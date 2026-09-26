@@ -1,0 +1,443 @@
+/* views/adminEdit.php */
+.admin-edit .navTab a {
+    border: 1px solid var(--admin-edit-border-strong, #cbd5e1);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    padding: 5px;
+    border-right: 0px;
+    background: var(--admin-edit-surface, #ffffff);
+}
+.admin-edit__date-range {
+    display: grid;
+    gap: 8px;
+}
+.admin-edit__latlong-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    align-items: end;
+}
+.admin-edit__latlong-map {
+    width: 100%;
+    height: 260px;
+    margin-top: 8px;
+    margin-bottom: 5px;
+    border-radius: 10px;
+    border: 1px solid var(--admin-edit-border-strong, #cbd5e1);
+    overflow: hidden;
+}
+.admin-edit__latlong-help {
+    margin-top: 6px;
+    color: #64748b;
+    font-size: 0.88rem;
+    line-height: 1.4;
+}
+@media (max-width: 640px) {
+    .admin-edit__latlong-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* views/adminEdit.php */
+.admin-edit {
+    --admin-edit-primary: var(--color-primary, #004663);
+    --admin-edit-surface: var(--color-surface, #ffffff);
+    --admin-edit-surface-alt: var(--color-surface-alt, #f0f2f5);
+    --admin-edit-border: var(--color-border, #e5e7eb);
+    --admin-edit-border-strong: var(--color-border-strong, #cbd5e1);
+    --admin-edit-text: var(--color-text, #111827);
+    --admin-edit-muted: var(--color-text-light, #6b7280);
+    --admin-edit-shadow: none;
+    color: var(--admin-edit-text);
+}
+
+.admin-edit__toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 15;
+    margin: -4px -4px 24px;
+    padding: 16px 18px;
+    background: color-mix(in srgb, var(--admin-edit-surface) 88%, transparent);
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid color-mix(in srgb, var(--admin-edit-border) 88%, transparent);
+}
+
+.admin-edit__toolbar-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.admin-edit__toolbar-copy {
+    display: grid;
+    gap: 4px;
+}
+
+.admin-edit__toolbar-title {
+    margin: 0;
+    font-size: 1.15rem;
+    font-weight: 700;
+}
+
+.admin-edit__toolbar-text {
+    margin: 0;
+    color: var(--admin-edit-muted);
+    font-size: 0.95rem;
+}
+
+.admin-edit__panel {
+    --generic-soft-panel-padding-block: var(--generic-container-padding-block, 16px);
+    --generic-soft-panel-padding-inline: var(--generic-container-padding-inline, 16px);
+    --generic-soft-panel-radius: var(--generic-container-radius, var(--radius-md, 6px));
+    --generic-soft-panel-border: var(--admin-edit-border);
+    --generic-soft-panel-background: var(--admin-edit-surface);
+    --generic-soft-panel-gap: var(--generic-space-4, 16px);
+    box-shadow: var(--admin-edit-shadow);
+}
+
+.admin-edit table.dbobjecttable {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 14px;
+}
+
+.admin-edit table.dbobjecttable > tbody > tr > th,
+.admin-edit table.dbobjecttable > tbody > tr > td,
+.admin-edit table.dbobjecttable > tr > th,
+.admin-edit table.dbobjecttable > tr > td {
+    vertical-align: top;
+}
+
+.admin-edit table.dbobjecttable th {
+    width: 220px;
+    min-width: 200px;
+    text-align: left;
+    padding: 13px var(--generic-space-4, 16px) 0 0;
+    color: var(--admin-edit-text);
+    font-weight: 700;
+    font-size: var(--generic-type-size-sm, 0.84rem);
+    line-height: 1.45;
+}
+
+.admin-edit table.dbobjecttable td {
+    padding: 0;
+}
+
+.admin-edit table.dbobjecttable td > input:not([type='checkbox']):not([type='radio']):not([type='button']):not([type='submit']):not([type='hidden']),
+.admin-edit table.dbobjecttable td > select,
+.admin-edit table.dbobjecttable td > textarea,
+.admin-edit table.dbobjecttable td > table,
+.admin-edit table.dbobjecttable td > div,
+.admin-edit table.dbobjecttable td > p,
+.admin-edit table.dbobjecttable td > hr {
+    margin-top: 0;
+}
+
+.admin-edit table.dbobjecttable td > input:not([type='checkbox']):not([type='radio']):not([type='button']):not([type='submit']):not([type='hidden']),
+.admin-edit table.dbobjecttable td > select,
+.admin-edit table.dbobjecttable td > textarea,
+.admin-edit table.dbobjecttable td > table,
+.admin-edit table.dbobjecttable td > div:not(.char_count):not(.field_help),
+.admin-edit table.dbobjecttable td > p,
+.admin-edit table.dbobjecttable td > hr,
+.admin-edit table.dbobjecttable td > h1,
+.admin-edit table.dbobjecttable td > h2 {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.admin-edit table.dbobjecttable td > table {
+    border-collapse: separate;
+    border-spacing: 12px 0;
+}
+
+.admin-edit table.dbobjecttable td > table td {
+    padding: 0;
+}
+
+.admin-edit table.dbobjecttable td > table td:first-child {
+    padding-left: 0;
+}
+
+.admin-edit__control,
+#formulaire-edit input[type='text'],
+#formulaire-edit input[type='email'],
+#formulaire-edit input[type='password'],
+#formulaire-edit input[type='number'],
+#formulaire-edit input[type='date'],
+#formulaire-edit input[type='time'],
+#formulaire-edit input[type='datetime-local'],
+#formulaire-edit input[type='color'],
+#formulaire-edit select,
+#formulaire-edit textarea {
+    width: 100%;
+    min-height: var(--generic-form-control-min-height, 44px);
+    padding: var(--generic-form-control-padding-block, 11px) var(--generic-form-control-padding-inline, 12px);
+    border: 1px solid var(--generic-form-control-border, var(--color-border, #d1d5db));
+    border-radius: var(--generic-form-control-radius, var(--radius-md, 6px));
+    background: var(--generic-form-control-background, var(--color-bg, #f8fafc));
+    color: var(--generic-form-control-color, var(--color-text, #1f2937));
+    font: inherit;
+    line-height: 1.45;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
+    box-sizing: border-box;
+}
+
+.admin-edit__field-content {
+    min-width: 0;
+}
+
+.admin-edit__field-content > [id^='img_'],
+.admin-edit__field-content > [id^='imgContainer_'] {
+    max-width: 100%;
+}
+
+#formulaire-edit textarea {
+    min-height: 120px;
+    resize: vertical;
+}
+
+#formulaire-edit input[type='color'] {
+    width: 72px;
+    min-width: 72px;
+    padding: 6px;
+}
+
+.admin-edit__color-field {
+    display: grid;
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 12px;
+    align-items: start;
+}
+
+.admin-edit__color-picker {
+    width: 72px !important;
+    min-width: 72px;
+    height: 46px;
+    padding: 6px !important;
+    border-radius: 14px;
+    cursor: pointer;
+}
+
+.admin-edit__color-text {
+    min-width: 0;
+}
+
+#formulaire-edit input[type='file'] {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px dashed var(--color-border, #d1d5db);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--color-surface-alt, #f8fafc) 88%, white 12%);
+    color: var(--color-text-light, #64748b);
+    box-sizing: border-box;
+}
+
+#formulaire-edit input[type='file']::file-selector-button {
+    margin-right: 12px;
+    padding: 10px 14px;
+    border: 1px solid var(--color-border, #d1d5db);
+    border-radius: 10px;
+    background: var(--color-surface, #ffffff);
+    color: var(--color-text, #1f2937);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+#formulaire-edit input[type='range'] {
+    width: min(360px, 100%);
+    accent-color: var(--admin-edit-primary);
+}
+
+#formulaire-edit input[type='checkbox'],
+#formulaire-edit input[type='radio'] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--admin-edit-primary);
+}
+
+.admin-edit__control:focus,
+#formulaire-edit input[type='text']:focus,
+#formulaire-edit input[type='email']:focus,
+#formulaire-edit input[type='password']:focus,
+#formulaire-edit input[type='number']:focus,
+#formulaire-edit input[type='date']:focus,
+#formulaire-edit input[type='time']:focus,
+#formulaire-edit input[type='datetime-local']:focus,
+#formulaire-edit input[type='color']:focus,
+#formulaire-edit input[type='file']:focus,
+#formulaire-edit select:focus,
+#formulaire-edit textarea:focus {
+    outline: none;
+    border-color: color-mix(in srgb, var(--color-primary, #2563eb) 52%, var(--color-border, #d1d5db));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary, #2563eb) 14%, transparent);
+    background: var(--color-surface, #ffffff);
+}
+
+#formulaire-edit button:not(.note-btn),
+#formulaire-edit input[type='button'],
+#formulaire-edit input[type='submit'] {
+    min-height: 42px;
+    padding: 10px 16px;
+    border: 1px solid transparent;
+    border-radius: 12px;
+    background: var(--color-primary, #2563eb);
+    color: var(--color-text-inverse, #ffffff);
+    font: inherit;
+    font-weight: 700;
+    line-height: 1.35;
+    cursor: pointer;
+    box-shadow: var(--shadow-md, 0 12px 24px rgba(0, 0, 0, 0.12));
+    transition: transform 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease, border-color 0.18s ease;
+}
+
+#formulaire-edit button:not(.note-btn):hover,
+#formulaire-edit input[type='button']:hover,
+#formulaire-edit input[type='submit']:hover {
+    transform: translateY(-1px);
+}
+
+#formulaire-edit button:not(.note-btn):disabled,
+#formulaire-edit input[type='button']:disabled,
+#formulaire-edit input[type='submit']:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+#formulaire-edit .admin-edit__action--secondary,
+#formulaire-edit .admin-edit__draft-button {
+    background: var(--color-surface-alt, #f0f2f5);
+    color: var(--color-text, #1f2937);
+    border-color: var(--color-border, #d1d5db);
+    box-shadow: none;
+}
+
+#formulaire-edit h1,
+#formulaire-edit h2 {
+    margin: 0 0 10px;
+    color: var(--admin-edit-text);
+}
+
+#formulaire-edit p {
+    margin: 0;
+    color: var(--admin-edit-muted);
+    line-height: 1.6;
+}
+
+#formulaire-edit hr {
+    border: 0;
+    border-top: 1px solid var(--admin-edit-border);
+    margin: 8px 0;
+}
+
+.admin-edit .char_count {
+    margin-top: 8px;
+    color: var(--color-text-light, #64748b);
+    font-size: 0.85rem;
+}
+
+.admin-edit .field_help {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    margin-left: 6px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--admin-edit-primary) 12%, var(--admin-edit-surface));
+    color: var(--admin-edit-primary);
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: help;
+}
+
+.admin-edit .required-star {
+    margin-left: 6px;
+    color: #dc2626;
+}
+
+.admin-edit .star-rating {
+    display: inline-flex;
+    gap: 6px;
+    padding: 10px 14px;
+    border: 1px solid var(--admin-edit-border);
+    border-radius: 14px;
+    background: var(--admin-edit-surface);
+}
+
+.admin-edit .star-rating span {
+    cursor: pointer;
+    font-size: 1.5rem;
+    color: #cbd5e1;
+}
+
+.admin-edit .star-rating span.active {
+    color: #f59e0b;
+}
+
+.admin-edit .drag_img,
+.admin-edit [id^='imgContainer_'] {
+    border-radius: 18px;
+}
+
+.admin-edit [id^='imgContainer_'] {
+    overflow: hidden;
+    border: 1px solid var(--admin-edit-border-strong) !important;
+    background: color-mix(in srgb, var(--admin-edit-surface-alt) 80%, var(--admin-edit-surface));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+}
+
+@media only screen and (max-width: 860px) {
+    .admin-edit__toolbar {
+        margin-left: 0;
+        margin-right: 0;
+        padding-left: 0;
+        padding-right: 0;
+    }
+
+    .admin-edit__panel {
+        padding: var(--generic-container-padding-block, 16px) var(--generic-container-padding-inline, 16px);
+        border-radius: var(--generic-container-radius, var(--radius-md, 6px));
+    }
+
+    .admin-edit table.dbobjecttable,
+    .admin-edit table.dbobjecttable tbody,
+    .admin-edit table.dbobjecttable tr,
+    .admin-edit table.dbobjecttable th,
+    .admin-edit table.dbobjecttable td {
+        display: block;
+        width: 100%;
+    }
+
+    .admin-edit table.dbobjecttable {
+        border-spacing: 0;
+    }
+
+    .admin-edit table.dbobjecttable tr {
+        margin-bottom: 18px;
+    }
+
+    .admin-edit table.dbobjecttable th {
+        min-width: 0;
+        padding: 0 0 8px;
+    }
+
+    .admin-edit table.dbobjecttable td > table,
+    .admin-edit table.dbobjecttable td > table tr,
+    .admin-edit table.dbobjecttable td > table td {
+        display: block;
+        width: 100%;
+    }
+
+    .admin-edit table.dbobjecttable td > table td + td {
+        margin-top: 12px;
+    }
+}

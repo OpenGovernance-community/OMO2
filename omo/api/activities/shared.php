@@ -5,7 +5,9 @@ use dbObject\ControlActivity;
 use dbObject\DocumentPvPoint;
 use dbObject\Holon;
 use dbObject\Organization;
+use dbObject\Permission;
 use dbObject\RecurrenceSchedule;
+use dbObject\UserOrganization;
 
 function omoActivitySourceLang()
 {
@@ -62,7 +64,7 @@ function omoActivitySourceLang()
         'activity.editor.responsible_none' => ['text' => 'Aucune personne', 'context' => 'Activity responsible person empty option.'],
         'activity.editor.responsible_help' => ['text' => 'Cette personne est responsable en complément de l espace porteur de la tâche récurrente.', 'context' => 'Recurring task responsible person field help.'],
         'activity.display_lead' => ['text' => 'Afficher en avance', 'context' => 'Advance field.'],
-        'activity.display_lead_help' => ['text' => 'La tâche apparaît ce nombre d unités avant sa date prévue.', 'context' => 'Help for the activity advance display field.'],
+        'activity.display_lead_help' => ['text' => 'La tâche apparaît ce nombre d’unités avant sa date prévue.', 'context' => 'Help for the activity advance display field.'],
         'activity.overdue_after' => ['text' => 'En retard après', 'context' => 'Delay field.'],
         'activity.overdue_after_help' => ['text' => 'La tâche est signalée en retard après ce délai suivant sa date prévue.', 'context' => 'Help for the activity overdue delay field.'],
         'activity.unit' => ['text' => 'Unité', 'context' => 'Unit field.'],
@@ -102,7 +104,7 @@ function omoActivitySourceLang()
         'activity.delay.month' => ['text' => 'mois', 'context' => 'Month unit.'],
         'activity.error.context' => ['text' => 'Contexte invalide ou inaccessible.', 'context' => 'Context error.'],
         'activity.error.not_found' => ['text' => 'Tâche récurrente introuvable.', 'context' => 'Not found error.'],
-        'activity.error.forbidden' => ['text' => 'Cette action n est pas autorisée.', 'context' => 'Forbidden error.'],
+        'activity.error.forbidden' => ['text' => 'Cette action n’est pas autorisée.', 'context' => 'Forbidden error.'],
         'activity.error.title' => ['text' => 'Le titre est obligatoire.', 'context' => 'Title error.'],
         'activity.error.schedule' => ['text' => 'La récurrence ou sa référence est invalide.', 'context' => 'Schedule error.'],
         'activity.error.save' => ['text' => 'Impossible d enregistrer cette tâche récurrente.', 'context' => 'Save error.'],
@@ -150,11 +152,15 @@ function omoActivityResolveContext($organizationId, $currentHolonId = 0)
     return ['status' => true, 'organization' => $organization, 'rootHolon' => $root, 'currentHolon' => $holon];
 }
 
-function omoActivityCanUsePermission(Holon $holon, $permissionKey)
+function omoActivityCanUsePermission(?Holon $holon, $permissionKey, $organizationId = 0)
 {
     $userId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
     if ($userId <= 0) {
         return false;
+    }
+
+    if (!($holon instanceof Holon)) {
+        return Permission::userCanInOrganization((string)$permissionKey, (int)$organizationId, $userId);
     }
 
     return $holon->isAllowed((string)$permissionKey, false, $userId)
@@ -178,6 +184,10 @@ function omoActivityPvMeetingQuery(int $organizationId): string
 
 function omoActivityCanView(ControlActivity $activity)
 {
+    if ($activity->get('IDholon') === null) {
+        $organization = $activity->getOrganization();
+        return $organization instanceof Organization && $organization->canViewDetail();
+    }
     $holon = $activity->getHolon();
     return $holon instanceof Holon && $holon->canViewDetail();
 }
@@ -239,6 +249,9 @@ if (!function_exists('omoActivityMatchesAssignment')) {
             return false;
         }
 
+        if ($activity->get('IDholon') === null) {
+            return UserOrganization::hasActiveMembership($currentUserId, (int)$organizationId);
+        }
         $holon = $activity->getHolon();
         return $holon instanceof Holon
             && omoActivityUserIsAssociatedWithHolon($currentUserId, $organizationId, $holon);
@@ -247,20 +260,32 @@ if (!function_exists('omoActivityMatchesAssignment')) {
 
 function omoActivityCanEdit(ControlActivity $activity)
 {
+    if ($activity->get('IDholon') === null) {
+        return omoActivityCanUsePermission(null, 'CAN_EDIT_RECURRING_TASK', (int)$activity->get('IDorganization'));
+    }
     $holon = $activity->getHolon();
     return $holon instanceof Holon && omoActivityCanUsePermission($holon, 'CAN_EDIT_RECURRING_TASK');
 }
 
 function omoActivityCanDelete(ControlActivity $activity)
 {
+    if ($activity->get('IDholon') === null) {
+        return omoActivityCanUsePermission(null, 'CAN_DELETE_RECURRING_TASK', (int)$activity->get('IDorganization'));
+    }
     $holon = $activity->getHolon();
     return $holon instanceof Holon && omoActivityCanUsePermission($holon, 'CAN_DELETE_RECURRING_TASK');
 }
 
 function omoActivityResponsibleAssignmentLabel(ControlActivity $activity)
 {
-    $holon = $activity->getHolon();
-    $roleLabel = $holon instanceof Holon ? trim((string)$holon->getDisplayName()) : '';
+    $roleLabel = '';
+    if ($activity->get('IDholon') === null) {
+        $organization = $activity->getOrganization();
+        $roleLabel = $organization instanceof Organization ? trim((string)$organization->get('name')) : '';
+    } else {
+        $holon = $activity->getHolon();
+        $roleLabel = $holon instanceof Holon ? trim((string)$holon->getDisplayName()) : '';
+    }
     $responsibleUserId = (int)$activity->get('IDuser_responsible');
     $responsibleLabel = $responsibleUserId > 0
         ? DocumentPvPoint::getUserDisplayNameForOrganization($responsibleUserId, (int)$activity->get('IDorganization'))

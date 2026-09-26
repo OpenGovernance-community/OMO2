@@ -98,18 +98,6 @@
     background: var(--topbar-action-bg-hover, #e5e7eb);
 }
 
-.common-topbar__visually-hidden {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
-}
-
 .common-topbar__actions {
     display: flex;
     align-items: center;
@@ -1198,6 +1186,43 @@ html[data-theme="dark"] .common-topbar-profile-preference__icon--theme-dark {
     margin: 0;
     line-height: 1.5;
     color: var(--color-text-light, #4b5563);
+}
+
+html[data-theme] .common-topbar {
+    background: var(--topbar-bg);
+    border-bottom-color: var(--topbar-border);
+}
+
+html[data-theme] .common-topbar__brand {
+    background: var(--topbar-brand-bg);
+}
+
+html[data-theme] .common-topbar__menu-wrap + .common-topbar__menu-wrap {
+    border-left-color: var(--topbar-border);
+}
+
+html[data-theme] .common-topbar__action,
+html[data-theme] .common-topbar__menu-item,
+html[data-theme] .common-topbar-modal__close,
+html[data-theme] .common-topbar-drawer__close {
+    background: var(--topbar-action-bg);
+    color: var(--topbar-action-text);
+}
+
+html[data-theme] .common-topbar__action--square {
+    background: transparent;
+    color: var(--topbar-action-text);
+}
+
+html[data-theme] .common-topbar__action:hover,
+html[data-theme] .common-topbar-modal__close:hover,
+html[data-theme] .common-topbar-drawer__close:hover {
+    background: var(--topbar-action-bg-hover);
+}
+
+html[data-theme] .common-topbar__avatar {
+    background: var(--topbar-avatar-bg);
+    color: var(--topbar-avatar-text);
 }
 
 html[data-theme] .common-topbar__menu {

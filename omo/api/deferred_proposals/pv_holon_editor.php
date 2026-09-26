@@ -11,6 +11,7 @@ $sourceLang = [
     'action' => ['text' => 'Action', 'context' => 'Deferred holon proposal action label'],
     'create' => ['text' => 'Créer un rôle ou cercle', 'context' => 'Deferred holon proposal create action'],
     'update' => ['text' => 'Modifier un rôle ou cercle', 'context' => 'Deferred holon proposal update action'],
+    'move' => ['text' => 'Deplacer un role ou cercle', 'context' => 'Deferred holon move action'],
     'delete' => ['text' => 'Supprimer un rôle ou cercle', 'context' => 'Deferred holon proposal delete action'],
     'holon' => ['text' => 'Espace concerné', 'context' => 'Deferred holon proposal target label'],
     'open_holon' => ['text' => 'Choisir un espace dans la structure', 'context' => 'Deferred holon proposal open picker label'],
@@ -72,7 +73,7 @@ if ($proposalId > 0) {
 }
 if ($proposal === null && isset($_GET['operation'])) {
     $candidateOperation = trim((string)$_GET['operation']);
-    if (in_array($candidateOperation, [DeferredProposal::OPERATION_CREATE, DeferredProposal::OPERATION_UPDATE, DeferredProposal::OPERATION_DELETE], true)) {
+    if (in_array($candidateOperation, [DeferredProposal::OPERATION_CREATE, DeferredProposal::OPERATION_UPDATE, DeferredProposal::OPERATION_DELETE, DeferredProposal::OPERATION_MOVE], true)) {
         $operation = $candidateOperation;
     }
 }
@@ -92,6 +93,31 @@ if ($stage === 'capture') {
     if (!$targetHolon) {
         http_response_code(403);
         echo '<div class="omo-empty-state">' . omoApiEscape($tr('denied_error')) . '</div>';
+        exit;
+    }
+    if ($operation === DeferredProposal::OPERATION_MOVE) {
+        $organization = new \dbObject\Organization();
+        $organization->load($organizationId);
+        $moveData = $organization->getHolonMoveEditorData($targetHolonId, $collectiveHolonId);
+        $state = $proposal instanceof DeferredProposal ? DeferredProposal::normalizeState($proposal->get('after_state')) : [];
+        $state['destinations'] = $moveData['destinations'];
+        require_once dirname(__DIR__, 3) . '/common/choice/deferred-editor-fields.php';
+        ?>
+        <form class="generic-section generic-section--stack" data-deferred-holon-move>
+            <strong><?= omoApiEscape($targetHolon->getDisplayName()) ?></strong>
+            <?php omoDeferredEditorRenderFields('holon_move', $state); ?>
+            <p class="generic-feedback" data-feedback hidden></p>
+            <div class="generic-action-row">
+                <button type="submit" class="generic-action-button generic-action-button--main"><?= omoApiEscape(omoDeferredEditorT('save')) ?></button>
+                <button type="button" class="generic-action-button generic-action-button--secondary" data-cancel><?= omoApiEscape(omoDeferredEditorT('cancel')) ?></button>
+            </div>
+        </form>
+        <?= commonPageScriptTags('/omo/api/deferred_proposals/pv_holon_move_editor.js', [
+            'organizationId' => $organizationId, 'pointId' => $pointId, 'proposalId' => $proposalId,
+            'holonId' => $targetHolonId, 'saveError' => $tr('save_error'),
+            'emptyMessage' => omoDeferredEditorT('move_empty'), 'workflow' => $workflow || !empty($_GET['direct']),
+        ]) ?>
+        <?php
         exit;
     }
     $initialPayload = $proposal instanceof DeferredProposal && $operation !== DeferredProposal::OPERATION_DELETE
@@ -161,7 +187,7 @@ if ($stage === 'capture') {
 $catalog = DeferredProposal::getHolonTargetHolonCatalog($organizationId, $collectiveHolonId);
 if (!isset($catalog[$targetHolonId])) $targetHolonId = (int)$document->getPvContextHolonId();
 $labels = [];
-$permissions = [DeferredProposal::OPERATION_CREATE => [], DeferredProposal::OPERATION_UPDATE => [], DeferredProposal::OPERATION_DELETE => []];
+$permissions = [DeferredProposal::OPERATION_CREATE => [], DeferredProposal::OPERATION_UPDATE => [], DeferredProposal::OPERATION_DELETE => [], DeferredProposal::OPERATION_MOVE => []];
 foreach ($catalog as $catalogHolonId => $entry) {
     $labels[(int)$catalogHolonId] = (string)$entry['label'];
     foreach (array_keys($permissions) as $catalogOperation) {
@@ -172,7 +198,7 @@ $targetLabel = (string)($labels[$targetHolonId] ?? '');
 ?>
 <section class="generic-section generic-section--stack omo-deferred-holon-selector" data-deferred-holon-selector>
     <p><?= omoApiEscape($tr('intro')) ?></p>
-    <label class="generic-form-field"><span class="generic-form-label"><?= omoApiEscape($tr('action')) ?></span><select class="generic-form-control" data-deferred-operation<?= $proposal instanceof DeferredProposal ? ' disabled' : '' ?>><option value="create"<?= $operation === 'create' ? ' selected' : '' ?>><?= omoApiEscape($tr('create')) ?></option><option value="update"<?= $operation === 'update' ? ' selected' : '' ?>><?= omoApiEscape($tr('update')) ?></option><option value="delete"<?= $operation === 'delete' ? ' selected' : '' ?>><?= omoApiEscape($tr('delete')) ?></option></select></label>
+    <label class="generic-form-field"><span class="generic-form-label"><?= omoApiEscape($tr('action')) ?></span><select class="generic-form-control" data-deferred-operation<?= $proposal instanceof DeferredProposal ? ' disabled' : '' ?>><option value="create"<?= $operation === 'create' ? ' selected' : '' ?>><?= omoApiEscape($tr('create')) ?></option><option value="update"<?= $operation === 'update' ? ' selected' : '' ?>><?= omoApiEscape($tr('update')) ?></option><option value="delete"<?= $operation === 'delete' ? ' selected' : '' ?>><?= omoApiEscape($tr('delete')) ?></option><option value="move"<?= $operation === 'move' ? ' selected' : '' ?>><?= omoApiEscape($tr('move')) ?></option></select></label>
     <label class="generic-form-field"><span class="generic-form-label"><?= omoApiEscape($tr('holon')) ?></span><span class="omo-deferred-holon-selector__control"><input class="generic-form-control" type="text" readonly value="<?= omoApiEscape($targetLabel) ?>" data-deferred-holon-label><button class="generic-action-button generic-action-button--secondary generic-action-button--icon-only" type="button" data-deferred-holon-open aria-label="<?= omoApiEscape($tr('open_holon')) ?>"><img src="/omo/images/tools/connection.png" alt=""></button></span><small class="omo-deferred-holon-selector__permission" data-deferred-holon-permission hidden></small></label>
     <p class="generic-feedback" data-deferred-feedback hidden></p>
     <div class="generic-action-row"><button class="generic-action-button generic-action-button--main" type="button" data-deferred-continue><?= omoApiEscape($tr('continue')) ?></button><button class="generic-action-button generic-action-button--secondary" type="button" data-deferred-cancel><?= omoApiEscape($tr('cancel')) ?></button></div>
@@ -188,18 +214,13 @@ $targetLabel = (string)($labels[$targetHolonId] ?? '');
 .omo-deferred-holon-selector__picker-header { display:flex; justify-content:space-between; gap:12px; }
 .omo-deferred-holon-selector__picker-panel .omo-holon-scope-picker__map { height:min(55dvh,520px); }
 </style>
-<script>
-(function () {
-    const root = document.querySelector('[data-deferred-holon-selector]'); if (!root) return;
-    const operation = root.querySelector('[data-deferred-operation]'), label = root.querySelector('[data-deferred-holon-label]'), permission = root.querySelector('[data-deferred-holon-permission]'), proceed = root.querySelector('[data-deferred-continue]'), pickerLayer = root.querySelector('[data-deferred-holon-picker]'), pickerHost = root.querySelector('[data-deferred-holon-map]');
-    const labels = <?= json_encode($labels, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>, permissions = <?= json_encode($permissions, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>, texts = <?= json_encode(['allowed' => $tr('allowed'), 'denied' => $tr('denied')], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
-    let targetId = <?= $targetHolonId ?>, candidateId = targetId, picker = null;
-    function allowedIds() { return Array.isArray(permissions[operation.value]) ? permissions[operation.value].map(Number) : []; }
-    function allowed(id) { return allowedIds().indexOf(Number(id)) !== -1; }
-    function sync() { const ok = allowed(targetId); label.value = String(labels[String(targetId)] || ''); permission.hidden = ok; permission.textContent = ok ? '' : texts.denied; proceed.disabled = !ok; }
-    function closePicker() { pickerLayer.hidden = true; if (picker && typeof picker.destroy === 'function') picker.destroy(); picker = null; pickerHost.innerHTML = ''; }
-    function updateCandidate(id) { candidateId = Number(id || 0); root.querySelector('[data-deferred-holon-choose]').disabled = !allowed(candidateId); }
-    function openPicker() { if (typeof window.omoMountHolonScopePicker !== 'function') return; candidateId = targetId; pickerLayer.hidden = false; picker = window.omoMountHolonScopePicker({host:pickerHost, organizationId:<?= $organizationId ?>, initialHolonId:targetId, selectableHolonIds:allowedIds(), showModes:false, initialScope:'local', labelMode:'context', suppressInitialChange:true, onChange:updateCandidate, onReady:updateCandidate}); updateCandidate(targetId); }
-    operation.addEventListener('change', sync); root.querySelector('[data-deferred-holon-open]').addEventListener('click', openPicker); root.querySelectorAll('[data-deferred-holon-close]').forEach(function (button) { button.addEventListener('click', closePicker); }); root.querySelector('[data-deferred-holon-choose]').addEventListener('click', function () { if (!allowed(candidateId)) return; targetId = candidateId; closePicker(); sync(); }); root.querySelector('[data-deferred-cancel]').addEventListener('click', function () { if (window.commonTopbarCloseModal) window.commonTopbarCloseModal(); }); proceed.addEventListener('click', function () { if (!allowed(targetId) || typeof window.commonTopbarOpenModal !== 'function') return; const url = '/omo/api/deferred_proposals/pv_holon_editor.php?stage=capture&oid=<?= $organizationId ?>&point_id=<?= $pointId ?>&proposal_id=<?= $proposalId ?>&operation=' + encodeURIComponent(operation.value) + '&holon_id=' + encodeURIComponent(String(targetId)); window.commonTopbarOpenModal(<?= json_encode($tr('holon')) ?>, url, 'fetch'); }); sync();
-}());
-</script>
+<?= commonPageScriptTags('/omo/api/deferred_proposals/pv_holon_editor.js', [
+    'labels' => $labels,
+    'permissions' => $permissions,
+    'tr' => ['allowed' => $tr('allowed'), 'denied' => $tr('denied')],
+    'targetId' => $targetHolonId,
+    'organizationId' => $organizationId,
+    'pointId' => $pointId,
+    'proposalId' => $proposalId,
+    'tr2' => $tr('holon'),
+]) ?>

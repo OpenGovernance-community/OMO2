@@ -21,7 +21,8 @@ if (!empty($enabledAppHashes['projects'])) {
                 $project,
                 $dashboardModuleScope,
                 $dashboardModuleContextHolonId,
-                $dashboardModuleScopeHolonIds
+                $dashboardModuleScopeHolonIds,
+                $organizationRootHolon instanceof Holon && $dashboardModuleContextHolonId === (int)$organizationRootHolon->getId()
             )
         ) {
             continue;

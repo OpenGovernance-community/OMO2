@@ -565,27 +565,7 @@
     }
 
     function executeFetchedScripts(container) {
-        var scripts = Array.prototype.slice.call(container.querySelectorAll('script'));
-        return scripts.reduce(function (promise, script) {
-            return promise.then(function () {
-                if (script.src) {
-                    return new Promise(function (resolve, reject) {
-                        var loadedScript = document.createElement('script');
-                        loadedScript.src = script.src;
-                        loadedScript.onload = resolve;
-                        loadedScript.onerror = reject;
-                        document.head.appendChild(loadedScript);
-                    });
-                }
-
-                try {
-                    window.eval(script.textContent || '');
-                    return Promise.resolve();
-                } catch (error) {
-                    return Promise.reject(error);
-                }
-            });
-        }, Promise.resolve());
+        return window.commonExecuteFragmentScripts(container);
     }
 
     function openDrawerWithUrl(url) {

@@ -1,0 +1,109 @@
+/* Mission cards and picker shared by the two LMS editors. */
+
+.lms-parcours-mission-item.is-menu-open {
+    z-index: 20;
+}
+
+.lms-parcours-mission-item__menu-wrap {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 25;
+}
+
+.lms-parcours-mission-item__menu-trigger {
+    width: 34px;
+    height: 34px;
+    border: 0;
+    border-radius: var(--radius-md);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255,255,255,0.94);
+    color: var(--text-main);
+    cursor: pointer;
+    box-shadow: 0 8px 18px rgba(15,23,42,0.1);
+}
+
+.lms-parcours-mission-item__menu.is-open {
+    display: block;
+}
+
+.lms-parcours-mission-item__menu-item {
+    width: 100%;
+    border: 0;
+    background: transparent;
+    color: var(--text-main);
+    text-align: left;
+    padding: 10px 12px;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+}
+
+.lms-parcours-mission-item__menu-item:hover {
+    background: color-mix(in srgb, var(--primary) 10%, var(--bg-card));
+}
+
+.lms-parcours-mission-item__body strong {
+    display: block;
+    margin-bottom: 6px;
+    padding-right: 42px;
+}
+
+.lms-parcours-mission-item__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    color: var(--text-light);
+    font-size: 0.92rem;
+}
+
+.lms-parcours-mission-item__meta span {
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--primary) 8%, var(--bg-card));
+}
+
+.lms-parcours-mission-picker[hidden] {
+    display: none !important;
+}
+
+.lms-parcours-mission-picker {
+    position: fixed;
+    inset: 0;
+    z-index: 1100;
+}
+
+.lms-parcours-mission-picker__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.36);
+}
+
+.lms-parcours-mission-picker__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.lms-parcours-mission-picker__header h4 {
+    margin: 0 0 6px;
+}
+
+.lms-parcours-mission-picker__header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.lms-parcours-mission-picker__search {
+    display: grid;
+    gap: 6px;
+}
+
+.lms-parcours-mission-picker__empty {
+    padding: 16px 18px;
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--primary) 7%, var(--bg-main));
+}

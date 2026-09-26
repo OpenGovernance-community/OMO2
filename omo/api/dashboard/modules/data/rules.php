@@ -8,7 +8,7 @@ $dashboardRuleCounts = array('modified' => 0, 'review' => 0, 'obsolete' => 0);
 if (!empty($enabledAppHashes['policy']) && $scopeReferenceHolon instanceof Holon) {
     $ruleContextHolonIds = $dashboardModuleScopeHolonIds;
     $dashboardRules = new ArrayRule();
-    $dashboardRules->loadForPolicyContexts($currentOrganizationId, $ruleContextHolonIds);
+    $dashboardRules->loadForPolicyContexts($currentOrganizationId, $ruleContextHolonIds, $dashboardIsOrganizationHolon);
     $today = new DateTimeImmutable('today');
     $recentThreshold = $today->modify('-6 days');
     foreach ($dashboardRules as $dashboardRule) {

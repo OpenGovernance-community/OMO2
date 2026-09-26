@@ -4,6 +4,7 @@ declare(strict_types=1);
 // Isolated rendering test: no database or translation service needed.
 require_once dirname(__DIR__) . '/class/dbobject/dbobject.class.php';
 require_once dirname(__DIR__) . '/class/dbobject/project.class.php';
+require_once dirname(__DIR__) . '/class/dbobject/rule.class.php';
 require_once dirname(__DIR__) . '/common/choice/deferred-editor-fields.php';
 
 function omoLoadTranslationBundle(string $domain, array $source): array { return $source; }
@@ -40,4 +41,13 @@ assertEditorFields(str_contains($projectHtml, 'value="2" selected>P2'), 'Priorit
 assertEditorFields(str_contains($projectHtml, 'value="4" selected>4/5'), 'Importance must retain its value.');
 assertEditorFields(str_contains($projectHtml, 'value="2026-10-05"'), 'Date objects must be formatted for HTML date inputs.');
 
+ob_start();
+omoDeferredEditorRenderFields('holon_move', ['parent_id' => 4, 'destinations' => [
+    ['id' => 3, 'pathLabel' => 'Current parent', 'isCurrentParent' => true],
+    ['id' => 4, 'pathLabel' => '<Destination>', 'isCurrentParent' => false],
+]]);
+$moveHtml = ob_get_clean();
+assertEditorFields(!str_contains($moveHtml, 'Current parent'), 'Moves cannot select the current parent.');
+assertEditorFields(str_contains($moveHtml, 'value="4" selected>&lt;Destination&gt;'), 'Move destinations must be escaped and retained on reopen.');
+assertEditorFields(!str_contains($moveHtml, 'name="title"'), 'A move must not edit the holon definition.');
 echo "deferred_editor_fields_test: OK\n";

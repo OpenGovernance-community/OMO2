@@ -7,9 +7,9 @@ require_once __DIR__ . '/inc/access.php';
 require_once __DIR__ . '/inc/parcours_editor.php';
 
 $sourceLang = [
-    'lms.parcours_missions_panel.error.access_denied' => ['text' => 'Acces refuse.', 'context' => 'Error shown when the user cannot access the parcours content manager panel.'],
+    'lms.parcours_missions_panel.error.access_denied' => ['text' => 'Accès refusé.', 'context' => 'Error shown when the user cannot access the parcours content manager panel.'],
     'lms.parcours_missions_panel.error.not_found' => ['text' => 'Parcours introuvable.', 'context' => 'Error shown when the parcours content manager cannot find the parcours.'],
-    'lms.parcours_missions_panel.error.cannot_edit' => ['text' => 'Vous n avez pas le droit de modifier ce parcours.', 'context' => 'Error shown when the user cannot edit the parcours content manager.'],
+    'lms.parcours_missions_panel.error.cannot_edit' => ['text' => 'Vous n’avez pas le droit de modifier ce parcours.', 'context' => 'Error shown when the user cannot edit the parcours content manager.'],
 ];
 
 $lang = omoLoadTranslationBundle('omo_lms_parcours_missions_panel', $sourceLang);

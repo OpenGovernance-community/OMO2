@@ -64,6 +64,14 @@ class ChatMessage extends DbObject
         return 'id ASC';
     }
 
+    public static function handleUserDeparture($organizationId, $userId, $ghostUserId)
+    {
+        return self::execute(
+            'UPDATE chat_message SET IDuser = :ghost_user_id WHERE IDorganization = :organization_id AND IDuser = :user_id',
+            array('ghost_user_id' => (int)$ghostUserId, 'organization_id' => (int)$organizationId, 'user_id' => (int)$userId)
+        );
+    }
+
     public static function normalizeMessageType($messageType)
     {
         return (string)$messageType === self::TYPE_SYSTEM ? self::TYPE_SYSTEM : self::TYPE_USER;

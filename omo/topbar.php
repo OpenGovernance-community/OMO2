@@ -43,7 +43,7 @@ function omoGetTopbarSourceLang(): array
             'context' => 'Fallback drawer title for the OMO topbar when no specific title is provided.',
         ],
         'topbar.organization_level.open_aria' => [
-            'text' => 'Ouvrir les parametres de l organisation (niveau {level}).',
+            'text' => 'Ouvrir les paramètres de l’organisation (niveau {level}).',
             'context' => 'Accessible label for the organization interface level shortcut in the OMO topbar.',
         ],
         'topbar.help.button' => [
@@ -55,7 +55,7 @@ function omoGetTopbarSourceLang(): array
             'context' => 'Fallback label for a help item when no label is available in the OMO topbar.',
         ],
         'topbar.help.faq.description' => [
-            'text' => 'Acces aux questions les plus courantes, avec moteur de recherche pour trouver facilement la reponse a ses questions.',
+            'text' => 'Accès aux questions les plus courantes, avec un moteur de recherche pour trouver facilement la réponse à vos questions.',
             'context' => 'Description of the FAQ help entry in the OMO topbar.',
         ],
         'topbar.help.faq.label' => [
@@ -158,6 +158,9 @@ function omoGetTopbarSourceLang(): array
             'text' => "Activer le mode Admin d'organisation",
             'context' => 'Button label used in the OMO topbar profile panel to enable organization admin mode for the current session.',
         ],
+        'topbar.profile.extended.enable' => ['text' => 'Activer les autorités étendues', 'context' => 'Enable optional personal extended permissions'],
+        'topbar.profile.extended.disable' => ['text' => 'Désactiver les autorités étendues', 'context' => 'Disable optional personal extended permissions'],
+        'topbar.profile.extended.notice' => ['text' => 'Ces autorites vous sont confiees de facon temporaire pour aider les autres equipes, toujours au service de l\'organisation. Activez-les seulement pour cette aide et desactivez-les une fois votre intervention terminee.', 'context' => 'Conscious activation notice for temporary extended authorities'],
         'topbar.profile.admin_mode.disable' => [
             'text' => "Quitter le mode Admin d'organisation",
             'context' => 'Button label used in the OMO topbar profile panel to disable organization admin mode for the current session.',
@@ -425,6 +428,12 @@ function omoBuildTopbarOptions(array $organizationContext, array $options = []):
         && $hasOrganizationContext
         && commonCurrentUserCanUseAdminMode((int)$organizationContext['id']);
 
+    $canUseExtendedAuthorities = $hasOrganizationContext && $currentUserId > 0
+        && commonCurrentUserCanUseExtendedAuthorities((int)$organizationContext['id']);
+    if ($canUseExtendedAuthorities && empty($_SESSION['extended_authorities_csrf'])) {
+        $_SESSION['extended_authorities_csrf'] = bin2hex(random_bytes(32));
+    }
+
     $config = [
         'appKey' => 'omo',
         'appLabel' => 'OMO',
@@ -450,6 +459,15 @@ function omoBuildTopbarOptions(array $organizationContext, array $options = []):
                 'statusActiveLabel' => omoTopbarTranslate('topbar.profile.admin_mode.active'),
                 'statusInactiveLabel' => omoTopbarTranslate('topbar.profile.admin_mode.inactive'),
                 'toggleUrl' => '/common/admin_mode.php',
+            ],
+            'extendedAuthorities' => [
+                'enabled' => $canUseExtendedAuthorities,
+                'active' => $canUseExtendedAuthorities && commonCurrentUserIsExtendedAuthoritiesEnabled((int)$organizationContext['id']),
+                'organizationId' => $hasOrganizationContext ? (int)$organizationContext['id'] : 0,
+                'enableLabel' => omoTopbarTranslate('topbar.profile.extended.enable'),
+                'disableLabel' => omoTopbarTranslate('topbar.profile.extended.disable'),
+                'notice' => omoTopbarTranslate('topbar.profile.extended.notice'),
+                'csrfToken' => (string)($_SESSION['extended_authorities_csrf'] ?? ''),
             ],
             'siteAdminMode' => [
                 'enabled' => commonCurrentUserCanUseSiteAdminMode(),

@@ -1,0 +1,250 @@
+/* omo/api/lms/parcours_create.php */
+.lms-create-parcours-view {
+    display: grid;
+    gap: 0;
+}
+
+.lms-create-parcours-header {
+    top: 0;
+    margin: 0;
+    z-index: 8;
+}
+
+.lms-create-parcours-header.generic-drawer-header {
+    --generic-drawer-header-z: 8;
+}
+
+.lms-create-parcours-cancel,
+.lms-create-parcours-save {
+    min-width: 150px;
+    margin-top: 0;
+}
+
+.lms-create-parcours-note,
+.lms-parcours-missions {
+    --generic-section-gap: var(--generic-space-4, 16px);
+}
+
+.lms-create-parcours-note {
+    color: var(--color-text-light, var(--text-light));
+}
+
+.lms-parcours-missions {
+    display: grid;
+}
+
+.lms-parcours-missions__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+}
+
+.lms-parcours-missions__header h3 {
+    margin: 0 0 6px;
+}
+
+.lms-parcours-missions__header p {
+    margin: 0;
+    color: var(--text-light);
+    line-height: 1.5;
+}
+
+.lms-parcours-missions__add-button {
+    white-space: nowrap;
+}
+
+.lms-parcours-missions__empty {
+    padding: 16px 18px;
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--primary) 7%, var(--bg-main));
+}
+
+.lms-parcours-missions__list {
+    display: grid;
+    gap: 12px;
+}
+
+.lms-parcours-mission-item {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr);
+    gap: 14px;
+    align-items: stretch;
+    padding: 14px 16px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    background: var(--bg-main);
+    position: relative;
+}
+
+
+.lms-parcours-mission-item.is-drop-target {
+    border-color: color-mix(in srgb, var(--primary) 55%, var(--border-color));
+}
+
+.lms-parcours-mission-item.is-dragging {
+    opacity: 0.45;
+}
+
+.lms-parcours-mission-item__handle {
+    align-self: stretch;
+    user-select: none;
+}
+
+
+
+.lms-parcours-mission-item__menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    min-width: 140px;
+    padding: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    background: var(--bg-card);
+    box-shadow: 0 16px 40px rgba(15,23,42,0.16);
+    display: none;
+    z-index: 30;
+}
+
+
+
+
+
+.lms-parcours-mission-item__body p {
+    margin: 0 0 8px;
+    color: var(--text-light);
+}
+
+
+
+
+
+
+.lms-parcours-mission-picker__panel {
+    position: relative;
+    z-index: 1;
+    width: min(760px, calc(100vw - 32px));
+    max-height: min(78vh, 760px);
+    margin: 7vh auto 0;
+    padding: 18px;
+    border-radius: var(--radius-md);
+    background: var(--bg-card);
+    box-shadow: 0 28px 80px rgba(15,23,42,0.28);
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 14px;
+    overflow: hidden;
+}
+
+
+
+
+.lms-parcours-mission-picker__header p {
+    margin: 0;
+    color: var(--text-light);
+}
+
+
+.lms-parcours-mission-picker [data-lms-mission-picker-library="1"] {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 14px;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.lms-parcours-mission-picker__list {
+    display: grid;
+    gap: 10px;
+    overflow: auto;
+    min-height: 0;
+    padding-right: 4px;
+}
+
+.lms-parcours-mission-picker__item {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 14px 16px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    background: var(--bg-main);
+}
+
+.lms-parcours-mission-picker__copy strong {
+    display: block;
+    margin-bottom: 6px;
+}
+
+
+.lms-parcours-mission-picker__item[hidden],
+.lms-parcours-mission-picker__empty[hidden] {
+    display: none !important;
+}
+
+.lms-parcours-mission-picker__new-button,
+.lms-parcours-mission-creator__submit {
+    white-space: nowrap;
+}
+
+.lms-parcours-mission-creator[hidden] {
+    display: none !important;
+}
+
+.lms-parcours-mission-creator {
+    grid-template-rows: auto minmax(0, 1fr);
+    min-height: 0;
+    overflow: auto;
+    padding-right: 4px;
+}
+
+.lms-parcours-mission-creator__header {
+    justify-content: flex-start;
+}
+
+.lms-parcours-mission-creator__grid {
+    --generic-form-grid-min: 240px;
+}
+
+.lms-parcours-mission-creator__field input,
+.lms-parcours-mission-creator__field textarea {
+    width: 100%;
+}
+
+.lms-parcours-mission-creator__actions {
+    --generic-action-row-gap: var(--generic-space-3, 12px);
+}
+
+@media (max-width: 720px) {
+    .lms-create-parcours-header .generic-drawer-header__actions {
+        width: 100%;
+        flex-direction: column-reverse;
+        align-items: stretch;
+    }
+
+    .lms-create-parcours-cancel,
+    .lms-create-parcours-save {
+        width: 100%;
+    }
+
+    .lms-parcours-missions__header,
+    .lms-parcours-mission-picker__header-actions,
+    .lms-parcours-mission-picker__header,
+    .lms-parcours-mission-picker__item,
+    .lms-parcours-mission-creator__header,
+    .lms-parcours-mission-creator__actions {
+        flex-direction: column;
+    }
+
+    .lms-parcours-mission-picker__panel {
+        width: calc(100vw - 20px);
+        margin-top: 4vh;
+        max-height: 88vh;
+    }
+
+    .lms-parcours-mission-creator__grid {
+        grid-template-columns: 1fr;
+    }
+}

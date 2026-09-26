@@ -40,15 +40,23 @@ $targetType = trim((string)($_GET['target_type'] ?? ''));
 $operation = trim((string)($_GET['operation'] ?? ''));
 $contextHolonId = (int)($_GET['context_holon_id'] ?? 0);
 if (!in_array($targetType, [DeferredProposal::TARGET_RULE, DeferredProposal::TARGET_HOLON, DeferredProposal::TARGET_PROJECT, DeferredProposal::TARGET_RECURRING_TASK, DeferredProposal::TARGET_INDICATOR], true)
-    || !in_array($operation, [DeferredProposal::OPERATION_CREATE, DeferredProposal::OPERATION_UPDATE, DeferredProposal::OPERATION_DELETE], true)) {
+    || !in_array($operation, [DeferredProposal::OPERATION_CREATE, DeferredProposal::OPERATION_UPDATE, DeferredProposal::OPERATION_DELETE, DeferredProposal::OPERATION_MOVE], true)) {
     $respond(422, ['status' => false, 'message' => 'Sélection invalide.']);
 }
 
 $objects = [];
+$ruleScopeContext = null;
 $contextHolon = null;
+if ($targetType === DeferredProposal::TARGET_HOLON && $operation === DeferredProposal::OPERATION_MOVE && (int)($_GET['moving_holon_id'] ?? 0) > 0) {
+    $movingHolon = DeferredProposal::loadAllowedHolonTargetHolon($organizationId, (int)$_GET['moving_holon_id'], $operation, $collectiveHolonId);
+    if (!$movingHolon || (int)$movingHolon->get('IDholon_parent') !== $contextHolonId) $respond(403, ['status' => false, 'message' => 'Deplacement non autorise.']);
+    $moveData = $context['organization']->getHolonMoveEditorData((int)$movingHolon->getId(), $collectiveHolonId);
+    $respond(200, ['status' => true, 'destinations' => $moveData['destinations'], 'before' => DeferredProposal::captureHolonMoveState($movingHolon)]);
+}
 if ($targetType === DeferredProposal::TARGET_RULE) {
     $contextHolon = DeferredProposal::loadAllowedRuleTargetHolon($organizationId, $contextHolonId, $operation, $collectiveHolonId);
     if (!($contextHolon instanceof Holon)) $respond(403, ['status' => false, 'message' => 'Le collectif ne dispose pas du droit nécessaire dans cet espace.']);
+    $ruleScopeContext = Rule::getScopeContext($contextHolon);
     if ($operation !== DeferredProposal::OPERATION_CREATE) {
         foreach (Rule::findDefinedInHolon($contextHolonId) as $rule) {
             if (!$rule instanceof Rule || (int)$rule->getId() <= 0) continue;
@@ -105,4 +113,5 @@ $respond(200, [
     'status' => true,
     'context' => ['id' => (int)$contextHolon->getId(), 'label' => (string)$contextHolon->getFullDisplayName()],
     'objects' => $objects,
+    'ruleScopeContext' => $ruleScopeContext,
 ]);

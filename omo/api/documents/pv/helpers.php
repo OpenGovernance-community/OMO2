@@ -42,6 +42,7 @@ function omoDocumentsPvEditorSourceLang(): array
         'documents.pv_editor.proposals.title' => ['text' => 'Modifications', 'context' => 'Heading above the deferred proposals attached to a PV point.'],
         'documents.pv_editor.proposals.operation.create' => ['text' => 'Création', 'context' => 'Operation label for a deferred object creation.'],
         'documents.pv_editor.proposals.operation.update' => ['text' => 'Modification', 'context' => 'Operation label for a deferred object update.'],
+        'documents.pv_editor.proposals.operation.move' => ['text' => 'Deplacement', 'context' => 'Deferred holon move operation'],
         'documents.pv_editor.proposals.operation.delete' => ['text' => 'Suppression', 'context' => 'Operation label for a deferred object deletion.'],
         'documents.pv_editor.proposals.holon_summary' => ['text' => '{operation} d’un élément de type {type}', 'context' => 'Summary of a deferred structural object action.'],
         'documents.pv_editor.proposals.status.pending' => ['text' => 'En attente', 'context' => 'Status of a deferred proposal waiting for validation.'],
@@ -394,6 +395,7 @@ function omoDocumentsPvEditorBuildUiText(?callable $translate = null, array $pri
         'proposalsTitle' => $resolve('documents.pv_editor.proposals.title', 'Modifications'),
         'proposalOperationCreate' => $resolve('documents.pv_editor.proposals.operation.create', 'Création'),
         'proposalOperationUpdate' => $resolve('documents.pv_editor.proposals.operation.update', 'Modification'),
+        'proposalOperationMove' => $resolve('documents.pv_editor.proposals.operation.move', 'Deplacement'),
         'proposalOperationDelete' => $resolve('documents.pv_editor.proposals.operation.delete', 'Suppression'),
         'proposalHolonSummary' => $resolve('documents.pv_editor.proposals.holon_summary', '{operation} d’un élément de type {type}'),
         'proposalStatusPending' => $resolve('documents.pv_editor.proposals.status.pending', 'En attente'),
@@ -1111,6 +1113,7 @@ function omoDocumentsPvEditorRenderDeferredProposals(array $pointData, array $ui
     $operationLabels = [
         \dbObject\DeferredProposal::OPERATION_CREATE => (string)($uiText['proposalOperationCreate'] ?? 'Création'),
         \dbObject\DeferredProposal::OPERATION_UPDATE => (string)($uiText['proposalOperationUpdate'] ?? 'Modification'),
+        \dbObject\DeferredProposal::OPERATION_MOVE => (string)($uiText['proposalOperationMove'] ?? 'Deplacement'),
         \dbObject\DeferredProposal::OPERATION_DELETE => (string)($uiText['proposalOperationDelete'] ?? 'Suppression'),
     ];
     $statusLabels = [
@@ -1311,12 +1314,12 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
                 . ' title="' . omoDocumentsPvEditorEscape($optionLabel) . '"'
                 . ' aria-label="' . omoDocumentsPvEditorEscape($optionLabel) . '">'
                 . '<img src="' . omoDocumentsPvEditorEscape($optionIcon) . '" alt="" aria-hidden="true" class="omo-pv-editor__point-type-icon">'
-                . '<span class="omo-pv-editor__sr-only">' . omoDocumentsPvEditorEscape($optionLabel) . '</span>'
+                . '<span class="omo-pv-editor__sr-only generic-visually-hidden">' . omoDocumentsPvEditorEscape($optionLabel) . '</span>'
                 . '</button>';
         }
         $html .= '      </div>';
         $html .= '      <details class="omo-pv-editor__priority-menu" data-omo-pv-point-priority-menu="' . $pointId . '">';
-        $html .= '          <summary class="omo-pv-editor__priority-circle omo-pv-editor__priority-circle--p' . $priority . '" title="' . omoDocumentsPvEditorEscape((string)$uiText['priority'] . ' ' . $priorityLabel) . '" aria-label="' . omoDocumentsPvEditorEscape((string)$uiText['priority'] . ' ' . $priorityLabel) . '"><span class="omo-pv-editor__sr-only">' . omoDocumentsPvEditorEscape((string)$uiText['priority'] . ' ' . $priorityLabel) . '</span></summary>';
+        $html .= '          <summary class="omo-pv-editor__priority-circle omo-pv-editor__priority-circle--p' . $priority . '" title="' . omoDocumentsPvEditorEscape((string)$uiText['priority'] . ' ' . $priorityLabel) . '" aria-label="' . omoDocumentsPvEditorEscape((string)$uiText['priority'] . ' ' . $priorityLabel) . '"><span class="omo-pv-editor__sr-only generic-visually-hidden">' . omoDocumentsPvEditorEscape((string)$uiText['priority'] . ' ' . $priorityLabel) . '</span></summary>';
         $html .= '          <div class="omo-pv-editor__priority-options">';
         for ($level = 1; $level <= 5; $level++) {
             $isSelected = $level === $priority;

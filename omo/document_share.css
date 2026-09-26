@@ -1,0 +1,88 @@
+body {
+    margin: 0;
+    background: var(--color-bg, #f8fafc);
+    color: var(--color-text, #1f2937);
+    font-family: sans-serif;
+}
+.omo-document-share {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 20px;
+    display: grid;
+    gap: 18px;
+}
+.omo-document-share__hero,
+.omo-document-share__body {
+    display: grid;
+    gap: 12px;
+}
+.omo-document-share__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.omo-document-share__status {
+    color: var(--color-text-light, #6b7280);
+    font-size: 14px;
+}
+.omo-document-share__content {
+    line-height: 1.7;
+    word-break: break-word;
+}
+.omo-document-share__content > :first-child {
+    margin-top: 0;
+}
+.omo-document-share__content > :last-child {
+    margin-bottom: 0;
+}
+.omo-document-share__content .omo-document-embed {
+    display: grid;
+    gap: 10px;
+    margin: 0 0 1em;
+    padding: 14px 16px;
+    border-radius: var(--radius-md);
+    border: 1px solid color-mix(in srgb, var(--color-border, #d1d5db) 85%, #2563eb 15%);
+    background: color-mix(in srgb, var(--color-surface, #fff) 90%, #eff6ff 10%);
+}
+.omo-document-share__content .omo-document-embed--resolved {
+    display: block;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-md);
+    background: transparent;
+    transition: background-color 140ms ease;
+}
+.omo-document-share__content .omo-document-embed--resolved:hover:not(:has(.omo-document-embed--resolved:hover)) {
+    background: color-mix(in srgb, var(--color-surface, #fff) 94%, var(--color-text, #1f2937) 6%);
+}
+.omo-document-share__content .omo-document-embed:last-child {
+    margin-bottom: 0;
+}
+.omo-document-share__content .omo-document-embed__label {
+    color: var(--color-text-light, #6b7280);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+.omo-document-share__content .omo-document-embed__title {
+    font-weight: 700;
+    color: var(--color-text, #1f2937);
+}
+.omo-document-share__content .omo-document-embed__description,
+.omo-document-share__content .omo-document-embed__message {
+    color: var(--color-text-light, #6b7280);
+    line-height: 1.6;
+}
+.omo-document-share__content .omo-document-embed__body {
+    display: grid;
+    gap: 0.9em;
+    padding-top: 2px;
+}
+.omo-document-share__content .omo-document-embed__body > :first-child {
+    margin-top: 0;
+}
+.omo-document-share__content .omo-document-embed__body > :last-child {
+    margin-bottom: 0;
+}

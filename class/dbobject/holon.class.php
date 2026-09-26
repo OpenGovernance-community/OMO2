@@ -8,6 +8,14 @@
 		{
 			return 'holon'; // Nom de la table correspondante
 		}	
+
+		public static function handleUserDeparture($organizationId, $userId, $ghostUserId)
+		{
+			return self::execute(
+				'UPDATE holon SET IDuser = :ghost_user_id WHERE IDorganization = :organization_id AND IDuser = :user_id',
+				array('ghost_user_id' => (int)$ghostUserId, 'organization_id' => (int)$organizationId, 'user_id' => (int)$userId)
+			);
+		}
 		
 		// Defini le contenu de la table
 		public static function rules()
@@ -1707,10 +1715,10 @@
 					}
 
 					$ranges = is_array($ranges) ? array_values($ranges) : array();
-					sort($ranges);
+					usort($ranges, static fn ($a, $b) => strcmp(HolonPermission::getAssignmentRange($a), HolonPermission::getAssignmentRange($b)));
 
-					foreach ($ranges as $range) {
-						$range = trim((string)$range);
+					foreach ($ranges as $assignment) {
+						$range = HolonPermission::getAssignmentRange($assignment);
 						if ($range === '') {
 							continue;
 						}
@@ -1719,6 +1727,7 @@
 							'permissionKey' => $permissionKey,
 							'range' => $range,
 							'memberType' => $memberType,
+							'is_extended' => HolonPermission::isExtendedAssignment($assignment),
 						);
 					}
 				}

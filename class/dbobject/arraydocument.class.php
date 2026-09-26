@@ -245,7 +245,7 @@
 			return $ruleMap;
 		}
 
-		public function loadVisibleForOrganizationContext($organizationId, $holonId = 0, $documentScope = 'contextual', array $descendantHolonIds = array())
+		public function loadVisibleForOrganizationContext($organizationId, $holonId = 0, $documentScope = 'contextual', array $descendantHolonIds = array(), $includeOrganizationDocuments = false)
 		{
 			$organizationId = (int)$organizationId;
 			$holonId = (int)$holonId;
@@ -281,17 +281,21 @@
 			);
 
 			if ($documentScope === 'children' || $documentScope === 'descendants') {
-				if (count($descendantHolonIds) === 0) {
+				if (count($descendantHolonIds) === 0 && !$includeOrganizationDocuments) {
 					return array();
 				}
-
-				$loadParams['where'][] = array('field' => 'IDholon', 'op' => 'in', 'value' => $descendantHolonIds);
+				if (count($descendantHolonIds) > 0) {
+					$loadParams[$includeOrganizationDocuments ? 'whereAny' : 'where'][] = array('field' => 'IDholon', 'op' => 'in', 'value' => $descendantHolonIds);
+				}
 			} else {
 				if ($holonId > 0) {
-					$loadParams['where'][] = array('field' => 'IDholon', 'value' => $holonId);
+					$loadParams[$includeOrganizationDocuments ? 'whereAny' : 'where'][] = array('field' => 'IDholon', 'value' => $holonId);
 				} else {
 					$loadParams['where'][] = array('field' => 'IDholon', 'op' => 'is null');
 				}
+			}
+			if ($includeOrganizationDocuments) {
+				$loadParams['whereAny'][] = array('field' => 'IDholon', 'op' => 'is null');
 			}
 
 			$this->load($loadParams);
@@ -439,7 +443,7 @@
 			})));
 		}
 
-		public function loadRecentForOrganizationContext($organizationId, $holonId = 0, $limit = 5, $documentScope = 'contextual', array $descendantHolonIds = array())
+		public function loadRecentForOrganizationContext($organizationId, $holonId = 0, $limit = 5, $documentScope = 'contextual', array $descendantHolonIds = array(), $includeOrganizationDocuments = false)
 		{
 			$organizationId = (int)$organizationId;
 			$holonId = (int)$holonId;
@@ -456,7 +460,7 @@
 				return;
 			}
 
-			$this->loadVisibleForOrganizationContext($organizationId, $holonId, $documentScope, $descendantHolonIds);
+			$this->loadVisibleForOrganizationContext($organizationId, $holonId, $documentScope, $descendantHolonIds, $includeOrganizationDocuments);
 
 			$items = array_values(array_filter($this->getArrayCopy(), function ($document) {
 				return $document instanceof \dbObject\Document

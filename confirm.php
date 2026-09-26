@@ -31,7 +31,7 @@
 				});
 			});
 		</script>
-		<link href="shared_css.css" rel="stylesheet">
+		<?= commonStylesheetTags('/shared_css.css') ?>
 		<style>
 			@media screen {
 

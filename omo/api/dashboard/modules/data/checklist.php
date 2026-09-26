@@ -11,7 +11,8 @@ if (!empty($enabledAppHashes['checklist']) && $scopeReferenceHolon instanceof Ho
         $currentOrganizationId,
         $dashboardModuleContextHolonId,
         $dashboardModuleScope,
-        $dashboardModuleScopeHolonIds
+        $dashboardModuleScopeHolonIds,
+        $organizationRootHolon instanceof Holon && $dashboardModuleContextHolonId === (int)$organizationRootHolon->getId()
     );
 
     foreach ($checklists as $checklist) {
@@ -35,7 +36,9 @@ if (!empty($enabledAppHashes['checklist']) && $scopeReferenceHolon instanceof Ho
             'id' => (int)$checklist->getId(),
             'title' => $templateRoot instanceof Project ? trim((string)$templateRoot->get('title')) : '',
             'holonId' => $checklistHolon instanceof Holon ? (int)$checklistHolon->getId() : 0,
-            'holonLabel' => $checklistHolon instanceof Holon ? trim((string)$checklistHolon->getDisplayName()) : '',
+            'holonLabel' => $checklistHolon instanceof Holon
+                ? trim((string)$checklistHolon->getDisplayName())
+                : trim((string)$organization->get('name')),
             'responsibilityLabel' => omoChecklistResponsibleAssignmentLabel($checklist),
         );
     }

@@ -1,0 +1,51 @@
+/* omo/api/documents/share_popup.php */
+.omo-share-popup {
+    color: var(--color-text, #1f2937);
+}
+
+.omo-share-popup__header-copy {
+    --generic-drawer-header-copy-gap: var(--generic-space-2);
+    min-width: 0;
+}
+
+.omo-share-popup__shell {
+    --generic-drawer-content-gap: var(--generic-space-4);
+}
+    .omo-share-popup--error {
+        color: var(--color-text-light, #6b7280);
+    }
+    .omo-share-popup__feedback {
+        --generic-feedback-min-height: 20px;
+        font-size: 13px;
+    }
+    .omo-share-popup__card {
+        --generic-section-gap: 10px;
+    }
+    .omo-share-popup__card-head,
+    .omo-share-popup__card-actions,
+    .omo-share-popup__actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        justify-content: space-between;
+        align-items: start;
+    }
+    .omo-share-popup__badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+    .omo-share-popup__badge {
+        padding: 4px 8px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 700;
+        background: var(--color-surface-alt, #f0f2f5);
+        border: 1px solid var(--color-border, #e5e7eb);
+    }
+    .omo-share-popup__badge--expired {
+        color: #dc2626;
+    }
+.omo-share-popup__meta {
+        color: var(--color-text-light, #6b7280);
+    }

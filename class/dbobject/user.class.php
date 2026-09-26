@@ -682,6 +682,22 @@
 			return json_encode(array_replace_recursive($removed, $kept), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 		}
 
+		private static function accountMergeMembershipParameters($keptValue, $removedValue)
+		{
+			$merged = self::accountMergeParameters($keptValue, $removedValue);
+			$kept = json_decode((string)$keptValue, true);
+			$removed = json_decode((string)$removedValue, true);
+			if ((is_array($kept) && !empty($kept['isAdmin']))
+				|| (is_array($removed) && !empty($removed['isAdmin']))) {
+				$parameters = json_decode((string)$merged, true);
+				$parameters = is_array($parameters) ? $parameters : array();
+				$parameters['isAdmin'] = true;
+				return json_encode($parameters, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+			}
+
+			return $merged;
+		}
+
 		private static function accountMergeFillMissing($keptValue, $removedValue)
 		{
 			return trim((string)$keptValue) !== '' ? $keptValue : $removedValue;
@@ -782,7 +798,7 @@
 						'phone' => self::accountMergeFillMissing($row['target_phone'] ?? '', $sourceOrganizationPhone),
 						'presentation' => self::accountMergeFillMissing($row['target_presentation'] ?? '', $row['presentation'] ?? null),
 						'latlong' => self::accountMergeFillMissing($row['target_latlong'] ?? '', $row['latlong'] ?? null),
-						'parameters' => self::accountMergeParameters($row['target_parameters'] ?? null, $row['parameters'] ?? null),
+						'parameters' => self::accountMergeMembershipParameters($row['target_parameters'] ?? null, $row['parameters'] ?? null),
 						'source_datecreation' => $row['datecreation'],
 						'source_dateconnexion' => $row['dateconnexion'],
 						'source_dateconnexion_compare' => $row['dateconnexion'],
@@ -855,7 +871,7 @@
 						 is_membership = GREATEST(is_membership, :source_is_membership)
 					 WHERE id = :target_id",
 					array(
-						'parameters' => self::accountMergeParameters($row['target_parameters'] ?? null, $row['parameters'] ?? null),
+						'parameters' => self::accountMergeMembershipParameters($row['target_parameters'] ?? null, $row['parameters'] ?? null),
 						'focus' => self::accountMergeFillMissing($row['target_focus'] ?? '', $row['focus'] ?? null),
 						'time_budget_hours' => self::accountMergeFillMissing($row['target_time_budget_hours'] ?? '', $row['time_budget_hours'] ?? null),
 						'time_budget_recurrence' => self::accountMergeFillMissing($row['target_time_budget_recurrence'] ?? '', $row['time_budget_recurrence'] ?? null),
@@ -1385,6 +1401,221 @@
 					$summary['parameter_references']++;
 				}
 			}
+		}
+
+		/** Count other active site administrators who still belong to the base organization. */
+		public static function countOtherActiveSiteAdminsInBaseOrganization($userId)
+		{
+			return (int)self::fetchValue(
+				'SELECT COUNT(DISTINCT other_user.id)
+				 FROM `user` other_user
+				 INNER JOIN user_organization base_membership ON base_membership.IDuser = other_user.id
+				 WHERE base_membership.IDorganization = :base_organization_id
+				   AND base_membership.active = 1
+				   AND other_user.active = 1
+				   AND other_user.siteadmin = 1
+				   AND other_user.id != :user_id',
+				array('base_organization_id' => Organization::SYSTEM_ORGANIZATION_ID, 'user_id' => (int)$userId)
+			);
+		}
+
+		/** Describe the consequences of deleting one account without changing data. */
+		public static function getAccountDeletionPlan($userId)
+		{
+			$userId = (int)$userId;
+			$user = new self();
+			if ($userId <= 0 || !$user->load($userId) || $user->isHistoricalPlaceholder()) {
+				return array('status' => false, 'message' => 'Le profil a supprimer est introuvable.');
+			}
+
+			$plan = array(
+				'status' => true,
+				'user_id' => $userId,
+				'email' => trim((string)$user->get('email')),
+				'departures' => array(),
+				'deleted_organizations' => array(),
+				'blockers' => array(),
+			);
+			if ($user->isSiteAdmin()) {
+				if (self::countOtherActiveSiteAdminsInBaseOrganization($userId) === 0) {
+					$plan['blockers'][] = "Ce profil est le dernier superadmin actif dans l'organisation de base. Attribuez ce statut à un autre membre avant de supprimer le profil.";
+				}
+			}
+			$memberships = self::fetchAll(
+				"SELECT membership.IDorganization, membership.active, membership.parameters, organization.name
+				 FROM user_organization membership
+				 INNER JOIN organization ON organization.id = membership.IDorganization
+				 WHERE membership.IDuser = :user_id
+				 ORDER BY organization.name ASC, organization.id ASC",
+				array('user_id' => $userId)
+			);
+			if ($memberships === false) {
+				return array('status' => false, 'message' => "Les organisations du profil n'ont pas pu etre analysees.");
+			}
+
+			foreach ($memberships as $membership) {
+				$organizationId = (int)($membership['IDorganization'] ?? 0);
+				if ($organizationId <= 0) {
+					continue;
+				}
+				$organizationName = trim((string)($membership['name'] ?? ''));
+				if ($organizationName === '') {
+					$organizationName = 'Organisation #' . $organizationId;
+				}
+				$activeMemberCount = (int)self::fetchValue(
+					"SELECT COUNT(*) FROM user_organization WHERE IDorganization = :organization_id AND active = 1",
+					array('organization_id' => $organizationId)
+				);
+				$membershipParameters = json_decode((string)($membership['parameters'] ?? ''), true);
+				$isOrganizationAdmin = !empty($membershipParameters['isAdmin']);
+				$isActive = !empty($membership['active']);
+				$isSystemOrganization = $organizationId === Organization::SYSTEM_ORGANIZATION_ID;
+
+				if ($isActive && $isSystemOrganization && $activeMemberCount === 1) {
+					$plan['blockers'][] = "Vous êtes le dernier membre de l'organisation de base " . $organizationName . '. Elle ne peut pas être supprimée.';
+					continue;
+				}
+				if ($isActive && $activeMemberCount === 1) {
+					$plan['deleted_organizations'][] = array('id' => $organizationId, 'name' => $organizationName);
+					continue;
+				}
+				if ($isActive && $isOrganizationAdmin) {
+					$organization = new Organization();
+					if (!$organization->load($organizationId) || $organization->countActiveAdminMemberships($userId) === 0) {
+						$plan['blockers'][] = "Vous etes le dernier administrateur de " . $organizationName . '. Nommez un autre administrateur avant de supprimer ce profil.';
+						continue;
+					}
+				}
+
+				$plan['departures'][] = array(
+					'id' => $organizationId,
+					'name' => $organizationName,
+					'active' => $isActive,
+				);
+			}
+
+			$confirmationNames = array_map(static function ($organization) {
+				return (string)($organization['name'] ?? '');
+			}, $plan['deleted_organizations']);
+			$plan['confirmation_text'] = count($confirmationNames) > 0
+				? implode(' + ', $confirmationNames)
+				: $plan['email'];
+			$plan['can_delete'] = count($plan['blockers']) === 0 && $plan['confirmation_text'] !== '';
+
+			return $plan;
+		}
+
+		public static function deleteOwnAccount($userId, $confirmationText)
+		{
+			$userId = (int)$userId;
+			$plan = self::getAccountDeletionPlan($userId);
+			if (empty($plan['status']) || empty($plan['can_delete'])) {
+				return array(
+					'status' => false,
+					'message' => (string)($plan['message'] ?? ($plan['blockers'][0] ?? 'La suppression de ce profil est impossible.')),
+					'plan' => $plan,
+				);
+			}
+			if (!hash_equals((string)$plan['confirmation_text'], trim((string)$confirmationText))) {
+				return array('status' => false, 'message' => 'Le texte de confirmation ne correspond pas.', 'plan' => $plan);
+			}
+
+			$user = new self();
+			if (!$user->load($userId) || $user->isHistoricalPlaceholder()) {
+				return array('status' => false, 'message' => 'Le profil a supprimer est introuvable.');
+			}
+			$pdo = self::getPdo();
+			if (!$pdo instanceof \PDO) {
+				return array('status' => false, 'message' => 'La base de donnees est indisponible.');
+			}
+
+			try {
+				$pdo->beginTransaction();
+				$lockedUserRows = self::accountMergeFetchAll($pdo, 'SELECT id FROM `user` WHERE id = :user_id FOR UPDATE', array('user_id' => $userId));
+				if (count($lockedUserRows) !== 1) {
+					throw new \RuntimeException('Le profil a supprimer n existe plus.');
+				}
+				$organizationIds = array();
+				if ($user->isSiteAdmin()) {
+					$organizationIds[Organization::SYSTEM_ORGANIZATION_ID] = Organization::SYSTEM_ORGANIZATION_ID;
+				}
+				foreach (array_merge($plan['deleted_organizations'], $plan['departures']) as $organizationData) {
+					$organizationId = (int)($organizationData['id'] ?? 0);
+					if ($organizationId > 0) {
+						$organizationIds[$organizationId] = $organizationId;
+					}
+				}
+				foreach ($organizationIds as $organizationId) {
+					self::accountMergeFetchAll(
+						$pdo,
+						'SELECT id FROM user_organization WHERE IDorganization = :organization_id FOR UPDATE',
+						array('organization_id' => $organizationId)
+					);
+				}
+				$plan = self::getAccountDeletionPlan($userId);
+				if (empty($plan['status']) || empty($plan['can_delete'])) {
+					throw new \RuntimeException((string)($plan['message'] ?? ($plan['blockers'][0] ?? 'Les conditions de suppression ont change.')));
+				}
+				if (!hash_equals((string)$plan['confirmation_text'], trim((string)$confirmationText))) {
+					throw new \RuntimeException('Les consequences de la suppression ont change. Verifiez a nouveau le texte de confirmation.');
+				}
+				$deletedOrganizationIds = array();
+				foreach ($plan['deleted_organizations'] as $organizationData) {
+					$organizationId = (int)($organizationData['id'] ?? 0);
+					$organization = new Organization();
+					if (!$organization->load($organizationId) || !$organization->deleteForAccountDeletion($userId)) {
+						$error = $organization->getLastDeleteError();
+						throw new \RuntimeException($error !== '' ? $error : "L'organisation " . (string)($organizationData['name'] ?? '') . " n'a pas pu etre supprimee.");
+					}
+					$deletedOrganizationIds[] = $organizationId;
+				}
+
+				foreach ($plan['departures'] as $organizationData) {
+					$organizationId = (int)($organizationData['id'] ?? 0);
+					$organization = new Organization();
+					if (!$organization->load($organizationId)) {
+						throw new \RuntimeException("L'organisation " . (string)($organizationData['name'] ?? '') . ' est introuvable.');
+					}
+					$departure = $organization->disconnectUserPreservingHistory($userId);
+					if (empty($departure['status'])) {
+						throw new \RuntimeException((string)($departure['message'] ?? "Le depart de l'organisation n'a pas pu etre finalise."));
+					}
+					$history = History::createEntry(
+						$organizationId,
+						(int)($departure['ghostUserId'] ?? 0),
+						'account_deleted',
+						'Le profil a ete supprime. Les references historiques sont conservees avec le profil historique.',
+						array('deleted_user_id' => $userId),
+						'user',
+						(int)($departure['ghostUserId'] ?? 0)
+					);
+					if (!is_array($history) || empty($history['status'])) {
+						throw new \RuntimeException("L'historique de suppression n'a pas pu etre enregistre.");
+					}
+				}
+
+				self::accountMergeExecute($pdo, 'DELETE FROM user_login_token WHERE IDuser = :user_id', array('user_id' => $userId));
+				self::accountMergeExecute($pdo, 'DELETE FROM user_remember WHERE IDuser = :user_id', array('user_id' => $userId));
+				self::accountMergeExecute(
+					$pdo,
+					'DELETE validation FROM user_competence_validation validation INNER JOIN user_competence competence ON competence.id = validation.IDuser_competence WHERE competence.IDuser = :user_id',
+					array('user_id' => $userId)
+				);
+				self::accountMergeExecute($pdo, 'DELETE FROM user_competence WHERE IDuser = :user_id', array('user_id' => $userId));
+				self::accountMergeExecute($pdo, 'DELETE FROM `user` WHERE id = :user_id', array('user_id' => $userId));
+				$pdo->commit();
+			} catch (\Throwable $error) {
+				if ($pdo->inTransaction()) {
+					$pdo->rollBack();
+				}
+				return array('status' => false, 'message' => $error->getMessage(), 'plan' => $plan);
+			}
+
+			return array(
+				'status' => true,
+				'deleted_organization_ids' => $deletedOrganizationIds,
+				'departure_count' => count($plan['departures']),
+			);
 		}
 
 		public static function mergeAccounts($keptUserId, $removedUserId)

@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/avatar.php';
+require_once __DIR__ . '/assets.php';
 
 function commonResolveTopbarProfileData($organizationContext = null, array $profileOptions = [])
 {
@@ -304,6 +305,15 @@ function commonRenderTopbar(array $options = [])
                 'statusInactiveLabel' => (string)($options['profile']['adminMode']['statusInactiveLabel'] ?? 'Mode admin d organisation inactif'),
                 'toggleUrl' => (string)($options['profile']['adminMode']['toggleUrl'] ?? '/common/admin_mode.php'),
             ],
+            'extendedAuthorities' => [
+                'enabled' => !empty($options['profile']['extendedAuthorities']['enabled']),
+                'active' => !empty($options['profile']['extendedAuthorities']['active']),
+                'organizationId' => (int)($options['profile']['extendedAuthorities']['organizationId'] ?? 0),
+                'enableLabel' => (string)($options['profile']['extendedAuthorities']['enableLabel'] ?? ''),
+                'disableLabel' => (string)($options['profile']['extendedAuthorities']['disableLabel'] ?? ''),
+                'notice' => (string)($options['profile']['extendedAuthorities']['notice'] ?? ''),
+                'csrfToken' => (string)($options['profile']['extendedAuthorities']['csrfToken'] ?? ''),
+            ],
             'siteAdminMode' => [
                 'enabled' => !empty($options['profile']['siteAdminMode']['enabled']),
                 'active' => !empty($options['profile']['siteAdminMode']['active']),
@@ -421,15 +431,15 @@ function commonRenderTopbar(array $options = [])
 
     if (!$assetsLoaded) {
         commonRenderTopbarJqueryAssets();
-        echo '<link rel="stylesheet" href="/common/assets/components.css?v=20260923-anchored-menu">' . PHP_EOL;
-        echo '<script src="/common/assets/components.js?v=20260919-context-help-hover" defer></script>' . PHP_EOL;
+        echo '<link rel="stylesheet" href="' . commonAssetUrl('/common/assets/components.css') . '">' . PHP_EOL;
+        echo '<script src="' . commonAssetUrl('/common/assets/components.js') . '" defer></script>' . PHP_EOL;
         echo '<script src="/common/holon_scope_picker.js?v=20260908-picker-resize" defer></script>' . PHP_EOL;
         echo '<script src="/common/project-picker/project-picker.js?v=20260922-shared" defer></script>' . PHP_EOL;
-        echo '<link rel="stylesheet" href="/common/assets/topbar.css?v=20260821-notification-mark-all-read">' . PHP_EOL;
+        echo '<link rel="stylesheet" href="' . commonAssetUrl('/common/assets/topbar.css') . '">' . PHP_EOL;
         echo '<link rel="stylesheet" href="/common/notifications/notifications.css">' . PHP_EOL;
         echo '<script src="/common/notifications/notifications.js" defer></script>' . PHP_EOL;
         echo '<script src="/common/notifications/inbox.js?v=20260821-mark-all-read" defer></script>' . PHP_EOL;
-        echo '<script src="/common/assets/topbar.js?v=20260922-modal-stack-scroll" defer></script>' . PHP_EOL;
+        echo '<script src="' . commonAssetUrl('/common/assets/topbar.js') . '" defer></script>' . PHP_EOL;
         $assetsLoaded = true;
     }
     ?>
@@ -606,7 +616,7 @@ function commonRenderTopbar(array $options = [])
                     <img src="/common/assets/icon-topbar-notifications.png" alt="" class="common-topbar__icon-image black-icon">
                 </span>
                 <span class="common-topbar__notification-badge" data-omo-notification-badge hidden>0</span>
-                <span class="common-topbar__visually-hidden"><?= htmlspecialchars($config['notifications']['buttonLabel']) ?></span>
+                <span class="common-topbar__visually-hidden generic-visually-hidden"><?= htmlspecialchars($config['notifications']['buttonLabel']) ?></span>
             </button>
             <div class="common-topbar__menu common-topbar__menu--panel common-topbar__menu--right" data-topbar-menu="notifications">
                 <div class="omo-notification-inbox__header">
@@ -766,6 +776,17 @@ function commonRenderTopbar(array $options = [])
                                 </div>
                             <?php endif; ?>
                             <button type="button" class="common-topbar__menu-item common-topbar-profile-actions__button" data-topbar-profile-edit><?= htmlspecialchars($config['profile']['editLabel']) ?></button>
+                            <?php if (!empty($config['profile']['extendedAuthorities']['enabled'])): ?>
+                                <button type="button"
+                                    class="common-topbar__menu-item common-topbar-profile-actions__button common-topbar-profile-actions__button--mode <?= !empty($config['profile']['extendedAuthorities']['active']) ? 'common-topbar-profile-actions__button--active' : 'common-topbar-profile-actions__button--inactive' ?>"
+                                    data-topbar-admin-mode-toggle
+                                    data-admin-mode-url="/common/extended_authorities.php"
+                                    data-admin-mode-organization-id="<?= (int)$config['profile']['extendedAuthorities']['organizationId'] ?>"
+                                    data-admin-mode-enabled="<?= !empty($config['profile']['extendedAuthorities']['active']) ? '0' : '1' ?>"
+                                    data-admin-mode-confirm="<?= htmlspecialchars($config['profile']['extendedAuthorities']['notice']) ?>"
+                                    data-admin-mode-csrf="<?= htmlspecialchars($config['profile']['extendedAuthorities']['csrfToken']) ?>"
+                                ><?= htmlspecialchars(!empty($config['profile']['extendedAuthorities']['active']) ? $config['profile']['extendedAuthorities']['disableLabel'] : $config['profile']['extendedAuthorities']['enableLabel']) ?></button>
+                            <?php endif; ?>
                             <?php if (!empty($config['profile']['adminMode']['enabled'])): ?>
                                 <button
                                     type="button"
@@ -802,7 +823,7 @@ function commonRenderTopbar(array $options = [])
             <h3 id="commonTopbarModalTitle"><?= htmlspecialchars($config['modal']['defaultTitle']) ?></h3>
             <button type="button" class="common-topbar-modal__close" data-topbar-modal-close aria-label="<?= htmlspecialchars($config['modal']['closeLabel']) ?>">
                 <span aria-hidden="true">&times;</span>
-                <span class="common-topbar__visually-hidden"><?= htmlspecialchars($config['modal']['closeLabel']) ?></span>
+                <span class="common-topbar__visually-hidden generic-visually-hidden"><?= htmlspecialchars($config['modal']['closeLabel']) ?></span>
             </button>
         </div>
         <div class="common-topbar-modal__body" id="commonTopbarModalBody"></div>
@@ -819,7 +840,7 @@ function commonRenderTopbar(array $options = [])
             <div class="generic-drawer-header__actions">
                 <button type="button" class="common-topbar-drawer__close" data-topbar-drawer-close aria-label="<?= htmlspecialchars($config['drawer']['closeLabel']) ?>">
                     <span aria-hidden="true">&times;</span>
-                    <span class="common-topbar__visually-hidden"><?= htmlspecialchars($config['drawer']['closeLabel']) ?></span>
+                    <span class="common-topbar__visually-hidden generic-visually-hidden"><?= htmlspecialchars($config['drawer']['closeLabel']) ?></span>
                 </button>
             </div>
         </div>

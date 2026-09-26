@@ -1,0 +1,103 @@
+/* omo/api/documents/move.php */
+.omo-document-move__empty {
+    padding: 18px;
+}
+
+.omo-document-move {
+    max-width: 100%;
+    min-width: 0;
+}
+
+#commonTopbarModalBody:has(.omo-document-move) {
+    overflow-x: hidden;
+}
+
+.omo-document-move__picker {
+    align-items: start;
+}
+
+.omo-document-move__holon-picker .omo-holon-scope-picker__map {
+    width: min(100%, min(520px, calc(100dvh - 360px)));
+    height: auto;
+    margin-top: 0;
+    aspect-ratio: 1;
+}
+
+.omo-document-move__destinations {
+    align-content: start;
+    min-height: 240px;
+    max-height: 390px;
+    overflow: auto;
+    padding: 2px;
+}
+
+.omo-document-move__destination {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 2px 10px;
+    width: 100%;
+    padding: 11px 12px 11px calc(12px + var(--omo-document-move-tree-indent, 0px));
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    color: var(--color-text);
+    font: inherit;
+    text-align: left;
+    background: var(--color-surface);
+    cursor: pointer;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+.omo-document-move__destination.is-nested::before {
+    content: '\21B3';
+    position: absolute;
+    left: calc(10px + var(--omo-document-move-tree-branch-indent, 0px));
+    top: 50%;
+    color: var(--color-text-light);
+    transform: translateY(-50%);
+}
+
+.omo-document-move__destination:hover,
+.omo-document-move__destination:focus-visible,
+.omo-document-move__destination.is-selected {
+    border-color: var(--color-primary);
+    background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface));
+}
+
+.omo-document-move__destination-label {
+    min-width: 0;
+    overflow: hidden;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.omo-document-move__destination-meta {
+    color: var(--color-text-light);
+    font-size: 0.78rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.omo-document-move__empty-destination {
+    padding: 12px;
+    border: 1px dashed var(--color-border);
+    border-radius: var(--radius-md);
+}
+
+.omo-document-move__status[hidden] {
+    display: none !important;
+}
+
+.omo-document-move__hint {
+    margin-right: auto;
+}
+
+@media (max-width: 768px) {
+    .omo-document-move__navigation {
+        display: grid;
+        padding: 0;
+        border: 0;
+    }
+}

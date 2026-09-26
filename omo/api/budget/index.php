@@ -90,7 +90,7 @@ $formatBudgetValue = static function ($value): string {
 $timeBudgetRecurrence = UserHolon::normalizeBudgetRecurrence($currentHolon->get('time_budget_recurrence'));
 $moneyBudgetRecurrence = UserHolon::normalizeBudgetRecurrence($currentHolon->get('money_budget_recurrence'));
 ?>
-<link rel="stylesheet" href="/omo/api/stats/stats.css?v=20260824-source-fields">
+<link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/stats/stats.css') ?>">
 <link rel="stylesheet" href="/omo/api/budget/budget.css?v=20260908-time-categories">
 <div
     class="omo-budget omo-panel-view"

@@ -70,7 +70,9 @@ if ($projectId <= 0) {
         if (!($archivedProject instanceof Project) || !omoProjectsCanViewProject($archivedProject, $context)) {
             continue;
         }
-        if (!omoProjectsScopeContainsProject($archivedProject, $projectScope, $currentHolon instanceof Holon ? (int)$currentHolon->getId() : 0, $scopeHolonIds)) {
+        $includeOrganizationProjects = $currentHolon instanceof Holon && $context['rootHolon'] instanceof Holon
+            && (int)$currentHolon->getId() === (int)$context['rootHolon']->getId();
+        if (!omoProjectsScopeContainsProject($archivedProject, $projectScope, $currentHolon instanceof Holon ? (int)$currentHolon->getId() : 0, $scopeHolonIds, $includeOrganizationProjects)) {
             continue;
         }
         if (!omoProjectsMatchesAssignment($archivedProject, $projectAssignment, $currentUserId, $organizationId)) {

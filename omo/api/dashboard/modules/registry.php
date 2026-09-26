@@ -59,7 +59,8 @@ if (!function_exists('omoDashboardMatchesResponsibleAudience')) {
         $userId = (int)$userId;
         $responsibleUserId = (int)$responsibleUserId;
         $isAssociated = $holon instanceof \dbObject\Holon
-            && omoDashboardUserIsAssociatedWithHolon($userId, $organizationId, $holon);
+            ? omoDashboardUserIsAssociatedWithHolon($userId, $organizationId, $holon)
+            : \dbObject\UserOrganization::hasActiveMembership($userId, $organizationId);
 
         if ($audience === 'mine') {
             return $userId > 0 && ($responsibleUserId === $userId || ($responsibleUserId <= 0 && $isAssociated));

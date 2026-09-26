@@ -1,4 +1,5 @@
-<?
+<?php
+	require_once __DIR__ . '/common/assets.php';
 	require_once __DIR__ . '/shared/date_groups.php';
 	require_once __DIR__ . '/common/environment_subdomains.php';
 	require_once __DIR__ . '/common/runtime_log.php';
@@ -542,7 +543,7 @@
 	
 		//<!-- Fonctions partagées entre plusieurs pages -->
 		echo '<script src="/shared_functions.js"></script>';
-		echo '<link href="/shared_css.css" rel="stylesheet">';
+		echo commonStylesheetTags('/shared_css.css');
 		
 		//<!-- Script Paypal -->
 		if (!empty($GLOBALS["paypalClientId"])) {

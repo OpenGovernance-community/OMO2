@@ -4,6 +4,7 @@ require_once dirname(__DIR__) . '/config.php';
 require_once dirname(__DIR__) . '/shared_functions.php';
 require_once dirname(__DIR__) . '/common/auth.php';
 require_once dirname(__DIR__) . '/common/account_merge.php';
+require_once dirname(__DIR__) . '/common/account_deletion.php';
 require_once __DIR__ . '/profil_translation_helper.php';
 
 $connected = checklogin();
@@ -23,6 +24,8 @@ $state = commonAccountMergeGetState($currentUserId);
 $configuration = array(
     'endpoint' => '/ajax/user_account_merge.php',
     'csrfToken' => commonAccountMergeGetCsrfToken(),
+    'deletionEndpoint' => '/ajax/user_account_delete.php',
+    'deletionCsrfToken' => commonAccountDeletionGetCsrfToken(),
     'currentEmail' => (string)$currentUser->get('email'),
     'otherEmail' => is_array($state) ? (string)($state['other_email'] ?? '') : '',
     'phase' => is_array($state) ? (string)($state['phase'] ?? 'code') : 'start',
@@ -36,115 +39,40 @@ $configuration = array(
         'verified' => profilPopupT('profile.popup.merge.status.verified'),
         'processing' => profilPopupT('profile.popup.merge.status.processing'),
         'invalidResponse' => profilPopupT('profile.popup.js.invalid_response'),
+        'deletionLoading' => profilPopupT('profile.popup.delete.loading'),
+        'deletionInvalidResponse' => profilPopupT('profile.popup.delete.invalid_response'),
+        'deletionSuccess' => profilPopupT('profile.popup.delete.success'),
+        'deletionWillLeave' => profilPopupT('profile.popup.delete.plan.leave'),
+        'deletionWillDeleteOrganizations' => profilPopupT('profile.popup.delete.plan.organizations'),
+        'deletionBlocked' => profilPopupT('profile.popup.delete.plan.blocked'),
+        'deletionNoOrganization' => profilPopupT('profile.popup.delete.plan.no_organization'),
+        'deletionConfirmationPrefix' => profilPopupT('profile.popup.delete.confirmation_prefix'),
+        'deletionProcessing' => profilPopupT('profile.popup.delete.processing'),
+        'mergeOpen' => profilPopupT('profile.popup.merge.reveal'),
+        'deletionOpen' => profilPopupT('profile.popup.delete.open'),
+        'collapse' => profilPopupT('profile.popup.tools.collapse'),
     ),
 );
 ?>
-<style>
-    .profile-merge-tool {
-        display: grid;
-        gap: 16px;
-    }
+<link rel="stylesheet" href="<?= commonAssetUrl('/common/assets/profile-tools.css') ?>">
 
-    .profile-merge-tool__copy,
-    .profile-merge-tool__step,
-    .profile-merge-tool__choices {
-        display: grid;
-        gap: 12px;
-    }
-
-    .profile-merge-tool__copy p,
-    .profile-merge-tool__step p {
-        margin: 0;
-        color: var(--color-text-light, #64748b);
-        line-height: 1.5;
-    }
-
-    .profile-merge-tool__field {
-        display: grid;
-        gap: 7px;
-        font-weight: 650;
-    }
-
-    .profile-merge-tool__current-email {
-        overflow-wrap: anywhere;
-        font-weight: 700;
-    }
-
-    .profile-merge-tool__actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        align-items: center;
-    }
-
-    .profile-merge-tool__method {
-        border: 0;
-        padding: 0;
-        background: transparent;
-        color: var(--color-primary, #004663);
-        cursor: pointer;
-        font: inherit;
-        font-weight: 700;
-        text-decoration: underline;
-    }
-
-    .profile-merge-tool__choice,
-    .profile-merge-tool__confirmation {
-        display: flex;
-        gap: 10px;
-        align-items: flex-start;
-    }
-
-    .profile-merge-tool__choice input,
-    .profile-merge-tool__confirmation input {
-        margin-top: 4px;
-    }
-
-    .profile-merge-tool__choice-copy {
-        display: grid;
-        gap: 3px;
-    }
-
-    .profile-merge-tool__choice-copy small {
-        color: var(--color-text-light, #64748b);
-        overflow-wrap: anywhere;
-    }
-
-    .profile-merge-tool__warning {
-        border-color: color-mix(in srgb, #dc2626 28%, var(--color-border, #dbe4ee));
-        background: color-mix(in srgb, #dc2626 7%, var(--color-surface, #fff));
-        color: color-mix(in srgb, #dc2626 82%, var(--color-text, #0f172a));
-    }
-
-    .profile-merge-tool__status {
-        min-height: 24px;
-        line-height: 1.45;
-        font-weight: 650;
-    }
-
-    .profile-merge-tool__status.is-error {
-        color: #b91c1c;
-    }
-
-    .profile-merge-tool__status.is-success {
-        color: #15803d;
-    }
-</style>
-
-<section class="profile-merge-tool generic-section profile-panel__section" data-profile-merge-root>
-    <div class="profile-merge-tool__copy">
-        <h3 class="generic-card-title generic-card-title--medium"><?= htmlspecialchars(profilPopupT('profile.popup.merge.title'), ENT_QUOTES, 'UTF-8') ?></h3>
-        <p><?= htmlspecialchars(profilPopupT('profile.popup.merge.intro'), ENT_QUOTES, 'UTF-8') ?></p>
+<div class="profile-tools-list" data-profile-tools-root>
+<section class="profile-merge-tool generic-section generic-accordion generic-accordion--card generic-accordion--collapsible generic-accordion--action-only is-collapsed profile-panel__section" data-profile-merge-root>
+    <div class="generic-accordion__header profile-account-tool__header">
+        <div class="profile-account-tool__copy">
+            <h3 class="generic-card-title generic-card-title--medium"><?= htmlspecialchars(profilPopupT('profile.popup.merge.title'), ENT_QUOTES, 'UTF-8') ?></h3>
+            <p><?= htmlspecialchars(profilPopupT('profile.popup.merge.intro'), ENT_QUOTES, 'UTF-8') ?></p>
+        </div>
+        <button type="button" class="generic-action-button generic-action-button--main" aria-expanded="false" data-merge-reveal>
+            <?= htmlspecialchars(profilPopupT('profile.popup.merge.reveal'), ENT_QUOTES, 'UTF-8') ?>
+        </button>
     </div>
 
+    <div class="generic-accordion__content profile-account-tool__content">
     <div class="generic-soft-panel generic-soft-panel--stack">
         <strong><?= htmlspecialchars(profilPopupT('profile.popup.merge.current_email'), ENT_QUOTES, 'UTF-8') ?></strong>
         <span class="profile-merge-tool__current-email"><?= htmlspecialchars((string)$currentUser->get('email'), ENT_QUOTES, 'UTF-8') ?></span>
     </div>
-
-    <button type="button" class="generic-action-button generic-action-button--main" data-merge-reveal>
-        <?= htmlspecialchars(profilPopupT('profile.popup.merge.reveal'), ENT_QUOTES, 'UTF-8') ?>
-    </button>
 
     <div class="profile-merge-tool__step" data-merge-email-step hidden>
         <label class="profile-merge-tool__field">
@@ -231,213 +159,32 @@ $configuration = array(
     </div>
 
     <div class="profile-merge-tool__status" aria-live="polite" data-merge-status></div>
+    </div>
 </section>
 
-<script>
-(function () {
-    var script = document.currentScript;
-    var root = script ? script.previousElementSibling : null;
-    var config = <?= json_encode($configuration, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP) ?>;
-    if (!root || !root.hasAttribute("data-profile-merge-root")) return;
+<section class="profile-account-delete generic-section generic-accordion generic-accordion--card generic-accordion--collapsible generic-accordion--action-only is-collapsed profile-panel__section" data-profile-delete-root>
+    <div class="generic-accordion__header profile-account-tool__header">
+        <div class="profile-account-tool__copy">
+            <h3 class="generic-card-title generic-card-title--medium"><?= htmlspecialchars(profilPopupT('profile.popup.delete.title'), ENT_QUOTES, 'UTF-8') ?></h3>
+            <p><?= htmlspecialchars(profilPopupT('profile.popup.delete.intro'), ENT_QUOTES, 'UTF-8') ?></p>
+        </div>
+        <button type="button" class="generic-action-button generic-action-button--danger" aria-expanded="false" data-delete-open><?= htmlspecialchars(profilPopupT('profile.popup.delete.open'), ENT_QUOTES, 'UTF-8') ?></button>
+    </div>
+    <div class="generic-accordion__content profile-account-delete__plan" data-delete-content>
+        <div class="profile-account-delete__status" aria-live="polite" data-delete-status></div>
+        <div data-delete-plan></div>
+        <div class="profile-account-delete__confirmation" data-delete-confirmation hidden>
+            <label class="profile-merge-tool__field">
+                <span data-delete-confirmation-label></span>
+                <input type="text" class="generic-form-control" autocomplete="off" data-delete-confirmation-input>
+            </label>
+            <button type="button" class="generic-action-button generic-action-button--danger" disabled data-delete-complete><?= htmlspecialchars(profilPopupT('profile.popup.delete.complete'), ENT_QUOTES, 'UTF-8') ?></button>
+        </div>
+    </div>
+</section>
+</div>
 
-    var reveal = root.querySelector("[data-merge-reveal]");
-    var emailInput = root.querySelector("[data-merge-email]");
-    var codeInput = root.querySelector("[data-merge-code]");
-    var passwordInput = root.querySelector("[data-merge-password]");
-    var totpInput = root.querySelector("[data-merge-totp]");
-    var confirmCheck = root.querySelector("[data-merge-confirm-check]");
-    var completeButton = root.querySelector("[data-merge-complete]");
-    var status = root.querySelector("[data-merge-status]");
-    var token = config.token || "";
-    var passwordLoginEnabled = !!config.passwordLoginEnabled;
-    var currentIsSiteAdmin = !!config.currentIsSiteAdmin;
-    var otherIsSiteAdmin = !!config.otherIsSiteAdmin;
-
-    function enforceSuperAdminChoice(data) {
-        data = data || {};
-        if (Object.prototype.hasOwnProperty.call(data, "current_is_siteadmin")) currentIsSiteAdmin = !!data.current_is_siteadmin;
-        if (Object.prototype.hasOwnProperty.call(data, "other_is_siteadmin")) otherIsSiteAdmin = !!data.other_is_siteadmin;
-
-        var forcedValue = currentIsSiteAdmin !== otherIsSiteAdmin
-            ? (currentIsSiteAdmin ? "current" : "other")
-            : "";
-        Array.prototype.forEach.call(root.querySelectorAll("[data-merge-keep]"), function (radio) {
-            radio.disabled = forcedValue !== "" && radio.value !== forcedValue;
-            if (radio.value === forcedValue) radio.checked = true;
-        });
-        root.querySelector("[data-merge-superadmin-note]").hidden = forcedValue === "";
-    }
-
-    function setStatus(message, type) {
-        status.textContent = message || "";
-        status.className = "profile-merge-tool__status" + (type ? " is-" + type : "");
-    }
-
-    function setBusy(busy) {
-        Array.prototype.forEach.call(root.querySelectorAll("button, input"), function (control) {
-            if (control === completeButton && !busy) {
-                control.disabled = !confirmCheck.checked;
-                return;
-            }
-            control.disabled = !!busy;
-        });
-        if (!busy) enforceSuperAdminChoice();
-    }
-
-    function post(action, values) {
-        var body = new URLSearchParams();
-        body.set("action", action);
-        body.set("csrf_token", config.csrfToken);
-        Object.keys(values || {}).forEach(function (key) { body.set(key, values[key]); });
-        return fetch(config.endpoint, {
-            method: "POST",
-            credentials: "same-origin",
-            headers: {
-                "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
-                "Accept": "application/json",
-                "X-Requested-With": "XMLHttpRequest"
-            },
-            body: body.toString()
-        }).then(function (response) {
-            return response.text().then(function (text) {
-                var payload;
-                try { payload = JSON.parse(text); } catch (error) { payload = { status: false, message: config.text.invalidResponse }; }
-                if (!response.ok && !payload.message) payload.message = config.text.invalidResponse;
-                return payload;
-            });
-        });
-    }
-
-    function renderPhase(phase, data) {
-        data = data || {};
-        reveal.hidden = phase !== "start";
-        root.querySelector("[data-merge-email-step]").hidden = phase !== "email";
-        root.querySelector("[data-merge-code-step]").hidden = phase !== "code";
-        root.querySelector("[data-merge-password-step]").hidden = phase !== "password";
-        root.querySelector("[data-merge-totp-step]").hidden = phase !== "totp";
-        root.querySelector("[data-merge-confirm-step]").hidden = phase !== "confirm";
-        root.querySelector("[data-merge-use-password]").hidden = !passwordLoginEnabled;
-
-        if (phase === "email") emailInput.focus();
-        if (phase === "code") codeInput.focus();
-        if (phase === "password") passwordInput.focus();
-        if (phase === "totp") totpInput.focus();
-        if (phase === "confirm") {
-            root.querySelector("[data-merge-current-email]").textContent = data.current_email || config.currentEmail || "";
-            root.querySelector("[data-merge-other-email]").textContent = data.other_email || config.otherEmail || "";
-            enforceSuperAdminChoice(data);
-            setStatus(config.text.verified, "success");
-        }
-    }
-
-    function handleVerificationResult(result) {
-        if (!result || !result.status) {
-            setStatus(result && result.message ? result.message : config.text.invalidResponse, "error");
-            return;
-        }
-        if (result.mfa_token) token = result.mfa_token;
-        renderPhase(result.phase || "confirm", result);
-        if (result.message) setStatus(result.message, "success");
-    }
-
-    reveal.addEventListener("click", function () { renderPhase("email"); });
-    function startVerification(email) {
-        setBusy(true);
-        post("start", { email: email }).then(function (result) {
-            setBusy(false);
-            if (!result.status) { setStatus(result.message || config.text.invalidResponse, "error"); return; }
-            token = result.request_token || "";
-            passwordLoginEnabled = !!result.password_login_enabled;
-            config.otherEmail = email;
-            renderPhase("code");
-            setStatus(result.message || "", result.delivery_uncertain ? "error" : "success");
-        }).catch(function () { setBusy(false); setStatus(config.text.invalidResponse, "error"); });
-    }
-    root.querySelector("[data-merge-start]").addEventListener("click", function () {
-        startVerification(emailInput.value);
-    });
-    root.querySelector("[data-merge-resend]").addEventListener("click", function () { startVerification(config.otherEmail); });
-    root.querySelector("[data-merge-verify-code]").addEventListener("click", function () {
-        setBusy(true);
-        post("verify_code", { token: token, code: codeInput.value }).then(function (result) {
-            setBusy(false);
-            handleVerificationResult(result);
-        }).catch(function () { setBusy(false); setStatus(config.text.invalidResponse, "error"); });
-    });
-    root.querySelector("[data-merge-verify-password]").addEventListener("click", function () {
-        setBusy(true);
-        post("verify_password", { password: passwordInput.value }).then(function (result) {
-            setBusy(false);
-            passwordInput.value = "";
-            handleVerificationResult(result);
-        }).catch(function () { setBusy(false); passwordInput.value = ""; setStatus(config.text.invalidResponse, "error"); });
-    });
-    root.querySelector("[data-merge-verify-totp]").addEventListener("click", function () {
-        setBusy(true);
-        post("verify_totp", { token: token, code: totpInput.value }).then(function (result) {
-            setBusy(false);
-            handleVerificationResult(result);
-        }).catch(function () { setBusy(false); setStatus(config.text.invalidResponse, "error"); });
-    });
-    root.querySelector("[data-merge-use-password]").addEventListener("click", function () { renderPhase("password"); });
-    root.querySelector("[data-merge-use-code]").addEventListener("click", function () { renderPhase("code"); });
-    confirmCheck.addEventListener("change", function () { completeButton.disabled = !confirmCheck.checked; });
-    completeButton.addEventListener("click", function () {
-        var selected = root.querySelector("[data-merge-keep]:checked");
-        setBusy(true);
-        setStatus(config.text.processing);
-        post("complete", { keep: selected ? selected.value : "", confirm: confirmCheck.checked ? "1" : "0" }).then(function (result) {
-            if (!result.status) {
-                setBusy(false);
-                setStatus(result.message || config.text.invalidResponse, "error");
-                return;
-            }
-            setStatus(result.message || "", "success");
-            window.setTimeout(function () { window.top.location.reload(); }, 700);
-        }).catch(function () { setBusy(false); setStatus(config.text.invalidResponse, "error"); });
-    });
-    Array.prototype.forEach.call(root.querySelectorAll("[data-merge-cancel]"), function (button) {
-        button.addEventListener("click", function () {
-            post("cancel", {}).then(function () {
-                token = "";
-                passwordLoginEnabled = false;
-                otherIsSiteAdmin = false;
-                emailInput.value = "";
-                codeInput.value = "";
-                passwordInput.value = "";
-                totpInput.value = "";
-                confirmCheck.checked = false;
-                completeButton.disabled = true;
-                setStatus("");
-                renderPhase("start");
-            });
-        });
-    });
-    [emailInput, codeInput, passwordInput, totpInput].forEach(function (input) {
-        input.addEventListener("keydown", function (event) {
-            if (event.key !== "Enter") return;
-            event.preventDefault();
-            var button = input.closest("[data-merge-email-step], [data-merge-code-step], [data-merge-password-step], [data-merge-totp-step]").querySelector(".generic-action-button--main");
-            if (button) button.click();
-        });
-    });
-    totpInput.addEventListener("input", function () { totpInput.value = totpInput.value.replace(/\D/g, "").slice(0, 6); });
-    codeInput.addEventListener("input", function () { codeInput.value = codeInput.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6); });
-
-    if (config.phase === "confirm") {
-        renderPhase("confirm", { current_email: config.currentEmail, other_email: config.otherEmail });
-    } else if (config.phase === "totp") {
-        renderPhase("totp");
-        setStatus(<?= json_encode(profilPopupT('profile.popup.merge.status.mfa_required'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>, "success");
-    } else if (config.phase === "code") {
-        renderPhase("code");
-    } else {
-        renderPhase("start");
-    }
-
-    if (config.initialToken && config.initialCode && token && config.initialToken === token) {
-        codeInput.value = config.initialCode;
-        root.querySelector("[data-merge-verify-code]").click();
-    }
-})();
-</script>
+<?= commonPageScriptTags('/common/assets/profile-tools.js', [
+    'config' => $configuration,
+    'profilePopupMergeStatusMfaRequired' => profilPopupT('profile.popup.merge.status.mfa_required'),
+]) ?>

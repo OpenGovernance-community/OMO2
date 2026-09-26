@@ -192,6 +192,12 @@ class Permission extends DbObject
                 'iscontextual' => true,
                 'group' => 'holons',
             ],
+            'CAN_MOVE_HOLON' => [
+                'title' => 'Deplacer des holons',
+                'description' => 'Autorise le deplacement des holons couverts par ce droit vers les destinations couvertes par ce meme droit.',
+                'iscontextual' => true,
+                'group' => 'holons',
+            ],
             'CAN_EDIT_HOLON_BUDGET' => [
                 'title' => 'Modifier les budgets de holons',
                 'description' => 'Autorise la modification des budgets temps et argent des holons dans le contexte cible.',

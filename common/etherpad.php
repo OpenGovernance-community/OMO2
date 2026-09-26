@@ -80,7 +80,7 @@ if (!function_exists('omoEtherpadApiRequest')) {
     {
         $config = omoEtherpadGetConfig($organization);
         if ($config['baseUrl'] === '' || $config['apiKey'] === '') {
-            return array('status' => false, 'text' => 'Etherpad n est pas configure pour cette organisation.');
+            return array('status' => false, 'text' => 'Etherpad n’est pas configuré pour cette organisation.');
         }
 
         if (!function_exists('curl_init')) {

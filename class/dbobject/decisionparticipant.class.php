@@ -17,6 +17,17 @@ class DecisionParticipant extends DbObject
         return 'decision_participant';
     }
 
+    public static function handleUserDeparture($organizationId, $userId, $ghostUserId)
+    {
+        return self::execute(
+            'UPDATE decision_participant participant
+             INNER JOIN decision_process process ON process.id = participant.IDdecision_process
+             SET participant.IDuser = :ghost_user_id
+             WHERE process.IDorganization = :organization_id AND participant.IDuser = :user_id',
+            array('ghost_user_id' => (int)$ghostUserId, 'organization_id' => (int)$organizationId, 'user_id' => (int)$userId)
+        );
+    }
+
     public static function rules()
     {
         return [

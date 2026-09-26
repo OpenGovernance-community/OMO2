@@ -6,14 +6,14 @@ include __DIR__ . '/inc/org.php';
 require_once __DIR__ . '/inc/access.php';
 
 $sourceLang = [
-    'lms.parcours_import.error.access_denied' => ['text' => 'Acces refuse.', 'context' => 'Error shown when the user cannot access the parcours import drawer.'],
+    'lms.parcours_import.error.access_denied' => ['text' => 'Accès refusé.', 'context' => 'Error shown when the user cannot access the parcours import drawer.'],
     'lms.parcours_import.hero.title' => ['text' => 'Importer un parcours', 'context' => 'Title of the parcours import drawer.'],
-    'lms.parcours_import.hero.intro' => ['text' => 'Ajoutez a cette organisation un parcours deja partage comme public ou marque basic.', 'context' => 'Intro text shown in the parcours import drawer.'],
+    'lms.parcours_import.hero.intro' => ['text' => 'Ajoutez à cette organisation un parcours déjà partagé comme public ou marqué « Basic ».', 'context' => 'Intro text shown in the parcours import drawer.'],
     'lms.parcours_import.catalog.title' => ['text' => 'Catalogue disponible', 'context' => 'Title shown above the list of importable parcours.'],
-    'lms.parcours_import.catalog.intro' => ['text' => 'Selectionnez un parcours existant pour le lier a l organisation courante.', 'context' => 'Intro text shown above the list of importable parcours.'],
+    'lms.parcours_import.catalog.intro' => ['text' => 'Sélectionnez un parcours existant pour le lier à l’organisation courante.', 'context' => 'Intro text shown above the list of importable parcours.'],
     'lms.parcours_import.search.label' => ['text' => 'Rechercher', 'context' => 'Label shown above the import search field.'],
     'lms.parcours_import.search.placeholder' => ['text' => 'Titre, description ou organisation', 'context' => 'Placeholder shown in the import search field.'],
-    'lms.parcours_import.empty' => ['text' => 'Aucun parcours public ou basic n est disponible a l import pour le moment.', 'context' => 'Empty state shown when no parcours can be imported.'],
+    'lms.parcours_import.empty' => ['text' => 'Aucun parcours public ou « Basic » n’est disponible à l’import pour le moment.', 'context' => 'Empty state shown when no parcours can be imported.'],
     'lms.parcours_import.type.pack' => ['text' => 'Pack', 'context' => 'Badge shown on importable pack parcours.'],
     'lms.parcours_import.type.parcours' => ['text' => 'Parcours', 'context' => 'Badge shown on importable simple parcours.'],
     'lms.parcours_import.badge.basic' => ['text' => 'Basic', 'context' => 'Badge shown when an importable parcours is marked basic.'],
@@ -22,7 +22,7 @@ $sourceLang = [
     'lms.parcours_import.count.parcours' => ['text' => '{count} parcours', 'context' => 'Badge showing how many child parcours are inside an importable pack.'],
     'lms.parcours_import.count.missions' => ['text' => '{count} missions', 'context' => 'Badge showing how many missions are inside an importable parcours.'],
     'lms.parcours_import.action.import' => ['text' => 'Importer', 'context' => 'Button used to import a parcours.'],
-    'lms.parcours_import.empty_search' => ['text' => 'Aucun parcours ne correspond a cette recherche.', 'context' => 'Empty state shown when no import search result matches.'],
+    'lms.parcours_import.empty_search' => ['text' => 'Aucun parcours ne correspond à cette recherche.', 'context' => 'Empty state shown when no import search result matches.'],
     'lms.parcours_import.action.close' => ['text' => 'Fermer', 'context' => 'Button used to close the parcours import drawer.'],
 ];
 
@@ -48,153 +48,7 @@ if ($currentUserId <= 0 || !$hasOrganizationAccess || !$canCreateParcours || $or
 
 $importableParcours = \dbObject\Parcours::fetchImportableForOrganization($organizationId);
 ?>
-<style>
-.lms-import-parcours-view {
-    display: grid;
-    gap: 18px;
-}
-
-.lms-import-parcours-hero,
-.lms-import-parcours-card {
-    padding: 20px 22px;
-    border-radius: var(--radius-md);
-    background: var(--bg-card);
-    box-shadow: var(--shadow);
-}
-
-.lms-import-parcours-hero {
-    border: 1px solid color-mix(in srgb, var(--primary) 18%, var(--border-color));
-    background:
-        radial-gradient(circle at top right, color-mix(in srgb, var(--primary) 20%, transparent), transparent 42%),
-        linear-gradient(135deg, color-mix(in srgb, var(--primary) 8%, var(--bg-card)), var(--bg-card));
-}
-
-.lms-import-parcours-hero h2,
-.lms-import-parcours-card h3 {
-    margin: 0 0 8px;
-}
-
-.lms-import-parcours-card {
-    border: 1px solid var(--border-color);
-    display: grid;
-    gap: 16px;
-}
-
-.lms-import-parcours-search {
-    display: grid;
-    gap: 6px;
-}
-
-.lms-import-parcours-search input {
-    width: 100%;
-}
-
-.lms-import-parcours-list {
-    display: grid;
-    gap: 12px;
-    max-height: min(58vh, 560px);
-    overflow: auto;
-    padding-right: 4px;
-}
-
-.lms-import-parcours-item {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 14px;
-    align-items: start;
-    padding: 14px 16px;
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    background: var(--bg-main);
-}
-
-.lms-import-parcours-item--pack {
-    border-color: color-mix(in srgb, var(--primary) 26%, var(--border-color));
-    background:
-        linear-gradient(135deg, color-mix(in srgb, var(--primary) 7%, var(--bg-main)), var(--bg-main));
-}
-
-.lms-import-parcours-item[hidden],
-.lms-import-parcours-empty[hidden] {
-    display: none !important;
-}
-
-.lms-import-parcours-item__copy {
-    display: grid;
-    gap: 8px;
-}
-
-.lms-import-parcours-item__copy strong {
-    display: block;
-}
-
-.lms-import-parcours-item__type {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    width: fit-content;
-    padding: 4px 8px;
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--primary) 8%, var(--bg-card));
-    color: var(--text-light);
-    font-size: 0.82rem;
-    letter-spacing: 0.02em;
-}
-
-.lms-import-parcours-item--pack .lms-import-parcours-item__type {
-    background: color-mix(in srgb, var(--primary) 15%, var(--bg-card));
-    color: var(--primary);
-}
-
-.lms-import-parcours-item__meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-
-.lms-import-parcours-item__meta span {
-    padding: 4px 8px;
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--primary) 8%, var(--bg-card));
-    color: var(--text-light);
-    font-size: 0.92rem;
-}
-
-.lms-import-parcours-item__action {
-    margin-top: 0;
-    white-space: nowrap;
-}
-
-.lms-import-parcours-empty {
-    padding: 16px 18px;
-    border-radius: var(--radius-md);
-    background: color-mix(in srgb, var(--primary) 7%, var(--bg-main));
-}
-
-.lms-import-parcours-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
-}
-
-.lms-import-parcours-cancel {
-    background: var(--border-color);
-    color: var(--text-main);
-}
-
-@media (max-width: 720px) {
-    .lms-import-parcours-item,
-    .lms-import-parcours-actions {
-        grid-template-columns: 1fr;
-        flex-direction: column-reverse;
-    }
-
-    .lms-import-parcours-item__action,
-    .lms-import-parcours-cancel {
-        width: 100%;
-    }
-}
-</style>
+<link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/lms/css/parcours-import.css') ?>">
 
 <div class="lms-import-parcours-view" data-lms-parcours-importer="1">
     <section class="lms-import-parcours-hero">

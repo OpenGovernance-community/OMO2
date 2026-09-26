@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/rule-scope-fields.php';
 
 // Shared form fields for deferred proposals in meeting minutes and ballots.
 function omoDeferredEditorT(string $key): string
@@ -20,6 +21,9 @@ function omoDeferredEditorT(string $key): string
         'blocked_until' => ['text' => 'Relance du projet bloqué', 'context' => 'Deferred project follow-up date'],
         'save' => ['text' => 'Enregistrer la modification', 'context' => 'Deferred proposal save action'],
         'cancel' => ['text' => 'Annuler', 'context' => 'Deferred proposal cancel action'],
+        'move_destination' => ['text' => 'Destination', 'context' => 'Deferred holon move destination'],
+        'move_help' => ['text' => 'Le deplacement sera applique apres validation de la proposition.', 'context' => 'Deferred holon move explanation'],
+        'move_empty' => ['text' => 'Aucune destination compatible et autorisee.', 'context' => 'Deferred holon move without destination'],
     ];
     static $bundle = null;
     $bundle ??= omoLoadTranslationBundle('omo_deferred_editor_fields', $sourceLang);
@@ -31,10 +35,24 @@ function omoDeferredEditorRenderFields(string $targetType, array $state): void
     $escape = static fn ($value): string => htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
     $value = static fn (string $name): string => $escape(($state[$name] ?? '') instanceof DateTimeInterface ? $state[$name]->format('Y-m-d') : ($state[$name] ?? ''));
     $label = static fn (string $key): string => $escape(omoDeferredEditorT($key));
+    if ($targetType === 'holon_move') {
+        ?>
+        <p><?= $label('move_help') ?></p>
+        <label class="generic-form-field"><span class="generic-form-label"><?= $label('move_destination') ?></span><select class="generic-form-control" name="parent_id" required>
+            <option value=""></option>
+            <?php foreach (($state['destinations'] ?? []) as $destination): ?>
+                <?php if (!empty($destination['isCurrentParent'])) continue; ?>
+                <option value="<?= (int)$destination['id'] ?>"<?= (int)($state['parent_id'] ?? 0) === (int)$destination['id'] ? ' selected' : '' ?>><?= $escape($destination['pathLabel']) ?></option>
+            <?php endforeach; ?>
+        </select></label>
+        <?php
+        return;
+    }
     ?>
     <div class="generic-form-stack">
         <label class="generic-form-field"><span class="generic-form-label"><?= $label('title') ?></span><input class="generic-form-control" name="title" required maxlength="255" value="<?= $value('title') ?>"></label>
         <?php if ($targetType === 'rule'): ?>
+            <?php omoRuleScopeRenderFields($state, $state['scopeContext'] ?? []); ?>
             <label class="generic-form-field"><span class="generic-form-label"><?= $label('intention') ?></span><textarea class="generic-form-control" name="intention" rows="3"><?= $value('intention') ?></textarea></label>
             <label class="generic-form-field"><span class="generic-form-label"><?= $label('rule') ?></span><textarea class="generic-form-control" name="description" rows="5" required><?= $value('description') ?></textarea></label>
             <div class="generic-form-grid">

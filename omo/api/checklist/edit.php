@@ -105,12 +105,12 @@ $checklistHelp = static function ($label, $text): string {
         <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided generic-form-section--compact omo-checklist-editor__section">
             <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape(omoChecklistT('checklist.form.identity')) ?></h3>
             <div class="omo-checklist-form-grid generic-form-grid">
-                <label class="omo-checklist-field omo-checklist-field--wide">
-                    <span><?= omoApiEscape(omoChecklistT('checklist.form.title')) ?></span>
+                <label class="omo-checklist-field omo-checklist-field--wide generic-form-field generic-form-field--full">
+                    <span class="generic-form-label"><?= omoApiEscape(omoChecklistT('checklist.form.title')) ?></span>
                     <input class="generic-form-control" type="text" name="title" value="<?= omoApiEscape((string)$templateRoot->get('title')) ?>" maxlength="255" required autofocus>
                 </label>
-                <div class="omo-checklist-field omo-checklist-field--wide">
-                    <span><?= omoApiEscape(omoChecklistT('checklist.form.description')) ?></span>
+                <div class="omo-checklist-field omo-checklist-field--wide generic-form-field generic-form-field--full">
+                    <span class="generic-form-label"><?= omoApiEscape(omoChecklistT('checklist.form.description')) ?></span>
                     <div class="omo-checklist-html-editor-container" data-checklist-html-editor-container>
                         <div
                             class="omo-checklist-html-editor"
@@ -120,20 +120,20 @@ $checklistHelp = static function ($label, $text): string {
                         <textarea name="description" hidden aria-hidden="true" data-checklist-html-value><?= omoApiEscape((string)$templateRoot->get('description')) ?></textarea>
                     </div>
                 </div>
-                <label class="omo-checklist-field">
-                    <span><?= omoApiEscape(omoChecklistT('checklist.form.status')) ?></span>
+                <label class="omo-checklist-field generic-form-field">
+                    <span class="generic-form-label"><?= omoApiEscape(omoChecklistT('checklist.form.status')) ?></span>
                     <select class="generic-form-control" name="status">
                         <?php foreach ([Checklist::STATUS_DRAFT, Checklist::STATUS_PUBLISHED] as $status): ?>
                             <option value="<?= omoApiEscape($status) ?>"<?= Checklist::normalizeStatus($checklist->get('status')) === $status ? ' selected' : '' ?>><?= omoApiEscape(omoChecklistStatusLabel($status)) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </label>
-                <label class="omo-checklist-field">
-                    <span><?= omoApiEscape(omoChecklistT('checklist.form.revision_note')) ?></span>
+                <label class="omo-checklist-field generic-form-field">
+                    <span class="generic-form-label"><?= omoApiEscape(omoChecklistT('checklist.form.revision_note')) ?></span>
                     <input class="generic-form-control" type="text" name="revision_note" value="<?= omoApiEscape((string)$checklist->get('revision_note')) ?>">
                 </label>
-                <label class="omo-checklist-field">
-                    <span class="generic-inline-help"><?= omoApiEscape(omoChecklistT('checklist.form.responsible')) ?><?= $checklistHelp(omoChecklistT('checklist.form.responsible'), omoChecklistT('checklist.form.responsible_help')) ?></span>
+                <label class="omo-checklist-field generic-form-field">
+                    <span class="generic-inline-help generic-form-label"><?= omoApiEscape(omoChecklistT('checklist.form.responsible')) ?><?= $checklistHelp(omoChecklistT('checklist.form.responsible'), omoChecklistT('checklist.form.responsible_help')) ?></span>
                     <select class="generic-form-control" name="IDuser_responsible">
                         <option value=""><?= omoApiEscape(omoChecklistT('checklist.form.responsible_none')) ?></option>
                         <?php foreach ($checklistResponsibleOptions as $responsible): ?>
@@ -154,16 +154,16 @@ $checklistHelp = static function ($label, $text): string {
                 </div>
             </div>
             <div class="omo-checklist-form-grid generic-form-grid">
-                <label class="omo-checklist-field">
-                    <span><?= omoApiEscape(omoChecklistT('checklist.form.trigger_type')) ?></span>
+                <label class="omo-checklist-field generic-form-field">
+                    <span class="generic-form-label"><?= omoApiEscape(omoChecklistT('checklist.form.trigger_type')) ?></span>
                     <select class="generic-form-control" name="trigger_type" data-checklist-trigger-type>
                         <?php foreach ([ChecklistTrigger::TYPE_MANUAL, ChecklistTrigger::TYPE_SCHEDULED, ChecklistTrigger::TYPE_CONTAINER] as $triggerOption): ?>
                             <option value="<?= omoApiEscape($triggerOption) ?>"<?= $triggerType === $triggerOption ? ' selected' : '' ?>><?= omoApiEscape(omoChecklistT('checklist.trigger.' . $triggerOption)) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </label>
-                <label class="omo-checklist-field" data-checklist-recurrence-field<?= $triggerType === ChecklistTrigger::TYPE_SCHEDULED ? '' : ' hidden' ?>>
-                    <span><?= omoApiEscape(omoChecklistT('checklist.form.frequency')) ?></span>
+                <label class="omo-checklist-field generic-form-field" data-checklist-recurrence-field<?= $triggerType === ChecklistTrigger::TYPE_SCHEDULED ? '' : ' hidden' ?>>
+                    <span class="generic-form-label"><?= omoApiEscape(omoChecklistT('checklist.form.frequency')) ?></span>
                     <select class="generic-form-control" name="frequency" data-checklist-frequency>
                         <option value=""><?= omoApiEscape(omoChecklistT('checklist.schedule.none')) ?></option>
                         <?php foreach (RecurrenceSchedule::getFrequencyCatalog() as $frequencyOption): ?>
@@ -171,12 +171,12 @@ $checklistHelp = static function ($label, $text): string {
                         <?php endforeach; ?>
                     </select>
                 </label>
-                <label class="omo-checklist-field" data-checklist-recurrence-field<?= $triggerType === ChecklistTrigger::TYPE_SCHEDULED ? '' : ' hidden' ?>>
-                    <span><?= omoApiEscape(omoChecklistT('checklist.form.schedule')) ?></span>
+                <label class="omo-checklist-field generic-form-field" data-checklist-recurrence-field<?= $triggerType === ChecklistTrigger::TYPE_SCHEDULED ? '' : ' hidden' ?>>
+                    <span class="generic-form-label"><?= omoApiEscape(omoChecklistT('checklist.form.schedule')) ?></span>
                     <select class="generic-form-control" name="schedule" data-checklist-schedule data-selected-value="<?= omoApiEscape((string)$schedule) ?>"></select>
                 </label>
-                <label class="omo-checklist-field" data-checklist-overlap-field<?= $triggerType === ChecklistTrigger::TYPE_CONTAINER ? ' hidden' : '' ?>>
-                    <span><?= omoApiEscape(omoChecklistT('checklist.form.overlap')) ?></span>
+                <label class="omo-checklist-field generic-form-field" data-checklist-overlap-field<?= $triggerType === ChecklistTrigger::TYPE_CONTAINER ? ' hidden' : '' ?>>
+                    <span class="generic-form-label"><?= omoApiEscape(omoChecklistT('checklist.form.overlap')) ?></span>
                     <select class="generic-form-control" name="overlap_policy">
                         <?php foreach ([ChecklistTrigger::OVERLAP_CREATE_NEW, ChecklistTrigger::OVERLAP_BLOCK, ChecklistTrigger::OVERLAP_RESTART] as $policy): ?>
                             <option value="<?= omoApiEscape($policy) ?>"<?= $overlapPolicy === $policy ? ' selected' : '' ?>><?= omoApiEscape(omoChecklistT('checklist.overlap.' . $policy)) ?></option>

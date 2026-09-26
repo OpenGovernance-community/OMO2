@@ -51,58 +51,7 @@ if (
     <div class="omo-import-popup__feedback generic-soft-panel" data-omo-org-import-feedback="1" hidden></div>
 </div>
 
-<style>
-.omo-import-popup {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    color: var(--color-text, #1f2937);
-}
-
-.omo-import-popup__hero {
-    --generic-hero-radius: var(--radius-md);
-}
-
-.omo-import-popup__text {
-    margin-top: 10px;
-}
-
-.omo-import-popup__form {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    padding: 18px;
-    border-radius: var(--radius-md);
-    border: 1px solid var(--color-border, #d1d5db);
-    background: var(--color-surface, #fff);
-}
-
-.omo-import-popup__field {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.omo-import-popup__input {
-    --generic-form-control-padding-block: 10px;
-}
-
-.omo-import-popup__actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-}
-
-.omo-import-popup__feedback {
-    color: var(--color-text-light, #6b7280);
-}
-
-.omo-import-popup__feedback--error {
-    color: #b91c1c;
-    border-color: rgba(220, 38, 38, 0.18);
-    background: rgba(220, 38, 38, 0.06);
-}
-</style>
+<link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/organizations/import.css') ?>">
 
 <script>
 (function () {

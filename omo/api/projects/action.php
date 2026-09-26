@@ -298,7 +298,7 @@ if ($action === 'attach_document') {
     $document = new Document();
     if (
         $documentId <= 0
-        || !($projectHolon instanceof Holon)
+        || (!($projectHolon instanceof Holon) && (int)$existingProject->get('IDholon') > 0)
         || !$document->load($documentId)
         || (int)$document->get('IDorganization') !== $organizationId
         || (int)$document->get('active') !== 1
@@ -590,28 +590,34 @@ if ($title === '') {
 
 $project = $existingProject instanceof Project ? $existingProject : new Project();
 $previousStatus = $projectId > 0 ? Project::normalizeStatus($project->get('status')) : '';
-$targetHolonId = isset($_POST['IDholon']) && is_numeric($_POST['IDholon'])
-    ? (int)$_POST['IDholon']
+$targetHolonId = array_key_exists('IDholon', $_POST)
+    ? (is_numeric($_POST['IDholon']) ? (int)$_POST['IDholon'] : 0)
     : (int)($project->get('IDholon') ?: ($context['currentHolon'] instanceof Holon ? $context['currentHolon']->getId() : 0));
-$targetHolon = new Holon();
 $rootHolon = $context['rootHolon'] ?? null;
-if (
-    $targetHolonId <= 0
-    || !$targetHolon->load($targetHolonId)
-    || !($rootHolon instanceof Holon)
-    || !$targetHolon->isDescendantOf((int)$rootHolon->getId(), true)
-    || !$targetHolon->canViewDetail()
-) {
+$targetHolon = null;
+if ($targetHolonId > 0) {
+    $candidateHolon = new Holon();
+    if (!$candidateHolon->load($targetHolonId)
+        || !($rootHolon instanceof Holon)
+        || !$candidateHolon->isDescendantOf((int)$rootHolon->getId(), true)
+        || !$candidateHolon->canViewDetail()) {
+        omoProjectsActionRespond(false, omoProjectsT('projects.error.holon'), [], 422);
+    }
+    $targetHolon = $candidateHolon;
+} elseif ($targetHolonId !== 0 || ($rootHolon instanceof Holon && !($projectId > 0 && (int)$project->get('IDholon') === 0))) {
     omoProjectsActionRespond(false, omoProjectsT('projects.error.holon'), [], 422);
 }
 if ($projectId > 0 && $targetHolonId !== (int)$project->get('IDholon')
-    && !omoProjectsCanUsePermission($targetHolon, 'CAN_CREATE_PROJECT', $context)
+    && !($targetHolon instanceof Holon && omoProjectsCanUsePermission($targetHolon, 'CAN_CREATE_PROJECT', $context))
     && (int)$project->get('IDuser') !== $currentUserId) {
     omoProjectsActionRespond(false, omoProjectsT('projects.error.forbidden'), [], 403);
 }
 if ($projectId <= 0) {
-    $canCreateTarget = omoProjectsCanUsePermission($targetHolon, 'CAN_CREATE_PROJECT', $context);
-    $canProposeTarget = !$canCreateTarget && $targetHolon->isAllowed('CAN_PROPOSE_PROJECT', false, $currentUserId);
+    $canCreateTarget = $targetHolon instanceof Holon
+        ? omoProjectsCanUsePermission($targetHolon, 'CAN_CREATE_PROJECT', $context)
+        : omoProjectsCanCreateContext($context);
+    $canProposeTarget = !$canCreateTarget && $targetHolon instanceof Holon
+        && $targetHolon->isAllowed('CAN_PROPOSE_PROJECT', false, $currentUserId);
     if (!$canCreateTarget && !$canProposeTarget) {
         omoProjectsActionRespond(false, omoProjectsT('projects.error.forbidden'), [], 403);
     }
@@ -626,7 +632,7 @@ if ($projectId <= 0) {
 if ($projectId <= 0) {
     $project->set('IDorganization', $organizationId);
 }
-$project->set('IDholon', $targetHolonId);
+$project->set('IDholon', $targetHolonId > 0 ? $targetHolonId : null);
 $project->set('title', mb_substr($title, 0, 255, 'UTF-8'));
 $project->set('description', PropertyFormat::sanitizeHtml((string)($_POST['description'] ?? '')));
 $defaultStatus = $projectId <= 0 ? Project::STATUS_IN_PROGRESS : $project->get('status');

@@ -38,14 +38,16 @@ $checklistScope = omoApiNormalizeContextScope(
 $scopeActiveIndex = omoApiResolveContextScopeIndex($checklistScope, $availableScopes);
 $scopeHolonIds = $checklistScope === 'children'
     ? omoApiGetDirectChildScopeHolonIds($currentHolon)
-    : ($checklistScope === 'descendants' ? omoApiGetDescendantHolonIds($currentHolon) : [(int)$currentHolon->getId()]);
+    : ($checklistScope === 'descendants' ? omoApiGetDescendantHolonIds($currentHolon) : ($currentHolon instanceof Holon ? [(int)$currentHolon->getId()] : []));
 
 $checklists = new ArrayChecklist();
 $checklists->loadForContext(
     $organizationId,
     $currentHolon instanceof Holon ? (int)$currentHolon->getId() : 0,
     $checklistScope,
-    $scopeHolonIds
+    $scopeHolonIds,
+    $currentHolon instanceof Holon && $rootHolon instanceof Holon
+        && (int)$currentHolon->getId() === (int)$rootHolon->getId()
 );
 $checklistRows = [];
 foreach ($checklists as $checklist) {
@@ -99,7 +101,7 @@ foreach ($checklists as $checklist) {
         'root' => $templateRoot,
         'title' => trim((string)$templateRoot->get('title')),
         'description' => trim(strip_tags((string)$templateRoot->get('description'))),
-        'holon' => $holon instanceof Holon ? trim((string)$holon->getDisplayName()) : '',
+        'holon' => $holon instanceof Holon ? trim((string)$holon->getDisplayName()) : trim((string)$organization->get('name')),
         'responsibilityLabel' => omoChecklistResponsibleAssignmentLabel($checklist),
         'itemCount' => $itemCount,
         'openRunCount' => $openRunCount,
@@ -135,7 +137,7 @@ $texts = [
 ];
 ?>
 <link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260902-save-menu">
-<link rel="stylesheet" href="/omo/api/checklist/checklist.css?v=20260917-style-review-final">
+<link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/checklist/checklist.css') ?>">
 <div
     class="omo-checklist omo-panel-view"
     id="omo-checklist-root"

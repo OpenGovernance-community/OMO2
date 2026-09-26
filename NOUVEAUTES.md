@@ -1,5 +1,109 @@
 # Journal Des Nouveautes
 
+- Regles : correction des rechargements en boucle au passage au tri alphabetique ou au regroupement par holon lorsqu une autre vue est enregistree. Les filtres sont transmis explicitement au serveur, y compris leurs valeurs par defaut.
+
+- Recherche : nettoyage des retours a la ligne encodes (comme &#13;) dans les resumes et apercus, y compris les anciennes recherches memorisees. Les paragraphes sont conserves et les lignes vides repetitives sont reduites.
+
+- Recherche : les filtres de modules conservent tous les resultats annonces par leurs compteurs. Suppression de la coupe globale a 36 resultats dans le worker, qui pouvait faire disparaitre entierement certains modules ; les compteurs refletent aussi la liste disponible lors de la restauration d une ancienne recherche.
+
+- Recherche : apercus centres sur les passages correspondants, titres et textes surlignes, contenu des documents HTML et FAQ, points pertinents des PV avec contexte de reunion, sous-projets et compteurs de documents et dates accessibles. Les competences pertinentes remontent dans la fiche Team, la bio devient recherchable et seules les competences visibles contribuent au classement final. Les autres apercus beneficient aussi des extraits et du surlignage ; le graphique des indicateurs est conserve.
+
+- Regles : les filtres Local, Contextuelles et Global remplacent Local, Enfants directs et Descendants. Local liste les regles definies dans le holon, Contextuelles rassemble ses regles applicables (cercle proche, ascendants et globales), Global affiche tout le reglement de l organisation. Les anciens filtres enregistres reviennent sur Contextuelles.
+
+- Regles : l aide du selecteur de portee affiche uniquement l explication du choix actuel et se met a jour au clic.
+
+- Regles : choix de portee locale, cercle, descendante ou globale avec le selecteur des vues. Pour un role, le cercle inclut son cercle parent et ses enfants directs. Si les domaines d autorite sont utilises, une autorite associee est exigee pour les portees globale, descendante et cercle depuis un role. Controle partage avec les PV et decisions, affichage des changements de portee et conservation dans les exports. Migration SQL ajoutee.
+
+- Regles : affichage en accordeons fermes par defaut, y compris pendant la recherche. Les correspondances sont surlignees dans les titres et contenus, sans distinction de casse ou d accents et en conservant la mise en forme.
+
+- Autorites : les noms acceptent maintenant les textes longs, sans limite de 255 caracteres ni troncature lors de la conversion des listes. Migration SQL ajoutee et aller-retour texte / autorite teste avec des libelles longs en UTF-8.
+
+- Holons : la conversion des listes d autorites vers du texte conserve aussi les textes anciens restes dans ces listes. Les erreurs distinguent une autorite supprimee d une autorite d une autre organisation, avec la liste, le holon et l identifiant concernes.
+
+- Droits : chaque portee peut etre marquee comme Autorite etendue pour les membres et admins (libelle harmonise dans les editeurs de holons et de modeles). Ces autorites etendues restent inactives par defaut ; les personnes concernees peuvent les activer dans leur profil apres un rappel de leur usage temporaire au service de l organisation. Activation et desactivation recalculent les droits, et le marquage est conserve dans les modeles et exports.
+
+- Holons : le passage d une liste texte a une liste d autorites, et inversement, demande confirmation puis convertit les valeurs lors de l enregistrement, y compris dans les holons partageant la definition. Le retour au texte conserve les noms, supprime les autorites et leurs instances de modele, conserve les regles dans leur holon et detache les sous-autorites. La conversion est annulee en cas d erreur ou de reference dans une autre liste.
+
+- Indicateurs : un indicateur importe ouvre un sous-drawer lie a son import, avec une action Detacher qui retire uniquement cet import. Le contexte est transmis lors du detachement et l'indicateur original ainsi que ses valeurs sont conserves. Le texte explicatif du detachement est retire du sous-drawer.
+
+- Structure : nouveau droit CAN_MOVE_HOLON pour deplacer les holons dans son perimetre, avec menu et destinations filtres et controle serveur. Les PV et decisions hors reorganisation peuvent proposer un deplacement differe, afficher le parent avant/apres et verifier a nouveau les droits et la structure lors de la validation.
+
+- Recherche : nom du fichier TopbarSearchRanker corrige en minuscules pour le chargement automatique sur Linux ; test de casse ajoute pour detecter aussi ce probleme sous Windows.
+
+- Structure : les membres ordinaires restent empiles meme quand ils tiennent sur une ligne. La souris les deploie au survol, y compris sur un ordinateur a ecran tactile ; le doigt les deploie au toucher. L'apercu utilise trois lignes au maximum selon la largeur, avec "..." en derniere position si necessaire. Les administrateurs restent visibles a cote.
+
+- Recherche : synthese des compteurs sans cadre englobant, modules contenant des resultats mis en evidence et filtre actif distingue par un contour renforce.
+
+- Recherche : suppression du rappel du titre, de la requete et des modules au-dessus des resultats, deja presents dans l en-tete.
+
+- Menu FAQ : recherche JavaScript sur les reponses completes, avec priorite a la question et aux mots entiers, pluriels proches, cinq mots significatifs les plus longs et bonus de couverture. Les boutons et notes ne polluent plus le score ; les resumes montrent le passage pertinent et le surlignage respecte le texte.
+
+- Recherche : classement harmonise entre modules, avec les cinq mots significatifs les plus longs, priorite aux mots entiers et pluriels reguliers presque equivalents. La couverture de plusieurs mots et les titres sont favorises ; les fragments internes et le contexte pesent moins, les repetitions sont plafonnees. Correction des points artificiels attribues aux documents hors PV et alignement des extraits et du surlignage sur ces correspondances.
+
+- Recherche : chaque resultat propose un apercu dans un drawer interne, avec une vue condensee propre au module (metadonnees des documents et PV, note FAQ, graphique d indicateur, texte et intention des regles, etapes des processus, etc.). Fermer l apercu conserve les resultats ; le bouton Ouvrir en pied de vue reprend la navigation par hash. Les droits d acces sont verifies au chargement de l apercu.
+
+- Site public : la page de migration OMO1 vers OMO2 compare maintenant les captures de structure, projets, reunions, documents et indicateurs. Seul le choix Decisions reste en attente. Le titre compact laisse davantage de place au comparateur et la consigne se trouve sous les images. L'espace de la video explicative reste reserve et la page est accessible depuis l'accueil OMO2.
+
+- Recherche : les extraits se concentrent sur le passage qui contient le plus de termes recherches. Les correspondances sont surlignees dans le titre, le contexte et le resume des resultats, avec ou sans accent.
+
+- Recherche : correction de la date des resultats FAQ pour eviter une erreur DateTime pendant une recherche globale.
+
+- Recherche : la topbar propose maintenant les processus et les taches recurrentes. Les resultats cherchent dans leurs titres et descriptions et ouvrent directement la fiche correspondante.
+
+- Structure : l’estompage selon la profondeur ne touche que les éléments situés sous le niveau courant ; le holon d’organisation reste donc pleinement visible pendant la navigation.
+
+- Mini structure : les éléments situés au-dessus du niveau courant, dont le holon d’organisation, ne s’estompent plus pendant la navigation.
+
+- Affichage : les pages et fenêtres chargées à la demande attendent leurs feuilles de style et l’initialisation de leurs scripts avant de montrer leur contenu, ce qui évite l’apparition fugace d’une mise en page brute lors de la première visite. Un délai de secours évite de bloquer l’écran si une ressource ne répond pas.
+
+- Profil : les formulaires général et d’organisation utilisent les sections et champs communs d’édition, avec une présentation plus aérée, une photo mieux placée et des actions alignées. L’onglet de prévisualisation et son rendu ont été retirés.
+
+- Styles et scripts : les ressources propres à un écran sont rapprochées de sa page PHP, celles partagées dans OMO sont rangées sous `omo/assets/`, et les composants utilisables par plusieurs applications restent sous `common/`. Les références gardent leur version automatique liée au contenu.
+
+- JavaScript : les gros scripts de 79 pages et composants sont déplacés dans des fichiers mis en cache et versionnés automatiquement. Les fenêtres et panneaux partagent leur chargement ordonné ; les outils d’édition, de recadrage, de cartes, de décisions et de vidéo réutilisent des scripts communs. Le JavaScript intégré aux sources PHP d’OMO et des vues partagées diminue d’environ 97,6 %. Un inventaire et une documentation accompagnent cette organisation.
+
+- Styles : les formulaires réutilisent davantage les composants communs, avec les indicateurs et les tâches récurrentes comme référence. Les styles statiques de 52 vues sont externalisés et mis en cache avec une version liée à leur contenu ; le CSS intégré aux vues inventoriées diminue de 90 %. Les panneaux attendent leurs styles avant leur initialisation. Les doublons de la barre supérieure, des invitations, des cartes de détails et des éditeurs LMS sont regroupés. La page de référence et un outil d’inventaire documentent cette base commune.
+
+- FAQ : le titre de chaque écran est intégré à l’en-tête général de la fenêtre. Le retour devient une flèche de navigation en haut à gauche du contenu, sans second bandeau.
+
+- FAQ : consultation, création, édition et envoi de questions harmonisés avec les formulaires d’indicateurs. Les champs sont regroupés en sections, les médias sont repliables et les actions de sauvegarde sont espacées dans un pied de formulaire. La demande d’origine et son relais restent accessibles pendant la rédaction. Les aperçus d’images ciblent le bon formulaire et leur cadre reste masqué tant qu’aucune image n’est choisie.
+
+- FAQ : les ébauches de l’IA privilégient un vocabulaire utilisateur et les fonctionnalités visibles, sans mentionner les sources consultées ni les détails d’architecture. Le message d’accompagnement est affiché en dehors du bloc qui contient la réponse.
+
+- FAQ : si une IA est configurée, une première réponse est proposée à partir de la question, de sa description et du journal des nouveautés. L’ébauche est affichée à l’auteur et enregistrée dans la réponse courte, avec un marquage IA. La demande reste masquée, à traiter et relayable jusqu’à la réponse de l’administrateur. En cas d’absence de réponse pertinente ou d’échec de l’IA, la demande suit le circuit habituel.
+
+- FAQ : les droits des super admins et des admins d’organisation reposent sur leurs rôles, sans activation du mode admin. Le relais est accessible depuis la fiche et l’éditeur ; un message explique s’il a déjà eu lieu ou si la migration de suivi manque. La lecture des dates de réponse et de relais accepte les objets DateTime des dbObject.
+
+- Organisation : correction d’une faute de frappe dans le déplacement des décisions qui empêchait le chargement de la classe.
+
+- FAQ : les nouvelles demandes vont d’abord aux super admins. Ils peuvent les sauver comme FAQ générique, comme FAQ d’organisation, ou les relayer aux administrateurs de l’organisation concernée. Les admins de l’organisation peuvent aussi transmettre la demande à leurs autres admins. Le relais est enregistré et les destinataires reçoivent un lien direct vers la demande.
+
+- FAQ : les e-mails de nouvelle question et de réponse utilisent le gabarit commun avec les couleurs et les visuels de l’organisation. La question, la description et la réponse sont présentées dans des blocs lisibles, même lorsque la réponse n’est pas publiée dans la FAQ.
+
+- FAQ : les utilisateurs connectés peuvent envoyer une question sans réponse depuis les résultats de recherche. Elle reste masquée au public, apparaît dans la liste de l’administration avec son auteur et sa description, et l’administrateur peut y répondre puis choisir de la publier. La notification part aux comptes administrateurs du site actifs avec un lien direct `#|faq-ID` qui ouvre l’édition tant que la demande est sans réponse ; ensuite, le même lien ouvre sa fiche avec un bouton d’édition selon les droits. L’auteur reçoit la réponse. Migrations SQL ajoutées pour les demandes et les réponses nulles en attente.
+
+- Traductions : les textes du signalement GitHub partagent maintenant un bloc de traduction pour le formulaire, les retours JavaScript et les réponses de l’API.
+
+- Regles : l enregistrement, la suppression et les erreurs utilisent les alertes temporaires de la topbar. Seuls le compteur et la liste des regles sont actualises apres une modification, sans recharger la page.
+
+- Regles : les organisations sans structure peuvent afficher, creer et gerer des regles liees directement a leur organisation. Ces regles restent visibles a la racine apres l ajout d une structure. Le choix d autorite n apparait que si des autorites existent dans l espace courant.
+
+- Projets : le champ Espace associe disparait et l espace devient facultatif dans une organisation sans structure. Les documents, indicateurs, taches recurrentes, processus et projets rattaches a l organisation restent visibles depuis la racine si une structure est ajoutee.
+
+- Processus : une organisation sans structure peut creer et executer des processus selon ses droits. Les projets modeles et les projets generes restent rattaches a l organisation sans holon, et le choix d espace disparait des etapes quand aucune structure n existe.
+
+- Taches recurrentes : une organisation sans structure peut afficher, creer, modifier, valider et supprimer des taches rattachees directement a l organisation, selon ses droits. La liste et le detail affichent le nom de l organisation pour ces taches.
+
+- Onglets : les composants partages affichent un menu deroulant sur mobile, avec le nom complet de l onglet actif. La selection conserve les chargements et actions existants ; les onglets cote a cote restent disponibles sur grand ecran.
+
+- Navigation mobile : l onglet du tableau de bord s appelle maintenant Pilotage.
+
+- Mobile : titres de pages et de sous-drawers plus compacts, marges reduites et boutons d en-tete repartis selon la largeur disponible. Les cartes des parametres occupent moins de hauteur et la prise de focus dans un panneau ne decale plus horizontalement le cadre de l application.
+
+- Profil : les outils de fusion et de suppression utilisent des cartes harmonisees avec leur bouton d action a droite et un formulaire repliable. La fusion conserve le statut de superadmin et les roles d admin d organisation ou de holon possedes par l un ou l autre des profils.
+
+- Profil : l onglet Outils regroupe maintenant des actions repliables pour fusionner des comptes ou supprimer definitivement son profil. La suppression affiche d abord les organisations conservees, celles qui seront supprimees avec leur historique lorsque le profil en est le seul membre, et les blocages de dernier administrateur. Un superadmin peut supprimer son profil si un autre superadmin actif reste membre de l organisation de base. Une confirmation textuelle est obligatoire. Les organisations conservees reutilisent ou creent leur profil historique technique afin de garder les references utiles apres la suppression. Un admin peut quitter l organisation de base si un autre admin y reste et, s il est aussi superadmin, si un autre superadmin y reste ; elle ne peut jamais etre supprimee.
+
 - Détail des modifications : les indicateurs affichent aussi les changements de personne en charge, de source et de fréquence de mise à jour ou de synchronisation. Les listes de propriétés des holons, notamment les autorités et les projets, présentent leurs libellés plutôt que leurs identifiants dans les comparaisons avant/après des PV et décisions.
 
 - Patreon : la liaison de compte passe maintenant par un point OAuth central configurable (`PATREON_CONNECT_URL`). Une transaction temporaire en base transmet l’utilisateur et le domaine d’origine au serveur central, qui notifie ensuite la fenêtre d’origine après la connexion. Les domaines de retour peuvent être autorisés avec un motif `*.domaine` pour les sous-domaines. Migration SQL ajoutée pour les transactions OAuth.
