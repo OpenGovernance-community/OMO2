@@ -887,6 +887,10 @@ class StatIndicator extends DbObject
 
         $organization = $this->getOrganization();
         $holon = $this->getHolon();
+        if (!($holon instanceof Holon) && $organization instanceof Organization
+            && Permission::userCanInOrganization($permissionKey, (int)$organization->getId(), $currentUserId)) {
+            return true;
+        }
         if (!($holon instanceof Holon) && $organization instanceof Organization) {
             $holon = $organization->getEnabledStructuralRootHolon();
         }

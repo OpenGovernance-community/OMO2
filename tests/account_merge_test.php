@@ -41,6 +41,23 @@ assertAccountMergeTest(
 );
 
 $root = dirname(__DIR__);
+// This isolated test does not initialize the application autoloader.
+require_once $root . '/class/dbobject/dbobject.class.php';
+require_once $root . '/class/dbobject/user.class.php';
+$mergeMembershipParameters = new ReflectionMethod(\dbObject\User::class, 'accountMergeMembershipParameters');
+foreach ([
+    ['{"isAdmin":false,"kept":"yes"}', '{"isAdmin":true,"removed":"yes"}'],
+    ['{"isAdmin":true,"kept":"yes"}', '{"isAdmin":false,"removed":"yes"}'],
+] as [$keptParameters, $removedParameters]) {
+    $mergedParameters = json_decode((string)$mergeMembershipParameters->invoke(null, $keptParameters, $removedParameters), true);
+    assertAccountMergeTest(
+        is_array($mergedParameters)
+            && ($mergedParameters['isAdmin'] ?? null) === true
+            && ($mergedParameters['kept'] ?? null) === 'yes'
+            && ($mergedParameters['removed'] ?? null) === 'yes',
+        'Overlapping memberships must retain admin status from either account and merge other settings.'
+    );
+}
 $userSource = file_get_contents($root . '/class/dbobject/user.class.php');
 $endpointSource = file_get_contents($root . '/ajax/user_account_merge.php');
 $profileSource = file_get_contents($root . '/popup/profil.php');
@@ -71,6 +88,11 @@ assertAccountMergeTest(
         && str_contains((string)$userSource, 'accountMergeLearningRows')
         && str_contains((string)$userSource, 'accountMergeActivityRows'),
     'Duplicate memberships, learning progress, attendance, project assignments, and decision responses must have explicit merge strategies.'
+);
+assertAccountMergeTest(
+    substr_count((string)$userSource, "self::accountMergeMembershipParameters(\$row['target_parameters']") === 2
+        && str_contains((string)$userSource, 'kept.siteadmin = GREATEST(kept.siteadmin, removed.siteadmin)'),
+    'Organization and holon admin roles, as well as superadmin status, must survive the merge.'
 );
 assertAccountMergeTest(
     str_contains((string)$userSource, "'account_merge'")
@@ -110,6 +132,9 @@ assertAccountMergeTest(
         && str_contains($toolsSource, 'data-merge-totp-step')
         && str_contains($toolsSource, 'data-merge-confirm-check')
         && str_contains($toolsSource, 'data-merge-superadmin-note')
+        && str_contains($toolsSource, 'data-profile-merge-root')
+        && str_contains($toolsSource, 'data-profile-delete-root')
+        && str_contains($toolsSource, 'profile-account-tool__header')
         && str_contains($toolsSource, 'enforceSuperAdminChoice')
         && str_contains($toolsSource, 'window.top.location.reload()'),
     'The merge UI must support password fallback, TOTP, explicit confirmation, and page refresh.'

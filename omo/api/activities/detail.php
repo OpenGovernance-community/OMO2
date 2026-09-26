@@ -119,7 +119,7 @@ if ($stateKey === 'due') {
         <div class="omo-activity-detail__hero-copy">
             <div class="omo-activity-detail__badges">
                 <span class="omo-activity-badge omo-activity-badge--<?= omoApiEscape($stateKey) ?>"><?= omoApiEscape(omoActivityStateLabel($state, $now)) ?></span>
-                <?php if ($holon instanceof Holon): ?><span class="omo-pill"><?= omoApiEscape($holon->getDisplayName()) ?></span><?php endif; ?>
+                <span class="omo-pill"><?= omoApiEscape($holon instanceof Holon ? $holon->getDisplayName() : (string)$context['organization']->get('name')) ?></span>
             </div>
             <h3 class="generic-card-title generic-card-title--large"><?= omoApiEscape((string)$activity->get('title')) ?></h3>
             <p class="generic-description"><?= omoApiEscape(omoActivityT('activity.responsibility.label')) ?> : <?= omoApiEscape($responsibilityLabel) ?></p>

@@ -16,7 +16,7 @@ $activity = new ControlActivity();
 $activity = $activityId > 0 && $activity->load($activityId) ? $activity : new ControlActivity();
 if (!$deferredEditor && (empty($context['status'])
     || ($activityId > 0 && ((int)$activity->get('IDorganization') !== $organizationId || !omoActivityCanEdit($activity)))
-    || ($activityId === 0 && !omoActivityCanUsePermission($context['currentHolon'], 'CAN_CREATE_RECURRING_TASK'))
+    || ($activityId === 0 && !omoActivityCanUsePermission($context['currentHolon'], 'CAN_CREATE_RECURRING_TASK', $organizationId))
 )) {
     http_response_code(403);
     echo '<div class="omo-empty-state">' . omoApiEscape(omoActivityT('activity.error.forbidden')) . '</div>';

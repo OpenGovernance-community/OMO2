@@ -1011,9 +1011,12 @@ if (!function_exists('omoProjectsCaptureModeLabel')) {
 }
 
 if (!function_exists('omoProjectsScopeContainsProject')) {
-    function omoProjectsScopeContainsProject(Project $project, $scope, $currentHolonId, array $descendantHolonIds = [])
+    function omoProjectsScopeContainsProject(Project $project, $scope, $currentHolonId, array $descendantHolonIds = [], $includeOrganizationProjects = false)
     {
         $projectHolonId = (int)$project->get('IDholon');
+        if ($projectHolonId === 0 && $includeOrganizationProjects) {
+            return true;
+        }
         $scope = trim(mb_strtolower((string)$scope, 'UTF-8'));
         if ($scope === 'descendants') {
             return in_array($projectHolonId, array_merge([(int)$currentHolonId], array_map('intval', $descendantHolonIds)), true);
@@ -1075,6 +1078,9 @@ if (!function_exists('omoProjectsMatchesAssignment')) {
         }
 
         $projectHolon = $project->getHolon();
+        if ((int)$project->get('IDholon') === 0) {
+            return \dbObject\UserOrganization::hasActiveMembership($currentUserId, (int)$organizationId);
+        }
         return $projectHolon instanceof Holon
             && omoProjectsUserIsAssociatedWithHolon($currentUserId, $organizationId, $projectHolon);
     }

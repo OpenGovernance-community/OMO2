@@ -18,10 +18,6 @@ function profilPopupGetSourceLang(): array
             'text' => 'Utilisateur inconnu',
             'context' => 'Error message shown when the current user record cannot be loaded for the profile popup.',
         ],
-        'profile.popup.section.active.title' => [
-            'text' => 'Votre profil actif',
-            'context' => 'Section title shown at the top of the personal profile popup.',
-        ],
         'profile.popup.section.edit.title' => [
             'text' => 'Modifier votre profil',
             'context' => 'Section title shown above the editable profile forms.',
@@ -30,20 +26,16 @@ function profilPopupGetSourceLang(): array
             'text' => 'Sections du profil personnel',
             'context' => 'Aria label used for the profile editor tabs.',
         ],
-        'profile.popup.tabs.current' => [
-            'text' => 'Prévisualisation',
-            'context' => 'Tab label used for the active profile preview.',
-        ],
         'profile.popup.tabs.organization' => [
-            'text' => 'Profil specifique',
+            'text' => 'Profil spécifique',
             'context' => 'Tab label used for the organization-specific profile form.',
         ],
         'profile.popup.tabs.general' => [
-            'text' => 'Profil general',
+            'text' => 'Profil général',
             'context' => 'Tab label used for the general profile form.',
         ],
         'profile.popup.tabs.competences' => [
-            'text' => 'Competences',
+            'text' => 'Compétences',
             'context' => 'Tab label used for the competence editor tab.',
         ],
         'profile.popup.tabs.patreon' => [
@@ -53,6 +45,26 @@ function profilPopupGetSourceLang(): array
         'profile.popup.tabs.tools' => [
             'text' => 'Outils',
             'context' => 'Tab label used for account tools in the profile popup.',
+        ],
+        'profile.popup.form.identity.general' => [
+            'text' => 'Identité et présentation',
+            'context' => 'Section heading for identity fields in the general profile form.',
+        ],
+        'profile.popup.form.contact.general' => [
+            'text' => 'Coordonnées et informations personnelles',
+            'context' => 'Section heading for contact and location fields in the general profile form.',
+        ],
+        'profile.popup.form.identity.organization' => [
+            'text' => 'Profil dans cette organisation',
+            'context' => 'Section heading for identity fields in the organization profile form.',
+        ],
+        'profile.popup.form.contact.organization' => [
+            'text' => 'Coordonnées dans cette organisation',
+            'context' => 'Section heading for contact fields in the organization profile form.',
+        ],
+        'profile.popup.form.security' => [
+            'text' => 'Sécurité du compte',
+            'context' => 'Section heading above password and two-factor settings in the general profile form.',
         ],
         'profile.popup.merge.title' => [
             'text' => 'Fusionner deux profils',
@@ -67,8 +79,12 @@ function profilPopupGetSourceLang(): array
             'context' => 'Label for the current account login email.',
         ],
         'profile.popup.merge.reveal' => [
-            'text' => 'Fusionner deux profils',
+            'text' => 'Préparer la fusion',
             'context' => 'Button that reveals the account merge form.',
+        ],
+        'profile.popup.tools.collapse' => [
+            'text' => 'Replier',
+            'context' => 'Button that collapses an open profile tool.',
         ],
         'profile.popup.merge.other_email_label' => [
             'text' => "Adresse e-mail de connexion de l’autre compte",
@@ -153,6 +169,58 @@ function profilPopupGetSourceLang(): array
         'profile.popup.merge.cancel' => [
             'text' => 'Annuler',
             'context' => 'Button that cancels the account merge flow.',
+        ],
+        'profile.popup.delete.title' => [
+            'text' => 'Supprimer mon profil',
+            'context' => 'Title of the irreversible account deletion tool.',
+        ],
+        'profile.popup.delete.intro' => [
+            'text' => 'Supprimez définitivement votre compte. Les références utiles dans les organisations conservées restent attribuées à un profil historique technique.',
+            'context' => 'Introductory text for the account deletion tool.',
+        ],
+        'profile.popup.delete.open' => [
+            'text' => 'Préparer la suppression',
+            'context' => 'Button opening the account deletion confirmation area.',
+        ],
+        'profile.popup.delete.loading' => [
+            'text' => 'Analyse des conséquences en cours…',
+            'context' => 'Status while the account deletion consequences are loaded.',
+        ],
+        'profile.popup.delete.invalid_response' => [
+            'text' => 'La suppression n’a pas pu être préparée. Rechargez la page et réessayez.',
+            'context' => 'Fallback error shown when the account deletion endpoint response is invalid.',
+        ],
+        'profile.popup.delete.plan.leave' => [
+            'text' => 'Organisations que vous quitterez',
+            'context' => 'Heading of organizations retained after the profile is deleted.',
+        ],
+        'profile.popup.delete.plan.organizations' => [
+            'text' => 'Organisations et historique qui seront supprimés',
+            'context' => 'Heading of organizations deleted because the account is their sole active member.',
+        ],
+        'profile.popup.delete.plan.blocked' => [
+            'text' => 'Points à résoudre avant la suppression',
+            'context' => 'Heading of account deletion blockers.',
+        ],
+        'profile.popup.delete.plan.no_organization' => [
+            'text' => 'Ce profil n’est rattaché à aucune organisation.',
+            'context' => 'Message shown when the profile has no organization memberships.',
+        ],
+        'profile.popup.delete.confirmation_prefix' => [
+            'text' => 'Pour confirmer, écrivez exactement :',
+            'context' => 'Prefix before the exact text required to confirm account deletion.',
+        ],
+        'profile.popup.delete.complete' => [
+            'text' => 'Supprimer définitivement mon profil',
+            'context' => 'Button that performs the irreversible account deletion.',
+        ],
+        'profile.popup.delete.processing' => [
+            'text' => 'Suppression en cours…',
+            'context' => 'Status while account deletion is running.',
+        ],
+        'profile.popup.delete.success' => [
+            'text' => 'Votre profil a été supprimé.',
+            'context' => 'Success message after account deletion.',
         ],
         'profile.popup.merge.status.code_sent' => [
             'text' => "Un code a été envoyé à l’autre adresse e-mail.",
@@ -260,57 +328,9 @@ function profilPopupGetSourceLang(): array
             'text' => 'Patreon',
             'context' => 'Section title shown for the Patreon connection block in the profile popup.',
         ],
-        'profile.popup.active.context.label' => [
-            'text' => 'Contexte',
-            'context' => 'Label shown for the active profile context summary item.',
-        ],
-        'profile.popup.active.context.organization' => [
-            'text' => 'Organisation : {organizationName}',
-            'context' => 'Summary value shown when the active profile context is scoped to an organization.',
-        ],
-        'profile.popup.active.context.general' => [
-            'text' => 'Profil général',
-            'context' => 'Summary value shown when the active profile context is the general user profile.',
-        ],
-        'profile.popup.active.photo.label' => [
-            'text' => 'Photo affichée',
-            'context' => 'Label shown for the active profile photo summary item.',
-        ],
-        'profile.popup.active.email.label' => [
-            'text' => 'E-mail affiché',
-            'context' => 'Label shown for the active profile email summary item.',
-        ],
-		'profile.popup.active.phone.label' => [
-			'text' => 'Téléphone affiché',
-			'context' => 'Label shown for the active profile phone summary item.',
-		],
-        'profile.popup.active.username.label' => [
-            'text' => "Nom d'utilisateur affiche",
-            'context' => 'Label shown for the active profile username summary item.',
-        ],
-        'profile.popup.active.fullname.label' => [
-            'text' => 'Nom complet',
-            'context' => 'Label shown for the active full name summary item.',
-        ],
-        'profile.popup.active.presentation.label' => [
-            'text' => 'Présentation active',
-            'context' => 'Label shown for the active profile presentation summary item.',
-        ],
-        'profile.popup.active.birthdate.label' => [
-            'text' => 'Date de naissance',
-            'context' => 'Label shown for the birth date summary item.',
-        ],
-        'profile.popup.active.birthday.label' => [
-            'text' => 'Anniversaire',
-            'context' => 'Label shown for the birthday summary item.',
-        ],
         'profile.popup.value.not_provided' => [
             'text' => 'Non renseigné',
             'context' => 'Fallback text shown in the profile popup when a value is missing.',
-        ],
-        'profile.popup.value.no_presentation' => [
-            'text' => 'Aucune présentation renseignée',
-            'context' => 'Fallback text shown when the user has no active presentation text.',
         ],
         'profile.popup.scope.switch_aria' => [
             'text' => 'Choix du contexte de profil',
@@ -433,11 +453,11 @@ function profilPopupGetSourceLang(): array
             'context' => 'Checkbox label allowing the account password to be used for interactive website login.',
         ],
         'profile.popup.password.login_permission.help' => [
-            'text' => 'Laissez cette case decochee si ce mot de passe doit servir uniquement a CalDAV et CardDAV.',
+            'text' => 'Laissez cette case décochée si ce mot de passe doit servir uniquement à CalDAV et CardDAV.',
             'context' => 'Help text explaining that a password can be reserved for DAV access.',
         ],
         'profile.popup.password.login_permission.unavailable' => [
-            'text' => 'Definissez d abord un mot de passe pour pouvoir choisir cet acces.',
+            'text' => 'Définissez d’abord un mot de passe pour pouvoir choisir cet accès.',
             'context' => 'Help text shown when password login permission cannot be changed because no password exists.',
         ],
         'profile.popup.totp.label' => [
@@ -445,11 +465,11 @@ function profilPopupGetSourceLang(): array
             'context' => 'Checkbox label enabling TOTP two factor authentication for website logins.',
         ],
         'profile.popup.totp.help.disabled' => [
-            'text' => 'Utilisez une application de validation comme Aegis, FreeOTP ou Google Authenticator. La double authentification est demandee pour chaque nouvelle connexion au site.',
+            'text' => 'Utilisez une application de validation comme Aegis, FreeOTP ou Google Authenticator. La double authentification est demandée pour chaque nouvelle connexion au site.',
             'context' => 'Help shown before TOTP activation.',
         ],
         'profile.popup.totp.help.enabled' => [
-            'text' => 'La double authentification est activee pour les nouvelles connexions au site. Les appareils coches comme memorises restent reconnus.',
+            'text' => 'La double authentification est activée pour les nouvelles connexions au site. Les appareils cochés comme mémorisés restent reconnus.',
             'context' => 'Help shown after TOTP activation.',
         ],
         'profile.popup.totp.setup.title' => [
@@ -461,11 +481,11 @@ function profilPopupGetSourceLang(): array
             'context' => 'TOTP enrollment instructions.',
         ],
         'profile.popup.totp.setup.manual_label' => [
-            'text' => 'Cle manuelle',
+            'text' => 'Clé manuelle',
             'context' => 'Label for the manual TOTP secret shown during enrollment.',
         ],
         'profile.popup.totp.setup.code_placeholder' => [
-            'text' => 'Code a 6 chiffres',
+            'text' => 'Code à 6 chiffres',
             'context' => 'TOTP enrollment verification input placeholder.',
         ],
         'profile.popup.totp.setup.confirm' => [
@@ -473,7 +493,7 @@ function profilPopupGetSourceLang(): array
             'context' => 'Button used to confirm TOTP enrollment.',
         ],
         'profile.popup.totp.disable.confirm' => [
-            'text' => 'Desactiver la double authentification pour ce compte ?',
+            'text' => 'Désactiver la double authentification pour ce compte ?',
             'context' => 'Confirmation before disabling TOTP.',
         ],
         'profile.popup.password.toggle.label' => [
@@ -650,15 +670,15 @@ function profilPopupGetSourceLang(): array
             'context' => 'Button label used to close the shared competence editor without saving.',
         ],
         'profile.popup.competence.create_button' => [
-            'text' => 'Ajouter une competence',
+            'text' => 'Ajouter une compétence',
             'context' => 'Button label used to open the shared competence editor in creation mode.',
         ],
         'profile.popup.competence.editor.create_title' => [
-            'text' => 'Nouvelle competence',
+            'text' => 'Nouvelle compétence',
             'context' => 'Title shown above the shared competence editor in creation mode.',
         ],
         'profile.popup.competence.editor.edit_title' => [
-            'text' => 'Modifier la competence',
+            'text' => 'Modifier la compétence',
             'context' => 'Title shown above the shared competence editor in edit mode.',
         ],
         'profile.popup.competence.js.reload_error' => [

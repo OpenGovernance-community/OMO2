@@ -1,9 +1,117 @@
 (function () {
     var tabContainerCount = 0;
     var contextHelpPositionFrame = 0;
+    var fragmentDisplays = new WeakMap();
+    var stylesheetLoads = new WeakMap();
 
     function toArray(items) {
         return Array.prototype.slice.call(items || []);
+    }
+
+    // Native innerHTML leaves scripts inert. Replay only executable scripts in
+    // source order, retaining their DOM position and the host application's context.
+    function executeFragmentScripts(container, options) {
+        options = options || {};
+        var scripts = options.scripts || toArray(container.querySelectorAll('script'));
+        var reveal = deferFragmentDisplay(container);
+        return waitForStylesheets(container).then(function () {
+        return scripts.reduce(function (sequence, script) {
+            return sequence.then(function () {
+                if (options.isCurrent && !options.isCurrent()) return;
+                var type = (script.getAttribute('type') || '').trim().toLowerCase();
+                if (type && !/^(?:module|(?:text|application)\/(?:java|ecma)script)$/.test(type)) return;
+                if (!script.isConnected && options.target) options.target.appendChild(script);
+                if (!script.parentNode) return;
+                return new Promise(function (resolve, reject) {
+                    var replacement = document.createElement('script');
+                    toArray(script.attributes).forEach(function (attribute) {
+                        replacement.setAttribute(attribute.name, attribute.value);
+                    });
+                    if (options.target) replacement.__omoLoadTarget = options.target;
+                    var waitsForLoad = !!replacement.src || type === 'module';
+                    if (waitsForLoad) {
+                        replacement.async = false;
+                        replacement.addEventListener('load', resolve, { once: true });
+                        replacement.addEventListener('error', function () {
+                            reject(new Error('Unable to load page script: ' + (replacement.src || 'module')));
+                        }, { once: true });
+                    }
+                    replacement.textContent = script.textContent || '';
+                    script.parentNode.replaceChild(replacement, script);
+                    if (!waitsForLoad) resolve();
+                });
+            });
+        }, Promise.resolve());
+        }).then(function () {
+            // Initializers can add styles for editors or other shared widgets.
+            if (options.isCurrent && !options.isCurrent()) return;
+            return waitForStylesheets(container);
+        }).finally(reveal);
+    }
+
+    // Opacity keeps the real layout available to maps, editors and size checks.
+    // A newer load owns the reveal: an older request cannot uncover its content.
+    function deferFragmentDisplay(container) {
+        if (!container || !container.classList) return function () {};
+        var previous = fragmentDisplays.get(container);
+        var state = {
+            busy: previous ? previous.busy : container.getAttribute('aria-busy'),
+            pending: previous ? previous.pending : container.classList.contains('generic-fragment-pending')
+        };
+        if (previous) window.clearTimeout(previous.timer);
+        fragmentDisplays.set(container, state);
+        container.classList.add('generic-fragment-pending');
+        container.setAttribute('aria-busy', 'true');
+
+        function reveal() {
+            if (fragmentDisplays.get(container) !== state) return;
+            window.clearTimeout(state.timer);
+            fragmentDisplays.delete(container);
+            if (!state.pending) container.classList.remove('generic-fragment-pending');
+            if (state.busy === null) container.removeAttribute('aria-busy');
+            else container.setAttribute('aria-busy', state.busy);
+        }
+
+        // An unavailable asset must not leave an entire screen invisible.
+        state.timer = window.setTimeout(reveal, 8000);
+        return reveal;
+    }
+
+    // Keep styles attached to their panel: moving them into the head would let
+    // screen-specific selectors affect unrelated screens after navigation.
+    function awaitStylesheets(container) {
+        var reveal = deferFragmentDisplay(container);
+        return waitForStylesheets(container).finally(reveal);
+    }
+
+    function waitForStylesheets(container) {
+        if (!container || !container.querySelectorAll) return Promise.resolve();
+        var links = toArray(container.querySelectorAll('link[rel~="stylesheet"]'));
+        if (document.head && container !== document) {
+            links = links.concat(toArray(document.head.querySelectorAll('link[rel~="stylesheet"]')));
+        }
+        return Promise.all(links.map(function (link) {
+            if (link.sheet || link.disabled || !link.href) return Promise.resolve();
+            if (link.media && window.matchMedia && !window.matchMedia(link.media).matches) return Promise.resolve();
+            var previousLoad = stylesheetLoads.get(link);
+            if (previousLoad && previousLoad.href === link.href) return previousLoad.promise;
+            var loaded = new Promise(function (resolve) {
+                var timer;
+                function finish() {
+                    window.clearTimeout(timer);
+                    link.removeEventListener('load', finish);
+                    link.removeEventListener('error', finish);
+                    resolve();
+                }
+                link.addEventListener('load', finish, { once: true });
+                link.addEventListener('error', finish, { once: true });
+                // A removed panel or a failed request must not stall navigation.
+                timer = window.setTimeout(finish, 8000);
+                if (link.sheet) finish();
+            });
+            stylesheetLoads.set(link, { href: link.href, promise: loaded });
+            return loaded;
+        }));
     }
 
     function ensureId(element, prefix) {
@@ -157,6 +265,84 @@
         return findClosestByAttribute(startNode, 'data-generic-tabs', document);
     }
 
+    function initMobileTabs(container, state) {
+        var list = state.tabs[0].closest('.generic-tabs__list');
+        var wrapper;
+        var select;
+
+        if (!list || list.hasAttribute('data-generic-tabs-mobile-ready')) {
+            return;
+        }
+
+        wrapper = document.createElement('div');
+        wrapper.className = 'generic-tabs__mobile';
+        select = document.createElement('select');
+        select.className = 'generic-form-control generic-tabs__select';
+        wrapper.appendChild(select);
+        list.parentNode.insertBefore(wrapper, list);
+
+        function availableTabs() {
+            return toArray(list.querySelectorAll('[data-generic-tab]')).filter(function (tab) {
+                var node = tab;
+                if (findClosestTabContainer(tab) !== container) { return false; }
+                while (node && node !== list) {
+                    if (node.hidden || node.getAttribute('aria-hidden') === 'true'
+                        || window.getComputedStyle(node).display === 'none') { return false; }
+                    node = node.parentElement;
+                }
+                return true;
+            });
+        }
+
+        function sync() {
+            var tabs = availableTabs();
+            var active = getFirstActiveTab(tabs);
+            var options = tabs.map(function (tab) {
+                var option = document.createElement('option');
+                option.value = ensureId(tab, container.id + '-tab');
+                option.textContent = String(tab.getAttribute('aria-label') || tab.textContent || '').replace(/\s+/g, ' ').trim();
+                option.disabled = tab.disabled || tab.getAttribute('aria-disabled') === 'true';
+                option.selected = tab === active;
+                return option;
+            });
+            select.replaceChildren.apply(select, options);
+            select.disabled = !tabs.some(function (tab) {
+                return !tab.disabled && tab.getAttribute('aria-disabled') !== 'true';
+            });
+            select.setAttribute('aria-label', list.getAttribute('aria-label')
+                || (active && (active.getAttribute('aria-label') || active.textContent).trim()) || '');
+            if (list.hasAttribute('aria-labelledby')) {
+                select.setAttribute('aria-labelledby', list.getAttribute('aria-labelledby'));
+            } else {
+                select.removeAttribute('aria-labelledby');
+            }
+            if (active && active.getAttribute('aria-controls')) {
+                select.setAttribute('aria-controls', active.getAttribute('aria-controls'));
+            } else {
+                select.removeAttribute('aria-controls');
+            }
+            wrapper.hidden = tabs.length < 2;
+        }
+
+        select.addEventListener('change', function () {
+            var tab = availableTabs().find(function (item) { return item.id === select.value; });
+            if (tab && !tab.disabled && tab.getAttribute('aria-disabled') !== 'true') {
+                // Keep module-specific click handlers (lazy loading, charts, etc.).
+                tab.click();
+            }
+            sync();
+        });
+        sync();
+        list.setAttribute('data-generic-tabs-mobile-ready', '1');
+        new MutationObserver(sync).observe(list, {
+            subtree: true,
+            childList: true,
+            characterData: true,
+            attributes: true,
+            attributeFilter: ['class', 'style', 'hidden', 'disabled', 'aria-disabled', 'aria-hidden', 'aria-selected', 'aria-label', 'aria-labelledby', 'aria-controls']
+        });
+    }
+
     function initTabs(container) {
         var state;
 
@@ -170,6 +356,7 @@
         }
 
         activateTab(container, getFirstActiveTab(state.tabs), false);
+        initMobileTabs(container, state);
         container.dataset.genericTabsReady = '1';
     }
 
@@ -184,6 +371,7 @@
         }
 
         accordion.dataset.genericAccordionReady = '1';
+        toggle.setAttribute('aria-expanded', accordion.classList.contains('is-collapsed') ? 'false' : 'true');
         toggle.addEventListener('click', function (event) {
             var interactiveTarget = event.target.closest('a, button, input, select, textarea, label, [data-generic-accordion-ignore-toggle]');
 
@@ -192,6 +380,7 @@
             }
 
             accordion.classList.toggle('is-collapsed');
+            toggle.setAttribute('aria-expanded', accordion.classList.contains('is-collapsed') ? 'false' : 'true');
         });
     }
 
@@ -867,6 +1056,9 @@
         initFileLists(scope);
         initEditableSelects(scope);
         positionOpenContextHelps(scope);
+        if (scope.matches && scope.matches('[data-generic-tabs]')) {
+            initTabs(scope);
+        }
         toArray(scope.querySelectorAll('[data-generic-tabs]')).forEach(initTabs);
         toArray(scope.querySelectorAll('[data-generic-accordion]')).forEach(initAccordion);
     }
@@ -1208,6 +1400,8 @@
 
     window.initGenericTabs = initTabs;
     window.initGenericComponents = initGenericComponents;
+    window.genericAwaitStylesheets = awaitStylesheets;
+    window.commonExecuteFragmentScripts = executeFragmentScripts;
     window.initGenericEditableSelects = initEditableSelects;
     window.initGenericFileLists = initFileLists;
     window.syncGenericFileLists = function (root) {

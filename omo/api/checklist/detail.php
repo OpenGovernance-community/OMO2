@@ -51,8 +51,7 @@ $emptyItemsKey = $isContainerChecklist ? 'checklist.detail.empty_activities' : '
 $canEdit = omoChecklistCanManage($checklist);
 $canDelete = omoChecklistCanDelete($checklist);
 $checklistHolon = $checklist->getHolon();
-$canCreate = $checklistHolon instanceof Holon
-    && omoChecklistCanUsePermission($checklistHolon, 'CAN_CREATE_PROCESS');
+$canCreate = omoChecklistCanUsePermission($checklistHolon, 'CAN_CREATE_PROCESS', $organizationId);
 $moveTargets = [];
 if ($canEdit) {
     $availableChecklists = new ArrayChecklist();
@@ -72,7 +71,7 @@ if ($canEdit) {
             'id' => (int)$candidateChecklist->getId(),
             'title' => trim((string)$candidateRoot->get('title')),
             'holonId' => $candidateHolon instanceof Holon ? (int)$candidateHolon->getId() : 0,
-            'context' => $candidateHolon instanceof Holon ? trim((string)$candidateHolon->getDisplayName()) : '',
+            'context' => $candidateHolon instanceof Holon ? trim((string)$candidateHolon->getDisplayName()) : trim((string)$context['organization']->get('name')),
         ];
     }
     usort($moveTargets, static function (array $left, array $right) {
@@ -165,7 +164,7 @@ foreach ($projectInstancesByItem as &$itemInstances) {
 }
 unset($itemInstances);
 $rootHolon = $templateRoot->getHolon();
-$rootHolonLabel = $rootHolon instanceof Holon ? trim((string)$rootHolon->getDisplayName()) : '';
+$rootHolonLabel = $rootHolon instanceof Holon ? trim((string)$rootHolon->getDisplayName()) : trim((string)$context['organization']->get('name'));
 $responsibilityLabel = omoChecklistResponsibleAssignmentLabel($checklist);
 $updatedAt = $checklist->get('updated_at');
 $canActivate = omoChecklistCanActivate($checklist, $trigger);
@@ -295,7 +294,7 @@ $formatDelay = static function ($value, $unit) {
                     continue;
                 }
                 $itemHolon = $project->getHolon();
-                $itemHolonLabel = $itemHolon instanceof Holon ? trim((string)$itemHolon->getDisplayName()) : '';
+                $itemHolonLabel = $itemHolon instanceof Holon ? trim((string)$itemHolon->getDisplayName()) : trim((string)$context['organization']->get('name'));
                 $activationType = ChecklistItem::normalizeActivationType($item->get('activation_type'));
                 $relationLabel = $isContainerChecklist ? '' : omoChecklistActivationLabel($activationType);
                 $delayLabel = $isContainerChecklist ? '' : $formatDelay($item->get('delay_value'), $item->get('delay_unit'));

@@ -64,6 +64,17 @@ class DecisionProposal extends DbObject
         return 'position ASC, id ASC';
     }
 
+    public static function handleUserDeparture($organizationId, $userId, $ghostUserId)
+    {
+        return self::execute(
+            'UPDATE decision_proposal proposal
+             INNER JOIN decision_process process ON process.id = proposal.IDdecision_process
+             SET proposal.IDuser_author = :ghost_user_id
+             WHERE process.IDorganization = :organization_id AND proposal.IDuser_author = :user_id',
+            array('ghost_user_id' => (int)$ghostUserId, 'organization_id' => (int)$organizationId, 'user_id' => (int)$userId)
+        );
+    }
+
     public function save()
     {
         $this->set('description', \dbObject\PropertyFormat::sanitizeHtml((string)$this->get('description')));

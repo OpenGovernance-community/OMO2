@@ -5,6 +5,7 @@ use dbObject\ChecklistItem;
 use dbObject\ChecklistTrigger;
 use dbObject\Holon;
 use dbObject\Organization;
+use dbObject\Permission;
 use dbObject\Project;
 use dbObject\RecurrenceSchedule;
 
@@ -301,17 +302,21 @@ if (!function_exists('omoChecklistCanCreateContext')) {
     function omoChecklistCanCreateContext(array $context)
     {
         $currentHolon = $context['currentHolon'] ?? null;
-        return $currentHolon instanceof Holon
-            && omoChecklistCanUsePermission($currentHolon, 'CAN_CREATE_PROCESS');
+        $organization = $context['organization'] ?? null;
+        $organizationId = $organization instanceof Organization ? (int)$organization->getId() : 0;
+        return omoChecklistCanUsePermission($currentHolon, 'CAN_CREATE_PROCESS', $organizationId);
     }
 }
 
 if (!function_exists('omoChecklistCanUsePermission')) {
-    function omoChecklistCanUsePermission(Holon $holon, $permissionKey)
+    function omoChecklistCanUsePermission(?Holon $holon, $permissionKey, $organizationId = 0)
     {
         $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
         if ($currentUserId <= 0) {
             return false;
+        }
+        if (!($holon instanceof Holon)) {
+            return Permission::userCanInOrganization((string)$permissionKey, (int)$organizationId, $currentUserId);
         }
         return $holon->isAllowed((string)$permissionKey, false, $currentUserId);
     }
@@ -321,6 +326,10 @@ if (!function_exists('omoChecklistCanView')) {
     function omoChecklistCanView(Checklist $checklist)
     {
         $templateRoot = $checklist->getTemplateRoot();
+        if ($templateRoot instanceof Project && $templateRoot->get('IDholon') === null) {
+            $organization = $checklist->getOrganization();
+            return $organization instanceof Organization && $organization->canViewDetail();
+        }
         $holon = $templateRoot instanceof Project ? $templateRoot->getHolon() : null;
         return $holon instanceof Holon && $holon->canViewDetail();
     }
@@ -330,6 +339,9 @@ if (!function_exists('omoChecklistCanManage')) {
     function omoChecklistCanManage(Checklist $checklist)
     {
         $templateRoot = $checklist->getTemplateRoot();
+        if ($templateRoot instanceof Project && $templateRoot->get('IDholon') === null) {
+            return omoChecklistCanUsePermission(null, 'CAN_EDIT_PROCESS', (int)$checklist->get('IDorganization'));
+        }
         $holon = $templateRoot instanceof Project ? $templateRoot->getHolon() : null;
         return $holon instanceof Holon
             && omoChecklistCanUsePermission($holon, 'CAN_EDIT_PROCESS');
@@ -339,6 +351,10 @@ if (!function_exists('omoChecklistCanManage')) {
 if (!function_exists('omoChecklistCanDelete')) {
     function omoChecklistCanDelete(Checklist $checklist)
     {
+        $templateRoot = $checklist->getTemplateRoot();
+        if ($templateRoot instanceof Project && $templateRoot->get('IDholon') === null) {
+            return omoChecklistCanUsePermission(null, 'CAN_DELETE_PROCESS', (int)$checklist->get('IDorganization'));
+        }
         $holon = $checklist->getHolon();
         return $holon instanceof Holon
             && omoChecklistCanUsePermission($holon, 'CAN_DELETE_PROCESS');
@@ -361,8 +377,13 @@ if (!function_exists('omoChecklistCanActivate')) {
         }
         $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
         $holon = $checklist->getHolon();
-        if ($currentUserId <= 0 || !($holon instanceof Holon) || !$holon->canViewDetail()) {
+        if ($currentUserId <= 0 || !omoChecklistCanView($checklist)) {
             return false;
+        }
+        if (!($holon instanceof Holon)) {
+            $templateRoot = $checklist->getTemplateRoot();
+            return $templateRoot instanceof Project && $templateRoot->get('IDholon') === null
+                && Permission::userCanInOrganization('CAN_CREATE_PROJECT', (int)$checklist->get('IDorganization'), $currentUserId);
         }
         $useSessionCache = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST';
         return $holon->isAllowed('CAN_CREATE_PROJECT', $useSessionCache, $currentUserId);
@@ -394,10 +415,12 @@ if (!function_exists('omoChecklistGetItemActivityHolon')) {
 if (!function_exists('omoChecklistCanConvertItemToActivity')) {
     function omoChecklistCanConvertItemToActivity(Checklist $checklist, ChecklistItem $item)
     {
+        $project = $item->getProjectTemplate();
         $holon = omoChecklistGetItemActivityHolon($checklist, $item);
         return omoChecklistGetTemporalItemRecurrence($item) instanceof \dbObject\ChecklistItemRecurrence
-            && $holon instanceof Holon
-            && omoChecklistCanUsePermission($holon, 'CAN_CREATE_RECURRING_TASK');
+            && $project instanceof Project
+            && ($holon instanceof Holon || $project->get('IDholon') === null)
+            && omoChecklistCanUsePermission($holon, 'CAN_CREATE_RECURRING_TASK', (int)$checklist->get('IDorganization'));
     }
 }
 
@@ -570,7 +593,7 @@ if (!function_exists('omoChecklistResponsibleAssignmentLabel')) {
         $holon = $checklist->getHolon();
         $roleLabel = $holon instanceof Holon
             ? trim((string)$holon->getDisplayName())
-            : '';
+            : trim((string)($checklist->getOrganization()?->get('name') ?? ''));
         $responsibleUserId = (int)$checklist->get('IDuser_responsible');
         $personLabel = $responsibleUserId > 0
             ? \dbObject\DocumentPvPoint::getUserDisplayNameForOrganization($responsibleUserId, (int)$checklist->get('IDorganization'))

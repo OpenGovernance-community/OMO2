@@ -40,7 +40,7 @@ if ($organizationId <= 0
     $respond(403, ['status' => false, 'message' => 'Accès refusé.']);
 }
 if (!in_array($targetType, [DeferredProposal::TARGET_RULE, DeferredProposal::TARGET_HOLON, DeferredProposal::TARGET_PROJECT, DeferredProposal::TARGET_RECURRING_TASK, DeferredProposal::TARGET_INDICATOR], true)
-    || !in_array($operation, [DeferredProposal::OPERATION_CREATE, DeferredProposal::OPERATION_UPDATE, DeferredProposal::OPERATION_DELETE], true)) {
+    || !in_array($operation, [DeferredProposal::OPERATION_CREATE, DeferredProposal::OPERATION_UPDATE, DeferredProposal::OPERATION_DELETE, DeferredProposal::OPERATION_MOVE], true)) {
     $respond(422, ['status' => false, 'message' => 'Sélection invalide.']);
 }
 

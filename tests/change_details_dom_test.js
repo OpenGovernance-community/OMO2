@@ -24,6 +24,10 @@ const markup = data => '<details data-omo-change-details-payload="' + encode(dat
     await new Promise(resolve => window.addEventListener('load', resolve, {once:true}));
     window.eval(wordDiff);
     window.eval(script);
+    const scopeChanges = window.omoChoiceChangeDetails.governanceChanges({type: 'rule.update', before: {scope: 'local'}, after: {scope: 'circle'}}, []);
+    assert.equal(scopeChanges.length, 1, 'Scope-only changes must remain visible to voters');
+    assert.equal(scopeChanges[0].before, 'Locale');
+    assert.equal(scopeChanges[0].after, 'Cercle');
     const settle = () => new Promise(resolve => window.setTimeout(resolve, 0));
     const first = document.querySelector('details');
     assert.equal(first.querySelectorAll('.omo-change-details__absence').length, 1, 'Late script must hydrate existing content');

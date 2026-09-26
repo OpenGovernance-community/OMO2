@@ -139,26 +139,6 @@
     line-height: 1.5;
 }
 
-.omo-checklist-form-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
-    gap: var(--generic-space-4, 16px);
-}
-
-.omo-checklist-field {
-    display: grid;
-    align-content: start;
-    gap: var(--generic-form-field-gap, var(--generic-space-2, 8px));
-    min-width: 0;
-    color: var(--color-text, #1f2937);
-    font-size: var(--generic-type-size-sm, .84rem);
-    font-weight: 700;
-}
-
-.omo-checklist-field--wide {
-    grid-column: 1 / -1;
-}
-
 .omo-checklist-field textarea {
     min-height: 82px;
     resize: vertical;
@@ -203,8 +183,6 @@
 }
 
 .generic-section.omo-checklist-item-editor {
-    --generic-section-padding-block: 16px;
-    --generic-section-padding-inline: 16px;
     margin: 0;
     border-left: 4px solid color-mix(in srgb, var(--color-primary, #2563eb) 70%, var(--color-border, #d1d5db));
 }

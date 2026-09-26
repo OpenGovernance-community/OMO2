@@ -11,7 +11,9 @@ if (!empty($enabledAppHashes['activities']) && $scopeReferenceHolon instanceof H
         ? array((int)$scopeReferenceHolon->getId())
         : $dashboardModuleScopeHolonIds;
     $activities = new ArrayControlActivity();
-    $activities->loadForContext($currentOrganizationId, $activityScopeHolonIds);
+    $includeOrganizationTasks = $organizationRootHolon instanceof Holon
+        && (int)$scopeReferenceHolon->getId() === (int)$organizationRootHolon->getId();
+    $activities->loadForContext($currentOrganizationId, $activityScopeHolonIds, true, $includeOrganizationTasks);
     $now = new DateTimeImmutable('now');
 
     foreach ($activities as $activity) {
@@ -20,17 +22,21 @@ if (!empty($enabledAppHashes['activities']) && $scopeReferenceHolon instanceof H
         }
 
         $activityHolon = $activity->getHolon();
-        if (!($activityHolon instanceof Holon) || !$activityHolon->canViewDetail()) {
+        if (($activityHolon instanceof Holon && !$activityHolon->canViewDetail())
+            || (!($activityHolon instanceof Holon) && (int)$activity->get('IDholon') !== 0)) {
             continue;
         }
         $responsibleUserId = (int)$activity->get('IDuser_responsible');
+        $isAssociated = $activityHolon instanceof Holon
+            ? omoDashboardUserIsAssociatedWithHolon($currentUserId, $currentOrganizationId, $activityHolon)
+            : \dbObject\UserOrganization::hasActiveMembership($currentUserId, $currentOrganizationId);
         if ($dashboardModuleAudience === 'mine'
             && $responsibleUserId !== $currentUserId
-            && ($responsibleUserId > 0 || !omoDashboardUserIsAssociatedWithHolon($currentUserId, $currentOrganizationId, $activityHolon))) {
+            && ($responsibleUserId > 0 || !$isAssociated)) {
             continue;
         }
         if ($dashboardModuleAudience === 'roles'
-            && !omoDashboardUserIsAssociatedWithHolon($currentUserId, $currentOrganizationId, $activityHolon)) {
+            && !$isAssociated) {
             continue;
         }
 
@@ -61,8 +67,10 @@ if (!empty($enabledAppHashes['activities']) && $scopeReferenceHolon instanceof H
             'title' => trim((string)$activity->get('title')) !== ''
                 ? trim((string)$activity->get('title'))
                 : 'Tâche récurrente #' . (int)$activity->getId(),
-            'holonId' => (int)$activityHolon->getId(),
-            'holonLabel' => trim((string)$activityHolon->getDisplayName()),
+            'holonId' => $activityHolon instanceof Holon ? (int)$activityHolon->getId() : 0,
+            'holonLabel' => $activityHolon instanceof Holon
+                ? trim((string)$activityHolon->getDisplayName())
+                : trim((string)$organization->get('name')),
             'responsibilityLabel' => omoActivityResponsibleAssignmentLabel($activity),
             'metric' => $metricKey,
             'occurrenceAt' => $effectiveOccurrenceAt,

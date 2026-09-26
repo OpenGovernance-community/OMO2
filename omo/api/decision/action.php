@@ -44,7 +44,7 @@ $requiresDelete = $requestedAction === 'delete'
 if ($requiresDelete ? empty($context['canDelete']) : empty($context['canManage'])) {
     omoDecisionActionJsonResponse(403, [
         'status' => false,
-        'message' => 'Acces refuse a cette prise de decision.',
+        'message' => 'Accès refusé à cette prise de décision.',
     ]);
 }
 

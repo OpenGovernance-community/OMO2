@@ -60,11 +60,11 @@ if (!function_exists('omoStatsSourceLang')) {
             'stats.action.delete' => ['text' => 'Supprimer', 'context' => 'Button deleting one dated indicator value.'],
             'stats.action.delete_indicator' => ['text' => "Supprimer l'indicateur", 'context' => 'Menu action archiving an indicator from the current catalogue.'],
             'stats.action.edit_import' => ['text' => 'Changer la source', 'context' => 'Menu action changing the source of a contextual indicator import.'],
-            'stats.action.delete_import' => ['text' => 'Retirer de ce contexte', 'context' => 'Menu action removing an indicator import from the current context.'],
+            'stats.action.delete_import' => ['text' => "Detacher l'indicateur", 'context' => 'Action removing only an indicator import from its context, preserving the original indicator.'],
             'stats.action.edit_group' => ['text' => 'Modifier le groupe', 'context' => 'Menu action editing a contextual indicator group.'],
             'stats.action.delete_group' => ['text' => 'Retirer le groupe', 'context' => 'Menu action removing a contextual indicator group.'],
             'stats.detail.confirm_delete_indicator' => ['text' => 'Supprimer cet indicateur de la liste ? Ses valeurs seront conservées.', 'context' => 'Confirmation before hiding an indicator.'],
-            'stats.detail.confirm_delete_import' => ['text' => 'Retirer cet indicateur du contexte ?', 'context' => 'Confirmation before removing a contextual import.'],
+            'stats.detail.confirm_delete_import' => ['text' => "Detacher cet indicateur de ce contexte ? L'indicateur original et ses valeurs seront conserves.", 'context' => 'Confirmation before removing only a contextual import.'],
             'stats.detail.confirm_delete_group' => ['text' => 'Retirer ce groupe du contexte ?', 'context' => 'Confirmation before removing a contextual indicator group.'],
             'stats.empty.contextual' => ['text' => "Aucun indicateur n'est encore défini dans ce contexte.", 'context' => 'Empty state for the contextual scope.'],
             'stats.empty.children' => ['text' => "Aucun indicateur n'est encore défini dans ce contexte ou ses enfants directs.", 'context' => 'Empty state for the direct child scope.'],
@@ -155,7 +155,7 @@ if (!function_exists('omoStatsSourceLang')) {
             'stats.form.intro' => ['text' => 'Définissez la série et, si nécessaire, sa courbe de référence.', 'context' => 'Introductory copy in the indicator form.'],
             'stats.form.responsible' => ['text' => 'Personne en charge', 'context' => 'Directly assigned person for an indicator.'],
             'stats.form.responsible_none' => ['text' => 'Aucune personne', 'context' => 'Empty direct responsible person option for an indicator.'],
-            'stats.form.responsible_help' => ['text' => 'Si aucune personne n est choisie, la responsabilité reste portée par l espace associé.', 'context' => 'Help text for the indicator responsible user selector.'],
+            'stats.form.responsible_help' => ['text' => 'Si aucune personne n’est choisie, la responsabilité reste portée par l’espace associé.', 'context' => 'Help text for the indicator responsible user selector.'],
             'stats.form.source_title' => ['text' => 'Source des valeurs', 'context' => 'Heading of the source choice in the indicator creation form.'],
             'stats.form.source_help' => ['text' => 'Choisissez une saisie manuelle ou une source automatique.', 'context' => 'Help text for the source choice in the indicator creation form.'],
             'stats.form.source_type' => ['text' => 'Type de source', 'context' => 'Label for the source type selector in the indicator creation form.'],
@@ -649,6 +649,9 @@ if (!function_exists('omoStatsCanEditIndicator')) {
 if (!function_exists('omoStatsCanDeleteIndicator')) {
     function omoStatsCanDeleteIndicator(StatIndicator $indicator, array $context): bool
     {
+        if ((int)$indicator->get('IDholon') === 0 && $indicator->canDelete()) {
+            return true;
+        }
         $holon = $indicator->getHolon() ?: ($context['rootHolon'] ?? null);
         return $holon instanceof Holon
             ? omoStatsCanUsePermission($holon, 'CAN_DELETE_INDICATOR', $context)
@@ -656,9 +659,32 @@ if (!function_exists('omoStatsCanDeleteIndicator')) {
     }
 }
 
+if (!function_exists('omoStatsCanUseOrganizationResourcePermission')) {
+    function omoStatsCanUseOrganizationResourcePermission(array $context, string $permissionKey): bool
+    {
+        $currentHolon = $context['currentHolon'] ?? null;
+        $rootHolon = $context['rootHolon'] ?? null;
+        if ($currentHolon instanceof Holon && (!($rootHolon instanceof Holon)
+            || (int)$currentHolon->getId() !== (int)$rootHolon->getId())) {
+            return false;
+        }
+        $organization = $context['organization'] ?? null;
+        $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
+        return $organization instanceof Organization && $currentUserId > 0
+            && (\dbObject\Permission::userCanInOrganization($permissionKey, (int)$organization->getId(), $currentUserId)
+                || ($rootHolon instanceof Holon && omoStatsCanUsePermission($rootHolon, $permissionKey, $context)));
+    }
+}
+
 if (!function_exists('omoStatsCanDeleteContextResource')) {
     function omoStatsCanDeleteContextResource($resource, array $context): bool
     {
+        if (!($resource instanceof StatIndicatorImport || $resource instanceof StatIndicatorGroup)) {
+            return false;
+        }
+        if ((int)$resource->get('IDholon') === 0) {
+            return omoStatsCanUseOrganizationResourcePermission($context, 'CAN_DELETE_INDICATOR');
+        }
         $holon = $context['currentHolon'] ?? $context['rootHolon'] ?? null;
         $contextHolonId = ($context['currentHolon'] ?? null) instanceof Holon ? (int)$context['currentHolon']->getId() : 0;
         return ($resource instanceof StatIndicatorImport || $resource instanceof StatIndicatorGroup)
@@ -808,6 +834,12 @@ if (!function_exists('omoStatsLoadImport')) {
 if (!function_exists('omoStatsCanEditContextResource')) {
     function omoStatsCanEditContextResource($resource, array $context)
     {
+        if (!($resource instanceof StatIndicatorImport || $resource instanceof StatIndicatorGroup)) {
+            return false;
+        }
+        if ((int)$resource->get('IDholon') === 0) {
+            return omoStatsCanUseOrganizationResourcePermission($context, 'CAN_EDIT_INDICATOR');
+        }
         if (!omoStatsCanManageContext($context)) {
             return false;
         }
@@ -1732,6 +1764,9 @@ if (!function_exists('omoStatsMatchesAssignment')) {
         }
 
         $holon = $indicator->getHolon();
+        if ((int)$indicator->get('IDholon') === 0) {
+            return \dbObject\UserOrganization::hasActiveMembership($currentUserId, (int)$organizationId);
+        }
         return $holon instanceof Holon
             && omoStatsUserIsAssociatedWithHolon($currentUserId, $organizationId, $holon);
     }

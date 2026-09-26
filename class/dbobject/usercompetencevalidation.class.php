@@ -37,6 +37,14 @@
 			return 'datecreation ASC, id ASC';
 		}
 
+		public static function handleUserDeparture($organizationId, $userId, $ghostUserId)
+		{
+			return self::execute(
+				'UPDATE user_competence_validation SET IDvalidator_user = :ghost_user_id WHERE IDorganization = :organization_id AND IDvalidator_user = :user_id',
+				array('ghost_user_id' => (int)$ghostUserId, 'organization_id' => (int)$organizationId, 'user_id' => (int)$userId)
+			);
+		}
+
 		public function canEdit()
 		{
 			$currentUserId = function_exists('commonGetCurrentUserId')

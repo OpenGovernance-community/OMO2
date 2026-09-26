@@ -8,22 +8,37 @@ class ArrayStatIndicatorGroup extends ArrayDbObject
         return '\\dbObject\\StatIndicatorGroup';
     }
 
-    public function loadForContext($organizationId, $holonId = 0, $scope = 'contextual', array $descendantHolonIds = [])
+    public function loadForContext($organizationId, $holonId = 0, $scope = 'contextual', array $descendantHolonIds = [], $includeOrganizationItems = false)
     {
         $this->exchangeArray([]);
         $where = [
             ['field' => 'IDorganization', 'value' => (int)$organizationId],
             ['field' => 'active', 'value' => 1],
         ];
+        $holonFilter = [];
         if ($scope === 'children' || $scope === 'descendants') {
             $ids = array_values(array_filter(array_map('intval', $descendantHolonIds)));
-            $where[] = ['field' => 'IDholon', 'op' => 'in', 'value' => $ids];
+            if ($ids !== []) {
+                $holonFilter[] = ['field' => 'IDholon', 'op' => 'in', 'value' => $ids];
+            }
         } else {
-            $where[] = (int)$holonId > 0
+            $holonFilter[] = (int)$holonId > 0
                 ? ['field' => 'IDholon', 'value' => (int)$holonId]
                 : ['field' => 'IDholon', 'op' => 'is null'];
         }
-        $this->load(['where' => $where, 'hydrate' => true, 'orderBy' => [['field' => 'name', 'dir' => 'ASC']]]);
+        if ($includeOrganizationItems) {
+            $holonFilter[] = ['field' => 'IDholon', 'op' => 'is null'];
+        }
+        if ($holonFilter === [] || (int)$organizationId <= 0) {
+            return;
+        }
+        $params = ['where' => $where, 'hydrate' => true, 'orderBy' => [['field' => 'name', 'dir' => 'ASC']]];
+        if ($includeOrganizationItems) {
+            $params['whereAny'] = $holonFilter;
+        } else {
+            $params['where'][] = $holonFilter[0];
+        }
+        $this->load($params);
     }
 
     public function loadForOrganization($organizationId)

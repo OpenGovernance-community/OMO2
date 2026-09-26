@@ -180,53 +180,19 @@
         }
     }
 
-    function executeEmbeddedScripts(container) {
-        var scripts;
-        var sequence;
-
-        if (!container) {
-            return Promise.resolve();
-        }
-
-        scripts = Array.prototype.slice.call(container.querySelectorAll('script'));
-        sequence = Promise.resolve();
-
-        scripts.forEach(function (script) {
-            sequence = sequence.then(function () {
-                return new Promise(function (resolve) {
-                    var replacement = document.createElement('script');
-
-                    Array.prototype.forEach.call(script.attributes, function (attribute) {
-                        replacement.setAttribute(attribute.name, attribute.value);
-                    });
-
-                    if (replacement.src) {
-                        replacement.async = false;
-                        replacement.addEventListener('load', function () {
-                            resolve();
-                        }, { once: true });
-                        replacement.addEventListener('error', function () {
-                            resolve();
-                        }, { once: true });
-                    } else {
-                        replacement.textContent = script.textContent || '';
-                    }
-
-                    script.parentNode.replaceChild(replacement, script);
-
-                    if (!replacement.src) {
-                        resolve();
-                    }
-                });
-            });
+    function executeEmbeddedScripts(container, requestId) {
+        return window.commonExecuteFragmentScripts(container, {
+            isCurrent: function () { return container.isConnected && container.__commonTopbarRemoteRequestId === requestId; }
         });
-
-        return sequence;
     }
 
     function enhanceScrollablePanel(container) {
         if (!container) {
             return;
+        }
+
+        if (typeof window.initGenericTabs === 'function') {
+            container.querySelectorAll('[data-generic-tabs]:not([data-generic-tabs-ready="1"])').forEach(window.initGenericTabs);
         }
 
         Array.prototype.forEach.call(
@@ -330,14 +296,19 @@
                 }
 
                 container.innerHTML = html;
-                executeEmbeddedScripts(container);
-                enhanceScrollablePanel(container);
-                if (container.id === 'commonTopbarModalBody') {
-                    syncModalPanelPreferredWidth(container);
-                }
-                window.setTimeout(function () {
+                var stylesReady = typeof window.genericAwaitStylesheets === 'function'
+                    ? window.genericAwaitStylesheets(container)
+                    : Promise.resolve();
+                return stylesReady.then(function () {
+                    if (container.__commonTopbarRemoteRequestId !== requestId) return;
+                    return executeEmbeddedScripts(container, requestId);
+                }).then(function () {
+                    if (container.__commonTopbarRemoteRequestId !== requestId) return;
                     enhanceScrollablePanel(container);
-                }, 0);
+                    if (container.id === 'commonTopbarModalBody') {
+                        syncModalPanelPreferredWidth(container);
+                    }
+                });
             })
             .catch(function () {
                 if (container.__commonTopbarRemoteRequestId !== requestId) {
@@ -1325,9 +1296,13 @@
             return;
         }
 
+        var notice = button.getAttribute('data-admin-mode-confirm');
+        if (button.getAttribute('data-admin-mode-enabled') === '1' && notice && !window.confirm(notice)) return;
+
         var formData = new FormData();
         formData.append('enabled', button.getAttribute('data-admin-mode-enabled') === '1' ? '1' : '0');
         formData.append('return_to', window.location.pathname + window.location.search);
+        if (button.hasAttribute('data-admin-mode-csrf')) formData.append('csrf_token', button.getAttribute('data-admin-mode-csrf'));
         if (organizationId !== '') {
             formData.append('organization_id', organizationId);
         }

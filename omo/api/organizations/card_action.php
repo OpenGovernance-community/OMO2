@@ -84,16 +84,6 @@ switch ($action) {
 		break;
 
 	case 'leave':
-		$membership = $organization->getMembership($currentUserId, true);
-		if ($organization->isSystemOrganization() && $membership && $membership->isOrganizationAdmin()) {
-			http_response_code(403);
-			$response = array(
-				'status' => false,
-				'message' => 'Un admin ne peut pas quitter l organisation de base.',
-			);
-			break;
-		}
-
 		$response = $organization->removeMember($currentUserId, array(
 			'actorUserId' => $currentUserId,
 		));

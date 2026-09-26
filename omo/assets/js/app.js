@@ -1034,29 +1034,39 @@ function loadContent(target, url, type = 'panel', onLoaded = null) {
                 });
             }
 
-            Array.from(temp.querySelectorAll('script')).forEach(function (script) {
-                if (omoIsExecutableScriptTag(script)) {
-                    script.remove();
-                }
-            });
-
-            $target.html(temp.innerHTML);
-            omoPreparePvApplicationSubdrawers($target.get(0));
-            omoInitMobileHeaderMenus($target.get(0));
-            omoExecuteFetchedScripts(scriptSource, $target.get(0));
-            omoInitMobileHeaderMenus($target.get(0));
-
-            if (shouldTraceDecisionLoad || containsDecisionRoot) {
-                omoTraceDecisionLoad('loadContent:afterScriptExecution', {
-                    requestId: requestId,
-                    resolvedUrl: resolvedUrl,
-                    targetChildCount: $target.children().length
+            // Append parsed nodes natively: scripts remain inert until replayed below.
+            $target.empty();
+            $target.get(0).append(...Array.from(temp.childNodes));
+            const stylesReady = typeof window.genericAwaitStylesheets === 'function'
+                ? window.genericAwaitStylesheets($target.get(0))
+                : Promise.resolve();
+            stylesReady.then(function () {
+                if ($target.data('omoRequestId') !== requestId) return;
+                omoPreparePvApplicationSubdrawers($target.get(0));
+                omoInitMobileHeaderMenus($target.get(0));
+                return omoExecuteFetchedScripts($target.get(0), $target.get(0), function () {
+                    return $target.data('omoRequestId') === requestId && $target.get(0).isConnected;
                 });
-            }
+            }).then(function () {
+                if ($target.data('omoRequestId') !== requestId || !$target.get(0).isConnected) return;
+                omoInitMobileHeaderMenus($target.get(0));
 
-            if (typeof onLoaded === 'function') {
-                onLoaded();
-            }
+                if (shouldTraceDecisionLoad || containsDecisionRoot) {
+                    omoTraceDecisionLoad('loadContent:afterScriptExecution', {
+                        requestId: requestId,
+                        resolvedUrl: resolvedUrl,
+                        targetChildCount: $target.children().length
+                    });
+                }
+
+                if (typeof onLoaded === 'function') {
+                    onLoaded();
+                }
+            }).catch(function (error) {
+                if ($target.data('omoRequestId') !== requestId) return;
+                console.error('Unable to initialize panel', error);
+                omoRenderLoadError($target);
+            });
 
         },
 
@@ -5409,7 +5419,9 @@ function omoGetTopbarSearchScopes() {
         documents: true,
         decision: true,
         projects: true,
-        stats: true
+        stats: true,
+        processus: true,
+        activities: true
     };
 
     document.querySelectorAll('#menu_sidebar .menu-item[data-hash][data-navigation-mode]').forEach(function (item) {
@@ -5840,51 +5852,10 @@ function omoPreparePvApplicationSubdrawers(scope) {
     });
 }
 
-function omoExecuteFetchedScripts(container, loadTarget = null) {
-    if (!container) {
-        return;
-    }
-
-    const scripts = Array.from(container.querySelectorAll('script'));
-    const containsDecisionRoot = !!container.querySelector('#omo-decisions-root');
-
-    if (containsDecisionRoot) {
-        omoTraceDecisionLoad('executeScripts:start', {
-            scriptCount: scripts.length,
-            executableScriptCount: scripts.filter(function (script) {
-                return omoIsExecutableScriptTag(script);
-            }).length
-        });
-    }
-
-    scripts.forEach(function (script, index) {
-        if (!omoIsExecutableScriptTag(script)) {
-            return;
-        }
-
-        const executableScript = document.createElement('script');
-        const sourceUrl = String(script.getAttribute('src') || '').trim();
-
-        if (containsDecisionRoot) {
-            omoTraceDecisionLoad('executeScripts:script', {
-                index: index,
-                sourceUrl: sourceUrl || 'inline',
-                inlineLength: sourceUrl === '' ? String(script.textContent || '').length : 0
-            });
-        }
-
-        Array.from(script.attributes).forEach(function (attribute) {
-            executableScript.setAttribute(attribute.name, attribute.value);
-        });
-        if (sourceUrl !== '') {
-            executableScript.async = false;
-        }
-        if (loadTarget instanceof Element) {
-            executableScript.__omoLoadTarget = loadTarget;
-        }
-        executableScript.text = script.textContent || '';
-        document.body.appendChild(executableScript);
-        document.body.removeChild(executableScript);
+function omoExecuteFetchedScripts(container, loadTarget = null, isCurrent = null) {
+    return window.commonExecuteFragmentScripts(container, {
+        target: loadTarget || container,
+        isCurrent: isCurrent
     });
 }
 
@@ -5953,18 +5924,35 @@ function omoReplaceFetchedPanelRoot(options = {}) {
 
             // Some module bootstraps live next to the replaced root instead of inside it.
             // Re-run scripts from the full fetched fragment so dynamic reloads keep working.
-            const scriptSource = temp.cloneNode(true);
+            const fetchedScripts = Array.from(temp.querySelectorAll('script'));
 
             if (beforeReplace) {
                 beforeReplace(currentRoot);
             }
 
+            // Styles can be siblings of the fetched root. Keep them in the
+            // replacement panel so they load and leave with that panel.
+            Array.from(temp.querySelectorAll('link[rel~="stylesheet"]'))
+                .filter(function (link) { return !nextRoot.contains(link); })
+                .reverse()
+                .forEach(function (link) { nextRoot.insertBefore(link, nextRoot.firstChild); });
             currentRoot.parentNode.replaceChild(nextRoot, currentRoot);
-            omoPreparePvApplicationSubdrawers(nextRoot);
-            omoInitMobileHeaderMenus(nextRoot);
-            omoExecuteFetchedScripts(scriptSource, nextRoot);
-            omoInitMobileHeaderMenus(nextRoot);
-            return nextRoot;
+            const stylesReady = typeof window.genericAwaitStylesheets === 'function'
+                ? window.genericAwaitStylesheets(nextRoot)
+                : Promise.resolve();
+            return stylesReady.then(function () {
+                if (!nextRoot.isConnected) return nextRoot;
+                omoPreparePvApplicationSubdrawers(nextRoot);
+                omoInitMobileHeaderMenus(nextRoot);
+                return window.commonExecuteFragmentScripts(nextRoot, {
+                    scripts: fetchedScripts,
+                    target: nextRoot,
+                    isCurrent: function () { return nextRoot.isConnected; }
+                }).then(function () {
+                    if (nextRoot.isConnected) omoInitMobileHeaderMenus(nextRoot);
+                    return nextRoot;
+                });
+            });
         })
         .finally(function () {
             if (setLoadingState) {

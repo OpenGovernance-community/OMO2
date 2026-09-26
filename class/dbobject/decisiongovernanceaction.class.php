@@ -184,8 +184,6 @@ class DecisionGovernanceAction extends DbObject
         ];
         if ($normalized['IDauthority']) {
             $normalized['IDholon'] = null;
-        } else {
-            $normalized['scope'] = Rule::SCOPE_LOCAL;
         }
         return $normalized;
     }
@@ -197,6 +195,8 @@ class DecisionGovernanceAction extends DbObject
             return ['status' => false, 'message' => 'La regle doit etre definie dans le contexte de la decision.'];
         }
         $state = self::normalizeRuleState($afterState, $rule);
+        $scopeValidation = Rule::validateScopeAttachment($afterState['scope'] ?? $state['scope'], $ruleHolon, $state['IDauthority']);
+        if (empty($scopeValidation['status'])) return ['status' => false, 'message' => $scopeValidation['text']];
         if ((int)$state['IDauthority'] > 0) {
             $authority = new Authority();
             if (!$authority->load((int)$state['IDauthority']) || (int)$authority->get('IDholon') !== (int)$expectedHolonId) {
@@ -204,7 +204,6 @@ class DecisionGovernanceAction extends DbObject
             }
         } else {
             $state['IDholon'] = (int)$expectedHolonId;
-            $state['scope'] = Rule::SCOPE_LOCAL;
         }
         if ($state['title'] === '' || $state['description'] === '' || $state['review_date'] === '' || $state['expiration_date'] === '') {
             return ['status' => false, 'message' => 'Le titre, la regle et les deux dates sont obligatoires.'];
@@ -218,6 +217,10 @@ class DecisionGovernanceAction extends DbObject
     public static function validateRuleCreate(array $afterState, $expectedHolonId)
     {
         $state = self::normalizeRuleState($afterState);
+        $holon = new Holon();
+        if (!$holon->load((int)$expectedHolonId)) return ['status' => false, 'message' => 'Espace introuvable.'];
+        $scopeValidation = Rule::validateScopeAttachment($afterState['scope'] ?? $state['scope'], $holon, $state['IDauthority']);
+        if (empty($scopeValidation['status'])) return ['status' => false, 'message' => $scopeValidation['text']];
         if ((int)$state['IDauthority'] > 0) {
             $authority = new Authority();
             if (!$authority->load((int)$state['IDauthority']) || (int)$authority->get('IDholon') !== (int)$expectedHolonId) {
@@ -227,7 +230,6 @@ class DecisionGovernanceAction extends DbObject
         } else {
             $state['IDauthority'] = null;
             $state['IDholon'] = (int)$expectedHolonId;
-            $state['scope'] = Rule::SCOPE_LOCAL;
         }
         if ($state['title'] === '' || $state['description'] === '' || $state['review_date'] === '' || $state['expiration_date'] === '') {
             return ['status' => false, 'message' => 'Le titre, la regle et les deux dates sont obligatoires.'];
@@ -468,6 +470,7 @@ class DecisionGovernanceAction extends DbObject
     {
         $labels = [
             'IDauthority' => 'Domaine d autorite',
+            'scope' => 'Portee',
             'title' => 'Titre',
             'intention' => 'Intention',
             'description' => 'Regle',
@@ -478,6 +481,11 @@ class DecisionGovernanceAction extends DbObject
         foreach ($labels as $field => $label) {
             $before = trim(strip_tags((string)($beforeState[$field] ?? '')));
             $after = trim(strip_tags((string)($afterState[$field] ?? '')));
+            if ($field === 'scope') {
+                $scopeLabels = array_column(Rule::attributeValues()['scope'], 1, 0);
+                $before = $scopeLabels[Rule::normalizeScope($before)] ?? $before;
+                $after = $scopeLabels[Rule::normalizeScope($after)] ?? $after;
+            }
             if ($before === $after) {
                 continue;
             }
@@ -494,6 +502,7 @@ class DecisionGovernanceAction extends DbObject
     {
         $items = [];
         foreach ([
+            'scope' => 'Portee',
             'title' => 'Titre',
             'intention' => 'Intention',
             'description' => 'Regle',
@@ -501,6 +510,7 @@ class DecisionGovernanceAction extends DbObject
             'expiration_date' => 'Date d echeance',
         ] as $field => $label) {
             $value = trim(strip_tags((string)($state[$field] ?? '')));
+            if ($field === 'scope') $value = array_column(Rule::attributeValues()['scope'], 1, 0)[Rule::normalizeScope($value)];
             if ($value === '') {
                 continue;
             }

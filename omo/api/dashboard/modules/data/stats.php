@@ -7,11 +7,14 @@ $overdueIndicators = [];
 if (!empty($enabledAppHashes['stats'])) {
     $statsIndicators = new ArrayStatIndicator();
     $statsContextHolonId = $dashboardModuleContextHolonId;
+    $includeOrganizationItems = $organizationRootHolon instanceof \dbObject\Holon
+        && $statsContextHolonId === (int)$organizationRootHolon->getId();
     $statsIndicators->loadForContext(
         $currentOrganizationId,
         $statsContextHolonId,
         $dashboardModuleScope,
-        $dashboardModuleScopeHolonIds
+        $dashboardModuleScopeHolonIds,
+        $includeOrganizationItems
     );
     $indicatorById = [];
     foreach ($statsIndicators as $indicator) {
@@ -25,7 +28,8 @@ if (!empty($enabledAppHashes['stats'])) {
         $currentOrganizationId,
         $statsContextHolonId,
         $dashboardModuleScope,
-        $dashboardModuleScopeHolonIds
+        $dashboardModuleScopeHolonIds,
+        $includeOrganizationItems
     );
     foreach ($indicatorImports as $indicatorImport) {
         $indicator = $indicatorImport->getIndicator();

@@ -26,7 +26,7 @@
 
             function actionParts(action) { var parts = String(action.type || '').split('.'); return {targetType:parts[0] || 'rule', operation:parts[1] || 'create'}; }
             function actionLabel(action) {
-                var map = {'rule.create':texts.ruleCreate,'rule.update':texts.ruleUpdate,'rule.delete':texts.ruleDelete,'holon.create':texts.roleCreate,'holon.update':texts.roleUpdate,'holon.delete':texts.roleDelete,'project.create':texts.projectCreate,'project.update':texts.projectUpdate,'project.delete':texts.projectDelete,'recurring_task.create':texts.recurringTaskCreate,'recurring_task.update':texts.recurringTaskUpdate,'recurring_task.delete':texts.recurringTaskDelete,'indicator.create':texts.indicatorCreate,'indicator.update':texts.indicatorUpdate,'indicator.delete':texts.indicatorDelete};
+                var map = {'rule.create':texts.ruleCreate,'rule.update':texts.ruleUpdate,'rule.delete':texts.ruleDelete,'holon.create':texts.roleCreate,'holon.update':texts.roleUpdate,'holon.delete':texts.roleDelete,'holon.move':texts.roleMove,'project.create':texts.projectCreate,'project.update':texts.projectUpdate,'project.delete':texts.projectDelete,'recurring_task.create':texts.recurringTaskCreate,'recurring_task.update':texts.recurringTaskUpdate,'recurring_task.delete':texts.recurringTaskDelete,'indicator.create':texts.indicatorCreate,'indicator.update':texts.indicatorUpdate,'indicator.delete':texts.indicatorDelete};
                 return map[action.type] || action.type;
             }
             function targetLabel(action) {
@@ -146,15 +146,15 @@
             function openChooser(pi, ai) {
                 var previous = ai >= 0 ? blueprint[pi].actions[ai] : null, parts = previous ? actionParts(previous) : {targetType:'rule',operation:'create'};
                 var type = parts.targetType, operation = parts.operation, contextId = chooseContext(type, operation, previous ? previous.holonId : payload.contextHolonId), objects = [], picker = null, candidateId = contextId;
-                modal(texts.actionAdd || 'Ajouter une modification', '<section class="generic-section generic-section--stack generic-section--roomy omo-deferred-workflow"><div class="generic-form-field"><span class="generic-form-label">' + escapeHtml(texts.objectType || 'Objet') + '</span><div class="omo-deferred-workflow__types"><button type="button" class="generic-soft-panel omo-deferred-workflow__type" data-type="rule"><strong>Règle</strong><span>Règles et politiques de l’espace</span></button><button type="button" class="generic-soft-panel omo-deferred-workflow__type" data-type="holon"><strong>Rôle ou cercle</strong><span>Éléments de la structure</span></button><button type="button" class="generic-soft-panel omo-deferred-workflow__type" data-type="project"><strong>Projet</strong><span>Projets de l’espace</span></button><button type="button" class="generic-soft-panel omo-deferred-workflow__type" data-type="recurring_task"><strong>Tâche récurrente</strong><span>Tâches planifiées de l’espace</span></button><button type="button" class="generic-soft-panel omo-deferred-workflow__type" data-type="indicator"><strong>Indicateur</strong><span>Indicateurs et mesures de l’espace</span></button></div></div><div class="generic-form-grid"><label class="generic-form-field"><span class="generic-form-label">Action</span><select class="generic-form-control" data-operation><option value="create">Création</option><option value="update">Modification</option><option value="delete">Suppression</option></select></label><label class="generic-form-field"><span class="generic-form-label">' + escapeHtml(texts.context || 'Contexte') + '</span><span class="omo-deferred-workflow__context-control"><input class="generic-form-control" readonly data-context-label><button type="button" class="generic-action-button generic-action-button--secondary generic-action-button--icon-only" data-context-open title="' + escapeHtml(texts.openContext || '') + '"><img src="/omo/images/tools/connection.png" alt=""></button></span></label></div><div class="generic-form-grid" data-object-row hidden><label class="generic-form-field"><span class="generic-form-label">' + escapeHtml(texts.object || 'Élément concerné') + '</span><select class="generic-form-control" data-object></select></label><div class="generic-form-field omo-deferred-workflow__launch-field"><span class="generic-form-label">&nbsp;</span><button type="button" class="generic-action-button generic-action-button--main" data-open-editor></button></div></div><div class="generic-action-row" data-create-row><button type="button" class="generic-action-button generic-action-button--main" data-open-editor></button></div><p class="generic-feedback" data-picker-feedback hidden></p><div class="omo-deferred-workflow__picker-layer" data-context-layer hidden><div class="generic-soft-panel generic-soft-panel--elevated generic-soft-panel--stack omo-deferred-workflow__picker-panel"><div data-context-map></div><div class="omo-deferred-workflow__picker-selection"><strong data-candidate-label></strong><span data-candidate-status></span></div><div class="generic-action-row"><button type="button" class="generic-action-button generic-action-button--main" data-context-choose>Choisir ce contexte</button><button type="button" class="generic-action-button generic-action-button--secondary" data-context-close>Annuler</button></div></div></div></section>');
+                modal(texts.actionAdd || 'Ajouter une modification', '<section class="generic-section generic-section--stack generic-section--roomy omo-deferred-workflow"><div class="generic-form-field"><span class="generic-form-label">' + escapeHtml(texts.objectType || 'Objet') + '</span><div class="omo-deferred-workflow__types"><button type="button" class="generic-soft-panel omo-deferred-workflow__type" data-type="rule"><strong>Règle</strong><span>Règles et politiques de l’espace</span></button><button type="button" class="generic-soft-panel omo-deferred-workflow__type" data-type="holon"><strong>Rôle ou cercle</strong><span>Éléments de la structure</span></button><button type="button" class="generic-soft-panel omo-deferred-workflow__type" data-type="project"><strong>Projet</strong><span>Projets de l’espace</span></button><button type="button" class="generic-soft-panel omo-deferred-workflow__type" data-type="recurring_task"><strong>Tâche récurrente</strong><span>Tâches planifiées de l’espace</span></button><button type="button" class="generic-soft-panel omo-deferred-workflow__type" data-type="indicator"><strong>Indicateur</strong><span>Indicateurs et mesures de l’espace</span></button></div></div><div class="generic-form-grid"><label class="generic-form-field"><span class="generic-form-label">Action</span><select class="generic-form-control" data-operation><option value="create">Création</option><option value="update">Modification</option><option value="delete">Suppression</option><option value="move">' + escapeHtml(texts.move || 'Deplacement') + '</option></select></label><label class="generic-form-field"><span class="generic-form-label">' + escapeHtml(texts.context || 'Contexte') + '</span><span class="omo-deferred-workflow__context-control"><input class="generic-form-control" readonly data-context-label><button type="button" class="generic-action-button generic-action-button--secondary generic-action-button--icon-only" data-context-open title="' + escapeHtml(texts.openContext || '') + '"><img src="/omo/images/tools/connection.png" alt=""></button></span></label></div><div class="generic-form-grid" data-object-row hidden><label class="generic-form-field"><span class="generic-form-label">' + escapeHtml(texts.object || 'Élément concerné') + '</span><select class="generic-form-control" data-object></select></label><div class="generic-form-field omo-deferred-workflow__launch-field"><span class="generic-form-label">&nbsp;</span><button type="button" class="generic-action-button generic-action-button--main" data-open-editor></button></div></div><div class="generic-action-row" data-create-row><button type="button" class="generic-action-button generic-action-button--main" data-open-editor></button></div><p class="generic-feedback" data-picker-feedback hidden></p><div class="omo-deferred-workflow__picker-layer" data-context-layer hidden><div class="generic-soft-panel generic-soft-panel--elevated generic-soft-panel--stack omo-deferred-workflow__picker-panel"><div data-context-map></div><div class="omo-deferred-workflow__picker-selection"><strong data-candidate-label></strong><span data-candidate-status></span></div><div class="generic-action-row"><button type="button" class="generic-action-button generic-action-button--main" data-context-choose>Choisir ce contexte</button><button type="button" class="generic-action-button generic-action-button--secondary" data-context-close>Annuler</button></div></div></div></section>');
                 var body = modalBody(), operationSelect = body.querySelector('[data-operation]'), objectSelect = body.querySelector('[data-object]'), objectRow = body.querySelector('[data-object-row]'), createRow = body.querySelector('[data-create-row]'), contextLabel = body.querySelector('[data-context-label]'), pickerFeedback = body.querySelector('[data-picker-feedback]');
                 operationSelect.value = operation;
                 function showFeedback(message) { pickerFeedback.hidden = !message; pickerFeedback.textContent = message || ''; }
-                function buttonText() { var key = type + '.' + operation, map = {'rule.create':texts.ruleCreate,'rule.update':texts.ruleUpdate,'rule.delete':texts.ruleDelete,'holon.create':texts.roleCreate,'holon.update':texts.roleUpdate,'holon.delete':texts.roleDelete,'project.create':String(projectModes[String(contextId)] || '') === 'propose' ? texts.projectPropose : texts.projectCreate,'project.update':texts.projectUpdate,'project.delete':texts.projectDelete,'recurring_task.create':texts.recurringTaskCreate,'recurring_task.update':texts.recurringTaskUpdate,'recurring_task.delete':texts.recurringTaskDelete,'indicator.create':texts.indicatorCreate,'indicator.update':texts.indicatorUpdate,'indicator.delete':texts.indicatorDelete}; return map[key] || texts.openEditor || 'Ouvrir l’éditeur'; }
-                function update() { body.querySelectorAll('[data-type]').forEach(function (button) { var selected = button.dataset.type === type; button.classList.toggle('is-selected', selected); button.setAttribute('aria-pressed', selected ? 'true' : 'false'); }); contextLabel.value = String(labels[String(contextId)] || ''); objectRow.hidden = operation === 'create'; createRow.hidden = operation !== 'create'; body.querySelectorAll('[data-open-editor]').forEach(function (button) { button.textContent = buttonText(); button.disabled = !contextId || (operation !== 'create' && !Number(objectSelect.value || 0)); }); }
+                function buttonText() { var key = type + '.' + operation, map = {'rule.create':texts.ruleCreate,'rule.update':texts.ruleUpdate,'rule.delete':texts.ruleDelete,'holon.create':texts.roleCreate,'holon.update':texts.roleUpdate,'holon.delete':texts.roleDelete,'holon.move':texts.roleMove,'project.create':String(projectModes[String(contextId)] || '') === 'propose' ? texts.projectPropose : texts.projectCreate,'project.update':texts.projectUpdate,'project.delete':texts.projectDelete,'recurring_task.create':texts.recurringTaskCreate,'recurring_task.update':texts.recurringTaskUpdate,'recurring_task.delete':texts.recurringTaskDelete,'indicator.create':texts.indicatorCreate,'indicator.update':texts.indicatorUpdate,'indicator.delete':texts.indicatorDelete}; return map[key] || texts.openEditor || 'Ouvrir l’éditeur'; }
+                function update() { var moveOption = operationSelect.querySelector('option[value="move"]'); moveOption.hidden = moveOption.disabled = type !== 'holon'; body.querySelectorAll('[data-type]').forEach(function (button) { var selected = button.dataset.type === type; button.classList.toggle('is-selected', selected); button.setAttribute('aria-pressed', selected ? 'true' : 'false'); }); contextLabel.value = String(labels[String(contextId)] || ''); objectRow.hidden = operation === 'create'; createRow.hidden = operation !== 'create'; body.querySelectorAll('[data-open-editor]').forEach(function (button) { button.textContent = buttonText(); button.disabled = !contextId || (operation !== 'create' && !Number(objectSelect.value || 0)); }); }
                 function loadObjects(selectedId) { contextId = chooseContext(type, operation, contextId); objects = []; objectSelect.innerHTML = '<option>' + escapeHtml(texts.loading || 'Chargement…') + '</option>'; update(); if (!contextId) { showFeedback('Le collectif ne dispose pas du droit nécessaire pour cette action.'); return; } if (operation === 'create') { objectSelect.innerHTML = ''; update(); return; } fetch(contextUrl(type, operation, contextId), {credentials:'same-origin'}).then(function (response) { return response.json().then(function (data) { return {ok:response.ok,data:data}; }); }).then(function (result) { if (!result.ok || !result.data.status) throw new Error(result.data.message || 'Chargement impossible.'); objects = result.data.objects || []; if (result.data.context) { labels[String(contextId)] = result.data.context.label || ''; contextLabel.value = labels[String(contextId)]; } objectSelect.innerHTML = optionHtml(objects, selectedId); if (!objects.length) objectSelect.innerHTML = '<option value="">' + escapeHtml(texts.emptyObjects || 'Aucun élément disponible dans ce contexte.') + '</option>'; update(); }).catch(function (error) { objectSelect.innerHTML = ''; showFeedback(error.message); update(); }); }
                 function selectedObject() { var id = Number(objectSelect.value || 0); return objects.find(function (item) { return Number(item.id) === id; }) || null; }
-                body.querySelectorAll('[data-type]').forEach(function (button) { button.disabled = !!previous && button.dataset.type !== type; button.addEventListener('click', function () { if (button.disabled) return; type = button.dataset.type; operation = operationSelect.value; contextId = chooseContext(type, operation, payload.contextHolonId); loadObjects(0); }); });
+                body.querySelectorAll('[data-type]').forEach(function (button) { button.disabled = !!previous && button.dataset.type !== type; button.addEventListener('click', function () { if (button.disabled) return; type = button.dataset.type; if (type !== 'holon' && operationSelect.value === 'move') operationSelect.value = 'create'; operation = operationSelect.value; contextId = chooseContext(type, operation, payload.contextHolonId); loadObjects(0); }); });
                 operationSelect.disabled = !!previous; operationSelect.addEventListener('change', function () { operation = operationSelect.value; contextId = chooseContext(type, operation, contextId); loadObjects(0); }); objectSelect.addEventListener('change', update);
                 body.querySelectorAll('[data-open-editor]').forEach(function (button) { button.addEventListener('click', function () { openEditor(pi, ai, type, operation, contextId, selectedObject()); }); });
                 body.querySelector('[data-context-open]').disabled = !!previous; body.querySelector('[data-context-open]').addEventListener('click', function () { var layer = body.querySelector('[data-context-layer]'), host = body.querySelector('[data-context-map]'), allowed = allowedContextIds(type, operation); if (!window.omoMountHolonScopePicker) return; candidateId = contextId; layer.hidden = false; picker = window.omoMountHolonScopePicker({host:host,organizationId:Number(payload.organizationId || 0),initialHolonId:contextId,selectableHolonIds:allowed,showModes:false,initialScope:'local',labelMode:'context',suppressInitialChange:true,onChange:setCandidate,onReady:setCandidate}); setCandidate(contextId); });
@@ -172,6 +172,7 @@
             function openEditor(pi, ai, type, operation, contextId, object) {
                 var previous = ai >= 0 ? blueprint[pi].actions[ai] : null;
                 if (!object && previous && operation !== 'create') object = {id:previous.targetId,state:previous.before || {}};
+                if (type === 'holon' && operation === 'move') { openHolonMoveEditor(pi, ai, contextId, object); return; }
                 if (type === 'holon' && operation !== 'delete') { openHolonEditor(pi, ai, operation, contextId, object); return; }
                 var action = baseAction(pi, ai, type, operation, contextId, object), state = clone(previous && operation !== 'delete' ? previous.after : (operation === 'create' ? {} : ((object || {}).state || {})));
                 if (operation === 'delete') {
@@ -180,7 +181,43 @@
                 }
                 if (type === 'rule') openRuleEditor(pi, ai, action, state); else if (type === 'project') openProjectEditor(pi, ai, action, state); else openObjectEditor(pi, ai, action, state, type);
             }
-            function openFieldsEditor(pi, ai, action, state, targetType) {
+            function openHolonMoveEditor(pi, ai, contextId, object) {
+                var action = baseAction(pi, ai, 'holon', 'move', contextId, object);
+                var previous = ai >= 0 ? blueprint[pi].actions[ai] : null;
+                fetch(contextUrl('holon', 'move', contextId) + '&moving_holon_id=' + Number(action.targetId), {credentials:'same-origin'})
+                    .then(function (response) { return response.json().then(function (data) {
+                        if (!response.ok || !data.status) throw new Error(data.message || texts.emptyObjects);
+                        return data;
+                    }); })
+                    .then(function (data) {
+                        modal(actionLabel(action), root.querySelector('[data-governance-fields="holon_move"]').innerHTML);
+                        var editor = modalBody().querySelector('[data-editor]'), select = editor.elements.namedItem('parent_id');
+                        (data.destinations || []).forEach(function (destination) {
+                            if (destination.isCurrentParent) return;
+                            var option = document.createElement('option');
+                            option.value = String(destination.id);
+                            option.textContent = destination.pathLabel;
+                            select.appendChild(option);
+                        });
+                        select.value = String(previous && previous.after ? previous.after.parent_id || '' : '');
+                        editor.querySelector('[type="submit"]').disabled = select.options.length <= 1;
+                        if (select.options.length <= 1) {
+                            var empty = document.createElement('p');
+                            empty.className = 'generic-feedback';
+                            empty.textContent = texts.moveEmpty || texts.emptyObjects;
+                            editor.prepend(empty);
+                        }
+                        editor.querySelector('[data-cancel]').addEventListener('click', closeModal);
+                        editor.addEventListener('submit', function (event) {
+                            event.preventDefault();
+                            if (!editor.reportValidity()) return;
+                            action.before = previous ? clone(previous.before) : clone(data.before);
+                            action.after = Object.assign({}, data.before, {parent_id:Number(select.value), parent_label:select.selectedOptions[0].textContent});
+                            saveAction(pi, ai, action);
+                        });
+                    }).catch(function (error) { if (window.commonNotify) window.commonNotify(error.message, 'error'); });
+            }
+            function openFieldsEditor(pi, ai, action, state, targetType, scopeContext) {
                 var template = root.querySelector('[data-governance-fields="' + targetType + '"]');
                 if (!template) return;
                 modal(actionLabel(action), template.innerHTML);
@@ -190,6 +227,7 @@
                     if (field && field.type === 'checkbox') field.checked = Number(state[name] || 0) > 0;
                     else if (field) field.value = state[name] == null ? '' : String(state[name]);
                 });
+                if (targetType === 'rule' && window.omoInitRuleScopeFields) window.omoInitRuleScopeFields(editor, scopeContext, state);
                 editor.querySelector('[data-cancel]').addEventListener('click', closeModal);
                 editor.addEventListener('submit', function (event) {
                     event.preventDefault();
@@ -201,8 +239,7 @@
                     if (targetType === 'indicator') after.name = String(after.name || '').trim();
                     else after.title = String(after.title || '').trim();
                     if (targetType === 'rule') {
-                        after.IDauthority = state.IDauthority || null;
-                        after.scope = state.scope || 'local';
+                        after.IDauthority = Number(after.IDauthority) || null;
                         if (!strip(after.description)) return;
                     }
                     action.after = after;
@@ -210,7 +247,13 @@
                 });
             }
             function openRuleEditor(pi, ai, action, state) {
-                openFieldsEditor(pi, ai, action, Object.assign(clone(payload.defaultRuleState || {}), state || {}), 'rule');
+                fetch(contextUrl('rule', actionParts(action).operation, action.holonId), {credentials:'same-origin'})
+                    .then(function (response) { return response.json().then(function (data) {
+                        if (!response.ok || !data.status) throw new Error(data.message || texts.emptyObjects);
+                        return data;
+                    }); })
+                    .then(function (data) { openFieldsEditor(pi, ai, action, Object.assign(clone(payload.defaultRuleState || {}), state || {}), 'rule', data.ruleScopeContext); })
+                    .catch(function (error) { if (window.commonNotify) window.commonNotify(error.message, 'error'); });
             }
             function openProjectEditor(pi, ai, action, state) {
                 openFieldsEditor(pi, ai, action, Object.assign({title:'',description:'',status:'in_progress',project_size:'M'}, state || {}), 'project');

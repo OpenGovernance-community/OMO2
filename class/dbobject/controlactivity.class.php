@@ -11,7 +11,7 @@ class ControlActivity extends ControlTask
     public static function rules()
     {
         return [
-            [['IDorganization', 'IDholon', 'title', 'frequency', 'schedule'], 'required'],
+            [['IDorganization', 'title', 'frequency', 'schedule'], 'required'],
             [['id', 'display_lead_value', 'execution_duration_value', 'position'], 'integer'],
             [['IDorganization', 'IDholon', 'IDuser_responsible'], 'fk'],
             [['title', 'frequency', 'schedule', 'display_lead_unit', 'execution_duration_unit'], 'string'],

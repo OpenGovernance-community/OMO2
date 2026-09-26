@@ -292,14 +292,14 @@ if (!function_exists('omoCalendarRenderInvitationHolonTreeNode')) {
                 <?php if ($hasChildren): ?>
                 <button
                     type="button"
-                    class="omo-calendar-invitations-editor__tree-toggle"
+                    class="omo-calendar-invitations-editor__tree-toggle generic-tree-toggle"
                     data-omo-calendar-holon-toggle
                     aria-expanded="<?= $isExpanded ? 'true' : 'false' ?>"
                 >
                     <span aria-hidden="true">&#9662;</span>
                 </button>
                 <?php else: ?>
-                <span class="omo-calendar-invitations-editor__tree-spacer" aria-hidden="true"></span>
+                <span class="omo-calendar-invitations-editor__tree-spacer generic-tree-spacer" aria-hidden="true"></span>
                 <?php endif; ?>
 
                 <label class="omo-calendar-invitations-editor__check">

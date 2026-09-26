@@ -4,31 +4,31 @@ require_once dirname(__DIR__, 4) . '/common/notification_center.php';
 
 $sourceLang = [
     'notifications.title' => ['text' => 'Notifications', 'context' => 'Title of the personal push notification settings panel.'],
-    'notifications.description' => ['text' => 'Autorisez OMO a vous prevenir sur cet appareil, puis choisissez les evenements et canaux qui vous conviennent.', 'context' => 'Description of the personal push notification settings panel.'],
+    'notifications.description' => ['text' => 'Autorisez OMO à vous prévenir sur cet appareil, puis choisissez les événements et canaux qui vous conviennent.', 'context' => 'Description of the personal push notification settings panel.'],
     'notifications.permission.label' => ['text' => 'Autoriser les notifications sur cet appareil', 'context' => 'Label of the toggle that controls browser push notifications.'],
-    'notifications.permission.help' => ['text' => 'Une alerte apparaitra dans le centre de notifications de votre telephone ou ordinateur, meme lorsque OMO est ferme.', 'context' => 'Help shown under the push notification toggle.'],
-    'notifications.status.loading' => ['text' => 'Verification de cet appareil...', 'context' => 'Status while the browser push state is loading.'],
-    'notifications.status.enabled' => ['text' => 'Les notifications sont actives pour cet appareil.', 'context' => 'Success status after subscribing this browser to push notifications.'],
-    'notifications.status.disabled' => ['text' => 'Les notifications sont desactivees pour cet appareil.', 'context' => 'Status after unsubscribing this browser from push notifications.'],
-    'notifications.status.denied' => ['text' => 'Les notifications ont ete bloquees dans ce navigateur. Modifiez cette autorisation dans les reglages du navigateur pour les reactiver.', 'context' => 'Status when browser notification permission was denied.'],
+    'notifications.permission.help' => ['text' => 'Une alerte apparaîtra dans le centre de notifications de votre téléphone ou ordinateur, même lorsque OMO est fermé.', 'context' => 'Help shown under the push notification toggle.'],
+    'notifications.status.loading' => ['text' => 'Vérification de cet appareil…', 'context' => 'Status while the browser push state is loading.'],
+    'notifications.status.enabled' => ['text' => 'Les notifications sont activées pour cet appareil.', 'context' => 'Success status after subscribing this browser to push notifications.'],
+    'notifications.status.disabled' => ['text' => 'Les notifications sont désactivées pour cet appareil.', 'context' => 'Status after unsubscribing this browser from push notifications.'],
+    'notifications.status.denied' => ['text' => 'Les notifications ont été bloquées dans ce navigateur. Modifiez cette autorisation dans les réglages du navigateur pour les réactiver.', 'context' => 'Status when browser notification permission was denied.'],
     'notifications.status.unsupported' => ['text' => 'Ce navigateur ne prend pas en charge les notifications push.', 'context' => 'Status when browser push APIs are not available.'],
-    'notifications.status.insecure' => ['text' => 'Les notifications necessitent une connexion HTTPS.', 'context' => 'Status when the page is not served securely.'],
-    'notifications.status.configuration' => ['text' => 'Les notifications ne sont pas encore configurees sur ce serveur.', 'context' => 'Status when server VAPID keys are missing.'],
-    'notifications.status.service_worker' => ['text' => 'Le service de notifications est encore en cours de demarrage. Reessayez dans quelques secondes.', 'context' => 'Status when the service worker could not become active before a push subscription request.'],
-    'notifications.status.brave_push' => ['text' => 'Brave bloque son service Push. Ouvrez Parametres > Confidentialite et securite, puis activez "Utiliser les services Google pour les messages Push" avant de reessayer.', 'context' => 'Help shown only in Brave when the browser push service rejects a subscription.'],
+    'notifications.status.insecure' => ['text' => 'Les notifications nécessitent une connexion HTTPS.', 'context' => 'Status when the page is not served securely.'],
+    'notifications.status.configuration' => ['text' => 'Les notifications ne sont pas encore configurées sur ce serveur.', 'context' => 'Status when server VAPID keys are missing.'],
+    'notifications.status.service_worker' => ['text' => 'Le service de notifications est encore en cours de démarrage. Réessayez dans quelques secondes.', 'context' => 'Status when the service worker could not become active before a push subscription request.'],
+    'notifications.status.brave_push' => ['text' => 'Brave bloque son service Push. Ouvrez Paramètres > Confidentialité et sécurité, puis activez « Utiliser les services Google pour les messages Push » avant de réessayer.', 'context' => 'Help shown only in Brave when the browser push service rejects a subscription.'],
     'notifications.status.error' => ['text' => 'Impossible de modifier les notifications pour cet appareil.', 'context' => 'Fallback error while subscribing or unsubscribing.'],
-    'notifications.preferences.title' => ['text' => 'Evenements et canaux', 'context' => 'Title of the notification preference form.'],
-    'notifications.preferences.description' => ['text' => 'Ces reglages s appliquent uniquement a cette organisation. Desactivez tous les canaux pour ne rien recevoir.', 'context' => 'Description of the organization notification preference form.'],
-    'notifications.preferences.group.decisions' => ['text' => 'Decisions', 'context' => 'Title of the decision notification preference group.'],
+    'notifications.preferences.title' => ['text' => 'Événements et canaux', 'context' => 'Title of the notification preference form.'],
+    'notifications.preferences.description' => ['text' => 'Ces réglages s’appliquent uniquement à cette organisation. Désactivez tous les canaux pour ne rien recevoir.', 'context' => 'Description of the organization notification preference form.'],
+    'notifications.preferences.group.decisions' => ['text' => 'Décisions', 'context' => 'Title of the decision notification preference group.'],
     'notifications.preferences.group.calendar' => ['text' => 'Calendrier', 'context' => 'Title of the calendar notification preference group.'],
     'notifications.preferences.group.projects' => ['text' => 'Projets', 'context' => 'Title of the project notification preference group.'],
-    'notifications.preferences.header.event' => ['text' => 'Evenement', 'context' => 'Header for the event column in notification preferences.'],
-    'notifications.preferences.event.decision_proposal_owner' => ['text' => 'Ajout de proposition a mes scrutins', 'context' => 'Preference label for proposals added to decisions owned by the user.'],
-    'notifications.preferences.event.decision_proposal_participant' => ['text' => 'Ajout de proposition aux scrutins auxquels je participe', 'context' => 'Preference label for proposals added to decisions where the user participates.'],
+    'notifications.preferences.header.event' => ['text' => 'Événement', 'context' => 'Header for the event column in notification preferences.'],
+    'notifications.preferences.event.decision_proposal_owner' => ['text' => 'Ajout d’une proposition à mes scrutins', 'context' => 'Preference label for proposals added to decisions owned by the user.'],
+    'notifications.preferences.event.decision_proposal_participant' => ['text' => 'Ajout d’une proposition aux scrutins auxquels je participe', 'context' => 'Preference label for proposals added to decisions where the user participates.'],
     'notifications.preferences.event.decision_chat_proposal_owner' => ['text' => 'Commentaire sur le chat de mes propositions', 'context' => 'Preference label for comments on proposals authored by the user.'],
     'notifications.preferences.event.decision_chat_participant' => ['text' => 'Commentaire dans un chat auquel je participe', 'context' => 'Preference label for comments in chats where the user has posted.'],
-    'notifications.preferences.event.decision_consultation_started' => ['text' => 'Passage de mes scrutins invites en consultation', 'context' => 'Preference label for invited decisions entering consultation.'],
-    'notifications.preferences.event.decision_evaluation_started' => ['text' => 'Passage de mes scrutins invites en vote', 'context' => 'Preference label for invited decisions entering voting.'],
+    'notifications.preferences.event.decision_consultation_started' => ['text' => 'Passage de mes scrutins invités en consultation', 'context' => 'Preference label for invited decisions entering consultation.'],
+    'notifications.preferences.event.decision_evaluation_started' => ['text' => 'Passage de mes scrutins invités en vote', 'context' => 'Preference label for invited decisions entering voting.'],
     'notifications.preferences.event.decision_consultation_ending' => ['text' => 'Fin prochaine de la consultation', 'context' => 'Preference label for consultation deadline reminders.'],
     'notifications.preferences.event.decision_evaluation_ending' => ['text' => 'Fin prochaine du vote', 'context' => 'Preference label for voting deadline reminders.'],
     'notifications.preferences.event.decision_consultation_finished' => ['text' => 'Fin de la consultation de mes scrutins : me rappeler de traiter les propositions et la suite', 'context' => 'Preference label for consultation completion notifications sent to the decision owner.'],
@@ -36,11 +36,11 @@ $sourceLang = [
     'notifications.preferences.event.project_proposal_refused' => ['text' => 'Refus de mes propositions de projet', 'context' => 'Preference label for refused project proposals.'],
     'notifications.preferences.event.project_status_changed' => ['text' => 'Changement de statut des projets que je suis', 'context' => 'Preference label for status changes on followed projects.'],
     'notifications.preferences.event.project_chat_owner' => ['text' => 'Commentaire sur mes projets ou propositions de projet', 'context' => 'Preference label for comments on projects the viewer is responsible for or proposed.'],
-    'notifications.preferences.event.project_chat_participant' => ['text' => 'Commentaire dans une discussion de projet a laquelle je participe', 'context' => 'Preference label for comments in project chats where the viewer has posted.'],
-    'notifications.preferences.event.calendar_event_invited' => ['text' => 'Invitation a un nouvel evenement', 'context' => 'Preference label for event creation or first invitation.'],
-    'notifications.preferences.event.calendar_event_location_changed' => ['text' => 'Modification du lieu d un evenement auquel je suis invite', 'context' => 'Preference label for event location changes.'],
-    'notifications.preferences.event.calendar_event_schedule_changed' => ['text' => 'Modification de l horaire d un evenement auquel je suis invite', 'context' => 'Preference label for event schedule changes.'],
-    'notifications.preferences.event.calendar_event_starting' => ['text' => 'Debut prochain d un evenement auquel je suis invite', 'context' => 'Preference label for event start reminders.'],
+    'notifications.preferences.event.project_chat_participant' => ['text' => 'Commentaire dans une discussion de projet à laquelle je participe', 'context' => 'Preference label for comments in project chats where the viewer has posted.'],
+    'notifications.preferences.event.calendar_event_invited' => ['text' => 'Invitation à un nouvel événement', 'context' => 'Preference label for event creation or first invitation.'],
+    'notifications.preferences.event.calendar_event_location_changed' => ['text' => 'Modification du lieu d’un événement auquel je suis invité', 'context' => 'Preference label for event location changes.'],
+    'notifications.preferences.event.calendar_event_schedule_changed' => ['text' => 'Modification de l’horaire d’un événement auquel je suis invité', 'context' => 'Preference label for event schedule changes.'],
+    'notifications.preferences.event.calendar_event_starting' => ['text' => 'Début prochain d’un événement auquel je suis invité', 'context' => 'Preference label for event start reminders.'],
     'notifications.preferences.reminder_days' => ['text' => 'Me rappeler', 'context' => 'Label for the day choices of a notification deadline reminder.'],
     'notifications.preferences.reminder_day' => ['one' => '{count} jour avant', 'other' => '{count} jours avant', 'context' => 'Label for one selected reminder delay.'],
     'notifications.preferences.reminder_none' => ['text' => 'Ne pas envoyer de rappel', 'context' => 'Empty option for an event reminder lead time.'],
@@ -59,13 +59,13 @@ $sourceLang = [
     'notifications.preferences.channel.telegram' => ['text' => 'Telegram', 'context' => 'Preference channel label for Telegram.'],
     'notifications.preferences.channel.email' => ['text' => 'E-mail', 'context' => 'Preference channel label for email.'],
     'notifications.preferences.save' => ['text' => 'Enregistrer les reglages', 'context' => 'Submit label for notification preferences.'],
-    'notifications.preferences.saved' => ['text' => 'Reglages de notifications enregistres.', 'context' => 'Success feedback after saving notification preferences.'],
-    'notifications.preferences.save_error' => ['text' => 'Impossible d enregistrer les reglages de notifications.', 'context' => 'Failure feedback after saving notification preferences.'],
-    'notifications.preferences.telegram_unavailable' => ['text' => 'Telegram n est pas connecte a ce compte.', 'context' => 'Help shown when Telegram is unavailable.'],
-    'notifications.warning.push.title' => ['text' => 'Notifications navigateur non configurees', 'context' => 'Warning title shown to organization administrators when browser push is unavailable on the server.'],
-    'notifications.warning.push.description' => ['text' => 'Les cles VAPID ne sont pas configurees sur ce serveur. Les membres ne peuvent pas activer les notifications navigateur.', 'context' => 'Warning body shown to organization administrators when browser push is unavailable on the server.'],
-    'notifications.warning.telegram.title' => ['text' => 'Telegram non configure', 'context' => 'Warning title shown to organization administrators when Telegram is unavailable on the server.'],
-    'notifications.warning.telegram.description' => ['text' => 'Le jeton du bot Telegram n est pas configure sur ce serveur. Les membres ne peuvent pas recevoir de messages Telegram.', 'context' => 'Warning body shown to organization administrators when Telegram is unavailable on the server.'],
+    'notifications.preferences.saved' => ['text' => 'Réglages de notifications enregistrés.', 'context' => 'Success feedback after saving notification preferences.'],
+    'notifications.preferences.save_error' => ['text' => 'Impossible d’enregistrer les réglages de notifications.', 'context' => 'Failure feedback after saving notification preferences.'],
+    'notifications.preferences.telegram_unavailable' => ['text' => 'Telegram n’est pas connecté à ce compte.', 'context' => 'Help shown when Telegram is unavailable.'],
+    'notifications.warning.push.title' => ['text' => 'Notifications navigateur non configurées', 'context' => 'Warning title shown to organization administrators when browser push is unavailable on the server.'],
+    'notifications.warning.push.description' => ['text' => 'Les clés VAPID ne sont pas configurées sur ce serveur. Les membres ne peuvent pas activer les notifications navigateur.', 'context' => 'Warning body shown to organization administrators when browser push is unavailable on the server.'],
+    'notifications.warning.telegram.title' => ['text' => 'Telegram non configuré', 'context' => 'Warning title shown to organization administrators when Telegram is unavailable on the server.'],
+    'notifications.warning.telegram.description' => ['text' => 'Le jeton du bot Telegram n’est pas configuré sur ce serveur. Les membres ne peuvent pas recevoir de messages Telegram.', 'context' => 'Warning body shown to organization administrators when Telegram is unavailable on the server.'],
 ];
 $lang = omoLoadTranslationBundle('omo_notification_settings', $sourceLang);
 $translate = static function ($key) use (&$lang, &$sourceLang) {
@@ -219,227 +219,8 @@ $configuration = [
     </form>
     <?php endif; ?>
 </div>
-<script>
-(function () {
-    var root = document.querySelector('[data-omo-notification-settings]');
-    if (!root || root.dataset.omoNotificationSettingsReady === '1') {
-        return;
-    }
-    root.dataset.omoNotificationSettingsReady = '1';
-    var configuration = <?= json_encode($configuration, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
-    var toggle = root.querySelector('[data-omo-notification-toggle]');
-    var feedback = root.querySelector('[data-omo-notification-feedback]');
-
-    function showFeedback(message, kind) {
-        if (!feedback) {
-            return;
-        }
-        feedback.textContent = String(message || '');
-        feedback.className = 'generic-feedback' + (kind ? ' is-' + kind : '');
-    }
-
-    function base64UrlToUint8Array(value) {
-        var base64 = String(value || '').replace(/-/g, '+').replace(/_/g, '/');
-        var padding = '='.repeat((4 - (base64.length % 4)) % 4);
-        var raw = window.atob(base64 + padding);
-        var output = new Uint8Array(raw.length);
-        for (var index = 0; index < raw.length; index += 1) {
-            output[index] = raw.charCodeAt(index);
-        }
-        return output;
-    }
-
-    function supportsPush() {
-        return window.isSecureContext
-            && 'serviceWorker' in navigator
-            && 'PushManager' in window
-            && 'Notification' in window;
-    }
-
-    async function isBraveBrowser() {
-        if (!navigator.brave || typeof navigator.brave.isBrave !== 'function') {
-            return false;
-        }
-
-        try {
-            return await navigator.brave.isBrave();
-        } catch (error) {
-            return false;
-        }
-    }
-
-    async function getSubscriptionErrorMessage(error) {
-        var message = error && error.message ? String(error.message) : '';
-        if (message.toLowerCase().indexOf('push service') !== -1 && await isBraveBrowser()) {
-            return configuration.texts.bravePush;
-        }
-        return message || configuration.texts.error;
-    }
-
-    function requestServer(method, subscription) {
-        return window.fetch(configuration.endpointUrl, {
-            method: method,
-            credentials: 'same-origin',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                csrf_token: configuration.csrfToken,
-                subscription: subscription.toJSON()
-            })
-        }).then(function (response) {
-            return response.json().catch(function () {
-                return {status: false, message: configuration.texts.error};
-            }).then(function (payload) {
-                if (!response.ok || !payload || payload.status !== true) {
-                    throw new Error(String(payload && payload.message ? payload.message : configuration.texts.error));
-                }
-                return payload;
-            });
-        });
-    }
-
-    function waitForActiveServiceWorker() {
-        return Promise.race([
-            navigator.serviceWorker.ready,
-            new Promise(function (resolve, reject) {
-                window.setTimeout(function () {
-                    reject(new Error(configuration.texts.serviceWorker));
-                }, 10000);
-            })
-        ]);
-    }
-
-    async function getRegistration() {
-        var registration = await navigator.serviceWorker.getRegistration('/omo/');
-        if (!registration) {
-            registration = await navigator.serviceWorker.register('/omo/sw.js', {scope: '/omo/', updateViaCache: 'none'});
-        }
-        if (!registration.active) {
-            await waitForActiveServiceWorker();
-            registration = await navigator.serviceWorker.getRegistration('/omo/') || registration;
-        }
-        if (!registration.active) {
-            throw new Error(configuration.texts.serviceWorker);
-        }
-        return registration;
-    }
-
-    async function refreshState() {
-        if (!toggle) {
-            return;
-        }
-        toggle.disabled = true;
-        if (!window.isSecureContext) {
-            showFeedback(configuration.texts.insecure, 'error');
-            return;
-        }
-        if (!supportsPush()) {
-            showFeedback(configuration.texts.unsupported, 'error');
-            return;
-        }
-        if (!configuration.vapidPublicKey) {
-            showFeedback(configuration.texts.configuration, 'error');
-            return;
-        }
-        if (Notification.permission === 'denied') {
-            showFeedback(configuration.texts.denied, 'error');
-            return;
-        }
-
-        try {
-            var registration = await getRegistration();
-            var subscription = await registration.pushManager.getSubscription();
-            if (subscription) {
-                await requestServer('POST', subscription);
-            }
-            toggle.checked = subscription !== null;
-            toggle.disabled = false;
-            showFeedback(subscription ? configuration.texts.enabled : configuration.texts.disabled, subscription ? 'success' : '');
-        } catch (error) {
-            toggle.disabled = false;
-            showFeedback(await getSubscriptionErrorMessage(error), 'error');
-        }
-    }
-
-    if (toggle) {
-        toggle.addEventListener('change', async function () {
-            toggle.disabled = true;
-            try {
-                var registration = await getRegistration();
-                var subscription = await registration.pushManager.getSubscription();
-                if (toggle.checked) {
-                    var permission = Notification.permission === 'granted'
-                        ? 'granted'
-                        : await Notification.requestPermission();
-                    if (permission !== 'granted') {
-                        toggle.checked = false;
-                        showFeedback(configuration.texts.denied, 'error');
-                        return;
-                    }
-                    if (!subscription) {
-                        subscription = await registration.pushManager.subscribe({
-                            userVisibleOnly: true,
-                            applicationServerKey: base64UrlToUint8Array(configuration.vapidPublicKey)
-                        });
-                    }
-                    await requestServer('POST', subscription);
-                    showFeedback(configuration.texts.enabled, 'success');
-                    return;
-                }
-
-                if (subscription) {
-                    await requestServer('DELETE', subscription);
-                    await subscription.unsubscribe();
-                }
-                showFeedback(configuration.texts.disabled, '');
-            } catch (error) {
-                toggle.checked = !toggle.checked;
-                showFeedback(await getSubscriptionErrorMessage(error), 'error');
-            } finally {
-                toggle.disabled = false;
-            }
-        });
-    }
-
-    var preferencesForm = root.querySelector('[data-omo-notification-preferences]');
-    if (preferencesForm) {
-        preferencesForm.addEventListener('submit', function (event) {
-            event.preventDefault();
-            var submit = preferencesForm.querySelector('button[type="submit"]');
-            var preferencesFeedback = preferencesForm.querySelector('[data-omo-notification-preferences-feedback]');
-            if (submit) {
-                submit.disabled = true;
-            }
-            window.fetch(configuration.preferencesUrl, {
-                method: 'POST',
-                credentials: 'same-origin',
-                body: new FormData(preferencesForm),
-                headers: {'Accept': 'application/json'}
-            }).then(function (response) {
-                return response.json().then(function (payload) {
-                    if (!response.ok || !payload || payload.status !== true) {
-                        throw new Error(payload && payload.message ? payload.message : configuration.texts.error);
-                    }
-                    return payload;
-                });
-            }).then(function () {
-                if (preferencesFeedback) {
-                    preferencesFeedback.textContent = <?= json_encode($translate('notifications.preferences.saved'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
-                    preferencesFeedback.className = 'generic-feedback is-success';
-                }
-            }).catch(function (error) {
-                if (preferencesFeedback) {
-                    preferencesFeedback.textContent = error && error.message ? error.message : <?= json_encode($translate('notifications.preferences.save_error'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
-                    preferencesFeedback.className = 'generic-feedback is-error';
-                }
-            }).finally(function () {
-                if (submit) {
-                    submit.disabled = false;
-                }
-            });
-        });
-    }
-
-    showFeedback(configuration.texts.loading, '');
-    refreshState();
-})();
-</script>
+<?= commonPageScriptTags('/omo/api/parameters/notifications/index.js', [
+    'configuration' => $configuration,
+    'notificationsPreferencesSaved' => $translate('notifications.preferences.saved'),
+    'message' => $translate('notifications.preferences.save_error'),
+]) ?>

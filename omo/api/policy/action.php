@@ -15,9 +15,12 @@ $action = strtolower(trim((string)($_POST['action'] ?? 'save')));
 $rule = new Rule();
 if ($ruleId > 0) {
     if (!$rule->load($ruleId)) $respond(false, omoPolicyT('policy.error.load'), 404);
+    if ($rule->getOrganizationId() !== $organizationId) $respond(false, omoPolicyT('policy.error.load'), 404);
     $ruleHolon = $rule->getHolon();
-    if (!($ruleHolon instanceof \dbObject\Holon)) $respond(false, omoPolicyT('policy.error.load'), 404);
-    $currentHolonId = (int)$ruleHolon->getId();
+    if (!($ruleHolon instanceof \dbObject\Holon) && ((int)$rule->get('IDholon') > 0 || (int)$rule->get('IDauthority') > 0)) {
+        $respond(false, omoPolicyT('policy.error.load'), 404);
+    }
+    $currentHolonId = $ruleHolon instanceof \dbObject\Holon ? (int)$ruleHolon->getId() : 0;
     if ($action === 'delete' ? !$rule->canDelete() : !$rule->canEdit()) $respond(false, omoPolicyT('policy.error.forbidden'), 403);
 }
 $context = omoPolicyResolveContext($organizationId, $currentHolonId);
@@ -26,18 +29,30 @@ if ($action === 'delete') {
     if ($ruleId <= 0 || !$rule->delete()) $respond(false, omoPolicyT('policy.error.delete'), 422);
     $respond(true, omoPolicyT('policy.success.delete'));
 }
-$authorityId = isset($_POST['authority_id']) && is_numeric($_POST['authority_id'])
-    ? (int)$_POST['authority_id']
+$authorityId = array_key_exists('IDauthority', $_POST) || array_key_exists('authority_id', $_POST)
+    ? (int)($_POST['IDauthority'] ?? $_POST['authority_id'])
     : ($ruleId > 0 ? (int)$rule->get('IDauthority') : 0);
 if ($authorityId > 0) {
     $authority = new Authority();
-    if (!$authority->load($authorityId) || (int)$authority->get('IDholon') !== (int)$context['currentHolon']->getId()) {
+    if (!($context['currentHolon'] instanceof \dbObject\Holon)
+        || !$authority->load($authorityId)
+        || (int)$authority->get('IDholon') !== (int)$context['currentHolon']->getId()) {
         $respond(false, omoPolicyT('policy.error.authority'), 422);
     }
     $rule->set('IDauthority', $authorityId);
+    $rule->set('IDholon', null);
 } else {
-    $rule->set('IDholon', (int)$context['currentHolon']->getId());
+    $wasOrganizationRule = $ruleId > 0 && (int)$rule->get('IDholon') === 0 && (int)$rule->get('IDauthority') === 0;
+    $rule->set('IDauthority', null);
+    $rule->set('IDholon', !$wasOrganizationRule && $context['currentHolon'] instanceof \dbObject\Holon
+        ? (int)$context['currentHolon']->getId()
+        : null);
 }
+$rule->set('IDorganization', $organizationId);
+$scope = (string)($_POST['scope'] ?? ($ruleId > 0 ? $rule->get('scope') : Rule::SCOPE_LOCAL));
+$scopeValidation = Rule::validateScopeAttachment($scope, $context['currentHolon'], $authorityId);
+if (empty($scopeValidation['status'])) $respond(false, $scopeValidation['text'], 422);
+$rule->set('scope', $scope);
 $rule->set('title', trim((string)($_POST['title'] ?? '')));
 $intention = Rule::sanitizeContentHtml((string)($_POST['intention'] ?? ''));
 $rule->set('intention', $intention !== '' ? $intention : null);

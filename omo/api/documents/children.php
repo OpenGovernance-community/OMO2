@@ -69,7 +69,9 @@ $documentVisibilityRuleMap = $documents->loadVisibleForOrganizationContext(
     $organizationId,
     $effectiveCurrentHolonId,
     $documentScope,
-    $scopeHolonIds
+    $scopeHolonIds,
+    $currentContextHolon instanceof Holon && $rootHolon instanceof Holon
+        && (int)$currentContextHolon->getId() === (int)$rootHolon->getId()
 );
 $folder = null;
 $childDocuments = array();

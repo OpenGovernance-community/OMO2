@@ -215,6 +215,7 @@ foreach (array_values($blueprint) as $proposalIndex => $proposalInput) {
             DecisionGovernanceAction::TYPE_HOLON_CREATE,
             DecisionGovernanceAction::TYPE_HOLON_UPDATE,
             DecisionGovernanceAction::TYPE_HOLON_DELETE,
+            'holon.move',
         ], true);
         if ($isRoleAction) {
             $targetId = (int)($actionInput['targetId'] ?? 0);
@@ -258,7 +259,19 @@ foreach (array_values($blueprint) as $proposalIndex => $proposalInput) {
                     ? DeferredProposal::normalizeState($existingDeferred->get('before_state'))
                     : ($existingAction instanceof DecisionGovernanceAction ? DecisionGovernanceAction::normalizeState($existingAction->get('before_state')) : DecisionGovernanceAction::captureHolonEditorState($role, $contextOrganization));
                 $roleName = (string)$beforeState['name'];
-                if ($actionType === DecisionGovernanceAction::TYPE_HOLON_DELETE) {
+                if ($actionType === 'holon.move') {
+                    $validation = DeferredProposal::validateHolonMove($contextOrganization, $role, (int)($actionInput['after']['parent_id'] ?? 0), $targetHolonId);
+                    if (empty($validation['status'])) $respond(422, $validation);
+                    $beforeState = $existingDeferred instanceof DeferredProposal
+                        ? DeferredProposal::normalizeState($existingDeferred->get('before_state'))
+                        : DeferredProposal::captureHolonMoveState($role);
+                    $afterState = $validation['state'];
+                    $moveTitle = omoDecisionGovernanceT('governance.action.role_move') . ' : ' . $roleName;
+                    $suggestedTitles[] = $moveTitle;
+                    $actionDescriptions[] = '<h4>' . htmlspecialchars($moveTitle, ENT_QUOTES, 'UTF-8') . '</h4><p>'
+                        . htmlspecialchars((string)$beforeState['parent_label'], ENT_QUOTES, 'UTF-8') . ' &rarr; '
+                        . htmlspecialchars((string)$afterState['parent_label'], ENT_QUOTES, 'UTF-8') . '</p>';
+                } elseif ($actionType === DecisionGovernanceAction::TYPE_HOLON_DELETE) {
                     $suggestedTitles[] = 'Supprimer le role ' . $roleName;
                     $actionDescriptions[] = '<h4>Supprimer le role ' . htmlspecialchars($roleName, ENT_QUOTES, 'UTF-8') . '</h4>' . DecisionGovernanceAction::buildRoleStateDescription($beforeState);
                 } else {

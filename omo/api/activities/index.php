@@ -34,10 +34,12 @@ $assignment = omoActivityNormalizeAssignment(
 );
 $holonIds = $scope === 'children'
     ? omoApiGetDirectChildScopeHolonIds($currentHolon)
-    : ($scope === 'descendants' ? omoApiGetDescendantHolonIds($currentHolon) : [(int)$currentHolon->getId()]);
+    : ($scope === 'descendants' ? omoApiGetDescendantHolonIds($currentHolon) : ($currentHolon instanceof Holon ? [(int)$currentHolon->getId()] : []));
 
 $activities = new ArrayControlActivity();
-$activities->loadForContext($organizationId, $holonIds);
+$includeOrganizationTasks = !($currentHolon instanceof Holon)
+    || ($rootHolon instanceof Holon && (int)$currentHolon->getId() === (int)$rootHolon->getId());
+$activities->loadForContext($organizationId, $holonIds, true, $includeOrganizationTasks);
 $now = new DateTimeImmutable('now');
 $frequencyOrder = RecurrenceSchedule::getFrequencyCatalog();
 $groups = array_fill_keys($frequencyOrder, []);
@@ -71,7 +73,7 @@ foreach ($activities as $activity) {
         'activity' => $activity,
         'state' => $state,
         'stateKey' => $stateKey,
-        'holonName' => $holon instanceof Holon ? $holon->getDisplayName() : '',
+        'holonName' => $holon instanceof Holon ? $holon->getDisplayName() : (string)$organization->get('name'),
         'checkedAt' => $checkedAt,
         'deadlineAt' => $deadlineAt instanceof DateTimeInterface ? $deadlineAt : null,
         'occurrenceAt' => $occurrenceAt instanceof DateTimeInterface ? $occurrenceAt : null,
@@ -107,7 +109,7 @@ $currentUrl = $baseUrl
     . '&activity_assignment=' . rawurlencode($assignment);
 $createUrl = '/omo/api/activities/edit.php?oid=' . $organizationId
     . ($currentHolonId > 0 ? '&cid=' . $currentHolonId : '') . $pvMeetingQuery;
-$canCreate = omoActivityCanUsePermission($currentHolon, 'CAN_CREATE_RECURRING_TASK');
+$canCreate = omoActivityCanUsePermission($currentHolon, 'CAN_CREATE_RECURRING_TASK', $organizationId);
 $stateFilters = ['all', 'attention', 'missed', 'checked', 'upcoming'];
 $texts = [
     'loading' => omoActivityT('activity.loading'),

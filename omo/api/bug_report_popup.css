@@ -1,0 +1,111 @@
+/* omo/api/bug_report_popup.php */
+.omo-bug-report-popup__header-copy {
+    --generic-drawer-header-copy-gap: var(--generic-space-2);
+}
+
+.omo-bug-report-popup__hero {
+    min-width: 0;
+}
+
+.omo-bug-report-popup__hero p,
+.omo-bug-report-popup__error p,
+.omo-bug-report-popup__error li {
+    margin: 0;
+    line-height: 1.5;
+    color: var(--color-text-light, #6b7280);
+}
+
+.omo-bug-report-popup__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.omo-bug-report-popup__hero-figure {
+    width: 96px;
+    height: 96px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--color-primary, #2563eb) 10%, var(--color-surface, #ffffff));
+    border: 1px solid color-mix(in srgb, var(--color-primary, #2563eb) 18%, var(--color-border, #e5e7eb));
+    box-shadow: 0 14px 28px rgba(15, 23, 42, 0.08);
+}
+
+.omo-bug-report-popup__hero-figure img {
+    width: 72px;
+    height: 72px;
+    object-fit: contain;
+    display: block;
+}
+
+.omo-bug-report-popup__error {
+    display: grid;
+    gap: 10px;
+    border: 1px solid rgba(185, 28, 28, 0.18);
+    background: rgba(185, 28, 28, 0.06);
+    color: #991b1b;
+}
+
+.omo-bug-report-popup__error h3,
+.omo-bug-report-popup__panel h3 {
+    margin: 0;
+}
+
+.omo-bug-report-popup__error ul {
+    margin: 0;
+    padding-left: 18px;
+}
+
+.omo-bug-report-popup__field label {
+    font-weight: 700;
+}
+
+.omo-bug-report-popup__file-input {
+    padding: 10px 12px;
+    border: 1px dashed var(--color-border, #cbd5e1);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-alt, #f8fafc);
+}
+
+.omo-bug-report-popup__file-list {
+    display: grid;
+    gap: 6px;
+    font-size: 0.92rem;
+    color: var(--color-text-light, #6b7280);
+}
+
+.omo-bug-report-popup__feedback {
+    --generic-feedback-min-height: 24px;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.omo-bug-report-popup__feedback a {
+    color: inherit;
+    font-weight: 700;
+}
+
+.omo-bug-report-popup__connect-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+@media (max-width: 640px) {
+    .omo-bug-report-popup__hero {
+        grid-template-columns: 1fr;
+    }
+
+    .omo-bug-report-popup__hero-figure {
+        order: -1;
+        width: 82px;
+        height: 82px;
+    }
+
+    .omo-bug-report-popup__hero-figure img {
+        width: 60px;
+        height: 60px;
+    }
+}
