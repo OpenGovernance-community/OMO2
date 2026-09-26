@@ -401,7 +401,7 @@
 					(string)$job->get('query'),
 					$job->getScopes(),
 					array(
-						'limit' => 36,
+						'retainAllScopes' => true,
 						'perScopeLimit' => 14,
 						'viewerContext' => $job->getViewerContext(),
 						'dateRange' => $job->getDateRange(),

@@ -6,7 +6,7 @@ return static function (\dbObject\Checklist $process): array {
     foreach ($process->getItems(true) as $item) {
         $template = $item->getProjectTemplate();
         if ($template) {
-            $steps[] = (count($steps) + 1) . '. ' . omoSearchPreviewText($template->get('title'));
+            $steps[] = ['title' => (count($steps) + 1) . '. ' . omoSearchPreviewText($template->get('title')), 'text' => $template->get('description')];
         }
     }
     return [
@@ -19,7 +19,7 @@ return static function (\dbObject\Checklist $process): array {
         ],
         'sections' => [
             omoSearchPreviewSection('summary', $root ? $root->get('description') : ''),
-            omoSearchPreviewSection('steps', implode("\n", $steps)),
         ],
+        'collections' => [['title' => omoSearchPreviewT('steps'), 'items' => $steps]],
     ];
 };

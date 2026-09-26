@@ -196,7 +196,7 @@ if (!function_exists('omoSearchPopupRenderSearchForm')) {
 if (!function_exists('omoSearchPopupHighlightTerms')) {
     function omoSearchPopupHighlightTerms($value, $query, $escape)
     {
-        $value = (string)$value;
+        $value = commonSearchNormalizeWhitespace((string)$value);
         $query = trim((string)$query);
         if ($value === '' || $query === '') {
             return $escape($value);
@@ -225,10 +225,11 @@ if (!function_exists('omoSearchPopupRenderContent')) {
     {
         $status = trim((string)($payload['status'] ?? 'completed'));
         $results = is_array($payload['results'] ?? null) ? $payload['results'] : array();
-        $counts = is_array($payload['counts'] ?? null) ? $payload['counts'] : array();
+        // Also keep counters honest when restoring an older, globally truncated search job.
+        $counts = array_count_values(array_column($results, 'module'));
         $error = trim((string)($payload['error'] ?? ''));
         ?>
-        <div class="omo-search-popup__content-state" data-omo-search-job-status="<?= $escape($status) ?>">
+        <div class="omo-search-popup__content-state" data-omo-search-job-status="<?= $escape($status) ?>" data-omo-search-result-query="<?= $escape($query) ?>">
             <?php if ($status === 'completed'): ?>
                 <div class="omo-search-popup__stats">
                     <?php omoSearchPopupRenderStats($selectedScopes, $scopeLabels, $counts, $escape); ?>

@@ -3,14 +3,14 @@ return static function (\dbObject\User $user, \dbObject\Organization $organizati
     $organizationId = (int)$organization->getId();
     $skills = [];
     foreach ($user->getVisibleCompetenceRows($organizationId, commonGetCurrentUserId()) as $skill) {
-        $skills[] = trim((string)($skill['name'] ?? '') . ' ' . (string)($skill['description'] ?? ''));
+        $skills[] = ['title' => $skill['name'] ?? '', 'text' => $skill['description'] ?? ''];
     }
     return [
         'title' => $user->getScopedDisplayName($organizationId),
-        'fields' => ['context' => $organization->get('name'), 'email' => $user->getScopedEmail($organizationId)],
+        'fields' => ['context' => $organization->get('name'), 'email' => $user->getScopedEmail($organizationId), 'username' => $user->getScopedUsername($organizationId)],
         'sections' => [
             omoSearchPreviewSection('presentation', $user->getScopedPresentation($organizationId)),
-            omoSearchPreviewSection('skills', implode("\n", $skills)),
         ],
+        'collections' => [['title' => omoSearchPreviewT('skills'), 'items' => $skills]],
     ];
 };
