@@ -564,6 +564,9 @@
 		public static function getDefaultLexicon(): array
 		{
 			return array(
+				'type1' => ['label' => 'Type 1'],
+				'type2' => ['label' => 'Type 2'],
+				'type3' => ['label' => 'Type 3'],
 				'space' => array(
 					'label' => 'Espace',
 				),
@@ -3695,6 +3698,7 @@
 			$targetProperty->set('name', $sourceProperty->get('name'));
 			$targetProperty->set('shortname', $sourceProperty->get('shortname'));
 			$targetProperty->set('IDpropertyformat', (int)$sourceProperty->get('IDpropertyformat'));
+			$targetProperty->set('type', Property::normalizeType($sourceProperty->get('type')));
 			$targetProperty->set('listitemtype', $sourceProperty->get('listitemtype'));
 			$targetProperty->set('listholontypeids', $sourceProperty->get('listholontypeids'));
 			$targetProperty->set('IDholon_organization', (int)$targetRootHolonId);
@@ -3875,6 +3879,7 @@
 				$property->set('name', trim((string)($definition['name'] ?? '')) !== '' ? $definition['name'] : 'Propriete');
 				$property->set('shortname', trim((string)($definition['shortname'] ?? '')) !== '' ? $definition['shortname'] : \dbObject\Property::buildShortnameFromName((string)($definition['name'] ?? 'Propriete')));
 				$property->set('IDpropertyformat', $formatId);
+				$property->set('type', Property::normalizeType($definition['type'] ?? null));
 				$property->set('listitemtype', \dbObject\Property::normalizeListItemType($definition['listItemType'] ?? null));
 				$property->set('listholontypeids', \dbObject\Property::serializeHolonTypeIds($definition['listHolonTypeIds'] ?? array()));
 				$property->set('IDholon_organization', (int)$targetRootHolonId);
@@ -4608,6 +4613,7 @@
 						}
 						$properties[] = array(
 							'id' => $propertyId,
+							'type' => Property::normalizeType($definition['type'] ?? null),
 							'name' => (string)($definition['name'] ?? ''),
 							'shortname' => (string)($definition['shortname'] ?? ''),
 							'formatId' => (int)($definition['formatId'] ?? 0),
@@ -8818,6 +8824,7 @@
 					'formatId' => (int)$property->get('IDpropertyformat'),
 				);
 
+				$definition['type'] = Property::normalizeType($property->get('type'));
 				if (trim((string)$property->get('listitemtype')) !== '') {
 					$definition['listItemType'] = (string)$property->get('listitemtype');
 				}
@@ -9098,6 +9105,29 @@
 			return in_array($scope, array('contextual', 'children', 'descendants'), true) ? $scope : 'contextual';
 		}
 
+		public function getPermissionEditorCatalog()
+		{
+			return \dbObject\Permission::getEditorCatalog(
+				$this->getLexicon(),
+				$this->getEnabledApplicationHashes(null, true)
+			);
+		}
+
+		protected function syncEditorPermissionAssignments(int $holonId, array $payload): bool
+		{
+			$editableKeys = array_column($this->getPermissionEditorCatalog(), 'key');
+			if (isset($payload['editablePermissionKeys']) && is_array($payload['editablePermissionKeys'])) {
+				// An application may have been reactivated since this editor was opened.
+				$editableKeys = array_values(array_intersect($editableKeys, array_filter($payload['editablePermissionKeys'], 'is_string')));
+			}
+			return \dbObject\HolonPermission::syncAssignmentsForHolon(
+				$holonId,
+				is_array($payload['permissions'] ?? null) ? $payload['permissions'] : array(),
+				null,
+				$editableKeys
+			);
+		}
+
 		public function getHolonTemplateEditorData($contextHolonId = 0, $scope = 'contextual')
 		{
 			$scope = $this->normalizeTemplateEditorScope($scope);
@@ -9115,7 +9145,7 @@
 					'types' => array(),
 					'formats' => array(),
 					'listItemTypes' => \dbObject\Property::getTemplateListItemTypeOptions(),
-					'permissionCatalog' => \dbObject\Permission::getEditorCatalog(),
+					'permissionCatalog' => $this->getPermissionEditorCatalog(),
 					'permissionRanges' => \dbObject\HolonPermission::getEditorRangeCatalog(),
 					'templateCatalog' => array(),
 					'definitionHolonCatalog' => array(),
@@ -9153,7 +9183,7 @@
 				'types' => array(),
 				'formats' => array(),
 				'listItemTypes' => \dbObject\Property::getTemplateListItemTypeOptions(),
-				'permissionCatalog' => $this->canManagePermissionAssignments() ? \dbObject\Permission::getEditorCatalog() : array(),
+				'permissionCatalog' => $this->canManagePermissionAssignments() ? $this->getPermissionEditorCatalog() : array(),
 				'permissionRanges' => $this->canManagePermissionAssignments() ? \dbObject\HolonPermission::getEditorRangeCatalog() : array(),
 				'templateCatalog' => array(),
 				'definitionHolonCatalog' => $this->getTemplateDefinitionDestinationCatalog(),
@@ -9163,8 +9193,16 @@
 				'authorityParentCatalog' => array(),
 				'authorityCanCreateRoot' => true,
 				'templates' => array(),
-				'canAddTemplateProperties' => $contextHolon ? $contextHolon->isAllowed('CAN_ADD_TEMPLATE_PROPERTIES') : false,
+				'propertyTypes' => Property::getTypeOptions($this->getLexicon(), $contextHolon),
+				'canAddTemplateProperties' => $contextHolon ? Property::canCreateAnyType($contextHolon) : false,
 			);
+			foreach ($data['definitionHolonCatalog'] as &$destination) {
+				$destinationHolon = new Holon();
+				$destination['propertyTypes'] = $destinationHolon->load((int)$destination['id'])
+					? Property::getTypeOptions($this->getLexicon(), $destinationHolon)
+					: [];
+			}
+			unset($destination);
 
 			foreach ($types as $type) {
 				$typeId = (int)$type->getId();
@@ -9282,7 +9320,8 @@
 
 			foreach ($templateTreeSource as $template) {
 				$templateNode = $template->toTemplateEditorNodeArray((int)$rootHolon->getId());
-				$templateNode['canAddProperties'] = $template->isAllowed('CAN_ADD_TEMPLATE_PROPERTIES');
+				$templateNode['canAddProperties'] = Property::canCreateAnyType($template);
+				$templateNode['propertyTypes'] = Property::getTypeOptions($this->getLexicon(), $template);
 				$templateNode['definitionHolonIds'] = array_map(function (array $destination) use ($template) {
 					return (int)$destination['id'];
 				}, $this->getTemplateDefinitionDestinationCatalog($template));
@@ -9339,13 +9378,14 @@
 			$node = $holon->toTemplateEditorNodeArray((int)$rootHolonId);
 			$node['properties'] = array_map(function ($property) use ($holon) {
 				$property['canEditValue'] = empty($property['effectiveLocked'])
-					&& $holon->isAllowed('CAN_EDIT_HOLON_PROPERTIES');
+					&& $holon->isAllowed(Property::permissionKey('EDIT', $property['type'] ?? null), false);
 				$property['canDelete'] = empty($property['inheritedMandatory'])
-					&& $holon->isAllowed('CAN_DELETE_HOLON_PROPERTIES');
+					&& $holon->isAllowed(Property::permissionKey('DELETE', $property['type'] ?? null), false);
 				return $property;
 			}, $holon->getTemplatePropertyDefinitions());
 			$node['children'] = array();
-			$node['canAddProperties'] = $holon->isAllowed('CAN_ADD_HOLON_PROPERTIES');
+			$node['canAddProperties'] = Property::canCreateAnyType($holon);
+			$node['propertyTypes'] = Property::getTypeOptions($this->getLexicon(), $holon);
 
 			return $node;
 		}
@@ -9362,33 +9402,54 @@
 			sort($listHolonTypeIds);
 
 			return array(
+				'type' => Property::normalizeType($definition['type'] ?? null),
 				'name' => trim((string)($definition['name'] ?? '')),
+				'shortname' => (string)($definition['shortname'] ?? ''),
 				'formatId' => $formatId,
 				'listItemType' => \dbObject\Property::normalizeTemplateListItemType($definition['listItemType'] ?? ''),
 				'listHolonTypeIds' => $listHolonTypeIds,
 				'mandatory' => !empty($definition['mandatory']),
 				'locked' => !empty($definition['locked']),
-				'isLocal' => !empty($definition['isLocal']),
 				'value' => $value,
 				'position' => (int)$position,
 			);
 		}
 
-		protected function getPropertyDefinitionPermissionOperations(array $existingDefinitions, array $submittedDefinitions)
+		protected function getPropertyDefinitionPermissionOperations(array $existingDefinitions, array $submittedDefinitions, array $inheritedDefinitions = [])
 		{
+			$existingIds = array_column($existingDefinitions, 'id');
+			foreach ($inheritedDefinitions as $definition) {
+				if (!in_array($definition['id'], $existingIds)) {
+					$definition['isInherited'] = true;
+					$definition['isLocal'] = false;
+					$existingDefinitions[] = $definition;
+				}
+			}
+			$submittedOrder = [];
+			foreach ($submittedDefinitions as $definition) {
+				if (!is_array($definition) || !in_array($definition['type'] ?? 'type1', Property::TYPES, true)) {
+					return ['INVALID_PROPERTY_TYPE'];
+				}
+				$id = (int)($definition['id'] ?? 0);
+				if ($id > 0) {
+					if (isset($submittedOrder[$id])) { return ['INVALID_PROPERTY_DEFINITION']; }
+					$submittedOrder[$id] = count($submittedOrder);
+				}
+			}
 			$existingById = array();
 			foreach (array_values($existingDefinitions) as $position => $definition) {
 				$propertyId = (int)($definition['id'] ?? 0);
 				if ($propertyId > 0) {
 					$existingById[$propertyId] = array(
 						'definition' => $definition,
-						'position' => $position,
+						'position' => count(array_intersect_key($existingById, $submittedOrder)),
 					);
 				}
 			}
 
 			$operations = array();
 			$submittedIds = array();
+			$retainedPosition = 0;
 			foreach (array_values($submittedDefinitions) as $position => $definition) {
 				if (!is_array($definition) || trim((string)($definition['name'] ?? '')) === '') {
 					continue;
@@ -9396,22 +9457,46 @@
 
 				$propertyId = (int)($definition['id'] ?? 0);
 				if ($propertyId <= 0 || !isset($existingById[$propertyId])) {
-					$operations['add'] = true;
+					if ($propertyId > 0) { return ['INVALID_PROPERTY_DEFINITION']; }
+					$operations[Property::permissionKey('CREATE', $definition['type'] ?? null)] = true;
 					continue;
 				}
 
 				$submittedIds[$propertyId] = true;
-				if (
-					$this->normalizePropertyDefinitionForPermission($existingById[$propertyId]['definition'], $existingById[$propertyId]['position'])
-					!== $this->normalizePropertyDefinitionForPermission($definition, $position)
-				) {
-					$operations['edit'] = true;
+				$previous = $existingById[$propertyId]['definition'];
+				// Older editors omit the internal name; omission preserves it.
+				$definition['shortname'] = $definition['shortname'] ?? ($previous['shortname'] ?? '');
+				if (!empty($previous['isInherited'])) {
+					$before = $this->normalizePropertyDefinitionForPermission($previous, 0);
+					$after = $this->normalizePropertyDefinitionForPermission($definition, 0);
+					foreach (['type', 'name', 'shortname', 'formatId', 'listItemType', 'listHolonTypeIds'] as $field) {
+						if ($before[$field] !== $after[$field]) { return ['INVALID_PROPERTY_DEFINITION']; }
+					}
 				}
+				if (!empty($previous['inheritedLocked']) && (string)($previous['value'] ?? '') !== (string)($definition['value'] ?? '')) {
+					return ['INVALID_PROPERTY_DEFINITION'];
+				}
+				$before = $this->normalizePropertyDefinitionForPermission($previous, $existingById[$propertyId]['position']);
+				$after = $this->normalizePropertyDefinitionForPermission($definition, $retainedPosition);
+				// Compare content in the original format: changing format is a structure operation.
+				$submittedContent = $this->normalizePropertyDefinitionForPermission(array_replace($definition, ['formatId' => $previous['formatId'] ?? 0]), 0);
+				if ($before['value'] !== $submittedContent['value']) {
+					$operations[Property::permissionKey('EDIT', $previous['type'] ?? null)] = true;
+				}
+				unset($before['value'], $after['value']);
+				if ($before !== $after) {
+					$operations[Property::permissionKey('CREATE', $previous['type'] ?? null)] = true;
+					if (Property::normalizeType($previous['type'] ?? null) !== Property::normalizeType($definition['type'] ?? null)) {
+						$operations[Property::permissionKey('CREATE', $definition['type'] ?? null)] = true;
+					}
+				}
+				$retainedPosition++;
 			}
 
 			foreach ($existingById as $propertyId => $existing) {
 				if (!isset($submittedIds[$propertyId])) {
-					$operations['delete'] = true;
+					if (!empty($existing['definition']['inheritedMandatory'])) { return ['INVALID_PROPERTY_DEFINITION']; }
+					$operations[Property::permissionKey('DELETE', $existing['definition']['type'] ?? null)] = true;
 				}
 			}
 
@@ -9442,33 +9527,28 @@
 			}));
 		}
 
-		protected function canApplyPropertyDefinitionChanges(\dbObject\Holon $permissionHolon, array $operations, $propertyScope)
+		protected function canUsePropertyPermission(Holon $context, string $permissionKey, int $collectiveHolonId = 0): bool
 		{
-			$propertyScope = strtoupper(trim((string)$propertyScope));
-			$operationLabels = array(
-				'ADD' => 'ajouter',
-				'EDIT' => 'modifier',
-				'DELETE' => 'supprimer',
-			);
-			foreach ($operations as $operation) {
-				$operation = strtoupper(trim((string)$operation));
-				if (!in_array($operation, array('ADD', 'EDIT', 'DELETE'), true)) {
-					continue;
-				}
+			return $collectiveHolonId === 0
+				? $context->isAllowed($permissionKey, false)
+				: ($collectiveHolonId > 0 && HolonPermission::holonHasCollectivePermissionForHolonContext((int)$this->getId(), $collectiveHolonId, $permissionKey, (int)$context->getId()));
+		}
 
-				$permissionKey = 'CAN_' . $operation . '_' . $propertyScope . '_PROPERTIES';
-				if (!$permissionHolon->isAllowed($permissionKey)) {
-					return array(
-						'status' => false,
-						'message' => "Vous n'avez pas les droits pour " . $operationLabels[$operation] . ' les proprietes de ' . strtolower($propertyScope) . '.',
-					);
+		protected function canApplyPropertyDefinitionChanges(\dbObject\Holon $permissionHolon, array $operations, $propertyScope, int $collectiveHolonId = 0)
+		{
+			foreach ($operations as $permissionKey) {
+				if (str_starts_with($permissionKey, 'INVALID_')) {
+					return ['status' => false, 'message' => 'Type ou definition de propriete invalide.'];
+				}
+				if (!$this->canUsePropertyPermission($permissionHolon, $permissionKey, $collectiveHolonId)) {
+					return ['status' => false, 'message' => 'Droit requis : ' . $permissionKey . '.'];
 				}
 			}
 
 			return array('status' => true);
 		}
 
-		protected function canEditSubmittedTemplatePropertyValues(\dbObject\Holon $holon, \dbObject\Holon $permissionHolon, array $submittedValuesByPropertyId, array $propertyDefinitions, $permissionKey = 'CAN_EDIT_HOLON')
+		protected function canEditSubmittedTemplatePropertyValues(\dbObject\Holon $holon, \dbObject\Holon $permissionHolon, array $submittedValuesByPropertyId, array $propertyDefinitions, $permissionKey = 'CAN_EDIT_HOLON', int $collectiveHolonId = 0)
 		{
 			$existingValuesByPropertyId = array();
 			if ((int)$holon->getId() > 0) {
@@ -9502,10 +9582,8 @@
 					);
 				}
 
-				// La modification soumise est une valeur locale de l instance,
-				// et non une modification de la definition du modele. Elle releve
-				// donc de l edition du holon, et non des proprietes ajoutees localement.
-				if ($permissionHolon->isAllowed($permissionKey, false)) {
+				// Les valeurs locales utilisent le type de la definition persistee.
+				if ($this->canUsePropertyPermission($permissionHolon, Property::permissionKey('EDIT', $definition['type'] ?? null), $collectiveHolonId)) {
 					continue;
 				}
 
@@ -9559,11 +9637,12 @@
 				'contextHolonName' => $holon->getDisplayName(),
 				'contextHolonLabel' => $holon->getTypeLabel(),
 				'editorMode' => 'holon-definition',
+				'canEditHolonFields' => $holon->isAllowed('CAN_EDIT_HOLON', false),
 				'targetHolonId' => (int)$holon->getId(),
 				'types' => array(),
 				'formats' => array(),
 				'listItemTypes' => \dbObject\Property::getTemplateListItemTypeOptions(),
-				'permissionCatalog' => $this->canManagePermissionAssignments() ? \dbObject\Permission::getEditorCatalog() : array(),
+				'permissionCatalog' => $this->canManagePermissionAssignments() ? $this->getPermissionEditorCatalog() : array(),
 				'permissionRanges' => $this->canManagePermissionAssignments() ? \dbObject\HolonPermission::getEditorRangeCatalog() : array(),
 				'templateCatalog' => array(),
 				'projectCatalog' => $this->getProjectListEditorCatalog($holon),
@@ -10470,7 +10549,7 @@
 			}
 		}
 
-		public function getHolonCreationEditorData($contextHolonId = 0, $holonId = 0, $collectiveGovernance = false)
+		public function getHolonCreationEditorData($contextHolonId = 0, $holonId = 0, $collectiveGovernance = false, int $collectiveHolonId = 0)
 		{
 			$rootHolon = $this->getStructuralRootHolon();
 			$holonId = (int)$holonId;
@@ -10507,10 +10586,11 @@
 				'types' => array(),
 				'formats' => array(),
 				'listItemTypes' => \dbObject\Property::getTemplateListItemTypeOptions(),
+				'propertyTypes' => Property::getTypeOptions($this->getLexicon(), $editingHolon ?: $contextHolon),
 				'canAddHolonProperties' => $editingHolon
-					? $editingHolon->isAllowed('CAN_ADD_HOLON_PROPERTIES')
-					: ($contextHolon ? $contextHolon->isAllowed('CAN_ADD_HOLON_PROPERTIES') : false),
-				'permissionCatalog' => $this->canManageHolonPermissionAssignments($isTemplateEditing) ? \dbObject\Permission::getEditorCatalog() : array(),
+					? Property::canCreateAnyType($editingHolon)
+					: ($contextHolon ? Property::canCreateAnyType($contextHolon) : false),
+				'permissionCatalog' => $this->canManageHolonPermissionAssignments($isTemplateEditing) ? $this->getPermissionEditorCatalog() : array(),
 				'permissionRanges' => $this->canManageHolonPermissionAssignments($isTemplateEditing) ? \dbObject\HolonPermission::getEditorRangeCatalog() : array(),
 				'templateCatalog' => array(),
 				'holonCatalog' => array(),
@@ -10529,12 +10609,11 @@
 			$data['canCreate'] = !$isTemplateEditing
 				&& ($collectiveGovernance || $contextHolon->isAllowed('CAN_ADD_HOLON'))
 				&& in_array((int)$contextHolon->get('IDtypeholon'), array(2, 3, 4), true);
+			$data['canEditHolonFields'] = !$editingHolon || $collectiveGovernance || $editingHolon->isAllowed('CAN_EDIT_HOLON', false);
 			$data['canEdit'] = $editingHolon
-				&& ($collectiveGovernance || $editingHolon->isAllowed('CAN_EDIT_HOLON'))
+				&& ($data['canEditHolonFields'] || Property::canActOnAnyType($editingHolon))
 				&& (!$isTemplateEditing || !$this->isDiscoveryMode())
 				&& in_array((int)$editingHolon->get('IDtypeholon'), array(1, 2, 3), true);
-			$canEditInheritedHolonPropertyValues = !$isTemplateEditing
-				&& ($data['canEdit'] || $data['canCreate']);
 
 			$templateContextPathRank = array_flip(array_map(static function ($pathHolon) {
 				return (int)$pathHolon->getId();
@@ -10594,9 +10673,9 @@
 					'definedInLabel' => $definitionHolonLabel,
 					'properties' => $isTemplateEditing
 						? $template->getTemplatePropertyDefinitions()
-						: array_map(static function (array $definition) use ($canEditInheritedHolonPropertyValues) {
+						: array_map(static function (array $definition) use ($editingHolon, $contextHolon) {
 							$definition['canEditValue'] = empty($definition['effectiveLocked'])
-								&& $canEditInheritedHolonPropertyValues;
+								&& ($editingHolon ?: $contextHolon)->isAllowed(Property::permissionKey('EDIT', $definition['type'] ?? null), false);
 							return $definition;
 						}, $template->getHolonCreationPropertyDefinitions()),
 				), $this->getHolonIllustrationData($template));
@@ -10681,6 +10760,33 @@
 						? $editingHolon->getTemplatePropertyDefinitions()
 						: $editingHolon->getHolonEditorPropertyDefinitions(),
 				), $this->getHolonIllustrationData($editingHolon));
+			}
+
+			if ($collectiveGovernance) {
+				$permissionContext = $editingHolon ?: $contextHolon;
+				$collectiveId = $collectiveHolonId > 0 ? $collectiveHolonId : -1;
+				foreach ($data['propertyTypes'] as &$type) {
+					foreach (['Create' => 'CREATE', 'Edit' => 'EDIT', 'Delete' => 'DELETE'] as $flag => $operation) {
+						$type['can' . $flag] = $this->canUsePropertyPermission($permissionContext, Property::permissionKey($operation, $type['id']), $collectiveId);
+					}
+				}
+				unset($type);
+				$data['canAddHolonProperties'] = in_array(true, array_column($data['propertyTypes'], 'canCreate'), true);
+				$permissions = array_column($data['propertyTypes'], null, 'id');
+				$applyPermissions = static function (array $definition) use ($permissions): array {
+					$permission = $permissions[Property::normalizeType($definition['type'] ?? null)];
+					$definition['canEditValue'] = empty($definition['effectiveLocked']) && $permission['canEdit'];
+					$definition['canEditDefinition'] = !empty($definition['isDirectProperty']) && $permission['canCreate'];
+					$definition['canDelete'] = !empty($definition['isDirectProperty']) && $permission['canDelete'];
+					return $definition;
+				};
+				foreach ($data['templateCatalog'] as &$templateEntry) {
+					$templateEntry['properties'] = array_map($applyPermissions, $templateEntry['properties']);
+				}
+				unset($templateEntry);
+				if ($data['holon']) {
+					$data['holon']['properties'] = array_map($applyPermissions, $data['holon']['properties']);
+				}
 			}
 
 			return $data;
@@ -11032,6 +11138,7 @@
 				$visibleValue = $this->buildHolonHistoryVisibleValue($definition);
 				$properties[$propertyId] = array(
 					'id' => $propertyId,
+					'type' => Property::normalizeType($definition['type'] ?? null),
 					'name' => trim((string)($definition['name'] ?? ('Propriete ' . $propertyId))),
 					'shortname' => trim((string)($definition['shortname'] ?? '')),
 					'formatId' => $formatId,
@@ -11901,6 +12008,16 @@
 					continue;
 				}
 
+				if (($beforeProperty['type'] ?? 'type1') !== ($afterProperty['type'] ?? 'type1')) {
+					$messages[] = 'le type de la propriete ' . $propertyToken . ' a ete modifie';
+					$changes[] = [
+						'type' => 'property_type_changed',
+						'propertyId' => (int)$propertyId,
+						'before' => $beforeProperty['type'] ?? 'type1',
+						'after' => $afterProperty['type'] ?? 'type1',
+					];
+				}
+
 				if (\dbObject\PropertyFormat::isListFormat($formatId)) {
 					if ($formatId === \dbObject\PropertyFormat::FORMAT_HTML_LIST) {
 						$beforeParts = \dbObject\PropertyFormat::getHtmlListParts((string)($beforeProperty['visibleValue'] ?? ''));
@@ -12764,8 +12881,9 @@
 			return array('status' => true);
 		}
 
-		public function saveHolonEditorDefinition(array $payload, $userId = 0, $contextHolonId = 0, $holonId = 0, $collectiveGovernance = false)
+		public function saveHolonEditorDefinition(array $payload, $userId = 0, $contextHolonId = 0, $holonId = 0, $collectiveGovernance = false, int $collectiveHolonId = 0)
 		{
+			$propertyCollectiveId = $collectiveGovernance ? ($collectiveHolonId > 0 ? $collectiveHolonId : -1) : 0;
 			$rootHolon = $this->getStructuralRootHolon();
 			$holonId = (int)$holonId;
 			$isEditing = $holonId > 0;
@@ -12773,6 +12891,7 @@
 			$holon = null;
 			$contextHolon = null;
 			$historyBeforeSnapshot = null;
+			$propertiesOnly = false;
 
 			if ($isEditing) {
 				$holon = new \dbObject\Holon();
@@ -12795,14 +12914,15 @@
 					);
 				}
 
-				if (!$collectiveGovernance && !$isTemplateEditing && !$holon->isAllowed('CAN_EDIT_HOLON')) {
+				$propertiesOnly = !$collectiveGovernance && !$holon->isAllowed('CAN_EDIT_HOLON', false);
+				if ($propertiesOnly && !Property::canActOnAnyType($holon)) {
 					return array(
 						'status' => false,
 'message' => "Vous n’avez pas les droits pour modifier cet espace.",
 					);
 				}
 
-				if (!$collectiveGovernance && $isTemplateEditing && !$holon->canEdit()) {
+				if (!$collectiveGovernance && !$propertiesOnly && $isTemplateEditing && !$holon->canEdit()) {
 					return array(
 						'status' => false,
 						'message' => "Vous n'avez pas les droits pour modifier ce holon.",
@@ -12839,7 +12959,7 @@
 			if ($contextHolon) {
 				$canSaveInContext = $collectiveGovernance
 					|| ($isEditing
-						? (!$isTemplateEditing || $contextHolon->canEdit())
+						? ($propertiesOnly || !$isTemplateEditing || $contextHolon->canEdit())
 						: $contextHolon->isAllowed('CAN_ADD_HOLON'));
 			}
 			if (!$canSaveInContext) {
@@ -12849,6 +12969,22 @@
 						? "Vous n'avez pas les droits pour modifier ce holon."
 						: "Vous n'avez pas les droits pour creer un holon ici.",
 				);
+			}
+
+			if ($propertiesOnly) {
+				// Only properties are accepted in this mode; all holon data comes from storage.
+				$payload = [
+					'properties' => is_array($payload['properties'] ?? null) ? $payload['properties'] : [],
+					'templateId' => (int)$holon->get('IDholon_template'),
+					'name' => $holon->getDisplayName(),
+					'fullName' => (string)$holon->get('nomcomplet'),
+					'adminMin' => $holon->get('admin_min'),
+					'adminMax' => $holon->get('admin_max'),
+					'adminMinOverride' => (bool)$holon->get('adminminoverride'),
+					'adminMaxOverride' => (bool)$holon->get('adminmaxoverride'),
+					'lockedAdminMin' => (bool)$holon->get('lockedadminmin'),
+					'lockedAdminMax' => (bool)$holon->get('lockedadminmax'),
+				];
 			}
 
 			$name = trim((string)($payload['name'] ?? ''));
@@ -13057,6 +13193,10 @@
 				);
 			}
 
+			if ($isTemplateEditing) {
+				$result = $this->canApplyPropertyDefinitionChanges($holon, $this->getPropertyDefinitionPermissionOperations($holon->getTemplatePropertyDefinitions(), $templateDefinitions, $template ? $template->getHolonCreationPropertyDefinitions() : []), 'TEMPLATE', $propertyCollectiveId);
+				if (empty($result['status'])) { return $result; }
+			}
 			$submittedDirectDefinitions = array();
 			if (!$isTemplateEditing) {
 				$submittedDirectDefinitions = $this->getSubmittedDirectHolonPropertyDefinitions(
@@ -13069,10 +13209,10 @@
 					}))
 					: array();
 				$propertyPermissionHolon = $holon ?: $contextHolon;
-				$propertyPermissionResult = $collectiveGovernance ? array('status' => true) : $this->canApplyPropertyDefinitionChanges(
+				$propertyPermissionResult = $this->canApplyPropertyDefinitionChanges(
 					$propertyPermissionHolon,
 					$this->getPropertyDefinitionPermissionOperations($existingDirectDefinitions, $submittedDirectDefinitions),
-					'HOLON'
+					'HOLON', $propertyCollectiveId
 				);
 				if (empty($propertyPermissionResult['status'])) {
 					return $propertyPermissionResult;
@@ -13087,12 +13227,12 @@
 			}
 
 			if (!$isTemplateEditing && $template instanceof \dbObject\Holon) {
-				$templatePropertyPermissionResult = $collectiveGovernance ? array('status' => true) : $this->canEditSubmittedTemplatePropertyValues(
+				$templatePropertyPermissionResult = $this->canEditSubmittedTemplatePropertyValues(
 					$holon ?: new \dbObject\Holon(),
 					$holon ?: $contextHolon,
 					$submittedValuesByPropertyId,
 					$templateDefinitions,
-					$isEditing ? 'CAN_EDIT_HOLON' : 'CAN_ADD_HOLON'
+					$isEditing ? 'CAN_EDIT_HOLON' : 'CAN_ADD_HOLON', $propertyCollectiveId
 				);
 				if (empty($templatePropertyPermissionResult['status'])) {
 					return $templatePropertyPermissionResult;
@@ -13103,43 +13243,46 @@
 				$holon = new \dbObject\Holon();
 			}
 
-			$holon->set('name', $name);
-			$holon->set('nomcomplet', $fullName !== '' ? $fullName : null);
-			$holon->set('templatename', $isTemplateEditing ? $name : null);
-			$holon->set('IDtypeholon', $typeId);
-			$holon->set('IDholon_parent', (int)$contextHolon->getId());
-			$holon->set('IDholon_template', $templateId > 0 ? $templateId : null);
-			$holon->set('IDholon_org', (int)$rootHolon->getId());
-			$holon->set('IDorganization', null);
-			$holon->set('IDuser', (int)$userId > 0 ? (int)$userId : (int)($holon->get('IDuser') ?: ($template ? $template->get('IDuser') : 0)));
-			$holon->set('active', true);
-			$holon->set('visible', $isTemplateEditing ? !empty($payload['visible']) : true);
-			$holon->set('mandatory', $isTemplateEditing ? !empty($payload['mandatory']) : false);
-			$holon->set('lockedname', $isTemplateEditing ? !empty($payload['lockedName']) : false);
-			$holon->set('lockedicon', $isTemplateEditing ? !empty($payload['lockedIcon']) : false);
-			$holon->set('unique', $isTemplateEditing ? !empty($payload['unique']) : false);
-			$holon->set('link', $isTemplateEditing ? !empty($payload['link']) : false);
-			$holon->set(
-				'adminparent',
-				$isTemplateEditing
-				&& $typeId === 1
-				&& (array_key_exists('adminParent', $payload) ? !empty($payload['adminParent']) : (bool)$holon->get('adminparent'))
-			);
-			$holon->set('admin_min', $isTemplateEditing || $adminMinOverride ? $submittedAdminMin : $effectiveAdminMin);
-			$holon->set('admin_max', $isTemplateEditing || $adminMaxOverride ? $submittedAdminMax : $effectiveAdminMax);
-			$holon->set('lockedadminmin', $lockedAdminMin);
-			$holon->set('lockedadminmax', $lockedAdminMax);
-			$holon->set('adminminoverride', $adminMinOverride);
-			$holon->set('adminmaxoverride', $adminMaxOverride);
-			$color = trim((string)($payload['color'] ?? ''));
-			$holon->set('color', $color !== '' ? $color : null);
-			$holon->set(
-				'icon',
-				(!$isTemplateEditing && $template && $template->getEffectiveTemplateBooleanField('lockedicon'))
-					? null
-					: ($iconValue !== '' ? $iconValue : null)
-			);
-			$holon->save();
+			if (!$propertiesOnly) {
+				$holon->set('name', $name);
+				$holon->set('nomcomplet', $fullName !== '' ? $fullName : null);
+				$holon->set('templatename', $isTemplateEditing ? $name : null);
+				$holon->set('IDtypeholon', $typeId);
+				$holon->set('IDholon_parent', (int)$contextHolon->getId());
+				$holon->set('IDholon_template', $templateId > 0 ? $templateId : null);
+				$holon->set('IDholon_org', (int)$rootHolon->getId());
+				$holon->set('IDorganization', null);
+				$holon->set('IDuser', (int)$userId > 0 ? (int)$userId : (int)($holon->get('IDuser') ?: ($template ? $template->get('IDuser') : 0)));
+				$holon->set('active', true);
+				$holon->set('visible', $isTemplateEditing ? !empty($payload['visible']) : true);
+				$holon->set('mandatory', $isTemplateEditing ? !empty($payload['mandatory']) : false);
+				$holon->set('lockedname', $isTemplateEditing ? !empty($payload['lockedName']) : false);
+				$holon->set('lockedicon', $isTemplateEditing ? !empty($payload['lockedIcon']) : false);
+				$holon->set('unique', $isTemplateEditing ? !empty($payload['unique']) : false);
+				$holon->set('link', $isTemplateEditing ? !empty($payload['link']) : false);
+				$holon->set(
+					'adminparent',
+					$isTemplateEditing
+					&& $typeId === 1
+					&& (array_key_exists('adminParent', $payload) ? !empty($payload['adminParent']) : (bool)$holon->get('adminparent'))
+				);
+				$holon->set('admin_min', $isTemplateEditing || $adminMinOverride ? $submittedAdminMin : $effectiveAdminMin);
+				$holon->set('admin_max', $isTemplateEditing || $adminMaxOverride ? $submittedAdminMax : $effectiveAdminMax);
+				$holon->set('lockedadminmin', $lockedAdminMin);
+				$holon->set('lockedadminmax', $lockedAdminMax);
+				$holon->set('adminminoverride', $adminMinOverride);
+				$holon->set('adminmaxoverride', $adminMaxOverride);
+				$color = trim((string)($payload['color'] ?? ''));
+				$holon->set('color', $color !== '' ? $color : null);
+				$holon->set(
+					'icon',
+					(!$isTemplateEditing && $template && $template->getEffectiveTemplateBooleanField('lockedicon'))
+						? null
+						: ($iconValue !== '' ? $iconValue : null)
+				);
+				$holon->save();
+
+			}
 
 			if ((int)$holon->getId() <= 0) {
 				return array(
@@ -13185,9 +13328,9 @@
 				}
 
 				$holon->syncEditorPropertyValues($submittedValuesByPropertyId, $templateDefinitions);
-				if ($this->canManageHolonPermissionAssignments(false) && !\dbObject\HolonPermission::syncAssignmentsForHolon(
+				if (!$propertiesOnly && $this->canManageHolonPermissionAssignments(false) && !$this->syncEditorPermissionAssignments(
 					(int)$holon->getId(),
-					is_array($payload['permissions'] ?? null) ? $payload['permissions'] : array()
+					$payload
 				)) {
 					return array(
 						'status' => false,
@@ -13546,18 +13689,7 @@
 				$submittedProperties,
 				$this->getRemovedPropertyDefinitionIds($payload)
 			);
-			$propertyPermissionHolon = $template->getId() > 0 ? $template : $contextHolon;
-			$propertyPermissionResult = $this->canApplyPropertyDefinitionChanges(
-				$propertyPermissionHolon,
-				$this->getPropertyDefinitionPermissionOperations(
-					$template->getId() > 0 ? $template->getTemplatePropertyDefinitions() : array(),
-					$submittedProperties
-				),
-				'TEMPLATE'
-			);
-			if (empty($propertyPermissionResult['status'])) {
-				return $propertyPermissionResult;
-			}
+
 
 			if ($template->getId() > 0) {
 				$historyBeforeSnapshot = $this->buildHolonHistorySnapshot($template, array(
@@ -13605,6 +13737,20 @@
 						$guard += 1;
 					}
 				}
+			}
+
+			$propertyPermissionHolon = $template->getId() > 0 ? $template : $contextHolon;
+			$propertyPermissionResult = $this->canApplyPropertyDefinitionChanges(
+				$propertyPermissionHolon,
+				$this->getPropertyDefinitionPermissionOperations(
+					$template->getId() > 0 ? $template->getTemplatePropertyDefinitions() : array(),
+					$submittedProperties,
+					$inheritsTemplate ? $inheritsTemplate->getHolonCreationPropertyDefinitions() : []
+				),
+				'TEMPLATE'
+			);
+			if (empty($propertyPermissionResult['status'])) {
+				return $propertyPermissionResult;
 			}
 
 			if ($inheritsTemplate && (int)$inheritsTemplate->get('IDtypeholon') > 0) {
@@ -13746,9 +13892,9 @@
 			$this->normalizeTemplateLocalAuthorities($template);
 			$this->syncTemplateAuthorityInstances($template);
 
-			if (!\dbObject\HolonPermission::syncAssignmentsForHolon(
+			if (!$this->syncEditorPermissionAssignments(
 				(int)$template->getId(),
-				is_array($payload['permissions'] ?? null) ? $payload['permissions'] : array()
+				$payload
 			)) {
 				return array(
 					'status' => false,
@@ -13880,7 +14026,8 @@
 				);
 			}
 
-			if (!$holon->canEdit()) {
+			$propertiesOnly = !$holon->isAllowed('CAN_EDIT_HOLON', false);
+			if ((!$propertiesOnly && !$holon->canEdit()) || ($propertiesOnly && !Property::canActOnAnyType($holon))) {
 				return array(
 					'status' => false,
 					'message' => "Vous n'avez pas les droits pour modifier cette organisation.",
@@ -13935,24 +14082,27 @@
 				return $propertyPermissionResult;
 			}
 
-			$holon->set('name', $name);
-			$holon->set('color', $color !== '' ? $color : null);
-			$holon->save();
+			if (!$propertiesOnly) {
+				$holon->set('name', $name);
+				$holon->set('color', $color !== '' ? $color : null);
+				$holon->save();
 
-			if ((int)$holon->getId() <= 0) {
-				return array(
-					'status' => false,
-					'message' => "L'organisation n'a pas pu etre enregistree.",
-				);
-			}
-
-			$organizationId = (int)$holon->get('IDorganization');
-			if ($organizationId > 0) {
-				$linkedOrganization = new self();
-				if ($linkedOrganization->load($organizationId)) {
-					$linkedOrganization->set('name', $name);
-					$linkedOrganization->save();
+				if ((int)$holon->getId() <= 0) {
+					return array(
+						'status' => false,
+						'message' => "L'organisation n'a pas pu etre enregistree.",
+					);
 				}
+
+				$organizationId = (int)$holon->get('IDorganization');
+				if ($organizationId > 0) {
+					$linkedOrganization = new self();
+					if ($linkedOrganization->load($organizationId)) {
+						$linkedOrganization->set('name', $name);
+						$linkedOrganization->save();
+					}
+				}
+
 			}
 
 			$submittedValuesByPropertyId = array();
@@ -14022,10 +14172,10 @@
 				$holon->syncEditorPropertyValues($postSyncSubmittedValues, $persistedDefinitions);
 			}
 
-			if ($this->canManagePermissionAssignments()) {
-				if (!\dbObject\HolonPermission::syncAssignmentsForHolon(
+			if (!$propertiesOnly && $this->canManagePermissionAssignments()) {
+				if (!$this->syncEditorPermissionAssignments(
 					(int)$holon->getId(),
-					is_array($payload['permissions'] ?? null) ? $payload['permissions'] : array()
+					$payload
 				)) {
 					return array(
 						'status' => false,
@@ -14049,10 +14199,10 @@
 			);
 		}
 
-		public function getApplications($userId = null)
+		public function getApplications($userId = null, bool $ignoreLoginRequirement = false)
 		{
 			$applications = new \dbObject\ArrayApplication();
-			$applications->loadEnabledForOrganization((int)$this->getId(), $userId !== null ? (int)$userId : 0);
+			$applications->loadEnabledForOrganization((int)$this->getId(), $userId !== null ? (int)$userId : 0, $ignoreLoginRequirement);
 			return $applications;
 		}
 
@@ -14134,11 +14284,11 @@
 			return $this->getStructuralRootHolon();
 		}
 
-		public function getEnabledApplicationHashes($userId = null)
+		public function getEnabledApplicationHashes($userId = null, bool $ignoreLoginRequirement = false)
 		{
 			$hashes = array();
 
-			foreach ($this->getApplications($userId) as $application) {
+			foreach ($this->getApplications($userId, $ignoreLoginRequirement) as $application) {
 				if (!($application instanceof \dbObject\Application)) {
 					continue;
 				}

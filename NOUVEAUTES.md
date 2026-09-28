@@ -1,5 +1,39 @@
 # Journal Des Nouveautes
 
+- Parcours : droit explicite Supprimer un parcours, distinct de Creer, applique au menu et aux endpoints. Un parcours encore utilise (organisations, packs, progressions ou prerequis) est retire du partage et conserve en lecture seule pour les utilisateurs existants ; les nouveaux imports et acces sont bloques. Suppression definitive uniquement sans usage. Migration ajoutee.
+
+- Connexion : champs de code completes pour la saisie automatique (one-time-code, nom, libelle accessible, corrections desactivees). Le mail affiche le code dans son objet et fournit une version texte brut avec un code clairement identifie, pour faciliter sa detection par les messageries compatibles.
+
+- Droits : les editeurs masquent les droits des applications desactivees (y compris holons et proprietes sans Structure). Les droits masques restent intacts en base lors des sauvegardes et reapparaissent a la reactivation. Organisation et Aide restent visibles.
+
+- Droits : dans chaque categorie, les actions sont regroupees par objet puis ordonnees Creer, Modifier, Supprimer (FAQ puis Parcours, proprietes type1 puis type2 puis type3).
+
+- Droits : groupes reordonnes dans les editeurs de holons et de modeles selon l ordre Organisation, Holons, Proprietes, Membres, Calendrier, Reglement, Documents et PV, Projets, Indicateurs, Taches recurrentes, Processus, Decisions, Budget et Aide. Aide regroupe FAQ et Parcours ; une migration retablit les deux droits Parcours s ils sont absents.
+
+- Holons : boutons d'ajout des valeurs, autorites, projets et proprietes dans la couleur principale, alignes a gauche et sans etirement sur toute la largeur.
+
+- Holons : fond de l'editeur aligne sur la surface blanche des autres formulaires, avec adaptation au theme sombre.
+
+- Modeles de holon : les retours a la ligne du message de confirmation de suppression s affichent correctement.
+
+- Holons : le menu Modifier et les editeurs sont accessibles avec un droit de creation, modification ou suppression de proprietes, y compris sur le holon racine. Sans CAN_EDIT_HOLON, le nom et le nom complet restent visibles avec un cadenas, et seules les proprietes sont modifiables ; les autres caracteristiques et les droits du holon sont preserves cote serveur.
+
+- Modeles de holon : confirmation avant de perdre des modifications en changeant de modele, en ouvrant un nouveau modele ou en quittant l editeur (navigation, fermeture du panneau, rechargement ou fermeture de la page). Annuler conserve la saisie.
+
+- Proprietes : le droit Creer couvre la creation et la structure (nom, format, type, configuration) ; Modifier couvre uniquement les valeurs. Separation appliquee dans les editeurs, les sauvegardes et les decisions collectives. Le changement de type exige Creer sur les deux types.
+
+- Holons : un petit cadenas a cote du nom des proprietes non modifiables remplace le message permanent ; le motif reste disponible au survol.
+
+- Partage de structure : retrait de la mini-navigation en bas a gauche et de sa barre de redimensionnement dans la vue de partage.
+
+- Structure : la capacite de la pile des membres est recalculee pendant le redimensionnement du panneau gauche. Sur un ordinateur tactile, reduire la largeur replie maintenant la liste lorsqu'elle ne tient plus sur une ligne.
+
+- Partage de structure : correction du rechargement en boucle sans connexion. Les liens publics ne lancent plus la maintenance reservee aux sessions connectees.
+
+- Structure : les membres ordinaires restent cote a cote lorsqu'ils tiennent avec le bouton d'ajout sur une ligne. La pile et son depliage au survol ou au toucher ne s'activent que si la largeur manque ; la limite de trois lignes et le bouton "..." restent en place.
+
+- Proprietes : ajout des types type1, type2 et type3, avec libelles personnalisables dans le lexique et droits contextuels de creation, modification et suppression par type. Les editeurs filtrent les choix autorises et le serveur controle aussi les valeurs heritees et les changements de type. Les proprietes existantes passent en type1 ; les nouveaux droits doivent etre attribues explicitement.
+
 - Regles : correction des rechargements en boucle au passage au tri alphabetique ou au regroupement par holon lorsqu une autre vue est enregistree. Les filtres sont transmis explicitement au serveur, y compris leurs valeurs par defaut.
 
 - Recherche : nettoyage des retours a la ligne encodes (comme &#13;) dans les resumes et apercus, y compris les anciennes recherches memorisees. Les paragraphes sont conserves et les lignes vides repetitives sont reduites.

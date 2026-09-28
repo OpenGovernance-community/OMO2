@@ -74,6 +74,7 @@ if ($isEditMode) {
 
 $data = $_POST;
 $parcours->loadFromArray($data);
+$parcours->set('isarchived', false); // Retirement is handled only by the deletion action.
 
 if (!\dbObject\Parcours::hasApplicationColumn()) {
     $parcours->set('IDapplication', null);

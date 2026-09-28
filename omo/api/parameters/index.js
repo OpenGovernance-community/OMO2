@@ -58,6 +58,10 @@ document.querySelectorAll('.omo-settings').forEach(function (root) {
             return;
         }
 
+        if (typeof window.omoConfirmDiscardChanges === 'function' && !window.omoConfirmDiscardChanges(nestedDrawer)) {
+            return;
+        }
+
         nestedDrawer.classList.remove('is-open');
         window.setTimeout(function () {
             if (!nestedDrawer.classList.contains('is-open')) {
@@ -73,6 +77,10 @@ document.querySelectorAll('.omo-settings').forEach(function (root) {
 
     function openNestedDrawer(title, url, mode, description) {
         if (!url) {
+            return;
+        }
+
+        if (nestedDrawer && typeof window.omoConfirmDiscardChanges === 'function' && !window.omoConfirmDiscardChanges(nestedDrawer)) {
             return;
         }
 

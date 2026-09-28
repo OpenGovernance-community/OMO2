@@ -9,6 +9,10 @@ function omoLexiconSourceLang(): array
     }
 
     $sourceLang = array(
+        'parameters.lexicon.term.type1.label' => ['text' => 'Type 1', 'context' => 'Property type name in the organization lexicon'],
+        'parameters.lexicon.term.type2.label' => ['text' => 'Type 2', 'context' => 'Property type name in the organization lexicon'],
+        'parameters.lexicon.term.type3.label' => ['text' => 'Type 3', 'context' => 'Property type name in the organization lexicon'],
+        'parameters.lexicon.section.properties' => ['text' => 'Types de proprietes', 'context' => 'Property types section in the organization lexicon'],
         'parameters.lexicon.title' => array(
             'text' => 'Lexique de l’organisation',
             'context' => 'Title of the organization lexicon editor.',
