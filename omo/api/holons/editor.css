@@ -2,7 +2,7 @@
     display: block;
 }
 
-.omo-holon-create--governance-capture {
+.omo-holon-create.omo-panel-view {
     background: var(--color-surface, #ffffff);
 }
 
@@ -336,6 +336,11 @@
 .omo-holon-create__property-name {
     font-weight: 700;
     line-height: 1.35;
+}
+
+.omo-holon-create__property-lock {
+    margin-left: 6px;
+    vertical-align: -1px;
 }
 
 .omo-holon-create__property-toggle {

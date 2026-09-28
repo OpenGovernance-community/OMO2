@@ -1713,6 +1713,9 @@ function commonCurrentUserHasPermission($permissionKey, $contextHolon = null, $o
 
     $permissionSet = commonGetCurrentUserOrganizationPermissionSet($organizationId, $forceRefresh);
     if (empty($permissionSet['definedPermissionKeys'][$permissionKey])) {
+        if (\dbObject\Permission::requiresExplicitAssignment($permissionKey)) {
+            return false;
+        }
         // An unconfigured permission is open to organization members.
         return commonUserHasOrganizationMembership($currentUserId, $organizationId);
     }
@@ -2627,7 +2630,16 @@ function commonSendLoginCode($userId, $email, array $organizationContext, $remem
     $querySeparator = strpos($verifyPath, '?') === false ? '?' : '&';
     $link = commonGetRequestScheme() . "://" . ($_SERVER['HTTP_HOST'] ?? '') . $verifyPath . $querySeparator . "token=" . urlencode($requestToken) . "&code=" . urlencode($loginCode) . "&return_to=" . urlencode($returnTo);
 
-    $subject = commonAuthT('auth.email.subject', [], $lang, $sourceLang);
+    $codeLabel = commonAuthT('auth.email.subject', [], $lang, $sourceLang);
+    $subject = $codeLabel . ' : ' . $loginCode;
+    // Keep the code contiguous and explicitly labelled in both MIME alternatives.
+    $plainTextMessage = $codeLabel . ' : ' . $loginCode . "\n\n"
+        . ($organizationContext['name'] ?: ($_SERVER['HTTP_HOST'] ?? 'Organisation')) . "\n\n"
+        . commonAuthT('auth.email.body.enter_code', [], $lang, $sourceLang) . "\n"
+        . commonAuthT('auth.email.body.validity_notice', [], $lang, $sourceLang) . "\n\n"
+        . commonAuthT('auth.email.body.open_link', [], $lang, $sourceLang) . "\n"
+        . $link . "\n\n"
+        . commonAuthT('auth.email.body.network_notice', [], $lang, $sourceLang);
     $orgName = htmlspecialchars($organizationContext['name'] ?: ($_SERVER['HTTP_HOST'] ?? 'Organisation'));
     $color = htmlspecialchars(commonGetOrganizationAccentColor($organizationContext, '#004663'));
     $logo = commonBuildAbsoluteAssetUrl($organizationContext['logo'] ?? '');
@@ -2679,9 +2691,6 @@ function commonSendLoginCode($userId, $email, array $organizationContext, $remem
 </html>
 ";
 
-    $headers = "MIME-Version: 1.0\r\n";
-    $headers .= "Content-type:text/html;charset=UTF-8\r\n";
-
     $fromAddress = trim((string)($GLOBALS['mailUser'] ?? ''));
     if ($fromAddress === '') {
         $host = preg_replace('/:\d+$/', '', commonGetRootHost() ?: 'localhost');
@@ -2692,7 +2701,7 @@ function commonSendLoginCode($userId, $email, array $organizationContext, $remem
 
     commonStorePendingLoginToken($requestToken);
 
-    if (!myHTMLMail([$fromAddress, $fromName], $email, $subject, $message)) {
+    if (!myHTMLMail([$fromAddress, $fromName], $email, $subject, $message, plainTextBody: $plainTextMessage)) {
         $response = [
             'request_token' => $requestToken,
             'return_to' => $returnTo,
@@ -3675,7 +3684,7 @@ function commonRenderMagicLoginPage(array $options = [])
 
             <div id="authCodeBox" class="auth-code-box" style="display:none;">
                 <p><?= htmlspecialchars(commonAuthT('auth.code.instructions', [], $lang, $sourceLang)) ?></p>
-                <input type="text" id="authCodeInput" inputmode="text" autocomplete="one-time-code" maxlength="6" placeholder="<?= htmlspecialchars(commonAuthT('auth.code.placeholder', [], $lang, $sourceLang)) ?>">
+                <input type="text" id="authCodeInput" name="code" inputmode="text" autocomplete="one-time-code" autocapitalize="characters" autocorrect="off" spellcheck="false" maxlength="6" aria-label="<?= htmlspecialchars(commonAuthT('auth.code.placeholder', [], $lang, $sourceLang)) ?>" placeholder="<?= htmlspecialchars(commonAuthT('auth.code.placeholder', [], $lang, $sourceLang)) ?>">
                 <button type="button" id="authCodeSubmit"><?= htmlspecialchars(commonAuthT('auth.button.validate_code', [], $lang, $sourceLang)) ?></button>
             </div>
             <div id="authTotpBox" class="auth-code-box" style="display:none;">

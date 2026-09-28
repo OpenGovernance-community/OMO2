@@ -32,7 +32,7 @@ if (!$organization->canEdit()) {
     exit;
 }
 
-$organization->setLexicon(array(
+$submittedLexicon = array(
 	'space' => array(
 		'label' => (string)($_POST['space_label'] ?? ''),
 	),
@@ -52,7 +52,11 @@ $organization->setLexicon(array(
     'admin' => array(
         'label' => (string)($_POST['admin_label'] ?? ''),
     ),
-));
+);
+foreach (\dbObject\Property::TYPES as $type) {
+    $submittedLexicon[$type] = ['label' => (string)($_POST[$type . '_label'] ?? '')];
+}
+$organization->setLexicon($submittedLexicon);
 
 $saveResult = $organization->save();
 if (empty($saveResult['status'])) {

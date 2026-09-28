@@ -3,7 +3,7 @@ namespace dbObject;
 
 class HolonPermission extends DbObject
 {
-    const PERMISSION_CACHE_VERSION = 24;
+    const PERMISSION_CACHE_VERSION = 26;
     const MEMBER_TYPE_MEMBER = 'member';
     const MEMBER_TYPE_ADMIN = 'admin';
     const MEMBER_TYPE_COLLECTIVE = 'collective';
@@ -275,13 +275,15 @@ class HolonPermission extends DbObject
         return $normalizedRanges;
     }
 
-    public static function syncAssignmentsForHolon($holonId, array $assignmentsByPermissionKey, $memberType = null)
+    public static function syncAssignmentsForHolon($holonId, array $assignmentsByPermissionKey, $memberType = null, ?array $editablePermissionKeys = null)
     {
         $holonId = (int)$holonId;
         if ($holonId <= 0) {
             return false;
         }
 
+        // Editors can submit only the displayed rights; imports still sync the full set.
+        $editableKeys = $editablePermissionKeys === null ? null : array_fill_keys($editablePermissionKeys, true);
         $profileMap = $memberType === null
             && (count($assignmentsByPermissionKey) === 0
                 || array_key_exists(self::MEMBER_TYPE_MEMBER, $assignmentsByPermissionKey)
@@ -297,7 +299,7 @@ class HolonPermission extends DbObject
                 : $assignmentsByPermissionKey;
             foreach ($sourceAssignments as $permissionKey => $ranges) {
                 $permissionKey = trim((string)$permissionKey);
-                if ($permissionKey === '') {
+                if ($permissionKey === '' || ($editableKeys !== null && !isset($editableKeys[$permissionKey]))) {
                     continue;
                 }
 
@@ -324,7 +326,7 @@ class HolonPermission extends DbObject
         if (is_array($existingRows)) {
             foreach ($existingRows as $row) {
                 $permissionKey = trim((string)($row['permission_key'] ?? ''));
-                if ($permissionKey === '') {
+                if ($permissionKey === '' || ($editableKeys !== null && !isset($editableKeys[$permissionKey]))) {
                     continue;
                 }
 
@@ -1645,6 +1647,9 @@ class HolonPermission extends DbObject
 
         $permissionSet = self::buildUserPermissionSetForOrganization($userId, $organizationId, [$permissionKey]);
         if (empty($permissionSet['definedPermissionKeys'][$permissionKey])) {
+            if (Permission::requiresExplicitAssignment($permissionKey)) {
+                return false;
+            }
             // An unconfigured permission is open to organization members.
             return self::hasActiveUserOrganizationMembership($userId, $organizationId);
         }

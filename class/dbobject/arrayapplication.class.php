@@ -53,7 +53,7 @@
 			}
 		}
 
-		public function loadEnabledForOrganization($organizationId, $userId = 0) {
+		public function loadEnabledForOrganization($organizationId, $userId = 0, bool $ignoreLoginRequirement = false) {
 			$organizationId = (int)$organizationId;
 			$userId = (int)$userId;
 
@@ -71,13 +71,14 @@
 				  AND oa.active = 1
 				  AND a.active = 1
 				  AND a.navigationmode <> 'panel'
-				  AND (a.requires_login = 0 OR :user_id > 0)
+				  AND (a.requires_login = 0 OR :user_id > 0 OR :ignore_login_requirement = 1)
 				ORDER BY COALESCE(oa.position, a.position, 999999) ASC, a.label ASC
 			";
 
 			$rows = \dbObject\DbObject::fetchAll($query, [
 				'organization_id' => $organizationId,
 				'user_id' => $userId,
+				'ignore_login_requirement' => $ignoreLoginRequirement ? 1 : 0,
 			]);
 
 			if ($rows === false) {

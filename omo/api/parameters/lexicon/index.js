@@ -14,15 +14,12 @@ window.commonPageScripts["/omo/api/parameters/lexicon/index.js"] = function (pag
     var feedback = root.querySelector('[data-omo-lexicon-feedback]');
     var saveButton = root.querySelector('[data-omo-lexicon-save]');
     var resetButton = root.querySelector('[data-omo-lexicon-reset]');
-    var defaultValues = {
-        space_label: 'Espace',
-        circle_label: 'Cercle',
-        role_label: 'Rôle',
-        group_label: 'Groupe',
-        tension_label: 'Tension',
-        tension_article: 'une',
-        admin_label: 'Admin'
-    };
+    var defaultValues = {};
+    Object.keys(pageConfig.defaults || {}).forEach(function (term) {
+        Object.keys(pageConfig.defaults[term]).forEach(function (field) {
+            defaultValues[term + '_' + field] = pageConfig.defaults[term][field];
+        });
+    });
 
     function setFeedback(message, kind) {
         if (!feedback) {

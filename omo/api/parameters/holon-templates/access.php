@@ -21,9 +21,21 @@ function omoHolonTemplateDiscoveryModeAccess(\dbObject\Organization $organizatio
     ];
 }
 
-function omoHolonTemplateAdminModeAccess($organizationId)
+function omoHolonTemplateAdminModeAccess($organizationId, $propertyHolonId = 0)
 {
     $organizationId = (int)$organizationId;
+    // The organization holon also hosts properties editable outside admin mode.
+    if ((int)$propertyHolonId > 0) {
+        $organization = new \dbObject\Organization();
+        if ($organization->load($organizationId)) {
+            $root = $organization->getStructuralRootHolon();
+            if ($root && (int)$root->getId() === (int)$propertyHolonId
+                && !$root->isAllowed('CAN_EDIT_HOLON', false)
+                && \dbObject\Property::canActOnAnyType($root)) {
+                return ['status' => true];
+            }
+        }
+    }
     if (commonCurrentUserIsSiteAdminModeEnabled()) {
         return ['status' => true];
     }

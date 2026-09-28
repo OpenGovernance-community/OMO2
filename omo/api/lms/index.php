@@ -12,6 +12,7 @@ $sourceLang = [
     'lms.index.title.embed_catalog' => ['text' => 'Parcours de prise en main', 'context' => 'Subtitle shown in embedded LMS catalog mode.'],
     'lms.index.card.action.delete' => ['text' => 'Supprimer', 'context' => 'Menu action used to delete an owned parcours or pack.'],
     'lms.index.card.action.detach' => ['text' => 'Détacher', 'context' => 'Menu action used to detach a shared parcours or pack from the current organization.'],
+    'lms.index.card.archived' => ['text' => 'Retire du partage - conserve pour les utilisateurs existants.', 'context' => 'Label on a retired parcours which remains available to existing learners and organizations.'],
     'lms.index.card.action.edit' => ['text' => 'Éditer', 'context' => 'Menu action used to open the editor of a parcours or pack.'],
     'lms.index.card.visibility_hidden' => ['text' => 'Actuellement masqué pour les membres standard.', 'context' => 'Note shown on hidden parcours cards.'],
     'lms.index.card.open' => ['text' => 'Ouvrir', 'context' => 'Button label used to open a parcours.'],
@@ -76,6 +77,7 @@ $anonymousCompletedParcoursIds = $user_id > 0 ? [] : lmsGetAnonymousCompletedPar
 $hasOrganizationAccess = commonUserHasOrganizationAccess($user_id, (int)$org['id']);
 $canCreateParcours = !$isBasicCatalogMode && lmsCurrentUserCanCreateParcours((int)$org['id'], $user_id);
 $canEditParcours = !$isBasicCatalogMode && lmsCurrentUserCanEditParcours((int)$org['id'], $user_id);
+$canDeleteParcours = !$isBasicCatalogMode && lmsCurrentUserCanDeleteParcours((int)$org['id'], $user_id);
 $organizationColor = commonGetOrganizationExplicitColor($org);
 $parcours = $isBasicCatalogMode
     ? \dbObject\Parcours::fetchBasicCatalogWithProgress($user_id, $anonymousCompletedParcoursIds)
@@ -177,8 +179,10 @@ if (!$isEmbedded) {
     $percent = $total > 0 ? round(($done / $total) * 100) : 0;
     $isOwnerParcours = (int)($p['owner_organization_id'] ?? 0) === (int)$org['id'];
     $isVisibleParcours = !array_key_exists('isvisible', $p) || !empty($p['isvisible']);
-    $canManageThisParcours = $canCreateParcours && !\dbObject\Parcours::hasAttachedPackParentInOrganization((int)$org['id'], (int)($p['id'] ?? 0));
-    $canEditThisParcours = $canEditParcours && $isOwnerParcours;
+    $canManageThisParcours = $isOwnerParcours
+        ? $canDeleteParcours && empty($p['isarchived'])
+        : $canCreateParcours && !\dbObject\Parcours::hasAttachedPackParentInOrganization((int)$org['id'], (int)($p['id'] ?? 0));
+    $canEditThisParcours = $canEditParcours && $isOwnerParcours && empty($p['isarchived']);
     $showMenuThisParcours = $canManageThisParcours || $canEditThisParcours;
     $detachActionLabel = $isOwnerParcours ? lmsIndexT('lms.index.card.action.delete') : lmsIndexT('lms.index.card.action.detach');
 ?>
@@ -221,6 +225,7 @@ if (!$isEmbedded) {
 
     <div class="card-content">
         <h3><?php echo htmlspecialchars($p['title']); ?></h3>
+        <?php if (!empty($p['isarchived'])): ?><p class="generic-meta"><?php echo htmlspecialchars(lmsIndexT('lms.index.card.archived')); ?></p><?php endif; ?>
         <div><?php echo htmlspecialchars($p['description']); ?></div>
         <?php if (!$isVisibleParcours): ?>
             <div class="card-visibility-note"><?php echo htmlspecialchars(lmsIndexT('lms.index.card.visibility_hidden')); ?></div>
@@ -277,8 +282,10 @@ if (!$isEmbedded) {
         $percent = $total > 0 ? round(($done / $total) * 100) : 0;
         $isOwnerParcours = (int)($p['owner_organization_id'] ?? 0) === (int)$org['id'];
         $isVisibleParcours = !array_key_exists('isvisible', $p) || !empty($p['isvisible']);
-        $canManageThisParcours = $canCreateParcours && !\dbObject\Parcours::hasAttachedPackParentInOrganization((int)$org['id'], (int)($p['id'] ?? 0));
-        $canEditThisParcours = $canEditParcours && $isOwnerParcours;
+        $canManageThisParcours = $isOwnerParcours
+            ? $canDeleteParcours && empty($p['isarchived'])
+            : $canCreateParcours && !\dbObject\Parcours::hasAttachedPackParentInOrganization((int)$org['id'], (int)($p['id'] ?? 0));
+        $canEditThisParcours = $canEditParcours && $isOwnerParcours && empty($p['isarchived']);
         $showMenuThisParcours = $canManageThisParcours || $canEditThisParcours;
         $detachActionLabel = $isOwnerParcours ? lmsIndexT('lms.index.card.action.delete') : lmsIndexT('lms.index.card.action.detach');
     ?>
@@ -321,6 +328,7 @@ if (!$isEmbedded) {
 
         <div class="card-content">
             <h3><?php echo htmlspecialchars($p['title']); ?></h3>
+            <?php if (!empty($p['isarchived'])): ?><p class="generic-meta"><?php echo htmlspecialchars(lmsIndexT('lms.index.card.archived')); ?></p><?php endif; ?>
             <div><?php echo htmlspecialchars($p['description']); ?></div>
             <?php if (!$isVisibleParcours): ?>
                 <div class="card-visibility-note"><?php echo htmlspecialchars(lmsIndexT('lms.index.card.visibility_hidden')); ?></div>
@@ -352,8 +360,8 @@ if (!$isEmbedded) {
         $percent = $total > 0 ? round(($done / $total) * 100) : 0;
         $isOwnerParcours = (int)($p['owner_organization_id'] ?? 0) === (int)$org['id'];
         $isVisibleParcours = !array_key_exists('isvisible', $p) || !empty($p['isvisible']);
-        $canManageThisParcours = $canCreateParcours;
-        $canEditThisParcours = $canEditParcours && $isOwnerParcours;
+        $canManageThisParcours = $isOwnerParcours ? $canDeleteParcours && empty($p['isarchived']) : $canCreateParcours;
+        $canEditThisParcours = $canEditParcours && $isOwnerParcours && empty($p['isarchived']);
         $showMenuThisParcours = $canManageThisParcours || $canEditThisParcours;
         $detachActionLabel = $isOwnerParcours ? lmsIndexT('lms.index.card.action.delete') : lmsIndexT('lms.index.card.action.detach');
     ?>
@@ -397,6 +405,7 @@ if (!$isEmbedded) {
         <div class="card-content">
             <div class="card-create-kicker"><?php echo htmlspecialchars(lmsIndexT('lms.index.pack.kicker')); ?></div>
             <h3><?php echo htmlspecialchars($p['title']); ?></h3>
+            <?php if (!empty($p['isarchived'])): ?><p class="generic-meta"><?php echo htmlspecialchars(lmsIndexT('lms.index.card.archived')); ?></p><?php endif; ?>
             <div><?php echo htmlspecialchars($p['description']); ?></div>
             <?php if (!$isVisibleParcours): ?>
                 <div class="card-visibility-note"><?php echo htmlspecialchars(lmsIndexT('lms.index.card.visibility_hidden')); ?></div>
@@ -421,6 +430,7 @@ if (!$isEmbedded) {
     'isEmbedded' => ($isEmbedded),
     'canCreateParcours' => ($canCreateParcours),
     'canEditParcours' => ($canEditParcours),
+    'canDeleteParcours' => ($canDeleteParcours),
     'lmsIndexText' => [
     'choiceLabel' => lmsIndexT('lms.index.form.choice'),
     'correctChoiceLabel' => lmsIndexT('lms.index.form.correct_choice'),
