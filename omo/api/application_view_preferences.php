@@ -60,7 +60,7 @@ if ($holonId > 0) {
         || !$candidate->isDescendantOf((int)$rootHolon->getId(), true)
         || !$candidate->canViewDetail()
     ) {
-        $respond(false, 'Holon introuvable.', array(), 404);
+        $respond(false, \dbObject\Organization::formatLexiconText('Holon introuvable.'), array(), 404);
     }
     $holon = $candidate;
 }

@@ -174,7 +174,7 @@ class Authority extends DbObject
         $description = trim((string)$this->get('description'));
 
         if ($holonId <= 0 || $label === '') {
-            return ['status' => false, 'text' => 'An authority requires a holon and a label.'];
+            return ['status' => false, 'text' => \dbObject\Organization::formatLexiconText('An authority requires a holon and a label.')];
         }
 
         $this->set('label', $label);
@@ -308,7 +308,7 @@ class Authority extends DbObject
             return ['status' => false, 'text' => 'The authority delegation is incomplete.'];
         }
         if (!$targetParent instanceof Holon || (int)$targetParent->getId() !== $sourceHolonId) {
-            return ['status' => false, 'text' => 'A complete delegation must target a direct child holon.'];
+            return ['status' => false, 'text' => \dbObject\Organization::formatLexiconText('A complete delegation must target a direct child holon.')];
         }
 
         $parentAuthority = $this->getParent();
@@ -472,7 +472,7 @@ class Authority extends DbObject
         $sourceHolonId = (int)$sourceHolon->getId();
         $targetHolonId = (int)$targetHolon->getId();
         if ($sourceHolonId <= 0 || $targetHolonId <= 0 || $sourceHolonId === $targetHolonId) {
-            return ['status' => false, 'text' => 'The authority transfer requires two distinct holons.'];
+            return ['status' => false, 'text' => \dbObject\Organization::formatLexiconText('The authority transfer requires two distinct holons.')];
         }
 
         $authorityRows = self::fetchAll(
@@ -483,7 +483,7 @@ class Authority extends DbObject
             ['source_holon_id' => $sourceHolonId]
         );
         if (!is_array($authorityRows)) {
-            return ['status' => false, 'text' => 'The holon authorities could not be loaded.'];
+            return ['status' => false, 'text' => \dbObject\Organization::formatLexiconText('The holon authorities could not be loaded.')];
         }
 
         $localRuleRows = self::fetchAll(
@@ -494,7 +494,7 @@ class Authority extends DbObject
             ['source_holon_id' => $sourceHolonId]
         );
         if (!is_array($localRuleRows)) {
-            return ['status' => false, 'text' => 'The holon local rules could not be loaded.'];
+            return ['status' => false, 'text' => \dbObject\Organization::formatLexiconText('The holon local rules could not be loaded.')];
         }
 
         if (count($authorityRows) === 0 && count($localRuleRows) === 0) {
@@ -686,7 +686,7 @@ class Authority extends DbObject
         $mustMoveAuthorities = $authorityDisposition === self::DELETION_REASSIGN
             || ($childrenDisposition === self::DELETION_REASSIGN && !empty($subtreeRows));
         if ($mustMoveAuthorities && $parentHolonId <= 0) {
-            return ['status' => false, 'text' => 'An authority can only be moved to an existing parent holon.'];
+            return ['status' => false, 'text' => \dbObject\Organization::formatLexiconText('An authority can only be moved to an existing parent holon.')];
         }
 
         $allRows = [[
@@ -735,7 +735,7 @@ class Authority extends DbObject
         }
 
         if ($rulesDisposition === self::DELETION_REASSIGN && !empty($ruleRows) && $parentHolonId <= 0 && $parentAuthorityId <= 0) {
-            return ['status' => false, 'text' => 'Rules can only be moved when a parent holon or authority exists.'];
+            return ['status' => false, 'text' => \dbObject\Organization::formatLexiconText('Rules can only be moved when a parent holon or authority exists.')];
         }
 
         $pdo = self::getPdo();
@@ -1147,7 +1147,7 @@ class Authority extends DbObject
             $targetProperty->set('active', true);
             $saveResult = $targetProperty->save();
             if (empty($saveResult['status'])) {
-                return ['status' => false, 'text' => 'An authority property reference could not be assigned to the parent holon.'];
+                return ['status' => false, 'text' => \dbObject\Organization::formatLexiconText('An authority property reference could not be assigned to the parent holon.')];
             }
         }
 

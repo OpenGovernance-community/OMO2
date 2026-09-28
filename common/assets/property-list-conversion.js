@@ -3,8 +3,8 @@
     if (window.omoPropertyListConversion) return;
     let texts = {
         toAuthority: 'Les textes de cette liste vont etre convertis en nouveaux objets autorites. Est-ce ce que vous souhaitez ?',
-        toText: 'Les autorites de cette liste seront remplacees par leurs noms. Les objets autorites et leurs instances de modele seront supprimes, avec leurs descriptions. Leurs regles seront conservees dans leur holon et detachees des autorites. Les sous-autorites seront conservees et detachees. Est-ce ce que vous souhaitez ?',
-        scope: 'La conversion sera appliquee a l enregistrement, dans tous les holons qui utilisent cette definition de liste.',
+        toText: 'Les autorites de cette liste seront remplacees par leurs noms. Les objets autorites et leurs instances de modele seront supprimes, avec leurs descriptions. Leurs regles seront conservees dans leur contexte et detachees des autorites. Les sous-autorites seront conservees et detachees. Est-ce ce que vous souhaitez ?',
+        scope: 'La conversion sera appliquee a l enregistrement, partout ou cette definition de liste est utilisee.',
         pending: 'Conversion confirmee pour le prochain enregistrement. Les valeurs ci-dessous sont conservees jusque-la. Revenez au type initial pour annuler.'
     };
     fetch('/common/jstranslation/property_list_conversion.php', { credentials: 'same-origin' })

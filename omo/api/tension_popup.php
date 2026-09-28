@@ -70,7 +70,7 @@ if ($organizationId > 0 && $organization->load($organizationId)) {
                 <div class="omo-tension-popup__meta">
                     <span class="omo-tension-popup__badge">Organisation: <?= htmlspecialchars((string)$organization->getLabel(), ENT_QUOTES, 'UTF-8') ?></span>
                     <?php if ($contextHolon instanceof \dbObject\Holon): ?>
-                        <span class="omo-tension-popup__badge">Holon: <?= htmlspecialchars((string)$contextHolon->getLabel(), ENT_QUOTES, 'UTF-8') ?></span>
+                        <span class="omo-tension-popup__badge"><?= htmlspecialchars(\dbObject\Organization::formatLexiconText('Holon: ', $organization->getLexicon()), ENT_QUOTES, 'UTF-8') ?><?= htmlspecialchars((string)$contextHolon->getLabel(), ENT_QUOTES, 'UTF-8') ?></span>
                     <?php endif; ?>
                 </div>
             </div>
@@ -102,9 +102,9 @@ if ($organizationId > 0 && $organization->load($organizationId)) {
                 </div>
 
                 <div class="omo-tension-popup__field generic-stack generic-stack--compact">
-                    <label for="omoTensionHolon">Holon</label>
+                    <label for="omoTensionHolon"><?= htmlspecialchars(\dbObject\Organization::formatLexiconText('Holon', $organization->getLexicon()), ENT_QUOTES, 'UTF-8') ?></label>
                     <?php if ($contextHolon instanceof \dbObject\Holon && !$currentContextSelectable): ?>
-                        <small class="omo-tension-popup__hint generic-help-text">Le holon courant n est pas selectionnable directement. Son chemin reste visible en grise ci-dessous.</small>
+                        <small class="omo-tension-popup__hint generic-help-text"><?= htmlspecialchars(\dbObject\Organization::formatLexiconText('Le holon courant n est pas selectionnable directement. Son chemin reste visible en grise ci-dessous.', $organization->getLexicon()), ENT_QUOTES, 'UTF-8') ?></small>
                     <?php endif; ?>
                     <select class="generic-form-control" id="omoTensionHolon" name="IDholon">
                         <?php

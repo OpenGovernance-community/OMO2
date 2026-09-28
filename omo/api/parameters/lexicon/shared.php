@@ -12,6 +12,11 @@ function omoLexiconSourceLang(): array
         'parameters.lexicon.term.type1.label' => ['text' => 'Type 1', 'context' => 'Property type name in the organization lexicon'],
         'parameters.lexicon.term.type2.label' => ['text' => 'Type 2', 'context' => 'Property type name in the organization lexicon'],
         'parameters.lexicon.term.type3.label' => ['text' => 'Type 3', 'context' => 'Property type name in the organization lexicon'],
+        'parameters.lexicon.term.type4.label' => ['text' => 'Type 4', 'context' => 'Property type name in the organization lexicon'],
+        'parameters.lexicon.term.type5.label' => ['text' => 'Type 5', 'context' => 'Property type name in the organization lexicon'],
+        'parameters.lexicon.type.enabled' => ['text' => 'Activer ce type', 'context' => 'Checkbox enabling a property type in this organization'],
+        'parameters.lexicon.type.name' => ['text' => "Nom dans l'interface", 'context' => 'Label of the custom name input for each property type'],
+        'parameters.lexicon.section.properties.help' => ['text' => "Cochez les types que vous souhaitez utiliser et personnalisez leur nom. Un type d\u{00e9}sactiv\u{00e9} est masqu\u{00e9} dans les choix, les \u{00e9}crans et les droits ; ses donn\u{00e9}es sont conserv\u{00e9}es.", 'context' => 'Explanation of property type activation in the organization lexicon'],
         'parameters.lexicon.section.properties' => ['text' => 'Types de proprietes', 'context' => 'Property types section in the organization lexicon'],
         'parameters.lexicon.title' => array(
             'text' => 'Lexique de l’organisation',

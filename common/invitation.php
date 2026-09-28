@@ -327,9 +327,9 @@ $requestMessage = $isMemberRequest ? $invitation->getRequestMessage() : '';
 				</div>
 				<?php else: ?>
 				<div class="invitation-section">
-					<h2>Holons concernes</h2>
+					<h2><?= commonInvitationEscape(\dbObject\Organization::formatLexiconText('Holons concernes', $organization->getLexicon())) ?></h2>
 					<?php if (count($pendingHolons) === 0): ?>
-						<p class="invitation-copy">Aucun holon en attente n'a ete retrouve pour cette invitation.</p>
+						<p class="invitation-copy"><?= commonInvitationEscape(\dbObject\Organization::formatLexiconText("Aucun holon en attente n'a ete retrouve pour cette invitation.", $organization->getLexicon())) ?></p>
 					<?php else: ?>
 						<ul class="invitation-list">
 							<?php foreach ($pendingHolons as $holon): ?>
@@ -346,7 +346,7 @@ $requestMessage = $isMemberRequest ? $invitation->getRequestMessage() : '';
 				<?php if (!$isMemberRequest && $validInvitation): ?>
 				<div class="invitation-section">
 					<h2>Votre reponse</h2>
-					<p class="invitation-copy">En acceptant, votre adhesion sera confirmee pour tous les holons listes ci-dessus en une seule fois.</p>
+					<p class="invitation-copy"><?= commonInvitationEscape(\dbObject\Organization::formatLexiconText('En acceptant, votre adhesion sera confirmee pour tous les holons listes ci-dessus en une seule fois.', $organization->getLexicon())) ?></p>
 					<div class="invitation-actions">
 						<form method="post" style="margin:0;">
 							<input type="hidden" name="token" value="<?= commonInvitationEscape($token) ?>">

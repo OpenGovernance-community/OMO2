@@ -141,15 +141,15 @@ if ($requestFragment === 'items') {
 	</div>
 	<div class="omo-holon-history-popup__shell generic-drawer-content">
 	<p class="omo-holon-history-popup__intro generic-description">
-		Historique lie au holon <strong><?= omoApiEscape($holon->getDisplayName()) ?></strong>.
+		<?= omoApiEscape(\dbObject\Organization::formatLexiconText('Historique lie au holon', $organization->getLexicon())) ?> <strong><?= omoApiEscape($holon->getDisplayName()) ?></strong>.
 		<?= $isOrganizationHolon
 			? 'Le flux couvre l ensemble de l historique de cette organisation.'
-			: 'Le flux inclut les modifications directes de ce holon et, pour un cercle, les elements qui lui sont rattaches.' ?>
+			: htmlspecialchars(\dbObject\Organization::formatLexiconText('Le flux inclut les modifications directes de ce holon et, pour un cercle, les elements qui lui sont rattaches.'), ENT_QUOTES, 'UTF-8') ?>
 	</p>
 
 	<?php if (count($historyItems) === 0): ?>
 		<div class="omo-holon-history-popup__empty">
-			Aucun element d'historique n'a ete trouve pour ce holon.
+			<?= omoApiEscape(\dbObject\Organization::formatLexiconText("Aucun element d'historique n'a ete trouve pour ce holon.", $organization->getLexicon())) ?>
 		</div>
 	<?php endif; ?>
 

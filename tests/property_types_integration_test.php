@@ -24,6 +24,10 @@ $_SERVER['HTTP_HOST'] = 'omo.localtest.me';
 $pdo = DbObject::getPdo();
 $pdo->beginTransaction();
 try {
+    $lexicon = $organization->getLexicon();
+    foreach (Property::TYPES as $type) $lexicon[$type]['enabled'] = true;
+    $organization->setLexicon($lexicon);
+    typeIntegrationSave($organization);
     $makeHolon = static function (string $name, ?Holon $template = null) use ($root): Holon {
         $holon = new Holon();
         $holon->set('name', $name);

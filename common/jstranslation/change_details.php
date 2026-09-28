@@ -3,6 +3,7 @@ require_once dirname(__DIR__, 2) . '/omo/api/bootstrap.php';
 require_once dirname(__DIR__) . '/choice/rule-scope-fields.php';
 
 $sourceLang = [
+    'currentHolon' => ['text' => 'Holon courant', 'context' => 'Current structure context when a rule has no authority'],
     'parent' => ['text' => 'Emplacement', 'context' => 'Holon parent before and after a move'],
     'notExisting' => ['text' => 'Cet élément n’existait pas.', 'context' => 'Neutral before panel for the creation of an object'],
     'deleted' => ['text' => 'Supprimé', 'context' => 'Single after panel for the deletion of an object'],

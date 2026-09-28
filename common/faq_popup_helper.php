@@ -178,7 +178,7 @@ if (!function_exists('faqPopupDescribeScope')) {
 
 		if ($holon) {
 			$scopeType = 'holon';
-			$scopeLabel = 'Holon: ' . $holonLabel;
+			$scopeLabel = \dbObject\Organization::formatLexiconText('Holon: ', $organization ? $organization->getLexicon() : null) . $holonLabel;
 			if (
 				$organization
 				&& $organizationLabel !== ''
@@ -782,7 +782,7 @@ if (!function_exists('faqPopupRenderScopeFields')) {
 				<div class="faq-popup__scope-field generic-form-field">
 					<label class="faq-popup__scope-label generic-form-label">Attachement</label>
 					<div class="faq-popup__scope-fixed generic-soft-panel">
-						<?= htmlspecialchars($selectedHolonId > 0 ? 'Holon courant' : 'Organisation courante', ENT_QUOTES, 'UTF-8') ?>
+						<?= htmlspecialchars($selectedHolonId > 0 ? \dbObject\Organization::formatLexiconText('Holon courant') : 'Organisation courante', ENT_QUOTES, 'UTF-8') ?>
 					</div>
 				</div>
 			<?php else: ?>
@@ -814,7 +814,7 @@ if (!function_exists('faqPopupRenderScopeFields')) {
 						data-faq-scope-kind
 					>
 						<?php if ($allowContextualAttachment || $canManageAllFaqs || $canManageOrganizationFaqs): ?>
-							<option value="organization"<?= $selectedAttachmentType === 'organization' ? ' selected' : '' ?>><?= $allowContextualAttachment && !$canManageAllFaqs && !$canManageOrganizationFaqs ? 'Holon courant' : 'Organisation courante' ?></option>
+							<option value="organization"<?= $selectedAttachmentType === 'organization' ? ' selected' : '' ?>><?= $allowContextualAttachment && !$canManageAllFaqs && !$canManageOrganizationFaqs ? htmlspecialchars(\dbObject\Organization::formatLexiconText('Holon courant'), ENT_QUOTES, 'UTF-8') : 'Organisation courante' ?></option>
 						<?php endif; ?>
 						<?php if ($allowParcoursAttachment || $canManageAllFaqs || $canManageOrganizationFaqs): ?>
 							<option value="parcours"<?= $selectedAttachmentType === 'parcours' ? ' selected' : '' ?>>Parcours</option>
@@ -849,7 +849,7 @@ if (!function_exists('faqPopupRenderScopeFields')) {
 					</div>
 				<?php endif; ?>
 				<div class="faq-popup__scope-field generic-form-field" data-faq-scope-holon-shell>
-					<label class="faq-popup__scope-label generic-form-label" for="faqScopeHolon">Holon</label>
+					<label class="faq-popup__scope-label generic-form-label" for="faqScopeHolon"><?= htmlspecialchars(\dbObject\Organization::formatLexiconText('Holon'), ENT_QUOTES, 'UTF-8') ?></label>
 					<select
 						class="faq-popup__scope-control generic-form-control"
 						id="faqScopeHolon"
@@ -943,7 +943,7 @@ if (!function_exists('faqPopupResolveSubmittedScope')) {
 			if (!$holon->load($holonId)) {
 				return array(
 					'status' => false,
-					'message' => 'Holon invalide.',
+					'message' => \dbObject\Organization::formatLexiconText('Holon invalide.'),
 				);
 			}
 		}
@@ -961,7 +961,7 @@ if (!function_exists('faqPopupResolveSubmittedScope')) {
 		if ($attachmentType === 'parcours' && $holonId > 0) {
 			return array(
 				'status' => false,
-				'message' => 'Une FAQ rattachee a un parcours ne peut pas etre rattachee a un holon.',
+				'message' => \dbObject\Organization::formatLexiconText('Une FAQ rattachee a un parcours ne peut pas etre rattachee a un holon.'),
 			);
 		}
 
@@ -1003,7 +1003,7 @@ if (!function_exists('faqPopupResolveSubmittedScope')) {
 			if ($holon && (int)$holon->get('IDorganization') !== $organizationId) {
 				return array(
 					'status' => false,
-					'message' => 'Le holon selectionne n appartient pas a l organisation selectionnee.',
+					'message' => \dbObject\Organization::formatLexiconText('Le holon selectionne n appartient pas a l organisation selectionnee.'),
 				);
 			}
 
@@ -1046,7 +1046,7 @@ if (!function_exists('faqPopupResolveSubmittedScope')) {
 			if ($holon && (int)$holon->get('IDorganization') !== $contextOrganizationId) {
 				return array(
 					'status' => false,
-					'message' => 'Le holon selectionne n appartient pas a l organisation courante.',
+					'message' => \dbObject\Organization::formatLexiconText('Le holon selectionne n appartient pas a l organisation courante.'),
 				);
 			}
 
@@ -1102,7 +1102,7 @@ if (!function_exists('faqPopupResolveSubmittedScope')) {
 			if (!$currentHolon instanceof \dbObject\Holon || (int)$currentHolon->getId() <= 0) {
 				return array(
 					'status' => false,
-					'message' => 'Contexte holon invalide.',
+					'message' => \dbObject\Organization::formatLexiconText('Contexte holon invalide.'),
 				);
 			}
 

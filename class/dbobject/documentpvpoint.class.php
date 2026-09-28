@@ -507,7 +507,7 @@ class DocumentPvPoint extends DbObject
             }
 
             if ($label === '') {
-                $label = 'Holon #' . (int)($row['id'] ?? 0);
+                $label = \dbObject\Organization::formatLexiconText('Holon #') . (int)($row['id'] ?? 0);
             }
 
             $items[] = [

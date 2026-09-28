@@ -70,13 +70,13 @@ if (!$scopeHolon) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Holon introuvable</title>
+    <title><?= htmlspecialchars(\dbObject\Organization::formatLexiconText('Holon introuvable', $organization->getLexicon()), ENT_QUOTES, 'UTF-8') ?></title>
     <link rel="stylesheet" href="/common/assets/auth.css">
 </head>
 <body class="auth-state-page">
     <main class="auth-state-layout">
         <div class="auth-state-card">
-            <h1>Holon introuvable</h1>
+            <h1><?= htmlspecialchars(\dbObject\Organization::formatLexiconText('Holon introuvable', $organization->getLexicon()), ENT_QUOTES, 'UTF-8') ?></h1>
             <p>Le contexte partage n est plus disponible.</p>
         </div>
     </main>
