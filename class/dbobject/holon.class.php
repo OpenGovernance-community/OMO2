@@ -1825,7 +1825,7 @@
 				$record['adminParent'] = true;
 			}
 
-			if ((int)$this->get('admin_min') > 0) {
+			if ($this->get('admin_min') !== null && trim((string)$this->get('admin_min')) !== '') {
 				$record['adminMin'] = (int)$this->get('admin_min');
 			}
 

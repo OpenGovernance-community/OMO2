@@ -39,7 +39,7 @@ function checkParentScope(string $range, array $expected): void
     }
     // The matrix must expose real target roots, including scopes resolving to several roots.
     $details = HP::buildEffectivePermissionDetailsForOrganization(7, 42, ['CAN_MOVE_HOLON']);
-    extendedAssert(count($details['rows']) > 0, 'Scope details are present');
+    extendedAssert((count($details['rows']) > 0) === (count($expected) > 0), 'Scope details match the presence of targets');
     foreach ($details['rows'] as $row) {
         extendedAssert(in_array($row['scopeHolonId'], $expected, true), 'Scope details must not include an excluded parent or an unresolved target');
     }
@@ -61,8 +61,23 @@ checkParentScope(HP::RANGE_PARENT_CIRCLE, [5]);
 checkParentScope(HP::RANGE_PARENT_CIRCLE_ELEMENTS, [3, 6]);
 checkParentScope(HP::RANGE_PARENT_CIRCLE_DESCENDANTS, [3, 6]);
 
+// Descendants starts at the assigned element, not its parent or its template.
+checkParentScope(HP::RANGE_DESCENDANTS, []);
+foreach ([16 => [3, 3], 17 => [16, 1], 18 => [17, 2], 19 => [18, 1], 20 => [3, 2], 21 => [20, 1]] as $id => [$parent, $type]) {
+    DbObject::$holons[$id] = ['id' => $id, 'name' => 'Element ' . $id, 'IDholon_parent' => $parent,
+        'IDholon_template' => 0, 'IDtypeholon' => $type, 'IDorganization' => 42, 'IDholon_org' => 1, 'active' => 1];
+}
+checkParentScope(HP::RANGE_DESCENDANTS, [16, 17, 18, 19, 20, 21]);
+$assignments = HP::getAssignmentKeyMapForHolon(9);
+extendedAssert($assignments['member']['CAN_MOVE_HOLON'] === ['descendants'], 'New range survives editor serialization');
+extendedAssert(HP::syncAssignmentsForHolon(9, $assignments), 'New range can be saved');
+extendedAssert(HP::getAssignmentKeyMapForHolon(9) === $assignments, 'Saving preserves the new range for all profiles');
+extendedAssert(in_array('descendants', array_column(HP::getEditorRangeCatalogForPermission('CAN_EDIT_HOLON', true), 'key'), true), 'Contextual catalog offers Descendants');
+extendedAssert(!in_array('descendants', array_column(HP::getEditorRangeCatalogForPermission('CAN_EDIT_ORGANIZATION', false), 'key'), true), 'Global rights remain organization-wide');
+
 $labels = HP::getRangeLabels();
+extendedAssert($labels[HP::RANGE_DESCENDANTS] === 'Descendants', 'Current descendants label');
 extendedAssert($labels[HP::RANGE_PARENT_CIRCLE] === 'Parent seul', 'Parent label');
 extendedAssert($labels[HP::RANGE_PARENT_CIRCLE_ELEMENTS] === 'Enfants direct du parent', 'Direct children label');
 extendedAssert($labels[HP::RANGE_PARENT_CIRCLE_DESCENDANTS] === 'Descendants du parent', 'Descendants label');
-echo "parent_permission_scopes_test: OK (depth, nested groups, excluded parent, root parent, inherited member/admin/collective grants, matrix)\n";
+echo "parent_permission_scopes_test: OK (current/parent descendants, depth, groups, exclusions, inherited member/admin/collective grants, matrix, save)\n";

@@ -726,6 +726,7 @@ function omoHolonTemplateRenderPermissions(permissionAssignments) {
         : [
             { key: 'self', label: omoHolonTemplateTexts.permissionSelf || '' },
             { key: 'direct_children', label: omoHolonTemplateTexts.permissionDirectChildren || '' },
+            { key: 'descendants', label: omoHolonTemplateTexts.permissionDescendants || 'Descendants' },
             { key: 'parent_circle', label: omoHolonTemplateTexts.permissionParentCircle || 'Parent seul' },
             { key: 'parent_circle_elements', label: omoHolonTemplateTexts.permissionParentCircleElements || '' },
             { key: 'parent_circle_descendants', label: omoHolonTemplateTexts.permissionParentCircleDescendants || 'Descendants du parent' },
@@ -1733,7 +1734,7 @@ function omoHolonTemplateRenderAuthorityRow(value) {
     const draft = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
     if (authorityId > 0 && !draft.editing) {
         const label = authority ? String(authority.label || '') : 'Autorite #' + String(authorityId);
-        const details = authority ? (authority.needsParent ? 'A rattacher manuellement' + (authority.pathLabel || authority.holonLabel ? ' - ' : '') : '') + String(authority.pathLabel || authority.holonLabel || '') : '';
+        const details = authority && authority.needsParent ? 'A rattacher manuellement' : '';
         const labelMarkup = authority && authority.isShell ? '<em>' + omoHolonTemplateEscapeHtml(label) + '</em>' : '<strong>' + omoHolonTemplateEscapeHtml(label) + '</strong>';
         return ''
             + '<div class="omo-template-authority__row omo-template-authority__row--existing' + (authority && authority.needsParent ? ' is-needs-parent' : '') + '" data-authority-entry data-authority-id="' + authorityId + '">'

@@ -146,6 +146,8 @@
 		{
 			return array(
 				'id',
+				'isModel',
+				'interface_level',
 				'name',
 				'shortname',
 				'domain',
@@ -3943,16 +3945,16 @@
 		{
 			$name = trim((string)($record['name'] ?? ''));
 			$fullName = trim((string)($record['fullName'] ?? ''));
-			if ($name === '') {
+			$templateName = trim((string)($record['templateName'] ?? ''));
+			if ($name === '' && $templateName === '') {
 				$name = self::formatLexiconText('Holon', $this->getLexicon());
 			}
 
 			if (!$preserveName) {
-				$targetHolon->set('name', $name);
+				$targetHolon->set('name', $name !== '' ? $name : null);
 			}
 
 			$targetHolon->set('nomcomplet', $fullName !== '' ? $fullName : null);
-			$templateName = trim((string)($record['templateName'] ?? ''));
 			$targetHolon->set('templatename', $isOrganizationRoot ? null : ($templateName !== '' ? $templateName : null));
 			$targetHolon->set('IDtypeholon', $isOrganizationRoot ? 4 : max(1, (int)($record['typeId'] ?? 1)));
 			$targetHolon->set('IDuser', (int)$userId > 0 ? (int)$userId : (int)$targetHolon->get('IDuser'));
@@ -3964,7 +3966,9 @@
 			$targetHolon->set('unique', !empty($record['unique']));
 			$targetHolon->set('link', !empty($record['link']));
 			$targetHolon->set('adminparent', !empty($record['adminParent']) && (int)$targetHolon->get('IDtypeholon') === 1);
-			$targetHolon->set('admin_min', max(0, (int)($record['adminMin'] ?? 0)));
+			$targetHolon->set('admin_min', array_key_exists('adminMin', $record) && trim((string)$record['adminMin']) !== ''
+				? max(0, (int)$record['adminMin'])
+				: null);
 			$targetHolon->set('admin_max', array_key_exists('adminMax', $record) && trim((string)$record['adminMax']) !== ''
 				? max(0, (int)$record['adminMax'])
 				: null);
@@ -8133,7 +8137,7 @@
 				if (!is_array($definitionSave) || empty($definitionSave['status'])) {
 					return array(
 						'status' => false,
-						'message' => (string)($definitionSave['text'] ?? 'La definition de l organisation n a pas pu etre enregistree.'),
+						'message' => (string)($definitionSave['text'] ?? 'La définition de l’organisation n’a pas pu être enregistrée.'),
 						'organization' => $target,
 					);
 				}
@@ -8159,7 +8163,7 @@
 				$pdo->beginTransaction();
 				// Parameters contain the lexicon and the organization-level dashboard
 				// and application-view defaults. They do not contain activity history.
-				$target->set('parameters', $source->getParametersArray());
+				$target->set('parameters', $source->getLexiconParameters());
 				$target->setPropertyTypeSettings($source->getPropertyTypeSettings());
 				$target->set('isModel', false);
 				$targetSave = $target->save();

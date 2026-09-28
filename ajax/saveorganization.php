@@ -38,7 +38,7 @@ if ($isEditMode) {
     if (!$organization->canEdit()) {
         echo json_encode(array(
             "success" => false,
-            "message" => "Vous n'avez pas le droit de modifier cette organisation.",
+            "message" => "Vous n’avez pas le droit de modifier cette organisation.",
         ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         exit;
     }
@@ -58,7 +58,7 @@ $name = trim((string)$organization->get("name"));
 if ($name === "") {
     echo json_encode(array(
         "success" => false,
-        "message" => "Le nom de l'organisation est obligatoire.",
+        "message" => "Le nom de l’organisation est obligatoire.",
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -70,8 +70,8 @@ if (empty($saveResult["status"]) || (int)$organization->getId() <= 0) {
         "message" => !empty($saveResult["text"])
             ? (string)$saveResult["text"]
             : ($isEditMode
-                ? "L'organisation n'a pas pu etre enregistree."
-                : "L'organisation n'a pas pu etre creee."),
+                ? "L’organisation n’a pas pu être enregistrée."
+                : "L’organisation n’a pas pu être créée."),
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -116,6 +116,6 @@ echo json_encode(array(
     "id" => (int)$organization->getId(),
     "organizationId" => (int)$organization->getId(),
     "mode" => $isEditMode ? "edit" : "create",
-    "message" => $isEditMode ? "Organisation enregistree." : "Organisation creee.",
+    "message" => $isEditMode ? "Organisation enregistrée." : "Organisation créée.",
     "redirect" => $redirectUrl,
 ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
