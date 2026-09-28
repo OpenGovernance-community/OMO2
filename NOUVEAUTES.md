@@ -1,5 +1,17 @@
 # Journal Des Nouveautes
 
+- Structure : le titre Dependances devient Espaces rattaches, avec le terme pluriel du lexique de l organisation et une traduction dediee.
+
+- Structure : blocs de proprietes compacts et bord a bord dans le panneau du holon, avec un simple separateur gris en bas, sans cadre ni coins arrondis.
+
+- Droits : portees renommees Parent seul, Enfants direct du parent et Descendants du parent. Les groupes sont transparents pour le parent et ses enfants directs. Les descendants couvrent toutes les profondeurs, sans inclure le parent.
+
+- Lexique : les libelles Holon et Holons suivent le terme Espace de chaque organisation dans les droits, invitations, FAQ, documents, imports et messages. Adaptation au singulier et au pluriel, sans modifier les codes techniques ni les noms saisis.
+
+- Lexique : marges et espacements harmonises, sections coherentes avec leurs explications visibles, types de proprietes alignes avec leur case d activation et leur nom, actions accessibles pendant le defilement et disposition adaptee aux petits ecrans.
+
+- Proprietes : cinq types configurables dans le lexique, chacun avec une case d activation. Les types desactives sont masques dans les choix, les ecrans et les droits, sans perdre leurs donnees ni leurs autorisations. Les organisations existantes conservent leurs trois types ; les types 4 et 5 restent desactives. Une organisation vierge active uniquement le type 1, nomme defini par le parent. Les modeles et exports de structure transmettent les libelles et activations.
+
 - Parcours : droit explicite Supprimer un parcours, distinct de Creer, applique au menu et aux endpoints. Un parcours encore utilise (organisations, packs, progressions ou prerequis) est retire du partage et conserve en lecture seule pour les utilisateurs existants ; les nouveaux imports et acces sont bloques. Suppression definitive uniquement sans usage. Migration ajoutee.
 
 - Connexion : champs de code completes pour la saisie automatique (one-time-code, nom, libelle accessible, corrections desactivees). Le mail affiche le code dans son objet et fournit une version texte brut avec un code clairement identifie, pour faciliter sa detection par les messageries compatibles.

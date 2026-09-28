@@ -741,7 +741,7 @@ if ($currentHolonId > 0) {
     ) {
         http_response_code(404);
         ?>
-        <div class="omo-calendar omo-empty-state">Holon introuvable pour cette organisation.</div>
+        <div class="omo-calendar omo-empty-state"><?= htmlspecialchars(\dbObject\Organization::formatLexiconText('Holon introuvable pour cette organisation.', $organization->getLexicon()), ENT_QUOTES, 'UTF-8') ?></div>
         <?php
         exit;
     }

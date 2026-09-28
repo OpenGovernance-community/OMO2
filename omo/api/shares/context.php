@@ -40,7 +40,7 @@ function omoShareResolveManageContext(array $input)
         return array(
             'status' => false,
             'code' => 404,
-            'message' => 'Aucun holon racine disponible.',
+            'message' => \dbObject\Organization::formatLexiconText('Aucun holon racine disponible.'),
         );
     }
 
@@ -50,7 +50,7 @@ function omoShareResolveManageContext(array $input)
             return array(
                 'status' => false,
                 'code' => 404,
-                'message' => 'Holon introuvable pour cette organisation.',
+                'message' => \dbObject\Organization::formatLexiconText('Holon introuvable pour cette organisation.'),
             );
         }
 
@@ -58,7 +58,7 @@ function omoShareResolveManageContext(array $input)
             return array(
                 'status' => false,
                 'code' => 403,
-                'message' => 'Acces refuse a ce holon.',
+                'message' => \dbObject\Organization::formatLexiconText('Acces refuse a ce holon.'),
             );
         }
 

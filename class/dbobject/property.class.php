@@ -4,7 +4,18 @@
 
 	class Property extends DbObject
 	{
-		public const TYPES = ['type1', 'type2', 'type3'];
+		public const TYPES = ['type1', 'type2', 'type3', 'type4', 'type5'];
+
+		public static function isTypeEnabled($type, array $lexicon): bool
+		{
+			$type = self::normalizeType($type);
+			return (bool)($lexicon[$type]['enabled'] ?? in_array($type, ['type1', 'type2', 'type3'], true));
+		}
+
+		public static function filterEnabledDefinitions(array $definitions, array $lexicon): array
+		{
+			return array_values(array_filter($definitions, static fn($definition) => self::isTypeEnabled($definition['type'] ?? null, $lexicon)));
+		}
 
 		public static function normalizeType($type): string
 		{
@@ -24,6 +35,7 @@
 		{
 			$options = [];
 			foreach (self::TYPES as $type) {
+				if (!self::isTypeEnabled($type, $lexicon)) continue;
 				$options[] = [
 					'id' => $type,
 					'name' => Organization::getLexiconLabel($lexicon, $type),
@@ -37,8 +49,8 @@
 
 		public static function canCreateAnyType(?Holon $context): bool
 		{
-			foreach (self::TYPES as $type) {
-				if ($context && $context->isAllowed(self::permissionKey('CREATE', $type), false)) {
+			foreach ($context ? self::getTypeOptions($context->getPropertyTypeLexicon(), $context) : [] as $option) {
+				if ($option['canCreate']) {
 					return true;
 				}
 			}
@@ -47,9 +59,9 @@
 
 		public static function canActOnAnyType(?Holon $context): bool
 		{
-			foreach (self::TYPES as $type) {
-				foreach (['CREATE', 'EDIT', 'DELETE'] as $operation) {
-					if ($context && $context->isAllowed(self::permissionKey($operation, $type), false)) {
+			foreach ($context ? self::getTypeOptions($context->getPropertyTypeLexicon(), $context) : [] as $option) {
+				foreach (['canCreate', 'canEdit', 'canDelete'] as $operation) {
+					if ($option[$operation]) {
 						return true;
 					}
 				}
@@ -223,6 +235,7 @@
 					if (!is_array($stored)) {
 						throw new \RuntimeException('La liste est introuvable. Rechargez le formulaire.');
 					}
+					if (!self::isTypeEnabled($stored['type'] ?? null, $holon->getPropertyTypeLexicon())) continue;
 					$from = self::normalizeListItemType($stored['listitemtype'] ?? '');
 					$to = self::normalizeListItemType($definition['listItemType'] ?? '');
 					$sourceFormat = (int)$stored['IDpropertyformat'];
@@ -257,7 +270,7 @@
 					}
 					if (!$local->load([['IDholon', $holon->getId()], ['IDproperty', $propertyId]])
 						|| (int)$stored['IDholon_organization'] !== (int)($holon->get('IDholon_org') ?: $holon->getId())) {
-						throw new \RuntimeException('Cette definition de liste ne peut pas etre convertie depuis ce holon.');
+						throw new \RuntimeException(\dbObject\Organization::formatLexiconText('Cette definition de liste ne peut pas etre convertie depuis ce holon.'));
 					}
 					$rows = self::fetchAll('SELECT id FROM `holonproperty` WHERE IDproperty = :id ORDER BY id FOR UPDATE', ['id' => $propertyId]);
 					if (!is_array($rows)) {
@@ -296,7 +309,7 @@
 									$items[] = $item;
 									continue;
 								}
-								$context = 'Liste "' . (string)$stored['name'] . '", holon #' . (int)$value->get('IDholon') . ' : ';
+								$context = 'Liste "' . (string)$stored['name'] . \dbObject\Organization::formatLexiconText('", holon #') . (int)$value->get('IDholon') . ' : ';
 								if ($id === 0) {
 									throw new \RuntimeException($context . 'une reference d autorite est invalide. La conversion est annulee.');
 								}

@@ -80,7 +80,7 @@ if ($organizationId <= 0) {
         $errorMessage = "Cet élément n'autorise pas l'ajout d'enfant.";
     } elseif (count($editorData['templateCatalog'] ?? array()) === 0) {
         $errorMessage = ($editorData['mode'] ?? 'create') === 'edit'
-            ? "Aucun modèle n'est disponible dans le contexte de ce holon."
+            ? \dbObject\Organization::formatLexiconText("Aucun modèle n'est disponible dans le contexte de ce holon.")
             : "Aucun modèle n'est disponible dans ce contexte pour créer un nouvel élément.";
     }
 }

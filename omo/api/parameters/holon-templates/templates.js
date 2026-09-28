@@ -726,9 +726,9 @@ function omoHolonTemplateRenderPermissions(permissionAssignments) {
         : [
             { key: 'self', label: omoHolonTemplateTexts.permissionSelf || '' },
             { key: 'direct_children', label: omoHolonTemplateTexts.permissionDirectChildren || '' },
-            { key: 'parent_circle', label: 'Cercle englobant seul' },
+            { key: 'parent_circle', label: omoHolonTemplateTexts.permissionParentCircle || 'Parent seul' },
             { key: 'parent_circle_elements', label: omoHolonTemplateTexts.permissionParentCircleElements || '' },
-            { key: 'parent_circle_descendants', label: 'Cercle englobant et descendants' },
+            { key: 'parent_circle_descendants', label: omoHolonTemplateTexts.permissionParentCircleDescendants || 'Descendants du parent' },
             { key: 'organization_root', label: omoHolonTemplateTexts.permissionOrganizationRoot || '' },
             { key: 'organization', label: omoHolonTemplateTexts.permissionOrganization || '' }
         ];

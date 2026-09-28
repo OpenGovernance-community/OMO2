@@ -47,7 +47,7 @@ if ($requestedHolonId > 0) {
         http_response_code(422);
         echo json_encode([
             'status' => false,
-            'message' => 'Le holon selectionne est invalide.',
+            'message' => \dbObject\Organization::formatLexiconText('Le holon selectionne est invalide.'),
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         exit;
     }

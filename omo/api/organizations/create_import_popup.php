@@ -166,6 +166,7 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
 <?= commonPageScriptTags('/omo/api/organizations/create_import_popup.js', [
     'templateCatalog' => $templateCatalog,
     'ui' => array(
+        'spacePlural' => \dbObject\Organization::formatLexiconText('holons'),
         'fileError' => t('organization_import.error.file', array(), $lang, $sourceLang),
         'memberInvitationEmailChoiceError' => t('organization_import.error.member_invitation_email_choice', array(), $lang, $sourceLang),
         'genericError' => t('organization_import.error.generic', array(), $lang, $sourceLang),

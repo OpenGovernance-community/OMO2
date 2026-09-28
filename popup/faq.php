@@ -85,7 +85,7 @@ if (count($popupReloadQuery) > 0) {
 
 $editorTitle = 'Nouvelle FAQ locale';
 $editorStatus = $contextHolon
-	? 'Cette FAQ sera rattachee au holon courant.'
+	? \dbObject\Organization::formatLexiconText('Cette FAQ sera rattachee au holon courant.')
 	: 'Cette FAQ sera creee dans le contexte courant.';
 $editorAllowScopeEditing = false;
 $editorAllowGeneric = false;
@@ -108,7 +108,7 @@ if ($canManageAllFaqs) {
 	$editorFields[] = 'isactive';
 } elseif ($canManageOrganizationFaqs) {
 	$editorTitle = 'Nouvelle FAQ organisation';
-	$editorStatus = 'Cette FAQ peut etre rattachee a l organisation courante, a un holon, ou a un parcours LMS disponible.';
+	$editorStatus = \dbObject\Organization::formatLexiconText('Cette FAQ peut etre rattachee a l organisation courante, a un holon, ou a un parcours LMS disponible.');
 	$editorAllowScopeEditing = true;
 	$editorFields[] = 'displayorder';
 	$editorFields[] = 'isactive';

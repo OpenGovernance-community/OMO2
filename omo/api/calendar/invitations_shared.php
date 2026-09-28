@@ -734,7 +734,7 @@ if (!function_exists('omoCalendarRenderInvitationEditor')) {
         $defaultUserId = (int)($editorState['defaultUserId'] ?? 0);
         $preferredTab = (string)($editorState['preferredTab'] ?? 'holons');
         $membersTabIsActive = $preferredTab === 'members' || !$hasHolonStructure;
-        $holonsTabId = $instanceId . 'Holons';
+        $holonsTabId = $instanceId . \dbObject\Organization::formatLexiconText('Holons');
         $membersTabId = $instanceId . 'Members';
         $guestsTabId = $instanceId . 'Guests';
 

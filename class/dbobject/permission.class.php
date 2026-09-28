@@ -333,6 +333,12 @@ class Permission extends DbObject
             'CAN_CREATE_TYPE3_PROPERTIES' => ['title' => 'Creer les proprietes type3', 'description' => 'Autorise a creer les proprietes type3 et a modifier leur structure (nom, format, type et configuration) dans le contexte cible.', 'iscontextual' => true, 'group' => 'properties'],
             'CAN_EDIT_TYPE3_PROPERTIES' => ['title' => 'Modifier les proprietes type3', 'description' => 'Autorise uniquement a modifier les valeurs des proprietes type3 (textes, listes et elements de liste), sans changer leur structure.', 'iscontextual' => true, 'group' => 'properties'],
             'CAN_DELETE_TYPE3_PROPERTIES' => ['title' => 'Supprimer les proprietes type3', 'description' => 'Autorise a supprimer les proprietes type3 dans le contexte cible.', 'iscontextual' => true, 'group' => 'properties'],
+            'CAN_CREATE_TYPE4_PROPERTIES' => ['title' => 'Creer les proprietes type4', 'description' => 'Autorise a creer les proprietes type4 et a modifier leur structure (nom, format, type et configuration) dans le contexte cible.', 'iscontextual' => true, 'group' => 'properties'],
+            'CAN_EDIT_TYPE4_PROPERTIES' => ['title' => 'Modifier les proprietes type4', 'description' => 'Autorise uniquement a modifier les valeurs des proprietes type4 (textes, listes et elements de liste), sans changer leur structure.', 'iscontextual' => true, 'group' => 'properties'],
+            'CAN_DELETE_TYPE4_PROPERTIES' => ['title' => 'Supprimer les proprietes type4', 'description' => 'Autorise a supprimer les proprietes type4 dans le contexte cible.', 'iscontextual' => true, 'group' => 'properties'],
+            'CAN_CREATE_TYPE5_PROPERTIES' => ['title' => 'Creer les proprietes type5', 'description' => 'Autorise a creer les proprietes type5 et a modifier leur structure (nom, format, type et configuration) dans le contexte cible.', 'iscontextual' => true, 'group' => 'properties'],
+            'CAN_EDIT_TYPE5_PROPERTIES' => ['title' => 'Modifier les proprietes type5', 'description' => 'Autorise uniquement a modifier les valeurs des proprietes type5 (textes, listes et elements de liste), sans changer leur structure.', 'iscontextual' => true, 'group' => 'properties'],
+            'CAN_DELETE_TYPE5_PROPERTIES' => ['title' => 'Supprimer les proprietes type5', 'description' => 'Autorise a supprimer les proprietes type5 dans le contexte cible.', 'iscontextual' => true, 'group' => 'properties'],
             'CAN_EDIT_TEMPLATE_PROPERTIES' => [
                 'title' => 'Modifier les proprietes de templates',
                 'description' => 'Autorise la modification des proprietes definies par les templates dans le contexte cible.',
@@ -396,11 +402,11 @@ class Permission extends DbObject
         ];
     }
 
-    public static function getEditorGroupCatalog()
+    public static function getEditorGroupCatalog(array $lexicon = [])
     {
         return [
             'organization' => ['title' => 'Organisation', 'order' => 10],
-            'holons' => ['title' => 'Holons', 'order' => 20, 'application' => 'structure'],
+            'holons' => ['title' => Organization::formatLexiconText('Holons', $lexicon), 'order' => 20, 'application' => 'structure'],
             'properties' => ['title' => 'Proprietes', 'order' => 30, 'application' => 'structure'],
             'members' => ['title' => 'Membres et roles', 'order' => 40, 'application' => 'team'],
             'calendar' => ['title' => 'Calendrier', 'order' => 50, 'application' => 'calendar'],
@@ -549,7 +555,7 @@ class Permission extends DbObject
             ],
         ]);
 
-        $groups = self::getEditorGroupCatalog();
+        $groups = self::getEditorGroupCatalog($lexicon);
         $catalog = [];
         foreach ($permissions as $permission) {
             $permissionKey = (string)$permission->get('permission_key');
@@ -567,10 +573,11 @@ class Permission extends DbObject
                 && !in_array($application, $enabledApplicationHashes, true)) {
                 continue;
             }
-            $title = (string)$permission->get('title');
-            $description = (string)$permission->get('description');
+            $title = Organization::formatLexiconText((string)$permission->get('title'), $lexicon);
+            $description = Organization::formatLexiconText((string)$permission->get('description'), $lexicon);
             if ($lexicon && preg_match('/^CAN_(CREATE|EDIT|DELETE)_(TYPE[1-9][0-9]*)_PROPERTIES$/', $permissionKey, $matches)) {
                 $type = strtolower($matches[2]);
+                if (!Property::isTypeEnabled($type, $lexicon)) continue;
                 $label = Organization::getLexiconLabel($lexicon, $type);
                 $title = str_replace($type, $label, $title);
                 $description = str_replace($type, $label, $description);

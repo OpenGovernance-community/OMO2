@@ -14,10 +14,16 @@ use dbObject\{Holon, Organization, Property, Permission};
 
 final class PropertyTypeTestHolon extends Holon {
     public array $grants = [];
+    public function getPropertyTypeLexicon(): array { return (new PropertyTypeTestOrganization())->getLexicon(); }
     public function isAllowed($key, $cache = true, $userId = 0) { return in_array($key, $this->grants, true); }
     public function getId() { return 0; }
 }
 final class PropertyTypeTestOrganization extends Organization {
+    public function getLexicon(): array {
+        $lexicon = parent::getLexicon();
+        foreach (Property::TYPES as $type) $lexicon[$type]['enabled'] = true;
+        return $lexicon;
+    }
     public function check(Holon $holon, array $before, array $after, array $inherited = []): bool {
         return !empty($this->canApplyPropertyDefinitionChanges($holon, $this->getPropertyDefinitionPermissionOperations($before, $after, $inherited), 'HOLON')['status']);
     }

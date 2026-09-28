@@ -212,7 +212,7 @@ class Rule extends DbObject
         }
 
         if (($authorityId > 0 && $holonId > 0) || ($authorityId <= 0 && $holonId <= 0 && $organizationId <= 0)) {
-            return ['status' => false, 'text' => 'A rule must be attached to an organization, authority or holon.'];
+            return ['status' => false, 'text' => \dbObject\Organization::formatLexiconText('A rule must be attached to an organization, authority or holon.')];
         }
 
         if ($reviewDate > $expirationDate) {
@@ -230,7 +230,7 @@ class Rule extends DbObject
         } elseif ($holonId > 0) {
             $holon = new Holon();
             if (!$holon->load($holonId)) {
-                return ['status' => false, 'text' => 'The selected holon does not exist.'];
+                return ['status' => false, 'text' => \dbObject\Organization::formatLexiconText('The selected holon does not exist.')];
             }
             $organizationId = (int)$holon->get('IDorganization');
             if ($organizationId <= 0 && (int)$holon->get('IDholon_org') > 0) {
