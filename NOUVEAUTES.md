@@ -1,5 +1,9 @@
 # Journal Des Nouveautes
 
+- Lexique : marges et espacements harmonises, sections coherentes avec leurs explications visibles, types de proprietes alignes avec leur case d activation et leur nom, actions accessibles pendant le defilement et disposition adaptee aux petits ecrans.
+
+- Proprietes : cinq types configurables dans le lexique, chacun avec une case d activation. Les types desactives sont masques dans les choix, les ecrans et les droits, sans perdre leurs donnees ni leurs autorisations. Les organisations existantes conservent leurs trois types ; les types 4 et 5 restent desactives. Une organisation vierge active uniquement le type 1, nomme defini par le parent. Les modeles et exports de structure transmettent les libelles et activations.
+
 - Parcours : droit explicite Supprimer un parcours, distinct de Creer, applique au menu et aux endpoints. Un parcours encore utilise (organisations, packs, progressions ou prerequis) est retire du partage et conserve en lecture seule pour les utilisateurs existants ; les nouveaux imports et acces sont bloques. Suppression definitive uniquement sans usage. Migration ajoutee.
 
 - Connexion : champs de code completes pour la saisie automatique (one-time-code, nom, libelle accessible, corrections desactivees). Le mail affiche le code dans son objet et fournit une version texte brut avec un code clairement identifie, pour faciliter sa detection par les messageries compatibles.

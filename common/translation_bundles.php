@@ -990,10 +990,12 @@ function translationBundleTranslate(string $key, array $variables = [], ?array $
         return $key;
     }
 
-    return translationBundleInterpolate(
-        translationBundleResolveText($entry, $variables),
-        $variables
-    );
+    $text = translationBundleResolveText($entry, $variables);
+    // Keep cached translations organization-neutral and user-provided variables intact.
+    if (class_exists(\dbObject\Organization::class)) {
+        $text = \dbObject\Organization::formatLexiconText($text);
+    }
+    return translationBundleInterpolate($text, $variables);
 }
 
 if (!function_exists('t')) {

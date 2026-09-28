@@ -564,6 +564,7 @@ $payload = array(
     ),
     'holons' => $compactExportData['holons'],
     'propertyDefinitions' => $compactExportData['propertyDefinitions'],
+    'propertyTypes' => $compactExportData['propertyTypes'],
 );
 
 $filenameBase = sprintf(

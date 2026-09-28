@@ -378,6 +378,7 @@
 
 		$properties=$selectedTemplate->getPropertiesValue();
 		foreach ($properties as $property) {
+			if (!\dbObject\Property::isTypeEnabled($property->get('type'), $selectedTemplate->getPropertyTypeLexicon())) continue;
 			$effectivePreview = circleBuildEffectivePreviewValue($property, $property->get("value_parents"), $property->get("value"));
 			echo "<div>".circleEscape($property->get("name")).":</div>";
 			echo "<div id='role_parent_".$property->get("IDproperty")."' style='white-space: pre-line;border:1px solid lightgrey; border-bottom:0px; background:#f9f9f9; border-radius:3px 3px 0px 0px; padding:5px;'>".str_replace("'","&apos;",circleEscape($effectivePreview))."</div>";
@@ -398,6 +399,7 @@
 
 		$properties=$selectedTemplate->getPropertiesValue();
 		foreach ($properties as $property) {
+			if (!\dbObject\Property::isTypeEnabled($property->get('type'), $selectedTemplate->getPropertyTypeLexicon())) continue;
 			$ancestorPreview = circleRenderPreviewValue($property, $property->get("value_parents"));
 			echo "<div>".circleEscape($property->get("name")).":</div>";
 			echo "<div id='role_parent_".$property->get("IDproperty")."' style='white-space: pre-line;border:1px solid lightgrey; border-bottom:0px; background:#f9f9f9; border-radius:3px 3px 0px 0px; padding:5px;'>".str_replace("'","&apos;",circleEscape($ancestorPreview))."</div>";

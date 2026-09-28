@@ -15,6 +15,7 @@ function createJSONstr($node) {
 	if (count($properties)>0) {
 		$str.=', "data": {';
 		foreach ($properties as $property) {
+			if (!\dbObject\Property::isTypeEnabled($property->get('type'), $node->getPropertyTypeLexicon())) continue;
 			// Récupère la veleur unique de la propriété, uniquement si elle est définie
 			if ($property->get("value")!==null || $property->get("value_parents")!==null)
 				$str.='"d'.$property->get("IDproperty").'" : {"value" : "'.($property->get("value")!==null?str_replace('"',"&quot;",$property->get("value")):"").'", "ancestor" : "'.($property->get("value_parents")!==null?str_replace('"',"&quot;",$property->get("value_parents")):"").'"}, ';
