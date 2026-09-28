@@ -1,5 +1,9 @@
 # Journal Des Nouveautes
 
+- Docker : seed SQL actualise jusqu'aux migrations du 28 septembre, avec les packs de parcours et un historique coherent. Import dans une base vide et absence de migrations en attente verifies.
+
+- Notifications navigateur : la souscription active est maintenant resynchronisee silencieusement a chaque ouverture authentifiee d OMO, sans nouvelle demande de permission. Une cle VAPID remplacee declenche aussi le renouvellement de la souscription ; le service worker est controle dans la PWA installee comme dans le navigateur.
+
 - Creation depuis un modele public : le formulaire accepte les modeles affiches dans le catalogue meme sans appartenance au modele source. Le statut public et le niveau d interface restent lisibles, et les reglages du modele sont copies sans ouvrir les parametres prives des autres organisations.
 
 - Creation depuis un modele : le catalogue et la validation du nouveau modele sont accessibles depuis le repertoire des organisations, y compris sans acces a l organisation courante, pour les utilisateurs connectes.
