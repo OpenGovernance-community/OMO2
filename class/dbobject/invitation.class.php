@@ -410,7 +410,7 @@
 			if ($holonId <= 0) {
 				return array(
 					'status' => false,
-					'message' => 'Le holon admin demande est invalide.',
+					'message' => \dbObject\Organization::formatLexiconText('Le holon admin demande est invalide.'),
 				);
 			}
 

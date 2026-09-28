@@ -270,7 +270,7 @@
 					}
 					if (!$local->load([['IDholon', $holon->getId()], ['IDproperty', $propertyId]])
 						|| (int)$stored['IDholon_organization'] !== (int)($holon->get('IDholon_org') ?: $holon->getId())) {
-						throw new \RuntimeException('Cette definition de liste ne peut pas etre convertie depuis ce holon.');
+						throw new \RuntimeException(\dbObject\Organization::formatLexiconText('Cette definition de liste ne peut pas etre convertie depuis ce holon.'));
 					}
 					$rows = self::fetchAll('SELECT id FROM `holonproperty` WHERE IDproperty = :id ORDER BY id FOR UPDATE', ['id' => $propertyId]);
 					if (!is_array($rows)) {
@@ -309,7 +309,7 @@
 									$items[] = $item;
 									continue;
 								}
-								$context = 'Liste "' . (string)$stored['name'] . '", holon #' . (int)$value->get('IDholon') . ' : ';
+								$context = 'Liste "' . (string)$stored['name'] . \dbObject\Organization::formatLexiconText('", holon #') . (int)$value->get('IDholon') . ' : ';
 								if ($id === 0) {
 									throw new \RuntimeException($context . 'une reference d autorite est invalide. La conversion est annulee.');
 								}

@@ -4729,9 +4729,9 @@
 					: $pointTypeIconMap['information'];
 				$pointFields = '';
 				$pointFields .= self::buildPvFieldHtml('Auteur', (string)($pointData['authorLabel'] ?? ''));
-				$pointFields .= self::buildPvFieldHtml('Holon concerne', (string)($pointData['concernedHolonLabel'] ?? ''));
+				$pointFields .= self::buildPvFieldHtml(Organization::formatLexiconText('Holon concerne', Organization::getLexiconForOrganizationId($organizationId)), (string)($pointData['concernedHolonLabel'] ?? ''));
 				$pointChips = '';
-				$pointChips .= self::buildPvChipGroupHtml('Holons adresses', (array)($pointData['addressedHolons'] ?? array()), 'holons');
+				$pointChips .= self::buildPvChipGroupHtml(Organization::formatLexiconText('Holons adresses', Organization::getLexiconForOrganizationId($organizationId)), (array)($pointData['addressedHolons'] ?? array()), 'holons');
 				$pointChips .= self::buildPvChipGroupHtml('Tensions', (array)($pointData['tensions'] ?? array()), 'tensions');
 				$desiredLabel = self::formatPvDurationLabel($pointData['desiredDurationMinutes'] ?? null, 'souhaites');
 				$actualLabel = self::formatPvDurationLabel($pointData['actualDurationMinutes'] ?? null, 'reelles');
@@ -5343,7 +5343,7 @@
 				) {
 					return array(
 						'status' => false,
-						'text' => "Holon introuvable pour cette organisation.",
+						'text' => \dbObject\Organization::formatLexiconText("Holon introuvable pour cette organisation."),
 					);
 				}
 
@@ -6965,7 +6965,7 @@
 			) {
 				return array(
 					'status' => false,
-					'text' => 'Holon du document introuvable.',
+					'text' => \dbObject\Organization::formatLexiconText('Holon du document introuvable.'),
 				);
 			}
 

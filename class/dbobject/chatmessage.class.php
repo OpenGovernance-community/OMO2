@@ -437,7 +437,7 @@ class ChatMessage extends DbObject
                 'value' => $authorLabel,
             ],
             'concerned_holon_id' => [
-                'label' => 'Holon concerne',
+                'label' => \dbObject\Organization::formatLexiconText('Holon concerne'),
                 'value' => static function (array $values) use ($holonLabel): string {
                     return $holonLabel($values['concerned_holon_id'] ?? 0);
                 },

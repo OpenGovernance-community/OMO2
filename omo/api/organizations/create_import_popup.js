@@ -77,7 +77,7 @@ window.commonPageScripts["/omo/api/organizations/create_import_popup.js"] = func
             var details = moduleData[module] || {};
             var available = module === 'structure' || !!details.selected;
             var total = Number(details.count || 0);
-            count.textContent = module === 'structure' ? String((payload.scope && payload.scope.holonCount) || 0) + ' holons' : (available ? String(total) + ' elements' : 'Absent du fichier');
+            count.textContent = module === 'structure' ? String((payload.scope && payload.scope.holonCount) || 0) + ' ' + String(ui.spacePlural || 'elements') : (available ? String(total) + ' elements' : 'Absent du fichier');
             row.classList.toggle('is-unavailable', !available);
             if (module !== 'structure') {
                 input.disabled = !available;

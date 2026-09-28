@@ -281,7 +281,7 @@ if ($contextHolonId <= 0) {
     $disabledVisibilityTypes[ObjectVisibility::TYPE_CIRCLE] = true;
     $disabledVisibilityTypes[ObjectVisibility::TYPE_ROLE] = true;
     $visibilityHelpText = $organizationId > 0
-        ? 'Ce document n’est pas lié à un holon. Les portées cercle et rôle ne sont pas disponibles.'
+        ? \dbObject\Organization::formatLexiconText('Ce document n’est pas lié à un holon. Les portées cercle et rôle ne sont pas disponibles.')
         : omoDocumentsCreateT('documents.create.visibility.help_outside_context');
     if ($organizationId > 0) {
         $visibilityHelpText = omoDocumentsCreateT('documents.create.visibility.help_no_holon');

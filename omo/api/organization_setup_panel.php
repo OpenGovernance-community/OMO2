@@ -42,7 +42,7 @@ if (!function_exists('omoRenderOrganizationSetupPanel')) {
                 </span>
                 <span class="omo-setup-card__content">
                     <span class="omo-setup-card__title generic-card-title generic-card-title--big">Créer à partir de rien</span>
-                    <span class="omo-setup-card__text generic-description generic-description--small">Crée uniquement le holon racine de type organisation, sans cercle ni rôle.</span>
+                    <span class="omo-setup-card__text generic-description generic-description--small"><?= htmlspecialchars(\dbObject\Organization::formatLexiconText('Crée uniquement le holon racine de type organisation, sans cercle ni rôle.', $organization->getLexicon()), ENT_QUOTES, 'UTF-8') ?></span>
                     <span class="omo-setup-card__cta">Créer l'organisation</span>
                 </span>
             </button>

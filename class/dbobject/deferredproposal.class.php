@@ -561,7 +561,7 @@ class DeferredProposal extends DbObject
             || !$holon->load((int)$proposal->get('target_id'))
             || (int)$holon->get('IDholon_parent') !== (int)($before['parent_id'] ?? 0)
             || (int)$holon->get('IDholon_template') !== (int)($before['template_id'] ?? 0)) {
-            return ['status' => false, 'conflict' => true, 'message' => 'Le holon a ete deplace, supprime ou son modele a change depuis la proposition.'];
+            return ['status' => false, 'conflict' => true, 'message' => \dbObject\Organization::formatLexiconText('Le holon a ete deplace, supprime ou son modele a change depuis la proposition.')];
         }
         $validation = self::validateHolonMove($organization, $holon, (int)($after['parent_id'] ?? 0), $collectiveHolonId);
         if (empty($validation['status'])) return $validation;

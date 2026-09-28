@@ -27,17 +27,17 @@
 }
 
 .circle-panel {
-    padding: 20px;
+    padding: 0;
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 0;
 }
 
 .circle-top {
     position: sticky;
     top: 0;
     z-index: 5;
-    margin: -20px -20px 0;
+    margin: 0;
     padding: 20px 20px 16px;
     background: var(--color-surface, #fff);
     border-bottom: 1px solid var(--color-border);
