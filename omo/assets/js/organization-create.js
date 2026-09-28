@@ -12,12 +12,14 @@ window.commonPageScripts["/omo/assets/js/organization-create.js"] = function (pa
         var canManageOrganizationRouting = pageConfig.canManageOrganizationRouting;
         var organizationRoutingLockedMessage = pageConfig.organizationRoutingLockedMessage;
         var refreshApplicationPrompt = pageConfig.refreshApplicationPrompt;
+        var uiLabels = pageConfig.uiLabels || {};
         var submitButton = document.getElementById('organization_create_submit');
         var cancelButton = document.getElementById('organization_create_cancel');
         var form = document.getElementById('organization_create_form');
         var feedback = document.getElementById('organization_create_feedback');
         var shortnameInput = document.getElementById('shortname') || document.querySelector('input[name="shortname"]');
         var domainInput = document.getElementById('domain') || document.querySelector('input[name="domain"]');
+        var locationSearchPending = false;
         var initialFormSnapshot = '';
         var initialApplicationSnapshot = '';
 
@@ -39,7 +41,7 @@ window.commonPageScripts["/omo/assets/js/organization-create.js"] = function (pa
             var hint = document.createElement('div');
             hint.id = hintId;
             hint.className = 'organization-create-routing-lock';
-            hint.innerHTML = '<strong>Acces reserve.</strong> ' + organizationRoutingLockedMessage;
+            hint.innerHTML = '<strong>' + (uiLabels.accessRestricted || '') + '</strong> ' + organizationRoutingLockedMessage;
 
             if (field) {
                 field.appendChild(hint);
@@ -166,14 +168,14 @@ window.commonPageScripts["/omo/assets/js/organization-create.js"] = function (pa
             var previewUrl = buildShortnamePreviewUrl(shortnameInput ? shortnameInput.value : '');
             if (previewUrl) {
                 if (organizationSubdomainRoutingEnabled) {
-                    hint.innerHTML = "Ce nom court sera utilise dans l'URL de base du site :<br><code>" + previewUrl + "</code>";
+                    hint.innerHTML = (uiLabels.shortnamePreview || '') + '<br><code>' + previewUrl + '</code>';
                 } else {
-                    hint.innerHTML = "Les sous-domaines d'organisation sont desactives sur ce serveur. L'acces se fera via une URL de type :<br><code>" + previewUrl + "</code>";
+                    hint.innerHTML = (uiLabels.shortnamePreviewDisabled || '') + '<br><code>' + previewUrl + '</code>';
                 }
                 return;
             }
 
-            hint.innerHTML = "Ce nom court sera utilise dans l'URL de base du site, par exemple :<br><code>" + shortnamePreviewScheme + "://nomcourt." + shortnamePreviewHost + shortnamePreviewPath + "</code>";
+            hint.innerHTML = (uiLabels.shortnamePreviewExample || '') + '<br><code>' + shortnamePreviewScheme + '://nomcourt.' + shortnamePreviewHost + shortnamePreviewPath + '</code>';
         }
 
         function setFeedback(message, isError) {
@@ -302,6 +304,89 @@ window.commonPageScripts["/omo/assets/js/organization-create.js"] = function (pa
             shortnameInput.addEventListener('change', updateShortnameHint);
             updateShortnameHint();
         }
+
+        function initializeAddressSearch() {
+            var addressInput = document.getElementById('organization_location_address');
+            var searchButton = document.getElementById('organization_location_search');
+            var searchFeedback = document.getElementById('organization_location_feedback');
+            var searchFeedbackText = document.getElementById('organization_location_feedback_text');
+            var attribution = document.getElementById('organization_location_attribution');
+            var latInput = document.getElementById('latlong_lat');
+            var longInput = document.getElementById('latlong_long');
+            var labels = pageConfig.locationLabels || {};
+
+            if (!addressInput || !searchButton || !searchFeedback || !searchFeedbackText || !attribution || !latInput || !longInput) {
+                return;
+            }
+
+            function showSearchFeedback(message, showAttribution) {
+                searchFeedbackText.textContent = message || '';
+                searchFeedback.hidden = !message;
+                attribution.hidden = !showAttribution;
+            }
+
+            function searchAddress() {
+                var address = addressInput.value.trim();
+                if (locationSearchPending || submitButton.disabled) {
+                    return;
+                }
+                if (!address) {
+                    showSearchFeedback(labels.empty || '', false);
+                    addressInput.focus();
+                    return;
+                }
+
+                searchButton.disabled = true;
+                locationSearchPending = true;
+                submitButton.disabled = true;
+                showSearchFeedback(labels.searching || '', false);
+                var url = '/ajax/organization_geocode.php?address=' + encodeURIComponent(address);
+                if (isEditMode && organizationId > 0) {
+                    url += '&oid=' + encodeURIComponent(organizationId);
+                }
+                fetch(url, { credentials: 'same-origin' })
+                    .then(function (response) {
+                        return response.json().then(function (data) {
+                            if (!response.ok || !data.success) {
+                                throw new Error(data.message || labels.error || '');
+                            }
+                            return data;
+                        });
+                    })
+                    .then(function (data) {
+                        if (addressInput.value.trim() !== address) {
+                            showSearchFeedback('', false);
+                            return;
+                        }
+                        if (!data.found) {
+                            showSearchFeedback(labels.notFound || '', false);
+                            return;
+                        }
+                        latInput.value = Number(data.lat).toFixed(6);
+                        longInput.value = Number(data.long).toFixed(6);
+                        latInput.dispatchEvent(new Event('change', { bubbles: true }));
+                        showSearchFeedback((labels.result || '{place}').replace('{place}', data.place || address), true);
+                    })
+                    .catch(function (error) {
+                        showSearchFeedback(error && error.message ? error.message : (labels.error || ''), false);
+                    })
+                    .finally(function () {
+                        locationSearchPending = false;
+                        searchButton.disabled = false;
+                        submitButton.disabled = false;
+                    });
+            }
+
+            searchButton.addEventListener('click', searchAddress);
+            addressInput.addEventListener('keydown', function (event) {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    searchAddress();
+                }
+            });
+        }
+
+        initializeAddressSearch();
 
         function initializeLocationPicker() {
             var mapElement = document.getElementById('organization-create-location-map');
@@ -580,8 +665,12 @@ window.commonPageScripts["/omo/assets/js/organization-create.js"] = function (pa
         function submitOrganization() {
             var shouldRefreshApplication;
 
+            if (locationSearchPending) {
+                return;
+            }
+
             if (!form) {
-                setFeedback("Le formulaire n'est pas disponible.", true);
+                setFeedback(uiLabels.formUnavailable || '', true);
                 return;
             }
 

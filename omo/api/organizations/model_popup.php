@@ -10,8 +10,14 @@ $sourceLang = array(
     'organization_model.field.model' => array('text' => 'Modèle', 'context' => 'Model selector label in the create-from-model popup.'),
     'organization_model.field.model_empty' => array('text' => 'Choisir un modèle...', 'context' => 'Empty model selector option in the create-from-model popup.'),
     'organization_model.loading' => array('text' => 'Ouverture du formulaire...', 'context' => 'Loading state in the create-from-model popup.'),
+    'organization_model.error.login' => array('text' => 'Connexion requise.', 'context' => 'Authentication error in the create-from-model popup.'),
 );
 $lang = translationBundleInit('omo_organization_model_popup', omoGetTranslationLocale(), $sourceLang);
+if ((int)commonGetCurrentUserId() <= 0) {
+    http_response_code(401);
+    echo htmlspecialchars(t('organization_model.error.login', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8');
+    exit;
+}
 $models = Organization::getPublicModelCatalog();
 ?>
 <div class="omo-model-popup generic-section generic-section--stack generic-section--roomy">
