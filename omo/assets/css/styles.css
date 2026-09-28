@@ -1616,6 +1616,7 @@ body {
 /* Toggle */
 .sidebar-toggle {
     height: 48px;
+    flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: flex-start;
@@ -1644,9 +1645,27 @@ body {
 }
 
 .menu-secondary {
+    flex-shrink: 0;
     margin-top: auto;
     padding-top: 8px;
     border-top: 1px solid rgba(255,255,255,0.14);
+}
+
+.menu-primary {
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior-y: contain;
+}
+
+.sidebar .menu-item {
+    flex-shrink: 0;
+}
+
+.menu-item--add .icon-img {
+    width: 20px;
+    height: 20px;
+    margin: 2px;
 }
 
 :root[data-theme="dark"] .menu-secondary {
@@ -3292,8 +3311,13 @@ button.omo-card {
 
 @media (max-width: 768px) {
     :root {
+        --sidebar-width: 36px;
         --mobile-nav-height: 48px;
         --topbar-bottom-offset: calc(var(--mobile-nav-height) + env(safe-area-inset-bottom, 0px));
+    }
+
+    .app .common-topbar__organization-level {
+        display: none;
     }
 
     .noMobile {
@@ -3407,6 +3431,60 @@ button.omo-card {
     .sidebar,
     .sidebar.expanded {
         width: 100% !important;
+    }
+
+    .sidebar-toggle,
+    .sidebar .menu-item {
+        width: 75%;
+    }
+
+    .sidebar .menu-item--add {
+        position: relative;
+        border-top: 0;
+    }
+
+    .sidebar .menu-item--add::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 133.333333%;
+        border-top: 1px solid rgba(255,255,255,0.12);
+    }
+
+    :root[data-theme="dark"] .sidebar .menu-item--add::before {
+        border-top-color: rgba(159,176,195,0.18);
+    }
+
+    .sidebar-toggle,
+    .sidebar .menu-item {
+        height: 36px;
+        padding: 0 9px;
+    }
+
+    .sidebar .icon {
+        width: 18px;
+        flex: 0 0 18px;
+        font-size: 18px;
+    }
+
+    .sidebar .icon-img {
+        width: 22.5px;
+        height: 22.5px;
+    }
+
+    .sidebar .menu-item--add .icon-img {
+        width: 15px;
+        height: 15px;
+        margin: 1.5px;
+    }
+
+    .sidebar .label {
+        margin-left: 9px;
+    }
+
+    .sidebar .menu-secondary {
+        padding-top: 6px;
     }
 
     /* désactiver visuellement le resizer */
