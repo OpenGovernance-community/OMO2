@@ -1,5 +1,11 @@
 # Journal Des Nouveautes
 
+- Navigation mobile : la pastille du niveau Expert, Autonome ou Decouverte est masquee dans la barre de l'application.
+
+- Structure : le selecteur de vue en bas a droite montre un cercle et trois lignes plutot que des lettres ; son libelle reste accessible au clavier et aux lecteurs d'ecran.
+
+- Navigation mobile : fond et separateurs du menu sur toute la largeur, bande des icones reduite a 75 %, boutons et icones plus petits. Le menu Parametres reste visible en bas pour acceder aux notifications ; la liste des applications defile si la hauteur manque.
+
 - Structure : le titre Dependances devient Espaces rattaches, avec le terme pluriel du lexique de l organisation et une traduction dediee.
 
 - Structure : blocs de proprietes compacts et bord a bord dans le panneau du holon, avec un simple separateur gris en bas, sans cadre ni coins arrondis.
