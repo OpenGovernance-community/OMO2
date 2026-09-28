@@ -293,7 +293,7 @@
                 var action = baseAction(pi, ai, 'holon', operation, contextId, object), previous = ai >= 0 ? blueprint[pi].actions[ai] : null, targetId = operation === 'create' ? 0 : Number(action.targetId || 0);
                 activeHolonCapture = {proposalIndex:pi,actionIndex:ai,action:action};
                 window.omoHolonGovernanceInitialPayload = previous && previous.after && previous.after.editor_payload ? clone(previous.after.editor_payload) : null;
-                var url = '/omo/api/holons/create.php?cid=' + Number(contextId) + '&governance_capture=1&v=20260923-deferred-proposals'; if (targetId > 0) url += '&hid=' + targetId;
+                var url = '/omo/api/holons/create.php?cid=' + Number(contextId) + '&governance_capture=1&collective_holon_id=' + Number(payload.contextHolonId || 0) + '&oid=' + Number(payload.organizationId || 0) + '&v=20260928-property-scopes'; if (targetId > 0) url += '&hid=' + targetId;
                 window.commonTopbarOpenModal(actionLabel(action), url, 'fetch');
             }
             window.addEventListener('omo-holon-governance-capture', function (event) {

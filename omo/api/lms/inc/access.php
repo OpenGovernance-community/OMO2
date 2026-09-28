@@ -222,6 +222,17 @@ function lmsCurrentUserCanEditParcours($organizationId, $userId = null, $useSess
 	return $permissionHolon->isAllowed('CAN_EDIT_PARCOURS', (bool)$useSessionCache, $userId);
 }
 
+function lmsCurrentUserCanDeleteParcours($organizationId, $userId = null, $useSessionCache = true)
+{
+	$organizationId = (int)$organizationId;
+	$userId = lmsResolveCurrentUserId($userId);
+	if ($organizationId <= 0 || $userId <= 0 || !commonUserHasOrganizationAccess($userId, $organizationId)) return false;
+	if (function_exists('commonCurrentUserIsAdminModeEnabled') && commonCurrentUserIsAdminModeEnabled($organizationId)) return true;
+	$context = lmsResolvePermissionHolonContext($organizationId, $userId);
+	$holon = $context['permissionHolon'] ?? null;
+	return $holon instanceof \dbObject\Holon && $holon->isAllowed('CAN_DELETE_PARCOURS', (bool)$useSessionCache, $userId);
+}
+
 function lmsCurrentUserIsOrganizationAdmin($organizationId, $userId = null)
 {
 	$organizationId = (int)$organizationId;
@@ -253,6 +264,7 @@ function lmsResolveParcoursManagementContext($organizationId, $parcoursId = 0, $
 	$isOrganizationAdmin = $hasOrganizationAccess ? lmsCurrentUserIsOrganizationAdmin($organizationId, $userId) : false;
 	$canCreate = $hasOrganizationAccess && lmsCurrentUserCanCreateParcours($organizationId, $userId, $useSessionCache);
 	$canEdit = $hasOrganizationAccess && lmsCurrentUserCanEditParcours($organizationId, $userId, $useSessionCache);
+	$canDelete = $hasOrganizationAccess && lmsCurrentUserCanDeleteParcours($organizationId, $userId, $useSessionCache);
 	$link = null;
 	$parcours = null;
 	$isOwned = false;
@@ -276,10 +288,11 @@ function lmsResolveParcoursManagementContext($organizationId, $parcoursId = 0, $
 		'isOrganizationAdmin' => $isOrganizationAdmin,
 		'canCreate' => $canCreate,
 		'canEdit' => $canEdit,
+		'canDelete' => $canDelete,
 		'link' => $link,
 		'parcours' => $parcours,
 		'isOwned' => $isOwned,
 		'isExposedViaPack' => $isExposedViaPack,
-		'canEditContent' => $canEdit && $parcours instanceof \dbObject\Parcours && $isOwned && ($link !== null || $isExposedViaPack),
+		'canEditContent' => $canEdit && $parcours instanceof \dbObject\Parcours && !$parcours->get('isarchived') && $isOwned && ($link !== null || $isExposedViaPack),
 	);
 }

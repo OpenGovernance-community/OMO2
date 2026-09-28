@@ -3,6 +3,12 @@ namespace dbObject;
 
 class Permission extends DbObject
 {
+    public static function requiresExplicitAssignment(string $permissionKey): bool
+    {
+        return $permissionKey === 'CAN_DELETE_PARCOURS'
+            || (bool)preg_match('/^CAN_(CREATE|EDIT|DELETE)_TYPE[1-9][0-9]*_PROPERTIES$/', $permissionKey);
+    }
+
     public static function userCanInOrganization(string $permissionKey, int $organizationId, int $userId): bool
     {
         if ($userId <= 0 || $organizationId <= 0) return false;
@@ -160,13 +166,13 @@ class Permission extends DbObject
                 'title' => 'Modifier des FAQ',
                 'description' => 'Autorise la modification des FAQ dans le contexte cible.',
                 'iscontextual' => true,
-                'group' => 'faq',
+                'group' => 'help',
             ],
             'CAN_DELETE_FAQ' => [
                 'title' => 'Supprimer des FAQ',
                 'description' => 'Autorise la suppression des FAQ dans le contexte cible.',
                 'iscontextual' => true,
-                'group' => 'faq',
+                'group' => 'help',
             ],
             'CAN_PROPOSE_PROJECT' => [
                 'title' => 'Proposer des projets',
@@ -262,7 +268,7 @@ class Permission extends DbObject
                 'title' => 'Creer des FAQ',
                 'description' => 'Autorise la creation de FAQ dans le contexte cible.',
                 'iscontextual' => true,
-                'group' => 'faq',
+                'group' => 'help',
             ],
             'CAN_CREATE_PROCESS' => [
                 'title' => 'Creer des processus',
@@ -318,6 +324,15 @@ class Permission extends DbObject
                 'iscontextual' => true,
                 'group' => 'stats',
             ],
+            'CAN_CREATE_TYPE1_PROPERTIES' => ['title' => 'Creer les proprietes type1', 'description' => 'Autorise a creer les proprietes type1 et a modifier leur structure (nom, format, type et configuration) dans le contexte cible.', 'iscontextual' => true, 'group' => 'properties'],
+            'CAN_EDIT_TYPE1_PROPERTIES' => ['title' => 'Modifier les proprietes type1', 'description' => 'Autorise uniquement a modifier les valeurs des proprietes type1 (textes, listes et elements de liste), sans changer leur structure.', 'iscontextual' => true, 'group' => 'properties'],
+            'CAN_DELETE_TYPE1_PROPERTIES' => ['title' => 'Supprimer les proprietes type1', 'description' => 'Autorise a supprimer les proprietes type1 dans le contexte cible.', 'iscontextual' => true, 'group' => 'properties'],
+            'CAN_CREATE_TYPE2_PROPERTIES' => ['title' => 'Creer les proprietes type2', 'description' => 'Autorise a creer les proprietes type2 et a modifier leur structure (nom, format, type et configuration) dans le contexte cible.', 'iscontextual' => true, 'group' => 'properties'],
+            'CAN_EDIT_TYPE2_PROPERTIES' => ['title' => 'Modifier les proprietes type2', 'description' => 'Autorise uniquement a modifier les valeurs des proprietes type2 (textes, listes et elements de liste), sans changer leur structure.', 'iscontextual' => true, 'group' => 'properties'],
+            'CAN_DELETE_TYPE2_PROPERTIES' => ['title' => 'Supprimer les proprietes type2', 'description' => 'Autorise a supprimer les proprietes type2 dans le contexte cible.', 'iscontextual' => true, 'group' => 'properties'],
+            'CAN_CREATE_TYPE3_PROPERTIES' => ['title' => 'Creer les proprietes type3', 'description' => 'Autorise a creer les proprietes type3 et a modifier leur structure (nom, format, type et configuration) dans le contexte cible.', 'iscontextual' => true, 'group' => 'properties'],
+            'CAN_EDIT_TYPE3_PROPERTIES' => ['title' => 'Modifier les proprietes type3', 'description' => 'Autorise uniquement a modifier les valeurs des proprietes type3 (textes, listes et elements de liste), sans changer leur structure.', 'iscontextual' => true, 'group' => 'properties'],
+            'CAN_DELETE_TYPE3_PROPERTIES' => ['title' => 'Supprimer les proprietes type3', 'description' => 'Autorise a supprimer les proprietes type3 dans le contexte cible.', 'iscontextual' => true, 'group' => 'properties'],
             'CAN_EDIT_TEMPLATE_PROPERTIES' => [
                 'title' => 'Modifier les proprietes de templates',
                 'description' => 'Autorise la modification des proprietes definies par les templates dans le contexte cible.',
@@ -362,15 +377,21 @@ class Permission extends DbObject
             ],
             'CAN_CREATE_PARCOURS' => [
                 'title' => 'Creer des parcours',
-                'description' => 'Autorise la creation, l import, la suppression et le detachement de parcours dans le contexte cible.',
+                'description' => 'Autorise la creation, l import et le detachement de parcours dans le contexte cible.',
                 'iscontextual' => false,
-                'group' => 'lms',
+                'group' => 'help',
             ],
             'CAN_EDIT_PARCOURS' => [
                 'title' => 'Editer des parcours',
                 'description' => 'Autorise la modification du contenu des parcours proprietaires et de leurs missions dans le contexte cible.',
                 'iscontextual' => false,
-                'group' => 'lms',
+                'group' => 'help',
+            ],
+            'CAN_DELETE_PARCOURS' => [
+                'title' => 'Supprimer un parcours',
+                'description' => 'Autorise la suppression des parcours de l organisation. Les parcours encore utilises sont retires du partage et conserves pour leurs utilisateurs existants.',
+                'iscontextual' => false,
+                'group' => 'help',
             ],
         ];
     }
@@ -378,22 +399,21 @@ class Permission extends DbObject
     public static function getEditorGroupCatalog()
     {
         return [
-            'holons' => ['title' => 'Holons', 'order' => 5],
-            'members' => ['title' => 'Membres et roles', 'order' => 10],
-            'content' => ['title' => 'Contenus et reunions', 'order' => 20],
-            'processes' => ['title' => 'Processus', 'order' => 25],
-            'recurring_tasks' => ['title' => 'Taches recurrentes', 'order' => 26],
-            'projects' => ['title' => 'Projets', 'order' => 20],
-            'policy' => ['title' => 'Reglement', 'order' => 21],
-            'stats' => ['title' => 'Indicateurs', 'order' => 30],
-            'documents' => ['title' => 'Documents et PV', 'order' => 40],
-            'decisions' => ['title' => 'Decisions', 'order' => 45],
-            'calendar' => ['title' => 'Calendrier', 'order' => 50],
-            'faq' => ['title' => 'FAQ', 'order' => 60],
-            'lms' => ['title' => 'Parcours', 'order' => 65],
-            'budget' => ['title' => 'Budget', 'order' => 35],
-            'properties' => ['title' => 'Proprietes', 'order' => 40],
-            'organization' => ['title' => 'Organisation', 'order' => 50],
+            'organization' => ['title' => 'Organisation', 'order' => 10],
+            'holons' => ['title' => 'Holons', 'order' => 20, 'application' => 'structure'],
+            'properties' => ['title' => 'Proprietes', 'order' => 30, 'application' => 'structure'],
+            'members' => ['title' => 'Membres et roles', 'order' => 40, 'application' => 'team'],
+            'calendar' => ['title' => 'Calendrier', 'order' => 50, 'application' => 'calendar'],
+            'policy' => ['title' => 'Reglement', 'order' => 60, 'application' => 'policy'],
+            'documents' => ['title' => 'Documents et PV', 'order' => 70, 'application' => 'documents'],
+            'projects' => ['title' => 'Projets', 'order' => 80, 'application' => 'projects'],
+            'stats' => ['title' => 'Indicateurs', 'order' => 90, 'application' => 'stats'],
+            'recurring_tasks' => ['title' => 'Taches recurrentes', 'order' => 100, 'application' => 'activities'],
+            'processes' => ['title' => 'Processus', 'order' => 110, 'application' => 'processus'],
+            'decisions' => ['title' => 'Decisions', 'order' => 120, 'application' => 'decision'],
+            'budget' => ['title' => 'Budget', 'order' => 130, 'application' => 'budget'],
+            'help' => ['title' => 'Aide', 'order' => 140],
+            'content' => ['title' => 'Contenus et reunions', 'order' => 990],
             'other' => ['title' => 'Autres droits', 'order' => 999],
         ];
     }
@@ -519,7 +539,7 @@ class Permission extends DbObject
         return $cache[$permissionKey];
     }
 
-    public static function getEditorCatalog()
+    public static function getEditorCatalog(array $lexicon = [], ?array $enabledApplicationHashes = null)
     {
         $permissions = new \dbObject\ArrayPermission();
         $permissions->load([
@@ -533,16 +553,33 @@ class Permission extends DbObject
         $catalog = [];
         foreach ($permissions as $permission) {
             $permissionKey = (string)$permission->get('permission_key');
+            // Keep historical assignments in storage, but expose the type-based rights only.
+            if (preg_match('/^CAN_(ADD|EDIT|DELETE)_(HOLON|TEMPLATE)_PROPERTIES$/', $permissionKey)) {
+                continue;
+            }
             $definition = self::getBuiltInDefinition($permissionKey);
             $groupKey = trim((string)($definition['group'] ?? 'other'));
             if (!isset($groups[$groupKey])) {
                 $groupKey = 'other';
             }
+            $application = $groups[$groupKey]['application'] ?? null;
+            if ($enabledApplicationHashes !== null && $application !== null
+                && !in_array($application, $enabledApplicationHashes, true)) {
+                continue;
+            }
+            $title = (string)$permission->get('title');
+            $description = (string)$permission->get('description');
+            if ($lexicon && preg_match('/^CAN_(CREATE|EDIT|DELETE)_(TYPE[1-9][0-9]*)_PROPERTIES$/', $permissionKey, $matches)) {
+                $type = strtolower($matches[2]);
+                $label = Organization::getLexiconLabel($lexicon, $type);
+                $title = str_replace($type, $label, $title);
+                $description = str_replace($type, $label, $description);
+            }
             $catalog[] = [
                 'id' => (int)$permission->getId(),
                 'key' => $permissionKey,
-                'title' => (string)$permission->get('title'),
-                'description' => (string)$permission->get('description'),
+                'title' => $title,
+                'description' => $description,
                 'group' => $groupKey,
                 'groupTitle' => (string)$groups[$groupKey]['title'],
                 'groupOrder' => (int)$groups[$groupKey]['order'],
@@ -555,6 +592,14 @@ class Permission extends DbObject
             $groupOrderComparison = ((int)$left['groupOrder']) <=> ((int)$right['groupOrder']);
             if ($groupOrderComparison !== 0) {
                 return $groupOrderComparison;
+            }
+
+            // Keep each object's actions together, independently of translated labels.
+            $leftObject = preg_replace('/^CAN_[A-Z]+_/', '', (string)$left['key']);
+            $rightObject = preg_replace('/^CAN_[A-Z]+_/', '', (string)$right['key']);
+            $objectComparison = strnatcasecmp($leftObject, $rightObject);
+            if ($objectComparison !== 0) {
+                return $objectComparison;
             }
 
             $actionOrder = static function ($key) {

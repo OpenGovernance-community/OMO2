@@ -124,6 +124,17 @@ $lexiconHelp = static function ($label, $text): string {
             </div>
         </section>
 
+        <section class="generic-section generic-section--stack generic-form-section">
+            <h3 class="generic-card-title"><?= omoLexiconEscape(omoLexiconT('parameters.lexicon.section.properties')) ?></h3>
+            <div class="generic-form-grid generic-form-grid--pair">
+                <?php foreach (\dbObject\Property::TYPES as $type): ?>
+                    <label class="generic-form-field">
+                        <span class="generic-form-label"><?= omoLexiconEscape(omoLexiconT('parameters.lexicon.term.' . $type . '.label')) ?></span>
+                        <input class="generic-form-control" name="<?= omoLexiconEscape($type) ?>_label" value="<?= omoLexiconEscape($lexicon[$type]['label']) ?>" maxlength="80" required>
+                    </label>
+                <?php endforeach; ?>
+            </div>
+        </section>
         <div class="omo-lexicon-editor__feedback generic-feedback" data-omo-lexicon-feedback aria-live="polite"></div>
         <div class="omo-lexicon-editor__actions generic-form-actions">
             <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-lexicon-reset><?= omoLexiconEscape(omoLexiconT('parameters.lexicon.action.reset')) ?></button>
@@ -133,6 +144,7 @@ $lexiconHelp = static function ($label, $text): string {
 </div>
 
 <?= commonPageScriptTags('/omo/api/parameters/lexicon/index.js', [
+    'defaults' => \dbObject\Organization::getDefaultLexicon(),
     'message' => omoLexiconT('parameters.lexicon.status.error'),
     'parametersLexiconStatusSaved' => omoLexiconT('parameters.lexicon.status.saved'),
 ]) ?>

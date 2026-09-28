@@ -8,7 +8,9 @@ const omoHolonTemplateState = {
     selectedId: pageConfig.selectedId,
     compactMode: pageConfig.compactMode,
     removedPropertyIds: [],
-    statusTimer: null
+    statusTimer: null,
+    savedSnapshot: null,
+    formRevision: 0
 };
 
 if (!omoHolonTemplatePageRoot) {
@@ -1840,6 +1842,8 @@ function omoHolonTemplateNormalizeProperty(property) {
         canEditValue: true
     }, source);
 
+    normalized.type = String(normalized.type || 'type1');
+    normalized.originalType = String(normalized.originalType || normalized.type);
     normalized.formatId = Number(normalized.formatId || 1);
     normalized.listItemType = String(normalized.listItemType || 'text');
     normalized.projectScope = ['local', 'children', 'descendants', 'global'].indexOf(String(normalized.projectScope || '')) >= 0
@@ -1863,8 +1867,12 @@ function omoHolonTemplateNormalizeProperty(property) {
         : (normalized.inheritedLocked || normalized.locked);
     normalized.isInherited = Boolean(normalized.isInherited);
     normalized.isLocal = Boolean(normalized.isLocal);
-    normalized.canDelete = normalized.canDelete !== false;
-    normalized.canEditValue = normalized.canEditValue !== false;
+    const permission = (omoHolonTemplateState.propertyTypes || omoHolonTemplateState.data.propertyTypes || []).find(type => type.id === normalized.originalType);
+    const isNew = Number(normalized.id || 0) <= 0;
+    normalized.canDelete = !normalized.inheritedMandatory && Boolean(isNew ? permission?.canCreate : permission?.canDelete);
+    normalized.canEditSettings = Boolean(permission?.canCreate);
+    normalized.canEditDefinition = !normalized.isInherited && normalized.canEditSettings;
+    normalized.canEditValue = !normalized.inheritedLocked && Boolean(isNew ? permission?.canCreate : permission?.canEdit);
     normalized.listHolonTypeIds = Array.isArray(normalized.listHolonTypeIds)
         ? normalized.listHolonTypeIds.map(function (typeId) { return Number(typeId); }).filter(Boolean)
         : [];
@@ -1927,7 +1935,7 @@ function omoHolonTemplateRenderListConfigHtml(property) {
         return '';
     }
 
-    const configDisabled = property.isInherited || !property.canEditValue ? ' disabled' : '';
+    const configDisabled = !property.canEditDefinition ? ' disabled' : '';
 
     const listItemTypeOptions = (omoHolonTemplateState.data.listItemTypes || []).map(function (itemType) {
         const selected = String(property.listItemType || 'text') === String(itemType.id) ? ' selected' : '';
@@ -2146,6 +2154,8 @@ function omoHolonTemplateCreatePropertyRow(property) {
     const row = document.createElement('div');
     row.className = 'omo-template-property generic-section';
     row.dataset.propertyId = Number(normalizedProperty.id || 0);
+    row.dataset.propertyType = normalizedProperty.type;
+    row.dataset.originalType = normalizedProperty.originalType;
     row.dataset.holonPropertyId = Number(normalizedProperty.holonPropertyId || 0);
     row.dataset.isInherited = normalizedProperty.isInherited ? '1' : '0';
 
@@ -2178,6 +2188,7 @@ function omoHolonTemplateCreatePropertyRow(property) {
         + '          <select class="omo-template-property__format">' + formatOptions + '</select>'
         + '      </label>'
         + '  </div>'
+        + window.omoPropertyTypes.render(normalizedProperty, omoHolonTemplateState.propertyTypes || omoHolonTemplateState.data.propertyTypes, omoHolonTemplateTexts.propertyType, normalizedProperty.canEditDefinition)
         + omoHolonTemplateRenderListConfigHtml(normalizedProperty)
         + '  <' + ([5, 7].indexOf(Number(normalizedProperty.formatId || 0)) >= 0 ? 'div' : 'label') + ' class="omo-field omo-template-property__value-field">'
         + '      <span>Valeur heritee par defaut</span>'
@@ -2205,6 +2216,7 @@ function omoHolonTemplateRefreshPropertyIndexes() {
 
 function omoHolonTemplateSerializePropertyValue(row, formatId, listItemType) {
     if (row.dataset.listConversionFrom) return String(row.dataset.conversionValue || '');
+    if (row.dataset.canEditValue === '0') return String(row.dataset.value || '');
     const htmlFieldHost = row.querySelector('[data-omo-html-field="1"]');
     if (Number(formatId || 0) === 5 && htmlFieldHost && htmlFieldHost.__omoSimpleHtmlField && typeof htmlFieldHost.__omoSimpleHtmlField.getValue === 'function') {
         return String(htmlFieldHost.__omoSimpleHtmlField.getValue() || '');
@@ -2307,6 +2319,8 @@ function omoHolonTemplateReadPropertyState(row) {
 
     return {
         id: Number(row.dataset.propertyId || 0),
+        type: window.omoPropertyTypes.read(row),
+        originalType: row.dataset.originalType,
         holonPropertyId: Number(row.dataset.holonPropertyId || 0),
         name: (row.querySelector('.omo-template-property__name') || {}).value || '',
         formatId: formatId,
@@ -2329,8 +2343,8 @@ function omoHolonTemplateRenderPropertyMetaHtml(property) {
             + '</div>';
     }
 
-    const mandatoryDisabled = property.inheritedMandatory || !property.canEditValue ? ' disabled' : '';
-    const lockedDisabled = property.inheritedLocked || !property.canEditValue ? ' disabled' : '';
+    const mandatoryDisabled = property.inheritedMandatory || !property.canEditSettings ? ' disabled' : '';
+    const lockedDisabled = property.inheritedLocked || !property.canEditSettings ? ' disabled' : '';
 
     return ''
         + '<div class="omo-template-property__meta">'
@@ -2345,6 +2359,8 @@ function omoHolonTemplateCreatePropertyRow(property) {
     const row = document.createElement('div');
     row.className = 'omo-template-property generic-section';
     row.dataset.propertyId = Number(normalizedProperty.id || 0);
+    row.dataset.propertyType = normalizedProperty.type;
+    row.dataset.originalType = normalizedProperty.originalType;
     row.dataset.holonPropertyId = Number(normalizedProperty.holonPropertyId || 0);
     row.dataset.isInherited = normalizedProperty.isInherited ? '1' : '0';
     row.dataset.isLocal = normalizedProperty.isLocal ? '1' : '0';
@@ -2355,6 +2371,7 @@ function omoHolonTemplateCreatePropertyRow(property) {
     row.dataset.inheritedValue = normalizedProperty.inheritedValue !== undefined && normalizedProperty.inheritedValue !== null
         ? String(normalizedProperty.inheritedValue)
         : '';
+    row.dataset.value = String(normalizedProperty.value ?? '');
     row.dataset.canEditValue = normalizedProperty.canEditValue ? '1' : '0';
     row.dataset.canDelete = normalizedProperty.canDelete ? '1' : '0';
 
@@ -2362,7 +2379,7 @@ function omoHolonTemplateCreatePropertyRow(property) {
         const selected = Number(normalizedProperty.formatId || 0) === Number(format.id) ? ' selected' : '';
         return '<option value="' + Number(format.id) + '"' + selected + '>' + omoHolonTemplateEscapeHtml(format.name) + '</option>';
     }).join('');
-    const structureDisabled = normalizedProperty.isInherited || !normalizedProperty.canEditValue ? ' disabled' : '';
+    const structureDisabled = !normalizedProperty.canEditDefinition ? ' disabled' : '';
     const removeDisabled = normalizedProperty.canDelete ? '' : ' disabled';
     const removeLabel = normalizedProperty.isInherited
         ? (omoHolonTemplateTexts.propertyExclude || '')
@@ -2394,12 +2411,13 @@ function omoHolonTemplateCreatePropertyRow(property) {
         + '      </label>'
         + '  </div>'
         + omoHolonTemplateRenderPropertyMetaHtml(normalizedProperty)
+        + window.omoPropertyTypes.render(normalizedProperty, omoHolonTemplateState.propertyTypes || omoHolonTemplateState.data.propertyTypes, omoHolonTemplateTexts.propertyType, normalizedProperty.canEditDefinition)
         + omoHolonTemplateRenderListConfigHtml(normalizedProperty)
         + inheritedValueHtml
         + valueEditorHtml
         + '  <div class="omo-template-property__actions">'
-        + '      <button type="button" class="omo-button omo-button--ghost" data-property-move="-1"' + (normalizedProperty.canEditValue ? '' : ' disabled') + '>' + omoHolonTemplateEscapeHtml(omoHolonTemplateTexts.propertyMoveUp || '') + '</button>'
-        + '      <button type="button" class="omo-button omo-button--ghost" data-property-move="1"' + (normalizedProperty.canEditValue ? '' : ' disabled') + '>' + omoHolonTemplateEscapeHtml(omoHolonTemplateTexts.propertyMoveDown || '') + '</button>'
+        + '      <button type="button" class="omo-button omo-button--ghost" data-property-move="-1"' + (normalizedProperty.canEditSettings ? '' : ' disabled') + '>' + omoHolonTemplateEscapeHtml(omoHolonTemplateTexts.propertyMoveUp || '') + '</button>'
+        + '      <button type="button" class="omo-button omo-button--ghost" data-property-move="1"' + (normalizedProperty.canEditSettings ? '' : ' disabled') + '>' + omoHolonTemplateEscapeHtml(omoHolonTemplateTexts.propertyMoveDown || '') + '</button>'
         + '      <button type="button" class="omo-button omo-button--danger" data-property-remove="1"' + removeDisabled + '>' + omoHolonTemplateEscapeHtml(removeLabel) + '</button>'
         + '  </div>'
         + '</div>';
@@ -2449,6 +2467,8 @@ function omoHolonTemplateReadPropertyState(row) {
 
     return {
         id: Number(row.dataset.propertyId || 0),
+        type: window.omoPropertyTypes.read(row),
+        originalType: row.dataset.originalType,
         holonPropertyId: Number(row.dataset.holonPropertyId || 0),
         listConversionFrom: String(row.dataset.listConversionFrom || ''),
         name: (row.querySelector('.omo-template-property__name') || {}).value || '',
@@ -2695,6 +2715,8 @@ function omoHolonTemplateShowWelcome() {
         return;
     }
 
+    omoHolonTemplateState.savedSnapshot = null;
+    omoHolonTemplateState.formRevision += 1;
     omoHolonTemplateState.selectedId = null;
     if (omoHolonTemplateElements.welcome) {
         omoHolonTemplateElements.welcome.hidden = false;
@@ -2788,19 +2810,29 @@ function omoHolonTemplateFillForm(template, options) {
             ? (omoHolonTemplateTexts.formExistingModelDescription || '')
             : (omoHolonTemplateTexts.formNewModelDescriptionShort || '');
     }
+    const propertyDestination = (omoHolonTemplateState.data.definitionHolonCatalog || []).find(item => Number(item.id) === Number(current.definedInId));
+    omoHolonTemplateState.propertyTypes = current.propertyTypes || propertyDestination?.propertyTypes || omoHolonTemplateState.data.propertyTypes || [];
     omoHolonTemplateRenderFormBadges(current);
     if (omoHolonTemplateElements.addProperty) {
-        const canAddProperties = Object.prototype.hasOwnProperty.call(current, 'canAddProperties')
-            ? Boolean(current.canAddProperties)
-            : Boolean(omoHolonTemplateState.data.canAddTemplateProperties);
-        omoHolonTemplateElements.addProperty.disabled = !canAddProperties;
+        omoHolonTemplateElements.addProperty.disabled = !window.omoPropertyTypes.firstCreatable(omoHolonTemplateState.propertyTypes);
     }
     omoHolonTemplateRenderPermissions(current.permissionAssignments || {});
     omoHolonTemplateRenderProperties(current.properties || []);
     omoHolonTemplateRenderMediaFields(current, Boolean(settings.preserveMediaState));
+    if (!settings.preserveMediaState) {
+        omoHolonTemplateState.formRevision += 1;
+        omoHolonTemplateMarkClean();
+    }
 }
 
 function omoHolonTemplateSelect(templateId) {
+    if (omoHolonTemplateState.savedSnapshot !== null
+        && Number(templateId) === Number(omoHolonTemplateState.selectedId)) {
+        return;
+    }
+    if (!omoHolonTemplateConfirmDiscardChanges()) {
+        return;
+    }
     const template = omoHolonTemplateFind(templateId);
     omoHolonTemplateState.selectedId = template ? Number(template.id) : null;
     omoHolonTemplateRenderTree();
@@ -2816,6 +2848,40 @@ function omoHolonTemplateReadProperties() {
         return property.name !== '';
     });
 }
+
+function omoHolonTemplateSnapshot() {
+    const current = omoHolonTemplateReadCurrentFormState();
+    // Include unfinished properties too: saving filters out rows without a name.
+    current.properties = Array.from(omoHolonTemplateElements.properties.querySelectorAll('.omo-template-property'))
+        .map(omoHolonTemplateReadPropertyState);
+    return JSON.stringify(current);
+}
+
+function omoHolonTemplateMarkClean() {
+    omoHolonTemplateState.savedSnapshot = omoHolonTemplateSnapshot();
+}
+
+function omoHolonTemplateHasUnsavedChanges() {
+    return omoHolonTemplateRoot.isConnected
+        && omoHolonTemplateState.savedSnapshot !== null
+        && omoHolonTemplateSnapshot() !== omoHolonTemplateState.savedSnapshot;
+}
+
+function omoHolonTemplateConfirmDiscardChanges() {
+    if (!omoHolonTemplateHasUnsavedChanges()) {
+        return true;
+    }
+    if (!window.confirm(omoHolonTemplateTexts.confirmDiscardChanges)) {
+        return false;
+    }
+    // Several navigation steps may guard the same editor in succession.
+    omoHolonTemplateMarkClean();
+    return true;
+}
+
+omoHolonTemplateRoot.setAttribute('data-omo-unsaved-changes', '');
+omoHolonTemplateRoot.omoHasUnsavedChanges = omoHolonTemplateHasUnsavedChanges;
+omoHolonTemplateRoot.omoConfirmDiscardChanges = omoHolonTemplateConfirmDiscardChanges;
 
 function omoHolonTemplateDelete() {
     const templateId = Number(omoHolonTemplateElements.form.dataset.templateId || 0);
@@ -2893,6 +2959,8 @@ function omoHolonTemplateDelete() {
 
 function omoHolonTemplateSave(event) {
     event.preventDefault();
+    const formRevision = omoHolonTemplateState.formRevision;
+    let submittedSnapshot = null;
 
     if (
         omoHolonTemplateElements.form
@@ -2910,6 +2978,10 @@ function omoHolonTemplateSave(event) {
     }
     Promise.all(pendingMediaFlushes)
         .then(function () {
+            if (!omoHolonTemplateRoot.isConnected || formRevision !== omoHolonTemplateState.formRevision) {
+                return null;
+            }
+            submittedSnapshot = omoHolonTemplateSnapshot();
             const payload = {
                 id: Number(omoHolonTemplateElements.form.dataset.templateId || 0),
                 typeId: omoHolonTemplateGetEffectiveTypeId(omoHolonTemplateElements.type.value || 0, omoHolonTemplateGetEffectiveInheritanceIdFromParent(omoHolonTemplateElements.parent.value || 0)),
@@ -2938,6 +3010,7 @@ function omoHolonTemplateSave(event) {
                 inheritsFromId: omoHolonTemplateGetEffectiveInheritanceIdFromParent(omoHolonTemplateElements.parent.value || 0),
                 definitionHolonId: Number((omoHolonTemplateElements.definitionHolon || {}).value || omoHolonTemplateElements.form.dataset.definitionHolonId || omoHolonTemplateState.data.rootHolonId || 0),
                 permissions: omoHolonTemplateReadPermissions(),
+                editablePermissionKeys: (omoHolonTemplateState.data.permissionCatalog || []).map(permission => permission.key),
                 removedPropertyIds: omoHolonTemplateState.removedPropertyIds.slice(),
                 properties: omoHolonTemplateReadProperties()
             };
@@ -2968,6 +3041,9 @@ function omoHolonTemplateSave(event) {
             });
         })
         .then(function (response) {
+            if (!response) {
+                return null;
+            }
             return response.json().then(function (data) {
                 return {
                     ok: response.ok,
@@ -2976,12 +3052,26 @@ function omoHolonTemplateSave(event) {
             });
         })
         .then(function (result) {
+            if (!result || !omoHolonTemplateRoot.isConnected || formRevision !== omoHolonTemplateState.formRevision) {
+                return;
+            }
             if (!result.ok || !result.data || result.data.status !== 'ok') {
                 throw new Error(result.data && result.data.message ? result.data.message : (omoHolonTemplateIsHolonDefinitionMode() ? (omoHolonTemplateTexts.saveErrorOrganization || '') : (omoHolonTemplateTexts.saveErrorModel || '')));
             }
 
             omoHolonTemplateState.data = result.data.data;
             omoHolonTemplateState.selectedId = result.data.template ? Number(result.data.template.id) : null;
+            if (omoHolonTemplateSnapshot() !== submittedSnapshot) {
+                // Preserve edits made while the save request was in flight.
+                const saved = JSON.parse(submittedSnapshot);
+                if (result.data.template) {
+                    saved.id = Number(result.data.template.id);
+                    omoHolonTemplateElements.form.dataset.templateId = String(saved.id);
+                }
+                omoHolonTemplateState.savedSnapshot = JSON.stringify(saved);
+                omoHolonTemplateRenderTree();
+                return;
+            }
             omoHolonTemplateRenderTree();
             omoHolonTemplateFillForm(
                 (result.data.template && omoHolonTemplateFind(result.data.template.id))
@@ -3074,6 +3164,14 @@ if (omoHolonTemplateElements.deleteButton) {
 }
 
 if (omoHolonTemplateElements.definitionHolon) {
+    omoHolonTemplateElements.definitionHolon.addEventListener('change', function () {
+        if (Number(omoHolonTemplateElements.form.dataset.templateId || 0) > 0) return;
+        const properties = Array.from(omoHolonTemplateElements.properties.querySelectorAll('.omo-template-property')).map(omoHolonTemplateReadPropertyState);
+        const destination = (omoHolonTemplateState.data.definitionHolonCatalog || []).find(item => Number(item.id) === Number(omoHolonTemplateElements.definitionHolon.value));
+        omoHolonTemplateState.propertyTypes = destination?.propertyTypes || [];
+        omoHolonTemplateElements.addProperty.disabled = !window.omoPropertyTypes.firstCreatable(omoHolonTemplateState.propertyTypes);
+        omoHolonTemplateRenderProperties(properties);
+    });
     ['focus', 'pointerdown', 'keydown'].forEach(function (eventName) {
         omoHolonTemplateElements.definitionHolon.addEventListener(eventName, function () {
             omoHolonTemplateSetDefinitionHolonOptionLabels(true);
@@ -3239,6 +3337,9 @@ if (omoHolonTemplateElements.root) {
 
         const templateAction = event.target.closest('[data-template-action]');
         if (templateAction) {
+            if (!omoHolonTemplateConfirmDiscardChanges()) {
+                return;
+            }
             omoHolonTemplateClearStatus();
 
             if (templateAction.getAttribute('data-template-action') === 'new-child' && omoHolonTemplateState.selectedId) {
@@ -3271,11 +3372,14 @@ if (omoHolonTemplateElements.root) {
                 omoHolonTemplateElements.properties.innerHTML = '';
             }
 
+            const type = window.omoPropertyTypes.firstCreatable(omoHolonTemplateState.propertyTypes);
+            if (!type) return;
             const defaultFormat = (omoHolonTemplateState.data.formats || []).length
                 ? Number(omoHolonTemplateState.data.formats[0].id || 1)
                 : 1;
 
             omoHolonTemplateElements.properties.appendChild(omoHolonTemplateCreatePropertyRow({
+                type: type,
                 id: 0,
                 holonPropertyId: 0,
                 name: '',

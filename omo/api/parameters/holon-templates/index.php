@@ -28,7 +28,7 @@ if ($organizationId <= 0) {
     $errorMessage = omoHolonTemplateT('parameters.holon_templates.error.organization_not_found');
 } elseif (empty(($discoveryModeAccess = omoHolonTemplateDiscoveryModeAccess($organization, $targetHolonId))['status'])) {
     $errorMessage = (string)($discoveryModeAccess['message'] ?? omoHolonTemplateT('parameters.holon_templates.error.discovery_mode'));
-} elseif (empty(($adminModeAccess = omoHolonTemplateAdminModeAccess($organizationId))['status'])) {
+} elseif (empty(($adminModeAccess = omoHolonTemplateAdminModeAccess($organizationId, $targetHolonId))['status'])) {
     $errorMessage = (string)($adminModeAccess['message'] ?? omoHolonTemplateT('parameters.holon_templates.error.admin_required'));
 } elseif ($organization->getEnabledStructuralRootHolon() === null) {
     $errorMessage = omoHolonTemplateT('parameters.holon_templates.error.structure_required');
@@ -63,6 +63,7 @@ if ($organizationId <= 0) {
     }
 }
 
+$propertiesOnly = $isHolonDefinitionMode && empty($editorData['canEditHolonFields']);
 $showTemplateWelcome = !$isHolonDefinitionMode && $selectedTemplateId <= 0;
 
 $omoHolonTemplateTexts = [
@@ -80,6 +81,7 @@ $omoHolonTemplateTexts = [
     'permissionNoneSelected' => omoHolonTemplateT('parameters.holon_templates.permission.none_selected'),
     'permissionRemoveRange' => omoHolonTemplateT('parameters.holon_templates.permission.remove_range'),
     'confirmInheritanceChange' => omoHolonTemplateT('parameters.holon_templates.confirm.inheritance_change'),
+    'confirmDiscardChanges' => omoHolonTemplateT('parameters.holon_templates.confirm.discard_changes'),
     'adminMaxPlaceholder' => omoHolonTemplateT('parameters.holon_templates.field.admin_max_placeholder'),
     'adminBoundInheritedPlaceholder' => omoHolonTemplateT('parameters.holon_templates.field.admin_bound_inherited_placeholder'),
     'summaryModelOne' => omoHolonTemplateT('parameters.holon_templates.summary.model_one'),
@@ -91,6 +93,7 @@ $omoHolonTemplateTexts = [
     'treeEmpty' => omoHolonTemplateT('parameters.holon_templates.tree.empty'),
     'treeRoot' => omoHolonTemplateT('parameters.holon_templates.tree.root'),
     'propertyName' => omoHolonTemplateT('parameters.holon_templates.property.name'),
+    'propertyType' => omoHolonTemplateT('parameters.holon_templates.property.type'),
     'propertyFormat' => omoHolonTemplateT('parameters.holon_templates.property.format'),
     'propertyValueDefault' => omoHolonTemplateT('parameters.holon_templates.property.value_default'),
     'propertyValueLocalAdded' => omoHolonTemplateT('parameters.holon_templates.property.value_local_added'),
@@ -226,6 +229,7 @@ $omoHolonTemplateTexts = [
                         </div>
 
                         <form id="omo-template-form" class="omo-template-form generic-form-stack">
+                        <?php if ($propertiesOnly): ?><fieldset class="generic-fieldset" disabled><?php endif; ?>
                         <section class="omo-template-section generic-section generic-section--stack generic-section--roomy">
                             <div class="omo-template-section__title generic-title generic-title--subsection"><?= htmlspecialchars($isHolonDefinitionMode ? omoHolonTemplateT('parameters.holon_templates.section.holon') : omoHolonTemplateT('parameters.holon_templates.section.structure'), ENT_QUOTES, 'UTF-8') ?></div>
 
@@ -246,9 +250,16 @@ $omoHolonTemplateTexts = [
                                 </label>
 
                                 <label class="omo-field omo-field--full">
-                                    <span><?= htmlspecialchars($isHolonDefinitionMode ? omoHolonTemplateT('parameters.holon_templates.field.name') : omoHolonTemplateT('parameters.holon_templates.field.model_name'), ENT_QUOTES, 'UTF-8') ?></span>
+                                    <span><?= htmlspecialchars($isHolonDefinitionMode ? omoHolonTemplateT('parameters.holon_templates.field.name') : omoHolonTemplateT('parameters.holon_templates.field.model_name'), ENT_QUOTES, 'UTF-8') ?><?php if ($propertiesOnly): ?> <img src="/img/cadenas.png" class="black-icon" width="14" height="14" alt="<?= omoHolonTemplateEscape(omoHolonTemplateT('parameters.holon_templates.field.edit_denied')) ?>" title="<?= omoHolonTemplateEscape(omoHolonTemplateT('parameters.holon_templates.field.edit_denied')) ?>"><?php endif; ?></span>
                                     <input type="text" name="name" id="omo-template-name" maxlength="255" required>
                                 </label>
+
+                                <?php if ($propertiesOnly): ?>
+                                <label class="omo-field">
+                                    <span><?= omoHolonTemplateEscape(omoHolonTemplateT('parameters.holon_templates.field.full_name')) ?><?php if ($propertiesOnly): ?> <img src="/img/cadenas.png" class="black-icon" width="14" height="14" alt="<?= omoHolonTemplateEscape(omoHolonTemplateT('parameters.holon_templates.field.edit_denied')) ?>" title="<?= omoHolonTemplateEscape(omoHolonTemplateT('parameters.holon_templates.field.edit_denied')) ?>"><?php endif; ?></span>
+                                    <input type="text" value="<?= omoHolonTemplateEscape((string)$rootHolon->get('nomcomplet')) ?>" readonly>
+                                </label>
+                                <?php endif; ?>
 
                                 <div class="omo-template-flags omo-field--full<?= $isHolonDefinitionMode ? ' omo-template-field--hidden' : '' ?>">
                                     <label class="omo-template-flags__option generic-soft-panel generic-stack generic-stack--compact">
@@ -304,6 +315,7 @@ $omoHolonTemplateTexts = [
                             </div>
                         </section>
 
+                        <?php if ($propertiesOnly): ?></fieldset><?php endif; ?>
                         <section class="omo-template-section generic-section generic-section--stack generic-section--roomy">
                             <div class="omo-template-section__head">
                                 <div>
@@ -320,6 +332,7 @@ $omoHolonTemplateTexts = [
                             <div class="omo-template-properties" id="omo-template-properties"></div>
                         </section>
 
+                        <?php if ($propertiesOnly): ?><fieldset disabled hidden><?php endif; ?>
                         <section class="omo-template-section generic-section generic-section--stack generic-section--roomy omo-template-section--permissions">
                             <div class="omo-template-permissions__sticky-navigation">
                                 <div class="omo-template-section__head">
@@ -386,6 +399,7 @@ $omoHolonTemplateTexts = [
                             </div>
                         </section>
 
+                        <?php if ($propertiesOnly): ?></fieldset><?php endif; ?>
                         <div class="omo-template-form__footer">
                             <div class="omo-template-form__hint generic-help-text generic-help-text--regular" id="omo-template-selection-hint"></div>
                             <?php if (!$isHolonDefinitionMode): ?>
@@ -414,6 +428,7 @@ $omoHolonTemplateTexts = [
 <script src="/omo/assets/js/simple-html-field.js?v=20260904-highlight-clear"></script>
 <script src="/common/assets/multiline-list-paste.js"></script>
 <script src="/common/assets/property-list-conversion.js"></script>
+<script src="/common/assets/property-types.js"></script>
 <link rel="stylesheet" href="/common/permissions/editor.css?v=20260923-permission-align">
 <script src="/common/permissions/editor.js?v=20260925-extended-authorities-label"></script>
 <?= commonPageScriptTags('/omo/api/parameters/holon-templates/templates.js', [

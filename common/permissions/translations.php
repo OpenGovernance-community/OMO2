@@ -13,6 +13,6 @@ function commonPermissionEditorSourceLang(): array
         'inherited' => ['text' => 'Hérité', 'context' => 'Read-only permission inherited from a template.'],
         'details' => ['text' => 'Description et code du droit', 'context' => 'Expandable technical information for a permission.'],
         'profile_legend' => ['text' => 'M : Membres · A : Admin · C : Collectif', 'context' => 'Sticky legend for permission profile abbreviations.'],
-        'help' => ['text' => 'Choisissez le profil puis les portées de chaque droit. Les droits hérités s’ajoutent aux droits locaux. Un droit non configuré dans l’organisation reste ouvert aux membres. Le mode admin doit être activé pour donner tous les droits.', 'context' => 'Permission editor explanation of scope, inheritance, default access and admin override.'],
+        'help' => ['text' => 'Choisissez le profil puis les portées de chaque droit. Les droits hérités s’ajoutent aux droits locaux. Un droit non configuré dans l’organisation reste ouvert aux membres, sauf les droits sur les types de proprietes qui exigent une attribution explicite. Le mode admin doit être activé pour donner tous les droits.', 'context' => 'Permission editor explanation of scope, inheritance, default access and admin override.'],
     ];
 }

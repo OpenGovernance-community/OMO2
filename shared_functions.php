@@ -574,7 +574,7 @@
 	
 	
 	// Fonction E-mail passant par un serveur, pour minimier les effets SPAM
-	function myHTMLMail($from,$to,$subject,$body,$cc=null, $bcc=null, array $attachments = []) {
+	function myHTMLMail($from,$to,$subject,$body,$cc=null, $bcc=null, array $attachments = [], ?string $plainTextBody = null) {
 
 
 		appSetLastMailError('');
@@ -631,11 +631,18 @@
 		$isHtmlBody = strip_tags($body)!=$body;
 		if (appMailShouldAppendPatreonFooter($from, $to, $body)) {
 			$body = appMailAppendPatreonFooter($body, $isHtmlBody);
+			if ($plainTextBody !== null) {
+				$plainTextBody = appMailAppendPatreonFooter($plainTextBody, false);
+			}
 			$isHtmlBody = strip_tags($body)!=$body;
 		}
 		$mail->Body = $body;
-		if ($isHtmlBody)
-			$mail->IsHTML(true);  
+		if ($isHtmlBody) {
+			$mail->IsHTML(true);
+			if ($plainTextBody !== null) {
+				$mail->AltBody = $plainTextBody;
+			}
+		}
 		
 		// Envoi de l'e-mail
 		try {

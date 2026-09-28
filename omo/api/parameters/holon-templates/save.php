@@ -33,7 +33,7 @@ if (!$organization->load($organizationId)) {
     exit;
 }
 
-$adminModeAccess = omoHolonTemplateAdminModeAccess($organizationId);
+$adminModeAccess = omoHolonTemplateAdminModeAccess($organizationId, (int)($_GET['hid'] ?? $_POST['hid'] ?? 0));
 if (empty($adminModeAccess['status'])) {
     http_response_code(403);
     echo json_encode(

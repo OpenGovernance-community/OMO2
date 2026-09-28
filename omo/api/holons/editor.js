@@ -30,7 +30,17 @@ if (governanceInitialPayload) {
         adminMinOverride: Boolean(governanceInitialPayload.adminMinOverride),
         adminMaxOverride: Boolean(governanceInitialPayload.adminMaxOverride),
         permissionAssignments: governanceInitialPayload.permissions || {},
-        properties: Array.isArray(governanceInitialPayload.properties) ? governanceInitialPayload.properties : []
+        properties: (Array.isArray(governanceInitialPayload.properties) ? governanceInitialPayload.properties : []).map(function (draft) {
+            const persisted = (currentHolon.properties || []).find(property => Number(property.id) === Number(draft.id))
+                || (state.data.templateCatalog || []).flatMap(template => template.properties || []).find(property => Number(property.id) === Number(draft.id));
+            const permission = (state.data.propertyTypes || []).find(type => type.id === String(draft.type || 'type1'));
+            const canCreate = Number(draft.id || 0) <= 0 && Boolean(permission?.canCreate);
+            return Object.assign({}, persisted || {}, draft, {
+                canEditDefinition: persisted ? Boolean(persisted.canEditDefinition) : canCreate,
+                canEditValue: persisted ? Boolean(persisted.canEditValue) : canCreate,
+                canDelete: persisted ? Boolean(persisted.canDelete) : canCreate
+            });
+        })
     });
 }
 
@@ -335,11 +345,13 @@ function buildLocalPermissionSummaryItems(assignments) {
 
 function buildInheritedPermissionSummary(inheritedPermissions) {
     const profiles = normalizePermissionProfiles(inheritedPermissions);
+    const visiblePermissionKeys = new Set(getPermissionCatalog().map(permission => permission.key));
     const profileLabels = { member: 'Membres', admin: adminLexiconLabel, collective: 'Collectif' };
     const items = [];
 
     Object.keys(profiles).forEach(function (profileKey) {
         Object.keys(profiles[profileKey] || {}).forEach(function (permissionKey) {
+            if (!visiblePermissionKeys.has(permissionKey)) return;
             const permission = profiles[profileKey][permissionKey] || null;
             const visibleItems = permission && Array.isArray(permission.visibleItems) ? permission.visibleItems : [];
             const title = permission ? String(permission.name || permission.shortname || permissionKey || '').trim() : String(permissionKey || '').trim();
@@ -941,7 +953,7 @@ function renderSimpleListInput(listItemType, values) {
             return renderSimpleListRow(listItemType, item);
         }).join('')
         + '  </div>'
-        + '  <button type="button" class="generic-action-button generic-action-button--secondary omo-holon-create__list-add" data-list-add="1">Ajouter une valeur</button>'
+        + '  <div class="generic-action-row generic-action-row--start"><button type="button" class="generic-action-button generic-action-button--main omo-holon-create__list-add" data-list-add="1">Ajouter une valeur</button></div>'
         + '</div>';
 }
 
@@ -1191,7 +1203,7 @@ function renderAuthorityListInput(values) {
         + '<div class="omo-holon-create__authority-list">'
         + '  <div class="omo-holon-create__authority-items">' + rows.map(renderAuthorityListRow).join('') + '</div>'
         + (canCreateAuthority
-            ? '  <button type="button" class="generic-action-button generic-action-button--secondary" data-authority-add="1">Ajouter une autorité</button>'
+            ? '  <div class="generic-action-row generic-action-row--start"><button type="button" class="generic-action-button generic-action-button--main" data-authority-add="1">Ajouter une autorité</button></div>'
             : '  <div class="omo-holon-create__empty-note generic-description generic-description--compact">Les autorités existantes restent disponibles, mais une autorité parente est nécessaire pour en créer une nouvelle.</div>')
         + '</div>';
 }
@@ -1276,7 +1288,7 @@ function renderProjectPicker(property, selectedIds, scope) {
     return ''
         + '<div class="omo-holon-create__project-picker" data-project-picker data-project-scope="' + projectScope + '" data-selected-ids="' + selectedIds.join(',') + '">'
         + '  <div class="omo-holon-create__project-selected-list" data-project-selected-list>' + renderSelectedProjectRows(selectedIds) + '</div>'
-        + '  <div><button type="button" class="generic-action-button generic-action-button--secondary" data-project-picker-open>' + escapeHtml(projectPickerTexts.add) + '</button></div>'
+        + '  <div class="generic-action-row generic-action-row--start"><button type="button" class="generic-action-button generic-action-button--main" data-project-picker-open>' + escapeHtml(projectPickerTexts.add) + '</button></div>'
         + '</div>';
 }
 
@@ -1401,8 +1413,7 @@ function renderPropertyInput(property) {
         : '';
 
     if (!property.canEditValue) {
-        return renderReadonlyPropertyValue(property, localValue)
-            + '<div class="omo-holon-create__permission-note generic-description generic-description--compact">Vous n\'avez pas les droits de modification.</div>';
+        return renderReadonlyPropertyValue(property, localValue);
     }
 
     if (formatId === 2) {
@@ -1697,6 +1708,7 @@ function renderDirectPropertyDefinition(property) {
         + '  <div class="omo-holon-create__grid">'
         + '    <label class="omo-holon-create__field generic-form-field"><span>Nom de la propriété</span><input type="text" class="omo-holon-create__direct-property-name generic-form-control" maxlength="255" value="' + escapeHtml(property.name || '') + '"' + disabledAttribute + '></label>'
         + '    <label class="omo-holon-create__field generic-form-field"><span>Format</span><select class="omo-holon-create__direct-property-format generic-form-control"' + disabledAttribute + '>' + getPropertyFormatOptions(property.formatId) + '</select></label>'
+        +      window.omoPropertyTypes.render(property, state.data.propertyTypes, pageConfig.propertyTypeLabel, !disabled)
         +      renderDirectPropertyListConfig(property, disabled)
         + '  </div>'
         + '  <button type="button" class="generic-action-button generic-action-button--secondary" data-direct-property-remove="1"' + deleteDisabled + '>Retirer cette propriété</button>'
@@ -1707,6 +1719,7 @@ function createPropertyRow(property, index) {
     const row = document.createElement('div');
     row.className = 'omo-holon-create__property generic-section generic-section--plain generic-section--flush';
     row.dataset.propertyId = Number(property.id || 0);
+    row.dataset.propertyType = String(property.type || 'type1');
     row.dataset.holonPropertyId = Number(property.holonPropertyId || 0);
     row.dataset.formatId = Number(property.formatId || 0);
     row.dataset.listItemType = String(property.listItemType || 'text');
@@ -1729,6 +1742,8 @@ function createPropertyRow(property, index) {
     row.dataset.canEditValue = property.canEditValue ? '1' : '0';
 
     const chips = [];
+    const propertyType = (state.data.propertyTypes || []).find(type => type.id === (property.type || 'type1'));
+    if (propertyType) chips.push('<span class="omo-holon-create__chip">' + escapeHtml(propertyType.name) + '</span>');
     if (property.formatName) {
         chips.push('<span class="omo-holon-create__chip omo-holon-create__chip--accent">' + escapeHtml(property.formatName) + '</span>');
     }
@@ -1744,7 +1759,9 @@ function createPropertyRow(property, index) {
         + '<div class="omo-holon-create__property-body">'
         + '  <div class="omo-holon-create__property-head">'
         + '      <div>'
-        + '          <div class="omo-holon-create__property-name">' + escapeHtml(property.name || ('Propriété ' + Number(property.id || 0))) + '</div>'
+        + '          <div class="omo-holon-create__property-name"><span class="omo-holon-create__property-label">' + escapeHtml(property.name || ('Propriété ' + Number(property.id || 0))) + '</span>'
+        + (property.canEditValue ? '' : '<img class="omo-holon-create__property-lock black-icon" src="/img/cadenas.png" width="14" height="14" alt="' + escapeHtml(pageConfig.propertyEditDenied) + '" title="' + escapeHtml(pageConfig.propertyEditDenied) + '">')
+        + '          </div>'
         + '          <div class="omo-holon-create__property-meta">' + chips.join('') + '</div>'
         + '      </div>'
         + '  </div>'
@@ -1756,7 +1773,7 @@ function createPropertyRow(property, index) {
         + '  </' + ([5, 7].indexOf(Number(property.formatId || 0)) >= 0 ? 'div' : 'label') + '>'
         + '</div>';
 
-    const propertyTitle = row.querySelector('.omo-holon-create__property-name');
+    const propertyTitle = row.querySelector('.omo-holon-create__property-label');
     if (propertyTitle && (!property.name || Number(property.id || 0) <= 0)) {
         propertyTitle.textContent = String(property.name || '').trim() || 'Nouvelle propriété';
     }
@@ -1800,6 +1817,7 @@ function getDirectPropertyDraft(row) {
     });
     return {
         id: Number(row.dataset.propertyId || 0),
+        type: window.omoPropertyTypes.read(row),
         holonPropertyId: Number(row.dataset.holonPropertyId || 0),
         listConversionFrom: String(row.dataset.listConversionFrom || ''),
         name: String(nameField && nameField.value ? nameField.value : row.dataset.propertyName || ''),
@@ -2040,6 +2058,7 @@ function readProperties() {
         const value = serializePropertyValue(row);
         const property = {
             id: Number(row.dataset.propertyId || 0),
+            type: window.omoPropertyTypes.read(row),
             name: String(row.dataset.propertyName || ''),
             shortname: String(row.dataset.shortname || ''),
             formatId: Number(row.dataset.formatId || 0),
@@ -2350,6 +2369,7 @@ function saveHolon(event) {
 					? Boolean(elements.adminMaxOverride.checked)
 					: Boolean(editingHolon.adminMaxOverride),
                 permissions: readPermissions(),
+                editablePermissionKeys: getPermissionCatalog().map(permission => permission.key),
                 properties: readProperties()
             };
 
@@ -2555,7 +2575,10 @@ if (elements.addProperty) {
         if (emptyNote) {
             emptyNote.remove();
         }
+        const type = window.omoPropertyTypes.firstCreatable(state.data.propertyTypes);
+        if (!type) return;
         const property = {
+            type: type,
             id: 0,
             name: '',
             shortname: '',
@@ -2656,7 +2679,7 @@ root.addEventListener('input', function (event) {
         return;
     }
     const propertyRow = event.target.closest('.omo-holon-create__property');
-    const propertyTitle = propertyRow ? propertyRow.querySelector('.omo-holon-create__property-name') : null;
+    const propertyTitle = propertyRow ? propertyRow.querySelector('.omo-holon-create__property-label') : null;
     if (propertyTitle) {
         propertyTitle.textContent = String(event.target.value || '').trim() || 'Nouvelle propriete';
     }

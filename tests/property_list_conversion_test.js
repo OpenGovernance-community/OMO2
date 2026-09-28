@@ -7,6 +7,7 @@ let confirmations = 0;
 const context = { window: { confirm: () => { confirmations++; return accepted; } }, fetch: () => Promise.resolve({ ok: false }) };
 vm.createContext(context);
 vm.runInContext(fs.readFileSync('common/assets/property-list-conversion.js', 'utf8'), context);
+vm.runInContext(fs.readFileSync('common/assets/property-types.js', 'utf8'), context);
 const conversion = context.window.omoPropertyListConversion;
 const draft = { id: 5, formatId: 7, listItemType: 'authority', value: '{"before":"Intro","items":["123","Budget"],"after":"End"}' };
 const field = { value: 'authority' };
