@@ -73,6 +73,7 @@ $omoHolonTemplateTexts = [
     'permissionCollective' => omoHolonTemplateT('parameters.holon_templates.permission.collective'),
     'permissionChildren' => omoHolonTemplateT('parameters.holon_templates.permission.children'),
     'permissionDirectChildren' => omoHolonTemplateT('parameters.holon_templates.permission.direct_children'),
+    'permissionDescendants' => omoHolonTemplateT('parameters.holon_templates.permission.descendants'),
     'permissionParentCircleElements' => omoHolonTemplateT('parameters.holon_templates.permission.parent_circle_elements'),
     'permissionParentCircle' => omoHolonTemplateT('parameters.holon_templates.permission.parent_circle'),
     'permissionParentCircleDescendants' => omoHolonTemplateT('parameters.holon_templates.permission.parent_circle_descendants'),
