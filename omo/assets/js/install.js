@@ -222,12 +222,109 @@
         }
     }
 
+    function omoBase64UrlToUint8Array(value) {
+        const base64 = String(value || '').replace(/-/g, '+').replace(/_/g, '/');
+        const padding = '='.repeat((4 - (base64.length % 4)) % 4);
+        const raw = window.atob(base64 + padding);
+        const output = new Uint8Array(raw.length);
+
+        for (let index = 0; index < raw.length; index += 1) {
+            output[index] = raw.charCodeAt(index);
+        }
+
+        return output;
+    }
+
+    function omoSubscriptionUsesVapidKey(subscription, vapidPublicKey) {
+        if (!subscription || !subscription.options || !subscription.options.applicationServerKey) {
+            return true;
+        }
+
+        try {
+            const expectedKey = omoBase64UrlToUint8Array(vapidPublicKey);
+            const currentKey = new Uint8Array(subscription.options.applicationServerKey);
+
+            if (expectedKey.length !== currentKey.length) {
+                return false;
+            }
+
+            return expectedKey.every(function (byte, index) {
+                return byte === currentKey[index];
+            });
+        } catch (error) {
+            return true;
+        }
+    }
+
+    function omoSyncPushSubscription(registration) {
+        const configuration = window.omoPushSubscriptionConfiguration;
+
+        if (
+            !configuration
+            || !configuration.csrfToken
+            || !configuration.endpointUrl
+            || !configuration.vapidPublicKey
+            || !registration
+            || !registration.pushManager
+            || !('PushManager' in window)
+            || !('Notification' in window)
+            || Notification.permission !== 'granted'
+        ) {
+            return Promise.resolve();
+        }
+
+        return registration.pushManager.getSubscription().then(function (subscription) {
+            if (!subscription) {
+                return null;
+            }
+
+            if (omoSubscriptionUsesVapidKey(subscription, configuration.vapidPublicKey)) {
+                return subscription;
+            }
+
+            return subscription.unsubscribe().then(function (unsubscribed) {
+                if (!unsubscribed) {
+                    throw new Error('Impossible de renouveler la souscription push OMO.');
+                }
+
+                return registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: omoBase64UrlToUint8Array(configuration.vapidPublicKey)
+                });
+            });
+        }).then(function (subscription) {
+            if (!subscription) {
+                return null;
+            }
+
+            return window.fetch(configuration.endpointUrl, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    csrf_token: configuration.csrfToken,
+                    subscription: subscription.toJSON()
+                })
+            }).then(function (response) {
+                return response.json().catch(function () {
+                    return {status: false};
+                }).then(function (payload) {
+                    if (!response.ok || !payload || payload.status !== true) {
+                        throw new Error('Impossible de synchroniser la souscription push OMO.');
+                    }
+                });
+            });
+        }).catch(function (error) {
+            console.warn('Impossible de synchroniser les notifications OMO.', error);
+        });
+    }
+
     function omoRegisterServiceWorker() {
         if (!('serviceWorker' in navigator) || !window.isSecureContext) {
             return;
         }
 
-        window.addEventListener('load', function () {
+        const register = function () {
             navigator.serviceWorker.getRegistration(OMO_SW_SCOPE).then(function (registration) {
                 if (registration) {
                     return registration;
@@ -237,10 +334,17 @@
                     scope: OMO_SW_SCOPE,
                     updateViaCache: 'none'
                 });
-            }).catch(function (error) {
+            }).then(omoSyncPushSubscription).catch(function (error) {
                 console.error('Impossible d\'enregistrer le service worker OMO.', error);
             });
-        }, { once: true });
+        };
+
+        if (document.readyState === 'complete') {
+            register();
+            return;
+        }
+
+        window.addEventListener('load', register, { once: true });
     }
 
     window.addEventListener('beforeinstallprompt', function (event) {
@@ -255,7 +359,5 @@
         omoHideBanner();
     });
 
-    if (!omoIsStandalone()) {
-        omoRegisterServiceWorker();
-    }
+    omoRegisterServiceWorker();
 })();
