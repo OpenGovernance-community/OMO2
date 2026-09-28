@@ -4,7 +4,8 @@ const lmsIndexViewer = {
     organizationId: window.omoLmsCatalogConfig.organizationId,
     isEmbedded: window.omoLmsCatalogConfig.isEmbedded,
     canCreateParcours: window.omoLmsCatalogConfig.canCreateParcours,
-    canEditParcours: window.omoLmsCatalogConfig.canEditParcours
+    canEditParcours: window.omoLmsCatalogConfig.canEditParcours,
+    canDeleteParcours: window.omoLmsCatalogConfig.canDeleteParcours
 };
 const lmsIndexText = window.omoLmsCatalogConfig.lmsIndexText;
 
@@ -2136,7 +2137,7 @@ async function deleteParcoursFromCard(event, parcoursId) {
     event.preventDefault();
     event.stopPropagation();
 
-    if (!lmsIndexViewer.canCreateParcours || parcoursId <= 0) {
+    if ((!lmsIndexViewer.canCreateParcours && !lmsIndexViewer.canDeleteParcours) || parcoursId <= 0) {
         return;
     }
 

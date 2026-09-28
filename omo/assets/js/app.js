@@ -976,9 +976,33 @@ function omoRenderLoadError($target) {
     ].join(''));
 }
 
+function omoConfirmDiscardChanges(container = document) {
+    const editors = Array.from(container.querySelectorAll('[data-omo-unsaved-changes]'));
+    if (container.matches && container.matches('[data-omo-unsaved-changes]')) {
+        editors.unshift(container);
+    }
+    return editors.every(function (editor) {
+        return typeof editor.omoConfirmDiscardChanges !== 'function'
+            || editor.omoConfirmDiscardChanges();
+    });
+}
+
+window.addEventListener('beforeunload', function (event) {
+    const hasChanges = Array.from(document.querySelectorAll('[data-omo-unsaved-changes]')).some(function (editor) {
+        return typeof editor.omoHasUnsavedChanges === 'function' && editor.omoHasUnsavedChanges();
+    });
+    if (hasChanges) {
+        event.preventDefault();
+        event.returnValue = '';
+    }
+});
+
 function loadContent(target, url, type = 'panel', onLoaded = null) {
 
     const $target = $(target);
+    if ($target.get(0) && !omoConfirmDiscardChanges($target.get(0))) {
+        return;
+    }
     const previousRequest = $target.data('omoXhr');
     const requestId = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
     const resolvedUrl = omoResolveAppUrl(url);
@@ -1577,6 +1601,10 @@ function openDrawer(id, url, options = {}) {
         return;
     }
 
+    if (!omoConfirmDiscardChanges()) {
+        return;
+    }
+
     // 👉 fermer les autres
     closeAllDrawers();
 
@@ -1938,6 +1966,10 @@ function closeDrawer(id, removeAfterClose = false) {
         return;
     }
 
+    if (!omoConfirmDiscardChanges(drawer.get(0))) {
+        return;
+    }
+
     drawer.removeClass('open');
 
     if (removeAfterClose) {
@@ -1946,6 +1978,9 @@ function closeDrawer(id, removeAfterClose = false) {
 }
 
 function closeAllDrawers(removeAfterClose = false) {
+    if (!omoConfirmDiscardChanges()) {
+        return;
+    }
     $('.drawer.open').each(function () {
         const drawer = $(this);
 
@@ -3224,6 +3259,11 @@ function omoCanCloseExternalPanelDrawer(drawer = null, settings = {}) {
         return true;
     }
 
+    const container = drawer || document.getElementById('omoExternalPanelDrawer');
+    if (container && !omoConfirmDiscardChanges(container)) {
+        return false;
+    }
+
     if (typeof window.omoPvEditorConfirmCanClose !== 'function') {
         return true;
     }
@@ -3398,6 +3438,10 @@ function omoOpenExternalPanelDrawer(options = {}) {
         && body.childNodes.length > 0;
 
     if (!body || !url) {
+        return false;
+    }
+
+    if (!canReuseMountedContent && !omoConfirmDiscardChanges(body)) {
         return false;
     }
 
@@ -3954,6 +3998,10 @@ function omoSetDrawerHashState(options = {}) {
     const currentHash = route.hash || null;
 
     if ((nextHash || null) === currentHash) {
+        return;
+    }
+
+    if (routeToken !== hashState.routeToken && !omoConfirmDiscardChanges()) {
         return;
     }
 
@@ -4651,6 +4699,13 @@ function updateActiveMenu(hash) {
 function navigate(oid, cid = null, hash = null) {
 
     const url = buildOmoUrl(oid, cid, hash);
+    const route = parseUrl();
+    const changesEditorContext = String(oid || '') !== String(route.oid || '')
+        || String(cid || '') !== String(route.cid || '')
+        || omoParseHashState(hash).routeToken !== omoParseHashState(route.hash).routeToken;
+    if (changesEditorContext && !omoConfirmDiscardChanges()) {
+        return;
+    }
     history.pushState({}, '', url);
 
     window.dispatchEvent(new CustomEvent('omo-route-change'));
@@ -4893,6 +4948,12 @@ function handleRoute() {
     const popupKey = hashState.popupKey;
     const popupId = hashState.popupId;
     const previousState = currentState;
+    if (previousState.oid !== null
+        && (oid !== previousState.oid || cid !== previousState.cid || routeToken !== previousState.routeToken)
+        && !omoConfirmDiscardChanges()) {
+        history.replaceState({}, '', buildOmoUrl(previousState.oid, previousState.cid, previousState.hash));
+        return;
+    }
     const canonicalProcessRoute = routeToken === 'checklist'
         ? 'processus'
         : (routeToken && /^checklist-c\d+$/i.test(routeToken)
@@ -5972,7 +6033,8 @@ function omoRunRuntimeMaintenance(options = {}) {
     const now = Date.now();
 
     if (
-        !omoRuntimeMaintenanceReady
+        omoIsShareMode()
+        || !omoRuntimeMaintenanceReady
         || omoRuntimeMaintenanceInFlight
         || (!force && now - omoRuntimeMaintenanceLastRunAt < OMO_RUNTIME_MAINTENANCE_MIN_INTERVAL_MS)
         || (navigator.onLine === false)
@@ -6022,6 +6084,11 @@ function omoRunRuntimeMaintenance(options = {}) {
 }
 
 function omoInstallRuntimeMaintenanceTriggers() {
+    // Public shares do not require the session used by the maintenance endpoint.
+    if (omoIsShareMode()) {
+        return;
+    }
+
     // Cron is the primary scheduler; keep a deferred fallback for hosts without cron.
     const scheduleInitialMaintenance = function () {
         window.setTimeout(function () {

@@ -1129,7 +1129,7 @@ $editTemplateContextId = $isCurrentTemplateHolon && $currentHolon->getParentHolo
     : ($isOrganizationDefinitionHolon ? (int)$currentHolon->getId() : 0);
 $canAddMembers = $currentHolon->isAllowed('CAN_ADD_MEMBER');
 $canCreateChildHolon = $currentHolon->isAllowed('CAN_ADD_HOLON') && in_array((int)$currentHolon->get('IDtypeholon'), array(2, 3, 4), true);
-$canEditHolon = $currentHolon->isAllowed('CAN_EDIT_HOLON') && in_array((int)$currentHolon->get('IDtypeholon'), array(1, 2, 3, 4), true);
+$canEditHolon = ($currentHolon->isAllowed('CAN_EDIT_HOLON', false) || (!$isCurrentTemplateHolon && \dbObject\Property::canActOnAnyType($currentHolon))) && in_array((int)$currentHolon->get('IDtypeholon'), array(1, 2, 3, 4), true);
 $canMoveHolon = !$isCurrentTemplateHolon && $currentHolon->isAllowed('CAN_MOVE_HOLON') && in_array((int)$currentHolon->get('IDtypeholon'), array(1, 2, 3), true);
 $canDeleteHolon = $currentHolon->isAllowed('CAN_DELETE_HOLON') && $currentHolon->canDelete() && in_array((int)$currentHolon->get('IDtypeholon'), array(1, 2, 3), true);
 $canViewHolonHistory = $currentHolon->canViewDetail();

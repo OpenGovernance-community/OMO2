@@ -782,6 +782,7 @@
  				$item = array(
 					'name' => (string)$property->get('name'),
 					'shortname' => (string)$property->get('shortname'),
+					'type' => Property::normalizeType($property->get('type')),
 					'position' => (int)($property->get('effective_position') ?: $property->get('position') ?: 0),
   					'value' => $value !== null ? (string)$value : '',
   					'formatId' => (int)$property->get('IDpropertyformat'),
@@ -1634,6 +1635,7 @@
 					'id' => $propertyId,
 					'key' => $keyPrefix . $property->get('IDproperty'),
 					'shortname' => (string)$property->get('shortname'),
+					'type' => Property::normalizeType($property->get('type')),
 					'name' => (string)$property->get('name'),
 					'position' => $propertyPosition,
 					'formatId' => (int)$property->get('IDpropertyformat'),
@@ -3901,9 +3903,9 @@
 			$definition['effectiveMandatory'] = $definition['inheritedMandatory'] || $definition['mandatory'];
 			$definition['effectiveLocked'] = $definition['inheritedLocked'] || $definition['locked'];
 			$definition['canDelete'] = !$definition['inheritedMandatory']
-				&& $this->isAllowed('CAN_DELETE_TEMPLATE_PROPERTIES');
+				&& $this->isAllowed(Property::permissionKey('DELETE', $definition['type'] ?? null), false);
 			$definition['canEditValue'] = !$definition['inheritedLocked']
-				&& $this->isAllowed('CAN_EDIT_TEMPLATE_PROPERTIES');
+				&& $this->isAllowed(Property::permissionKey('EDIT', $definition['type'] ?? null), false);
 
 			return $definition;
 		}
@@ -3989,6 +3991,7 @@
 				'id' => (int)$property->getId(),
 				'name' => (string)$property->get('name'),
 				'shortname' => (string)$property->get('shortname'),
+				'type' => Property::normalizeType($property->get('type')),
 				'formatId' => (int)$property->get('IDpropertyformat'),
 				'formatName' => $formatName,
 				'listItemType' => (string)$property->get('listitemtype'),
@@ -4121,6 +4124,7 @@
 					'id' => (int)($definition['id'] ?? 0),
 					'name' => (string)($definition['name'] ?? ''),
 					'shortname' => (string)($definition['shortname'] ?? ''),
+					'type' => Property::normalizeType($definition['type'] ?? null),
 					'formatId' => (int)($definition['formatId'] ?? 0),
 					'formatName' => (string)($definition['formatName'] ?? ''),
 					'position' => (int)($definition['position'] ?? 0),
@@ -4145,11 +4149,6 @@
 			$definitionsByPropertyId = array();
 			$templatePropertyIds = array();
 			$templateAuthorityIdMap = $this->getTemplateAuthorityInstanceIdMap();
-			// Les droits peuvent venir d un role et de son modele. Les valeurs
-			// heritees font partie de l edition du holon, alors que les proprietes
-			// locales supplementaires ont leurs droits propres.
-			$canEditHolon = $this->isAllowed('CAN_EDIT_HOLON', false);
-			$canEditHolonProperties = $this->isAllowed('CAN_EDIT_HOLON_PROPERTIES', false);
 
 			$templateId = (int)$this->get('IDholon_template');
 			if ($templateId > 0) {
@@ -4158,11 +4157,9 @@
 					foreach ($template->getHolonCreationPropertyDefinitions() as $definition) {
 						$propertyId = (int)($definition['id'] ?? 0);
 						if ($propertyId > 0) {
-							// Une propriete uniquement heritee n a pas encore de ligne
-							// holonproperty locale. Sa valeur reste modifiable avec le
-							// droit d edition de cette instance.
+							// Le type herite determine le droit de modifier la valeur locale.
 							$definition['canEditValue'] = empty($definition['effectiveLocked'])
-								&& $canEditHolon;
+								&& $this->isAllowed(Property::permissionKey('EDIT', $definition['type']), false);
 							$definition['isTemplateProperty'] = true;
 							$definition['isDirectProperty'] = false;
 							$definition['canEditDefinition'] = false;
@@ -4187,6 +4184,7 @@
 					'id' => $propertyId,
 					'name' => (string)$property->get('name'),
 					'shortname' => (string)$property->get('shortname'),
+					'type' => Property::normalizeType($property->get('type')),
 					'formatId' => (int)$property->get('IDpropertyformat'),
 					'formatName' => (string)$property->get('propertyformat_name'),
 					'position' => (int)($property->get('effective_position') ?: 0),
@@ -4198,11 +4196,11 @@
 					'inheritedLocked' => false,
 					'effectiveMandatory' => false,
 					'effectiveLocked' => false,
-					'canEditValue' => $canEditHolonProperties,
+					'canEditValue' => false,
 					'isTemplateProperty' => false,
 					'isDirectProperty' => true,
-					'canEditDefinition' => $this->isAllowed('CAN_EDIT_HOLON_PROPERTIES'),
-					'canDelete' => $this->isAllowed('CAN_DELETE_HOLON_PROPERTIES'),
+					'canEditDefinition' => $this->isAllowed(Property::permissionKey('CREATE', $property->get('type')), false),
+					'canDelete' => $this->isAllowed(Property::permissionKey('DELETE', $property->get('type')), false),
 				);
 
 				$definition['value'] = $localValue !== null ? (string)$localValue : '';
@@ -4217,16 +4215,15 @@
 				$definition['effectiveMandatory'] = (bool)$property->get('mandatory');
 				$definition['effectiveLocked'] = (bool)$property->get('locked');
 				$isTemplateProperty = isset($templatePropertyIds[$propertyId]);
-				// Une valeur heritee releve de l edition du holon. Une propriete
-				// directement ajoutee reste soumise au droit sur les proprietes.
+				// Meme controle de type pour les valeurs locales et heritees.
 				$definition['canEditValue'] = !((bool)$property->get('locked'))
-					&& ($isTemplateProperty ? $canEditHolon : $canEditHolonProperties);
+					&& $this->isAllowed(Property::permissionKey('EDIT', $definition['type']), false);
 				$definition['isTemplateProperty'] = $isTemplateProperty;
 				$definition['isDirectProperty'] = !$isTemplateProperty;
 				$definition['canEditDefinition'] = !$isTemplateProperty
-					&& $this->isAllowed('CAN_EDIT_HOLON_PROPERTIES');
+					&& $this->isAllowed(Property::permissionKey('CREATE', $property->get('type')), false);
 				$definition['canDelete'] = !$isTemplateProperty
-					&& $this->isAllowed('CAN_DELETE_HOLON_PROPERTIES');
+					&& $this->isAllowed(Property::permissionKey('DELETE', $property->get('type')), false);
 				$definition['position'] = (int)($property->get('effective_position') ?: ($definition['position'] ?? 0));
 
 				$definitionsByPropertyId[$propertyId] = $definition;
@@ -4296,7 +4293,8 @@
 				}
 
 				$property->set('name', $propertyName);
-				$property->set('shortname', trim((string)($definition['shortname'] ?? '')) !== '' ? $definition['shortname'] : \dbObject\Property::buildShortnameFromName($propertyName));
+				$property->set('type', Property::normalizeType($definition['type'] ?? $property->get('type')));
+				$property->set('shortname', trim((string)($definition['shortname'] ?? '')) !== '' ? $definition['shortname'] : ($property->getId() > 0 ? $property->get('shortname') : \dbObject\Property::buildShortnameFromName($propertyName)));
 				$property->set('IDpropertyformat', $formatId);
 				$listItemType = null;
 				$listHolonTypeIds = null;
@@ -4546,10 +4544,6 @@
 				if ($isInheritedDefinition) {
 					$inheritedDefinition = $inheritedDefinitionsById[$propertyId];
 					$holonProperty = new \dbObject\HolonProperty();
-					$holonPropertyId = (int)($definition['holonPropertyId'] ?? 0);
-					if ($holonPropertyId > 0) {
-						$holonProperty->load($holonPropertyId);
-					}
 
 					if ($holonProperty->getId() <= 0) {
 						$holonProperty->load([
@@ -4615,7 +4609,8 @@
 				}
 
 				$property->set('name', $propertyName);
-				$property->set('shortname', trim((string)($definition['shortname'] ?? '')) !== '' ? $definition['shortname'] : \dbObject\Property::buildShortnameFromName($propertyName));
+				$property->set('type', Property::normalizeType($definition['type'] ?? $property->get('type')));
+				$property->set('shortname', trim((string)($definition['shortname'] ?? '')) !== '' ? $definition['shortname'] : ($property->getId() > 0 ? $property->get('shortname') : \dbObject\Property::buildShortnameFromName($propertyName)));
 				$property->set('IDpropertyformat', $propertyFormatId);
 				$listItemType = null;
 				$listHolonTypeIds = null;
@@ -4632,10 +4627,6 @@
 				$property->save();
 
 				$holonProperty = new \dbObject\HolonProperty();
-				$holonPropertyId = (int)($definition['holonPropertyId'] ?? 0);
-				if ($holonPropertyId > 0) {
-					$holonProperty->load($holonPropertyId);
-				}
 
 				if ($holonProperty->getId() <= 0 && $property->getId() > 0) {
 					$holonProperty->load([

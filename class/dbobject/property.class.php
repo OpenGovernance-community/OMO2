@@ -4,6 +4,58 @@
 
 	class Property extends DbObject
 	{
+		public const TYPES = ['type1', 'type2', 'type3'];
+
+		public static function normalizeType($type): string
+		{
+			$type = $type === null || $type === '' ? 'type1' : (string)$type;
+			if (!in_array($type, self::TYPES, true)) {
+				throw new \InvalidArgumentException('Type de propriete invalide.');
+			}
+			return $type;
+		}
+
+		public static function permissionKey(string $operation, $type): string
+		{
+			return 'CAN_' . strtoupper($operation) . '_' . strtoupper(self::normalizeType($type)) . '_PROPERTIES';
+		}
+
+		public static function getTypeOptions(array $lexicon, ?Holon $context = null): array
+		{
+			$options = [];
+			foreach (self::TYPES as $type) {
+				$options[] = [
+					'id' => $type,
+					'name' => Organization::getLexiconLabel($lexicon, $type),
+					'canCreate' => $context && $context->isAllowed(self::permissionKey('CREATE', $type), false),
+					'canEdit' => $context && $context->isAllowed(self::permissionKey('EDIT', $type), false),
+					'canDelete' => $context && $context->isAllowed(self::permissionKey('DELETE', $type), false),
+				];
+			}
+			return $options;
+		}
+
+		public static function canCreateAnyType(?Holon $context): bool
+		{
+			foreach (self::TYPES as $type) {
+				if ($context && $context->isAllowed(self::permissionKey('CREATE', $type), false)) {
+					return true;
+				}
+			}
+			return false;
+		}
+
+		public static function canActOnAnyType(?Holon $context): bool
+		{
+			foreach (self::TYPES as $type) {
+				foreach (['CREATE', 'EDIT', 'DELETE'] as $operation) {
+					if ($context && $context->isAllowed(self::permissionKey($operation, $type), false)) {
+						return true;
+					}
+				}
+			}
+			return false;
+		}
 		public const LIST_ITEM_TEXT = 'text';
 		public const LIST_ITEM_NUMBER = 'number';
 		public const LIST_ITEM_DATE = 'date';
@@ -23,7 +75,7 @@
 			return [
 				[['id'], 'required'],				// Champs obligatoires
 				[['id','position'], 'integer'],					
-				[['name','shortname','listitemtype','listholontypeids'], 'string'],			// Texte libre
+				[['name','shortname','type','listitemtype','listholontypeids'], 'string'],			// Texte libre
 				[['IDpropertyformat','IDholon_organization'], 'fk'],			// Texte libre
 				[['datecreation'], 'datetime'],				// Clé étrangères
 				[['active'], 'boolean'],				// Booléens
@@ -38,6 +90,7 @@
 				'id' => 'ID',
 				'name' => 'Nom',
 				'shortname' => 'Nom court',
+				'type' => 'Type',
 				'IDpropertyformat' => 'Format',
 				'listitemtype' => "Type d'éléments de liste",
 				'listholontypeids' => 'Types d’espaces autorisés',

@@ -1,0 +1,268 @@
+<?php
+declare(strict_types=1);
+// Local MariaDB integration test: all fixtures are rolled back.
+if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
+require_once dirname(__DIR__) . '/shared_functions.php';
+require_once dirname(__DIR__) . '/common/auth.php';
+
+use dbObject\{DbObject, ArrayOrganization, Holon, Property, HolonProperty, ArrayHolonProperty, User, UserHolon, UserOrganization, HolonPermission, Permission};
+
+function typeIntegrationCheck(bool $ok, string $message): void {
+    if (!$ok) throw new RuntimeException($message);
+}
+function typeIntegrationSave($object): void {
+    $result = $object->save();
+    typeIntegrationCheck(!empty($result['status']), $result['text'] ?? 'Fixture save failed');
+}
+$organizations = new ArrayOrganization();
+$organizations->load(['limit' => 1]);
+$root = null;
+foreach ($organizations as $organization) { $root = $organization->getStructuralRootHolon(); }
+typeIntegrationCheck($root instanceof Holon, 'Local organization required');
+$_SESSION['currentUser'] = 0;
+$_SERVER['HTTP_HOST'] = 'omo.localtest.me';
+$pdo = DbObject::getPdo();
+$pdo->beginTransaction();
+try {
+    $makeHolon = static function (string $name, ?Holon $template = null) use ($root): Holon {
+        $holon = new Holon();
+        $holon->set('name', $name);
+        $holon->set('IDholon_org', $root->getId());
+        $holon->set('IDholon_parent', $root->getId());
+        $holon->set('IDtypeholon', 1);
+        $holon->set('active', true);
+        if ($template) $holon->set('IDholon_template', $template->getId());
+        typeIntegrationSave($holon);
+        return $holon;
+    };
+    $template = $makeHolon('Property types test template');
+    $template->set('templatename', 'Property types test template');
+    typeIntegrationSave($template);
+    $definitions = [];
+    foreach (Property::TYPES as $type) {
+        $definitions[] = ['id' => 0, 'type' => $type, 'name' => 'Property ' . $type, 'formatId' => 1, 'value' => 'Default ' . $type];
+    }
+    $template->syncTemplateProperties($definitions, (int)$root->getId());
+    $persisted = $template->getTemplatePropertyDefinitions();
+    typeIntegrationCheck(array_column($persisted, 'type') === Property::TYPES, 'Template types must persist');
+    $child = $makeHolon('Property types test instance', $template);
+    $inherited = $child->getHolonEditorPropertyDefinitions();
+    typeIntegrationCheck(array_column($inherited, 'type') === Property::TYPES, 'Inherited instance types must match');
+    typeIntegrationCheck(!array_filter($inherited, static fn ($item) => $item['canEditValue']), 'No grants must keep inherited values read-only');
+    $values = [];
+    foreach ($inherited as $definition) $values[$definition['id']] = 'Local ' . $definition['type'];
+    $child->syncEditorPropertyValues($values, $inherited);
+    typeIntegrationCheck(array_column($child->getHolonEditorPropertyDefinitions(), 'type') === Property::TYPES, 'Local overrides must retain inherited types');
+    $bulk = ArrayHolonProperty::fetchAllValuesByHolonIds([(int)$child->getId()]);
+    typeIntegrationCheck(count($bulk) > 0, 'Bulk structure query must support the new column');
+    $local = $child->syncDirectEditorPropertyDefinitions([
+        ['id' => 0, 'type' => 'type3', 'name' => 'Local skill', 'formatId' => 1, 'value' => 'Skill'],
+    ], (int)$root->getId());
+    $property = new Property();
+    typeIntegrationCheck($property->load($local[0]['id'], true) && $property->get('type') === 'type3', 'Direct property type must persist');
+    $local[0]['type'] = 'type2';
+    $child->syncDirectEditorPropertyDefinitions($local, (int)$root->getId());
+    $property->load($local[0]['id'], true);
+    typeIntegrationCheck($property->get('type') === 'type2', 'Direct reclassification must persist');
+    $export = $organization->getStructureCompactExportData($child);
+    $exportTypes = array_column($export['propertyDefinitions'], 'type', 'id');
+    typeIntegrationCheck(($exportTypes[$local[0]['id']] ?? '') === 'type2', 'Text property exports must retain type');
+    $persisted[0]['type'] = 'type2';
+    $template->syncTemplateProperties($persisted, (int)$root->getId());
+    $types = array_column($child->getHolonEditorPropertyDefinitions(), 'type', 'id');
+    typeIntegrationCheck($types[$persisted[0]['id']] === 'type2', 'Source type changes must reach instances');
+    $circle = $makeHolon('Property types parent circle');
+    $circle->set('IDtypeholon', 2);
+    typeIntegrationSave($circle);
+    $child->set('IDholon_parent', $circle->getId());
+    typeIntegrationSave($child);
+    $user = new User();
+    $user->set('email', 'property-types-' . bin2hex(random_bytes(8)) . '@example.invalid');
+    $user->set('active', true);
+    typeIntegrationSave($user);
+    $membership = new UserHolon();
+    $membership->set('IDuser', $user->getId());
+    $membership->set('IDholon', $circle->getId());
+    $membership->set('active', true);
+    $membership->set('is_membership', true);
+    typeIntegrationSave($membership);
+    $organizationMembership = new UserOrganization();
+    $organizationMembership->set('IDuser', $user->getId());
+    $organizationMembership->set('IDorganization', $organization->getId());
+    $organizationMembership->set('active', true);
+    typeIntegrationSave($organizationMembership);
+    $_SESSION['currentUser'] = (int)$user->getId();
+    $_SESSION['currentOrganization'] = (int)$organization->getId();
+    typeIntegrationCheck(commonUserHasOrganizationMembership($user->getId(), $organization->getId()), 'Permission fixture must be an active member');
+    foreach (Property::TYPES as $type) {
+        foreach (['CREATE', 'EDIT', 'DELETE'] as $operation) {
+            $key = Property::permissionKey($operation, $type);
+            typeIntegrationCheck(!$child->isAllowed($key, false), 'Unconfigured type permission must be denied to active members');
+            typeIntegrationCheck(!commonCurrentUserHasPermission($key, $child, (int)$organization->getId(), true), 'Cached check must also deny unconfigured type permissions');
+        }
+    }
+    $permission = Permission::findByKey('CAN_CREATE_TYPE3_PROPERTIES');
+    $assignment = new HolonPermission();
+    $assignment->set('IDholon', $circle->getId());
+    $assignment->set('IDpermission', $permission->getId());
+    $assignment->set('range', HolonPermission::RANGE_DIRECT_CHILDREN);
+    $assignment->set('member_type', HolonPermission::MEMBER_TYPE_MEMBER);
+    typeIntegrationSave($assignment);
+    typeIntegrationCheck($child->isAllowed('CAN_CREATE_TYPE3_PROPERTIES', false), 'Parent grant must authorize creation on its direct child');
+    typeIntegrationCheck(!$child->isAllowed('CAN_EDIT_TYPE3_PROPERTIES', false), 'Create grant must not imply edit');
+    typeIntegrationCheck(Property::canCreateAnyType($child), 'Parent grant must enable the add button');
+    $holonEditGrant = new HolonPermission();
+    $holonEditGrant->set('IDholon', $circle->getId());
+    $holonEditGrant->set('IDpermission', Permission::findByKey('CAN_EDIT_HOLON')->getId());
+    $holonEditGrant->set('range', HolonPermission::RANGE_DIRECT_CHILDREN);
+    $holonEditGrant->set('member_type', HolonPermission::MEMBER_TYPE_ADMIN);
+    typeIntegrationSave($holonEditGrant);
+    typeIntegrationCheck(!$child->isAllowed('CAN_EDIT_HOLON', false), 'Fixture must have no holon edit right');
+    $local[0]['type'] = 'type3';
+    $child->syncDirectEditorPropertyDefinitions($local, (int)$root->getId());
+    $direct = array_values(array_filter($child->getHolonEditorPropertyDefinitions(), static fn ($item) => !empty($item['isDirectProperty'])))[0];
+    typeIntegrationCheck($direct['canEditDefinition'] && !$direct['canEditValue'], 'Create-only member can change structure but not content');
+    $limitedEditor = $organization->getHolonCreationEditorData((int)$circle->getId(), (int)$child->getId());
+    typeIntegrationCheck($limitedEditor['canEdit'] && !$limitedEditor['canEditHolonFields'], 'Property CREATE must open the editor without holon edit rights');
+    $protectedFields = ['name', 'nomcomplet', 'IDholon_parent', 'IDholon_template', 'IDtypeholon', 'IDuser', 'color', 'icon', 'active', 'visible', 'mandatory', 'admin_min', 'admin_max', 'adminminoverride', 'adminmaxoverride'];
+    $protectedBefore = [];
+    foreach ($protectedFields as $field) $protectedBefore[$field] = $child->get($field);
+    $permissionBefore = HolonPermission::getAssignmentKeyMapForHolon((int)$child->getId());
+    $limitedPayload = ['properties' => $limitedEditor['holon']['properties'], 'name' => 'Forged name', 'fullName' => 'Forged full name', 'color' => '#123456', 'icon' => 'forged.png', 'templateId' => 9999999, 'adminMin' => 99, 'adminMax' => 100, 'adminMinOverride' => true, 'adminMaxOverride' => true, 'permissions' => ['CAN_EDIT_HOLON' => ['member' => ['self']]]];
+    $limitedPayload['properties'][] = ['id' => 0, 'type' => 'type3', 'name' => 'Created without holon edit', 'formatId' => 1, 'value' => 'Initial content'];
+    $result = $organization->saveHolonEditorDefinition($limitedPayload, (int)$user->getId(), (int)$circle->getId(), (int)$child->getId());
+    typeIntegrationCheck(!empty($result['status']), 'Property CREATE must save without holon edit: ' . json_encode($result));
+    $child->load((int)$child->getId(), true);
+    foreach ($protectedBefore as $field => $expected) typeIntegrationCheck($child->get($field) === $expected, 'Property-only save must preserve holon field ' . $field);
+    typeIntegrationCheck(HolonPermission::getAssignmentKeyMapForHolon((int)$child->getId()) === $permissionBefore, 'Property-only save must preserve holon permissions');
+    $assignment->set('IDpermission', Permission::findByKey('CAN_EDIT_TYPE3_PROPERTIES')->getId());
+    typeIntegrationSave($assignment);
+    $direct = array_values(array_filter($child->getHolonEditorPropertyDefinitions(), static fn ($item) => !empty($item['isDirectProperty'])))[0];
+    typeIntegrationCheck(!$direct['canEditDefinition'] && $direct['canEditValue'], 'Edit-only member can change content but not structure');
+    $limitedEditor = $organization->getHolonCreationEditorData((int)$circle->getId(), (int)$child->getId());
+    typeIntegrationCheck($limitedEditor['canEdit'] && !$limitedEditor['canEditHolonFields'] && !$limitedEditor['canAddHolonProperties'], 'Property EDIT alone must open only the content controls');
+    $limitedPayload = ['properties' => $limitedEditor['holon']['properties']];
+    $limitedIndex = array_search($direct['id'], array_column($limitedPayload['properties'], 'id'));
+    $limitedPayload['properties'][$limitedIndex]['value'] = 'Member content';
+    $result = $organization->saveHolonEditorDefinition($limitedPayload, (int)$user->getId(), 0, (int)$child->getId());
+    typeIntegrationCheck(!empty($result['status']), 'Property EDIT must save with properties-only payload: ' . json_encode($result));
+    $assignment->set('IDpermission', Permission::findByKey('CAN_DELETE_TYPE3_PROPERTIES')->getId());
+    typeIntegrationSave($assignment);
+    $limitedEditor = $organization->getHolonCreationEditorData(0, (int)$child->getId());
+    typeIntegrationCheck($limitedEditor['canEdit'] && !$limitedEditor['canEditHolonFields'], 'Property DELETE alone must open the editor');
+    $limitedPayload = ['properties' => array_values(array_filter($limitedEditor['holon']['properties'], static fn ($property) => $property['name'] !== 'Created without holon edit'))];
+    $result = $organization->saveHolonEditorDefinition($limitedPayload, (int)$user->getId(), 0, (int)$child->getId());
+    typeIntegrationCheck(!empty($result['status']), 'Property DELETE must save without holon edit: ' . json_encode($result));
+    $assignment->delete();
+    typeIntegrationCheck(!$organization->getHolonCreationEditorData(0, (int)$child->getId())['canEdit'], 'No holon or property rights must deny editor access');
+    typeIntegrationCheck(empty($organization->saveHolonEditorDefinition($limitedPayload, (int)$user->getId(), 0, (int)$child->getId())['status']), 'No rights must also deny saves');
+    $assignment = new HolonPermission();
+    $assignment->set('IDholon', $circle->getId());
+    $assignment->set('IDpermission', Permission::findByKey('CAN_EDIT_TYPE3_PROPERTIES')->getId());
+    $assignment->set('range', HolonPermission::RANGE_DIRECT_CHILDREN);
+    $assignment->set('member_type', HolonPermission::MEMBER_TYPE_MEMBER);
+    typeIntegrationSave($assignment);
+
+    $collectiveAssignment = new HolonPermission();
+    $collectiveAssignment->set('IDholon', $circle->getId());
+    $collectiveAssignment->set('IDpermission', Permission::findByKey('CAN_EDIT_TYPE3_PROPERTIES')->getId());
+    $collectiveAssignment->set('range', HolonPermission::RANGE_DIRECT_CHILDREN);
+    $collectiveAssignment->set('member_type', HolonPermission::MEMBER_TYPE_COLLECTIVE);
+    typeIntegrationSave($collectiveAssignment);
+    $editor = $organization->getHolonCreationEditorData((int)$circle->getId(), (int)$child->getId(), true, (int)$circle->getId());
+    $collectiveDirect = array_values(array_filter($editor['holon']['properties'], static fn ($item) => !empty($item['isDirectProperty'])))[0];
+    typeIntegrationCheck(!$editor['canAddHolonProperties'] && !$collectiveDirect['canEditDefinition'] && $collectiveDirect['canEditValue'], 'Collective editor must distinguish value rights from creation rights');
+    $snapshot = \dbObject\DecisionGovernanceAction::captureHolonEditorState($child, $organization);
+    $payload = $snapshot['editor_payload'];
+    $index = array_search($direct['id'], array_column($payload['properties'], 'id'));
+    typeIntegrationCheck($index !== false, 'Direct property must be captured');
+    $payload['properties'][$index]['name'] = 'Forbidden rename';
+    $result = $organization->saveHolonEditorDefinition($payload, 0, (int)$circle->getId(), (int)$child->getId(), true, (int)$circle->getId());
+    typeIntegrationCheck(empty($result['status']) && str_contains($result['message'] ?? '', 'CAN_CREATE_TYPE3_PROPERTIES'), 'Collective EDIT must reject structure changes in the real save path: ' . json_encode($result));
+    $payload['properties'][$index]['name'] = $direct['name'];
+    $payload['properties'][$index]['value'] = 'Collectively enriched';
+    $result = $organization->saveHolonEditorDefinition($payload, 0, (int)$circle->getId(), (int)$child->getId(), true, (int)$circle->getId());
+    typeIntegrationCheck(!empty($result['status']), 'Collective EDIT must save value changes: ' . json_encode($result));
+    $value = new HolonProperty();
+    $value->load([['IDholon', $child->getId()], ['IDproperty', $direct['id']]]);
+    typeIntegrationCheck($value->get('value') === 'Collectively enriched', 'Collective content must persist');
+    $property->load($direct['id'], true);
+    typeIntegrationCheck($property->get('name') === $direct['name'], 'Rejected structure changes must not persist');
+    $payload['properties'][$index]['value'] = 'Denied without collective context';
+    $result = $organization->saveHolonEditorDefinition($payload, 0, (int)$circle->getId(), (int)$child->getId(), true);
+    typeIntegrationCheck(empty($result['status']), 'Governance flag alone must not bypass property rights');
+    $collectiveAssignment->set('IDpermission', Permission::findByKey('CAN_CREATE_TYPE3_PROPERTIES')->getId());
+    typeIntegrationSave($collectiveAssignment);
+    $payload['properties'][$index]['value'] = 'Collectively enriched';
+    $payload['properties'][$index]['name'] = 'Collectively renamed';
+    $result = $organization->saveHolonEditorDefinition($payload, 0, (int)$circle->getId(), (int)$child->getId(), true, (int)$circle->getId());
+    typeIntegrationCheck(!empty($result['status']), 'Collective CREATE alone must save structure changes: ' . json_encode($result));
+    $payload['properties'][$index]['value'] = 'Denied content';
+    $result = $organization->saveHolonEditorDefinition($payload, 0, (int)$circle->getId(), (int)$child->getId(), true, (int)$circle->getId());
+    typeIntegrationCheck(empty($result['status']) && str_contains($result['message'] ?? '', 'CAN_EDIT_TYPE3_PROPERTIES'), 'Collective CREATE must not use the submitting member EDIT right');
+
+    // The deciding collective can differ from the parent of the edited holon.
+    $otherCollective = $makeHolon('Property types deciding collective');
+    $otherGrant = new HolonPermission();
+    $otherGrant->set('IDholon', $otherCollective->getId());
+    $otherGrant->set('IDpermission', Permission::findByKey('CAN_EDIT_TYPE3_PROPERTIES')->getId());
+    $otherGrant->set('range', HolonPermission::RANGE_ORGANIZATION);
+    $otherGrant->set('member_type', HolonPermission::MEMBER_TYPE_COLLECTIVE);
+    typeIntegrationSave($otherGrant);
+    $child->load((int)$child->getId(), true);
+    $before = \dbObject\DecisionGovernanceAction::captureHolonEditorState($child, $organization);
+    $after = $before;
+    $index = array_search($direct['id'], array_column($after['editor_payload']['properties'], 'id'));
+    typeIntegrationCheck($index !== false, 'Saved direct property must be captured');
+    $after['editor_payload']['properties'][$index]['value'] = 'Decision content';
+    $proposal = new \dbObject\DeferredProposal();
+    $proposal->set('IDorganization', $organization->getId());
+    $proposal->set('IDholon', $circle->getId());
+    $proposal->set('target_type', 'holon');
+    $proposal->set('operation', 'update');
+    $proposal->set('target_id', $child->getId());
+    $proposal->set('before_state', $before);
+    $proposal->set('after_state', $after);
+    $result = \dbObject\DecisionGovernanceAction::applyDeferredProposal($proposal, (int)$circle->getId(), (int)$otherCollective->getId());
+    typeIntegrationCheck(!empty($result['status']), 'Deferred executor must use the deciding collective rights: ' . json_encode($result));
+    // Organization holon: the separate definition editor must have the same boundary.
+    $rootGrant = new HolonPermission();
+    $rootGrant->set('IDholon', $circle->getId());
+    $rootGrant->set('IDpermission', Permission::findByKey('CAN_CREATE_TYPE3_PROPERTIES')->getId());
+    $rootGrant->set('range', HolonPermission::RANGE_ORGANIZATION_ROOT);
+    $rootGrant->set('member_type', HolonPermission::MEMBER_TYPE_MEMBER);
+    typeIntegrationSave($rootGrant);
+    typeIntegrationCheck(!$root->isAllowed('CAN_EDIT_HOLON', false) && Property::canActOnAnyType($root), 'Root fixture needs properties-only rights');
+    $rootEditor = $organization->getHolonDefinitionEditorData((int)$root->getId());
+    typeIntegrationCheck(!$rootEditor['canEditHolonFields'], 'Root characteristics must be protected');
+    require_once dirname(__DIR__) . '/omo/api/parameters/holon-templates/access.php';
+    typeIntegrationCheck(!empty(omoHolonTemplateAdminModeAccess((int)$organization->getId(), (int)$root->getId())['status']), 'Root property editor must open outside admin mode');
+    $rootName = $root->get('name');
+    $rootColor = $root->get('color');
+    $rootPermissions = HolonPermission::getAssignmentKeyMapForHolon((int)$root->getId());
+    $rootPayload = ['name' => 'Forbidden organization rename', 'color' => '#123456', 'properties' => $rootEditor['templates'][0]['properties'], 'permissions' => []];
+    $rootPayload['properties'][] = ['id' => 0, 'type' => 'type3', 'name' => 'Root property', 'formatId' => 1, 'value' => 'Initial content'];
+    $result = $organization->saveHolonDefinitionEditor($rootPayload, (int)$user->getId(), (int)$root->getId());
+    typeIntegrationCheck(!empty($result['status']), 'Root properties-only save must succeed: ' . json_encode($result));
+    $root->load((int)$root->getId(), true);
+    typeIntegrationCheck($root->get('name') === $rootName && $root->get('color') === $rootColor, 'Root fields must remain unchanged');
+    typeIntegrationCheck(HolonPermission::getAssignmentKeyMapForHolon((int)$root->getId()) === $rootPermissions, 'Root permissions must remain unchanged');
+    $holonEditGrant->set('member_type', HolonPermission::MEMBER_TYPE_MEMBER);
+    typeIntegrationSave($holonEditGrant);
+    $fullEditor = $organization->getHolonCreationEditorData(0, (int)$child->getId());
+    typeIntegrationCheck($fullEditor['canEdit'] && $fullEditor['canEditHolonFields'], 'CAN_EDIT_HOLON must retain access to holon characteristics');
+    $fullPayload = \dbObject\DecisionGovernanceAction::captureHolonEditorState($child, $organization)['editor_payload'];
+    $fullPayload['name'] = 'Authorized holon rename';
+    $result = $organization->saveHolonEditorDefinition($fullPayload, (int)$user->getId(), 0, (int)$child->getId());
+    typeIntegrationCheck(!empty($result['status']), 'Full holon edit must still save: ' . json_encode($result));
+    $child->load((int)$child->getId(), true);
+    typeIntegrationCheck($child->get('name') === 'Authorized holon rename', 'Authorized holon changes must persist');
+    $catalog = Permission::getEditorCatalog(['type3' => ['label' => 'Competences']]);
+    $typed = array_values(array_filter($catalog, static fn ($item) => $item['key'] === 'CAN_CREATE_TYPE3_PROPERTIES'));
+    typeIntegrationCheck(str_contains($typed[0]['title'], 'Competences'), 'Permission labels must use the lexicon');
+    typeIntegrationCheck(!array_filter($catalog, static fn ($item) => $item['key'] === 'CAN_ADD_HOLON_PROPERTIES'), 'Legacy origin permissions must not remain assignable in the editor');
+    echo "property_types_integration_test: OK (template, instance, local override, direct property, reclassification, export, bulk query, rollback)\n";
+} finally {
+    if ($pdo->inTransaction()) $pdo->rollBack();
+    DbObject::$preload = [];
+}

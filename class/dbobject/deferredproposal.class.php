@@ -1119,7 +1119,8 @@ class DeferredProposal extends DbObject
         $proposalHolonId = (int)$proposal->get('IDholon');
         return DecisionGovernanceAction::applyDeferredProposal(
             $proposal,
-            $proposalHolonId > 0 ? $proposalHolonId : $contextHolonId
+            $proposalHolonId > 0 ? $proposalHolonId : $contextHolonId,
+            $contextHolonId
         );
     }
 

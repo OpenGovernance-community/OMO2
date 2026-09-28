@@ -688,7 +688,7 @@ class DecisionGovernanceAction extends DbObject
      * Keeping the rule and role application code here avoids two divergent
      * implementations during the migration away from decision-only actions.
      */
-    public static function applyDeferredProposal(DeferredProposal $proposal, int $contextHolonId): array
+    public static function applyDeferredProposal(DeferredProposal $proposal, int $contextHolonId, int $collectiveHolonId = 0): array
     {
         $targetType = trim((string)$proposal->get('target_type'));
         $operation = trim((string)$proposal->get('operation'));
@@ -705,18 +705,18 @@ class DecisionGovernanceAction extends DbObject
         $decision = new DecisionProcess();
         $decision->set('IDorganization', (int)$proposal->get('IDorganization'));
         $decision->set('IDholon', $contextHolonId > 0 ? $contextHolonId : (int)$proposal->get('IDholon'));
-        $result = $action->applyOne($decision);
+        $result = $action->applyOne($decision, $collectiveHolonId > 0 ? $collectiveHolonId : -1);
         if (!empty($result['created_id'])) {
             $result['target_id'] = (int)$result['created_id'];
         }
         return $result;
     }
 
-    protected function applyOne(DecisionProcess $decision)
+    protected function applyOne(DecisionProcess $decision, ?int $collectiveHolonId = null)
     {
         $actionType = trim((string)$this->get('action_type'));
         if (in_array($actionType, [self::TYPE_HOLON_CREATE, self::TYPE_HOLON_UPDATE, self::TYPE_HOLON_DELETE], true)) {
-            return $this->applyHolonAction($decision, $actionType);
+            return $this->applyHolonAction($decision, $actionType, $collectiveHolonId ?? (int)$decision->get('IDholon'));
         }
         if (!in_array($actionType, [self::TYPE_RULE_CREATE, self::TYPE_RULE_UPDATE, self::TYPE_RULE_DELETE], true)) {
             return ['status' => false, 'message' => 'Ce type d action n est pas encore executable.'];
@@ -784,7 +784,7 @@ class DecisionGovernanceAction extends DbObject
         return $rule->applyGovernanceState((array)$validation['state'], 0);
     }
 
-    protected function applyHolonAction(DecisionProcess $decision, $actionType)
+    protected function applyHolonAction(DecisionProcess $decision, $actionType, int $collectiveHolonId)
     {
         $context = new Holon();
         if (!$context->load((int)$decision->get('IDholon'))) {
@@ -810,7 +810,7 @@ class DecisionGovernanceAction extends DbObject
             $holon = new Holon();
             $state = $validation['state'];
             if (is_array($state['editor_payload'] ?? null)) {
-                $result = $organization->saveHolonEditorDefinition($state['editor_payload'], 0, (int)$context->getId(), 0, true);
+                $result = $organization->saveHolonEditorDefinition($state['editor_payload'], 0, (int)$context->getId(), 0, true, $collectiveHolonId);
                 if (empty($result['status'])) return $result;
                 $createdId = (int)($result['holon']['id'] ?? 0);
                 if ($createdId <= 0) return ['status' => false, 'message' => 'L espace ne peut pas être créé.'];
@@ -868,7 +868,7 @@ class DecisionGovernanceAction extends DbObject
         $validation = self::validateHolonState($after, $parentHolon, $holon);
         if (empty($validation['status'])) return $validation;
         if (is_array($validation['state']['editor_payload'] ?? null)) {
-            return $organization->saveHolonEditorDefinition($validation['state']['editor_payload'], 0, (int)$parentHolon->getId(), (int)$holon->getId(), true);
+            return $organization->saveHolonEditorDefinition($validation['state']['editor_payload'], 0, (int)$parentHolon->getId(), (int)$holon->getId(), true, $collectiveHolonId);
         }
         $holon->set('name', $validation['state']['name']);
         $holon->set('nomcomplet', $validation['state']['full_name'] !== '' ? $validation['state']['full_name'] : null);

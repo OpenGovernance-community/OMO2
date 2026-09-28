@@ -44,7 +44,8 @@ function omoUpdateMemberStack(stack) {
     const previewCapacity = columnCount * 3;
     const memberCount = $members.length;
     const hasAddButton = $addButton.length > 0;
-    const requiresCompaction = memberCount > 1;
+    const requiresCompaction = memberCount + (hasAddButton ? 1 : 0) > columnCount;
+    const wasCompact = $stack.attr('data-member-compact') === '1';
     const memberCapacity = hasAddButton
         ? Math.max(0, previewCapacity - 1)
         : previewCapacity;
@@ -78,7 +79,7 @@ function omoUpdateMemberStack(stack) {
 
     if (!requiresCompaction) {
         omoSetMemberStackExpanded(stack, true);
-    } else if (!omoIsTouchMemberLayout()) {
+    } else if (!wasCompact || !omoIsTouchMemberLayout()) {
         omoSetMemberStackExpanded(stack, false);
     }
 }
@@ -112,6 +113,7 @@ function omoPrepareMemberStacks() {
                 omoUpdateMemberStack(stack);
             });
             stack._omoMemberResizeObserver.observe(stack);
+            stack._omoMemberResizeObserver.observe(stack.parentElement);
         }
     });
 }

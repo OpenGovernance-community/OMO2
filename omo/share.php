@@ -245,16 +245,6 @@ $brandHref = $shareLink->buildShareUrl($initialCid);
             <div class="panel panel-left" id="panel-left">
                 <div class="omo-left-panel-shell" id="omoLeftPanelShell">
                     <div class="omo-left-panel-shell__context" id="panel-left-context"></div>
-                    <div
-                        class="omo-left-panel-shell__resizer"
-                        id="panel-left-structure-resizer"
-                        role="separator"
-                        aria-orientation="horizontal"
-                        aria-label="Redimensionner la mini structure"
-                    ></div>
-                    <div class="omo-left-panel-shell__structure" id="panel-left-structure">
-                        <div class="omo-left-panel-shell__structure-host" id="omo-left-structure-map"></div>
-                    </div>
                 </div>
             </div>
             <div class="resizer" id="resizer"></div>
@@ -296,7 +286,6 @@ window.omoConfig = <?= json_encode(array(
 ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 </script>
 <script src="<?= commonAssetUrl('/omo/assets/js/app.js') ?>"></script>
-<script src="/omo/assets/js/structure-mini-map.js?v=20260916-structure-render-cache"></script>
 <script>
 $(document).ready(function () {
     if (window.omoConfig && !window.omoConfig.shareAllowsStructure) {

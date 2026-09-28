@@ -4,6 +4,9 @@ require_once dirname(__DIR__) . '/bootstrap.php';
 use dbObject\Organization;
 
 $holonCreateSourceLang = [
+    'holon.edit_denied' => ['text' => "Vous n'avez pas les droits de modification du holon.", 'context' => 'Tooltip on locked holon name and full name fields'],
+    'property.type' => ['text' => 'Type de propriete', 'context' => 'Property permission type selector in the holon editor'],
+    'property.edit_denied' => ['text' => "Vous n'avez pas les droits de modification.", 'context' => 'Tooltip and accessible description of the lock beside a read-only holon property name'],
     'project_picker.add' => ['text' => 'Ajouter', 'context' => 'Button opening the project selector for a holon property'],
     'project_picker.title' => ['text' => 'Ajouter des projets', 'context' => 'Project selector title in the holon editor'],
     'project_picker.search' => ['text' => 'Rechercher un projet…', 'context' => 'Project selector search placeholder in the holon editor'],
@@ -28,6 +31,7 @@ $editorData = null;
 $errorMessage = '';
 $adminLabel = 'Admin';
 $adminLabelLower = 'admin';
+$canEditHolonFields = false;
 $canEditHolonColor = false;
 $canEditHolonPermissions = false;
 $canEditHolonAdminBounds = false;
@@ -50,10 +54,14 @@ if ($organizationId <= 0) {
     $organizationInterfaceLevel = $organization->getInterfaceLevel();
     $canEditHolonColor = $organizationInterfaceLevel >= Organization::INTERFACE_LEVEL_EXPERT;
     $canEditHolonAdminBounds = !$organization->isDiscoveryMode();
-    $editorData = $organization->getHolonCreationEditorData($contextHolonId, $holonId, $governanceCapture);
+    $editorData = $organization->getHolonCreationEditorData($contextHolonId, $holonId, $governanceCapture, (int)($collectiveHolonId ?? ($_GET['collective_holon_id'] ?? 0)));
 	$canEditHolonPermissions = $organization->canManageHolonPermissionAssignments(
 		($editorData['editorType'] ?? 'holon') === 'template'
 	);
+	$canEditHolonFields = !empty($editorData['canEditHolonFields']);
+	$canEditHolonColor = $canEditHolonColor && $canEditHolonFields;
+	$canEditHolonAdminBounds = $canEditHolonAdminBounds && $canEditHolonFields;
+	$canEditHolonPermissions = $canEditHolonPermissions && $canEditHolonFields;
 	$canAddHolonProperties = !empty($editorData['canAddHolonProperties']);
 	$editedHolonData = is_array($editorData['holon'] ?? null) ? $editorData['holon'] : array();
 	$hasCustomHolonAppearance = trim((string)($editedHolonData['color'] ?? '')) !== ''
@@ -97,27 +105,29 @@ $drawerTitle = (($editorData['mode'] ?? 'create') === 'edit') ? 'Modifier l’é
 
                     <form id="omo-holon-create-form" class="omo-holon-create__form generic-form-stack">
                         <div class="omo-panel-view__body_content">
+                        <?php if (!$canEditHolonFields): ?><fieldset class="generic-fieldset" disabled><?php endif; ?>
                         <section class="omo-holon-create__section generic-section generic-section--stack generic-form-section generic-form-section--divided">
                             <div class="omo-holon-create__grid generic-form-grid">
                                 <label class="omo-holon-create__field generic-form-field">
-                                    <span class="generic-form-label">Nom</span>
+                                    <span class="generic-form-label">Nom<?php if (!$canEditHolonFields): ?> <img src="/img/cadenas.png" class="omo-holon-create__property-lock black-icon" width="14" height="14" alt="<?= omoApiEscape($holonCreateT('holon.edit_denied')) ?>" title="<?= omoApiEscape($holonCreateT('holon.edit_denied')) ?>"><?php endif; ?></span>
                                     <input type="text" id="omo-holon-create-name" class="generic-form-control" maxlength="255" required>
-                                    <small class="generic-help-text" id="omo-holon-create-name-help"></small>
+                                    <small class="generic-help-text" id="omo-holon-create-name-help"<?= !$canEditHolonFields ? ' hidden' : '' ?>></small>
                                 </label>
 
-                                <label class="omo-holon-create__field generic-form-field">
+                                <label class="omo-holon-create__field generic-form-field"<?= !$canEditHolonFields ? ' hidden' : '' ?>>
                                     <span class="generic-form-label">Modèle</span>
                                     <select id="omo-holon-create-template" class="generic-form-control" required></select>
                                 </label>
 
                                 <label class="omo-holon-create__field omo-holon-create__field--full generic-form-field generic-form-field--full">
-                                    <span class="generic-form-label">Nom complet</span>
+                                    <span class="generic-form-label">Nom complet<?php if (!$canEditHolonFields): ?> <img src="/img/cadenas.png" class="omo-holon-create__property-lock black-icon" width="14" height="14" alt="<?= omoApiEscape($holonCreateT('holon.edit_denied')) ?>" title="<?= omoApiEscape($holonCreateT('holon.edit_denied')) ?>"><?php endif; ?></span>
                                     <input type="text" id="omo-holon-create-full-name" class="generic-form-control" maxlength="255">
-                                    <small class="generic-help-text">Optionnel. Utilise dans la vue liste et dans la fiche contexte.</small>
+                                    <small class="generic-help-text"<?= !$canEditHolonFields ? ' hidden' : '' ?>>Optionnel. Utilise dans la vue liste et dans la fiche contexte.</small>
                                 </label>
 
                             </div>
                         </section>
+                        <?php if (!$canEditHolonFields): ?></fieldset><?php endif; ?>
                         <section class="omo-holon-create__section omo-holon-create__section--separated generic-section generic-section--stack generic-form-section generic-form-section--divided">
                             <div class="omo-holon-create__section-head generic-form-section__heading">
                                 <div class="generic-form-section__copy">
@@ -130,8 +140,8 @@ $drawerTitle = (($editorData['mode'] ?? 'create') === 'edit') ? 'Modifier l’é
 
                             <div class="omo-holon-create__properties" id="omo-holon-create-properties"></div>
                             <?php if ($canAddHolonProperties): ?>
-                            <div class="generic-action-row">
-                            <button type="button" class="generic-action-button generic-action-button--secondary" id="omo-holon-create-add-property">Ajouter une propriété</button>
+                            <div class="generic-action-row generic-action-row--start">
+                            <button type="button" class="generic-action-button generic-action-button--main" id="omo-holon-create-add-property">Ajouter une propriété</button>
                             </div>
                             <?php endif; ?>
                         </section>
@@ -292,6 +302,7 @@ $drawerTitle = (($editorData['mode'] ?? 'create') === 'edit') ? 'Modifier l’é
 <script src="/omo/assets/js/simple-html-field.js?v=20260904-highlight-clear"></script>
 <script src="/common/assets/multiline-list-paste.js"></script>
 <script src="/common/assets/property-list-conversion.js"></script>
+<script src="/common/assets/property-types.js"></script>
 <link rel="stylesheet" href="/common/permissions/editor.css?v=20260923-permission-align">
 <script src="/common/permissions/editor.js?v=20260925-extended-authorities-label"></script>
 <?= commonPageScriptTags('/omo/api/holons/editor.js', [
@@ -300,6 +311,8 @@ $drawerTitle = (($editorData['mode'] ?? 'create') === 'edit') ? 'Modifier l’é
     'directPermissionLabel' => $directPermissionLabel,
     'canEditHolonColor' => ($canEditHolonColor),
     'governanceCapture' => ($governanceCapture),
+    'propertyTypeLabel' => $holonCreateT('property.type'),
+    'propertyEditDenied' => $holonCreateT('property.edit_denied'),
     'projectPickerTexts' => [
     'add' => $holonCreateT('project_picker.add'),
     'title' => $holonCreateT('project_picker.title'),
