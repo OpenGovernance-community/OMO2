@@ -67,6 +67,7 @@ class OrganizationExport
             ],
             'holons' => $compact['holons'] ?? [],
             'propertyDefinitions' => $compact['propertyDefinitions'] ?? [],
+            'propertyTypes' => $organization->getPropertyTypeSettings(),
 			'authorities' => $compact['authorities'] ?? [],
 			'rules' => $compact['rules'] ?? [],
             'modules' => [],

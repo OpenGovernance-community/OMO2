@@ -564,9 +564,11 @@
 		public static function getDefaultLexicon(): array
 		{
 			return array(
-				'type1' => ['label' => 'Type 1'],
-				'type2' => ['label' => 'Type 2'],
-				'type3' => ['label' => 'Type 3'],
+				'type1' => ['label' => 'Type 1', 'enabled' => true],
+				'type2' => ['label' => 'Type 2', 'enabled' => true],
+				'type3' => ['label' => 'Type 3', 'enabled' => true],
+				'type4' => ['label' => 'Type 4', 'enabled' => false],
+				'type5' => ['label' => 'Type 5', 'enabled' => false],
 				'space' => array(
 					'label' => 'Espace',
 				),
@@ -589,6 +591,24 @@
 			);
 		}
 
+		public static function getInitialLexicon(): array
+		{
+			$lexicon = self::getDefaultLexicon();
+			foreach (Property::TYPES as $type) $lexicon[$type]['enabled'] = $type === 'type1';
+			$lexicon['type1']['label'] = "d\u{00e9}fini par le parent";
+			return $lexicon;
+		}
+
+		public function getPropertyTypeSettings(): array
+		{
+			return array_intersect_key($this->getLexicon(), array_flip(Property::TYPES));
+		}
+
+		public function setPropertyTypeSettings(array $settings): void
+		{
+			$this->setLexicon(array_replace($this->getLexicon(), array_intersect_key($settings, array_flip(Property::TYPES))));
+		}
+
 		public static function normalizeLexicon(array $lexicon): array
 		{
 			$defaults = self::getDefaultLexicon();
@@ -601,6 +621,10 @@
 				}
 				if (!is_array($value)) {
 					$value = array();
+				}
+
+				if (array_key_exists('enabled', $defaultTerm) && array_key_exists('enabled', $value)) {
+					$normalized[$key]['enabled'] = filter_var($value['enabled'], FILTER_VALIDATE_BOOLEAN);
 				}
 
 				$label = trim((string)($value['label'] ?? ''));
@@ -625,10 +649,18 @@
 
 		public function getLexicon(): array
 		{
-			$parameters = $this->getParametersArray();
+			$parameters = $this->getLexiconParameters();
 			$lexicon = $parameters['lexicon'] ?? array();
 
 			return self::normalizeLexicon(is_array($lexicon) ? $lexicon : array());
+		}
+
+		protected function getLexiconParameters(): array
+		{
+			// Public labels and type visibility must not depend on access to private parameters.
+			if ($this->needsFullLoadForField('parameters')) $this->load($this->getId());
+			$parameters = json_decode((string)($this->_fields['parameters'] ?? ''), true);
+			return is_array($parameters) ? $parameters : [];
 		}
 
 		protected function getHolonTypeLabelForEditor(int $typeId): string
@@ -657,28 +689,18 @@
 
 		public function setLexicon(array $lexicon): void
 		{
-			$parameters = $this->getParametersArray();
+			$parameters = $this->getLexiconParameters();
 			$parameters['lexicon'] = self::normalizeLexicon($lexicon);
 			$this->setParametersArray($parameters);
 		}
 
 		public static function getLexiconForOrganizationId($organizationId): array
 		{
-			static $lexiconsByOrganizationId = array();
-
 			$organizationId = (int)$organizationId;
-			if ($organizationId <= 0) {
-				return self::getDefaultLexicon();
-			}
-
-			if (!array_key_exists($organizationId, $lexiconsByOrganizationId)) {
+			return self::memoizeRead([__FUNCTION__, $organizationId], static function () use ($organizationId) {
 				$organization = new self();
-				$lexiconsByOrganizationId[$organizationId] = $organization->load($organizationId)
-					? $organization->getLexicon()
-					: self::getDefaultLexicon();
-			}
-
-			return $lexiconsByOrganizationId[$organizationId];
+				return $organizationId > 0 && $organization->load($organizationId) ? $organization->getLexicon() : self::getDefaultLexicon();
+			});
 		}
 
 		public static function getLexiconLabel(array $lexicon, string $key, bool $plural = false): string
@@ -695,6 +717,29 @@
 			}
 
 			return $label;
+		}
+
+		/** Adapt application copy only, before interpolation and HTML escaping. */
+		public static function formatLexiconText(string $text, ?array $lexicon = null): string
+		{
+			$pattern = '~(?<![\pL\pN_/{.\\\\|-])(?:(le|du|au|ce|de)\s+)?(holons?)(?![\pL\pN_}/.\\\\|-])~iu';
+			if (!preg_match($pattern, $text)) return $text;
+			$lexicon ??= self::getLexiconForOrganizationId((int)($_SESSION['currentOrganization'] ?? 0));
+			return preg_replace_callback($pattern, static function (array $match) use ($lexicon): string {
+				$plural = strtolower($match[2]) === 'holons';
+				$label = self::getLexiconLabel($lexicon, 'space', $plural);
+				$upper = $match[2][0] === 'H';
+				$label = ($upper ? mb_strtoupper(mb_substr($label, 0, 1)) : mb_strtolower(mb_substr($label, 0, 1))) . mb_substr($label, 1);
+				$prefix = $match[1] ?? '';
+				if ($prefix === '') return $label;
+				if (!$plural && preg_match('/^[aeiouy\x{00e0}\x{00e2}\x{00e4}\x{00e9}\x{00e8}\x{00ea}\x{00eb}\x{00ee}\x{00ef}\x{00f4}\x{00f6}\x{00f9}\x{00fb}\x{00fc}]/iu', $label)) {
+					$elisions = ['le' => "l'", 'du' => "de l'", 'au' => "\u{00e0} l'", 'ce' => 'cet ', 'de' => "d'"];
+					$replacement = $elisions[strtolower($prefix)];
+					if ($prefix[0] !== strtolower($prefix[0])) $replacement = mb_strtoupper(mb_substr($replacement, 0, 1)) . mb_substr($replacement, 1);
+					return $replacement . $label;
+				}
+				return $prefix . ' ' . $label;
+			}, $text) ?? $text;
 		}
 
 		public function getApplicationLinkByDirectory(string $directory, bool $activeOnly = false): ?\dbObject\OrganizationApplication
@@ -1863,6 +1908,9 @@
 
 		public function save()
 		{
+			if ((int)$this->getId() <= 0 && !isset($this->getLexiconParameters()['lexicon'])) {
+				$this->setLexicon(self::getInitialLexicon());
+			}
 			$shortnameValidation = $this->validateShortnameValue($this->get('shortname'));
 			if (!is_array($shortnameValidation) || empty($shortnameValidation['status'])) {
 				return is_array($shortnameValidation)
@@ -4641,6 +4689,8 @@
 
 		protected function cloneImportTemplateNodes(\dbObject\Holon $sourceTemplateRoot, \dbObject\Holon $targetRootHolon, $userId = 0)
 		{
+			$this->setPropertyTypeSettings($sourceTemplateRoot->getPropertyTypeLexicon());
+			if (empty($this->save()['status'])) throw new \RuntimeException('Impossible de copier les types de proprietes du modele.');
 			$sourceNodesById = $this->getImportTemplateNodes($sourceTemplateRoot);
 			$targetNodesBySourceId = array();
 			$targetNodeIdMap = array();
@@ -5057,6 +5107,9 @@
 
 			try {
 				$pdo->beginTransaction();
+				$settings = is_array($payload['propertyTypes'] ?? null) ? $payload['propertyTypes'] : array_intersect_key(self::getDefaultLexicon(), array_flip(Property::TYPES));
+				$this->setPropertyTypeSettings($settings);
+				if (empty($this->save()['status'])) throw new \RuntimeException('Impossible d importer les types de proprietes.');
 
 				$targetRootHolon = $this->createStructuralRootHolon($userId);
 				if (!$targetRootHolon) {
@@ -8107,6 +8160,7 @@
 				// Parameters contain the lexicon and the organization-level dashboard
 				// and application-view defaults. They do not contain activity history.
 				$target->set('parameters', $source->getParametersArray());
+				$target->setPropertyTypeSettings($source->getPropertyTypeSettings());
 				$target->set('isModel', false);
 				$targetSave = $target->save();
 				if (!is_array($targetSave) || empty($targetSave['status'])) {
@@ -8263,6 +8317,11 @@
 
 		protected function initializeStructureFromTemplate(\dbObject\Holon $sourceRootHolon, $userId = 0)
 		{
+			$source = new self();
+			if ($source->load((int)$sourceRootHolon->get('IDorganization'))) {
+				$this->setPropertyTypeSettings($source->getPropertyTypeSettings());
+				if (empty($this->save()['status'])) return ['status' => false, 'message' => 'Impossible de copier les types de proprietes du modele.'];
+			}
 			$targetRootHolon = $this->createStructuralRootHolon($userId, $sourceRootHolon);
 			if (!$targetRootHolon) {
 				return array(
@@ -8924,6 +8983,7 @@
 			return array(
 				'holons' => $holonTree,
 				'propertyDefinitions' => $propertyDefinitions,
+				'propertyTypes' => $this->getPropertyTypeSettings(),
 				'authorities' => $authorityRows,
 				'rules' => $ruleRows,
 			);
@@ -9103,6 +9163,17 @@
 				$scope = 'descendants';
 			}
 			return in_array($scope, array('contextual', 'children', 'descendants'), true) ? $scope : 'contextual';
+		}
+
+		protected function filterPropertyTypesForEditor(array $data): array
+		{
+			foreach ($data as $key => $value) {
+				if (!is_array($value)) continue;
+				$data[$key] = $key === 'properties'
+					? Property::filterEnabledDefinitions($value, $this->getLexicon())
+					: $this->filterPropertyTypesForEditor($value);
+			}
+			return $data;
 		}
 
 		public function getPermissionEditorCatalog()
@@ -9370,7 +9441,7 @@
 				$data['templates'][] = $templateNode;
 			}
 
-			return $data;
+			return $this->filterPropertyTypesForEditor($data);
 		}
 
 		protected function buildHolonDefinitionEditorNode(\dbObject\Holon $holon, $rootHolonId)
@@ -9425,6 +9496,16 @@
 					$existingDefinitions[] = $definition;
 				}
 			}
+			$lexicon = $this->getLexicon();
+			$disabledIds = [];
+			foreach ($existingDefinitions as $definition) {
+				if (!Property::isTypeEnabled($definition['type'] ?? null, $lexicon)) $disabledIds[(int)$definition['id']] = true;
+			}
+			$submittedDefinitions = array_values(array_filter($submittedDefinitions, static fn($definition) => !isset($disabledIds[(int)($definition['id'] ?? 0)])));
+			foreach ($submittedDefinitions as $definition) {
+				if (!in_array($definition['type'] ?? 'type1', Property::TYPES, true) || !Property::isTypeEnabled($definition['type'] ?? null, $lexicon)) return ['INVALID_PROPERTY_TYPE'];
+			}
+			$existingDefinitions = Property::filterEnabledDefinitions($existingDefinitions, $lexicon);
 			$submittedOrder = [];
 			foreach ($submittedDefinitions as $definition) {
 				if (!is_array($definition) || !in_array($definition['type'] ?? 'type1', Property::TYPES, true)) {
@@ -9529,6 +9610,7 @@
 
 		protected function canUsePropertyPermission(Holon $context, string $permissionKey, int $collectiveHolonId = 0): bool
 		{
+			if (preg_match('/_TYPE([1-5])_PROPERTIES$/', $permissionKey, $matches) && !Property::isTypeEnabled('type' . $matches[1], $this->getLexicon())) return false;
 			return $collectiveHolonId === 0
 				? $context->isAllowed($permissionKey, false)
 				: ($collectiveHolonId > 0 && HolonPermission::holonHasCollectivePermissionForHolonContext((int)$this->getId(), $collectiveHolonId, $permissionKey, (int)$context->getId()));
@@ -9667,7 +9749,7 @@
 
 			$data['formats'] = $this->buildEditorPropertyFormats($formats);
 
-			return $data;
+			return $this->filterPropertyTypesForEditor($data);
 		}
 
 		// Construit liste holons
@@ -10603,7 +10685,7 @@
 			);
 
 			if (!$rootHolon || !$contextHolon) {
-				return $data;
+				return $this->filterPropertyTypesForEditor($data);
 			}
 
 			$data['canCreate'] = !$isTemplateEditing
@@ -10762,6 +10844,7 @@
 				), $this->getHolonIllustrationData($editingHolon));
 			}
 
+			$data = $this->filterPropertyTypesForEditor($data);
 			if ($collectiveGovernance) {
 				$permissionContext = $editingHolon ?: $contextHolon;
 				$collectiveId = $collectiveHolonId > 0 ? $collectiveHolonId : -1;
@@ -10789,7 +10872,7 @@
 				}
 			}
 
-			return $data;
+			return $this->filterPropertyTypesForEditor($data);
 		}
 
 		protected function getSubmittedDirectHolonPropertyDefinitions(array $submittedDefinitions, array $templateDefinitions)
@@ -12587,6 +12670,7 @@
 
 			foreach ($propertyDefinitions as $definition) {
 				$propertyId = (int)($definition['id'] ?? 0);
+				if (!$holon->isPropertyEnabled($propertyId)) continue;
 				$formatId = (int)($definition['formatId'] ?? 0);
 				if (
 					$propertyId <= 0
@@ -13120,7 +13204,7 @@
 					$name = trim((string)$template->getDisplayName());
 				}
 
-				$templateDefinitions = $template->getHolonCreationPropertyDefinitions();
+				$templateDefinitions = Property::filterEnabledDefinitions($template->getHolonCreationPropertyDefinitions(), $this->getLexicon());
 				foreach ($templateDefinitions as $definition) {
 					$propertyId = (int)($definition['id'] ?? 0);
 					if ($propertyId <= 0) {
@@ -13297,13 +13381,13 @@
 			}
 
 			if ($isTemplateEditing) {
-				$holon->syncTemplateProperties($templateDefinitions, (int)$rootHolon->getId());
+				$holon->syncTemplateProperties($templateDefinitions, (int)$rootHolon->getId(), true);
 			} else {
 				$conversionResult = \dbObject\Property::convertListDefinitions($holon, $submittedDirectDefinitions);
 				if (empty($conversionResult['status'])) { return $conversionResult; }
 				$resolvedDirectDefinitions = $holon->syncDirectEditorPropertyDefinitions(
 					$submittedDirectDefinitions,
-					(int)$rootHolon->getId()
+					(int)$rootHolon->getId(), true
 				);
 				$templateDefinitions = array_merge($templateDefinitions, $resolvedDirectDefinitions);
 				foreach ($resolvedDirectDefinitions as $definition) {
@@ -13327,7 +13411,7 @@
 					);
 				}
 
-				$holon->syncEditorPropertyValues($submittedValuesByPropertyId, $templateDefinitions);
+				$holon->syncEditorPropertyValues($submittedValuesByPropertyId, $templateDefinitions, true);
 				if (!$propertiesOnly && $this->canManageHolonPermissionAssignments(false) && !$this->syncEditorPermissionAssignments(
 					(int)$holon->getId(),
 					$payload
@@ -13845,7 +13929,7 @@
 
 			$template->syncTemplateProperties(
 				$submittedProperties,
-				(int)$rootHolon->getId()
+				(int)$rootHolon->getId(), true
 			);
 
 			$persistedTemplateDefinitions = $template->getTemplatePropertyDefinitions();
@@ -13888,7 +13972,7 @@
 				}
 			}
 			unset($definition);
-			$template->syncTemplateProperties($persistedTemplateDefinitions, (int)$rootHolon->getId());
+			$template->syncTemplateProperties($persistedTemplateDefinitions, (int)$rootHolon->getId(), true);
 			$this->normalizeTemplateLocalAuthorities($template);
 			$this->syncTemplateAuthorityInstances($template);
 
@@ -14134,7 +14218,7 @@
 			}
 			unset($definition);
 
-			$holon->syncTemplateProperties($definitions, (int)$rootHolon->getId());
+			$holon->syncTemplateProperties($definitions, (int)$rootHolon->getId(), true);
 
 			$requiresAuthorityPostSync = false;
 			foreach ($definitions as $definition) {
@@ -14169,7 +14253,7 @@
 					);
 				}
 
-				$holon->syncEditorPropertyValues($postSyncSubmittedValues, $persistedDefinitions);
+				$holon->syncEditorPropertyValues($postSyncSubmittedValues, $persistedDefinitions, true);
 			}
 
 			if (!$propertiesOnly && $this->canManagePermissionAssignments()) {
@@ -15686,6 +15770,7 @@
 				$matchedExcerptScore = 0;
 
 				foreach ($holon->getPropertiesValue() as $property) {
+					if (!Property::isTypeEnabled($property->get('type'), $this->getLexicon())) continue;
 					$propertyLabel = trim((string)$property->get('name') . ' ' . (string)$property->get('shortname'));
 					$propertyValue = self::buildTopbarStructurePropertySearchValue($property);
 					$searchFields['summary'][] = (string)$property->get('value');

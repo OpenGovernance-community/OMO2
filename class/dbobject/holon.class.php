@@ -339,6 +339,18 @@
 		}
 		
 		// Resout organisation liee
+		public function getPropertyTypeLexicon(): array
+		{
+			return Organization::getLexiconForOrganizationId($this->resolveOrganizationId());
+		}
+
+		public function isPropertyEnabled(int $propertyId): bool
+		{
+			if ($propertyId <= 0) return true;
+			$property = new Property();
+			return $property->load($propertyId) && Property::isTypeEnabled($property->get('type'), $this->getPropertyTypeLexicon());
+		}
+
 		protected function resolveOrganizationId()
 		{
 			$organizationId = (int)$this->get('IDorganization');
@@ -772,6 +784,7 @@
 			$data = array();
 
 			foreach ($this->getPropertiesValue() as $property) {
+				if (!Property::isTypeEnabled($property->get('type'), $this->getPropertyTypeLexicon())) continue;
 				$value = $this->shouldHideLocalPropertyValue($property) ? null : $property->get('value');
 				$ancestor = $property->get('value_parents');
 
@@ -939,6 +952,10 @@
 			}
 
 			$propertyRowsByHolonId = \dbObject\ArrayHolonProperty::fetchAllValuesByHolonIds($structureHolonIds);
+			$organizationRoot = new self();
+			$lexicon = $organizationRoot->load($organizationRootHolonId) ? $organizationRoot->getPropertyTypeLexicon() : Organization::getDefaultLexicon();
+			foreach ($propertyRowsByHolonId as &$propertyRows) $propertyRows = Property::filterEnabledDefinitions($propertyRows, $lexicon);
+			unset($propertyRows);
 			$memberRows = array();
 			$organizationMemberUserIds = array();
 			if (!empty($options['includeMemberUserIds'])) {
@@ -1607,6 +1624,7 @@
 
 			$templateAuthorityIdMap = $this->getTemplateAuthorityInstanceIdMap();
 			foreach ($this->getPropertiesValue() as $property) {
+				if (!Property::isTypeEnabled($property->get('type'), $this->getPropertyTypeLexicon())) continue;
 				$propertyId = (int)$property->get('IDproperty');
 				$propertyPosition = (int)($property->get('effective_position') ?: $property->get('position') ?: 0);
 				if (isset($templatePositionsByPropertyId[$propertyId])) {
@@ -4243,7 +4261,7 @@
 			return $definitions;
 		}
 
-		public function syncDirectEditorPropertyDefinitions(array $definitions, $organizationRootId)
+		public function syncDirectEditorPropertyDefinitions(array $definitions, $organizationRootId, bool $preserveDisabled = false)
 		{
 			$organizationRootId = (int)$organizationRootId;
 			$templatePropertyIds = array();
@@ -4264,6 +4282,7 @@
 				}
 
 				$propertyId = (int)($definition['id'] ?? 0);
+				if ($preserveDisabled && (!$this->isPropertyEnabled($propertyId) || !Property::isTypeEnabled($definition['type'] ?? null, $this->getPropertyTypeLexicon()))) continue;
 				if ($propertyId > 0 && isset($templatePropertyIds[$propertyId])) {
 					continue;
 				}
@@ -4337,7 +4356,7 @@
 		}
 
 		// Synchronise valeurs locales
-		public function syncEditorPropertyValues(array $submittedValuesByPropertyId, array $propertyDefinitions)
+		public function syncEditorPropertyValues(array $submittedValuesByPropertyId, array $propertyDefinitions, bool $preserveDisabled = false)
 		{
 			$definitionsByPropertyId = array();
 			foreach ($propertyDefinitions as $definition) {
@@ -4353,6 +4372,7 @@
 			}
 
 			foreach ($definitionsByPropertyId as $propertyId => $definition) {
+				if ($preserveDisabled && !$this->isPropertyEnabled((int)$propertyId)) continue;
 				if (!empty($definition['effectiveLocked'])) {
 					continue;
 				}
@@ -4396,6 +4416,7 @@
 			}
 
 			foreach ($existingByPropertyId as $propertyId => $holonProperty) {
+				if ($preserveDisabled && !$this->isPropertyEnabled((int)$propertyId)) continue;
 				if (isset($definitionsByPropertyId[$propertyId])) {
 					continue;
 				}
@@ -4510,7 +4531,7 @@
 			);
 		}
 
-		public function syncTemplateProperties(array $definitions, $organizationRootId)
+		public function syncTemplateProperties(array $definitions, $organizationRootId, bool $preserveDisabled = false)
 		{
 			$organizationRootId = (int)$organizationRootId;
 			$retainedHolonPropertyIds = array();
@@ -4538,6 +4559,7 @@
 				}
 
 				$propertyId = (int)($definition['id'] ?? 0);
+				if ($preserveDisabled && (!$this->isPropertyEnabled($propertyId) || !Property::isTypeEnabled($definition['type'] ?? null, $this->getPropertyTypeLexicon()))) continue;
 				$isInheritedDefinition = $propertyId > 0 && isset($inheritedDefinitionsById[$propertyId]);
 				$submittedPropertyIds[$propertyId] = true;
 
@@ -4663,6 +4685,7 @@
 			}
 
 			foreach ($inheritedDefinitionsById as $propertyId => $inheritedDefinition) {
+				if ($preserveDisabled && !$this->isPropertyEnabled((int)$propertyId)) continue;
 				if (isset($submittedPropertyIds[$propertyId])) {
 					continue;
 				}
@@ -4699,6 +4722,7 @@
 				}
 
 				$propertyId = (int)$existingHolonProperty->get('IDproperty');
+				if ($preserveDisabled && !$this->isPropertyEnabled($propertyId)) continue;
 				if (isset($inheritedDefinitionsById[$propertyId]) && !isset($submittedPropertyIds[$propertyId])) {
 					continue;
 				}

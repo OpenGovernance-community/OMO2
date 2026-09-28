@@ -1,10 +1,14 @@
 <?php
 
 if (!function_exists('commonUserPermissionBuildCatalogMap')) {
-    function commonUserPermissionBuildCatalogMap()
+    function commonUserPermissionBuildCatalogMap(int $organizationId = 0)
     {
         $catalog = [];
-        foreach (\dbObject\Permission::getEditorCatalog() as $permissionEntry) {
+        $organization = new \dbObject\Organization();
+        $entries = $organizationId > 0 && $organization->load($organizationId)
+            ? $organization->getPermissionEditorCatalog()
+            : \dbObject\Permission::getEditorCatalog();
+        foreach ($entries as $permissionEntry) {
             $permissionKey = trim((string)($permissionEntry['key'] ?? ''));
             if ($permissionKey === '') {
                 continue;

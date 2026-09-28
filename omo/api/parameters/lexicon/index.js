@@ -35,7 +35,8 @@ window.commonPageScripts["/omo/api/parameters/lexicon/index.js"] = function (pag
             Object.keys(defaultValues).forEach(function (key) {
                 var input = form ? form.elements[key] : null;
                 if (input) {
-                    input.value = defaultValues[key];
+                    if (input.type === 'checkbox') input.checked = !!defaultValues[key];
+                    else input.value = defaultValues[key];
                 }
             });
             setFeedback('', '');

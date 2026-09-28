@@ -129,7 +129,9 @@ function omoUserContextRenderRoleAssignment(array $assignment, $userId, $returnP
 function omoUserContextRenderRightsFragment($targetUserId, $organizationId)
 {
     $details = \dbObject\HolonPermission::buildEffectivePermissionDetailsForOrganization((int)$targetUserId, (int)$organizationId);
-    $permissionCatalog = commonUserPermissionBuildCatalogMap();
+    $permissionCatalog = commonUserPermissionBuildCatalogMap((int)$organizationId);
+    $details['rows'] = array_values(array_filter((array)($details['rows'] ?? []),
+        static fn($row) => isset($permissionCatalog[$row['permissionKey'] ?? ''])));
     $holonIds = [];
 
     foreach ((array)($details['rows'] ?? []) as $row) {
