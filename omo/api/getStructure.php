@@ -124,9 +124,9 @@ function omoGetStructurePanelSourceLang(): array
             'text' => 'Partager la structure',
             'context' => 'Modal title used when opening the share dialog from the structure action menu.',
         ],
-        'structure.view.toggle_label' => [
-            'text' => 'O   L',
-            'context' => 'Short toggle label used to switch between organization graph view and list view in the structure panel.',
+        'structure.view.list_aria' => [
+            'text' => 'Vue en liste',
+            'context' => 'Accessible label for the structure view switch; its checked state enables the list view.',
         ],
         'structure.warning.brave' => [
             'text' => 'Brave semble bloquer la lecture du canevas utilisée pour la navigation graphique, probablement à cause du bouclier anti-empreinte numérique. La vue en liste a été activée pour continuer à naviguer. Vous pouvez aussi assouplir le bouclier pour ce site.',
@@ -261,7 +261,6 @@ $structureTranslations = [
     'searchPlaceholder' => t('structure.list.search.placeholder'),
     'shareModalTitle' => t('structure.share.modal_title'),
     'showPropertiesAria' => t('structure.list.properties.show_aria'),
-    'toggleLabel' => t('structure.view.toggle_label'),
     'warningBrave' => t('structure.warning.brave'),
     'warningDismissAria' => t('structure.warning.dismiss_aria'),
     'warningPixelMismatch' => t('structure.warning.pixel_mismatch'),
@@ -298,8 +297,11 @@ $structureTranslations = [
         </div>
 
         <div class="switch chart-toggle">
-            <input type="checkbox" id="toggleSwitch" />
-            <label for="toggleSwitch" class="slider"><?= omoApiEscape(t('structure.view.toggle_label')) ?></label>
+            <input type="checkbox" id="toggleSwitch" aria-label="<?= omoApiEscape(t('structure.view.list_aria')) ?>" />
+            <label for="toggleSwitch" class="slider">
+                <svg class="structure-view-icon structure-view-icon--circle" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="6.5" fill="none" stroke="currentColor" stroke-width="2" /></svg>
+                <svg class="structure-view-icon structure-view-icon--list" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M3 5h14M3 10h14M3 15h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></svg>
+            </label>
         </div>
     </div>
 
