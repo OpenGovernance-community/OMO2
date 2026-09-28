@@ -94,9 +94,9 @@ class HolonPermission extends DbObject
         return [
             self::RANGE_SELF => 'Element courant',
             self::RANGE_DIRECT_CHILDREN => 'Enfants directs',
-            self::RANGE_PARENT_CIRCLE => 'Cercle englobant seul',
-            self::RANGE_PARENT_CIRCLE_ELEMENTS => 'Enfants du cercle englobant',
-            self::RANGE_PARENT_CIRCLE_DESCENDANTS => 'Cercle englobant et descendants',
+            self::RANGE_PARENT_CIRCLE => 'Parent seul',
+            self::RANGE_PARENT_CIRCLE_ELEMENTS => 'Enfants direct du parent',
+            self::RANGE_PARENT_CIRCLE_DESCENDANTS => 'Descendants du parent',
             self::RANGE_ORGANIZATION_ROOT => "L'organisation",
             self::RANGE_ORGANIZATION => "Toute l'organisation",
         ];
@@ -801,13 +801,14 @@ class HolonPermission extends DbObject
         return array_values($collected);
     }
 
-    protected static function resolveContainingCircleIdFromRows($holonId, array $holonsById, $includeSelf = false)
+    protected static function resolveScopeParentIdFromRows($holonId, array $holonsById)
     {
-        $currentHolonId = $includeSelf ? (int)$holonId : (int)($holonsById[(int)$holonId]['IDholon_parent'] ?? 0);
+        $currentHolonId = (int)($holonsById[(int)$holonId]['IDholon_parent'] ?? 0);
         $guard = 0;
 
         while ($currentHolonId > 0 && isset($holonsById[$currentHolonId]) && $guard < 100) {
-            if ((int)($holonsById[$currentHolonId]['IDtypeholon'] ?? 0) === 2) {
+            // Groups do not create an extra structural level.
+            if ((int)($holonsById[$currentHolonId]['IDtypeholon'] ?? 0) !== 3) {
                 return $currentHolonId;
             }
 
@@ -818,7 +819,7 @@ class HolonPermission extends DbObject
         return 0;
     }
 
-    protected static function collectCircleElementHolonIdsFromRows($circleHolonId, array $holonsById)
+    protected static function collectCircleElementHolonIdsFromRows($circleHolonId, array $holonsById, bool $includeGroups = false)
     {
         $circleHolonId = (int)$circleHolonId;
         if ($circleHolonId <= 0 || !isset($holonsById[$circleHolonId])) {
@@ -826,7 +827,10 @@ class HolonPermission extends DbObject
         }
 
         $collectedHolonIds = [];
-        $appendGroupElements = function ($parentHolonId) use (&$appendGroupElements, &$collectedHolonIds, $holonsById) {
+        $visited = [];
+        $appendGroupElements = function ($parentHolonId) use (&$appendGroupElements, &$collectedHolonIds, &$visited, $holonsById, $includeGroups) {
+            if (isset($visited[$parentHolonId])) return;
+            $visited[$parentHolonId] = true;
             foreach ($holonsById as $holonId => $row) {
                 if ((int)($row['IDholon_parent'] ?? 0) !== (int)$parentHolonId) {
                     continue;
@@ -837,7 +841,7 @@ class HolonPermission extends DbObject
                     continue;
                 }
 
-                if ((int)($row['IDtypeholon'] ?? 0) === 3) {
+                if (!$includeGroups && (int)($row['IDtypeholon'] ?? 0) === 3) {
                     $appendGroupElements($holonId);
                     continue;
                 }
@@ -932,26 +936,22 @@ class HolonPermission extends DbObject
                 ];
 
             case self::RANGE_PARENT_CIRCLE_DESCENDANTS:
-                $circleId = self::resolveContainingCircleIdFromRows($assignedHolonId, $holonsById, false);
-                if ($circleId > 0) {
-                    return ['type' => 'subtree', 'holonId' => $circleId];
-                }
-                return ['type' => 'organization', 'holonId' => 0];
-
             case self::RANGE_PARENT_CIRCLE_ELEMENTS:
-                $circleId = self::resolveContainingCircleIdFromRows($assignedHolonId, $holonsById, false);
-                if ($circleId > 0) {
+                $parentId = self::resolveScopeParentIdFromRows($assignedHolonId, $holonsById) ?: $organizationRootHolonId;
+                if ($parentId > 0) {
+                    $includeDescendants = $range === self::RANGE_PARENT_CIRCLE_DESCENDANTS;
                     return [
-                        'type' => 'exact',
-                        'holonIds' => self::collectCircleElementHolonIdsFromRows($circleId, $holonsById),
+                        'type' => $includeDescendants ? 'subtree' : 'exact',
+                        // Start below the parent so it never receives descendant rights.
+                        'holonIds' => self::collectCircleElementHolonIdsFromRows($parentId, $holonsById, $includeDescendants),
                     ];
                 }
                 return ['type' => 'none', 'holonId' => 0];
 
             case self::RANGE_PARENT_CIRCLE:
-                $circleId = self::resolveContainingCircleIdFromRows($assignedHolonId, $holonsById, false);
-                if ($circleId > 0) {
-                    return ['type' => 'exact', 'holonId' => $circleId];
+                $parentId = self::resolveScopeParentIdFromRows($assignedHolonId, $holonsById);
+                if ($parentId > 0) {
+                    return ['type' => 'exact', 'holonId' => $parentId];
                 }
                 return ['type' => 'exact', 'holonId' => $organizationRootHolonId];
 
@@ -1155,28 +1155,31 @@ class HolonPermission extends DbObject
                     }
 
                     $scopeType = (string)($resolvedScope['type'] ?? 'none');
-                    $scopeHolonId = (int)($resolvedScope['holonId'] ?? 0);
                     if ($scopeType === 'none') {
                         continue;
                     }
-
-                    $dedupeKey = implode('|', [
-                        $permissionKey,
-                        $scopeType,
-                        (string)$scopeHolonId,
-                        (string)$assignedHolonId,
-                        (string)$permissionSourceHolonId,
-                        (string)($assignment['range'] ?? self::RANGE_SELF),
-                    ]);
-                    $details['rows'][$dedupeKey] = [
-                        'permissionKey' => $permissionKey,
-                        'isContextual' => !empty($assignment['is_contextual']),
-                        'scopeType' => $scopeType,
-                        'scopeHolonId' => $scopeHolonId,
-                        'assignedHolonId' => $assignedHolonId,
-                        'sourceHolonId' => (int)$permissionSourceHolonId,
-                        'range' => (string)($assignment['range'] ?? self::RANGE_SELF),
-                    ];
+                    $scopeHolonIds = $scopeType === 'organization'
+                        ? [0]
+                        : array_values(array_filter(array_map('intval', $resolvedScope['holonIds'] ?? [$resolvedScope['holonId'] ?? 0])));
+                    foreach ($scopeHolonIds as $scopeHolonId) {
+                        $dedupeKey = implode('|', [
+                            $permissionKey,
+                            $scopeType,
+                            (string)$scopeHolonId,
+                            (string)$assignedHolonId,
+                            (string)$permissionSourceHolonId,
+                            (string)($assignment['range'] ?? self::RANGE_SELF),
+                        ]);
+                        $details['rows'][$dedupeKey] = [
+                            'permissionKey' => $permissionKey,
+                            'isContextual' => !empty($assignment['is_contextual']),
+                            'scopeType' => $scopeType,
+                            'scopeHolonId' => $scopeHolonId,
+                            'assignedHolonId' => $assignedHolonId,
+                            'sourceHolonId' => (int)$permissionSourceHolonId,
+                            'range' => (string)($assignment['range'] ?? self::RANGE_SELF),
+                        ];
+                    }
                 }
             }
         }

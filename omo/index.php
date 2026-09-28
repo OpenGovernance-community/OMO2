@@ -144,8 +144,8 @@ $sourceLang = [
         'context' => 'Badge shown on an organization card when the user has a pending invitation for that organization.',
     ],
     'app.directory.invitation.pending_holons' => [
-        'one' => '{count} holon en attente',
-        'other' => '{count} holons en attente',
+        'one' => '{count} {space} en attente',
+        'other' => '{count} {space} en attente',
         'context' => 'Summary shown on a pending invitation organization card with the number of holons included in the invitation.',
     ],
     'app.directory.invitation.pending_organization' => [
@@ -441,7 +441,7 @@ function omoBuildDirectoryCardData(array $directoryEntry, $currentUserId)
         'organizationCardMeta' => $pendingInvitation
             ? (
                 count($invitationPendingHolons) > 0
-                    ? t('app.directory.invitation.pending_holons', ['count' => count($invitationPendingHolons)])
+                    ? t('app.directory.invitation.pending_holons', ['count' => count($invitationPendingHolons), 'space' => \dbObject\Organization::getLexiconLabel($accessibleOrganization->getLexicon(), 'space', count($invitationPendingHolons) !== 1)])
                     : t('app.directory.invitation.pending_organization')
             )
             : $organizationHostLabel,

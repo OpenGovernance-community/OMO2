@@ -44,9 +44,9 @@ function omoGetOrgPanelSourceLang(): array
             'text' => 'Ne plus partager comme modèle',
             'context' => 'Action menu label to unpublish the current organization model.',
         ],
-        'leftbar.children.section_title' => [
-            'text' => 'Dependances',
-            'context' => 'Accordion title for child navigation in the left panel.',
+        'leftbar.children.attached_title' => [
+            'text' => '{spacesLabel} rattachés',
+            'context' => 'Accordion title for direct child spaces in the left panel. {spacesLabel} is the plural space label from the organization lexicon; preserve this placeholder.',
         ],
         'leftbar.copy_link.error' => [
             'text' => 'Impossible de copier le lien direct.',
@@ -1143,7 +1143,7 @@ $parentHolonForDelete = $canDeleteHolon ? $currentHolon->getParentHolon() : null
 $deleteParentId = $parentHolonForDelete ? (int)$parentHolonForDelete->getId() : 0;
 $deleteParentIsRoot = $parentHolonForDelete ? ((int)$parentHolonForDelete->get('IDtypeholon') === 4) : false;
 $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canMoveHolon || $canDeleteHolon || $canViewHolonHistory || $canManageOrganizationModel;
-$debugPermissionCatalog = Permission::getEditorCatalog();
+$debugPermissionCatalog = Permission::getEditorCatalog($organization->getLexicon());
 $debugPermissionEntries = array();
 foreach ($debugPermissionCatalog as $permissionEntry) {
     $permissionKey = trim((string)($permissionEntry['key'] ?? ''));
@@ -1384,14 +1384,14 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
     </div>
 
     <?php if (count($sections) === 0): ?>
-        <div class="circle-section generic-section generic-accordion generic-accordion--card">
+        <div class="circle-section generic-section generic-accordion generic-accordion--row">
             <div class="circle-section__title generic-card-title generic-card-title--small"><?= omoApiEscape(t('leftbar.empty.section_title')) ?></div>
             <p class="section-text generic-description generic-description--small generic-description--primary"><?= omoApiEscape(t('leftbar.empty.message')) ?></p>
         </div>
     <?php endif; ?>
 
     <?php foreach ($sections as $section): ?>
-        <div class="circle-section generic-section generic-accordion generic-accordion--card generic-accordion--collapsible">
+        <div class="circle-section generic-section generic-accordion generic-accordion--row generic-accordion--collapsible">
             <div class="generic-accordion__header">
                 <span class="generic-accordion__title generic-card-title generic-card-title--small"><?= omoApiEscape($section['title']) ?></span>
                 <span class="generic-accordion__toggle">&#9662;</span>
@@ -1403,9 +1403,9 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
         </div>
     <?php endforeach; ?>
     <?php if (count($childNavigation['circles']) > 0 || count($childNavigation['groups']) > 0 || count($childNavigation['roles']) > 0): ?>
-        <div class="circle-section circle-section--navigation generic-section generic-accordion generic-accordion--card generic-accordion--collapsible" data-section-key="dependencies">
+        <div class="circle-section circle-section--navigation generic-section generic-accordion generic-accordion--row generic-accordion--collapsible" data-section-key="dependencies">
             <div class="generic-accordion__header">
-                <span class="generic-accordion__title generic-card-title generic-card-title--small"><?= omoApiEscape(t('leftbar.children.section_title')) ?></span>
+                <span class="generic-accordion__title generic-card-title generic-card-title--small"><?= omoApiEscape(t('leftbar.children.attached_title', ['spacesLabel' => Organization::getLexiconLabel($organizationLexicon, 'space', true)])) ?></span>
                 <span class="generic-accordion__toggle">&#9662;</span>
             </div>
             <div class="generic-accordion__content">
@@ -1455,9 +1455,9 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
     <?php endif; ?>
 
     <?php if (count($debugPermissionEntries) > 0 && 1==0): ?>
-        <div class="circle-section generic-section generic-accordion generic-accordion--card">
+        <div class="circle-section generic-section generic-accordion generic-accordion--row">
             <div class="circle-section__title generic-card-title generic-card-title--small">Permissions</div>
-            <p class="section-text">Codes disponibles sur ce holon. Ceux que vous avez sont en gras.</p>
+            <p class="section-text"><?= htmlspecialchars(\dbObject\Organization::formatLexiconText('Codes disponibles sur ce holon. Ceux que vous avez sont en gras.', $organization->getLexicon()), ENT_QUOTES, 'UTF-8') ?></p>
             <div class="section-text">
                 <?php foreach ($debugPermissionEntries as $index => $permissionEntry): ?>
                     <?php if ($index > 0): ?>, <?php endif; ?>

@@ -513,7 +513,7 @@ if (!$organization->canViewDetail()) {
 
 $organizationRoot = $organization->getStructuralRootHolon();
 if ($organizationRoot === null) {
-    omoStructureExportJsonError(404, "Aucun holon racine de type organisation n'a ete trouve pour cette organisation.");
+    omoStructureExportJsonError(404, \dbObject\Organization::formatLexiconText("Aucun holon racine de type organisation n'a ete trouve pour cette organisation."));
 }
 
 $navigationRoot = $organizationRoot;
@@ -530,11 +530,11 @@ $currentHolonId = (int)($_GET['cid'] ?? 0);
 if ($currentHolonId > 0 && $currentHolonId !== (int)$navigationRoot->getId()) {
     $currentHolon = new Holon();
     if (!$currentHolon->load($currentHolonId)) {
-        omoStructureExportJsonError(404, 'Holon introuvable.');
+        omoStructureExportJsonError(404, \dbObject\Organization::formatLexiconText('Holon introuvable.'));
     }
 
     if (!$currentHolon->canViewDetail() || !$currentHolon->isDescendantOf($navigationRoot, true)) {
-        omoStructureExportJsonError(403, 'Acces refuse a ce holon.');
+        omoStructureExportJsonError(403, \dbObject\Organization::formatLexiconText('Acces refuse a ce holon.'));
     }
 
     $exportRoot = $currentHolon;

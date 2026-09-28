@@ -2683,7 +2683,7 @@ if (!function_exists('omoDecisionApplyInvitationSelections')) {
             if (!$holon->load($holonId) || !$organization->containsHolon($holon) || !$holon->canViewDetail()) {
                 return [
                     'status' => false,
-                    'message' => 'Un holon selectionne est invalide.',
+                    'message' => \dbObject\Organization::formatLexiconText('Un holon selectionne est invalide.'),
                 ];
             }
 
@@ -2857,7 +2857,7 @@ if (!function_exists('omoDecisionRenderInlineInvitationSection')) {
         $instanceId = 'omoDecisionInvitationsInline' . $instanceCounter;
         $membersTabId = $instanceId . 'Members';
         $guestsTabId = $instanceId . 'Guests';
-        $holonsTabId = $instanceId . 'Holons';
+        $holonsTabId = $instanceId . \dbObject\Organization::formatLexiconText('Holons');
 
         ob_start();
         ?>
