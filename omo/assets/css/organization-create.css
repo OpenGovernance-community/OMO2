@@ -49,6 +49,32 @@
     overflow: hidden;
 }
 
+.organization-create-address-search {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+}
+
+.organization-create-address-search .generic-form-control {
+    min-width: 0;
+    flex: 1;
+}
+
+.organization-create-address-search .generic-action-button {
+    flex: none;
+}
+
+.organization-create-location-attribution {
+    color: inherit;
+    white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+    .organization-create-address-search {
+        flex-direction: column;
+    }
+}
+
 .organization-create-image-editor {
     display: grid;
     justify-items: start;

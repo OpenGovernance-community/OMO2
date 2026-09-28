@@ -410,6 +410,7 @@ function omoHolonTemplateSourceLang()
         'parameters.holon_templates.permission.children' => ['text' => 'Sous-éléments', 'context' => 'Permission scope label used for child holons in the holon template editor.'],
         'parameters.holon_templates.permission.direct_children' => ['text' => 'Éléments directs', 'context' => 'Permission scope label used for direct children of the current element in the structural template editor.'],
         'parameters.holon_templates.permission.parent_circle' => ['text' => 'Parent seul', 'context' => 'Permission scope targeting only the structural parent, ignoring groups.'],
+        'parameters.holon_templates.permission.descendants' => ['text' => 'Descendants', 'context' => 'Permission scope targeting all descendants of the current element, excluding the current element itself.'],
         'parameters.holon_templates.permission.parent_circle_elements' => ['text' => 'Enfants direct du parent', 'context' => 'Permission scope targeting direct children of the parent, traversing groups but stopping at other elements.'],
         'parameters.holon_templates.permission.parent_circle_descendants' => ['text' => 'Descendants du parent', 'context' => 'Permission scope targeting every descendant of the parent, excluding the parent itself.'],
         'parameters.holon_templates.permission.organization_root' => ['text' => "L'organisation", 'context' => 'Permission scope label used only for the organization root holon in the holon template editor.'],

@@ -9,6 +9,7 @@ class HolonPermission extends DbObject
     const MEMBER_TYPE_COLLECTIVE = 'collective';
     const RANGE_SELF = 'self';
     const RANGE_DIRECT_CHILDREN = 'direct_children';
+    const RANGE_DESCENDANTS = 'descendants';
     const RANGE_PARENT_CIRCLE = 'parent_circle';
     const RANGE_PARENT_CIRCLE_ELEMENTS = 'parent_circle_elements';
     const RANGE_PARENT_CIRCLE_DESCENDANTS = 'parent_circle_descendants';
@@ -94,6 +95,7 @@ class HolonPermission extends DbObject
         return [
             self::RANGE_SELF => 'Element courant',
             self::RANGE_DIRECT_CHILDREN => 'Enfants directs',
+            self::RANGE_DESCENDANTS => 'Descendants',
             self::RANGE_PARENT_CIRCLE => 'Parent seul',
             self::RANGE_PARENT_CIRCLE_ELEMENTS => 'Enfants direct du parent',
             self::RANGE_PARENT_CIRCLE_DESCENDANTS => 'Descendants du parent',
@@ -933,6 +935,13 @@ class HolonPermission extends DbObject
                 return [
                     'type' => 'exact',
                     'holonIds' => self::collectCircleElementHolonIdsFromRows($assignedHolonId, $holonsById),
+                ];
+
+            case self::RANGE_DESCENDANTS:
+                return [
+                    'type' => 'subtree',
+                    // Each child starts a subtree; the assigned element is excluded.
+                    'holonIds' => self::collectCircleElementHolonIdsFromRows($assignedHolonId, $holonsById, true),
                 ];
 
             case self::RANGE_PARENT_CIRCLE_DESCENDANTS:

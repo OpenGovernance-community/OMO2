@@ -1,5 +1,17 @@
 # Journal Des Nouveautes
 
+- Creation depuis un modele public : le formulaire accepte les modeles affiches dans le catalogue meme sans appartenance au modele source. Le statut public et le niveau d interface restent lisibles, et les reglages du modele sont copies sans ouvrir les parametres prives des autres organisations.
+
+- Creation depuis un modele : le catalogue et la validation du nouveau modele sont accessibles depuis le repertoire des organisations, y compris sans acces a l organisation courante, pour les utilisateurs connectes.
+
+- Organisation : la position geographique se trouve apres l identite visuelle. Une recherche d adresse OpenStreetMap/Nominatim renseigne latitude et longitude, avec verification possible sur la carte avant enregistrement. Le lien d attribution suit le resultat de recherche sur la meme ligne ; les textes de l ecran ont retrouve leurs accents et leur ponctuation.
+
+- Modeles d organisation : la duplication conserve le minimum d admins indefini, distinct de zero, et le nom affiche des modeles dont seul le nom de modele est renseigne, comme Groupe. Correction commune aux exports et imports de structure.
+
+- Droits : nouvelle portee Descendants, disponible dans les editeurs et la matrice. Elle couvre tous les niveaux sous l element courant, groupes compris, sans inclure cet element, son parent ni ses voisins.
+
+- Modeles de holon : les autorites associees affichent leur libelle une seule fois, sans repetition du chemin hierarchique ; l avertissement de rattachement manuel reste visible.
+
 - Navigation mobile : la pastille du niveau Expert, Autonome ou Decouverte est masquee dans la barre de l'application.
 
 - Structure : le selecteur de vue en bas a droite montre un cercle et trois lignes plutot que des lettres ; son libelle reste accessible au clavier et aux lecteurs d'ecran.
