@@ -130,7 +130,7 @@ if ($documentId > 0) {
     $organizationId = (int)$document->get('IDorganization');
 
     $canManagePvDocument = $document->isPvDocument()
-        && $document->canUserManagePvDocument($currentUserId);
+        && $document->canUserManagePvStructure($organizationId, $currentUserId);
     $canManageDocument = !$document->isPvDocument()
         && $document->canManageInOrganizationContext($organizationId, $currentUserId, false);
     $canEditDocumentContent = !$document->isPvDocument()

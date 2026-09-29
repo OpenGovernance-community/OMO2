@@ -1230,6 +1230,13 @@
     margin-right: auto;
 }
 
+.omo-pv-editor__toolbar > [hidden],
+.omo-pv-editor__document-meta-editor[hidden],
+.omo-pv-editor__document-visibility[hidden],
+.omo-pv-editor__application-tab-add[hidden] {
+    display: none !important;
+}
+
 .omo-pv-editor__sort-menu > summary {
     display: grid;
     width: 42px;

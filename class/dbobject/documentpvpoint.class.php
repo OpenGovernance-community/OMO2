@@ -1969,7 +1969,10 @@ class DocumentPvPoint extends DbObject
             }
         }
 
-        $canManage = $document->canUserManagePvDocument($userId);
+        if (!$document->canUserReorderPvPoints($userId)) {
+            return ['status' => false, 'message' => 'Acces refuse.'];
+        }
+        $canManage = $document->canUserManagePvStructure((int)$document->get('IDorganization'), $userId);
         if (!$canManage && $document->getPvStage() !== \dbObject\Document::PV_STAGE_PREPARATION) {
             return ['status' => false, 'message' => 'Le deplacement des points personnels est limite a la preparation.'];
         }
@@ -2081,7 +2084,9 @@ class DocumentPvPoint extends DbObject
         if ($documentId <= 0 || $userId <= 0 || !$document->load($documentId) || !$document->isPvDocument() || $document->isPvValidated()) {
             return ['status' => false, 'message' => 'Document PV invalide.'];
         }
-        if (!$document->isPvEditor($userId) || $document->getPvStage() === \dbObject\Document::PV_STAGE_REVIEW) {
+        if (!$document->isPvEditor($userId)
+            || !$document->canUserManagePvStructure((int)$document->get('IDorganization'), $userId)
+            || $document->getPvStage() === \dbObject\Document::PV_STAGE_REVIEW) {
             return ['status' => false, 'message' => 'Vous ne pouvez pas classer cet ordre du jour.'];
         }
 
