@@ -104,7 +104,7 @@ $canSend = $documentId > 0
     && (int)$document->get('IDorganization') === $organizationId
     && $document->isPvDocument()
     && $document->getPvStage() === Document::PV_STAGE_PREPARATION
-    && $document->canUserManagePvDocument($currentUserId);
+    && $document->canUserManagePvStructure($organizationId, $currentUserId);
 
 if (!$canSend) {
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {

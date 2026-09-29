@@ -44,7 +44,7 @@ if (
     || $organizationId <= 0
     || !$document->load($documentId)
     || (int)$document->get('IDorganization') !== $organizationId
-    || !$document->canUserManagePvDocument($currentUserId)
+    || !$document->canUserManagePvStructure($organizationId, $currentUserId)
 ) {
     $respond(false, 'Vous ne pouvez pas modifier les applications de ce PV.', [], 403);
 }

@@ -1,5 +1,11 @@
 # Journal Des Nouveautes
 
+- Editeur de PV : pendant la reunion, les onglets Projets, Indicateurs et Taches recurrentes utilisent les droits collectifs du holon porteur du PV pour leurs actions de creation, de modification et de deplacement disponibles dans la portee autorisee. Le contexte est retire des onglets des que la reunion ou la responsabilite d edition change.
+
+- Editeur de PV : un remplacant invite sans `CAN_CLAIM_PV` peut poursuivre le texte des points et les marquer termines, mais ne peut plus modifier la structure de l ordre du jour. Le tri, les poignees de deplacement et les autres commandes de structure suivent les droits apres chaque passation.
+
+- Le formulaire d’administration Etherpad accepte maintenant plusieurs adresses séparées par des virgules ; la validation et le bouton « Tester la connexion » vérifient chacune d’elles.
+
 - Le proxy du VPS expose `pad.omo2.org` vers l’instance Etherpad existante sur `doc.opengov.tools`, afin de conserver les pads et d’utiliser un cookie propre à `omo2.org`.
 
 - Etherpad accepte désormais plusieurs URLs publiques séparées par des virgules. OMO choisit automatiquement celle dont le domaine parent correspond au site ouvert et limite le cookie de session à ce domaine.

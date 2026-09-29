@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/env.php';
+require_once dirname(__DIR__) . '/common/etherpad.php';
 
 function serverEnvAdminT($key, $fallback, array $replace = [])
 {
@@ -112,10 +113,10 @@ function serverEnvAdminGetEditableSections()
             'fields' => [
                 [
                     'key' => 'ETHERPAD_URL',
-                    'label' => serverEnvAdminT('parameters.server_env.field.ETHERPAD_URL.label', 'URL du serveur Etherpad'),
-                    'type' => 'url',
-                    'placeholder' => 'https://doc.opengov.tools',
-                    'help' => serverEnvAdminT('parameters.server_env.field.ETHERPAD_URL.help', 'Adresse de base du serveur Etherpad, sans /p/ ni /api/.'),
+                    'label' => serverEnvAdminT('parameters.server_env.field.ETHERPAD_URL.label', 'Adresses Etherpad'),
+                    'type' => 'text',
+                    'placeholder' => 'https://pad.example.org,https://pad.example.net',
+                    'help' => serverEnvAdminT('parameters.server_env.field.ETHERPAD_URL.help', 'Une ou plusieurs adresses de base séparées par des virgules. OMO choisit celle qui correspond au domaine du site.'),
                 ],
                 [
                     'key' => 'ETHERPAD_API_KEY',
@@ -136,7 +137,7 @@ function serverEnvAdminGetEditableSections()
                     'label' => serverEnvAdminT('parameters.server_env.field.ETHERPAD_COOKIE_DOMAIN.label', 'Domaine de partage des cookies'),
                     'type' => 'text',
                     'placeholder' => '.opengov.tools',
-                    'help' => serverEnvAdminT('parameters.server_env.field.ETHERPAD_COOKIE_DOMAIN.help', 'Domaine commun a OMO et Etherpad, par exemple .opengov.tools. Laissez vide seulement si les deux utilisent exactement le meme host.'),
+                    'help' => serverEnvAdminT('parameters.server_env.field.ETHERPAD_COOKIE_DOMAIN.help', 'Optionnel. OMO déduit normalement le domaine du cookie de l’adresse Etherpad choisie.'),
                 ],
             ],
         ],
@@ -552,6 +553,26 @@ function serverEnvAdminIsHttpUrl($value)
         && !isset($parsedServerUrl['fragment']);
 }
 
+function serverEnvAdminParseEtherpadUrls($value)
+{
+    $value = trim((string)$value);
+    if ($value === '') {
+        return null;
+    }
+
+    $baseUrls = [];
+    foreach (explode(',', $value) as $part) {
+        $baseUrl = omoEtherpadNormalizeBaseUrl($part);
+        if ($baseUrl === '' || !serverEnvAdminIsHttpUrl($baseUrl)) {
+            return null;
+        }
+
+        $baseUrls[$baseUrl] = $baseUrl;
+    }
+
+    return array_values($baseUrls);
+}
+
 function serverEnvAdminValidateValues(array $values)
 {
     $errors = [];
@@ -610,7 +631,11 @@ function serverEnvAdminValidateValues(array $values)
             continue;
         }
 
-        if (!serverEnvAdminIsHttpUrl($serverUrl)) {
+        if (
+            $serverUrlKey === 'ETHERPAD_URL'
+                ? serverEnvAdminParseEtherpadUrls($serverUrl) === null
+                : !serverEnvAdminIsHttpUrl($serverUrl)
+        ) {
             $errors[] = serverEnvAdminT(
                 $serverUrlError['translationKey'],
                 $serverUrlError['fallback']
@@ -658,7 +683,7 @@ function serverEnvAdminConnectionTestError($service, $reason)
 
     return serverEnvAdminT(
         'parameters.server_env.error.connection_test_failed',
-        'La connexion avec {service} a echoue{reason}.',
+        'La connexion avec {service} a échoué{reason}.',
         [
             'service' => $serviceLabel,
             'reason' => $reason === '' ? '' : ' : ' . $reason,
@@ -724,14 +749,14 @@ function serverEnvAdminRequest($method, $url, array $options = array())
 
 function serverEnvAdminTestEtherpadConnection(array $values)
 {
-    $baseUrl = rtrim(trim((string)($values['ETHERPAD_URL'] ?? '')), '/');
+    $baseUrls = serverEnvAdminParseEtherpadUrls($values['ETHERPAD_URL'] ?? '');
     $apiKey = trim((string)($values['ETHERPAD_API_KEY'] ?? ''));
     $apiVersion = trim((string)($values['ETHERPAD_API_VERSION'] ?? ''));
 
-    if (!serverEnvAdminIsHttpUrl($baseUrl)) {
+    if ($baseUrls === null) {
         return [
             'status' => false,
-            'message' => serverEnvAdminT('parameters.server_env.error.invalid_etherpad_url', 'L URL Etherpad doit etre une adresse http ou https valide.'),
+            'message' => serverEnvAdminT('parameters.server_env.error.invalid_etherpad_url', 'Chaque adresse Etherpad doit être une URL HTTP ou HTTPS valide.'),
         ];
     }
     if ($apiKey === '' || $apiVersion === '') {
@@ -739,7 +764,7 @@ function serverEnvAdminTestEtherpadConnection(array $values)
             'status' => false,
             'message' => serverEnvAdminT(
                 'parameters.server_env.error.etherpad_connection_incomplete',
-                'Renseignez l URL, la cle API et la version de l API Etherpad avant le test.'
+                'Renseignez les adresses, la clé API et la version de l’API Etherpad avant le test.'
             ),
         ];
     }
@@ -750,33 +775,35 @@ function serverEnvAdminTestEtherpadConnection(array $values)
         ];
     }
 
-    $url = $baseUrl . '/api/' . rawurlencode($apiVersion) . '/listAllPads?'
-        . http_build_query(['apikey' => $apiKey], '', '&', PHP_QUERY_RFC3986);
-    $result = serverEnvAdminRequest('GET', $url);
-    if (!($result['status'] ?? false)) {
-        $reason = isset($result['httpCode']) && (int)$result['httpCode'] > 0
-            ? 'HTTP ' . (int)$result['httpCode']
-            : (string)($result['text'] ?? '');
-        return [
-            'status' => false,
-            'message' => serverEnvAdminConnectionTestError('etherpad', $reason),
-        ];
-    }
+    foreach ($baseUrls as $baseUrl) {
+        $url = $baseUrl . '/api/' . rawurlencode($apiVersion) . '/listAllPads?'
+            . http_build_query(['apikey' => $apiKey], '', '&', PHP_QUERY_RFC3986);
+        $result = serverEnvAdminRequest('GET', $url);
+        if (!($result['status'] ?? false)) {
+            $reason = isset($result['httpCode']) && (int)$result['httpCode'] > 0
+                ? 'HTTP ' . (int)$result['httpCode']
+                : (string)($result['text'] ?? '');
+            return [
+                'status' => false,
+                'message' => serverEnvAdminConnectionTestError('etherpad', $baseUrl . ' : ' . $reason),
+            ];
+        }
 
-    $payload = json_decode((string)($result['body'] ?? ''), true);
-    if (!is_array($payload) || (int)($payload['code'] ?? -1) !== 0) {
-        $reason = is_array($payload) ? trim((string)($payload['message'] ?? '')) : '';
-        return [
-            'status' => false,
-            'message' => serverEnvAdminConnectionTestError('etherpad', $reason),
-        ];
+        $payload = json_decode((string)($result['body'] ?? ''), true);
+        if (!is_array($payload) || (int)($payload['code'] ?? -1) !== 0) {
+            $reason = is_array($payload) ? trim((string)($payload['message'] ?? '')) : '';
+            return [
+                'status' => false,
+                'message' => serverEnvAdminConnectionTestError('etherpad', $baseUrl . ' : ' . $reason),
+            ];
+        }
     }
 
     return [
         'status' => true,
         'message' => serverEnvAdminT(
             'parameters.server_env.status.etherpad_connection_ok',
-            'Connexion Etherpad verifiee : URL, version de l API et cle sont valides.'
+            'Connexion Etherpad vérifiée pour toutes les adresses : version de l’API et clé valides.'
         ),
     ];
 }
