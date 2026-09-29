@@ -5450,6 +5450,9 @@
 			$result = $object->save();
 			if (!is_array($result) || empty($result['status']) || (int)$object->getId() <= 0) {
 				$message = is_array($result) ? trim((string)($result['text'] ?? '')) : '';
+				if ($message === '' && is_array($result)) {
+					$message = trim((string)($result['errorCode'] ?? ''));
+				}
 				throw new \RuntimeException($label . ($message !== '' ? ': ' . $message : '.'));
 			}
 		}
@@ -6703,7 +6706,7 @@
 					$warnings[] = 'La tache OMO 1 #' . (int)$record['sourceId'] . ' etait rattachee a un projet inaccessible et n a pas ete importee.';
 					continue;
 				}
-				$sourceUserId = (int)($record['sourceProposerUserId'] ?? 0);
+				$sourceUserId = (int)($record['sourceUserId'] ?? 0);
 				$targetUserId = isset($userIdMap[$sourceUserId]) ? (int)$userIdMap[$sourceUserId] : (int)$actorUserId;
 				$sourceHolonId = (int)($record['sourceHolonId'] ?? 0);
 				$targetHolonId = isset($holonIdMap[$sourceHolonId]) ? (int)$holonIdMap[$sourceHolonId] : null;
@@ -6722,6 +6725,8 @@
 				$task->set('IDorganization', (int)$organization->getId());
 				$task->set('IDholon', $targetHolonId);
 				$task->set('IDuser', $targetUserId);
+				$sourceProposerUserId = (int)($record['sourceProposerUserId'] ?? 0);
+				$task->set('IDuser_proposed', isset($userIdMap[$sourceProposerUserId]) ? (int)$userIdMap[$sourceProposerUserId] : null);
 				$task->set('title', $title !== '' ? $title : 'Tache OMO 1 #' . (int)$record['sourceId']);
 				$task->set('description', $record['description'] ?? null);
 				$task->set('status', array_key_exists('status', $record)
@@ -6735,18 +6740,38 @@
 				$task->set('capture_mode', \dbObject\Project::normalizeCaptureMode($record['captureMode'] ?? null));
 				$task->set('project_size', \dbObject\Project::normalizeSize($record['projectSize'] ?? \dbObject\Project::SIZE_S));
 				$task->set('project_kind', \dbObject\Project::KIND_STANDARD);
+				$task->set('proposal_status', trim((string)($record['proposalStatus'] ?? '')) ?: \dbObject\Project::PROPOSAL_NONE);
+				$task->set('proposed_at', self::omo1ImportDate($record['proposedAt'] ?? null));
+				$task->set('proposal_decided_at', self::omo1ImportDate($record['proposalDecidedAt'] ?? null));
 				$createdAt = self::omo1ImportDate($record['createdAt'] ?? null);
 				if ($createdAt) {
 					$task->set('created_at', $createdAt);
 				}
 				$task->set('active', array_key_exists('active', $record) ? (bool)$record['active'] : true);
+				if (\dbObject\Project::normalizeStatus($task->get('status')) === \dbObject\Project::STATUS_BLOCKED) {
+					$blockedReason = self::omo1ImportLimitText($record['blockedReason'] ?? '', 4000);
+					$task->set('blocked_reason', $blockedReason !== '' ? $blockedReason : 'Tache importee avec le statut bloque.');
+					$task->set('blocked_until', self::omo1ImportDate($record['blockedUntil'] ?? null)
+						?: $createdAt
+						?: new \DateTimeImmutable('today', new \DateTimeZone('Europe/Zurich')));
+					$task->set('blocked_auto_reactivate', !empty($record['blockedAutoReactivate']) ? 1 : 0);
+					$task->set('blocked_reactivate_status', trim((string)($record['blockedReactivateStatus'] ?? '')) ?: null);
+				}
+				$closedAt = self::omo1ImportDate($record['closedAt'] ?? null);
+				if ($closedAt) {
+					$task->set('closed_at', $closedAt);
+				}
+				$archivedAt = self::omo1ImportDate($record['archivedAt'] ?? null);
+				if ($archivedAt) {
+					$task->set('archived_at', $archivedAt);
+				}
 				self::omo1ImportPrepareTaskParent(
 					$task,
 					isset($projectIdMap[$sourceProjectId]) ? (int)$projectIdMap[$sourceProjectId] : null,
 					(int)$record['sourceId'],
 					$warnings
 				);
-				self::omo1ImportSave($task, 'Une tache n a pas pu etre importee');
+				self::omo1ImportSave($task, 'La tache source #' . (int)$record['sourceId'] . ' n a pas pu etre importee');
 				$taskIdMap[(int)$record['sourceId']] = (int)$task->getId();
 				$stats['tasks'] += 1;
 			}
@@ -7757,6 +7782,11 @@
 
 			$availableModules = array('structure', 'rules', 'members', 'documents', 'projects', 'tasks', 'checklists', 'indicators', 'calendar', 'pv');
 			$sourceModules = isset($payload['modules']) && is_array($payload['modules']) ? $payload['modules'] : array();
+			$isOmo2Export = (string)($payload['source']['system'] ?? '') === 'omo2';
+			if ($isOmo2Export && !isset($sourceModules['rules']) && isset($payload['rules']) && is_array($payload['rules'])) {
+				$sourceModules['rules'] = array('selected' => true, 'count' => count($payload['rules']), 'records' => array());
+				$payload['modules']['rules'] = $sourceModules['rules'];
+			}
 			$selectedModules = array();
 			foreach ($availableModules as $module) {
 				$selectedModules[$module] = !empty($requestedModules[$module]) && !empty($sourceModules[$module]['selected']);
@@ -7831,7 +7861,11 @@
 				self::omo1ImportUserMembership($organization, $actorUserId, true);
 				self::omo1ImportJournalWrite('organization_membership_completed');
 				self::omo1ImportJournalWrite('structure_import_started');
-				$structureResult = $organization->importStructure($payload, $actorUserId, $templateCalibration);
+				$structurePayload = $payload;
+				if (!$selectedModules['rules']) {
+					$structurePayload['rules'] = array();
+				}
+				$structureResult = $organization->importStructure($structurePayload, $actorUserId, $templateCalibration);
 				if (empty($structureResult['status']) || !($structureResult['rootHolon'] ?? null) instanceof \dbObject\Holon) {
 					throw new \RuntimeException((string)($structureResult['message'] ?? 'La structure n a pas pu etre importee.'));
 				}
@@ -7856,8 +7890,8 @@
 					'activeApplications' => isset($applicationSync['activeApplications']) && is_array($applicationSync['activeApplications']) ? $applicationSync['activeApplications'] : array(),
 				));
 				$holonIdMap = isset($structureResult['holonIdMap']) && is_array($structureResult['holonIdMap']) ? $structureResult['holonIdMap'] : array();
-				$rulesRecords = $selectedModules['rules'] ? self::omo1ImportModuleRecords($payload, 'rules') : array();
-				$ruleDomainRecords = $selectedModules['rules'] ? self::omo1ImportRuleDomains($payload, $rulesRecords) : array();
+				$rulesRecords = $selectedModules['rules'] && !$isOmo2Export ? self::omo1ImportModuleRecords($payload, 'rules') : array();
+				$ruleDomainRecords = $selectedModules['rules'] && !$isOmo2Export ? self::omo1ImportRuleDomains($payload, $rulesRecords) : array();
 				$userIdMap = array();
 				$documentIdMap = array();
 				$documentProjectSourceMap = array();
@@ -7868,6 +7902,11 @@
 				$pendingUserIds = array();
 				$pendingInvitations = array();
 				$stats = array('members' => 0, 'invitations' => 0, 'roleAssignments' => 0, 'authorities' => 0, 'rules' => 0, 'documents' => 0, 'projects' => 0, 'projectFollowers' => 0, 'tasks' => 0, 'activities' => 0, 'skippedActivities' => 0, 'processes' => 0, 'processItems' => 0, 'indicators' => 0, 'indicatorValues' => 0, 'calendar' => 0, 'pv' => 0, 'pvPoints' => 0);
+				if ($isOmo2Export && $selectedModules['rules']) {
+					$importedRules = new \dbObject\ArrayRule();
+					$importedRules->loadForPolicyContexts((int)$organization->getId(), array(), false, 'global');
+					$stats['rules'] = count($importedRules);
+				}
 				$warnings = array_merge(
 					$mediaWarnings,
 					isset($structureResult['warnings']) && is_array($structureResult['warnings'])
@@ -7888,7 +7927,7 @@
 						'pendingInvitations' => count($pendingInvitations),
 					));
 				}
-				if ($selectedModules['rules']) {
+				if ($selectedModules['rules'] && !$isOmo2Export) {
 					self::omo1ImportJournalWrite('module_rules_started', array(
 						'ruleCount' => count($rulesRecords),
 						'authorityCount' => count($ruleDomainRecords),
@@ -12451,43 +12490,6 @@
 			return $label !== '' ? $label : 'autorite #' . $authorityId;
 		}
 
-		protected function markTemplateAuthorityInstancesOriginLost(\dbObject\Authority $sourceAuthority)
-		{
-			$sourceIds = array();
-			$pendingAuthorities = array($sourceAuthority);
-			while (count($pendingAuthorities) > 0) {
-				$authority = array_shift($pendingAuthorities);
-				if (!($authority instanceof \dbObject\Authority)) {
-					continue;
-				}
-				$authorityId = (int)$authority->getId();
-				if ($authorityId <= 0 || isset($sourceIds[$authorityId])) {
-					continue;
-				}
-				$sourceIds[$authorityId] = true;
-				foreach ($authority->getChildren() as $childAuthority) {
-					$pendingAuthorities[] = $childAuthority;
-				}
-			}
-
-			if (count($sourceIds) === 0) {
-				return;
-			}
-
-			foreach ($this->getAuthorityListEditorCatalog() as $entry) {
-				$templateAuthorityId = (int)($entry['templateAuthorityId'] ?? 0);
-				if ($templateAuthorityId <= 0 || !isset($sourceIds[$templateAuthorityId]) || !empty($entry['templateOriginLost'])) {
-					continue;
-				}
-				$instance = new \dbObject\Authority();
-				if (!$instance->load((int)($entry['id'] ?? 0))) {
-					continue;
-				}
-				$instance->set('template_origin_lost', true);
-				$instance->save();
-			}
-		}
-
 		protected function syncTemplateAuthorityInstances(\dbObject\Holon $template)
 		{
 			$rootHolon = $this->getStructuralRootHolon();
@@ -12654,6 +12656,7 @@
 					: '';
 			};
 
+			$removedAuthorityIds = array();
 			$existingValuesByPropertyId = array();
 			foreach ($holon->getHolonProperties() as $holonProperty) {
 				$existingValuesByPropertyId[(int)$holonProperty->get('IDproperty')] = (string)$holonProperty->get('value');
@@ -12711,6 +12714,9 @@
 				foreach ($submittedItems as $submittedItem) {
 					$existingId = is_array($submittedItem) ? (int)($submittedItem['id'] ?? 0) : (int)$submittedItem;
 					if ($existingId > 0) {
+						if (isset($removedAuthorityIds[$existingId])) {
+							continue;
+						}
 						if (!isset($allowedExistingIds[$existingId])) {
 							return array(
 								'status' => false,
@@ -12719,17 +12725,22 @@
 						}
 
 						$authority = new \dbObject\Authority();
+						$isDeletion = is_array($submittedItem) && !empty($submittedItem['delete']);
 						if (
 							!$authority->load($existingId)
 							|| (int)$authority->get('IDholon') !== (int)$holon->getId()
 						) {
+							if ($isDeletion) {
+								// The stored list can still reference a missing or foreign authority.
+								// Remove only this reference; never delete an authority owned elsewhere.
+								continue;
+							}
 							return array(
 								'status' => false,
 'message' => 'Cette autorité ne peut pas être modifiée depuis cet espace.',
 							);
 						}
 
-						$isDeletion = is_array($submittedItem) && !empty($submittedItem['delete']);
 						$before = array(
 							'label' => trim((string)$authority->get('label')),
 							'description' => trim((string)$authority->get('description')),
@@ -12743,9 +12754,6 @@
 									'message' => 'Cette autorite est geree par son modele et ne peut pas etre modifiee ici.',
 								);
 							}
-							if ($isTemplateSource) {
-								$this->markTemplateAuthorityInstancesOriginLost($authority);
-							}
 							$deletionPlan = is_array($submittedItem['deletionPlan'] ?? null)
 								? $submittedItem['deletionPlan']
 								: array();
@@ -12755,6 +12763,9 @@
 									'status' => false,
 									'message' => (string)($deletionResult['text'] ?? 'Cette autorite ne peut pas etre traitee.'),
 								);
+							}
+							foreach (array_merge($deletionResult['deletedAuthorityIds'] ?? array(), $deletionResult['movedAuthorityIds'] ?? array()) as $removedId) {
+								$removedAuthorityIds[(int)$removedId] = true;
 							}
 
 							$authorityRetained = !empty($deletionResult['authorityRetained']);
@@ -12771,6 +12782,10 @@
 							if ($propertyReferenceCount > 0) {
 								$historyContent .= ' ' . $propertyReferenceCount . ' rattachement' . ($propertyReferenceCount > 1 ? 's' : '') . ' de propriete remonte' . ($propertyReferenceCount > 1 ? 's' : '') . self::formatLexiconText(' au holon parent.', $this->getLexicon());
 							}
+							$removedReferenceCount = (int)($deletionResult['removedPropertyReferenceCount'] ?? 0);
+							if ($removedReferenceCount > 0) {
+								$historyContent .= ' ' . $removedReferenceCount . ' reference' . ($removedReferenceCount > 1 ? 's' : '') . ' retiree' . ($removedReferenceCount > 1 ? 's' : '') . ' des listes.';
+							}
 							$this->recordAuthorityHistory(
 								$holon,
 								$authorUserId,
@@ -12785,6 +12800,7 @@
 									'deletedRuleIds' => $deletionResult['deletedRuleIds'] ?? array(),
 									'movedRuleIds' => $deletionResult['movedRuleIds'] ?? array(),
 									'movedPropertyReferenceCount' => $propertyReferenceCount,
+									'removedPropertyReferenceCount' => $removedReferenceCount,
 									'reactivatedShellId' => $reactivatedShellId,
 								)
 							);
@@ -12964,6 +12980,26 @@
 				}
 
 				$submittedValuesByPropertyId[$propertyId] = $serializeItems($rawValue, $formatId, $resolvedIds);
+			}
+			if (!empty($removedAuthorityIds)) {
+				foreach ($propertyDefinitions as $definition) {
+					$propertyId = (int)($definition['id'] ?? 0);
+					$formatId = (int)($definition['formatId'] ?? 0);
+					if (
+						$propertyId <= 0
+						|| (string)($definition['listItemType'] ?? '') !== \dbObject\Property::LIST_ITEM_AUTHORITY
+						|| !\dbObject\PropertyFormat::isListFormat($formatId)
+						|| !isset($submittedValuesByPropertyId[$propertyId])
+					) {
+						continue;
+					}
+					$rawValue = (string)$submittedValuesByPropertyId[$propertyId];
+					$items = array_values(array_filter($parseItems($rawValue, $formatId), static function ($item) use ($removedAuthorityIds) {
+						$itemId = is_array($item) ? (int)($item['id'] ?? 0) : (int)$item;
+						return !isset($removedAuthorityIds[$itemId]);
+					}));
+					$submittedValuesByPropertyId[$propertyId] = $serializeItems($rawValue, $formatId, $items);
+				}
 			}
 
 			return array('status' => true);

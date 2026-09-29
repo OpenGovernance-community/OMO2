@@ -11,6 +11,10 @@ use dbObject\ArrayProjectDocument;
 use dbObject\ProjectDocument;
 use dbObject\PropertyFormat;
 use dbObject\UserOrganization;
+use dbObject\ControlActivity;
+use dbObject\ProjectIndicator;
+use dbObject\ProjectRecurringTask;
+use dbObject\StatIndicator;
 
 header('Content-Type: text/plain; charset=UTF-8');
 
@@ -286,6 +290,50 @@ if (
     omoProjectsActionRespond(false, omoProjectsT('projects.error.forbidden'), [], 403);
 }
 
+if (in_array($action, ['attach_resource', 'detach_resource'], true)) {
+    $type = (string)($_POST['resource_type'] ?? '');
+    $isIndicator = $type === 'indicator';
+    $isTask = $type === 'recurring_task';
+    $organization = $context['organization'] ?? null;
+    if (!($existingProject instanceof Project) || (!$isIndicator && !$isTask)
+        || !$organization->isApplicationEnabled($isIndicator ? 'stats' : 'activities', $currentUserId)) {
+        omoProjectsActionRespond(false, omoProjectsT('projects.error.forbidden'), [], 403);
+    }
+    $resourceId = isset($_POST['resource_id']) && is_numeric($_POST['resource_id']) ? (int)$_POST['resource_id'] : 0;
+    $resource = $isIndicator ? new StatIndicator() : new ControlActivity();
+    $resourceVisible = false;
+    if ($resourceId > 0 && $resource->load($resourceId) && (int)$resource->get('IDorganization') === $organizationId
+        && (int)$resource->get('active') === 1) {
+        if ($isIndicator) {
+            $resourceVisible = $resource->canView();
+        } else {
+            require_once dirname(__DIR__) . '/activities/shared.php';
+            $resourceVisible = omoActivityCanView($resource);
+        }
+    }
+    if (!$resourceVisible) {
+        omoProjectsActionRespond(false, omoProjectsT('projects.error.forbidden'), [], 403);
+    }
+    $field = $isIndicator ? 'IDstatindicator' : 'IDrecurringtask';
+    $link = $isIndicator ? new ProjectIndicator() : new ProjectRecurringTask();
+    $exists = $link->load([['IDproject', $projectId], [$field, $resourceId]]);
+    if ($action === 'attach_resource' && !$exists) {
+        $link->set('IDproject', $projectId);
+        $link->set($field, $resourceId);
+        $result = $link->save();
+        if (!is_array($result) || empty($result['status'])) {
+            omoProjectsActionRespond(false, omoProjectsT('projects.resources.error'), [], 422);
+        }
+        $existingProject->recordAssociationHistory($type, $resourceId, (string)$resource->get($isIndicator ? 'name' : 'title'), 'added', $currentUserId);
+    } elseif ($action === 'detach_resource' && $exists) {
+        if (!$link->delete()) {
+            omoProjectsActionRespond(false, omoProjectsT('projects.resources.error'), [], 422);
+        }
+        $existingProject->recordAssociationHistory($type, $resourceId, (string)$resource->get($isIndicator ? 'name' : 'title'), 'removed', $currentUserId);
+    }
+    omoProjectsActionRespond(true, omoProjectsT('projects.success.save'), ['projectId' => $projectId, 'resourceId' => $resourceId, 'resourceType' => $type]);
+}
+
 if ($action === 'attach_document') {
     if (!($existingProject instanceof Project)) {
         omoProjectsActionRespond(false, omoProjectsT('projects.error.not_found'), [], 404);
@@ -319,6 +367,7 @@ if ($action === 'attach_document') {
         if (!is_array($saveResult) || empty($saveResult['status'])) {
             omoProjectsActionRespond(false, omoProjectsT('projects.error.save'), [], 422);
         }
+        $existingProject->recordAssociationHistory('document', $documentId, (string)$document->get('title'), 'added', $currentUserId);
     }
 
     omoProjectsActionRespond(true, omoProjectsT('projects.success.save'), [
@@ -370,6 +419,8 @@ if ($action === 'remove_document') {
     } elseif (!$document->delete()) {
         omoProjectsActionRespond(false, omoProjectsT('projects.error.save'), [], 422);
     }
+
+    $existingProject->recordAssociationHistory('document', $documentId, (string)$document->get('title'), $shouldDetach ? 'removed' : 'deleted', $currentUserId);
 
     omoProjectsActionRespond(true, omoProjectsT('projects.success.save'), [
         'projectId' => $projectId,

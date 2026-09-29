@@ -1702,12 +1702,14 @@ function omoHolonTemplateRenderAuthorityDeletionChoices(authorityId, draft) {
     const authority = omoHolonTemplateGetAuthorityCatalog().find(function (entry) {
         return Number(entry.id || 0) === Number(authorityId || 0);
     }) || null;
+    if (!authority) {
+        return '';
+    }
     const authorityFallback = authority && authority.isLocal ? 'delete' : 'reassign';
     const checked = function (name, value, fallback) {
         return String(plan[name] || fallback) === value ? ' checked' : '';
     };
     const prefix = 'template-authority-delete-' + String(authorityId);
-    const impact = omoHolonTemplateGetAuthorityDeletionImpact(authorityId, String(plan.authority || 'reassign'), String(plan.children || 'reassign'));
     return ''
         + '<div class="omo-template-authority__deletion" data-authority-deletion-options>'
         + '  <p>Choisissez ce qui doit etre conserve avant validation.</p>'
@@ -1715,14 +1717,7 @@ function omoHolonTemplateRenderAuthorityDeletionChoices(authorityId, draft) {
         + '    <label><input type="radio" name="' + prefix + '-authority" value="delete" data-authority-deletion-choice="authority"' + checked('authority', 'delete', authorityFallback) + '> Supprimer definitivement</label>'
         + '    <label><input type="radio" name="' + prefix + '-authority" value="reassign" data-authority-deletion-choice="authority"' + checked('authority', 'reassign', authorityFallback) + '> Remonter au holon parent</label>'
         + '  </fieldset>'
-        + (impact.descendants > 0 ? '  <fieldset data-authority-deletion-group="children"><legend>Sous-autorites</legend>'
-        + '    <label><input type="radio" name="' + prefix + '-children" value="delete" data-authority-deletion-choice="children"' + checked('children', 'delete', 'reassign') + '> Supprimer les branches<span data-authority-deletion-count="children">' + omoHolonTemplateFormatAuthorityDeletionCount(impact.descendants, 'sous-autorite', 'sous-autorites') + '</span></label>'
-        + '    <label><input type="radio" name="' + prefix + '-children" value="reassign" data-authority-deletion-choice="children"' + checked('children', 'reassign', 'reassign') + '> Remonter les branches au holon parent<span data-authority-deletion-count="children">' + omoHolonTemplateFormatAuthorityDeletionCount(impact.descendants, 'sous-autorite', 'sous-autorites') + '</span></label>'
-        + '  </fieldset>' : '')
-        + '  <fieldset data-authority-deletion-group="rules"' + (impact.rules <= 0 ? ' hidden' : '') + '><legend>Regles des autorites supprimees</legend>'
-        + '    <label><input type="radio" name="' + prefix + '-rules" value="delete" data-authority-deletion-choice="rules"' + checked('rules', 'delete', 'reassign') + '> Supprimer les regles<span data-authority-deletion-count="rules">' + omoHolonTemplateFormatAuthorityDeletionCount(impact.rules, 'regle concernee', 'regles concernees') + '</span></label>'
-        + '    <label><input type="radio" name="' + prefix + '-rules" value="reassign" data-authority-deletion-choice="rules"' + checked('rules', 'reassign', 'reassign') + '> Remonter a l autorite la plus proche et demander une revue sous 2 mois<span data-authority-deletion-count="rules">' + omoHolonTemplateFormatAuthorityDeletionCount(impact.rules, 'regle concernee', 'regles concernees') + '</span></label>'
-        + '  </fieldset>'
+        + '  <p>Les sous-autorites et les regles seront conservees et rattachees a leur autorite parente si possible.</p>'
         + '</div>';
 }
 
@@ -1738,7 +1733,9 @@ function omoHolonTemplateRenderAuthorityRow(value) {
         const labelMarkup = authority && authority.isShell ? '<em>' + omoHolonTemplateEscapeHtml(label) + '</em>' : '<strong>' + omoHolonTemplateEscapeHtml(label) + '</strong>';
         return ''
             + '<div class="omo-template-authority__row omo-template-authority__row--existing' + (authority && authority.needsParent ? ' is-needs-parent' : '') + '" data-authority-entry data-authority-id="' + authorityId + '">'
-            + '  <button type="button" class="omo-template-authority__edit" data-authority-edit="1">' + labelMarkup + (details ? '<small>' + omoHolonTemplateEscapeHtml(details) + '</small>' : '') + '</button>'
+            + (authority
+                ? '  <button type="button" class="omo-template-authority__edit" data-authority-edit="1">' + labelMarkup + (details ? '<small>' + omoHolonTemplateEscapeHtml(details) + '</small>' : '') + '</button>'
+                : '  <div class="omo-template-authority__edit">' + labelMarkup + '</div>')
             + '  <button type="button" class="omo-button omo-button--ghost" data-authority-delete="1" aria-label="Supprimer l autorite">&times;</button>'
             + omoHolonTemplateRenderAuthorityDeletionChoices(authorityId, draft)
             + '</div>';
@@ -1751,7 +1748,8 @@ function omoHolonTemplateRenderAuthorityRow(value) {
     const requestedDelegationMode = String(draft.delegationMode || 'partial');
     const selectedParent = omoHolonTemplateGetAuthorityParentCatalog().find(function (entry) { return Number(entry.id || 0) === parentId; }) || null;
     const partialAllowed = !(selectedParent && selectedParent.isShell);
-    const delegationMode = !partialAllowed && requestedDelegationMode !== 'complete' ? 'complete' : requestedDelegationMode;
+    const completeAllowed = !(selectedParent && selectedParent.hasExternalDescendant);
+    const delegationMode = !partialAllowed ? 'complete' : (!completeAllowed && requestedDelegationMode === 'complete' ? 'partial' : requestedDelegationMode);
     const parentOptions = omoHolonTemplateGetAuthorityParentCatalog().map(function (authority) {
         if (Number(authority.id || 0) === authorityId) {
             return '';
@@ -1771,7 +1769,7 @@ function omoHolonTemplateRenderAuthorityRow(value) {
 
     const delegationField = authorityId > 0 || rootAuthoritySelected ? '' : '      <select class="omo-template-authority__delegation"' + (parentId <= 0 ? ' disabled' : '') + '>'
         + '<option value="partial"' + (delegationMode !== 'complete' ? ' selected' : '') + (partialAllowed ? '' : ' disabled') + '>Delegation partielle</option>'
-        + '<option value="complete"' + (delegationMode === 'complete' ? ' selected' : '') + '>Delegation complete</option></select>';
+        + '<option value="complete"' + (delegationMode === 'complete' ? ' selected' : '') + (completeAllowed ? '' : ' disabled') + '>Delegation complete</option></select>';
     const authorityDetails = (authorityId > 0 || parentId > 0 || rootAuthoritySelected) && (authorityId > 0 || delegationMode !== 'complete')
         ? '      <label class="omo-template-authority__local-label"><input type="checkbox" class="omo-template-authority__local"' + (isLocal ? ' checked' : '') + '> Autorite locale</label>'
             + '      <input type="text" class="omo-template-authority__label" value="' + omoHolonTemplateEscapeHtml(label) + '" placeholder="Nouvelle autorite">'
