@@ -43,6 +43,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
     const eventExtensionMenu = root.querySelector('[data-omo-pv-event-extension-menu]');
     const eventExtensionToggle = root.querySelector('[data-omo-pv-event-extension-toggle]');
     const eventExtensionPanel = root.querySelector('[data-omo-pv-event-extension-panel]');
+    const documentMetaEditor = root.querySelector('[data-omo-pv-document-meta-editor]');
     const documentTitleInput = root.querySelector('[data-omo-pv-document-title]');
     const documentDescriptionInput = root.querySelector('[data-omo-pv-document-description]');
     const documentVisibilitySelect = root.querySelector('[data-omo-pv-document-visibility]');
@@ -55,7 +56,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
     const applicationWorkspace = root.querySelector('[data-omo-pv-application-workspace]');
     const applicationTabsActionUrl = String(root.getAttribute('data-omo-pv-application-tabs-action-url') || '').trim();
     const applicationTabsCsrf = String(root.getAttribute('data-omo-pv-application-tabs-csrf') || '').trim();
-    const canManageApplicationTabs = root.getAttribute('data-omo-pv-application-tabs-manage') === '1';
+    let canManageApplicationTabs = root.getAttribute('data-omo-pv-application-tabs-manage') === '1';
     const applicationContextHolonId = Number(root.getAttribute('data-omo-pv-application-tabs-cid') || 0);
     const pvEditorSwitchableSurfaces = [mainPanel].filter(Boolean);
     const initialApplicationCatalog = pageConfig.initialApplicationCatalog;
@@ -176,6 +177,15 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
     }));
     let activeApplicationTabId = 0;
 
+    function pvApplicationMeetingContextKey(documentPayload) {
+        return documentPayload
+            && Number(documentPayload.pvEditorUserId || 0) === currentUserId
+            && String(documentPayload.pvStage || '') === 'meeting'
+            && editorToken !== ''
+            ? String(documentId) + ':' + editorToken
+            : '';
+    }
+
     function buildPvApplicationUrl(applicationTab) {
         const sourceUrl = String(applicationTab && applicationTab.url || '').trim();
         if (sourceUrl === '') {
@@ -191,7 +201,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
             url.searchParams.set('cid', String(applicationContextHolonId));
         }
         url.searchParams.set('pv_application_tab_id', String(Number(applicationTab.tabId || 0)));
-        if (initialDocumentPayload.isPvEditor && initialDocumentPayload.pvStage === 'meeting' && editorToken !== '') {
+        if (pvApplicationMeetingContextKey(currentDocumentPayload) !== '') {
             url.searchParams.set('pv_meeting_document_id', String(documentId));
             url.searchParams.set('pv_meeting_editor_token', editorToken);
         }
@@ -2083,13 +2093,21 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
 
     function syncDocumentMetadataUi() {
         const isDirty = documentMetadataIsDirty();
+        const canEditMetadata = currentDocumentPayload.canManagePvStructure === true
+            && String(currentDocumentPayload.pvStage || '') !== 'review';
+        if (documentMetaEditor instanceof HTMLElement) documentMetaEditor.hidden = !canEditMetadata;
+        if (documentVisibilitySelect instanceof HTMLElement) documentVisibilitySelect.hidden = !canEditMetadata;
+        if (documentTitleDisplay instanceof HTMLElement) documentTitleDisplay.hidden = canEditMetadata;
+        if (documentDescriptionDisplay instanceof HTMLElement) {
+            documentDescriptionDisplay.hidden = canEditMetadata || !String(currentDocumentPayload.description || '').trim();
+        }
         const canGenerateAutoSummary = autoSummaryAvailable && currentDocumentPayload.pvStage === 'review';
         if (documentAutoSummaryButton instanceof HTMLButtonElement) {
             documentAutoSummaryButton.hidden = !canGenerateAutoSummary;
             documentAutoSummaryButton.disabled = autoSummaryPending;
         }
         if (documentMetaSaveButton instanceof HTMLButtonElement) {
-            documentMetaSaveButton.disabled = !isDirty || documentMetadataSaving;
+            documentMetaSaveButton.disabled = !canEditMetadata || !isDirty || documentMetadataSaving;
             documentMetaSaveButton.classList.toggle('generic-action-button--main', isDirty);
             documentMetaSaveButton.classList.toggle('is-saving', documentMetadataSaving);
             documentMetaSaveButton.textContent = documentMetadataSaving
@@ -2553,6 +2571,11 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
                 takeover.isRequestedByCurrentSession ? 1 : 0,
                 takeover.mustYield ? 1 : 0,
                 String(takeover.requestedAtIso || ''),
+                pointPayload.canReorder ? 1 : 0,
+                pointPayload.canEditPointDetails ? 1 : 0,
+                pointPayload.canDelete ? 1 : 0,
+                pointPayload.canAssignAuthor ? 1 : 0,
+                pointPayload.canToggleHandled ? 1 : 0,
                 Number(pointPayload.discussionMessageCount || 0)
             ].join('|');
         });
@@ -2682,6 +2705,25 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         const isCurrentEditor = currentUserId > 0
             && Number(documentPayload.pvEditorUserId || 0) === currentUserId;
         const isWaitingForReplacement = isCurrentEditor && documentPayload.pvEditorHandoverOpen === true;
+        const canManageStructure = documentPayload.canManagePvStructure === true;
+        const isReview = String(documentPayload.pvStage || '') === 'review';
+        canManageApplicationTabs = canManageStructure;
+        const applicationTabAddButton = applicationTabsNav instanceof Element
+            ? applicationTabsNav.querySelector('[data-omo-pv-application-tab-add]')
+            : null;
+        if (applicationTabAddButton instanceof HTMLButtonElement) {
+            applicationTabAddButton.hidden = !canManageStructure;
+        }
+        if (sortMenu instanceof HTMLDetailsElement) {
+            sortMenu.hidden = !isCurrentEditor || !canManageStructure || isReview;
+            if (sortMenu.hidden) sortMenu.open = false;
+        }
+        if (addGroupButton instanceof HTMLButtonElement) {
+            addGroupButton.hidden = !canManageStructure || isReview;
+        }
+        if (deleteDropzone instanceof HTMLButtonElement) {
+            deleteDropzone.hidden = isReview || (isCurrentEditor && !canManageStructure);
+        }
         if (secretaryState instanceof Element) {
             secretaryState.hidden = !isCurrentEditor;
             secretaryState.classList.toggle('is-waiting', isWaitingForReplacement);
@@ -2694,7 +2736,6 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
             const canClaimEditor = documentPayload.canClaimPvEditor === true;
             const canReplaceEditor = documentPayload.canReplacePvEditor === true;
             const hasEditor = Number(documentPayload.pvEditorUserId || 0) > 0;
-            const isReview = String(documentPayload.pvStage || '') === 'review';
             claimSecretaryButton.hidden = isReview || (!isCurrentEditor && !canClaimEditor && !canReplaceEditor);
             claimSecretaryButton.disabled = claimSecretaryButton.hidden || isWaitingForReplacement;
             claimSecretaryButton.classList.toggle('is-waiting', isWaitingForReplacement);
@@ -2730,7 +2771,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
             }
         }
 
-        const canManageInvitations = documentPayload.canManagePvDocument === true
+        const canManageInvitations = canManageStructure
             && String(documentPayload.pvStage || '') === 'preparation';
         if (invitationsMenu instanceof HTMLElement) {
             invitationsMenu.hidden = !canManageInvitations;
@@ -2748,7 +2789,8 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         }
 
         if (addButton instanceof HTMLButtonElement) {
-            addButton.disabled = documentPayload.isPvValidated === true;
+            addButton.hidden = isCurrentEditor && !canManageStructure;
+            addButton.disabled = documentPayload.isPvValidated === true || isReview || addButton.hidden;
         }
         if (templateToggleButton instanceof HTMLButtonElement) {
             const isTemplate = documentPayload.isPvTemplate === true;
@@ -2765,7 +2807,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         if (documentDescriptionDisplay instanceof Element) {
             const description = String(documentPayload.description || '').trim();
             documentDescriptionDisplay.textContent = description;
-            documentDescriptionDisplay.hidden = description === '';
+            documentDescriptionDisplay.hidden = description === '' || canManageStructure && !isReview;
         }
 
         if (!documentMetadataIsDirty()) {
@@ -2788,7 +2830,17 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
             return;
         }
 
+        const previousMeetingContextKey = pvApplicationMeetingContextKey(currentDocumentPayload);
         currentDocumentPayload = Object.assign({}, currentDocumentPayload, documentPayload);
+        if (pvApplicationMeetingContextKey(currentDocumentPayload) !== previousMeetingContextKey
+            && applicationWorkspace instanceof Element) {
+            applicationWorkspace.querySelectorAll('[data-omo-pv-application-panel]').forEach(function (panel) {
+                panel.removeAttribute('data-omo-pv-application-loaded');
+            });
+            if (activeApplicationTabId > 0) {
+                setActiveApplicationTab(activeApplicationTabId);
+            }
+        }
         applyAssociatedEventSchedule(currentDocumentPayload.associatedEvent);
         knownDocumentSyncVersion = String(currentDocumentPayload.syncVersion || knownDocumentSyncVersion || '');
         if (currentDocumentPayload.isPvValidated === true) {
@@ -2810,7 +2862,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
 
     function canManageAttendance() {
         return currentDocumentPayload
-            && currentDocumentPayload.canManagePvDocument === true
+            && currentDocumentPayload.canManagePvStructure === true
             && String(currentDocumentPayload.pvStage || '') !== 'review';
     }
 
@@ -2944,7 +2996,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         }
 
         const canExtendEvent = documentPayload
-            && documentPayload.canManagePvDocument === true
+            && documentPayload.canManagePvStructure === true
             && String(documentPayload.pvStage || '') === 'meeting';
         eventExtensionMenu.hidden = !canExtendEvent;
         if (eventExtensionToggle instanceof HTMLButtonElement) {
@@ -4703,7 +4755,22 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
                 // Keep the local draft DOM, but still accept its server-side position.
                 // Otherwise a reordered point in edit mode is rebuilt from its old
                 // position until the point itself is saved.
-                mergeKnownPointSignature(pointPayload);
+                if (forceRefresh) {
+                    replacePointNavHtml(pointPayload);
+                    if (!pointPayload.canReorder) {
+                        currentCard.querySelectorAll('[data-omo-pv-point-move]').forEach(function (button) { button.remove(); });
+                    }
+                    if (!pointPayload.canDelete) {
+                        currentCard.querySelectorAll('[data-omo-pv-point-delete]').forEach(function (button) { button.remove(); });
+                    }
+                    if (!pointPayload.canEditPointDetails) {
+                        currentCard.querySelectorAll('[data-omo-pv-point-title], [data-omo-pv-point-duration], [data-omo-pv-point-author], [data-omo-pv-point-concerned-holon], [data-omo-pv-point-confidential], [data-omo-pv-point-type-option], [data-omo-pv-point-priority-option]').forEach(function (control) {
+                            control.disabled = true;
+                        });
+                    }
+                } else {
+                    mergeKnownPointSignature(pointPayload);
+                }
                 return;
             }
 
@@ -6300,15 +6367,18 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
                 }
 
                 const remoteDocumentPayload = payload && payload.document ? payload.document : null;
+                const editorRightsChanged = remoteDocumentPayload
+                    && (Number(remoteDocumentPayload.pvEditorUserId || 0) !== Number(currentDocumentPayload.pvEditorUserId || 0)
+                        || remoteDocumentPayload.canManagePvStructure !== currentDocumentPayload.canManagePvStructure);
                 if (documentPayloadHasRemoteChanges(remoteDocumentPayload)) {
                     mergeCurrentDocumentPayload(remoteDocumentPayload);
                 }
                 if (attendanceEnabled) {
                     renderAttendancePayload(payload && payload.attendance ? payload.attendance : null);
                 }
-                if (payload && Array.isArray(payload.points) && pointCollectionHasRemoteChanges(payload.points)) {
+                if (payload && Array.isArray(payload.points) && (editorRightsChanged || pointCollectionHasRemoteChanges(payload.points))) {
                     return processIncomingTakeoverRequests(payload.points).then(function (pointPayloads) {
-                        renderPointCollection(pointPayloads);
+                        renderPointCollection(pointPayloads, editorRightsChanged);
                         return payload;
                     });
                 }

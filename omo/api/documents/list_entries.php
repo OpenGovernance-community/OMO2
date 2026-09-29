@@ -83,8 +83,7 @@ if (!function_exists('omoDocumentsBuildListEntries')) {
                 $documentViewerContext,
                 true
             );
-            $canMoveDocument = ($document->isPvDocument() && $document->canUserManagePvDocument($currentUserId))
-                || $canManageDocument;
+            $canMoveDocument = $document->canMoveInOrganizationContext($documentOrganizationId, $currentUserId);
             $canMergeDocument = $document->supportsHtmlContent()
                 && $canManageDocument
                 && $document->canEditInOrganizationContext($documentOrganizationId, $currentUserId, false);
@@ -143,7 +142,7 @@ if (!function_exists('omoDocumentsBuildListEntries')) {
                 'documentType' => $document->getDocumentType(),
                 'isTemplate' => $isDocumentTemplate,
                 'canManageTemplate' => $document->isTemplateEligible() && ($document->isPvDocument()
-                    ? $document->canUserManagePvDocument($currentUserId)
+                    ? $document->canUserManagePvStructure($documentOrganizationId, $currentUserId)
                     : $canManageDocument),
                 'isPvValidated' => $isPvValidated,
                 'canOpenInPvApplicationTab' => $canOpenInPvApplicationTab,

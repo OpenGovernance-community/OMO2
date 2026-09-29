@@ -111,6 +111,7 @@ $pvCreatorLabel = $pvCreatorUserId > 0
     : '';
 $isPvEditor = !$isPublicParticipation && $document->isPvEditor($currentUserId);
 $canManagePvDocument = !$isPublicParticipation && $document->canUserManagePvDocument($currentUserId);
+$canManagePvStructure = !$isPublicParticipation && $document->canUserManagePvStructure($organizationId, $currentUserId);
 $pvApplicationTabsCsrf = '';
 if (!$isPublicParticipation) {
     if (empty($_SESSION['omo_pv_application_tabs_csrf'])) {
@@ -119,7 +120,7 @@ if (!$isPublicParticipation) {
     $pvApplicationTabsCsrf = (string)$_SESSION['omo_pv_application_tabs_csrf'];
 }
 $isPvReview = $document->getPvStage() === \dbObject\Document::PV_STAGE_REVIEW;
-$canEditPvDocumentHeader = $canManagePvDocument && !$isPvReview;
+$canEditPvDocumentHeader = $canManagePvStructure && !$isPvReview;
 $canExtendAssociatedEvent = !$isPublicParticipation
     && $hasAssociatedEvent
     && $document->getPvStage() === \dbObject\Document::PV_STAGE_MEETING;
@@ -187,7 +188,7 @@ $pvStageOptions = [
 $hasPvInvitationEditor = true;
 $canManagePvInvitations = $hasPvInvitationEditor
     && $pvStage === \dbObject\Document::PV_STAGE_PREPARATION
-    && $canManagePvDocument;
+    && $canManagePvStructure;
 $pvInvitationPopupUrl = '/omo/api/calendar/invitations_popup.php?oid=' . rawurlencode((string)$organizationId)
     . ($hasAssociatedEvent
         ? '&id=' . rawurlencode((string)(int)$event->getId())
@@ -270,7 +271,7 @@ if (!$isPublicParticipation && $hasOrganization) {
 }
 $pvApplicationCatalog = array_values($pvApplicationCatalog);
 $showPvApplicationTabs = !$isPublicParticipation
-    && ($canManagePvDocument || count($pvApplicationTabsPayload) > 0);
+    && ($canManagePvStructure || $isPvEditor || $canClaimPvEditor || $canReplacePvEditor || count($pvApplicationTabsPayload) > 0);
 
 if ($hasDocumentsApplication) {
     $embeddableDocuments = new \dbObject\ArrayDocument();
@@ -532,7 +533,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     data-omo-pv-editor-action-url="<?= $escape('/omo/api/documents/pv/action.php') ?>"
     data-omo-pv-application-tabs-action-url="<?= $escape('/omo/api/documents/pv/application_tabs.php') ?>"
     data-omo-pv-application-tabs-csrf="<?= $escape($pvApplicationTabsCsrf) ?>"
-    data-omo-pv-application-tabs-manage="<?= $canManagePvDocument ? '1' : '0' ?>"
+    data-omo-pv-application-tabs-manage="<?= $canManagePvStructure ? '1' : '0' ?>"
     data-omo-pv-application-tabs-cid="<?= (int)$pvApplicationContextHolonId ?>"
 >
     <link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/documents/pv/editor.css') ?>">
@@ -551,17 +552,15 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                 </button>
             </span>
         <?php endforeach; ?>
-        <?php if ($canManagePvDocument): ?>
-            <button type="button" class="generic-action-button generic-action-button--main generic-action-button--icon-only omo-pv-editor__application-tab-add" data-omo-pv-application-tab-add aria-label="<?= $escape((string)$uiText['applicationAdd']) ?>" title="<?= $escape((string)$uiText['applicationAdd']) ?>">+</button>
-        <?php endif; ?>
+        <button type="button" class="generic-action-button generic-action-button--main generic-action-button--icon-only omo-pv-editor__application-tab-add" data-omo-pv-application-tab-add aria-label="<?= $escape((string)$uiText['applicationAdd']) ?>" title="<?= $escape((string)$uiText['applicationAdd']) ?>"<?= $canManagePvStructure ? '' : ' hidden' ?>>+</button>
     </nav>
     <?php endif; ?>
 
     <aside class="omo-pv-editor__sidebar">
         <section class="omo-pv-editor__panel generic-section omo-pv-editor__agenda-panel">
             <div class="omo-pv-editor__toolbar">
-                <?php if ($isPvEditor && !$isPvReview): ?>
-                    <details class="omo-pv-editor__sort-menu" data-omo-pv-sort-menu>
+                <?php if (!$isPublicParticipation): ?>
+                    <details class="omo-pv-editor__sort-menu" data-omo-pv-sort-menu<?= $isPvEditor && $canManagePvStructure && !$isPvReview ? '' : ' hidden' ?>>
                         <summary class="generic-action-button generic-action-button--secondary" title="<?= $escape((string)$uiText['sort']) ?>" aria-label="<?= $escape((string)$uiText['sort']) ?>"><img src="/omo/assets/images/documents/sort-ascending.png" class="omo-pv-editor__toolbar-icon black-icon" alt="" aria-hidden="true"></summary>
                         <form class="omo-pv-editor__sort-menu-panel" data-omo-pv-sort-form>
                             <fieldset class="omo-pv-editor__sort-options">
@@ -583,11 +582,9 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                         </form>
                     </details>
                 <?php endif; ?>
-                <button type="button" class="omo-pv-editor__delete-dropzone" data-omo-pv-delete-dropzone title="<?= $escape((string)$uiText['deleteItem']) ?>" aria-label="<?= $escape((string)$uiText['deleteItem']) ?>"<?= $isPvReview ? ' hidden' : '' ?>><img src="/omo/assets/images/documents/poubelle.png" alt="" aria-hidden="true"></button>
-                <?php if ($canCreatePvGroups): ?>
-                    <button type="button" class="generic-action-button generic-action-button--secondary omo-pv-editor__add-button" data-omo-pv-editor-add-group title="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.action.add_group')) ?>" aria-label="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.action.add_group')) ?>"><img src="/omo/assets/images/documents/add-folder.png" class="omo-pv-editor__toolbar-icon black-icon" alt="" aria-hidden="true"></button>
-                <?php endif; ?>
-                <button type="button" class="generic-action-button generic-action-button--main omo-pv-editor__add-button" data-omo-pv-editor-add-point<?= $isPvValidated || $isPvReview ? ' disabled' : '' ?> title="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.action.add_point')) ?>" aria-label="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.action.add_point')) ?>"><img src="/omo/assets/images/documents/add.png" class="omo-pv-editor__toolbar-icon omo-pv-editor__toolbar-icon--on-main" alt="" aria-hidden="true"></button>
+                <button type="button" class="omo-pv-editor__delete-dropzone" data-omo-pv-delete-dropzone title="<?= $escape((string)$uiText['deleteItem']) ?>" aria-label="<?= $escape((string)$uiText['deleteItem']) ?>"<?= $isPvReview || ($isPvEditor && !$canManagePvStructure) ? ' hidden' : '' ?>><img src="/omo/assets/images/documents/poubelle.png" alt="" aria-hidden="true"></button>
+                <button type="button" class="generic-action-button generic-action-button--secondary omo-pv-editor__add-button" data-omo-pv-editor-add-group title="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.action.add_group')) ?>" aria-label="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.action.add_group')) ?>"<?= $canCreatePvGroups ? '' : ' hidden' ?>><img src="/omo/assets/images/documents/add-folder.png" class="omo-pv-editor__toolbar-icon black-icon" alt="" aria-hidden="true"></button>
+                <button type="button" class="generic-action-button generic-action-button--main omo-pv-editor__add-button" data-omo-pv-editor-add-point<?= $isPvValidated || $isPvReview ? ' disabled' : '' ?><?= $isPvEditor && !$canManagePvStructure ? ' hidden' : '' ?> title="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.action.add_point')) ?>" aria-label="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.action.add_point')) ?>"><img src="/omo/assets/images/documents/add.png" class="omo-pv-editor__toolbar-icon omo-pv-editor__toolbar-icon--on-main" alt="" aria-hidden="true"></button>
             </div>
             <div class="omo-pv-editor__nav generic-stack generic-stack--compact" data-omo-pv-editor-nav>
                 <?php if (count($pointNavItems) === 0): ?>
@@ -655,8 +652,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             <div class="omo-pv-editor__panel generic-section omo-pv-editor__header-card">
             <div class="omo-pv-editor__page-title">
                 <div class="omo-pv-editor__identity-copy generic-stack generic-stack--compact">
-                <?php if ($canEditPvDocumentHeader): ?>
-                    <div class="omo-pv-editor__document-meta-editor" data-omo-pv-document-meta-editor>
+                    <div class="omo-pv-editor__document-meta-editor" data-omo-pv-document-meta-editor<?= $canEditPvDocumentHeader ? '' : ' hidden' ?>>
                         <input
                             type="text"
                             class="omo-pv-editor__document-title-input"
@@ -678,15 +674,12 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                             <?php endif; ?>
                         </div>
                     </div>
-                <?php else: ?>
-                    <h2 data-omo-pv-document-title-display><?= $escape($documentTitle) ?></h2>
-                    <p data-omo-pv-document-description-display<?= $documentDescription === '' ? ' hidden' : '' ?>><?= $escape($documentDescription) ?></p>
-                <?php endif; ?>
+                    <h2 data-omo-pv-document-title-display<?= $canEditPvDocumentHeader ? ' hidden' : '' ?>><?= $escape($documentTitle) ?></h2>
+                    <p data-omo-pv-document-description-display<?= $canEditPvDocumentHeader || $documentDescription === '' ? ' hidden' : '' ?>><?= $escape($documentDescription) ?></p>
                 </div>
             </div>
             <div class="omo-pv-editor__page-side generic-stack">
-                <?php if ($canEditPvDocumentHeader): ?>
-                    <div class="omo-pv-editor__document-visibility" data-omo-pv-document-visibility>
+                    <div class="omo-pv-editor__document-visibility" data-omo-pv-document-visibility<?= $canEditPvDocumentHeader ? '' : ' hidden' ?>>
                         <?= commonRenderObjectVisibilitySelector(array(
                             'inputName' => 'pv_document_visibility',
                             'idPrefix' => 'pv-document-visibility',
@@ -695,7 +688,6 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                             'optionLabels' => $documentVisibilityOptions,
                         )) ?>
                     </div>
-                <?php endif; ?>
                 <div class="omo-pv-editor__stage-field">
                     <div
                         class="omo-visibility-choice omo-pv-editor__stage-choice"
@@ -733,7 +725,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                             <span class="omo-pv-editor__event-info-icon" aria-hidden="true"><img src="/omo/assets/images/documents/event-schedule.png" alt="" class="black-icon"></span>
                             <span class="omo-pv-editor__event-info-value" data-omo-pv-event-schedule><?= $escape($eventSchedule) ?></span>
                             <?php if (!$isPublicParticipation && $hasAssociatedEvent): ?>
-                                <div class="generic-menu omo-pv-editor__event-extension-menu" data-omo-pv-event-extension-menu<?= $canExtendAssociatedEvent && $canManagePvDocument ? '' : ' hidden' ?>>
+                                <div class="generic-menu omo-pv-editor__event-extension-menu" data-omo-pv-event-extension-menu<?= $canExtendAssociatedEvent && $canManagePvStructure ? '' : ' hidden' ?>>
                                     <button type="button" class="generic-menu-toggle omo-pv-editor__event-extension-toggle" data-omo-pv-event-extension-toggle aria-haspopup="menu" aria-expanded="false" aria-controls="omoPvEventExtensionMenu" aria-label="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.event.extend.button_title')) ?>" title="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.event.extend.button_title')) ?>">+</button>
                                     <div id="omoPvEventExtensionMenu" class="generic-menu-panel generic-menu-panel--wide omo-pv-editor__event-extension-panel" data-omo-pv-event-extension-panel role="menu" aria-label="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.event.extend.menu_aria')) ?>" hidden>
                                         <?php foreach ([5, 10, 15, 30] as $extensionMinutes): ?>
@@ -887,6 +879,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         'pvCreatorLabel' => $pvCreatorLabel,
         'isPvEditor' => $isPvEditor,
         'canManagePvDocument' => $canManagePvDocument,
+        'canManagePvStructure' => $canManagePvStructure,
         'canClaimPvEditor' => $canClaimPvEditor,
         'canReplacePvEditor' => $canReplacePvEditor,
         'pvEditorHandoverOpen' => $pvEditorHandoverOpen,

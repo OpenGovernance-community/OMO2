@@ -40,7 +40,7 @@ if (
     || (int)$document->get('IDorganization') !== $organizationId
     || !$document->isPvDocument()
     || $document->getPvStage() !== \dbObject\Document::PV_STAGE_REVIEW
-    || !$document->canUserManagePvDocument($currentUserId)
+    || !$document->canUserManagePvStructure($organizationId, $currentUserId)
 ) {
     $jsonResponse(['status' => false, 'message' => 'Vous ne pouvez pas générer le résumé de ce PV.'], 403);
 }

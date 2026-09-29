@@ -642,7 +642,7 @@ if (!function_exists('omoStatsCanEditIndicator')) {
             return true;
         }
 
-        $holon = $indicator->getHolon();
+        $holon = $indicator->getHolon() ?: ($context['rootHolon'] ?? null);
         return $holon instanceof Holon
             && omoStatsCanUsePermission($holon, 'CAN_EDIT_INDICATOR', $context);
     }

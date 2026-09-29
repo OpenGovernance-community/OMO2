@@ -716,11 +716,14 @@ function omoDocumentsPvEditorBuildContextualPointPayload(
         $pointData['canEditNow'] = false;
     }
     $pointData['canReorder'] = $document->canUserReorderPvItem($point, $currentUserId);
+    $pointData['canEditPointDetails'] = !$document->isPvEditor($currentUserId)
+        || $document->canUserManagePvStructure($organizationId, $currentUserId);
     $pointData['canEditGroup'] = $point->isGroup() && $document->canUserCreatePvGroups($currentUserId);
     $pointData['isReview'] = $document->getPvStage() === \dbObject\Document::PV_STAGE_REVIEW;
     $pointData['discussionMessageCount'] = max(0, (int)($discussionSummary['total_messages'] ?? 0));
     $pointData['canDelete'] = !$pointData['isReview']
         && !$pointData['isHandled']
+        && $pointData['canEditPointDetails']
         && ($point->isGroup()
             ? $pointData['canEditGroup']
             : !empty($pointData['canEditNow']));
@@ -732,7 +735,7 @@ function omoDocumentsPvEditorBuildContextualPointPayload(
         && $document->canUserManagePvDocument($currentUserId)
         && empty($pointData['lock']['isLockedByOther']);
     $pointData['canAssignAuthor'] = !$pointData['isHandled']
-        && $document->canUserManagePvDocument($currentUserId);
+        && $document->canUserManagePvStructure($organizationId, $currentUserId);
     $pointData['hasStructureApplication'] = $hasStructureApplication;
     $pointData['deferredProposals'] = [];
     foreach (\dbObject\DeferredProposal::getForPvPoint((int)$point->getId()) as $deferredProposal) {
@@ -745,7 +748,7 @@ function omoDocumentsPvEditorBuildContextualPointPayload(
     $pointData['canAddDeferredProposal'] = !$pointData['isReview']
         && !$pointData['isHandled']
         && !empty($pointData['canEditNow'])
-        && $document->canUserManagePvDocument($currentUserId)
+        && $document->canUserManagePvStructure($organizationId, $currentUserId)
         && $hasStructureApplication;
     $pointData['canManageDeferredProposals'] = $pointData['canAddDeferredProposal'];
     $pointData['authorOptions'] = $authorOptions;
@@ -760,6 +763,7 @@ function omoDocumentsPvEditorBuildContextualPointPayload(
             $pointData['canEditNow'] = false;
         }
         $pointData['canReorder'] = false;
+        $pointData['canEditPointDetails'] = true;
         $pointData['canEditGroup'] = false;
         $pointData['canDelete'] = !$pointData['isReview'] && !$pointData['isHandled'] && $pointData['canEditNow'];
         $pointData['isPvEditor'] = false;
@@ -1242,11 +1246,12 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
 
     $isEditable = !empty($pointData['isEditable']);
     $canEditNow = !empty($pointData['canEditNow']);
+    $canEditPointDetails = !empty($pointData['canEditPointDetails']);
     $canAssignAuthor = !empty($pointData['canAssignAuthor']);
     $canReorder = !empty($pointData['canReorder']);
     $isReview = !empty($pointData['isReview']);
-    $canEditDuration = $canEditNow && !$isReview;
-    $canEditConfidential = $canEditNow && !$isReview;
+    $canEditDuration = $canEditNow && $canEditPointDetails && !$isReview;
+    $canEditConfidential = $canEditNow && $canEditPointDetails && !$isReview;
     $chips = '';
     $addressedHolons = is_array($pointData['addressedHolons'] ?? null) ? $pointData['addressedHolons'] : [];
     $tensions = is_array($pointData['tensions'] ?? null) ? $pointData['tensions'] : [];
@@ -1285,7 +1290,7 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
     $html .= '  <div class="omo-document-pv__point-main">';
     $html .= '    <div class="omo-document-pv__point-topline">';
     $html .= '      <span class="omo-document-pv__point-order">' . omoDocumentsPvEditorEscape((string)($pointData['positionLabel'] ?? '--')) . '</span>';
-    if ($canEditNow) {
+    if ($canEditNow && $canEditPointDetails) {
         $html .= '      <input type="text" class="omo-pv-editor__point-title-input" maxlength="80" value="' . omoDocumentsPvEditorEscape($title) . '" data-omo-pv-point-title="' . $pointId . '" aria-label="' . omoDocumentsPvEditorEscape((string)$uiText['title']) . '">';
         if ($canEditDuration) {
             $html .= '      <label class="omo-pv-editor__point-duration-shell" title="' . omoDocumentsPvEditorEscape((string)$uiText['duration']) . '">';
@@ -1366,7 +1371,7 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
     } else {
         $html .= '      <span class="omo-pv-editor__point-author">' . omoDocumentsPvEditorEscape($authorLabel !== '' ? $authorLabel : (string)($uiText['readonly'] ?? 'Lecture seule')) . '</span>';
     }
-    if ($canEditNow && !empty($pointData['hasStructureApplication'])) {
+    if ($canEditNow && $canEditPointDetails && !empty($pointData['hasStructureApplication'])) {
         $html .= '      <label class="omo-pv-editor__point-concerned">';
         $html .= '          <span class="omo-pv-editor__point-concerned-label">' . omoDocumentsPvEditorEscape((string)$uiText['concernedHolon']) . '</span>';
         $html .= '          <select class="omo-pv-editor__point-concerned-select" data-omo-pv-point-concerned-holon="' . $pointId . '" aria-label="' . omoDocumentsPvEditorEscape((string)$uiText['concernedHolon']) . '">';

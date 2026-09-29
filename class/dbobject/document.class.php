@@ -382,7 +382,7 @@
 				|| (int)$this->get('IDorganization') !== (int)$organizationId
 				|| !$this->isTemplateEligible()
 				|| ($this->isPvDocument()
-					? !$this->canUserManagePvDocument($userId)
+					? !$this->canUserManagePvStructure($organizationId, $userId)
 					: !$this->canManageInOrganizationContext($organizationId, $userId, false))
 			) {
 				return array('status' => false, 'text' => 'Acces refuse.');
@@ -411,6 +411,7 @@
 		public function canDeleteInOrganizationContext(int $organizationId, int $userId): bool
 		{
 			return $organizationId === (int)$this->get('IDorganization')
+				&& (!$this->isPvEditor($userId) || $this->canUserManagePvStructure($organizationId, $userId))
 				&& $this->hasObjectPermission('CAN_DELETE_DOCUMENT', $userId)
 				&& ((function_exists('commonUserHasAdminOverride') && \commonUserHasAdminOverride($userId, $organizationId))
 					|| $this->currentViewerCanAccessVisibility($organizationId, null, $userId));
@@ -426,6 +427,7 @@
 
 			if ($this->isPvDocument()) {
 				return $this->hasObjectPermission('CAN_EDIT_DOCUMENT', $userId)
+					&& (!$this->isPvEditor($userId) || $this->canUserManagePvStructure($organizationId, $userId))
 					&& ($this->isPvCreatorOrEditor($userId) || \commonUserHasAdminOverride($userId, $organizationId));
 			}
 
@@ -1111,8 +1113,11 @@
 			if ($organizationId <= 0 || $userId <= 0 || (int)$this->get('IDorganization') !== $organizationId) {
 				return false;
 			}
+			if ($this->isPvEditor($userId) && !$this->canUserManagePvStructure($organizationId, $userId)) {
+				return false;
+			}
 
-			return ($this->isPvDocument() && $this->canUserManagePvDocument($userId))
+			return ($this->isPvDocument() && $this->canUserManagePvStructure($organizationId, $userId))
 				|| $this->canManageInOrganizationContext($organizationId, $userId, false);
 		}
 
@@ -1854,6 +1859,16 @@
 				&& $permissionHolon->isAllowed('CAN_CLAIM_PV', false, $userId);
 		}
 
+		public function canUserManagePvStructure(int $organizationId, int $userId): bool
+		{
+			// Older PVs may not have an official editor until their first handover.
+			return $this->canUserManagePvDocument($userId)
+				&& (!$this->isPvEditor($userId)
+					|| $this->getLastOfficialPvEditorUserId() <= 0
+					|| $userId === $this->getLastOfficialPvEditorUserId()
+					|| $this->canUserClaimPvEditor($organizationId, $userId));
+		}
+
 		public function canUserReplacePvEditor(int $organizationId, int $userId): bool
 		{
 			if (
@@ -1910,6 +1925,9 @@
 			}
 
 			$this->set('pv_editor_handover_open', 1);
+			if ($this->getLastOfficialPvEditorUserId() <= 0) {
+				$this->set('IDuser_pv_official_editor', $userId);
+			}
 			$this->set('IDusermodification', $userId);
 			$this->set('datemodification', new \DateTimeImmutable());
 			$saveResult = $this->save();
@@ -1927,6 +1945,9 @@
 				return array('status' => false, 'text' => 'Acces refuse.');
 			}
 
+			if ($this->getLastOfficialPvEditorUserId() <= 0) {
+				$this->set('IDuser_pv_official_editor', $this->getPvEditorUserId());
+			}
 			$this->set('IDuser_pv_editor', $userId);
 			$this->set('pv_editor_handover_open', 0);
 			$this->set('IDusermodification', $userId);
@@ -1959,8 +1980,8 @@
 		public function canUserReorderPvPoints(int $userId): bool
 		{
 			return $this->isPvDocument() && !$this->isPvValidated() && $this->getPvStage() !== self::PV_STAGE_REVIEW && (
-				$this->canUserManagePvDocument($userId)
-				|| $this->getPvStage() === self::PV_STAGE_PREPARATION
+				$this->canUserManagePvStructure((int)$this->get('IDorganization'), $userId)
+				|| ($this->getPvStage() === self::PV_STAGE_PREPARATION && !$this->isPvEditor($userId))
 			);
 		}
 
@@ -1970,15 +1991,15 @@
 				return false;
 			}
 
-			return $this->canUserManagePvDocument($userId)
-				|| (!$item->isGroup() && $this->getPvStage() === self::PV_STAGE_PREPARATION && $item->isEditableByUser($userId));
+			return $this->canUserManagePvStructure((int)$this->get('IDorganization'), $userId)
+				|| (!$this->isPvEditor($userId) && !$item->isGroup() && $this->getPvStage() === self::PV_STAGE_PREPARATION && $item->isEditableByUser($userId));
 		}
 
 		public function canUserCreatePvGroups(int $userId): bool
 		{
 			return !$this->isPvValidated()
 				&& $this->getPvStage() !== self::PV_STAGE_REVIEW
-				&& $this->canUserManagePvDocument($userId);
+				&& $this->canUserManagePvStructure((int)$this->get('IDorganization'), $userId);
 		}
 
 		public function getInvitations(bool $activeOnly = false)
@@ -2499,7 +2520,7 @@
 						: (int)($_SESSION['currentUser'] ?? 0)
 				);
 
-			return $this->canUserManagePvDocument($resolvedUserId);
+			return $this->canUserManagePvStructure($organizationId, $resolvedUserId);
 		}
 
 		public function updatePvStageInOrganizationContext(int $organizationId, int $userId, string $stage): array
@@ -6272,7 +6293,7 @@
 				);
 			}
 
-			$canManagePvDocument = $this->isPvDocument() && $this->canUserManagePvDocument($userId);
+			$canManagePvDocument = $this->isPvDocument() && $this->canUserManagePvStructure($organizationId, $userId);
 			$canManageDocument = !$this->isPvDocument()
 				&& $this->canManageInOrganizationContext($organizationId, $userId, false);
 			$canEditContent = !$this->isPvDocument()
