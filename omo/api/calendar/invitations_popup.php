@@ -68,7 +68,7 @@ if ($documentId > 0) {
         || (int)$document->get('IDorganization') !== $organizationId
         || !$document->isPvDocument()
         || $document->getPvStage() !== Document::PV_STAGE_PREPARATION
-        || !$document->canUserManagePvDocument($currentUserId)
+        || !$document->canUserManagePvStructure($organizationId, $currentUserId)
     ) {
         http_response_code(403);
         ?><div class="omo-calendar-invitations-popup__empty"><?= omoApiEscape(omoCalendarInvitationsPopupT('calendar.invitations.empty_denied')) ?></div><?php
@@ -93,7 +93,7 @@ if ($documentId > 0) {
     $rootHolon = $organization->getEnabledStructuralRootHolon($currentUserId);
     $canEditInvitations = omoCalendarCanEditEvent($event, $organizationId, $currentUserId, $rootHolon, false);
     foreach ($event->getAssociatedDocuments() as $associatedDocument) {
-        if (!($associatedDocument instanceof Document) || !$associatedDocument->isPvDocument() || $associatedDocument->getPvStage() !== Document::PV_STAGE_PREPARATION || !$associatedDocument->canUserManagePvDocument($currentUserId)) {
+        if (!($associatedDocument instanceof Document) || !$associatedDocument->isPvDocument() || $associatedDocument->getPvStage() !== Document::PV_STAGE_PREPARATION || !$associatedDocument->canUserManagePvStructure($organizationId, $currentUserId)) {
             continue;
         }
         $canEditInvitations = true;
