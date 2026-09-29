@@ -1,5 +1,9 @@
 # Journal Des Nouveautes
 
+- Le proxy du VPS expose `pad.omo2.org` vers l’instance Etherpad existante sur `doc.opengov.tools`, afin de conserver les pads et d’utiliser un cookie propre à `omo2.org`.
+
+- Etherpad accepte désormais plusieurs URLs publiques séparées par des virgules. OMO choisit automatiquement celle dont le domaine parent correspond au site ouvert et limite le cookie de session à ce domaine.
+
 - Collabora sur le VPS autorise désormais `omo2.org` et `www.omo2.org` comme hôtes WOPI et origines d’iframe, en plus des domaines OpenGov existants.
 
 - Historique des holons : l archivage et la suppression des indicateurs et des taches recurrentes sont inscrits dans le flux du holon avec leur nom et leur auteur, sans invalider le cache de structure. L action est annulee si son entree d historique ne peut pas etre enregistree.

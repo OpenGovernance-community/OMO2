@@ -39,20 +39,95 @@ if (!function_exists('omoEtherpadNormalizeBaseUrl')) {
     }
 }
 
+if (!function_exists('omoEtherpadGetRequestHost')) {
+    function omoEtherpadGetRequestHost(): string
+    {
+        $rawHost = trim((string)($_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? ''));
+        if ($rawHost === '') {
+            return '';
+        }
+
+        $host = strtolower(trim((string)parse_url('http://' . $rawHost, PHP_URL_HOST)));
+        return rtrim($host, '.');
+    }
+}
+
+if (!function_exists('omoEtherpadGetBaseUrls')) {
+    function omoEtherpadGetBaseUrls(): array
+    {
+        $baseUrls = array();
+        foreach (explode(',', (string)($GLOBALS['etherpadBaseUrl'] ?? '')) as $configuredBaseUrl) {
+            $baseUrl = omoEtherpadNormalizeBaseUrl($configuredBaseUrl);
+            if ($baseUrl !== '') {
+                $baseUrls[$baseUrl] = $baseUrl;
+            }
+        }
+
+        return array_values($baseUrls);
+    }
+}
+
+if (!function_exists('omoEtherpadInferCookieDomain')) {
+    function omoEtherpadInferCookieDomain(string $baseUrl, ?string $requestHost = null): ?string
+    {
+        $remoteHost = strtolower(trim((string)parse_url($baseUrl, PHP_URL_HOST)));
+        $requestHost = strtolower(trim($requestHost ?? omoEtherpadGetRequestHost()));
+        if (
+            $remoteHost === ''
+            || $requestHost === ''
+            || filter_var($remoteHost, FILTER_VALIDATE_IP)
+            || filter_var($requestHost, FILTER_VALIDATE_IP)
+        ) {
+            return null;
+        }
+
+        if (hash_equals($requestHost, $remoteHost)) {
+            return '';
+        }
+
+        $hostParts = explode('.', $remoteHost);
+        if (count($hostParts) < 3) {
+            return null;
+        }
+
+        $cookieDomain = implode('.', array_slice($hostParts, 1));
+        return $requestHost === $cookieDomain || str_ends_with($requestHost, '.' . $cookieDomain)
+            ? '.' . $cookieDomain
+            : null;
+    }
+}
+
 if (!function_exists('omoEtherpadResolveConfig')) {
     function omoEtherpadResolveConfig(array $storedConfig = array()): array
     {
-        $globalBaseUrl = omoEtherpadNormalizeBaseUrl((string)($GLOBALS['etherpadBaseUrl'] ?? ''));
+        $baseUrls = omoEtherpadGetBaseUrls();
+        $globalBaseUrl = $baseUrls[0] ?? '';
         $globalApiKey = trim((string)($GLOBALS['etherpadApiKey'] ?? ''));
         $apiVersion = trim((string)($GLOBALS['etherpadApiVersion'] ?? '1'));
         if (!preg_match('/^[0-9]+(?:\.[0-9]+)*$/', $apiVersion)) {
             $apiVersion = '1';
         }
 
+        $publicBaseUrl = $globalBaseUrl;
+        $cookieDomain = '';
+        foreach ($baseUrls as $candidateBaseUrl) {
+            $candidateCookieDomain = omoEtherpadInferCookieDomain($candidateBaseUrl);
+            if ($candidateCookieDomain === null) {
+                continue;
+            }
+
+            if ($cookieDomain === '' || strlen($candidateCookieDomain) > strlen($cookieDomain)) {
+                $publicBaseUrl = $candidateBaseUrl;
+                $cookieDomain = $candidateCookieDomain;
+            }
+        }
+
         return array(
-            'baseUrl' => $globalBaseUrl,
+            'baseUrl' => $publicBaseUrl,
+            'apiBaseUrl' => $publicBaseUrl,
             'apiKey' => $globalApiKey,
             'apiVersion' => $apiVersion,
+            'cookieDomain' => $cookieDomain,
             'baseUrlOverride' => '',
             'hasBaseUrlOverride' => false,
             'hasApiKeyOverride' => false,
@@ -79,7 +154,8 @@ if (!function_exists('omoEtherpadApiRequest')) {
     function omoEtherpadApiRequest(?\dbObject\Organization $organization, string $function, array $parameters = array()): array
     {
         $config = omoEtherpadGetConfig($organization);
-        if ($config['baseUrl'] === '' || $config['apiKey'] === '') {
+        $apiBaseUrl = trim((string)($config['apiBaseUrl'] ?? $config['baseUrl'] ?? ''));
+        if ($apiBaseUrl === '' || $config['apiKey'] === '') {
             return array('status' => false, 'text' => 'Etherpad n’est pas configuré pour cette organisation.');
         }
 
@@ -92,7 +168,7 @@ if (!function_exists('omoEtherpadApiRequest')) {
             return array('status' => false, 'text' => 'Fonction Etherpad invalide.');
         }
 
-        $url = $config['baseUrl'] . '/api/' . rawurlencode($config['apiVersion']) . '/' . $function;
+        $url = $apiBaseUrl . '/api/' . rawurlencode($config['apiVersion']) . '/' . $function;
         $parameters['apikey'] = $config['apiKey'];
         // Etherpad's documented HTTP API uses query parameters. Some supported
         // releases reject POST requests entirely, so keep this interoperable.
@@ -106,7 +182,7 @@ if (!function_exists('omoEtherpadApiRequest')) {
         curl_setopt($curl, CURLOPT_CONNECTTIMEOUT, 10);
         curl_setopt($curl, CURLOPT_TIMEOUT, 30);
         curl_setopt($curl, CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
-        $apiHost = strtolower(trim((string)parse_url($config['baseUrl'], PHP_URL_HOST)));
+        $apiHost = strtolower(trim((string)parse_url($apiBaseUrl, PHP_URL_HOST)));
         $localDevelopmentCertificate = '/etc/apache2/ssl/dev-localhost.crt';
         if (
             $apiHost !== ''
@@ -348,6 +424,18 @@ if (!function_exists('omoEtherpadResolveCookieDomain')) {
 
         if (hash_equals($currentHost, $remoteHost)) {
             return '';
+        }
+
+        $routeCookieDomain = strtolower(trim((string)($config['cookieDomain'] ?? '')));
+        if ($routeCookieDomain !== '') {
+            $routeCookieDomain = ltrim($routeCookieDomain, '.');
+            $hostMatchesRoute = static function (string $host) use ($routeCookieDomain): bool {
+                return hash_equals($host, $routeCookieDomain) || str_ends_with($host, '.' . $routeCookieDomain);
+            };
+
+            if ($hostMatchesRoute($currentHost) && $hostMatchesRoute($remoteHost)) {
+                return '.' . $routeCookieDomain;
+            }
         }
 
         $configuredDomain = strtolower(trim((string)($GLOBALS['etherpadCookieDomain'] ?? '')));
