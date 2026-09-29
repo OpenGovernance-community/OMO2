@@ -1,5 +1,7 @@
 # Journal Des Nouveautes
 
+- Agenda : l'éditeur d'événement propose un onglet Disponibilités chargé à la demande, qui croise les créneaux des invités et de l'organisateur, affiche les personnes prises en compte et se recalcule après modification des invitations. Un clic sur un créneau libre, puis Maj + clic, définit les horaires de l'événement sans traverser une plage occupée ou une pause.
+
 - Autorites : la delegation complete est refusee lorsqu'une branche de l'autorite est deja confiee a un autre espace, meme a plusieurs niveaux de profondeur. Elle reste possible si toutes les sous-autorites sont dans l'espace source ; les editeurs desactivent le choix indisponible.
 
 - Autorites : la suppression nettoie les references dans les listes actives et inactives, ainsi que les liens des instances de modele. Les sous-autorites et les regles sont conservees et rattachees a l'autorite parente lorsque c'est possible. Les editeurs ne proposent plus de supprimer les branches ou les regles.

@@ -4,6 +4,7 @@ require_once dirname(__DIR__) . '/common/user_competence_ui.php';
 require_once dirname(__DIR__) . '/common/user_profile_ui.php';
 require_once dirname(__DIR__) . '/common/user_permission_ui.php';
 require_once dirname(__DIR__) . '/common/user_availability.php';
+require_once dirname(__DIR__) . '/common/calendar/availability-grid.php';
 
 use dbObject\Holon;
 use dbObject\Invitation;
@@ -43,19 +44,6 @@ function omoUserContextT(string $key, array $replace = []): string
     }
 
     return t($key, $replace, $bundle, $sourceLang);
-}
-
-function omoUserContextAvailabilityFormatDate(DateTimeInterface $date, bool $withWeekday = false): string
-{
-    if (class_exists('IntlDateFormatter')) {
-        $formatter = new IntlDateFormatter('fr_CH', $withWeekday ? IntlDateFormatter::FULL : IntlDateFormatter::LONG, IntlDateFormatter::NONE);
-        $formatted = $formatter->format($date);
-        if (is_string($formatted) && $formatted !== '') {
-            return $formatted;
-        }
-    }
-
-    return $date->format($withWeekday ? 'l j F Y' : 'F Y');
 }
 
 function omoUserContextAvailabilityRenderFragment(int $userId, int $organizationId, int $currentHolonId): void
@@ -104,55 +92,11 @@ function omoUserContextAvailabilityRenderFragment(int $userId, int $organization
         return $baseUrl . '&month=' . rawurlencode($targetMonth->format('Y-m'))
             . ($targetDay ? '&date=' . rawurlencode($targetDay->format('Y-m-d')) : '');
     };
-    $selectedData = $selectedDay ? ($days[$selectedDay->format('Y-m-d')] ?? null) : null;
-    ?>
-    <section class="omo-user-context__availability" aria-label="<?= omoApiEscape(omoUserContextT('availability_heading')) ?>">
-        <div class="omo-user-context__pane-copy">
-            <div class="omo-user-context__section-copy"><?= omoApiEscape(omoUserContextT('availability_hint')) ?></div>
-        </div>
-        <div class="omo-user-context__availability-layout">
-            <section class="omo-user-context__availability-month generic-soft-panel">
-                <div class="omo-user-context__availability-month-head">
-                    <h3 class="generic-card-title generic-card-title--medium"><?= omoApiEscape(omoUserContextAvailabilityFormatDate($month)) ?></h3>
-                    <nav class="omo-user-context__availability-nav" aria-label="<?= omoApiEscape(omoUserContextT('availability_heading')) ?>">
-                        <button type="button" class="generic-action-button generic-action-button--secondary generic-action-button--icon-only" data-user-availability-url="<?= omoApiEscape($makeUrl($month->modify('-1 month'))) ?>" aria-label="<?= omoApiEscape(omoUserContextT('previous_month')) ?>">&larr;</button>
-                        <button type="button" class="generic-action-button generic-action-button--secondary generic-action-button--icon-only" data-user-availability-url="<?= omoApiEscape($makeUrl($month->modify('+1 month'))) ?>" aria-label="<?= omoApiEscape(omoUserContextT('next_month')) ?>">&rarr;</button>
-                    </nav>
-                </div>
-                <div class="omo-user-context__availability-weekdays" aria-hidden="true">
-                    <?php foreach (['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'] as $label): ?><span><?= omoApiEscape($label) ?></span><?php endforeach; ?>
-                </div>
-                <div class="omo-user-context__availability-calendar">
-                    <?php for ($empty = 1; $empty < (int)$month->format('N'); $empty += 1): ?><span aria-hidden="true"></span><?php endfor; ?>
-                    <?php foreach ($days as $date => $data): $day = new DateTimeImmutable($date, $zone); $state = (string)$data['state']; ?>
-                        <button type="button" class="omo-user-context__availability-day" data-state="<?= omoApiEscape($state) ?>"<?= $selectedDay && $selectedDay->format('Y-m-d') === $date ? ' aria-current="date"' : '' ?> data-user-availability-url="<?= omoApiEscape($makeUrl($month, $day)) ?>" aria-label="<?= omoApiEscape(omoUserContextAvailabilityFormatDate($day, true) . ' : ' . omoUserContextT($state)) ?>"><?= (int)$day->format('j') ?></button>
-                    <?php endforeach; ?>
-                </div>
-                <ul class="omo-user-context__availability-legend" aria-label="<?= omoApiEscape(omoUserContextT('availability_heading')) ?>">
-                    <?php foreach (['free', 'partial', 'full'] as $state): ?><li data-state="<?= omoApiEscape($state) ?>"><span aria-hidden="true"></span><?= omoApiEscape(omoUserContextT($state)) ?></li><?php endforeach; ?>
-                </ul>
-            </section>
-            <aside class="omo-user-context__availability-day-panel generic-soft-panel" aria-live="polite">
-                <?php if (!$selectedDay || !is_array($selectedData)): ?>
-                    <div class="omo-user-context__availability-empty"><strong class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoUserContextT('select_day')) ?></strong><span><?= omoApiEscape(omoUserContextT('select_day_hint')) ?></span></div>
-                <?php elseif (!$selectedData['slots']): ?>
-                    <div class="omo-user-context__availability-empty"><strong class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoUserContextAvailabilityFormatDate($selectedDay, true)) ?></strong><span><?= omoApiEscape(omoUserContextT('no_hours')) ?></span></div>
-                <?php else: ?>
-                    <div class="omo-user-context__availability-day-head"><strong class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoUserContextAvailabilityFormatDate($selectedDay, true)) ?></strong></div>
-                    <div class="omo-user-context__availability-slots">
-                        <?php foreach ($selectedData['slots'] as $slot): ?>
-                            <?php if ($slot['pause']): ?>
-                                <div class="omo-user-context__availability-pause"><span><?= omoApiEscape(omoUserContextT('pause')) ?></span></div>
-                            <?php else: ?>
-                                <div class="omo-user-context__availability-slot" data-state="<?= $slot['busy'] ? 'busy' : 'free' ?>" aria-label="<?= omoApiEscape($slot['start']->format('H:i') . ' - ' . $slot['end']->format('H:i') . ' : ' . omoUserContextT($slot['busy'] ? 'busy' : 'available')) ?>"><time datetime="<?= omoApiEscape($slot['start']->format(DateTimeInterface::ATOM)) ?>"><?= omoApiEscape($slot['start']->format('H:i') . ' - ' . $slot['end']->format('H:i')) ?></time><?php if ($slot['busy']): ?><span><?= omoApiEscape(omoUserContextT('busy')) ?></span><?php endif; ?></div>
-                            <?php endif; ?>
-                        <?php endforeach; ?>
-                    </div>
-                <?php endif; ?>
-            </aside>
-        </div>
-    </section>
-    <?php
+    $labels = [];
+    foreach (['availability_heading', 'previous_month', 'next_month', 'free', 'partial', 'full', 'closed', 'select_day', 'select_day_hint', 'no_hours', 'pause', 'busy', 'available'] as $key) {
+        $labels[$key === 'availability_heading' ? 'heading' : $key] = omoUserContextT($key);
+    }
+    commonCalendarRenderAvailabilityGrid($month, $selectedDay, $days, $labels, 'data-user-availability-url', $makeUrl, omoUserContextT('availability_hint'));
 }
 
 function omoUserContextFormatDate($value)
@@ -955,6 +899,7 @@ foreach ($competenceRows as $competenceRow) {
 ?>
 <div class="omo-user-context" data-user-competence-popup-url="<?= omoApiEscape($popupReloadUrl) ?>" data-user-initial-tab="<?= omoApiEscape($initialTab) ?>">
     <link rel="stylesheet" href="<?= commonAssetUrl('/common/team/user-popup.css') ?>">
+    <link rel="stylesheet" href="<?= commonAssetUrl('/common/calendar/availability-grid.css') ?>">
 
     <div class="omo-user-context__header generic-drawer-header generic-drawer-header--sticky">
         <section class="omo-user-context__profile">

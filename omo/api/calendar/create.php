@@ -6,6 +6,8 @@ require_once dirname(__DIR__, 3) . '/common/etherpad.php';
 require_once dirname(__DIR__, 3) . '/common/ethercalc.php';
 require_once dirname(__DIR__, 3) . '/common/notification_center.php';
 require_once dirname(__DIR__, 3) . '/common/external_calendar.php';
+require_once dirname(__DIR__, 3) . '/common/user_availability.php';
+require_once dirname(__DIR__, 3) . '/common/calendar/availability-grid.php';
 
 use dbObject\ArrayHolon;
 use dbObject\Document;
@@ -128,6 +130,31 @@ $sourceLang = array_merge([
         'text' => 'Invités',
         'context' => 'Second tab label in the event creation form for invitation settings.',
     ],
+    'calendar.create.tab.availability' => ['text' => 'Disponibilités', 'context' => 'Third tab showing shared availability of event participants.'],
+    'calendar.create.preview.heading' => ['text' => 'Disponibilités communes', 'context' => 'Heading of the combined invitee calendar.'],
+    'calendar.create.preview.people_count' => ['one' => '{count} personne prise en compte', 'other' => '{count} personnes prises en compte', 'context' => 'Count of OMO people whose calendars are included in the combined preview.'],
+    'calendar.create.preview.organizer' => ['text' => 'Organisateur', 'context' => 'Role of the event owner in the people list above combined availability.'],
+    'calendar.create.preview.member' => ['text' => 'Membre', 'context' => 'Fallback label when a selected member has no display name.'],
+    'calendar.create.preview.hint' => ['text' => 'Créneaux communs aux invités et à l’organisateur, selon leurs agendas OMO et externes.', 'context' => 'Explanation of the combined availability preview.'],
+    'calendar.create.preview.email_warning' => ['text' => 'Les invitations par e-mail ne peuvent pas être vérifiées.', 'context' => 'Caution when the preview includes guests without an OMO account.'],
+    'calendar.create.preview.cache_warning' => ['text' => 'Certains agendas externes ne sont pas à jour ou ne couvrent pas cette période.', 'context' => 'Caution when external calendar cache is incomplete.'],
+    'calendar.create.preview.error' => ['text' => 'Impossible de calculer les disponibilités pour le moment.', 'context' => 'Combined availability preview failure.'],
+    'calendar.create.preview.loading' => ['text' => 'Calcul des disponibilités…', 'context' => 'Loading state of the combined availability tab.'],
+    'calendar.create.preview.select_day' => ['text' => 'Choisissez un jour', 'context' => 'Prompt to choose a day in the invitee availability preview.'],
+    'calendar.create.preview.select_day_hint' => ['text' => 'Sélectionnez une date pour afficher les créneaux communs.', 'context' => 'Explanation before a day is selected.'],
+    'calendar.create.preview.no_hours' => ['text' => 'Aucun créneau commun pour cette journée.', 'context' => 'Combined availability when participants have no overlapping working hours.'],
+    'calendar.create.preview.free' => ['text' => 'Libre', 'context' => 'All participants are free.'],
+    'calendar.create.preview.partial' => ['text' => 'Partiellement occupé', 'context' => 'Some common slots are occupied.'],
+    'calendar.create.preview.full' => ['text' => 'Occupé', 'context' => 'All common slots are occupied.'],
+    'calendar.create.preview.closed' => ['text' => 'Indisponible', 'context' => 'No shared working hours.'],
+    'calendar.create.preview.busy' => ['text' => 'Occupé', 'context' => 'A half-hour slot is occupied.'],
+    'calendar.create.preview.pause' => ['text' => 'Pause', 'context' => 'A participant has a configured break.'],
+    'calendar.create.preview.previous_month' => ['text' => 'Mois précédent', 'context' => 'Navigate combined availability calendar backward.'],
+    'calendar.create.preview.next_month' => ['text' => 'Mois suivant', 'context' => 'Navigate combined availability calendar forward.'],
+    'calendar.create.preview.select_slot' => ['text' => 'Sélectionner ce créneau', 'context' => 'Accessible label for a free half-hour slot used to set event times.'],
+    'calendar.create.preview.selection_hint' => ['text' => 'Cliquez sur un créneau libre, puis Maj + clic sur un second pour définir la plage.', 'context' => 'Instructions for selecting event start and end from shared availability.'],
+    'calendar.create.preview.range_blocked' => ['text' => 'La plage traverse une pause ou un créneau occupé. Choisissez une plage continue et libre.', 'context' => 'Invalid shift-click range in shared availability.'],
+    'calendar.create.preview.range_selected' => ['text' => 'Début et fin de l’événement mis à jour.', 'context' => 'Confirmation after choosing a time range from shared availability.'],
     'calendar.create.tabs_aria' => [
         'text' => "Configuration de l'événement",
         'context' => 'Accessible label of the tabs used in the event creation form.',
@@ -553,6 +580,119 @@ if (!$isEditMode && !$canCreateEvent) {
     } else {
         echo '<div class="omo-empty-state">Accès refusé.</div>';
     }
+    exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['availability_preview'])) {
+    header('Content-Type: text/html; charset=UTF-8');
+    if (strcasecmp((string)($_SERVER['HTTP_X_REQUESTED_WITH'] ?? ''), 'XMLHttpRequest') !== 0) {
+        http_response_code(403);
+        exit;
+    }
+    $selectedHolons = is_array($_POST['invitation_holon_ids'] ?? null) ? $_POST['invitation_holon_ids'] : [];
+    $selectedUsers = is_array($_POST['invitation_user_ids'] ?? null) ? $_POST['invitation_user_ids'] : [];
+    $selectedEmails = is_string($_POST['invitation_emails'] ?? null) ? $_POST['invitation_emails'] : '';
+    $selection = omoCalendarPrepareInvitationSelections($organization, $organizationId, $selectedHolons, $selectedUsers, $selectedEmails);
+    if (!$selection['status']) {
+        http_response_code(422);
+        echo '<div class="omo-calendar-create__preview-feedback is-error">' . omoApiEscape((string)$selection['message']) . '</div>';
+        exit;
+    }
+
+    $zone = new DateTimeZone('Europe/Zurich');
+    $today = new DateTimeImmutable('today', $zone);
+    $monthValue = trim((string)($_POST['month'] ?? $today->format('Y-m')));
+    $month = DateTimeImmutable::createFromFormat('!Y-m-d', $monthValue . '-01', $zone);
+    if (!$month || $month->format('Y-m') !== $monthValue) {
+        $month = $today->modify('first day of this month');
+    }
+    $selectedValue = trim((string)($_POST['date'] ?? ''));
+    $selectedDay = $selectedValue !== '' ? DateTimeImmutable::createFromFormat('!Y-m-d', $selectedValue, $zone) : null;
+    if (!$selectedDay || $selectedDay->format('Y-m-d') !== $selectedValue || $selectedDay->format('Y-m') !== $month->format('Y-m')) {
+        $selectedDay = null;
+    }
+
+    $previewEvent = $isEditMode ? $event : new Event();
+    $previewEvent->set('IDorganization', $organizationId);
+    if (!$isEditMode) {
+        $previewEvent->set('IDuser', $currentUserId);
+    }
+    $previewHolonId = (int)($_POST['IDholon'] ?? 0);
+    $previewEvent->set('IDholon', $previewHolonId > 0 && isset($allowedHolonIds[$previewHolonId]) ? $previewHolonId : null);
+    $proposedInvitations = [];
+    foreach ($selection['invitations'] as $values) {
+        $invitation = new \dbObject\EventInvitation();
+        foreach ($values as $field => $value) {
+            $invitation->set($field, $value);
+        }
+        $invitation->set('active', 1);
+        $invitation->set('status', \dbObject\EventInvitation::STATUS_INVITED);
+        $proposedInvitations[] = $invitation;
+    }
+    $targets = $previewEvent->getEffectiveInvitationTargets($organizationId, $proposedInvitations);
+    $userIds = array_values(array_unique(array_filter(array_merge($targets['userIds'], [(int)$previewEvent->get('IDuser')]))));
+    $rangeStart = $month->setTime(0, 0);
+    $rangeEnd = $month->modify('+1 month')->setTime(0, 0);
+    $participants = [];
+    $participantNames = [];
+    $incomplete = false;
+    $refreshDeadline = microtime(true) + 18;
+    try {
+        foreach ($userIds as $userId) {
+            $participantUser = new \dbObject\User();
+            $participantNames[$userId] = $participantUser->load((int)$userId)
+                ? trim((string)$participantUser->getScopedDisplayName($organizationId))
+                : '';
+            if ($participantNames[$userId] === '') {
+                $participantNames[$userId] = omoCalendarCreateT('calendar.create.preview.member');
+            }
+            commonExternalCalendarRefreshForAvailability((int)$userId, $refreshDeadline);
+            $hours = \dbObject\MeetingProfile::isStorageAvailable()
+                ? \dbObject\MeetingProfile::forUser((int)$userId)->hours()
+                : \dbObject\MeetingProfile::defaultHours();
+            $calendarIncomplete = false;
+            $busy = commonUserAvailabilityLoadBusyIntervals((int)$userId, $rangeStart, $rangeEnd, $calendarIncomplete, $isEditMode ? $eventId : 0);
+            $incomplete = $incomplete || $calendarIncomplete;
+            $participants[] = ['hours' => $hours, 'busy' => $busy];
+        }
+    } catch (Throwable $exception) {
+        error_log('Combined calendar availability preview failed: ' . get_class($exception));
+        http_response_code(503);
+        echo '<div class="omo-calendar-create__preview-feedback is-error">' . omoApiEscape(omoCalendarCreateT('calendar.create.preview.error')) . '</div>';
+        exit;
+    }
+
+    $days = [];
+    for ($day = $rangeStart; $day < $rangeEnd; $day = $day->modify('+1 day')) {
+        $days[$day->format('Y-m-d')] = commonUserAvailabilityBuildCombinedDay($day, $participants);
+    }
+    $labelKeys = ['heading', 'previous_month', 'next_month', 'free', 'partial', 'full', 'closed', 'select_day', 'select_day_hint', 'no_hours', 'pause', 'busy', 'select_slot', 'selection_hint', 'range_blocked', 'range_selected'];
+    $labels = [];
+    foreach ($labelKeys as $key) {
+        $labels[$key] = omoCalendarCreateT('calendar.create.preview.' . $key);
+    }
+    $labels['available'] = $labels['free'];
+    ?>
+    <div class="omo-calendar-create__preview-people" aria-label="<?= omoApiEscape(omoCalendarCreateT('calendar.create.preview.people_count', ['count' => (string)count($userIds)])) ?>">
+        <strong><?= omoApiEscape(omoCalendarCreateT('calendar.create.preview.people_count', ['count' => (string)count($userIds)])) ?></strong>
+        <ul>
+            <?php foreach ($participantNames as $userId => $name): ?>
+                <li><?= omoApiEscape($name) ?><?php if ((int)$userId === (int)$previewEvent->get('IDuser')): ?> <span><?= omoApiEscape(omoCalendarCreateT('calendar.create.preview.organizer')) ?></span><?php endif; ?></li>
+            <?php endforeach; ?>
+        </ul>
+    </div>
+    <?php
+    if ($targets['emails']) {
+        echo '<p class="omo-calendar-create__preview-warning">' . omoApiEscape(omoCalendarCreateT('calendar.create.preview.email_warning')) . '</p>';
+    }
+    if ($incomplete) {
+        echo '<p class="omo-calendar-create__preview-warning">' . omoApiEscape(omoCalendarCreateT('calendar.create.preview.cache_warning')) . '</p>';
+    }
+    $makeControlValue = static function (DateTimeImmutable $targetMonth, ?DateTimeImmutable $targetDay = null): string {
+        return 'month=' . rawurlencode($targetMonth->format('Y-m'))
+            . ($targetDay ? '&date=' . rawurlencode($targetDay->format('Y-m-d')) : '');
+    };
+    commonCalendarRenderAvailabilityGrid($month, $selectedDay, $days, $labels, 'data-omo-calendar-preview-target', $makeControlValue, omoCalendarCreateT('calendar.create.preview.hint'), true);
     exit;
 }
 
@@ -1251,6 +1391,7 @@ if ($isEditMode) {
                 <div class="generic-tabs__list" aria-label="<?= omoApiEscape(omoCalendarCreateT('calendar.create.tabs_aria')) ?>">
                     <button type="button" class="generic-tabs__tab is-active" data-generic-tab data-generic-tab-target="omoCalendarCreateTabEvent"><?= omoApiEscape(omoCalendarCreateT('calendar.create.tab.event')) ?></button>
                     <button type="button" class="generic-tabs__tab" data-generic-tab data-generic-tab-target="omoCalendarCreateTabInvites"><?= omoApiEscape(omoCalendarCreateT('calendar.create.tab.invites')) ?></button>
+                    <button type="button" class="generic-tabs__tab" data-generic-tab data-generic-tab-target="omoCalendarCreateTabAvailability" data-omo-calendar-preview-tab><?= omoApiEscape(omoCalendarCreateT('calendar.create.tab.availability')) ?></button>
                 </div>
                 <div class="generic-tabs__panels">
                     <div id="omoCalendarCreateTabEvent" class="generic-tabs__panel omo-calendar-create__tab-panel" data-generic-tab-panel>
@@ -1456,6 +1597,9 @@ if ($isEditMode) {
                             'showFooterHint' => true,
                         ]) ?>
                     </div>
+                    <div id="omoCalendarCreateTabAvailability" class="generic-tabs__panel omo-calendar-create__tab-panel omo-calendar-create__tab-panel--availability" data-generic-tab-panel hidden>
+                        <div data-omo-calendar-preview-host aria-live="polite" data-loading-label="<?= omoApiEscape(omoCalendarCreateT('calendar.create.preview.loading')) ?>" data-error-label="<?= omoApiEscape(omoCalendarCreateT('calendar.create.preview.error')) ?>"></div>
+                    </div>
                 </div>
             </div>
 
@@ -1470,3 +1614,4 @@ if ($isEditMode) {
 
 <link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/calendar/invitations.css') ?>">
 <link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/calendar/editor.css') ?>">
+<link rel="stylesheet" href="<?= commonAssetUrl('/common/calendar/availability-grid.css') ?>">
