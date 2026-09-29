@@ -5,6 +5,8 @@ require_once dirname(__DIR__, 3) . '/common/stats_ethercalc_sync.php';
 require_once dirname(__DIR__, 3) . '/common/stats_spreadsheet_sync.php';
 
 use dbObject\StatIndicator;
+use dbObject\DbObject;
+use dbObject\History;
 use dbObject\Document;
 use dbObject\StatIndicatorGroup;
 use dbObject\StatIndicatorGroupItem;
@@ -751,7 +753,7 @@ if ($action === 'delete_value') {
     omoStatsActionRespond(true);
 }
 
-if ($action === 'delete_indicator') {
+if ($action === 'delete_indicator' || $action === 'archive_indicator') {
     $indicatorId = isset($_POST['indicator_id']) && is_numeric($_POST['indicator_id']) ? (int)$_POST['indicator_id'] : 0;
     $indicator = omoStatsLoadIndicator($indicatorId, $organizationId);
     if (!($indicator instanceof StatIndicator)) {
@@ -760,9 +762,31 @@ if ($action === 'delete_indicator') {
     if (!omoStatsCanDeleteIndicator($indicator, $context)) {
         omoStatsActionRespond(false, omoStatsT('stats.error.forbidden'), [], 403);
     }
-    $indicator->set('active', 0);
-    $result = $indicator->save();
-    if (!is_array($result) || empty($result['status'])) {
+    $pdo = DbObject::getPdo();
+    try {
+        $pdo->beginTransaction();
+        $indicator->set('active', 0);
+        if ($action === 'archive_indicator') {
+            $indicator->set('archived_at', new DateTimeImmutable('now'));
+        }
+        $result = $indicator->save();
+        if (!is_array($result) || empty($result['status']) || !History::recordHolonResourceLifecycle(
+            $organizationId,
+            (int)$indicator->get('IDholon'),
+            'indicator',
+            $indicatorId,
+            (string)$indicator->get('name'),
+            $action === 'archive_indicator' ? 'archived' : 'deleted',
+            function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0
+        )) {
+            throw new RuntimeException('Indicator archive history could not be saved.');
+        }
+        $pdo->commit();
+    } catch (Throwable $exception) {
+        if ($pdo instanceof PDO && $pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        error_log('Indicator lifecycle action failed for ' . $indicatorId . ': ' . $exception->getMessage());
         omoStatsActionRespond(false, omoStatsT('stats.error.save'), [], 500);
     }
     omoStatsActionRespond(true, '', ['id' => $indicatorId]);

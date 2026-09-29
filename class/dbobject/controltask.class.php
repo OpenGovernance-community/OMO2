@@ -22,7 +22,7 @@ class ControlTask extends DbObject
             [['title', 'frequency', 'schedule', 'display_lead_unit', 'execution_duration_unit'], 'string'],
             [['description'], 'text'],
             [['active'], 'boolean'],
-            [['created_at', 'updated_at'], 'datetime'],
+            [['created_at', 'updated_at', 'archived_at'], 'datetime'],
             [['id'], 'safe'],
         ];
     }
@@ -44,6 +44,7 @@ class ControlTask extends DbObject
             'execution_duration_unit' => 'Unite du delai avant retard',
             'position' => 'Position',
             'active' => 'Active',
+            'archived_at' => 'Date d archivage',
             'created_at' => 'Creation',
             'updated_at' => 'Mise a jour',
         ];

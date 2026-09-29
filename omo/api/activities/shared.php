@@ -16,6 +16,8 @@ function omoActivitySourceLang()
         'activity.new' => ['text' => 'Ajouter une tâche récurrente', 'context' => 'Create recurring task action.'],
         'activity.edit' => ['text' => 'Modifier', 'context' => 'Edit activity action.'],
         'activity.delete' => ['text' => 'Supprimer', 'context' => 'Delete activity action.'],
+        'activity.archive' => ['text' => 'Archiver', 'context' => 'Archive recurring task action.'],
+        'activity.more' => ['text' => 'Plus d actions', 'context' => 'Open recurring task actions menu.'],
         'activity.check' => ['text' => 'Valider', 'context' => 'Validate activity action.'],
         'activity.done' => ['text' => 'Fait', 'context' => 'Direct completion action in the activity list.'],
         'activity.save' => ['text' => 'Enregistrer', 'context' => 'Save activity action.'],
@@ -112,6 +114,7 @@ function omoActivitySourceLang()
         'activity.error.action' => ['text' => 'Action impossible.', 'context' => 'Generic activity action error.'],
         'activity.loading' => ['text' => 'Chargement de la tâche récurrente...', 'context' => 'Recurring task loading message.'],
         'activity.confirm.delete' => ['text' => 'Supprimer cette tâche récurrente et son historique ?', 'context' => 'Recurring task deletion confirmation.'],
+        'activity.confirm.archive' => ['text' => 'Archiver cette tache recurrente ? Elle ne sera plus visible et son historique sera conserve.', 'context' => 'Recurring task archive confirmation.'],
         'activity.success.saved' => ['text' => 'Tâche récurrente enregistrée.', 'context' => 'Save success.'],
         'activity.success.checked' => ['text' => 'Tâche récurrente validée.', 'context' => 'Check success.'],
     ];

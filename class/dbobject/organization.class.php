@@ -6888,6 +6888,7 @@
 					$activity->set('execution_duration_unit', \dbObject\ControlActivity::normalizeDelayUnit($recurrenceData['executionDurationUnit'] ?? null));
 					$activity->set('position', (int)($record['position'] ?? $positionsByHolonId[$targetHolonId]));
 					$activity->set('active', $itemActive);
+					$activity->set('archived_at', self::omo1ImportDate($record['archivedAt'] ?? null));
 					$createdAt = self::omo1ImportDate($record['createdAt'] ?? null);
 					if ($createdAt) {
 						$activity->set('created_at', $createdAt);
@@ -7229,6 +7230,7 @@
 					$indicator->set('created_at', $createdAt);
 				}
 				$indicator->set('active', !array_key_exists('active', $record) || (bool)$record['active']);
+				$indicator->set('archived_at', self::omo1ImportDate($record['archivedAt'] ?? null));
 				self::omo1ImportSave($indicator, 'Un indicateur n a pas pu etre cree');
 				$stats['indicators'] += 1;
 

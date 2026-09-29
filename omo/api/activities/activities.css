@@ -124,6 +124,21 @@
     gap: 8px;
 }
 
+.omo-activity-detail__menu {
+    position: relative;
+}
+
+.omo-activity-row__menu {
+    position: absolute;
+    top: 50%;
+    right: 12px;
+    transform: translateY(-50%);
+}
+
+.omo-activity-row-shell.is-menu-open {
+    z-index: 5;
+}
+
 .omo-activity-badge {
     display: inline-flex;
     align-items: center;

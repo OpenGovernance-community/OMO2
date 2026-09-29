@@ -59,11 +59,13 @@ if (!function_exists('omoStatsSourceLang')) {
             'stats.action.save' => ['text' => 'Enregistrer', 'context' => 'Button saving indicator edition.'],
             'stats.action.delete' => ['text' => 'Supprimer', 'context' => 'Button deleting one dated indicator value.'],
             'stats.action.delete_indicator' => ['text' => "Supprimer l'indicateur", 'context' => 'Menu action archiving an indicator from the current catalogue.'],
+            'stats.action.archive_indicator' => ['text' => "Archiver l'indicateur", 'context' => 'Menu action hiding an indicator while retaining its history.'],
             'stats.action.edit_import' => ['text' => 'Changer la source', 'context' => 'Menu action changing the source of a contextual indicator import.'],
             'stats.action.delete_import' => ['text' => "Detacher l'indicateur", 'context' => 'Action removing only an indicator import from its context, preserving the original indicator.'],
             'stats.action.edit_group' => ['text' => 'Modifier le groupe', 'context' => 'Menu action editing a contextual indicator group.'],
             'stats.action.delete_group' => ['text' => 'Retirer le groupe', 'context' => 'Menu action removing a contextual indicator group.'],
             'stats.detail.confirm_delete_indicator' => ['text' => 'Supprimer cet indicateur de la liste ? Ses valeurs seront conservées.', 'context' => 'Confirmation before hiding an indicator.'],
+            'stats.detail.confirm_archive_indicator' => ['text' => 'Archiver cet indicateur ? Il ne sera plus visible et ses valeurs seront conservees.', 'context' => 'Confirmation before archiving an indicator.'],
             'stats.detail.confirm_delete_import' => ['text' => "Detacher cet indicateur de ce contexte ? L'indicateur original et ses valeurs seront conserves.", 'context' => 'Confirmation before removing only a contextual import.'],
             'stats.detail.confirm_delete_group' => ['text' => 'Retirer ce groupe du contexte ?', 'context' => 'Confirmation before removing a contextual indicator group.'],
             'stats.empty.contextual' => ['text' => "Aucun indicateur n'est encore défini dans ce contexte.", 'context' => 'Empty state for the contextual scope.'],
@@ -538,7 +540,7 @@ if (!function_exists('omoStatsGetGroupOverdueInfo')) {
                 continue;
             }
             $indicator = $item->getIndicator();
-            if (!($indicator instanceof StatIndicator) || !$indicator->canView()) {
+            if (!($indicator instanceof StatIndicator) || (int)$indicator->get('active') !== 1 || !$indicator->canView()) {
                 continue;
             }
             $indicatorSeverity = omoStatsGetIndicatorOverdueInfo($indicator, $referenceDate)['severity'];
@@ -827,7 +829,7 @@ if (!function_exists('omoStatsLoadImport')) {
             return null;
         }
         $indicator = $import->getIndicator();
-        return $indicator instanceof StatIndicator && $indicator->canView() ? $import : null;
+        return $indicator instanceof StatIndicator && (int)$indicator->get('active') === 1 && $indicator->canView() ? $import : null;
     }
 }
 
@@ -2119,7 +2121,7 @@ if (!function_exists('omoStatsGetGroupSeries')) {
                 continue;
             }
             $indicator = $item->getIndicator();
-            if (!($indicator instanceof StatIndicator) || !$indicator->canView()) {
+            if (!($indicator instanceof StatIndicator) || (int)$indicator->get('active') !== 1 || !$indicator->canView()) {
                 continue;
             }
 

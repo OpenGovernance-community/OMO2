@@ -26,7 +26,7 @@ $sourceIndicators = [];
 foreach ($groupItems as $item) {
     $indicatorIds[] = (int)$item->get('IDstatindicator');
     $indicator = $item->getIndicator();
-    if ($indicator instanceof StatIndicator && $indicator->canView()) {
+    if ($indicator instanceof StatIndicator && (int)$indicator->get('active') === 1 && $indicator->canView()) {
         $sourceIndicators[] = $indicator;
     }
 }

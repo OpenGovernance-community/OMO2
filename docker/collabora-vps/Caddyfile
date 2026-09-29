@@ -7,3 +7,18 @@ collabora.opengov.tools {
         header_up Host {host}
     }
 }
+
+board.opengov.tools {
+    reverse_proxy spacedeck:9666 {
+        header_up Host {host}
+    }
+}
+
+pad.omo2.org {
+    reverse_proxy https://doc.opengov.tools {
+        header_up Host doc.opengov.tools
+        transport http {
+            tls_server_name doc.opengov.tools
+        }
+    }
+}
