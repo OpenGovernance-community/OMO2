@@ -1,5 +1,35 @@
 # Journal Des Nouveautes
 
+- Agenda : l'éditeur d'événement propose un onglet Disponibilités chargé à la demande, qui croise les créneaux des invités et de l'organisateur, affiche les personnes prises en compte et se recalcule après modification des invitations. Un clic sur un créneau libre, puis Maj + clic, définit les horaires de l'événement sans traverser une plage occupée ou une pause.
+
+- Autorites : la delegation complete est refusee lorsqu'une branche de l'autorite est deja confiee a un autre espace, meme a plusieurs niveaux de profondeur. Elle reste possible si toutes les sous-autorites sont dans l'espace source ; les editeurs desactivent le choix indisponible.
+
+- Autorites : la suppression nettoie les references dans les listes actives et inactives, ainsi que les liens des instances de modele. Les sous-autorites et les regles sont conservees et rattachees a l'autorite parente lorsque c'est possible. Les editeurs ne proposent plus de supprimer les branches ou les regles.
+
+- Projets : l historique enregistre les ajouts et retraits de documents, indicateurs et taches recurrentes, ainsi que la creation et la suppression des evenements lies au projet. Chaque entree conserve le nom de l element et son auteur.
+
+- Projets : les indicateurs lies utilisent leur vue compacte avec valeur recente et mini graphique. Les taches recurrentes liees affichent leur prochaine echeance et leur badge d etat, comme dans leur application.
+
+- Autorites : une reference residuelle dans la liste d'un espace peut etre retiree depuis l'editeur, meme si l'autorite n'existe plus ou appartient a un autre espace. La suppression ne touche pas l'objet d'un autre espace.
+
+- Projets : les selecteurs d indicateurs et de taches recurrentes reprennent la navigation par espace et la recherche du selecteur de documents. La navigation reste accessible sur mobile.
+
+- Documents des projets : le selecteur et la creation acceptent maintenant les projets sans espace propre, conformement au droit de creation deja affiche sur leur onglet Documents.
+
+- Projets : les onglets Documents et Evenements sont plus courts. Si les applications sont actives, des onglets Indicateurs et Taches recurrentes permettent de consulter, creer, selectionner et lier ces elements au projet.
+
+- Profils : l’onglet Disponibilités évite désormais de répéter son titre et suit la présentation générique des onglets intégrés.
+
+- Import/export d'organisation OMO2 : les regles sont maintenant selectionnables et detectees, y compris dans les exports precedents ou elles figurent uniquement a la racine du JSON. L'import restaure les details des taches bloquees et indique leur identifiant source en cas d'erreur.
+
+- Profils : un onglet Disponibilités affiche un mois coloré selon les créneaux libres, partiellement occupés ou occupés. Un clic sur un jour affiche ses horaires sans révéler les titres des événements.
+
+- Projets : le tri Espace devient selectionnable apres passage de Local a Enfants directs ou Descendants dans le selecteur de portee.
+
+- Docker : seed SQL reconstruit avec le schema et les migrations du 28 septembre, les catalogues systeme et une demo minimale Org1/Org2. Les anciennes donnees de travail ne sont plus reinjectees lors du reset. La premiere initialisation cree aussi la base Etherpad et son utilisateur depuis la configuration locale privee.
+
+- Notifications navigateur : la souscription active est maintenant resynchronisee silencieusement a chaque ouverture authentifiee d OMO, sans nouvelle demande de permission. Une cle VAPID remplacee declenche aussi le renouvellement de la souscription ; le service worker est controle dans la PWA installee comme dans le navigateur.
+
 - Creation depuis un modele public : le formulaire accepte les modeles affiches dans le catalogue meme sans appartenance au modele source. Le statut public et le niveau d interface restent lisibles, et les reglages du modele sont copies sans ouvrir les parametres prives des autres organisations.
 
 - Creation depuis un modele : le catalogue et la validation du nouveau modele sont accessibles depuis le repertoire des organisations, y compris sans acces a l organisation courante, pour les utilisateurs connectes.

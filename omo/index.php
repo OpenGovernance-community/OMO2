@@ -4,6 +4,7 @@ require_once dirname(__DIR__) . '/common/auth.php';
 require_once dirname(__DIR__) . '/common/topbar.php';
 require_once dirname(__DIR__) . '/common/patreon.php';
 require_once dirname(__DIR__) . '/common/translation_bundles.php';
+require_once dirname(__DIR__) . '/common/web_push.php';
 require_once __DIR__ . '/topbar.php';
 
 $sourceLang = [
@@ -639,6 +640,26 @@ if (!commonGetCurrentUserId() && !$isDemoGuest) {
 
 $currentUserName = $isDemoGuest ? t('app.user.demo') : commonGetCurrentUserDisplayName();
 $currentUserId = commonGetCurrentUserId();
+$omoPushSubscriptionConfiguration = null;
+if (!$isDemoGuest && $currentUserId > 0) {
+    if (empty($_SESSION['omo_notification_push_csrf'])) {
+        $_SESSION['omo_notification_push_csrf'] = bin2hex(random_bytes(32));
+    }
+
+    $vapidConfiguration = webPushGetVapidConfiguration();
+    if (is_array($vapidConfiguration) && !empty($vapidConfiguration['publicKeyBase64Url'])) {
+        $omoPushSubscriptionConfiguration = [
+            'csrfToken' => (string)$_SESSION['omo_notification_push_csrf'],
+            'endpointUrl' => '/omo/api/notifications/push_subscription.php',
+            'vapidPublicKey' => (string)$vapidConfiguration['publicKeyBase64Url'],
+        ];
+    }
+}
+if (is_array($omoPushSubscriptionConfiguration)) {
+    $omoPwaBodyEndHtml = '<script>window.omoPushSubscriptionConfiguration = '
+        . json_encode($omoPushSubscriptionConfiguration, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_SLASHES)
+        . ';</script><script src="/omo/assets/js/install.js" defer></script>';
+}
 $isSiteAdmin = !$isDemoGuest && commonCurrentUserIsSiteAdminModeEnabled();
 $omoOrganizationAccentColor = commonGetOrganizationAccentColor($organizationContext, '#004663');
 $omoOrganizationAccentColorCss = htmlspecialchars($omoOrganizationAccentColor, ENT_QUOTES, 'UTF-8');
@@ -1078,6 +1099,7 @@ if ($isOrganizationHub && !$isDemoGuest) {
         window.omoInitSiteUpdateCheck(window.omoSiteUpdateConfig);
     </script>
     <?php } ?>
+    <?= $omoPwaBodyEndHtml ?>
 </body>
 </html>
 <?php
@@ -1393,7 +1415,7 @@ window.omoConfig = <?=
     );
 ?>;
 </script>
-<script src="/omo/assets/js/install.js" defer></script>
+<?= $omoPwaBodyEndHtml ?>
 <?php if ($isSiteAdmin) { ?>
 <script src="/omo/assets/js/site-update.js"></script>
 <?php } ?>

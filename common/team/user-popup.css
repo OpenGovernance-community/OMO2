@@ -242,11 +242,8 @@
 }
 
 .omo-user-context__tabs {
-    --generic-tabs-list-padding-inline: 14px;
-    --generic-tabs-panel-padding-block: 18px;
-    --generic-tabs-panel-padding-inline: 18px;
-    --generic-tabs-panel-radius: 22px;
-    --generic-tabs-panel-shadow: var(--shadow-sm, none);
+    --param-tabs-list-padding-inline: 0px;
+    min-width: 0;
 }
 
 .omo-user-context__pane-head {
@@ -801,17 +798,12 @@
     .omo-user-context__competence-action {
         justify-items: start;
     }
+
 }
 
 @media (max-width: 640px) {
     .omo-user-context__stats-grid {
         grid-template-columns: minmax(0, 1fr);
-    }
-
-    .omo-user-context__tabs {
-        --generic-tabs-list-padding-inline: 0;
-        --generic-tabs-panel-padding-block: 14px;
-        --generic-tabs-panel-padding-inline: 14px;
     }
 
     .omo-user-context__summary {

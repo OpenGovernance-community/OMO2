@@ -93,6 +93,33 @@ try {
         $otherAuthority = new Authority();
         conversionCheck($otherAuthority->load($otherIds[0]) && (int)$otherAuthority->get('IDholon') === (int)$other->getId(), 'Shared values were not converted');
 
+        $missingAuthorityId = 2147483647;
+        $values[0]->set('value', $encode([$ids[0], $missingAuthorityId, $otherIds[0]]));
+        conversionSave($values[0]);
+        $submitted = [(int)$property->getId() => $encode([$ids[0], $missingAuthorityId, $otherIds[0]])];
+        $args = [$owner, &$submitted, $resolved, 0, []];
+        $syncResult = $syncAuthorities->invokeArgs($organization, $args);
+        conversionCheck(empty($syncResult['status']), 'Stale authority references must not be kept without deletion');
+
+        $submitted = [(int)$property->getId() => $encode([
+            ['id' => $ids[0]],
+            ['id' => $missingAuthorityId, 'delete' => true],
+            ['id' => $otherIds[0], 'delete' => true],
+        ])];
+        $args = [$owner, &$submitted, $resolved, 0, []];
+        $syncResult = $syncAuthorities->invokeArgs($organization, $args);
+        conversionCheck(!empty($syncResult['status']), $syncResult['message'] ?? 'Stale authority references could not be removed');
+        conversionCheck(Property::listConversionParts($submitted[(int)$property->getId()], $format)['items'] === [$ids[0]], 'Only the stale list references should be removed');
+        $owner->syncEditorPropertyValues($submitted, $resolved);
+        conversionCheck(Property::listConversionParts(conversionReload($values[0])->get('value'), $format)['items'] === [$ids[0]], 'Stale authority references remained after save');
+        conversionCheck($otherAuthority->load($otherIds[0], true), 'A foreign authority was deleted with its stale reference');
+        $submitted = [(int)$property->getId() => $encode([['id' => $otherIds[0], 'delete' => true]])];
+        $args = [$owner, &$submitted, $resolved, 0, []];
+        $syncResult = $syncAuthorities->invokeArgs($organization, $args);
+        conversionCheck(empty($syncResult['status']), 'An ID absent from the stored list must still be rejected');
+        $values[0]->set('value', $definitions[0]['value']);
+        conversionSave($values[0]);
+
         $rule = new Rule();
         $rule->set('IDauthority', $authority->getId());
         $rule->set('title', 'Conversion rule');
@@ -137,7 +164,7 @@ try {
         conversionSave($values[1]);
         $result = Property::convertListDefinitions($owner, $definitions);
         conversionCheck(empty($result['status']) && str_contains($result['message'], '#2147483647 n existe plus'), 'Missing authority must have a specific error');
-        conversionCheck(str_contains($result['message'], 'holon #' . $other->getId()), 'Missing authority error must identify the affected holon');
+        conversionCheck(str_contains($result['message'], 'espace #' . $other->getId()), 'Missing authority error must identify the affected space: ' . $result['message']);
         conversionCheck((new Authority())->load($ids[0], true), 'Missing reference must roll back earlier conversions');
 
         $legacyText = $ids[0] . ' anciens domaines en texte';

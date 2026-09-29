@@ -72,6 +72,8 @@ $projectDiscussionLabels = json_encode([
 $projectDiscussionMessageCountLabel = omoProjectsT('projects.chat.message_count', ['count' => $projectDiscussionMessageCount]);
 
 $organization = $context['organization'];
+$showIndicators = $organization->isApplicationEnabled('stats', $currentUserId);
+$showRecurringTasks = $organization->isApplicationEnabled('activities', $currentUserId);
 $projectDisplayConfig = omoProjectsGetDisplayConfig($organizationId);
 $enabledStatuses = $projectDisplayConfig['enabledStatuses'];
 $usesPriority = !empty($projectDisplayConfig['usePriority']);
@@ -241,11 +243,17 @@ $documentsUrl = '/omo/api/projects/documents.php?oid=' . rawurlencode((string)$o
     . '&id=' . rawurlencode((string)$projectId);
 $eventsUrl = '/omo/api/projects/events.php?oid=' . rawurlencode((string)$organizationId)
     . '&id=' . rawurlencode((string)$projectId);
+$indicatorsUrl = '/omo/api/projects/resources.php?oid=' . rawurlencode((string)$organizationId)
+    . '&id=' . rawurlencode((string)$projectId) . '&type=indicator';
+$recurringTasksUrl = '/omo/api/projects/resources.php?oid=' . rawurlencode((string)$organizationId)
+    . '&id=' . rawurlencode((string)$projectId) . '&type=recurring_task';
 $historyUrl = '/omo/api/projects/history.php?oid=' . rawurlencode((string)$organizationId)
     . '&id=' . rawurlencode((string)$projectId);
 if ((int)($_GET['cid'] ?? 0) > 0) {
     $documentsUrl .= '&cid=' . rawurlencode((string)(int)$_GET['cid']);
     $eventsUrl .= '&cid=' . rawurlencode((string)(int)$_GET['cid']);
+    $indicatorsUrl .= '&cid=' . rawurlencode((string)(int)$_GET['cid']);
+    $recurringTasksUrl .= '&cid=' . rawurlencode((string)(int)$_GET['cid']);
     $historyUrl .= '&cid=' . rawurlencode((string)(int)$_GET['cid']);
 }
 ?>
@@ -311,6 +319,18 @@ if ((int)($_GET['cid'] ?? 0) > 0) {
                 <img class="generic-monochrome-icon generic-tabs__tab-icon" src="/omo/images/tools/calendar.png" alt="">
                 <span class="generic-tabs__tab-label"><?= omoApiEscape(omoProjectsT('projects.detail.tabs.events')) ?></span>
             </button>
+            <?php if ($showIndicators): ?>
+            <button type="button" class="generic-tabs__tab" data-generic-tab data-generic-tab-target="omo-project-detail-indicators-<?= (int)$project->getId() ?>" data-omo-project-resource-tab aria-label="<?= omoApiEscape(omoProjectsT('projects.detail.tabs.indicators')) ?>">
+                <img class="generic-monochrome-icon generic-tabs__tab-icon" src="/omo/images/tools/stats.png" alt="">
+                <span class="generic-tabs__tab-label"><?= omoApiEscape(omoProjectsT('projects.detail.tabs.indicators')) ?></span>
+            </button>
+            <?php endif; ?>
+            <?php if ($showRecurringTasks): ?>
+            <button type="button" class="generic-tabs__tab" data-generic-tab data-generic-tab-target="omo-project-detail-recurring-tasks-<?= (int)$project->getId() ?>" data-omo-project-resource-tab aria-label="<?= omoApiEscape(omoProjectsT('projects.detail.tabs.recurring_tasks')) ?>">
+                <img class="generic-monochrome-icon generic-tabs__tab-icon" src="/omo/images/tools/control-list.png" alt="">
+                <span class="generic-tabs__tab-label"><?= omoApiEscape(omoProjectsT('projects.detail.tabs.recurring_tasks')) ?></span>
+            </button>
+            <?php endif; ?>
             <button type="button" class="generic-tabs__tab" data-generic-tab data-generic-tab-target="omo-project-detail-history-<?= (int)$project->getId() ?>" data-omo-project-detail-history-tab aria-label="<?= omoApiEscape(omoProjectsT('projects.detail.tabs.history')) ?>">
                 <img class="generic-monochrome-icon generic-tabs__tab-icon" src="/omo/images/tools/history.png" alt="">
                 <span class="generic-tabs__tab-label"><?= omoApiEscape(omoProjectsT('projects.detail.tabs.history')) ?></span>
@@ -516,6 +536,16 @@ if ((int)($_GET['cid'] ?? 0) > 0) {
             <div id="omo-project-detail-events-<?= (int)$project->getId() ?>" class="generic-tabs__panel omo-project-detail__tab-panel" data-generic-tab-panel data-omo-project-detail-events-panel data-omo-project-detail-events-url="<?= omoApiEscape($eventsUrl) ?>" data-omo-project-detail-events-loaded="0" hidden>
                 <div class="omo-project-detail__tab-content omo-project-detail__events-content generic-drawer-content" data-omo-project-detail-events-content></div>
             </div>
+            <?php if ($showIndicators): ?>
+            <div id="omo-project-detail-indicators-<?= (int)$project->getId() ?>" class="generic-tabs__panel omo-project-detail__tab-panel" data-generic-tab-panel data-omo-project-resource-panel data-resource-type="indicator" data-resource-url="<?= omoApiEscape($indicatorsUrl) ?>" hidden>
+                <div class="omo-project-detail__tab-content generic-drawer-content" data-omo-project-resource-content></div>
+            </div>
+            <?php endif; ?>
+            <?php if ($showRecurringTasks): ?>
+            <div id="omo-project-detail-recurring-tasks-<?= (int)$project->getId() ?>" class="generic-tabs__panel omo-project-detail__tab-panel" data-generic-tab-panel data-omo-project-resource-panel data-resource-type="recurring_task" data-resource-url="<?= omoApiEscape($recurringTasksUrl) ?>" hidden>
+                <div class="omo-project-detail__tab-content generic-drawer-content" data-omo-project-resource-content></div>
+            </div>
+            <?php endif; ?>
             <div id="omo-project-detail-history-<?= (int)$project->getId() ?>" class="generic-tabs__panel omo-project-detail__tab-panel" data-generic-tab-panel data-omo-project-detail-history-panel data-omo-project-detail-history-url="<?= omoApiEscape($historyUrl) ?>" data-omo-project-detail-history-loaded="0" hidden>
                 <div class="omo-project-detail__tab-content omo-project-detail__history-content generic-drawer-content" data-omo-project-detail-history-content></div>
             </div>

@@ -163,16 +163,24 @@ try {
     availabilityExpect(!$freeAfterRefresh['conflicts'] && !$freeAfterRefresh['unverified'], 'Successful refresh with no conflict allows normal save');
     $emailInvite = new EventInvitation(); $emailInvite->set('invitation_type', 'email'); $emailInvite->set('email', 'unknown@example.invalid');
     availabilityExpect($proposed->checkInvitationAvailability([$emailInvite])['unverified'][0]['reason'] === 'email', 'External email availability unknown');
-    if (in_array($argv[1] ?? '', ['--render', '--post-warning'], true)) {
+    if (in_array($argv[1] ?? '', ['--render', '--form', '--post-warning', '--preview'], true)) {
         $busy->set('active', 1); $busy->set('is_all_day', 0); $busy->save();
         $_SESSION['currentUser'] = (int)$guest->getId();
         $_SESSION['currentOrganization'] = (int)$org->getId();
         $_SERVER['HTTP_HOST'] = 'localtest.me';
-        $_SERVER['REQUEST_METHOD'] = ($argv[1] === '--render') ? 'GET' : 'POST';
+        $_SERVER['REQUEST_METHOD'] = in_array($argv[1], ['--render', '--form'], true) ? 'GET' : 'POST';
         $_SERVER['REQUEST_URI'] = '/omo/api/calendar/' . ($argv[1] === '--render' ? 'index.php' : 'create.php');
         $_GET = ['oid' => $org->getId(), 'view' => 'week', 'date' => $day->format('Y-m-d')];
         $_REQUEST = $_GET;
-        if ($argv[1] === '--render') {
+        if ($argv[1] === '--form') {
+            ob_start();
+            require dirname(__DIR__) . '/omo/api/calendar/create.php';
+            $formHtml = (string)ob_get_clean();
+            availabilityExpect(str_contains($formHtml, 'data-omo-calendar-preview-tab')
+                && str_contains($formHtml, 'data-omo-calendar-preview-host')
+                && !str_contains($formHtml, 'calendar-freebusy-calendar'), 'Editor renders a lazy availability tab without precomputing the calendar.');
+            echo "calendar_availability_test --form: OK\n";
+        } elseif ($argv[1] === '--render') {
             ob_start();
             (static function (): void {
                 global $lang, $sourceLang;
@@ -211,6 +219,29 @@ try {
             availabilityExpect(isset($week['count'], $week['days'][0]['count'], $week['days'][0]['countLabel']), 'Timeline badges retain counts and labels');
             $styles = (string)file_get_contents(dirname(__DIR__) . '/omo/api/calendar/calendar.css');
             availabilityExpect(substr_count($styles, '-webkit-line-clamp: 2') >= 2, 'Timed and all-day event titles are clamped to two lines');
+        } elseif ($argv[1] === '--preview') {
+            $calendar->markSyncResult(true);
+            $_SERVER['HTTP_X_REQUESTED_WITH'] = 'XMLHttpRequest';
+            $_POST = [
+                'availability_preview' => '1',
+                'month' => $day->format('Y-m'),
+                'date' => $day->format('Y-m-d'),
+                'invitation_user_ids' => [(int)$organizer->getId()],
+            ];
+            ob_start();
+            register_shutdown_function(static function () use ($day): void {
+                $output = ob_get_clean();
+                availabilityExpect(str_contains($output, 'data-omo-calendar-preview-target'), 'Preview endpoint returns navigable shared calendar.');
+                availabilityExpect(str_contains($output, '2 personnes prises en compte') && str_contains($output, 'Guest') && str_contains($output, 'Organizer') && str_contains($output, 'Organisateur'), 'Preview identifies invited member and event owner separately.');
+                availabilityExpect(!str_contains($output, 'SECRET title') && !str_contains($output, 'SECRET details'), 'Preview never exposes private event content.');
+                if ((int)$day->format('N') <= 5) {
+                    availabilityExpect(str_contains($output, 'data-state="busy"'), 'Invitee OMO appointment blocks a shared slot.');
+                    availabilityExpect(str_contains($output, '<button type="button" class="calendar-freebusy-slot" data-state="free"')
+                        && str_contains($output, '<div class="calendar-freebusy-slot" data-state="busy"'), 'Only free slots can set event times.');
+                }
+                echo "calendar_availability_test --preview: OK\n";
+            });
+            require dirname(__DIR__) . '/omo/api/calendar/create.php';
         } else {
             $_POST = ['title' => 'Availability test ' . $nonce, 'status' => Event::STATUS_DRAFT,
                 'start_at' => $day->format('Y-m-d') . 'T10:30', 'end_at' => $day->format('Y-m-d') . 'T11:30',

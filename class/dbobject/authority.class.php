@@ -105,6 +105,7 @@ class Authority extends DbObject
 				'needsParent' => strpos((string)($row['description'] ?? ''), self::IMPORT_NEEDS_PARENT_MARKER) !== false,
                 'parentId' => (int)($row['IDauthority_parent'] ?? 0),
                 'holonId' => (int)($row['IDholon'] ?? 0),
+				'hasExternalDescendant' => false,
                 'ruleCount' => (int)($row['rule_count'] ?? 0),
                 'holonLabel' => trim((string)($row['holon_full_name'] ?? '')) ?: trim((string)($row['holon_name'] ?? '')),
             ];
@@ -123,6 +124,19 @@ class Authority extends DbObject
             $catalogById[$authorityId]['pathLabel'] = implode(' > ', array_filter($labels, static function ($label) {
                 return trim((string)$label) !== '';
             }));
+        }
+
+        foreach ($catalogById as $entry) {
+            $descendantHolonId = (int)$entry['holonId'];
+            $currentId = (int)$entry['parentId'];
+            $visited = [];
+            while ($currentId > 0 && isset($catalogById[$currentId]) && !isset($visited[$currentId])) {
+                $visited[$currentId] = true;
+                if ((int)$catalogById[$currentId]['holonId'] !== $descendantHolonId) {
+                    $catalogById[$currentId]['hasExternalDescendant'] = true;
+                }
+                $currentId = (int)$catalogById[$currentId]['parentId'];
+            }
         }
 
         return array_values($catalogById);
@@ -318,6 +332,11 @@ class Authority extends DbObject
         if ($subtreeRows === false) {
             return ['status' => false, 'text' => 'The delegated authority tree could not be loaded.'];
         }
+        foreach ($subtreeRows as $row) {
+            if ((int)($row['IDholon'] ?? 0) !== $sourceHolonId) {
+                return ['status' => false, 'text' => 'Une delegation complete est impossible car une partie de cette autorite est deja deleguee a un autre espace.'];
+            }
+        }
         $descendantIds = array_values(array_filter(array_map(static function ($row) {
             return (int)($row['id'] ?? 0);
         }, $subtreeRows)));
@@ -326,8 +345,11 @@ class Authority extends DbObject
             return ['status' => false, 'text' => 'The database connection is unavailable.'];
         }
 
+        $ownsTransaction = !$pdo->inTransaction();
         try {
-            $pdo->beginTransaction();
+            if ($ownsTransaction) {
+                $pdo->beginTransaction();
+            }
             if ($canMoveAuthority) {
                 $this->set('IDholon', $targetHolonId);
                 $this->set('is_shell', 0);
@@ -427,9 +449,11 @@ class Authority extends DbObject
                 $movedRuleIds = [];
             }
 
-            $pdo->commit();
+            if ($ownsTransaction && $pdo->inTransaction()) {
+                $pdo->commit();
+            }
         } catch (\Throwable $exception) {
-            if ($pdo->inTransaction()) {
+            if ($ownsTransaction && $pdo->inTransaction()) {
                 $pdo->rollBack();
             }
             self::registerDbError('authority_complete_delegation', ['authority_id' => $authorityId], $exception);
@@ -594,6 +618,18 @@ class Authority extends DbObject
             if (empty($propertyReferenceResult['status'])) {
                 throw new \RuntimeException((string)($propertyReferenceResult['text'] ?? 'The authority property references could not be preserved.'));
             }
+            if (!empty($replacementParentIds)) {
+                $copyReferenceResult = $helperAuthority->moveAuthorityPropertyReferences(
+                    array_keys($replacementParentIds),
+                    $targetHolonId,
+                    $replacementParentIds
+                );
+                if (empty($copyReferenceResult['status'])) {
+                    throw new \RuntimeException((string)($copyReferenceResult['text'] ?? 'The delegated authority references could not be preserved.'));
+                }
+                $propertyReferenceResult['movedCount'] += (int)($copyReferenceResult['movedCount'] ?? 0);
+                $helperAuthority->detachTemplateAuthorityReferences(array_keys($replacementParentIds));
+            }
 
             foreach ($localRuleRows as $localRuleRow) {
                 $ruleId = (int)($localRuleRow['id'] ?? 0);
@@ -658,8 +694,8 @@ class Authority extends DbObject
         }
 
         $authorityDisposition = self::normalizeDeletionDisposition($plan['authority'] ?? self::DELETION_REASSIGN, self::DELETION_REASSIGN);
-        $childrenDisposition = self::normalizeDeletionDisposition($plan['children'] ?? self::DELETION_REASSIGN, self::DELETION_REASSIGN);
-        $rulesDisposition = self::normalizeDeletionDisposition($plan['rules'] ?? self::DELETION_REASSIGN, self::DELETION_REASSIGN);
+        $childrenDisposition = self::DELETION_REASSIGN;
+        $rulesDisposition = self::DELETION_REASSIGN;
 
         $ownerHolon = $this->getHolon();
         $parentHolon = $ownerHolon instanceof Holon ? $ownerHolon->getParentHolon() : null;
@@ -677,15 +713,17 @@ class Authority extends DbObject
         if ($reversesCompleteDelegation) {
             $authorityDisposition = self::DELETION_DELETE;
         }
+        $targetHolonId = $authorityDisposition === self::DELETION_DELETE && $parentAuthority instanceof self
+            ? (int)$parentAuthority->get('IDholon')
+            : $parentHolonId;
 
         $subtreeRows = $this->getSubtreeRows();
         if ($subtreeRows === false) {
             return ['status' => false, 'text' => 'The authority tree could not be loaded.'];
         }
 
-        $mustMoveAuthorities = $authorityDisposition === self::DELETION_REASSIGN
-            || ($childrenDisposition === self::DELETION_REASSIGN && !empty($subtreeRows));
-        if ($mustMoveAuthorities && $parentHolonId <= 0) {
+        $mustMoveAuthorities = $authorityDisposition === self::DELETION_REASSIGN || !empty($subtreeRows);
+        if ($mustMoveAuthorities && $targetHolonId <= 0) {
             return ['status' => false, 'text' => \dbObject\Organization::formatLexiconText('An authority can only be moved to an existing parent holon.')];
         }
 
@@ -720,11 +758,7 @@ class Authority extends DbObject
             if ($rowId <= 0) {
                 continue;
             }
-            if ($childrenDisposition === self::DELETION_DELETE) {
-                $deletedAuthorityIds[$rowId] = true;
-            } else {
-                $movedAuthorityIds[$rowId] = true;
-            }
+            $movedAuthorityIds[$rowId] = true;
         }
 
         $deletedAuthorityIds = array_keys($deletedAuthorityIds);
@@ -734,7 +768,7 @@ class Authority extends DbObject
             return ['status' => false, 'text' => 'The rules attached to this authority could not be loaded.'];
         }
 
-        if ($rulesDisposition === self::DELETION_REASSIGN && !empty($ruleRows) && $parentHolonId <= 0 && $parentAuthorityId <= 0) {
+        if (!empty($ruleRows) && $targetHolonId <= 0 && $parentAuthorityId <= 0) {
             return ['status' => false, 'text' => \dbObject\Organization::formatLexiconText('Rules can only be moved when a parent holon or authority exists.')];
         }
 
@@ -765,8 +799,11 @@ class Authority extends DbObject
             return 0;
         };
 
+        $ownsTransaction = !$pdo->inTransaction();
         try {
-            $pdo->beginTransaction();
+            if ($ownsTransaction) {
+                $pdo->beginTransaction();
+            }
 
             if ($reversesCompleteDelegation) {
                 $parentAuthority->set('is_shell', 0);
@@ -782,7 +819,7 @@ class Authority extends DbObject
                     throw new \RuntimeException('The authority to move no longer exists.');
                 }
 
-                $movedAuthority->set('IDholon', $parentHolonId);
+                $movedAuthority->set('IDholon', $targetHolonId);
                 $movedAuthority->set('IDauthority_parent', $nearestSurvivingAuthority($movedAuthorityId) ?: null);
                 $saveResult = $movedAuthority->save();
                 if (empty($saveResult['status'])) {
@@ -790,10 +827,11 @@ class Authority extends DbObject
                 }
             }
 
-            $propertyReferenceResult = $this->moveAuthorityPropertyReferences($movedAuthorityIds, $parentHolonId);
+            $propertyReferenceResult = $this->moveAuthorityPropertyReferences($movedAuthorityIds, $targetHolonId, [], true, $deletedAuthorityIds);
             if (empty($propertyReferenceResult['status'])) {
                 throw new \RuntimeException((string)($propertyReferenceResult['text'] ?? 'The authority property references could not be moved.'));
             }
+            $this->detachTemplateAuthorityReferences($deletedAuthorityIds);
 
             $deletedRuleIds = [];
             $movedRuleIds = [];
@@ -801,15 +839,6 @@ class Authority extends DbObject
                 $ruleId = (int)($ruleRow['id'] ?? 0);
                 $ruleAuthorityId = (int)($ruleRow['IDauthority'] ?? 0);
                 if ($ruleId <= 0) {
-                    continue;
-                }
-
-                if ($rulesDisposition === self::DELETION_DELETE) {
-                    $rule = new Rule();
-                    if (!$rule->load($ruleId) || !$rule->delete()) {
-                        throw new \RuntimeException('A rule could not be deleted.');
-                    }
-                    $deletedRuleIds[] = $ruleId;
                     continue;
                 }
 
@@ -824,7 +853,7 @@ class Authority extends DbObject
                     $rule->set('IDholon', null);
                 } else {
                     $rule->set('IDauthority', null);
-                    $rule->set('IDholon', $parentHolonId);
+                    $rule->set('IDholon', $targetHolonId);
                 }
                 $reviewDate = new \DateTimeImmutable('today');
                 $rule->set('review_date', $reviewDate->format('Y-m-d'));
@@ -848,9 +877,11 @@ class Authority extends DbObject
                 }
             }
 
-            $pdo->commit();
+            if ($ownsTransaction && $pdo->inTransaction()) {
+                $pdo->commit();
+            }
         } catch (\Throwable $exception) {
-            if ($pdo->inTransaction()) {
+            if ($ownsTransaction && $pdo->inTransaction()) {
                 $pdo->rollBack();
             }
             self::registerDbError('authority_delete_transaction', ['authority_id' => $authorityId], $exception);
@@ -875,6 +906,7 @@ class Authority extends DbObject
             'deletedRuleIds' => $deletedRuleIds,
             'movedRuleIds' => $movedRuleIds,
             'movedPropertyReferenceCount' => (int)($propertyReferenceResult['movedCount'] ?? 0),
+            'removedPropertyReferenceCount' => (int)($propertyReferenceResult['removedCount'] ?? 0),
             'reactivatedShellId' => $reversesCompleteDelegation ? (int)$parentAuthority->getId() : 0,
             'plan' => [
                 'authority' => $authorityDisposition,
@@ -968,7 +1000,7 @@ class Authority extends DbObject
         while (!empty($pendingIds)) {
             $currentId = (int)array_shift($pendingIds);
             $children = self::fetchAll(
-                'SELECT `id`, `IDauthority_parent` FROM `authority` WHERE `IDauthority_parent` = :authority_id ORDER BY `id` ASC',
+                'SELECT `id`, `IDauthority_parent`, `IDholon` FROM `authority` WHERE `IDauthority_parent` = :authority_id ORDER BY `id` ASC',
                 ['authority_id' => $currentId]
             );
             if (!is_array($children)) {
@@ -1010,21 +1042,65 @@ class Authority extends DbObject
         );
     }
 
-    protected function moveAuthorityPropertyReferences(array $authorityIds, $targetHolonId, array $replacementAuthorityIds = [], $removeFromSources = true)
+    protected function detachTemplateAuthorityReferences(array $authorityIds)
     {
         $authorityIds = array_values(array_unique(array_filter(array_map('intval', $authorityIds))));
+        if (empty($authorityIds)) {
+            return;
+        }
+
+        $params = [];
+        $placeholders = [];
+        foreach ($authorityIds as $index => $authorityId) {
+            $key = 'authority_' . $index;
+            $placeholders[] = ':' . $key;
+            $params[$key] = $authorityId;
+        }
+        $rows = self::fetchAll(
+            'SELECT `id` FROM `authority` WHERE `IDauthority_template` IN (' . implode(', ', $placeholders) . ')',
+            $params
+        );
+        if (!is_array($rows)) {
+            throw new \RuntimeException('The template authority references could not be loaded.');
+        }
+        $deletedLookup = array_fill_keys($authorityIds, true);
+        foreach ($rows as $row) {
+            $instanceId = (int)($row['id'] ?? 0);
+            if ($instanceId <= 0 || isset($deletedLookup[$instanceId])) {
+                continue;
+            }
+            $instance = new self();
+            if (!$instance->load($instanceId)) {
+                throw new \RuntimeException('A template authority instance no longer exists.');
+            }
+            $instance->set('IDauthority_template', null);
+            $instance->set('template_origin_lost', true);
+            $saveResult = $instance->save();
+            if (empty($saveResult['status'])) {
+                throw new \RuntimeException((string)($saveResult['text'] ?? 'A template authority reference could not be removed.'));
+            }
+            unset(self::$preload['authority_' . $instanceId]);
+        }
+    }
+
+    protected function moveAuthorityPropertyReferences(array $authorityIds, $targetHolonId, array $replacementAuthorityIds = [], $removeFromSources = true, array $deletedAuthorityIds = [])
+    {
+        $authorityIds = array_values(array_unique(array_filter(array_map('intval', $authorityIds))));
+        $deletedAuthorityIds = array_values(array_unique(array_filter(array_map('intval', $deletedAuthorityIds))));
         $targetHolonId = (int)$targetHolonId;
-        if (empty($authorityIds) || $targetHolonId <= 0) {
-            return ['status' => true, 'movedCount' => 0];
+        if (empty($authorityIds) && empty($deletedAuthorityIds)) {
+            return ['status' => true, 'movedCount' => 0, 'removedCount' => 0];
+        }
+        if (!empty($authorityIds) && $targetHolonId <= 0) {
+            return ['status' => false, 'text' => 'The target holon for authority references is missing.'];
         }
 
         $rows = self::fetchAll(
-            'SELECT hp.`id`, hp.`IDholon`, hp.`IDproperty`, hp.`value`, hp.`position`, hp.`mandatory`, hp.`locked`,
+            'SELECT hp.`id`, hp.`IDholon`, hp.`IDproperty`, hp.`value`, hp.`active`, hp.`position`, hp.`mandatory`, hp.`locked`,
                     p.`IDpropertyformat`
              FROM `holonproperty` hp
              INNER JOIN `property` p ON p.`id` = hp.`IDproperty`
-             WHERE hp.`active` = 1
-               AND p.`listitemtype` = :list_item_type
+             WHERE p.`listitemtype` = :list_item_type
                AND p.`IDpropertyformat` IN (:format_list, :format_html_list)',
             [
                 'list_item_type' => Property::LIST_ITEM_AUTHORITY,
@@ -1037,51 +1113,71 @@ class Authority extends DbObject
         }
 
         $authorityLookup = array_fill_keys($authorityIds, true);
+        $deletedAuthorityLookup = array_fill_keys($deletedAuthorityIds, true);
         $replacementAuthorityIds = array_filter(array_map('intval', $replacementAuthorityIds));
         $targetItemsByPropertyId = [];
         $sourceUpdates = [];
         $movedCount = 0;
+        $removedCount = 0;
         foreach ($rows as $row) {
             $sourceHolonId = (int)($row['IDholon'] ?? 0);
-            if ($sourceHolonId <= 0 || $sourceHolonId === $targetHolonId) {
+            if ($sourceHolonId <= 0) {
                 continue;
             }
 
+            $canMove = !empty($row['active']) && $sourceHolonId !== $targetHolonId;
             $formatId = (int)($row['IDpropertyformat'] ?? 0);
             $items = $this->parseAuthorityPropertyItems($formatId, $row['value'] ?? '');
             $remainingItems = [];
             $movedItems = [];
+            $removedFromRow = 0;
+            $replacedInRow = 0;
             foreach ($items as $item) {
                 $itemAuthorityId = $this->getAuthorityPropertyItemId($item);
-                if ($itemAuthorityId > 0 && isset($authorityLookup[$itemAuthorityId])) {
+                if ($itemAuthorityId > 0 && isset($deletedAuthorityLookup[$itemAuthorityId])) {
+                    $removedFromRow += 1;
+                    $removedCount += 1;
+                } elseif ($canMove && $itemAuthorityId > 0 && isset($authorityLookup[$itemAuthorityId])) {
                     $movedItems[] = $this->replaceAuthorityPropertyItemId(
                         $item,
                         $replacementAuthorityIds[$itemAuthorityId] ?? $itemAuthorityId
                     );
                     $movedCount += 1;
+                    if (!$removeFromSources) {
+                        $remainingItems[] = $item;
+                    }
+                } elseif ($removeFromSources && empty($row['active']) && $sourceHolonId !== $targetHolonId
+                    && $itemAuthorityId > 0 && isset($authorityLookup[$itemAuthorityId])) {
+                    $removedFromRow += 1;
+                    $removedCount += 1;
+                } elseif ($sourceHolonId === $targetHolonId && isset($replacementAuthorityIds[$itemAuthorityId])) {
+                    $remainingItems[] = $this->replaceAuthorityPropertyItemId($item, $replacementAuthorityIds[$itemAuthorityId]);
+                    $replacedInRow += 1;
                 } else {
                     $remainingItems[] = $item;
                 }
             }
-            if (empty($movedItems)) {
+            if (empty($movedItems) && $removedFromRow === 0 && $replacedInRow === 0) {
                 continue;
             }
 
             $propertyId = (int)($row['IDproperty'] ?? 0);
             if ($propertyId <= 0) {
-                continue;
+                return ['status' => false, 'text' => 'An authority property reference has no property.'];
             }
-            if (!isset($targetItemsByPropertyId[$propertyId])) {
-                $targetItemsByPropertyId[$propertyId] = [
-                    'formatId' => $formatId,
-                    'items' => [],
-                    'source' => $row,
-                ];
+            if (!empty($movedItems)) {
+                if (!isset($targetItemsByPropertyId[$propertyId])) {
+                    $targetItemsByPropertyId[$propertyId] = [
+                        'formatId' => $formatId,
+                        'items' => [],
+                        'source' => $row,
+                    ];
+                }
+                foreach ($movedItems as $movedItem) {
+                    $targetItemsByPropertyId[$propertyId]['items'][] = $movedItem;
+                }
             }
-            foreach ($movedItems as $movedItem) {
-                $targetItemsByPropertyId[$propertyId]['items'][] = $movedItem;
-            }
-            if ($removeFromSources) {
+            if ($removeFromSources || $removedFromRow > 0 || $replacedInRow > 0) {
                 $sourceUpdates[] = [
                     'row' => $row,
                     'formatId' => $formatId,
@@ -1096,7 +1192,10 @@ class Authority extends DbObject
                 return ['status' => false, 'text' => 'An authority property reference no longer exists.'];
             }
             $value = $this->serializeAuthorityPropertyItems((int)$sourceUpdate['formatId'], $sourceUpdate['items'], $sourceProperty->get('value'));
-            if (PropertyFormat::isEmptyValue((int)$sourceUpdate['formatId'], $value)) {
+            if (empty($sourceUpdate['items']) && (
+                (int)$sourceUpdate['formatId'] === PropertyFormat::FORMAT_LIST
+                || PropertyFormat::isEmptyValue((int)$sourceUpdate['formatId'], $value)
+            )) {
                 $sourceProperty->set('active', false);
                 $sourceProperty->set('value', null);
             } else {
@@ -1151,7 +1250,7 @@ class Authority extends DbObject
             }
         }
 
-        return ['status' => true, 'movedCount' => $movedCount];
+        return ['status' => true, 'movedCount' => $movedCount, 'removedCount' => $removedCount];
     }
 
     protected function parseAuthorityPropertyItems($formatId, $value)

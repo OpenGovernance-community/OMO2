@@ -4,6 +4,7 @@ require_once dirname(__DIR__) . '/bootstrap.php';
 use dbObject\Event;
 use dbObject\Holon;
 use dbObject\Organization;
+use dbObject\Project;
 
 header('Content-Type: application/json; charset=UTF-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
@@ -105,6 +106,8 @@ if ($deleteDocuments) {
 $pdo = \dbObject\DbObject::getPdo();
 $startedTransaction = $pdo instanceof \PDO && !$pdo->inTransaction();
 $deleted = false;
+$projectId = (int)$event->get('IDproject');
+$eventTitle = (string)$event->get('title');
 try {
     if ($startedTransaction) {
         $pdo->beginTransaction();
@@ -136,6 +139,13 @@ try {
         'status' => false,
         'message' => 'Impossible de supprimer cet événement.',
     ], 422);
+}
+
+if ($projectId > 0) {
+    $project = new Project();
+    if ($project->load($projectId) && (int)$project->get('IDorganization') === $organizationId) {
+        $project->recordAssociationHistory('event', $eventId, $eventTitle, 'deleted', $currentUserId);
+    }
 }
 
 omoCalendarDeleteResponse([

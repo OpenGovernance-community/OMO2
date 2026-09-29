@@ -445,7 +445,8 @@ class Event extends DbObject
         return $displayNameCache[$cacheKey];
     }
 
-    protected function getEffectiveInvitationTargets($organizationId, ?array $proposedInvitations = null): array
+    /** Callers supplying invitations must validate them in the current organization first. */
+    public function getEffectiveInvitationTargets($organizationId, ?array $proposedInvitations = null): array
     {
         $organizationId = (int)$organizationId;
         if ($organizationId <= 0) {

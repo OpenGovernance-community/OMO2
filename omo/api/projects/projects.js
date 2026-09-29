@@ -278,6 +278,20 @@
         });
     }
 
+    function loadProjectResource(tab) {
+        loadProjectDetailTab(tab, {
+            name: 'resource',
+            contentSelector: '[data-omo-project-resource-content]',
+            urlAttribute: 'data-resource-url',
+            loadedAttribute: 'data-resource-loaded',
+            loadingAttribute: 'data-resource-loading',
+            loadingTextKey: 'documentsLoading',
+            loadingFallback: 'Chargement...',
+            errorTextKey: 'documentsError',
+            errorFallback: 'Impossible de charger les éléments.'
+        });
+    }
+
     function loadProjectHistory(tab) {
         loadProjectDetailTab(tab, {
             name: 'history',
@@ -290,6 +304,19 @@
             errorTextKey: 'historyError',
             errorFallback: 'Impossible de charger l’historique.'
         });
+    }
+
+    function refreshProjectHistory(projectId) {
+        var panel = root.querySelector('#omo-project-detail-history-' + String(projectId));
+        if (!panel) {
+            return;
+        }
+        panel.removeAttribute('data-omo-project-detail-history-loaded');
+        panel.removeAttribute('data-omo-project-detail-history-loading');
+        var tab = root.querySelector('[data-omo-project-detail-history-tab][data-generic-tab-target="' + panel.id + '"]');
+        if (tab && !panel.hidden) {
+            loadProjectHistory(tab);
+        }
     }
 
     function revealRoot() {
@@ -697,6 +724,142 @@
         });
     }
 
+    function refreshProjectResource(projectId, type) {
+        refreshProjectHistory(projectId);
+        var panel = root.querySelector('#omo-project-detail-' + (type === 'indicator' ? 'indicators-' : 'recurring-tasks-') + String(projectId));
+        if (!panel) {
+            return;
+        }
+        panel.removeAttribute('data-resource-loaded');
+        panel.removeAttribute('data-resource-loading');
+        var tab = root.querySelector('[data-omo-project-resource-tab][data-generic-tab-target="' + panel.id + '"]');
+        if (tab && !panel.hidden) {
+            loadProjectResource(tab);
+        }
+    }
+
+    function openProjectResourcePicker(url, title) {
+        if (!url || typeof window.commonTopbarOpenModal !== 'function') {
+            return;
+        }
+        window.commonTopbarOpenModal(title || '', '<p class="generic-description generic-description--small">' + escapeHtml(texts.loading || '') + '</p>', 'html');
+        fetch(resolveUrl(url), {credentials: 'same-origin', headers: {'X-Requested-With': 'XMLHttpRequest'}, cache: 'no-store'})
+            .then(function (response) { return response.json().then(function (data) { if (!response.ok || !data.success) { throw new Error(data.message || texts.actionError); } return data; }); })
+            .then(function (data) {
+                var host = document.getElementById('commonTopbarModalBody');
+                if (!host) { return; }
+                var labels = data.labels || {};
+                var type = data.type;
+                var projectId = Number(data.projectId || 0);
+                var uid = String(Date.now());
+                var existingId = 'omo-project-resource-existing-' + uid;
+                var newId = 'omo-project-resource-new-' + uid;
+                var createHtml = '';
+                if (data.canCreate) {
+                    createHtml = '<button type="button" class="generic-tabs__tab" data-generic-tab data-generic-tab-target="' + newId + '">' + escapeHtml(labels.new) + '</button>';
+                }
+                host.innerHTML = '<div class="generic-tabs omo-document-embed-picker omo-project-document-picker omo-project-resource-picker generic-drawer-content" data-generic-tabs>'
+                    + '<div class="generic-tabs__list"><button type="button" class="generic-tabs__tab is-active" data-generic-tab data-generic-tab-target="' + existingId + '">' + escapeHtml(labels.existing) + '</button>' + createHtml + '</div>'
+                    + '<div class="generic-tabs__panels"><section id="' + existingId + '" class="generic-tabs__panel" data-generic-tab-panel>'
+                    + '<div class="omo-resource-picker omo-resource-picker--mobile-scope"><aside class="omo-resource-picker__navigation" data-resource-scope></aside>'
+                    + '<div class="omo-resource-picker__content"><label class="omo-resource-picker__quick-search"><img src="/common/assets/icon-topbar-search.png" alt="" aria-hidden="true"><input type="search" class="generic-form-control" data-resource-search placeholder="' + escapeHtml(labels.search) + '" aria-label="' + escapeHtml(labels.search) + '"></label>'
+                    + '<div class="omo-document-embed-picker__field"><select class="generic-form-control omo-document-embed-picker__select" size="10" data-resource-select aria-label="' + escapeHtml(labels.existing) + '"></select></div>'
+                    + '<div class="omo-document-embed-picker__preview"><div class="omo-document-embed-picker__preview-title" data-resource-title></div><div class="omo-document-embed-picker__preview-description" data-resource-description hidden></div></div>'
+                    + '<div class="omo-document-embed-picker__actions"><button type="button" class="generic-action-button generic-action-button--secondary" data-resource-cancel>' + escapeHtml(labels.cancel) + '</button><button type="button" class="generic-action-button generic-action-button--main" data-resource-attach disabled>' + escapeHtml(labels.attach) + '</button></div></div></div></section>'
+                    + (data.canCreate ? '<section id="' + newId + '" class="generic-tabs__panel" data-generic-tab-panel hidden><form class="generic-form-stack" data-resource-create>'
+                        + '<label class="generic-form-field"><span class="generic-form-label">' + escapeHtml(labels.name) + '</span><input class="generic-form-control" name="resource_name" maxlength="' + (type === 'indicator' ? '190' : '255') + '" required></label>'
+                        + '<label class="generic-form-field"><span class="generic-form-label">' + escapeHtml(labels.description) + '</span><textarea class="generic-form-control" name="description" rows="3"></textarea></label>'
+                        + (type === 'recurring_task' ? '<div class="generic-form-grid generic-form-grid--pair"><label class="generic-form-field"><span class="generic-form-label">' + escapeHtml(labels.frequency) + '</span><select class="generic-form-control" name="frequency" data-resource-frequency>' + Object.keys(data.frequencyLabels || {}).map(function (key) { return '<option value="' + escapeHtml(key) + '">' + escapeHtml(data.frequencyLabels[key]) + '</option>'; }).join('') + '</select></label><label class="generic-form-field"><span class="generic-form-label">' + escapeHtml(labels.schedule) + '</span><select class="generic-form-control" name="schedule" data-resource-schedule></select></label></div>' : '')
+                        + '<div class="generic-form-actions"><button type="submit" class="generic-action-button generic-action-button--main">' + escapeHtml(labels.create) + '</button></div></form></section>' : '')
+                    + '</div><p class="generic-feedback" data-resource-error hidden></p></div>';
+                if (typeof window.initGenericComponents === 'function') { window.initGenericComponents(host); }
+                var search = host.querySelector('[data-resource-search]');
+                var select = host.querySelector('[data-resource-select]');
+                var attach = host.querySelector('[data-resource-attach]');
+                var previewTitle = host.querySelector('[data-resource-title]');
+                var description = host.querySelector('[data-resource-description]');
+                var error = host.querySelector('[data-resource-error]');
+                var items = Array.isArray(data.items) ? data.items : [];
+                var scopePicker = null;
+                function showError(message) { error.textContent = String(message || labels.error); error.hidden = false; }
+                function render() {
+                    var query = String(search.value || '').trim().toLowerCase();
+                    var selected = select.value;
+                    select.innerHTML = '';
+                    items.filter(function (item) {
+                        var holonId = Number(item.contextHolonId || 0);
+                        return (!scopePicker || holonId <= 0 || scopePicker.matches(holonId))
+                            && (!query || [item.title, item.description, item.contextLabel].join(' ').toLowerCase().indexOf(query) !== -1);
+                    }).forEach(function (item) {
+                        var option = document.createElement('option');
+                        option.value = String(item.id);
+                        option.textContent = String(item.title || '') + (item.contextLabel ? ' - ' + String(item.contextLabel) : '');
+                        select.appendChild(option);
+                    });
+                    select.value = selected;
+                    var item = items.find(function (candidate) { return String(candidate.id) === select.value; });
+                    previewTitle.textContent = item ? String(item.title || '') : String(labels.none || '');
+                    description.textContent = item ? String(item.description || '') : '';
+                    description.hidden = !item || !item.description;
+                    attach.disabled = !item;
+                }
+                scopePicker = typeof window.omoMountHolonScopePicker === 'function'
+                    ? window.omoMountHolonScopePicker({
+                        host: host.querySelector('[data-resource-scope]'),
+                        organizationId: Number(root.getAttribute('data-omo-projects-oid') || 0),
+                        initialHolonId: Number(data.projectHolonId || routeCid || 0),
+                        initialScope: 'local',
+                        labels: data.scopeLabels || {},
+                        onChange: render
+                    })
+                    : null;
+                search.addEventListener('input', render);
+                select.addEventListener('change', render);
+                host.querySelector('[data-resource-cancel]').addEventListener('click', function () { window.commonTopbarCloseModal(); });
+                render();
+                attach.addEventListener('click', function () {
+                    var resourceId = Number(select.value || 0);
+                    if (resourceId <= 0) { return; }
+                    attach.disabled = true;
+                    postProjectAction(projectId, 'attach_resource', {resource_type: type, resource_id: resourceId})
+                        .then(function () { refreshProjectResource(projectId, type); window.commonTopbarCloseModal(); })
+                        .catch(function (failure) { attach.disabled = false; showError(failure.message); });
+                });
+                var create = host.querySelector('[data-resource-create]');
+                if (create) {
+                    var frequency = create.querySelector('[data-resource-frequency]');
+                    var schedule = create.querySelector('[data-resource-schedule]');
+                    function renderSchedule() {
+                        if (!frequency || !schedule) { return; }
+                        schedule.innerHTML = '';
+                        (data.scheduleOptions[frequency.value] || []).forEach(function (item) { var option = document.createElement('option'); option.value = String(item.value); option.textContent = String(item.label); schedule.appendChild(option); });
+                    }
+                    if (frequency) { frequency.addEventListener('change', renderSchedule); renderSchedule(); }
+                    create.addEventListener('submit', function (event) {
+                        event.preventDefault();
+                        if (!create.reportValidity()) { return; }
+                        var payload = new FormData(create);
+                        var name = String(payload.get('resource_name') || '').trim();
+                        payload.delete('resource_name');
+                        payload.set('oid', String(root.getAttribute('data-omo-projects-oid') || 0));
+                        payload.set('cid', String(data.projectHolonId || 0));
+                        if (type === 'indicator') { payload.set('stats_action', 'save_indicator'); payload.set('name', name); payload.set('reference_type', 'none'); }
+                        else { payload.set('activity_action', 'save_activity'); payload.set('title', name); }
+                        var button = create.querySelector('[type="submit"]');
+                        button.disabled = true;
+                        fetch(resolveUrl(type === 'indicator' ? '/omo/api/stats/action.php' : '/omo/api/activities/action.php'), {method: 'POST', credentials: 'same-origin', body: payload, headers: {'X-Requested-With': 'XMLHttpRequest'}})
+                            .then(function (response) { return response.json().then(function (result) { if (!response.ok || !(result.success || result.status)) { throw new Error(result.message || labels.error); } return result; }); })
+                            .then(function (result) { var resourceId = Number(result.id || (String(result.detailUrl || '').match(/[?&]id=(\d+)/) || [])[1] || 0); if (resourceId <= 0) { throw new Error(labels.error); } return postProjectAction(projectId, 'attach_resource', {resource_type: type, resource_id: resourceId}); })
+                            .then(function () { refreshProjectResource(projectId, type); window.commonTopbarCloseModal(); })
+                            .catch(function (failure) { button.disabled = false; showError(failure.message); });
+                    });
+                }
+            }).catch(function (failure) {
+                var host = document.getElementById('commonTopbarModalBody');
+                if (host) { host.textContent = failure.message || texts.actionError; }
+            });
+    }
+
     function openProjectDocumentPicker(url) {
         if (!url || typeof window.commonTopbarOpenModal !== 'function') {
             return;
@@ -739,7 +902,7 @@
                 + '<button type="button" class="generic-tabs__tab" data-generic-tab data-generic-tab-target="' + newTabId + '">' + escapeHtml(texts.documentsPickerNew || 'Nouveau document') + '</button>'
                 + '</div><div class="generic-tabs__panels">'
                 + '<section id="' + existingTabId + '" class="generic-tabs__panel" data-generic-tab-panel>'
-                + '<div class="omo-resource-picker"><aside class="omo-resource-picker__navigation" data-omo-project-document-picker-scope></aside>'
+                + '<div class="omo-resource-picker omo-resource-picker--mobile-scope"><aside class="omo-resource-picker__navigation" data-omo-project-document-picker-scope></aside>'
                 + '<div class="omo-resource-picker__content">'
                 + '<label class="omo-resource-picker__quick-search"><img src="/common/assets/icon-topbar-search.png" alt="" aria-hidden="true"><input type="search" class="generic-form-control" data-omo-project-document-picker-search aria-label="' + escapeHtml(texts.documentsPickerSearch || 'Rechercher un document') + '" placeholder="' + escapeHtml(texts.documentsPickerSearch || 'Rechercher un document') + '"></label>'
                 + '<div class="omo-document-embed-picker__field"><select class="generic-form-control omo-document-embed-picker__select" data-omo-project-document-picker-select aria-label="' + escapeHtml(texts.documentsPickerVisible || 'Documents visibles') + '" size="10"></select></div>'
@@ -2499,6 +2662,12 @@
             return;
         }
 
+        var resourceTab = event.target.closest('[data-omo-project-resource-tab]');
+        if (resourceTab) {
+            loadProjectResource(resourceTab);
+            return;
+        }
+
         var historyTab = event.target.closest('[data-omo-project-detail-history-tab]');
         if (historyTab) {
             loadProjectHistory(historyTab);
@@ -2510,6 +2679,34 @@
             event.preventDefault();
             event.stopPropagation();
             openProjectDocumentPicker(addDocumentButton.getAttribute('data-omo-project-detail-add-document-url') || '');
+            return;
+        }
+
+        var addResourceButton = event.target.closest('[data-omo-project-resource-add]');
+        if (addResourceButton) {
+            event.preventDefault();
+            openProjectResourcePicker(addResourceButton.getAttribute('data-resource-url') || '', addResourceButton.getAttribute('data-resource-title') || '');
+            return;
+        }
+
+        var detachResourceButton = event.target.closest('[data-omo-project-resource-detach]');
+        if (detachResourceButton) {
+            event.preventDefault();
+            var resourceProjectId = Number(detachResourceButton.getAttribute('data-project-id') || 0);
+            var resourceType = detachResourceButton.getAttribute('data-resource-type') || '';
+            var resourceId = Number(detachResourceButton.getAttribute('data-resource-id') || 0);
+            detachResourceButton.disabled = true;
+            postProjectAction(resourceProjectId, 'detach_resource', {resource_type: resourceType, resource_id: resourceId})
+                .then(function () { refreshProjectResource(resourceProjectId, resourceType); })
+                .catch(function (failure) { detachResourceButton.disabled = false; if (typeof window.omoNotify === 'function') { window.omoNotify(failure.message || texts.actionError, 'error'); } });
+            return;
+        }
+
+        var resourceLink = event.target.closest('[data-omo-project-resource-link]');
+        if (resourceLink) {
+            event.preventDefault();
+            if (typeof window.omoOpenDrawerHashState === 'function') { window.omoOpenDrawerHashState(String(resourceLink.getAttribute('href') || '').replace(/^#/, '')); }
+            else { window.location.hash = resourceLink.getAttribute('href') || ''; }
             return;
         }
 
@@ -3128,6 +3325,7 @@
         if (!Number.isInteger(projectId) || projectId <= 0) {
             return;
         }
+        refreshProjectHistory(projectId);
         var panel = root.querySelector('#omo-project-detail-documents-' + String(projectId));
         var tab = root.querySelector('[data-omo-project-detail-documents-tab][data-generic-tab-target="omo-project-detail-documents-' + String(projectId) + '"]');
         var content = panel ? panel.querySelector('[data-omo-project-detail-documents-content]') : null;
@@ -3148,6 +3346,7 @@
         if (!Number.isInteger(projectId) || projectId <= 0) {
             return;
         }
+        refreshProjectHistory(projectId);
         var panel = root.querySelector('#omo-project-detail-events-' + String(projectId));
         var tab = root.querySelector('[data-omo-project-detail-events-tab][data-generic-tab-target="omo-project-detail-events-' + String(projectId) + '"]');
         var content = panel ? panel.querySelector('[data-omo-project-detail-events-content]') : null;
