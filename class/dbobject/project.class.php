@@ -873,6 +873,66 @@ class Project extends DbObject
         }
     }
 
+    public function recordAssociationHistory(string $resourceType, int $resourceId, string $resourceTitle, string $change, int $authorUserId = 0): void
+    {
+        $resources = [
+            'document' => 'du document',
+            'event' => 'de l’événement',
+            'indicator' => 'de l’indicateur',
+            'recurring_task' => 'de la tâche récurrente',
+        ];
+        if (!isset($resources[$resourceType]) || !in_array($change, ['added', 'removed', 'deleted'], true)) {
+            return;
+        }
+
+        $projectId = (int)$this->getId();
+        $organizationId = (int)$this->get('IDorganization');
+        if ($projectId <= 0 || $organizationId <= 0 || $resourceId <= 0) {
+            return;
+        }
+
+        $title = History::sanitizeReferenceLabel($resourceTitle);
+        if ($title === '') {
+            $title = '#' . $resourceId;
+        }
+        $resourceLabel = $resources[$resourceType];
+        $prefix = match ($change) {
+            'added' => 'Ajout ',
+            'removed' => 'Retrait ',
+            'deleted' => 'Suppression ',
+        };
+        $preposition = $change === 'added' ? ' au projet ' : ' du projet ';
+        $content = $prefix . $resourceLabel . ' « ' . $title . ' »' . $preposition
+            . History::buildReferenceToken('project', $projectId, (string)$this->get('title')) . '.';
+        if ($authorUserId <= 0 && function_exists('commonGetCurrentUserId')) {
+            $authorUserId = (int)commonGetCurrentUserId();
+        }
+
+        try {
+            $result = History::createEntry(
+                $organizationId,
+                $authorUserId,
+                'project_' . $resourceType . '_' . $change,
+                $content,
+                [
+                    'targetType' => 'project',
+                    'targetId' => $projectId,
+                    'resourceType' => $resourceType,
+                    'resourceId' => $resourceId,
+                    'resourceTitle' => $title,
+                    'change' => $change,
+                ],
+                'project',
+                $projectId
+            );
+            if (!is_array($result) || empty($result['status'])) {
+                error_log('Project association history could not be saved for project ' . $projectId . '.');
+            }
+        } catch (\Throwable $exception) {
+            error_log('Project association history failed for project ' . $projectId . ': ' . $exception->getMessage());
+        }
+    }
+
     public function save()
     {
         $historyBeforeState = (int)$this->getId() > 0 ? self::getStoredHistoryState((int)$this->getId()) : null;

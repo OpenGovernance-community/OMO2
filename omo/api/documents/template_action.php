@@ -1,5 +1,6 @@
 <?php
 require_once dirname(__DIR__) . '/bootstrap.php';
+require_once dirname(__DIR__) . '/projects/shared.php';
 
 use dbObject\Document;
 use dbObject\Project;
@@ -60,10 +61,12 @@ if ($projectId > 0) {
         !$project->load($projectId)
         || (int)$project->get('IDorganization') !== $organizationId
         || (int)$project->get('active') !== 1
-        || !(($projectHolon = $project->getHolon()) instanceof \dbObject\Holon)
-        || $holonId !== (int)$projectHolon->getId()
-        || !$projectHolon->isAllowed('CAN_CREATE_DOCUMENT', true, $userId)
+        || !omoProjectsCanCreateDocument($project, $userId)
     ) {
+        $error('Accès refusé.', 403);
+    }
+    $projectHolon = $project->getHolon();
+    if ($holonId !== ($projectHolon instanceof \dbObject\Holon ? (int)$projectHolon->getId() : 0)) {
         $error('Accès refusé.', 403);
     }
 }
@@ -89,6 +92,7 @@ if ($projectId > 0) {
             $duplicate->delete();
             $error('Impossible d associer le document au projet.');
         }
+        $project->recordAssociationHistory('document', (int)$duplicate->getId(), (string)$duplicate->get('title'), 'added', $userId);
     }
 }
 

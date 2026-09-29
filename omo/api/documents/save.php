@@ -1,5 +1,6 @@
 <?php
 require_once dirname(__DIR__) . '/bootstrap.php';
+require_once dirname(__DIR__) . '/projects/shared.php';
 
 header('Content-Type: application/json; charset=UTF-8');
 
@@ -41,8 +42,7 @@ if ($projectId > 0) {
         !$project->load($projectId)
         || (int)$project->get('IDorganization') !== $organizationId
         || (int)$project->get('active') !== 1
-        || !(($projectHolon = $project->getHolon()) instanceof \dbObject\Holon)
-        || !$projectHolon->isAllowed('CAN_CREATE_DOCUMENT', true, $currentUserId)
+        || !\omoProjectsCanCreateDocument($project, $currentUserId)
     ) {
         http_response_code(403);
         echo json_encode(array(
@@ -52,7 +52,8 @@ if ($projectId > 0) {
         exit;
     }
 
-    if ($holonId > 0 && $holonId !== (int)$projectHolon->getId()) {
+    $projectHolon = $project->getHolon();
+    if ($holonId !== ($projectHolon instanceof \dbObject\Holon ? (int)$projectHolon->getId() : 0)) {
         http_response_code(403);
         echo json_encode(array(
             'status' => false,
@@ -194,6 +195,7 @@ if ($projectId > 0) {
             ));
             exit;
         }
+        $project->recordAssociationHistory('document', (int)$document->getId(), (string)$document->get('title'), 'added', $currentUserId);
     }
 }
 

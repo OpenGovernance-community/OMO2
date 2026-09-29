@@ -35,10 +35,12 @@ if (
 $projectHolon = $project->getHolon();
 $rootHolon = $context['rootHolon'] ?? null;
 if (
-    !($projectHolon instanceof Holon)
-    || !($rootHolon instanceof Holon)
-    || !$projectHolon->isDescendantOf((int)$rootHolon->getId(), true)
-    || !$projectHolon->canViewDetail()
+    $projectHolon instanceof Holon
+    && (
+        !($rootHolon instanceof Holon)
+        || !$projectHolon->isDescendantOf((int)$rootHolon->getId(), true)
+        || !$projectHolon->canViewDetail()
+    )
 ) {
     $respond(false, ['message' => omoProjectsT('projects.error.not_found')], 404);
 }
@@ -89,7 +91,10 @@ $templates->loadDocumentTemplatesForOrganization($organizationId);
 $templatePayload = [];
 foreach ($templates as $template) {
     if (!($template instanceof \dbObject\Document)
-        || !$template->canUseAsDocumentTemplateInOrganizationContext($organizationId, (int)$projectHolon->getId())) {
+        || !$template->canUseAsDocumentTemplateInOrganizationContext(
+            $organizationId,
+            $projectHolon instanceof Holon ? (int)$projectHolon->getId() : null
+        )) {
         continue;
     }
 
@@ -106,10 +111,10 @@ foreach ($templates as $template) {
 
 $respond(true, [
     'projectId' => $projectId,
-    'projectHolonId' => (int)$projectHolon->getId(),
+    'projectHolonId' => $projectHolon instanceof Holon ? (int)$projectHolon->getId() : 0,
     'canCreate' => true,
     'createUrl' => '/omo/api/documents/create.php?oid=' . rawurlencode((string)$organizationId)
-        . '&cid=' . rawurlencode((string)(int)$projectHolon->getId())
+        . ($projectHolon instanceof Holon ? '&cid=' . rawurlencode((string)(int)$projectHolon->getId()) : '')
         . '&project_id=' . rawurlencode((string)$projectId)
         . '&editor_host=project_picker',
     'documents' => $payload,

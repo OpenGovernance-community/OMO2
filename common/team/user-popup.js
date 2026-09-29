@@ -72,6 +72,27 @@
         });
     });
 
+    root.addEventListener('click', function (event) {
+        var control = event.target.closest('[data-user-availability-url]');
+        var host;
+        var url;
+
+        if (!control || !root.contains(control)) {
+            return;
+        }
+
+        url = String(control.getAttribute('data-user-availability-url') || '').trim();
+        host = root.querySelector('[data-user-availability-host="1"]');
+        if (url === '' || !host) {
+            return;
+        }
+
+        event.preventDefault();
+        host.setAttribute('data-user-fragment-url', url);
+        host.removeAttribute('data-user-fragment-loaded');
+        loadFragmentHost(host);
+    });
+
     root.querySelectorAll('[data-user-role-cid]').forEach(function (button) {
         button.addEventListener('click', function (event) {
             event.preventDefault();
