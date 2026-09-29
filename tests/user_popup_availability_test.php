@@ -41,9 +41,9 @@ userAvailabilityExpect(!commonUserAvailabilityOverlaps($day->setTime(9, 0), $day
 $root = dirname(__DIR__);
 $popup = (string)file_get_contents($root . '/popup/user.php');
 $script = (string)file_get_contents($root . '/common/team/user-popup.js');
-$styles = (string)file_get_contents($root . '/common/team/user-popup.css');
+$styles = (string)file_get_contents($root . '/common/calendar/availability-grid.css');
 userAvailabilityExpect(str_contains($popup, 'omo-user-context-panel-availability') && str_contains($popup, 'section=availability'), 'The profile exposes a lazy availability tab.');
 userAvailabilityExpect(str_contains($script, 'data-user-availability-url') && str_contains($script, 'data-user-availability-host="1"'), 'Month and day controls reload the profile availability fragment.');
-userAvailabilityExpect(str_contains($styles, '.omo-user-context__availability-calendar') && str_contains($styles, '[data-state="partial"]'), 'Availability states have a dedicated calendar presentation.');
+userAvailabilityExpect(str_contains($styles, '.calendar-freebusy-calendar') && str_contains($styles, '[data-state="partial"]'), 'Availability states have a dedicated calendar presentation.');
 
 echo "user_popup_availability_test: OK\n";
