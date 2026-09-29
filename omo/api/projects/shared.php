@@ -659,6 +659,11 @@ if (!function_exists('omoProjectsCanManageProject')) {
             return true;
         }
 
+        $rootHolon = $context['rootHolon'] ?? null;
+        if ($rootHolon instanceof Holon && omoProjectsCanUsePermission($rootHolon, 'CAN_EDIT_PROJECT', $context)) {
+            return true;
+        }
+
         $organization = $context['organization'] ?? null;
         return $organization instanceof Organization && (\dbObject\Permission::userCanInOrganization('CAN_EDIT_PROJECT', (int)$organization->getId(), (int)commonGetCurrentUserId()));
     }

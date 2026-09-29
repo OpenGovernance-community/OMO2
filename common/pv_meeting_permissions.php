@@ -36,10 +36,17 @@ function commonResolvePvMeetingPermissionContext(int $organizationId): ?array
         return $resolvedByOrganization[$organizationId] = null;
     }
 
+    $collectiveHolon = $document->getPvPermissionHolon($organizationId);
+    if (!($collectiveHolon instanceof \dbObject\Holon)
+        || commonResolveHolonOrganizationId($collectiveHolon) !== $organizationId) {
+        return $resolvedByOrganization[$organizationId] = null;
+    }
+
     return $resolvedByOrganization[$organizationId] = [
         'document' => $document,
         'documentId' => $documentId,
         'userId' => $currentUserId,
+        'collectiveHolonId' => (int)$collectiveHolon->getId(),
     ];
 }
 
@@ -62,14 +69,24 @@ function commonPvMeetingCanUseCollectivePermission(?array $meetingContext, \dbOb
         return false;
     }
 
+    if (!in_array($permissionKey, [
+        'CAN_CREATE_PROJECT', 'CAN_EDIT_PROJECT', 'CAN_DELETE_PROJECT',
+        'CAN_CREATE_INDICATOR', 'CAN_EDIT_INDICATOR', 'CAN_DELETE_INDICATOR',
+        'CAN_CREATE_RECURRING_TASK', 'CAN_EDIT_RECURRING_TASK', 'CAN_DELETE_RECURRING_TASK',
+    ], true)) {
+        return false;
+    }
+
     $document = $meetingContext['document'];
     $organizationId = (int)$document->get('IDorganization');
     $holonOrganizationId = commonResolveHolonOrganizationId($holon);
+    $collectiveHolonId = (int)($meetingContext['collectiveHolonId'] ?? 0);
     return $organizationId > 0
+        && $collectiveHolonId > 0
         && $holonOrganizationId === $organizationId
-        && \dbObject\HolonPermission::userHasCollectivePermissionForHolonContext(
-            (int)($meetingContext['userId'] ?? 0),
+        && \dbObject\HolonPermission::holonHasCollectivePermissionForHolonContext(
             $organizationId,
+            $collectiveHolonId,
             $permissionKey,
             (int)$holon->getId()
         );

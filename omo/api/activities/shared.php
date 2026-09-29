@@ -163,7 +163,19 @@ function omoActivityCanUsePermission(?Holon $holon, $permissionKey, $organizatio
     }
 
     if (!($holon instanceof Holon)) {
-        return Permission::userCanInOrganization((string)$permissionKey, (int)$organizationId, $userId);
+        if (Permission::userCanInOrganization((string)$permissionKey, (int)$organizationId, $userId)) {
+            return true;
+        }
+        $meetingContext = commonResolvePvMeetingPermissionContext((int)$organizationId);
+        if (!is_array($meetingContext)) {
+            return false;
+        }
+        $organization = new Organization();
+        $rootHolon = $organization->load((int)$organizationId)
+            ? $organization->getEnabledStructuralRootHolon()
+            : null;
+        return $rootHolon instanceof Holon
+            && commonPvMeetingCanUseCollectivePermission($meetingContext, $rootHolon, (string)$permissionKey);
     }
 
     return $holon->isAllowed((string)$permissionKey, false, $userId)
