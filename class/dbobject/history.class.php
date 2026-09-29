@@ -573,6 +573,15 @@
 				'project_block_details_updated' => 'Modification du blocage',
 				'project_blocked' => 'Blocage du projet',
 				'project_auto_reactivated' => 'Reactivation automatique du projet',
+				'project_document_added' => 'Ajout de document',
+				'project_document_removed' => 'Retrait de document',
+				'project_document_deleted' => 'Suppression de document',
+				'project_event_added' => 'Ajout d’événement',
+				'project_event_deleted' => 'Suppression d’événement',
+				'project_indicator_added' => 'Ajout d’indicateur',
+				'project_indicator_removed' => 'Retrait d’indicateur',
+				'project_recurring_task_added' => 'Ajout de tâche récurrente',
+				'project_recurring_task_removed' => 'Retrait de tâche récurrente',
 			);
 
 			if (isset($labels[$action])) {

@@ -121,6 +121,8 @@ services:
 
   db:
     image: mariadb:11.4
+    env_file:
+      - ./docker/etherpad/.env.private
     environment:
       MARIADB_DATABASE: omodev
       MARIADB_USER: omodev

@@ -1077,6 +1077,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
+    if (!$isEditMode && $project instanceof Project) {
+        $project->recordAssociationHistory('event', (int)$event->getId(), (string)$event->get('title'), 'added', $currentUserId);
+    }
+
     try {
         $notificationEvent = new Event();
         if (

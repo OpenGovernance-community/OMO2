@@ -65,7 +65,7 @@ if ($usesPriority) {
 if ($usesImportance) {
     $availableProjectSorts[] = 'importance';
 }
-if ($canUseHolonSort) {
+if (in_array('children', $availableScopes, true) || in_array('descendants', $availableScopes, true)) {
     $availableProjectSorts[] = 'holon';
 }
 $projectQuickSearch = trim((string)($_GET['project_query'] ?? ''));
@@ -847,7 +847,9 @@ $projectTexts = [
 <link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260902-save-menu">
 <link rel="stylesheet" href="/common/choice/change-details.css?v=20260923-lifecycle-details">
 <link rel="stylesheet" href="/common/chat/thread.css?v=20260910-project-chat">
-<link rel="stylesheet" href="/omo/api/projects/projects.css?v=20260918-project-followers-star-size">
+<?php if ($organization->isApplicationEnabled('stats')): ?><link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/stats/stats.css') ?>"><?php endif; ?>
+<?php if ($organization->isApplicationEnabled('activities')): ?><link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/activities/activities.css') ?>"><?php endif; ?>
+<link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/projects/projects.css') ?>">
 <div
     class="omo-projects omo-panel-view"
     id="omo-projects-root"

@@ -68,11 +68,11 @@ Le seed principal versionne est dans :
 
 Ce fichier est publie dans le repository pour que l'environnement Docker soit directement utilisable apres clonage.
 
-Les evolutions versionnees ajoutees apres le snapshot de ce dump sont appliquees automatiquement juste apres par :
-
-`docker/db/init/01-post-base-migrations.sql`
-
-Ce second fichier rejoue les migrations SQL publiees manquantes pour aligner une base Docker neuve avec l'etat courant du schema et des donnees de reference, sans devoir lancer manuellement les migrations apres chaque recreation de volume.
+Le seed contient le schema, un jeu de demonstration minimal et les migrations
+publiees jusqu'au 28 septembre 2026. Lorsqu'une nouvelle migration est ajoutee
+dans `sql/`, il faut regenerer ce seed pour les futures bases Docker neuves.
+Le script `docker/db/init/01-etherpad.sh` cree ensuite la base et l'utilisateur
+Etherpad avec le mot de passe de `docker/etherpad/.env.private`.
 
 Si tu veux ajouter des donnees locales non publiees, cree un script supplementaire ignore par Git, par exemple :
 
@@ -81,10 +81,10 @@ Si tu veux ajouter des donnees locales non publiees, cree un script supplementai
 Au premier demarrage :
 
 - MariaDB importe `00-base.seed.sql`
-- MariaDB importe ensuite `01-post-base-migrations.sql` pour rejouer les migrations versionnees manquantes depuis le snapshot du dump
+- MariaDB execute ensuite `01-etherpad.sh` pour initialiser Etherpad
 - MariaDB importe ensuite, s'ils existent, les scripts locaux additionnels comme `99-local.override.local.sql`
 - MariaDB utilise `utf8mb4` par defaut grace a `docker/db/conf.d/charset.cnf`
-- le dump principal contient deja les organisations de demo `Org1` et `Org2` ainsi que la structure de demo
+- le dump principal contient `Org1`, `Org2`, leurs comptes et leurs racines de structure, sans les anciens projets ni documents de test
 
 ## 3. Lancer les conteneurs
 

@@ -75,6 +75,9 @@ window.commonPageScripts["/omo/api/organizations/create_import_popup.js"] = func
             var count = root.querySelector('[data-omo-create-import-module-count="' + module + '"]');
             if (!input || !row || !count) { return; }
             var details = moduleData[module] || {};
+            if (module === 'rules' && !moduleData.rules && payload && payload.source && payload.source.system === 'omo2' && Array.isArray(payload.rules)) {
+                details = { selected: true, count: payload.rules.length };
+            }
             var available = module === 'structure' || !!details.selected;
             var total = Number(details.count || 0);
             count.textContent = module === 'structure' ? String((payload.scope && payload.scope.holonCount) || 0) + ' ' + String(ui.spacePlural || 'elements') : (available ? String(total) + ' elements' : 'Absent du fichier');

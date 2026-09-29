@@ -6,11 +6,18 @@ Ordre conseille pour l'initialisation locale :
 2. ajouter si besoin un override local du type `docker/db/init/99-local.override.local.sql`
 3. lancer `docker compose up --build`
 
-Le dump courant contient le schema complet et les donnees de demonstration. Il est deja prevu pour :
+Le script `01-etherpad.sh` cree aussi la base et l'utilisateur Etherpad lors de la
+premiere initialisation. Il lit les identifiants prives de
+`docker/etherpad/.env.private`, injectes dans le service `db` par Compose.
+
+Le dump courant contient le schema complet et un jeu de donnees minimal. Il est deja prevu pour :
 
 - stocker les textes en `utf8mb4`
 - fournir deux organisations de demo generiques `org1` et `org2`
-- inclure la structure de demo utile a `demo.localhost`
+- inclure trois comptes de demo, deux racines d'organisation et les catalogues systeme
+
+Les projets, documents, activites et autres donnees de travail de l'ancien dump
+ne sont pas reinjectes lors d'un reset.
 
 Le seed a ete reimporte et controle apres les migrations jusqu'au
 `2026-09-28-05-property-type-activation.sql`. Il inclut aussi les liens des

@@ -6,6 +6,7 @@ $sourceLang = [
     'organization_export.error.auth' => ['text' => 'Connexion requise.', 'context' => 'Authentication message in the organization export popup.'],
     'organization_export.help' => ['text' => 'Choisissez les elements a inclure. La structure est toujours exportee et le fichier JSON reste compatible avec l import OMO 2.', 'context' => 'Introductory text of the organization export popup.'],
     'organization_export.module.members' => ['text' => 'Membres et roles', 'context' => 'Members module label in the organization export popup.'],
+    'organization_export.module.rules' => ['text' => 'Règles', 'context' => 'Rules module label in the organization export popup.'],
     'organization_export.module.documents' => ['text' => 'Documents', 'context' => 'Documents module label in the organization export popup.'],
     'organization_export.documents_notice' => ['text' => 'Seuls les documents HTML, liens externes et dossiers sont exportés. Les fichiers téléversés et les documents reliés à Etherpad, EtherCalc, Nextcloud, Collabora ou SpaceDeck ne le sont pas.', 'context' => 'Notice explaining which documents are intentionally omitted from an organization export.'],
     'organization_export.module.projects' => ['text' => 'Projets', 'context' => 'Projects module label in the organization export popup.'],
@@ -26,6 +27,7 @@ if ($currentUserId <= 0) {
     exit;
 }
 $modules = [
+    'rules' => t('organization_export.module.rules', [], $lang, $sourceLang),
     'members' => t('organization_export.module.members', [], $lang, $sourceLang),
     'documents' => t('organization_export.module.documents', [], $lang, $sourceLang),
     'projects' => t('organization_export.module.projects', [], $lang, $sourceLang),

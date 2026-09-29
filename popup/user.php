@@ -3,11 +3,157 @@ require_once dirname(__DIR__) . '/omo/api/bootstrap.php';
 require_once dirname(__DIR__) . '/common/user_competence_ui.php';
 require_once dirname(__DIR__) . '/common/user_profile_ui.php';
 require_once dirname(__DIR__) . '/common/user_permission_ui.php';
+require_once dirname(__DIR__) . '/common/user_availability.php';
 
 use dbObject\Holon;
 use dbObject\Invitation;
+use dbObject\MeetingProfile;
 use dbObject\Organization;
 use dbObject\User;
+
+function omoUserContextT(string $key, array $replace = []): string
+{
+    static $bundle = null;
+    static $sourceLang = null;
+    if ($sourceLang === null) {
+        $texts = [
+            'profile_tabs' => 'Onglets du profil',
+            'availability_tab' => 'Disponibilités',
+            'availability_heading' => 'Disponibilités',
+            'availability_hint' => 'Les créneaux sont calculés à partir des agendas OMO et des calendriers externes connectés.',
+            'select_day' => 'Choisissez un jour',
+            'select_day_hint' => 'Sélectionnez une date dans le mois pour afficher les heures.',
+            'free' => 'Libre',
+            'partial' => 'Partiellement occupé',
+            'full' => 'Occupé',
+            'closed' => 'Indisponible',
+            'busy' => 'Occupé',
+            'available' => 'Libre',
+            'pause' => 'Pause',
+            'no_hours' => 'Aucune disponibilité configurée pour cette journée.',
+            'previous_month' => 'Mois précédent',
+            'next_month' => 'Mois suivant',
+            'unavailable' => 'Les disponibilités ne peuvent pas être affichées pour le moment.',
+        ];
+        $sourceLang = [];
+        foreach ($texts as $id => $text) {
+            $sourceLang[$id] = ['text' => $text, 'context' => 'User profile availability: ' . $id];
+        }
+        $bundle = loadTranslationBundle('user-profile-availability', translationBundleResolveRequestLocale('lang', translationBundleGetSupportedLocales(), 'fr'), $sourceLang);
+    }
+
+    return t($key, $replace, $bundle, $sourceLang);
+}
+
+function omoUserContextAvailabilityFormatDate(DateTimeInterface $date, bool $withWeekday = false): string
+{
+    if (class_exists('IntlDateFormatter')) {
+        $formatter = new IntlDateFormatter('fr_CH', $withWeekday ? IntlDateFormatter::FULL : IntlDateFormatter::LONG, IntlDateFormatter::NONE);
+        $formatted = $formatter->format($date);
+        if (is_string($formatted) && $formatted !== '') {
+            return $formatted;
+        }
+    }
+
+    return $date->format($withWeekday ? 'l j F Y' : 'F Y');
+}
+
+function omoUserContextAvailabilityRenderFragment(int $userId, int $organizationId, int $currentHolonId): void
+{
+    $zone = new DateTimeZone('Europe/Zurich');
+    $today = new DateTimeImmutable('today', $zone);
+    $monthValue = trim((string)($_GET['month'] ?? $today->format('Y-m')));
+    $month = DateTimeImmutable::createFromFormat('!Y-m-d', $monthValue . '-01', $zone);
+    if (!$month || $month->format('Y-m') !== $monthValue) {
+        $month = $today->modify('first day of this month');
+    }
+    $selectedDay = null;
+    $selectedValue = trim((string)($_GET['date'] ?? ''));
+    if ($selectedValue !== '') {
+        $selectedDay = DateTimeImmutable::createFromFormat('!Y-m-d', $selectedValue, $zone);
+        if (!$selectedDay || $selectedDay->format('Y-m-d') !== $selectedValue) {
+            $selectedDay = null;
+        } elseif ($selectedDay->format('Y-m') !== $month->format('Y-m')) {
+            $month = $selectedDay->modify('first day of this month');
+        }
+    }
+
+    $hours = MeetingProfile::defaultHours();
+    if (MeetingProfile::isStorageAvailable()) {
+        $profile = MeetingProfile::forUser($userId);
+        $hours = $profile->hours();
+    }
+    $rangeStart = $month->setTime(0, 0);
+    $rangeEnd = $month->modify('+1 month')->setTime(0, 0);
+    try {
+        $busy = commonUserAvailabilityLoadBusyIntervals($userId, $rangeStart, $rangeEnd);
+    } catch (Throwable $exception) {
+        ?>
+        <div class="omo-user-context__fragment-feedback is-error"><?= omoApiEscape(omoUserContextT('unavailable')) ?></div>
+        <?php
+        return;
+    }
+
+    $days = [];
+    for ($day = $rangeStart; $day < $rangeEnd; $day = $day->modify('+1 day')) {
+        $days[$day->format('Y-m-d')] = commonUserAvailabilityBuildDay($day, $hours, $busy);
+    }
+    $baseUrl = '/popup/user.php?section=availability&id=' . $userId . '&oid=' . $organizationId
+        . ($currentHolonId > 0 ? '&cid=' . $currentHolonId : '');
+    $makeUrl = static function (DateTimeImmutable $targetMonth, ?DateTimeImmutable $targetDay = null) use ($baseUrl): string {
+        return $baseUrl . '&month=' . rawurlencode($targetMonth->format('Y-m'))
+            . ($targetDay ? '&date=' . rawurlencode($targetDay->format('Y-m-d')) : '');
+    };
+    $selectedData = $selectedDay ? ($days[$selectedDay->format('Y-m-d')] ?? null) : null;
+    ?>
+    <section class="omo-user-context__availability" aria-label="<?= omoApiEscape(omoUserContextT('availability_heading')) ?>">
+        <div class="omo-user-context__pane-copy">
+            <div class="omo-user-context__section-copy"><?= omoApiEscape(omoUserContextT('availability_hint')) ?></div>
+        </div>
+        <div class="omo-user-context__availability-layout">
+            <section class="omo-user-context__availability-month generic-soft-panel">
+                <div class="omo-user-context__availability-month-head">
+                    <h3 class="generic-card-title generic-card-title--medium"><?= omoApiEscape(omoUserContextAvailabilityFormatDate($month)) ?></h3>
+                    <nav class="omo-user-context__availability-nav" aria-label="<?= omoApiEscape(omoUserContextT('availability_heading')) ?>">
+                        <button type="button" class="generic-action-button generic-action-button--secondary generic-action-button--icon-only" data-user-availability-url="<?= omoApiEscape($makeUrl($month->modify('-1 month'))) ?>" aria-label="<?= omoApiEscape(omoUserContextT('previous_month')) ?>">&larr;</button>
+                        <button type="button" class="generic-action-button generic-action-button--secondary generic-action-button--icon-only" data-user-availability-url="<?= omoApiEscape($makeUrl($month->modify('+1 month'))) ?>" aria-label="<?= omoApiEscape(omoUserContextT('next_month')) ?>">&rarr;</button>
+                    </nav>
+                </div>
+                <div class="omo-user-context__availability-weekdays" aria-hidden="true">
+                    <?php foreach (['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'] as $label): ?><span><?= omoApiEscape($label) ?></span><?php endforeach; ?>
+                </div>
+                <div class="omo-user-context__availability-calendar">
+                    <?php for ($empty = 1; $empty < (int)$month->format('N'); $empty += 1): ?><span aria-hidden="true"></span><?php endfor; ?>
+                    <?php foreach ($days as $date => $data): $day = new DateTimeImmutable($date, $zone); $state = (string)$data['state']; ?>
+                        <button type="button" class="omo-user-context__availability-day" data-state="<?= omoApiEscape($state) ?>"<?= $selectedDay && $selectedDay->format('Y-m-d') === $date ? ' aria-current="date"' : '' ?> data-user-availability-url="<?= omoApiEscape($makeUrl($month, $day)) ?>" aria-label="<?= omoApiEscape(omoUserContextAvailabilityFormatDate($day, true) . ' : ' . omoUserContextT($state)) ?>"><?= (int)$day->format('j') ?></button>
+                    <?php endforeach; ?>
+                </div>
+                <ul class="omo-user-context__availability-legend" aria-label="<?= omoApiEscape(omoUserContextT('availability_heading')) ?>">
+                    <?php foreach (['free', 'partial', 'full'] as $state): ?><li data-state="<?= omoApiEscape($state) ?>"><span aria-hidden="true"></span><?= omoApiEscape(omoUserContextT($state)) ?></li><?php endforeach; ?>
+                </ul>
+            </section>
+            <aside class="omo-user-context__availability-day-panel generic-soft-panel" aria-live="polite">
+                <?php if (!$selectedDay || !is_array($selectedData)): ?>
+                    <div class="omo-user-context__availability-empty"><strong class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoUserContextT('select_day')) ?></strong><span><?= omoApiEscape(omoUserContextT('select_day_hint')) ?></span></div>
+                <?php elseif (!$selectedData['slots']): ?>
+                    <div class="omo-user-context__availability-empty"><strong class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoUserContextAvailabilityFormatDate($selectedDay, true)) ?></strong><span><?= omoApiEscape(omoUserContextT('no_hours')) ?></span></div>
+                <?php else: ?>
+                    <div class="omo-user-context__availability-day-head"><strong class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoUserContextAvailabilityFormatDate($selectedDay, true)) ?></strong></div>
+                    <div class="omo-user-context__availability-slots">
+                        <?php foreach ($selectedData['slots'] as $slot): ?>
+                            <?php if ($slot['pause']): ?>
+                                <div class="omo-user-context__availability-pause"><span><?= omoApiEscape(omoUserContextT('pause')) ?></span></div>
+                            <?php else: ?>
+                                <div class="omo-user-context__availability-slot" data-state="<?= $slot['busy'] ? 'busy' : 'free' ?>" aria-label="<?= omoApiEscape($slot['start']->format('H:i') . ' - ' . $slot['end']->format('H:i') . ' : ' . omoUserContextT($slot['busy'] ? 'busy' : 'available')) ?>"><time datetime="<?= omoApiEscape($slot['start']->format(DateTimeInterface::ATOM)) ?>"><?= omoApiEscape($slot['start']->format('H:i') . ' - ' . $slot['end']->format('H:i')) ?></time><?php if ($slot['busy']): ?><span><?= omoApiEscape(omoUserContextT('busy')) ?></span><?php endif; ?></div>
+                            <?php endif; ?>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+            </aside>
+        </div>
+    </section>
+    <?php
+}
 
 function omoUserContextFormatDate($value)
 {
@@ -710,6 +856,10 @@ if ($requestedSection === 'rights') {
     http_response_code(404);
     exit;
 }
+if ($requestedSection === 'availability') {
+    omoUserContextAvailabilityRenderFragment($userId, $organizationId, $currentHolonId);
+    exit;
+}
 
 $membership = $user->getOrganizationMembership($organizationId);
 $currentViewerUserId = (int)commonGetCurrentUserId();
@@ -757,8 +907,10 @@ $canValidateCompetences = $currentViewerUserId > 0
     && (!function_exists('commonGetCurrentShareToken') || commonGetCurrentShareToken() === '');
 $popupReloadUrl = '/popup/user.php?id=' . (int)$userId . '&oid=' . (int)$organizationId . ($currentHolonId > 0 ? '&cid=' . (int)$currentHolonId : '');
 $rightsFragmentUrl = '/popup/user.php?section=rights&id=' . (int)$userId . '&oid=' . (int)$organizationId;
+$availabilityFragmentUrl = '/popup/user.php?section=availability&id=' . (int)$userId . '&oid=' . (int)$organizationId
+    . ($currentHolonId > 0 ? '&cid=' . (int)$currentHolonId : '');
 $initialTab = trim((string)($_GET['tab'] ?? ''));
-$initialTab = in_array($initialTab, array('current-roles', 'organization-roles'), true) ? $initialTab : '';
+$initialTab = in_array($initialTab, array('availability', 'current-roles', 'organization-roles'), true) ? $initialTab : '';
 $showCurrentScope = $hasStructureContext && (int)$currentHolon->getId() !== (int)$rootHolon->getId();
 $currentScopeName = $showCurrentScope ? trim((string)$currentHolon->getDisplayName()) : '';
 $secondaryLabel = $email !== '' ? $email : ($username !== '' ? '@' . $username : '');
@@ -839,8 +991,8 @@ foreach ($competenceRows as $competenceRow) {
 
     <div class="omo-user-context__shell">
         <div class="omo-user-context__main">
-            <div class="generic-tabs omo-user-context__tabs" data-generic-tabs>
-                <div class="generic-tabs__list">
+            <div class="generic-tabs generic-tabs--embedded omo-user-context__tabs" data-generic-tabs>
+                <div class="generic-tabs__list" aria-label="<?= omoApiEscape(omoUserContextT('profile_tabs')) ?>">
                     <button
                         type="button"
                         class="generic-tabs__tab is-active"
@@ -853,6 +1005,13 @@ foreach ($competenceRows as $competenceRow) {
                         data-generic-tab
                         data-generic-tab-target="omo-user-context-panel-competences"
                     >Competences</button>
+                    <button
+                        type="button"
+                        class="generic-tabs__tab"
+                        data-generic-tab
+                        data-generic-tab-target="omo-user-context-panel-availability"
+                        data-user-fragment-panel="omo-user-context-panel-availability"
+                    ><?= omoApiEscape(omoUserContextT('availability_tab')) ?></button>
                     <?php if ($hasStructureContext && $showCurrentScope): ?>
                         <button
                             type="button"
@@ -1103,6 +1262,15 @@ foreach ($competenceRows as $competenceRow) {
                                 <?php endif; ?>
                             <?php endif; ?>
                         </section>
+                    </div>
+
+                    <div id="omo-user-context-panel-availability" class="generic-tabs__panel" data-generic-tab-panel hidden>
+                        <div
+                            class="omo-user-context__fragment-host"
+                            data-user-fragment-host="1"
+                            data-user-availability-host="1"
+                            data-user-fragment-url="<?= omoApiEscape($availabilityFragmentUrl) ?>"
+                        ></div>
                     </div>
 
                     <?php if ($hasStructureContext && $showCurrentScope): ?>

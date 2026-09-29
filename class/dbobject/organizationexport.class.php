@@ -8,6 +8,7 @@ class OrganizationExport
 
     public const MODULES = [
         'structure',
+        'rules',
         'members',
         'documents',
         'projects',
@@ -69,7 +70,7 @@ class OrganizationExport
             'propertyDefinitions' => $compact['propertyDefinitions'] ?? [],
             'propertyTypes' => $organization->getPropertyTypeSettings(),
 			'authorities' => $compact['authorities'] ?? [],
-			'rules' => $compact['rules'] ?? [],
+			'rules' => $selected['rules'] ? ($compact['rules'] ?? []) : [],
             'modules' => [],
         ];
 
@@ -107,6 +108,11 @@ class OrganizationExport
         $payload['modules']['structure'] = [
             'selected' => true,
             'count' => $holonCount,
+            'records' => [],
+        ];
+        $payload['modules']['rules'] = [
+            'selected' => $selected['rules'],
+            'count' => count($payload['rules']),
             'records' => [],
         ];
 

@@ -242,11 +242,216 @@
 }
 
 .omo-user-context__tabs {
-    --generic-tabs-list-padding-inline: 14px;
-    --generic-tabs-panel-padding-block: 18px;
-    --generic-tabs-panel-padding-inline: 18px;
-    --generic-tabs-panel-radius: 22px;
-    --generic-tabs-panel-shadow: var(--shadow-sm, none);
+    --param-tabs-list-padding-inline: 0px;
+    min-width: 0;
+}
+
+.omo-user-context__availability {
+    display: grid;
+    gap: 16px;
+}
+
+.omo-user-context__availability-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(230px, 0.65fr);
+    gap: 14px;
+    align-items: start;
+}
+
+.omo-user-context__availability-month,
+.omo-user-context__availability-day-panel {
+    --generic-soft-panel-radius: 18px;
+    --generic-soft-panel-padding-block: 14px;
+    --generic-soft-panel-padding-inline: 14px;
+    display: grid;
+    gap: 14px;
+}
+
+.omo-user-context__availability-month-head,
+.omo-user-context__availability-nav,
+.omo-user-context__availability-day-head {
+    display: flex;
+    align-items: center;
+}
+
+.omo-user-context__availability-month-head {
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.omo-user-context__availability-nav {
+    gap: 6px;
+}
+
+.omo-user-context__availability-nav .generic-action-button {
+    min-width: 34px;
+    min-height: 34px;
+    padding: 0;
+}
+
+.omo-user-context__availability-weekdays,
+.omo-user-context__availability-calendar {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 5px;
+}
+
+.omo-user-context__availability-weekdays {
+    padding: 0 2px;
+    color: var(--color-text-light, #64748b);
+    font-size: 11px;
+    font-weight: 700;
+    text-align: center;
+}
+
+.omo-user-context__availability-day {
+    display: grid;
+    min-width: 0;
+    min-height: 38px;
+    place-items: center;
+    padding: 4px;
+    border: 1px solid var(--color-border, #dbe4ee);
+    border-radius: 10px;
+    background: var(--color-surface, #ffffff);
+    color: var(--color-text, #1f2937);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.omo-user-context__availability-day:hover,
+.omo-user-context__availability-day:focus-visible {
+    z-index: 1;
+    border-color: color-mix(in srgb, var(--color-primary, #2563eb) 42%, var(--color-border, #dbe4ee));
+    outline: none;
+    box-shadow: 0 5px 12px color-mix(in srgb, var(--color-primary, #2563eb) 14%, transparent);
+    transform: translateY(-1px);
+}
+
+.omo-user-context__availability-day[aria-current="date"] {
+    border-color: var(--color-primary, #2563eb);
+    box-shadow: inset 0 0 0 1px var(--color-primary, #2563eb);
+}
+
+.omo-user-context__availability-day[data-state="free"] {
+    border-color: #bfe4d0;
+    background: #f0fbf5;
+    color: #166534;
+}
+
+.omo-user-context__availability-day[data-state="partial"] {
+    border-color: #f0d89c;
+    background: #fff9ea;
+    color: #8a5a08;
+}
+
+.omo-user-context__availability-day[data-state="full"] {
+    border-color: #e4c8c4;
+    background: #fff5f3;
+    color: #9f3024;
+}
+
+.omo-user-context__availability-day[data-state="closed"] {
+    background: var(--color-surface-alt, #f1f5f9);
+    color: var(--color-text-light, #94a3b8);
+}
+
+.omo-user-context__availability-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 16px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    color: var(--color-text-light, #64748b);
+    font-size: 12px;
+}
+
+.omo-user-context__availability-legend li {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.omo-user-context__availability-legend span {
+    width: 9px;
+    height: 9px;
+    border-radius: 999px;
+    background: var(--color-surface-alt, #e2e8f0);
+}
+
+.omo-user-context__availability-legend li[data-state="free"] span { background: #35b779; }
+.omo-user-context__availability-legend li[data-state="partial"] span { background: #d99a1b; }
+.omo-user-context__availability-legend li[data-state="full"] span { background: #c65b50; }
+
+.omo-user-context__availability-empty {
+    display: grid;
+    min-height: 156px;
+    place-content: center;
+    gap: 7px;
+    color: var(--color-text-light, #64748b);
+    line-height: 1.45;
+    text-align: center;
+}
+
+.omo-user-context__availability-slots {
+    display: grid;
+    max-height: 328px;
+    gap: 6px;
+    overflow: auto;
+    padding-right: 2px;
+}
+
+.omo-user-context__availability-slot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-height: 34px;
+    padding: 7px 9px;
+    border: 1px solid var(--color-border, #dbe4ee);
+    border-radius: 9px;
+    background: var(--color-surface, #ffffff);
+    color: var(--color-text-light, #64748b);
+    font-size: 12px;
+}
+
+.omo-user-context__availability-slot time {
+    color: var(--color-text, #1f2937);
+    font-weight: 700;
+}
+
+.omo-user-context__availability-slot[data-state="busy"] {
+    border-color: #e4c8c4;
+    background: #fff7f5;
+    color: #9f3024;
+}
+
+.omo-user-context__availability-slot[data-state="free"] {
+    border-color: #c7e6d5;
+    background: #f6fcf8;
+    color: #27724a;
+}
+
+.omo-user-context__availability-pause {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--color-text-light, #94a3b8);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.omo-user-context__availability-pause::before,
+.omo-user-context__availability-pause::after {
+    height: 1px;
+    flex: 1;
+    background: var(--color-border, #dbe4ee);
+    content: "";
 }
 
 .omo-user-context__pane-head {
@@ -801,6 +1006,10 @@
     .omo-user-context__competence-action {
         justify-items: start;
     }
+
+    .omo-user-context__availability-layout {
+        grid-template-columns: minmax(0, 1fr);
+    }
 }
 
 @media (max-width: 640px) {
@@ -808,14 +1017,18 @@
         grid-template-columns: minmax(0, 1fr);
     }
 
-    .omo-user-context__tabs {
-        --generic-tabs-list-padding-inline: 0;
-        --generic-tabs-panel-padding-block: 14px;
-        --generic-tabs-panel-padding-inline: 14px;
-    }
-
     .omo-user-context__summary {
         padding: 14px;
+    }
+
+    .omo-user-context__availability-month,
+    .omo-user-context__availability-day-panel {
+        --generic-soft-panel-padding-block: 12px;
+        --generic-soft-panel-padding-inline: 12px;
+    }
+
+    .omo-user-context__availability-day {
+        min-height: 34px;
     }
 
     .omo-user-context__competence {
