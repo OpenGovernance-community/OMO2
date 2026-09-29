@@ -1680,25 +1680,26 @@ window.commonPageScripts["/omo/api/stats/stats.js"] = function (pageConfig, page
             return;
         }
 
-        var deleteButton = event.target.closest('[data-omo-stats-delete-indicator]');
-        if (!deleteButton) {
+        var indicatorActionButton = event.target.closest('[data-omo-stats-archive-indicator], [data-omo-stats-delete-indicator]');
+        if (!indicatorActionButton) {
             return;
         }
         event.preventDefault();
         event.stopPropagation();
-        if (!window.confirm(texts.confirmDeleteIndicator)) {
+        var isArchive = indicatorActionButton.hasAttribute('data-omo-stats-archive-indicator');
+        if (!window.confirm(isArchive ? texts.confirmArchiveIndicator : texts.confirmDeleteIndicator)) {
             return;
         }
         var formData = new FormData();
-        formData.append('stats_action', 'delete_indicator');
-        formData.append('indicator_id', deleteButton.getAttribute('data-omo-stats-delete-indicator') || '');
+        formData.append('stats_action', isArchive ? 'archive_indicator' : 'delete_indicator');
+        formData.append('indicator_id', indicatorActionButton.getAttribute(isArchive ? 'data-omo-stats-archive-indicator' : 'data-omo-stats-delete-indicator') || '');
         formData.append('oid', root.getAttribute('data-omo-stats-oid') || '');
-        deleteButton.disabled = true;
+        indicatorActionButton.disabled = true;
         postFormData(formData).then(function () {
             closeDrawer({force: true});
             return refreshRoot(currentUrl);
         }).catch(function (error) {
-            deleteButton.disabled = false;
+            indicatorActionButton.disabled = false;
             window.omoNotify(error.message || texts.loadError, 'error');
         });
     });

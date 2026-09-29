@@ -49,7 +49,7 @@ class StatIndicator extends DbObject
             [['description'], 'text'],
             [['chart_min_value'], 'float'],
             [['show_cumulative', 'active'], 'boolean'],
-            [['created_at', 'updated_at', 'ethercalc_last_sync_at', 'spreadsheet_last_sync_at'], 'datetime'],
+            [['created_at', 'updated_at', 'archived_at', 'ethercalc_last_sync_at', 'spreadsheet_last_sync_at'], 'datetime'],
             [['id'], 'safe'],
         ];
     }
@@ -87,6 +87,7 @@ class StatIndicator extends DbObject
             'chart_min_value' => 'Valeur basse du graphique',
             'show_cumulative' => 'Afficher le cumul',
             'active' => 'Actif',
+            'archived_at' => 'Date d archivage',
             'created_at' => 'Création',
             'updated_at' => 'Mise à jour',
         ];

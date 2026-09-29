@@ -563,6 +563,7 @@ class OrganizationExport
 				'sourceHolonId' => (int)$activity->get('IDholon'),
 				'sourceResponsibleUserId' => (int)$activity->get('IDuser_responsible'),
 				'active' => (bool)$activity->get('active'),
+				'archivedAt' => self::normalizeValue($activity->get('archived_at')),
 				'position' => (int)$activity->get('position'),
 				'createdAt' => self::normalizeValue($activity->get('created_at')),
 				'updatedAt' => self::normalizeValue($activity->get('updated_at')),
@@ -621,6 +622,7 @@ class OrganizationExport
                 'chartMinValue' => $indicator->get('chart_min_value'),
                 'showCumulative' => (bool)$indicator->get('show_cumulative'),
                 'active' => (bool)$indicator->get('active'),
+                'archivedAt' => self::normalizeValue($indicator->get('archived_at')),
                 'createdAt' => self::normalizeValue($indicator->get('created_at')),
                 'values' => $values,
             ];

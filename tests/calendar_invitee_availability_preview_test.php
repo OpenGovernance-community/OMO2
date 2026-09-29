@@ -41,6 +41,23 @@ inviteAvailabilityExpect(str_contains($selectableHtml, '<button type="button" cl
 inviteAvailabilityExpect(str_contains($selectableHtml, '<div class="calendar-freebusy-slot" data-state="busy"'), 'Busy half-hours are never selectable.');
 inviteAvailabilityExpect(str_contains($selectableHtml, 'data-omo-calendar-preview-slot-start="2030-01-07T10:00"'), 'Selectable slots expose local event times.');
 
+$firstBreakHours = [1 => ['open' => true, 'start' => '09:00', 'end' => '17:00', 'pause' => true, 'pause_start' => '12:00', 'pause_end' => '13:00']];
+$secondBreakHours = [1 => ['open' => true, 'start' => '09:00', 'end' => '17:00', 'pause' => true, 'pause_start' => '14:00', 'pause_end' => '15:00']];
+$singleBreak = commonUserAvailabilityBuildDay($day, $firstBreakHours, []);
+ob_start();
+commonCalendarRenderAvailabilityGrid($day->modify('first day of this month'), $day, [$day->format('Y-m-d') => $singleBreak], $labels, 'data-user-availability-url', static fn() => '/popup/user.php');
+$singleBreakHtml = (string)ob_get_clean();
+inviteAvailabilityExpect(substr_count($singleBreakHtml, '<div class="calendar-freebusy-pause">') === 1, 'A one-hour break has one separator in the profile.');
+
+$separateBreaks = commonUserAvailabilityBuildCombinedDay($day, [
+    ['hours' => $firstBreakHours, 'busy' => []],
+    ['hours' => $secondBreakHours, 'busy' => []],
+]);
+ob_start();
+commonCalendarRenderAvailabilityGrid($day->modify('first day of this month'), $day, [$day->format('Y-m-d') => $separateBreaks], $selectableLabels, 'data-omo-calendar-preview-target', static fn() => 'month=2030-01&date=2030-01-07', '', true);
+$separateBreaksHtml = (string)ob_get_clean();
+inviteAvailabilityExpect(substr_count($separateBreaksHtml, '<div class="calendar-freebusy-pause">') === 2, 'Two distinct breaks keep separate markers in the event editor.');
+
 $root = dirname(__DIR__);
 $editor = (string)file_get_contents($root . '/omo/api/calendar/create.php');
 $script = (string)file_get_contents($root . '/common/calendar/availability.js');
