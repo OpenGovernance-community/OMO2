@@ -177,6 +177,15 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
     }));
     let activeApplicationTabId = 0;
 
+    function pvApplicationMeetingContextKey(documentPayload) {
+        return documentPayload
+            && Number(documentPayload.pvEditorUserId || 0) === currentUserId
+            && String(documentPayload.pvStage || '') === 'meeting'
+            && editorToken !== ''
+            ? String(documentId) + ':' + editorToken
+            : '';
+    }
+
     function buildPvApplicationUrl(applicationTab) {
         const sourceUrl = String(applicationTab && applicationTab.url || '').trim();
         if (sourceUrl === '') {
@@ -192,7 +201,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
             url.searchParams.set('cid', String(applicationContextHolonId));
         }
         url.searchParams.set('pv_application_tab_id', String(Number(applicationTab.tabId || 0)));
-        if (initialDocumentPayload.isPvEditor && initialDocumentPayload.pvStage === 'meeting' && editorToken !== '') {
+        if (pvApplicationMeetingContextKey(currentDocumentPayload) !== '') {
             url.searchParams.set('pv_meeting_document_id', String(documentId));
             url.searchParams.set('pv_meeting_editor_token', editorToken);
         }
@@ -2821,7 +2830,17 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
             return;
         }
 
+        const previousMeetingContextKey = pvApplicationMeetingContextKey(currentDocumentPayload);
         currentDocumentPayload = Object.assign({}, currentDocumentPayload, documentPayload);
+        if (pvApplicationMeetingContextKey(currentDocumentPayload) !== previousMeetingContextKey
+            && applicationWorkspace instanceof Element) {
+            applicationWorkspace.querySelectorAll('[data-omo-pv-application-panel]').forEach(function (panel) {
+                panel.removeAttribute('data-omo-pv-application-loaded');
+            });
+            if (activeApplicationTabId > 0) {
+                setActiveApplicationTab(activeApplicationTabId);
+            }
+        }
         applyAssociatedEventSchedule(currentDocumentPayload.associatedEvent);
         knownDocumentSyncVersion = String(currentDocumentPayload.syncVersion || knownDocumentSyncVersion || '');
         if (currentDocumentPayload.isPvValidated === true) {
