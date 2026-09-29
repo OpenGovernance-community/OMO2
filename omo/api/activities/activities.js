@@ -549,7 +549,7 @@
             if (!result.status) {
                 throw new Error(result.message || texts.actionError);
             }
-            if (listCheck || action === 'delete_activity') {
+            if (listCheck || action === 'delete_activity' || action === 'archive_activity') {
                 refreshRoot(currentUrl);
                 return;
             }
@@ -562,6 +562,35 @@
             notify(error && error.message ? error.message : texts.actionError, 'error');
         });
     }
+
+    function closeActionMenu() {
+        root.querySelectorAll('[data-activity-action-menu]').forEach(function (menu) {
+            menu.classList.remove('is-open');
+            var rowShell = menu.closest('.omo-activity-row-shell');
+            if (rowShell) {
+                rowShell.classList.remove('is-menu-open');
+            }
+            var toggle = menu.querySelector('[data-activity-action-menu-toggle]');
+            var panel = menu.querySelector('[data-activity-action-menu-panel]');
+            if (toggle) {
+                toggle.setAttribute('aria-expanded', 'false');
+            }
+            if (panel) {
+                panel.hidden = true;
+            }
+        });
+    }
+
+    document.addEventListener('click', function (event) {
+        if (!event.target.closest('[data-activity-action-menu]')) {
+            closeActionMenu();
+        }
+    });
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') {
+            closeActionMenu();
+        }
+    });
 
     function initializeViewFilter() {
         var temporary = readStoredValue(window.sessionStorage, sessionViewsStorageKey);
@@ -600,6 +629,27 @@
     }
 
     root.addEventListener('click', function (event) {
+        var actionMenuToggle = event.target.closest('[data-activity-action-menu-toggle]');
+        if (actionMenuToggle) {
+            event.preventDefault();
+            event.stopPropagation();
+            var actionMenu = actionMenuToggle.closest('[data-activity-action-menu]');
+            var shouldOpen = actionMenuToggle.getAttribute('aria-expanded') !== 'true';
+            closeActionMenu();
+            if (shouldOpen && actionMenu) {
+                actionMenu.classList.add('is-open');
+                var rowShell = actionMenu.closest('.omo-activity-row-shell');
+                if (rowShell) {
+                    rowShell.classList.add('is-menu-open');
+                }
+                actionMenuToggle.setAttribute('aria-expanded', 'true');
+                actionMenu.querySelector('[data-activity-action-menu-panel]').hidden = false;
+            }
+            return;
+        }
+        if (!event.target.closest('[data-activity-action-menu]')) {
+            closeActionMenu();
+        }
         var closeButton = event.target.closest('[data-activity-close]');
         if (closeButton) {
             event.preventDefault();

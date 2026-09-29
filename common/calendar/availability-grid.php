@@ -53,10 +53,13 @@ function commonCalendarRenderAvailabilityGrid(
                         <p class="calendar-freebusy-selection-feedback" data-omo-calendar-preview-selection-feedback data-range-blocked="<?= $escape($labels['range_blocked']) ?>" data-range-selected="<?= $escape($labels['range_selected']) ?>" role="status" aria-live="polite"></p>
                     <?php endif; ?>
                     <div class="calendar-freebusy-slots">
-                        <?php foreach ($selectedData['slots'] as $slot): ?>
+                        <?php $previousPauseEnd = null; foreach ($selectedData['slots'] as $slot): ?>
                             <?php if ($slot['pause']): ?>
-                                <div class="calendar-freebusy-pause"><span><?= $escape($labels['pause']) ?></span></div>
+                                <?php if ($previousPauseEnd === null || $previousPauseEnd != $slot['start']): ?>
+                                    <div class="calendar-freebusy-pause"><span><?= $escape($labels['pause']) ?></span></div>
+                                <?php endif; $previousPauseEnd = $slot['end']; ?>
                             <?php else: ?>
+                                <?php $previousPauseEnd = null; ?>
                                 <?php $isSelectable = $selectableSlots && !$slot['busy']; $slotTag = $isSelectable ? 'button' : 'div'; ?>
                                 <<?= $slotTag ?><?= $isSelectable ? ' type="button"' : '' ?> class="calendar-freebusy-slot" data-state="<?= $slot['busy'] ? 'busy' : 'free' ?>"<?= $selectableSlots ? ' data-omo-calendar-preview-slot-start="' . $escape($slot['start']->format('Y-m-d\TH:i')) . '" data-omo-calendar-preview-slot-end="' . $escape($slot['end']->format('Y-m-d\TH:i')) . '"' : '' ?><?= $isSelectable ? ' aria-pressed="false"' : '' ?> aria-label="<?= $escape($slot['start']->format('H:i') . ' - ' . $slot['end']->format('H:i') . ' : ' . $labels[$slot['busy'] ? 'busy' : ($isSelectable ? 'select_slot' : 'available')]) ?>"><time datetime="<?= $escape($slot['start']->format(DateTimeInterface::ATOM)) ?>"><?= $escape($slot['start']->format('H:i') . ' - ' . $slot['end']->format('H:i')) ?></time><?php if ($slot['busy']): ?><span><?= $escape($labels['busy']) ?></span><?php endif; ?></<?= $slotTag ?>>
                             <?php endif; ?>

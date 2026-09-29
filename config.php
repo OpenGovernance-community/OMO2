@@ -27,7 +27,8 @@ $GLOBALS['openAiUploadApiKey'] = envValue('OPENAI_UPLOAD_API_KEY', $GLOBALS['Ope
 $GLOBALS['openAiTranslationModel'] = envValue('OPENAI_TRANSLATION_MODEL', envValue('OPENAI_MODEL', 'gpt-4o'));
 $GLOBALS['stadiaMapsApiKey'] = envValue('STADIA_MAPS_API_KEY', '');
 
-// Configuration Etherpad par defaut. Les organisations peuvent surcharger ces valeurs dans l application Documents.
+// Configuration Etherpad globale. ETHERPAD_URL accepte plusieurs URLs separees
+// par des virgules afin de servir un meme Etherpad depuis plusieurs domaines.
 $GLOBALS['etherpadBaseUrl'] = envValue('ETHERPAD_URL', 'https://doc.opengov.tools');
 $GLOBALS['etherpadApiKey'] = envValue('ETHERPAD_API_KEY', '');
 $GLOBALS['etherpadApiVersion'] = envValue('ETHERPAD_API_VERSION', '1');

@@ -118,7 +118,7 @@ $texts = [
 ];
 ?>
 <link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260902-save-menu">
-<link rel="stylesheet" href="/omo/api/activities/activities.css?v=20260921-compact-editor">
+<link rel="stylesheet" href="/omo/api/activities/activities.css?v=20260929-archive">
 <div
     class="omo-activities omo-panel-view"
     id="omo-activities-root"
@@ -262,6 +262,15 @@ $texts = [
                                                 <?php endif; ?>
                                             </div>
                                         </article>
+                                        <?php if (omoActivityCanDelete($activity)): ?>
+                                            <div class="generic-menu omo-activity-row__menu" data-activity-action-menu>
+                                                <button type="button" class="generic-menu-toggle" data-activity-action-menu-toggle aria-label="<?= omoApiEscape(omoActivityT('activity.more')) ?>" aria-expanded="false">...</button>
+                                                <div class="generic-menu-panel generic-menu-panel--wide generic-menu-panel--anchored" data-activity-action-menu-panel role="menu" hidden>
+                                                    <button type="button" class="generic-menu-item" data-activity-post-action="archive_activity" data-activity-id="<?= (int)$activity->getId() ?>" data-activity-confirm="<?= omoApiEscape(omoActivityT('activity.confirm.archive')) ?>" role="menuitem"><?= omoApiEscape(omoActivityT('activity.archive')) ?></button>
+                                                    <button type="button" class="generic-menu-item generic-menu-item--danger" data-activity-post-action="delete_activity" data-activity-id="<?= (int)$activity->getId() ?>" data-activity-confirm="<?= omoApiEscape(omoActivityT('activity.confirm.delete')) ?>" role="menuitem"><?= omoApiEscape(omoActivityT('activity.delete')) ?></button>
+                                                </div>
+                                            </div>
+                                        <?php endif; ?>
                                     </div>
                                 <?php endforeach; ?>
                             </div>
@@ -293,4 +302,4 @@ $texts = [
 <script src="/common/drawer/subdrawer.js?v=20260906-slide-right"></script>
 <script src="/omo/assets/js/simple-html-field.js?v=20260912-toolbar-always-visible"></script>
 <script src="/omo/assets/js/application-view-preferences.js?v=20260919-activity-assignment"></script>
-<script src="/omo/api/activities/activities.js?v=20260921-topbar-feedback"></script>
+<script src="/omo/api/activities/activities.js?v=20260929-archive"></script>
