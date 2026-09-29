@@ -13,6 +13,7 @@ $activity = new ControlActivity();
 $activity = !empty($context['status']) && $activity->load((int)($_GET['id'] ?? 0)) ? $activity : null;
 if (!($activity instanceof ControlActivity)
     || (int)$activity->get('IDorganization') !== $organizationId
+    || (int)$activity->get('active') !== 1
     || !omoActivityCanView($activity)
 ) {
     http_response_code(404);
@@ -109,9 +110,13 @@ if ($stateKey === 'due') {
             <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-subdrawer-action data-activity-open-url="<?= omoApiEscape($editUrl) ?>"><?= omoApiEscape(omoActivityT('activity.edit')) ?></button>
         <?php endif; ?>
         <?php if (omoActivityCanDelete($activity)): ?>
-            <button type="button" class="generic-action-button generic-action-button--danger generic-action-button--icon-only" data-omo-subdrawer-action data-activity-post-action="delete_activity" data-activity-id="<?= (int)$activity->getId() ?>" data-activity-confirm="<?= omoApiEscape(omoActivityT('activity.confirm.delete')) ?>" title="<?= omoApiEscape(omoActivityT('activity.delete')) ?>" aria-label="<?= omoApiEscape(omoActivityT('activity.delete')) ?>">
-                <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"><path d="M5 7h14M10 11v6M14 11v6M9 7V5h6v2m-9 0 1 13h10l1-13"></path></svg>
-            </button>
+            <div class="generic-menu omo-activity-detail__menu" data-omo-subdrawer-action data-activity-action-menu>
+                <button type="button" class="generic-menu-toggle" data-activity-action-menu-toggle aria-label="<?= omoApiEscape(omoActivityT('activity.more')) ?>" aria-expanded="false">...</button>
+                <div class="generic-menu-panel generic-menu-panel--wide generic-menu-panel--anchored" data-activity-action-menu-panel role="menu" hidden>
+                    <button type="button" class="generic-menu-item" data-activity-post-action="archive_activity" data-activity-id="<?= (int)$activity->getId() ?>" data-activity-confirm="<?= omoApiEscape(omoActivityT('activity.confirm.archive')) ?>" role="menuitem"><?= omoApiEscape(omoActivityT('activity.archive')) ?></button>
+                    <button type="button" class="generic-menu-item generic-menu-item--danger" data-activity-post-action="delete_activity" data-activity-id="<?= (int)$activity->getId() ?>" data-activity-confirm="<?= omoApiEscape(omoActivityT('activity.confirm.delete')) ?>" role="menuitem"><?= omoApiEscape(omoActivityT('activity.delete')) ?></button>
+                </div>
+            </div>
         <?php endif; ?>
     </div>
 

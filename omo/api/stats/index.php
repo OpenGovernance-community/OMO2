@@ -101,7 +101,7 @@ $importedIndicatorIds = [];
 $importedIndicatorEditable = [];
 foreach ($imports as $import) {
     $sourceIndicator = $import->getIndicator();
-    if (!($sourceIndicator instanceof StatIndicator) || $sourceIndicator->isHiddenFromCatalog() || !$sourceIndicator->canView()) {
+    if (!($sourceIndicator instanceof StatIndicator) || (int)$sourceIndicator->get('active') !== 1 || $sourceIndicator->isHiddenFromCatalog() || !$sourceIndicator->canView()) {
         continue;
     }
     $sourceId = (int)$sourceIndicator->getId();
@@ -212,11 +212,17 @@ foreach ($groupItems as $group) {
         ];
     }, $groupReferencePoints);
     $groupReferenceType = StatIndicator::normalizeReferenceType($group->get('reference_type'));
+    $activeGroupItems = array_filter(omoStatsCollectionItems($group->getItems(), \dbObject\StatIndicatorGroupItem::class), static function ($item): bool {
+        $sourceIndicator = $item->getIndicator();
+        return $sourceIndicator instanceof StatIndicator
+            && (int)$sourceIndicator->get('active') === 1
+            && $sourceIndicator->canView();
+    });
     $groupViewData[] = [
         'group' => $group,
         'series' => $series,
         'latestSumValue' => $latestSumValue,
-        'memberCount' => count(omoStatsCollectionItems($group->getItems(), \dbObject\StatIndicatorGroupItem::class)),
+        'memberCount' => count($activeGroupItems),
         'indicatorIds' => array_values(array_map(static function ($item) {
             return $item instanceof \dbObject\StatIndicatorGroupItem ? (int)$item->get('IDstatindicator') : 0;
         }, omoStatsCollectionItems($group->getItems(), \dbObject\StatIndicatorGroupItem::class))),
@@ -242,7 +248,7 @@ foreach ($groupViewData as $groupItem) {
         $sourceIndicator = $groupSourceItem instanceof \dbObject\StatIndicatorGroupItem
             ? $groupSourceItem->getIndicator()
             : null;
-        if ($sourceIndicator instanceof StatIndicator) {
+        if ($sourceIndicator instanceof StatIndicator && (int)$sourceIndicator->get('active') === 1) {
             $groupFrequencyRank = min(
                 $groupFrequencyRank,
                 omoStatsMeasurementFrequencyRank($sourceIndicator)
@@ -527,6 +533,7 @@ $displayItemCount = count($statsEntries);
                                                 <?php else: ?>
                                                     <button type="button" class="generic-menu-item" data-omo-stats-open-editor-url="<?= omoApiEscape($detailBaseUrl . '&id=' . rawurlencode((string)$indicator->getId())) ?>"><?= omoApiEscape(omoStatsT('stats.action.detail')) ?></button>
                                                     <?php if ($item['canEdit']): ?><button type="button" class="generic-menu-item" data-omo-stats-open-editor-url="<?= omoApiEscape($createUrl . '&id=' . rawurlencode((string)$indicator->getId())) ?>"><?= omoApiEscape(omoStatsT('stats.action.edit')) ?></button><?php endif; ?>
+                                                    <?php if ($item['canDelete']): ?><button type="button" class="generic-menu-item" data-omo-stats-archive-indicator="<?= (int)$indicator->getId() ?>"><?= omoApiEscape(omoStatsT('stats.action.archive_indicator')) ?></button><?php endif; ?>
                                                     <?php if ($item['canDelete']): ?><button type="button" class="generic-menu-item generic-menu-item--danger" data-omo-stats-delete-indicator="<?= (int)$indicator->getId() ?>"><?= omoApiEscape(omoStatsT('stats.action.delete_indicator')) ?></button><?php endif; ?>
                                                 <?php endif; ?>
                                             </div>
@@ -672,6 +679,7 @@ $displayItemCount = count($statsEntries);
                                                 <?php else: ?>
                                                     <button type="button" class="generic-menu-item" data-omo-stats-open-editor-url="<?= omoApiEscape($detailBaseUrl . '&id=' . rawurlencode((string)$indicator->getId())) ?>"><?= omoApiEscape(omoStatsT('stats.action.detail')) ?></button>
                                                     <?php if ($item['canEdit']): ?><button type="button" class="generic-menu-item" data-omo-stats-open-editor-url="<?= omoApiEscape($createUrl . '&id=' . rawurlencode((string)$indicator->getId())) ?>"><?= omoApiEscape(omoStatsT('stats.action.edit')) ?></button><?php endif; ?>
+                                                    <?php if ($item['canDelete']): ?><button type="button" class="generic-menu-item" data-omo-stats-archive-indicator="<?= (int)$indicator->getId() ?>"><?= omoApiEscape(omoStatsT('stats.action.archive_indicator')) ?></button><?php endif; ?>
                                                     <?php if ($item['canDelete']): ?><button type="button" class="generic-menu-item generic-menu-item--danger" data-omo-stats-delete-indicator="<?= (int)$indicator->getId() ?>"><?= omoApiEscape(omoStatsT('stats.action.delete_indicator')) ?></button><?php endif; ?>
                                                 <?php endif; ?>
                                             </div>
@@ -743,6 +751,7 @@ $displayItemCount = count($statsEntries);
         'loadError' => omoStatsT('stats.error.load'),
         'confirmDelete' => omoStatsT('stats.detail.confirm_delete'),
         'confirmDeleteIndicator' => omoStatsT('stats.detail.confirm_delete_indicator'),
+        'confirmArchiveIndicator' => omoStatsT('stats.detail.confirm_archive_indicator'),
         'confirmDeleteImport' => omoStatsT('stats.detail.confirm_delete_import'),
         'confirmDeleteGroup' => omoStatsT('stats.detail.confirm_delete_group'),
         'importTitle' => omoStatsT('stats.import.title'),

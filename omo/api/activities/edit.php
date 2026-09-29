@@ -15,7 +15,7 @@ $activityId = $deferredEditor ? (int)$deferredEditor['objectId'] : (int)($_GET['
 $activity = new ControlActivity();
 $activity = $activityId > 0 && $activity->load($activityId) ? $activity : new ControlActivity();
 if (!$deferredEditor && (empty($context['status'])
-    || ($activityId > 0 && ((int)$activity->get('IDorganization') !== $organizationId || !omoActivityCanEdit($activity)))
+    || ($activityId > 0 && ((int)$activity->get('IDorganization') !== $organizationId || (int)$activity->get('active') !== 1 || !omoActivityCanEdit($activity)))
     || ($activityId === 0 && !omoActivityCanUsePermission($context['currentHolon'], 'CAN_CREATE_RECURRING_TASK', $organizationId))
 )) {
     http_response_code(403);

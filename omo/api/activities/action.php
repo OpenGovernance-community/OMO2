@@ -1,11 +1,11 @@
 <?php
-require_once dirname(__DIR__) . '/bootstrap.php'; require_once __DIR__ . '/shared.php'; use dbObject\ControlActivity; use dbObject\ControlTaskCheck; use dbObject\RecurrenceSchedule; use dbObject\UserOrganization;
+require_once dirname(__DIR__) . '/bootstrap.php'; require_once __DIR__ . '/shared.php'; use dbObject\ControlActivity; use dbObject\ControlTaskCheck; use dbObject\DbObject; use dbObject\History; use dbObject\RecurrenceSchedule; use dbObject\UserOrganization;
 header('Content-Type: application/json; charset=utf-8');
 function omoActivityRespond($status, $message, array $extra = []) { echo json_encode(array_merge(['status' => (bool)$status, 'message' => (string)$message], $extra), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); exit; }
 if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') { omoActivityRespond(false, omoActivityT('activity.error.forbidden')); }
 $oid = (int)($_SESSION['currentOrganization'] ?? ($_POST['oid'] ?? 0)); $cid = (int)($_POST['cid'] ?? 0); $context = omoActivityResolveContext($oid, $cid); if (empty($context['status'])) { omoActivityRespond(false, $context['message']); } $action = trim((string)($_POST['activity_action'] ?? '')); $suffix = ($cid > 0 ? '&cid=' . $cid : '') . omoActivityPvMeetingQuery($oid);
 if ($action === 'save_activity') {
-    $id = (int)($_POST['id'] ?? 0); $activity = new ControlActivity(); if ($id > 0 && (!$activity->load($id) || (int)$activity->get('IDorganization') !== $oid)) { omoActivityRespond(false, omoActivityT('activity.error.not_found')); }
+    $id = (int)($_POST['id'] ?? 0); $activity = new ControlActivity(); if ($id > 0 && (!$activity->load($id) || (int)$activity->get('IDorganization') !== $oid || (int)$activity->get('active') !== 1)) { omoActivityRespond(false, omoActivityT('activity.error.not_found')); }
     if ($id > 0 ? !omoActivityCanEdit($activity) : !omoActivityCanUsePermission($context['currentHolon'], 'CAN_CREATE_RECURRING_TASK', $oid)) { omoActivityRespond(false, omoActivityT('activity.error.forbidden')); }
     $title = trim((string)($_POST['title'] ?? '')); $frequency = RecurrenceSchedule::normalizeFrequency($_POST['frequency'] ?? ''); $schedule = RecurrenceSchedule::normalizeSchedule($frequency, $_POST['schedule'] ?? ''); if ($title === '') { omoActivityRespond(false, omoActivityT('activity.error.title')); } if (!$frequency || !$schedule) { omoActivityRespond(false, omoActivityT('activity.error.schedule')); } $responsibleUserId = isset($_POST['IDuser_responsible']) && is_numeric($_POST['IDuser_responsible']) ? (int)$_POST['IDuser_responsible'] : 0; if ($responsibleUserId > 0 && !UserOrganization::hasActiveMembership($responsibleUserId, $oid)) { $responsibleUserId = 0; }
     if ($id === 0) { $activity->set('IDorganization', $oid); $activity->set('IDholon', $context['currentHolon'] instanceof \dbObject\Holon ? (int)$context['currentHolon']->getId() : null); $activity->set('position', 0); $activity->set('active', 1); }
@@ -13,11 +13,74 @@ if ($action === 'save_activity') {
     omoActivityRespond(true, omoActivityT('activity.success.saved'), ['detailUrl' => '/omo/api/activities/detail.php?oid=' . $oid . '&id=' . (int)$activity->getId() . $suffix]);
 }
 if ($action === 'check_activity') {
-    $activity = new ControlActivity(); if (!$activity->load((int)($_POST['id'] ?? 0)) || (int)$activity->get('IDorganization') !== $oid || !omoActivityCanView($activity)) { omoActivityRespond(false, omoActivityT('activity.error.not_found')); }
+    $activity = new ControlActivity(); if (!$activity->load((int)($_POST['id'] ?? 0)) || (int)$activity->get('IDorganization') !== $oid || (int)$activity->get('active') !== 1 || !omoActivityCanView($activity)) { omoActivityRespond(false, omoActivityT('activity.error.not_found')); }
     $state = $activity->getOccurrenceState(new DateTimeImmutable('now')); $userId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0; if ($userId <= 0 || !in_array($state['state'] ?? '', ['due', 'missed'], true)) { omoActivityRespond(false, omoActivityT('activity.error.forbidden')); }
     $check = new ControlTaskCheck(); $check->set('IDcontroltask', (int)$activity->getId()); $check->set('IDuser', $userId); $check->set('scheduled_for', $state['occurrenceAt']); $check->set('checked_at', new DateTimeImmutable('now')); $result = $check->save(); if (!is_array($result) || empty($result['status'])) { omoActivityRespond(false, omoActivityT('activity.error.save')); }
     omoActivityRespond(true, omoActivityT('activity.success.checked'), ['detailUrl' => '/omo/api/activities/detail.php?oid=' . $oid . '&id=' . (int)$activity->getId() . $suffix]);
 }
-if ($action === 'delete_activity') { $activity = new ControlActivity(); if (!$activity->load((int)($_POST['id'] ?? 0)) || (int)$activity->get('IDorganization') !== $oid || !omoActivityCanDelete($activity) || !$activity->deleteWithRelatedData()) { omoActivityRespond(false, omoActivityT('activity.error.forbidden')); } omoActivityRespond(true, omoActivityT('activity.success.saved'), ['detailUrl' => '/omo/api/activities/index.php?oid=' . $oid . $suffix]); }
+if ($action === 'archive_activity') {
+    $activity = new ControlActivity();
+    if (!$activity->load((int)($_POST['id'] ?? 0)) || (int)$activity->get('IDorganization') !== $oid || (int)$activity->get('active') !== 1 || !omoActivityCanDelete($activity)) {
+        omoActivityRespond(false, omoActivityT('activity.error.forbidden'));
+    }
+    $pdo = DbObject::getPdo();
+    try {
+        $pdo->beginTransaction();
+        $activity->set('active', 0);
+        $activity->set('archived_at', new DateTimeImmutable('now'));
+        $result = $activity->save();
+        if (!is_array($result) || empty($result['status']) || !History::recordHolonResourceLifecycle(
+            $oid,
+            (int)$activity->get('IDholon'),
+            'recurring_task',
+            (int)$activity->getId(),
+            (string)$activity->get('title'),
+            'archived',
+            function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0
+        )) {
+            throw new RuntimeException('Recurring task archive history could not be saved.');
+        }
+        $pdo->commit();
+    } catch (Throwable $exception) {
+        if ($pdo instanceof PDO && $pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        error_log('Recurring task archive failed for ' . (int)$activity->getId() . ': ' . $exception->getMessage());
+        omoActivityRespond(false, omoActivityT('activity.error.save'));
+    }
+    omoActivityRespond(true, omoActivityT('activity.success.saved'), ['detailUrl' => '/omo/api/activities/index.php?oid=' . $oid . $suffix]);
+}
+if ($action === 'delete_activity') {
+    $activity = new ControlActivity();
+    if (!$activity->load((int)($_POST['id'] ?? 0)) || (int)$activity->get('IDorganization') !== $oid || !omoActivityCanDelete($activity)) {
+        omoActivityRespond(false, omoActivityT('activity.error.forbidden'));
+    }
+    $activityId = (int)$activity->getId();
+    $holonId = (int)$activity->get('IDholon');
+    $title = (string)$activity->get('title');
+    $pdo = DbObject::getPdo();
+    try {
+        $pdo->beginTransaction();
+        if (!$activity->deleteWithRelatedData() || !History::recordHolonResourceLifecycle(
+            $oid,
+            $holonId,
+            'recurring_task',
+            $activityId,
+            $title,
+            'deleted',
+            function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0
+        )) {
+            throw new RuntimeException('Recurring task deletion history could not be saved.');
+        }
+        $pdo->commit();
+    } catch (Throwable $exception) {
+        if ($pdo instanceof PDO && $pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        error_log('Recurring task deletion failed for ' . $activityId . ': ' . $exception->getMessage());
+        omoActivityRespond(false, omoActivityT('activity.error.save'));
+    }
+    omoActivityRespond(true, omoActivityT('activity.success.saved'), ['detailUrl' => '/omo/api/activities/index.php?oid=' . $oid . $suffix]);
+}
 omoActivityRespond(false, omoActivityT('activity.error.not_found'));
 ?>

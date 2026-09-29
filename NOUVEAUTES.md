@@ -1,6 +1,12 @@
 # Journal Des Nouveautes
 
-- Agenda : l'éditeur d'événement propose un onglet Disponibilités chargé à la demande, qui croise les créneaux des invités et de l'organisateur, affiche les personnes prises en compte et se recalcule après modification des invitations. Un clic sur un créneau libre, puis Maj + clic, définit les horaires de l'événement sans traverser une plage occupée ou une pause.
+- Collabora sur le VPS autorise désormais `omo2.org` et `www.omo2.org` comme hôtes WOPI et origines d’iframe, en plus des domaines OpenGov existants.
+
+- Historique des holons : l archivage et la suppression des indicateurs et des taches recurrentes sont inscrits dans le flux du holon avec leur nom et leur auteur, sans invalider le cache de structure. L action est annulee si son entree d historique ne peut pas etre enregistree.
+
+- Indicateurs et taches recurrentes : une action Archiver dans le menu conserve les valeurs et les validations tout en retirant l element des vues actives. La date d archivage est enregistree pour une future consultation des archives.
+
+- Agenda : l'éditeur d'événement propose un onglet Disponibilités chargé à la demande, qui croise les créneaux des invités et de l'organisateur, affiche les personnes prises en compte et se recalcule après modification des invitations. Un clic sur un créneau libre, puis Maj + clic, définit les horaires de l'événement sans traverser une plage occupée ou une pause. Les demi-heures consécutives de pause n'affichent qu'un seul séparateur.
 
 - Autorites : la delegation complete est refusee lorsqu'une branche de l'autorite est deja confiee a un autre espace, meme a plusieurs niveaux de profondeur. Elle reste possible si toutes les sous-autorites sont dans l'espace source ; les editeurs desactivent le choix indisponible.
 

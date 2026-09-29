@@ -105,6 +105,63 @@
 			return $result;
 		}
 
+		public static function recordHolonResourceLifecycle($organizationId, $holonId, $resourceType, $resourceId, $resourceTitle, $change, $authorUserId = 0)
+		{
+			$organizationId = (int)$organizationId;
+			$holonId = (int)$holonId;
+			$resourceId = (int)$resourceId;
+			$resourceLabels = array(
+				'indicator' => "l'indicateur",
+				'recurring_task' => 'la tache recurrente',
+			);
+			if ($organizationId <= 0 || $resourceId <= 0 || !isset($resourceLabels[$resourceType]) || !in_array($change, array('archived', 'deleted'), true)) {
+				return false;
+			}
+
+			try {
+				$holon = new Holon();
+				if ($holonId <= 0 || !$holon->load($holonId) || (int)$holon->get('IDorganization') !== $organizationId) {
+					$organization = new Organization();
+					$holon = $organization->load($organizationId) ? $organization->getStructuralRootHolon() : null;
+				}
+				if (!($holon instanceof Holon) || (int)$holon->getId() <= 0) {
+					return false;
+				}
+				$holonId = (int)$holon->getId();
+				$title = self::sanitizeReferenceLabel($resourceTitle);
+				if ($title === '') {
+					$title = '#' . $resourceId;
+				}
+				$content = ($change === 'archived' ? 'Archivage de ' : 'Suppression de ')
+					. $resourceLabels[$resourceType] . ' « ' . $title . ' » dans '
+					. self::buildReferenceToken('holon', $holonId, $holon->getDisplayName()) . '.';
+				$result = self::createEntry(
+					$organizationId,
+					(int)$authorUserId,
+					'holon_' . $resourceType . '_' . $change,
+					$content,
+					array(
+						'IDholon' => $holonId,
+						'resourceType' => $resourceType,
+						'resourceId' => $resourceId,
+						'resourceTitle' => $title,
+						'change' => $change,
+					),
+					// Structure cache watches only entries targeting "holon".
+					'holon_resource',
+					$holonId
+				);
+				if (!is_array($result) || empty($result['status'])) {
+					error_log('Holon resource history could not be saved for ' . $resourceType . ' ' . $resourceId . '.');
+					return false;
+				}
+				return true;
+			} catch (\Throwable $exception) {
+				error_log('Holon resource history failed for ' . $resourceType . ' ' . $resourceId . ': ' . $exception->getMessage());
+				return false;
+			}
+		}
+
 		public static function buildHolonSearchNeedle($holonId)
 		{
 			return '[holon|' . (int)$holonId . '|';
@@ -582,6 +639,10 @@
 				'project_indicator_removed' => 'Retrait d’indicateur',
 				'project_recurring_task_added' => 'Ajout de tâche récurrente',
 				'project_recurring_task_removed' => 'Retrait de tâche récurrente',
+				'holon_indicator_archived' => "Archivage d'indicateur",
+				'holon_indicator_deleted' => "Suppression d'indicateur",
+				'holon_recurring_task_archived' => 'Archivage de tache recurrente',
+				'holon_recurring_task_deleted' => 'Suppression de tache recurrente',
 			);
 
 			if (isset($labels[$action])) {
@@ -668,13 +729,14 @@
 					FROM history
 					WHERE active = 1
 					  AND IDorganization = :organization_id
-					  AND target_type = :target_type
+					  AND target_type IN (:target_type, :resource_target_type)
 					  AND target_id IN (" . implode(', ', $targetHolonIds) . ")
 					ORDER BY datecreation DESC, id DESC
 					LIMIT " . $offset . ", " . ($limit + 1);
 				$rows = self::fetchAll($query, array(
 					'organization_id' => $organizationId,
 					'target_type' => 'holon',
+					'resource_target_type' => 'holon_resource',
 				));
 			}
 			if (!is_array($rows) || count($rows) === 0) {
