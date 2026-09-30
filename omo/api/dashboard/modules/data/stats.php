@@ -35,6 +35,7 @@ if (!empty($enabledAppHashes['stats'])) {
         $indicator = $indicatorImport->getIndicator();
         if (
             !($indicator instanceof StatIndicator)
+            || (int)$indicator->get('active') !== 1
             || !$indicator->canView()
             || isset($indicatorById[(int)$indicator->getId()])
         ) {
