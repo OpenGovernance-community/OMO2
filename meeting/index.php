@@ -21,6 +21,8 @@ $profile = null;
 $draft = null;
 $receipt = null;
 $selectedSlot = null;
+$durationMinutes = 30;
+$selectedMethod = null;
 $dayResults = [];
 $guest = ['name' => '', 'email' => '', 'reason' => ''];
 $name = strtolower(trim((string)($_GET['name'] ?? '')));
@@ -85,6 +87,8 @@ try {
         $selectedTime = (string)($_POST['time'] ?? '');
     }
     if (!$receipt && !$draft) {
+        $durationMinutes = meetingValidateDuration($_SERVER['REQUEST_METHOD'] === 'POST' ? ($_POST['duration'] ?? 30) : ($_GET['duration'] ?? 30), $profile->maxDurationMinutes());
+        $selectedMethod = meetingResolveMethod($profile, $_SERVER['REQUEST_METHOD'] === 'POST' ? ($_POST['method'] ?? '') : ($_GET['method'] ?? ''), $_SERVER['REQUEST_METHOD'] !== 'POST');
         if (!$selectedDay && !empty($_GET['date'])) { $selectedDay = meetingDate((string)$_GET['date'], $zone); }
         $monthValue = $selectedDay ? $selectedDay->format('Y-m') : (string)($_GET['month'] ?? $month->format('Y-m'));
         $month = meetingDate($monthValue . '-01', $zone);
@@ -93,12 +97,12 @@ try {
             || ($selectedDay && ($selectedDay < $now->setTime(0, 0) || $selectedDay > $lastDate))) { throw new RuntimeException('date_invalid'); }
         $busy = meetingBusy($profile, $month, $month->modify('+1 month'));
         for ($day = $month; $day < $month->modify('+1 month'); $day = $day->modify('+1 day')) {
-            $dayResults[$day->format('Y-m-d')] = $day > $lastDate ? ['state' => 'closed', 'slots' => []] : meetingDay($day, $profile->hours(), $busy, $now);
+            $dayResults[$day->format('Y-m-d')] = $day > $lastDate ? ['state' => 'closed', 'slots' => []] : meetingDay($day, $profile->hours(), $busy, $now, $durationMinutes);
         }
         $selectedTime = $selectedTime ?? (string)($_GET['time'] ?? '');
         if ($selectedDay && $selectedTime !== '') {
             foreach ($dayResults[$selectedDay->format('Y-m-d')]['slots'] as $slot) {
-                if ($slot['time'] === $selectedTime && $slot['free']) { $selectedSlot = $slot; }
+                if ($slot['time'] === $selectedTime && $slot['bookable']) { $selectedSlot = $slot; }
             }
             if (!$selectedSlot) { throw new RuntimeException('slot_taken'); }
         }
@@ -110,7 +114,7 @@ try {
             $limit = AuthRateLimit::consume('meeting-email', commonAuthHashIdentifier('meeting-email', $guest['email']), 10, 3600);
             if (empty($limit['allowed'])) { throw new RuntimeException('rate'); }
             $draft = $guest + ['token' => bin2hex(random_bytes(32)), 'user' => $userId, 'date' => $selectedDay->format('Y-m-d'),
-                'time' => $selectedTime, 'expires' => time() + 900];
+                'time' => $selectedTime, 'duration' => $durationMinutes, 'method' => $selectedMethod, 'expires' => time() + 900];
             $drafts = array_slice((array)($_SESSION['meeting_drafts'] ?? []), -19, null, true);
             $drafts[$draft['token']] = $draft;
             $_SESSION['meeting_drafts'] = $drafts;
@@ -118,7 +122,7 @@ try {
     }
 } catch (Throwable $exception) {
     $key = $exception instanceof RuntimeException ? $exception->getMessage() : 'unavailable';
-    if (!in_array($key, ['disabled', 'rate', 'csrf', 'expired', 'guest_invalid', 'date_invalid', 'slot_taken', 'busy', 'pending', 'write_failed', 'calendar_invalid', 'storage', 'unavailable'], true)) {
+    if (!in_array($key, ['disabled', 'rate', 'csrf', 'expired', 'guest_invalid', 'date_invalid', 'duration_invalid', 'method_invalid', 'slot_taken', 'busy', 'pending', 'write_failed', 'calendar_invalid', 'storage', 'unavailable'], true)) {
         error_log('Meeting request failed: ' . get_class($exception)); $key = 'unavailable';
     }
     $error = meetingT($key);

@@ -49,18 +49,40 @@ meetingReject(fn() => meetingValidateHours($invalid), 'hours_invalid');
 $zone = new DateTimeZone('Europe/Zurich');
 $day = meetingDate('2030-01-07', $zone); // Monday
 $before = $day->modify('-1 day');
-$free = meetingDay($day, $hours, [], $before);
+$free = meetingDay($day, $hours, [], $before, 60);
 meetingExpect($free['state'] === 'free', 'Lunch alone should not make the day yellow');
 $map = array_column($free['slots'], 'free', 'time');
-meetingExpect($map['11:00'] && !$map['11:30'] && !$map['12:00'] && !$map['12:30'] && $map['13:00'], 'No lunch overlap');
+meetingExpect($map['11:00'] && $map['11:30'] && !$map['12:00'] && !$map['12:30'] && $map['13:00'], 'Half-hour availability does not hide the slot before lunch');
  $pauseMap = array_column($free['slots'], 'pause', 'time');
-meetingExpect(!$pauseMap['11:00'] && $pauseMap['11:30'] && $pauseMap['12:00'] && $pauseMap['12:30'] && !$pauseMap['13:00'], 'Lunch slots are identified for the public divider');
-meetingExpect($map['16:00'] && !isset($map['16:30']), 'Only full appointments that fit before closing are displayed');
+meetingExpect(!$pauseMap['11:00'] && !$pauseMap['11:30'] && $pauseMap['12:00'] && $pauseMap['12:30'] && !$pauseMap['13:00'], 'Only actual lunch half-hours are replaced by the divider');
+meetingExpect($map['16:00'] && $map['16:30'], 'The final free half-hour remains visible');
+$bookable = array_column($free['slots'], 'bookable', 'time');
+meetingExpect($bookable['11:00'] && !$bookable['11:30'] && $bookable['16:00'] && !$bookable['16:30'], 'Booking still requires two consecutive free half-hours before closing or lunch');
+meetingExpect($free['workingCount'] === 14 && $free['busySlotCount'] === 0, 'Booking day colors count half-hours outside lunch');
+$selectionStarts = array_column($free['slots'], 'selection_time', 'time');
+meetingExpect($selectionStarts['16:30'] === '16:00' && $selectionStarts['11:30'] === '11:00', 'Backward fitting cells remain selectable at closing and lunch');
+$short = meetingDay($day, $hours, [], $before);
+meetingExpect($short['slots'][0]['booking_end']->getTimestamp() - $short['slots'][0]['start']->getTimestamp() === 1800, 'Default appointment is thirty minutes');
+meetingExpect(meetingValidateDuration('90', 120) === 90, 'Duration accepts half-hour multiples');
+foreach ([0, 31, 150, '30.0', ['30']] as $invalidDuration) { meetingReject(fn() => meetingValidateDuration($invalidDuration, 120), 'duration_invalid'); }
+$methods = meetingValidateMethods([
+    ['type' => 'address', 'value' => 'Rue du Test 12, Genève'],
+    ['type' => 'video', 'value' => 'https://meet.example.test/room?x=1&y=2'],
+    ['type' => 'phone', 'value' => '+41 22 123 45 67'],
+], []);
+meetingExpect(count($methods) === 3 && strlen($methods[0]['id']) === 16, 'Methods receive stable identifiers');
+meetingExpect(meetingValidateMethods(array_reverse($methods), $methods)[0]['id'] === $methods[2]['id'], 'Reordering keeps the same method identity');
+foreach ([['type' => 'video', 'value' => 'javascript:alert(1)'], ['type' => 'phone', 'value' => ''],
+    ['type' => 'address', 'value' => "Address\nATTENDEE:evil"], ['id' => 'foreign', 'type' => 'address', 'value' => 'Address'],
+    ['type' => 'unsupported', 'value' => 'Address']] as $invalidMethod) {
+    meetingReject(fn() => meetingValidateMethods([$invalidMethod], $methods), 'methods_invalid');
+}
+meetingReject(fn() => meetingValidateMethods(array_fill(0, 21, ['type' => 'phone', 'value' => '123']), []), 'methods_invalid');
 $busy = [[$day->setTime(10, 15), $day->setTime(11, 15)]];
 $partial = meetingDay($day, $hours, $busy, $before);
 meetingExpect($partial['state'] === 'partial', 'Partial day state');
 $map = array_column($partial['slots'], 'free', 'time');
-meetingExpect(!$map['09:30'] && !$map['10:00'] && !$map['10:30'] && !$map['11:00'], 'Sub-half-hour event conflicts');
+meetingExpect($map['09:30'] && !$map['10:00'] && !$map['10:30'] && !$map['11:00'], 'Sub-half-hour event conflicts are applied to half-hour cells');
 meetingExpect(meetingDay($day, $hours, [[$day, $day->modify('+1 day')]], $before)['state'] === 'full', 'All day occupation');
 meetingExpect(meetingDay($day->modify('+5 days'), $hours, [], $before)['state'] === 'closed', 'Closed weekend');
 meetingExpect(meetingDay($day, $hours, [], $day->modify('+1 day'))['state'] === 'closed', 'Past day');
@@ -69,8 +91,9 @@ meetingReject(fn() => meetingDate('2030-02-31', $zone), 'date_invalid');
 foreach (['2030-03-31', '2030-10-27'] as $dstDate) {
     $dst = meetingDate($dstDate, $zone); $dstHours = $hours;
     $dstHours[7] = ['open' => true, 'start' => '01:00', 'end' => '05:00', 'pause' => false, 'pause_start' => '12:00', 'pause_end' => '13:00'];
-    foreach (meetingDay($dst, $dstHours, [], $dst->modify('-1 day'))['slots'] as $slot) {
-        if ($slot['free']) { meetingExpect($slot['end']->getTimestamp() - $slot['start']->getTimestamp() === 3600, 'DST duration remains one hour'); }
+    foreach (meetingDay($dst, $dstHours, [], $dst->modify('-1 day'), 60)['slots'] as $slot) {
+        if ($slot['free']) { meetingExpect($slot['end']->getTimestamp() - $slot['start']->getTimestamp() === 1800, 'DST cells remain half-hours'); }
+        if ($slot['bookable']) { meetingExpect($slot['booking_end']->getTimestamp() - $slot['start']->getTimestamp() === 3600, 'DST booking duration remains one hour'); }
     }
 }
 $ics = meetingIcs(str_repeat('a', 64), $day->setTime(9, 0), $day->setTime(10, 0), str_repeat('Long title ', 30), "line one\r\nATTENDEE:evil@example.org;comma,");
@@ -149,6 +172,7 @@ try {
     meetingReject(fn() => meetingBook($uid, $draft, $request, fn() => false), 'unavailable');
     $reportError = false;
     $booking = meetingBook($uid, $draft, $request, fn() => false);
+    meetingExpect($booking->get('end_at')->getTimestamp() - $booking->get('start_at')->getTimestamp() === 3600, 'Two selected half-hours create a full one-hour appointment');
     meetingExpect($booking->get('status') === 'confirmed' && !$booking->get('email_sent_at') && $puts === 1, 'Failed email does not cancel reservation');
     meetingExpect(str_contains((string)$booking->get('calendar_data'), 'SUMMARY:Rendez-vous : Meeting Fixture / Test visitor'), 'Calendar event uses the owner full name instead of the public slug');
     $mailCount = 0;
@@ -166,10 +190,25 @@ try {
     $timeout = false;
     $recovered = meetingBook($uid, $later, $request, $mailer);
     meetingExpect($recovered->get('status') === 'confirmed' && $puts === 2, 'Ambiguous timeout reconciled without a second PUT');
+    $longDraft = $draft; $longDraft['token'] = bin2hex(random_bytes(32));
+    $longDraft['date'] = (new DateTimeImmutable('+2 days', $zone))->format('Y-m-d');
+    $longDraft['duration'] = 90;
+    meetingReject(fn() => meetingBook($uid, $longDraft, $request, $mailer), 'duration_invalid');
+    $profile->set('max_duration_minutes', 90); meetingSave($profile);
+    meetingExpect(MeetingProfile::forUser($uid)->maxDurationMinutes() === 90, 'Maximum duration persists on the profile');
+    $longBooking = meetingBook($uid, $longDraft, $request, $mailer);
+    meetingExpect($longBooking->get('end_at')->getTimestamp() - $longBooking->get('start_at')->getTimestamp() === 5400, 'The actual calendar appointment uses the selected ninety minutes');
+    $halfDraft = $longDraft; $halfDraft['token'] = bin2hex(random_bytes(32)); $halfDraft['time'] = '16:30'; $halfDraft['duration'] = 30;
+    $halfBooking = meetingBook($uid, $halfDraft, $request, $mailer);
+    meetingExpect($halfBooking->get('end_at')->getTimestamp() - $halfBooking->get('start_at')->getTimestamp() === 1800, 'Thirty-minute booking can end at closing');
 
     // Real local HTTP route, visitor session, privacy, review and CSRF (no real booking or email).
     $curl = curl_init();
+    // Isolate local test traffic from the developer's rate-limit buckets; never relax production limits.
+    $testIp = '127.77.' . hexdec(substr($nonce, 0, 2)) . '.' . hexdec(substr($nonce, 2, 2));
+    $testEmail = 'http-' . $nonce . '@example.invalid';
     curl_setopt_array($curl, [CURLOPT_RETURNTRANSFER => true, CURLOPT_COOKIEFILE => '', CURLOPT_TIMEOUT => 20,
+        CURLOPT_INTERFACE => $testIp, CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
         CURLOPT_SSL_VERIFYPEER => false, CURLOPT_SSL_VERIFYHOST => 0]); // Local Docker certificate only.
     $http = static function (string $path, ?array $post = null) use ($curl) {
         curl_setopt($curl, CURLOPT_URL, 'https://localhost' . $path);
@@ -183,9 +222,20 @@ try {
     meetingExpect($code === 200 && str_contains($page, 'meeting-calendar__day'), 'Public named route renders month');
     meetingExpect(str_contains($page, 'meeting-avatar') && !str_contains($page, ' data-meeting-avatar '), 'Missing host photo displays initials');
     meetingExpect(str_contains($page, 'meeting-legend') && str_contains($page, 'meeting-steps'), 'Availability legend and booking steps render');
+    meetingExpect((bool)preg_match('/<script type="application\/json" data-meeting-month-data>(.*?)<\/script>/s', $page, $monthPayload), 'Public page provides month data for local day navigation');
+    $monthData = json_decode($monthPayload[1], true, 512, JSON_THROW_ON_ERROR);
+    meetingExpect($monthData['durationSlots'] === 1 && $monthData['maxDuration'] === 90 && count($monthData['days']) >= 28, 'Month defaults to thirty minutes and exposes the configured limit');
+    foreach ($monthData['days'] as $dayData) {
+        foreach ($dayData['slots'] as $slotData) {
+            meetingExpect(array_keys($slotData) === ['time', 'end', 'startEpoch', 'free', 'pause', 'bookable'], 'Public slots contain only availability, never event details');
+        }
+    }
     $dom = new DOMDocument();
     @$dom->loadHTML($page);
     $xpath = new DOMXPath($dom);
+    meetingExpect($xpath->evaluate('string(//select[@data-meeting-duration]/option[@selected]/@value)') === '30'
+        && $xpath->query('//select[@data-meeting-duration]/option')->length === 3, 'Duration selector defaults to thirty minutes and stops at the configured maximum');
+    meetingExpect(str_contains($page, '/common/notifications/notifications.js'), 'Public booking reuses topbar notifications without loading the topbar');
     $expectedShareTitle = meetingT('share_title', ['name' => 'Meeting Fixture']);
     meetingExpect(trim((string)$xpath->evaluate('string(//title)')) === $expectedShareTitle . ' - OMO', 'Browser title uses the owner full name');
     meetingExpect(trim((string)$xpath->evaluate('string(//h1)')) === meetingT('book_with', ['name' => 'Meeting Fixture']), 'Booking heading uses the owner full name');
@@ -213,19 +263,24 @@ try {
     $user->set('image', ''); meetingSave($user);
     [$code, $page] = $http($path . '?receipt=' . $draft['token']);
     meetingExpect(!str_contains($page, 'visitor@example.invalid'), 'Receipt is bound to visitor session');
-    [$code, $page] = $http($path . '?date=' . $draft['date'] . '&time=16:00');
+    [$code, $page] = $http($path . '?date=' . $draft['date'] . '&time=16:00&duration=60');
     meetingExpect($code === 200 && str_contains($page, 'name="reason"'), 'One-hour selection shows guest form');
     meetingExpect(!str_contains($page, 'Seules les disponibilites sont publiques') && str_contains($page, 'Powered by')
         && str_contains($page, 'href="/">OMO2</a>') && str_contains($page, 'href="/">OpenMyOrganization</a>'), 'Booking form uses the current instance footer without redundant privacy copy');
     preg_match('/name="csrf" value="([a-f0-9]+)"/', $page, $matches);
     $csrf = $matches[1] ?? '';
-    [$code, $page] = $http($path, ['csrf' => $csrf, 'date' => $draft['date'], 'time' => '16:00',
+    [$code, $page] = $http($path, ['csrf' => $csrf, 'date' => $draft['date'], 'time' => '16:00', 'duration' => 60,
         'name' => 'HTTP fixture', 'email' => 'not-an-email', 'reason' => 'Preserve my input']);
     meetingExpect(str_contains($page, 'name="reason"') && str_contains($page, 'Preserve my input'), 'Validation error preserves the form');
-    [$code, $page] = $http($path, ['csrf' => $csrf, 'date' => $draft['date'], 'time' => '16:00',
-        'name' => 'HTTP fixture', 'email' => 'http@example.invalid', 'reason' => 'HTTP preview only']);
+    [$code, $page] = $http($path, ['csrf' => $csrf, 'date' => $draft['date'], 'time' => '16:00', 'duration' => 60,
+        'name' => 'HTTP fixture', 'email' => $testEmail, 'reason' => 'HTTP preview only']);
     meetingExpect($code === 200 && str_contains($page, 'name="token"') && str_contains($page, 'HTTP preview only'), 'Review step keeps visitor details');
     meetingExpect(str_contains($page, 'meeting-summary__details') && str_contains($page, '16:00 - 17:00'), 'Review has the redesigned complete time range');
+    [$code, $page] = $http($path, ['csrf' => $csrf, 'date' => $draft['date'], 'time' => '15:30', 'duration' => 90,
+        'name' => 'HTTP fixture', 'email' => $testEmail, 'reason' => 'Duration preview']);
+    meetingExpect(str_contains($page, '15:30 - 17:00') && str_contains($page, '90 min'), 'Review preserves the selected ninety minutes');
+    [$code, $page] = $http($path . '?date=' . $draft['date'] . '&time=15:30&duration=120');
+    meetingExpect(str_contains($page, meetingEscape(meetingT('duration_invalid'))) && !str_contains($page, 'name="reason"'), 'A forged URL cannot exceed the owner limit');
 
     // Render the final screen with an already mocked booking: no real CalDAV write or email.
     $confirmation = (static function () use ($booking, $profile, $zone, $path): string {
@@ -238,6 +293,36 @@ try {
     })();
     meetingExpect(str_contains($confirmation, 'meeting-success-mark') && str_contains($confirmation, 'download=1')
         && str_contains($confirmation, 'Test visitor'), 'Confirmation shows success, attendee and ICS action');
+    $profile->set('meeting_methods', json_encode($methods)); meetingSave($profile);
+    meetingExpect(meetingResolveMethod(MeetingProfile::forUser($uid), '', true) === $methods[0], 'Configured first method is the default public choice');
+    meetingReject(fn() => meetingResolveMethod($profile, 'foreign'), 'method_invalid');
+    meetingReject(fn() => meetingResolveMethod($profile, ''), 'method_invalid');
+    [$code, $page] = $http($path . '?date=' . $draft['date'] . '&time=16:00&duration=60&method=' . $methods[1]['id']);
+    $methodDom = new DOMDocument(); @$methodDom->loadHTML($page); $methodXpath = new DOMXPath($methodDom);
+    meetingExpect($methodXpath->query('//select[@data-meeting-method]/option')->length === 3
+        && $methodXpath->evaluate('string(//select[@data-meeting-method]/option[@selected]/@value)') === $methods[1]['id'], 'Public selector exposes configured methods and retains the choice');
+    meetingExpect($methodXpath->evaluate('string(//input[@type="hidden" and @name="method"]/@value)') === $methods[1]['id'], 'Details form submits only the configured identifier');
+    [$code, $page] = $http($path, ['csrf' => $csrf, 'date' => $draft['date'], 'time' => '16:00', 'duration' => 60,
+        'method' => $methods[1]['id'], 'name' => 'HTTP fixture', 'email' => $testEmail, 'reason' => 'Method preview']);
+    preg_match('/data-meeting-error>(.*?)<\/p>/s', $page, $methodError);
+    meetingExpect(str_contains($page, meetingEscape(meetingMethodLabel($methods[1]))) && str_contains($page, 'name="token"'), 'Review includes the chosen contact details: ' . strip_tags($methodError[1] ?? ''));
+    [$code, $page] = $http($path, ['csrf' => $csrf, 'date' => $draft['date'], 'time' => '16:00', 'duration' => 60,
+        'method' => 'foreign', 'name' => 'HTTP fixture', 'email' => $testEmail, 'reason' => 'Forged choice']);
+    meetingExpect(str_contains($page, meetingEscape(meetingT('method_invalid'))) && !str_contains($page, 'name="token"'), 'Visitor cannot invent contact details');
+    $methodDraft = $draft; $methodDraft['token'] = bin2hex(random_bytes(32));
+    $methodDraft['date'] = (new DateTimeImmutable('+3 days', $zone))->format('Y-m-d');
+    $methodDraft['method'] = $methods[1];
+    $methodBooking = meetingBook($uid, $methodDraft, $request, $mailer);
+    meetingExpect($methodBooking->meetingMethod() === $methods[1], 'Confirmed booking stores a snapshot of the method');
+    meetingExpect(in_array('LOCATION:' . meetingMethodLabel($methods[1]), commonExternalCalendarUnfoldLines($methodBooking->get('calendar_data')), true), 'CalDAV and ICS include the selected location');
+    $originalMethods = $methods;
+    $methods[1]['value'] = 'https://meet.example.test/new-room';
+    $profile->set('meeting_methods', json_encode($methods)); meetingSave($profile);
+    $staleDraft = $methodDraft; $staleDraft['token'] = bin2hex(random_bytes(32)); $staleDraft['time'] = '16:00';
+    meetingReject(fn() => meetingBook($uid, $staleDraft, $request, $mailer), 'method_invalid');
+    meetingExpect(meetingBook($uid, $methodDraft, $request, $mailer)->meetingMethod() === $originalMethods[1], 'Retrying a confirmed booking keeps its original contact details');
+    $profile->set('meeting_methods', '[]'); meetingSave($profile);
+    meetingReject(fn() => meetingBook($uid, $staleDraft, $request, $mailer), 'method_invalid');
     [$code] = $http($path, ['csrf' => 'incorrect']);
     meetingExpect($code === 403, 'Public POST rejects bad CSRF');
     [$code] = $http('/omo/api/calendar/meeting_settings.php');

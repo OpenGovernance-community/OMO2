@@ -11,7 +11,7 @@ class MeetingBooking extends DbObject
         return [[['IDuser', 'token', 'guest_name', 'guest_email', 'start_at', 'end_at'], 'required'],
             [['id'], 'integer'], [['id'], 'safe'], [['IDuser', 'IDexternalcalendar'], 'fk'],
             [['token', 'status', 'guest_name', 'guest_email', 'resource_url'], 'string'],
-            [['reason', 'calendar_data'], 'text'], [['start_at', 'end_at', 'created_at', 'email_sent_at'], 'datetime']];
+            [['reason', 'calendar_data', 'meeting_method'], 'text'], [['start_at', 'end_at', 'created_at', 'email_sent_at'], 'datetime']];
     }
     public static function attributeLength()
     {
@@ -22,8 +22,9 @@ class MeetingBooking extends DbObject
         return ['IDuser' => 'Utilisateur', 'IDexternalcalendar' => 'Calendrier', 'token' => 'Reference',
             'status' => 'Etat', 'guest_name' => 'Nom', 'guest_email' => 'E-mail', 'reason' => 'Motif',
             'start_at' => 'Debut', 'end_at' => 'Fin', 'resource_url' => 'Ressource CalDAV',
-            'calendar_data' => 'Evenement', 'created_at' => 'Creation', 'email_sent_at' => 'E-mail envoye'];
+            'calendar_data' => 'Evenement', 'created_at' => 'Creation', 'email_sent_at' => 'E-mail envoye', 'meeting_method' => 'Moyen de rencontre'];
     }
+    public function meetingMethod(): ?array { return json_decode((string)$this->get('meeting_method'), true) ?: null; }
     public static function pendingIntervals(int $userId, \DateTimeInterface $start, \DateTimeInterface $end, string $except = ''): array
     {
         $rows = self::fetchAll('SELECT start_at, end_at FROM meeting_booking
