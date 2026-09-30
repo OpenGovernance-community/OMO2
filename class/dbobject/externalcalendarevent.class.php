@@ -65,6 +65,14 @@ class ExternalCalendarEvent extends DbObject
         ]) ? $event : null;
     }
 
+    public static function deactivateForCalendar($calendarId)
+    {
+        return self::execute(
+            'UPDATE `external_calendar_event` SET `active` = 0 WHERE `IDexternalcalendar` = :calendar_id',
+            ['calendar_id' => (int)$calendarId]
+        );
+    }
+
     public static function deactivateInRange($calendarId, \DateTimeInterface $rangeStart, \DateTimeInterface $rangeEnd)
     {
         return self::execute(

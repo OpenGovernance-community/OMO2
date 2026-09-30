@@ -35,6 +35,15 @@ function omoDeferredEditorRenderFields(string $targetType, array $state): void
     $escape = static fn ($value): string => htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
     $value = static fn (string $name): string => $escape(($state[$name] ?? '') instanceof DateTimeInterface ? $state[$name]->format('Y-m-d') : ($state[$name] ?? ''));
     $label = static fn (string $key): string => $escape(omoDeferredEditorT($key));
+    $htmlField = static function (string $name, string $labelKey) use ($label, $value): void {
+        ?>
+        <div class="generic-form-field" data-omo-proposal-html-field>
+            <span class="generic-form-label"><?= $label($labelKey) ?></span>
+            <div class="omo-proposal-html-editor" data-omo-proposal-html-editor data-omo-deferred-html="<?= $name ?>"></div>
+            <textarea name="<?= $name ?>" data-omo-proposal-html-value hidden aria-hidden="true"><?= $value($name) ?></textarea>
+        </div>
+        <?php
+    };
     if ($targetType === 'holon_move') {
         ?>
         <p><?= $label('move_help') ?></p>
@@ -53,15 +62,15 @@ function omoDeferredEditorRenderFields(string $targetType, array $state): void
         <label class="generic-form-field"><span class="generic-form-label"><?= $label('title') ?></span><input class="generic-form-control" name="title" required maxlength="255" value="<?= $value('title') ?>"></label>
         <?php if ($targetType === 'rule'): ?>
             <?php omoRuleScopeRenderFields($state, $state['scopeContext'] ?? []); ?>
-            <label class="generic-form-field"><span class="generic-form-label"><?= $label('intention') ?></span><textarea class="generic-form-control" name="intention" rows="3"><?= $value('intention') ?></textarea></label>
-            <label class="generic-form-field"><span class="generic-form-label"><?= $label('rule') ?></span><textarea class="generic-form-control" name="description" rows="5" required><?= $value('description') ?></textarea></label>
+            <?php $htmlField('intention', 'intention'); ?>
+            <?php $htmlField('description', 'rule'); ?>
             <div class="generic-form-grid">
                 <?php foreach (['review_date', 'expiration_date'] as $field): ?>
                     <label class="generic-form-field"><span class="generic-form-label"><?= $label($field) ?></span><input class="generic-form-control" type="date" name="<?= $field ?>" value="<?= $value($field) ?>" required></label>
                 <?php endforeach; ?>
             </div>
         <?php elseif ($targetType === 'project'): ?>
-            <label class="generic-form-field"><span class="generic-form-label"><?= $label('description') ?></span><textarea class="generic-form-control" name="description" rows="4"><?= $value('description') ?></textarea></label>
+            <?php $htmlField('description', 'description'); ?>
             <div class="generic-form-grid">
                 <label class="generic-form-field"><span class="generic-form-label"><?= $label('status') ?></span><select class="generic-form-control" name="status"><?php foreach (\dbObject\Project::getStatusCatalog() as $key => $entry): ?><option value="<?= $escape($key) ?>"<?= ($state['status'] ?? \dbObject\Project::STATUS_IN_PROGRESS) === $key ? ' selected' : '' ?>><?= $escape($entry['label']) ?></option><?php endforeach; ?></select></label>
                 <label class="generic-form-field"><span class="generic-form-label"><?= $label('size') ?></span><select class="generic-form-control" name="project_size"><?php foreach (\dbObject\Project::sizes() as $size): ?><option value="<?= $size ?>"<?= ($state['project_size'] ?? \dbObject\Project::SIZE_M) === $size ? ' selected' : '' ?>><?= $size ?></option><?php endforeach; ?></select></label>

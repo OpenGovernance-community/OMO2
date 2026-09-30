@@ -37,6 +37,15 @@ $sourceLang = [
     'calendar.connect.caldav_steps.three' => ['text' => 'Utilisez l’identifiant affiché ci-dessous et votre mot de passe OMO. Si vous n’avez pas de mot de passe, configurez-en un dans votre profil.', 'context' => 'Third step for connecting an OMO CalDAV calendar.'],
     'calendar.connect.caldav_steps.four' => ['text' => 'Validez la connexion, puis activez les agendas OMO proposés dans votre application.', 'context' => 'Final step for connecting an OMO CalDAV calendar.'],
     'calendar.connect.external.title' => ['text' => 'Agendas CalDAV', 'context' => 'Heading for the external calendar connection form.'],
+    'calendar.connect.external.list' => ['text' => 'Calendriers connectes', 'context' => 'Connected calendar list heading.'],
+    'calendar.connect.external.add' => ['text' => 'Ajouter un calendrier', 'context' => 'Calendar creation section heading.'],
+    'calendar.connect.external.edit' => ['text' => 'Modifier', 'context' => 'Edit calendar button.'],
+    'calendar.connect.external.edit_title' => ['text' => 'Modifier le calendrier', 'context' => 'Calendar settings form heading.'],
+    'calendar.connect.external.save' => ['text' => 'Enregistrer', 'context' => 'Save calendar settings button.'],
+    'calendar.connect.external.cancel' => ['text' => 'Annuler', 'context' => 'Cancel calendar editing button.'],
+    'calendar.connect.external.keep_secret' => ['text' => 'Laisser vide pour conserver la valeur actuelle.', 'context' => 'Help for replacing a stored calendar credential.'],
+    'calendar.connect.external.calendar_url' => ['text' => 'Lien direct du calendrier CalDAV', 'context' => 'URL of the selected CalDAV collection when editing.'],
+    'calendar.connect.external.calendar_url_help' => ['text' => 'Utilisez le lien direct de cet agenda. Pour choisir un autre agenda depuis un serveur, utilisez le formulaire d ajout.', 'context' => 'Help for editing a CalDAV collection URL.'],
     'calendar.connect.external.intro' => ['text' => 'Connectez votre compte Nextcloud ou Infomaniak, puis choisissez les agendas à afficher. Les événements restent privés et en lecture seule dans OMO.', 'context' => 'Introductory copy for external calendar discovery.'],
     'calendar.connect.external.name' => ['text' => 'Nom dans OMO', 'context' => 'Label for an external calendar display name.'],
     'calendar.connect.external.url' => ['text' => 'Adresse du serveur CalDAV', 'context' => 'Label for a CalDAV discovery URL.'],
@@ -60,6 +69,14 @@ $sourceLang = [
     'calendar.connect.external.finished' => ['text' => 'Traitement terminé. Consultez le résultat sous chaque agenda.', 'context' => 'All selected calendars have been processed.'],
     'calendar.connect.external.failed' => ['text' => 'Opération impossible. Réessayez.', 'context' => 'Network or unexpected calendar error.'],
     'calendar.connect.external.confirm_delete' => ['text' => 'Retirer cet agenda externe d’OMO ?', 'context' => 'Confirm disconnecting a calendar from OMO only.'],
+    'calendar.connect.external.ics_title' => ['text' => 'Agenda par lien ICS', 'context' => 'Heading for an external ICS subscription.'],
+    'calendar.connect.external.ics_intro' => ['text' => 'Ajoutez l’adresse secrète au format iCal de Google Calendar ou d’un autre agenda. Les événements seront visibles dans OMO en lecture seule.', 'context' => 'Explanation of ICS subscription.'],
+    'calendar.connect.external.ics_url' => ['text' => 'Adresse ICS privée', 'context' => 'ICS subscription URL label.'],
+    'calendar.connect.external.ics_secret' => ['text' => 'Gardez cette adresse privée : elle donne accès à votre agenda.', 'context' => 'Warning about the bearer URL.'],
+    'calendar.connect.external.ics_steps' => ['text' => 'Dans Google Calendar sur le Web : Paramètres > votre agenda > Intégrer l’agenda > Adresse secrète au format iCal.', 'context' => 'Location of Google Calendar secret iCal URL.'],
+    'calendar.connect.external.ics_add' => ['text' => 'Ajouter l’agenda ICS', 'context' => 'Button to subscribe to an ICS feed.'],
+    'calendar.connect.external.type.ics' => ['text' => 'ICS', 'context' => 'ICS source badge.'],
+    'calendar.connect.external.type.caldav' => ['text' => 'CalDAV', 'context' => 'CalDAV source badge.'],
 ];
 
 $lang = omoLoadTranslationBundle('omo_calendar_connect', $sourceLang);
@@ -69,6 +86,26 @@ function omoCalendarConnectT($key, array $replace = [])
     global $lang, $sourceLang;
     return t($key, $replace, $lang, $sourceLang);
 }
+
+$connectHelp = static function (string $labelKey, array $textKeys): string {
+    return '<details class="generic-context-help generic-context-help--compact" data-generic-context-help-hover>'
+        . '<summary aria-label="' . omoApiEscape(omoCalendarConnectT($labelKey)) . '">?</summary>'
+        . '<div class="generic-context-help__content">'
+        . implode('', array_map(static fn($key) => '<p>' . omoApiEscape(omoCalendarConnectT($key)) . '</p>', $textKeys))
+        . '</div></details>';
+};
+
+$calendarIdentityFields = static function (bool $discovered = false): void {
+    ?>
+    <div class="generic-form-field">
+        <span class="generic-form-label"><?= omoApiEscape(omoCalendarConnectT('calendar.connect.external.name')) ?></span>
+        <div class="generic-control-action">
+            <input class="generic-form-control omo-calendar-connect__color-control" type="color" <?= $discovered ? 'data-calendar-color' : 'name="color"' ?> value="#0f766e" aria-label="<?= omoApiEscape(omoCalendarConnectT('calendar.connect.color')) ?>" title="<?= omoApiEscape(omoCalendarConnectT('calendar.connect.color')) ?>">
+            <input class="generic-form-control generic-form-control--compact" type="text" <?= $discovered ? 'data-calendar-title' : 'name="title" required' ?> maxlength="190" aria-label="<?= omoApiEscape(omoCalendarConnectT('calendar.connect.external.name')) ?>">
+        </div>
+    </div>
+    <?php
+};
 
 $organizationId = isset($_GET['oid']) && is_numeric($_GET['oid']) ? (int)$_GET['oid'] : 0;
 $holonId = isset($_GET['cid']) && is_numeric($_GET['cid']) ? (int)$_GET['cid'] : 0;
@@ -166,51 +203,109 @@ foreach (['searching', 'connected', 'choose', 'pending', 'finished', 'failed', '
                     </section>
                 <?php endif; ?>
             </div>
-            <div id="omoCalendarConnectExternal" class="generic-tabs__panel generic-form-stack" data-generic-tab-panel hidden>
-                <section class="generic-form-section generic-form-section--divided generic-form-stack">
-                    <h4 class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoCalendarConnectT('calendar.connect.external.title')) ?></h4>
-                    <p class="omo-calendar-connect__message"><?= omoApiEscape(omoCalendarConnectT('calendar.connect.external.intro')) ?></p>
-                    <form class="omo-calendar-connect__external-form generic-form-stack" data-omo-external-calendar-form data-omo-external-calendar-action="<?= omoApiEscape($externalActionUrl) ?>">
-                        <input type="hidden" name="action" value="discover">
-                        <label class="generic-form-field"><span class="generic-form-label"><?= omoApiEscape(omoCalendarConnectT('calendar.connect.external.url')) ?></span><input class="generic-form-control" type="url" name="server_url" required maxlength="2000" placeholder="https://cloud.example/remote.php/dav"><span class="generic-help-text"><?= omoApiEscape(omoCalendarConnectT('calendar.connect.external.url_hint')) ?></span></label>
-                        <label class="generic-form-field"><span class="generic-form-label"><?= omoApiEscape(omoCalendarConnectT('calendar.connect.username')) ?></span><input class="generic-form-control" type="text" name="username" required maxlength="250" autocomplete="username"></label>
-                        <label class="generic-form-field"><span class="generic-form-label"><?= omoApiEscape(omoCalendarConnectT('calendar.connect.external.password')) ?></span><input class="generic-form-control" type="password" name="password" required autocomplete="new-password"></label>
-                        <div class="omo-calendar-connect__external-actions"><button type="submit" class="generic-action-button generic-action-button--main"><?= omoApiEscape(omoCalendarConnectT('calendar.connect.external.search')) ?></button><p class="generic-feedback generic-feedback--collapse-empty" data-omo-external-calendar-feedback aria-live="polite"></p></div>
-                    </form>
-                </section>
-                <form class="generic-form-stack" data-omo-external-calendar-selection hidden>
-                    <h4 class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoCalendarConnectT('calendar.connect.external.selection')) ?></h4>
-                    <div class="generic-form-stack" data-omo-external-calendar-results></div>
-                    <button type="submit" class="generic-action-button generic-action-button--main"><?= omoApiEscape(omoCalendarConnectT('calendar.connect.external.connect_selected')) ?></button>
-                    <p class="generic-feedback generic-feedback--collapse-empty" data-omo-external-calendar-feedback aria-live="polite"></p>
-                </form>
-                <template data-omo-external-calendar-template>
-                    <section class="generic-soft-panel generic-soft-panel--stack" data-omo-external-calendar-result>
-                        <label class="generic-checkbox"><input type="checkbox" data-calendar-selected><span class="generic-form-label"><?= omoApiEscape(omoCalendarConnectT('calendar.connect.external.select')) ?></span><strong data-calendar-name></strong></label>
-                        <span class="generic-help-text" data-calendar-connected hidden><?= omoApiEscape(omoCalendarConnectT('calendar.connect.external.connected')) ?></span>
-                        <div class="generic-form-grid">
-                            <label class="generic-form-field"><span class="generic-form-label"><?= omoApiEscape(omoCalendarConnectT('calendar.connect.external.name')) ?></span><input class="generic-form-control" type="text" maxlength="190" data-calendar-title></label>
-                            <label class="generic-form-field"><span class="generic-form-label"><?= omoApiEscape(omoCalendarConnectT('calendar.connect.color')) ?></span><input class="generic-form-control" type="color" data-calendar-color></label>
-                        </div>
-                        <p class="generic-feedback generic-feedback--collapse-empty" data-calendar-status aria-live="polite"></p>
-                    </section>
-                </template>
-                <section class="generic-form-section generic-form-section--divided generic-form-stack">
+            <div id="omoCalendarConnectExternal" class="generic-tabs__panel generic-form-stack generic-form-stack--compact" data-generic-tab-panel hidden>
+                <section class="generic-form-section generic-form-section--divided generic-form-stack generic-form-stack--compact">
+                    <h4 class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoCalendarConnectT('calendar.connect.external.list')) ?></h4>
                     <?php if (count($externalCalendars) === 0): ?>
                         <p class="omo-calendar-connect__message"><?= omoApiEscape(omoCalendarConnectT('calendar.connect.external.empty')) ?></p>
                     <?php else: ?>
                         <div class="omo-calendar-connect__external-list">
                             <?php foreach ($externalCalendars as $externalCalendar): ?>
-                                <?php if (!($externalCalendar instanceof ExternalCalendar)): continue; endif; ?>
+                                <?php
+                                    if (!($externalCalendar instanceof ExternalCalendar)): continue; endif;
+                                    $editValues = [
+                                        'id' => (int)$externalCalendar->getId(),
+                                        'provider' => (string)$externalCalendar->get('provider'),
+                                        'title' => (string)$externalCalendar->get('title'),
+                                        'color' => ExternalCalendar::normalizeColor($externalCalendar->get('color')),
+                                        'calendar_url' => (string)$externalCalendar->get('provider') === 'ics' ? '' : (string)$externalCalendar->get('calendar_url'),
+                                        'username' => (string)$externalCalendar->get('provider') === 'ics' ? '' : (string)$externalCalendar->get('username'),
+                                    ];
+                                ?>
                                 <article class="omo-calendar-connect__external-item" data-omo-external-calendar-item>
                                     <span class="omo-calendar-connect__external-color" style="--param-external-calendar-color: <?= omoApiEscape(ExternalCalendar::normalizeColor($externalCalendar->get('color'))) ?>;"></span>
-                                    <div><strong><?= omoApiEscape($externalCalendar->get('title')) ?></strong><span class="generic-form-label"><?= omoApiEscape(omoCalendarConnectT('calendar.connect.external.last_sync')) ?> : <?= omoApiEscape($externalCalendar->get('last_sync_at') instanceof DateTimeInterface ? $externalCalendar->get('last_sync_at')->format('d.m.Y H:i') : omoCalendarConnectT('calendar.connect.external.never')) ?></span><?php if (trim((string)$externalCalendar->get('last_sync_error')) !== ''): ?><span class="omo-calendar-connect__external-error"><?= omoApiEscape(omoCalendarConnectT('calendar.connect.external.error')) ?> : <?= omoApiEscape($externalCalendar->get('last_sync_error')) ?></span><?php endif; ?></div>
-                                    <div class="omo-calendar-connect__external-actions"><button type="button" class="generic-action-button generic-action-button--secondary" data-omo-external-calendar-sync data-omo-external-calendar-id="<?= (int)$externalCalendar->getId() ?>" data-omo-external-calendar-action="<?= omoApiEscape($externalActionUrl) ?>"><?= omoApiEscape(omoCalendarConnectT('calendar.connect.external.sync')) ?></button><button type="button" class="generic-action-button generic-action-button--danger" data-omo-external-calendar-delete data-omo-external-calendar-id="<?= (int)$externalCalendar->getId() ?>" data-omo-external-calendar-action="<?= omoApiEscape($externalActionUrl) ?>"><?= omoApiEscape(omoCalendarConnectT('calendar.connect.external.delete')) ?></button></div>
+                                    <div><strong><?= omoApiEscape($externalCalendar->get('title')) ?></strong><span class="generic-form-label"><?= omoApiEscape(omoCalendarConnectT('calendar.connect.external.type.' . ((string)$externalCalendar->get('provider') === 'ics' ? 'ics' : 'caldav'))) ?> · <?= omoApiEscape(omoCalendarConnectT('calendar.connect.external.last_sync')) ?> : <?= omoApiEscape($externalCalendar->get('last_sync_at') instanceof DateTimeInterface ? $externalCalendar->get('last_sync_at')->format('d.m.Y H:i') : omoCalendarConnectT('calendar.connect.external.never')) ?></span><?php if (trim((string)$externalCalendar->get('last_sync_error')) !== ''): ?><span class="omo-calendar-connect__external-error"><?= omoApiEscape(omoCalendarConnectT('calendar.connect.external.error')) ?> : <?= omoApiEscape($externalCalendar->get('last_sync_error')) ?></span><?php endif; ?></div>
+                                    <div class="omo-calendar-connect__external-actions"><button type="button" class="generic-action-button generic-action-button--compact generic-action-button--secondary" data-omo-external-calendar-edit="<?= omoApiEscape(json_encode($editValues, JSON_UNESCAPED_UNICODE)) ?>" aria-controls="omoCalendarExternalEditor" aria-expanded="false"><?= omoApiEscape(omoCalendarConnectT('calendar.connect.external.edit')) ?></button><button type="button" class="generic-action-button generic-action-button--compact generic-action-button--secondary" data-omo-external-calendar-sync data-omo-external-calendar-id="<?= (int)$externalCalendar->getId() ?>" data-omo-external-calendar-action="<?= omoApiEscape($externalActionUrl) ?>"><?= omoApiEscape(omoCalendarConnectT('calendar.connect.external.sync')) ?></button><button type="button" class="generic-action-button generic-action-button--compact generic-action-button--danger" data-omo-external-calendar-delete data-omo-external-calendar-id="<?= (int)$externalCalendar->getId() ?>" data-omo-external-calendar-action="<?= omoApiEscape($externalActionUrl) ?>"><?= omoApiEscape(omoCalendarConnectT('calendar.connect.external.delete')) ?></button></div>
                                 </article>
                             <?php endforeach; ?>
                         </div>
                     <?php endif; ?>
                 </section>
+                <form id="omoCalendarExternalEditor" class="generic-form-section generic-form-section--divided generic-form-stack generic-form-stack--compact" data-omo-external-calendar-edit-form hidden>
+                    <h4 class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoCalendarConnectT('calendar.connect.external.edit_title')) ?></h4>
+                    <input type="hidden" name="action" value="update">
+                    <input type="hidden" name="calendar_id">
+                    <?php $calendarIdentityFields(); ?>
+                    <div class="generic-form-field" data-omo-external-calendar-edit-ics>
+                        <div class="generic-inline-help"><label class="generic-form-label" for="omoCalendarEditIcsUrl"><?= omoApiEscape(omoCalendarConnectT('calendar.connect.external.ics_url')) ?></label><?= $connectHelp('calendar.connect.external.ics_url', ['calendar.connect.external.keep_secret', 'calendar.connect.external.ics_steps', 'calendar.connect.external.ics_secret']) ?></div>
+                        <input id="omoCalendarEditIcsUrl" class="generic-form-control generic-form-control--compact" type="url" name="ics_url" maxlength="2000" autocomplete="off" placeholder="<?= omoApiEscape(omoCalendarConnectT('calendar.connect.external.keep_secret')) ?>">
+                    </div>
+                    <div class="generic-form-stack generic-form-stack--compact" data-omo-external-calendar-edit-caldav>
+                        <div class="generic-form-field">
+                            <div class="generic-inline-help"><label class="generic-form-label" for="omoCalendarEditCalDavUrl"><?= omoApiEscape(omoCalendarConnectT('calendar.connect.external.calendar_url')) ?></label><?= $connectHelp('calendar.connect.external.calendar_url', ['calendar.connect.external.calendar_url_help']) ?></div>
+                            <input id="omoCalendarEditCalDavUrl" class="generic-form-control generic-form-control--compact" type="url" name="calendar_url" maxlength="2000">
+                        </div>
+                        <div class="generic-form-grid">
+                            <label class="generic-form-field"><span class="generic-form-label"><?= omoApiEscape(omoCalendarConnectT('calendar.connect.username')) ?></span><input class="generic-form-control generic-form-control--compact" type="text" name="username" maxlength="250" autocomplete="username"></label>
+                            <div class="generic-form-field">
+                                <div class="generic-inline-help"><label class="generic-form-label" for="omoCalendarEditPassword"><?= omoApiEscape(omoCalendarConnectT('calendar.connect.external.password')) ?></label><?= $connectHelp('calendar.connect.external.password', ['calendar.connect.external.keep_secret']) ?></div>
+                                <input id="omoCalendarEditPassword" class="generic-form-control generic-form-control--compact" type="password" name="password" maxlength="4096" autocomplete="new-password" placeholder="<?= omoApiEscape(omoCalendarConnectT('calendar.connect.external.keep_secret')) ?>">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="omo-calendar-connect__external-actions">
+                        <button type="submit" class="generic-action-button generic-action-button--compact generic-action-button--main"><?= omoApiEscape(omoCalendarConnectT('calendar.connect.external.save')) ?></button>
+                        <button type="button" class="generic-action-button generic-action-button--compact generic-action-button--secondary" data-omo-external-calendar-edit-cancel><?= omoApiEscape(omoCalendarConnectT('calendar.connect.external.cancel')) ?></button>
+                        <p class="generic-feedback generic-feedback--collapse-empty" data-omo-external-calendar-feedback aria-live="polite"></p>
+                    </div>
+                </form>
+                <section class="generic-form-section generic-form-section--divided generic-form-stack generic-form-stack--compact" data-omo-external-calendar-add>
+                    <h4 class="generic-card-title generic-card-title--small" id="omoCalendarExternalAddTitle"><?= omoApiEscape(omoCalendarConnectT('calendar.connect.external.add')) ?></h4>
+                    <div class="omo-calendar-connect__external-actions" role="radiogroup" aria-labelledby="omoCalendarExternalAddTitle">
+                        <label class="generic-checkbox"><input type="radio" name="external_calendar_type" value="ics" checked data-omo-external-calendar-type aria-controls="omoCalendarExternalIcs"><span><?= omoApiEscape(omoCalendarConnectT('calendar.connect.external.ics_title')) ?></span></label>
+                        <label class="generic-checkbox"><input type="radio" name="external_calendar_type" value="caldav" data-omo-external-calendar-type aria-controls="omoCalendarExternalCalDav"><span><?= omoApiEscape(omoCalendarConnectT('calendar.connect.external.type.caldav')) ?></span></label>
+                    </div>
+                    <section id="omoCalendarExternalIcs" class="generic-form-stack generic-form-stack--compact" data-omo-external-calendar-provider="ics">
+                        <form class="generic-form-stack generic-form-stack--compact" data-omo-external-calendar-ics-form>
+                            <input type="hidden" name="action" value="save_ics">
+                            <div class="generic-form-field">
+                                <div class="generic-inline-help"><label class="generic-form-label" for="omoCalendarExternalIcsUrl"><?= omoApiEscape(omoCalendarConnectT('calendar.connect.external.ics_url')) ?></label><?= $connectHelp('calendar.connect.external.ics_url', ['calendar.connect.external.ics_intro', 'calendar.connect.external.ics_steps', 'calendar.connect.external.ics_secret']) ?></div>
+                                <input id="omoCalendarExternalIcsUrl" class="generic-form-control generic-form-control--compact" type="url" name="ics_url" required maxlength="2000" placeholder="https://calendar.google.com/calendar/ical/...">
+                            </div>
+                            <?php $calendarIdentityFields(); ?>
+                            <div class="omo-calendar-connect__external-actions"><button type="submit" class="generic-action-button generic-action-button--compact generic-action-button--main"><?= omoApiEscape(omoCalendarConnectT('calendar.connect.external.ics_add')) ?></button><p class="generic-feedback generic-feedback--collapse-empty" data-omo-external-calendar-feedback aria-live="polite"></p></div>
+                        </form>
+                    </section>
+                    <section id="omoCalendarExternalCalDav" class="generic-form-stack generic-form-stack--compact" data-omo-external-calendar-provider="caldav" hidden>
+                        <form class="omo-calendar-connect__external-form generic-form-stack generic-form-stack--compact" data-omo-external-calendar-form data-omo-external-calendar-action="<?= omoApiEscape($externalActionUrl) ?>">
+                            <input type="hidden" name="action" value="discover">
+                            <div class="generic-form-field">
+                                <div class="generic-inline-help"><label class="generic-form-label" for="omoCalendarExternalServer"><?= omoApiEscape(omoCalendarConnectT('calendar.connect.external.url')) ?></label><?= $connectHelp('calendar.connect.external.url', ['calendar.connect.external.intro', 'calendar.connect.external.url_hint']) ?></div>
+                                <input id="omoCalendarExternalServer" class="generic-form-control generic-form-control--compact" type="url" name="server_url" required maxlength="2000" placeholder="https://cloud.example/remote.php/dav">
+                            </div>
+                            <div class="generic-form-grid">
+                                <label class="generic-form-field"><span class="generic-form-label"><?= omoApiEscape(omoCalendarConnectT('calendar.connect.username')) ?></span><input class="generic-form-control generic-form-control--compact" type="text" name="username" required maxlength="250" autocomplete="username"></label>
+                                <label class="generic-form-field"><span class="generic-form-label"><?= omoApiEscape(omoCalendarConnectT('calendar.connect.external.password')) ?></span><input class="generic-form-control generic-form-control--compact" type="password" name="password" required autocomplete="new-password"></label>
+                            </div>
+                            <div class="omo-calendar-connect__external-actions"><button type="submit" class="generic-action-button generic-action-button--compact generic-action-button--main"><?= omoApiEscape(omoCalendarConnectT('calendar.connect.external.search')) ?></button><p class="generic-feedback generic-feedback--collapse-empty" data-omo-external-calendar-feedback aria-live="polite"></p></div>
+                        </form>
+                        <form class="generic-form-stack generic-form-stack--compact" data-omo-external-calendar-selection hidden>
+                            <h4 class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoCalendarConnectT('calendar.connect.external.selection')) ?></h4>
+                            <div class="generic-form-stack generic-form-stack--compact" data-omo-external-calendar-results></div>
+                            <button type="submit" class="generic-action-button generic-action-button--compact generic-action-button--main"><?= omoApiEscape(omoCalendarConnectT('calendar.connect.external.connect_selected')) ?></button>
+                            <p class="generic-feedback generic-feedback--collapse-empty" data-omo-external-calendar-feedback aria-live="polite"></p>
+                        </form>
+                        <template data-omo-external-calendar-template>
+                            <section class="generic-soft-panel generic-soft-panel--stack" data-omo-external-calendar-result>
+                                <label class="generic-checkbox"><input type="checkbox" data-calendar-selected><span class="generic-form-label"><?= omoApiEscape(omoCalendarConnectT('calendar.connect.external.select')) ?></span><strong data-calendar-name></strong></label>
+                                <span class="generic-help-text" data-calendar-connected hidden><?= omoApiEscape(omoCalendarConnectT('calendar.connect.external.connected')) ?></span>
+                                <?php $calendarIdentityFields(true); ?>
+                                <p class="generic-feedback generic-feedback--collapse-empty" data-calendar-status aria-live="polite"></p>
+                            </section>
+                        </template>
+                    </section>
+                </section>
+
             </div>
         </div>
     </div>

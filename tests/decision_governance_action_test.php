@@ -30,6 +30,9 @@ $normalized = DecisionGovernanceAction::normalizeRuleState([
 assertDecisionGovernanceAction($normalized['title'] === 'Regle test', 'The rule title must be trimmed.');
 assertDecisionGovernanceAction($normalized['scope'] === 'descendants', 'A holon rule must retain its selected scope.');
 assertDecisionGovernanceAction($normalized['review_date'] === '2027-01-10', 'The review date must be normalized.');
+assertDecisionGovernanceAction(!\dbObject\Rule::hasContentText('<p><br></p>'), 'Empty editor markup must not count as rule content.');
+assertDecisionGovernanceAction(!\dbObject\Rule::hasContentText('<p>&nbsp;</p>'), 'Nonbreaking spaces must not count as rule content.');
+assertDecisionGovernanceAction(\dbObject\Rule::hasContentText('<p>Contenu <strong>utile</strong></p>'), 'Formatted rule text must remain valid.');
 
 $description = DecisionGovernanceAction::buildRuleUpdateDescription(
     array_merge($normalized, ['title' => 'Ancien titre']),

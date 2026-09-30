@@ -224,7 +224,9 @@
                 var editor = modalBody().querySelector('[data-editor]');
                 Object.keys(state).forEach(function (name) {
                     var field = editor.elements.namedItem(name);
+                    var htmlEditor = editor.querySelector('[data-omo-deferred-html="' + name + '"]');
                     if (field && field.type === 'checkbox') field.checked = Number(state[name] || 0) > 0;
+                    else if (htmlEditor && window.omoProposalHtml) window.omoProposalHtml.setValue(htmlEditor, state[name] == null ? '' : String(state[name]));
                     else if (field) field.value = state[name] == null ? '' : String(state[name]);
                 });
                 if (targetType === 'rule' && window.omoInitRuleScopeFields) window.omoInitRuleScopeFields(editor, scopeContext, state);
@@ -234,13 +236,20 @@
                     if (!editor.reportValidity()) return;
                     var after = Object.assign({}, state);
                     editor.querySelectorAll('input[type="checkbox"][name]').forEach(function (field) { after[field.name] = field.checked ? String(field.value || '1') : '0'; });
+                    editor.querySelectorAll('[data-omo-deferred-html]').forEach(function (htmlEditor) {
+                        var field = editor.elements.namedItem(htmlEditor.getAttribute('data-omo-deferred-html'));
+                        if (field && window.omoProposalHtml) field.value = window.omoProposalHtml.getValue(htmlEditor);
+                    });
                     new FormData(editor).forEach(function (value, name) { after[name] = String(value); });
                     after.IDholon = Number(action.holonId);
                     if (targetType === 'indicator') after.name = String(after.name || '').trim();
                     else after.title = String(after.title || '').trim();
                     if (targetType === 'rule') {
                         after.IDauthority = Number(after.IDauthority) || null;
-                        if (!strip(after.description)) return;
+                        if (!strip(after.description)) {
+                            if (window.commonNotify) window.commonNotify(texts.ruleContentRequired, 'error');
+                            return;
+                        }
                     }
                     action.after = after;
                     saveAction(pi, ai, action);

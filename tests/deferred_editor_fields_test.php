@@ -25,6 +25,9 @@ omoDeferredEditorRenderFields('rule', [
 $ruleHtml = ob_get_clean();
 assertEditorFields(str_contains($ruleHtml, 'Règle &quot;test&quot;'), 'Titles must be initialized and escaped.');
 assertEditorFields(str_contains($ruleHtml, '&lt;p&gt;Intention conservée&lt;/p&gt;'), 'Rich intention must survive textarea initialization.');
+assertEditorFields(str_contains($ruleHtml, 'data-omo-deferred-html="intention"'), 'Rule intention must use the shared HTML editor.');
+assertEditorFields(str_contains($ruleHtml, 'data-omo-deferred-html="description"'), 'Rule description must use the shared HTML editor.');
+assertEditorFields(substr_count($ruleHtml, 'data-omo-proposal-html-editor') === 2, 'Both rule HTML fields must mount an editor.');
 assertEditorFields(!str_contains($ruleHtml, '<script>'), 'Field content must not break out of textareas.');
 assertEditorFields(str_contains($ruleHtml, 'value="2026-11-01"'), 'Rule dates must be initialized.');
 assertEditorFields(str_contains($ruleHtml, 'generic-form-stack'), 'Shared fields must use the common form spacing.');
@@ -40,6 +43,7 @@ assertEditorFields(str_contains($projectHtml, 'value="L" selected'), 'Project si
 assertEditorFields(str_contains($projectHtml, 'value="2" selected>P2'), 'Priority must retain its value.');
 assertEditorFields(str_contains($projectHtml, 'value="4" selected>4/5'), 'Importance must retain its value.');
 assertEditorFields(str_contains($projectHtml, 'value="2026-10-05"'), 'Date objects must be formatted for HTML date inputs.');
+assertEditorFields(str_contains($projectHtml, 'data-omo-deferred-html="description"'), 'Project description must use the shared HTML editor.');
 
 ob_start();
 omoDeferredEditorRenderFields('holon_move', ['parent_id' => 4, 'destinations' => [

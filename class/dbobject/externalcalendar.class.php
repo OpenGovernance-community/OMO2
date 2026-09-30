@@ -73,6 +73,12 @@ class ExternalCalendar extends DbObject
         return strtolower($value);
     }
 
+    public static function synchronizationRange(?\DateTimeInterface $at = null): array
+    {
+        $at = $at === null ? new \DateTimeImmutable('now') : \DateTimeImmutable::createFromInterface($at);
+        return [$at->modify('-30 days'), $at->modify('+3 months')];
+    }
+
     public function markSyncResult($success, $message = '', $sourceCtag = null)
     {
         $this->set('last_sync_at', new \DateTimeImmutable('now'));
