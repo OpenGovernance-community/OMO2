@@ -1305,6 +1305,8 @@ $projectTexts = [
 </div>
 <script src="/common/drawer/subdrawer.js?v=20260906-slide-right"></script>
 <link rel="stylesheet" href="/common/calendar/availability.css?v=20260916-conflict">
+<script src="<?= commonAssetUrl('/common/calendar/availability-model.js') ?>"></script>
+<script src="<?= commonAssetUrl('/common/calendar/availability-view.js') ?>"></script>
 <script src="<?= commonAssetUrl('/common/calendar/availability.js') ?>"></script>
 <script src="/common/calendar/event-editor.js?v=20260922-document-templates"></script>
 <script src="/omo/assets/js/application-view-preferences.js?v=20260917-filter-hierarchy"></script>

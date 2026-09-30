@@ -30,6 +30,8 @@ function omoUserContextT(string $key, array $replace = []): string
             'closed' => 'Indisponible',
             'busy' => 'Occupé',
             'available' => 'Libre',
+            'day_availability' => '{free} / {total} créneaux libres',
+            'occupation_scale' => 'Plus disponible → Moins disponible',
             'pause' => 'Pause',
             'no_hours' => 'Aucune disponibilité configurée pour cette journée.',
             'previous_month' => 'Mois précédent',
@@ -83,8 +85,12 @@ function omoUserContextAvailabilityRenderFragment(int $userId, int $organization
     }
 
     $days = [];
+    $encodedDays = [];
+    $dateLabels = [];
     for ($day = $rangeStart; $day < $rangeEnd; $day = $day->modify('+1 day')) {
         $days[$day->format('Y-m-d')] = commonUserAvailabilityBuildDay($day, $hours, $busy);
+        $encodedDays[$day->format('Y-m-d')] = commonUserAvailabilityEncodeDay($days[$day->format('Y-m-d')]);
+        $dateLabels[$day->format('Y-m-d')] = commonUserAvailabilityFormatDate($day, true);
     }
     $baseUrl = '/popup/user.php?section=availability&id=' . $userId . '&oid=' . $organizationId
         . ($currentHolonId > 0 ? '&cid=' . $currentHolonId : '');
@@ -93,10 +99,14 @@ function omoUserContextAvailabilityRenderFragment(int $userId, int $organization
             . ($targetDay ? '&date=' . rawurlencode($targetDay->format('Y-m-d')) : '');
     };
     $labels = [];
-    foreach (['availability_heading', 'previous_month', 'next_month', 'free', 'partial', 'full', 'closed', 'select_day', 'select_day_hint', 'no_hours', 'pause', 'busy', 'available'] as $key) {
+    foreach (['availability_heading', 'previous_month', 'next_month', 'free', 'partial', 'full', 'closed', 'select_day', 'select_day_hint', 'no_hours', 'pause', 'busy', 'available', 'day_availability', 'occupation_scale'] as $key) {
         $labels[$key === 'availability_heading' ? 'heading' : $key] = omoUserContextT($key);
     }
     commonCalendarRenderAvailabilityGrid($month, $selectedDay, $days, $labels, 'data-user-availability-url', $makeUrl, omoUserContextT('availability_hint'));
+    echo '<script type="application/json" data-user-availability-data>' . json_encode([
+        'month' => $month->format('Y-m'), 'date' => $selectedDay?->format('Y-m-d') ?? '',
+        'people' => [['days' => $encodedDays]], 'dates' => $dateLabels, 'labels' => $labels,
+    ], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR) . '</script>';
 }
 
 function omoUserContextFormatDate($value)
@@ -1276,6 +1286,8 @@ foreach ($competenceRows as $competenceRow) {
         </div>
     </div>
 </div>
+<script src="<?= commonAssetUrl('/common/calendar/availability-model.js') ?>"></script>
+<script src="<?= commonAssetUrl('/common/calendar/availability-view.js') ?>"></script>
 <script src="<?= commonAssetUrl('/common/team/user-popup.js') ?>"></script>
 <?php if ($canValidateCompetences && count($competenceRows) > 0): ?>
 <script src="<?= commonAssetUrl('/common/team/user-actions.js') ?>"></script>

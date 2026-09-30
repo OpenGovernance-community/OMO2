@@ -3,9 +3,27 @@
     var modalBody = document.getElementById('commonTopbarModalBody');
     var fragmentLoadingMessage = 'Chargement...';
     var fragmentErrorMessage = 'Impossible de charger cet onglet pour le moment.';
+    if (!root) { return; }
+    var availabilityView = window.omoCalendarAvailabilityView;
+    var availabilityRequest = 0;
+    var availabilityData = null;
+    var availabilityMonths = availabilityView.monthCache(function (url) {
+        return fetch(url, {credentials: 'same-origin', headers: {'X-Requested-With': 'XMLHttpRequest'}})
+            .then(function (response) {
+                if (!response.ok) { throw new Error('load'); }
+                return response.text();
+            });
+    });
 
-    if (!root) {
-        return;
+    function installAvailability(host, html, date) {
+        host.innerHTML = html;
+        var payload = host.querySelector('[data-user-availability-data]');
+        availabilityData = payload ? JSON.parse(payload.textContent) : null;
+        host.setAttribute('data-user-fragment-loaded', '1');
+        if (availabilityData) {
+            availabilityMonths.set(availabilityData.month, html);
+            availabilityView.renderProfile(host, availabilityData, date === undefined ? availabilityData.date : date);
+        }
     }
 
     if (modalBody) {
@@ -37,6 +55,29 @@
         }
 
         if (host.getAttribute('data-user-fragment-loaded') === '1') {
+            return;
+        }
+
+        if (host.matches('[data-user-availability-host="1"]')) {
+            var target = new URL(fragmentUrl, location.href);
+            var date = target.searchParams.get('date') || '';
+            var month = date.slice(0, 7) || target.searchParams.get('month') || 'initial';
+            var request = ++availabilityRequest;
+            host.setAttribute('aria-busy', 'true');
+            if (availabilityData && availabilityData.month === month) {
+                availabilityView.renderProfile(host, availabilityData, date);
+                host.setAttribute('data-user-fragment-loaded', '1');
+                host.removeAttribute('aria-busy');
+                return;
+            }
+            host.textContent = fragmentLoadingMessage;
+            availabilityMonths.load(month, fragmentUrl).then(function (html) {
+                if (request === availabilityRequest && host.isConnected) { installAvailability(host, html, date); }
+            }).catch(function () {
+                if (request === availabilityRequest) { host.textContent = fragmentErrorMessage; }
+            }).finally(function () {
+                if (request === availabilityRequest) { host.removeAttribute('aria-busy'); }
+            });
             return;
         }
 

@@ -4,9 +4,12 @@ function commonUserAvailabilityFormatDate(DateTimeInterface $date, bool $withWee
 {
     if (class_exists('IntlDateFormatter')) {
         $formatter = new IntlDateFormatter('fr_CH', $withWeekday ? IntlDateFormatter::FULL : IntlDateFormatter::LONG, IntlDateFormatter::NONE);
+        if (!$withWeekday) {
+            $formatter->setPattern('LLLL y');
+        }
         $formatted = $formatter->format($date);
         if (is_string($formatted) && $formatted !== '') {
-            return $formatted;
+            return $withWeekday ? $formatted : ucfirst($formatted);
         }
     }
 
@@ -95,7 +98,7 @@ function commonUserAvailabilityBuildDay(DateTimeImmutable $day, array $hours, ar
     }
 
     $state = $workingCount === 0 ? 'closed' : ($busyCount === 0 ? 'free' : ($busyCount === $workingCount ? 'full' : 'partial'));
-    return ['state' => $state, 'slots' => $slots];
+    return ['state' => $state, 'slots' => $slots, 'workingCount' => $workingCount, 'busySlotCount' => $busyCount];
 }
 
 /** Show only times shared by every participant; a pause or busy slot blocks the group. */
@@ -130,18 +133,31 @@ function commonUserAvailabilityBuildCombinedDay(DateTimeImmutable $day, array $p
             $matching[] = $personSlots[$time];
         }
         $isPause = false;
-        $isBusy = false;
+        $occupiedPeople = 0;
         foreach ($matching as $slot) {
             $isPause = $isPause || $slot['pause'];
-            $isBusy = $isBusy || $slot['busy'];
+            $occupiedPeople += $slot['busy'] ? 1 : 0;
         }
+        $isBusy = $occupiedPeople > 0;
         if (!$isPause) {
             $workingCount++;
             $busyCount += $isBusy ? 1 : 0;
         }
-        $slots[] = ['start' => $firstSlot['start'], 'end' => $firstSlot['end'], 'busy' => $isBusy, 'pause' => $isPause];
+        $slots[] = ['start' => $firstSlot['start'], 'end' => $firstSlot['end'], 'busy' => $isBusy, 'pause' => $isPause,
+            'busyCount' => $occupiedPeople, 'participantCount' => count($participants)];
     }
 
     $state = $workingCount === 0 ? 'closed' : ($busyCount === 0 ? 'free' : ($busyCount === $workingCount ? 'full' : 'partial'));
-    return ['state' => $state, 'slots' => $slots];
+    return ['state' => $state, 'slots' => $slots, 'workingCount' => $workingCount, 'busySlotCount' => $busyCount];
+}
+
+/** Compact, title-free daily data for local filtering: 0 closed, 1 free, 2 busy, 3 pause. */
+function commonUserAvailabilityEncodeDay(array $day): string
+{
+    $codes = str_repeat('0', 48);
+    foreach ($day['slots'] as $slot) {
+        $index = (int)$slot['start']->format('G') * 2 + ((int)$slot['start']->format('i') >= 30 ? 1 : 0);
+        $codes[$index] = $slot['pause'] ? '3' : ($slot['busy'] ? '2' : '1');
+    }
+    return $codes;
 }

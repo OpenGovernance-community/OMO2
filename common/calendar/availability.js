@@ -114,7 +114,8 @@
     function previewState(form) {
         var state = previewStates.get(form);
         if (!state) {
-            state = {dirty: true, month: '', date: '', anchor: '', request: 0, controller: null};
+            state = {dirty: true, month: '', date: '', anchor: '', request: 0, controller: null,
+                data: null, months: new Map(), excluded: new Set()};
             previewStates.set(form, state);
         }
         return state;
@@ -133,14 +134,137 @@
         if (field.closest('[data-omo-calendar-invitations-editor]')
             && !field.matches('[name^="invitation_"]')) { return; }
         var state = previewState(form);
-        state.dirty = true;
-        state.request++;
-        if (state.controller) { state.controller.abort(); state.controller = null; }
         if (field.matches('[name="start_at"]')) {
             state.date = String(field.value || '').slice(0, 10);
             state.month = state.date.slice(0, 7);
             state.anchor = '';
         }
+        // A new schedule only changes the selected day; participant data stays usable.
+        if (field.matches('[name="start_at"], [name="end_at"]')) {
+            if (state.controller) {
+                state.controller.abort();
+                state.controller = null;
+                state.request++;
+                previewHost(form).removeAttribute('aria-busy');
+            }
+            return;
+        }
+        state.dirty = true;
+        state.data = null;
+        state.months.clear();
+        state.request++;
+        if (state.controller) { state.controller.abort(); state.controller = null; }
+    }
+
+    function previewText(labels, key, values) {
+        return window.omoCalendarAvailabilityView.text(labels[key], values || {});
+    }
+
+    var previewElement = window.omoCalendarAvailabilityView.element;
+    var previewSlotTime = window.omoCalendarAvailabilityView.slotTime;
+
+    function renderPreview(form) {
+        var state = previewState(form);
+        var host = previewHost(form);
+        var data = state.data;
+        var model = window.omoCalendarAvailabilityModel;
+        if (!host || !data || !model) { return; }
+        var labels = data.labels;
+        var people = data.people.filter(function (person) { return !state.excluded.has(person.id); });
+        var count = previewText(labels, 'selected_count', {selected: people.length, total: data.people.length});
+        host.querySelector('[data-omo-calendar-preview-people-count]').textContent = count;
+        host.querySelector('.omo-calendar-create__preview-people').setAttribute('aria-label', count);
+        host.querySelector('[data-omo-calendar-preview-cache-warning]').hidden = !people.some(function (person) { return person.incomplete; });
+        var days = {};
+        Object.keys(data.dates).forEach(function (date) { days[date] = model.aggregateDay(people, date); });
+        host.querySelectorAll('.calendar-freebusy-day[data-omo-calendar-preview-target]').forEach(function (button) {
+            var date = new URLSearchParams(button.getAttribute('data-omo-calendar-preview-target')).get('date');
+            if (!days[date]) { return; }
+            var day = days[date];
+            window.omoCalendarAvailabilityView.paintDay(button, day, data.dates[date], labels, date === state.date);
+        });
+
+        var panel = host.querySelector('.calendar-freebusy-day-panel');
+        panel.replaceChildren();
+        var day = days[state.date];
+        var heading = data.dates[state.date] || labels.select_day;
+        if (!people.length || !day || !day.slots.length) {
+            var empty = previewElement('div', 'calendar-freebusy-empty');
+            empty.appendChild(previewElement('strong', 'generic-card-title generic-card-title--small', heading));
+            empty.appendChild(previewElement('span', '', !people.length ? labels.no_people : (!day ? labels.select_day_hint : labels.no_hours)));
+            panel.appendChild(empty);
+            state.anchor = '';
+            return;
+        }
+        var header = previewElement('div', 'calendar-freebusy-day-head');
+        header.appendChild(previewElement('strong', 'generic-card-title generic-card-title--small', heading));
+        panel.appendChild(header);
+        panel.appendChild(previewElement('p', 'calendar-freebusy-selection-hint', labels.selection_hint));
+        var feedback = previewElement('p', 'calendar-freebusy-selection-feedback');
+        feedback.setAttribute('data-omo-calendar-preview-selection-feedback', '');
+        feedback.dataset.rangeBlocked = labels.range_blocked;
+        feedback.dataset.rangeSelected = labels.range_selected;
+        feedback.setAttribute('role', 'status');
+        feedback.setAttribute('aria-live', 'polite');
+        panel.appendChild(feedback);
+        var list = previewElement('div', 'calendar-freebusy-slots');
+        var previousPauseIndex = -2;
+        day.slots.forEach(function (slot) {
+            if (slot.pause) {
+                if (slot.index !== previousPauseIndex + 1) {
+                    var pause = previewElement('div', 'calendar-freebusy-pause');
+                    pause.appendChild(previewElement('span', '', labels.pause));
+                    list.appendChild(pause);
+                }
+                previousPauseIndex = slot.index;
+                return;
+            }
+            var start = previewSlotTime(slot.index);
+            var end = previewSlotTime(slot.index + 1);
+            var row = previewElement(slot.busy ? 'div' : 'button', 'calendar-freebusy-slot');
+            row.dataset.state = slot.busy ? 'busy' : 'free';
+            row.dataset.omoCalendarPreviewSlotStart = state.date + 'T' + start;
+            row.dataset.omoCalendarPreviewSlotEnd = state.date + 'T' + end;
+            var slotLabel = slot.busy ? previewText(labels, 'busy_count', {busy: slot.busyCount, total: slot.participantCount}) : labels.select_slot;
+            row.setAttribute('aria-label', start + ' - ' + end + ' : ' + slotLabel);
+            var time = previewElement('time', '', start + ' - ' + end);
+            time.setAttribute('datetime', state.date + 'T' + start);
+            row.appendChild(time);
+            if (slot.busy) {
+                row.title = previewText(labels, 'busy_names', {names: slot.busyNames.join(', ')});
+                row.setAttribute('aria-label', row.getAttribute('aria-label') + ' : ' + row.title);
+                row.tabIndex = 0;
+                row.dataset.busyCount = String(slot.busyCount);
+                row.style.setProperty('--param-freebusy-busy-hue', String(model.occupationHue(slot.busyCount, slot.participantCount)));
+                row.appendChild(previewElement('span', '', slotLabel));
+            } else {
+                row.type = 'button';
+                row.setAttribute('aria-pressed', 'false');
+            }
+            list.appendChild(row);
+        });
+        panel.appendChild(list);
+        var startField = form.querySelector('[name="start_at"]');
+        var anchor = state.anchor || (startField ? String(startField.value || '').slice(0, 16) : '');
+        state.anchor = Array.from(list.querySelectorAll('button')).some(function (slot) {
+            return slot.dataset.omoCalendarPreviewSlotStart === anchor;
+        }) ? anchor : '';
+        syncPreviewSelectedSlots(form, state);
+    }
+
+    function installPreview(form, html) {
+        var host = previewHost(form);
+        var state = previewState(form);
+        host.innerHTML = html;
+        var payload = host.querySelector('[data-omo-calendar-preview-data]');
+        if (!payload) { throw new Error(''); }
+        state.data = JSON.parse(payload.textContent);
+        host.querySelectorAll('[data-omo-calendar-preview-person]').forEach(function (checkbox) {
+            checkbox.checked = !state.excluded.has(checkbox.getAttribute('data-omo-calendar-preview-person'));
+        });
+        host.dataset.loaded = '1';
+        state.dirty = false;
+        renderPreview(form);
     }
 
     function syncPreviewSelectedSlots(form, state) {
@@ -175,22 +299,42 @@
             return item.dataset.omoCalendarPreviewSlotStart === state.anchor;
         }) : -1;
         if (targetIndex < 0) { return; }
-        if (anchorIndex < 0) { anchorIndex = targetIndex; }
-        var first = Math.min(anchorIndex, targetIndex);
-        var last = Math.max(anchorIndex, targetIndex);
-        for (var index = first; index <= last; index++) {
-            if (slots[index].dataset.state !== 'free'
-                || (index > first && slots[index - 1].dataset.omoCalendarPreviewSlotEnd !== slots[index].dataset.omoCalendarPreviewSlotStart)) {
-                var feedback = host.querySelector('[data-omo-calendar-preview-selection-feedback]');
-                setPreviewSelectionFeedback(host, feedback ? feedback.dataset.rangeBlocked || '' : '', true);
-                return;
-            }
-        }
-        var startValue = slots[first].dataset.omoCalendarPreviewSlotStart;
-        var endValue = slots[last].dataset.omoCalendarPreviewSlotEnd;
         var startField = form.querySelector('[name="start_at"]');
         var endField = form.querySelector('[name="end_at"]');
         if (!startField || !endField) { return; }
+        if (anchorIndex < 0) { anchorIndex = targetIndex; }
+        var first = Math.min(anchorIndex, targetIndex);
+        var last = Math.max(anchorIndex, targetIndex);
+        var invalidRange = false;
+        if (!extend) {
+            var duration = Date.parse(endField.value + 'Z') - Date.parse(startField.value + 'Z');
+            var count = Number.isFinite(duration) && duration > 0 ? Math.max(1, Math.ceil(duration / 1800000)) : 1;
+            var range = window.omoCalendarAvailabilityModel.selectRange(slots.map(function (item) {
+                return {free: item.dataset.state === 'free', start: item.dataset.omoCalendarPreviewSlotStart, end: item.dataset.omoCalendarPreviewSlotEnd};
+            }), targetIndex, count);
+            if (range) { first = range.first; last = range.last; }
+            else { invalidRange = true; }
+        }
+        for (var index = first; index <= last; index++) {
+            if (slots[index].dataset.state !== 'free'
+                || (index > first && slots[index - 1].dataset.omoCalendarPreviewSlotEnd !== slots[index].dataset.omoCalendarPreviewSlotStart)) {
+                invalidRange = true;
+                break;
+            }
+        }
+        if (invalidRange) {
+            state.anchor = '';
+            slots.forEach(function (item) { item.setAttribute('aria-pressed', 'false'); item.classList.remove('is-anchor'); });
+            var feedback = host.querySelector('[data-omo-calendar-preview-selection-feedback]');
+            var message = feedback ? feedback.dataset.rangeBlocked || '' : '';
+            if (typeof window.commonNotify === 'function') {
+                setPreviewSelectionFeedback(host, '', false);
+                window.commonNotify(message, {type: 'error', duration: 5000});
+            } else { setPreviewSelectionFeedback(host, message, true); }
+            return;
+        }
+        var startValue = slots[first].dataset.omoCalendarPreviewSlotStart;
+        var endValue = slots[last].dataset.omoCalendarPreviewSlotEnd;
         startField.value = startValue;
         endField.value = endValue;
         var allDay = form.querySelector('[name="is_all_day"]');
@@ -208,24 +352,39 @@
         state.dirty = false;
         syncPreviewSelectedSlots(form, state);
         var success = host.querySelector('[data-omo-calendar-preview-selection-feedback]');
-        setPreviewSelectionFeedback(host, success ? success.dataset.rangeSelected || '' : '', false);
+        setPreviewSelectionFeedback(host, '', false);
+        if (success && typeof window.commonNotify === 'function') {
+            window.commonNotify(success.dataset.rangeSelected || '', {type: 'success', duration: 3000});
+        }
     }
 
     function loadPreview(form, force) {
         var host = previewHost(form);
         if (!host) { return; }
         var state = previewState(form);
-        if (!force && !state.dirty && host.dataset.loaded === '1') { return; }
-        if (state.controller) { state.controller.abort(); }
-        state.controller = new AbortController();
-        var request = ++state.request;
         var start = form.querySelector('[name="start_at"]');
         var initialDate = start ? String(start.value || '').slice(0, 10) : '';
-        state.date = state.date || initialDate;
         if (!state.month) {
             var now = new Date();
-            state.month = state.date.slice(0, 7) || (now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0'));
+            state.month = initialDate.slice(0, 7) || (now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0'));
         }
+        if (!state.date && initialDate.slice(0, 7) === state.month) { state.date = initialDate; }
+        if (state.date.slice(0, 7) !== state.month) { state.date = ''; }
+        if (state.controller) {
+            state.controller.abort();
+            state.controller = null;
+            state.request++;
+        }
+        if (!force && !state.dirty && host.dataset.loaded === '1' && state.data && state.data.month === state.month) {
+            renderPreview(form);
+            return;
+        }
+        if (!force && !state.dirty && state.months.has(state.month)) {
+            installPreview(form, state.months.get(state.month));
+            return;
+        }
+        state.controller = new AbortController();
+        var request = ++state.request;
         var data = new FormData();
         data.set('availability_preview', '1');
         data.set('month', state.month);
@@ -239,6 +398,7 @@
         });
         var emails = form.querySelector('[name="invitation_emails"]');
         if (emails) { data.set('invitation_emails', emails.value); }
+        host.dataset.loaded = '0';
         host.replaceChildren();
         var loading = document.createElement('div');
         loading.className = 'omo-calendar-create__preview-loading';
@@ -256,13 +416,8 @@
             });
         }).then(function (html) {
             if (request !== state.request || !form.isConnected) { return; }
-            host.innerHTML = html;
-            host.dataset.loaded = '1';
-            state.dirty = false;
-            var startField = form.querySelector('[name="start_at"]');
-            var startValue = startField ? String(startField.value || '').slice(0, 16) : '';
-            state.anchor = host.querySelector('button[data-omo-calendar-preview-slot-start="' + startValue + '"]') ? startValue : '';
-            syncPreviewSelectedSlots(form, state);
+            installPreview(form, html);
+            state.months.set(state.data.month, html);
         }).catch(function (error) {
             if (error.name === 'AbortError' || request !== state.request) { return; }
             host.innerHTML = error.message || '';
@@ -279,6 +434,16 @@
 
     document.addEventListener('input', markPreviewDirty);
     document.addEventListener('change', markPreviewDirty);
+    document.addEventListener('change', function (event) {
+        var checkbox = event.target.closest('[data-omo-calendar-preview-person]');
+        var form = checkbox && checkbox.closest('[data-omo-calendar-create-form]');
+        if (!form) { return; }
+        var state = previewState(form);
+        var id = checkbox.getAttribute('data-omo-calendar-preview-person');
+        if (checkbox.checked) { state.excluded.delete(id); }
+        else { state.excluded.add(id); }
+        renderPreview(form);
+    });
     document.addEventListener('click', function (event) {
         var slot = event.target.closest('button[data-omo-calendar-preview-slot-start]');
         if (slot) {
@@ -301,6 +466,6 @@
         var state = previewState(editor);
         state.month = target.get('month') || state.month;
         state.date = target.get('date') || '';
-        loadPreview(editor, true);
+        loadPreview(editor, false);
     });
 })(window, document);

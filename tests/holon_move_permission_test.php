@@ -72,13 +72,27 @@ namespace dbObject {
     require_once dirname(__DIR__) . '/class/dbobject/permission.class.php';
 
     final class MoveTestOrganization extends Organization {
+        public array $mandatoryCalls = [];
         public function getId() { return 42; }
         public function get($field) { return $field === 'name' ? 'Test' : null; }
         public function getStructuralRootHolon() { $root = new Holon(); $root->load(1); return $root; }
         public function containsHolon($holon): bool { return (int)$holon->get('IDorganization') === 42 && (bool)$holon->get('active'); }
         public function isTemplateAvailableInContext(Holon $template, $contextHolonId = 0) { return $contextHolonId !== 4; }
         protected function isTemplateAvailableForHolonCreation(Holon $template, Holon $contextHolon, $excludedHolonId = 0) { return true; }
-        protected function createMandatoryChildrenForCircle(Holon $circleHolon, $rootHolonId, $userId = 0, array $excludedTemplateIds = []) {}
+        protected function createMandatoryChildrenForCircle(Holon $circleHolon, $rootHolonId, $userId = 0, array $excludedTemplateIds = []) {
+            $this->mandatoryCalls[] = (int)$circleHolon->getId();
+        }
+    }
+
+    final class MandatoryCircleGuardTestOrganization extends Organization {
+        public int $templateLookups = 0;
+        public function getAvailableTemplateDefinitionHolons($contextHolonId = 0) {
+            $this->templateLookups++;
+            return [];
+        }
+        public function checkMandatoryChildren(Holon $holon): void {
+            $this->createMandatoryChildrenForCircle($holon, 1);
+        }
     }
 }
 
@@ -113,6 +127,7 @@ namespace {
     Holon::$saveFails = false;
     moveAssert(!empty($organization->moveHolonDefinition(5, 4, 7)['status']), 'Authorized immediate move must succeed.');
     moveAssert(Holon::$rows[5]['IDholon_parent'] === 4, 'Move must change the parent.');
+    moveAssert($organization->mandatoryCalls === [3, 5], 'Moving a circle must update the old circle and the moved circle.');
     Holon::$rows[5]['IDholon_parent'] = 3; $holon->load(5);
     Holon::$personal = [];
     \dbObject\HolonPermission::$scopes = [2 => [2]];
@@ -129,5 +144,23 @@ namespace {
     Holon::$rows[4]['template'] = false; $destination->load(4);
     Holon::$rows[5]['IDholon_template'] = 8; $holon->load(5);
     moveAssert(!$organization->canMoveHolonToParent($holon, $destination, null, 2), 'Template availability restrictions must remain enforced.');
+    Holon::$rows[3]['IDtypeholon'] = 3;
+    Holon::$rows[5]['IDtypeholon'] = 1;
+    Holon::$rows[5]['IDholon_template'] = 0;
+    $organization->mandatoryCalls = [];
+    Holon::$personal[7] = [5 => true, 4 => true, 3 => true];
+    moveAssert(!empty($organization->moveHolonDefinition(5, 4, 7)['status']), 'Role must be movable out of a group.');
+    moveAssert($organization->mandatoryCalls === [], 'Moving a role out of a group must not add mandatory children to the group.');
+    Holon::$personal[7][2] = true;
+    moveAssert(!empty($organization->moveHolonDefinition(3, 4, 7)['status']), 'Group must be movable out of a circle.');
+    moveAssert($organization->mandatoryCalls === [2], 'Moving a group must update the old circle only, never the group.');
+
+    $guardOrganization = new \dbObject\MandatoryCircleGuardTestOrganization();
+    $group = new Holon(); $group->load(3);
+    $guardOrganization->checkMandatoryChildren($group);
+    moveAssert($guardOrganization->templateLookups === 0, 'Mandatory child creation must reject a group before looking up templates.');
+    $circle = new Holon(); $circle->load(4);
+    $guardOrganization->checkMandatoryChildren($circle);
+    moveAssert($guardOrganization->templateLookups === 1, 'Mandatory child creation must remain available for a circle.');
     echo "holon_move_permission_test: OK\n";
 }

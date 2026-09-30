@@ -47,6 +47,8 @@ body.meeting-page {
 .meeting-avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .meeting-host__copy { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .meeting-meta { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 14px; color: var(--color-text-light); font-size: 13px; }
+.meeting-duration { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 12px; margin: 0; }
+.meeting-method { max-width: min(100%, 360px); }
 .meeting-meta span { display: inline-flex; align-items: center; gap: 7px; }
 .meeting-meta .meeting-icon { width: 19px; height: 19px; }
 .meeting-host__note { display: flex; align-items: center; gap: 14px; color: var(--color-primary); font-size: 13px; }
@@ -67,6 +69,22 @@ body.meeting-page {
 .meeting-page .meeting-calendar__day[data-state="partial"] { background: #faf6ed; border-color: #efe7d5; color: #7a633a; }
 .meeting-page .meeting-calendar__day[data-state="full"] { background: #faf1f2; border-color: #efdee1; color: #885f66; }
 .meeting-page .meeting-calendar__day[data-state="closed"] { background: #fafbfc; color: #84919a; border-color: #edf0f2; }
+.meeting-page .meeting-calendar__day[data-busy-slots] {
+    border-color: hsl(var(--param-freebusy-busy-hue, 0) 65% 77%);
+    background: hsl(var(--param-freebusy-busy-hue, 0) 85% 93%);
+    color: hsl(var(--param-freebusy-busy-hue, 0) 65% 30%);
+}
+.meeting-legend [data-state="occupation"] .meeting-status-dot {
+    width: 48px;
+    border-radius: 999px;
+    background: linear-gradient(to right, hsl(48 75% 60%), hsl(0 65% 60%));
+}
+.meeting-slot[aria-pressed="true"] {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: #fff;
+}
+.meeting-times [data-meeting-continue][hidden] { display: none; }
 .meeting-calendar__day[href]:hover { border-color: var(--color-primary); }
 .meeting-page .meeting-calendar__day[aria-current="date"] { background: var(--color-primary); border-color: var(--color-primary); color: #fff; box-shadow: 0 4px 12px rgb(8 107 118 / 14%); }
 .meeting-legend { display: flex; flex-wrap: wrap; gap: 12px 20px; padding: 4px 0 0; margin: 0; list-style: none; font-size: 11px; color: var(--color-text-light); }

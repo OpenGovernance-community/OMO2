@@ -1,5 +1,29 @@
 # Journal Des Nouveautes
 
+- Disponibilités : le titre du calendrier affiche uniquement le mois et l’année (par exemple « Novembre 2026 »), sans le premier jour du mois.
+
+- Structure : le deplacement d'un role hors d'un groupe ne cree plus de holons issus de modeles obligatoires dans ce groupe. La creation automatique de ces enfants est maintenant limitee aux cercles, y compris lors du deplacement d'un groupe. Les instances obligatoires creees par erreur dans un groupe peuvent etre supprimees avec les droits habituels, tandis que la derniere instance dans un cercle reste protegee.
+
+- Réservation : la légende en dégradé prend la forme d’une barre à extrémités arrondies, plutôt que d’une ellipse.
+
+- Réservation : les demi-heures libres mais trop courtes pour la durée choisie apparaissent en teinte claire avec un curseur interdit et une aide invitant à réduire la durée. Le gris est réservé aux créneaux réellement indisponibles.
+
+- Réservation : suppression de la mention « Toutes les 30 min » dans l’en-tête.
+
+- Réservation : les paramètres permettent d’ajouter et supprimer des moyens de rencontre (adresse, visioconférence, téléphone). Le visiteur choisit à côté de la durée ; ce choix est conservé dans le récapitulatif, le lieu de l’événement CalDAV/ICS et l’e-mail. Les rendez-vous confirmés conservent leurs coordonnées même si les paramètres changent ensuite. Migration et schéma Docker mis à jour.
+
+- Réservation : durée maximale configurable par pas de 30 minutes, avec 30 minutes sélectionnées par défaut dans l’en-tête public. Les créneaux ne pouvant accueillir la durée choisie sont grisés, tout en conservant le repli vers l’arrière lorsqu’il est possible. Les erreurs utilisent les notifications temporaires communes, même sans topbar. La durée choisie est vérifiée côté serveur et conservée dans le récapitulatif, l’événement et l’e-mail. Migration et schéma Docker mis à jour.
+
+- Disponibilités : le profil et la réservation chargent les disponibilités par mois et changent de jour dans le navigateur, avec navigation et coloration partagées. La réservation utilise aussi le dégradé jaune-rouge et des cases de 30 minutes. Un clic sélectionne une plage de la durée prévue, d’abord vers l’avant puis vers l’arrière si nécessaire ; si aucune plage consécutive ne convient, la sélection est vidée et une erreur est affichée. Les réservations restent vérifiées côté serveur avant confirmation.
+
+- Profil : le calendrier des disponibilités individuelles utilise le même dégradé jaune-rouge selon la proportion de créneaux occupés, hors pauses. Les journées entièrement libres restent vertes et le survol indique le nombre de demi-heures libres.
+
+- Disponibilités des invités : la confirmation de mise à jour des horaires utilise désormais la notification temporaire de la topbar, au lieu d’un message dans le calendrier.
+
+- Disponibilités des invités : les jours du calendrier utilisent aussi un dégradé jaune-rouge selon la proportion de demi-heures occupées pour le groupe sélectionné. Les journées entièrement libres restent vertes ; les pauses sont exclues du calcul et le survol indique le nombre de créneaux libres en commun.
+
+- Disponibilités des invités : les créneaux vont du vert (tous libres) au jaune puis au rouge selon la proportion de personnes occupées, avec leurs noms au survol précédés de « Occupé: ». Des cases à cocher permettent de les exclure du calcul sans modifier les invitations ; le mois chargé est recalculé dans le navigateur, sans nouvelle requête lors du filtrage. L’aide au filtrage se trouve dans une bulle à côté du compteur et l’explication des agendas sous le calendrier.
+
 - Editeur de PV : pendant la reunion, les onglets Projets, Indicateurs et Taches recurrentes utilisent les droits collectifs du holon porteur du PV pour leurs actions de creation, de modification et de deplacement disponibles dans la portee autorisee. Le contexte est retire des onglets des que la reunion ou la responsabilite d edition change.
 
 - Editeur de PV : un remplacant invite sans `CAN_CLAIM_PV` peut poursuivre le texte des points et les marquer termines, mais ne peut plus modifier la structure de l ordre du jour. Le tri, les poignees de deplacement et les autres commandes de structure suivent les droits apres chaque passation.
