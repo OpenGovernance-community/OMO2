@@ -12,6 +12,11 @@ function userAvailabilityExpect(bool $condition, string $message): void
 }
 
 $zone = new DateTimeZone('Europe/Zurich');
+if (class_exists('IntlDateFormatter')) {
+    $november = new DateTimeImmutable('2026-11-01', $zone);
+    userAvailabilityExpect(commonUserAvailabilityFormatDate($november) === 'Novembre 2026', 'Month headings contain only the capitalized month and year.');
+    userAvailabilityExpect(str_contains(commonUserAvailabilityFormatDate($november, true), '1 novembre 2026'), 'Selected day labels retain the full date.');
+}
 $day = new DateTimeImmutable('2030-01-07', $zone);
 $hours = [];
 for ($weekday = 1; $weekday <= 7; $weekday += 1) {

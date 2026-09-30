@@ -1,5 +1,9 @@
 # Journal Des Nouveautes
 
+- Disponibilités : le titre du calendrier affiche uniquement le mois et l’année (par exemple « Novembre 2026 »), sans le premier jour du mois.
+
+- Structure : le deplacement d'un role hors d'un groupe ne cree plus de holons issus de modeles obligatoires dans ce groupe. La creation automatique de ces enfants est maintenant limitee aux cercles, y compris lors du deplacement d'un groupe. Les instances obligatoires creees par erreur dans un groupe peuvent etre supprimees avec les droits habituels, tandis que la derniere instance dans un cercle reste protegee.
+
 - Réservation : la légende en dégradé prend la forme d’une barre à extrémités arrondies, plutôt que d’une ellipse.
 
 - Réservation : les demi-heures libres mais trop courtes pour la durée choisie apparaissent en teinte claire avec un curseur interdit et une aide invitant à réduire la durée. Le gris est réservé aux créneaux réellement indisponibles.
