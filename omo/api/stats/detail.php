@@ -56,6 +56,7 @@ if ($indicator->isEthercalcSource() || $indicator->isSpreadsheetSource()) {
     }
 }
 $contextLabel = omoStatsContextLabel($indicator);
+$indicatorDescription = trim((string)$indicator->get('description'));
 $responsibilityLabel = omoStatsResponsibleAssignmentLabel($indicator);
 $measurementFrequency = $indicator->getEffectiveMeasurementFrequency();
 $measurementSchedule = omoStatsMeasurementScheduleLabel($measurementFrequency, $indicator->get('measurement_schedule'));
@@ -150,6 +151,7 @@ $tabPrefix = 'omo-stats-detail-' . (int)$indicatorId;
     <div class="generic-tabs omo-stats-detail__tabs" data-generic-tabs>
         <div class="generic-tabs__list">
             <button type="button" class="generic-tabs__tab is-active" data-generic-tab data-generic-tab-target="<?= omoApiEscape($tabPrefix) ?>-chart"><?= omoApiEscape(omoStatsT('stats.detail.tab.chart')) ?></button>
+            <?php if ($indicatorDescription !== ''): ?><button type="button" class="generic-tabs__tab" data-generic-tab data-generic-tab-target="<?= omoApiEscape($tabPrefix) ?>-description"><?= omoApiEscape(omoStatsT('stats.detail.tab.description')) ?></button><?php endif; ?>
             <button type="button" class="generic-tabs__tab" data-generic-tab data-generic-tab-target="<?= omoApiEscape($tabPrefix) ?>-values"><?= omoApiEscape(omoStatsT('stats.detail.tab.values')) ?> (<?= count($values) ?>)</button>
         </div>
         <div class="generic-tabs__panels">
@@ -194,6 +196,11 @@ $tabPrefix = 'omo-stats-detail-' . (int)$indicatorId;
                     </div>
                 <?php endif; ?>
             </section>
+            <?php if ($indicatorDescription !== ''): ?>
+                <section id="<?= omoApiEscape($tabPrefix) ?>-description" class="generic-tabs__panel omo-stats-detail__description-panel" data-generic-tab-panel hidden>
+                    <p class="generic-description generic-description--primary omo-stats-detail__description"><?= omoApiEscape($indicatorDescription) ?></p>
+                </section>
+            <?php endif; ?>
             <section id="<?= omoApiEscape($tabPrefix) ?>-values" class="generic-tabs__panel" data-generic-tab-panel hidden>
                 <?php if (count($valuesDescending) === 0): ?>
                     <div class="omo-empty-state"><?= omoApiEscape(omoStatsT('stats.detail.no_values')) ?></div>
@@ -269,4 +276,4 @@ $tabPrefix = 'omo-stats-detail-' . (int)$indicatorId;
         });
     }());
 </script>
-<script src="/omo/api/stats/chart.js?v=20260919-reference-scale"></script>
+<script src="/omo/api/stats/chart.js?v=20260930-group-source-state"></script>

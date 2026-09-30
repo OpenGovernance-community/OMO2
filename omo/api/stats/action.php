@@ -753,6 +753,30 @@ if ($action === 'delete_value') {
     omoStatsActionRespond(true);
 }
 
+if ($action === 'move_indicator') {
+    $indicatorId = isset($_POST['indicator_id']) && is_numeric($_POST['indicator_id']) ? (int)$_POST['indicator_id'] : 0;
+    $targetHolonId = isset($_POST['IDholon']) && is_numeric($_POST['IDholon']) ? (int)$_POST['IDholon'] : 0;
+    $indicator = omoStatsLoadIndicator($indicatorId, $organizationId);
+    if (!($indicator instanceof StatIndicator)) {
+        omoStatsActionRespond(false, omoStatsT('stats.error.not_found'), [], 404);
+    }
+    if (!omoStatsCanDeleteIndicator($indicator, $context)) {
+        omoStatsActionRespond(false, omoStatsT('stats.error.move_source'), [], 403);
+    }
+    $targetHolon = new \dbObject\Holon();
+    if ($targetHolonId <= 0
+        || !$targetHolon->load($targetHolonId)
+        || !omoStatsCanMoveIndicatorToHolon($indicator, $targetHolon, $context)) {
+        omoStatsActionRespond(false, omoStatsT('stats.error.move_target'), [], 422);
+    }
+    $indicator->set('IDholon', $targetHolonId);
+    $result = $indicator->save();
+    if (!is_array($result) || empty($result['status'])) {
+        omoStatsActionRespond(false, omoStatsT('stats.error.save'), [], 422);
+    }
+    omoStatsActionRespond(true, '', ['id' => $indicatorId, 'holonId' => $targetHolonId]);
+}
+
 if ($action === 'delete_indicator' || $action === 'archive_indicator') {
     $indicatorId = isset($_POST['indicator_id']) && is_numeric($_POST['indicator_id']) ? (int)$_POST['indicator_id'] : 0;
     $indicator = omoStatsLoadIndicator($indicatorId, $organizationId);

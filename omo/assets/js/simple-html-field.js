@@ -93,6 +93,9 @@
             + '.omo-indicator-embed--warning{border-color:color-mix(in srgb,#eab308 42%,var(--color-border,#d1d5db));background:color-mix(in srgb,var(--color-surface,#fff) 94%,#fef9c3 6%);}'
             + '.omo-indicator-embed--warning .omo-indicator-embed__chart{border-color:color-mix(in srgb,#eab308 42%,var(--color-border,#d1d5db));background:linear-gradient(135deg,color-mix(in srgb,#eab308 10%,var(--color-surface,#fff)),color-mix(in srgb,#eab308 4%,var(--color-surface-alt,#f8fafc)));}'
             + '.omo-indicator-embed--current .omo-indicator-embed__values em{color:#15803d;}'
+            + '.omo-indicator-embed--unavailable{border-color:#cbd5e1;background:#f8fafc;box-shadow:none;color:#64748b;}'
+            + '.omo-indicator-embed--unavailable .omo-indicator-embed__chart{border-color:#cbd5e1;background:#f8fafc;box-shadow:none;color:#64748b;}'
+            + '.omo-indicator-embed--unavailable .omo-indicator-embed__title,.omo-indicator-embed--unavailable .omo-indicator-embed__values em{color:#64748b;}'
             + '.omo-indicator-embed--warning .omo-indicator-embed__values em{color:#a16207;}'
             + '.omo-indicator-embed__main{display:grid;grid-template-columns:minmax(0,210px) minmax(0,1fr) 128px;gap:12px;align-items:stretch;}'
             + '.omo-indicator-embed__chart{grid-column:1;grid-row:1;position:relative;display:block;width:100%;max-width:210px;min-width:0;aspect-ratio:16 / 9;padding:6px 7px;border:1px solid color-mix(in srgb,var(--color-border,#d1d5db) 68%,#2563eb 32%);border-radius:var(--radius-md);background:linear-gradient(135deg,color-mix(in srgb,var(--color-primary,#2563eb) 9%,var(--color-surface,#fff)),color-mix(in srgb,var(--color-primary,#2563eb) 3%,var(--color-surface-alt,#f8fafc)));box-shadow:0 12px 26px -21px color-mix(in srgb,var(--color-primary,#2563eb) 68%,transparent);box-sizing:border-box;color:#2563eb;}'
@@ -785,7 +788,7 @@
         if ((!options || !options.simpleOnly) && isAllowedIndicatorEmbedElement(sourceNode)) {
             const embedNode = ownerDocument.createElement('span');
             const sourceClassName = ' ' + String(sourceNode.getAttribute('class') || '').trim() + ' ';
-            const isOverdue = getElementAttributeValue(sourceNode, 'data-omo-indicator-overdue').trim() === '1'
+            let isOverdue = getElementAttributeValue(sourceNode, 'data-omo-indicator-overdue').trim() === '1'
                 || sourceClassName.indexOf(' omo-indicator-embed--overdue ') >= 0
                 || sourceClassName.indexOf(' omo-indicator-embed--warning ') >= 0;
             const overdueSeverity = getElementAttributeValue(sourceNode, 'data-omo-indicator-overdue-severity').trim() === 'warning'
@@ -793,13 +796,21 @@
                 ? 'warning'
                 : 'error';
             const statusLabel = getIndicatorEmbedStatusLabel(sourceNode);
+            const rawSourceStatus = getElementAttributeValue(sourceNode, 'data-omo-indicator-source-status').trim();
+            const sourceStatus = rawSourceStatus === 'archived' || rawSourceStatus === 'unavailable' ? rawSourceStatus : '';
+            if (sourceStatus) {
+                isOverdue = false;
+            }
             const hasStatus = statusLabel !== '' || sourceClassName.indexOf(' omo-indicator-embed--current ') >= 0;
-            embedNode.setAttribute('class', 'omo-indicator-embed' + (isOverdue ? (overdueSeverity === 'warning' ? ' omo-indicator-embed--warning' : ' omo-indicator-embed--overdue') : (hasStatus ? ' omo-indicator-embed--current' : '')));
+            embedNode.setAttribute('class', 'omo-indicator-embed' + (sourceStatus ? ' omo-indicator-embed--unavailable' : (isOverdue ? (overdueSeverity === 'warning' ? ' omo-indicator-embed--warning' : ' omo-indicator-embed--overdue') : (hasStatus ? ' omo-indicator-embed--current' : ''))));
             embedNode.setAttribute('contenteditable', 'false');
             embedNode.setAttribute('data-omo-embed-type', 'indicator');
             embedNode.setAttribute('data-omo-indicator-id', String(getIndicatorEmbedElementId(sourceNode)));
             const indicatorKind = getElementAttributeValue(sourceNode, 'data-omo-indicator-kind').trim() === 'group' ? 'group' : 'indicator';
             embedNode.setAttribute('data-omo-indicator-kind', indicatorKind);
+            if (sourceStatus) {
+                embedNode.setAttribute('data-omo-indicator-source-status', sourceStatus);
+            }
             ['title', 'description', 'value', 'date', 'context', 'chart-min', 'chart-max', 'overdue-severity'].forEach(function (attributeName) {
                 const value = getElementAttributeValue(sourceNode, 'data-omo-indicator-' + attributeName).trim();
                 if (value) {
@@ -829,7 +840,7 @@
             linkNode.setAttribute('href', indicatorKind === 'group' ? ('#stats-g' + String(getIndicatorEmbedElementId(sourceNode))) : ('#stats-i' + String(getIndicatorEmbedElementId(sourceNode))));
             const statusDotNode = ownerDocument.createElement('span');
             statusDotNode.setAttribute('class', 'omo-indicator-embed__status-dot'
-                + (isOverdue ? (overdueSeverity === 'warning' ? ' omo-indicator-embed__status-dot--warning' : ' omo-indicator-embed__status-dot--overdue') : (hasStatus ? ' omo-indicator-embed__status-dot--current' : ' omo-indicator-embed__status-dot--unknown')));
+                + (sourceStatus ? ' omo-indicator-embed__status-dot--unknown' : (isOverdue ? (overdueSeverity === 'warning' ? ' omo-indicator-embed__status-dot--warning' : ' omo-indicator-embed__status-dot--overdue') : (hasStatus ? ' omo-indicator-embed__status-dot--current' : ' omo-indicator-embed__status-dot--unknown'))));
             statusDotNode.setAttribute('aria-hidden', 'true');
             const titleTextNode = ownerDocument.createElement('span');
             titleTextNode.textContent = title;

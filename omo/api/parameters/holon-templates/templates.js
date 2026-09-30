@@ -871,7 +871,7 @@ function omoHolonTemplateReadPermissions() {
         Array.from(row.querySelectorAll('[data-permission-scope]')).forEach(function (scope) {
             const range = String(scope.getAttribute('data-permission-token') || '').trim();
             if (!range) return;
-            Array.from(scope.querySelectorAll('[data-permission-profile]:checked')).forEach(function (checkbox) {
+            Array.from(scope.querySelectorAll('[data-permission-profile]')).filter(window.omoPermissionAssignments.isAssigned).forEach(function (checkbox) {
                 const profileKey = String(checkbox.getAttribute('data-permission-profile') || '').trim();
                 if (!Object.prototype.hasOwnProperty.call(assignments, profileKey)) return;
                 if (!assignments[profileKey][permissionKey]) assignments[profileKey][permissionKey] = [];
@@ -1001,7 +1001,7 @@ function omoHolonTemplateReadPermissionRowAssignments(row) {
     Array.from(row.querySelectorAll('[data-permission-scope]')).forEach(function (scope) {
         const range = String(scope.getAttribute('data-permission-token') || '').trim();
         if (!range) return;
-        Array.from(scope.querySelectorAll('[data-permission-profile]:checked')).forEach(function (checkbox) {
+        Array.from(scope.querySelectorAll('[data-permission-profile]')).filter(window.omoPermissionAssignments.isAssigned).forEach(function (checkbox) {
             const profileKey = String(checkbox.getAttribute('data-permission-profile') || '').trim();
             if (Object.prototype.hasOwnProperty.call(assignments, profileKey)) assignments[profileKey].push(window.omoPermissionAssignments.readScope(scope, profileKey));
         });
