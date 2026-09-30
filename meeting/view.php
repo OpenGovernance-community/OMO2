@@ -1,6 +1,7 @@
 <?php
 // Public booking presentation, rendered only through index.php.
 if (!isset($csrf, $monthKeys)) { http_response_code(404); exit; }
+require_once dirname(__DIR__) . '/common/meeting/steps.php';
 function meetingIcon(string $name): string
 {
     $paths = [
@@ -67,19 +68,20 @@ foreach (['free', 'partial', 'full', 'closed', 'day_availability', 'select_day',
     <meta name="twitter:title" content="<?= meetingEscape($shareTitle) ?>">
     <meta name="twitter:description" content="<?= meetingEscape($shareDescription) ?>">
     <?php if ($shareImageUrl !== ''): ?><meta name="twitter:image" content="<?= meetingEscape($shareImageUrl) ?>"><?php endif; ?>
-    <link rel="stylesheet" href="/common/assets/components.css?v=<?= (int)filemtime(dirname(__DIR__) . '/common/assets/components.css') ?>"><link rel="stylesheet" href="/meeting/meeting.css?v=<?= (int)filemtime(__DIR__ . '/meeting.css') ?>">
+    <link rel="stylesheet" href="<?= meetingEscape(commonAssetUrl('/common/assets/components.css')) ?>"><link rel="stylesheet" href="<?= meetingEscape(commonAssetUrl('/common/meeting/public.css')) ?>">
     <link rel="stylesheet" href="/common/notifications/notifications.css">
 </head>
 <body class="meeting-page">
 <main class="generic-page-shell meeting-shell">
     <div class="meeting-topbar">
-        <a class="meeting-brand" href="<?= meetingEscape($path) ?>" aria-label="<?= meetingEscape(meetingT('title')) ?>"><?= meetingIcon('calendar') ?><span>OMO<span class="meeting-brand__label"><?= meetingEscape(meetingT('title')) ?></span></span></a>
+        <a class="meeting-brand" href="<?= meetingEscape($path) ?>" aria-label="<?= meetingEscape(meetingT('title')) ?>"><span><img class="meeting-brand__logo" src="<?= meetingEscape(commonAssetUrl('/img/omo2/logo-omo-dark.png')) ?>" alt="OMO" width="1076" height="332"><span class="meeting-brand__label"><?= meetingEscape(meetingT('title')) ?></span></span></a>
         <?php if ($profile): ?>
-        <ol class="meeting-steps" aria-label="<?= meetingEscape(meetingT('steps')) ?>">
-            <?php foreach ([1 => 'step_time', 2 => 'step_details', 3 => 'step_confirm'] as $step => $label): ?>
-                <li <?= $activeStep === $step ? 'aria-current="step"' : '' ?> data-complete="<?= $activeStep > $step || $receipt ? 'true' : 'false' ?>"><span class="meeting-steps__number"><?= $activeStep > $step || $receipt ? meetingIcon('check') : $step ?></span><span><?= meetingEscape(meetingT($label)) ?></span></li>
-            <?php endforeach; ?>
-        </ol>
+        <?= commonMeetingRenderSteps(
+            [meetingT('step_time'), meetingT('step_details'), meetingT('step_confirm')],
+            $activeStep,
+            (bool)$receipt,
+            meetingT('steps')
+        ) ?>
         <?php endif; ?>
     </div>
     <header class="generic-soft-panel generic-soft-panel--elevated meeting-host">
