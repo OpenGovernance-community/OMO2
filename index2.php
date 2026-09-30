@@ -91,7 +91,8 @@ $sourceLang = [
     'home.event.users.date' => ['text' => '15 octobre 2026', 'context' => 'October 15 online meeting date.'],
     'home.event.users.time' => ['text' => 'De 11 h à 12 h', 'context' => 'October 15 online meeting time range.'],
     'home.event.users.body' => ['text' => 'Un espace pour poser vos questions, échanger et partager vos expériences.', 'context' => 'October 15 online meeting description.'],
-    'home.action.join' => ['text' => 'Rejoindre la visioconférence', 'context' => 'Video meeting action shown for each upcoming event.'],
+    'home.action.join' => ['text' => 'Rejoindre la visioconférence', 'context' => 'Video meeting action for the October 1 presentation.'],
+    'home.action.register' => ['text' => 'S’inscrire à la rencontre', 'context' => 'Registration action for the October 15 user meeting.'],
     'home.story.title' => ['text' => '13 ans de liens, d’essais et d’apprentissages.', 'context' => 'Project history section heading.'],
     'home.story.body' => ['text' => 'OMO a grandi avec les collectifs qui l’utilisent. Leurs questions, leurs essais et leurs retours nourrissent le logiciel depuis treize ans.', 'context' => 'Project history section body.'],
     'home.story.conclusion' => ['text' => 'OMO2 ouvre un nouveau chapitre de cette histoire commune : un espace plus intégré pour relier les personnes, les décisions et l’action.', 'context' => 'Project history section conclusion.'],
@@ -192,14 +193,15 @@ $omo2Links = [
     'source' => 'https://github.com/OpenGovernance-community/OMO2',
     'support' => 'https://www.patreon.com/cw/OpenGovernance',
     'videoMeeting' => 'https://kmeet.infomaniak.com/omo2',
+    'userMeetingRegistration' => 'https://omo2.org/event/register/81a0737433596f49ef721650bac87c8db5c648d79839f20d89e79ce7a785e32e',
     'terms' => '/common/conditions-generales.php',
     'privacy' => '/common/politique-confidentialite.php',
 ];
 
 // Keep scheduled meetings in chronological order.
 $upcomingEvents = [
-    ['date' => '2026-10-01', 'key' => 'home.event.presentation'],
-    ['date' => '2026-10-15', 'key' => 'home.event.users'],
+    ['date' => '2026-10-01', 'key' => 'home.event.presentation', 'link' => 'videoMeeting', 'action' => 'home.action.join'],
+    ['date' => '2026-10-15', 'key' => 'home.event.users', 'link' => 'userMeetingRegistration', 'action' => 'home.action.register'],
 ];
 
 // The external player is created only after a visitor explicitly activates it.
@@ -425,7 +427,7 @@ $canonicalUrl = '/index2.php';
                             <strong><time datetime="<?= $e($event['date']) ?>"><?= $e($t($event['key'] . '.date')) ?></time></strong>
                             <ul><li><?= $e($t($event['key'] . '.time')) ?></li><li><?= $e($t('home.event.online')) ?></li></ul>
                             <p><?= $e($t($event['key'] . '.body')) ?></p>
-                            <a class="omo2-button omo2-button--light omo2-button--full" href="<?= $e($omo2Links['videoMeeting']) ?>" target="_blank" rel="noopener noreferrer"><?= $e($t('home.action.join')) ?></a>
+                            <a class="omo2-button omo2-button--light omo2-button--full" href="<?= $e($omo2Links[$event['link']]) ?>" target="_blank" rel="noopener noreferrer"><?= $e($t($event['action'])) ?></a>
                         </div>
                     <?php endforeach; ?>
                 </aside>
