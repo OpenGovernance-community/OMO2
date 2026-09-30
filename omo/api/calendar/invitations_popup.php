@@ -300,12 +300,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'publicRegistration' => $resource instanceof Event ? (static function () use ($eventId) {
                 $link = EventPublicLink::forEvent($eventId);
                 return ['enabled' => $link && (int)$link->get('enabled') === 1,
+                    'people' => \dbObject\EventPublicRegistration::forEvent($eventId),
                     'url' => $link && (int)$link->get('enabled') === 1
                         ? rtrim((string)appGetCurrentSiteBaseUrl(), '/') . $link->publicPath() : ''];
             })() : null,
         ]) ?>
-
-        <div id="omoCalendarInvitationsPopupFeedback" class="omo-calendar-invitations-popup__feedback generic-feedback"></div>
 
         <div class="omo-calendar-invitations-popup__actions generic-action-row">
             <button type="submit" id="omoCalendarInvitationsPopupSubmit" class="generic-action-button generic-action-button--main">

@@ -926,6 +926,10 @@ input:focus-visible + .generic-choice-card,
     font-size: var(--generic-type-size-body);
 }
 
+.generic-help-text--centered {
+    text-align: center;
+}
+
 .generic-context-help {
     position: relative;
     display: inline-flex;

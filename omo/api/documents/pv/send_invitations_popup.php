@@ -215,7 +215,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <span class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoDocumentsPvSendInvitationT('documents.pv_invitations.message')) ?></span>
             <textarea id="omoPvSendInvitationsMessage" name="message" class="generic-form-control" rows="9"<?= count($recipients) > 0 ? '' : ' disabled' ?>><?= omoApiEscape($defaultMessage) ?></textarea>
         </label>
-        <div id="omoPvSendInvitationsFeedback" class="generic-feedback" hidden></div>
         <div class="generic-action-row">
             <button type="submit" id="omoPvSendInvitationsSubmit" class="generic-action-button generic-action-button--main"<?= count($recipients) > 0 ? '' : ' disabled' ?>><?= omoApiEscape(omoDocumentsPvSendInvitationT('documents.pv_invitations.send')) ?></button>
         </div>
@@ -224,15 +223,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <script>
 (function () {
     const form = document.getElementById('omoPvSendInvitationsForm');
-    const feedback = document.getElementById('omoPvSendInvitationsFeedback');
     const submitButton = document.getElementById('omoPvSendInvitationsSubmit');
-    if (!form || !feedback || !submitButton) {
+    if (!form || !submitButton) {
         return;
     }
 
     form.addEventListener('submit', function (event) {
         event.preventDefault();
-        feedback.hidden = true;
         submitButton.disabled = true;
         fetch(form.getAttribute('action'), {
             method: 'POST',
@@ -246,20 +243,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 });
             })
             .then(function (result) {
-                feedback.textContent = result.payload && result.payload.message
+                let message = result.payload && result.payload.message
                     ? result.payload.message
                     : <?= json_encode(omoDocumentsPvSendInvitationT('documents.pv_invitations.network_error'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
                 if (result.payload && result.payload.diagnostic) {
-                    feedback.textContent += '\n' + result.payload.diagnostic;
+                    message += '\n' + result.payload.diagnostic;
                 }
-                feedback.classList.toggle('is-success', result.ok && result.payload && result.payload.status === true);
-                feedback.hidden = false;
+                const success = result.ok && result.payload && result.payload.status === true;
+                window.commonNotify(message, success ? 'success' : 'error', {duration: success ? 5000 : 7000});
                 submitButton.disabled = !(result.ok && result.payload && result.payload.status === true);
             })
             .catch(function () {
-                feedback.textContent = <?= json_encode(omoDocumentsPvSendInvitationT('documents.pv_invitations.network_error'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
-                feedback.classList.remove('is-success');
-                feedback.hidden = false;
+                window.commonNotify(<?= json_encode(omoDocumentsPvSendInvitationT('documents.pv_invitations.network_error'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>, 'error', {duration: 7000});
                 submitButton.disabled = false;
             });
     });

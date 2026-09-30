@@ -2,7 +2,7 @@
 require_once dirname(__DIR__) . '/shared_functions.php';
 require_once dirname(__DIR__) . '/common/auth.php';
 require_once dirname(__DIR__) . '/common/pv_participation.php';
-require_once dirname(__DIR__) . '/common/translation_bundles.php';
+require_once __DIR__ . '/translations.php';
 
 $participationSourceLang = [
     'documents.pv_participation.invalid_title' => ['text' => 'Lien de réunion invalide', 'context' => 'Title of the public PV participation page when the link is unavailable.'],

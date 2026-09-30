@@ -18,6 +18,18 @@ class EventPublicRegistration extends DbObject
     }
     public static function attributeLength() { return ['name' => 190, 'email' => 254, 'token' => 64]; }
 
+    public static function forEvent(int $eventId, bool $confirmedOnly = false): array
+    {
+        if ($eventId <= 0) { return []; }
+        $items = new ArrayEventPublicRegistration();
+        $where = [['field' => 'IDevent', 'value' => $eventId]];
+        if ($confirmedOnly) { $where[] = ['field' => 'confirmed_at', 'op' => 'is not null']; }
+        $items->load(['where' => $where, 'hydrate' => true, 'orderBy' => [
+            ['field' => 'name', 'dir' => 'ASC'], ['field' => 'email', 'dir' => 'ASC'],
+        ]]);
+        return array_values($items->getArrayCopy());
+    }
+
     public static function forEmail(int $eventId, string $email): ?self
     {
         $item = new self();

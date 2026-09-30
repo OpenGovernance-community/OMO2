@@ -40,6 +40,10 @@ if (!function_exists('omoCalendarInvitationSourceLang')) {
                 'text' => 'Invités externes',
                 'context' => 'Tab label for email invitations in calendar.',
             ],
+            'calendar.invitations.tab.public' => [
+                'text' => 'Inscriptions tout public',
+                'context' => 'Tab for enabling public event registration and listing public registrants.',
+            ],
             'calendar.invitations.current' => [
                 'text' => '(courant)',
                 'context' => 'Suffix shown next to the current holon inside the event invitation tree.',
@@ -103,6 +107,55 @@ if (!function_exists('omoCalendarInvitationSourceLang')) {
             'calendar.invitations.public_link' => [
                 'text' => 'Lien à diffuser',
                 'context' => 'Label for the public event registration URL.',
+            ],
+            'calendar.invitations.people_count' => [
+                'one' => '{count} personne invitée ou inscrite',
+                'other' => '{count} personnes invitées ou inscrites',
+                'context' => 'Distinct people invited through spaces, individual membership or email, including confirmed public registrations.',
+            ],
+            'calendar.invitations.holon_people_count' => [
+                'one' => '{name} ({count} personne)',
+                'other' => '{name} ({count} personnes)',
+                'context' => 'Selected invitation space and number of its members, before deduplicating with other spaces.',
+            ],
+            'calendar.invitations.current_holon_people_count' => [
+                'one' => '{name} (contexte courant, {count} personne)',
+                'other' => '{name} (contexte courant, {count} personnes)',
+                'context' => 'Invited current context and number of its members.',
+            ],
+            'calendar.invitations.no_default_members' => [
+                'text' => 'Aucun membre invité par défaut.',
+                'context' => 'Invitation summary when no space or individual member is selected and no default invitation scope applies.',
+            ],
+            'calendar.invitations.individual_members_count' => [
+                'one' => '{count} membre invité individuellement',
+                'other' => '{count} membres invités individuellement',
+                'context' => 'Number of explicitly selected individual members; they may also belong to invited spaces.',
+            ],
+            'calendar.invitations.registered_count' => [
+                'one' => '{count} inscription confirmée par e-mail',
+                'other' => '{count} inscriptions confirmées par e-mail',
+                'context' => 'Number of confirmed public event registrations.',
+            ],
+            'calendar.invitations.count_hint' => [
+                'text' => 'Le total compte chaque personne une seule fois. Les inscriptions en attente de confirmation sont exclues.',
+                'context' => 'Explanation of invitation totals and overlapping invitation sources.',
+            ],
+            'calendar.invitations.registrations_title' => [
+                'text' => 'Inscriptions par e-mail',
+                'context' => 'Heading of the registrant list in the public registration tab.',
+            ],
+            'calendar.invitations.registrations_empty' => [
+                'text' => "Aucune demande d'inscription pour le moment.",
+                'context' => 'Empty public registration list in OMO.',
+            ],
+            'calendar.invitations.registration_confirmed' => [
+                'text' => 'Inscription confirmée',
+                'context' => 'Status of a public registrant who validated their email address.',
+            ],
+            'calendar.invitations.registration_pending' => [
+                'text' => 'En attente de confirmation',
+                'context' => 'Status of a public registration which is not yet effective.',
             ],
             'calendar.invitations.default_scope' => [
                 'text' => 'Par défaut, tous les membres du contexte rattaché à cet événement sont invités.',
@@ -606,7 +659,7 @@ if (!function_exists('omoCalendarBuildInvitationSummaryData')) {
             ),
             'invitationCount' => 0,
             'hasExplicitInvitations' => false,
-            'summary' => '',
+            'summaryItems' => [],
         ];
 
         $invitations = [];
@@ -617,37 +670,43 @@ if (!function_exists('omoCalendarBuildInvitationSummaryData')) {
         }
         $data['invitationCount'] = count($invitations);
         $data['hasExplicitInvitations'] = $data['invitationCount'] > 0;
+        $data['counts'] = $event->getInvitationCounts($invitations);
+        $peopleSummaryParts = [];
+        foreach ([
+            'individualMembers' => 'calendar.invitations.individual_members_count',
+            'invitedEmails' => 'calendar.invitations.additional_emails',
+            'confirmedRegistrations' => 'calendar.invitations.registered_count',
+        ] as $countKey => $translationKey) {
+            if ($data['counts'][$countKey] > 0) {
+                $peopleSummaryParts[] = t($translationKey, ['count' => $data['counts'][$countKey]], $lang, $sourceLang);
+            }
+        }
 
         if (count($invitations) === 0) {
-            $defaultSummary = t(
-                $summaryHolon instanceof Holon
-                    ? 'calendar.invitations.default_scope'
-                    : 'calendar.invitations.default_scope_organization',
-                [],
-                $lang,
-                $sourceLang
-            );
-            if ($summaryHolon instanceof Holon) {
-                $defaultSummary = rtrim($defaultSummary, '.');
-                $defaultSummary .= ' ' . $summaryHolon->getTemplateLabel(true) . ' ' . trim((string)$summaryHolon->getDisplayName()) . '.';
+            $defaultSummary = '';
+            if ($data['counts']['members'] > 0) {
+                $defaultSummary = $eventHolon instanceof Holon
+                    ? t(
+                        $eventHolonId === $summaryHolonId
+                            ? 'calendar.invitations.current_holon_people_count'
+                            : 'calendar.invitations.holon_people_count',
+                        ['name' => trim((string)$eventHolon->getDisplayName()), 'count' => $data['counts']['members']],
+                        $lang,
+                        $sourceLang
+                    )
+                    : t('calendar.invitations.default_scope_organization', [], $lang, $sourceLang);
             }
 
-            $data['summary'] = $defaultSummary;
+            $data['summaryItems'] = array_values(array_filter(array_merge([$defaultSummary], $peopleSummaryParts)));
             return $data;
         }
 
         $holonLabels = [];
-        $additionalUsersCount = 0;
-        $additionalEmailsCount = 0;
-        $includesCurrentHolon = false;
 
         foreach ($invitations as $invitation) {
             $type = EventInvitation::normalizeType($invitation->get('invitation_type'));
             if ($type === EventInvitation::TYPE_HOLON) {
                 $holonId = (int)$invitation->get('IDholon');
-                if ($holonId === $summaryHolonId && $summaryHolonId > 0) {
-                    $includesCurrentHolon = true;
-                }
 
                 $holonLabel = trim((string)$invitation->get('display_name'));
                 if ($holonLabel === '' && $holonId > 0) {
@@ -656,39 +715,21 @@ if (!function_exists('omoCalendarBuildInvitationSummaryData')) {
                         $holonLabel = trim((string)$holon->getDisplayName());
                     }
                 }
-                if ($holonLabel !== '') {
-                    $holonLabels[] = $holonLabel;
+                $memberCount = $data['counts']['holonMemberCounts'][$holonId] ?? 0;
+                if ($holonLabel !== '' && $memberCount > 0) {
+                    $holonLabels[$holonId] = t(
+                        $holonId === $summaryHolonId
+                            ? 'calendar.invitations.current_holon_people_count'
+                            : 'calendar.invitations.holon_people_count', [
+                        'name' => $holonLabel, 'count' => $memberCount,
+                    ], $lang, $sourceLang);
                 }
                 continue;
             }
 
-            if ($type === EventInvitation::TYPE_USER) {
-                $additionalUsersCount += 1;
-                continue;
-            }
-
-            $additionalEmailsCount += 1;
         }
 
-        $summaryParts = [];
-        if (count($holonLabels) > 0) {
-            $summaryParts[] = implode(', ', array_slice(array_values(array_unique($holonLabels)), 0, 3));
-        }
-        if ($additionalUsersCount > 0) {
-            $summaryParts[] = t('calendar.invitations.additional_people', ['count' => (string)$additionalUsersCount], $lang, $sourceLang);
-        }
-        if ($additionalEmailsCount > 0) {
-            $summaryParts[] = t('calendar.invitations.additional_emails', ['count' => (string)$additionalEmailsCount], $lang, $sourceLang);
-        }
-        if ($summaryHolon instanceof Holon) {
-            $summaryParts[] = $includesCurrentHolon
-                ? t('calendar.invitations.current_scope_included', [], $lang, $sourceLang)
-                : t('calendar.invitations.current_scope_excluded', [], $lang, $sourceLang);
-        }
-
-        $data['summary'] = implode(' - ', array_filter($summaryParts, static function ($value) {
-            return trim((string)$value) !== '';
-        }));
+        $data['summaryItems'] = array_merge(array_values($holonLabels), $peopleSummaryParts);
 
         return $data;
     }
@@ -699,6 +740,10 @@ if (!function_exists('omoCalendarRenderInvitationSummarySection')) {
     {
         $summaryData = omoCalendarBuildInvitationSummaryData($event, $context, $lang, $sourceLang);
         $canEditInvitations = !array_key_exists('canEditInvitations', $context) || !empty($context['canEditInvitations']);
+        $summaryList = '';
+        foreach ($summaryData['summaryItems'] as $item) {
+            $summaryList .= '<li>' . $escape((string)$item) . '</li>';
+        }
 
         return '<section class="generic-soft-panel generic-soft-panel--stack omo-calendar-detail__content">'
             . '<div class="omo-calendar-detail__summary-head">'
@@ -716,7 +761,16 @@ if (!function_exists('omoCalendarRenderInvitationSummarySection')) {
                         : ''
                 )
             . '</div>'
-            . '<p class="omo-calendar-detail__summary-copy">' . $escape((string)$summaryData['summary']) . '</p>'
+            . '<div class="generic-heading-with-help">'
+                . '<strong class="generic-meta-value">' . $escape(t('calendar.invitations.people_count', ['count' => $summaryData['counts']['total']], $lang, $sourceLang)) . '</strong>'
+                . '<details class="generic-context-help generic-context-help--compact" data-generic-context-help-hover>'
+                    . '<summary aria-label="' . $escape(t('calendar.invitations.count_hint', [], $lang, $sourceLang)) . '">?</summary>'
+                    . '<div class="generic-context-help__content">' . $escape(t('calendar.invitations.count_hint', [], $lang, $sourceLang)) . '</div>'
+                . '</details>'
+            . '</div>'
+            . ($summaryList !== ''
+                ? '<ul class="omo-calendar-detail__summary-copy">' . $summaryList . '</ul>'
+                : '')
         . '</section>';
     }
 }
@@ -750,6 +804,7 @@ if (!function_exists('omoCalendarRenderInvitationEditor')) {
         $holonsTabId = $instanceId . \dbObject\Organization::formatLexiconText('Holons');
         $membersTabId = $instanceId . 'Members';
         $guestsTabId = $instanceId . 'Guests';
+        $publicTabId = $instanceId . 'PublicRegistrations';
 
         ob_start();
         ?>
@@ -773,6 +828,9 @@ if (!function_exists('omoCalendarRenderInvitationEditor')) {
                     <?php else: ?>
                     <button type="button" class="generic-tabs__tab is-active" data-generic-tab data-generic-tab-target="<?= $escape($membersTabId) ?>"><?= $escape(t('calendar.invitations.tab.members', [], $lang, $sourceLang)) ?></button>
                     <button type="button" class="generic-tabs__tab" data-generic-tab data-generic-tab-target="<?= $escape($guestsTabId) ?>"><?= $escape(t('calendar.invitations.tab.guests', [], $lang, $sourceLang)) ?></button>
+                    <?php endif; ?>
+                    <?php if (is_array($options['publicRegistration'])): ?>
+                    <button type="button" class="generic-tabs__tab" data-generic-tab data-generic-tab-target="<?= $escape($publicTabId) ?>"><?= $escape(t('calendar.invitations.tab.public', [], $lang, $sourceLang)) ?></button>
                     <?php endif; ?>
                 </div>
                 <div class="generic-tabs__panels">
@@ -850,7 +908,10 @@ if (!function_exists('omoCalendarRenderInvitationEditor')) {
                             placeholder="<?= $escape(t('calendar.invitations.guests_placeholder', [], $lang, $sourceLang)) ?>"
                         ><?= $escape(implode("\n", $selectedEmails)) ?></textarea>
                         <p class="omo-calendar-invitations-editor__hint"><?= $escape(t('calendar.invitations.guests_hint', [], $lang, $sourceLang)) ?></p>
-                        <?php if (is_array($options['publicRegistration'])): ?>
+                    </div>
+
+                    <?php if (is_array($options['publicRegistration'])): ?>
+                    <div id="<?= $escape($publicTabId) ?>" class="generic-tabs__panel omo-calendar-invitations-editor__tab-panel" data-generic-tab-panel hidden>
                         <label class="omo-calendar-invitations-editor__check">
                             <input type="checkbox" name="public_registration" value="1" data-omo-public-registration-toggle<?= !empty($options['publicRegistration']['enabled']) ? ' checked' : '' ?>>
                             <span class="omo-calendar-invitations-editor__check-meta">
@@ -862,8 +923,24 @@ if (!function_exists('omoCalendarRenderInvitationEditor')) {
                             <span><?= $escape(t('calendar.invitations.public_link', [], $lang, $sourceLang)) ?></span>
                             <input class="generic-form-control" type="url" readonly value="<?= $escape((string)($options['publicRegistration']['url'] ?? '')) ?>" data-omo-public-registration-url>
                         </label>
-                        <?php endif; ?>
+                        <section class="generic-section generic-section--stack" aria-labelledby="<?= $escape($instanceId) ?>Registrations">
+                            <h4 class="generic-card-title generic-card-title--small" id="<?= $escape($instanceId) ?>Registrations"><?= $escape(t('calendar.invitations.registrations_title', [], $lang, $sourceLang)) ?></h4>
+                            <?php if (empty($options['publicRegistration']['people'])): ?>
+                                <p class="generic-help-text"><?= $escape(t('calendar.invitations.registrations_empty', [], $lang, $sourceLang)) ?></p>
+                            <?php else: ?>
+                                <div class="generic-stack" role="list">
+                                    <?php foreach ($options['publicRegistration']['people'] as $person): ?>
+                                    <div class="generic-soft-panel generic-soft-panel--stack" role="listitem">
+                                        <strong><?= $escape($person->get('name')) ?></strong>
+                                        <span class="generic-description generic-description--small"><?= $escape($person->get('email')) ?></span>
+                                        <span class="generic-description generic-description--small"><?= $escape(t($person->get('confirmed_at') ? 'calendar.invitations.registration_confirmed' : 'calendar.invitations.registration_pending', [], $lang, $sourceLang)) ?></span>
+                                    </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php endif; ?>
+                        </section>
                     </div>
+                    <?php endif; ?>
                 </div>
             </div>
 
