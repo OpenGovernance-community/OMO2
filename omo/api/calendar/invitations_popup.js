@@ -91,7 +91,13 @@ window.commonPageScripts["/omo/api/calendar/invitations_popup.js"] = function (p
                 feedback.textContent = result.data.message || pageConfig.calendarInvitationsUpdated;
                 feedback.classList.add('is-success');
 
-                if (typeof window.commonTopbarCloseModal === 'function') {
+                var publicLink = form.querySelector('[data-omo-public-registration-link]');
+                if (publicLink) {
+                    publicLink.hidden = !result.data.publicUrl;
+                    publicLink.querySelector('[data-omo-public-registration-url]').value = result.data.publicUrl || '';
+                }
+
+                if (!publicLink && typeof window.commonTopbarCloseModal === 'function') {
                     window.commonTopbarCloseModal();
                 }
 

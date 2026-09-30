@@ -32,7 +32,7 @@ if ($user_id <= 0 && !$isGuestAllowed && count($parcours) === 0) {
     commonRenderMagicLoginPage([
         'title' => $org['name'] . ' - LMS',
         'appName' => 'LMS',
-        'intro' => 'Connectez-vous pour acceder aux parcours de cette organisation.',
+        'intro' => 'Connectez-vous pour accéder aux parcours de cette organisation.',
         'returnTo' => $loginReturnTo,
         'topbar' => [
             'appKey' => 'lms',
@@ -337,7 +337,7 @@ $loginDrawerReturnTo = lmsBuildLocalPath('/lms/', $isEmbedded ? ['embed' => 1] :
 <div class="lms-access-note">
     <strong>Une partie du LMS est accessible publiquement.</strong>
     <?php if ($hiddenParcoursCount > 0): ?>
-        Connectez-vous pour acceder aux <?php echo (int)$hiddenParcoursCount; ?> autre<?php echo $hiddenParcoursCount > 1 ? 's' : ''; ?> parcours reserves aux membres de l organisation.
+        Connectez-vous pour accéder aux <?php echo (int)$hiddenParcoursCount; ?> autre<?php echo $hiddenParcoursCount > 1 ? 's' : ''; ?> parcours réservés aux membres de l’organisation.
     <?php else: ?>
         Connectez-vous pour enregistrer votre avancement et retrouver vos parcours sur votre profil.
     <?php endif; ?>

@@ -94,7 +94,7 @@ function omoGetOrgPanelSourceLang(): array
             'context' => 'Section title for direct child authority delegations.',
         ],
         'leftbar.authority.internal_children' => [
-            'text' => 'Sous-autorites',
+            'text' => 'Sous-autorités',
             'context' => 'Section title for authority descendants held by the same holon.',
         ],
         'leftbar.authority.inherited_from' => [

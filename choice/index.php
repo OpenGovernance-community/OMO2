@@ -314,7 +314,7 @@ if ($currentUserId <= 0) {
     commonRenderMagicLoginPage([
         'title' => t('choice.page.title', [], $lang, $sourceLang),
         'appName' => 'Choice',
-        'intro' => 'Connectez-vous pour retrouver toutes les prises de decision qui vous concernent.',
+        'intro' => 'Connectez-vous pour retrouver toutes les prises de décision qui vous concernent.',
         'returnTo' => '/choice/',
     ]);
 }
@@ -324,7 +324,7 @@ if (!$currentUser->load($currentUserId)) {
     commonRenderMagicLoginPage([
         'title' => t('choice.page.title', [], $lang, $sourceLang),
         'appName' => 'Choice',
-        'intro' => 'Connectez-vous pour retrouver toutes les prises de decision qui vous concernent.',
+        'intro' => 'Connectez-vous pour retrouver toutes les prises de décision qui vous concernent.',
         'returnTo' => '/choice/',
     ]);
 }

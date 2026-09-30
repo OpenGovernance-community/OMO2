@@ -584,7 +584,7 @@ $dashboardMetricLabels = array(
         <div class="omo-panel-view__header-main">
             <div class="omo-panel-view__title-cluster">
                 <span class="omo-panel-view__app-icon omo-personal-space__app-icon" aria-hidden="true">
-                    <img src="/omo/images/tools/alert.png" alt="">
+                    <img src="/omo/images/tools/dashboard.png" alt="">
                 </span>
                 <div class="omo-panel-view__header-copy">
                     <div class="omo-personal-space__title-row generic-title-row generic-title-row--center">

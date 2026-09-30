@@ -150,7 +150,7 @@ if (!function_exists('omoStatsSpreadsheetReadCell')) {
             $value = $result['worksheet']->getCell($cell)->getCalculatedValue();
             $value = omoStatsSpreadsheetParseDecimal($value);
             return $value === null
-                ? ['status' => false, 'text' => 'La cellule du tableur ne contient pas une valeur numerique.']
+                ? ['status' => false, 'text' => 'La cellule du tableur ne contient pas une valeur numérique.']
                 : ['status' => true, 'value' => $value];
         } catch (\Throwable $exception) {
             return ['status' => false, 'text' => 'Impossible de lire la cellule du tableur.'];

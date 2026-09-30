@@ -115,7 +115,7 @@ if (!function_exists('commonDecisionParticipationGetSourceLang')) {
             'decisions.public.access.resend' => ['text' => 'Renvoyer le code', 'context' => 'Button resending a public access code.'],
             'decisions.public.access.enter' => ['text' => 'Accéder au scrutin', 'context' => 'Button validating the public access code.'],
             'decisions.public.navigation.help' => ['text' => 'Aide', 'context' => 'Public decision page help label.'],
-            'decisions.public.logout' => ['text' => 'Se deconnecter', 'context' => 'Button that ends a participant personal public access.'],
+            'decisions.public.logout' => ['text' => 'Se déconnecter', 'context' => 'Button that ends a participant personal public access.'],
             'decisions.public.help.webmaster' => ['text' => 'Webmaster : {email}', 'context' => 'Server administrator email link shown below the public decision help items.'],
             'decisions.public.navigation.aria' => ['text' => 'Navigation du scrutin', 'context' => 'Public decision page mobile navigation label.'],
             'decisions.public.navigation.info' => ['text' => 'Infos', 'context' => 'Public decision page mobile information tab.'],

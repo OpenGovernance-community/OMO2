@@ -108,14 +108,14 @@ if ($choiceMode === 'multiple') {
 if (count($proposalIds) === 0) {
     omoDecisionModuleJsonResponse(400, [
         'status' => false,
-        'message' => 'Veuillez selectionner au moins une proposition.',
+        'message' => 'Veuillez sélectionner au moins une proposition.',
     ]);
 }
 
 if ($choiceMode === 'multiple' && $maxChoices > 0 && count($proposalIds) > $maxChoices) {
     omoDecisionModuleJsonResponse(400, [
         'status' => false,
-        'message' => 'Vous ne pouvez pas selectionner autant de propositions.',
+        'message' => 'Vous ne pouvez pas sélectionner autant de propositions.',
     ]);
 }
 

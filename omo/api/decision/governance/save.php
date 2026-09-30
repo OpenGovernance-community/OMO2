@@ -375,15 +375,15 @@ foreach (array_values($blueprint) as $proposalIndex => $proposalInput) {
         if (!($allowedRuleHolon instanceof Holon)) $respond(403, ['status' => false, 'message' => 'Le collectif ne dispose pas du droit nécessaire pour cette règle.']);
         $requiresExistingRule = $actionType !== DecisionGovernanceAction::TYPE_RULE_CREATE;
         if (!$requiresExistingRule && $targetId !== 0) {
-            $respond(422, ['status' => false, 'message' => 'Une creation de regle ne peut pas cibler une regle existante.']);
+            $respond(422, ['status' => false, 'message' => 'La création d’une règle ne peut pas cibler une règle existante.']);
         }
         $rule = new Rule();
         $ruleHolon = $requiresExistingRule && $rule->load($targetId) ? $rule->getHolon() : null;
         if ($requiresExistingRule && ($targetId <= 0 || !($ruleHolon instanceof Holon) || (int)$ruleHolon->getId() !== $actionContextHolonId)) {
-            $respond(422, ['status' => false, 'message' => 'La regle choisie n appartient pas a ce contexte.']);
+            $respond(422, ['status' => false, 'message' => 'La règle choisie n’appartient pas à ce contexte.']);
         }
         if ($requiresExistingRule && isset($usedTargetIds[$targetId])) {
-            $respond(422, ['status' => false, 'message' => 'Une meme regle ne peut pas etre modifiee ou supprimee plusieurs fois dans ce scrutin.']);
+            $respond(422, ['status' => false, 'message' => 'Une même règle ne peut pas être modifiée ou supprimée plusieurs fois dans ce scrutin.']);
         }
         if ($requiresExistingRule) {
             $usedTargetIds[$targetId] = true;
@@ -418,8 +418,8 @@ foreach (array_values($blueprint) as $proposalIndex => $proposalInput) {
                 : []);
             $afterState = (array)$validation['state'];
             $ruleTitle = trim((string)$afterState['title']);
-            $suggestedTitles[] = 'Creer la regle ' . $ruleTitle;
-            $actionDescriptions[] = '<h4>Creer la regle ' . htmlspecialchars($ruleTitle, ENT_QUOTES, 'UTF-8') . '</h4>'
+            $suggestedTitles[] = 'Créer la règle ' . $ruleTitle;
+            $actionDescriptions[] = '<h4>Créer la règle ' . htmlspecialchars($ruleTitle, ENT_QUOTES, 'UTF-8') . '</h4>'
                 . DecisionGovernanceAction::buildRuleStateDescription($afterState);
         } elseif ($actionType === DecisionGovernanceAction::TYPE_RULE_DELETE) {
             $validation = DecisionGovernanceAction::validateRuleDelete($rule, $actionContextHolonId);
@@ -433,8 +433,8 @@ foreach (array_values($blueprint) as $proposalIndex => $proposalInput) {
                 : (array)$validation['state']);
             $afterState = [];
             $ruleTitle = trim((string)$beforeState['title']);
-            $suggestedTitles[] = 'Supprimer la regle ' . $ruleTitle;
-            $actionDescriptions[] = '<h4>Supprimer la regle ' . htmlspecialchars($ruleTitle, ENT_QUOTES, 'UTF-8') . '</h4>'
+            $suggestedTitles[] = 'Supprimer la règle ' . $ruleTitle;
+            $actionDescriptions[] = '<h4>Supprimer la règle ' . htmlspecialchars($ruleTitle, ENT_QUOTES, 'UTF-8') . '</h4>'
                 . DecisionGovernanceAction::buildRuleStateDescription($beforeState);
         } else {
             $beforeState = $existingDeferred instanceof DeferredProposal
@@ -452,11 +452,11 @@ foreach (array_values($blueprint) as $proposalIndex => $proposalInput) {
             }
             $afterState = (array)$validation['state'];
             if ($beforeState === $afterState) {
-                $respond(422, ['status' => false, 'message' => 'La modification de la regle ' . trim((string)$rule->get('title')) . ' ne contient aucun changement.']);
+                $respond(422, ['status' => false, 'message' => 'La modification de la règle ' . trim((string)$rule->get('title')) . ' ne contient aucun changement.']);
             }
             $ruleTitle = trim((string)$rule->get('title'));
-            $suggestedTitles[] = 'Modifier la regle ' . $ruleTitle;
-            $actionDescriptions[] = '<h4>Modifier la regle ' . htmlspecialchars($ruleTitle, ENT_QUOTES, 'UTF-8') . '</h4>'
+            $suggestedTitles[] = 'Modifier la règle ' . $ruleTitle;
+            $actionDescriptions[] = '<h4>Modifier la règle ' . htmlspecialchars($ruleTitle, ENT_QUOTES, 'UTF-8') . '</h4>'
                 . DecisionGovernanceAction::buildRuleUpdateDescription($beforeState, $afterState);
         }
         $ruleTitles[] = $ruleTitle;
