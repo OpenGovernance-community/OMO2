@@ -99,7 +99,10 @@ namespace {
     extendedAssert(!commonCurrentUserCanUseExtendedAuthorities(43), 'Availability must stay within its organization.');
     extendedAssert(!commonCurrentUserIsExtendedAuthoritiesEnabled(43), 'Activation must stay within its organization.');
     $_SESSION['currentUser'] = 9;
+    extendedAssert(HP::userHasPermissionForHolonContext(9, 42, 'CAN_MOVE_HOLON', 2), 'Role admins also receive ordinary member grants.');
+    extendedAssert(!HP::userHasPermissionForHolonContext(9, 42, 'CAN_MOVE_HOLON', 4), 'Extended member grants remain dormant for role admins too.');
     extendedAssert(commonSetCurrentUserExtendedAuthorities(true, 42), 'Assigned role administrator can activate their extensions.');
+    extendedAssert(HP::userHasPermissionForHolonContext(9, 42, 'CAN_MOVE_HOLON', 4), 'Role admins receive extended member grants after activation.');
     extendedAssert(HP::userHasPermissionForHolonContext(9, 42, 'CAN_DELETE_HOLON', 3), 'Role admin grants are included only for its administrator.');
     $_SESSION['currentUser'] = 8;
     extendedAssert(!commonCurrentUserIsExtendedAuthoritiesEnabled(42), 'Activation must not leak across users.');

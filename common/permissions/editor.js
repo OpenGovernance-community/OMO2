@@ -11,6 +11,8 @@
     window.omoPermissionAssignments = {
         values: assignmentValues,
         range: assignmentRange,
+        isAssigned: checkbox => checkbox.dataset.permissionExplicit !== undefined
+            ? checkbox.dataset.permissionExplicit === '1' : checkbox.checked,
         readScope: (scope, profile) => {
             const range = scope.dataset.permissionToken;
             return profile !== 'collective' && !!scope.querySelector('[data-permission-extended]:checked')
@@ -18,6 +20,13 @@
         },
         decorate: (row, assignments) => {
             row.querySelectorAll('[data-permission-scope]').forEach(scope => {
+                const member = scope.querySelector('[data-permission-profile="member"]');
+                const admin = scope.querySelector('[data-permission-profile="admin"]');
+                const adminLabel = admin && admin.closest('label');
+                const adminTitle = adminLabel ? adminLabel.title : '';
+                let inheritedTitle = 'Inclus dans les droits des membres';
+                // Keep explicit grants separate from the checked state showing effective rights.
+                if (admin) admin.dataset.permissionExplicit = admin.checked ? '1' : '0';
                 const label = document.createElement('label');
                 label.className = 'generic-checkbox';
                 const checkbox = document.createElement('input');
@@ -29,12 +38,26 @@
                 text.textContent = 'Autorité étendue';
                 label.append(checkbox, text);
                 scope.firstElementChild.append(label);
-                const refresh = () => { checkbox.disabled = !scope.querySelector('[data-permission-profile="member"]:checked, [data-permission-profile="admin"]:checked'); };
-                scope.addEventListener('change', refresh);
+                const refresh = () => {
+                    if (admin) {
+                        admin.disabled = !!(member && member.checked);
+                        admin.checked = admin.disabled || admin.dataset.permissionExplicit === '1';
+                        if (adminLabel) adminLabel.title = admin.disabled ? inheritedTitle : adminTitle;
+                    }
+                    checkbox.disabled = !scope.querySelector('[data-permission-profile="member"]:checked, [data-permission-profile="admin"]:checked');
+                };
+                scope.addEventListener('change', event => {
+                    if (admin && event.target === admin && !admin.disabled) {
+                        admin.dataset.permissionExplicit = admin.checked ? '1' : '0';
+                    }
+                    refresh();
+                });
                 refresh();
                 translations.then(texts => {
                     text.textContent = texts.extended || 'Autorité étendue';
                     label.title = texts.extended_help || '';
+                    inheritedTitle = texts.admin_inherits_member || inheritedTitle;
+                    refresh();
                 });
             });
         }

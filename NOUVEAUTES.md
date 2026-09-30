@@ -1,5 +1,13 @@
 # Journal Des Nouveautes
 
+- Indicateurs : la vue detaillee affiche un onglet Description lorsque l indicateur en possede une, y compris pour les indicateurs importes. Les retours a la ligne sont conserves.
+
+- Indicateurs : le menu d un indicateur propose son deplacement vers un autre espace via la carte des cercles imbriques. L action exige le droit de supprimer dans l espace actuel et celui de creer des indicateurs dans la destination ; seuls les emplacements autorises sont selectionnables.
+
+- Droits : dans les editeurs de holons et de modeles, cocher Membres coche et grise Admin pour montrer les droits deja inclus. Decocher Membres rend Admin modifiable et conserve son eventuelle attribution explicite.
+
+- Indicateurs combines : un cumul ou un graphique multi-courbes passe en gris si une source est archivee, supprimee ou inaccessible. Le nom et l etat de chaque source concernee sont affiches, les alertes de retard cessent et l edition du groupe reste disponible. Une archive fige les courbes historiques a la date d archivage ; une source supprimee ou inaccessible rend le calcul et le graphique indisponibles. Les apercus dans l editeur de PV reprennent cet etat.
+
 - Profil membre : en mode super admin, le bouton "Prendre l'identite" permet d'ouvrir l'organisation courante avec les droits du membre choisi. La personne recoit une notification dans OMO et l'action figure dans l'historique de l'organisation. Ces deux enregistrements sont obligatoires avant le changement de session ; les modes admin et les donnees de session precedentes sont ensuite effaces, et l'action est aussi journalisee dans le journal de securite.
 
 - Indicateurs : un import dont la source est archivee reste visible en gris dans les vues cartes et compacte. Il signale que la source doit etre remplacee, conserve l acces aux valeurs historiques et ne passe plus en retard. Son import peut toujours etre modifie ou detache. Le tableau de bord des retards exclut cette source ; les autres indicateurs et les taches recurrentes archives ou supprimes disparaissent au retour au tableau de bord.

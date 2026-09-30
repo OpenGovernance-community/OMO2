@@ -409,9 +409,14 @@
 			if (self::isAllowedIndicatorEmbedNode($node)) {
 				$indicatorId = self::getIndicatorEmbedNodeId($node);
 				$sourceClassName = ' ' . trim((string)self::getDomNodeAttributeValue($node, 'class')) . ' ';
+				$rawSourceStatus = trim((string)self::getDomNodeAttributeValue($node, 'data-omo-indicator-source-status'));
+				$sourceStatus = in_array($rawSourceStatus, array('archived', 'unavailable'), true) ? $rawSourceStatus : '';
 				$isOverdue = trim((string)self::getDomNodeAttributeValue($node, 'data-omo-indicator-overdue')) === '1'
 					|| strpos($sourceClassName, ' omo-indicator-embed--overdue ') !== false
 					|| strpos($sourceClassName, ' omo-indicator-embed--warning ') !== false;
+				if ($sourceStatus !== '') {
+					$isOverdue = false;
+				}
 				$overdueSeverity = trim((string)self::getDomNodeAttributeValue($node, 'data-omo-indicator-overdue-severity')) === 'warning'
 					|| strpos($sourceClassName, ' omo-indicator-embed--warning ') !== false
 					? 'warning'
@@ -428,12 +433,15 @@
 				}
 				$hasStatus = $statusLabel !== '' || strpos($sourceClassName, ' omo-indicator-embed--current ') !== false;
 				$element = $document->createElement('span');
-				$element->setAttribute('class', 'omo-indicator-embed' . ($isOverdue ? ($overdueSeverity === 'warning' ? ' omo-indicator-embed--warning' : ' omo-indicator-embed--overdue') : ($hasStatus ? ' omo-indicator-embed--current' : '')));
+				$element->setAttribute('class', 'omo-indicator-embed' . ($sourceStatus !== '' ? ' omo-indicator-embed--unavailable' : ($isOverdue ? ($overdueSeverity === 'warning' ? ' omo-indicator-embed--warning' : ' omo-indicator-embed--overdue') : ($hasStatus ? ' omo-indicator-embed--current' : ''))));
 				$element->setAttribute('contenteditable', 'false');
 				$element->setAttribute('data-omo-embed-type', 'indicator');
 				$element->setAttribute('data-omo-indicator-id', (string)$indicatorId);
 				$indicatorKind = trim((string)self::getDomNodeAttributeValue($node, 'data-omo-indicator-kind')) === 'group' ? 'group' : 'indicator';
 				$element->setAttribute('data-omo-indicator-kind', $indicatorKind);
+				if ($sourceStatus !== '') {
+					$element->setAttribute('data-omo-indicator-source-status', $sourceStatus);
+				}
 
 				foreach (array('title', 'description', 'value', 'date', 'context', 'chart-min', 'chart-max', 'overdue-severity') as $attributeName) {
 					$value = trim((string)self::getDomNodeAttributeValue($node, 'data-omo-indicator-' . $attributeName));
@@ -455,7 +463,7 @@
 				$linkNode->setAttribute('class', 'omo-indicator-embed__title');
 				$linkNode->setAttribute('href', $indicatorKind === 'group' ? '#stats' : ('#stats-i' . $indicatorId));
 				$statusDotNode = $document->createElement('span');
-				$statusDotNode->setAttribute('class', 'omo-indicator-embed__status-dot' . ($isOverdue ? ($overdueSeverity === 'warning' ? ' omo-indicator-embed__status-dot--warning' : ' omo-indicator-embed__status-dot--overdue') : ($hasStatus ? ' omo-indicator-embed__status-dot--current' : ' omo-indicator-embed__status-dot--unknown')));
+				$statusDotNode->setAttribute('class', 'omo-indicator-embed__status-dot' . ($sourceStatus !== '' ? ' omo-indicator-embed__status-dot--unknown' : ($isOverdue ? ($overdueSeverity === 'warning' ? ' omo-indicator-embed__status-dot--warning' : ' omo-indicator-embed__status-dot--overdue') : ($hasStatus ? ' omo-indicator-embed__status-dot--current' : ' omo-indicator-embed__status-dot--unknown'))));
 				$statusDotNode->setAttribute('aria-hidden', 'true');
 				$linkNode->appendChild($statusDotNode);
 				$titleTextNode = $document->createElement('span');

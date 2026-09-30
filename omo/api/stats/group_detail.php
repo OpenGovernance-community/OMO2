@@ -41,12 +41,19 @@ $groupCeilingValue = omoStatsGetGroupCeilingValue($group);
 $chartMinValue = is_numeric($group->get('chart_min_value')) ? (float)$group->get('chart_min_value') : null;
 $groupOverdueInfo = omoStatsGetGroupOverdueInfo($group, null, $sourceAvailability);
 $groupOverdueSeverity = (string)$groupOverdueInfo['severity'];
-$chartData = omoStatsBuildGroupChartData($group, $series, $groupOverdueSeverity);
+$chartData = $sourceAvailability['status'] === 'unavailable'
+    ? []
+    : omoStatsBuildGroupChartData($group, $series, $groupOverdueSeverity);
+if ($sourceAvailability['status'] === 'archived') {
+    $chartData['sourceStatus'] = 'archived';
+}
 $displayMode = StatIndicatorGroup::normalizeDisplayMode($group->get('display_mode'));
 $headerDescription = $displayMode === StatIndicatorGroup::DISPLAY_SUM
     ? omoStatsT('stats.group.mode.sum')
     : omoStatsT('stats.group.mode.overlay');
-$colors = ['#2563eb', '#db2777', '#059669', '#d97706', '#7c3aed', '#0891b2'];
+$colors = $sourceAvailability['status'] === 'current'
+    ? ['#2563eb', '#db2777', '#059669', '#d97706', '#7c3aed', '#0891b2']
+    : ['#64748b', '#94a3b8', '#475569', '#a1a1aa', '#71717a', '#6b7280'];
 $seriesColors = [];
 foreach ($series as $seriesIndex => $seriesItem) {
     $seriesIndicator = $seriesItem['indicator'] ?? null;
@@ -96,7 +103,7 @@ foreach ($series as $seriesIndex => $seriesItem) {
 
     <section class="generic-section omo-stats-detail__chart-panel">
         <div class="omo-stats-interactive-chart" data-omo-stats-interactive-chart>
-            <?= omoStatsRenderGroupChart($group, $series, 'large', $groupOverdueSeverity, true) ?>
+            <?= omoStatsRenderGroupChart($group, $series, 'large', $groupOverdueSeverity, true, $sourceAvailability) ?>
             <?= omoStatsRenderInteractiveChartRange($chartData) ?>
         </div>
     </section>
@@ -128,4 +135,4 @@ foreach ($series as $seriesIndex => $seriesItem) {
         </div>
     </section>
 </article>
-<script src="/omo/api/stats/chart.js?v=20260807-range-handles"></script>
+<script src="/omo/api/stats/chart.js?v=20260930-group-source-state"></script>
