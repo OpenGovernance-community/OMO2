@@ -77,6 +77,8 @@ if (!function_exists('omoStatsSourceLang')) {
             'stats.card.value_count' => ['one' => '{count} valeur', 'other' => '{count} valeurs', 'context' => 'Count of dated values attached to an indicator.'],
             'stats.card.context' => ['text' => 'Contexte', 'context' => 'Label for the holon owning an indicator.'],
             'stats.card.imported' => ['text' => 'Importé', 'context' => 'Label on an indicator imported into the current context.'],
+            'stats.card.source_archived' => ['text' => 'Source indisponible', 'context' => 'Neutral status of an imported indicator whose source was archived or hidden.'],
+            'stats.card.source_archived_hint' => ['text' => "Cet indicateur importe n'est plus disponible. Choisissez un autre indicateur pour le remplacer.", 'context' => 'Explanation shown on an imported indicator whose source was archived.'],
             'stats.card.group' => ['text' => 'Groupe', 'context' => 'Label on a composite indicator group card.'],
             'stats.card.member_count' => ['one' => '{count} indicateur', 'other' => '{count} indicateurs', 'context' => 'Number of indicators in a group.'],
             'stats.card.overdue' => ['text' => 'Valeur dépassée', 'context' => 'Label shown when an indicator has passed its expected measurement deadline.'],
@@ -829,7 +831,9 @@ if (!function_exists('omoStatsLoadImport')) {
             return null;
         }
         $indicator = $import->getIndicator();
-        return $indicator instanceof StatIndicator && (int)$indicator->get('active') === 1 && $indicator->canView() ? $import : null;
+        return $indicator instanceof StatIndicator
+            && (int)$indicator->get('IDorganization') === (int)$organizationId
+            && $indicator->canView() ? $import : null;
     }
 }
 

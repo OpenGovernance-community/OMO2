@@ -12,13 +12,20 @@ final class ImportDetailIndicator extends \dbObject\StatIndicator
     public function getMeasurements() { return []; }
     public function getReferencePoints() { return []; }
     public function getEffectiveMeasurementFrequency(): ?string { return null; }
+    public function canView() { return true; }
+}
+
+final class ImportDetailImport extends \dbObject\StatIndicatorImport
+{
+    public function getIndicator() { return $GLOBALS['fixtureIndicator']; }
 }
 
 function omoStatsResolveContext($organizationId, $holonId) { return ['status' => true]; }
 function omoStatsLoadImport($id, $organizationId) { return $id === 20 ? $GLOBALS['fixtureImport'] : null; }
-function omoStatsLoadIndicator($id, $organizationId) { return $id === 10 ? $GLOBALS['fixtureIndicator'] : null; }
+function omoStatsLoadIndicator($id, $organizationId) { return $id === 10 && ($GLOBALS['fixtureScenario'] ?? '') !== 'archived' ? $GLOBALS['fixtureIndicator'] : null; }
 function omoStatsCanEditIndicator($indicator, $context) { return true; }
 function omoStatsCanDeleteContextResource($import, $context) { return $GLOBALS['fixtureCanDetach']; }
+function omoStatsCanEditContextResource($import, $context) { return $GLOBALS['fixtureCanDetach']; }
 function omoStatsContextLabel($indicator) { return 'Source circle'; }
 function omoStatsResponsibleAssignmentLabel($indicator) { return 'Responsible'; }
 function omoStatsGetIndicatorReferencePercentage($indicator, $latest, $points) { return null; }
@@ -33,6 +40,7 @@ require_once dirname(__DIR__) . '/omo/api/stats/shared.php';
 
 if (($argv[1] ?? '') === '--render') {
     $scenario = $argv[2];
+    $fixtureScenario = $scenario;
     $_SERVER['REQUEST_METHOD'] = 'GET';
     $_SESSION = ['currentOrganization' => 1];
     $_GET = ['cid' => 7, 'id' => 10];
@@ -47,9 +55,11 @@ if (($argv[1] ?? '') === '--render') {
         $_GET['id'] = 999;
     }
     $fixtureCanDetach = $scenario !== 'read-only';
-    $fixtureImport = new \dbObject\StatIndicatorImport();
+    $fixtureImport = new ImportDetailImport();
     $fixtureImport->set('IDstatindicator', 10);
     $fixtureIndicator = new ImportDetailIndicator();
+    $fixtureIndicator->set('IDorganization', $scenario === 'foreign-source' ? 2 : 1);
+    $fixtureIndicator->set('active', $scenario === 'archived' ? 0 : 1);
     $fixtureIndicator->set('name', 'Source indicator');
     $fixtureIndicator->set('reference_type', 'none');
     $fixtureIndicator->set('source_type', 'manual');
@@ -75,17 +85,22 @@ function assertImportDetail(bool $condition, string $message): void
     }
 }
 
-foreach (['original', 'import', 'read-only', 'wrong-source', 'missing', 'malformed'] as $scenario) {
+foreach (['original', 'import', 'archived', 'read-only', 'wrong-source', 'foreign-source', 'missing', 'malformed'] as $scenario) {
     $command = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(__FILE__) . ' --render ' . escapeshellarg($scenario);
     $result = json_decode((string)shell_exec($command), true, 512, JSON_THROW_ON_ERROR);
     $html = $result['html'];
-    if (in_array($scenario, ['missing', 'malformed'], true)) {
+    if (in_array($scenario, ['missing', 'malformed', 'foreign-source'], true)) {
         assertImportDetail($result['status'] === 404, 'Invalid imports must not fall back to a supplied original ID.');
         assertImportDetail(!str_contains($html, 'data-omo-stats-detail'), 'Invalid imports must not expose original content.');
         continue;
     }
     assertImportDetail($result['status'] === 200, 'Valid details must render.');
     assertImportDetail(str_contains($html, 'Source indicator') && str_contains($html, 'data-test-chart'), 'Imports must display their source content.');
+    if ($scenario === 'archived') {
+        assertImportDetail(str_contains($html, 'omo-stats-detail--source-archived'), 'An archived imported source must retain a neutral detail view.');
+        assertImportDetail(str_contains($html, 'stats.card.source_archived_hint'), 'The archived import must explain how to replace its source.');
+        assertImportDetail(!str_contains($html, 'omo-stats-overdue-label'), 'An archived import must not appear overdue.');
+    }
     if ($scenario === 'original') {
         assertImportDetail(str_contains($html, 'data-omo-stats-open-editor-url'), 'Originals must keep editing available.');
         assertImportDetail(str_contains($html, 'data-omo-stats-add-value-form'), 'Originals must keep measurement entry available.');
@@ -99,6 +114,10 @@ foreach (['original', 'import', 'read-only', 'wrong-source', 'missing', 'malform
     assertImportDetail(
         str_contains($html, 'data-omo-stats-delete-import="20"') === ($scenario !== 'read-only'),
         'Detach must target the import and respect its permission.'
+    );
+    assertImportDetail(
+        str_contains($html, 'data-omo-stats-edit-import="20"') === ($scenario !== 'read-only'),
+        'Changing the source must remain available for archived imports with edit permission.'
     );
 }
 

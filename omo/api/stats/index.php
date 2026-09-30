@@ -99,9 +99,10 @@ $imports->loadForContext(
 $importedIndicatorLabels = [];
 $importedIndicatorIds = [];
 $importedIndicatorEditable = [];
+$importedIndicatorUnavailable = [];
 foreach ($imports as $import) {
     $sourceIndicator = $import->getIndicator();
-    if (!($sourceIndicator instanceof StatIndicator) || (int)$sourceIndicator->get('active') !== 1 || $sourceIndicator->isHiddenFromCatalog() || !$sourceIndicator->canView()) {
+    if (!($sourceIndicator instanceof StatIndicator) || $sourceIndicator->isHiddenFromCatalog() || !$sourceIndicator->canView()) {
         continue;
     }
     $sourceId = (int)$sourceIndicator->getId();
@@ -114,6 +115,7 @@ foreach ($imports as $import) {
     $importedIndicatorIds[$sourceId] = (int)$import->getId();
     $importedIndicatorEditable[$sourceId] = omoStatsCanEditContextResource($import, $context);
     $importedIndicatorDeletable[$sourceId] = omoStatsCanDeleteContextResource($import, $context);
+    $importedIndicatorUnavailable[$sourceId] = (int)$sourceIndicator->get('active') !== 1;
 }
 
 $groups = new ArrayStatIndicatorGroup();
@@ -172,10 +174,13 @@ $groupDetailBaseUrl .= $pvMeetingQuery;
 
 $indicatorViewData = [];
 foreach ($indicatorItems as $indicator) {
+    $sourceArchived = !empty($importedIndicatorUnavailable[(int)$indicator->getId()]);
     $values = omoStatsCollectionItems($indicator->getMeasurements(), StatIndicatorValue::class);
     $referencePoints = omoStatsCollectionItems($indicator->getReferencePoints(), StatIndicatorReferencePoint::class);
     $latestValue = count($values) > 0 ? $values[count($values) - 1] : null;
-    $overdueInfo = omoStatsGetIndicatorOverdueInfo($indicator);
+    $overdueInfo = $sourceArchived
+        ? ['is_overdue' => false, 'severity' => 'none', 'overdue_days' => 0]
+        : omoStatsGetIndicatorOverdueInfo($indicator);
     $indicatorViewData[] = [
         'indicator' => $indicator,
         'values' => $values,
@@ -185,6 +190,7 @@ foreach ($indicatorItems as $indicator) {
         'contextLabel' => $importedIndicatorLabels[(int)$indicator->getId()] ?? omoStatsContextLabel($indicator),
         'responsibilityLabel' => omoStatsResponsibleAssignmentLabel($indicator),
         'isImported' => isset($importedIndicatorLabels[(int)$indicator->getId()]),
+        'sourceArchived' => $sourceArchived,
         'importId' => $importedIndicatorIds[(int)$indicator->getId()] ?? 0,
         'canEditImport' => $importedIndicatorEditable[(int)$indicator->getId()] ?? false,
         'canDeleteImport' => $importedIndicatorDeletable[(int)$indicator->getId()] ?? false,
@@ -508,7 +514,7 @@ $displayItemCount = count($statsEntries);
                             $indicatorName = trim((string)$indicator->get('name'));
                             ?>
                             <article
-                                class="generic-section omo-stats-card<?= $overdueSeverity === 'error' ? ' omo-stats-card--overdue' : ($overdueSeverity === 'warning' ? ' omo-stats-card--warning' : '') ?>"
+                                class="generic-section omo-stats-card<?= $item['sourceArchived'] ? ' omo-stats-card--source-archived' : ($overdueSeverity === 'error' ? ' omo-stats-card--overdue' : ($overdueSeverity === 'warning' ? ' omo-stats-card--warning' : '')) ?>"
                                 data-omo-stats-indicator-id="<?= (int)$indicator->getId() ?>"
                                 data-omo-stats-import-id="<?= (int)$item['importId'] ?>"
                                 data-omo-stats-search-item
@@ -520,6 +526,7 @@ $displayItemCount = count($statsEntries);
                                     <div>
                                         <span class="generic-card-title generic-card-title--eyebrow"><?= omoApiEscape((string)$item['contextLabel']) ?></span>
                                         <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape($indicatorName) ?></h3>
+                                        <?php if ($item['sourceArchived']): ?><span class="omo-stats-source-archived-note"><?= omoApiEscape(omoStatsT('stats.card.source_archived_hint')) ?></span><?php endif; ?>
                                         <span class="generic-meta generic-meta--small"><?= omoApiEscape(omoStatsT('stats.responsibility.label')) ?> : <?= omoApiEscape((string)$item['responsibilityLabel']) ?></span>
                                     </div>
                                     <span class="omo-stats-card__value-count<?= $item['canEdit'] ? ' omo-stats-card__value-count--with-menu' : '' ?>"><?= omoApiEscape(omoStatsT('stats.card.value_count', ['count' => count($item['values'])])) ?></span>
@@ -546,7 +553,9 @@ $displayItemCount = count($statsEntries);
                                 <div class="omo-stats-card__footer">
                                     <span class="omo-stats-card__latest-label">
                                         <span><?= omoApiEscape(omoStatsT('stats.card.latest')) ?></span>
-                                        <?php if ($overdueSeverity === 'warning'): ?>
+                                        <?php if ($item['sourceArchived']): ?>
+                                            <span class="omo-stats-card__status omo-stats-card__status--source-archived"><?= omoApiEscape(omoStatsT('stats.card.source_archived')) ?></span>
+                                        <?php elseif ($overdueSeverity === 'warning'): ?>
                                             <span class="omo-stats-card__status omo-stats-card__status--warning"><?= omoApiEscape(omoStatsT('stats.card.to_complete')) ?></span>
                                         <?php elseif ($overdueSeverity === 'error' && $overdueDays > 0): ?>
                                             <span class="omo-stats-card__status omo-stats-card__status--overdue"><?= omoApiEscape(omoStatsT('stats.card.overdue_days', ['count' => $overdueDays])) ?></span>
@@ -662,7 +671,7 @@ $displayItemCount = count($statsEntries);
                             ?>
                             <article class="generic-file-list__item-shell" data-omo-stats-search-item>
                                 <div
-                                    class="generic-file-list__row omo-stats-compact__row<?= $item['overdueSeverity'] === 'error' ? ' omo-stats-compact__row--overdue' : ($item['overdueSeverity'] === 'warning' ? ' omo-stats-compact__row--warning' : '') ?>"
+                                    class="generic-file-list__row omo-stats-compact__row<?= $item['sourceArchived'] ? ' omo-stats-compact__row--source-archived' : ($item['overdueSeverity'] === 'error' ? ' omo-stats-compact__row--overdue' : ($item['overdueSeverity'] === 'warning' ? ' omo-stats-compact__row--warning' : '')) ?>"
                                     data-omo-stats-indicator-id="<?= (int)$indicator->getId() ?>"
                                     data-omo-stats-import-id="<?= (int)$item['importId'] ?>"
                                     tabindex="0"
@@ -690,6 +699,7 @@ $displayItemCount = count($statsEntries);
                                             <span class="omo-stats-compact__dot" aria-hidden="true"></span>
                                             <div class="generic-file-list__title-block">
                                                 <strong class="generic-file-list__title"><?= omoApiEscape($indicatorName) ?></strong>
+                                                <?php if ($item['sourceArchived']): ?><span class="omo-stats-source-archived-note" title="<?= omoApiEscape(omoStatsT('stats.card.source_archived_hint')) ?>"><?= omoApiEscape(omoStatsT('stats.card.source_archived')) ?></span><?php endif; ?>
                                                 <span class="generic-file-list__meta-line"><?= omoApiEscape(omoStatsT('stats.card.value_count', ['count' => count($item['values'])])) ?> · <?= omoApiEscape(omoStatsT('stats.responsibility.label')) ?> : <?= omoApiEscape((string)$item['responsibilityLabel']) ?></span>
                                             </div>
                                         </div>
