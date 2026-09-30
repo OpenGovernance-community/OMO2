@@ -6,8 +6,8 @@ $sourceLang = array(
     'documents.nextcloud.detail.invalid_path' => array('text' => 'Chemin du dossier distant invalide.', 'context' => 'Error shown when a remote file path is invalid.'),
     'documents.nextcloud.detail.rights' => array('text' => 'Les droits du dossier distant s appliquent a ce fichier.', 'context' => 'Hint shown for an editable remote file.'),
     'documents.nextcloud.detail.download' => array('text' => 'Telecharger', 'context' => 'Download action for a remote file.'),
-    'documents.nextcloud.detail.fullscreen' => array('text' => 'Plein ecran', 'context' => 'Fullscreen action for a remote preview.'),
-    'documents.nextcloud.detail.exit_fullscreen' => array('text' => 'Quitter le plein ecran', 'context' => 'Label shown after entering fullscreen.'),
+    'documents.nextcloud.detail.fullscreen' => array('text' => 'Plein écran', 'context' => 'Fullscreen action for a remote preview.'),
+    'documents.nextcloud.detail.exit_fullscreen' => array('text' => 'Quitter le plein écran', 'context' => 'Label shown after entering fullscreen.'),
     'documents.nextcloud.detail.download_only' => array('text' => 'Ce fichier peut etre telecharge. Son format nest pas previsualisable.', 'context' => 'Fallback for unsupported remote file previews.'),
 );
 $lang = omoLoadTranslationBundle('omo_documents_nextcloud_detail', $sourceLang);
@@ -17,7 +17,7 @@ $context = omoDocumentsNextcloudLoadFolder((int)($_GET['id'] ?? 0), (int)($_GET[
 $escape = 'omoApiEscape';
 if (empty($context['status'])) {
     http_response_code((int)($context['httpCode'] ?? 404));
-    ?><div class="omo-document-detail omo-document-detail--error"><div class="omo-empty-state"><?= $escape((string)($context['text'] ?? 'Acces refuse.')) ?></div></div><?php
+    ?><div class="omo-document-detail omo-document-detail--error"><div class="omo-empty-state"><?= $escape((string)($context['text'] ?? 'Accès refusé.')) ?></div></div><?php
     exit;
 }
 

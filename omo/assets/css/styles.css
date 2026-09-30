@@ -1718,8 +1718,8 @@ body {
 
 /* image */
 .icon-img {
-    width: 30px;
-    height: 30px;
+    width: 24px;
+    height: 24px;
     object-fit: contain;
 
     /* 👉 blanc sur fond sombre */
@@ -3469,8 +3469,8 @@ button.omo-card {
     }
 
     .sidebar .icon-img {
-        width: 22.5px;
-        height: 22.5px;
+        width: 18px;
+        height: 18px;
     }
 
     .sidebar .menu-item--add .icon-img {

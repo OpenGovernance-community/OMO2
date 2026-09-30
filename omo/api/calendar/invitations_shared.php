@@ -92,6 +92,18 @@ if (!function_exists('omoCalendarInvitationSourceLang')) {
                 'text' => "Une adresse par ligne. L'envoi d'e-mails pourra être branché ensuite sur cette liste.",
                 'context' => 'Hint shown below the guest email textarea in the event invitation editor.',
             ],
+            'calendar.invitations.public_enable' => [
+                'text' => "Permettre l'inscription tout public",
+                'context' => 'Checkbox enabling public registration for an event.',
+            ],
+            'calendar.invitations.public_hint' => [
+                'text' => "Les personnes confirmeront leur adresse e-mail avant que leur inscription soit effective.",
+                'context' => 'Explanation of public event registration.',
+            ],
+            'calendar.invitations.public_link' => [
+                'text' => 'Lien à diffuser',
+                'context' => 'Label for the public event registration URL.',
+            ],
             'calendar.invitations.default_scope' => [
                 'text' => 'Par défaut, tous les membres du contexte rattaché à cet événement sont invités.',
                 'context' => 'Summary shown when an event has no explicit invitations and falls back to its context.',
@@ -718,6 +730,7 @@ if (!function_exists('omoCalendarRenderInvitationEditor')) {
             'userFieldName' => 'invitation_user_ids[]',
             'emailFieldName' => 'invitation_emails',
             'showFooterHint' => true,
+            'publicRegistration' => null,
         ], $options);
 
         $instanceId = preg_replace('/[^A-Za-z0-9_-]+/', '', (string)$options['instanceId']);
@@ -837,6 +850,19 @@ if (!function_exists('omoCalendarRenderInvitationEditor')) {
                             placeholder="<?= $escape(t('calendar.invitations.guests_placeholder', [], $lang, $sourceLang)) ?>"
                         ><?= $escape(implode("\n", $selectedEmails)) ?></textarea>
                         <p class="omo-calendar-invitations-editor__hint"><?= $escape(t('calendar.invitations.guests_hint', [], $lang, $sourceLang)) ?></p>
+                        <?php if (is_array($options['publicRegistration'])): ?>
+                        <label class="omo-calendar-invitations-editor__check">
+                            <input type="checkbox" name="public_registration" value="1" data-omo-public-registration-toggle<?= !empty($options['publicRegistration']['enabled']) ? ' checked' : '' ?>>
+                            <span class="omo-calendar-invitations-editor__check-meta">
+                                <strong><?= $escape(t('calendar.invitations.public_enable', [], $lang, $sourceLang)) ?></strong>
+                                <span class="omo-calendar-invitations-editor__member-email"><?= $escape(t('calendar.invitations.public_hint', [], $lang, $sourceLang)) ?></span>
+                            </span>
+                        </label>
+                        <label class="generic-form-field" data-omo-public-registration-link<?= empty($options['publicRegistration']['url']) ? ' hidden' : '' ?>>
+                            <span><?= $escape(t('calendar.invitations.public_link', [], $lang, $sourceLang)) ?></span>
+                            <input class="generic-form-control" type="url" readonly value="<?= $escape((string)($options['publicRegistration']['url'] ?? '')) ?>" data-omo-public-registration-url>
+                        </label>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>

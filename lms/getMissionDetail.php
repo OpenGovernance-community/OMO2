@@ -18,7 +18,7 @@ $isOrganizationAdmin = !empty($accessContext['isLoggedIn'])
 
 if (empty($accessContext['exists']) || empty($accessContext['canView'])) {
 	http_response_code(empty($accessContext['isLoggedIn']) ? 401 : 403);
-	echo "Acces refuse";
+	echo "Accès refusé";
 	exit;
 }
 

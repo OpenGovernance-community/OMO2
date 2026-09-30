@@ -662,7 +662,7 @@ function profilPopupGetSourceLang(): array
             'context' => 'Button label used to create a new competence.',
         ],
         'profile.popup.competence.edit' => [
-            'text' => 'Editer',
+            'text' => 'Modifier',
             'context' => 'Button label used to open the shared competence editor for an existing competence.',
         ],
         'profile.popup.competence.cancel' => [

@@ -1,5 +1,15 @@
 # Journal Des Nouveautes
 
+- Relecture des textes français de l’application : correction des accents, de la grammaire et de la ponctuation dans les traductions et les libellés visibles.
+
+- Interface OMO : les icones des applications dans la barre laterale sont legerement reduites pour mieux correspondre a la taille des emplacements.
+
+- Agenda : les evenements peuvent ouvrir une inscription publique depuis l onglet Invites externes. Un lien partageable recueille le nom et l e-mail, exige une confirmation par e-mail, puis donne un recapitulatif prive avec les nombres de personnes inscrites et presentes et les documents associes.
+
+- Interface OMO : les icones des Regles et du tableau de bord utilisent les nouvelles illustrations fournies.
+
+- Accueil OMO2 : affichage des rendez-vous en visioconférence des 1er et 15 octobre 2026, avec leur programme et un bouton pour rejoindre chaque événement.
+
 - Indicateurs : la vue detaillee affiche un onglet Description lorsque l indicateur en possede une, y compris pour les indicateurs importes. Les retours a la ligne sont conserves.
 
 - Indicateurs : le menu d un indicateur propose son deplacement vers un autre espace via la carte des cercles imbriques. L action exige le droit de supprimer dans l espace actuel et celui de creer des indicateurs dans la destination ; seuls les emplacements autorises sont selectionnables.

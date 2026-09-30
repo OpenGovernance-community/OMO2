@@ -55,7 +55,7 @@ $sourceLang = [
         'context' => 'Accessible label for the next period button in timeline calendar views.',
     ],
     'calendar.action.edit' => [
-        'text' => 'Editer',
+        'text' => 'Modifier',
         'context' => 'Action shown in the compact event menu for events the current user can edit.',
     ],
     'calendar.action.delete' => [

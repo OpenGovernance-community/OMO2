@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 /*
- * Public OMO2 homepage. The values in $omo2Links and $nextDiscoveryEvent are
+ * Public OMO2 homepage. The values in $omo2Links and $upcomingEvents are
  * intentionally grouped here so the public calls to action can be updated
  * without searching through the page markup.
  */
@@ -78,19 +78,26 @@ $sourceLang = [
     'home.action.support' => ['text' => 'Soutenir OMO', 'context' => 'Call to action for project support.'],
     'home.video.title' => ['text' => 'OMO2 en quelques minutes.', 'context' => 'Presentation video section heading.'],
     'home.video.action' => ['text' => 'Lancer la vidéo de présentation', 'context' => 'Accessible label for the presentation video action.'],
-    'home.event.kicker' => ['text' => 'Rencontre mensuelle', 'context' => 'Discovery event section eyebrow.'],
+    'home.event.kicker' => ['text' => 'Prochains rendez-vous', 'context' => 'Upcoming online meetings section eyebrow.'],
     'home.event.title' => ['text' => 'Faisons connaissance.', 'context' => 'Discovery event section heading.'],
-    'home.event.body' => ['text' => 'Chaque mois, retrouvons-nous en ligne pour découvrir OMO2, poser vos questions et parler de vos façons de coopérer. Que vous découvriez le projet ou l’utilisiez déjà, vous êtes les bienvenus.', 'context' => 'Discovery event section body.'],
-    'home.event.label' => ['text' => 'Prochaine découverte d’OMO2 en ligne', 'context' => 'Label above the next discovery event details.'],
-    'home.event.online' => ['text' => 'En ligne', 'context' => 'Event format label.'],
-    'home.action.register' => ['text' => 'S’inscrire au prochain événement', 'context' => 'Call to action to register for the next discovery event.'],
-    'home.action.dates' => ['text' => 'Voir les prochaines dates', 'context' => 'Secondary action to view other discovery dates.'],
+    'home.event.body' => ['text' => 'Retrouvons-nous en visioconférence pour découvrir OMO2 et échanger autour de son utilisation.', 'context' => 'Upcoming online meetings section introduction.'],
+    'home.event.label' => ['text' => 'Prochains rendez-vous', 'context' => 'Footer link to the upcoming meetings.'],
+    'home.event.online' => ['text' => 'En visioconférence', 'context' => 'Event format label.'],
+    'home.event.presentation.title' => ['text' => 'Présentation générale d’OMO2', 'context' => 'October 1 online meeting title.'],
+    'home.event.presentation.date' => ['text' => '1er octobre 2026', 'context' => 'October 1 online meeting date.'],
+    'home.event.presentation.time' => ['text' => '17 h', 'context' => 'October 1 online meeting start time.'],
+    'home.event.presentation.body' => ['text' => 'Une première présentation générale du logiciel.', 'context' => 'October 1 online meeting description.'],
+    'home.event.users.title' => ['text' => 'Rencontre des usagers', 'context' => 'October 15 online meeting title.'],
+    'home.event.users.date' => ['text' => '15 octobre 2026', 'context' => 'October 15 online meeting date.'],
+    'home.event.users.time' => ['text' => 'De 11 h à 12 h', 'context' => 'October 15 online meeting time range.'],
+    'home.event.users.body' => ['text' => 'Un espace pour poser vos questions, échanger et partager vos expériences.', 'context' => 'October 15 online meeting description.'],
+    'home.action.join' => ['text' => 'Rejoindre la visioconférence', 'context' => 'Video meeting action shown for each upcoming event.'],
     'home.story.title' => ['text' => '13 ans de liens, d’essais et d’apprentissages.', 'context' => 'Project history section heading.'],
     'home.story.body' => ['text' => 'OMO a grandi avec les collectifs qui l’utilisent. Leurs questions, leurs essais et leurs retours nourrissent le logiciel depuis treize ans.', 'context' => 'Project history section body.'],
     'home.story.conclusion' => ['text' => 'OMO2 ouvre un nouveau chapitre de cette histoire commune : un espace plus intégré pour relier les personnes, les décisions et l’action.', 'context' => 'Project history section conclusion.'],
     'home.final.title' => ['text' => 'Et si l’on faisait grandir la coopération ensemble ?', 'context' => 'Final homepage call to action heading.'],
     'home.final.body' => ['text' => 'Découvrez OMO2, explorez-le avec votre collectif et partagez ce qui vous aiderait à mieux travailler ensemble.', 'context' => 'Final homepage call to action body.'],
-    'home.final.event' => ['text' => 'Participer à la prochaine découverte en ligne', 'context' => 'Final homepage event link.'],
+    'home.final.event' => ['text' => 'Voir les prochains rendez-vous', 'context' => 'Final homepage event link.'],
     'home.footer.omo' => ['text' => 'OMO', 'context' => 'First footer column heading.'],
     'home.footer.discover' => ['text' => 'Découvrir', 'context' => 'Second footer column heading.'],
     'home.footer.project' => ['text' => 'Projet', 'context' => 'Third footer column heading.'],
@@ -156,13 +163,10 @@ $sourceLang = [
     'home.support.kicker' => ['text' => 'La solidarité en pratique', 'context' => 'Public OMO2 homepage: support kicker.'],
     'home.support.label' => ['text' => 'Open source et financement', 'context' => 'Public OMO2 homepage: support label.'],
     'home.video.privacy' => ['text' => 'Le lecteur Vimeo se charge seulement lorsque vous lancez la vidéo.', 'context' => 'Public OMO2 homepage: video privacy.'],
-    'home.discover.label' => ['text' => 'Vidéo et rencontre de découverte', 'context' => 'Public OMO2 homepage: discover label.'],
+    'home.discover.label' => ['text' => 'Vidéo et prochains rendez-vous', 'context' => 'Public OMO2 homepage: discover label.'],
     'home.story.kicker' => ['text' => 'Une histoire collective', 'context' => 'Public OMO2 homepage: story kicker.'],
     'home.footer.tagline' => ['text' => 'Un commun porté par l’association OpenGouvernance, créé par et avec sa communauté.', 'context' => 'Public OMO2 homepage: footer tagline.'],
     'home.footer.signature' => ['text' => 'Open source · Créé ensemble', 'context' => 'Public OMO2 homepage: footer signature.'],
-    'home.event.pending' => ['text' => 'La prochaine date sera annoncée ici.', 'context' => 'Public OMO2 homepage: event pending.'],
-    'home.event.date_pending' => ['text' => 'Date à venir', 'context' => 'Public OMO2 homepage: event date_pending.'],
-    'home.event.time_pending' => ['text' => 'Horaire à confirmer', 'context' => 'Public OMO2 homepage: event time_pending.'],
 ];
 
 $lang = loadTranslationBundle('home_omo2', 'fr', $sourceLang);
@@ -187,18 +191,15 @@ $omo2Links = [
     'manifesto' => 'https://localtest.me/survey/',
     'source' => 'https://github.com/OpenGovernance-community/OMO2',
     'support' => 'https://www.patreon.com/cw/OpenGovernance',
-    'eventRegistration' => '',
-    'eventDates' => '',
+    'videoMeeting' => 'https://kmeet.infomaniak.com/omo2',
     'terms' => '/common/conditions-generales.php',
     'privacy' => '/common/politique-confidentialite.php',
 ];
 
-// Update these four values when the next open discovery session is scheduled.
-$nextDiscoveryEvent = [
-    'date' => $t('home.event.date_pending'),
-    'time' => $t('home.event.time_pending'),
-    'duration' => '',
-    'format' => $t('home.event.online'),
+// Keep scheduled meetings in chronological order.
+$upcomingEvents = [
+    ['date' => '2026-10-01', 'key' => 'home.event.presentation'],
+    ['date' => '2026-10-15', 'key' => 'home.event.users'],
 ];
 
 // The external player is created only after a visitor explicitly activates it.
@@ -220,7 +221,7 @@ $canonicalUrl = '/index2.php';
     <meta name="twitter:card" content="summary_large_image">
     <meta name="theme-color" content="#05263c">
     <link rel="icon" type="image/jpeg" href="/img/omo-iceberg.jpg?v=20260914" sizes="1254x1254">
-    <link rel="stylesheet" href="/assets/omo2-home.css?v=20260914-organizations-16">
+    <link rel="stylesheet" href="/assets/omo2-home.css?v=20260930-meetings-2">
     <script type="application/ld+json">
     {"@context":"https://schema.org","@type":"SoftwareApplication","name":"OpenMyOrganization","applicationCategory":"BusinessApplication","operatingSystem":"Web","description":"<?= $e($t('home.meta.description')) ?>","url":"<?= $e($canonicalUrl) ?>"}
     </script>
@@ -414,7 +415,20 @@ $canonicalUrl = '/index2.php';
         <section class="omo2-section omo2-section--discover" id="decouvrir" aria-label="<?= $e($t('home.discover.label')) ?>">
             <div class="omo2-shell omo2-discover-grid">
                 <div class="omo2-video"><p class="omo2-eyebrow"><?= $e($t('home.video.title')) ?></p><button class="omo2-video__poster" type="button" data-video-url="<?= $e($presentationVideoUrl) ?>" data-video-title="<?= $e($t('home.video.title')) ?>" aria-label="<?= $e($t('home.video.action')) ?>"><img src="/img/omo2/structure.png" width="1672" height="941" loading="lazy" alt="<?= $e($t('home.image.structure')) ?>"><span class="omo2-video__play" aria-hidden="true">▶</span></button><p class="omo2-video__privacy"><?= $e($t('home.video.privacy')) ?></p></div>
-                <aside class="omo2-event" id="evenement"><p class="omo2-eyebrow omo2-eyebrow--light"><?= $e($t('home.event.kicker')) ?></p><h2><?= $e($t('home.event.title')) ?></h2><p><?= $e($t('home.event.body')) ?></p><div class="omo2-event__details"><span><?= $e($t('home.event.label')) ?></span><strong><?= $e($nextDiscoveryEvent['date']) ?></strong><ul><li><?= $e($nextDiscoveryEvent['time']) ?></li><?php if ($nextDiscoveryEvent['duration'] !== ''): ?><li><?= $e($nextDiscoveryEvent['duration']) ?></li><?php endif; ?><li><?= $e($nextDiscoveryEvent['format']) ?></li></ul></div><?php if ($omo2Links['eventRegistration'] !== ''): ?><a class="omo2-button omo2-button--light omo2-button--full" href="<?= $e($omo2Links['eventRegistration']) ?>"><?= $e($t('home.action.register')) ?></a><?php else: ?><p class="omo2-event__pending"><?= $e($t('home.event.pending')) ?></p><?php endif; ?><?php if ($omo2Links['eventDates'] !== ''): ?><a class="omo2-event__secondary" href="<?= $e($omo2Links['eventDates']) ?>"><?= $e($t('home.action.dates')) ?> <span aria-hidden="true">↘</span></a><?php endif; ?></aside>
+                <aside class="omo2-event" id="evenement">
+                    <p class="omo2-eyebrow omo2-eyebrow--light"><?= $e($t('home.event.kicker')) ?></p>
+                    <h2><?= $e($t('home.event.title')) ?></h2>
+                    <p><?= $e($t('home.event.body')) ?></p>
+                    <?php foreach ($upcomingEvents as $event): ?>
+                        <div class="omo2-event__details">
+                            <span><?= $e($t($event['key'] . '.title')) ?></span>
+                            <strong><time datetime="<?= $e($event['date']) ?>"><?= $e($t($event['key'] . '.date')) ?></time></strong>
+                            <ul><li><?= $e($t($event['key'] . '.time')) ?></li><li><?= $e($t('home.event.online')) ?></li></ul>
+                            <p><?= $e($t($event['key'] . '.body')) ?></p>
+                            <a class="omo2-button omo2-button--light omo2-button--full" href="<?= $e($omo2Links['videoMeeting']) ?>" target="_blank" rel="noopener noreferrer"><?= $e($t('home.action.join')) ?></a>
+                        </div>
+                    <?php endforeach; ?>
+                </aside>
             </div>
         </section>
 

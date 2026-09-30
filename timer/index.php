@@ -147,7 +147,7 @@ $sourceLang = [
         'context' => 'Loading message for the recent work time sheet.',
     ],
     'timer.history.empty' => [
-        'text' => 'Aucun pointage termine pour le moment.',
+        'text' => 'Aucun pointage terminé pour le moment.',
         'context' => 'Empty message for the recent work time sheet.',
     ],
     'timer.history.edit' => [

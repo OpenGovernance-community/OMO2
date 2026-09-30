@@ -28,13 +28,13 @@ if (empty($accessContext['canView'])) {
 		commonRenderMagicLoginPage([
 			'title' => $org['name'] . ' - LMS',
 			'appName' => 'LMS',
-			'intro' => 'Connectez-vous pour acceder a ce parcours.',
+			'intro' => 'Connectez-vous pour accéder à ce parcours.',
 			'returnTo' => $loginReturnTo,
 		]);
 	}
 
 	http_response_code(403);
-	echo 'Acces refuse';
+	echo 'Accès refusé';
 	exit;
 }
 
@@ -332,7 +332,7 @@ $organizationColor = commonGetOrganizationExplicitColor($org);
 <p><?php echo htmlspecialchars($parcours['description']); ?></p>
 <?php if ($isAnonymousViewer): ?>
 <div class="lms-anonymous-note">
-	Votre avancement est memorise localement sur cet appareil tant que vous restez deconnecte.
+	Votre avancement est mémorisé localement sur cet appareil tant que vous restez déconnecté.
 </div>
 <?php elseif (!$canTrackProgress): ?>
 <div class="lms-anonymous-note">

@@ -47,7 +47,7 @@ if (!function_exists('lmsRenderParcoursMissionManager')) {
             'lms.parcours_editor.pack.title' => ['text' => 'Parcours du pack', 'context' => 'Section title for parcours items attached to a pack.'],
             'lms.parcours_editor.pack.intro' => ['text' => 'Glissez les parcours pour changer leur ordre, puis ajoutez des parcours simples dont votre organisation est propriétaire.', 'context' => 'Intro text for the pack children section.'],
             'lms.parcours_editor.pack.empty' => ['text' => 'Aucun parcours n’est encore rattaché à ce pack.', 'context' => 'Empty state shown when the pack has no child parcours.'],
-            'lms.parcours_editor.pack.edit' => ['text' => 'Editer le parcours', 'context' => 'Menu action used to edit a child parcours of a pack.'],
+            'lms.parcours_editor.pack.edit' => ['text' => 'Modifier le parcours', 'context' => 'Menu action used to edit a child parcours of a pack.'],
             'lms.parcours_editor.pack.remove' => ['text' => 'Retirer du pack', 'context' => 'Menu action used to remove a child parcours from a pack.'],
             'lms.parcours_editor.pack.application_linked' => ['text' => 'Application liee', 'context' => 'Metadata badge shown when a pack child parcours is linked to an application.'],
             'lms.parcours_editor.pack.always_visible' => ['text' => 'Toujours visible', 'context' => 'Metadata badge shown when a pack child parcours remains visible regardless of apps.'],

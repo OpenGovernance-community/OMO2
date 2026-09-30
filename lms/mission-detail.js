@@ -78,14 +78,14 @@ window.commonPageScripts["/lms/mission-detail.js"] = function (pageConfig, pageS
 				<div class="lms-homework-item${isDone ? ' is-done' : ''}" data-homework-id="${homeworkId}">
 					<div class="lms-homework-row">
 						<div class="lms-homework-summary">
-							${lmsMissionViewerCanTrack ? `<button type="button" class="lms-homework-check${isDone ? ' is-done' : ''}" data-homework-check="${homeworkId}" aria-label="${isDone ? 'Retirer la validation' : 'Valider la tache'}" title="${isDone ? 'Retirer la validation' : 'Valider la tache'}" ${quizMode ? 'disabled' : ''}></button>` : ''}
+							${lmsMissionViewerCanTrack ? `<button type="button" class="lms-homework-check${isDone ? ' is-done' : ''}" data-homework-check="${homeworkId}" aria-label="${isDone ? 'Retirer la validation' : 'Valider la tâche'}" title="${isDone ? 'Retirer la validation' : 'Valider la tâche'}" ${quizMode ? 'disabled' : ''}></button>` : ''}
 							<div class="lms-homework-text">
 								<div class="lms-homework-title">${escapeHtml(homework.title || '')}</div>
-								<div class="lms-homework-meta">${isDone ? 'Valide' : 'A faire'}</div>
+							<div class="lms-homework-meta">${isDone ? 'Validé' : 'À faire'}</div>
 							</div>
 						</div>
 						<div class="lms-homework-actions">
-							<button type="button" class="lms-homework-expand" data-homework-expand="${homeworkId}" aria-expanded="${detailOpen ? 'true' : 'false'}">${detailOpen ? 'Masquer le detail' : 'Detail de la tache'}</button>
+							<button type="button" class="lms-homework-expand" data-homework-expand="${homeworkId}" aria-expanded="${detailOpen ? 'true' : 'false'}">${detailOpen ? 'Masquer le détail' : 'Détail de la tâche'}</button>
 						</div>
 					</div>
 					<div class="lms-homework-detail" ${detailOpen ? '' : 'hidden'}>
@@ -280,7 +280,7 @@ window.commonPageScripts["/lms/mission-detail.js"] = function (pageConfig, pageS
 		`;
 
 		if (q.multiple) {
-			html += `<small>Plusieurs reponses possibles</small>`;
+			html += `<small>Plusieurs réponses possibles</small>`;
 		}
 
 		q.choices.forEach(c => {
@@ -310,7 +310,7 @@ window.commonPageScripts["/lms/mission-detail.js"] = function (pageConfig, pageS
 		if (currentIndex === currentQuestions.length - 1) {
 			doneBtn.textContent = "Terminer";
 		} else {
-			doneBtn.textContent = "Valider la reponse";
+			doneBtn.textContent = 'Valider la réponse';
 		}
 	}
 
@@ -319,7 +319,7 @@ window.commonPageScripts["/lms/mission-detail.js"] = function (pageConfig, pageS
 		let selected = Array.from(inputs).map(i => i.value);
 
 		if (selected.length === 0) {
-			alert("Veuillez selectionner une reponse");
+			alert('Veuillez sélectionner une réponse.');
 			return;
 		}
 
@@ -339,7 +339,7 @@ window.commonPageScripts["/lms/mission-detail.js"] = function (pageConfig, pageS
 					showQuestion();
 				}
 			} else {
-				alert("Mauvaise reponse");
+				alert('Mauvaise réponse.');
 			}
 		});
 	}

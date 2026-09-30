@@ -51,6 +51,8 @@ RewriteRule ^circle/public/([0-9A-Za-z]+)/?$ /circle/index.php?view=$1 [QSA,L]
 RewriteRule ^pv/([0-9]+)/?$ /pv/index.php?id=$1 [QSA,L]
 
 RewriteRule ^meeting/([0-9A-Za-z-]+)/?$ /meeting/index.php?name=$1 [QSA,L]
+RewriteRule ^event/register/([a-f0-9]{64})/?$ /event/index.php?token=$1 [QSA,L]
+RewriteRule ^event/receipt/([a-f0-9]{64})/?$ /event/index.php?receipt=$1 [QSA,L]
 
 RewriteRule ^calendar/share/([a-f0-9]{64})\.ics$ /common/calendar/feed.php?token=$1 [L]
 

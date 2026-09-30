@@ -151,12 +151,12 @@ function commonRenderTopbar(array $options = [])
             function_exists('translationBundleGetLanguageOptions')
                 ? translationBundleGetLanguageOptions()
                 : [
-                    ['locale' => 'fr', 'label' => 'Francais'],
+                    ['locale' => 'fr', 'label' => 'Français'],
                     ['locale' => 'en', 'label' => 'English'],
                     ['locale' => 'de', 'label' => 'Deutsch'],
-                    ['locale' => 'es', 'label' => 'Espanol'],
+                    ['locale' => 'es', 'label' => 'Español'],
                     ['locale' => 'it', 'label' => 'Italiano'],
-                    ['locale' => 'pt', 'label' => 'Portugues'],
+                    ['locale' => 'pt', 'label' => 'Português'],
                     ['locale' => 'nl', 'label' => 'Nederlands'],
                     ['locale' => 'pl', 'label' => 'Polski'],
                 ]
@@ -288,7 +288,7 @@ function commonRenderTopbar(array $options = [])
         'lexicon' => is_array($options['lexicon'] ?? null) ? $options['lexicon'] : [],
         'profile' => [
             'enabled' => array_key_exists('enabled', $options['profile'] ?? []) ? !empty($options['profile']['enabled']) : true,
-            'editLabel' => (string)($options['profile']['editLabel'] ?? 'Editer le profil'),
+            'editLabel' => (string)($options['profile']['editLabel'] ?? 'Modifier le profil'),
             'editTitle' => (string)($options['profile']['editTitle'] ?? 'Profil'),
             'editMode' => (string)($options['profile']['editMode'] ?? 'fetch'),
             'editUrl' => (string)($options['profile']['editUrl'] ?? '/popup/profil.php'),

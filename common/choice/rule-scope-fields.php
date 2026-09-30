@@ -3,7 +3,7 @@
 function omoRuleScopeT(string $key): string
 {
     static $sourceLang = [
-        'scope' => ['text' => 'Portee', 'context' => 'Rule scope field'],
+        'scope' => ['text' => 'Portée', 'context' => 'Rule scope field'],
         'local' => ['text' => 'Locale', 'context' => 'Rule applies to its own context'],
         'circle' => ['text' => 'Cercle', 'context' => 'Rule applies to the circle and its direct children'],
         'descendants' => ['text' => 'Descendante', 'context' => 'Rule applies to its context and all descendants'],
@@ -14,8 +14,8 @@ function omoRuleScopeT(string $key): string
         'help.global' => ['text' => 'Globale : toute l organisation.', 'context' => 'Selected global rule scope explanation'],
         'authority' => ['text' => 'Domaine d autorite', 'context' => 'Rule authority attachment'],
         'none' => ['text' => 'Aucun domaine associe', 'context' => 'Empty authority option'],
-        'required' => ['text' => 'Cette portee exige un domaine d autorite associe.', 'context' => 'Rule authority requirement'],
-        'unavailable' => ['text' => 'Aucun domaine disponible dans cet espace. Ajoutez un domaine ou choisissez une portee autorisee sans domaine.', 'context' => 'Rule scope requires an unavailable authority'],
+        'required' => ['text' => 'Cette portée exige un domaine d’autorité associé.', 'context' => 'Rule authority requirement'],
+        'unavailable' => ['text' => 'Aucun domaine disponible dans cet espace. Ajoutez-en un ou choisissez une portée autorisée sans domaine.', 'context' => 'Rule scope requires an unavailable authority'],
     ];
     static $bundle = null;
     $bundle ??= omoLoadTranslationBundle('omo_rule_scope', $sourceLang);

@@ -120,7 +120,7 @@ if (!function_exists('omoEthercalcRequest')) {
 
         $method = strtoupper(trim($method));
         if (!in_array($method, array('GET', 'POST', 'PUT', 'DELETE'), true) || !preg_match('#^/[A-Za-z0-9_./-]*$#', $path)) {
-            return array('status' => false, 'text' => 'Requete EtherCalc invalide.');
+            return array('status' => false, 'text' => 'Requête EtherCalc invalide.');
         }
 
         $url = $baseUrl . $path;
