@@ -80,6 +80,12 @@ if (!function_exists('omoStatsSourceLang')) {
             'stats.card.source_archived' => ['text' => 'Source indisponible', 'context' => 'Neutral status of an imported indicator whose source was archived or hidden.'],
             'stats.card.source_archived_hint' => ['text' => "Cet indicateur importe n'est plus disponible. Choisissez un autre indicateur pour le remplacer.", 'context' => 'Explanation shown on an imported indicator whose source was archived.'],
             'stats.card.group' => ['text' => 'Groupe', 'context' => 'Label on a composite indicator group card.'],
+            'stats.group.source.unknown' => ['text' => 'Indicateur #{id}', 'context' => 'Fallback name of a missing indicator in a combined chart.'],
+            'stats.group.source.archived' => ['text' => '{name} : source archivee, les donnees ne sont plus mises a jour.', 'context' => 'Archived source status on a combined indicator.'],
+            'stats.group.source.deleted' => ['text' => '{name} : source supprimee, les donnees combinees ne sont plus disponibles.', 'context' => 'Deleted source status on a combined indicator.'],
+            'stats.group.source.unavailable' => ['text' => '{name} : source inaccessible, les donnees combinees ne sont plus disponibles.', 'context' => 'Inaccessible source status on a combined indicator.'],
+            'stats.group.source.archived_short' => ['text' => 'Archivee', 'context' => 'Short archived source label in a combined indicator legend.'],
+            'stats.group.source.deleted_short' => ['text' => 'Supprimee', 'context' => 'Short deleted source label in a combined indicator legend.'],
             'stats.card.member_count' => ['one' => '{count} indicateur', 'other' => '{count} indicateurs', 'context' => 'Number of indicators in a group.'],
             'stats.card.overdue' => ['text' => 'Valeur dépassée', 'context' => 'Label shown when an indicator has passed its expected measurement deadline.'],
             'stats.card.to_complete' => ['text' => 'À compléter', 'context' => 'Label shown when an indicator is due but still within its grace period.'],
@@ -533,18 +539,75 @@ if (!function_exists('omoStatsIsIndicatorOverdue')) {
     }
 }
 
-if (!function_exists('omoStatsGetGroupOverdueInfo')) {
-    function omoStatsGetGroupOverdueInfo(StatIndicatorGroup $group, ?DateTimeInterface $referenceDate = null): array
+if (!function_exists('omoStatsGetGroupSourceAvailability')) {
+    function omoStatsGetGroupSourceAvailability(StatIndicatorGroup $group): array
     {
-        $severity = 'none';
+        $sources = [];
+        $issues = [];
+        $cutoffTimestamp = null;
+        $status = 'current';
         foreach ($group->getItems() as $item) {
             if (!($item instanceof StatIndicatorGroupItem)) {
                 continue;
             }
+            $sourceId = (int)$item->get('IDstatindicator');
             $indicator = $item->getIndicator();
-            if (!($indicator instanceof StatIndicator) || (int)$indicator->get('active') !== 1 || !$indicator->canView()) {
+            if (!($indicator instanceof StatIndicator)) {
+                $issues[] = ['id' => $sourceId, 'status' => 'deleted', 'name' => omoStatsT('stats.group.source.unknown', ['id' => $sourceId])];
+                $status = 'unavailable';
                 continue;
             }
+            if (!$indicator->canView()) {
+                $issues[] = ['id' => $sourceId, 'status' => 'unavailable', 'name' => omoStatsT('stats.group.source.unknown', ['id' => $sourceId])];
+                $status = 'unavailable';
+                continue;
+            }
+            $sources[] = $indicator;
+            if ((int)$indicator->get('active') === 1) {
+                continue;
+            }
+            $name = trim((string)$indicator->get('name'));
+            if ($name === '') {
+                $name = omoStatsT('stats.group.source.unknown', ['id' => $sourceId]);
+            }
+            $archivedAt = $indicator->get('archived_at');
+            if ($archivedAt instanceof DateTimeInterface) {
+                $issues[] = ['id' => $sourceId, 'status' => 'archived', 'name' => $name];
+                $cutoffTimestamp = $cutoffTimestamp === null
+                    ? $archivedAt->getTimestamp()
+                    : min($cutoffTimestamp, $archivedAt->getTimestamp());
+                if ($status === 'current') {
+                    $status = 'archived';
+                }
+            } else {
+                $issues[] = ['id' => $sourceId, 'status' => 'deleted', 'name' => $name];
+                $status = 'unavailable';
+            }
+        }
+        return ['status' => $status, 'sources' => $sources, 'issues' => $issues, 'cutoffTimestamp' => $cutoffTimestamp];
+    }
+}
+
+if (!function_exists('omoStatsGroupSourceMessages')) {
+    function omoStatsGroupSourceMessages(array $availability): array
+    {
+        $messages = [];
+        foreach ($availability['issues'] ?? [] as $issue) {
+            $messages[] = omoStatsT('stats.group.source.' . $issue['status'], ['name' => $issue['name']]);
+        }
+        return $messages;
+    }
+}
+
+if (!function_exists('omoStatsGetGroupOverdueInfo')) {
+    function omoStatsGetGroupOverdueInfo(StatIndicatorGroup $group, ?DateTimeInterface $referenceDate = null, ?array $availability = null): array
+    {
+        $availability = $availability ?? omoStatsGetGroupSourceAvailability($group);
+        if ($availability['status'] !== 'current') {
+            return ['is_overdue' => false, 'severity' => 'none'];
+        }
+        $severity = 'none';
+        foreach ($availability['sources'] as $indicator) {
             $indicatorSeverity = omoStatsGetIndicatorOverdueInfo($indicator, $referenceDate)['severity'];
             if ($indicatorSeverity === 'error') {
                 $severity = 'error';
@@ -2117,18 +2180,15 @@ if (!function_exists('omoStatsNormalizeGroupSeriesTimestamps')) {
 }
 
 if (!function_exists('omoStatsGetGroupSeries')) {
-    function omoStatsGetGroupSeries(StatIndicatorGroup $group)
+    function omoStatsGetGroupSeries(StatIndicatorGroup $group, ?array $availability = null)
     {
+        $availability = $availability ?? omoStatsGetGroupSourceAvailability($group);
+        if ($availability['status'] === 'unavailable') {
+            return [];
+        }
         $series = [];
-        foreach ($group->getItems() as $item) {
-            if (!($item instanceof StatIndicatorGroupItem)) {
-                continue;
-            }
-            $indicator = $item->getIndicator();
-            if (!($indicator instanceof StatIndicator) || (int)$indicator->get('active') !== 1 || !$indicator->canView()) {
-                continue;
-            }
-
+        $cutoffTimestamp = $availability['cutoffTimestamp'];
+        foreach ($availability['sources'] as $indicator) {
             $points = [];
             foreach ($indicator->getMeasurements() as $measurement) {
                 if (!($measurement instanceof StatIndicatorValue)) {
@@ -2136,6 +2196,9 @@ if (!function_exists('omoStatsGetGroupSeries')) {
                 }
                 $measuredAt = $measurement->get('measured_at');
                 if (!($measuredAt instanceof DateTimeInterface) || !is_numeric($measurement->get('value'))) {
+                    continue;
+                }
+                if ($cutoffTimestamp !== null && $measuredAt->getTimestamp() > $cutoffTimestamp) {
                     continue;
                 }
                 $points[] = [

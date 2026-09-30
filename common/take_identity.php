@@ -2,6 +2,12 @@
 require_once dirname(__DIR__) . '/shared_functions.php';
 require_once __DIR__ . '/auth.php';
 
+$sourceLang = [
+    'identity_switch_failed' => [
+        'text' => 'Impossible de prendre l’identité pour le moment.',
+        'context' => 'Error shown when the identity switch security notice or history cannot be saved.',
+    ],
+];
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 header('Expires: 0');
@@ -32,14 +38,26 @@ if (!commonCurrentUserIsSiteAdminModeEnabled()
 }
 
 $organization = new \dbObject\Organization();
+$adminUser = new \dbObject\User();
 $targetUser = new \dbObject\User();
 if (!$organization->load($organizationId)
+    || !$adminUser->load($adminUserId)
     || !$targetUser->load($targetUserId)
     || !(bool)$targetUser->get('active')
     || $targetUser->isHistoricalPlaceholder()
     || !\dbObject\UserOrganization::hasActiveMembership($targetUserId, $organizationId)
 ) {
     http_response_code(403);
+    exit;
+}
+
+if (!session_regenerate_id(true)
+    || !\dbObject\User::recordIdentitySwitchNotice($adminUser, $targetUser, $organization)
+) {
+    http_response_code(503);
+    header('Content-Type: text/plain; charset=UTF-8');
+    $bundle = commonAuthLoadBundle('take-identity', $sourceLang);
+    echo commonAuthT('identity_switch_failed', [], $bundle, $sourceLang);
     exit;
 }
 
@@ -52,7 +70,6 @@ commonAuthSecurityLog('take_identity', 'success', [
 commonExpireCookieValue(commonGetRememberCookieName(), true);
 commonExpireLegacyRememberCookie();
 commonExpireLegacyAuthCookies();
-session_regenerate_id(true);
 $_SESSION = [
     'currentUser' => $targetUserId,
     'currentOrganization' => $organizationId,
