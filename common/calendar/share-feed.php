@@ -1,5 +1,6 @@
 <?php
 require_once dirname(__DIR__) . '/caldav.php';
+require_once dirname(__DIR__) . '/external_calendar.php';
 
 use dbObject\ArrayEvent;
 use dbObject\ArrayExternalCalendarEvent;
@@ -74,6 +75,7 @@ function calendarShareBuildFeed(CalendarShare $share, ?DateTimeImmutable $now = 
     if (is_array($scope)) {
         $eventGroups = [calendarShareLoadScopedOmoEvents($share, $scope)];
     } else {
+        commonExternalCalendarRefreshForDisplay($userId);
         $omo = new ArrayEvent();
         $omo->loadBusyForUserDateRange($userId, $start, $end);
         $external = new ArrayExternalCalendarEvent();

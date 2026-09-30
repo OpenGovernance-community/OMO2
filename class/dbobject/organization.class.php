@@ -9653,12 +9653,15 @@
 			}));
 		}
 
-		protected function canUsePropertyPermission(Holon $context, string $permissionKey, int $collectiveHolonId = 0): bool
+		protected function canUsePropertyPermission(Holon $context, string $permissionKey, int $collectiveHolonId = 0, bool $creatingHolon = false): bool
 		{
 			if (preg_match('/_TYPE([1-5])_PROPERTIES$/', $permissionKey, $matches) && !Property::isTypeEnabled('type' . $matches[1], $this->getLexicon())) return false;
+			if ($collectiveHolonId === 0 && $creatingHolon && preg_match('/^CAN_EDIT_(TYPE[1-9][0-9]*)_PROPERTIES$/', $permissionKey, $matches)) {
+				return $context->canEditPropertyValue(strtolower($matches[1]), true);
+			}
 			return $collectiveHolonId === 0
 				? $context->isAllowed($permissionKey, false)
-				: ($collectiveHolonId > 0 && HolonPermission::holonHasCollectivePermissionForHolonContext((int)$this->getId(), $collectiveHolonId, $permissionKey, (int)$context->getId()));
+				: ($collectiveHolonId > 0 && HolonPermission::holonHasCollectivePermissionForHolonContext((int)$this->getId(), $collectiveHolonId, $permissionKey, (int)$context->getId(), $creatingHolon));
 		}
 
 		protected function canApplyPropertyDefinitionChanges(\dbObject\Holon $permissionHolon, array $operations, $propertyScope, int $collectiveHolonId = 0)
@@ -9710,7 +9713,7 @@
 				}
 
 				// Les valeurs locales utilisent le type de la definition persistee.
-				if ($this->canUsePropertyPermission($permissionHolon, Property::permissionKey('EDIT', $definition['type'] ?? null), $collectiveHolonId)) {
+				if ($this->canUsePropertyPermission($permissionHolon, Property::permissionKey('EDIT', $definition['type'] ?? null), $collectiveHolonId, $permissionKey === 'CAN_ADD_HOLON')) {
 					continue;
 				}
 
@@ -10717,7 +10720,7 @@
 				'types' => array(),
 				'formats' => array(),
 				'listItemTypes' => \dbObject\Property::getTemplateListItemTypeOptions(),
-				'propertyTypes' => Property::getTypeOptions($this->getLexicon(), $editingHolon ?: $contextHolon),
+				'propertyTypes' => Property::getTypeOptions($this->getLexicon(), $editingHolon ?: $contextHolon, !$editingHolon),
 				'canAddHolonProperties' => $editingHolon
 					? Property::canCreateAnyType($editingHolon)
 					: ($contextHolon ? Property::canCreateAnyType($contextHolon) : false),
@@ -10806,7 +10809,7 @@
 						? $template->getTemplatePropertyDefinitions()
 						: array_map(static function (array $definition) use ($editingHolon, $contextHolon) {
 							$definition['canEditValue'] = empty($definition['effectiveLocked'])
-								&& ($editingHolon ?: $contextHolon)->isAllowed(Property::permissionKey('EDIT', $definition['type'] ?? null), false);
+								&& ($editingHolon ?: $contextHolon)->canEditPropertyValue($definition['type'] ?? null, !$editingHolon);
 							return $definition;
 						}, $template->getHolonCreationPropertyDefinitions()),
 				), $this->getHolonIllustrationData($template));
@@ -10899,7 +10902,7 @@
 				$collectiveId = $collectiveHolonId > 0 ? $collectiveHolonId : -1;
 				foreach ($data['propertyTypes'] as &$type) {
 					foreach (['Create' => 'CREATE', 'Edit' => 'EDIT', 'Delete' => 'DELETE'] as $flag => $operation) {
-						$type['can' . $flag] = $this->canUsePropertyPermission($permissionContext, Property::permissionKey($operation, $type['id']), $collectiveId);
+						$type['can' . $flag] = $this->canUsePropertyPermission($permissionContext, Property::permissionKey($operation, $type['id']), $collectiveId, !$editingHolon);
 					}
 				}
 				unset($type);

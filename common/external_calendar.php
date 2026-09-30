@@ -4,6 +4,8 @@ use dbObject\ArrayExternalCalendar;
 use dbObject\ExternalCalendar;
 use dbObject\ExternalCalendarEvent;
 
+require_once __DIR__ . '/external_calendar_ics.php';
+
 function commonExternalCalendarReadEnvironmentValue($key, $default = '')
 {
     if (function_exists('commonReadRuntimeEnvValue')) {
@@ -201,9 +203,11 @@ function commonExternalCalendarHttpRequest($url, $username, $password, $requestB
     curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($curl, CURLOPT_FOLLOWLOCATION, false);
     curl_setopt($curl, CURLOPT_CUSTOMREQUEST, $method);
-    curl_setopt($curl, CURLOPT_POSTFIELDS, (string)$requestBody);
-    curl_setopt($curl, CURLOPT_USERPWD, (string)$username . ':' . (string)$password);
-    curl_setopt($curl, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
+    if ($method !== 'GET') {
+        curl_setopt($curl, CURLOPT_POSTFIELDS, (string)$requestBody);
+        curl_setopt($curl, CURLOPT_USERPWD, (string)$username . ':' . (string)$password);
+        curl_setopt($curl, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
+    }
     $timeoutMs = $deadline === null ? 45000 : max(1, min(45000, (int)(($deadline - microtime(true)) * 1000)));
     curl_setopt($curl, CURLOPT_CONNECTTIMEOUT_MS, min(10000, $timeoutMs));
     curl_setopt($curl, CURLOPT_TIMEOUT_MS, $timeoutMs);
@@ -214,15 +218,15 @@ function commonExternalCalendarHttpRequest($url, $username, $password, $requestB
         $address = str_contains($addresses[0], ':') ? '[' . $addresses[0] . ']' : $addresses[0];
         curl_setopt($curl, CURLOPT_RESOLVE, [$host . ':' . (parse_url($url, PHP_URL_PORT) ?: 443) . ':' . $address]);
     }
-    curl_setopt($curl, CURLOPT_HTTPHEADER, [
-        'Depth: ' . (int)$depth,
-        'Content-Type: ' . ($method === 'PUT' ? 'text/calendar' : 'application/xml') . '; charset=UTF-8',
-        'Accept: application/xml, text/calendar',
-        'User-Agent: OpenMyOrganization CalDAV sync',
-        ...$extraHeaders,
-    ]);
-    curl_setopt($curl, CURLOPT_WRITEFUNCTION, static function ($handle, $chunk) use (&$responseBody) {
-        if (strlen($responseBody) + strlen($chunk) > 5 * 1024 * 1024) {
+    curl_setopt($curl, CURLOPT_HTTPHEADER, $method === 'GET'
+        ? ['Accept: text/calendar', 'User-Agent: OpenMyOrganization calendar sync', ...$extraHeaders]
+        : ['Depth: ' . (int)$depth,
+            'Content-Type: ' . ($method === 'PUT' ? 'text/calendar' : 'application/xml') . '; charset=UTF-8',
+            'Accept: application/xml, text/calendar',
+            'User-Agent: OpenMyOrganization CalDAV sync', ...$extraHeaders]);
+    $bodyLimit = ($method === 'GET' ? 10 : 5) * 1024 * 1024;
+    curl_setopt($curl, CURLOPT_WRITEFUNCTION, static function ($handle, $chunk) use (&$responseBody, $bodyLimit) {
+        if (strlen($responseBody) + strlen($chunk) > $bodyLimit) {
             return 0;
         }
         $responseBody .= $chunk;
@@ -238,19 +242,27 @@ function commonExternalCalendarHttpRequest($url, $username, $password, $requestB
     $result = curl_exec($curl);
     $statusCode = (int)curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
     if ($result === false) {
-        return ['status' => false, 'message' => 'Connexion CalDAV impossible (réseau, certificat ou réponse trop volumineuse).'];
+        return ['status' => false, 'message' => $method === 'GET'
+            ? 'Lecture du flux ICS impossible (reseau, certificat ou reponse trop volumineuse).'
+            : 'Connexion CalDAV impossible (réseau, certificat ou réponse trop volumineuse).'];
     }
     if (in_array($statusCode, [301, 302, 303, 307, 308], true)) {
-        $target = commonExternalCalendarResolveHref($url, $location);
+        $target = $method === 'GET' && preg_match('#^https://#i', $location)
+            ? commonExternalCalendarNormalizeUrl($location)
+            : commonExternalCalendarResolveHref($url, $location);
         if ($target === null || $redirects >= 4) {
-            return ['status' => false, 'message' => 'Redirection CalDAV refusée. Utilisez directement l’adresse HTTPS du serveur de synchronisation.'];
+            return ['status' => false, 'message' => $method === 'GET'
+                ? 'Redirection du flux ICS refusee.'
+                : 'Redirection CalDAV refusée. Utilisez directement l’adresse HTTPS du serveur de synchronisation.'];
         }
         return commonExternalCalendarHttpRequest($target, $username, $password, $requestBody, $method, $depth, $redirects + 1, $extraHeaders, $deadline);
     }
     if ($statusCode < 200 || $statusCode >= 300) {
-        return ['status' => false, 'code' => $statusCode, 'message' => in_array($statusCode, [401, 403], true)
+        return ['status' => false, 'code' => $statusCode, 'message' => $method === 'GET'
+            ? 'Le flux ICS a repondu avec le code HTTP ' . $statusCode . '.'
+            : (in_array($statusCode, [401, 403], true)
             ? 'Accès refusé : vérifiez l’identifiant de synchronisation et le mot de passe d’application.'
-            : 'Le serveur CalDAV a repondu avec le code HTTP ' . $statusCode . '.'];
+            : 'Le serveur CalDAV a repondu avec le code HTTP ' . $statusCode . '.')];
     }
 
     return ['status' => true, 'code' => $statusCode, 'body' => $responseBody, 'url' => $url];
@@ -258,6 +270,7 @@ function commonExternalCalendarHttpRequest($url, $username, $password, $requestB
 
 function commonExternalCalendarCanCreate(ExternalCalendar $calendar, ?callable $request = null): bool
 {
+    if ((string)$calendar->get('provider') !== 'caldav') { return false; }
     $password = commonExternalCalendarDecryptPassword($calendar->get('password_encrypted'));
     if ($password === null || !(int)$calendar->get('active')) { return false; }
     $request ??= 'commonExternalCalendarHttpRequest';
@@ -694,41 +707,40 @@ function commonExternalCalendarParseReport($xml, $strict = false)
     return ['status' => true, 'events' => array_values($events)];
 }
 
-function commonExternalCalendarSynchronize(ExternalCalendar $calendar, $rangeStart = null, $rangeEnd = null, $force = false, ?float $deadline = null)
+function commonExternalCalendarSynchronize(ExternalCalendar $calendar, $rangeStart = null, $rangeEnd = null, $force = false, ?float $deadline = null, ?callable $request = null)
 {
     $calendarId = (int)$calendar->getId();
-    $url = commonExternalCalendarNormalizeUrl($calendar->get('calendar_url'));
-    $password = commonExternalCalendarDecryptPassword($calendar->get('password_encrypted'));
-    if ($calendarId <= 0 || $url === null || trim((string)$calendar->get('username')) === '' || $password === null) {
-        $message = 'La configuration CalDAV est incomplete ou ne peut pas etre lue.';
+    $isIcs = (string)$calendar->get('provider') === 'ics';
+    $secret = commonExternalCalendarDecryptPassword($calendar->get('password_encrypted'));
+    $url = commonExternalCalendarNormalizeUrl($isIcs ? $secret : $calendar->get('calendar_url'));
+    if ($calendarId <= 0 || $url === null || (!$isIcs && (trim((string)$calendar->get('username')) === '' || $secret === null))) {
+        $message = 'La configuration du calendrier est incomplete ou ne peut pas etre lue.';
         $calendar->markSyncResult(false, $message);
         return ['status' => false, 'message' => $message];
     }
-    $rangeStart = $rangeStart instanceof \DateTimeInterface ? \DateTimeImmutable::createFromInterface($rangeStart) : new \DateTimeImmutable('-30 days');
-    $rangeEnd = $rangeEnd instanceof \DateTimeInterface ? \DateTimeImmutable::createFromInterface($rangeEnd) : new \DateTimeImmutable('+400 days');
+    $replaceCache = $rangeStart === null && $rangeEnd === null;
+    [$defaultStart, $defaultEnd] = ExternalCalendar::synchronizationRange();
+    $rangeStart = $rangeStart instanceof \DateTimeInterface ? \DateTimeImmutable::createFromInterface($rangeStart) : $defaultStart;
+    $rangeEnd = $rangeEnd instanceof \DateTimeInterface ? \DateTimeImmutable::createFromInterface($rangeEnd) : $defaultEnd;
     if ($rangeEnd <= $rangeStart) {
         return ['status' => false, 'message' => 'La plage de synchronisation est invalide.'];
     }
 
-    $sourceCtag = commonExternalCalendarReadSourceCtag($url, trim((string)$calendar->get('username')), $password, $deadline);
-    if (!$force && $sourceCtag !== null && hash_equals((string)$calendar->get('source_ctag'), $sourceCtag)) {
-        $calendar->markSyncResult(true, '', $sourceCtag);
-        return ['status' => true, 'count' => 0, 'unchanged' => true];
-    }
-
-    $response = commonExternalCalendarHttpReport(
-        $url,
-        trim((string)$calendar->get('username')),
-        $password,
-        commonExternalCalendarBuildReport($rangeStart, $rangeEnd),
-        $deadline
-    );
+    // The window advances even when the source is unchanged. Each due refresh
+    // must request the new range instead of skipping it based on the CalDAV ctag.
+    $request ??= 'commonExternalCalendarHttpRequest';
+    $response = $isIcs
+        ? $request($url, '', '', '', 'GET', 0, 0, [], $deadline)
+        : commonExternalCalendarHttpReport($url, trim((string)$calendar->get('username')), $secret,
+            commonExternalCalendarBuildReport($rangeStart, $rangeEnd), $deadline);
     if (empty($response['status'])) {
-        $message = trim((string)($response['message'] ?? 'Synchronisation CalDAV impossible.'));
+        $message = trim((string)($response['message'] ?? 'Synchronisation du calendrier impossible.'));
         $calendar->markSyncResult(false, $message);
         return ['status' => false, 'message' => $message];
     }
-    $parsed = commonExternalCalendarParseReport((string)$response['body']);
+    $parsed = $isIcs
+        ? commonExternalCalendarParseIcsFeed((string)$response['body'], $rangeStart, $rangeEnd)
+        : commonExternalCalendarParseReport((string)$response['body']);
     if (empty($parsed['status'])) {
         $message = trim((string)($parsed['message'] ?? 'La reponse CalDAV ne peut pas etre lue.'));
         $calendar->markSyncResult(false, $message);
@@ -741,7 +753,10 @@ function commonExternalCalendarSynchronize(ExternalCalendar $calendar, $rangeSta
     }
     try {
         $pdo->beginTransaction();
-        if (!ExternalCalendarEvent::deactivateInRange($calendarId, $rangeStart, $rangeEnd)) {
+        $deactivated = $replaceCache
+            ? ExternalCalendarEvent::deactivateForCalendar($calendarId)
+            : ExternalCalendarEvent::deactivateInRange($calendarId, $rangeStart, $rangeEnd);
+        if (!$deactivated) {
             throw new \RuntimeException('Impossible de preparer les evenements importes.');
         }
         foreach ((array)$parsed['events'] as $values) {
@@ -767,13 +782,13 @@ function commonExternalCalendarSynchronize(ExternalCalendar $calendar, $rangeSta
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
         }
-        $message = 'La synchronisation CalDAV a echoue.';
+        $message = 'La synchronisation du calendrier a echoue.';
         error_log('OMO external calendar synchronization failed: ' . $exception->getMessage());
         $calendar->markSyncResult(false, $message);
         return ['status' => false, 'message' => $message];
     }
 
-    $calendar->markSyncResult(true, '', $sourceCtag);
+    $calendar->markSyncResult(true);
     return ['status' => true, 'count' => count((array)$parsed['events'])];
 }
 
@@ -791,7 +806,7 @@ function commonExternalCalendarRefreshForAvailability(int $userId, float $deadli
             if (microtime(true) >= $deadline) { break; }
             $last = $calendar->get('last_sync_at');
             $failed = trim((string)$calendar->get('last_sync_error')) !== '';
-            if ($last instanceof \DateTimeInterface && $last->getTimestamp() > time() - ($failed ? 60 : 7200)) { continue; }
+            if ($last instanceof \DateTimeInterface && $last->getTimestamp() > time() - ($failed ? 60 : 3600)) { continue; }
             $synchronize($calendar, null, null, false, min($deadline, microtime(true) + 8));
         }
     } finally {
@@ -799,33 +814,24 @@ function commonExternalCalendarRefreshForAvailability(int $userId, float $deadli
     }
 }
 
-function commonExternalCalendarSynchronizeDue($limit = 10, $minimumAgeMinutes = 120)
+/** Refresh only when an owner-facing calendar view actually needs the external cache. */
+function commonExternalCalendarRefreshForDisplay(int $userId, ?float $deadline = null, ?callable $synchronize = null): void
 {
-    $calendars = new ArrayExternalCalendar();
-    $calendars->loadForUser(0, true);
-    if (count($calendars) === 0 && ExternalCalendar::isStorageAvailable()) {
-        $calendars->load([
-            'where' => [
-                ['field' => 'active', 'value' => 1],
-            ],
-            'orderBy' => [
-                ['field' => 'last_sync_at', 'dir' => 'ASC'],
-                ['field' => 'id', 'dir' => 'ASC'],
-            ],
-        ]);
-    }
-    $processed = 0;
-    $threshold = new \DateTimeImmutable('-' . max(1, (int)$minimumAgeMinutes) . ' minutes');
-    foreach ($calendars as $calendar) {
-        if (!($calendar instanceof ExternalCalendar) || $processed >= max(1, (int)$limit)) {
-            continue;
+    $deadline ??= microtime(true) + 12;
+    if ($userId <= 0 || !ExternalCalendar::isStorageAvailable() || microtime(true) >= $deadline) { return; }
+    if (!\dbObject\MeetingProfile::lock($userId)) { return; }
+    try {
+        $calendars = new ArrayExternalCalendar();
+        $calendars->loadForUser($userId, true);
+        $synchronize ??= 'commonExternalCalendarSynchronize';
+        foreach ($calendars as $calendar) {
+            if (microtime(true) >= $deadline) { break; }
+            $last = $calendar->get('last_sync_at');
+            $failed = trim((string)$calendar->get('last_sync_error')) !== '';
+            if ($last instanceof \DateTimeInterface && $last->getTimestamp() > time() - ($failed ? 300 : 5 * 3600)) { continue; }
+            $synchronize($calendar, null, null, false, min($deadline, microtime(true) + 8));
         }
-        $lastSyncAt = $calendar->get('last_sync_at');
-        if ($lastSyncAt instanceof \DateTimeInterface && $lastSyncAt > $threshold) {
-            continue;
-        }
-        commonExternalCalendarSynchronize($calendar);
-        $processed++;
+    } finally {
+        \dbObject\MeetingProfile::unlock($userId);
     }
-    return $processed;
 }

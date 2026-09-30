@@ -3,7 +3,6 @@ require_once __DIR__ . '/faq_fake_cron.php';
 require_once __DIR__ . '/stats_ethercalc_sync.php';
 require_once __DIR__ . '/stats_spreadsheet_sync.php';
 require_once __DIR__ . '/notification_center.php';
-require_once __DIR__ . '/external_calendar.php';
 require_once __DIR__ . '/omo_cron_log.php';
 require_once __DIR__ . '/omo_maintenance_lock.php';
 
@@ -32,7 +31,6 @@ if (!function_exists('omo_run_fake_cron_maintenance')) {
             'decisionNotificationsProcessed' => 0,
             'eventNotificationsProcessed' => 0,
             'projectsReactivated' => 0,
-            'externalCalendarsSynced' => 0,
         ];
 
         $runTask = static function ($name, $errorPrefix, callable $callback) use (&$failedTasks) {
@@ -117,14 +115,6 @@ if (!function_exists('omo_run_fake_cron_maintenance')) {
                 return \dbObject\Project::reactivateDueBlockedBatch(200);
             }
         );
-        $result['externalCalendarsSynced'] = $runTask(
-            'external_calendar_sync',
-            'OMO fake cron external calendar synchronization failed: ',
-            static function () {
-                return commonExternalCalendarSynchronizeDue(10, 120);
-            }
-        );
-
         omoCronFinishMaintenanceLog($logContext, $failedTasks);
 
         return $result;
