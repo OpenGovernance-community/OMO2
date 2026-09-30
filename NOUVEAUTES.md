@@ -1,5 +1,21 @@
 # Journal Des Nouveautes
 
+- Inscriptions publiques : les e-mails de confirmation affichent le createur et son organisation comme expediteur, presentent ses coordonnees et dirigent les reponses vers son adresse e-mail dans cette organisation.
+
+- Inscriptions publiques : ajout des etapes Vos informations, Envoi e-mail et Confirmation en haut des ecrans, avec le meme composant de progression que /meeting/.
+
+- Inscriptions publiques : ajout du pied de page Powered by OMO2 et OpenMyOrganization avec les memes liens et styles que /meeting/.
+
+- Rendez-vous : /meeting/ reprend le logo officiel et la palette bleu glacier des inscriptions publiques. Les deux pages utilisent maintenant une feuille de style commune dans /common/meeting/public.css.
+
+- Inscriptions publiques : la fiche adopte une palette bleu glacier et le logo officiel OMO, y compris sur la confirmation et le recapitulatif.
+
+- Inscriptions publiques : rouvrir le lien recu par e-mail apres confirmation conduit directement au recapitulatif, sans demander de confirmer a nouveau.
+
+- Inscriptions publiques : l URL de visioconference reste masquee jusqu a la confirmation de l inscription et apparait uniquement sur le recapitulatif confirme.
+
+- Accueil OMO2 : le rendez-vous des usagers du 15 octobre propose maintenant un lien d'inscription propre a cette rencontre ; la presentation du 1er octobre conserve son lien de visioconference.
+
 - Agenda : la date de l evenement affiche le jour de la semaine avec une majuscule et la date sur une ligne, puis les horaires ou la mention Toute la journee sur la suivante.
 
 - Agenda : la ligne des dates de reference est centree et affiche le nom du createur lorsqu il est disponible. L auteur de la derniere modification n est pas enregistre pour les evenements.

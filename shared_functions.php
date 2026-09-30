@@ -574,7 +574,7 @@
 	
 	
 	// Fonction E-mail passant par un serveur, pour minimier les effets SPAM
-	function myHTMLMail($from,$to,$subject,$body,$cc=null, $bcc=null, array $attachments = [], ?string $plainTextBody = null) {
+	function myHTMLMail($from,$to,$subject,$body,$cc=null, $bcc=null, array $attachments = [], ?string $plainTextBody = null, ?array $replyTo = null) {
 
 
 		appSetLastMailError('');
@@ -618,6 +618,9 @@
 			$mail->setFrom($from[0],$from[1]);
 		else
 			$mail->setFrom($from);
+		if ($replyTo !== null) {
+			$mail->addReplyTo((string)$replyTo[0], (string)($replyTo[1] ?? ''));
+		}
 		if (is_array($to))
 			foreach ($to as $dest) {
 				$mail->addAddress($dest); // Destinataire
