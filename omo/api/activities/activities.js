@@ -549,6 +549,10 @@
             if (!result.status) {
                 throw new Error(result.message || texts.actionError);
             }
+            if ((action === 'delete_activity' || action === 'archive_activity')
+                && typeof window.omoInvalidateMainRightPanel === 'function') {
+                window.omoInvalidateMainRightPanel();
+            }
             if (listCheck || action === 'delete_activity' || action === 'archive_activity') {
                 refreshRoot(currentUrl);
                 return;

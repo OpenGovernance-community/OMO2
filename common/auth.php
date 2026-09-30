@@ -2274,7 +2274,7 @@ function commonAuthSecurityLog($event, $outcome, array $context = [])
         $payload['account_hash'] = commonAuthHashIdentifier('email', $email);
     }
 
-    foreach (['user_id', 'reason', 'scope', 'retry_after', 'legacy'] as $key) {
+    foreach (['user_id', 'target_user_id', 'organization_id', 'reason', 'scope', 'retry_after', 'legacy'] as $key) {
         if (array_key_exists($key, $context)) {
             $payload[$key] = $context[$key];
         }

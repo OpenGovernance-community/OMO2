@@ -38,6 +38,7 @@ function omoUserContextT(string $key, array $replace = []): string
             'previous_month' => 'Mois précédent',
             'next_month' => 'Mois suivant',
             'unavailable' => 'Les disponibilités ne peuvent pas être affichées pour le moment.',
+            'take_identity' => 'Prendre l\'identité',
         ];
         $sourceLang = [];
         foreach ($texts as $id => $text) {
@@ -819,6 +820,15 @@ if ($requestedSection === 'availability') {
 
 $membership = $user->getOrganizationMembership($organizationId);
 $currentViewerUserId = (int)commonGetCurrentUserId();
+$canTakeIdentity = commonCurrentUserIsSiteAdminModeEnabled()
+    && $organizationId === (int)($_SESSION['currentOrganization'] ?? 0)
+    && $currentViewerUserId !== $userId
+    && (bool)$user->get('active')
+    && !$user->isHistoricalPlaceholder()
+    && \dbObject\UserOrganization::hasActiveMembership($userId, $organizationId);
+if ($canTakeIdentity) {
+    $_SESSION['take_identity_csrf'] ??= bin2hex(random_bytes(32));
+}
 $hasBudgetApplication = $organization->isApplicationEnabled('budget', $currentViewerUserId);
 $displayName = trim((string)$user->getScopedDisplayName($organizationId));
 $email = trim((string)$user->getScopedEmail($organizationId));
@@ -942,6 +952,14 @@ foreach ($competenceRows as $competenceRow) {
                     <?php endif; ?>
                     <span class="omo-user-context__badge"><?= $competenceCount ?> competence<?= $competenceCount > 1 ? 's' : '' ?></span>
                 </div>
+                <?php if ($canTakeIdentity): ?>
+                    <form method="post" action="/common/take_identity.php">
+                        <input type="hidden" name="csrf" value="<?= omoApiEscape($_SESSION['take_identity_csrf']) ?>">
+                        <input type="hidden" name="user_id" value="<?= $userId ?>">
+                        <input type="hidden" name="organization_id" value="<?= $organizationId ?>">
+                        <button type="submit" class="generic-action-button generic-action-button--secondary"><?= omoApiEscape(omoUserContextT('take_identity')) ?></button>
+                    </form>
+                <?php endif; ?>
             </div>
         </section>
     </div>
