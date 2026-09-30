@@ -204,7 +204,7 @@ if (!function_exists('omoEtherpadApiRequest')) {
 
         $payload = json_decode((string)$response, true);
         if (!is_array($payload)) {
-            return array('status' => false, 'text' => 'Etherpad a renvoye une reponse invalide.', 'httpCode' => $httpCode);
+            return array('status' => false, 'text' => 'Etherpad a renvoyé une réponse invalide.', 'httpCode' => $httpCode);
         }
 
         $code = (int)($payload['code'] ?? -1);

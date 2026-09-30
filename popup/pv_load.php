@@ -25,7 +25,7 @@
 			"filter" => "IDuser=".(int)$_SESSION["currentUser"]
 		]);
 
-		echo "<H1>".T_("Reunions sauvegardees")."</H1>";
+		echo "<H1>".T_("Réunions sauvegardées")."</H1>";
 		echo "<div id='PVliste'>";
 		foreach ($listePV as $pv) {
 			$content = pvLoadDecodeSavedData($pv->get("data"));

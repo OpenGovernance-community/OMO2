@@ -2,7 +2,6 @@ window.commonPageScripts = window.commonPageScripts || {};
 window.commonPageScripts["/omo/api/calendar/invitations_popup.js"] = function (pageConfig, pageScript) {
 (function () {
     var form = document.getElementById('omoCalendarInvitationsPopupForm');
-    var feedback = document.getElementById('omoCalendarInvitationsPopupFeedback');
     var submitButton = document.getElementById('omoCalendarInvitationsPopupSubmit');
 
     function initInvitationEditor(scope) {
@@ -46,7 +45,7 @@ window.commonPageScripts["/omo/api/calendar/invitations_popup.js"] = function (p
         });
     }
 
-    if (!form || !feedback || !submitButton) {
+    if (!form || !submitButton) {
         return;
     }
 
@@ -60,8 +59,6 @@ window.commonPageScripts["/omo/api/calendar/invitations_popup.js"] = function (p
         if (usesSharedPendingState && !window.omoBeginPendingAction(form)) {
             return;
         }
-        feedback.textContent = '';
-        feedback.classList.remove('is-success');
         if (!usesSharedPendingState) {
             submitButton.disabled = true;
         }
@@ -84,14 +81,19 @@ window.commonPageScripts["/omo/api/calendar/invitations_popup.js"] = function (p
             })
             .then(function (result) {
                 if (!result.ok || !result.data || !result.data.status) {
-                    feedback.textContent = result.data && result.data.message ? result.data.message : pageConfig.message;
+                    window.commonNotify(result.data && result.data.message ? result.data.message : pageConfig.message, 'error', {duration: 7000});
                     return;
                 }
 
-                feedback.textContent = result.data.message || pageConfig.calendarInvitationsUpdated;
-                feedback.classList.add('is-success');
+                window.commonNotify(result.data.message || pageConfig.calendarInvitationsUpdated, 'success', {duration: 5000});
 
-                if (typeof window.commonTopbarCloseModal === 'function') {
+                var publicLink = form.querySelector('[data-omo-public-registration-link]');
+                if (publicLink) {
+                    publicLink.hidden = !result.data.publicUrl;
+                    publicLink.querySelector('[data-omo-public-registration-url]').value = result.data.publicUrl || '';
+                }
+
+                if (!publicLink && typeof window.commonTopbarCloseModal === 'function') {
                     window.commonTopbarCloseModal();
                 }
 
@@ -111,7 +113,7 @@ window.commonPageScripts["/omo/api/calendar/invitations_popup.js"] = function (p
                 }
             })
             .catch(function () {
-                feedback.textContent = pageConfig.calendarInvitationsJsRequestError;
+                window.commonNotify(pageConfig.calendarInvitationsJsRequestError, 'error', {duration: 7000});
             })
             .finally(function () {
                 if (usesSharedPendingState && typeof window.omoEndPendingAction === 'function') {

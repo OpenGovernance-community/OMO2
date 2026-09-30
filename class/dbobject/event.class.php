@@ -424,6 +424,11 @@ class Event extends DbObject
         return $emailCache[$cacheKey];
     }
 
+    public function getCreatedByDisplayName(): string
+    {
+        return $this->getViewerDisplayName((int)$this->get('IDuser'), (int)$this->get('IDorganization'));
+    }
+
     protected function getViewerDisplayName($userId, $organizationId): string
     {
         static $displayNameCache = [];
@@ -457,6 +462,7 @@ class Event extends DbObject
             'hasExplicitInvitations' => false,
             'userIds' => [],
             'emails' => [],
+            'registeredEmails' => [],
         ];
 
         foreach ($proposedInvitations ?? $this->getInvitations(true) as $invitation) {
@@ -496,28 +502,71 @@ class Event extends DbObject
             }
         }
 
-        if ($targets['hasExplicitInvitations']) {
-            $targets['userIds'] = array_values($targets['userIds']);
-            $targets['emails'] = array_values($targets['emails']);
-            return $targets;
-        }
-
-        $eventHolonId = (int)$this->get('IDholon');
-        if ($eventHolonId > 0) {
-            foreach ($this->getInvitationMembershipUserIds($eventHolonId, $organizationId) as $userId) {
-                if ($userId > 0) {
-                    $targets['userIds'][$userId] = (int)$userId;
+        // Public registrations supplement the invitation scope; they never replace its defaults.
+        if (!$targets['hasExplicitInvitations']) {
+            $eventHolonId = (int)$this->get('IDholon');
+            if ($eventHolonId > 0) {
+                foreach ($this->getInvitationMembershipUserIds($eventHolonId, $organizationId) as $userId) {
+                    if ($userId > 0) {
+                        $targets['userIds'][$userId] = (int)$userId;
+                    }
                 }
+            } elseif (!$this->organizationHasStructureApplication($organizationId)) {
+                $targets['userIds'] = $this->getOrganizationMemberUserIds($organizationId);
             }
-            $targets['userIds'] = array_values($targets['userIds']);
-            return $targets;
         }
 
-        if (!$this->organizationHasStructureApplication($organizationId)) {
-            $targets['userIds'] = $this->getOrganizationMemberUserIds($organizationId);
+        foreach (EventPublicRegistration::forEvent((int)$this->getId(), true) as $registration) {
+            $email = self::normalizeInvitationEmail($registration->get('email'));
+            if ($email !== '') {
+                $targets['emails'][$email] = $email;
+                $targets['registeredEmails'][$email] = trim((string)$registration->get('name'));
+            }
         }
-
+        $targets['userIds'] = array_values($targets['userIds']);
+        $targets['emails'] = array_values($targets['emails']);
         return $targets;
+    }
+
+    /** Count people once across invited spaces, individual members and public registrations. */
+    public function getInvitationCounts(?array $invitations = null): array
+    {
+        $invitations ??= $this->getInvitations(true)->getArrayCopy();
+        $invitations = array_values(array_filter($invitations, static fn($invitation) =>
+            $invitation instanceof EventInvitation && (int)$invitation->get('active') === 1
+            && EventInvitation::normalizeStatus($invitation->get('status')) !== EventInvitation::STATUS_REVOKED));
+        $individualUserIds = [];
+        $holonIds = [];
+        $invitedEmails = [];
+        foreach ($invitations as $invitation) {
+            if ($invitation->get('invitation_type') === EventInvitation::TYPE_USER && (int)$invitation->get('IDuser') > 0) {
+                $individualUserIds[(int)$invitation->get('IDuser')] = true;
+            } elseif ($invitation->get('invitation_type') === EventInvitation::TYPE_HOLON && (int)$invitation->get('IDholon') > 0) {
+                $holonIds[(int)$invitation->get('IDholon')] = true;
+            } elseif ($invitation->get('invitation_type') === EventInvitation::TYPE_EMAIL) {
+                $email = self::normalizeInvitationEmail($invitation->get('email'));
+                if ($email !== '') { $invitedEmails[$email] = true; }
+            }
+        }
+        $organizationId = (int)$this->get('IDorganization');
+        $targets = $this->getEffectiveInvitationTargets($organizationId, $invitations);
+        $holonMemberCounts = [];
+        foreach (array_keys($holonIds) as $holonId) {
+            $holonMemberCounts[$holonId] = count($this->getInvitationMembershipUserIds($holonId, $organizationId));
+        }
+        $userIds = array_values(array_unique(array_map('intval', $targets['userIds'])));
+        $emails = array_fill_keys($targets['emails'], true);
+        foreach ($userIds as $userId) {
+            unset($emails[$this->getViewerScopedEmail($userId, $organizationId)]);
+        }
+        return [
+            'total' => count($userIds) + count($emails),
+            'holonMemberCounts' => $holonMemberCounts,
+            'members' => count($userIds),
+            'individualMembers' => count($individualUserIds),
+            'invitedEmails' => count($invitedEmails),
+            'confirmedRegistrations' => count($targets['registeredEmails']),
+        ];
     }
 
     /** Calendar intervals have an exclusive end; OMO all-day dates are inclusive. */
@@ -638,7 +687,7 @@ class Event extends DbObject
 
 				$recipients[$email] = array(
 					'email' => $email,
-					'display_name' => '',
+					'display_name' => (string)($targets['registeredEmails'][$email] ?? ''),
 					'user_id' => 0,
 				);
 			}
@@ -841,6 +890,9 @@ class Event extends DbObject
             $identityKey = 'email:' . $normalizedEmail;
             $attendanceRow = $attendanceRows[$identityKey] ?? null;
             $displayName = trim((string)($displayNameMap['emails'][$normalizedEmail] ?? ''));
+            if ($displayName === '') {
+                $displayName = trim((string)($targets['registeredEmails'][$normalizedEmail] ?? ''));
+            }
             if ($displayName === '') {
                 $displayName = trim((string)($attendanceRow['display_name'] ?? ''));
             }

@@ -114,7 +114,7 @@ function omoActivitySourceLang()
         'activity.error.action' => ['text' => 'Action impossible.', 'context' => 'Generic activity action error.'],
         'activity.loading' => ['text' => 'Chargement de la tâche récurrente...', 'context' => 'Recurring task loading message.'],
         'activity.confirm.delete' => ['text' => 'Supprimer cette tâche récurrente et son historique ?', 'context' => 'Recurring task deletion confirmation.'],
-        'activity.confirm.archive' => ['text' => 'Archiver cette tache recurrente ? Elle ne sera plus visible et son historique sera conserve.', 'context' => 'Recurring task archive confirmation.'],
+        'activity.confirm.archive' => ['text' => 'Archiver cette tâche récurrente ? Elle ne sera plus visible et son historique sera conservé.', 'context' => 'Recurring task archive confirmation.'],
         'activity.success.saved' => ['text' => 'Tâche récurrente enregistrée.', 'context' => 'Save success.'],
         'activity.success.checked' => ['text' => 'Tâche récurrente validée.', 'context' => 'Check success.'],
     ];

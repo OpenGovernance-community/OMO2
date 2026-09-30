@@ -85,7 +85,7 @@ if (count($popupReloadQuery) > 0) {
 
 $editorTitle = 'Nouvelle FAQ locale';
 $editorStatus = $contextHolon
-	? \dbObject\Organization::formatLexiconText('Cette FAQ sera rattachee au holon courant.')
+	? \dbObject\Organization::formatLexiconText('Cette FAQ sera rattachée au holon courant.')
 	: 'Cette FAQ sera creee dans le contexte courant.';
 $editorAllowScopeEditing = false;
 $editorAllowGeneric = false;
@@ -108,7 +108,7 @@ if ($canManageAllFaqs) {
 	$editorFields[] = 'isactive';
 } elseif ($canManageOrganizationFaqs) {
 	$editorTitle = 'Nouvelle FAQ organisation';
-	$editorStatus = \dbObject\Organization::formatLexiconText('Cette FAQ peut etre rattachee a l organisation courante, a un holon, ou a un parcours LMS disponible.');
+	$editorStatus = \dbObject\Organization::formatLexiconText('Cette FAQ peut être rattachée à l’organisation courante, à un holon ou à un parcours LMS disponible.');
 	$editorAllowScopeEditing = true;
 	$editorFields[] = 'displayorder';
 	$editorFields[] = 'isactive';
@@ -143,7 +143,7 @@ if ($canManageAllFaqs) {
 							<div
 								class="faq-popup__scope-toggle omo-segmented"
 								role="tablist"
-								aria-label="Portee de la FAQ"
+							aria-label="Portée de la FAQ"
 								data-faq-scope-switch="<?= htmlspecialchars($faqScope, ENT_QUOTES, 'UTF-8') ?>"
 							>
 								<?php foreach ($faqAvailableScopes as $scopeOption): ?>
@@ -177,7 +177,7 @@ if ($canManageAllFaqs) {
 							type="search"
 							class="faq-popup__search-input"
 							data-faq-search-input
-							placeholder="Rechercher une question, une reponse, un mot-cle..."
+							placeholder="Rechercher une question, une réponse ou un mot-clé…"
 							aria-label="Rechercher dans la FAQ"
 						>
 					</label>
@@ -238,7 +238,7 @@ if ($canManageAllFaqs) {
 					</button>
 					<div class="faq-popup__answer" data-faq-answer>
 						<div class="faq-popup__answer-body generic-stack generic-stack--compact">
-							<div class="faq-popup__answer-caption generic-meta-label">Reponse resumee</div>
+							<div class="faq-popup__answer-caption generic-meta-label">Réponse résumée</div>
 							<div class="faq-popup__answer-text generic-description generic-description--card generic-description--primary" data-faq-answer-text><?= nl2br(htmlspecialchars($faq->getShortAnswer(220))) ?></div>
 						</div>
 						<div class="faq-popup__answer-footer">

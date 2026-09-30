@@ -119,7 +119,7 @@ if (!function_exists('omoStatsEthercalcReadCell')) {
         $rawValue = $result['rows'][$rowIndex][$columnIndex] ?? null;
         $value = omoStatsEthercalcParseDecimal($rawValue);
         return $value === null
-            ? ['status' => false, 'text' => 'La cellule EtherCalc ne contient pas une valeur numerique.']
+            ? ['status' => false, 'text' => 'La cellule EtherCalc ne contient pas une valeur numérique.']
             : ['status' => true, 'value' => $value];
     }
 }

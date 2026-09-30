@@ -13,8 +13,8 @@ function translationBundleGetBuiltInLanguageCatalog()
     return [
         [
             'locale' => 'fr',
-            'name' => 'Francais',
-            'native_name' => 'Francais',
+            'name' => 'Français',
+            'native_name' => 'Français',
             'sort_order' => 10,
             'active' => 1,
             'is_source' => 1,
@@ -38,7 +38,7 @@ function translationBundleGetBuiltInLanguageCatalog()
         [
             'locale' => 'es',
             'name' => 'Espagnol',
-            'native_name' => 'Espanol',
+            'native_name' => 'Español',
             'sort_order' => 40,
             'active' => 1,
             'is_source' => 0,
@@ -54,14 +54,14 @@ function translationBundleGetBuiltInLanguageCatalog()
         [
             'locale' => 'pt',
             'name' => 'Portugais',
-            'native_name' => 'Portugues',
+            'native_name' => 'Português',
             'sort_order' => 60,
             'active' => 1,
             'is_source' => 0,
         ],
         [
             'locale' => 'nl',
-            'name' => 'Neerlandais',
+            'name' => 'Néerlandais',
             'native_name' => 'Nederlands',
             'sort_order' => 70,
             'active' => 1,

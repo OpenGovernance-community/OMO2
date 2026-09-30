@@ -8,7 +8,7 @@ require_once __DIR__ . '/inc/mission_editor.php';
 
 $sourceLang = [
     'lms.mission_edit.error.access_denied' => [
-        'text' => 'Acces refuse.',
+        'text' => 'Accès refusé.',
         'context' => 'Error shown when the user cannot access the mission editor.',
     ],
     'lms.mission_edit.error.cannot_edit_parcours' => [

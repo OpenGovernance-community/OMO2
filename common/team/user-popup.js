@@ -239,7 +239,7 @@
             }
 
             if (typeof window.commonTopbarOpenModal === 'function') {
-                window.commonTopbarOpenModal('Editer l affectation', editorUrl, 'fetch');
+                window.commonTopbarOpenModal('Modifier l’affectation', editorUrl, 'fetch');
             }
         });
     });

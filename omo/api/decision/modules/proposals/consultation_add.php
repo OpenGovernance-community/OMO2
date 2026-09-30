@@ -116,7 +116,7 @@ if (empty($context['status'])) {
         omoDecisionModuleJsonResponse((int)($context['code'] ?? 403), [
             'status' => false,
             'feedbackStatus' => 'error',
-            'message' => 'Acces refuse.',
+            'message' => 'Accès refusé.',
             'redirectUrl' => '',
         ]);
     }

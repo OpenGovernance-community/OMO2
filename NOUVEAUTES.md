@@ -1,5 +1,41 @@
 # Journal Des Nouveautes
 
+- Agenda : la date de l evenement affiche le jour de la semaine avec une majuscule et la date sur une ligne, puis les horaires ou la mention Toute la journee sur la suivante.
+
+- Agenda : la ligne des dates de reference est centree et affiche le nom du createur lorsqu il est disponible. L auteur de la derniere modification n est pas enregistre pour les evenements.
+
+- Agenda : les groupes et les decomptes d invites du detail d un evenement sont presentes en liste a puces.
+
+- Agenda : le detail d un evenement presente le document associe puis la description a gauche, et le lieu puis les invites a droite.
+
+- Agenda : le detail des evenements retire le sous-titre et le bloc Informations rapides ; les dates de creation et de modification disponibles figurent en bas, sans cadre et en italique.
+
+- Agenda : l explication du decompte des invites est accessible dans une infobulle via le point d interrogation place a cote du total.
+
+- Agenda : le detail d un evenement defile verticalement lorsque son contenu depasse la hauteur du panneau, en gardant les actions de l en-tete accessibles.
+
+- Agenda : le recapitulatif des invites masque les categories a zero et indique le contexte courant directement apres son nom, avec son nombre de personnes.
+
+- PV : correction du chargement des traductions sur la page publique de participation, qui provoquait une erreur fatale a l ouverture du lien d invitation.
+
+- PV : le resultat de l envoi des invitations utilise les notifications fixes de la topbar, pendant 5 secondes pour un succes et 7 secondes pour une erreur.
+
+- Agenda : les inscriptions publiques confirmees rejoignent les listes de presence et les destinataires des invitations a la reunion, avec leur nom et sans doublon avec les membres ou les e-mails deja invites. Les demandes en attente restent exclues.
+
+- Agenda : la confirmation et les erreurs d enregistrement des invites utilisent les notifications fixes de la topbar, pendant 5 secondes pour un succes et 7 secondes pour une erreur.
+
+- Agenda : le detail des evenements affiche le total des personnes invitees ou inscrites sans doublons, les espaces selectionnes, les membres individuels et les inscriptions par e-mail. Un onglet dedie Inscriptions tout public regroupe l activation, le lien a diffuser et la liste des noms, e-mails et statuts des inscriptions publiques, y compris celles en attente de confirmation.
+
+- Relecture des textes français de l’application : correction des accents, de la grammaire et de la ponctuation dans les traductions et les libellés visibles.
+
+- Interface OMO : les icones des applications dans la barre laterale sont legerement reduites pour mieux correspondre a la taille des emplacements.
+
+- Agenda : les evenements peuvent ouvrir une inscription publique depuis l onglet Inscriptions tout public. Un lien partageable recueille le nom et l e-mail, exige une confirmation par e-mail, puis donne un recapitulatif prive avec les nombres de personnes inscrites et presentes et les documents associes.
+
+- Interface OMO : les icones des Regles et du tableau de bord utilisent les nouvelles illustrations fournies.
+
+- Accueil OMO2 : affichage des rendez-vous en visioconférence des 1er et 15 octobre 2026, avec leur programme et un bouton pour rejoindre chaque événement.
+
 - Indicateurs : la vue detaillee affiche un onglet Description lorsque l indicateur en possede une, y compris pour les indicateurs importes. Les retours a la ligne sont conserves.
 
 - Indicateurs : le menu d un indicateur propose son deplacement vers un autre espace via la carte des cercles imbriques. L action exige le droit de supprimer dans l espace actuel et celui de creer des indicateurs dans la destination ; seuls les emplacements autorises sont selectionnables.
