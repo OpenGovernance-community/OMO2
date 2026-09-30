@@ -28,6 +28,24 @@ if ($shareImageUrl !== '' && str_starts_with($shareImageUrl, '/') && $siteBaseUr
 }
 $activeStep = $receipt || $draft ? 3 : ($selectedSlot ? 2 : 1);
 $currentMonth = $now->modify('first day of this month')->setTime(0, 0);
+$durationMinutes = $receipt ? (int)(($receipt->get('end_at')->getTimestamp() - $receipt->get('start_at')->getTimestamp()) / 60) : ($draft['duration'] ?? ($draft ? 60 : ($durationMinutes ?? 30)));
+$methods = $profile ? $profile->methods() : [];
+$selectedMethod = $receipt ? $receipt->meetingMethod() : ($draft ? ($draft['method'] ?? null) : ($selectedMethod ?? ($methods[0] ?? null)));
+$methodQuery = $selectedMethod ? '&method=' . rawurlencode($selectedMethod['id']) : '';
+$monthData = ['month' => ($month ?? $currentMonth)->format('Y-m'), 'path' => $path, 'durationSlots' => intdiv($durationMinutes, 30), 'maxDuration' => $profile ? $profile->maxDurationMinutes() : 60, 'days' => [], 'dates' => [], 'weekdays' => [], 'labels' => []];
+foreach (($dayResults ?? []) as $date => $result) {
+    $dateObject = new DateTimeImmutable($date, $zone);
+    $monthData['dates'][$date] = $formatDay($dateObject);
+    $monthData['weekdays'][$date] = meetingT(meetingWeekdayKeys()[(int)$dateObject->format('N')]);
+    $monthData['days'][$date] = ['state' => $result['state'], 'workingCount' => $result['workingCount'] ?? 0,
+        'busySlotCount' => $result['busySlotCount'] ?? 0, 'slots' => array_map(static fn(array $slot): array => [
+            'time' => $slot['time'], 'end' => $slot['end']->format('H:i'), 'startEpoch' => $slot['start']->getTimestamp(),
+            'free' => $slot['free'], 'pause' => $slot['pause'], 'bookable' => $slot['bookable'],
+        ], $result['slots'])];
+}
+foreach (['free', 'partial', 'full', 'closed', 'day_availability', 'select_day', 'day_hint', 'select_time', 'no_slots', 'pause', 'occupied', 'change_time', 'loading_month', 'unavailable', 'wait', 'continue', 'range_unavailable', 'duration_limited'] as $key) {
+    $monthData['labels'][$key] = meetingT($key);
+}
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -50,6 +68,7 @@ $currentMonth = $now->modify('first day of this month')->setTime(0, 0);
     <meta name="twitter:description" content="<?= meetingEscape($shareDescription) ?>">
     <?php if ($shareImageUrl !== ''): ?><meta name="twitter:image" content="<?= meetingEscape($shareImageUrl) ?>"><?php endif; ?>
     <link rel="stylesheet" href="/common/assets/components.css?v=<?= (int)filemtime(dirname(__DIR__) . '/common/assets/components.css') ?>"><link rel="stylesheet" href="/meeting/meeting.css?v=<?= (int)filemtime(__DIR__ . '/meeting.css') ?>">
+    <link rel="stylesheet" href="/common/notifications/notifications.css">
 </head>
 <body class="meeting-page">
 <main class="generic-page-shell meeting-shell">
@@ -69,15 +88,31 @@ $currentMonth = $now->modify('first day of this month')->setTime(0, 0);
         <?php endif; ?>
         <div class="meeting-host__copy">
             <h1 class="generic-card-title generic-card-title--display"><?= meetingEscape($displayName ? meetingT('book_with', ['name' => $displayName]) : meetingT('title')) ?></h1>
-            <div class="meeting-meta"><span><?= meetingIcon('globe') ?>Europe/Zurich</span><span><?= meetingIcon('clock') ?><?= meetingEscape(meetingT('duration_short')) ?></span><span><?= meetingIcon('repeat') ?><?= meetingEscape(meetingT('interval_short')) ?></span></div>
+            <div class="meeting-meta"><span><?= meetingIcon('globe') ?>Europe/Zurich</span>
+                <?php if ($profile && !$receipt && !$draft): ?>
+                <form class="meeting-duration" method="get" action="<?= meetingEscape($path) ?>">
+                    <input type="hidden" name="month" value="<?= meetingEscape($monthData['month']) ?>">
+                    <?php if ($selectedDay): ?><input type="hidden" name="date" value="<?= meetingEscape($selectedDay->format('Y-m-d')) ?>"><?php endif; ?>
+                    <label class="generic-inline-help"><?= meetingIcon('clock') ?><select name="duration" data-meeting-duration class="generic-form-control generic-form-control--compact" aria-label="<?= meetingEscape(meetingT('duration')) ?>">
+                        <?php for ($minutes = 30; $minutes <= $profile->maxDurationMinutes(); $minutes += 30): ?><option value="<?= $minutes ?>"<?= $minutes === $durationMinutes ? ' selected' : '' ?>><?= meetingEscape(meetingT('duration_minutes', ['minutes' => $minutes])) ?></option><?php endfor; ?>
+                    </select></label>
+                    <?php if ($methods): ?>
+                    <label class="generic-inline-help meeting-method"><?= meetingIcon('user') ?><select name="method" data-meeting-method class="generic-form-control generic-form-control--compact" aria-label="<?= meetingEscape(meetingT('method')) ?>">
+                        <?php foreach ($methods as $method): ?><option value="<?= meetingEscape($method['id']) ?>"<?= ($selectedMethod['id'] ?? '') === $method['id'] ? ' selected' : '' ?>><?= meetingEscape(meetingMethodLabel($method)) ?></option><?php endforeach; ?>
+                    </select></label>
+                    <?php endif; ?>
+                    <noscript><button class="generic-action-button generic-action-button--secondary"><?= meetingEscape(meetingT('continue')) ?></button></noscript>
+                </form>
+                <?php else: ?><span><?= meetingIcon('clock') ?><?= meetingEscape(meetingT('duration_minutes', ['minutes' => $durationMinutes])) ?></span><?php endif; ?>
+            </div>
         </div>
         <div class="meeting-host__note"><span class="meeting-icon-disc"><?= meetingIcon('calendar') ?></span><span><?= meetingEscape(meetingT('tagline')) ?><small><?= meetingEscape(meetingT('tagline_hint')) ?></small></span></div>
     </header>
-    <?php if ($error): ?><p class="generic-feedback is-error" role="alert"><?= meetingEscape($error) ?></p><?php endif; ?>
+    <?php if ($error): ?><p class="generic-feedback is-error" role="alert" data-meeting-error><?= meetingEscape($error) ?></p><?php endif; ?>
     <?php if ($receipt || $draft): ?>
         <?php
         $summaryStart = $receipt ? DateTimeImmutable::createFromInterface($receipt->get('start_at'))->setTimezone($zone) : new DateTimeImmutable($draft['date'] . ' ' . $draft['time'], $zone);
-        $summaryEnd = $receipt ? DateTimeImmutable::createFromInterface($receipt->get('end_at'))->setTimezone($zone) : $summaryStart->modify('+1 hour');
+        $summaryEnd = $receipt ? DateTimeImmutable::createFromInterface($receipt->get('end_at'))->setTimezone($zone) : $summaryStart->modify('+' . $durationMinutes . ' minutes');
         $summaryName = $receipt ? $receipt->get('guest_name') : $draft['name'];
         $summaryEmail = $receipt ? $receipt->get('guest_email') : $draft['email'];
         $summaryReason = $receipt ? $receipt->get('reason') : $draft['reason'];
@@ -92,6 +127,7 @@ $currentMonth = $now->modify('first day of this month')->setTime(0, 0);
                 <div class="generic-soft-panel generic-soft-panel--tinted meeting-detail-row"><span class="meeting-icon-disc"><?= meetingIcon('calendar') ?></span><div><span class="meeting-muted"><?= meetingEscape(meetingT('date_time')) ?></span><strong><?= meetingEscape($formatDay($summaryStart)) ?> &middot; <?= meetingEscape($summaryStart->format('H:i') . ' - ' . $summaryEnd->format('H:i')) ?></strong><span class="meeting-muted">Europe/Zurich</span></div></div>
                 <div class="generic-soft-panel generic-soft-panel--tinted meeting-detail-row"><span class="meeting-icon-disc"><?= meetingIcon('user') ?></span><div><span class="meeting-muted"><?= meetingEscape(meetingT('your_details')) ?></span><strong><?= meetingEscape($summaryName) ?></strong><span class="meeting-muted"><?= meetingEscape($summaryEmail) ?></span></div></div>
                 <div class="generic-soft-panel generic-soft-panel--tinted meeting-detail-row"><span class="meeting-icon-disc"><?= meetingIcon('note') ?></span><div><span class="meeting-muted"><?= meetingEscape(meetingT('reason')) ?></span><strong><?= nl2br(meetingEscape($summaryReason)) ?></strong></div></div>
+                <?php if ($selectedMethod): ?><div class="generic-soft-panel generic-soft-panel--tinted meeting-detail-row"><span class="meeting-icon-disc"><?= meetingIcon('user') ?></span><div><span class="meeting-muted"><?= meetingEscape(meetingT('method')) ?></span><strong><?= meetingEscape(meetingMethodLabel($selectedMethod)) ?></strong></div></div><?php endif; ?>
             </div>
             <?php if ($receipt): ?>
                 <p class="<?= $receipt->get('email_sent_at') ? 'meeting-muted' : 'generic-feedback is-error' ?>" role="status"><?= meetingEscape(meetingT($receipt->get('email_sent_at') ? 'email_sent' : 'email_failed')) ?></p>
@@ -101,7 +137,7 @@ $currentMonth = $now->modify('first day of this month')->setTime(0, 0);
                 <?php endif; ?>
             <?php else: ?>
                 <form method="post" action="<?= meetingEscape($path) ?>" data-meeting-confirm><input type="hidden" name="csrf" value="<?= meetingEscape($csrf) ?>"><input type="hidden" name="action" value="confirm"><input type="hidden" name="token" value="<?= meetingEscape($draft['token']) ?>"><button class="generic-action-button generic-action-button--main generic-action-button--wide"><?= meetingEscape(meetingT('confirm')) ?><?= meetingIcon('arrow') ?></button></form>
-                <a class="meeting-back" href="<?= meetingEscape($path . '?date=' . $draft['date']) ?>"><?= meetingEscape(meetingT('back')) ?></a>
+                <a class="meeting-back" href="<?= meetingEscape($path . '?date=' . $draft['date'] . '&duration=' . $durationMinutes . $methodQuery) ?>"><?= meetingEscape(meetingT('back')) ?></a>
             <?php endif; ?>
         </section>
     <?php elseif ($profile && $dayResults): ?>
@@ -110,21 +146,25 @@ $currentMonth = $now->modify('first day of this month')->setTime(0, 0);
                 <div class="meeting-month-nav">
                     <h2 id="meeting-month" class="generic-card-title generic-card-title--large"><?= meetingEscape(meetingT($monthKeys[(int)$month->format('n')]) . ' ' . $month->format('Y')) ?></h2>
                     <nav aria-label="<?= meetingEscape(meetingT('availability')) ?>">
-                        <?php if ($month > $currentMonth): ?><a class="generic-action-button generic-action-button--secondary generic-action-button--icon-only" href="<?= meetingEscape($path . '?month=' . $month->modify('-1 month')->format('Y-m')) ?>" aria-label="<?= meetingEscape(meetingT('previous')) ?>"><?= meetingIcon('previous') ?></a><?php else: ?><button class="generic-action-button generic-action-button--secondary generic-action-button--icon-only generic-action-button--unavailable" disabled aria-label="<?= meetingEscape(meetingT('previous')) ?>"><?= meetingIcon('previous') ?></button><?php endif; ?>
-                        <a class="generic-action-button generic-action-button--secondary" href="<?= meetingEscape($path . '?date=' . $now->format('Y-m-d') . '#meeting-times') ?>"><?= meetingEscape(meetingT('today')) ?></a>
-                        <?php if ($month->modify('+1 month') <= $now->modify('+365 days')): ?><a class="generic-action-button generic-action-button--secondary generic-action-button--icon-only" href="<?= meetingEscape($path . '?month=' . $month->modify('+1 month')->format('Y-m')) ?>" aria-label="<?= meetingEscape(meetingT('next')) ?>"><?= meetingIcon('next') ?></a><?php else: ?><button class="generic-action-button generic-action-button--secondary generic-action-button--icon-only generic-action-button--unavailable" disabled aria-label="<?= meetingEscape(meetingT('next')) ?>"><?= meetingIcon('next') ?></button><?php endif; ?>
+                        <?php if ($month > $currentMonth): ?><a class="generic-action-button generic-action-button--secondary generic-action-button--icon-only" href="<?= meetingEscape($path . '?month=' . $month->modify('-1 month')->format('Y-m') . '&duration=' . $durationMinutes . $methodQuery) ?>" aria-label="<?= meetingEscape(meetingT('previous')) ?>"><?= meetingIcon('previous') ?></a><?php else: ?><button class="generic-action-button generic-action-button--secondary generic-action-button--icon-only generic-action-button--unavailable" disabled aria-label="<?= meetingEscape(meetingT('previous')) ?>"><?= meetingIcon('previous') ?></button><?php endif; ?>
+                        <a class="generic-action-button generic-action-button--secondary" href="<?= meetingEscape($path . '?date=' . $now->format('Y-m-d') . '&duration=' . $durationMinutes . $methodQuery . '#meeting-times') ?>"><?= meetingEscape(meetingT('today')) ?></a>
+                        <?php if ($month->modify('+1 month') <= $now->modify('+365 days')): ?><a class="generic-action-button generic-action-button--secondary generic-action-button--icon-only" href="<?= meetingEscape($path . '?month=' . $month->modify('+1 month')->format('Y-m') . '&duration=' . $durationMinutes . $methodQuery) ?>" aria-label="<?= meetingEscape(meetingT('next')) ?>"><?= meetingIcon('next') ?></a><?php else: ?><button class="generic-action-button generic-action-button--secondary generic-action-button--icon-only generic-action-button--unavailable" disabled aria-label="<?= meetingEscape(meetingT('next')) ?>"><?= meetingIcon('next') ?></button><?php endif; ?>
                     </nav>
                 </div>
                 <div class="meeting-calendar">
                     <?php foreach (meetingWeekdayKeys() as $label): ?><span class="meeting-calendar__weekday" title="<?= meetingEscape(meetingT($label)) ?>"><?= meetingEscape(mb_substr(meetingT($label), 0, 3)) ?></span><?php endforeach; ?>
                     <?php for ($i = 1; $i < (int)$month->format('N'); $i++): ?><span aria-hidden="true"></span><?php endfor; ?>
                     <?php foreach ($dayResults as $date => $data): ?>
-                        <?php $dateLabel = $formatDay(new DateTimeImmutable($date, $zone)) . ' : ' . meetingT($data['state']); ?>
+                        <?php
+                        $dayLabel = !empty($data['workingCount']) ? meetingT('day_availability', ['free' => $data['workingCount'] - $data['busySlotCount'], 'total' => $data['workingCount']]) : meetingT($data['state']);
+                        $dateLabel = $formatDay(new DateTimeImmutable($date, $zone)) . ' : ' . $dayLabel;
+                        $occupationAttributes = !empty($data['busySlotCount']) ? ' data-busy-slots="' . (int)$data['busySlotCount'] . '" style="--param-freebusy-busy-hue:' . (48 * (1 - $data['busySlotCount'] / $data['workingCount'])) . '"' : '';
+                        ?>
                         <?php if ($data['state'] === 'closed'): ?><span class="meeting-calendar__day" data-state="closed" aria-label="<?= meetingEscape($dateLabel) ?>"><strong><?= (int)substr($date, -2) ?></strong></span>
-                        <?php else: ?><a class="meeting-calendar__day" data-state="<?= $data['state'] ?>" href="<?= meetingEscape($path . '?date=' . $date . '#meeting-times') ?>" aria-label="<?= meetingEscape($dateLabel) ?>" <?= $selectedDay && $selectedDay->format('Y-m-d') === $date ? 'aria-current="date"' : '' ?>><strong><?= (int)substr($date, -2) ?></strong></a><?php endif; ?>
+                        <?php else: ?><a class="meeting-calendar__day" data-date="<?= meetingEscape($date) ?>" data-state="<?= $data['state'] ?>"<?= $occupationAttributes ?> title="<?= meetingEscape($dayLabel) ?>" href="<?= meetingEscape($path . '?date=' . $date . '&duration=' . $durationMinutes . $methodQuery . '#meeting-times') ?>" aria-label="<?= meetingEscape($dateLabel) ?>" <?= $selectedDay && $selectedDay->format('Y-m-d') === $date ? 'aria-current="date"' : '' ?>><strong><?= (int)substr($date, -2) ?></strong></a><?php endif; ?>
                     <?php endforeach; ?>
                 </div>
-                <ul class="meeting-legend" aria-label="<?= meetingEscape(meetingT('availability')) ?>"><?php foreach (['free', 'partial', 'full', 'closed'] as $state): ?><li data-state="<?= $state ?>"><span class="meeting-status-dot" aria-hidden="true"></span><?= meetingEscape(meetingT($state === 'closed' ? 'closed_short' : $state)) ?></li><?php endforeach; ?></ul>
+                <ul class="meeting-legend" aria-label="<?= meetingEscape(meetingT('availability')) ?>"><?php foreach (['free', 'occupation', 'closed'] as $state): ?><li data-state="<?= $state ?>"><span class="meeting-status-dot" aria-hidden="true"></span><?= meetingEscape(meetingT($state === 'closed' ? 'closed_short' : ($state === 'occupation' ? 'occupation_scale' : $state))) ?></li><?php endforeach; ?></ul>
             </section>
             <aside id="meeting-times" class="generic-soft-panel generic-soft-panel--elevated generic-soft-panel--stack meeting-times" aria-labelledby="meeting-day">
                 <?php if (!$selectedDay): ?>
@@ -132,9 +172,9 @@ $currentMonth = $now->modify('first day of this month')->setTime(0, 0);
                 <?php else: ?>
                     <div><p class="meeting-eyebrow"><?= meetingEscape(meetingT(meetingWeekdayKeys()[(int)$selectedDay->format('N')])) ?></p><h2 id="meeting-day" class="generic-card-title generic-card-title--large"><?= meetingEscape($formatDay($selectedDay)) ?></h2></div>
                     <?php if ($selectedSlot): ?>
-                        <div class="meeting-selection"><span><?= meetingIcon('clock') ?><strong><?= meetingEscape($selectedSlot['time'] . ' - ' . $selectedSlot['end']->format('H:i')) ?></strong></span><a href="<?= meetingEscape($path . '?date=' . $selectedDay->format('Y-m-d') . '#meeting-times') ?>"><?= meetingEscape(meetingT('change_time')) ?></a></div>
+                        <div class="meeting-selection"><span><?= meetingIcon('clock') ?><strong><?= meetingEscape($selectedSlot['time'] . ' - ' . $selectedSlot['booking_end']->format('H:i')) ?></strong></span><a href="<?= meetingEscape($path . '?date=' . $selectedDay->format('Y-m-d') . '&duration=' . $durationMinutes . $methodQuery . '#meeting-times') ?>"><?= meetingEscape(meetingT('change_time')) ?></a></div>
                         <form class="generic-form-stack generic-form-stack--compact" method="post" action="<?= meetingEscape($path . '#meeting-times') ?>">
-                            <input type="hidden" name="csrf" value="<?= meetingEscape($csrf) ?>"><input type="hidden" name="date" value="<?= meetingEscape($selectedDay->format('Y-m-d')) ?>"><input type="hidden" name="time" value="<?= meetingEscape($selectedSlot['time']) ?>">
+                            <input type="hidden" name="csrf" value="<?= meetingEscape($csrf) ?>"><input type="hidden" name="date" value="<?= meetingEscape($selectedDay->format('Y-m-d')) ?>"><input type="hidden" name="time" value="<?= meetingEscape($selectedSlot['time']) ?>"><input type="hidden" name="duration" value="<?= $durationMinutes ?>"><input type="hidden" name="method" value="<?= meetingEscape($selectedMethod['id'] ?? '') ?>">
                             <label class="meeting-honeypot" aria-hidden="true">Website<input name="website" tabindex="-1" autocomplete="off"></label>
                             <div class="generic-form-grid generic-form-grid--pair"><?php foreach (['name', 'email'] as $field): ?><label class="generic-form-field"><span><?= meetingEscape(meetingT($field)) ?></span><input class="generic-form-control generic-form-control--compact" name="<?= $field ?>" type="<?= $field === 'email' ? 'email' : 'text' ?>" autocomplete="<?= $field ?>" maxlength="<?= $field === 'email' ? 254 : 190 ?>" required value="<?= meetingEscape($guest[$field]) ?>"></label><?php endforeach; ?></div>
                             <label class="generic-form-field"><span><?= meetingEscape(meetingT('reason')) ?></span><textarea class="generic-form-control generic-form-control--compact" name="reason" rows="3" maxlength="4000" required placeholder="<?= meetingEscape(meetingT('reason_placeholder')) ?>"><?= meetingEscape($guest['reason']) ?></textarea></label>
@@ -151,7 +191,8 @@ $currentMonth = $now->modify('first day of this month')->setTime(0, 0);
                                     <?php $inPause = true; continue; ?>
                                 <?php endif; ?>
                                 <?php $inPause = false; ?>
-                                <?php if ($slot['free']): ?><a class="generic-action-button generic-action-button--choice meeting-slot" href="<?= meetingEscape($path . '?date=' . $selectedDay->format('Y-m-d') . '&time=' . $slot['time'] . '#meeting-times') ?>"><?= meetingEscape($slot['time'] . ' - ' . $slot['end']->format('H:i')) ?></a>
+                                <?php if ($slot['selection_time'] !== null): ?><a class="generic-action-button generic-action-button--choice meeting-slot" href="<?= meetingEscape($path . '?date=' . $selectedDay->format('Y-m-d') . '&time=' . $slot['selection_time'] . '&duration=' . $durationMinutes . $methodQuery . '#meeting-times') ?>"><?= meetingEscape($slot['time'] . ' - ' . $slot['end']->format('H:i')) ?></a>
+                                <?php elseif ($slot['free']): ?><button class="generic-action-button generic-action-button--choice generic-action-button--choice-limited meeting-slot" disabled title="<?= meetingEscape(meetingT('duration_limited')) ?>" aria-label="<?= meetingEscape($slot['time'] . ' - ' . $slot['end']->format('H:i') . ' : ' . meetingT('duration_limited')) ?>"><?= meetingEscape($slot['time'] . ' - ' . $slot['end']->format('H:i')) ?></button>
                                 <?php else: ?><button class="generic-action-button generic-action-button--secondary generic-action-button--unavailable meeting-slot" disabled aria-label="<?= meetingEscape($slot['time'] . ' - ' . $slot['end']->format('H:i') . ' : ' . meetingT('occupied')) ?>"><?= meetingEscape($slot['time'] . ' - ' . $slot['end']->format('H:i')) ?></button><?php endif; ?>
                             <?php endforeach; ?>
                         </div>
@@ -162,7 +203,20 @@ $currentMonth = $now->modify('first day of this month')->setTime(0, 0);
     <?php elseif ($profile): ?><a class="meeting-back" href="<?= meetingEscape($path) ?>"><?= meetingEscape(meetingT('back')) ?></a><?php endif; ?>
     <footer class="meeting-footer"><?= meetingEscape(meetingT('powered_by')) ?> <a href="/">OMO2</a> &middot; <a href="/">OpenMyOrganization</a></footer>
 </main>
+<script src="/common/notifications/notifications.js"></script>
+<?php if ($profile && !$receipt && !$draft && !empty($dayResults)): ?>
+<script type="application/json" data-meeting-month-data><?= json_encode($monthData, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR) ?></script>
+<script src="/common/calendar/availability-model.js?v=<?= (int)filemtime(dirname(__DIR__) . '/common/calendar/availability-model.js') ?>"></script>
+<script src="/common/calendar/availability-view.js?v=<?= (int)filemtime(dirname(__DIR__) . '/common/calendar/availability-view.js') ?>"></script>
+<script src="/meeting/meeting.js?v=<?= (int)filemtime(__DIR__ . '/meeting.js') ?>"></script>
+<?php endif; ?>
 <script>
+document.querySelectorAll('[data-meeting-error]').forEach(function (message) {
+    if (typeof window.commonNotify === 'function') {
+        window.commonNotify(message.textContent, {type: 'error', duration: 5000});
+        message.hidden = true;
+    }
+});
 document.querySelectorAll('[data-meeting-avatar]').forEach(function (image) {
     function fallback() { image.hidden = true; }
     image.addEventListener('error', fallback);

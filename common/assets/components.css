@@ -1298,13 +1298,30 @@ html[data-theme="dark"] .black-icon,
 }
 
 /* Non-interactive time options retain readable contrast, without a wait cursor. */
-.generic-action-button--unavailable:disabled {
+.generic-action-button--unavailable:disabled,
+.generic-action-button--unavailable[aria-disabled="true"],
+.generic-action-button--unavailable[aria-disabled="true"]:hover {
     opacity: 1;
     cursor: not-allowed;
     color: var(--color-text-light, #64748b);
     background: color-mix(in srgb, var(--color-text-light, #64748b) 9%, var(--color-surface, #ffffff));
     border-color: transparent;
     font-weight: 400;
+    box-shadow: none;
+    transform: none;
+}
+
+/* A choice that becomes usable when another setting (such as duration) changes. */
+.generic-action-button--choice-limited:disabled,
+.generic-action-button--choice-limited[aria-disabled="true"],
+.generic-action-button--choice-limited[aria-disabled="true"]:hover {
+    opacity: 1;
+    cursor: not-allowed;
+    color: color-mix(in srgb, var(--color-primary, #2563eb) 60%, var(--color-surface, #ffffff));
+    background: var(--color-surface, #ffffff);
+    border-color: color-mix(in srgb, var(--color-primary, #2563eb) 18%, var(--color-surface, #ffffff));
+    box-shadow: none;
+    transform: none;
 }
 
 .generic-drag-handle {

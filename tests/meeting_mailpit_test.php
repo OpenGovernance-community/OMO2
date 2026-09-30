@@ -26,10 +26,13 @@ $GLOBALS['mailUser'] = '';
 $_SERVER['HTTP_HOST'] = 'localhost';
 $reference = 'OMO-Mailpit-meeting-test-' . bin2hex(random_bytes(8));
 $start = new DateTimeImmutable('tomorrow 10:00', new DateTimeZone('Europe/Zurich'));
-$ics = meetingIcs(bin2hex(random_bytes(32)), $start, $start->modify('+1 hour'), $reference, 'Synthetic email test only. No appointment created.');
+$method = ['id' => 'fixture', 'type' => 'video', 'value' => 'https://meet.example.invalid/room?x=1&y=2'];
+$ics = meetingIcs(bin2hex(random_bytes(32)), $start, $start->modify('+1 hour'), $reference, 'Synthetic email test only. No appointment created.', meetingMethodLabel($method));
 $booking = new \dbObject\MeetingBooking();
 $booking->set('calendar_data', $ics);
 $booking->set('start_at', $start);
+$booking->set('end_at', $start->modify('+1 hour'));
+$booking->set('meeting_method', json_encode($method));
 $booking->set('guest_name', 'Mailpit Test <visitor>');
 $booking->set('guest_email', 'meeting-test@example.invalid');
 $booking->set('reason', "Synthetic email test only. No appointment created.\n<script>untrusted input</script>");
@@ -49,6 +52,7 @@ $html = (string)($detail['HTML'] ?? '');
 if (!str_contains($html, "width='640'") || !str_contains($html, 'background:#004663')
     || !str_contains($html, commonMailEscape(meetingT('confirmed')))
     || !str_contains($html, 'Mailpit Test &lt;visitor&gt;')
+    || !str_contains($html, commonMailEscape(meetingMethodLabel($method)))
     || !str_contains($html, '&lt;script&gt;untrusted input&lt;/script&gt;') || str_contains($html, '<script>')) {
     throw new RuntimeException('Shared OMO mail layout missing or visitor text not escaped');
 }

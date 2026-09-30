@@ -325,6 +325,30 @@ window.omoInitCalendar = function (root) {
                     var slugStatus = form.querySelector('[data-meeting-slug-status]');
                     var enabledField = form.elements.enabled;
                     var enabledContent = form.querySelector('[data-meeting-enabled-content]');
+                    var methodList = form.querySelector('[data-meeting-methods]');
+                    var methodIndex = methodList.querySelectorAll('[data-meeting-method-row]').length;
+                    function syncMethodRows() {
+                        methodList.querySelectorAll('[data-meeting-method-row]').forEach(function (row) {
+                            var type = row.querySelector('[data-meeting-method-type]').value;
+                            var input = row.querySelector('[data-meeting-method-value]');
+                            input.type = type === 'video' ? 'url' : (type === 'phone' ? 'tel' : 'text');
+                            input.maxLength = type === 'phone' ? 100 : 1000;
+                        });
+                        form.querySelector('[data-meeting-method-add]').disabled = methodList.children.length >= Number(methodList.dataset.maxMethods);
+                    }
+                    form.addEventListener('click', function (event) {
+                        if (event.target.closest('[data-meeting-method-add]')) {
+                            var row = form.querySelector('[data-meeting-method-template]').content.cloneNode(true);
+                            row.querySelectorAll('[name]').forEach(function (input) { input.name = input.name.replace('__index__', String(methodIndex)); });
+                            methodIndex++;
+                            methodList.appendChild(row);
+                            syncMethodRows();
+                            methodList.lastElementChild.querySelector('[data-meeting-method-value]').focus();
+                        }
+                        var remove = event.target.closest('[data-meeting-method-remove]');
+                        if (remove) { remove.closest('[data-meeting-method-row]').remove(); syncMethodRows(); }
+                    });
+                    syncMethodRows();
                     function show(node, value, success) { node.textContent = value; node.classList.toggle('is-success', success); }
                     function syncMeetingEnabledContent() {
                         if (enabledContent && enabledField) { enabledContent.hidden = !enabledField.checked; }
@@ -334,6 +358,7 @@ window.omoInitCalendar = function (root) {
                             .then(function (response) { return response.json(); });
                     }
                     form.addEventListener('change', function () {
+                        syncMethodRows();
                         syncMeetingEnabledContent();
                         form.querySelectorAll('[data-meeting-day]').forEach(function (day) {
                             day.querySelector('[data-meeting-hours]').hidden = !day.querySelector('[data-meeting-open]').checked;
@@ -363,10 +388,16 @@ window.omoInitCalendar = function (root) {
                         var button = form.querySelector('[type="submit"]');
                         if (button.disabled) { return; }
                         var data = new FormData(form);
+                        var submittedRows = Array.from(methodList.querySelectorAll('[data-meeting-method-row]'));
                         button.disabled = true; show(message, text.saving, true);
                         post(data).then(function (result) {
                             show(message, result.message, result.status);
-                            if (result.status) { form.querySelector('[data-meeting-link]').value = window.location.origin + result.path; }
+                            if (result.status) {
+                                form.querySelector('[data-meeting-link]').value = window.location.origin + result.path;
+                                submittedRows.forEach(function (row, index) {
+                                    if (row.isConnected && result.methods && result.methods[index]) { row.querySelector('[data-meeting-method-id]').value = result.methods[index].id; }
+                                });
+                            }
                         }).catch(function () { show(message, text.unavailable, false); })
                             .finally(function () { button.disabled = false; });
                     });
