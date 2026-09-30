@@ -433,7 +433,7 @@ $omoHolonTemplateTexts = [
 <script src="/common/assets/property-list-conversion.js"></script>
 <script src="/common/assets/property-types.js"></script>
 <link rel="stylesheet" href="/common/permissions/editor.css?v=20260923-permission-align">
-<script src="/common/permissions/editor.js?v=20260925-extended-authorities-label"></script>
+<script src="/common/permissions/editor.js?v=20260930-member-admin"></script>
 <?= commonPageScriptTags('/omo/api/parameters/holon-templates/templates.js', [
     'omoHolonTemplateTexts' => $omoHolonTemplateTexts,
     'data' => $editorData,

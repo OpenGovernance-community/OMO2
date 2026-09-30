@@ -3741,7 +3741,12 @@
 		{
 			$indicatorId = (int)$element->getAttribute('data-omo-indicator-id');
 			$indicatorKind = trim((string)self::getDocumentEmbedAttributeValue($element, 'data-omo-indicator-kind')) === 'group' ? 'group' : 'indicator';
+			$rawSourceStatus = trim((string)self::getDocumentEmbedAttributeValue($element, 'data-omo-indicator-source-status'));
+			$sourceStatus = in_array($rawSourceStatus, array('archived', 'unavailable'), true) ? $rawSourceStatus : '';
 			$isOverdue = trim((string)self::getDocumentEmbedAttributeValue($element, 'data-omo-indicator-overdue')) === '1';
+			if ($sourceStatus !== '') {
+				$isOverdue = false;
+			}
 			$overdueSeverity = trim((string)self::getDocumentEmbedAttributeValue($element, 'data-omo-indicator-overdue-severity')) === 'warning' ? 'warning' : 'error';
 			$title = trim((string)self::getDocumentEmbedAttributeValue($element, 'data-omo-indicator-title'));
 			$value = trim((string)self::getDocumentEmbedAttributeValue($element, 'data-omo-indicator-value'));
@@ -3751,11 +3756,12 @@
 			$title = $title !== '' ? $title : ('Indicateur #' . $indicatorId);
 			$targetUrl = $indicatorKind === 'group' ? '#stats' : ('#stats-i' . $indicatorId);
 
-			$html = '<span class="omo-indicator-embed' . ($isOverdue ? ($overdueSeverity === 'warning' ? ' omo-indicator-embed--warning' : ' omo-indicator-embed--overdue') : ($status !== '' ? ' omo-indicator-embed--current' : '')) . '"'
+			$html = '<span class="omo-indicator-embed' . ($sourceStatus !== '' ? ' omo-indicator-embed--unavailable' : ($isOverdue ? ($overdueSeverity === 'warning' ? ' omo-indicator-embed--warning' : ' omo-indicator-embed--overdue') : ($status !== '' ? ' omo-indicator-embed--current' : ''))) . '"'
 				. ' data-omo-embed-type="indicator"'
 				. ' data-omo-indicator-id="' . $indicatorId . '"'
+				. ($sourceStatus !== '' ? ' data-omo-indicator-source-status="' . $sourceStatus . '"' : '')
 				. ' data-omo-indicator-kind="' . $indicatorKind . '">';
-			$statusDotClass = $isOverdue ? ($overdueSeverity === 'warning' ? ' omo-indicator-embed__status-dot--warning' : ' omo-indicator-embed__status-dot--overdue') : ($status !== '' ? ' omo-indicator-embed__status-dot--current' : ' omo-indicator-embed__status-dot--unknown');
+			$statusDotClass = $sourceStatus !== '' ? ' omo-indicator-embed__status-dot--unknown' : ($isOverdue ? ($overdueSeverity === 'warning' ? ' omo-indicator-embed__status-dot--warning' : ' omo-indicator-embed__status-dot--overdue') : ($status !== '' ? ' omo-indicator-embed__status-dot--current' : ' omo-indicator-embed__status-dot--unknown'));
 			$html .= '<span class="omo-indicator-embed__main">' . self::renderIndicatorEmbedChart($element) . '<span class="omo-indicator-embed__copy">';
 			$html .= '<strong><a class="omo-indicator-embed__title" href="' . htmlspecialchars($targetUrl, ENT_QUOTES, 'UTF-8') . '">'
 				. '<span class="omo-indicator-embed__status-dot' . $statusDotClass . '" aria-hidden="true"></span><span>'

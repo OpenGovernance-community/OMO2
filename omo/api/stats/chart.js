@@ -2,6 +2,7 @@
     'use strict';
 
     var groupColors = ['#2563eb', '#db2777', '#059669', '#d97706', '#7c3aed', '#0891b2'];
+    var archivedGroupColors = ['#64748b', '#94a3b8', '#475569', '#a1a1aa', '#71717a', '#6b7280'];
     var chartSequence = 0;
 
     function escapeXml(value) {
@@ -432,7 +433,8 @@
         svg += '<text class="omo-stats-chart__axis-label" x="' + (width - paddingRight) + '" y="' + (height - 12) + '" text-anchor="end">' + formatDay(endDay) + '</text>';
         series.forEach(function (seriesItem) {
             var coordinates = seriesItem.points.map(mapPoint);
-            var color = seriesItem.sum ? groupColors[0] : groupColors[seriesItem.sourceIndex % groupColors.length];
+            var colors = data.sourceStatus === 'archived' ? archivedGroupColors : groupColors;
+            var color = seriesItem.sum ? colors[0] : colors[seriesItem.sourceIndex % colors.length];
             var lineClass = 'omo-stats-chart__line' + (seriesItem.background ? ' omo-stats-chart__line--background' : '') + (seriesItem.sum ? ' omo-stats-chart__line--sum' : '');
             if (coordinates.length > 1) {
                 svg += '<polyline class="' + lineClass + '" style="stroke:' + color + '" points="' + coordinateString(coordinates) + '"/>';
