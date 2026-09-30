@@ -618,6 +618,7 @@
 				'holon_updated' => 'Modification',
 				'holon_member_added' => 'Ajout de membre',
 				'holon_member_removed' => 'Retrait de membre',
+				'identity_taken' => 'Prise d’identité',
 				'authority_updated' => 'Modification d autorite',
 				'authority_deleted' => 'Suppression d autorite',
 				'authority_reassigned' => 'Remontee d autorite',

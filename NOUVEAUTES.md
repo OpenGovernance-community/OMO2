@@ -1,6 +1,6 @@
 # Journal Des Nouveautes
 
-- Profil membre : en mode super admin, le bouton "Prendre l'identite" permet d'ouvrir l'organisation courante avec les droits du membre choisi. La session est renouvelee, les modes admin et les donnees de session precedentes sont effaces, et l'action est journalisee.
+- Profil membre : en mode super admin, le bouton "Prendre l'identite" permet d'ouvrir l'organisation courante avec les droits du membre choisi. La personne recoit une notification dans OMO et l'action figure dans l'historique de l'organisation. Ces deux enregistrements sont obligatoires avant le changement de session ; les modes admin et les donnees de session precedentes sont ensuite effaces, et l'action est aussi journalisee dans le journal de securite.
 
 - Indicateurs : un import dont la source est archivee reste visible en gris dans les vues cartes et compacte. Il signale que la source doit etre remplacee, conserve l acces aux valeurs historiques et ne passe plus en retard. Son import peut toujours etre modifie ou detache. Le tableau de bord des retards exclut cette source ; les autres indicateurs et les taches recurrentes archives ou supprimes disparaissent au retour au tableau de bord.
 
