@@ -827,8 +827,10 @@ $calendarEarliestEventEndAt = $gridStart <= $todayStart ? $gridStart : $todaySta
 $events->loadForOrganizationDateRange($organizationId, $calendarEarliestEventEndAt, null, false, true);
 $externalEventMetaByVirtualId = [];
 if (ExternalCalendar::isStorageAvailable()) {
+    commonExternalCalendarRefreshForDisplay($currentUserId);
     $externalEvents = new ArrayExternalCalendarEvent();
-    $externalEvents->loadActiveForUserDateRange($currentUserId, $calendarEarliestEventEndAt, new \DateTimeImmutable('+400 days'));
+    [, $externalRangeEnd] = ExternalCalendar::synchronizationRange();
+    $externalEvents->loadActiveForUserDateRange($currentUserId, $calendarEarliestEventEndAt, $externalRangeEnd);
     $virtualEventId = 1000000000;
     foreach ($externalEvents as $externalEvent) {
         if (!($externalEvent instanceof ExternalCalendarEvent)) {

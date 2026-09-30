@@ -189,6 +189,7 @@ foreach ($holonCatalog as $catalogHolonId => $catalogEntry) {
 </section>
 <link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/deferred_proposals/pv_rule_editor.css') ?>">
 <script src="<?= commonAssetUrl('/common/choice/rule-scope-fields.js') ?>"></script>
+<script src="<?= commonAssetUrl('/common/choice/proposal-html.js') ?>"></script>
 <?= commonPageScriptTags('/omo/api/deferred_proposals/pv_rule_editor.js', [
     'labels' => $holonLabels,
     'permissions' => $permissionsByOperation,

@@ -6,7 +6,14 @@ class Permission extends DbObject
     public static function requiresExplicitAssignment(string $permissionKey): bool
     {
         return $permissionKey === 'CAN_DELETE_PARCOURS'
-            || (bool)preg_match('/^CAN_(CREATE|EDIT|DELETE)_TYPE[1-9][0-9]*_PROPERTIES$/', $permissionKey);
+            || (bool)preg_match('/^CAN_(CREATE|DELETE)_TYPE[1-9][0-9]*_PROPERTIES$/', $permissionKey);
+    }
+
+    public static function getUnconfiguredFallbackPermissionKey(string $permissionKey, bool $creatingHolon = false): ?string
+    {
+        return preg_match('/^CAN_EDIT_TYPE[1-9][0-9]*_PROPERTIES$/', $permissionKey)
+            ? ($creatingHolon ? 'CAN_ADD_HOLON' : 'CAN_EDIT_HOLON')
+            : null;
     }
 
     public static function userCanInOrganization(string $permissionKey, int $organizationId, int $userId): bool

@@ -3,7 +3,7 @@ namespace dbObject;
 
 class HolonPermission extends DbObject
 {
-    const PERMISSION_CACHE_VERSION = 26;
+    const PERMISSION_CACHE_VERSION = 27;
     const MEMBER_TYPE_MEMBER = 'member';
     const MEMBER_TYPE_ADMIN = 'admin';
     const MEMBER_TYPE_COLLECTIVE = 'collective';
@@ -1448,7 +1448,14 @@ class HolonPermission extends DbObject
         return $permissionSet;
     }
 
-    public static function holonHasCollectivePermissionForHolonContext($organizationId, $collectiveHolonId, $permissionKey, $contextHolonId)
+    public static function isPermissionConfiguredForOrganization(int $organizationId, string $permissionKey): bool
+    {
+        $rootId = self::resolveOrganizationRootHolonId($organizationId);
+        $holons = $rootId > 0 ? self::loadOrganizationHolonRows($rootId) : [];
+        return $holons && count(self::loadPermissionAssignmentsForOrganization(array_keys($holons), [$permissionKey])) > 0;
+    }
+
+    public static function holonHasCollectivePermissionForHolonContext($organizationId, $collectiveHolonId, $permissionKey, $contextHolonId, bool $creatingHolon = false)
     {
         $organizationId = (int)$organizationId;
         $collectiveHolonId = (int)$collectiveHolonId;
@@ -1456,6 +1463,11 @@ class HolonPermission extends DbObject
         $permissionKey = trim((string)$permissionKey);
         if ($organizationId <= 0 || $collectiveHolonId <= 0 || $contextHolonId <= 0 || $permissionKey === '') {
             return false;
+        }
+
+        $fallback = Permission::getUnconfiguredFallbackPermissionKey($permissionKey, $creatingHolon);
+        if ($fallback !== null && !self::isPermissionConfiguredForOrganization($organizationId, $permissionKey)) {
+            return self::holonHasCollectivePermissionForHolonContext($organizationId, $collectiveHolonId, $fallback, $contextHolonId);
         }
 
         $permissionSet = self::buildHolonCollectivePermissionSetForOrganization(
@@ -1610,6 +1622,11 @@ class HolonPermission extends DbObject
             return false;
         }
 
+        $fallback = Permission::getUnconfiguredFallbackPermissionKey($permissionKey);
+        if ($fallback !== null && !self::isPermissionConfiguredForOrganization($organizationId, $permissionKey)) {
+            return self::userHasCollectivePermissionForHolonContext($userId, $organizationId, $fallback, $contextHolonId);
+        }
+
         $permissionSet = self::buildUserCollectivePermissionSetForOrganization($userId, $organizationId, [$permissionKey]);
         $scope = $permissionSet['permissions'][$permissionKey] ?? null;
         if (!is_array($scope)) {
@@ -1646,7 +1663,7 @@ class HolonPermission extends DbObject
         return false;
     }
 
-    public static function userHasPermissionForHolonContext($userId, $organizationId, $permissionKey, $contextHolonId)
+    public static function userHasPermissionForHolonContext($userId, $organizationId, $permissionKey, $contextHolonId, bool $creatingHolon = false)
     {
         $userId = (int)$userId;
         $organizationId = (int)$organizationId;
@@ -1659,6 +1676,10 @@ class HolonPermission extends DbObject
 
         $permissionSet = self::buildUserPermissionSetForOrganization($userId, $organizationId, [$permissionKey]);
         if (empty($permissionSet['definedPermissionKeys'][$permissionKey])) {
+            $fallback = Permission::getUnconfiguredFallbackPermissionKey($permissionKey, $creatingHolon);
+            if ($fallback !== null) {
+                return self::userHasPermissionForHolonContext($userId, $organizationId, $fallback, $contextHolonId);
+            }
             if (Permission::requiresExplicitAssignment($permissionKey)) {
                 return false;
             }

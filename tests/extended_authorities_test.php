@@ -39,6 +39,7 @@ namespace dbObject {
     }
     class Permission extends DbObject {
         public const KEYS = [1 => 'CAN_MOVE_HOLON', 2 => 'CAN_EDIT_HOLON', 3 => 'CAN_DELETE_HOLON'];
+        public static function getUnconfiguredFallbackPermissionKey(string $key, bool $creatingHolon = false): ?string { return null; }
         public static function getContextualMap($keys) { return array_fill_keys($keys, true); }
         public static function isPermissionContextual($key, $fallback) { return true; }
         public static function findByKey($key) { $p = new self(); $p->setId(array_search($key, self::KEYS, true)); return $p; }

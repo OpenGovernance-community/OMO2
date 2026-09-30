@@ -191,13 +191,17 @@ function meetingBusy(MeetingProfile $profile, DateTimeImmutable $start, DateTime
         }
     }
     $calendars = new ArrayExternalCalendar();
+    if (!$live) { commonExternalCalendarRefreshForDisplay($uid); }
     $calendars->loadForUser($uid, true);
     $destinationPresent = false;
     foreach ($calendars as $calendar) { $destinationPresent = $destinationPresent || (int)$calendar->getId() === (int)$profile->get('IDexternalcalendar'); }
     if (!$destinationPresent) { throw new RuntimeException('unavailable'); }
     $request ??= 'commonExternalCalendarHttpRequest';
+    $icsCalendarIds = [];
     foreach ($calendars as $calendar) {
-        if ($live) {
+        $isIcs = (string)$calendar->get('provider') === 'ics';
+        if ($isIcs) { $icsCalendarIds[(int)$calendar->getId()] = true; }
+        if ($live && !$isIcs) {
             $password = commonExternalCalendarDecryptPassword($calendar->get('password_encrypted'));
             if ($password === null) { throw new RuntimeException('unavailable'); }
             $result = $request($calendar->get('calendar_url'), $calendar->get('username'), $password,
@@ -206,27 +210,26 @@ function meetingBusy(MeetingProfile $profile, DateTimeImmutable $start, DateTime
             $parsed = commonExternalCalendarParseReport($result['body'], true);
             if (empty($parsed['status'])) { throw new RuntimeException('unavailable'); }
             foreach ($parsed['events'] as $event) { if ($event['is_busy']) { $busy[] = [$event['start_at'], $event['end_at']]; } }
+        } elseif ($live && $isIcs) {
+            $last = $calendar->get('last_sync_at');
+            if (!$last instanceof DateTimeInterface || $last->getTimestamp() < time() - 3600 || $calendar->get('last_sync_error')) {
+                $result = commonExternalCalendarSynchronize($calendar, null, null, false, microtime(true) + 8);
+                if (empty($result['status'])) { throw new RuntimeException('unavailable'); }
+            }
         } else {
             $last = $calendar->get('last_sync_at');
-            if (!$last instanceof DateTimeInterface || $last->getTimestamp() < time() - 7200 || $calendar->get('last_sync_error')) {
-                // A bounded, owner-wide refresh: public visitors never trigger concurrent full imports.
-                if (!MeetingProfile::lock($uid)) { throw new RuntimeException('unavailable'); }
-                try {
-                    $calendar->load((int)$calendar->getId(), true);
-                    $last = $calendar->get('last_sync_at');
-                    if (!$last instanceof DateTimeInterface || $last->getTimestamp() < time() - 7200) {
-                        $result = commonExternalCalendarSynchronize($calendar);
-                        if (empty($result['status'])) { throw new RuntimeException('unavailable'); }
-                    }
-                    if ($calendar->get('last_sync_error')) { throw new RuntimeException('unavailable'); }
-                } finally { MeetingProfile::unlock($uid); }
-            }
+            if (!$last instanceof DateTimeInterface || $last->getTimestamp() < time() - 5 * 3600 || $calendar->get('last_sync_error')) { throw new RuntimeException('unavailable'); }
+        }
+        if (!$live || $isIcs) {
+            [$coveredStart, $coveredEnd] = ExternalCalendar::synchronizationRange($calendar->get('last_sync_at'));
+            if ($storageStart < $coveredStart || $storageEnd > $coveredEnd) { throw new RuntimeException('unavailable'); }
         }
     }
-    if (!$live) {
+    if (!$live || $icsCalendarIds !== []) {
         $external = new ArrayExternalCalendarEvent();
         $external->loadActiveForUserDateRange($uid, $storageStart, $storageEnd);
         foreach ($external as $event) {
+            if ($live && !isset($icsCalendarIds[(int)$event->get('IDexternalcalendar')])) { continue; }
             if ($event->get('is_busy')) {
                 $endAt = DateTimeImmutable::createFromInterface($event->get('end_at'));
                 $busy[] = [$event->get('start_at'), $event->get('is_all_day') ? $endAt->modify('+1 second') : $endAt];

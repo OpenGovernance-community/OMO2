@@ -114,6 +114,12 @@ class Rule extends DbObject
         return PropertyFormat::sanitizeHtml(strip_tags($html, $allowedTags));
     }
 
+    public static function hasContentText($html): bool
+    {
+        $text = html_entity_decode(strip_tags((string)$html), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        return preg_match('/[^\s\x{00A0}]/u', $text) === 1;
+    }
+
     public static function scopes()
     {
         return [self::SCOPE_LOCAL, self::SCOPE_CIRCLE, self::SCOPE_DESCENDANTS, self::SCOPE_GLOBAL];
@@ -207,7 +213,7 @@ class Rule extends DbObject
         $expirationDate = $this->normalizeDate($this->get('expiration_date'));
         $scope = trim((string)$this->get('scope')) ?: self::SCOPE_LOCAL;
 
-        if ($title === '' || $description === '' || !$reviewDate || !$expirationDate) {
+        if ($title === '' || !self::hasContentText($description) || !$reviewDate || !$expirationDate) {
             return ['status' => false, 'text' => 'A rule requires a title, description, review date and expiration date.'];
         }
 

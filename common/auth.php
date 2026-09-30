@@ -1713,6 +1713,10 @@ function commonCurrentUserHasPermission($permissionKey, $contextHolon = null, $o
 
     $permissionSet = commonGetCurrentUserOrganizationPermissionSet($organizationId, $forceRefresh);
     if (empty($permissionSet['definedPermissionKeys'][$permissionKey])) {
+        $fallback = \dbObject\Permission::getUnconfiguredFallbackPermissionKey($permissionKey);
+        if ($fallback !== null) {
+            return commonCurrentUserHasPermission($fallback, $contextHolon, $organizationId);
+        }
         if (\dbObject\Permission::requiresExplicitAssignment($permissionKey)) {
             return false;
         }

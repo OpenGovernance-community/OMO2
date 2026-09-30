@@ -13,8 +13,9 @@ class ArrayExternalCalendarEvent extends ArrayDbObject
         $result['hasCalendars'] = count($calendars) > 0;
         foreach ($calendars as $calendar) {
             $lastSync = !empty($calendar['last_sync_at']) ? new \DateTimeImmutable($calendar['last_sync_at']) : null;
-            if ($lastSync === null || $lastSync < new \DateTimeImmutable('-2 hours') || !empty($calendar['last_sync_error'])
-                || $start < new \DateTimeImmutable('-30 days') || $end > new \DateTimeImmutable('+400 days')) {
+            [$coveredStart, $coveredEnd] = ExternalCalendar::synchronizationRange($lastSync);
+            if ($lastSync === null || $lastSync < new \DateTimeImmutable('-1 hour') || !empty($calendar['last_sync_error'])
+                || $start < $coveredStart || $end > $coveredEnd) {
                 $result['incomplete'] = true;
             }
         }

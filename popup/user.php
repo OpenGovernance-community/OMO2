@@ -4,6 +4,7 @@ require_once dirname(__DIR__) . '/common/user_competence_ui.php';
 require_once dirname(__DIR__) . '/common/user_profile_ui.php';
 require_once dirname(__DIR__) . '/common/user_permission_ui.php';
 require_once dirname(__DIR__) . '/common/user_availability.php';
+require_once dirname(__DIR__) . '/common/external_calendar.php';
 require_once dirname(__DIR__) . '/common/calendar/availability-grid.php';
 
 use dbObject\Holon;
@@ -76,6 +77,7 @@ function omoUserContextAvailabilityRenderFragment(int $userId, int $organization
     $rangeStart = $month->setTime(0, 0);
     $rangeEnd = $month->modify('+1 month')->setTime(0, 0);
     try {
+        commonExternalCalendarRefreshForDisplay($userId);
         $busy = commonUserAvailabilityLoadBusyIntervals($userId, $rangeStart, $rangeEnd);
     } catch (Throwable $exception) {
         ?>

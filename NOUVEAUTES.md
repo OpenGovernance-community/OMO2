@@ -1,5 +1,21 @@
 # Journal Des Nouveautes
 
+- Proprietes : sans droit de modification configure pour un type dans l'organisation, les valeurs suivent le droit de creer le holon lors de sa creation, puis le droit de modifier le holon lors de son edition. Les attributions explicites et les verrouillages restent prioritaires ; la structure et la suppression des proprietes gardent leurs droits propres.
+
+- Agenda : les calendriers connectes apparaissent avant les formulaires d'ajout. Choix ICS / CalDAV par boutons radio, champs compacts et aides en capsules « ? ». Chaque calendrier dispose d'un bouton Modifier pour changer son nom, sa couleur et ses parametres de connexion ; les secrets laisses vides sont conserves et un changement de connexion relance la synchronisation.
+
+- Agenda : les imports ICS et CalDAV couvrent maintenant trois mois a venir et trente jours passes. La fenetre avance a chaque synchronisation ; les anciennes occurrences hors fenetre sont desactivees et les disponibilites hors couverture restent non verifiees.
+
+- Agenda : correction de la lecture des series ICS sur journee entiere avec une date de fin UNTIL, en conservant le fuseau horaire et le dernier jour inclus.
+
+- Agenda : correction de l'ajout ICS qui envoyait un formulaire vide apres la desactivation des champs et affichait « Action inconnue ».
+
+- Agenda : abonnement en lecture seule aux flux ICS prives, y compris Google Calendar, avec recurrence RRULE, dates exclues et occurrences annulees ou deplacees. La synchronisation CalDAV et ICS est maintenant declenchee a la consultation (cache de 5 heures) ou pour les controles de disponibilite et reservations (1 heure maximum) ; la tache periodique a ete retiree.
+
+- Propositions de modifications dans les PV et les decisions collectives : les champs HTML des regles (intention et contenu) et des projets (description) utilisent l'editeur Summernote commun, avec conservation de la mise en forme lors du chargement et de l'enregistrement.
+
+- Profil : sur téléphone, sélectionner un jour dans les disponibilités fait défiler la vue vers les créneaux, avec respect de la préférence de réduction des animations.
+
 - Disponibilités : le titre du calendrier affiche uniquement le mois et l’année (par exemple « Novembre 2026 »), sans le premier jour du mois.
 
 - Structure : le deplacement d'un role hors d'un groupe ne cree plus de holons issus de modeles obligatoires dans ce groupe. La creation automatique de ces enfants est maintenant limitee aux cercles, y compris lors du deplacement d'un groupe. Les instances obligatoires creees par erreur dans un groupe peuvent etre supprimees avec les droits habituels, tandis que la derniere instance dans un cercle reste protegee.
