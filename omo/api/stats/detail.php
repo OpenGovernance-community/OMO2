@@ -20,21 +20,25 @@ if ($isImport) {
     // Resolve the source through the import; never fall back to an original detail.
     $indicatorId = $import ? (int)$import->get('IDstatindicator') : 0;
 }
-$indicator = omoStatsLoadIndicator($indicatorId, $organizationId);
+$indicator = $isImport && $import ? $import->getIndicator() : omoStatsLoadIndicator($indicatorId, $organizationId);
 
-if (!($indicator instanceof StatIndicator)) {
+if (!($indicator instanceof StatIndicator)
+    || (int)$indicator->get('IDorganization') !== $organizationId
+    || !$indicator->canView()) {
     http_response_code(404);
     echo '<div class="omo-empty-state">' . omoApiEscape(omoStatsT('stats.error.not_found')) . '</div>';
     exit;
 }
 
 $values = omoStatsCollectionItems($indicator->getMeasurements(), StatIndicatorValue::class);
+$sourceArchived = $isImport && (int)$indicator->get('active') !== 1;
 $referencePoints = omoStatsCollectionItems($indicator->getReferencePoints(), StatIndicatorReferencePoint::class);
 $valuesDescending = array_reverse($values);
 $latestValue = count($values) > 0 ? $values[count($values) - 1] : null;
 $latestReferencePercentage = omoStatsGetIndicatorReferencePercentage($indicator, $latestValue, $referencePoints);
 $canEdit = !$isImport && !empty($context['status']) && omoStatsCanEditIndicator($indicator, $context);
 $canDetach = $import && omoStatsCanDeleteContextResource($import, $context);
+$canChangeSource = $import && omoStatsCanEditContextResource($import, $context);
 $canEditValues = $canEdit && !$indicator->isEthercalcSource() && !$indicator->isSpreadsheetSource();
 $sourceUrl = StatIndicator::sanitizeSourceUrl($indicator->get('source_url'));
 $sourceDocument = null;
@@ -57,7 +61,9 @@ $measurementFrequency = $indicator->getEffectiveMeasurementFrequency();
 $measurementSchedule = omoStatsMeasurementScheduleLabel($measurementFrequency, $indicator->get('measurement_schedule'));
 $chartMinValue = is_numeric($indicator->get('chart_min_value')) ? (float)$indicator->get('chart_min_value') : null;
 $showCumulative = (int)$indicator->get('show_cumulative') > 0;
-$overdueInfo = omoStatsGetIndicatorOverdueInfo($indicator);
+$overdueInfo = $sourceArchived
+    ? ['is_overdue' => false, 'severity' => 'none', 'overdue_days' => 0]
+    : omoStatsGetIndicatorOverdueInfo($indicator);
 $overdueSeverity = (string)$overdueInfo['severity'];
 $chartData = omoStatsBuildIndicatorChartData($indicator, $values, $referencePoints, $overdueSeverity);
 $headerDescriptionParts = [omoStatsReferenceTypeLabel($indicator->get('reference_type'))];
@@ -82,7 +88,7 @@ if ($isImport) {
 $tabPrefix = 'omo-stats-detail-' . (int)$indicatorId;
 ?>
 <article
-    class="omo-stats-detail<?= $overdueSeverity === 'error' ? ' omo-stats-detail--overdue' : ($overdueSeverity === 'warning' ? ' omo-stats-detail--warning' : '') ?>"
+    class="omo-stats-detail<?= $sourceArchived ? ' omo-stats-detail--source-archived' : ($overdueSeverity === 'error' ? ' omo-stats-detail--overdue' : ($overdueSeverity === 'warning' ? ' omo-stats-detail--warning' : '')) ?>"
     data-omo-stats-detail
     data-indicator-id="<?= (int)$indicatorId ?>"
     data-import-id="<?= (int)$importId ?>"
@@ -94,6 +100,15 @@ $tabPrefix = 'omo-stats-detail-' . (int)$indicatorId;
         data-omo-subdrawer-title="<?= omoApiEscape((string)$indicator->get('name')) ?>"
         data-omo-subdrawer-description="<?= omoApiEscape($headerDescription) ?>"
     >
+        <?php if ($canChangeSource): ?>
+            <button
+                type="button"
+                class="generic-action-button generic-action-button--secondary"
+                data-omo-subdrawer-action
+                data-omo-stats-edit-import="<?= (int)$importId ?>"
+                data-omo-stats-indicator-id="<?= (int)$indicatorId ?>"
+            ><?= omoApiEscape(omoStatsT('stats.action.edit_import')) ?></button>
+        <?php endif; ?>
         <?php if ($canDetach): ?>
             <button
                 type="button"
@@ -113,6 +128,7 @@ $tabPrefix = 'omo-stats-detail-' . (int)$indicatorId;
     </div>
 
     <div class="omo-stats-detail__meta omo-stats-detail__meta--compact generic-meta">
+        <?php if ($sourceArchived): ?><span class="omo-stats-source-archived-note"><strong><?= omoApiEscape(omoStatsT('stats.card.source_archived')) ?>.</strong> <?= omoApiEscape(omoStatsT('stats.card.source_archived_hint')) ?></span><?php endif; ?>
         <span><strong><?= omoApiEscape(omoStatsT('stats.card.context')) ?> :</strong> <?= omoApiEscape($contextLabel) ?></span>
         <span><strong><?= omoApiEscape(omoStatsT('stats.responsibility.label')) ?> :</strong> <?= omoApiEscape($responsibilityLabel) ?></span>
             <?php if ($overdueSeverity === 'warning'): ?>

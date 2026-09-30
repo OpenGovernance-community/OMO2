@@ -1,5 +1,9 @@
 # Journal Des Nouveautes
 
+- Profil membre : en mode super admin, le bouton "Prendre l'identite" permet d'ouvrir l'organisation courante avec les droits du membre choisi. La session est renouvelee, les modes admin et les donnees de session precedentes sont effaces, et l'action est journalisee.
+
+- Indicateurs : un import dont la source est archivee reste visible en gris dans les vues cartes et compacte. Il signale que la source doit etre remplacee, conserve l acces aux valeurs historiques et ne passe plus en retard. Son import peut toujours etre modifie ou detache. Le tableau de bord des retards exclut cette source ; les autres indicateurs et les taches recurrentes archives ou supprimes disparaissent au retour au tableau de bord.
+
 - Proprietes : sans droit de modification configure pour un type dans l'organisation, les valeurs suivent le droit de creer le holon lors de sa creation, puis le droit de modifier le holon lors de son edition. Les attributions explicites et les verrouillages restent prioritaires ; la structure et la suppression des proprietes gardent leurs droits propres.
 
 - Agenda : les calendriers connectes apparaissent avant les formulaires d'ajout. Choix ICS / CalDAV par boutons radio, champs compacts et aides en capsules « ? ». Chaque calendrier dispose d'un bouton Modifier pour changer son nom, sa couleur et ses parametres de connexion ; les secrets laisses vides sont conserves et un changement de connexion relance la synchronisation.

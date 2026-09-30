@@ -302,4 +302,4 @@ $texts = [
 <script src="/common/drawer/subdrawer.js?v=20260906-slide-right"></script>
 <script src="/omo/assets/js/simple-html-field.js?v=20260912-toolbar-always-visible"></script>
 <script src="/omo/assets/js/application-view-preferences.js?v=20260919-activity-assignment"></script>
-<script src="/omo/api/activities/activities.js?v=20260929-archive"></script>
+<script src="/omo/api/activities/activities.js?v=20260930-dashboard-refresh"></script>

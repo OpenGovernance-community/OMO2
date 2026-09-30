@@ -1696,6 +1696,9 @@ window.commonPageScripts["/omo/api/stats/stats.js"] = function (pageConfig, page
         formData.append('oid', root.getAttribute('data-omo-stats-oid') || '');
         indicatorActionButton.disabled = true;
         postFormData(formData).then(function () {
+            if (typeof window.omoInvalidateMainRightPanel === 'function') {
+                window.omoInvalidateMainRightPanel();
+            }
             closeDrawer({force: true});
             return refreshRoot(currentUrl);
         }).catch(function (error) {
