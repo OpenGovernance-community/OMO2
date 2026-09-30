@@ -3,20 +3,29 @@ require_once dirname(__DIR__) . '/shared_functions.php';
 require_once dirname(__DIR__) . '/common/auth.php';
 require_once dirname(__DIR__) . '/common/email_layout.php';
 require_once dirname(__DIR__) . '/common/translation_bundles.php';
+require_once dirname(__DIR__) . '/common/meeting/steps.php';
 
 use dbObject\AuthRateLimit;
 use dbObject\Event;
 use dbObject\EventPublicLink;
 use dbObject\EventPublicRegistration;
+use dbObject\Organization;
+use dbObject\User;
 
 $sourceLang = [
     'title' => ['text' => 'Inscription à un événement', 'context' => 'Public event registration page title.'],
+    'powered_by' => ['text' => 'Powered by', 'context' => 'Attribution before the OMO2 and OpenMyOrganization links in the public registration footer.'],
+    'steps' => ['text' => "Étapes de l'inscription", 'context' => 'Accessible label for public registration progress.'],
+    'step_details' => ['text' => 'Vos informations', 'context' => 'First registration step: name and email.'],
+    'step_email' => ['text' => 'Envoi e-mail', 'context' => 'Second registration step: confirmation email sent.'],
+    'step_confirm' => ['text' => 'Confirmation', 'context' => 'Third registration step: email confirmation and receipt.'],
     'unavailable' => ['text' => "Cette page d'inscription n'est pas disponible.", 'context' => 'Unavailable public event.'],
     'intro' => ['text' => 'Participez à cette rencontre', 'context' => 'Public event introduction.'],
     'date' => ['text' => 'Date et horaire', 'context' => 'Event date label.'],
     'place' => ['text' => 'Lieu', 'context' => 'Event place label.'],
     'place_unspecified' => ['text' => 'Lieu à préciser', 'context' => 'Event with no physical or online location yet.'],
     'video' => ['text' => 'Visioconférence', 'context' => 'Online event label.'],
+    'video_locked' => ['text' => "Finalisez l'inscription pour accéder à l'URL", 'context' => 'Placeholder hiding the meeting URL until the registration is confirmed.'],
     'description' => ['text' => 'À propos de la rencontre', 'context' => 'Event description heading.'],
     'form_title' => ['text' => "S'inscrire", 'context' => 'Registration form heading.'],
     'name' => ['text' => 'Votre nom', 'context' => 'Registrant name field.'],
@@ -40,6 +49,7 @@ $sourceLang = [
     'mail_intro' => ['text' => 'Vous avez demandé une inscription à « {title} ». Confirmez votre adresse pour valider votre place.', 'context' => 'Registration confirmation email introduction.'],
     'mail_button' => ['text' => 'Confirmer mon inscription', 'context' => 'Registration confirmation email button.'],
     'mail_footer' => ['text' => "Si vous n'avez pas demandé cette inscription, ignorez ce message.", 'context' => 'Registration confirmation email footer.'],
+    'mail_contact' => ['text' => 'Votre contact : {name} ({email}). Vous pouvez répondre directement à cet e-mail.', 'context' => 'Event creator contact details and reply instructions in the registration email.'],
 ];
 $bundle = loadTranslationBundle('event_public_registration', translationBundleResolveRequestLocale('lang', translationBundleGetSupportedLocales(), 'fr'), $sourceLang);
 function eventT(string $key, array $replace = []): string
@@ -85,6 +95,10 @@ try {
     if ($confirmationToken !== '' && $state !== 'receipt') {
         $registration = EventPublicRegistration::forToken($confirmationToken);
         if (!$registration || (int)$registration->get('IDevent') !== (int)$event->getId()) { throw new RuntimeException('invalid'); }
+        if ($registration->get('confirmed_at')) {
+            header('Location: /event/receipt/' . rawurlencode((string)$registration->get('token')), true, 303);
+            exit;
+        }
         $state = 'confirm';
     }
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -122,10 +136,21 @@ try {
         }
         $base = rtrim((string)appGetCurrentSiteBaseUrl(), '/');
         $url = $base . $link->publicPath() . '?confirm=' . rawurlencode((string)$registration->get('token'));
+        $organizationId = (int)$event->get('IDorganization');
+        $organization = new Organization();
+        $organizationName = $organization->load($organizationId) ? trim((string)$organization->get('name')) : '';
+        $creator = new User();
+        $creatorEmail = $creator->load((int)$event->get('IDuser')) ? trim((string)$creator->getScopedEmail($organizationId)) : '';
+        if (!filter_var($creatorEmail, FILTER_VALIDATE_EMAIL)) { $creatorEmail = ''; }
+        $creatorName = $event->getCreatedByDisplayName();
+        $contactName = $creatorName !== '' ? $creatorName : $creatorEmail;
+        $senderName = implode(' · ', array_unique(array_filter([$contactName, $organizationName]))) ?: 'OMO';
+        $replyTo = $creatorEmail !== '' ? [$creatorEmail, $contactName] : null;
         $body = commonRenderMailLayout([
-            'brand_name' => 'OMO',
+            'brand_name' => $organizationName !== '' ? $organizationName : $senderName,
             'heading' => eventT('confirm_title'),
             'intro_html' => commonMailTextToHtml(eventT('mail_intro', ['title' => (string)$event->get('title')])),
+            'details_html' => $replyTo !== null ? commonMailTextToHtml(eventT('mail_contact', ['name' => $contactName, 'email' => $creatorEmail])) : '',
             'button_label' => eventT('mail_button'), 'button_url' => $url,
             'footer_html' => commonMailTextToHtml(eventT('mail_footer')),
         ]);
@@ -135,7 +160,7 @@ try {
             $from = 'noreply@' . preg_replace('/:\d+$/', '', (string)$host);
             if (!filter_var($from, FILTER_VALIDATE_EMAIL)) { $from = 'noreply@localhost.invalid'; }
         }
-        if (!myHTMLMail([$from, 'OMO'], $email, eventT('mail_subject', ['title' => (string)$event->get('title')]), $body)) {
+        if (!myHTMLMail([$from, $senderName], $email, eventT('mail_subject', ['title' => (string)$event->get('title')]), $body, replyTo: $replyTo)) {
             error_log('Public event registration email failed for event ' . (int)$event->getId());
             throw new RuntimeException('error');
         }
@@ -173,12 +198,22 @@ $documents = $state === 'receipt' && $event ? $event->getAssociatedDocuments() :
     <meta name="robots" content="noindex,nofollow">
     <title><?= eventEscape($event ? $event->get('title') : eventT('title')) ?> - OMO</title>
     <link rel="stylesheet" href="<?= eventEscape(commonAssetUrl('/common/assets/components.css')) ?>">
-    <link rel="stylesheet" href="<?= eventEscape(commonAssetUrl('/meeting/meeting.css')) ?>">
+    <link rel="stylesheet" href="<?= eventEscape(commonAssetUrl('/common/meeting/public.css')) ?>">
     <link rel="stylesheet" href="<?= eventEscape(commonAssetUrl('/event/event.css')) ?>">
 </head>
 <body class="meeting-page event-registration-page">
 <main class="generic-page-shell meeting-shell event-registration-shell">
-    <div class="meeting-topbar"><a class="meeting-brand" href="<?= eventEscape($link ? $link->publicPath() : '/') ?>"><span>OMO<span class="meeting-brand__label"><?= eventEscape(eventT('title')) ?></span></span></a></div>
+    <div class="meeting-topbar">
+        <a class="meeting-brand" href="<?= eventEscape($link ? $link->publicPath() : '/') ?>"><span><img class="meeting-brand__logo" src="<?= eventEscape(commonAssetUrl('/img/omo2/logo-omo-dark.png')) ?>" alt="OMO" width="1076" height="332"><span class="meeting-brand__label"><?= eventEscape(eventT('title')) ?></span></span></a>
+        <?php if ($event): ?>
+            <?= commonMeetingRenderSteps(
+                [eventT('step_details'), eventT('step_email'), eventT('step_confirm')],
+                match ($state) { 'form' => 1, 'sent' => 2, default => 3 },
+                $state === 'receipt',
+                eventT('steps')
+            ) ?>
+        <?php endif; ?>
+    </div>
     <?php if (!$event): ?>
     <section class="generic-soft-panel generic-soft-panel--elevated"><h1 class="generic-card-title generic-card-title--large"><?= eventEscape(eventT('unavailable')) ?></h1></section>
     <?php else: ?>
@@ -190,7 +225,7 @@ $documents = $state === 'receipt' && $event ? $event->getAssociatedDocuments() :
         <section class="generic-soft-panel generic-soft-panel--elevated generic-stack">
             <div class="meeting-detail-row"><span class="meeting-icon-disc" aria-hidden="true">&#128339;</span><div><span class="meeting-muted"><?= eventEscape(eventT('date')) ?></span><strong><?= eventEscape($schedule) ?></strong></div></div>
             <?php if (!empty($location['address'])): ?><div class="meeting-detail-row"><span class="meeting-icon-disc" aria-hidden="true">&#128205;</span><div><span class="meeting-muted"><?= eventEscape(eventT('place')) ?></span><strong><?= eventEscape($location['address']) ?></strong></div></div><?php endif; ?>
-            <?php if (!empty($location['videoUrl'])): ?><div class="meeting-detail-row"><span class="meeting-icon-disc" aria-hidden="true">&#128249;</span><div><span class="meeting-muted"><?= eventEscape(eventT('video')) ?></span><strong><?= eventEscape($location['videoUrl']) ?></strong></div></div><?php endif; ?>
+            <?php if (!empty($location['videoUrl'])): ?><div class="meeting-detail-row"><span class="meeting-icon-disc" aria-hidden="true">&#128249;</span><div><span class="meeting-muted"><?= eventEscape(eventT('video')) ?></span><strong><?= eventEscape($state === 'receipt' ? $location['videoUrl'] : eventT('video_locked')) ?></strong></div></div><?php endif; ?>
             <?php if (empty($location['address']) && empty($location['videoUrl'])): ?><div class="meeting-detail-row"><span class="meeting-icon-disc" aria-hidden="true">&#128205;</span><div><span class="meeting-muted"><?= eventEscape(eventT('place')) ?></span><strong><?= eventEscape(eventT('place_unspecified')) ?></strong></div></div><?php endif; ?>
             <?php if (trim((string)$event->get('description')) !== ''): ?><section class="generic-section generic-section--stack"><h2 class="generic-card-title generic-card-title--medium"><?= eventEscape(eventT('description')) ?></h2><p class="event-registration-description"><?= nl2br(eventEscape($event->get('description'))) ?></p></section><?php endif; ?>
         </section>
@@ -227,6 +262,7 @@ $documents = $state === 'receipt' && $event ? $event->getAssociatedDocuments() :
         <?php endforeach; ?>
     <?php endif; ?>
     <?php endif; ?>
+    <footer class="meeting-footer"><?= eventEscape(eventT('powered_by')) ?> <a href="/">OMO2</a> &middot; <a href="/">OpenMyOrganization</a></footer>
 </main>
 </body>
 </html>
