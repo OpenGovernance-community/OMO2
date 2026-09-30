@@ -677,7 +677,10 @@
 			}
 
 			if ($this->isLastMandatoryTemplateInstance()) {
-				return false;
+				$parentHolon = $this->getParentHolon();
+				if ($parentHolon instanceof self && (int)$parentHolon->get('IDtypeholon') === 2) {
+					return false;
+				}
 			}
 
 			if ($this->isMandatoryVisibleTemplateOriginal()) {

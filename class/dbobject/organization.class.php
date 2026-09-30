@@ -10651,6 +10651,10 @@
 		// Ajoute enfants obligatoires
 		protected function createMandatoryChildrenForCircle(\dbObject\Holon $circleHolon, $rootHolonId, $userId = 0, array $excludedTemplateIds = array())
 		{
+			if ((int)$circleHolon->get('IDtypeholon') !== 2) {
+				return;
+			}
+
 			$excludedTemplateIds = array_map('intval', $excludedTemplateIds);
 
 			foreach ($this->getAvailableTemplateDefinitionHolons((int)$circleHolon->getId()) as $template) {
@@ -13643,9 +13647,11 @@
 				);
 			}
 
-			$this->createMandatoryChildrenForCircle($currentParent, (int)$rootHolon->getId(), $userId);
+			if ((int)$currentParent->get('IDtypeholon') === 2) {
+				$this->createMandatoryChildrenForCircle($currentParent, (int)$rootHolon->getId(), $userId);
+			}
 
-			if (in_array((int)$holon->get('IDtypeholon'), array(2, 3), true)) {
+			if ((int)$holon->get('IDtypeholon') === 2) {
 				$this->createMandatoryChildrenForCircle($holon, (int)$rootHolon->getId(), $userId);
 			}
 

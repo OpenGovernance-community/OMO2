@@ -4,9 +4,12 @@ function commonUserAvailabilityFormatDate(DateTimeInterface $date, bool $withWee
 {
     if (class_exists('IntlDateFormatter')) {
         $formatter = new IntlDateFormatter('fr_CH', $withWeekday ? IntlDateFormatter::FULL : IntlDateFormatter::LONG, IntlDateFormatter::NONE);
+        if (!$withWeekday) {
+            $formatter->setPattern('LLLL y');
+        }
         $formatted = $formatter->format($date);
         if (is_string($formatted) && $formatted !== '') {
-            return $formatted;
+            return $withWeekday ? $formatted : ucfirst($formatted);
         }
     }
 
