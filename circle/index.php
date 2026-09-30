@@ -24,7 +24,7 @@
     'text2' => T_("Charger un schéma"),
     'text3' => T_("Soutenez-nous !"),
     'text4' => T_("Ajouter un noeud"),
-    'text5' => T_("Editer un noeud"),
+    'text5' => T_("Modifier un nœud"),
     'text6' => T_("Déplacer un noeud"),
 ], 'circleEditorConfig') ?>
 

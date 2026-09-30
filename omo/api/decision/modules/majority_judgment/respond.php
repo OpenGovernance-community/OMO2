@@ -134,7 +134,7 @@ if (
 ) {
     omoDecisionModuleJsonResponse(403, [
         'status' => false,
-        'message' => 'Votre reponse a deja ete soumise et ne peut plus etre modifiee.',
+        'message' => 'Votre réponse a déjà été soumise et ne peut plus être modifiée.',
     ]);
 }
 if (!$response) {

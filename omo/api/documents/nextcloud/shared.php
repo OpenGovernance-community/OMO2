@@ -17,7 +17,7 @@ function omoDocumentsNextcloudLoadFolder(int $folderId, int $organizationId = 0)
         || !commonUserHasOrganizationAccess($userId, $resolvedOrganizationId)
         || !$folder->canViewInOrganizationContext($resolvedOrganizationId, $holonId > 0 ? $holonId : null, $userId)
     ) {
-        return array('status' => false, 'httpCode' => 403, 'text' => 'Acces refuse.');
+        return array('status' => false, 'httpCode' => 403, 'text' => 'Accès refusé.');
     }
 
     $organization = new \dbObject\Organization();
@@ -56,7 +56,7 @@ function omoDocumentsNextcloudLoadFolder(int $folderId, int $organizationId = 0)
 		}
 		$saveResult = $folder->save();
 		if (!is_array($saveResult) || empty($saveResult['status'])) {
-			return array('status' => false, 'httpCode' => 500, 'text' => 'Impossible de mettre a jour le chemin du dossier NextCloud.');
+			return array('status' => false, 'httpCode' => 500, 'text' => 'Impossible de mettre à jour le chemin du dossier NextCloud.');
 		}
 	}
 

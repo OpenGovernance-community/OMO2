@@ -134,7 +134,7 @@ $popupUrl = 'api/shares/popup.php?oid=' . rawurlencode((string)$organizationId) 
 
                     <div class="omo-share-popup__card-actions">
                         <button type="button" class="omo-share-popup__button generic-action-button generic-action-button--secondary" data-share-copy="1">Copier</button>
-                        <button type="button" class="omo-share-popup__button generic-action-button generic-action-button--secondary" data-share-edit="1">Editer</button>
+                        <button type="button" class="omo-share-popup__button generic-action-button generic-action-button--secondary" data-share-edit="1">Modifier</button>
                         <button type="button" class="omo-share-popup__button generic-action-button generic-action-button--danger" data-share-delete="1">Supprimer</button>
                     </div>
                 </div>

@@ -644,7 +644,7 @@
 			&& telegramRoleCanReceiveGroupMemos($user, $organization, $currentHolon)
 		) {
 			$buttons[] = array(array(
-				'text' => 'Selectionner ce role',
+				'text' => 'Sélectionner ce rôle',
 				'callback_data' => 'tg_dest_role_'.$organizationId.'_'.(int)$currentHolon->getId(),
 			));
 		}
@@ -690,7 +690,7 @@
 
 		$text = "Connecter ce groupe\n\nStructure : ".buildHolonPathLabel($organization, $currentHolon === $rootHolon ? null : $currentHolon);
 		$text .= (int)$currentHolon->get('IDtypeholon') === 1
-			? "\n\nVous pouvez selectionner ce role ou explorer les projets rattaches a ce role."
+			? "\n\nVous pouvez sélectionner ce rôle ou explorer les projets rattachés à ce rôle."
 			: "\n\nLes groupes et les cercles servent uniquement a naviguer. Choisissez un role.";
 		return array('text' => $text, 'buttons' => $buttons);
 	}
@@ -748,7 +748,7 @@
 
 			$projectId = (int)$project->getId();
 			$title = trim((string)$project->get('title'));
-			$buttons[] = array(array('text' => 'Selectionner : '.$title, 'callback_data' => 'tg_dest_project_'.$organizationId.'_'.$roleHolonId.'_'.$projectId));
+			$buttons[] = array(array('text' => 'Sélectionner : '.$title, 'callback_data' => 'tg_dest_project_'.$organizationId.'_'.$roleHolonId.'_'.$projectId));
 			if (count($childrenByParent[$projectId] ?? array()) > 0) {
 				$buttons[] = array(array('text' => 'Explorer : '.$title, 'callback_data' => 'tg_dest_projects_'.$organizationId.'_'.$roleHolonId.'_'.$projectId));
 			}

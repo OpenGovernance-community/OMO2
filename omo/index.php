@@ -251,7 +251,7 @@ $sourceLang = [
         'context' => 'Status label shown on the organization directory page with the number of accessible organizations.',
     ],
     'app.login.intro' => [
-        'text' => 'Connectez-vous pour acceder à la structure et aux outils de gouvernance.',
+        'text' => 'Connectez-vous pour accéder à la structure et aux outils de gouvernance.',
         'context' => 'Intro text shown on the login page before accessing OMO.',
     ],
     'app.login.page_title' => [

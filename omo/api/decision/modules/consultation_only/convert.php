@@ -30,7 +30,7 @@ if (DecisionProcess::normalizeEvaluationMethod($decisionGroup->get('evaluation_m
     omoDecisionModuleJsonResponse(409, ['status' => false, 'message' => 'Cette prise de decision ne peut pas etre transformee depuis une consultation seule.']);
 }
 if (!$decision->hasConsultationEnded() || $decision->hasEvaluationStarted()) {
-    omoDecisionModuleJsonResponse(409, ['status' => false, 'message' => 'La consultation doit etre terminee avant de choisir un mode de vote.']);
+    omoDecisionModuleJsonResponse(409, ['status' => false, 'message' => 'La consultation doit être terminée avant de choisir un mode de vote.']);
 }
 
 $targetMethod = DecisionProcess::normalizeEvaluationMethod((string)($_POST['target_method'] ?? ''));

@@ -220,7 +220,7 @@ function omoUserContextRenderRoleAssignment(array $assignment, $userId, $returnP
                             class="generic-menu-item"
                             data-user-role-edit-url="<?= omoApiEscape($assignmentEditorUrl) ?>"
                             role="menuitem"
-                        >Editer l affectation</button>
+                        >Modifier l’affectation</button>
                     </div>
                 </div>
             <?php endif; ?>
@@ -451,7 +451,7 @@ function omoUserContextRenderPendingInvitationFragment(array $context)
 
         <section class="omo-user-pending-invitation__section generic-section generic-section--stack">
             <h3 class="generic-card-title generic-card-title--medium">Etat du profil</h3>
-            <p class="omo-user-pending-invitation__detail"><?= omoApiEscape($detailCopy !== '' ? $detailCopy : 'Le profil detaille n est pas encore accessible.') ?></p>
+            <p class="omo-user-pending-invitation__detail"><?= omoApiEscape($detailCopy !== '' ? $detailCopy : 'Le profil détaillé n’est pas encore accessible.') ?></p>
         </section>
 
         <section class="omo-user-pending-invitation__section generic-section generic-section--stack">
@@ -479,7 +479,7 @@ function omoUserContextRenderPendingInvitationFragment(array $context)
                         $pendingHolonType = trim((string)($pendingHolon['typeLabel'] ?? ''));
                         ?>
                         <li>
-                            <strong><?= omoApiEscape($pendingHolonName !== '' ? $pendingHolonName : 'Acces en attente') ?></strong>
+                            <strong><?= omoApiEscape($pendingHolonName !== '' ? $pendingHolonName : 'Accès en attente') ?></strong>
                             <?php if ($pendingHolonType !== ''): ?>
                                 <span class="omo-user-pending-invitation__holon-type">(<?= omoApiEscape($pendingHolonType) ?>)</span>
                             <?php endif; ?>
@@ -489,7 +489,7 @@ function omoUserContextRenderPendingInvitationFragment(array $context)
             <?php elseif ($hasPendingInvitation): ?>
                 <div class="omo-user-pending-invitation__empty">Cette invitation attend encore une réponse, mais aucun espace détaillé n’a pu être listé.</div>
             <?php else: ?>
-                <div class="omo-user-pending-invitation__empty"><?= omoApiEscape($missingInvitationCopy !== '' ? $missingInvitationCopy : 'Aucune invitation active n a ete retrouvee pour ce membre. La vue affichera le profil normal des que la situation sera regularisee.') ?></div>
+                <div class="omo-user-pending-invitation__empty"><?= omoApiEscape($missingInvitationCopy !== '' ? $missingInvitationCopy : 'Aucune invitation active n’a été retrouvée pour ce membre. La vue affichera son profil normal dès que la situation sera régularisée.') ?></div>
             <?php endif; ?>
         </section>
 
@@ -577,7 +577,7 @@ function omoUserContextRenderPendingInvitationFragment(array $context)
                         return;
                     }
 
-                    setFeedback(result.data.message || 'Invitation renvoyee.', false);
+                    setFeedback(result.data.message || 'Invitation renvoyée.', false);
                 })
                 .catch(function () {
                     resendButton.disabled = false;
@@ -615,7 +615,7 @@ if (!$organization->load($organizationId)) {
 if (!$organization->canViewDetail()) {
     http_response_code(403);
     ?>
-    <div class="omo-user-context omo-user-context--error">Acces refuse a cette organisation.</div>
+    <div class="omo-user-context omo-user-context--error">Accès refusé à cette organisation.</div>
     <?php
     exit;
 }
@@ -638,7 +638,7 @@ if ($hasStructureContext && $currentHolonId > 0 && (int)$rootHolon->getId() !== 
     if (!$canViewCandidate) {
         http_response_code(403);
         ?>
-        <div class="omo-user-context omo-user-context--error">Acces refuse a ce contexte.</div>
+        <div class="omo-user-context omo-user-context--error">Accès refusé à ce contexte.</div>
         <?php
         exit;
     }
@@ -671,20 +671,20 @@ if ($hasUninvitedPendingMembership) {
         'secondaryLabel' => $pendingMemberEmail,
         'contextLabel' => trim((string)$currentHolon->getTemplateLabel(true)),
         'contextName' => trim((string)$currentHolon->getDisplayName()),
-        'stateTitle' => 'A inviter',
-        'stateBadge' => 'A inviter',
+        'stateTitle' => 'À inviter',
+        'stateBadge' => 'À inviter',
         'invitationSectionTitle' => 'Invitation non envoyee',
-        'statusCopy' => 'Cette personne a ete importee sans recevoir d e-mail. Son profil reste masque tant qu une invitation n est pas envoyee et acceptee.',
+        'statusCopy' => 'Cette personne a été importée sans recevoir d’e-mail. Son profil reste masqué tant qu’une invitation n’a pas été envoyée et acceptée.',
         'detailCopy' => 'Le compte est prepare dans cette organisation, sans que la personne ait encore ete informee de son existence.',
-        'manageCopy' => 'Vous pouvez creer puis envoyer une invitation a cette adresse e-mail.',
+        'manageCopy' => 'Vous pouvez créer puis envoyer une invitation à cette adresse e-mail.',
         'manageRestrictedCopy' => \dbObject\Organization::formatLexiconText('Le compte reste en attente. Seules les personnes ayant le droit CAN_ADD_MEMBER sur ce holon peuvent envoyer une invitation.'),
-        'missingInvitationCopy' => 'Aucune invitation n a encore ete creee pour cette personne.',
+        'missingInvitationCopy' => 'Aucune invitation n’a encore été créée pour cette personne.',
         'pendingHolons' => array(),
         'hasPendingInvitation' => false,
         'canManageInvitation' => $canSendPendingMemberInvitation,
         'canResendInvitation' => $canSendPendingMemberInvitation,
         'invitationAction' => 'send_invitation',
-        'invitationActionLabel' => 'Envoyer l e-mail d invitation',
+        'invitationActionLabel' => 'Envoyer l’e-mail d’invitation',
     ]);
     exit;
 }
@@ -715,10 +715,10 @@ if ($pendingInvitation instanceof Invitation && $pendingInvitation->isAdminIniti
         'secondaryLabel' => $pendingInvitationEmail,
         'contextLabel' => trim((string)$currentHolon->getTemplateLabel(true)),
         'contextName' => trim((string)$currentHolon->getDisplayName()),
-        'statusCopy' => 'Ce profil reste masque tant que la personne n a pas accepte son invitation.',
-        'detailCopy' => 'Meme en mode admin d organisation, les informations du profil ne sont pas affichees avant acceptation afin d eviter tout acces sans consentement.',
-        'manageCopy' => 'Vous pouvez uniquement renvoyer le message d invitation a cette adresse e-mail.',
-        'manageRestrictedCopy' => \dbObject\Organization::formatLexiconText('Le profil reste masque jusqu a l acceptation de l invitation. Seules les personnes qui ont le droit CAN_ADD_MEMBER sur ce holon peuvent renvoyer le message.'),
+        'statusCopy' => 'Ce profil reste masqué tant que la personne n’a pas accepté son invitation.',
+        'detailCopy' => 'Même en mode admin d’organisation, les informations du profil ne sont pas affichées avant acceptation, afin d’éviter tout accès sans consentement.',
+        'manageCopy' => 'Vous pouvez uniquement renvoyer le message d’invitation à cette adresse e-mail.',
+        'manageRestrictedCopy' => \dbObject\Organization::formatLexiconText('Le profil reste masqué jusqu’à l’acceptation de l’invitation. Seules les personnes qui ont le droit CAN_ADD_MEMBER sur ce holon peuvent renvoyer le message.'),
         'invitationTypeLabel' => 'Invitation admin',
         'pendingHolons' => $pendingInvitationHolons,
         'hasPendingInvitation' => true,
@@ -742,11 +742,11 @@ if (!$userLoaded) {
             'secondaryLabel' => $pendingInvitationEmail,
             'contextLabel' => trim((string)$currentHolon->getTemplateLabel(true)),
             'contextName' => trim((string)$currentHolon->getDisplayName()),
-            'statusCopy' => 'Ce membre a bien une invitation en attente, mais son profil complet n est pas encore disponible.',
-            'detailCopy' => 'Pour le moment, seuls les elements lies a l invitation peuvent etre affiches. Les informations detaillees du profil seront visibles apres acceptation.',
-            'manageCopy' => 'Vous pouvez renvoyer le message d invitation a cette adresse e-mail.',
+            'statusCopy' => 'Ce membre a bien une invitation en attente, mais son profil complet n’est pas encore disponible.',
+            'detailCopy' => 'Pour le moment, seuls les éléments liés à l’invitation peuvent être affichés. Les informations détaillées du profil seront visibles après acceptation.',
+            'manageCopy' => 'Vous pouvez renvoyer le message d’invitation à cette adresse e-mail.',
             'manageRestrictedCopy' => \dbObject\Organization::formatLexiconText('Vous pouvez voir que cette invitation existe, mais seul un role avec le droit CAN_ADD_MEMBER sur ce holon peut renvoyer le message.'),
-            'invitationTypeLabel' => $pendingInvitation->isAdminInitiatedInvitation() ? 'Invitation admin' : 'Demande d acces',
+            'invitationTypeLabel' => $pendingInvitation->isAdminInitiatedInvitation() ? 'Invitation admin' : 'Demande d’accès',
             'pendingHolons' => $pendingInvitationHolons,
             'hasPendingInvitation' => true,
             'canManageInvitation' => $canManagePendingInvitation,
@@ -783,11 +783,11 @@ if (!$user->canViewDetail()) {
             'secondaryLabel' => $pendingInvitationEmail,
             'contextLabel' => trim((string)$currentHolon->getTemplateLabel(true)),
             'contextName' => trim((string)$currentHolon->getDisplayName()),
-            'statusCopy' => 'Ce profil n est pas encore accessible car la personne n a pas encore accepte son invitation.',
-            'detailCopy' => 'Dans cet etat, le logiciel ne dispose pas encore d un profil consultable. Seules les informations minimales de l invitation peuvent etre affichees.',
+            'statusCopy' => 'Ce profil n’est pas encore accessible, car la personne n’a pas encore accepté son invitation.',
+            'detailCopy' => 'Dans cet état, le logiciel ne dispose pas encore d’un profil consultable. Seules les informations minimales de l’invitation peuvent être affichées.',
             'manageCopy' => 'Vous pouvez renvoyer le message sans ouvrir le profil complet.',
-            'manageRestrictedCopy' => \dbObject\Organization::formatLexiconText('Le profil detaille reste masque tant que l invitation n a pas ete acceptee. Le renvoi est reserve aux roles qui ont CAN_ADD_MEMBER sur ce holon.'),
-            'invitationTypeLabel' => $pendingInvitation->isAdminInitiatedInvitation() ? 'Invitation admin' : 'Demande d acces',
+            'manageRestrictedCopy' => \dbObject\Organization::formatLexiconText('Le profil détaillé reste masqué tant que l’invitation n’a pas été acceptée. Le renvoi est réservé aux rôles qui ont CAN_ADD_MEMBER sur ce holon.'),
+            'invitationTypeLabel' => $pendingInvitation->isAdminInitiatedInvitation() ? 'Invitation admin' : 'Demande d’accès',
             'pendingHolons' => $pendingInvitationHolons,
             'hasPendingInvitation' => true,
             'canManageInvitation' => $canManagePendingInvitation,
@@ -798,7 +798,7 @@ if (!$user->canViewDetail()) {
 
     http_response_code(403);
     ?>
-    <div class="omo-user-context omo-user-context--error">Acces refuse a cet utilisateur.</div>
+    <div class="omo-user-context omo-user-context--error">Accès refusé à cet utilisateur.</div>
     <?php
     exit;
 }
@@ -941,7 +941,7 @@ foreach ($competenceRows as $competenceRow) {
                 <div class="generic-card-title generic-card-title--eyebrow">Profil membre</div>
                 <h2 class="generic-card-title generic-card-title--large"><?= omoApiEscape($displayName !== '' ? $displayName : ('Utilisateur ' . $userId)) ?></h2>
                 <div class="omo-user-context__secondary<?= $email === '' ? ' omo-user-context__meta-value--muted' : '' ?>">
-                    <?= omoApiEscape($email !== '' ? $email : 'Non renseigne') ?>
+                    <?= omoApiEscape($email !== '' ? $email : 'Non renseigné') ?>
                 </div>
                 <div class="omo-user-context__badges">
                     <?php if ($isAdmin): ?>
@@ -979,7 +979,7 @@ foreach ($competenceRows as $competenceRow) {
                         class="generic-tabs__tab"
                         data-generic-tab
                         data-generic-tab-target="omo-user-context-panel-competences"
-                    >Competences</button>
+                    >Compétences</button>
                     <button
                         type="button"
                         class="generic-tabs__tab"
@@ -993,7 +993,7 @@ foreach ($competenceRows as $competenceRow) {
                             class="generic-tabs__tab"
                             data-generic-tab
                             data-generic-tab-target="omo-user-context-panel-current-roles"
-                        >Roles (contexte)</button>
+                        >Rôles (contexte)</button>
                     <?php endif; ?>
                     <?php if ($hasStructureContext): ?>
                         <button
@@ -1001,7 +1001,7 @@ foreach ($competenceRows as $competenceRow) {
                             class="generic-tabs__tab"
                             data-generic-tab
                             data-generic-tab-target="omo-user-context-panel-organization-roles"
-                        >Tous les roles</button>
+                        >Tous les rôles</button>
                     <?php endif; ?>
                     <?php if ($canViewRights): ?>
                     <button
@@ -1018,14 +1018,14 @@ foreach ($competenceRows as $competenceRow) {
                         <section class="omo-user-context__section generic-section generic-section--stack">
                             <div class="omo-user-context__pane-copy">
                                 <div class="omo-user-context__section-kicker generic-card-title generic-card-title--eyebrow">Informations</div>
-                                <div class="generic-card-title generic-card-title--medium">Vue d'ensemble du membre</div>
-                                <div class="omo-user-context__section-copy">Coordonnees, dates utiles et quelques indicateurs generaux pour ce profil.</div>
+                                <div class="generic-card-title generic-card-title--medium">Vue d’ensemble du membre</div>
+                                <div class="omo-user-context__section-copy">Coordonnées, dates utiles et quelques indicateurs généraux pour ce profil.</div>
                             </div>
 
                             <?php if ($presentation !== ''): ?>
                                 <div class="omo-user-context__summary generic-soft-panel">
                                     <div class="omo-user-context__summary-copy">
-                                        <strong class="generic-card-title generic-card-title--small">Presentation</strong>
+                                        <strong class="generic-card-title generic-card-title--small">Présentation</strong>
                                         <p class="omo-user-context__presentation"><?= nl2br(omoApiEscape($presentation)) ?></p>
                                     </div>
                                 </div>
@@ -1042,11 +1042,11 @@ foreach ($competenceRows as $competenceRow) {
 
                             <div class="omo-user-context__info-grid">
                                 <section class="omo-user-context__stats generic-section generic-section--stack">
-                                    <div class="generic-card-title generic-card-title--eyebrow">Apercu</div>
+                                    <div class="generic-card-title generic-card-title--eyebrow">Aperçu</div>
                                     <div class="omo-user-context__stats-grid">
                                         <div class="omo-user-context__stat generic-soft-panel">
                                             <div class="omo-user-context__stat-value"><?= $competenceCount ?></div>
-                                            <div class="omo-user-context__stat-label">Competences</div>
+                                            <div class="omo-user-context__stat-label">Compétences</div>
                                         </div>
                                         <div class="omo-user-context__stat generic-soft-panel">
                                             <div class="omo-user-context__stat-value"><?= $totalValidationCount ?></div>
@@ -1055,39 +1055,39 @@ foreach ($competenceRows as $competenceRow) {
                                         <?php if ($hasStructureContext): ?>
                                             <div class="omo-user-context__stat generic-soft-panel">
                                                 <div class="omo-user-context__stat-value"><?= $currentRoleCount ?></div>
-                                                <div class="omo-user-context__stat-label">Roles ici</div>
+                                                <div class="omo-user-context__stat-label">Rôles ici</div>
                                             </div>
                                             <div class="omo-user-context__stat generic-soft-panel">
                                                 <div class="omo-user-context__stat-value"><?= $organizationRoleCount ?></div>
-                                                <div class="omo-user-context__stat-label">Roles orga</div>
+                                                <div class="omo-user-context__stat-label">Rôles orga</div>
                                             </div>
                                         <?php endif; ?>
                                     </div>
                                 </section>
 
                                 <section class="omo-user-context__meta-card generic-section generic-section--stack">
-                                    <div class="generic-card-title generic-card-title--eyebrow">Details</div>
+                                    <div class="generic-card-title generic-card-title--eyebrow">Détails</div>
                                     <div class="omo-user-context__meta-list">
                                         <div class="omo-user-context__meta-item">
                                             <div class="omo-user-context__meta-label generic-card-title generic-card-title--small">E-mail</div>
                                             <div class="omo-user-context__meta-value<?= $email === '' ? ' omo-user-context__meta-value--muted' : '' ?>">
-                                                <?= omoApiEscape($email !== '' ? $email : 'Non renseigne') ?>
+                                                <?= omoApiEscape($email !== '' ? $email : 'Non renseigné') ?>
                                             </div>
                                         </div>
                                         <div class="omo-user-context__meta-item">
                                             <div class="omo-user-context__meta-label generic-card-title generic-card-title--small">Nom d'utilisateur</div>
                                             <div class="omo-user-context__meta-value<?= $username === '' ? ' omo-user-context__meta-value--muted' : '' ?>">
-                                                <?= omoApiEscape($username !== '' ? $username : 'Non renseigne') ?>
+                                                <?= omoApiEscape($username !== '' ? $username : 'Non renseigné') ?>
                                             </div>
                                         </div>
                                         <div class="omo-user-context__meta-item">
-                                            <div class="omo-user-context__meta-label generic-card-title generic-card-title--small">Ajout a l'organisation</div>
+                                            <div class="omo-user-context__meta-label generic-card-title generic-card-title--small">Ajout à l’organisation</div>
                                             <div class="omo-user-context__meta-value<?= $joinedAtLabel === '' ? ' omo-user-context__meta-value--muted' : '' ?>">
                                                 <?= omoApiEscape($joinedAtLabel !== '' ? $joinedAtLabel : 'Inconnu') ?>
                                             </div>
                                         </div>
                                         <div class="omo-user-context__meta-item">
-                                            <div class="omo-user-context__meta-label generic-card-title generic-card-title--small">Derniere connexion</div>
+                                            <div class="omo-user-context__meta-label generic-card-title generic-card-title--small">Dernière connexion</div>
                                             <div class="omo-user-context__meta-value<?= $lastSeenLabel === '' ? ' omo-user-context__meta-value--muted' : '' ?>">
                                                 <?= omoApiEscape($lastSeenLabel !== '' ? $lastSeenLabel : 'Jamais') ?>
                                             </div>
@@ -1095,7 +1095,7 @@ foreach ($competenceRows as $competenceRow) {
                                         <div class="omo-user-context__meta-item">
                                             <div class="omo-user-context__meta-label generic-card-title generic-card-title--small">Date de naissance</div>
                                             <div class="omo-user-context__meta-value<?= $birthdateLabel === '' ? ' omo-user-context__meta-value--muted' : '' ?>">
-                                                <?= omoApiEscape($birthdateLabel !== '' ? $birthdateLabel : 'Non renseignee') ?>
+                                                <?= omoApiEscape($birthdateLabel !== '' ? $birthdateLabel : 'Non renseignée') ?>
                                             </div>
                                         </div>
                                     </div>
@@ -1108,10 +1108,10 @@ foreach ($competenceRows as $competenceRow) {
                         <section class="omo-user-context__section generic-section generic-section--stack">
                             <div class="omo-user-context__pane-head">
                                 <div class="omo-user-context__pane-copy">
-                                    <div class="omo-user-context__section-kicker generic-card-title generic-card-title--eyebrow">Competences visibles</div>
-                                    <div class="generic-card-title generic-card-title--medium">Vue detaillee des competences declarees</div>
+                                    <div class="omo-user-context__section-kicker generic-card-title generic-card-title--eyebrow">Compétences visibles</div>
+                                    <div class="generic-card-title generic-card-title--medium">Vue détaillée des compétences déclarées</div>
                                     <div class="omo-user-context__section-copy">
-                                        Niveau, validations et contexte d'application sont regroupes dans une meme vue.
+                                        Niveau, validations et contexte d’application sont regroupés dans une même vue.
                                     </div>
                                 </div>
                             </div>
@@ -1206,7 +1206,7 @@ foreach ($competenceRows as $competenceRow) {
                                                             class="omo-user-context__competence-menu-toggle generic-action-button generic-action-button--secondary"
                                                             data-user-competence-menu-toggle="1"
                                                             aria-expanded="false"
-                                                            aria-label="Editer la recommandation pour <?= omoApiEscape($competenceName) ?>"
+                                                            aria-label="Modifier la recommandation pour <?= omoApiEscape($competenceName) ?>"
                                                         >...</button>
                                                         <div class="omo-user-context__competence-menu" data-user-competence-menu="1" hidden>
                                                             <div class="omo-user-context__competence-menu-title"><?= omoApiEscape($competenceName) ?></div>
@@ -1254,11 +1254,11 @@ foreach ($competenceRows as $competenceRow) {
                                 <div class="omo-user-context__pane-copy">
                                     <div class="omo-user-context__section-kicker generic-card-title generic-card-title--eyebrow">Contexte courant</div>
                                     <div class="generic-card-title generic-card-title--medium"><?= omoApiEscape($currentScopeName !== '' ? $currentScopeName : 'Contexte actif') ?></div>
-                                    <div class="omo-user-context__section-copy">Roles visibles uniquement dans le contexte actuellement consulte.</div>
+                                    <div class="omo-user-context__section-copy">Rôles visibles uniquement dans le contexte actuellement consulté.</div>
                                 </div>
 
                                 <?php if ($currentRoleCount === 0): ?>
-                                    <div class="omo-user-context__empty">Aucun role visible dans ce contexte.</div>
+                                    <div class="omo-user-context__empty">Aucun rôle visible dans ce contexte.</div>
                                 <?php else: ?>
                                     <ul class="omo-user-context__roles">
                                         <?php foreach ($currentAssignments as $assignment): ?>
@@ -1275,12 +1275,12 @@ foreach ($competenceRows as $competenceRow) {
                             <section class="omo-user-context__section generic-section generic-section--stack">
                                 <div class="omo-user-context__pane-copy">
                                     <div class="omo-user-context__section-kicker generic-card-title generic-card-title--eyebrow">Organisation</div>
-                                    <div class="generic-card-title generic-card-title--medium">Ensemble des roles visibles dans l'organisation</div>
-                                    <div class="omo-user-context__section-copy">Cette vue rassemble les affectations generales et les roles attaches a d'autres branches visibles.</div>
+                                    <div class="generic-card-title generic-card-title--medium">Ensemble des rôles visibles dans l’organisation</div>
+                                    <div class="omo-user-context__section-copy">Cette vue rassemble les affectations générales et les rôles rattachés à d’autres branches visibles.</div>
                                 </div>
 
                                 <?php if ($organizationRoleCount === 0): ?>
-                                    <div class="omo-user-context__empty">Aucun role visible dans l'organisation.</div>
+                                    <div class="omo-user-context__empty">Aucun rôle visible dans l’organisation.</div>
                                 <?php else: ?>
                                     <ul class="omo-user-context__roles">
                                         <?php foreach ($organizationAssignments as $assignment): ?>

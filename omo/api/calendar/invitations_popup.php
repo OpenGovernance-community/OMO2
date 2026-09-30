@@ -9,6 +9,7 @@ use dbObject\Document;
 use dbObject\DocumentInvitation;
 use dbObject\Event;
 use dbObject\EventInvitation;
+use dbObject\EventPublicLink;
 use dbObject\Holon;
 use dbObject\Organization;
 
@@ -24,6 +25,8 @@ $sourceLang = array_merge([
 ], omoCalendarInvitationSourceLang());
 
 $lang = omoLoadTranslationBundle('omo_calendar_invitations_popup', $sourceLang);
+$_SESSION['omo_calendar_invitations_csrf'] ??= bin2hex(random_bytes(32));
+$invitationCsrf = $_SESSION['omo_calendar_invitations_csrf'];
 
 function omoCalendarInvitationsPopupT($key, array $variables = [])
 {
@@ -174,6 +177,11 @@ $popupActionUrl = '/omo/api/calendar/invitations_popup.php?' . http_build_query(
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Content-Type: application/json; charset=UTF-8');
+    if (!hash_equals($invitationCsrf, (string)($_POST['csrf'] ?? ''))) {
+        http_response_code(403);
+        echo json_encode(['status' => false, 'message' => omoCalendarInvitationsPopupT('calendar.invitations.save_error')], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
 
     $selectedHolonIds = array_values(array_unique(array_filter(array_map('intval', $_POST['holon_ids'] ?? []), static function ($holonId) {
         return $holonId > 0;
@@ -207,6 +215,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         );
         if (empty($applyResult['status'])) {
             throw new InvalidArgumentException(trim((string)($applyResult['message'] ?? omoCalendarInvitationsPopupT('calendar.invitations.save_error'))));
+        }
+        if ($resource instanceof Event && !EventPublicLink::setForEvent($eventId, !empty($_POST['public_registration']))) {
+            throw new RuntimeException('Public event link could not be saved');
         }
 
         $pdo->commit();
@@ -258,6 +269,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'eventId' => $eventId,
         'pvEditorContext' => $isPvEditorContext,
         'pvDocumentId' => $pvDocumentId,
+        'publicUrl' => $resource instanceof Event && ($publicLink = EventPublicLink::forEvent($eventId)) && (int)$publicLink->get('enabled') === 1
+            ? rtrim((string)appGetCurrentSiteBaseUrl(), '/') . $publicLink->publicPath() : '',
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -270,6 +283,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     action="<?= omoApiEscape($popupActionUrl) ?>"
     method="post"
 >
+    <input type="hidden" name="csrf" value="<?= omoApiEscape($invitationCsrf) ?>">
     <div class="omo-calendar-invitations-popup__header generic-drawer-header generic-drawer-header--sticky">
         <div class="generic-drawer-header__copy omo-calendar-invitations-popup__header-copy">
             <div class="generic-card-title generic-card-title--eyebrow">Calendrier</div>
@@ -283,9 +297,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'userFieldName' => 'user_ids[]',
             'emailFieldName' => 'emails',
             'showFooterHint' => false,
+            'publicRegistration' => $resource instanceof Event ? (static function () use ($eventId) {
+                $link = EventPublicLink::forEvent($eventId);
+                return ['enabled' => $link && (int)$link->get('enabled') === 1,
+                    'people' => \dbObject\EventPublicRegistration::forEvent($eventId),
+                    'url' => $link && (int)$link->get('enabled') === 1
+                        ? rtrim((string)appGetCurrentSiteBaseUrl(), '/') . $link->publicPath() : ''];
+            })() : null,
         ]) ?>
-
-        <div id="omoCalendarInvitationsPopupFeedback" class="omo-calendar-invitations-popup__feedback generic-feedback"></div>
 
         <div class="omo-calendar-invitations-popup__actions generic-action-row">
             <button type="submit" id="omoCalendarInvitationsPopupSubmit" class="generic-action-button generic-action-button--main">

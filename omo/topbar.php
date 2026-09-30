@@ -23,11 +23,11 @@ function omoGetTopbarSourceLang(): array
             'context' => 'Topbar tension button label in OMO pages.',
         ],
         'topbar.tension.title' => [
-            'text' => 'Declarer une tension',
+            'text' => 'Déclarer une tension',
             'context' => 'Topbar tension modal title in OMO pages.',
         ],
         'topbar.tension.title_template' => [
-            'text' => 'Declarer {tensionArticle} {tensionLabel}',
+            'text' => 'Déclarer {tensionArticle} {tensionLabel}',
             'context' => 'Topbar tension modal title with the organization lexicon term.',
         ],
         'topbar.tension.unavailable_html' => [
@@ -39,7 +39,7 @@ function omoGetTopbarSourceLang(): array
             'context' => 'Generic close button label for the OMO topbar modal and drawer.',
         ],
         'topbar.drawer.default_title' => [
-            'text' => 'Panneau lateral',
+            'text' => 'Panneau latéral',
             'context' => 'Fallback drawer title for the OMO topbar when no specific title is provided.',
         ],
         'topbar.organization_level.open_aria' => [
@@ -67,11 +67,11 @@ function omoGetTopbarSourceLang(): array
             'context' => 'Title of the FAQ help entry in the OMO topbar.',
         ],
         'topbar.help.pending_html' => [
-            'text' => '<p>Contenu a venir.</p>',
+            'text' => '<p>Contenu à venir.</p>',
             'context' => 'Fallback HTML shown when a help item exists but does not yet have content in the OMO topbar.',
         ],
         'topbar.help.privacy.label' => [
-            'text' => 'Politique de confidentialite',
+            'text' => 'Politique de confidentialité',
             'context' => 'Label of the privacy policy text link shown in the OMO topbar help menu.',
         ],
         'topbar.help.webmaster.label' => [
@@ -79,19 +79,19 @@ function omoGetTopbarSourceLang(): array
             'context' => 'Label of the server administrator email link shown below the public help items.',
         ],
         'topbar.help.terms.label' => [
-            'text' => 'Conditions generales',
+            'text' => 'Conditions générales',
             'context' => 'Label of the terms and conditions text link shown in the OMO topbar help menu.',
         ],
         'topbar.help.tour.description' => [
-            'text' => 'Tour des fonctions visibles a l ecran avec explication pour chaque bouton et chaque possibilite.',
+            'text' => 'Tour des fonctions visibles à l’écran, avec une explication pour chaque bouton et chaque possibilité.',
             'context' => 'Description of the guided tour help entry in the OMO topbar.',
         ],
         'topbar.help.tour.label' => [
-            'text' => 'Visite guidee',
+            'text' => 'Visite guidée',
             'context' => 'Label of the guided tour help entry in the OMO topbar.',
         ],
         'topbar.help.tutorials.description' => [
-            'text' => 'Des formations ciblees pour monter en competences dans l utilisation du logiciel.',
+            'text' => 'Des formations ciblées pour développer vos compétences dans l’utilisation du logiciel.',
             'context' => 'Description of the tutorials help entry in the OMO topbar.',
         ],
         'topbar.help.tutorials.label' => [
@@ -115,7 +115,7 @@ function omoGetTopbarSourceLang(): array
             'context' => 'Additional explanation displayed below the OMO topbar remote content loading error.',
         ],
         'topbar.loading' => [
-            'text' => 'Chargement...',
+            'text' => 'Chargement…',
             'context' => 'Temporary message displayed inside the OMO topbar modal or drawer while remote content is loading.',
         ],
         'topbar.retry' => [
@@ -135,7 +135,7 @@ function omoGetTopbarSourceLang(): array
             'context' => 'Email field label in the OMO topbar profile panel.',
         ],
         'topbar.profile.details.empty_value' => [
-            'text' => 'Non renseigne',
+            'text' => 'Non renseigné',
             'context' => 'Fallback value shown for missing profile information in the OMO topbar profile panel.',
         ],
         'topbar.profile.details.name' => [
@@ -147,7 +147,7 @@ function omoGetTopbarSourceLang(): array
             'context' => 'Username field label in the OMO topbar profile panel.',
         ],
         'topbar.profile.edit_label' => [
-            'text' => 'Editer le profil',
+            'text' => 'Modifier le profil',
             'context' => 'Button label used to open the profile editor from the OMO topbar.',
         ],
         'topbar.profile.edit_title' => [
@@ -160,7 +160,7 @@ function omoGetTopbarSourceLang(): array
         ],
         'topbar.profile.extended.enable' => ['text' => 'Activer les autorités étendues', 'context' => 'Enable optional personal extended permissions'],
         'topbar.profile.extended.disable' => ['text' => 'Désactiver les autorités étendues', 'context' => 'Disable optional personal extended permissions'],
-        'topbar.profile.extended.notice' => ['text' => 'Ces autorites vous sont confiees de facon temporaire pour aider les autres equipes, toujours au service de l\'organisation. Activez-les seulement pour cette aide et desactivez-les une fois votre intervention terminee.', 'context' => 'Conscious activation notice for temporary extended authorities'],
+        'topbar.profile.extended.notice' => ['text' => 'Ces autorités vous sont confiées temporairement pour aider les autres équipes, toujours au service de l’organisation. Activez-les uniquement pour cette aide, puis désactivez-les une fois votre intervention terminée.', 'context' => 'Conscious activation notice for temporary extended authorities'],
         'topbar.profile.admin_mode.disable' => [
             'text' => "Quitter le mode Admin d'organisation",
             'context' => 'Button label used in the OMO topbar profile panel to disable organization admin mode for the current session.',
@@ -194,7 +194,7 @@ function omoGetTopbarSourceLang(): array
             'context' => 'Label of the compact language selector shown in the OMO topbar profile panel.',
         ],
         'topbar.profile.preferences.language_system' => [
-            'text' => 'Systeme',
+            'text' => 'Système',
             'context' => 'System language option label shown in the compact language selector of the OMO topbar profile panel.',
         ],
         'topbar.profile.preferences.theme_dark' => [
@@ -202,7 +202,7 @@ function omoGetTopbarSourceLang(): array
             'context' => 'Dark theme option label shown in the OMO topbar profile panel.',
         ],
         'topbar.profile.preferences.theme_label' => [
-            'text' => 'Theme',
+            'text' => 'Thème',
             'context' => 'Label of the compact theme selector shown in the OMO topbar profile panel.',
         ],
         'topbar.profile.preferences.theme_light' => [
@@ -210,7 +210,7 @@ function omoGetTopbarSourceLang(): array
             'context' => 'Light theme option label shown in the OMO topbar profile panel.',
         ],
         'topbar.profile.preferences.theme_system' => [
-            'text' => 'Systeme',
+            'text' => 'Système',
             'context' => 'System theme option label shown in the OMO topbar profile panel.',
         ],
         'topbar.profile.preferences.color_style_label' => [
@@ -226,15 +226,15 @@ function omoGetTopbarSourceLang(): array
             'context' => 'Turquoise color style option label shown in the OMO topbar profile panel.',
         ],
         'topbar.profile.preferences.color_style_ocean_blue' => [
-            'text' => 'Ocean Blue',
+            'text' => 'Bleu océan',
             'context' => 'Ocean Blue color style option label shown in the OMO topbar profile panel.',
         ],
         'topbar.profile.summary_fallback' => [
-            'text' => 'Resume du profil',
+            'text' => 'Résumé du profil',
             'context' => 'Fallback summary text shown below the profile name in the OMO topbar when no email is available.',
         ],
         'topbar.search.advanced_hint' => [
-            'text' => 'D autres filtres avances pourront s ajouter ici.',
+            'text' => 'D’autres filtres avancés pourront s’ajouter ici.',
             'context' => 'Fallback hint shown in the OMO topbar search panel when no scoped search options are available.',
         ],
         'topbar.search.button' => [
@@ -242,7 +242,7 @@ function omoGetTopbarSourceLang(): array
             'context' => 'Topbar search menu button label in OMO pages.',
         ],
         'topbar.search.placeholder' => [
-            'text' => 'Rechercher un espace, un outil, une regle, une FAQ ou un tutoriel',
+            'text' => 'Rechercher un espace, un outil, une règle, une FAQ ou un tutoriel',
             'context' => 'Placeholder and label for the OMO topbar search field.',
         ],
         'topbar.search.scope' => [
@@ -250,7 +250,7 @@ function omoGetTopbarSourceLang(): array
             'context' => 'Label shown above the scoped filters in the OMO topbar search panel.',
         ],
         'topbar.search.period' => [
-            'text' => 'Periode',
+            'text' => 'Période',
             'context' => 'Label shown above the date range filter in the OMO topbar search panel.',
         ],
         'topbar.search.period_start' => [
@@ -266,7 +266,7 @@ function omoGetTopbarSourceLang(): array
             'context' => 'Submit button label for the OMO topbar search field.',
         ],
         'topbar.logout' => [
-            'text' => 'Se deconnecter',
+            'text' => 'Se déconnecter',
             'context' => 'Logout button label in the OMO topbar profile panel.',
         ],
         'topbar.notifications.button' => [
