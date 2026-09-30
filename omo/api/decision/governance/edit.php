@@ -224,6 +224,7 @@ $payload = [
         'failed' => omoDecisionGovernanceT('governance.status.failed'),
         'emptyRules' => omoDecisionGovernanceT('governance.empty.rules'),
         'genericError' => omoDecisionGovernanceT('governance.error.generic'),
+        'ruleContentRequired' => omoDecisionGovernanceT('governance.error.rule_content'),
         'saving' => omoDecisionGovernanceT('governance.saving'),
         'updateAction' => omoDecisionGovernanceT('governance.action.update'),
         'addAction' => omoDecisionGovernanceT('governance.action.apply'),
@@ -342,6 +343,7 @@ $payload = [
 </section>
 <script src="/common/choice/word-diff.js?v=20260815"></script>
 <script src="<?= commonAssetUrl('/common/choice/rule-scope-fields.js') ?>"></script>
+<script src="<?= commonAssetUrl('/common/choice/proposal-html.js') ?>"></script>
 <script src="/common/choice/change-details.js?v=20260924-readable-diffs"></script>
 <script src="<?= commonAssetUrl('/common/choice/governance-actions.js') ?>"></script>
 <script>if(window.omoGovernanceEditorInit){window.omoGovernanceEditorInit(document);}</script>

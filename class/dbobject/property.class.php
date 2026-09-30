@@ -31,7 +31,7 @@
 			return 'CAN_' . strtoupper($operation) . '_' . strtoupper(self::normalizeType($type)) . '_PROPERTIES';
 		}
 
-		public static function getTypeOptions(array $lexicon, ?Holon $context = null): array
+		public static function getTypeOptions(array $lexicon, ?Holon $context = null, bool $creatingHolon = false): array
 		{
 			$options = [];
 			foreach (self::TYPES as $type) {
@@ -40,7 +40,7 @@
 					'id' => $type,
 					'name' => Organization::getLexiconLabel($lexicon, $type),
 					'canCreate' => $context && $context->isAllowed(self::permissionKey('CREATE', $type), false),
-					'canEdit' => $context && $context->isAllowed(self::permissionKey('EDIT', $type), false),
+					'canEdit' => $context && $context->canEditPropertyValue($type, $creatingHolon),
 					'canDelete' => $context && $context->isAllowed(self::permissionKey('DELETE', $type), false),
 				];
 			}

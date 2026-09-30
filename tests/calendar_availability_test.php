@@ -113,6 +113,18 @@ try {
         && $report['conflicts'][0]['holon'] === '' && !str_contains(json_encode($report), 'SECRET'), 'External source remains generic');
     availabilityExpect($report['conflicts'][0]['start'] === $day->format('Y-m-d') . ' 10:00'
         && $report['conflicts'][0]['end'] === $day->format('Y-m-d') . ' 11:00', 'Full external appointment interval shown');
+    $displayRefreshes = 0;
+    $calendar->set('last_sync_at', new DateTimeImmutable('-3 hours')); $calendar->save();
+    commonExternalCalendarRefreshForDisplay((int)$guest->getId(), microtime(true) + 2,
+        static function () use (&$displayRefreshes): void { $displayRefreshes++; });
+    availabilityExpect($displayRefreshes === 0, 'A displayed calendar may reuse a three-hour-old cache');
+    $calendar->set('last_sync_at', new DateTimeImmutable('-6 hours')); $calendar->save();
+    commonExternalCalendarRefreshForDisplay((int)$guest->getId(), microtime(true) + 2,
+        static function (ExternalCalendar $calendar) use (&$displayRefreshes): void {
+            $displayRefreshes++;
+            $calendar->markSyncResult(true);
+        });
+    availabilityExpect($displayRefreshes === 1, 'A displayed calendar refreshes a six-hour-old cache');
     $external->set('is_busy', 0); $external->save();
     availabilityExpect($proposed->checkInvitationAvailability([$invite])['conflicts'] === [], 'Transparent external event ignored');
     $calendar->set('last_sync_at', new DateTimeImmutable('-3 hours')); $calendar->save();

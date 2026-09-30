@@ -467,6 +467,16 @@
 			return $this->userIsAllowed($userId, $permissionKey, $useSessionCache);
 		}
 
+		public function canEditPropertyValue($type, bool $creatingHolon = false): bool
+		{
+			$key = Property::permissionKey('EDIT', $type);
+			if (!$creatingHolon) {
+				return $this->isAllowed($key, false);
+			}
+			$userId = function_exists('commonGetCurrentUserId') ? (int)\commonGetCurrentUserId() : (int)($_SESSION['currentUser'] ?? 0);
+			return HolonPermission::userHasPermissionForHolonContext($userId, $this->resolveOrganizationId(), $key, (int)$this->getId(), true);
+		}
+
 		// Charge template lie
 		public function getTemplateHolon()
 		{

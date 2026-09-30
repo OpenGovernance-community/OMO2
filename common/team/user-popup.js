@@ -42,7 +42,15 @@
         }, 0);
     }
 
-    function loadFragmentHost(host) {
+    function scrollToAvailabilitySlots(host) {
+        if (!window.matchMedia || !window.matchMedia('(max-width: 640px)').matches) { return; }
+        var panel = host.querySelector('.calendar-freebusy-day-panel');
+        if (panel) {
+            panel.scrollIntoView({block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'});
+        }
+    }
+
+    function loadFragmentHost(host, scrollToSlots) {
         var fragmentUrl;
 
         if (!host) {
@@ -68,11 +76,15 @@
                 availabilityView.renderProfile(host, availabilityData, date);
                 host.setAttribute('data-user-fragment-loaded', '1');
                 host.removeAttribute('aria-busy');
+                if (scrollToSlots && date) { scrollToAvailabilitySlots(host); }
                 return;
             }
             host.textContent = fragmentLoadingMessage;
             availabilityMonths.load(month, fragmentUrl).then(function (html) {
-                if (request === availabilityRequest && host.isConnected) { installAvailability(host, html, date); }
+                if (request === availabilityRequest && host.isConnected) {
+                    installAvailability(host, html, date);
+                    if (scrollToSlots && date) { scrollToAvailabilitySlots(host); }
+                }
             }).catch(function () {
                 if (request === availabilityRequest) { host.textContent = fragmentErrorMessage; }
             }).finally(function () {
@@ -131,7 +143,7 @@
         event.preventDefault();
         host.setAttribute('data-user-fragment-url', url);
         host.removeAttribute('data-user-fragment-loaded');
-        loadFragmentHost(host);
+        loadFragmentHost(host, control.classList.contains('calendar-freebusy-day'));
     });
 
     root.querySelectorAll('[data-user-role-cid]').forEach(function (button) {

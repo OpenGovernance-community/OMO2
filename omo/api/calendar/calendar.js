@@ -2197,6 +2197,9 @@ window.omoInitCalendar = function (root) {
             var text = JSON.parse(container.getAttribute('data-omo-external-calendar-text') || '{}');
             var csrf = container.getAttribute('data-omo-external-calendar-csrf') || '';
             var discoveryForm = container.querySelector('[data-omo-external-calendar-form]');
+            var icsForm = container.querySelector('[data-omo-external-calendar-ics-form]');
+            var editForm = container.querySelector('[data-omo-external-calendar-edit-form]');
+            var addSection = container.querySelector('[data-omo-external-calendar-add]');
             var selectionForm = container.querySelector('[data-omo-external-calendar-selection]');
             var discoveryToken = '';
             var busy = false;
@@ -2220,6 +2223,77 @@ window.omoInitCalendar = function (root) {
                         throw new Error(payload && payload.message ? payload.message : text.failed);
                     }
                     return payload;
+                });
+            }
+            container.querySelectorAll('[data-omo-external-calendar-type]').forEach(function (radio) {
+                radio.addEventListener('change', function () {
+                    if (!radio.checked || busy) { return; }
+                    container.querySelectorAll('[data-omo-external-calendar-provider]').forEach(function (panel) {
+                        panel.hidden = panel.getAttribute('data-omo-external-calendar-provider') !== radio.value;
+                    });
+                });
+            });
+            container.addEventListener('click', function (event) {
+                var button = event.target.closest('[data-omo-external-calendar-edit], [data-omo-external-calendar-edit-cancel]');
+                if (!button || busy || !editForm) { return; }
+                var cancel = button.hasAttribute('data-omo-external-calendar-edit-cancel');
+                var previous = container.querySelector('[data-omo-external-calendar-edit][aria-expanded="true"]');
+                container.querySelectorAll('[data-omo-external-calendar-edit]').forEach(function (toggle) {
+                    toggle.setAttribute('aria-expanded', !cancel && toggle === button ? 'true' : 'false');
+                });
+                editForm.reset();
+                feedback(editForm.querySelector('[data-omo-external-calendar-feedback]'), '', false);
+                editForm.hidden = cancel;
+                addSection.hidden = !cancel;
+                if (cancel) {
+                    if (previous) { previous.focus(); }
+                    return;
+                }
+                var values = JSON.parse(button.getAttribute('data-omo-external-calendar-edit'));
+                editForm.elements.calendar_id.value = values.id;
+                ['title', 'color', 'calendar_url', 'username'].forEach(function (name) {
+                    editForm.elements[name].value = values[name] || '';
+                });
+                var isIcs = values.provider === 'ics';
+                editForm.querySelector('[data-omo-external-calendar-edit-ics]').hidden = !isIcs;
+                editForm.querySelector('[data-omo-external-calendar-edit-caldav]').hidden = isIcs;
+                editForm.elements.calendar_url.required = !isIcs;
+                editForm.elements.username.required = !isIcs;
+                editForm.elements.title.focus();
+            });
+            if (editForm) {
+                editForm.addEventListener('submit', function (event) {
+                    event.preventDefault();
+                    if (busy) { return; }
+                    var body = new FormData(editForm);
+                    var message = editForm.querySelector('[data-omo-external-calendar-feedback]');
+                    setBusy(true);
+                    feedback(message, text.pending, false);
+                    requestExternal(body).then(function (payload) {
+                        editForm.elements.password.value = '';
+                        editForm.elements.ics_url.value = '';
+                        window.omoNotify(payload.message, payload.synced === false ? 'error' : 'success');
+                        return refreshCalendar(currentUrl);
+                    }).then(function () { openCalendarConnectPopup(true); })
+                        .catch(function (error) { feedback(message, error.message || text.failed, true); })
+                        .finally(function () { setBusy(false); });
+                });
+            }
+            if (icsForm) {
+                icsForm.addEventListener('submit', function (event) {
+                    event.preventDefault();
+                    if (busy) { return; }
+                    var message = icsForm.querySelector('[data-omo-external-calendar-feedback]');
+                    var body = new FormData(icsForm);
+                    setBusy(true);
+                    feedback(message, text.pending, false);
+                    requestExternal(body).then(function (payload) {
+                        feedback(message, payload.message, payload.synced === false);
+                        icsForm.reset();
+                        return refreshCalendar(currentUrl);
+                    }).then(function () { openCalendarConnectPopup(true); })
+                        .catch(function (error) { feedback(message, error.message || text.failed, true); })
+                        .finally(function () { setBusy(false); });
                 });
             }
             container.addEventListener('click', function (event) {

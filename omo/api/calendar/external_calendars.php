@@ -21,6 +21,11 @@ $sourceLang = [
     'synced' => ['text' => '{count} evenement(s) synchronise(s).', 'context' => 'Successful manual calendar sync.'],
     'connected' => ['text' => 'Agenda connecte et synchronise.', 'context' => 'Calendar saved and first sync completed.'],
     'sync_failed' => ['text' => 'Agenda enregistre. Synchronisation a relancer : {reason}', 'context' => 'Calendar saved but initial sync failed.'],
+    'ics_url' => ['text' => 'Indiquez une adresse ICS HTTPS valide.', 'context' => 'Invalid subscription URL.'],
+    'ics_connected' => ['text' => 'Agenda ICS ajoute et synchronise.', 'context' => 'ICS subscription created.'],
+    'updated' => ['text' => 'Calendrier mis a jour.', 'context' => 'Calendar settings saved.'],
+    'title_required' => ['text' => 'Indiquez un nom pour ce calendrier.', 'context' => 'Missing calendar display name.'],
+    'duplicate' => ['text' => 'Cette adresse est deja utilisee par un autre calendrier connecte.', 'context' => 'Duplicate calendar URL during editing.'],
 ];
 $lang = omoLoadTranslationBundle('omo_calendar_external_actions', $sourceLang);
 function omoExternalCalendarT($key, array $replace = [])
@@ -115,6 +120,92 @@ if ($action === 'sync') {
             : (string)($result['message'] ?? 'Synchronisation impossible.'),
         ['count' => (int)($result['count'] ?? 0)]
     );
+}
+
+if ($action === 'update') {
+    if (!$calendar instanceof ExternalCalendar) {
+        omoExternalCalendarReply(false, omoExternalCalendarT('missing'));
+    }
+    $title = trim((string)($_POST['title'] ?? ''));
+    if ($title === '') { omoExternalCalendarReply(false, omoExternalCalendarT('title_required')); }
+    $isIcs = (string)$calendar->get('provider') === 'ics';
+    $url = (string)$calendar->get('calendar_url');
+    $username = (string)$calendar->get('username');
+    $encrypted = (string)$calendar->get('password_encrypted');
+    $connectionChanged = false;
+    if ($isIcs) {
+        // Never return the stored bearer URL to the browser. Blank means unchanged.
+        $replacement = trim((string)($_POST['ics_url'] ?? ''));
+        if ($replacement !== '') {
+            $replacement = commonExternalCalendarNormalizeUrl($replacement);
+            if ($replacement === null) { omoExternalCalendarReply(false, omoExternalCalendarT('ics_url')); }
+            $url = 'ics:' . hash('sha256', $replacement);
+            $encrypted = commonExternalCalendarEncryptPassword($replacement);
+            $connectionChanged = true;
+        }
+    } else {
+        $url = commonExternalCalendarNormalizeUrl($_POST['calendar_url'] ?? '');
+        $username = trim((string)($_POST['username'] ?? ''));
+        $password = (string)($_POST['password'] ?? '');
+        if ($url === null || $username === '' || strlen($username) > 250 || str_contains($username, ':') || strlen($password) > 4096) {
+            omoExternalCalendarReply(false, omoExternalCalendarT('credentials'));
+        }
+        $connectionChanged = $url !== (string)$calendar->get('calendar_url') || $username !== (string)$calendar->get('username') || $password !== '';
+        if ($password !== '') { $encrypted = commonExternalCalendarEncryptPassword($password); }
+    }
+    if ($encrypted === null) { omoExternalCalendarReply(false, omoExternalCalendarT('key')); }
+    $duplicate = new ExternalCalendar();
+    if ($duplicate->load([['IDuser', $userId], ['calendar_url', $url]]) && (int)$duplicate->getId() !== (int)$calendar->getId()) {
+        omoExternalCalendarReply(false, omoExternalCalendarT('duplicate'));
+    }
+    $calendar->set('title', mb_substr($title, 0, 190, 'UTF-8'));
+    $calendar->set('color', ExternalCalendar::normalizeColor($_POST['color'] ?? ''));
+    $calendar->set('calendar_url', $url);
+    $calendar->set('username', $username);
+    $calendar->set('password_encrypted', $encrypted);
+    $calendar->set('updated_at', new DateTimeImmutable('now'));
+    if ($connectionChanged) {
+        $calendar->set('source_ctag', null);
+        $calendar->set('last_sync_at', null);
+    }
+    $saved = $calendar->save();
+    if (!is_array($saved) || empty($saved['status'])) { omoExternalCalendarReply(false, omoExternalCalendarT('save_failed')); }
+    if (!$connectionChanged) { omoExternalCalendarReply(true, omoExternalCalendarT('updated')); }
+    $calendar->load((int)$calendar->getId(), true);
+    $sync = commonExternalCalendarSynchronize($calendar, null, null, true);
+    omoExternalCalendarReply(true, !empty($sync['status']) ? omoExternalCalendarT('updated')
+        : omoExternalCalendarT('sync_failed', ['reason' => (string)($sync['message'] ?? '')]),
+        ['synced' => !empty($sync['status'])]);
+}
+
+if ($action === 'save_ics') {
+    $url = commonExternalCalendarNormalizeUrl($_POST['ics_url'] ?? '');
+    if ($url === null) { omoExternalCalendarReply(false, omoExternalCalendarT('ics_url')); }
+    $encrypted = commonExternalCalendarEncryptPassword($url);
+    if ($encrypted === null) { omoExternalCalendarReply(false, omoExternalCalendarT('key')); }
+    // The private URL is a bearer credential: keep only a digest in the visible URL field.
+    $calendarKey = 'ics:' . hash('sha256', $url);
+    $title = trim((string)($_POST['title'] ?? '')) ?: 'Agenda ICS';
+    $calendar = new ExternalCalendar();
+    if (!$calendar->load([['IDuser', $userId], ['calendar_url', $calendarKey]])) {
+        $calendar->set('IDuser', $userId);
+        $calendar->set('created_at', new DateTimeImmutable('now'));
+    }
+    $calendar->set('provider', 'ics');
+    $calendar->set('title', mb_substr($title, 0, 190, 'UTF-8'));
+    $calendar->set('calendar_url', $calendarKey);
+    $calendar->set('username', 'ics');
+    $calendar->set('password_encrypted', $encrypted);
+    $calendar->set('color', ExternalCalendar::normalizeColor($_POST['color'] ?? ''));
+    $calendar->set('active', 1);
+    $calendar->set('updated_at', new DateTimeImmutable('now'));
+    $saved = $calendar->save();
+    if (!is_array($saved) || empty($saved['status'])) { omoExternalCalendarReply(false, omoExternalCalendarT('save_failed')); }
+    $calendar->load((int)$calendar->getId(), true);
+    $sync = commonExternalCalendarSynchronize($calendar, null, null, true);
+    omoExternalCalendarReply(true, !empty($sync['status']) ? omoExternalCalendarT('ics_connected')
+        : omoExternalCalendarT('sync_failed', ['reason' => (string)($sync['message'] ?? '')]),
+        ['calendarId' => (int)$calendar->getId(), 'synced' => !empty($sync['status']), 'count' => (int)($sync['count'] ?? 0)]);
 }
 
 if ($action !== 'save') {

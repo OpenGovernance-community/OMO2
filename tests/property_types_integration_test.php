@@ -101,8 +101,8 @@ try {
     foreach (Property::TYPES as $type) {
         foreach (['CREATE', 'EDIT', 'DELETE'] as $operation) {
             $key = Property::permissionKey($operation, $type);
-            typeIntegrationCheck(!$child->isAllowed($key, false), 'Unconfigured type permission must be denied to active members');
-            typeIntegrationCheck(!commonCurrentUserHasPermission($key, $child, (int)$organization->getId(), true), 'Cached check must also deny unconfigured type permissions');
+            typeIntegrationCheck($child->isAllowed($key, false) === ($operation === 'EDIT' && $child->isAllowed('CAN_EDIT_HOLON', false)), 'Unconfigured values must follow holon edit; creation and deletion stay explicit');
+            typeIntegrationCheck(commonCurrentUserHasPermission($key, $child, (int)$organization->getId(), true) === ($operation === 'EDIT' && $child->isAllowed('CAN_EDIT_HOLON', false)), 'Cached and uncached defaults must agree');
         }
     }
     $permission = Permission::findByKey('CAN_CREATE_TYPE3_PROPERTIES');
@@ -113,7 +113,7 @@ try {
     $assignment->set('member_type', HolonPermission::MEMBER_TYPE_MEMBER);
     typeIntegrationSave($assignment);
     typeIntegrationCheck($child->isAllowed('CAN_CREATE_TYPE3_PROPERTIES', false), 'Parent grant must authorize creation on its direct child');
-    typeIntegrationCheck(!$child->isAllowed('CAN_EDIT_TYPE3_PROPERTIES', false), 'Create grant must not imply edit');
+    typeIntegrationCheck($child->isAllowed('CAN_EDIT_TYPE3_PROPERTIES', false) === $child->isAllowed('CAN_EDIT_HOLON', false), 'A property create grant must not affect the value fallback');
     typeIntegrationCheck(Property::canCreateAnyType($child), 'Parent grant must enable the add button');
     $holonEditGrant = new HolonPermission();
     $holonEditGrant->set('IDholon', $circle->getId());

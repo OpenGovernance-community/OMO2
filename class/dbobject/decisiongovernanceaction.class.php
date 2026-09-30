@@ -205,7 +205,7 @@ class DecisionGovernanceAction extends DbObject
         } else {
             $state['IDholon'] = (int)$expectedHolonId;
         }
-        if ($state['title'] === '' || $state['description'] === '' || $state['review_date'] === '' || $state['expiration_date'] === '') {
+        if ($state['title'] === '' || !Rule::hasContentText($state['description']) || $state['review_date'] === '' || $state['expiration_date'] === '') {
             return ['status' => false, 'message' => 'Le titre, la regle et les deux dates sont obligatoires.'];
         }
         if ($state['review_date'] > $state['expiration_date']) {
@@ -231,7 +231,7 @@ class DecisionGovernanceAction extends DbObject
             $state['IDauthority'] = null;
             $state['IDholon'] = (int)$expectedHolonId;
         }
-        if ($state['title'] === '' || $state['description'] === '' || $state['review_date'] === '' || $state['expiration_date'] === '') {
+        if ($state['title'] === '' || !Rule::hasContentText($state['description']) || $state['review_date'] === '' || $state['expiration_date'] === '') {
             return ['status' => false, 'message' => 'Le titre, la regle et les deux dates sont obligatoires.'];
         }
         if ($state['review_date'] > $state['expiration_date']) {

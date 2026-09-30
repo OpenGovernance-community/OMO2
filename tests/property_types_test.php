@@ -41,7 +41,9 @@ foreach (Property::TYPES as $i => $type) {
     $definitions[] = ['id' => $i + 1, 'type' => $type, 'name' => 'Property ' . $type, 'formatId' => 1, 'value' => ''];
     foreach (['CREATE', 'EDIT', 'DELETE'] as $operation) {
         propertyTypeCheck(isset(Permission::getBuiltInCatalog()[Property::permissionKey($operation, $type)]), 'Permission missing');
-        propertyTypeCheck(Permission::requiresExplicitAssignment(Property::permissionKey($operation, $type)), 'Type permission must be denied when unconfigured');
+        propertyTypeCheck(Permission::requiresExplicitAssignment(Property::permissionKey($operation, $type)) === ($operation !== 'EDIT'), 'Only property creation and deletion require explicit assignment');
+        propertyTypeCheck(Permission::getUnconfiguredFallbackPermissionKey(Property::permissionKey($operation, $type)) === ($operation === 'EDIT' ? 'CAN_EDIT_HOLON' : null), 'Only value editing falls back to holon editing');
+        propertyTypeCheck(Permission::getUnconfiguredFallbackPermissionKey(Property::permissionKey($operation, $type), true) === ($operation === 'EDIT' ? 'CAN_ADD_HOLON' : null), 'Creation uses holon creation only for values');
     }
 }
 propertyTypeCheck(!Property::canCreateAnyType($holon), 'No grants must disable creation');
