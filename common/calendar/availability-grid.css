@@ -226,6 +226,19 @@ button.calendar-freebusy-slot.is-anchor {
     color: #9f3024;
 }
 
+/* The event preview supplies a hue derived from busy people / considered people. */
+.calendar-freebusy-slot[data-state="busy"][data-busy-count],
+.calendar-freebusy-day[data-busy-slots] {
+    border-color: hsl(var(--param-freebusy-busy-hue, 0) 65% 77%);
+    background: hsl(var(--param-freebusy-busy-hue, 0) 85% 93%);
+    color: hsl(var(--param-freebusy-busy-hue, 0) 65% 30%);
+}
+
+.calendar-freebusy-legend li[data-state="occupation"] span {
+    width: 48px;
+    background: linear-gradient(to right, hsl(48 75% 60%), hsl(0 65% 60%));
+}
+
 .calendar-freebusy-slot[data-state="free"] {
     border-color: #c7e6d5;
     background: #f6fcf8;

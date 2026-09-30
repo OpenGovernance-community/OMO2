@@ -22,6 +22,10 @@ ne sont pas reinjectes lors d'un reset.
 Le seed a ete reimporte et controle apres les migrations jusqu'au
 `2026-09-28-05-property-type-activation.sql`. Il inclut aussi les liens des
 packs de parcours (`parcours.ispack` et `parcours_parcours`).
+Le schema de `meeting_profile` inclut aussi `max_duration_minutes` (migration
+`2026-09-30-01-meeting-max-duration.sql`, valeur initiale 60 minutes).
+Les moyens de rencontre et leur copie dans les reservations sont inclus
+(`2026-09-30-02-meeting-methods.sql`).
 
 Un redemarrage avec le volume `db_data` existant conserve sa base : les fichiers
 de ce repertoire ne sont lus que lors de la premiere initialisation du volume.

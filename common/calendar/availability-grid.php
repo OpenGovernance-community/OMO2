@@ -34,11 +34,23 @@ function commonCalendarRenderAvailabilityGrid(
                 <div class="calendar-freebusy-calendar">
                     <?php for ($empty = 1; $empty < (int)$month->format('N'); $empty++): ?><span aria-hidden="true"></span><?php endfor; ?>
                     <?php foreach ($days as $date => $data): $day = new DateTimeImmutable($date, $month->getTimezone()); $state = (string)$data['state']; ?>
-                        <button type="button" class="calendar-freebusy-day" data-state="<?= $escape($state) ?>"<?= $selectedDay && $selectedDay->format('Y-m-d') === $date ? ' aria-current="date"' : '' ?> <?= $control($month, $day) ?> aria-label="<?= $escape(commonUserAvailabilityFormatDate($day, true) . ' : ' . $labels[$state]) ?>"><?= (int)$day->format('j') ?></button>
+                        <?php
+                        $dayLabel = $labels[$state];
+                        $dayOccupationAttributes = '';
+                        if (isset($labels['day_availability']) && !empty($data['workingCount'])) {
+                            $dayLabel = strtr($labels['day_availability'], ['{free}' => (string)($data['workingCount'] - $data['busySlotCount']), '{total}' => (string)$data['workingCount']]);
+                            if ($data['busySlotCount'] > 0) {
+                                $dayHue = 48 * (1 - $data['busySlotCount'] / $data['workingCount']);
+                                $dayOccupationAttributes = ' data-busy-slots="' . (int)$data['busySlotCount'] . '" style="--param-freebusy-busy-hue:' . $escape((string)$dayHue) . '"';
+                            }
+                        }
+                        ?>
+                        <button type="button" class="calendar-freebusy-day" data-state="<?= $escape($state) ?>"<?= $dayOccupationAttributes ?><?= $selectedDay && $selectedDay->format('Y-m-d') === $date ? ' aria-current="date"' : '' ?> <?= $control($month, $day) ?> title="<?= $escape($dayLabel) ?>" aria-label="<?= $escape(commonUserAvailabilityFormatDate($day, true) . ' : ' . $dayLabel) ?>"><?= (int)$day->format('j') ?></button>
                     <?php endforeach; ?>
                 </div>
                 <ul class="calendar-freebusy-legend" aria-label="<?= $escape($labels['heading']) ?>">
-                    <?php foreach (['free', 'partial', 'full'] as $state): ?><li data-state="<?= $escape($state) ?>"><span aria-hidden="true"></span><?= $escape($labels[$state]) ?></li><?php endforeach; ?>
+                    <?php foreach (isset($labels['occupation_scale']) ? ['free'] : ['free', 'partial', 'full'] as $state): ?><li data-state="<?= $escape($state) ?>"><span aria-hidden="true"></span><?= $escape($labels[$state]) ?></li><?php endforeach; ?>
+                    <?php if (isset($labels['occupation_scale'])): ?><li data-state="occupation"><span aria-hidden="true"></span><?= $escape($labels['occupation_scale']) ?></li><?php endif; ?>
                 </ul>
             </section>
             <aside class="calendar-freebusy-day-panel generic-soft-panel" aria-live="polite">
@@ -61,7 +73,16 @@ function commonCalendarRenderAvailabilityGrid(
                             <?php else: ?>
                                 <?php $previousPauseEnd = null; ?>
                                 <?php $isSelectable = $selectableSlots && !$slot['busy']; $slotTag = $isSelectable ? 'button' : 'div'; ?>
-                                <<?= $slotTag ?><?= $isSelectable ? ' type="button"' : '' ?> class="calendar-freebusy-slot" data-state="<?= $slot['busy'] ? 'busy' : 'free' ?>"<?= $selectableSlots ? ' data-omo-calendar-preview-slot-start="' . $escape($slot['start']->format('Y-m-d\TH:i')) . '" data-omo-calendar-preview-slot-end="' . $escape($slot['end']->format('Y-m-d\TH:i')) . '"' : '' ?><?= $isSelectable ? ' aria-pressed="false"' : '' ?> aria-label="<?= $escape($slot['start']->format('H:i') . ' - ' . $slot['end']->format('H:i') . ' : ' . $labels[$slot['busy'] ? 'busy' : ($isSelectable ? 'select_slot' : 'available')]) ?>"><time datetime="<?= $escape($slot['start']->format(DateTimeInterface::ATOM)) ?>"><?= $escape($slot['start']->format('H:i') . ' - ' . $slot['end']->format('H:i')) ?></time><?php if ($slot['busy']): ?><span><?= $escape($labels['busy']) ?></span><?php endif; ?></<?= $slotTag ?>>
+                                <?php
+                                $busyLabel = $labels['busy'];
+                                $occupationAttributes = '';
+                                if ($slot['busy'] && isset($slot['busyCount'], $slot['participantCount'], $labels['busy_count'])) {
+                                    $busyLabel = strtr($labels['busy_count'], ['{busy}' => (string)$slot['busyCount'], '{total}' => (string)$slot['participantCount']]);
+                                    $hue = 48 * (1 - $slot['busyCount'] / max(1, $slot['participantCount']));
+                                    $occupationAttributes = ' data-busy-count="' . (int)$slot['busyCount'] . '" style="--param-freebusy-busy-hue:' . $escape((string)$hue) . '"';
+                                }
+                                ?>
+                                <<?= $slotTag ?><?= $isSelectable ? ' type="button"' : '' ?> class="calendar-freebusy-slot" data-state="<?= $slot['busy'] ? 'busy' : 'free' ?>"<?= $occupationAttributes ?><?= $selectableSlots ? ' data-omo-calendar-preview-slot-start="' . $escape($slot['start']->format('Y-m-d\TH:i')) . '" data-omo-calendar-preview-slot-end="' . $escape($slot['end']->format('Y-m-d\TH:i')) . '"' : '' ?><?= $isSelectable ? ' aria-pressed="false"' : '' ?> aria-label="<?= $escape($slot['start']->format('H:i') . ' - ' . $slot['end']->format('H:i') . ' : ' . ($slot['busy'] ? $busyLabel : $labels[$isSelectable ? 'select_slot' : 'available'])) ?>"><time datetime="<?= $escape($slot['start']->format(DateTimeInterface::ATOM)) ?>"><?= $escape($slot['start']->format('H:i') . ' - ' . $slot['end']->format('H:i')) ?></time><?php if ($slot['busy']): ?><span><?= $escape($busyLabel) ?></span><?php endif; ?></<?= $slotTag ?>>
                             <?php endif; ?>
                         <?php endforeach; ?>
                     </div>

@@ -234,6 +234,16 @@ try {
                 availabilityExpect(str_contains($output, 'data-omo-calendar-preview-target'), 'Preview endpoint returns navigable shared calendar.');
                 availabilityExpect(str_contains($output, '2 personnes prises en compte') && str_contains($output, 'Guest') && str_contains($output, 'Organizer') && str_contains($output, 'Organisateur'), 'Preview identifies invited member and event owner separately.');
                 availabilityExpect(!str_contains($output, 'SECRET title') && !str_contains($output, 'SECRET details'), 'Preview never exposes private event content.');
+                availabilityExpect((bool)preg_match('/<script type="application\/json" data-omo-calendar-preview-data>(.*?)<\/script>/s', $output, $payload), 'Preview includes local filtering data.');
+                $clientData = json_decode($payload[1], true, 512, JSON_THROW_ON_ERROR);
+                availabilityExpect(count($clientData['people']) === 2, 'Month data contains each considered person once.');
+                foreach ($clientData['people'] as $person) {
+                    availabilityExpect($person['name'] !== '' && strlen($person['days'][$day->format('Y-m-d')]) === 48, 'Hover names and half-hour states are available locally.');
+                    availabilityExpect((bool)preg_match('/^[0123]{48}$/', $person['days'][$day->format('Y-m-d')]), 'Client gets availability codes, not private appointment details.');
+                }
+                availabilityExpect(!str_contains(json_encode($clientData), 'SECRET'), 'Local cache discloses no private titles.');
+                preg_match_all('/<input[^>]*data-omo-calendar-preview-person[^>]*>/', $output, $filters);
+                availabilityExpect(count($filters[0]) === 2 && !str_contains(implode('', $filters[0]), ' name='), 'Search filters are not submitted as invitations.');
                 if ((int)$day->format('N') <= 5) {
                     availabilityExpect(str_contains($output, 'data-state="busy"'), 'Invitee OMO appointment blocks a shared slot.');
                     availabilityExpect(str_contains($output, '<button type="button" class="calendar-freebusy-slot" data-state="free"')

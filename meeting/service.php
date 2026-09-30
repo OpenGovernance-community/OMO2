@@ -55,37 +55,101 @@ function meetingOverlap(DateTimeInterface $start, DateTimeInterface $end, array 
     return false;
 }
 
-function meetingDay(DateTimeImmutable $day, array $hours, array $busy, DateTimeImmutable $now): array
+function meetingValidateDuration($value, int $maximum): int
 {
+    if ((!is_int($value) && !is_string($value)) || !preg_match('/^[0-9]{1,4}$/D', (string)$value)) { throw new RuntimeException('duration_invalid'); }
+    $minutes = (int)$value;
+    if ($minutes < 30 || $minutes % 30 !== 0 || $minutes > min($maximum, MeetingProfile::MAX_DURATION_MINUTES)) { throw new RuntimeException('duration_invalid'); }
+    return $minutes;
+}
+
+function meetingValidateMethods($input, array $existing): array
+{
+    if (!is_array($input) || count($input) > MeetingProfile::MAX_METHODS) { throw new RuntimeException('methods_invalid'); }
+    $knownIds = array_column($existing, 'id');
+    $methods = [];
+    $seen = [];
+    foreach ($input as $row) {
+        if (!is_array($row) || !is_string($row['type'] ?? null) || !is_string($row['value'] ?? null) || !is_string($row['id'] ?? '')) { throw new RuntimeException('methods_invalid'); }
+        $type = $row['type'];
+        $value = trim($row['value']);
+        $id = $row['id'] ?? '';
+        if (!in_array($type, MeetingProfile::METHOD_TYPES, true) || $value === '' || mb_strlen($value) > 1000 || preg_match('/[\x00-\x1f\x7f]/', $value)) { throw new RuntimeException('methods_invalid'); }
+        if ($type === 'video' && (!filter_var($value, FILTER_VALIDATE_URL) || !in_array(strtolower((string)parse_url($value, PHP_URL_SCHEME)), ['http', 'https'], true))) { throw new RuntimeException('methods_invalid'); }
+        if ($type === 'phone' && (mb_strlen($value) > 100 || !preg_match('/[0-9]/', $value))) { throw new RuntimeException('methods_invalid'); }
+        if ($id !== '' && (!in_array($id, $knownIds, true) || isset($seen[$id]))) { throw new RuntimeException('methods_invalid'); }
+        $id = $id !== '' ? $id : bin2hex(random_bytes(8));
+        $seen[$id] = true;
+        $methods[] = ['id' => $id, 'type' => $type, 'value' => $value];
+    }
+    return $methods;
+}
+
+function meetingResolveMethod(MeetingProfile $profile, $id, bool $useDefault = false): ?array
+{
+    if (!is_string($id)) { throw new RuntimeException('method_invalid'); }
+    $methods = $profile->methods();
+    if (!$methods && $id === '') { return null; }
+    if ($id === '' && $useDefault) { return $methods[0] ?? null; }
+    foreach ($methods as $method) { if ($method['id'] === $id) { return $method; } }
+    throw new RuntimeException('method_invalid');
+}
+
+function meetingDay(DateTimeImmutable $day, array $hours, array $busy, DateTimeImmutable $now, int $durationMinutes = 30): array
+{
+    $durationMinutes = meetingValidateDuration($durationMinutes, MeetingProfile::MAX_DURATION_MINUTES);
     $row = $hours[(int)$day->format('N')];
     if (!$row['open'] || $day->modify('+1 day') <= $now) { return ['state' => 'closed', 'slots' => []]; }
     $zone = $day->getTimezone();
-    $begin = meetingDate($day->format('Y-m-d'), $zone)->modify($row['start']);
     $finish = $day->modify($row['end']);
     $pauseStart = $day->modify($row['pause_start']);
     $pauseEnd = $day->modify($row['pause_end']);
     $slots = [];
-    $available = false;
-    $occupied = false;
+    $workingCount = 0;
+    $busySlotCount = 0;
     // Iterate wall-clock half-hours, skipping non-existent or DST-crossing hours.
     [$hour, $minute] = array_map('intval', explode(':', $row['start']));
     for ($minutes = $hour * 60 + $minute; $minutes < 24 * 60; $minutes += 30) {
         $label = sprintf('%02d:%02d', intdiv($minutes, 60), $minutes % 60);
         if ($label >= $row['end']) { break; }
         $start = $day->setTime(intdiv($minutes, 60), $minutes % 60);
-        $end = $start->modify('+1 hour');
-        // Do not render a half-hour departure if its one-hour appointment ends after closing.
+        $end = $start->modify('+30 minutes');
         if ($end > $finish) { break; }
         $pause = $row['pause'] && $start < $pauseEnd && $end > $pauseStart;
         $conflict = meetingOverlap($start, $end, $busy);
         $free = !$pause && !$conflict && $start > $now
-            && $start->format('H:i') === $label && $end->getTimestamp() - $start->getTimestamp() === 3600;
+            && $start->format('H:i') === $label && $end->getTimestamp() - $start->getTimestamp() === 1800;
         $slots[] = ['time' => $label, 'start' => $start, 'end' => $end, 'free' => $free, 'pause' => $pause];
-        $available = $available || $free;
+        if (!$pause) {
+            $workingCount++;
+            $busySlotCount += $free ? 0 : 1;
+        }
     }
-    $working = $row['pause'] ? [[$begin, $pauseStart], [$pauseEnd, $finish]] : [[$begin, $finish]];
-    foreach ($working as [$start, $end]) { $occupied = $occupied || meetingOverlap($start, $end, $busy); }
-    return ['state' => !$available ? 'full' : ($occupied ? 'partial' : 'free'), 'slots' => $slots];
+    $requiredSlots = intdiv($durationMinutes, 30);
+    foreach ($slots as $index => &$slot) {
+        $slot['bookable'] = true;
+        $slot['booking_end'] = $slot['start']->modify('+' . $durationMinutes . ' minutes');
+        for ($offset = 0; $offset < $requiredSlots; $offset++) {
+            $next = $slots[$index + $offset] ?? null;
+            if (!$next || !$next['free'] || $next['start']->getTimestamp() !== $slot['start']->getTimestamp() + $offset * 1800) {
+                $slot['bookable'] = false;
+                break;
+            }
+        }
+    }
+    unset($slot);
+    // A clicked half-hour may belong to a valid appointment starting earlier.
+    $busySlotCount = 0;
+    foreach ($slots as $index => &$slot) {
+        $slot['selection_time'] = null;
+        for ($first = $index; $first >= max(0, $index - $requiredSlots + 1); $first--) {
+            if ($slots[$first]['bookable']) { $slot['selection_time'] = $slots[$first]['time']; break; }
+        }
+        if (!$slot['pause'] && $slot['selection_time'] === null) { $busySlotCount++; }
+    }
+    unset($slot);
+    return ['state' => !$workingCount ? 'closed' : ($busySlotCount === $workingCount ? 'full' : ($busySlotCount ? 'partial' : 'free')),
+        'slots' => $slots, 'workingCount' => $workingCount, 'busySlotCount' => $busySlotCount];
 }
 
 function meetingSave($object): void
@@ -172,14 +236,16 @@ function meetingBusy(MeetingProfile $profile, DateTimeImmutable $start, DateTime
     return $busy;
 }
 
-function meetingIcs(string $token, DateTimeImmutable $start, DateTimeImmutable $end, string $title, string $description): string
+function meetingIcs(string $token, DateTimeImmutable $start, DateTimeImmutable $end, string $title, string $description, string $location = ''): string
 {
     $escape = static fn($text) => str_replace(["\\", "\r\n", "\r", "\n", ';', ','], ['\\\\', '\\n', '\\n', '\\n', '\\;', '\\,'], $text);
     $utc = new DateTimeZone('UTC');
     $lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//OMO//Meeting//FR', 'CALSCALE:GREGORIAN', 'BEGIN:VEVENT',
         'UID:' . $token . '@omo2.org', 'DTSTAMP:' . gmdate('Ymd\THis\Z'),
         'DTSTART:' . $start->setTimezone($utc)->format('Ymd\THis\Z'), 'DTEND:' . $end->setTimezone($utc)->format('Ymd\THis\Z'),
-        'SUMMARY:' . $escape($title), 'DESCRIPTION:' . $escape($description), 'STATUS:CONFIRMED', 'TRANSP:OPAQUE', 'END:VEVENT', 'END:VCALENDAR'];
+        'SUMMARY:' . $escape($title), 'DESCRIPTION:' . $escape($description)];
+    if ($location !== '') { $lines[] = 'LOCATION:' . $escape($location); }
+    array_push($lines, 'STATUS:CONFIRMED', 'TRANSP:OPAQUE', 'END:VEVENT', 'END:VCALENDAR');
     $folded = [];
     foreach ($lines as $line) {
         while (strlen($line) > 75) {
@@ -209,12 +275,14 @@ function meetingMail(MeetingBooking $booking): bool
     $body = commonRenderMailLayout([
         'brand_name' => 'OMO',
         'heading' => meetingT('confirmed'),
-        'intro_html' => commonMailTextToHtml(meetingT('mail_body', ['date' => $start->format('d.m.Y H:i')])),
+        'intro_html' => commonMailTextToHtml(meetingT('mail_body', ['date' => $start->format('d.m.Y H:i'),
+            'duration' => (int)(($booking->get('end_at')->getTimestamp() - $booking->get('start_at')->getTimestamp()) / 60)])),
         'body_html' => commonMailTextToHtml($title),
         'details_html' => commonMailTextToHtml(
             meetingT('name') . ' : ' . (string)$booking->get('guest_name') . "\n"
             . meetingT('email') . ' : ' . (string)$booking->get('guest_email')
-        ) . commonMailTextToHtml(meetingT('reason') . " :\n" . (string)$booking->get('reason')),
+        ) . commonMailTextToHtml(meetingT('reason') . " :\n" . (string)$booking->get('reason'))
+            . ($booking->meetingMethod() ? commonMailTextToHtml(meetingT('method') . ' : ' . meetingMethodLabel($booking->meetingMethod())) : ''),
     ]);
     try { return myHTMLMail([$from, 'OMO'], $booking->get('guest_email'), $title, $body, null, null,
         [['name' => 'rendez-vous.ics', 'type' => 'text/calendar; charset=UTF-8', 'content' => $ics]]); }
@@ -252,13 +320,17 @@ function meetingBook(int $userId, array $draft, ?callable $request = null, ?call
                 } elseif (($recovery['code'] ?? 0) !== 404) { throw new RuntimeException('pending'); }
             }
             if (!$found) {
+                $method = meetingResolveMethod($profile, $draft['method']['id'] ?? '');
+                if ($method !== ($draft['method'] ?? null)) { throw new RuntimeException('method_invalid'); }
+                // Legacy drafts created before variable durations represented one hour.
+                $durationMinutes = meetingValidateDuration($draft['duration'] ?? 60, $profile->maxDurationMinutes());
                 $day = meetingDate($draft['date'], new DateTimeZone($profile->get('timezone')));
                 $now = new DateTimeImmutable('now', $day->getTimezone());
                 if ($day < $now->setTime(0, 0) || $day > $now->modify('+365 days')) { throw new RuntimeException('date_invalid'); }
                 $busy = meetingBusy($profile, $day, $day->modify('+1 day'), true, $draft['token'], $request);
                 $slot = null;
-                foreach (meetingDay($day, $profile->hours(), $busy, $now)['slots'] as $candidate) {
-                    if ($candidate['time'] === $draft['time'] && $candidate['free']) { $slot = $candidate; }
+                foreach (meetingDay($day, $profile->hours(), $busy, $now, $durationMinutes)['slots'] as $candidate) {
+                    if ($candidate['time'] === $draft['time'] && $candidate['bookable']) { $slot = $candidate; }
                 }
                 if (!$slot) { throw new RuntimeException('slot_taken'); }
                 if (!$existing) {
@@ -268,12 +340,15 @@ function meetingBook(int $userId, array $draft, ?callable $request = null, ?call
                         $displayName = trim((string)$owner->getScopedDisplayName());
                         if ($displayName !== '') { $ownerName = $displayName; }
                     }
-                    $ics = meetingIcs($draft['token'], $slot['start'], $slot['end'], meetingT('event_title', ['owner' => $ownerName, 'guest' => $draft['name']]),
-                        $draft['name'] . "\n" . $draft['email'] . "\n\n" . $draft['reason']);
+                    $ics = meetingIcs($draft['token'], $slot['start'], $slot['booking_end'], meetingT('event_title', ['owner' => $ownerName, 'guest' => $draft['name']]),
+                        $draft['name'] . "\n" . $draft['email'] . "\n\n" . $draft['reason']
+                            . ($method ? "\n\n" . meetingT('method') . ' : ' . meetingMethodLabel($method) : ''),
+                        $method ? meetingMethodLabel($method) : '');
                     foreach (['IDuser' => $userId, 'IDexternalcalendar' => $calendar->getId(), 'token' => $draft['token'],
                         'guest_name' => $draft['name'], 'guest_email' => $draft['email'], 'reason' => $draft['reason'],
+                        'meeting_method' => $method ? json_encode($method, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE) : null,
                         'start_at' => $slot['start']->setTimezone(new DateTimeZone(date_default_timezone_get())),
-                        'end_at' => $slot['end']->setTimezone(new DateTimeZone(date_default_timezone_get())), 'resource_url' => $resource,
+                        'end_at' => $slot['booking_end']->setTimezone(new DateTimeZone(date_default_timezone_get())), 'resource_url' => $resource,
                         'calendar_data' => $ics, 'created_at' => new DateTimeImmutable()] as $key => $value) { $booking->set($key, $value); }
                 }
                 $booking->set('status', 'pending');

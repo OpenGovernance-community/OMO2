@@ -26,6 +26,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!$locked) { throw new RuntimeException('busy'); }
         $profile = MeetingProfile::forUser($userId);
         $hours = meetingValidateHours((array)($_POST['hours'] ?? []));
+        $methods = meetingValidateMethods($_POST['meeting_methods'] ?? [], $profile->methods());
+        $profile->set('meeting_methods', json_encode($methods, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
+        $profile->set('max_duration_minutes', meetingValidateDuration($_POST['max_duration_minutes'] ?? 60, MeetingProfile::MAX_DURATION_MINUTES));
         $profile->set('slug', $slug);
         $profile->set('weekly_hours', json_encode($hours));
         $profile->set('enabled', empty($_POST['enabled']) ? 0 : 1);
@@ -36,10 +39,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ((int)$profile->get('enabled') && !commonExternalCalendarCanCreate($calendar)) { throw new RuntimeException('calendar_invalid'); }
         }
         meetingSave($profile);
-        echo json_encode(['status' => true, 'message' => meetingT('saved'), 'path' => '/meeting/' . $slug]);
+        echo json_encode(['status' => true, 'message' => meetingT('saved'), 'path' => '/meeting/' . $slug, 'methods' => $methods]);
     } catch (Throwable $exception) {
         $key = $exception instanceof RuntimeException ? $exception->getMessage() : 'storage';
-        if (!in_array($key, ['slug_invalid', 'slug_taken', 'csrf', 'busy', 'hours_invalid', 'calendar_invalid', 'storage'], true)) { $key = 'storage'; }
+        if (!in_array($key, ['slug_invalid', 'slug_taken', 'csrf', 'busy', 'hours_invalid', 'duration_invalid', 'methods_invalid', 'calendar_invalid', 'storage'], true)) { $key = 'storage'; }
         echo json_encode(['status' => false, 'message' => meetingT($key)]);
     } finally { if ($locked) { MeetingProfile::unlock($userId); } }
     exit;
@@ -49,6 +52,25 @@ $calendars->loadForUser($userId, true);
 $hours = $profile->hours();
 $text = [];
 foreach (['settings', 'saving', 'copied', 'unavailable'] as $key) { $text[$key] = meetingT($key); }
+$renderMethodRow = static function ($index, array $method = []): void {
+    $name = 'meeting_methods[' . $index . ']';
+    ?>
+    <div class="generic-control-action" data-meeting-method-row>
+        <div class="generic-form-grid generic-form-grid--pair">
+            <input type="hidden" name="<?= meetingEscape($name . '[id]') ?>" value="<?= meetingEscape($method['id'] ?? '') ?>" data-meeting-method-id>
+            <label class="generic-form-field"><span class="generic-form-label"><?= meetingEscape(meetingT('method_type')) ?></span>
+                <select class="generic-form-control" name="<?= meetingEscape($name . '[type]') ?>" data-meeting-method-type>
+                    <?php foreach (MeetingProfile::METHOD_TYPES as $type): ?><option value="<?= $type ?>"<?= ($method['type'] ?? 'address') === $type ? ' selected' : '' ?>><?= meetingEscape(meetingT('method_' . $type)) ?></option><?php endforeach; ?>
+                </select>
+            </label>
+            <label class="generic-form-field"><span class="generic-form-label"><?= meetingEscape(meetingT('method_value')) ?></span>
+                <input class="generic-form-control" name="<?= meetingEscape($name . '[value]') ?>" value="<?= meetingEscape($method['value'] ?? '') ?>" required maxlength="1000" data-meeting-method-value>
+            </label>
+        </div>
+        <button type="button" class="generic-action-button generic-action-button--secondary generic-action-button--icon-only" data-meeting-method-remove aria-label="<?= meetingEscape(meetingT('method_remove')) ?>">&times;</button>
+    </div>
+    <?php
+};
 ?>
 <link rel="stylesheet" href="/omo/api/calendar/popups.css?v=20260917-calendar-ui-6">
 <form class="generic-drawer-content generic-form-stack" data-topbar-modal-max-width="860px" data-meeting-settings data-text="<?= meetingEscape(json_encode($text)) ?>" action="/omo/api/calendar/meeting_settings.php" method="post">
@@ -77,7 +99,20 @@ foreach (['settings', 'saving', 'copied', 'unavailable'] as $key) { $text[$key] 
                 <button class="generic-action-button generic-action-button--secondary" type="button" data-meeting-copy><?= meetingEscape(meetingT('copy')) ?></button>
             </div>
         </section>
+        <section class="generic-form-section generic-form-section--divided generic-form-stack">
+            <h3 class="generic-card-title"><?= meetingEscape(meetingT('methods')) ?></h3>
+            <p class="generic-help-text"><?= meetingEscape(meetingT('methods_hint')) ?></p>
+            <div class="generic-form-stack" data-meeting-methods data-max-methods="<?= MeetingProfile::MAX_METHODS ?>">
+                <?php foreach ($profile->methods() as $index => $method) { $renderMethodRow($index, $method); } ?>
+            </div>
+            <template data-meeting-method-template><?php $renderMethodRow('__index__'); ?></template>
+            <button type="button" class="generic-action-button generic-action-button--secondary" data-meeting-method-add><?= meetingEscape(meetingT('method_add')) ?></button>
+        </section>
         <section class="generic-form-section generic-form-section--divided">
+            <label class="generic-form-field"><span class="generic-form-label"><?= meetingEscape(meetingT('max_duration')) ?></span>
+                <input type="number" class="generic-form-control" name="max_duration_minutes" min="30" max="<?= MeetingProfile::MAX_DURATION_MINUTES ?>" step="30" required value="<?= $profile->maxDurationMinutes() ?>">
+                <span class="generic-help-text"><?= meetingEscape(meetingT('max_duration_hint')) ?></span>
+            </label>
             <div class="generic-form-section__copy">
                 <h3 class="generic-card-title"><?= meetingEscape(meetingT('hours')) ?></h3>
                 <p class="generic-help-text"><?= meetingEscape(meetingT('timezone')) ?></p>
