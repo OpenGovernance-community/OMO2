@@ -21,16 +21,14 @@ $context = omoStatsResolveContext($organizationId, $currentHolonId);
 $context['pvMeetingPermission'] = commonResolvePvMeetingPermissionContext($organizationId);
 $canEdit = !empty($context['status']) && omoStatsCanEditContextResource($group, $context);
 $groupItems = omoStatsCollectionItems($group->getItems(), StatIndicatorGroupItem::class);
+$sourceAvailability = omoStatsGetGroupSourceAvailability($group);
+$sourceMessages = omoStatsGroupSourceMessages($sourceAvailability);
 $indicatorIds = [];
-$sourceIndicators = [];
 foreach ($groupItems as $item) {
     $indicatorIds[] = (int)$item->get('IDstatindicator');
-    $indicator = $item->getIndicator();
-    if ($indicator instanceof StatIndicator && (int)$indicator->get('active') === 1 && $indicator->canView()) {
-        $sourceIndicators[] = $indicator;
-    }
 }
-$series = omoStatsGetGroupSeries($group);
+$sourceIndicators = $sourceAvailability['sources'];
+$series = omoStatsGetGroupSeries($group, $sourceAvailability);
 $referencePointData = array_map(static function ($point) {
     $pointAt = $point->get('point_at');
     return [
@@ -41,7 +39,7 @@ $referencePointData = array_map(static function ($point) {
 }, omoStatsGetGroupReferencePoints($group));
 $groupCeilingValue = omoStatsGetGroupCeilingValue($group);
 $chartMinValue = is_numeric($group->get('chart_min_value')) ? (float)$group->get('chart_min_value') : null;
-$groupOverdueInfo = omoStatsGetGroupOverdueInfo($group);
+$groupOverdueInfo = omoStatsGetGroupOverdueInfo($group, null, $sourceAvailability);
 $groupOverdueSeverity = (string)$groupOverdueInfo['severity'];
 $chartData = omoStatsBuildGroupChartData($group, $series, $groupOverdueSeverity);
 $displayMode = StatIndicatorGroup::normalizeDisplayMode($group->get('display_mode'));
@@ -58,7 +56,7 @@ foreach ($series as $seriesIndex => $seriesItem) {
     }
 }
 ?>
-<article class="omo-stats-group-detail<?= $groupOverdueSeverity === 'error' ? ' omo-stats-group-detail--overdue' : ($groupOverdueSeverity === 'warning' ? ' omo-stats-group-detail--warning' : '') ?>" data-omo-stats-group-detail data-group-id="<?= (int)$groupId ?>">
+<article class="omo-stats-group-detail<?= $sourceAvailability['status'] !== 'current' ? ' omo-stats-group-detail--source-issue' : ($groupOverdueSeverity === 'error' ? ' omo-stats-group-detail--overdue' : ($groupOverdueSeverity === 'warning' ? ' omo-stats-group-detail--warning' : '')) ?>" data-omo-stats-group-detail data-group-id="<?= (int)$groupId ?>">
     <div
         hidden
         data-omo-subdrawer-header
@@ -84,7 +82,8 @@ foreach ($series as $seriesIndex => $seriesItem) {
     </div>
 
     <div class="omo-stats-detail__meta omo-stats-detail__meta--compact generic-meta">
-        <span><strong><?= omoApiEscape(omoStatsT('stats.card.member_count', ['count' => count($sourceIndicators)])) ?></strong></span>
+        <span><strong><?= omoApiEscape(omoStatsT('stats.card.member_count', ['count' => count($groupItems)])) ?></strong></span>
+        <?php foreach ($sourceMessages as $sourceMessage): ?><span class="omo-stats-source-archived-note"><?= omoApiEscape($sourceMessage) ?></span><?php endforeach; ?>
         <?php if ($chartMinValue !== null): ?>
             <span><strong><?= omoApiEscape(omoStatsT('stats.detail.chart_min_value')) ?> :</strong> <?= omoApiEscape(omoStatsFormatNumber($chartMinValue)) ?></span>
         <?php endif; ?>
@@ -117,13 +116,12 @@ foreach ($series as $seriesIndex => $seriesItem) {
                     type="button"
                     class="omo-stats-group-detail__legend-item"
                     style="--omo-stats-series-color: <?= omoApiEscape($legendColor) ?>;"
-                    data-omo-stats-open-indicator="<?= (int)$indicator->getId() ?>"
-                    aria-label="<?= omoApiEscape(omoStatsT('stats.card.open', ['name' => (string)$indicator->get('name')])) ?>"
+                    <?php if ((int)$indicator->get('active') === 1): ?>data-omo-stats-open-indicator="<?= (int)$indicator->getId() ?>" aria-label="<?= omoApiEscape(omoStatsT('stats.card.open', ['name' => (string)$indicator->get('name')])) ?>"<?php else: ?>disabled<?php endif; ?>
                 >
                     <span class="omo-stats-group-detail__legend-dot" aria-hidden="true"></span>
                     <div>
                         <strong><?= omoApiEscape((string)$indicator->get('name')) ?></strong>
-                        <span><?= omoApiEscape(omoStatsContextLabel($indicator)) ?></span>
+                        <span><?= omoApiEscape((int)$indicator->get('active') === 1 ? omoStatsContextLabel($indicator) : omoStatsT($indicator->get('archived_at') instanceof DateTimeInterface ? 'stats.group.source.archived_short' : 'stats.group.source.deleted_short')) ?></span>
                     </div>
                 </button>
             <?php endforeach; ?>

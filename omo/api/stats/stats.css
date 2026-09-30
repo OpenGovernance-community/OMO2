@@ -272,25 +272,34 @@
 }
 
 .omo-stats-card--source-archived,
-.omo-stats-compact__row--source-archived {
+.omo-stats-card--source-issue,
+.omo-stats-compact__row--source-archived,
+.omo-stats-compact__row--source-issue {
     border-color: var(--color-border, #d1d5db);
     background: var(--color-surface-alt, #f8fafc);
     color: var(--color-text-light, #64748b);
 }
 
-.omo-stats-card--source-archived .omo-stats-card__chart {
+.omo-stats-card--source-archived .omo-stats-card__chart,
+.omo-stats-card--source-issue .omo-stats-card__chart {
     background: var(--color-surface-alt, #f8fafc);
 }
 
 .omo-stats-card--source-archived .omo-stats-card__header h3,
 .omo-stats-card--source-archived .omo-stats-card__footer strong,
-.generic-file-list--structured .omo-stats-compact__row--source-archived .generic-file-list__title {
+.omo-stats-card--source-issue .omo-stats-card__header h3,
+.omo-stats-card--source-issue .omo-stats-card__footer strong,
+.generic-file-list--structured .omo-stats-compact__row--source-archived .generic-file-list__title,
+.generic-file-list--structured .omo-stats-compact__row--source-issue .generic-file-list__title {
     color: var(--color-text-light, #64748b);
 }
 
 .omo-stats-card--source-archived .omo-stats-chart,
+.omo-stats-card--source-issue .omo-stats-chart,
 .omo-stats-compact__row--source-archived .omo-stats-chart,
-.omo-stats-detail--source-archived .omo-stats-chart {
+.omo-stats-compact__row--source-issue .omo-stats-chart,
+.omo-stats-detail--source-archived .omo-stats-chart,
+.omo-stats-group-detail--source-issue .omo-stats-chart {
     color: var(--color-text-light, #64748b);
 }
 
@@ -575,7 +584,8 @@
     box-shadow: 0 0 0 5px color-mix(in srgb, var(--omo-stats-warning) 12%, transparent);
 }
 
-.omo-stats-compact__row--source-archived .omo-stats-compact__dot {
+.omo-stats-compact__row--source-archived .omo-stats-compact__dot,
+.omo-stats-compact__row--source-issue .omo-stats-compact__dot {
     background: var(--color-text-light, #64748b);
     box-shadow: 0 0 0 5px color-mix(in srgb, var(--color-text-light, #64748b) 12%, transparent);
 }
@@ -651,6 +661,17 @@ button.omo-stats-group-detail__legend-item:focus-visible {
     border-color: var(--omo-stats-accent, #2563eb);
     background: var(--color-surface, #fff);
     outline: none;
+}
+
+button.omo-stats-group-detail__legend-item:disabled {
+    border-color: var(--color-border, #d1d5db);
+    background: var(--color-surface-alt, #f8fafc);
+    color: var(--color-text-light, #64748b);
+    cursor: default;
+}
+
+button.omo-stats-group-detail__legend-item:disabled .omo-stats-group-detail__legend-dot {
+    background: var(--color-text-light, #64748b);
 }
 
 .omo-stats-group-detail__legend-dot {

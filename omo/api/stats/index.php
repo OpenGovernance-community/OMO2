@@ -206,8 +206,9 @@ foreach ($groupItems as $group) {
     if (!$group->canView()) {
         continue;
     }
-    $series = omoStatsGetGroupSeries($group);
-    $latestSumValue = omoStatsGetGroupLatestSumValue($group, $series);
+    $sourceAvailability = omoStatsGetGroupSourceAvailability($group);
+    $series = omoStatsGetGroupSeries($group, $sourceAvailability);
+    $latestSumValue = $sourceAvailability['status'] === 'unavailable' ? null : omoStatsGetGroupLatestSumValue($group, $series);
     $groupReferencePoints = omoStatsGetGroupReferencePoints($group);
     $groupReferencePointData = array_map(static function ($point) {
         $pointAt = $point->get('point_at');
@@ -218,20 +219,18 @@ foreach ($groupItems as $group) {
         ];
     }, $groupReferencePoints);
     $groupReferenceType = StatIndicator::normalizeReferenceType($group->get('reference_type'));
-    $activeGroupItems = array_filter(omoStatsCollectionItems($group->getItems(), \dbObject\StatIndicatorGroupItem::class), static function ($item): bool {
-        $sourceIndicator = $item->getIndicator();
-        return $sourceIndicator instanceof StatIndicator
-            && (int)$sourceIndicator->get('active') === 1
-            && $sourceIndicator->canView();
-    });
+    $groupSourceItems = omoStatsCollectionItems($group->getItems(), \dbObject\StatIndicatorGroupItem::class);
     $groupViewData[] = [
         'group' => $group,
         'series' => $series,
         'latestSumValue' => $latestSumValue,
-        'memberCount' => count($activeGroupItems),
+        'memberCount' => count($groupSourceItems),
+        'sourceStatus' => $sourceAvailability['status'],
+        'sourceMessages' => omoStatsGroupSourceMessages($sourceAvailability),
+        'sourceIndicators' => $sourceAvailability['sources'],
         'indicatorIds' => array_values(array_map(static function ($item) {
             return $item instanceof \dbObject\StatIndicatorGroupItem ? (int)$item->get('IDstatindicator') : 0;
-        }, omoStatsCollectionItems($group->getItems(), \dbObject\StatIndicatorGroupItem::class))),
+        }, $groupSourceItems)),
         'referenceType' => $groupReferenceType,
         'referencePoints' => array_values($groupReferencePointData),
         'ceilingValue' => $groupReferenceType === StatIndicator::REFERENCE_CEILING
@@ -241,7 +240,7 @@ foreach ($groupItems as $group) {
         'hideSameHolonSources' => (int)$group->get('hide_same_holon_sources') === 1,
         'canEdit' => omoStatsCanEditContextResource($group, $context),
         'canDelete' => omoStatsCanDeleteContextResource($group, $context),
-        'overdueSeverity' => omoStatsGetGroupOverdueInfo($group)['severity'],
+        'overdueSeverity' => omoStatsGetGroupOverdueInfo($group, null, $sourceAvailability)['severity'],
     ];
 }
 
@@ -250,16 +249,11 @@ foreach ($groupViewData as $groupItem) {
     $group = $groupItem['group'];
     $name = trim((string)$group->get('name'));
     $groupFrequencyRank = 70;
-    foreach ($group->getItems() as $groupSourceItem) {
-        $sourceIndicator = $groupSourceItem instanceof \dbObject\StatIndicatorGroupItem
-            ? $groupSourceItem->getIndicator()
-            : null;
-        if ($sourceIndicator instanceof StatIndicator && (int)$sourceIndicator->get('active') === 1) {
-            $groupFrequencyRank = min(
-                $groupFrequencyRank,
-                omoStatsMeasurementFrequencyRank($sourceIndicator)
-            );
-        }
+    foreach ($groupItem['sourceIndicators'] as $sourceIndicator) {
+        $groupFrequencyRank = min(
+            $groupFrequencyRank,
+            omoStatsMeasurementFrequencyRank($sourceIndicator)
+        );
     }
     $frequencyLabelsByRank = [
         10 => StatIndicator::FREQUENCY_DAILY,
@@ -463,8 +457,9 @@ $displayItemCount = count($statsEntries);
                             <?php if ($statsEntry['kind'] === 'group'): ?>
                             <?php $groupItem = $statsEntry['data']; $group = $groupItem['group']; $latestSumValue = $groupItem['latestSumValue']; $groupOverdueSeverity = $groupItem['overdueSeverity']; ?>
                             <article
-                                class="generic-section omo-stats-card omo-stats-card--group<?= $groupOverdueSeverity === 'error' ? ' omo-stats-card--overdue' : ($groupOverdueSeverity === 'warning' ? ' omo-stats-card--warning' : '') ?>"
+                                class="generic-section omo-stats-card omo-stats-card--group<?= $groupItem['sourceStatus'] !== 'current' ? ' omo-stats-card--source-issue' : ($groupOverdueSeverity === 'error' ? ' omo-stats-card--overdue' : ($groupOverdueSeverity === 'warning' ? ' omo-stats-card--warning' : '')) ?>"
                                 data-omo-stats-group-id="<?= (int)$group->getId() ?>"
+                                data-omo-stats-source-status="<?= omoApiEscape($groupItem['sourceStatus']) ?>"
                                 data-omo-stats-search-item
                                 tabindex="0"
                                 role="button"
@@ -474,6 +469,7 @@ $displayItemCount = count($statsEntries);
                                     <div>
                                         <span class="generic-card-title generic-card-title--eyebrow"><?= omoApiEscape(omoStatsT('stats.card.group')) ?></span>
                                         <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape((string)$group->get('name')) ?></h3>
+                                        <?php foreach ($groupItem['sourceMessages'] as $sourceMessage): ?><span class="omo-stats-source-archived-note"><?= omoApiEscape($sourceMessage) ?></span><?php endforeach; ?>
                                     </div>
                                     <span class="omo-stats-card__value-count<?= $groupItem['canEdit'] ? ' omo-stats-card__value-count--with-menu' : '' ?>"><?= omoApiEscape(omoStatsT('stats.card.member_count', ['count' => $groupItem['memberCount']])) ?></span>
                                     <?php if ($groupItem['canEdit'] || $groupItem['canDelete']): ?>
@@ -619,8 +615,9 @@ $displayItemCount = count($statsEntries);
                             <?php $groupItem = $statsEntry['data']; $group = $groupItem['group']; $latestSumValue = $groupItem['latestSumValue']; $groupOverdueSeverity = $groupItem['overdueSeverity']; ?>
                             <article class="generic-file-list__item-shell" data-omo-stats-search-item>
                                 <div
-                                    class="generic-file-list__row omo-stats-compact__row omo-stats-compact__row--group<?= $groupOverdueSeverity === 'error' ? ' omo-stats-compact__row--overdue' : ($groupOverdueSeverity === 'warning' ? ' omo-stats-compact__row--warning' : '') ?>"
+                                    class="generic-file-list__row omo-stats-compact__row omo-stats-compact__row--group<?= $groupItem['sourceStatus'] !== 'current' ? ' omo-stats-compact__row--source-issue' : ($groupOverdueSeverity === 'error' ? ' omo-stats-compact__row--overdue' : ($groupOverdueSeverity === 'warning' ? ' omo-stats-compact__row--warning' : '')) ?>"
                                     data-omo-stats-group-id="<?= (int)$group->getId() ?>"
+                                    data-omo-stats-source-status="<?= omoApiEscape($groupItem['sourceStatus']) ?>"
                                     tabindex="0"
                                     role="button"
                                     aria-label="<?= omoApiEscape(omoStatsT('stats.card.open', ['name' => (string)$group->get('name')])) ?>"
@@ -640,6 +637,7 @@ $displayItemCount = count($statsEntries);
                                             <span class="omo-stats-compact__dot omo-stats-compact__dot--group" aria-hidden="true"></span>
                                             <div class="generic-file-list__title-block">
                                                 <strong class="generic-file-list__title"><?= omoApiEscape((string)$group->get('name')) ?></strong>
+                                                <?php foreach ($groupItem['sourceMessages'] as $sourceMessage): ?><span class="omo-stats-source-archived-note"><?= omoApiEscape($sourceMessage) ?></span><?php endforeach; ?>
                                                 <span class="generic-file-list__meta-line"><?= omoApiEscape(omoStatsT('stats.card.member_count', ['count' => $groupItem['memberCount']])) ?></span>
                                             </div>
                                         </div>

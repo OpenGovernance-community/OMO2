@@ -145,6 +145,68 @@
 			return (bool)$this->getParameter('isSiteAdmin');
 		}
 
+		public static function recordIdentitySwitchNotice(self $admin, self $target, Organization $organization): bool
+		{
+			$adminId = (int)$admin->getId();
+			$targetId = (int)$target->getId();
+			$organizationId = (int)$organization->getId();
+			$pdo = self::getPdo();
+			if ($adminId <= 0 || $targetId <= 0 || $organizationId <= 0 || !($pdo instanceof \PDO) || $pdo->inTransaction()) {
+				return false;
+			}
+
+			$adminLabel = trim((string)$admin->getScopedDisplayName($organizationId));
+			$targetLabel = trim((string)$target->getScopedDisplayName($organizationId));
+			$organizationLabel = trim((string)$organization->get('name'));
+			$adminLabel = $adminLabel !== '' ? $adminLabel : 'Utilisateur ' . $adminId;
+			$targetLabel = $targetLabel !== '' ? $targetLabel : 'Utilisateur ' . $targetId;
+			$organizationLabel = $organizationLabel !== '' ? $organizationLabel : 'Organisation ' . $organizationId;
+
+			try {
+				$pdo->beginTransaction();
+				$notification = Notification::createForUser(
+					$targetId,
+					$organizationId,
+					'identity_taken',
+					'identity-taken-' . bin2hex(random_bytes(16)),
+					'Un super admin a pris votre identité',
+					'Le super admin ' . $adminLabel . ' a ouvert l’organisation ' . $organizationLabel . ' sous votre identité.',
+					'/omo/o/' . $organizationId
+				);
+				if (!($notification instanceof Notification)) {
+					throw new \RuntimeException('Identity switch notification could not be saved.');
+				}
+
+				$content = History::buildReferenceToken('user', $adminId, $adminLabel)
+					. ' a pris l’identité de '
+					. History::buildReferenceToken('user', $targetId, $targetLabel)
+					. ' dans '
+					. History::buildReferenceToken('organization', $organizationId, $organizationLabel)
+					. '.';
+				$historyResult = History::createEntry(
+					$organizationId,
+					$adminId,
+					'identity_taken',
+					$content,
+					['admin_user_id' => $adminId, 'target_user_id' => $targetId],
+					'organization',
+					$organizationId
+				);
+				if (!is_array($historyResult) || empty($historyResult['status'])) {
+					throw new \RuntimeException('Identity switch history could not be saved.');
+				}
+
+				$pdo->commit();
+				return true;
+			} catch (\Throwable $exception) {
+				if ($pdo->inTransaction()) {
+					$pdo->rollBack();
+				}
+				error_log('Identity switch notice failed: ' . $exception->getMessage());
+				return false;
+			}
+		}
+
 		public function allowsPasswordLogin()
 		{
 			return trim((string)$this->get('password')) !== ''
