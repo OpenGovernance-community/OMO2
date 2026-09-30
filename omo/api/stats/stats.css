@@ -124,6 +124,23 @@
     gap: 10px;
 }
 
+.omo-stats-move-dialog {
+    display: grid;
+    gap: 14px;
+}
+
+.omo-stats-move-dialog__actions {
+    display: flex;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.omo-stats-move-dialog__error {
+    margin: 0;
+    color: var(--color-danger, #dc2626);
+}
+
 .omo-stats__body {
     --omo-stats-body-padding: 18px;
     padding: 0px var(--omo-stats-body-padding);
@@ -506,6 +523,12 @@
     stroke-linejoin: round;
 }
 
+.omo-stats-card--source-issue .omo-stats-chart__reference,
+.omo-stats-compact__row--source-issue .omo-stats-chart__reference,
+.omo-stats-group-detail--source-issue .omo-stats-chart__reference {
+    stroke: #94a3b8;
+}
+
 .omo-stats-chart__reference--ceiling {
     stroke-dasharray: none;
     stroke-width: 3;
@@ -757,6 +780,14 @@ button.omo-stats-group-detail__legend-item:disabled .omo-stats-group-detail__leg
     display: grid;
     gap: 10px;
     min-width: 0;
+}
+
+.omo-stats-detail__description-panel {
+    padding: 24px;
+}
+
+.omo-stats-detail__description {
+    white-space: pre-wrap;
 }
 
 .omo-stats-detail__source-document {

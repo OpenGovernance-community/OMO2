@@ -29,8 +29,9 @@ function loadFunctions(window, file, names) {
     window.escapeHtml = value => String(value);
     window.omoHolonTemplateEscapeHtml = window.escapeHtml;
     window.omoHolonTemplateTexts = {};
-    loadFunctions(window, 'omo/api/holons/editor.js', ['normalizePermissionRanges', 'getPermissionProfiles', 'getPermissionRangeLabel', 'getPermissionAssignmentsForKey', 'readPermissionRowAssignments', 'setPermissionRowRanges', 'bindPermissionRow']);
-    loadFunctions(window, 'omo/api/parameters/holon-templates/templates.js', ['omoHolonTemplateNormalizePermissionRanges', 'omoHolonTemplateGetPermissionRangeLabel', 'omoHolonTemplateGetPermissionAssignmentsForKey', 'omoHolonTemplateReadPermissionRowAssignments', 'omoHolonTemplateSetPermissionRowRanges', 'omoHolonTemplateBindPermissionRow']);
+    loadFunctions(window, 'omo/api/holons/editor.js', ['normalizePermissionRanges', 'getPermissionProfiles', 'getPermissionRangeLabel', 'getPermissionAssignmentsForKey', 'readPermissionRowAssignments', 'readPermissions', 'setPermissionRowRanges', 'bindPermissionRow']);
+    loadFunctions(window, 'omo/api/parameters/holon-templates/templates.js', ['omoHolonTemplateNormalizePermissionRanges', 'omoHolonTemplateGetPermissionRangeLabel', 'omoHolonTemplateGetPermissionAssignmentsForKey', 'omoHolonTemplateReadPermissionRowAssignments', 'omoHolonTemplateReadPermissions', 'omoHolonTemplateSetPermissionRowRanges', 'omoHolonTemplateBindPermissionRow']);
+    window.elements = window.omoHolonTemplateElements = {permissions: document.body};
     window.omoHolonTemplateGetPermissionProfiles = window.getPermissionProfiles;
     const profiles = window.getPermissionProfiles();
     const ranges = [{key: 'self', label: 'Soi'}, {key: 'descendants', label: 'Descendants'}];
@@ -38,13 +39,19 @@ function loadFunctions(window, file, names) {
     for (const prefix of ['', 'omoHolonTemplate']) {
         const fn = name => window[prefix ? prefix + name[0].toUpperCase() + name.slice(1) : name];
         const row = document.createElement('div');
+        row.dataset.permissionKey = 'CAN_MOVE_HOLON';
         row.innerHTML = '<div data-permission-tokens></div><select data-permission-select><option value=""></option><option value="descendants">Descendants</option></select>';
         document.body.append(row);
         const map = {member: {CAN_MOVE_HOLON: assignments.member}, admin: {}, collective: {CAN_MOVE_HOLON: assignments.collective}};
         fn('setPermissionRowRanges')(row, fn('getPermissionAssignmentsForKey')(map, 'CAN_MOVE_HOLON'), ranges, profiles);
         fn('bindPermissionRow')(row, ranges);
         assert.deepEqual(plain(fn('readPermissionRowAssignments')(row)), assignments, prefix + ': reopening must preserve dormant and ordinary grants');
+        assert.deepEqual(plain(fn('readPermissions')()), map, 'Saving must not turn implicit admin rights into explicit grants');
         const scope = row.querySelector('[data-permission-token="descendants"]');
+        const admin = scope.querySelector('[data-permission-profile="admin"]');
+        assert(admin.checked && admin.disabled, 'Member rights must show as included for admins on opening');
+        admin.click();
+        assert(admin.checked, 'Implicit admin rights cannot be unchecked independently');
         const extended = scope.querySelector('[data-permission-extended]');
         assert(extended.checked && !extended.disabled);
         extended.click();
@@ -52,15 +59,32 @@ function loadFunctions(window, file, names) {
         extended.click();
         const member = scope.querySelector('[data-permission-profile="member"]');
         member.click();
+        assert(!admin.checked && !admin.disabled, 'Removing member rights restores the unassigned admin state');
         assert(extended.disabled, 'Collective-only grants cannot depend on a personal activation');
         assert.deepEqual(plain(fn('readPermissionRowAssignments')(row).collective), ['descendants']);
         member.click();
+        assert(admin.checked && admin.disabled, 'Checking members must immediately check and disable admin');
         scope.querySelector('[data-permission-remove]').click();
         assert.deepEqual(plain(fn('readPermissionRowAssignments')(row)), {member: ['self'], admin: [], collective: []}, 'Removal must handle object assignments');
         const select = row.querySelector('select');
         select.value = 'descendants';
         select.dispatchEvent(new window.Event('change', {bubbles: true}));
         assert.deepEqual(plain(fn('readPermissionRowAssignments')(row).member), ['self', 'descendants'], 'New scopes are ordinary by default');
+        // Explicit admin rights survive toggling members, rerendering and saving.
+        let currentScope = row.querySelector('[data-permission-token="descendants"]');
+        currentScope.querySelector('[data-permission-profile="member"]').click();
+        currentScope.querySelector('[data-permission-profile="admin"]').click();
+        currentScope.querySelector('[data-permission-profile="member"]').click();
+        assert.deepEqual(plain(fn('readPermissions')().admin), {CAN_MOVE_HOLON: ['descendants']});
+        const saved = fn('readPermissionRowAssignments')(row);
+        fn('setPermissionRowRanges')(row, saved, ranges, profiles);
+        currentScope = row.querySelector('[data-permission-token="descendants"]');
+        const explicitAdmin = currentScope.querySelector('[data-permission-profile="admin"]');
+        assert(explicitAdmin.checked && explicitAdmin.disabled);
+        currentScope.querySelector('[data-permission-profile="member"]').click();
+        assert(explicitAdmin.checked && !explicitAdmin.disabled, 'An explicit admin grant must survive removing member rights');
+        explicitAdmin.click();
+        assert.deepEqual(plain(fn('readPermissions')().admin), {}, 'An explicit admin grant can still be removed');
         row.remove();
     }
 

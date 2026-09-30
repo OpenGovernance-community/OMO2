@@ -1442,16 +1442,23 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         const chartMinLabel = String(indicatorItem.chartMinLabel || '').trim();
         const chartMaxLabel = String(indicatorItem.chartMaxLabel || '').trim();
         const chartHtml = String(indicatorItem.chartHtml || '').trim();
+        const sourceStatus = indicatorItem && indicatorItem.sourceStatus === 'archived' ? 'archived'
+            : (indicatorItem && indicatorItem.sourceStatus === 'unavailable' ? 'unavailable' : 'current');
         const overdueSeverity = indicatorItem && indicatorItem.overdueSeverity === 'warning' ? 'warning' : 'error';
-        const statusClass = indicatorItem && indicatorItem.isOverdue
+        const statusClass = sourceStatus !== 'current'
+            ? ' omo-indicator-embed--unavailable'
+            : indicatorItem && indicatorItem.isOverdue
             ? (overdueSeverity === 'warning' ? ' omo-indicator-embed--warning' : ' omo-indicator-embed--overdue')
             : (statusLabel !== '' ? ' omo-indicator-embed--current' : '');
-        const statusDotClass = indicatorItem && indicatorItem.isOverdue
+        const statusDotClass = sourceStatus !== 'current'
+            ? ' omo-indicator-embed__status-dot--unknown'
+            : indicatorItem && indicatorItem.isOverdue
             ? (overdueSeverity === 'warning' ? ' omo-indicator-embed__status-dot--warning' : ' omo-indicator-embed__status-dot--overdue')
             : (statusLabel !== '' ? ' omo-indicator-embed__status-dot--current' : ' omo-indicator-embed__status-dot--unknown');
         return '<span class="omo-indicator-embed' + statusClass + '" contenteditable="false" data-omo-embed-type="indicator"'
             + ' data-omo-indicator-id="' + String(indicatorId) + '"'
             + ' data-omo-indicator-kind="' + indicatorKind + '"'
+            + (sourceStatus !== 'current' ? ' data-omo-indicator-source-status="' + sourceStatus + '"' : '')
             + ' data-omo-indicator-title="' + escapeDocumentEmbedHtml(title) + '"'
             + (description !== '' ? ' data-omo-indicator-description="' + escapeDocumentEmbedHtml(description) + '"' : '')
             + (valueLabel !== '' ? ' data-omo-indicator-value="' + escapeDocumentEmbedHtml(valueLabel) + '"' : '')

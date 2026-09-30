@@ -60,6 +60,11 @@ if (!function_exists('omoStatsSourceLang')) {
             'stats.action.delete' => ['text' => 'Supprimer', 'context' => 'Button deleting one dated indicator value.'],
             'stats.action.delete_indicator' => ['text' => "Supprimer l'indicateur", 'context' => 'Menu action archiving an indicator from the current catalogue.'],
             'stats.action.archive_indicator' => ['text' => "Archiver l'indicateur", 'context' => 'Menu action hiding an indicator while retaining its history.'],
+            'stats.action.move_indicator' => ['text' => "Deplacer l'indicateur", 'context' => 'Menu action moving an indicator to another space.'],
+            'stats.move.title' => ['text' => "Deplacer l'indicateur", 'context' => 'Title of the indicator move dialog.'],
+            'stats.move.hint' => ['text' => "Choisissez un espace ou vous pouvez creer un indicateur.", 'context' => 'Instruction in the indicator move dialog.'],
+            'stats.move.submit' => ['text' => 'Deplacer ici', 'context' => 'Button confirming an indicator move.'],
+            'stats.move.select_required' => ['text' => 'Choisissez un autre espace autorise.', 'context' => 'Validation when no valid indicator destination is selected.'],
             'stats.action.edit_import' => ['text' => 'Changer la source', 'context' => 'Menu action changing the source of a contextual indicator import.'],
             'stats.action.delete_import' => ['text' => "Detacher l'indicateur", 'context' => 'Action removing only an indicator import from its context, preserving the original indicator.'],
             'stats.action.edit_group' => ['text' => 'Modifier le groupe', 'context' => 'Menu action editing a contextual indicator group.'],
@@ -86,6 +91,7 @@ if (!function_exists('omoStatsSourceLang')) {
             'stats.group.source.unavailable' => ['text' => '{name} : source inaccessible, les donnees combinees ne sont plus disponibles.', 'context' => 'Inaccessible source status on a combined indicator.'],
             'stats.group.source.archived_short' => ['text' => 'Archivee', 'context' => 'Short archived source label in a combined indicator legend.'],
             'stats.group.source.deleted_short' => ['text' => 'Supprimee', 'context' => 'Short deleted source label in a combined indicator legend.'],
+            'stats.group.chart.unavailable' => ['text' => 'Graphique indisponible : une source a ete supprimee ou est inaccessible.', 'context' => 'Placeholder for a combined chart with a missing source.'],
             'stats.card.member_count' => ['one' => '{count} indicateur', 'other' => '{count} indicateurs', 'context' => 'Number of indicators in a group.'],
             'stats.card.overdue' => ['text' => 'Valeur dépassée', 'context' => 'Label shown when an indicator has passed its expected measurement deadline.'],
             'stats.card.to_complete' => ['text' => 'À compléter', 'context' => 'Label shown when an indicator is due but still within its grace period.'],
@@ -116,6 +122,8 @@ if (!function_exists('omoStatsSourceLang')) {
             'stats.error.spreadsheet_synced' => ['text' => 'Les valeurs de cet indicateur sont synchronisées depuis un document tableur.', 'context' => 'Error shown when a spreadsheet-backed indicator cannot be edited manually.'],
             'stats.error.not_found' => ['text' => 'Indicateur introuvable.', 'context' => 'Error shown when an indicator is unavailable.'],
             'stats.error.forbidden' => ['text' => 'Vous ne pouvez pas modifier cet indicateur.', 'context' => 'Error shown when indicator edition is forbidden.'],
+            'stats.error.move_source' => ['text' => "Vous ne pouvez pas deplacer cet indicateur depuis son espace actuel.", 'context' => 'Error when indicator deletion permission at the source is missing.'],
+            'stats.error.move_target' => ['text' => "Destination invalide ou non autorisee pour la creation d'indicateurs.", 'context' => 'Error for an invalid or unauthorized indicator move destination.'],
             'stats.error.method' => ['text' => 'Cette action doit être envoyée en POST.', 'context' => 'Error returned for a mutation using the wrong HTTP method.'],
             'stats.error.action' => ['text' => 'Action inconnue.', 'context' => 'Error returned for an unsupported stats action.'],
             'stats.error.name' => ['text' => "Le nom de l'indicateur est obligatoire.", 'context' => 'Validation error for a missing indicator name.'],
@@ -134,6 +142,7 @@ if (!function_exists('omoStatsSourceLang')) {
             'stats.error.group_name' => ['text' => 'Le nom du groupe est obligatoire.', 'context' => 'Validation error for a missing indicator group name.'],
             'stats.error.schedule' => ['text' => 'Le rythme de mesure est invalide.', 'context' => 'Validation error for an invalid expected measurement frequency or moment.'],
             'stats.detail.tab.chart' => ['text' => 'Graphique', 'context' => 'Tab showing the large chart.'],
+            'stats.detail.tab.description' => ['text' => 'Description', 'context' => 'Tab showing the indicator description.'],
             'stats.detail.tab.values' => ['text' => 'Valeurs', 'context' => 'Tab showing dated values.'],
             'stats.detail.source' => ['text' => 'Consulter la source', 'context' => 'External link to the indicator source.'],
             'stats.detail.source_document' => ['text' => 'Afficher le document source', 'context' => 'Button revealing the collaborative document used by an automatic indicator.'],
@@ -723,6 +732,44 @@ if (!function_exists('omoStatsCanDeleteIndicator')) {
         return $holon instanceof Holon
             ? omoStatsCanUsePermission($holon, 'CAN_DELETE_INDICATOR', $context)
             : $indicator->canDelete();
+    }
+}
+
+if (!function_exists('omoStatsCanMoveIndicatorToHolon')) {
+    function omoStatsCanMoveIndicatorToHolon(StatIndicator $indicator, Holon $targetHolon, array $context): bool
+    {
+        $rootHolon = $context['rootHolon'] ?? null;
+        return omoStatsCanDeleteIndicator($indicator, $context)
+            && $rootHolon instanceof Holon
+            && (int)$targetHolon->getId() !== (int)$indicator->get('IDholon')
+            && $targetHolon->isDescendantOf((int)$rootHolon->getId(), true)
+            && (int)$targetHolon->get('active') === 1
+            && (int)$targetHolon->get('visible') === 1
+            && !$targetHolon->isTemplateNode((int)$rootHolon->getId())
+            && $targetHolon->canViewDetail()
+            && omoStatsCanUsePermission($targetHolon, 'CAN_CREATE_INDICATOR', $context);
+    }
+}
+
+if (!function_exists('omoStatsGetIndicatorMoveDestinationIds')) {
+    function omoStatsGetIndicatorMoveDestinationIds(array $context): array
+    {
+        $rootHolon = $context['rootHolon'] ?? null;
+        if (!($rootHolon instanceof Holon)) {
+            return [];
+        }
+        $destinations = [];
+        foreach (omoApiGetDescendantHolonIds($rootHolon) as $holonId) {
+            $holon = new Holon();
+            if ($holon->load((int)$holonId)
+                && (int)$holon->get('active') === 1
+                && (int)$holon->get('visible') === 1
+                && $holon->canViewDetail()
+                && omoStatsCanUsePermission($holon, 'CAN_CREATE_INDICATOR', $context)) {
+                $destinations[] = (int)$holonId;
+            }
+        }
+        return $destinations;
     }
 }
 
@@ -2220,12 +2267,37 @@ if (!function_exists('omoStatsGetGroupSeries')) {
 
         $series = omoStatsNormalizeGroupSeriesTimestamps($series, omoStatsGroupTimeBucketSeconds($series));
 
+        $firstCompleteTimestamp = null;
+        $lastCompleteTimestamp = null;
+        if ($availability['status'] === 'archived') {
+            if (count($series) !== count($availability['sources'])) {
+                return [];
+            }
+            $firstCompleteTimestamp = max(array_map(static function (array $seriesItem): int {
+                return (int)$seriesItem['points'][0]['timestamp'];
+            }, $series));
+            $lastCompleteTimestamp = min(array_map(static function (array $seriesItem): int {
+                return (int)$seriesItem['points'][count($seriesItem['points']) - 1]['timestamp'];
+            }, $series));
+            if ($lastCompleteTimestamp < $firstCompleteTimestamp) {
+                return [];
+            }
+        }
+
         $timestamps = [];
         foreach ($series as $seriesItem) {
             $points = $seriesItem['points'];
             foreach ($points as $point) {
+                if ($firstCompleteTimestamp !== null
+                    && ($point['timestamp'] < $firstCompleteTimestamp || $point['timestamp'] > $lastCompleteTimestamp)) {
+                    continue;
+                }
                 $timestamps[(int)$point['timestamp']] = true;
             }
+        }
+        if ($firstCompleteTimestamp !== null) {
+            $timestamps[$firstCompleteTimestamp] = true;
+            $timestamps[$lastCompleteTimestamp] = true;
         }
 
         $interpolate = static function (array $points, $timestamp) {
@@ -2269,6 +2341,11 @@ if (!function_exists('omoStatsGetGroupSeries')) {
 
         $backgroundSeries = [];
         foreach ($series as $sourceIndex => $seriesItem) {
+            if ($firstCompleteTimestamp !== null) {
+                $seriesItem['points'] = array_values(array_filter($seriesItem['points'], static function (array $point) use ($firstCompleteTimestamp, $lastCompleteTimestamp): bool {
+                    return $point['timestamp'] >= $firstCompleteTimestamp && $point['timestamp'] <= $lastCompleteTimestamp;
+                }));
+            }
             $seriesItem['is_background'] = true;
             $seriesItem['source_index'] = $sourceIndex;
             $backgroundSeries[] = $seriesItem;
@@ -2283,9 +2360,13 @@ if (!function_exists('omoStatsGetGroupSeries')) {
 }
 
 if (!function_exists('omoStatsRenderGroupChart')) {
-    function omoStatsRenderGroupChart(StatIndicatorGroup $group, array $series, $variant = 'card', $isOverdue = null, $withTooltips = false)
+    function omoStatsRenderGroupChart(StatIndicatorGroup $group, array $series, $variant = 'card', $isOverdue = null, $withTooltips = false, ?array $availability = null)
     {
         $variant = in_array($variant, ['compact', 'card', 'large'], true) ? $variant : 'card';
+        $availability = $availability ?? omoStatsGetGroupSourceAvailability($group);
+        if ($availability['status'] === 'unavailable') {
+            return '<div class="omo-stats-chart-empty">' . omoApiEscape(omoStatsT('stats.group.chart.unavailable')) . '</div>';
+        }
         if ($isOverdue === null) {
             $isOverdue = omoStatsGetGroupOverdueInfo($group)['severity'];
         }
@@ -2378,7 +2459,9 @@ if (!function_exists('omoStatsRenderGroupChart')) {
                 round($paddingTop + (1 - (($point['value'] - $minValue) / ($maxValue - $minValue))) * $plotHeight, 2),
             ];
         };
-        $colors = ['#2563eb', '#db2777', '#059669', '#d97706', '#7c3aed', '#0891b2'];
+        $colors = $availability['status'] === 'archived'
+            ? ['#64748b', '#94a3b8', '#475569', '#a1a1aa', '#71717a', '#6b7280']
+            : ['#2563eb', '#db2777', '#059669', '#d97706', '#7c3aed', '#0891b2'];
         $svg = '<svg class="omo-stats-chart omo-stats-chart--' . omoApiEscape($variant) . ' omo-stats-chart--group' . ($overdueSeverity === 'error' ? ' omo-stats-chart--overdue' : ($overdueSeverity === 'warning' ? ' omo-stats-chart--warning' : '')) . '" viewBox="0 0 ' . $width . ' ' . $height . '" role="img" aria-label="' . omoApiEscape((string)$group->get('name')) . '">';
         if ($variant === 'large') {
             for ($gridIndex = 0; $gridIndex <= $chartScale['intervals']; $gridIndex++) {
@@ -2400,7 +2483,9 @@ if (!function_exists('omoStatsRenderGroupChart')) {
             $isSum = !empty($seriesItem['is_sum']);
             $isReference = !empty($seriesItem['is_reference']);
             $sourceIndex = isset($seriesItem['source_index']) ? (int)$seriesItem['source_index'] : $seriesIndex;
-            $color = $isReference ? '#7b9aa8' : ($isSum ? $colors[0] : $colors[$sourceIndex % count($colors)]);
+            $color = $isReference
+                ? ($availability['status'] === 'archived' ? '#94a3b8' : '#7b9aa8')
+                : ($isSum ? $colors[0] : $colors[$sourceIndex % count($colors)]);
             $lineClass = $isReference ? 'omo-stats-chart__reference' : 'omo-stats-chart__line'
                 . ($isBackground ? ' omo-stats-chart__line--background' : '')
                 . ($isSum ? ' omo-stats-chart__line--sum' : '');

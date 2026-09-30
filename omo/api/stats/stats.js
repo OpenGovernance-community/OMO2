@@ -856,6 +856,82 @@ window.commonPageScripts["/omo/api/stats/stats.js"] = function (pageConfig, page
         });
     }
 
+    function openIndicatorMoveDialog(button) {
+        if (!button || typeof window.commonTopbarOpenModal !== 'function' || typeof window.omoMountHolonScopePicker !== 'function') {
+            window.omoNotify(texts.loadError, 'error');
+            return;
+        }
+        var indicatorId = Number(button.getAttribute('data-omo-stats-move-indicator') || 0);
+        var sourceHolonId = Number(button.getAttribute('data-omo-stats-source-holon') || 0);
+        var allowedIds = [];
+        try {
+            allowedIds = JSON.parse(root.getAttribute('data-omo-stats-move-destinations') || '[]');
+        } catch (error) {
+            allowedIds = [];
+        }
+        allowedIds = allowedIds.filter(function (id) { return Number(id) > 0 && Number(id) !== sourceHolonId; });
+        var html = '<div class="omo-stats-move-dialog generic-drawer-content">'
+            + '<p class="generic-help-text">' + escapeHtml(texts.moveHint) + '</p>'
+            + '<div data-omo-stats-move-picker></div>'
+            + '<p class="omo-stats-move-dialog__error" data-omo-stats-move-error hidden></p>'
+            + '<div class="omo-stats-move-dialog__actions">'
+            + '<button type="button" class="generic-action-button generic-action-button--secondary" data-omo-stats-move-cancel>' + escapeHtml(texts.cancel) + '</button>'
+            + '<button type="button" class="generic-action-button generic-action-button--main" data-omo-stats-move-submit disabled>' + escapeHtml(texts.moveSubmit) + '</button>'
+            + '</div></div>';
+        window.commonTopbarOpenModal(texts.moveTitle, html, 'html');
+        window.setTimeout(function () {
+            var modal = document.getElementById('commonTopbarModalBody');
+            var dialog = modal ? modal.querySelector('.omo-stats-move-dialog') : null;
+            if (!dialog) { return; }
+            var submit = dialog.querySelector('[data-omo-stats-move-submit]');
+            var errorNode = dialog.querySelector('[data-omo-stats-move-error]');
+            var selectedHolonId = 0;
+            window.omoMountHolonScopePicker({
+                host: dialog.querySelector('[data-omo-stats-move-picker]'),
+                organizationId: Number(root.getAttribute('data-omo-stats-oid') || 0),
+                initialHolonId: sourceHolonId,
+                selectableHolonIds: allowedIds,
+                showModes: false,
+                onChange: function (holonId) {
+                    selectedHolonId = Number(holonId || 0);
+                    submit.disabled = allowedIds.indexOf(selectedHolonId) === -1;
+                    errorNode.hidden = true;
+                }
+            });
+            dialog.addEventListener('click', function (event) {
+                if (event.target.closest('[data-omo-stats-move-cancel]')) {
+                    window.commonTopbarCloseModal();
+                    return;
+                }
+                if (!event.target.closest('[data-omo-stats-move-submit]')) { return; }
+                if (allowedIds.indexOf(selectedHolonId) === -1) {
+                    errorNode.textContent = texts.moveSelectRequired;
+                    errorNode.hidden = false;
+                    return;
+                }
+                submit.disabled = true;
+                var formData = new FormData();
+                formData.append('stats_action', 'move_indicator');
+                formData.append('indicator_id', String(indicatorId));
+                formData.append('IDholon', String(selectedHolonId));
+                formData.append('oid', root.getAttribute('data-omo-stats-oid') || '');
+                formData.append('cid', String(routeCid));
+                postFormData(formData).then(function () {
+                    window.commonTopbarCloseModal();
+                    if (typeof window.omoInvalidateMainRightPanel === 'function') {
+                        window.omoInvalidateMainRightPanel();
+                    }
+                    closeDrawer({force: true});
+                    return refreshRoot(currentUrl);
+                }).catch(function (actionError) {
+                    submit.disabled = false;
+                    errorNode.textContent = actionError.message || texts.loadError;
+                    errorNode.hidden = false;
+                });
+            });
+        }, 0);
+    }
+
     function contextHelp(label, text) {
         return '<details class="generic-context-help generic-context-help--compact" data-generic-context-help-hover>'
             + '<summary aria-label="' + escapeHtml(label) + '">?</summary>'
@@ -1602,6 +1678,14 @@ window.commonPageScripts["/omo/api/stats/stats.js"] = function (pageConfig, page
                 id: editImportButton.getAttribute('data-omo-stats-edit-import') || '',
                 indicatorIds: [editImportButton.getAttribute('data-omo-stats-indicator-id') || '']
             });
+            return;
+        }
+
+        var moveIndicatorButton = event.target.closest('[data-omo-stats-move-indicator]');
+        if (moveIndicatorButton) {
+            event.preventDefault();
+            event.stopPropagation();
+            openIndicatorMoveDialog(moveIndicatorButton);
             return;
         }
 

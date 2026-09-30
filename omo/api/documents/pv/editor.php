@@ -449,10 +449,11 @@ if ($hasStatsApplication) {
             continue;
         }
 
-        $groupSeries = omoStatsGetGroupSeries($embeddableIndicatorGroup);
+        $groupAvailability = omoStatsGetGroupSourceAvailability($embeddableIndicatorGroup);
+        $groupSeries = omoStatsGetGroupSeries($embeddableIndicatorGroup, $groupAvailability);
         $groupMode = \dbObject\StatIndicatorGroup::normalizeDisplayMode($embeddableIndicatorGroup->get('display_mode'));
         $groupMemberCount = count(omoStatsCollectionItems($embeddableIndicatorGroup->getItems(), \dbObject\StatIndicatorGroupItem::class));
-        $groupIsOverdue = omoStatsIsGroupOverdue($embeddableIndicatorGroup);
+        $groupIsOverdue = omoStatsGetGroupOverdueInfo($embeddableIndicatorGroup, null, $groupAvailability)['is_overdue'];
         $embeddableIndicatorsPayload[] = [
             'id' => (int)$embeddableIndicatorGroup->getId(),
             'kind' => 'group',
@@ -463,12 +464,15 @@ if ($hasStatsApplication) {
                 : omoDocumentsPvEditorT('documents.pv_editor.indicator.group_overlay'),
             'valueLabel' => omoDocumentsPvEditorT('documents.pv_editor.indicator.group_members', ['count' => $groupMemberCount]),
             'dateLabel' => '',
-            'statusLabel' => $groupIsOverdue
-                ? omoDocumentsPvEditorT('documents.pv_editor.indicator.overdue')
-                : omoDocumentsPvEditorT('documents.pv_editor.indicator.current'),
+            'statusLabel' => $groupAvailability['status'] === 'current'
+                ? ($groupIsOverdue
+                    ? omoDocumentsPvEditorT('documents.pv_editor.indicator.overdue')
+                    : omoDocumentsPvEditorT('documents.pv_editor.indicator.current'))
+                : implode(' ', omoStatsGroupSourceMessages($groupAvailability)),
+            'sourceStatus' => $groupAvailability['status'],
             'isOverdue' => $groupIsOverdue,
             'overdueSeverity' => $groupIsOverdue ? 'error' : 'none',
-            'chartHtml' => omoStatsRenderGroupChart($embeddableIndicatorGroup, $groupSeries, 'compact', $groupIsOverdue),
+            'chartHtml' => omoStatsRenderGroupChart($embeddableIndicatorGroup, $groupSeries, 'compact', $groupIsOverdue, false, $groupAvailability),
         ];
     }
 

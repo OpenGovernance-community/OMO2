@@ -3,6 +3,7 @@
 function commonPermissionEditorSourceLang(): array
 {
     return [
+        'admin_inherits_member' => ['text' => 'Inclus dans les droits des membres', 'context' => 'Disabled checked admin permission because admins also receive member permissions'],
         'extended' => ['text' => 'Autorité étendue', 'context' => 'Optional extended personal permission for a scope'],
         'extended_help' => ['text' => 'Les droits Membres et Admin de cette portee exigent une activation consciente des autorites etendues. Les droits du Collectif restent permanents.', 'context' => 'Explanation of extended permissions and collective independence'],
         'search' => ['text' => 'Rechercher un droit ou une application', 'context' => 'Permission editor search field.'],
