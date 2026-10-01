@@ -807,7 +807,14 @@ function commonExternalCalendarRefreshForAvailability(int $userId, float $deadli
             $last = $calendar->get('last_sync_at');
             $failed = trim((string)$calendar->get('last_sync_error')) !== '';
             if ($last instanceof \DateTimeInterface && $last->getTimestamp() > time() - ($failed ? 60 : 3600)) { continue; }
-            $synchronize($calendar, null, null, false, min($deadline, microtime(true) + 8));
+            try {
+                $synchronize($calendar, null, null, false, min($deadline, microtime(true) + 8));
+            } catch (\Throwable $exception) {
+                // Availability remains advisory: preserve cached events on a timeout
+                // or provider failure, and apply the usual retry cooldown.
+                error_log('External calendar availability refresh failed: ' . get_class($exception));
+                $calendar->markSyncResult(false, 'Synchronisation indisponible. Donnees existantes conservees.');
+            }
         }
     } finally {
         \dbObject\MeetingProfile::unlock($userId);

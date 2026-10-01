@@ -465,7 +465,10 @@ class DocumentPvPoint extends DbObject
             return $userLabel;
         }
 
-        return trim((string)$this->get('author_email'));
+        $email = trim((string)$this->get('author_email'));
+        $document = new Document();
+        return $email !== '' && $document->load((int)$this->get('IDdocument'))
+            ? $document->getExternalParticipantDisplayName($email) : $email;
     }
 
     public function getConcernedHolonLabel(): string

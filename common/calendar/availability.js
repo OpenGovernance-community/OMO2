@@ -21,7 +21,8 @@
     window.omoCalendarSetAvailabilityPending = function (form, pending) {
         var loading = form.querySelector('[data-calendar-availability-loading]');
         var panel = form.querySelector('[data-calendar-availability]');
-        if (loading) { loading.hidden = !pending; }
+        var confirmed = form.elements.availability_ack && form.elements.availability_ack.value !== '';
+        if (loading) { loading.hidden = !pending || confirmed; }
         if (pending && panel) {
             panel.hidden = true;
             delete panel.dataset.acknowledgement;

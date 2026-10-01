@@ -373,6 +373,12 @@ if (!function_exists('omoEtherpadGetOrCreateSession')) {
         }
 
         $sessionsResult = omoEtherpadApiRequest($organization, 'listSessionsOfGroup', array('groupID' => $groupId));
+        // Return competing sessions so the caller can remove them from this browser's
+        // cookie without revoking sessions that other browsers may still be using.
+        // Etherpad returns null (not an empty object) for a group without sessions.
+        $groupSessions = $sessionsResult['data'] ?? null;
+        $groupSessionIds = ($sessionsResult['status'] ?? false) && ($groupSessions === null || is_array($groupSessions))
+            ? array_keys($groupSessions ?? array()) : null;
         if (($sessionsResult['status'] ?? false) && is_array($sessionsResult['data'] ?? null)) {
             foreach ($sessionsResult['data'] as $sessionId => $sessionData) {
                 if (
@@ -385,27 +391,40 @@ if (!function_exists('omoEtherpadGetOrCreateSession')) {
                         'sessionId' => trim((string)$sessionId),
                         'validUntil' => (int)$sessionData['validUntil'],
                         'reused' => true,
+                        'groupSessionIds' => $groupSessionIds,
                     );
                 }
             }
         }
 
-        return omoEtherpadCreateSession($organization, $groupId, $authorId, $validUntil);
+        $result = omoEtherpadCreateSession($organization, $groupId, $authorId, $validUntil);
+        $result['groupSessionIds'] = $groupSessionIds;
+        return $result;
     }
 }
 
 if (!function_exists('omoEtherpadBuildSessionCookieValue')) {
-    function omoEtherpadBuildSessionCookieValue(string $sessionId, string $existingValue = ''): string
+    function omoEtherpadBuildSessionCookieValue(string $sessionId, string $existingValue = '', ?array $groupSessionIds = null): string
     {
+        // Etherpad may choose any valid session for a group. Keep only the identity
+        // selected by this opening; retain sessions for other pads when known safe.
+        if ($groupSessionIds === null) {
+            $existingValue = '';
+        }
+        $excludedIds = array_fill_keys($groupSessionIds ?? array(), true);
         $sessionIds = array();
-        foreach (array_merge(explode(',', $existingValue), array($sessionId)) as $candidate) {
+        foreach (explode(',', $existingValue) as $candidate) {
             $candidate = trim((string)$candidate);
-            if (!preg_match('/^s\.[A-Za-z0-9_-]{1,128}$/', $candidate)) {
+            if (!preg_match('/^s\.[A-Za-z0-9_-]{1,128}$/', $candidate) || isset($excludedIds[$candidate]) || $candidate === $sessionId) {
                 continue;
             }
 
             $sessionIds[$candidate] = $candidate;
         }
+        if (!preg_match('/^s\.[A-Za-z0-9_-]{1,128}$/', $sessionId)) {
+            return '';
+        }
+        $sessionIds[$sessionId] = $sessionId;
 
         return implode(',', array_slice(array_values($sessionIds), -20));
     }
@@ -499,4 +518,56 @@ if (!function_exists('omoEtherpadGetOrigin')) {
 
         return $origin;
     }
+}
+
+/** Caller must authorize editing this document before issuing an Etherpad session. */
+function omoEtherpadPrepareEditingAccess(\dbObject\Organization $organization, string $padId, string $authorMapper, string $authorName): array
+{
+    $cookieDomain = omoEtherpadResolveCookieDomain($organization);
+    if ($cookieDomain === null) {
+        return ['status' => false, 'text' => 'Le domaine de cookie Etherpad ne permet pas de transmettre la session OMO.'];
+    }
+
+    $authorResult = omoEtherpadApiRequest($organization, 'createAuthorIfNotExistsFor', array(
+        'authorMapper' => $authorMapper,
+        'name' => $authorName,
+    ));
+    $authorId = trim((string)($authorResult['data']['authorID'] ?? ''));
+    if (!($authorResult['status'] ?? false) || $authorId === '') {
+        return ['status' => false, 'text' => 'Impossible de créer l’identité Etherpad.'];
+    }
+
+    $groupId = trim((string)strtok($padId, '$'));
+    $sessionResult = omoEtherpadGetOrCreateSession($organization, $groupId, $authorId);
+    if (!($sessionResult['status'] ?? false)) {
+        return ['status' => false, 'text' => 'Impossible de créer la session Etherpad.'];
+    }
+
+    $existingCookieValue = is_string($_COOKIE['sessionID'] ?? null) ? (string)$_COOKIE['sessionID'] : '';
+    $sessionCookieValue = omoEtherpadBuildSessionCookieValue(
+        (string)$sessionResult['sessionId'],
+        $existingCookieValue,
+        $sessionResult['groupSessionIds'] ?? null
+    );
+    $cookieOptions = array(
+        'expires' => (int)($sessionResult['validUntil'] ?? (time() + 3600)),
+        'path' => '/',
+        'secure' => strtolower((string)parse_url(omoEtherpadGetConfig($organization)['baseUrl'], PHP_URL_SCHEME)) === 'https',
+        // Etherpad reads sessionID from document.cookie before it opens its socket.
+        // This cookie is an Etherpad session credential, not an OMO login cookie.
+        'httponly' => false,
+        'samesite' => 'None',
+    );
+    if ($cookieDomain !== '') {
+        $cookieOptions['domain'] = $cookieDomain;
+    }
+    if ($sessionCookieValue === '' || !setcookie('sessionID', $sessionCookieValue, $cookieOptions)) {
+        return ['status' => false, 'text' => 'Impossible de transmettre la session Etherpad.'];
+    }
+
+    $padUrl = omoEtherpadBuildPadUrl($organization, $padId);
+    if ($padUrl === '') {
+        return ['status' => false, 'text' => 'URL Etherpad invalide.'];
+    }
+    return ['status' => true, 'url' => $padUrl];
 }

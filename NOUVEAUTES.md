@@ -1,5 +1,13 @@
 # Journal Des Nouveautes
 
+- Pads : chaque ouverture selectionne la session de l identite courante pour le document et retire du cookie les sessions concurrentes du meme pad. Un acces public ne prend plus le pas sur le compte utilise ensuite dans OMO.
+
+- Participants externes : les pads et les auteurs de points de PV affichent le nom suivi de l e-mail confirme ; les membres de l organisation gardent leur nom seul. Le plugin Etherpad OMO empeche les sessions authentifiees de renommer leur auteur depuis le navigateur ; les Framapad externes recoivent ce nom en valeur initiale.
+
+- Inscriptions publiques : apres confirmation, les pads associes s ouvrent en edition dans un volet lateral et les PV non valides donnent acces a la page individuelle de participation a la reunion. L acces est limite aux documents de l evenement et aux inscriptions confirmees.
+
+- Agenda : les disponibilites sont actualisees avant l'affichage des conflits, avec repli sur les evenements en cache en cas d'erreur ou de timeout. La confirmation enregistre directement l'evenement sans nouveau controle de disponibilite ni synchronisation. Les membres invites sont valides avant toute actualisation et leurs details prives restent masques.
+
 - Calendrier : les erreurs d analyse ICS renvoient maintenant le type d exception et sa cause, limitee a 400 caracteres, pour faciliter le diagnostic sur le serveur.
 
 - Rangement : guides dans docs/, rapports dans docs/performance/, pages publiques OMO2 dans views/, exports EasyPV dans pv/export.php, export OMO1 dans tools/migration/ et pages transversales dans common/. Les anciennes URL restent accessibles par reecriture interne, avec conservation des parametres et des donnees POST.
