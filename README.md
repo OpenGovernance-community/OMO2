@@ -17,7 +17,7 @@ docker compose down -v
 docker compose up --build
 ```
 
-Guide complet : [DOCKER.md](DOCKER.md)
+Guide complet : [DOCKER.md](docs/DOCKER.md)
 
 ## 2. Installation sur un site ou un serveur
 
@@ -31,4 +31,14 @@ git clone -b Dev <url-du-repo> .
 
 Puis ouvrir le site dans le navigateur. Si le fichier `.env` est absent, le site redirige automatiquement vers `install.php` et lance l'assistant d'installation.
 
-Guide complet : [DEPLOY.md](DEPLOY.md)
+Guide complet : [DEPLOY.md](docs/DEPLOY.md)
+
+## Organisation des fichiers
+
+- `docs/` : guides de deploiement et Docker ; `docs/performance/` : rapports de performance.
+- `views/omo2-home.php` et `views/omo2-migration.php` : pages publiques OMO2, accessibles aux URL historiques `/index2.php` et `/migration-omo.php`.
+- `pv/export.php` : exports Word, OpenDocument et PDF d EasyPV.
+- `common/confirm.php`, `common/qr/` et `common/admin/stats.php` : confirmation de compte, QR codes et statistiques du site.
+- `tools/migration/omo1-export.php` : outil ponctuel d export d une organisation OMO1 vers le format importe par OMO2. Il demande les acces a la base source et l identifiant de l organisation ; il s utilise depuis le navigateur.
+
+Les anciennes URL des pages deplacees restent gerees par les reecritures internes de `.htaccess`, y compris les requetes POST. Les commandes des guides se lancent depuis la racine du depot.

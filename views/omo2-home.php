@@ -6,16 +6,16 @@ declare(strict_types=1);
  * intentionally grouped here so the public calls to action can be updated
  * without searching through the page markup.
  */
-require_once __DIR__ . '/config.php';
+require_once dirname(__DIR__) . '/config.php';
 
 spl_autoload_register(static function (string $class): void {
-    $path = __DIR__ . '/class/' . str_replace('\\', '/', strtolower($class)) . '.class.php';
+    $path = dirname(__DIR__) . '/class/' . str_replace('\\', '/', strtolower($class)) . '.class.php';
     if (is_file($path)) {
         require_once $path;
     }
 });
 
-require_once __DIR__ . '/common/translation_bundles.php';
+require_once dirname(__DIR__) . '/common/translation_bundles.php';
 
 $sourceLang = [
     'home.meta.title' => ['text' => 'OpenMyOrganization - Mieux s’organiser pour mieux coopérer', 'context' => 'Browser title for the public OMO2 homepage.'],

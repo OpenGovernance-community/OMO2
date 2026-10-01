@@ -781,7 +781,7 @@ function omoDocumentsPvEditorBuildContextualPointPayload(
             'email' => $publicParticipationLink->getRecipientEmail(),
             'label' => $publicParticipationLink->getRecipientUserId() > 0
                 ? \dbObject\DocumentPvPoint::getUserDisplayNameForOrganization($publicParticipationLink->getRecipientUserId(), $organizationId)
-                : $publicParticipationLink->getRecipientEmail(),
+                : $document->getExternalParticipantDisplayName($publicParticipationLink->getRecipientEmail()),
         ]];
         $pointData['authorHolonOptions'] = $publicParticipantCanUseStructure ? $authorHolonOptions : [];
     }

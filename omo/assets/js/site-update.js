@@ -341,6 +341,7 @@
         var forceButton = root.querySelector('[data-omo-site-update-force]');
         var dismissButton = root.querySelector('[data-omo-site-update-dismiss]');
         var lastPayload = null;
+        var completeOnly = new URLSearchParams(window.location.search).get('site-update-complete') === '1';
 
         function hideBanner() {
             root.hidden = true;
@@ -380,6 +381,20 @@
                     return;
                 }
 
+                if (payload.requiresCompletion === true || completeOnly) {
+                    completeOnly = true;
+                    setBannerState(root, {
+                        type: 'error',
+                        title: 'Finaliser la mise a jour',
+                        message: 'Installer les dependances PHP et executer les migrations pour le code deja present sur le serveur.',
+                        metaHtml: renderMeta(payload),
+                        showRun: true,
+                        runLabel: 'Finaliser',
+                        showDismiss: true
+                    });
+                    return;
+                }
+
                 if (payload.available === true) {
                     var behindCount = payload.behindCount ? Number(payload.behindCount) : 0;
                     var hasTrackedChanges = payload.trackedLocalChangeCount ? Number(payload.trackedLocalChangeCount) > 0 : false;
@@ -388,12 +403,13 @@
                     if (hasUntrackedOverlap) {
                         setBannerState(root, {
                             type: 'error',
-                            title: 'Fichiers non suivis a proteger',
-                            message: 'Des fichiers non suivis seraient remplaces par le patch distant. Deplacez-les ou supprimez-les manuellement avant la mise a jour.',
+                            title: 'Fichiers locaux en conflit',
+                            message: 'Vous pouvez forcer la mise a jour. Les fichiers identiques a la version distante ne seront pas sauvegardes ; seules les differences seront sauvegardees avant remplacement.',
                             metaHtml: renderMeta(payload),
                             localChangesHtml: renderLocalChanges(payload),
                             showRun: false,
-                            showForce: false,
+                            showForce: true,
+                            forceDisabled: false,
                             showDismiss: true
                         });
                         return;
@@ -440,25 +456,26 @@
         }
 
         function runUpdate(force) {
-            if (force !== true && (!lastPayload || lastPayload.available !== true)) {
+            if (!completeOnly && force !== true && (!lastPayload || lastPayload.available !== true)) {
                 hideBanner();
                 return;
             }
 
             if (force === true) {
                 var trackedCount = lastPayload && lastPayload.trackedLocalChangeCount ? Number(lastPayload.trackedLocalChangeCount) : 0;
-                var warning = 'Cette action remplacera definitivement ' + trackedCount + (trackedCount > 1 ? ' modifications locales suivies par Git.' : ' modification locale suivie par Git.') + ' Les fichiers non suivis seront conserves. Continuer ?';
+                var untrackedCount = lastPayload && lastPayload.untrackedOverlappingLocalChangeCount ? Number(lastPayload.untrackedOverlappingLocalChangeCount) : 0;
+                var warning = 'Cette action synchronisera le site avec la version distante : ' + trackedCount + ' fichiers suivis modifies et ' + untrackedCount + ' fichiers non suivis en conflit. Les contenus identiques ne seront pas sauvegardes. Les contenus differents seront sauvegardes hors du dossier public avant remplacement. Les fichiers non suivis sans conflit seront conserves. Continuer ?';
                 if (!window.confirm(warning)) {
                     return;
                 }
-            } else if (!window.confirm('Installer la nouvelle version du site maintenant ?')) {
+            } else if (!window.confirm(completeOnly ? 'Installer les dependances et appliquer les migrations du code actuel ?' : 'Installer la nouvelle version du site maintenant ?')) {
                 return;
             }
 
             setBannerState(root, {
                 type: '',
                 title: 'Mise a jour en cours',
-                message: 'Synchronisation du code et execution des migrations SQL...',
+                message: completeOnly ? 'Installation des dependances et execution des migrations SQL...' : 'Synchronisation du code et execution des migrations SQL...',
                 metaHtml: renderMeta(lastPayload || {}),
                 localChangesHtml: renderLocalChanges(lastPayload || {}),
                 showRun: !force,
@@ -479,9 +496,9 @@
                 }
             };
 
-            if (force === true) {
+            if (force === true || completeOnly) {
                 requestOptions.headers['Content-Type'] = 'application/x-www-form-urlencoded;charset=UTF-8';
-                requestOptions.body = 'force=1';
+                requestOptions.body = completeOnly ? 'complete=1' : 'force=1';
             }
 
             fetch(config.runUrl, requestOptions)
@@ -540,8 +557,14 @@
                 });
 
                 window.setTimeout(function () {
+                    if (completeOnly) {
+                        var url = new URL(window.location.href);
+                        url.searchParams.delete('site-update-complete');
+                        window.location.replace(url.toString());
+                        return;
+                    }
                     window.location.reload();
-                }, payload.updated === false ? 1000 : 1800);
+                }, payload.backupPath ? 15000 : (payload.updated === false ? 1000 : 1800));
             })
             .catch(function (error) {
                 setBannerState(root, {
