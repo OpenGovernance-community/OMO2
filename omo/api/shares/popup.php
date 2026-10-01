@@ -46,6 +46,7 @@ if (empty($context['status'])) {
 }
 
 $organizationId = (int)$context['organizationId'];
+$organization = $context['organization'];
 $currentHolon = $context['currentHolon'];
 $shareLinks = HolonShareLink::findAllForContext($organizationId, (int)$currentHolon->getId(), false);
 $hasExistingLinks = count($shareLinks) > 0;

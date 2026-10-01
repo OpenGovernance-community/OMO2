@@ -371,6 +371,41 @@ class DeferredProposal extends DbObject
     }
 
     /**
+     * Return holon targets directly contained by a context, passing through
+     * group nodes so their children remain available in proposal pickers.
+     */
+    public static function getHolonTargetsForContext(Holon $contextHolon, string $operation, array $catalog): array
+    {
+        $targets = [];
+        $visited = [];
+        $collect = static function (Holon $parent) use (&$collect, &$targets, &$visited, $operation, $catalog): void {
+            foreach ($parent->getChildren() as $child) {
+                if (!$child instanceof Holon) continue;
+                $childId = (int)$child->getId();
+                if ($childId <= 0 || isset($visited[$childId])) continue;
+                $visited[$childId] = true;
+
+                if (!empty($catalog[$childId]['permissions'][$operation])) {
+                    $targets[] = $child;
+                }
+                if ((int)$child->get('IDtypeholon') === 3) {
+                    $collect($child);
+                }
+            }
+        };
+        $collect($contextHolon);
+        usort($targets, static function (Holon $left, Holon $right): int {
+            $leftIsRole = (int)$left->get('IDtypeholon') === 1;
+            $rightIsRole = (int)$right->get('IDtypeholon') === 1;
+            if ($leftIsRole !== $rightIsRole) return $leftIsRole ? 1 : -1;
+            $labelOrder = strcasecmp((string)$left->getDisplayName(), (string)$right->getDisplayName());
+            return $labelOrder !== 0 ? $labelOrder : ((int)$left->getId() <=> (int)$right->getId());
+        });
+
+        return $targets;
+    }
+
+    /**
      * Load a rule target only when it belongs to the organization's enabled
      * structure and the collective holding the PV has the requested right
      * there. Personal grants are deliberately ignored.
