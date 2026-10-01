@@ -1,11 +1,17 @@
 <?php
 require_once __DIR__ . '/bootstrap.php';
 require_once dirname(__DIR__, 2) . '/common/avatar.php';
+require_once __DIR__ . '/projects/shared.php';
+commonReleaseReadOnlySession();
 use dbObject\ArrayOrganization;
+use dbObject\ArrayProject;
+use dbObject\Authority;
 use dbObject\Holon;
 use dbObject\HolonPermission;
+use dbObject\Organization;
 use dbObject\Permission;
 use dbObject\PropertyFormat;
+use dbObject\Project;
 
 function omoGetOrgPanelSourceLang(): array
 {
@@ -30,17 +36,17 @@ function omoGetOrgPanelSourceLang(): array
             'text' => 'Deplacer',
             'context' => 'Action menu label to move the current holon in the left panel.',
         ],
-        'leftbar.children.circles' => [
-            'text' => 'Cercles',
-            'context' => 'Subtitle for child circles listed in the left panel navigation.',
+        'leftbar.actions.share_as_model' => [
+            'text' => 'Partager comme modèle',
+            'context' => 'Action menu label to publish the current organization as a public model.',
         ],
-        'leftbar.children.roles' => [
-            'text' => 'Roles',
-            'context' => 'Subtitle for child roles listed in the left panel navigation.',
+        'leftbar.actions.stop_sharing_as_model' => [
+            'text' => 'Ne plus partager comme modèle',
+            'context' => 'Action menu label to unpublish the current organization model.',
         ],
-        'leftbar.children.section_title' => [
-            'text' => 'Dependances',
-            'context' => 'Accordion title for child navigation in the left panel.',
+        'leftbar.children.attached_title' => [
+            'text' => '{spacesLabel} rattachés',
+            'context' => 'Accordion title for direct child spaces in the left panel. {spacesLabel} is the plural space label from the organization lexicon; preserve this placeholder.',
         ],
         'leftbar.copy_link.error' => [
             'text' => 'Impossible de copier le lien direct.',
@@ -54,6 +60,10 @@ function omoGetOrgPanelSourceLang(): array
             'text' => 'Element',
             'context' => 'Fallback title for a detail card item in the left panel when no title is available.',
         ],
+        'leftbar.detail.show' => [
+            'text' => 'Voir détail',
+            'context' => 'Label shown beside the control that expands the HTML detail of a text property.',
+        ],
         'leftbar.detail.property_fallback' => [
             'text' => 'Propriete {propertyId}',
             'context' => 'Fallback section title for a holon property in the left panel when no label is available.',
@@ -66,8 +76,37 @@ function omoGetOrgPanelSourceLang(): array
             'text' => 'Mis a jour le {date} par {userName}',
             'context' => 'Update metadata shown below a left panel section when the updater is known.',
         ],
+        'leftbar.authority.delegated_count' => [
+            'one' => '{count} autorite deleguee',
+            'other' => '{count} autorites deleguees',
+            'context' => 'Count shown beside an authority that has direct delegated child authorities.',
+        ],
+        'leftbar.authority.delegated' => [
+            'text' => 'deleguee',
+            'context' => 'Status shown for an inactive authority shell after complete delegation.',
+        ],
+        'leftbar.authority.description' => [
+            'text' => 'Description',
+            'context' => 'Section title for the description of an authority.',
+        ],
+        'leftbar.authority.delegated_to' => [
+            'text' => 'Deleguee a',
+            'context' => 'Section title for direct child authority delegations.',
+        ],
+        'leftbar.authority.internal_children' => [
+            'text' => 'Sous-autorités',
+            'context' => 'Section title for authority descendants held by the same holon.',
+        ],
+        'leftbar.authority.inherited_from' => [
+            'text' => 'Heritee de',
+            'context' => 'Section title for the parent authority of an authority.',
+        ],
+        'leftbar.authority.root' => [
+            'text' => 'Autorite racine',
+            'context' => 'Fallback shown when an authority has no parent authority.',
+        ],
         'leftbar.empty.message' => [
-            'text' => 'Aucun contenu n est encore renseigne pour ce holon.',
+            'text' => 'Aucun contenu n’est encore renseigné pour cet élément.',
             'context' => 'Message shown in the left panel when the current holon has no visible content.',
         ],
         'leftbar.empty.section_title' => [
@@ -75,15 +114,15 @@ function omoGetOrgPanelSourceLang(): array
             'context' => 'Section title shown in the left panel when the current holon has no visible content.',
         ],
         'leftbar.error.holon_access_denied' => [
-            'text' => 'Acces refuse a ce holon.',
+            'text' => 'Accès refusé à cet élément.',
             'context' => 'Error message shown in the left panel when the current holon cannot be viewed.',
         ],
         'leftbar.error.holon_not_found' => [
-            'text' => 'Holon introuvable pour cette organisation.',
+            'text' => 'Élément introuvable pour cette organisation.',
             'context' => 'Error message shown in the left panel when the requested holon cannot be found.',
         ],
         'leftbar.error.organization_access_denied' => [
-            'text' => 'Acces refuse a cette organisation.',
+            'text' => 'Accès refusé à cette organisation.',
             'context' => 'Error message shown in the left panel when the current organization cannot be viewed.',
         ],
         'leftbar.error.organization_invalid' => [
@@ -95,7 +134,7 @@ function omoGetOrgPanelSourceLang(): array
             'context' => 'Error message shown in the left panel when the requested organization cannot be found.',
         ],
         'leftbar.error.root_not_found' => [
-            'text' => 'Aucune structure racine n a ete trouvee pour cette organisation.',
+            'text' => 'Aucune structure racine n’a été trouvée pour cette organisation.',
             'context' => 'Error message shown in the left panel when the organization has no structural root holon.',
         ],
         'leftbar.members.add' => [
@@ -106,6 +145,14 @@ function omoGetOrgPanelSourceLang(): array
             'text' => '{memberName} - invitation en attente',
             'context' => 'Tooltip shown for a pending invited member avatar in the left panel.',
         ],
+		'leftbar.members.role_focus_line' => [
+			'text' => 'Focus : {focus}',
+			'context' => 'Additional tooltip line showing a role assignment focus for a member avatar.',
+		],
+		'leftbar.members.admin_tooltip' => [
+			'text' => '{memberName} - {adminLabel}',
+			'context' => 'Tooltip shown for an administrator member avatar in the left panel.',
+		],
         'leftbar.members.section_title' => [
             'text' => 'Membres',
             'context' => 'Section title shown above the member avatars in the left panel.',
@@ -113,6 +160,18 @@ function omoGetOrgPanelSourceLang(): array
         'leftbar.members.view_all' => [
             'text' => 'Voir tout',
             'context' => 'Button label to open the complete team drawer from the left panel.',
+        ],
+        'leftbar.project.children.empty' => [
+            'text' => 'Aucun sous-projet direct.',
+            'context' => 'Message shown when expanding a project reference without direct subprojects.',
+        ],
+        'leftbar.project.children.error' => [
+            'text' => 'Impossible de charger les sous-projets.',
+            'context' => 'Message shown when loading direct subprojects of a project reference fails.',
+        ],
+        'leftbar.project.children.loading' => [
+            'text' => 'Chargement des sous-projets...',
+            'context' => 'Temporary message while direct subprojects of a project reference are loading.',
         ],
     ];
 }
@@ -194,11 +253,342 @@ function omoFormatListItemValue($item, array $entry)
         return $holonLabelCache[$holonId];
     }
 
+    if ($listItemType === 'project') {
+        static $projectTitleCache = array();
+
+        $projectId = is_array($item) ? (int)($item['id'] ?? 0) : (int)$item;
+        if ($projectId <= 0) {
+            return is_scalar($item) ? trim((string)$item) : '';
+        }
+
+        if (!isset($projectTitleCache[$projectId])) {
+            $project = new Project();
+            $projectTitleCache[$projectId] = ($project->load($projectId)
+                && (int)$project->get('IDorganization') === (int)($_SESSION['currentOrganization'] ?? 0)
+                && (
+                    omoProjectsCanRevealProjectTitle($project)
+                    || omoProjectsCanViewProject($project, omoProjectsResolveContext((int)$_SESSION['currentOrganization']))
+                )
+            )
+                ? trim((string)$project->get('title'))
+                : '';
+        }
+
+        return $projectTitleCache[$projectId];
+    }
+
+    if ($listItemType === 'authority') {
+        static $authorityLabelCache = array();
+
+        $authorityId = is_array($item) ? (int)($item['id'] ?? 0) : (int)$item;
+        if ($authorityId <= 0) {
+            return is_scalar($item) ? trim((string)$item) : '';
+        }
+
+        if (!isset($authorityLabelCache[$authorityId])) {
+            $authority = new Authority();
+            $authorityLabelCache[$authorityId] = '';
+            if (
+                $authority->load($authorityId)
+                && (int)$authority->getOrganizationId() === (int)($_SESSION['currentOrganization'] ?? 0)
+            ) {
+                $authorityLabelCache[$authorityId] = trim((string)$authority->get('label'));
+            }
+        }
+
+        return $authorityLabelCache[$authorityId];
+    }
+
     if (is_array($item)) {
         return trim((string)($item['label'] ?? $item['value'] ?? ''));
     }
 
     return trim((string)$item);
+}
+
+function omoGetProjectReferenceData($projectId)
+{
+    static $projectsById = null;
+    static $childrenByParent = null;
+    static $statusSummaryMemo = array();
+    static $projectContext = null;
+
+    $projectId = (int)$projectId;
+    if ($projectId <= 0) {
+        return null;
+    }
+
+    if (omoProjectsIsStructuralShareRequest()) {
+        $project = new Project();
+        if (
+            !$project->load($projectId)
+            || (int)$project->get('IDorganization') !== (int)($_SESSION['currentOrganization'] ?? 0)
+            || !omoProjectsCanRevealProjectTitle($project)
+        ) {
+            return null;
+        }
+
+        return array(
+            'project' => $project,
+            'titleOnly' => true,
+        );
+    }
+
+    if ($projectsById === null) {
+        $projectsById = array();
+        $childrenByParent = array();
+        $projectContext = omoProjectsResolveContext((int)($_SESSION['currentOrganization'] ?? 0));
+        $projects = new ArrayProject();
+        $projects->loadForOrganization((int)($_SESSION['currentOrganization'] ?? 0));
+
+        foreach ($projects as $project) {
+            $id = (int)$project->getId();
+            if ($id <= 0 || empty($projectContext['status']) || !omoProjectsCanViewProject($project, $projectContext)) {
+                continue;
+            }
+
+            $projectsById[$id] = $project;
+            $parentId = (int)$project->get('IDproject_parent');
+            if ($parentId > 0) {
+                $childrenByParent[$parentId][] = $project;
+            }
+        }
+    }
+
+    if (!isset($projectsById[$projectId])) {
+        return null;
+    }
+
+	$project = $projectsById[$projectId];
+	return array(
+		'project' => $project,
+		'statusSummary' => omoProjectsBuildStatusBar($project, $childrenByParent, $statusSummaryMemo),
+		'hasDirectChildren' => !empty($childrenByParent[$projectId]),
+	);
+}
+
+function omoRenderProjectReferenceItem($item, $source = '')
+{
+    $projectId = is_array($item) ? (int)($item['id'] ?? 0) : (int)$item;
+    $referenceData = omoGetProjectReferenceData($projectId);
+    if ($referenceData === null) {
+        return '';
+    }
+
+    $project = $referenceData['project'];
+    $title = trim((string)$project->get('title'));
+    if ($title === '') {
+        return '';
+    }
+
+    if (!empty($referenceData['titleOnly'])) {
+        $className = $source !== '' ? ' class="is-' . omoApiEscape($source) . '"' : '';
+        return '<li' . $className . '>' . omoApiEscape($title) . '</li>';
+    }
+
+	$priority = Project::normalizeLevel($project->get('priority'));
+	$status = Project::normalizeStatus($project->get('status'));
+	$statusLabel = omoProjectsStatusLabel($status, (int)$project->get('IDorganization'));
+	$hasDirectChildren = !empty($referenceData['hasDirectChildren']);
+    $className = 'section-project-reference';
+    if ($source !== '') {
+        $className .= ' is-' . $source;
+    }
+
+	$html = '<li class="' . omoApiEscape($className) . '" data-omo-project-reference data-project-id="' . $projectId . '">';
+	$html .= '<div class="section-project-reference__head">';
+	$html .= '<span class="section-project-reference__status-dot section-project-reference__status-dot--' . omoApiEscape($status) . '"'
+		. ' role="img" aria-label="' . omoApiEscape($statusLabel) . '" title="' . omoApiEscape($statusLabel) . '"></span>';
+    $html .= '<a class="section-project-reference__title" data-omo-project-reference-title href="#projects-d' . $projectId . '">' . omoApiEscape($title) . '</a>';
+    if ($priority !== null) {
+        $html .= '<span class="generic-project-priority generic-project-priority--p' . (int)$priority . '">P' . (int)$priority . '</span>';
+    }
+	$html .= '</div>';
+	if ($hasDirectChildren) {
+		$html .= '<button type="button" class="section-project-reference__status-toggle" data-omo-project-reference-toggle aria-expanded="false" aria-label="Afficher les sous-projets de ' . omoApiEscape($title) . '">';
+		$html .= omoProjectsRenderStatusBar($referenceData['statusSummary'], 'section-project-reference__status-bar', 'div', true);
+		$html .= '</button>';
+		$html .= '<div class="section-project-reference__children" data-omo-project-reference-children hidden></div>';
+	}
+    $html .= '</li>';
+
+    return $html;
+}
+
+function omoGetAuthorityReferenceData($item)
+{
+    static $authorityCache = array();
+
+    $authorityId = is_array($item) ? (int)($item['id'] ?? 0) : (int)$item;
+    if ($authorityId <= 0) {
+        return null;
+    }
+
+    if (array_key_exists($authorityId, $authorityCache)) {
+        return $authorityCache[$authorityId];
+    }
+
+    $authorityCache[$authorityId] = null;
+    $authority = new Authority();
+    if (
+        !$authority->load($authorityId)
+        || (int)$authority->getOrganizationId() !== (int)($_SESSION['currentOrganization'] ?? 0)
+    ) {
+        return null;
+    }
+
+    $children = array();
+    foreach ($authority->getChildren() as $child) {
+        $label = trim((string)$child->get('label'));
+        if ($label !== '') {
+            $owner = $child->getHolon();
+            $children[] = array(
+                'id' => (int)$child->getId(),
+                'label' => $label,
+                'holonId' => $owner instanceof Holon ? (int)$owner->getId() : 0,
+                'holonLabel' => $owner instanceof Holon ? $owner->getFullDisplayName() : '',
+            );
+        }
+    }
+
+    $parentData = null;
+    $parent = $authority->getParent();
+    if ($parent instanceof Authority) {
+        $parentOwner = $parent->getHolon();
+        $parentData = array(
+            'label' => trim((string)$parent->get('label')),
+            'holonLabel' => $parentOwner instanceof Holon ? $parentOwner->getFullDisplayName() : '',
+        );
+    }
+
+    $authorityCache[$authorityId] = array(
+        'id' => $authorityId,
+        'ownerHolonId' => (int)$authority->get('IDholon'),
+        'parentId' => (int)$authority->get('IDauthority_parent'),
+        'label' => trim((string)$authority->get('label')),
+        'isShell' => $authority->isShell(),
+        'description' => trim((string)$authority->get('description')),
+        'parent' => $parentData,
+        'children' => $children,
+    );
+
+    return $authorityCache[$authorityId];
+}
+
+function omoRenderAuthorityInternalTree(array $referenceData, $ownerHolonId, array $visited = array())
+{
+    $authorityId = (int)($referenceData['id'] ?? 0);
+    if ($authorityId <= 0 || isset($visited[$authorityId])) {
+        return '';
+    }
+    $visited[$authorityId] = true;
+    $items = '';
+    foreach ($referenceData['children'] as $child) {
+        if ((int)($child['holonId'] ?? 0) !== (int)$ownerHolonId) {
+            continue;
+        }
+        $childData = omoGetAuthorityReferenceData((int)($child['id'] ?? 0));
+        if (!is_array($childData)) {
+            continue;
+        }
+        $label = omoApiEscape((string)$childData['label']);
+        if (!empty($childData['isShell'])) {
+            $label = '<em>' . $label . '</em>';
+        }
+        $nested = omoRenderAuthorityInternalTree($childData, $ownerHolonId, $visited);
+        $items .= '<li>' . $label . $nested . '</li>';
+    }
+
+    return $items !== '' ? '<ul class="section-authority-reference__children">' . $items . '</ul>' : '';
+}
+
+function omoRenderAuthorityReferenceItem($item, $source = '')
+{
+    $referenceData = omoGetAuthorityReferenceData($item);
+    if (!is_array($referenceData) || $referenceData['label'] === '') {
+        return '';
+    }
+
+    $className = 'section-authority-reference';
+    if ($source !== '') {
+        $className .= ' is-' . $source;
+    }
+
+    $children = $referenceData['children'];
+    $delegatedChildren = array_filter($children, static function ($child) use ($referenceData) {
+        $childHolonId = (int)($child['holonId'] ?? 0);
+        return $childHolonId > 0 && $childHolonId !== (int)($referenceData['ownerHolonId'] ?? 0);
+    });
+    $countLabel = count($delegatedChildren) > 0
+        ? '-' . t('leftbar.authority.delegated_count', array('count' => count($delegatedChildren)))
+        : '';
+    $statusLabel = !empty($referenceData['isShell']) ? t('leftbar.authority.delegated') : $countLabel;
+    $parent = is_array($referenceData['parent'] ?? null) ? $referenceData['parent'] : null;
+    $parentLabel = $parent ? trim((string)($parent['label'] ?? '')) : '';
+    $parentHolonLabel = $parent ? trim((string)($parent['holonLabel'] ?? '')) : '';
+    $html = '<li class="' . omoApiEscape($className) . '">';
+    $html .= '<details class="section-authority-reference__details">';
+    $authorityLabel = omoApiEscape($referenceData['label']);
+    if (!empty($referenceData['isShell'])) {
+        $authorityLabel = '<em>' . $authorityLabel . '</em>';
+    }
+    $html .= '<summary><span class="section-authority-reference__label generic-title generic-title--compact">' . $authorityLabel . '</span>';
+    if ($statusLabel !== '') {
+        $html .= ' <span class="section-authority-reference__count">(' . omoApiEscape($statusLabel) . ')</span>';
+    }
+    $html .= '</summary>';
+    $html .= '<div class="section-authority-reference__body">';
+    $html .= '<section><h4>' . omoApiEscape(t('leftbar.authority.inherited_from')) . '</h4><div>'
+        . ($parentLabel !== ''
+            ? omoApiEscape($parentLabel) . ($parentHolonLabel !== '' ? ' <span class="section-authority-reference__holon">(' . omoApiEscape($parentHolonLabel) . ')</span>' : '')
+            : omoApiEscape(t('leftbar.authority.root')))
+        . '</div></section>';
+    if (trim((string)$referenceData['description']) !== '') {
+        $html .= '<section><h4>' . omoApiEscape(t('leftbar.authority.description')) . '</h4><div>'
+            . nl2br(omoApiEscape($referenceData['description'])) . '</div></section>';
+    }
+    $internalChildren = omoRenderAuthorityInternalTree($referenceData, (int)$referenceData['ownerHolonId']);
+    if ($internalChildren !== '') {
+        $html .= '<section><h4>' . omoApiEscape(t('leftbar.authority.internal_children')) . '</h4>' . $internalChildren . '</section>';
+    }
+    if (count($delegatedChildren) > 0) {
+        $html .= '<section><h4>' . omoApiEscape(t('leftbar.authority.delegated_to')) . '</h4><ul class="section-authority-reference__children">';
+        foreach ($delegatedChildren as $child) {
+            $childLabel = trim((string)($child['label'] ?? ''));
+            $holonLabel = trim((string)($child['holonLabel'] ?? ''));
+            if ($childLabel === '') {
+                continue;
+            }
+            $html .= '<li>' . omoApiEscape($childLabel)
+                . ($holonLabel !== '' ? ' <span class="section-authority-reference__holon">(' . omoApiEscape($holonLabel) . ')</span>' : '')
+                . '</li>';
+        }
+        $html .= '</ul></section>';
+    }
+    $html .= '</div></details></li>';
+
+    return $html;
+}
+
+function omoFilterTopLevelAuthorityItems(array $items)
+{
+    $itemsById = array();
+    foreach ($items as $item) {
+        $referenceData = omoGetAuthorityReferenceData($item);
+        if (is_array($referenceData)) {
+            $itemsById[(int)$referenceData['id']] = $referenceData;
+        }
+    }
+
+    return array_values(array_filter($items, static function ($item) use ($itemsById) {
+        $referenceData = omoGetAuthorityReferenceData($item);
+        if (!is_array($referenceData)) {
+            return true;
+        }
+        $parentId = (int)($referenceData['parentId'] ?? 0);
+        return !isset($itemsById[$parentId])
+            || (int)($itemsById[$parentId]['ownerHolonId'] ?? 0) !== (int)($referenceData['ownerHolonId'] ?? 0);
+    }));
 }
 
 function omoNormalizeDetailedListItem($item)
@@ -223,7 +613,7 @@ function omoRenderTextBlock($text, $className = 'section-text')
         return '';
     }
 
-    return '<div class="' . omoApiEscape($className) . '">' . nl2br(omoApiEscape($text)) . '</div>';
+    return '<div class="' . omoApiEscape($className) . ' generic-description generic-description--small generic-description--primary">' . nl2br(omoApiEscape($text)) . '</div>';
 }
 
 function omoRenderHtmlBlock($html, $className = 'section-html')
@@ -238,8 +628,19 @@ function omoRenderHtmlBlock($html, $className = 'section-html')
 
 function omoRenderFormattedList(array $items, array $entry, $className = 'section-list')
 {
+    if ((string)($entry['listItemType'] ?? '') === 'authority') {
+        $items = omoFilterTopLevelAuthorityItems($items);
+    }
     $html = '<ul class="' . omoApiEscape($className) . '">';
     foreach ($items as $item) {
+        if ((string)($entry['listItemType'] ?? '') === 'project') {
+            $html .= omoRenderProjectReferenceItem($item);
+            continue;
+        }
+        if ((string)($entry['listItemType'] ?? '') === 'authority') {
+            $html .= omoRenderAuthorityReferenceItem($item);
+            continue;
+        }
         $formattedItem = omoFormatListItemValue($item, $entry);
         if ($formattedItem === '') {
             continue;
@@ -289,12 +690,31 @@ function omoBuildListItemDescriptors(array $ancestorItems, array $currentItems)
 function omoRenderMixedList(array $ancestorItems, array $currentItems, array $entry, $className = 'section-list')
 {
     $descriptors = omoBuildListItemDescriptors($ancestorItems, $currentItems);
+    if ((string)($entry['listItemType'] ?? '') === 'authority') {
+        $topLevelItems = omoFilterTopLevelAuthorityItems(array_column($descriptors, 'item'));
+        $topLevelIds = array_fill_keys(array_map(static function ($item) {
+            $referenceData = omoGetAuthorityReferenceData($item);
+            return is_array($referenceData) ? (int)$referenceData['id'] : 0;
+        }, $topLevelItems), true);
+        $descriptors = array_values(array_filter($descriptors, static function ($descriptor) use ($topLevelIds) {
+            $referenceData = omoGetAuthorityReferenceData($descriptor['item']);
+            return !is_array($referenceData) || isset($topLevelIds[(int)$referenceData['id']]);
+        }));
+    }
     if (count($descriptors) === 0) {
         return '';
     }
 
     $html = '<ul class="' . omoApiEscape($className) . '">';
     foreach ($descriptors as $descriptor) {
+        if ((string)($entry['listItemType'] ?? '') === 'project') {
+            $html .= omoRenderProjectReferenceItem($descriptor['item'], $descriptor['source']);
+            continue;
+        }
+        if ((string)($entry['listItemType'] ?? '') === 'authority') {
+            $html .= omoRenderAuthorityReferenceItem($descriptor['item'], $descriptor['source']);
+            continue;
+        }
         $formattedItem = omoFormatListItemValue($descriptor['item'], $entry);
         if ($formattedItem === '') {
             continue;
@@ -321,10 +741,10 @@ function omoRenderDetailedList(array $ancestorItems, array $currentItems, array 
             continue;
         }
 
-        $html .= '<details class="section-detail-card is-' . omoApiEscape($descriptor['source']) . '">';
+        $html .= '<details class="generic-accordion generic-accordion--inset section-detail-card is-' . omoApiEscape($descriptor['source']) . '">';
         $html .= '<summary>' . omoApiEscape($detailItem['title'] !== '' ? $detailItem['title'] : t('leftbar.detail.item_fallback')) . '</summary>';
         if ($detailItem['description'] !== '') {
-            $html .= '<div class="section-detail-card__body">' . nl2br(omoApiEscape($detailItem['description'])) . '</div>';
+            $html .= '<div class="generic-accordion generic-accordion--inset section-detail-card__body">' . nl2br(omoApiEscape($detailItem['description'])) . '</div>';
         }
         $html .= '</details>';
     }
@@ -352,11 +772,39 @@ function omoRenderSectionBody(array $entry)
     $effective = trim((string)($entry['effectiveValue'] ?? ''));
     $formatId = (int)($entry['formatId'] ?? 0);
 
-    if ($effective === '') {
+    if (PropertyFormat::isEmptyValue($formatId, $effective)) {
         return '';
     }
 
-    if ($formatId === 2) {
+    if ($formatId === PropertyFormat::FORMAT_TEXT_HTML) {
+        $parts = PropertyFormat::getTextHtmlParts($effective);
+        $summary = $parts['text'] !== '' ? $parts['text'] : t('leftbar.detail.item_fallback');
+        if (PropertyFormat::isEmptyValue(PropertyFormat::FORMAT_HTML, $parts['detail'])) {
+            return '<div class="section-text-html__plain">' . omoApiEscape($summary) . '</div>';
+        }
+
+        $html = '<details class="section-text-html"><summary class="section-text-html__summary">' . omoApiEscape($summary) . '<span class="section-text-html__toggle"><span>' . omoApiEscape(t('leftbar.detail.show')) . '</span><span class="section-text-html__arrow" aria-hidden="true">&#9656;</span></span></summary>';
+        $html .= omoRenderHtmlBlock($parts['detail'], 'section-text-html__body section-html');
+        return $html . '</details>';
+    }
+
+    if ($formatId === PropertyFormat::FORMAT_HTML_LIST) {
+        $parts = PropertyFormat::getHtmlListParts($effective);
+        if (PropertyFormat::isEmptyValue(PropertyFormat::FORMAT_HTML_LIST, $parts)) {
+            return '';
+        }
+        $html = '<div class="section-html-list">';
+        $html .= omoRenderHtmlBlock($parts['before'], 'section-html section-html--before-list');
+        $listEntry = $entry;
+        $listEntry['value'] = json_encode($parts['items'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $listEntry['ancestor'] = '';
+        $listEntry['effectiveValue'] = $listEntry['value'];
+        $html .= omoRenderMixedList(array(), $parts['items'], $listEntry);
+        $html .= omoRenderHtmlBlock($parts['after'], 'section-html section-html--after-list');
+        return $html . '</div>';
+    }
+
+    if ($formatId === PropertyFormat::FORMAT_LIST) {
         $currentItems = omoParseListItems($value);
         $ancestorItems = omoParseListItems($ancestor);
         if ((string)($entry['listItemType'] ?? '') === 'detail') {
@@ -400,6 +848,10 @@ function omoEntryHasLocalDisplayValue(array $entry)
 
     if ($formatId === PropertyFormat::FORMAT_HTML) {
         return !PropertyFormat::isEmptyValue(PropertyFormat::FORMAT_HTML, $value);
+    }
+
+    if (in_array($formatId, array(PropertyFormat::FORMAT_TEXT_HTML, PropertyFormat::FORMAT_HTML_LIST), true)) {
+        return !PropertyFormat::isEmptyValue($formatId, $value);
     }
 
     return trim((string)$value) !== '';
@@ -483,8 +935,9 @@ function omoBuildSections(Holon $holon)
     $sections = array();
 
     foreach ($entries as $entry) {
-        $effective = trim((string)($entry['effectiveValue'] ?? ''));
-        if ($effective === '') {
+        $effective = $entry['effectiveValue'] ?? '';
+        $formatId = (int)($entry['formatId'] ?? 0);
+        if (PropertyFormat::isEmptyValue($formatId, $effective)) {
             continue;
         }
 
@@ -502,7 +955,8 @@ function omoBuildSections(Holon $holon)
 function omoBuildChildNavigation(Holon $holon)
 {
     $items = array(
-        'containers' => array(),
+        'circles' => array(),
+        'groups' => array(),
         'roles' => array(),
     );
 
@@ -520,8 +974,10 @@ function omoBuildChildNavigation(Holon $holon)
 
         if ($entry['type'] === 1) {
             $items['roles'][] = $entry;
+        } elseif ($entry['type'] === 3) {
+            $items['groups'][] = $entry;
         } else {
-            $items['containers'][] = $entry;
+            $items['circles'][] = $entry;
         }
     }
 
@@ -569,6 +1025,12 @@ if (!$canViewOrganization) {
     <?php
     exit;
 }
+
+$organizationLexicon = $organization->getLexicon();
+$adminLabel = trim((string)($organizationLexicon['admin']['label'] ?? '')) ?: 'Admin';
+$childCircleLabel = Organization::getLexiconLabel($organizationLexicon, 'circle', true);
+$childGroupLabel = Organization::getLexiconLabel($organizationLexicon, 'group', true);
+$childRoleLabel = Organization::getLexiconLabel($organizationLexicon, 'role', true);
 
 $root = $organization->getEnabledStructuralRootHolon();
 if ($root === null) {
@@ -624,33 +1086,63 @@ $breadcrumb = array_values(array_filter($currentHolon->getPathHolons(), function
 $sections = omoBuildSections($currentHolon);
 $childNavigation = omoBuildChildNavigation($currentHolon);
 $holonTypeLabel = omoGetHolonHeaderLabel($currentHolon);
+$holonIconUrl = trim((string)$currentHolon->getEffectiveIcon());
+if ($holonIconUrl === 'newimage') {
+    $holonIconUrl = '';
+}
 $selectedNodeClass = 'node_' . (int)$currentHolon->getId();
 $memberCards = $currentHolon->getAssociatedMemberCards(array(
     'organizationId' => $organizationId,
 ));
+$isRoleHolon = (int)$currentHolon->get('IDtypeholon') === 1;
+$isOrganizationDefinitionHolon = $currentHolon->isOrganizationHolon();
 if (function_exists('commonGetCurrentShareToken') && commonGetCurrentShareToken() !== '' && !commonCurrentShareAllowsPeople()) {
     $memberCards = array();
+} else {
+    $directContextAdminUserIds = $isOrganizationDefinitionHolon
+        ? array()
+        : array_fill_keys($currentHolon->getDirectContextAdminUserIds($organizationId), true);
+
+    foreach ($memberCards as &$memberCard) {
+        $memberCard['isAdmin'] = isset($directContextAdminUserIds[(int)($memberCard['userId'] ?? 0)]);
+    }
+    unset($memberCard);
+
+    usort($memberCards, static function (array $left, array $right) {
+        if ((bool)($left['isAdmin'] ?? false) !== (bool)($right['isAdmin'] ?? false)) {
+            return !empty($left['isAdmin']) ? -1 : 1;
+        }
+
+        return strcmp(
+            omoApiSortKey((string)($left['displayName'] ?? '')),
+            omoApiSortKey((string)($right['displayName'] ?? ''))
+        );
+    });
 }
-$memberPreviewLimit = 8;
-$visibleMemberCards = array_slice($memberCards, 0, $memberPreviewLimit);
-$hasHiddenMembers = count($memberCards) > count($visibleMemberCards);
-$isOrganizationDefinitionHolon = (int)$currentHolon->get('IDtypeholon') === 4;
+$regularMemberCount = count(array_filter($memberCards, static function (array $member): bool {
+    return empty($member['isAdmin']);
+}));
 $isCurrentTemplateHolon = !$isOrganizationDefinitionHolon && $root ? $currentHolon->isTemplateNode((int)$root->getId()) : false;
 $editTemplateContextId = $isCurrentTemplateHolon && $currentHolon->getParentHolon()
     ? (int)$currentHolon->getParentHolon()->getId()
     : ($isOrganizationDefinitionHolon ? (int)$currentHolon->getId() : 0);
 $canAddMembers = $currentHolon->isAllowed('CAN_ADD_MEMBER');
-$canCreateChildHolon = $currentHolon->canEdit() && in_array((int)$currentHolon->get('IDtypeholon'), array(2, 3, 4), true);
-$canEditHolon = $currentHolon->canEdit() && in_array((int)$currentHolon->get('IDtypeholon'), array(1, 2, 3, 4), true);
-$canMoveHolon = !$isCurrentTemplateHolon && $currentHolon->canEdit() && in_array((int)$currentHolon->get('IDtypeholon'), array(1, 2, 3), true);
-$canDeleteHolon = $currentHolon->canDelete() && in_array((int)$currentHolon->get('IDtypeholon'), array(1, 2, 3), true);
+$canCreateChildHolon = $currentHolon->isAllowed('CAN_ADD_HOLON') && in_array((int)$currentHolon->get('IDtypeholon'), array(2, 3, 4), true);
+$canEditHolon = ($currentHolon->isAllowed('CAN_EDIT_HOLON', false) || (!$isCurrentTemplateHolon && \dbObject\Property::canActOnAnyType($currentHolon))) && in_array((int)$currentHolon->get('IDtypeholon'), array(1, 2, 3, 4), true);
+$canMoveHolon = !$isCurrentTemplateHolon && $currentHolon->isAllowed('CAN_MOVE_HOLON') && in_array((int)$currentHolon->get('IDtypeholon'), array(1, 2, 3), true);
+$canDeleteHolon = $currentHolon->isAllowed('CAN_DELETE_HOLON') && $currentHolon->canDelete() && in_array((int)$currentHolon->get('IDtypeholon'), array(1, 2, 3), true);
 $canViewHolonHistory = $currentHolon->canViewDetail();
+$activeOrganizationMembership = $organization->getMembership((int)commonGetCurrentUserId(), true);
+$canManageOrganizationModel = $isOrganizationDefinitionHolon
+    && $activeOrganizationMembership
+    && $activeOrganizationMembership->isOrganizationAdmin()
+    && commonCurrentUserIsAdminModeEnabled($organizationId);
 $deleteDescendantCount = $canDeleteHolon ? (int)$currentHolon->countVisibleDescendants() : 0;
 $parentHolonForDelete = $canDeleteHolon ? $currentHolon->getParentHolon() : null;
 $deleteParentId = $parentHolonForDelete ? (int)$parentHolonForDelete->getId() : 0;
 $deleteParentIsRoot = $parentHolonForDelete ? ((int)$parentHolonForDelete->get('IDtypeholon') === 4) : false;
-$hasHolonActions = $canCreateChildHolon || $canEditHolon || $canMoveHolon || $canDeleteHolon || $canViewHolonHistory;
-$debugPermissionCatalog = Permission::getEditorCatalog();
+$hasHolonActions = $canCreateChildHolon || $canEditHolon || $canMoveHolon || $canDeleteHolon || $canViewHolonHistory || $canManageOrganizationModel;
+$debugPermissionCatalog = Permission::getEditorCatalog($organization->getLexicon());
 $debugPermissionEntries = array();
 foreach ($debugPermissionCatalog as $permissionEntry) {
     $permissionKey = trim((string)($permissionEntry['key'] ?? ''));
@@ -687,24 +1179,35 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
 
     <div class="circle-header">
         <div>
-            <div class="circle-kicker generic-card-title generic-card-title--eyebrow"><?= omoApiEscape($holonTypeLabel) ?></div>
- <div class="breadcrumb">
-        <?php foreach ($breadcrumb as $index => $crumb): ?>
-            <?php if ($index > 0): ?>
-                <span class="separator">&rsaquo;</span>
-            <?php endif; ?>
+            <div class="breadcrumb">
+                <?php foreach ($breadcrumb as $index => $crumb): ?>
+                    <?php if ($index > 0): ?>
+                        <span class="separator">&rsaquo;</span>
+                    <?php endif; ?>
 
-            <?php $isActive = ((int)$crumb->getId() === (int)$currentHolon->getId()); ?>
-            <?php if (!$isActive): ?>
-            <span class="crumb<?= $isActive ? ' active' : '' ?>"
-                  data-cid="<?= (int)$crumb->getId() ?>"
-                  data-is-root="<?= $index === 0 ? '1' : '0' ?>">
-                <?= omoApiEscape($crumb->getFullDisplayName()) ?>
-            </span>
-            <?php endif; ?>
-        <?php endforeach; ?>
-    </div>
-            <h2 class="circle-title generic-card-title generic-card-title--section"><?= omoApiEscape($currentHolon->getFullDisplayName()) ?></h2>
+                    <?php $isActive = ((int)$crumb->getId() === (int)$currentHolon->getId()); ?>
+                    <?php if (!$isActive): ?>
+                    <span class="crumb<?= $isActive ? ' active' : '' ?>"
+                          data-cid="<?= (int)$crumb->getId() ?>"
+                          data-is-root="<?= $index === 0 ? '1' : '0' ?>">
+                        <?= omoApiEscape($crumb->getFullDisplayName()) ?>
+                    </span>
+                    <?php endif; ?>
+                <?php endforeach; ?>
+            </div>
+            <div class="circle-title-row">
+                <?php if ($holonIconUrl !== ''): ?>
+                    <div class="circle-title__icon">
+                        <img src="<?= omoApiEscape($holonIconUrl) ?>" alt="">
+                    </div>
+                <?php endif; ?>
+                <div class="circle-title-copy">
+                    <div class="circle-kicker generic-card-title generic-card-title--eyebrow"><?= omoApiEscape($holonTypeLabel) ?></div>
+                    <h2 class="circle-title generic-card-title generic-card-title--section">
+                        <span><?= omoApiEscape($currentHolon->getFullDisplayName()) ?></span>
+                    </h2>
+                </div>
+            </div>
         </div>
         <div class="circle-meta">
             <?php if ($hasHolonActions): ?>
@@ -717,6 +1220,14 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
                         aria-expanded="false"
                     >...</button>
                     <div class="circle-menu__panel" data-holon-menu-panel="1" hidden>
+                        <?php if ($canManageOrganizationModel): ?>
+                            <button
+                                type="button"
+                                class="circle-menu__item"
+                                data-toggle-organization-model="1"
+                                data-oid="<?= (int)$organizationId ?>"
+                            ><?= omoApiEscape($organization->isSharedAsTemplate() ? t('leftbar.actions.stop_sharing_as_model') : t('leftbar.actions.share_as_model')) ?></button>
+                        <?php endif; ?>
                         <?php if ($canCreateChildHolon): ?>
                             <button
                                 type="button"
@@ -771,15 +1282,34 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
             <button type="button" class="circle-badge circle-badge--link" data-copy-direct-link="1" data-cid="<?= (int)$currentHolon->getId() ?>">#<?= (int)$currentHolon->getId() ?></button>
         </div>
     </div>
-    <?php if (count($visibleMemberCards) > 0 || $canAddMembers): ?>
+    <?php if (count($memberCards) > 0 || $canAddMembers): ?>
         <div class="circle-members">
             <div class="circle-members__label generic-card-title generic-card-title--eyebrow"><?= omoApiEscape(t('leftbar.members.section_title')) ?></div>
             <div class="circle-members__row">
                 <div class="circle-members__list">
-                    <?php foreach ($visibleMemberCards as $member): ?>
-                        <?php $memberTooltip = !empty($member['isPending'])
-                            ? t('leftbar.members.pending_tooltip', ['memberName' => $member['displayName']])
-                            : (string)$member['displayName']; ?>
+                    <?php foreach ($memberCards as $member): ?>
+						<?php
+						$hasPendingInvitation = !empty($member['hasPendingInvitation']);
+						$memberTooltip = $hasPendingInvitation
+							? t('leftbar.members.pending_tooltip', ['memberName' => $member['displayName']])
+							: (!empty($member['isAdmin'])
+								? t('leftbar.members.admin_tooltip', ['memberName' => $member['displayName'], 'adminLabel' => $adminLabel])
+								: (string)$member['displayName']); ?>
+						<?php
+						$memberFocus = '';
+						if ($isRoleHolon && is_array($member['assignmentLinks'] ?? null)) {
+							foreach ($member['assignmentLinks'] as $assignmentLink) {
+								if ((int)($assignmentLink['holonId'] ?? 0) !== (int)$currentHolon->getId()) {
+									continue;
+								}
+								$memberFocus = trim((string)($assignmentLink['focus'] ?? ''));
+								break;
+							}
+						}
+						if ($memberFocus !== '') {
+							$memberTooltip .= "\n" . t('leftbar.members.role_focus_line', ['focus' => $memberFocus]);
+						}
+						?>
                         <?php
                         $memberPhotoUrl = trim((string)($member['photoUrl'] ?? ''));
                         $memberInitials = trim((string)($member['initials'] ?? ''));
@@ -799,7 +1329,8 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
                         $memberAvatarStyle = '--circle-member-avatar-bg: ' . $memberAvatarPalette['background'] . '; --circle-member-avatar-text: ' . $memberAvatarPalette['foreground'] . ';';
                         ?>
                         <span
-                            class="circle-member<?= !empty($member['isPending']) ? ' circle-member--pending' : '' ?>"
+                            class="circle-member<?= !empty($member['isAdmin']) ? ' circle-member--admin' : ' circle-member--regular' ?><?= $hasPendingInvitation ? ' circle-member--pending' : '' ?>"
+                            data-circle-member-item="1"
                             data-tooltip="<?= omoApiEscape($memberTooltip) ?>"
                             data-member-user-id="<?= (int)($member['userId'] ?? 0) ?>"
                             <?= $memberPhotoUrl === '' ? 'style="' . omoApiEscape($memberAvatarStyle) . '"' : '' ?>
@@ -819,12 +1350,26 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
                             <?php else: ?>
                                 <span class="circle-member__initials"><?= omoApiEscape($memberInitials) ?></span>
                             <?php endif; ?>
+                            <?php if ($hasPendingInvitation): ?>
+                                <span class="circle-member__invitation-icon" aria-hidden="true">&#9993;</span>
+                            <?php endif; ?>
                         </span>
                     <?php endforeach; ?>
+                    <button
+                        type="button"
+                        class="circle-member circle-member--more"
+                        data-circle-member-action="more"
+                        data-open-team-drawer="1"
+                        data-cid="<?= (int)$currentHolon->getId() ?>"
+                        aria-label="<?= omoApiEscape(t('leftbar.members.view_all')) ?>"
+                        title="<?= omoApiEscape(t('leftbar.members.view_all')) ?>"
+                        <?= $regularMemberCount <= 8 ? 'hidden' : '' ?>
+                    >...</button>
                     <?php if ($canAddMembers): ?>
                         <button
                             type="button"
                             class="circle-member circle-member--add"
+                            data-circle-member-action="add"
                             data-open-member-popup="1"
                             data-hid="<?= (int)$currentHolon->getId() ?>"
                             aria-label="<?= omoApiEscape(t('leftbar.members.add')) ?>"
@@ -832,23 +1377,20 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
                         >+</button>
                     <?php endif; ?>
                 </div>
-                <?php if ($hasHiddenMembers): ?>
-                    <button type="button" class="circle-badge circle-badge--action" data-open-team-drawer="1" data-cid="<?= (int)$currentHolon->getId() ?>"><?= omoApiEscape(t('leftbar.members.view_all')) ?></button>
-                <?php endif; ?>
             </div>
         </div>
     <?php endif; ?>
     </div>
 
     <?php if (count($sections) === 0): ?>
-        <div class="circle-section generic-section generic-accordion generic-accordion--card">
+        <div class="circle-section generic-section generic-accordion generic-accordion--row">
             <div class="circle-section__title generic-card-title generic-card-title--small"><?= omoApiEscape(t('leftbar.empty.section_title')) ?></div>
-            <p class="section-text"><?= omoApiEscape(t('leftbar.empty.message')) ?></p>
+            <p class="section-text generic-description generic-description--small generic-description--primary"><?= omoApiEscape(t('leftbar.empty.message')) ?></p>
         </div>
     <?php endif; ?>
 
     <?php foreach ($sections as $section): ?>
-        <div class="circle-section generic-section generic-accordion generic-accordion--card generic-accordion--collapsible">
+        <div class="circle-section generic-section generic-accordion generic-accordion--row generic-accordion--collapsible">
             <div class="generic-accordion__header">
                 <span class="generic-accordion__title generic-card-title generic-card-title--small"><?= omoApiEscape($section['title']) ?></span>
                 <span class="generic-accordion__toggle">&#9662;</span>
@@ -859,18 +1401,32 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
             </div>
         </div>
     <?php endforeach; ?>
-    <?php if (count($childNavigation['containers']) > 0 || count($childNavigation['roles']) > 0): ?>
-        <div class="circle-section circle-section--navigation generic-section generic-accordion generic-accordion--card generic-accordion--collapsible" data-section-key="dependencies">
+    <?php if (count($childNavigation['circles']) > 0 || count($childNavigation['groups']) > 0 || count($childNavigation['roles']) > 0): ?>
+        <div class="circle-section circle-section--navigation generic-section generic-accordion generic-accordion--row generic-accordion--collapsible" data-section-key="dependencies">
             <div class="generic-accordion__header">
-                <span class="generic-accordion__title generic-card-title generic-card-title--small"><?= omoApiEscape(t('leftbar.children.section_title')) ?></span>
+                <span class="generic-accordion__title generic-card-title generic-card-title--small"><?= omoApiEscape(t('leftbar.children.attached_title', ['spacesLabel' => Organization::getLexiconLabel($organizationLexicon, 'space', true)])) ?></span>
                 <span class="generic-accordion__toggle">&#9662;</span>
             </div>
             <div class="generic-accordion__content">
-                <?php if (count($childNavigation['containers']) > 0): ?>
+                <?php if (count($childNavigation['circles']) > 0): ?>
                     <div class="child-nav-group">
-                        <div class="child-nav-subtitle generic-card-title generic-card-title--small"><?= omoApiEscape(t('leftbar.children.circles')) ?></div>
+                        <div class="child-nav-subtitle generic-card-title generic-card-title--small"><?= omoApiEscape($childCircleLabel) ?></div>
                         <div class="child-nav-list">
-                            <?php foreach ($childNavigation['containers'] as $child): ?>
+                            <?php foreach ($childNavigation['circles'] as $child): ?>
+                                <button type="button" class="child-nav-item" data-cid="<?= (int)$child['id'] ?>">
+                                    <span class="child-nav-dot child-nav-dot--container"></span>
+                                    <span class="child-nav-label"><?= omoApiEscape($child['name']) ?></span>
+                                </button>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                <?php endif; ?>
+
+                <?php if (count($childNavigation['groups']) > 0): ?>
+                    <div class="child-nav-group">
+                        <div class="child-nav-subtitle generic-card-title generic-card-title--small"><?= omoApiEscape($childGroupLabel) ?></div>
+                        <div class="child-nav-list">
+                            <?php foreach ($childNavigation['groups'] as $child): ?>
                                 <button type="button" class="child-nav-item" data-cid="<?= (int)$child['id'] ?>">
                                     <span class="child-nav-dot child-nav-dot--container"></span>
                                     <span class="child-nav-label"><?= omoApiEscape($child['name']) ?></span>
@@ -882,7 +1438,7 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
 
                 <?php if (count($childNavigation['roles']) > 0): ?>
                     <div class="child-nav-group">
-                        <div class="child-nav-subtitle generic-card-title generic-card-title--small"><?= omoApiEscape(t('leftbar.children.roles')) ?></div>
+                        <div class="child-nav-subtitle generic-card-title generic-card-title--small"><?= omoApiEscape($childRoleLabel) ?></div>
                         <div class="child-nav-list">
                             <?php foreach ($childNavigation['roles'] as $child): ?>
                                 <button type="button" class="child-nav-item child-nav-item--role" data-cid="<?= (int)$child['id'] ?>">
@@ -898,9 +1454,9 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
     <?php endif; ?>
 
     <?php if (count($debugPermissionEntries) > 0 && 1==0): ?>
-        <div class="circle-section generic-section generic-accordion generic-accordion--card">
+        <div class="circle-section generic-section generic-accordion generic-accordion--row">
             <div class="circle-section__title generic-card-title generic-card-title--small">Permissions</div>
-            <p class="section-text">Codes disponibles sur ce holon. Ceux que vous avez sont en gras.</p>
+            <p class="section-text"><?= htmlspecialchars(\dbObject\Organization::formatLexiconText('Codes disponibles sur ce holon. Ceux que vous avez sont en gras.', $organization->getLexicon()), ENT_QUOTES, 'UTF-8') ?></p>
             <div class="section-text">
                 <?php foreach ($debugPermissionEntries as $index => $permissionEntry): ?>
                     <?php if ($index > 0): ?>, <?php endif; ?>
@@ -918,750 +1474,16 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
 
 </div>
 
-<style>
-.breadcrumb {
-    font-size: 12px;
-    color: var(--color-text-light);
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 6px;
-}
-
-.crumb {
-    cursor: pointer;
-}
-
-.crumb:hover {
-    text-decoration: underline;
-}
-
-.crumb.active {
-    color: var(--color-text);
-    font-weight: 600;
-}
-
-.separator {
-    opacity: 0.5;
-}
-
-.circle-panel {
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-}
-
-.circle-top {
-    position: sticky;
-    top: 0;
-    z-index: 5;
-    margin: -20px -20px 0;
-    padding: 20px 20px 16px;
-    background: var(--color-surface, #fff);
-    border-bottom: 1px solid var(--color-border);
-}
-
-.circle-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 16px;
-}
-
-.circle-kicker {
-    margin-bottom: 6px;
-}
-
-.circle-title {
-    margin: 0;
-}
-
-.circle-members {
-    display: grid;
-    gap: 8px;
-    margin-top: 14px;
-}
-
-.circle-members__row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-}
-
-.circle-members__list {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-
-.circle-member {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 34px;
-    height: 34px;
-    border-radius: 999px;
-    overflow: hidden;
-    border: 1px solid var(--color-border);
-    background: var(--circle-member-avatar-bg, color-mix(in srgb, var(--color-primary) 12%, var(--color-surface-alt, #f0f2f5)));
-    box-shadow: var(--shadow-sm, 0 1px 2px rgba(15, 23, 42, 0.08));
-}
-
-.circle-member[data-open-user-context="1"] {
-    cursor: pointer;
-}
-
-.circle-member--pending {
-    opacity: 0.55;
-    border-style: dashed;
-}
-
-.circle-member--add {
-    cursor: pointer;
-    font-size: 18px;
-    font-weight: 500;
-    color: var(--color-primary);
-    background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface));
-}
-
-.circle-member--add:hover {
-    border-color: color-mix(in srgb, var(--color-primary) 35%, var(--color-border));
-    background: color-mix(in srgb, var(--color-primary) 14%, var(--color-surface));
-}
-
-.circle-member__photo {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-}
-
-.circle-member--pending .circle-member__photo {
-    filter: grayscale(1);
-}
-
-.circle-member__initials {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    height: 100%;
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--circle-member-avatar-text, var(--color-text));
-}
-
-.circle-member--pending .circle-member__initials {
-    color: var(--color-text-light);
-}
-
-.circle-meta {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-}
-
-.circle-badge {
-    font-size: 12px;
-    padding: 6px 10px;
-    border-radius: 999px;
-    background: var(--color-surface-alt, #f0f2f5);
-    color: var(--color-text-light);
-    border: 1px solid var(--color-border);
-}
-
-.circle-badge--link {
-    cursor: pointer;
-}
-
-.circle-badge--action {
-    cursor: pointer;
-    color: var(--color-primary);
-    border-color: color-mix(in srgb, var(--color-primary) 24%, var(--color-border));
-    background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface));
-}
-
-.circle-badge--action:hover {
-    border-color: var(--color-primary);
-}
-
-.circle-badge--menu {
-    cursor: pointer;
-    min-width: 34px;
-    padding: 6px 8px;
-    color: var(--color-text);
-    font-weight: 700;
-    letter-spacing: 0.08em;
-}
-
-.circle-badge--danger {
-    cursor: pointer;
-    color: #b91c1c;
-    border-color: rgba(220, 38, 38, 0.26);
-    background: rgba(220, 38, 38, 0.08);
-}
-
-.circle-badge--danger:hover {
-    border-color: rgba(220, 38, 38, 0.4);
-    background: rgba(220, 38, 38, 0.14);
-}
-
-.circle-badge--link.copied {
-    border-color: var(--color-primary);
-    color: var(--color-primary);
-}
-
-.circle-menu {
-    position: relative;
-}
-
-.circle-menu__panel {
-    position: absolute;
-    top: calc(100% + 8px);
-    right: 0;
-    min-width: 140px;
-    padding: 6px;
-    border: 1px solid var(--color-border);
-    border-radius: 12px;
-    background: var(--color-surface, #fff);
-    box-shadow: var(--shadow-md, 0 12px 24px rgba(15, 23, 42, 0.14));
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    z-index: 15;
-}
-
-.circle-menu__panel[hidden] {
-    display: none;
-}
-
-.circle-menu__item {
-    width: 100%;
-    padding: 9px 11px;
-    border: 0;
-    border-radius: 8px;
-    background: transparent;
-    color: var(--color-text);
-    text-align: left;
-    cursor: pointer;
-    font-size: 13px;
-}
-
-.circle-menu__item:hover {
-    background: var(--color-surface-alt, #f0f2f5);
-}
-
-.circle-menu__item--danger {
-    color: #b91c1c;
-}
-
-.circle-menu__item--danger:hover {
-    background: rgba(220, 38, 38, 0.08);
-}
-
-.circle-section__title {
-    margin-bottom: 8px;
-}
-
-.section-text,
-.section-inherited__text {
-    font-size: 14px;
-    line-height: 1.5;
-    white-space: pre-line;
-}
-
-.section-html {
-    font-size: 14px;
-    line-height: 1.5;
-    word-break: break-word;
-}
-
-.section-html > :first-child {
-    margin-top: 0;
-}
-
-.section-html > :last-child {
-    margin-bottom: 0;
-}
-
-.section-html p {
-    margin: 0 0 0.85em;
-}
-
-.section-update-meta {
-    margin-top: 10px;
-    font-size: 11px;
-    line-height: 1.35;
-    color: var(--color-text-light);
-}
-
-.section-html ul,
-.section-html ol {
-    margin: 0.25em 0;
-    padding-left: 18px;
-}
-
-.section-html a {
-    color: var(--color-primary);
-    text-decoration: underline;
-}
-
-.section-text--inherited {
-    font-style: italic;
-    color: var(--color-text-light);
-}
-
-.section-list {
-    padding-left: 18px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    margin: 0;
-}
-
-.section-list li {
-    font-size: 14px;
-    line-height: 1.4;
-}
-
-.section-list li.is-inherited {
-    font-style: italic;
-    color: var(--color-text-light);
-}
-
-.section-detail-list {
-    display: grid;
-    gap: 8px;
-}
-
-.section-detail-card {
-    border: 1px solid var(--color-border);
-    border-radius: 12px;
-    background: color-mix(in srgb, var(--color-surface-alt) 65%, var(--color-surface));
-    overflow: hidden;
-}
-
-.section-detail-card.is-inherited {
-    color: var(--color-text-light);
-}
-
-.section-detail-card summary {
-    cursor: pointer;
-    padding: 10px 12px;
-    font-weight: 600;
-}
-
-.section-detail-card__body {
-    padding: 0 12px 12px;
-    font-size: 14px;
-    line-height: 1.5;
-    white-space: pre-line;
-}
-
-.section-inherited {
-    padding: 10px 12px;
-    margin-bottom: 12px;
-    border-radius: var(--radius-sm, 8px);
-    background: var(--color-surface-alt, #f0f2f5);
-    border: 1px dashed var(--color-border);
-}
-
-.section-inherited__label {
-    margin-bottom: 6px;
-}
-
-.child-nav-group + .child-nav-group {
-    margin-top: 16px;
-}
-
-.child-nav-subtitle {
-    margin-bottom: 8px;
-}
-
-.child-nav-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.child-nav-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
-    padding: 10px 12px;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    background: var(--color-surface-alt, #f0f2f5);
-    color: var(--color-text);
-    cursor: pointer;
-    text-align: left;
-}
-
-.child-nav-item:hover {
-    border-color: var(--color-primary);
-}
-
-.child-nav-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 999px;
-    flex: 0 0 10px;
-}
-
-.child-nav-dot--container {
-    background: var(--color-primary);
-}
-
-.child-nav-dot--role {
-    background: var(--chart-role-fill, #fbbf24);
-}
-
-.child-nav-label {
-    line-height: 1.35;
-}
-</style>
-
-<script>
-function omoCloseHolonMenus() {
-    $('#panel-left [data-holon-menu="1"]').each(function () {
-        $(this).removeClass('is-open');
-        $(this).find('[data-holon-menu-panel="1"]').prop('hidden', true);
-        $(this).find('[data-holon-menu-toggle="1"]').attr('aria-expanded', 'false');
-    });
-}
-
-window.dispatchEvent(new CustomEvent('omo-structure-member-highlight', {
-    detail: {
-        userId: null
-    }
-}));
-
-$(document)
-  .off('click.omoOrgSection', '#panel-left .generic-accordion__header')
-  .on('click.omoOrgSection', '#panel-left .generic-accordion__header', function () {
-    const section = $(this).closest('.generic-accordion--collapsible');
-    const key = String(section.data('section-key') || omoNormalizeSectionKey(section.find('.generic-accordion__title').first().text()));
-
-    section.toggleClass('is-collapsed');
-    localStorage.setItem('section_' + key, section.hasClass('is-collapsed'));
-  });
-
-$(document)
-  .off('click.omoOrgCrumb', '#panel-left .crumb[data-cid]')
-  .on('click.omoOrgCrumb', '#panel-left .crumb[data-cid]', function () {
-    const cid = Number($(this).data('cid'));
-    const isRoot = String($(this).data('is-root')) === '1';
-
-    if (!cid || typeof navigate !== 'function' || typeof parseUrl !== 'function') {
-        return;
-    }
-
-    const route = parseUrl();
-    navigate(route.oid, isRoot ? null : cid, route.hash || null);
-  });
-
-$(document)
-  .off('click.omoOrgChildNav', '#panel-left .child-nav-item[data-cid]')
-  .on('click.omoOrgChildNav', '#panel-left .child-nav-item[data-cid]', function () {
-    const cid = Number($(this).data('cid'));
-
-    if (!cid || typeof navigate !== 'function' || typeof parseUrl !== 'function') {
-        return;
-    }
-
-    const route = parseUrl();
-    navigate(route.oid, cid, route.hash || null);
-  });
-
-$(document)
-  .off('mouseenter.omoOrgMemberHighlight', '#panel-left .circle-member[data-member-user-id]')
-  .on('mouseenter.omoOrgMemberHighlight', '#panel-left .circle-member[data-member-user-id]', function () {
-    const userId = Number($(this).data('member-user-id'));
-
-    window.dispatchEvent(new CustomEvent('omo-structure-member-highlight', {
-        detail: {
-            userId: userId > 0 ? userId : null
-        }
-    }));
-  });
-
-$(document)
-  .off('mouseleave.omoOrgMemberHighlight', '#panel-left .circle-member[data-member-user-id]')
-  .on('mouseleave.omoOrgMemberHighlight', '#panel-left .circle-member[data-member-user-id]', function () {
-    window.dispatchEvent(new CustomEvent('omo-structure-member-highlight', {
-        detail: {
-            userId: null
-        }
-    }));
-  });
-
-$(document)
-  .off('click.omoOrgMemberContext', '#panel-left .circle-member[data-open-user-context="1"]')
-  .on('click.omoOrgMemberContext', '#panel-left .circle-member[data-open-user-context="1"]', function () {
-    const userId = Number($(this).data('member-user-id'));
-
-    if (typeof window.omoOpenUserContextPopup !== 'function') {
-        return;
-    }
-
-    window.omoOpenUserContextPopup(userId);
-  });
-
-$(document)
-  .off('keydown.omoOrgMemberContext', '#panel-left .circle-member[data-open-user-context="1"]')
-  .on('keydown.omoOrgMemberContext', '#panel-left .circle-member[data-open-user-context="1"]', function (event) {
-    if (event.key !== 'Enter' && event.key !== ' ') {
-        return;
-    }
-
-    event.preventDefault();
-    $(this).trigger('click');
-  });
-
-$(document)
-  .off('click.omoOrgHolonMenu', '#panel-left [data-holon-menu-toggle="1"]')
-  .on('click.omoOrgHolonMenu', '#panel-left [data-holon-menu-toggle="1"]', function (event) {
-    event.stopPropagation();
-
-    const menu = $(this).closest('[data-holon-menu="1"]');
-    const willOpen = !menu.hasClass('is-open');
-    omoCloseHolonMenus();
-
-    if (!willOpen) {
-        return;
-    }
-
-    menu.addClass('is-open');
-    menu.find('[data-holon-menu-panel="1"]').prop('hidden', false);
-    menu.find('[data-holon-menu-toggle="1"]').attr('aria-expanded', 'true');
-  });
-
-$(document)
-  .off('click.omoOrgHolonMenuItem', '#panel-left [data-holon-menu-panel="1"] button')
-  .on('click.omoOrgHolonMenuItem', '#panel-left [data-holon-menu-panel="1"] button', function () {
-    omoCloseHolonMenus();
-  });
-
-$(document)
-  .off('click.omoOrgHolonMenuOutside')
-  .on('click.omoOrgHolonMenuOutside', function (event) {
-    if ($(event.target).closest('#panel-left [data-holon-menu="1"]').length) {
-        return;
-    }
-
-    omoCloseHolonMenus();
-  });
-
-$(document)
-  .off('click.omoOrgCreateHolon', '#panel-left [data-open-create-holon="1"]')
-  .on('click.omoOrgCreateHolon', '#panel-left [data-open-create-holon="1"]', function () {
-    const cid = Number($(this).data('cid'));
-
-    if (!cid) {
-        return;
-    }
-
-    if (typeof window.omoOpenExternalRouteDrawer === 'function' && window.omoOpenExternalRouteDrawer('holon-create-' + cid, {
-        title: 'Ajouter'
-    })) {
-        return;
-    }
-
-    if (typeof window.omoOpenDrawerHashState === 'function') {
-        window.omoOpenDrawerHashState('holon-create-' + cid);
-    }
-  });
-
-$(document)
-  .off('click.omoOrgEditHolon', '#panel-left [data-open-edit-holon="1"]')
-  .on('click.omoOrgEditHolon', '#panel-left [data-open-edit-holon="1"]', function () {
-    const button = $(this);
-    const hid = Number(button.data('hid'));
-    const isTemplateEdit = String(button.data('template-edit')) === '1';
-    const isDefinitionEdit = String(button.data('definition-edit')) === '1';
-    const templateContextId = Number(button.data('template-context-id') || 0);
-
-    if (!hid) {
-        return;
-    }
-
-    let routeToken = 'holon-edit-' + hid;
-    if ((isTemplateEdit || isDefinitionEdit) && templateContextId > 0) {
-        routeToken = 'holon-template-edit-' + templateContextId + '-' + hid;
-    }
-
-    if (typeof window.omoOpenExternalRouteDrawer === 'function' && window.omoOpenExternalRouteDrawer(routeToken, {
-        title: 'Modifier'
-    })) {
-        return;
-    }
-
-    if (typeof window.omoOpenDrawerHashState === 'function') {
-        window.omoOpenDrawerHashState(routeToken);
-    }
-  });
-
-$(document)
-  .off('click.omoOrgMoveHolon', '#panel-left [data-open-move-holon="1"]')
-  .on('click.omoOrgMoveHolon', '#panel-left [data-open-move-holon="1"]', function () {
-    const hid = Number($(this).data('hid'));
-
-    if (!hid || typeof window.omoOpenPopupHashState !== 'function') {
-        return;
-    }
-
-    window.omoOpenPopupHashState('holon-move', hid);
-  });
-
-$(document)
-  .off('click.omoOrgOpenTeamDrawer', '#panel-left [data-open-team-drawer="1"]')
-  .on('click.omoOrgOpenTeamDrawer', '#panel-left [data-open-team-drawer="1"]', function () {
-    if (typeof openDrawer !== 'function') {
-        return;
-    }
-
-    const route = typeof parseUrl === 'function' ? parseUrl() : { oid: null, cid: null };
-    const targetCid = Number($(this).data('cid') || route.cid || 0);
-    let drawerUrl = '/omo/api/team/index.php';
-
-    if (route && route.oid) {
-        drawerUrl += '?oid=' + encodeURIComponent(route.oid);
-        if (targetCid > 0) {
-            drawerUrl += '&cid=' + encodeURIComponent(targetCid);
-        }
-    } else if (targetCid > 0) {
-        drawerUrl += '?cid=' + encodeURIComponent(targetCid);
-    }
-
-    openDrawer('drawer_team', drawerUrl);
-  });
-
-$(document)
-  .off('click.omoOrgOpenMemberPopup', '#panel-left [data-open-member-popup="1"]')
-  .on('click.omoOrgOpenMemberPopup', '#panel-left [data-open-member-popup="1"]', function () {
-    const hid = Number($(this).data('hid'));
-
-    if (!hid || typeof window.commonTopbarOpenModal !== 'function') {
-        return;
-    }
-
-    window.commonTopbarOpenModal(
-        <?= json_encode(t('leftbar.members.add'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
-        'api/holons/member_popup.php?hid=' + hid,
-        'fetch'
-    );
-  });
-
-$(document)
-  .off('click.omoOrgOpenHolonHistory', '#panel-left [data-open-holon-history="1"]')
-  .on('click.omoOrgOpenHolonHistory', '#panel-left [data-open-holon-history="1"]', function () {
-    const hid = Number($(this).data('hid'));
-
-    if (!hid || typeof window.commonTopbarOpenModal !== 'function') {
-        return;
-    }
-
-    window.commonTopbarOpenModal(
-        <?= json_encode(t('leftbar.actions.history'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
-        'api/holons/history_popup.php?hid=' + hid,
-        'fetch'
-    );
-  });
-
-$(document)
-  .off('click.omoOrgDeleteHolon', '#panel-left [data-delete-holon="1"]')
-  .on('click.omoOrgDeleteHolon', '#panel-left [data-delete-holon="1"]', function () {
-    const hid = Number($(this).data('hid'));
-
-    if (!hid || typeof window.omoOpenPopupHashState !== 'function') {
-        return;
-    }
-
-    window.omoOpenPopupHashState('holon-delete', hid);
-  });
-
-function omoNormalizeSectionKey(value) {
-    return String(value || '')
-        .trim()
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/\s+/g, '_');
-}
-
-function omoBuildDirectHolonUrl(cid) {
-    const rootId = <?= (int)$navigationRoot->getId() ?>;
-    const route = typeof parseUrl === 'function'
-        ? parseUrl()
-        : { oid: <?= (int)$organizationId ?> };
-    const targetCid = Number(cid) === Number(rootId) ? null : cid;
-
-    if (typeof buildOmoUrl === 'function') {
-        return buildOmoUrl(route.oid, targetCid, null, { absolute: true });
-    }
-
-    if (targetCid) {
-        return `${window.location.origin}/omo/c/${targetCid}`;
-    }
-
-    return `${window.location.origin}/omo/`;
-}
-
-(function restoreSections() {
-    $('#panel-left .generic-accordion--collapsible').each(function () {
-        const key = String($(this).data('section-key') || omoNormalizeSectionKey($(this).find('.generic-accordion__title').first().text()));
-        const saved = localStorage.getItem('section_' + key);
-
-        if (saved === 'true') {
-            $(this).addClass('is-collapsed');
-            return;
-        }
-
-        if (saved === null && key === 'dependencies') {
-            $(this).addClass('is-collapsed');
-        }
-    });
-})();
-
-$(document)
-  .off('click.omoOrgCopyDirectLink', '#panel-left [data-copy-direct-link="1"]')
-  .on('click.omoOrgCopyDirectLink', '#panel-left [data-copy-direct-link="1"]', async function () {
-    const button = this;
-    const cid = Number($(button).data('cid'));
-    const url = omoBuildDirectHolonUrl(cid);
-
-    if (!url) {
-        return;
-    }
-
-    try {
-        if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
-            await navigator.clipboard.writeText(url);
-        } else {
-            const input = document.createElement('input');
-            input.value = url;
-            document.body.appendChild(input);
-            input.select();
-            document.execCommand('copy');
-            document.body.removeChild(input);
-        }
-
-        const originalText = button.textContent;
-        $(button).addClass('copied');
-        button.textContent = <?= json_encode(t('leftbar.copy_link.success'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
-
-        window.setTimeout(function () {
-            button.textContent = originalText;
-            $(button).removeClass('copied');
-        }, 1200);
-    } catch (error) {
-        console.error(<?= json_encode(t('leftbar.copy_link.error'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>, error);
-    }
-  });
-</script>
+<link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/getOrg.css') ?>">
+
+<?= commonPageScriptTags('/omo/api/getOrg.js', [
+    'leftbarMembersAdd' => t('leftbar.members.add'),
+    'leftbarActionsHistory' => t('leftbar.actions.history'),
+    'rootId' => (int)$navigationRoot->getId(),
+    'oid' => (int)$organizationId,
+    'leftbarCopyLinkSuccess' => t('leftbar.copy_link.success'),
+    'leftbarCopyLinkError' => t('leftbar.copy_link.error'),
+    'leftbarProjectChildrenLoading' => omoApiEscape(t('leftbar.project.children.loading')),
+    'leftbarProjectChildrenEmpty' => omoApiEscape(t('leftbar.project.children.empty')),
+    'leftbarProjectChildrenError' => omoApiEscape(t('leftbar.project.children.error')),
+], 'omoOrganizationPageConfig') ?>

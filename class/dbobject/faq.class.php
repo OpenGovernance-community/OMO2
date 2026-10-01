@@ -11,6 +11,7 @@ class FAQ extends DbObject
 	protected static $_hasVoteColumns = null;
 	protected static $_hasScoreAnalyticsColumns = null;
 	protected static $_hasParcoursColumn = null;
+	protected static $_hasApplicationColumn = null;
 	protected static $_organizationIdByHolonId = array();
 	protected static $_availableParcoursIdsByOrganization = array();
 
@@ -22,17 +23,19 @@ class FAQ extends DbObject
 	public static function rules()
 	{
 		return [
-			[['question', 'answer'], 'required'],
-			[['id', 'IDhowto', 'IDorganization', 'IDparcours', 'displayorder', 'viewcount', 'total_votes'], 'integer'],
-			[['IDorganization', 'IDholon', 'IDparcours'], 'fk'],
+			[['question'], 'required'],
+			[['id', 'IDhowto', 'displayorder', 'viewcount', 'total_votes'], 'integer'],
+			[['IDorganization', 'IDholon', 'IDparcours', 'IDapplication', 'request_user_id'], 'fk'],
 			[['positive_score', 'negative_score', 'reliability'], 'float'],
 			[['question'], 'string'],
 			[['video'], 'string'],
 			[['answer'], 'text'],
 			[['detail'], 'html'],
+			[['request_description'], 'text'],
+			[['request_author_name', 'request_author_email'], 'string'],
 			[['image'], 'image'],
-			[['isactive'], 'boolean'],
-			[['created', 'updated', 'reliability_updated_at', 'score_decayed_at'], 'datetime'],
+			[['isactive', 'request_ai_draft'], 'boolean'],
+			[['created', 'updated', 'reliability_updated_at', 'score_decayed_at', 'request_answered_at', 'request_relayed_at'], 'datetime'],
 			[['id'], 'safe'],
 		];
 	}
@@ -45,13 +48,18 @@ class FAQ extends DbObject
 			'IDorganization' => 'Organisation',
 			'IDholon' => 'Holon',
 			'IDparcours' => 'Parcours',
+			'IDapplication' => 'Application',
 			'question' => 'Question',
 			'detail' => 'Reponse complete',
 			'answer' => 'Reponse courte',
 			'image' => 'Image',
 			'video' => 'Video',
 			'displayorder' => 'Ordre',
-			'isactive' => 'Active',
+			'isactive' => 'Afficher dans la FAQ publique',
+			'request_description' => 'Description du problème',
+			'request_author_name' => 'Auteur de la demande',
+			'request_author_email' => 'E-mail de l auteur',
+			'request_relayed_at' => 'Relayee aux administrateurs le',
 			'created' => 'Creee le',
 			'updated' => 'Mise a jour le',
 			'viewcount' => 'Nombre de vues',
@@ -70,6 +78,13 @@ class FAQ extends DbObject
 			'question' => 255,
 			'video' => 1000,
 			'image' => [480, 270],
+		];
+	}
+
+	public static function attributeDescriptions()
+	{
+		return [
+			'IDapplication' => 'Application optionnelle. Si elle est desactivee dans l organisation courante, la FAQ est masquee pour les utilisateurs.',
 		];
 	}
 
@@ -281,6 +296,140 @@ class FAQ extends DbObject
 		return self::$_hasParcoursColumn;
 	}
 
+	public static function hasApplicationColumn()
+	{
+		if (self::$_hasApplicationColumn !== null) {
+			return self::$_hasApplicationColumn;
+		}
+
+		self::$_hasApplicationColumn = self::hasColumn('IDapplication');
+		return self::$_hasApplicationColumn;
+	}
+
+	public static function hasRequestColumns()
+	{
+		foreach (array('request_user_id', 'request_author_name', 'request_author_email', 'request_description', 'request_answered_at') as $columnName) {
+			if (!self::hasColumn($columnName)) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	public static function hasRequestRelayColumn()
+	{
+		return self::hasColumn('request_relayed_at');
+	}
+
+	public function isPendingRequest()
+	{
+		return (int)$this->get('request_user_id') > 0
+			&& (trim((string)$this->get('answer')) === '' || $this->hasAiDraft());
+	}
+
+	public static function hasAiDraftColumn()
+	{
+		return self::hasColumn('request_ai_draft');
+	}
+
+	public function hasAiDraft()
+	{
+		return (bool)$this->get('request_ai_draft');
+	}
+
+	public function saveAiDraft(string $answer): bool
+	{
+		$answer = trim($answer);
+		if ($answer === '' || (int)$this->getId() <= 0 || !self::hasAiDraftColumn()) {
+			return false;
+		}
+		// A delayed AI response must never overwrite a human answer or publish the request.
+		$statement = self::prepareAndExecute(
+			"UPDATE `faq` SET `answer` = :answer, `request_ai_draft` = 1
+			 WHERE `id` = :id AND `request_user_id` > 0 AND `isactive` = 0
+			 AND `request_answered_at` IS NULL AND (`answer` IS NULL OR TRIM(`answer`) = '')",
+			['answer' => $answer, 'id' => (int)$this->getId()]
+		);
+		if ($statement === false) {
+			return false;
+		}
+		$affectedRows = (int)$statement->rowCount();
+		$statement->closeCursor();
+		self::finishSqlPerformanceStatement($statement, 'execute', true, $affectedRows);
+		if ($affectedRows !== 1) {
+			return false;
+		}
+		$this->set('answer', $answer);
+		$this->set('request_ai_draft', true);
+		return true;
+	}
+
+	public function hasRequestBeenRelayed()
+	{
+		return self::parseDateTimeValue($this->get('request_relayed_at')) !== null;
+	}
+
+	public function hasRequestBeenAnswered()
+	{
+		return self::parseDateTimeValue($this->get('request_answered_at')) !== null;
+	}
+
+	public function canRelayRequest()
+	{
+		return $this->isPendingRequest()
+			&& self::currentViewerHasOrganizationAdminAccess($this->getResolvedOrganizationId());
+	}
+
+	public static function getSystemAdminEmails()
+	{
+		$admins = new ArrayUser();
+		$admins->load(array(
+			'where' => array(
+				array('field' => 'siteadmin', 'value' => 1),
+				array('field' => 'active', 'value' => 1),
+			),
+			'hydrate' => array('email'),
+		));
+		$emails = array();
+		foreach ($admins as $admin) {
+			$email = trim((string)$admin->get('email'));
+			if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+				$emails[mb_strtolower($email, 'UTF-8')] = $email;
+			}
+		}
+
+		return array_values($emails);
+	}
+
+	public static function getOrganizationAdminEmails($organizationId, $excludedUserId = 0)
+	{
+		$organizationId = (int)$organizationId;
+		$excludedUserId = (int)$excludedUserId;
+		if ($organizationId <= 0) {
+			return array();
+		}
+
+		$memberships = new ArrayUserOrganization();
+		$memberships->loadActiveForOrganization($organizationId);
+		$emails = array();
+		foreach ($memberships as $membership) {
+			if (!$membership instanceof UserOrganization || !$membership->isOrganizationAdmin()) {
+				continue;
+			}
+			if ($excludedUserId > 0 && (int)$membership->get('IDuser') === $excludedUserId) {
+				continue;
+			}
+
+			$email = trim((string)$membership->getScopedEmail());
+			if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+				$emails[mb_strtolower($email, 'UTF-8')] = $email;
+			}
+		}
+
+		return array_values($emails);
+	}
+
 	public static function getPopupOrderBy()
 	{
 		$orderBy = [];
@@ -410,7 +559,8 @@ class FAQ extends DbObject
 		}
 
 		$organization = new \dbObject\Organization();
-		if (!$organization->load($organizationId) || !$organization->canViewDetail()) {
+		if (!$organization->load($organizationId)
+			|| (!self::currentViewerHasOrganizationAdminAccess($organizationId) && !$organization->canViewDetail())) {
 			return false;
 		}
 
@@ -428,7 +578,7 @@ class FAQ extends DbObject
 			if (
 				!$candidate->load($currentHolonId)
 				|| !$candidate->isDescendantOf($rootHolon->getId())
-				|| !$candidate->canViewDetail()
+				|| (!self::currentViewerHasOrganizationAdminAccess($organizationId) && !$candidate->canViewDetail())
 			) {
 				return false;
 			}
@@ -466,7 +616,7 @@ class FAQ extends DbObject
 			: null;
 
 		if ($organizationId <= 0) {
-			return array('global');
+			return array('contextual');
 		}
 
 		if (
@@ -479,12 +629,12 @@ class FAQ extends DbObject
 		if (
 			$currentHolon instanceof \dbObject\Holon
 			&& (int)$currentHolon->getId() > 0
-			&& !($rootHolon instanceof \dbObject\Holon && (int)$rootHolon->getId() === (int)$currentHolon->getId())
+			&& count($currentHolon->getChildren()) > 0
 		) {
+			$allowedScopes[] = 'children';
 			$allowedScopes[] = 'descendants';
 		}
 
-		$allowedScopes[] = 'global';
 		return $allowedScopes;
 	}
 
@@ -534,8 +684,8 @@ class FAQ extends DbObject
 
 	public static function currentViewerHasSiteAdminAccess()
 	{
-		return function_exists('commonCurrentUserIsSiteAdminModeEnabled')
-			&& \commonCurrentUserIsSiteAdminModeEnabled();
+		return function_exists('commonCurrentUserIsSiteAdmin')
+			&& \commonCurrentUserIsSiteAdmin();
 	}
 
 	public static function currentViewerHasOrganizationAdminAccess($organizationId = 0)
@@ -549,8 +699,8 @@ class FAQ extends DbObject
 			return true;
 		}
 
-		return function_exists('commonCurrentUserIsAdminModeEnabled')
-			&& \commonCurrentUserIsAdminModeEnabled($organizationId);
+		return function_exists('commonCurrentUserCanUseAdminMode')
+			&& \commonCurrentUserCanUseAdminMode($organizationId);
 	}
 
 	public static function resolveViewerAccess(array $context = array())
@@ -837,6 +987,40 @@ class FAQ extends DbObject
 		return $parcours->load($parcoursId) ? $parcours : null;
 	}
 
+	public function getLinkedApplication()
+	{
+		if (!self::hasApplicationColumn()) {
+			return null;
+		}
+
+		$applicationId = (int)$this->get('IDapplication');
+		if ($applicationId <= 0) {
+			return null;
+		}
+
+		$application = new \dbObject\Application();
+		return $application->load($applicationId) ? $application : null;
+	}
+
+	public function isLinkedApplicationVisibleInOrganization($organizationId)
+	{
+		if (!self::hasApplicationColumn()) {
+			return true;
+		}
+
+		$applicationId = (int)$this->get('IDapplication');
+		if ($applicationId <= 0) {
+			return true;
+		}
+
+		$organizationId = (int)$organizationId;
+		if ($organizationId <= 0) {
+			return false;
+		}
+
+		return \dbObject\Application::isEnabledForOrganization($applicationId, $organizationId);
+	}
+
 	protected static function resolveOrganizationIdForHolon($holonId)
 	{
 		$holonId = (int)$holonId;
@@ -888,6 +1072,11 @@ class FAQ extends DbObject
 
 	public function canBeEditedInContext(array $context = array())
 	{
+		return $this->canUseContextPermission('CAN_EDIT_FAQ', $context);
+	}
+
+	protected function canUseContextPermission(string $permissionKey, array $context): bool
+	{
 		$viewerAccess = self::resolveViewerAccess($context);
 		if (!empty($viewerAccess['canManageAllFaqs'])) {
 			return true;
@@ -898,8 +1087,57 @@ class FAQ extends DbObject
 			return false;
 		}
 
-		return !empty($viewerAccess['canManageOrganizationFaqs'])
-			&& $organizationId === (int)($viewerAccess['organizationId'] ?? 0);
+		if (!empty($viewerAccess['canManageOrganizationFaqs'])
+			&& $organizationId === (int)($viewerAccess['organizationId'] ?? 0)) {
+			return true;
+		}
+
+		$parcoursId = self::hasParcoursColumn() ? (int)$this->get('IDparcours') : 0;
+		$contextOrganizationId = (int)($context['organizationId'] ?? 0);
+		if ($organizationId !== $contextOrganizationId) return false;
+		$holonId = (int)$this->get('IDholon');
+		$organization = $this->getResolvedOrganization();
+		$holon = $holonId > 0 ? new Holon() : ($organization ? $organization->getEnabledStructuralRootHolon() : null);
+		if ($holonId > 0 && !$holon->load($holonId)) return false;
+		$userId = (int)($viewerAccess['userId'] ?? 0);
+		$allowed = $holon instanceof Holon
+			? $holon->isAllowed($permissionKey, false, $userId)
+			: Permission::userCanInOrganization($permissionKey, $organizationId, $userId);
+		if (!$allowed) return false;
+		if ($parcoursId <= 0) return true;
+		if ($contextOrganizationId <= 0) {
+			return false;
+		}
+
+		$ownedParcoursIds = \dbObject\Parcours::fetchOwnedFaqTargetIdsForOrganization($contextOrganizationId);
+		if (!in_array($parcoursId, $ownedParcoursIds, true)) {
+			return false;
+		}
+
+		return self::canManageParcoursInContext(
+			$context,
+			(int)($viewerAccess['userId'] ?? 0),
+			true
+		);
+	}
+
+	public static function canManageParcoursInContext(array $context = array(), $userId = 0, $useSessionCache = true)
+	{
+		$organizationId = (int)($context['organizationId'] ?? 0);
+		$userId = (int)$userId;
+		if ($userId <= 0) {
+			$userId = self::resolveCurrentUserId();
+		}
+		if ($organizationId <= 0 || $userId <= 0) {
+			return false;
+		}
+
+		if (!function_exists('lmsCurrentUserCanCreateParcours') || !function_exists('lmsCurrentUserCanEditParcours')) {
+			return false;
+		}
+
+		return \lmsCurrentUserCanCreateParcours($organizationId, $userId, (bool)$useSessionCache)
+			|| \lmsCurrentUserCanEditParcours($organizationId, $userId, (bool)$useSessionCache);
 	}
 
 	public function canBeDetachedInContext(array $context = array())
@@ -908,14 +1146,58 @@ class FAQ extends DbObject
 		return !empty($viewerAccess['canManageAllFaqs']);
 	}
 
+	public function canBeDeletedInContext(array $context = array())
+	{
+		return $this->canUseContextPermission('CAN_DELETE_FAQ', $context);
+	}
+
+	public function delete()
+	{
+		$faqId = (int)$this->getId();
+		$pdo = self::getPdo();
+		if ($faqId <= 0 || !($pdo instanceof \PDO)) {
+			return false;
+		}
+
+		$startedTransaction = !$pdo->inTransaction();
+		$relatedTables = array('faq_choice', 'mission_faq', 'user_faq_response');
+
+		try {
+			if ($startedTransaction) {
+				$pdo->beginTransaction();
+			}
+
+			foreach ($relatedTables as $tableName) {
+				if (self::tableExists($tableName) && !self::execute(
+					'DELETE FROM `' . $tableName . '` WHERE `IDfaq` = :faq_id',
+					array('faq_id' => $faqId)
+				)) {
+					throw new \RuntimeException('faq_related_rows_delete_failed');
+				}
+			}
+
+			if (!parent::delete()) {
+				throw new \RuntimeException('faq_delete_failed');
+			}
+
+			if ($startedTransaction && $pdo->inTransaction()) {
+				$pdo->commit();
+			}
+
+			return true;
+		} catch (\Throwable $exception) {
+			if ($startedTransaction && $pdo->inTransaction()) {
+				$pdo->rollBack();
+			}
+
+			return false;
+		}
+	}
+
 	public function canBeViewedInContext(array $context = array(), $scope = 'contextual')
 	{
 		$scope = self::normalizePopupScope($scope, $context);
 		$viewerAccess = self::resolveViewerAccess($context);
-		if ($scope === 'global' && !empty($viewerAccess['canManageAllFaqs'])) {
-			return true;
-		}
-
 		$faqOrganizationId = $this->getResolvedOrganizationId();
 		$holon = $this->getContextHolon();
 		$parcoursId = self::hasParcoursColumn() ? (int)$this->get('IDparcours') : 0;
@@ -939,13 +1221,14 @@ class FAQ extends DbObject
 				}
 			}
 		} elseif ($holon instanceof \dbObject\Holon) {
-			if ($scope === 'global') {
-				$matchesScope = $faqOrganizationId > 0 && $faqOrganizationId === $contextOrganizationId;
-			} elseif ($currentHolon && (int)$currentHolon->getId() > 0) {
+			if ($currentHolon && (int)$currentHolon->getId() > 0) {
 				$currentHolonId = (int)$currentHolon->getId();
 				$faqHolonId = (int)$holon->getId();
 
-				if ($scope === 'descendants') {
+				if ($scope === 'children') {
+					$matchesScope = $faqHolonId === $currentHolonId
+						|| (int)$holon->get('IDholon_parent') === $currentHolonId;
+				} elseif ($scope === 'descendants') {
 					$matchesScope = $holon->isDescendantOf($currentHolonId, true);
 				} else {
 					$matchesScope = $faqHolonId === $currentHolonId;
@@ -954,10 +1237,15 @@ class FAQ extends DbObject
 				$matchesScope = false;
 			}
 		} else {
-			$matchesScope = $faqOrganizationId > 0 && $faqOrganizationId === $contextOrganizationId;
+			$matchesScope = $faqOrganizationId > 0
+				&& $faqOrganizationId === $contextOrganizationId;
 		}
 
 		if (!$matchesScope) {
+			return false;
+		}
+
+		if (!$this->isLinkedApplicationVisibleInOrganization($contextOrganizationId)) {
 			return false;
 		}
 
@@ -972,7 +1260,7 @@ class FAQ extends DbObject
 			return true;
 		}
 
-		if (!(int)$this->get('isactive')) {
+		if (!(int)$this->get('isactive') || $this->hasAiDraft()) {
 			return false;
 		}
 

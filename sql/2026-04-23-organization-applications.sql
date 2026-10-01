@@ -43,7 +43,6 @@ INSERT INTO `application` (
   (1, 'Structure', 'structure', NULL, 'images/tools/connection.png', 'drawer_structure', 'api/getStructure.php?drawer=1', 'drawer', 10, 0, 1),
   (2, 'Projets', 'projects', 'projects', 'images/tools/product.png', 'drawer_projects', 'api/projects/index.php', 'drawer', 20, 0, 1),
   (3, 'Règlement', 'policy', 'policy', 'images/tools/policy.png', 'drawer_policy', 'api/policy/index.php', 'drawer', 30, 0, 1),
-  (4, 'Checklistes', 'checklists', 'checklists', 'images/tools/bucket-list.png', 'drawer_checklists', 'api/checklists/index.php', 'drawer', 40, 0, 1),
   (5, 'Indicateurs', 'stats', 'stats', 'images/tools/stats.png', 'drawer_stats', 'api/stats/index.php', 'drawer', 50, 0, 1),
   (6, 'Documents', 'documents', 'documents', 'images/tools/documents-folder.png', 'drawer_documents', 'api/documents/index.php', 'drawer', 60, 1, 1),
   (7, 'Team', 'team', 'team', 'images/tools/team.png', 'drawer_team', 'api/team/index.php', 'drawer', 70, 1, 1)
@@ -62,7 +61,7 @@ ON DUPLICATE KEY UPDATE
 INSERT IGNORE INTO `organization_application` (`IDorganization`, `IDapplication`, `position`, `active`)
 SELECT o.id, a.id, a.position, 1
 FROM `organization` o
-INNER JOIN `application` a ON a.id IN (1, 2, 3, 4, 5, 6, 7);
+INNER JOIN `application` a ON a.id IN (1, 2, 3, 5, 6, 7);
 
 SELECT id, label, hash, directory, navigationmode, position, requires_login, active
 FROM application

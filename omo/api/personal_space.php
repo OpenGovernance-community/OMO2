@@ -1,28 +1,58 @@
 <?php
 require_once __DIR__ . '/bootstrap.php';
 require_once dirname(__DIR__, 2) . '/common/user_profile_ui.php';
+require_once __DIR__ . '/projects/shared.php';
+require_once __DIR__ . '/stats/shared.php';
+require_once __DIR__ . '/checklist/shared.php';
+require_once __DIR__ . '/activities/shared.php';
+require_once __DIR__ . '/dashboard/modules/registry.php';
 
-use dbObject\ArrayDecisionProcess;
-use dbObject\ArrayDocument;
-use dbObject\ArrayEvent;
-use dbObject\ArrayUserOrganization;
 use dbObject\Holon;
-use dbObject\History;
-use dbObject\ObjectVisibility;
 use dbObject\Organization;
+use dbObject\UserHolon;
+use dbObject\ApplicationSetting;
 
 $sourceLang = [
+    'personal_space.title' => [
+        'text' => 'Tableau de pilotage',
+        'context' => 'Main title of the dashboard panel shown on the right side of the OMO workspace.',
+    ],
+    'personal_space.scope.contextual' => [
+        'text' => 'Local',
+        'context' => 'Dashboard scope showing items attached to the current holon.',
+    ],
+    'personal_space.scope.children' => [
+        'text' => 'Enfants directs',
+        'context' => 'Dashboard scope showing items attached to the current holon and direct children.',
+    ],
+    'personal_space.scope.descendants' => [
+        'text' => 'Descendants',
+        'context' => 'Dashboard scope showing items attached to the current holon and descendants.',
+    ],
+    'personal_space.section.projects_overdue' => [
+        'text' => 'Projets en retard',
+        'context' => 'Title of the overdue projects dashboard card.',
+    ],
+    'personal_space.section.indicators_overdue' => [
+        'text' => 'Indicateurs en retard',
+        'context' => 'Title of the overdue indicators dashboard card.',
+    ],
+    'personal_space.overdue.days' => [
+        'one' => '{count} jour de retard',
+        'other' => '{count} jours de retard',
+        'context' => 'Overdue duration displayed beside an overdue dashboard item.',
+    ],
+    'personal_space.overdue.to_complete' => [
+        'text' => 'A completer',
+        'context' => 'Status shown for an indicator that is overdue but still within its grace period.',
+    ],
     'personal_space.heading' => [
         'text' => 'Espace personnel',
         'context' => 'Main title of the personal space panel shown on the right side of the OMO workspace.',
     ],
-    'personal_space.intro' => [
-        'text' => 'Un résumé rapide des sujets qui vous concernent dans cet espace.',
-        'context' => 'Intro text displayed below the personal space title.',
-    ],
     'personal_space.empty' => [
-        'text' => 'Aucun résumé personnel disponible avec les applications actives pour le moment.',
-        'context' => 'Fallback empty state when no supported applications are enabled in the sidebar.',
+        'text' => 'Aucun module n’est configuré dans cette vue du tableau de pilotage.',
+        'context' => 'Fallback empty state when the effective dashboard layout has no visible module.',
     ],
     'personal_space.login_required' => [
         'text' => 'Connectez-vous pour afficher votre résumé personnel.',
@@ -64,6 +94,22 @@ $sourceLang = [
         'text' => 'Orga',
         'context' => 'Short fallback context label used for organization-wide events in the personal space panel.',
     ],
+    'personal_space.calendar.document.open' => [
+        'text' => 'Ouvrir le document associe',
+        'context' => 'Accessible label for the document icon shown next to a dashboard event.',
+    ],
+    'personal_space.calendar.month.01' => ['text' => 'Jan', 'context' => 'Short January label shown in the dashboard event date badge.'],
+    'personal_space.calendar.month.02' => ['text' => 'Fev', 'context' => 'Short February label shown in the dashboard event date badge.'],
+    'personal_space.calendar.month.03' => ['text' => 'Mar', 'context' => 'Short March label shown in the dashboard event date badge.'],
+    'personal_space.calendar.month.04' => ['text' => 'Avr', 'context' => 'Short April label shown in the dashboard event date badge.'],
+    'personal_space.calendar.month.05' => ['text' => 'Mai', 'context' => 'Short May label shown in the dashboard event date badge.'],
+    'personal_space.calendar.month.06' => ['text' => 'Juin', 'context' => 'Short June label shown in the dashboard event date badge.'],
+    'personal_space.calendar.month.07' => ['text' => 'Juil', 'context' => 'Short July label shown in the dashboard event date badge.'],
+    'personal_space.calendar.month.08' => ['text' => 'Aout', 'context' => 'Short August label shown in the dashboard event date badge.'],
+    'personal_space.calendar.month.09' => ['text' => 'Sept', 'context' => 'Short September label shown in the dashboard event date badge.'],
+    'personal_space.calendar.month.10' => ['text' => 'Oct', 'context' => 'Short October label shown in the dashboard event date badge.'],
+    'personal_space.calendar.month.11' => ['text' => 'Nov', 'context' => 'Short November label shown in the dashboard event date badge.'],
+    'personal_space.calendar.month.12' => ['text' => 'Dec', 'context' => 'Short December label shown in the dashboard event date badge.'],
     'personal_space.team.empty' => [
         'text' => 'Aucun anniversaire proche à afficher.',
         'context' => 'Empty state shown when no upcoming personal or professional anniversaries are found.',
@@ -129,6 +175,85 @@ $sourceLang = [
         'text' => 'Date inconnue',
         'context' => 'Fallback label shown when no usable date is available for a listed item.',
     ],
+    'personal_space.edit' => [
+        'text' => 'Éditer',
+        'context' => 'Action opening the dashboard layout editor.',
+    ],
+    'personal_space.editor.title' => [
+        'text' => 'Éditer le tableau de pilotage',
+        'context' => 'Dashboard layout editor title.',
+    ],
+    'personal_space.editor.description' => [
+        'text' => 'Sélectionnez une case, puis Maj + clic sur une case voisine pour créer un module double.',
+        'context' => 'Dashboard layout editor instructions.',
+    ],
+    'personal_space.editor.save' => ['text' => 'Enregistrer', 'context' => 'Save dashboard layout action.'],
+	'personal_space.editor.save_personal' => ['text' => 'Enregistrer ma vue', 'context' => 'Save the current dashboard layout as the member personal preference.'],
+	'personal_space.editor.reset_temporary' => ['text' => 'Revenir à la vue par défaut', 'context' => 'Remove the temporary dashboard layout kept for the current session.'],
+	'personal_space.editor.reset_personal' => ['text' => 'Revenir aux vues par défaut', 'context' => 'Remove the member personal dashboard preference and restore configured defaults.'],
+	'personal_space.editor.reset_options' => ['text' => 'Autres vues par défaut à effacer', 'context' => 'Accessible label for the dashboard default layout removal menu.'],
+	'personal_space.editor.reset_default' => ['text' => 'Effacer une vue par défaut', 'context' => 'Fallback action label when no personal dashboard preference can be removed.'],
+	'personal_space.editor.reset_holon_default' => ['text' => 'Effacer la vue par défaut de ce holon', 'context' => 'Remove the default dashboard layout stored on the current holon.'],
+	'personal_space.editor.reset_organization_template_default' => ['text' => 'Effacer la vue par défaut du modèle {templateName}', 'context' => 'Remove the organization dashboard layout stored for the directly inherited template.'],
+	'personal_space.editor.reset_organization_model_default' => ['text' => 'Effacer la vue par défaut du modèle Organisation', 'context' => 'Remove the organization dashboard layout stored for the organization holon.'],
+	'personal_space.editor.reset_application_type_default' => ['text' => 'Effacer la vue par défaut de tous les {typeName}', 'context' => 'Remove the application dashboard layout stored for the current base holon type.'],
+	'personal_space.editor.reset_global_default' => ['text' => 'Effacer la vue par défaut globale', 'context' => 'Remove the global dashboard layout stored for all organizations.'],
+	'personal_space.editor.save_options' => ['text' => 'Autres options d’enregistrement', 'context' => 'Accessible label for dashboard default save options.'],
+    'personal_space.editor.save_holon_default' => ['text' => 'Enregistrer par défaut pour ce holon', 'context' => 'Save the current dashboard layout as the default for this holon.'],
+    'personal_space.editor.save_organization_template_default' => ['text' => 'Enregistrer par défaut pour le modèle {templateName}', 'context' => 'Save the current dashboard layout as the organization default for the template inherited by the current holon.'],
+    'personal_space.editor.save_organization_model_default' => ['text' => 'Enregistrer par défaut pour le modèle Organisation', 'context' => 'Save the current dashboard layout as the default for the organization holon.'],
+    'personal_space.editor.save_application_type_default' => ['text' => 'Enregistrer par défaut pour tous les {typeName}', 'context' => 'Save the current dashboard layout as the application default for the current base holon type.'],
+    'personal_space.editor.save_global_default' => ['text' => 'Enregistrer par défaut global', 'context' => 'Save the global dashboard layout for every organization without a more specific view.'],
+    'personal_space.editor.close' => ['text' => 'Fermer', 'context' => 'Close dashboard layout editor action.'],
+    'personal_space.editor.add_row' => ['text' => 'Ajouter une ligne', 'context' => 'Add one row to dashboard layout editor.'],
+    'personal_space.editor.choose' => ['text' => 'Choisir un module', 'context' => 'Choose module action in an empty dashboard grid selection.'],
+    'personal_space.editor.replace' => ['text' => 'Remplacer', 'context' => 'Replace a dashboard module action.'],
+    'personal_space.editor.configure' => ['text' => 'Configurer', 'context' => 'Open the dashboard module configuration dialog.'],
+    'personal_space.editor.configure_title' => ['text' => 'Configurer {module}', 'context' => 'Dashboard module configuration dialog title.'],
+    'personal_space.editor.configure_scope' => ['text' => 'Portée', 'context' => 'Label for the dashboard module scope setting.'],
+    'personal_space.editor.configure_audience' => ['text' => 'Affichage', 'context' => 'Label for the audience setting in a dashboard module configuration dialog.'],
+    'personal_space.editor.configure_video' => ['text' => 'Vidéo', 'context' => 'Label for the embedded video URL in a dashboard module configuration dialog.'],
+    'personal_space.editor.configure_video_hint' => ['text' => 'Lien Vimeo, YouTube ou Infomaniak.', 'context' => 'Supported video providers hint in the dashboard module configuration dialog.'],
+    'personal_space.editor.configure_apply' => ['text' => 'Appliquer', 'context' => 'Apply dashboard module configuration changes.'],
+    'personal_space.editor.delete' => ['text' => 'Supprimer', 'context' => 'Delete a dashboard module action.'],
+    'personal_space.editor.catalog' => ['text' => 'Modules disponibles', 'context' => 'Dashboard module picker title.'],
+    'personal_space.editor.cancel' => ['text' => 'Annuler', 'context' => 'Cancel dashboard module picker action.'],
+    'personal_space.editor.save_error' => ['text' => 'Impossible d’enregistrer le tableau de pilotage.', 'context' => 'Dashboard layout save error.'],
+    'personal_space.module.rules' => ['text' => 'Règles', 'context' => 'Dashboard rules module title.'],
+    'personal_space.module.projects' => ['text' => 'Projets', 'context' => 'Dashboard projects module title.'],
+    'personal_space.module.team' => ['text' => 'Team', 'context' => 'Dashboard team module title.'],
+    'personal_space.module.documents' => ['text' => 'Documents', 'context' => 'Dashboard documents module title.'],
+    'personal_space.module.event' => ['text' => 'Événements', 'context' => 'Dashboard events module title.'],
+    'personal_space.module.structure' => ['text' => 'Structure', 'context' => 'Dashboard structure module title.'],
+    'personal_space.module.stats' => ['text' => 'Indicateurs', 'context' => 'Dashboard overdue stats module title.'],
+    'personal_space.module.checklist' => ['text' => 'Processus', 'context' => 'Dashboard process module title.'],
+    'personal_space.module.activities' => ['text' => 'Tâches récurrentes', 'context' => 'Dashboard recurring tasks module title.'],
+    'personal_space.module.video' => ['text' => 'Vidéo', 'context' => 'Dashboard embedded video module title.'],
+    'personal_space.metric.modified' => ['text' => 'Modifiées', 'context' => 'Recently modified rules metric.'],
+    'personal_space.metric.review' => ['text' => 'À revoir', 'context' => 'Rules due for review metric.'],
+    'personal_space.metric.obsolete' => ['text' => 'Obsolètes', 'context' => 'Expired rules metric.'],
+    'personal_space.metric.total' => ['text' => 'Total', 'context' => 'Total projects metric.'],
+    'personal_space.metric.in_progress' => ['text' => 'En cours', 'context' => 'In-progress projects metric.'],
+    'personal_space.metric.late' => ['text' => 'En retard', 'context' => 'Overdue projects metric.'],
+    'personal_space.metric.created' => ['text' => 'Créés', 'context' => 'Recently created documents metric.'],
+    'personal_space.metric.documents_modified' => ['text' => 'Modifiés', 'context' => 'Recently modified documents metric.'],
+    'personal_space.metric.events_all' => ['text' => 'Planifiés sur 30 jours', 'context' => 'All planned events in the next thirty days dashboard metric.'],
+    'personal_space.metric.events_mine' => ['text' => 'Pour moi', 'context' => 'Planned events visible to the current user dashboard metric.'],
+    'personal_space.metric.activities_soon' => ['text' => 'Bientôt à faire', 'context' => 'Recurring activities displayed before their scheduled time.'],
+    'personal_space.metric.activities_due' => ['text' => 'À faire', 'context' => 'Recurring activities that are currently due.'],
+    'personal_space.metric.activities_overdue' => ['text' => 'En retard', 'context' => 'Recurring activities with an uncompleted missed occurrence.'],
+    'personal_space.activities.soon_for' => ['text' => 'Bientôt à faire le {date}', 'context' => 'Date shown for an activity displayed before its planned time.'],
+    'personal_space.activities.due_for' => ['text' => 'À faire depuis le {date}', 'context' => 'Date shown for an activity currently due.'],
+    'personal_space.activities.overdue_for' => ['text' => 'En retard depuis le {date}', 'context' => 'Date shown for an overdue recurring activity.'],
+    'personal_space.audience.all' => ['text' => 'Tous', 'context' => 'Dashboard module audience showing items for everyone.'],
+    'personal_space.audience.mine' => ['text' => 'Moi', 'context' => 'Dashboard module audience showing items assigned to the current member.'],
+    'personal_space.audience.roles' => ['text' => 'Mes espaces', 'context' => 'Dashboard indicators module audience showing items attached to the current member spaces.'],
+    'personal_space.module.empty' => ['text' => 'Aucun élément à afficher.', 'context' => 'Empty dashboard module fallback.'],
+    'personal_space.video.empty' => ['text' => 'Aucune vidéo n’est configurée pour ce module.', 'context' => 'Empty state for an unconfigured dashboard video module.'],
+    'personal_space.video.player_title' => ['text' => 'Vidéo de présentation', 'context' => 'Title of the embedded video player in the dashboard.'],
+    'personal_space.module.unavailable' => ['text' => 'Cette application n’est pas active dans ce contexte.', 'context' => 'Unavailable dashboard module message.'],
+    'personal_space.module.more' => ['one' => 'Et {count} de plus', 'other' => 'Et {count} de plus', 'context' => 'Summary shown below a dashboard module when more items exist than are displayed.'],
+    'personal_space.module.more_template' => ['text' => 'Et {count} de plus', 'context' => 'Template used by the dashboard client when recalculating the number of hidden items after a filter.'],
 ];
 
 $lang = omoLoadTranslationBundle('omo_personal_space_panel', $sourceLang);
@@ -136,6 +261,10 @@ $lang = omoLoadTranslationBundle('omo_personal_space_panel', $sourceLang);
 $currentOrganizationId = isset($_GET['oid']) ? (int)$_GET['oid'] : (int)($_SESSION['currentOrganization'] ?? 0);
 $currentHolonId = isset($_GET['cid']) ? (int)$_GET['cid'] : 0;
 $currentUserId = (int)commonGetCurrentUserId();
+if ($currentUserId > 0 && empty($_SESSION['omo_dashboard_layout_csrf'])) {
+    $_SESSION['omo_dashboard_layout_csrf'] = bin2hex(random_bytes(32));
+}
+commonReleaseReadOnlySession();
 $currentContextHolon = null;
 $organizationRootHolon = null;
 
@@ -158,22 +287,6 @@ if ($currentOrganizationId <= 0 || !$organization->load($currentOrganizationId))
 $organizationRootHolon = $organization->getEnabledStructuralRootHolon();
 
 $enabledAppHashes = array_fill_keys($organization->getEnabledApplicationHashes($currentUserId), true);
-$supportedAppHashes = array('decision', 'documents', 'calendar', 'team', 'structure');
-$hasSupportedApp = false;
-foreach ($supportedAppHashes as $supportedAppHash) {
-    if (!empty($enabledAppHashes[$supportedAppHash])) {
-        $hasSupportedApp = true;
-        break;
-    }
-}
-
-$formatDateTime = static function ($value, $includeTime = false) use ($lang, $sourceLang): string {
-    if (!$value instanceof DateTimeInterface) {
-        return t('personal_space.date.unknown', [], $lang, $sourceLang);
-    }
-
-    return $value->format($includeTime ? 'd.m.Y H:i' : 'd.m.Y');
-};
 
 $documentShortDateFormatter = class_exists('IntlDateFormatter')
     ? new IntlDateFormatter('fr_FR', IntlDateFormatter::MEDIUM, IntlDateFormatter::NONE)
@@ -235,6 +348,18 @@ $formatCalendarRange = static function ($startAt, $endAt, $isAllDay = false) use
     return $startAt->format('d.m.Y H:i') . ' -> ' . $endAt->format('d.m.Y H:i');
 };
 
+$formatCalendarTime = static function ($startAt, $endAt, $isAllDay = false): string {
+    if ($isAllDay || !($startAt instanceof DateTimeInterface) || !($endAt instanceof DateTimeInterface)) {
+        return '';
+    }
+
+    if ($startAt->format('Y-m-d') === $endAt->format('Y-m-d')) {
+        return $startAt->format('H:i') . ' - ' . $endAt->format('H:i');
+    }
+
+    return $startAt->format('d.m H:i') . ' -> ' . $endAt->format('d.m H:i');
+};
+
 if ($currentHolonId > 0) {
     $candidateHolon = new Holon();
     if (
@@ -247,325 +372,378 @@ if ($currentHolonId > 0) {
     }
 }
 
-$decisionProcesses = new ArrayDecisionProcess();
-$decisionSummary = !empty($enabledAppHashes['decision']) && $currentUserId > 0
-    ? $decisionProcesses->buildPersonalSpaceSummary($currentOrganizationId, $currentUserId, $currentHolonId, 3)
-    : null;
-$documentVisibilityIconMap = array(
-    ObjectVisibility::TYPE_EVERYONE => '/omo/assets/images/documents/visibility/everyone.png',
-    ObjectVisibility::TYPE_ORGANIZATION => '/omo/assets/images/documents/visibility/organization.png',
-    ObjectVisibility::TYPE_CIRCLE => '/omo/assets/images/documents/visibility/circle.png',
-    ObjectVisibility::TYPE_ROLE => '/omo/assets/images/documents/visibility/role.png',
-    ObjectVisibility::TYPE_SELF => '/omo/assets/images/documents/visibility/me.png',
+$scopeReferenceHolon = $currentContextHolon instanceof Holon
+    ? $currentContextHolon
+    : $organizationRootHolon;
+$dashboardAvailableScopes = omoApiGetAvailableContextScopes(
+    $scopeReferenceHolon instanceof Holon,
+    $scopeReferenceHolon,
+    $organizationRootHolon
 );
-$documents = new ArrayDocument();
-$recentDocuments = array();
-$descendantHolonIds = omoApiGetDescendantHolonIds($currentContextHolon);
-$descendantHolonIdMap = count($descendantHolonIds) > 0 ? array_fill_keys($descendantHolonIds, true) : array();
-$useDescendantContextScope = omoApiCanUseDescendantScope($currentContextHolon, $organizationRootHolon) && count($descendantHolonIds) > 0;
-if (!empty($enabledAppHashes['documents'])) {
-    $documents->loadRecentForOrganizationContext(
-        $currentOrganizationId,
-        $currentHolonId,
-        5,
-        $useDescendantContextScope ? 'descendants' : 'contextual',
-        $descendantHolonIds
+$dashboardHolonId = $scopeReferenceHolon instanceof Holon ? (int)$scopeReferenceHolon->getId() : 0;
+$dashboardInterfaceLevel = $organization->getInterfaceLevel();
+$dashboardSettings = $currentUserId > 0 && $dashboardHolonId > 0
+    ? UserHolon::loadDashboardSettings($currentUserId, $dashboardHolonId)
+    : null;
+$dashboardPersonalLayout = $dashboardInterfaceLevel > Organization::INTERFACE_LEVEL_DISCOVERY && $dashboardSettings instanceof UserHolon
+    ? $dashboardSettings->getDashboardLayoutPreference()
+    : null;
+$dashboardHolonDefaultLayout = $scopeReferenceHolon instanceof Holon
+    ? $scopeReferenceHolon->getDashboardDefaultLayout()
+    : null;
+$dashboardTemplateKey = $scopeReferenceHolon instanceof Holon
+    ? $scopeReferenceHolon->getDashboardDirectTemplateLayoutKey()
+    : '';
+$dashboardTemplateLabel = $scopeReferenceHolon instanceof Holon
+    ? $scopeReferenceHolon->getDashboardTemplateLayoutLabel()
+    : '';
+$dashboardIsOrganizationHolon = $scopeReferenceHolon instanceof Holon
+    && $organizationRootHolon instanceof Holon
+    && (int)$scopeReferenceHolon->getId() === (int)$organizationRootHolon->getId();
+$dashboardBaseTypeKey = $scopeReferenceHolon instanceof Holon
+    ? $scopeReferenceHolon->getDashboardBaseTypeLayoutKey()
+    : '';
+$dashboardBaseTypeLabel = $scopeReferenceHolon instanceof Holon
+    ? $scopeReferenceHolon->getTypeLabel()
+    : '';
+$dashboardOrganizationTemplateLayout = $scopeReferenceHolon instanceof Holon
+    ? $organization->getDashboardTemplateDefaultLayoutForHolon($scopeReferenceHolon)
+    : null;
+$dashboardOrganizationModelLayout = $dashboardIsOrganizationHolon
+    ? $organization->getDashboardOrganizationDefaultLayout()
+    : null;
+$dashboardApplicationBaseTypeLayout = $scopeReferenceHolon instanceof Holon
+    ? ApplicationSetting::getDashboardBaseTypeDefaultLayoutForHolon($scopeReferenceHolon)
+    : null;
+$dashboardGlobalLayout = ApplicationSetting::getDashboardGlobalDefaultLayout();
+$dashboardTemporaryLayout = $dashboardInterfaceLevel === Organization::INTERFACE_LEVEL_DISCOVERY && $currentUserId > 0
+    ? omoDashboardViewPreferencesGetTemporaryLayout($currentUserId, $currentOrganizationId, $dashboardHolonId)
+    : null;
+$dashboardLayout = omoDashboardViewPreferencesResolveLayout(array(
+    'temporary' => $dashboardTemporaryLayout,
+    'personal' => $dashboardPersonalLayout,
+    'holon' => $dashboardHolonDefaultLayout,
+    'organizationTemplate' => $dashboardOrganizationTemplateLayout,
+    'organizationModel' => $dashboardOrganizationModelLayout,
+    'applicationType' => $dashboardApplicationBaseTypeLayout,
+    'global' => $dashboardGlobalLayout,
+));
+$dashboardAccess = omoDashboardViewPreferencesGetAccess($currentUserId, $organization, $scopeReferenceHolon);
+$dashboardInterfaceLevel = (int)$dashboardAccess['interfaceLevel'];
+$canEditDashboard = !empty($dashboardAccess['canEdit']);
+$canSaveDashboardHolonDefault = !empty($dashboardAccess['canSaveHolon']);
+$canSaveDashboardOrganizationTemplateDefault = !empty($dashboardAccess['canSaveOrganizationTemplate']);
+$canSaveDashboardOrganizationModelDefault = !empty($dashboardAccess['canSaveOrganizationModel']);
+$canSaveDashboardApplicationBaseTypeDefault = !empty($dashboardAccess['canSaveApplicationType']);
+$canSaveDashboardGlobalDefault = !empty($dashboardAccess['canSaveGlobal']);
+$dashboardSaveDefinitions = array(
+    'temporary' => array('textKey' => 'personal_space.editor.save', 'templateKey' => ''),
+    'personal' => array('textKey' => 'personal_space.editor.save', 'templateKey' => ''),
+    'holon' => array('textKey' => 'personal_space.editor.save_holon_default', 'templateKey' => ''),
+    'organization_template' => array('textKey' => 'personal_space.editor.save_organization_template_default', 'templateKey' => $dashboardTemplateKey),
+    'organization_model' => array('textKey' => 'personal_space.editor.save_organization_model_default', 'templateKey' => ''),
+    'application_type' => array('textKey' => 'personal_space.editor.save_application_type_default', 'templateKey' => $dashboardBaseTypeKey),
+    'global' => array('textKey' => 'personal_space.editor.save_global_default', 'templateKey' => ''),
+);
+$dashboardSaveOptions = array();
+foreach (omoDashboardViewPreferencesGetOrderedSaveScopes($dashboardAccess) as $dashboardSaveScope) {
+    $dashboardSaveOptions[] = array_merge(
+        array('scope' => $dashboardSaveScope),
+        $dashboardSaveDefinitions[$dashboardSaveScope]
     );
-    $recentDocuments = $documents->buildPersonalSpaceItems($currentOrganizationId);
 }
-$calendarEvents = array();
-if (!empty($enabledAppHashes['calendar']) && $currentUserId > 0) {
-    $events = new ArrayEvent();
-    $events->loadUpcomingForPersonalSpace($currentOrganizationId, $currentUserId, 5);
-    $holonNameCache = array();
-    $organizationContextLabel = t('personal_space.calendar.context.organization', [], $lang, $sourceLang);
-    $limitToContextDescendants = $currentContextHolon instanceof Holon && count($descendantHolonIdMap) > 0;
-
-    foreach ($events as $event) {
-        if (!($event instanceof \dbObject\Event) || (int)$event->getId() <= 0) {
-            continue;
-        }
-
-        $eventHolonId = (int)$event->get('IDholon');
-        if ($limitToContextDescendants && ($eventHolonId <= 0 || !isset($descendantHolonIdMap[$eventHolonId]))) {
-            continue;
-        }
-
-        $contextLabel = $organizationContextLabel;
-
-        if ($eventHolonId > 0) {
-            if (!array_key_exists($eventHolonId, $holonNameCache)) {
-                $holon = new Holon();
-                $holonNameCache[$eventHolonId] = $holon->load($eventHolonId)
-                    ? trim((string)$holon->get('name'))
-                    : '';
-            }
-
-            if (trim((string)$holonNameCache[$eventHolonId]) !== '') {
-                $contextLabel = (string)$holonNameCache[$eventHolonId];
-            }
-        }
-
-        $calendarEvents[] = array(
-            'id' => (int)$event->getId(),
-            'holonId' => $eventHolonId,
-            'title' => trim((string)$event->get('title')) !== ''
-                ? trim((string)$event->get('title'))
-                : 'Evenement #' . (int)$event->getId(),
-            'description' => trim((string)$event->get('description')),
-            'contextLabel' => $contextLabel,
-            'rangeLabel' => $formatCalendarRange(
-                $event->get('start_at'),
-                $event->get('end_at'),
-                (bool)$event->get('is_all_day')
-            ),
-        );
+$dashboardPrimarySaveOption = $dashboardSaveOptions[0] ?? array(
+    'scope' => '',
+    'textKey' => 'personal_space.editor.save',
+    'templateKey' => '',
+);
+$dashboardAdditionalSaveOptions = array_slice($dashboardSaveOptions, 1);
+$dashboardResetOptions = array();
+if (!empty($dashboardAccess['canSaveTemporary']) && $dashboardTemporaryLayout !== null) {
+    $dashboardResetOptions[] = array('scope' => 'temporary_reset', 'textKey' => 'personal_space.editor.reset_temporary', 'templateKey' => '');
+}
+if (!empty($dashboardAccess['canSavePersonal']) && $dashboardPersonalLayout !== null) {
+    $dashboardResetOptions[] = array('scope' => 'personal_reset', 'textKey' => 'personal_space.editor.reset_personal', 'templateKey' => '');
+}
+if ($canSaveDashboardHolonDefault && $dashboardHolonDefaultLayout !== null) {
+    $dashboardResetOptions[] = array('scope' => 'holon_reset', 'textKey' => 'personal_space.editor.reset_holon_default', 'templateKey' => '');
+}
+if ($canSaveDashboardOrganizationTemplateDefault && $dashboardOrganizationTemplateLayout !== null) {
+    $dashboardResetOptions[] = array('scope' => 'organization_template_reset', 'textKey' => 'personal_space.editor.reset_organization_template_default', 'templateKey' => $dashboardTemplateKey);
+}
+if ($canSaveDashboardOrganizationModelDefault && $dashboardOrganizationModelLayout !== null) {
+    $dashboardResetOptions[] = array('scope' => 'organization_model_reset', 'textKey' => 'personal_space.editor.reset_organization_model_default', 'templateKey' => '');
+}
+if ($canSaveDashboardApplicationBaseTypeDefault && $dashboardApplicationBaseTypeLayout !== null) {
+    $dashboardResetOptions[] = array('scope' => 'application_type_reset', 'textKey' => 'personal_space.editor.reset_application_type_default', 'templateKey' => $dashboardBaseTypeKey);
+}
+if ($canSaveDashboardGlobalDefault && $dashboardGlobalLayout !== null) {
+    $dashboardResetOptions[] = array('scope' => 'global_reset', 'textKey' => 'personal_space.editor.reset_global_default', 'templateKey' => '');
+}
+$hasDashboardMenuOptions = $dashboardAdditionalSaveOptions !== array() || $dashboardResetOptions !== array();
+$dashboardModuleCatalog = UserHolon::getDashboardModuleCatalog();
+$dashboardModuleDefinitions = omoDashboardGetModuleDefinitions();
+$hasVisibleDashboardModule = false;
+foreach ($dashboardLayout as $dashboardModule) {
+    $dashboardModuleType = (string)($dashboardModule['type'] ?? '');
+    $dashboardModuleDefinition = $dashboardModuleDefinitions[$dashboardModuleType] ?? null;
+    if (
+        is_array($dashboardModuleDefinition)
+        && (
+            !empty($dashboardModuleDefinition['standalone'])
+            || ($dashboardHolonId > 0 && !empty($enabledAppHashes[$dashboardModuleDefinition['app'] ?? '']))
+        )
+    ) {
+        $hasVisibleDashboardModule = true;
+        break;
     }
 }
-$memberships = new ArrayUserOrganization();
-$allowedTeamUserIds = null;
-if ($currentContextHolon instanceof Holon) {
-    $allowedTeamUserIds = $currentContextHolon->getAssociatedMemberUserIds(array(
-        'organizationId' => $currentOrganizationId,
-    ));
+$dashboardCsrfToken = '';
+if ($currentUserId > 0) {
+    $dashboardCsrfToken = (string)$_SESSION['omo_dashboard_layout_csrf'];
 }
-$teamEvents = !empty($enabledAppHashes['team']) && $currentUserId > 0
-    ? $memberships->buildUpcomingCelebrations($currentOrganizationId, 6, null, array(
-        'proNew' => t('personal_space.team.pro.new', [], $lang, $sourceLang),
-        'proNewDetailPrefix' => t('personal_space.team.pro.new_detail_prefix', [], $lang, $sourceLang),
-        'proToday' => t('personal_space.team.pro.today', [], $lang, $sourceLang),
-        'proSoonPrefix' => t('personal_space.team.pro.soon_prefix', [], $lang, $sourceLang),
-    ), $allowedTeamUserIds)
-    : array();
-$personalSpaceForcedOpenScope = '';
-if ($organizationRootHolon instanceof Holon) {
-    if ($currentContextHolon instanceof Holon && (int)$currentContextHolon->getId() !== (int)$organizationRootHolon->getId()) {
-        $personalSpaceForcedOpenScope = 'descendants';
-    } else {
-        $personalSpaceForcedOpenScope = 'global';
-    }
+$dashboardModuleLabels = array();
+foreach (array_keys($dashboardModuleCatalog) as $dashboardModuleType) {
+    $dashboardModuleLabels[$dashboardModuleType] = t('personal_space.module.' . $dashboardModuleType, [], $lang, $sourceLang);
 }
 
-$structureHistory = !empty($enabledAppHashes['structure'])
-    ? History::fetchHolonFeedPage($currentOrganizationId, $currentHolonId, 5, 0, $currentHolonId <= 0)
-    : array('items' => array());
-$historyItems = is_array($structureHistory['items'] ?? null) ? $structureHistory['items'] : array();
+$dashboardRouteTokens = array_map(static function (array $definition): string {
+    return (string)($definition['route'] ?? '');
+}, $dashboardModuleDefinitions);
+$dashboardMetricLabels = array(
+    'rules' => array(
+        'modified' => t('personal_space.metric.modified', [], $lang, $sourceLang),
+        'review' => t('personal_space.metric.review', [], $lang, $sourceLang),
+        'obsolete' => t('personal_space.metric.obsolete', [], $lang, $sourceLang),
+    ),
+    'projects' => array(
+        'total' => t('personal_space.metric.total', [], $lang, $sourceLang),
+        'in_progress' => t('personal_space.metric.in_progress', [], $lang, $sourceLang),
+        'late' => t('personal_space.metric.late', [], $lang, $sourceLang),
+    ),
+    'documents' => array(
+        'created' => t('personal_space.metric.created', [], $lang, $sourceLang),
+        'modified' => t('personal_space.metric.documents_modified', [], $lang, $sourceLang),
+    ),
+    'event' => array(
+        'all' => t('personal_space.metric.events_all', [], $lang, $sourceLang),
+        'mine' => t('personal_space.metric.events_mine', [], $lang, $sourceLang),
+    ),
+    'activities' => array(
+        'soon' => t('personal_space.metric.activities_soon', [], $lang, $sourceLang),
+        'due' => t('personal_space.metric.activities_due', [], $lang, $sourceLang),
+        'overdue' => t('personal_space.metric.activities_overdue', [], $lang, $sourceLang),
+    ),
+);
 ?>
-<div class="omo-personal-space<?= $currentUserId <= 0 ? ' omo-personal-space--guest' : '' ?>">
-    <div class="omo-personal-space__scroll">
-        <section class="generic-section generic-section--stack omo-personal-space__hero">
-            <span class="generic-card-title generic-card-title--section"><?= omoApiEscape(t('personal_space.heading', [], $lang, $sourceLang)) ?></span>
-            <p class="omo-personal-space__hero-text">
-                <?= omoApiEscape($currentUserId > 0 ? t('personal_space.intro', [], $lang, $sourceLang) : t('personal_space.login_required', [], $lang, $sourceLang)) ?>
-            </p>
-        </section>
+<div
+    class="omo-personal-space omo-panel-view<?= $currentUserId <= 0 ? ' omo-personal-space--guest' : '' ?>"
+    id="omo-personal-space-root"
+    data-omo-personal-space-oid="<?= (int)$currentOrganizationId ?>"
+    data-omo-personal-space-cid="<?= (int)$currentHolonId ?>"
+    data-omo-dashboard-holon-id="<?= (int)$dashboardHolonId ?>"
+    data-omo-dashboard-layout="<?= omoApiEscape(json_encode(array_values($dashboardLayout), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>"
+    data-omo-dashboard-available-scopes="<?= omoApiEscape(json_encode(array_values($dashboardAvailableScopes), JSON_UNESCAPED_SLASHES)) ?>"
+    data-omo-dashboard-catalog="<?= omoApiEscape(json_encode(array_map(static function (array $catalogItem, $moduleType) use ($dashboardModuleLabels, $enabledAppHashes, $dashboardHolonId): array {
+        return array(
+            'type' => (string)$moduleType,
+            'label' => (string)($dashboardModuleLabels[$moduleType] ?? $moduleType),
+            'enabled' => !empty($catalogItem['standalone']) || ($dashboardHolonId > 0 && !empty($enabledAppHashes[$catalogItem['app'] ?? ''])),
+            'settings' => is_array($catalogItem['settings'] ?? null) ? $catalogItem['settings'] : array(),
+        );
+    }, $dashboardModuleCatalog, array_keys($dashboardModuleCatalog)), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>"
+    data-omo-dashboard-save-url="/omo/api/personal_space_layout.php"
+    data-omo-dashboard-csrf="<?= omoApiEscape($dashboardCsrfToken) ?>"
+    data-omo-dashboard-texts="<?= omoApiEscape(json_encode(array(
+        'choose' => t('personal_space.editor.choose', [], $lang, $sourceLang),
+        'replace' => t('personal_space.editor.replace', [], $lang, $sourceLang),
+        'delete' => t('personal_space.editor.delete', [], $lang, $sourceLang),
+        'configure' => t('personal_space.editor.configure', [], $lang, $sourceLang),
+        'configureTitle' => t('personal_space.editor.configure_title', array('module' => '{module}'), $lang, $sourceLang),
+        'configureScope' => t('personal_space.editor.configure_scope', [], $lang, $sourceLang),
+        'configureAudience' => t('personal_space.editor.configure_audience', [], $lang, $sourceLang),
+        'configureVideo' => t('personal_space.editor.configure_video', [], $lang, $sourceLang),
+        'videoConfigured' => t('personal_space.module.video', [], $lang, $sourceLang),
+        'videoMissing' => t('personal_space.video.empty', [], $lang, $sourceLang),
+        'configureApply' => t('personal_space.editor.configure_apply', [], $lang, $sourceLang),
+        'cancel' => t('personal_space.editor.cancel', [], $lang, $sourceLang),
+        'scopeLabels' => array(
+            'contextual' => t('personal_space.scope.contextual', [], $lang, $sourceLang),
+            'children' => t('personal_space.scope.children', [], $lang, $sourceLang),
+            'descendants' => t('personal_space.scope.descendants', [], $lang, $sourceLang),
+        ),
+        'audienceLabels' => array(
+            'all' => t('personal_space.audience.all', [], $lang, $sourceLang),
+            'mine' => t('personal_space.audience.mine', [], $lang, $sourceLang),
+            'roles' => t('personal_space.audience.roles', [], $lang, $sourceLang),
+        ),
+        'saveError' => t('personal_space.editor.save_error', [], $lang, $sourceLang),
+    ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>"
+>
+    <header class="omo-personal-space__header omo-panel-view__header omo-panel-view__header--stacked">
+        <div class="omo-panel-view__header-main">
+            <div class="omo-panel-view__title-cluster">
+                <span class="omo-panel-view__app-icon omo-personal-space__app-icon" aria-hidden="true">
+                    <img src="/omo/images/tools/dashboard.png" alt="">
+                </span>
+                <div class="omo-panel-view__header-copy">
+                    <div class="omo-personal-space__title-row generic-title-row generic-title-row--center">
+                        <h2 class="omo-panel-view__title"><?= omoApiEscape(t('personal_space.title', [], $lang, $sourceLang)) ?></h2>
+                    </div>
+                    <?php if ($currentUserId <= 0): ?>
+                        <p class="omo-panel-view__description"><?= omoApiEscape(t('personal_space.login_required', [], $lang, $sourceLang)) ?></p>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <?php if ($canEditDashboard): ?>
+                <div class="omo-panel-view__header-actions" data-omo-header-actions>
+                    <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-dashboard-edit><?= omoApiEscape(t('personal_space.edit', [], $lang, $sourceLang)) ?></button>
+                </div>
+            <?php endif; ?>
+        </div>
+    </header>
+
+    <div class="omo-panel-view__body omo-personal-space__body">
+        <div class="omo-panel-view__body_content omo-personal-space__scroll">
 
         <?php if ($currentUserId <= 0): ?>
             <section class="generic-section generic-section--stack omo-personal-space__card">
                 <p class="omo-personal-space__empty"><?= omoApiEscape(t('personal_space.login_required', [], $lang, $sourceLang)) ?></p>
             </section>
-        <?php elseif (!$hasSupportedApp): ?>
+        <?php elseif (!$hasVisibleDashboardModule): ?>
             <section class="generic-section generic-section--stack omo-personal-space__card">
                 <p class="omo-personal-space__empty"><?= omoApiEscape(t('personal_space.empty', [], $lang, $sourceLang)) ?></p>
             </section>
         <?php else: ?>
-            <?php if (!empty($enabledAppHashes['decision']) && is_array($decisionSummary)): ?>
-                <?php
-                $decisionCounts = $decisionSummary['counts'] ?? array();
-                $actionLine = t('personal_space.decisions.action', [
-                    'count' => (string)(int)($decisionCounts['action'] ?? 0),
-                ], $lang, $sourceLang);
-                $respondedCount = (int)($decisionCounts['actionResponded'] ?? 0);
-                if ($respondedCount > 0) {
-                    $actionLine .= ' (' . t('personal_space.decisions.responded', [
-                        'count' => (string)$respondedCount,
-                    ], $lang, $sourceLang) . ')';
-                }
-                $decisionLines = array();
-                if ((int)($decisionCounts['finalize'] ?? 0) > 0) {
-                    $decisionLines[] = t('personal_space.decisions.finalize', ['count' => (string)(int)$decisionCounts['finalize']], $lang, $sourceLang);
-                }
-                if ((int)($decisionCounts['consultation'] ?? 0) > 0) {
-                    $decisionLines[] = t('personal_space.decisions.consultation', ['count' => (string)(int)$decisionCounts['consultation']], $lang, $sourceLang);
-                }
-                if ((int)($decisionCounts['action'] ?? 0) > 0) {
-                    $decisionLines[] = $actionLine;
-                }
-                if ((int)($decisionCounts['results'] ?? 0) > 0) {
-                    $decisionLines[] = t('personal_space.decisions.results', ['count' => (string)(int)$decisionCounts['results']], $lang, $sourceLang);
-                }
-                $hasDecisionActivity = array_sum(array_map('intval', $decisionCounts)) > 0;
-                ?>
-                <section class="generic-section generic-section--stack omo-personal-space__card">
-                    <div class="omo-personal-space__section-head">
-                        <span class="generic-card-title generic-card-title--small"><?= omoApiEscape(t('personal_space.section.decisions', [], $lang, $sourceLang)) ?></span>
-                        <button type="button" class="omo-personal-space__section-action" data-omo-personal-space-route-token="decision"<?= $personalSpaceForcedOpenScope !== '' ? ' data-omo-personal-space-forced-scope="' . omoApiEscape($personalSpaceForcedOpenScope) . '"' : '' ?>><?= omoApiEscape(t('personal_space.open_app', [], $lang, $sourceLang)) ?></button>
-                    </div>
-
-                    <?php if ($hasDecisionActivity): ?>
-                        <ul class="omo-personal-space__summary-list">
-                            <?php foreach ($decisionLines as $decisionLine): ?>
-                                <li><?= omoApiEscape($decisionLine) ?></li>
-                            <?php endforeach; ?>
-                        </ul>
-                    <?php else: ?>
-                        <p class="omo-personal-space__empty"><?= omoApiEscape(t('personal_space.decisions.empty', [], $lang, $sourceLang)) ?></p>
-                    <?php endif; ?>
-                </section>
-            <?php endif; ?>
-
-            <?php if (!empty($enabledAppHashes['documents'])): ?>
-                <section class="generic-section generic-section--stack omo-personal-space__card">
-                    <div class="omo-personal-space__section-head">
-                        <span class="generic-card-title generic-card-title--small"><?= omoApiEscape(t('personal_space.section.documents_recent', [], $lang, $sourceLang)) ?></span>
-                        <button type="button" class="omo-personal-space__section-action" data-omo-personal-space-route-token="documents"<?= $personalSpaceForcedOpenScope !== '' ? ' data-omo-personal-space-forced-scope="' . omoApiEscape($personalSpaceForcedOpenScope) . '"' : '' ?>><?= omoApiEscape(t('personal_space.open_app', [], $lang, $sourceLang)) ?></button>
-                    </div>
-
-                    <?php if ($recentDocuments !== array()): ?>
-                        <div class="omo-personal-space__item-list">
-                            <?php foreach ($recentDocuments as $documentItem): ?>
-                                <button
-                                    type="button"
-                                    class="omo-personal-space__item-button"
-                                    data-omo-personal-space-document-url="<?= omoApiEscape($documentItem['contextUrl'] ?? '') ?>"
-                                    data-omo-personal-space-document-title="<?= omoApiEscape($documentItem['title'] ?? '') ?>"
-                                >
-                                    <span class="omo-personal-space__item-topline">
-                                        <span class="omo-personal-space__item-inline">
-                                            <span class="omo-personal-space__item-meta omo-personal-space__item-meta--date"><?= omoApiEscape($formatDocumentSummaryDate($documentItem['datemodification'] ?? $documentItem['datecreation'] ?? null)) ?></span>
-                                            <span class="omo-personal-space__item-title"><?= omoApiEscape($documentItem['title'] ?? '') ?></span>
-                                        </span>
-                                        <?php
-                                        $documentVisibilityType = ObjectVisibility::normalizeVisibilityType((string)($documentItem['visibility']['type'] ?? ''));
-                                        $documentVisibilityIconUrl = (string)($documentVisibilityIconMap[$documentVisibilityType] ?? $documentVisibilityIconMap[ObjectVisibility::TYPE_ORGANIZATION]);
-                                        $documentVisibilityLabel = trim((string)($documentItem['visibility']['badgeText'] ?? ''));
-                                        ?>
-                                        <?php if ($documentVisibilityIconUrl !== '' && $documentVisibilityLabel !== ''): ?>
-                                            <span class="omo-personal-space__visibility-icon" role="img" aria-label="<?= omoApiEscape($documentVisibilityLabel) ?>" title="<?= omoApiEscape($documentVisibilityLabel) ?>">
-                                                <img src="<?= omoApiEscape($documentVisibilityIconUrl) ?>" alt="" loading="lazy">
-                                            </span>
-                                        <?php endif; ?>
-                                    </span>
-                                    <?php if (trim((string)($documentItem['description'] ?? '')) !== ''): ?>
-                                        <span class="omo-personal-space__item-copy"><?= omoApiEscape($documentItem['description']) ?></span>
-                                    <?php endif; ?>
-                                </button>
-                            <?php endforeach; ?>
+            <div class="omo-dashboard-grid" data-omo-dashboard-grid>
+                <?php foreach ($dashboardLayout as $dashboardModule): ?>
+                    <?php
+                    $dashboardModuleType = (string)($dashboardModule['type'] ?? '');
+                    $dashboardModuleDefinition = $dashboardModuleDefinitions[$dashboardModuleType] ?? null;
+                    if (!is_array($dashboardModuleDefinition)) {
+                        continue;
+                    }
+                    $dashboardModuleSettings = is_array($dashboardModule['settings'] ?? null)
+                        ? $dashboardModule['settings']
+                        : array();
+                    $dashboardModuleHasScope = !empty($dashboardModuleCatalog[$dashboardModuleType]['settings']['scope']);
+                    $dashboardModuleScope = $dashboardModuleHasScope
+                        ? omoApiNormalizeContextScope($dashboardModuleSettings['scope'] ?? 'contextual', $dashboardAvailableScopes)
+                        : 'contextual';
+                    $dashboardModuleAudience = !empty($dashboardModuleCatalog[$dashboardModuleType]['settings']['audience'])
+                        ? UserHolon::normalizeDashboardModuleAudience($dashboardModuleSettings['audience'] ?? 'all')
+                        : '';
+                    $dashboardModuleScopeHolonIds = $dashboardModuleScope === 'children'
+                        ? omoApiGetDirectChildScopeHolonIds($scopeReferenceHolon)
+                        : ($dashboardModuleScope === 'descendants'
+                            ? omoApiGetDescendantHolonIds($scopeReferenceHolon)
+                            : array($dashboardHolonId));
+                    $dashboardModuleScopeHolonIdMap = count($dashboardModuleScopeHolonIds) > 0
+                        ? array_fill_keys(array_map('intval', $dashboardModuleScopeHolonIds), true)
+                        : array();
+                    $dashboardModuleContextHolonId = $dashboardHolonId;
+                    $dashboardModuleForcedOpenScope = $dashboardModuleScope === 'contextual' ? '' : $dashboardModuleScope;
+                    $dashboardModuleScopeLabel = t('personal_space.scope.' . $dashboardModuleScope, [], $lang, $sourceLang);
+                    $dashboardModuleAudienceLabel = $dashboardModuleAudience !== ''
+                        ? t('personal_space.audience.' . $dashboardModuleAudience, [], $lang, $sourceLang)
+                        : '';
+                    $dashboardModuleEnabled = !empty($dashboardModuleDefinition['standalone']) || ($dashboardHolonId > 0 && !empty($enabledAppHashes[$dashboardModuleDefinition['app'] ?? '']));
+                    $dashboardModuleRouteToken = (string)($dashboardRouteTokens[$dashboardModuleType] ?? '');
+                    $dashboardModuleIsTall = (int)($dashboardModule['rowSpan'] ?? 1) > 1;
+                    $dashboardModuleStyle = '--omo-dashboard-row:' . ((int)$dashboardModule['row'] + 1)
+                        . ';--omo-dashboard-column:' . ((int)$dashboardModule['column'] + 1)
+                        . ';--omo-dashboard-row-span:' . (int)$dashboardModule['rowSpan']
+                        . ';--omo-dashboard-column-span:' . (int)$dashboardModule['columnSpan'] . ';';
+                    ?>
+                    <section class="generic-section generic-section--stack omo-personal-space__card omo-dashboard-module omo-dashboard-module--<?= omoApiEscape($dashboardModuleType) ?><?= $dashboardModuleIsTall ? ' omo-dashboard-module--tall' : '' ?>" style="<?= omoApiEscape($dashboardModuleStyle) ?>" data-omo-dashboard-module="<?= omoApiEscape($dashboardModuleType) ?>">
+                        <div class="omo-personal-space__section-head">
+                            <span class="generic-card-title generic-card-title--small"><?= omoApiEscape($dashboardModuleLabels[$dashboardModuleType] ?? $dashboardModuleType) ?></span>
+                            <?php if ($dashboardModuleHasScope): ?><span class="omo-personal-space__tag omo-dashboard-module__scope"><?= omoApiEscape($dashboardModuleScopeLabel) ?></span><?php endif; ?>
+                            <?php if ($dashboardModuleAudienceLabel !== ''): ?><span class="omo-personal-space__tag omo-dashboard-module__audience"><?= omoApiEscape($dashboardModuleAudienceLabel) ?></span><?php endif; ?>
+                            <?php if ($dashboardModuleEnabled && $dashboardModuleRouteToken !== ''): ?>
+                                <button type="button" class="omo-personal-space__section-action generic-action-button generic-action-button--secondary generic-action-button--compact" data-omo-personal-space-route-token="<?= omoApiEscape($dashboardModuleRouteToken) ?>"<?= $dashboardModuleForcedOpenScope !== '' && $dashboardModuleType !== 'structure' ? ' data-omo-personal-space-forced-scope="' . omoApiEscape($dashboardModuleForcedOpenScope) . '"' : '' ?>><?= omoApiEscape(t('personal_space.open_app', [], $lang, $sourceLang)) ?></button>
+                            <?php endif; ?>
                         </div>
-                    <?php else: ?>
-                        <p class="omo-personal-space__empty"><?= omoApiEscape(t('personal_space.documents.empty', [], $lang, $sourceLang)) ?></p>
-                    <?php endif; ?>
-                </section>
-            <?php endif; ?>
 
-            <?php if (!empty($enabledAppHashes['calendar'])): ?>
-                <section class="generic-section generic-section--stack omo-personal-space__card">
-                    <div class="omo-personal-space__section-head">
-                        <span class="generic-card-title generic-card-title--small"><?= omoApiEscape(t('personal_space.section.calendar', [], $lang, $sourceLang)) ?></span>
-                        <button type="button" class="omo-personal-space__section-action" data-omo-personal-space-route-token="calendar"<?= $personalSpaceForcedOpenScope !== '' ? ' data-omo-personal-space-forced-scope="' . omoApiEscape($personalSpaceForcedOpenScope) . '"' : '' ?>><?= omoApiEscape(t('personal_space.open_app', [], $lang, $sourceLang)) ?></button>
-                    </div>
-
-                    <?php if ($calendarEvents !== array()): ?>
-                        <div class="omo-personal-space__item-list">
-                            <?php foreach ($calendarEvents as $eventItem): ?>
-                                <button
-                                    type="button"
-                                    class="omo-personal-space__item-button"
-                                    data-omo-personal-space-calendar-event-id="<?= (int)($eventItem['id'] ?? 0) ?>"
-                                    data-omo-personal-space-calendar-holon-id="<?= (int)($eventItem['holonId'] ?? 0) ?>"
-                                >
-                                    <span class="omo-personal-space__item-title"><?= omoApiEscape($eventItem['title'] ?? '') ?></span>
-                                    <span class="omo-personal-space__item-meta"><?= omoApiEscape($eventItem['rangeLabel'] ?? '') ?></span>
-                                    <span class="omo-personal-space__item-meta"><?= omoApiEscape($eventItem['contextLabel'] ?? '') ?></span>
-                                    <?php if (trim((string)($eventItem['description'] ?? '')) !== ''): ?>
-                                        <span class="omo-personal-space__item-copy"><?= omoApiEscape($eventItem['description']) ?></span>
-                                    <?php endif; ?>
-                                </button>
-                            <?php endforeach; ?>
-                        </div>
-                    <?php else: ?>
-                        <p class="omo-personal-space__empty"><?= omoApiEscape(t('personal_space.calendar.empty', [], $lang, $sourceLang)) ?></p>
-                    <?php endif; ?>
-                </section>
-            <?php endif; ?>
-
-            <?php if (!empty($enabledAppHashes['team'])): ?>
-                <section class="generic-section generic-section--stack omo-personal-space__card">
-                    <div class="omo-personal-space__section-head">
-                        <span class="generic-card-title generic-card-title--small"><?= omoApiEscape(t('personal_space.section.team', [], $lang, $sourceLang)) ?></span>
-                        <button type="button" class="omo-personal-space__section-action" data-omo-personal-space-route-token="team"<?= $personalSpaceForcedOpenScope !== '' ? ' data-omo-personal-space-forced-scope="' . omoApiEscape($personalSpaceForcedOpenScope) . '"' : '' ?>><?= omoApiEscape(t('personal_space.open_app', [], $lang, $sourceLang)) ?></button>
-                    </div>
-
-                    <?php if ($teamEvents !== array()): ?>
-                        <div class="omo-personal-space__item-list">
-                            <?php foreach ($teamEvents as $event): ?>
-                                <?php
-                                $tagType = trim((string)($event['tagType'] ?? ''));
-                                $tagLabel = $tagType === 'pro'
-                                    ? t('personal_space.team.tag.pro', [], $lang, $sourceLang)
-                                    : t('personal_space.team.tag.personal', [], $lang, $sourceLang);
-                                ?>
-                                <button
-                                    type="button"
-                                    class="omo-personal-space__item-button"
-                                    data-omo-personal-space-user-id="<?= (int)($event['userId'] ?? 0) ?>"
-                                >
-                                    <span class="omo-personal-space__item-topline">
-                                        <span class="omo-personal-space__item-title"><?= omoApiEscape($event['displayName'] ?? '') ?></span>
-                                        <span class="omo-personal-space__tag"><?= omoApiEscape($tagLabel) ?></span>
-                                    </span>
-                                    <span class="omo-personal-space__item-meta"><?= omoApiEscape($event['headline'] ?? '') ?></span>
-                                    <?php if (trim((string)($event['detail'] ?? '')) !== ''): ?>
-                                        <span class="omo-personal-space__item-copy"><?= omoApiEscape($event['detail']) ?></span>
-                                    <?php endif; ?>
-                                </button>
-                            <?php endforeach; ?>
-                        </div>
-                    <?php else: ?>
-                        <p class="omo-personal-space__empty"><?= omoApiEscape(t('personal_space.team.empty', [], $lang, $sourceLang)) ?></p>
-                    <?php endif; ?>
-                </section>
-            <?php endif; ?>
-
-            <?php if (!empty($enabledAppHashes['structure'])): ?>
-                <section class="generic-section generic-section--stack omo-personal-space__card">
-                    <div class="omo-personal-space__section-head">
-                        <span class="generic-card-title generic-card-title--small"><?= omoApiEscape(t('personal_space.section.structure', [], $lang, $sourceLang)) ?></span>
-                        <button type="button" class="omo-personal-space__section-action" data-omo-personal-space-route-token="structure"><?= omoApiEscape(t('personal_space.open_app', [], $lang, $sourceLang)) ?></button>
-                    </div>
-
-                    <?php if ($historyItems !== array()): ?>
-                        <div class="omo-personal-space__item-list">
-                            <?php foreach ($historyItems as $historyItem): ?>
-                                <?php
-                                $historyDate = null;
-                                $historyDateValue = trim((string)($historyItem['datecreation'] ?? ''));
-                                $historyContentHtml = trim((string)($historyItem['contentHtml'] ?? ''));
-                                if ($historyDateValue !== '') {
-                                    try {
-                                        $historyDate = new DateTimeImmutable($historyDateValue);
-                                    } catch (Throwable $exception) {
-                                        $historyDate = null;
-                                    }
-                                }
-                                ?>
-                                <div class="omo-personal-space__item-card">
-                                    <span class="omo-personal-space__item-topline">
-                                        <span class="omo-personal-space__item-title"><?= omoApiEscape($historyItem['actionLabel'] ?? '') ?></span>
-                                        <span class="omo-personal-space__item-meta"><?= omoApiEscape($formatDateTime($historyDate, true)) ?></span>
-                                    </span>
-                                    <span class="omo-personal-space__item-copy"><?= $historyContentHtml !== '' ? nl2br($historyContentHtml) : omoApiEscape($historyItem['contentDisplay'] ?? '') ?></span>
-                                    <?php if (trim((string)($historyItem['authorDisplayName'] ?? '')) !== ''): ?>
-                                        <span class="omo-personal-space__item-meta"><?= omoApiEscape($historyItem['authorDisplayName']) ?></span>
-                                    <?php endif; ?>
-                                </div>
-                            <?php endforeach; ?>
-                        </div>
-                    <?php else: ?>
-                        <p class="omo-personal-space__empty"><?= omoApiEscape(t('personal_space.structure.empty', [], $lang, $sourceLang)) ?></p>
-                    <?php endif; ?>
-                </section>
-            <?php endif; ?>
+                        <?php if (!$dashboardModuleEnabled): ?>
+                            <p class="omo-personal-space__empty"><?= omoApiEscape(t('personal_space.module.unavailable', [], $lang, $sourceLang)) ?></p>
+                        <?php else: ?>
+                            <?php include (string)$dashboardModuleDefinition['loader']; ?>
+                            <?php include (string)$dashboardModuleDefinition['template']; ?>
+                        <?php endif; ?>
+                    </section>
+                <?php endforeach; ?>
+            </div>
         <?php endif; ?>
     </div>
 </div>
+    <?php if ($canEditDashboard): ?>
+    <div class="omo-overlay-drawer omo-dashboard-editor" data-omo-dashboard-editor hidden>
+        <div class="omo-overlay-drawer__backdrop" data-omo-dashboard-editor-close></div>
+        <div class="omo-overlay-drawer__panel">
+            <div class="omo-overlay-drawer__header generic-drawer-header generic-drawer-header--sticky">
+                <div class="generic-drawer-header__copy">
+                    <h3 class="omo-overlay-drawer__title"><?= omoApiEscape(t('personal_space.editor.title', [], $lang, $sourceLang)) ?></h3>
+                    <p class="omo-overlay-drawer__description"><?= omoApiEscape(t('personal_space.editor.description', [], $lang, $sourceLang)) ?></p>
+                </div>
+                <div class="generic-drawer-header__actions">
+                    <div class="omo-dashboard-save-actions">
+                        <button type="button" class="generic-action-button generic-action-button--compact generic-action-button--main" data-omo-dashboard-editor-save="<?= omoApiEscape($dashboardPrimarySaveOption['scope']) ?>"<?= $dashboardPrimarySaveOption['templateKey'] !== '' ? ' data-omo-dashboard-template-key="' . omoApiEscape($dashboardPrimarySaveOption['templateKey']) . '"' : '' ?>><?= omoApiEscape(t($dashboardPrimarySaveOption['textKey'], ['templateName' => $dashboardTemplateLabel, 'typeName' => $dashboardBaseTypeLabel], $lang, $sourceLang)) ?></button>
+                        <?php if ($hasDashboardMenuOptions): ?>
+                            <div class="generic-menu omo-dashboard-save-menu" data-omo-dashboard-save-menu>
+                                <button type="button" class="generic-menu-toggle" data-omo-dashboard-save-menu-toggle aria-expanded="false" aria-label="<?= omoApiEscape(t('personal_space.editor.save_options', [], $lang, $sourceLang)) ?>">&#9662;</button>
+                                <div class="generic-menu-panel omo-dashboard-save-menu__panel" data-omo-dashboard-save-menu-panel role="menu" hidden>
+                                    <?php foreach ($dashboardAdditionalSaveOptions as $dashboardOption): ?>
+                                        <button type="button" class="generic-menu-item" data-omo-dashboard-save-scope="<?= omoApiEscape($dashboardOption['scope']) ?>"<?= $dashboardOption['templateKey'] !== '' ? ' data-omo-dashboard-template-key="' . omoApiEscape($dashboardOption['templateKey']) . '"' : '' ?> role="menuitem"><?= omoApiEscape(t($dashboardOption['textKey'], ['templateName' => $dashboardTemplateLabel, 'typeName' => $dashboardBaseTypeLabel], $lang, $sourceLang)) ?></button>
+                                    <?php endforeach; ?>
+                                    <?php if ($dashboardAdditionalSaveOptions !== array() && $dashboardResetOptions !== array()): ?>
+                                        <div class="omo-dashboard-save-menu__separator" role="separator"></div>
+                                    <?php endif; ?>
+                                    <?php foreach ($dashboardResetOptions as $dashboardOption): ?>
+                                        <button type="button" class="generic-menu-item" data-omo-dashboard-editor-reset="<?= omoApiEscape($dashboardOption['scope']) ?>"<?= $dashboardOption['templateKey'] !== '' ? ' data-omo-dashboard-template-key="' . omoApiEscape($dashboardOption['templateKey']) . '"' : '' ?> role="menuitem"><?= omoApiEscape(t($dashboardOption['textKey'], ['templateName' => $dashboardTemplateLabel, 'typeName' => $dashboardBaseTypeLabel], $lang, $sourceLang)) ?></button>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                    <button type="button" class="generic-action-button generic-action-button--compact generic-action-button--secondary" data-omo-dashboard-editor-close><?= omoApiEscape(t('personal_space.editor.close', [], $lang, $sourceLang)) ?></button>
+                </div>
+            </div>
+            <div class="omo-overlay-drawer__body omo-dashboard-editor__body">
+                <div class="omo-dashboard-editor__grid" data-omo-dashboard-editor-grid></div>
+                <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-dashboard-add-row><?= omoApiEscape(t('personal_space.editor.add_row', [], $lang, $sourceLang)) ?></button>
+            </div>
+        </div>
+        <div class="omo-dashboard-picker" data-omo-dashboard-picker hidden>
+            <div class="omo-dashboard-picker__panel generic-soft-panel generic-soft-panel--stack" role="dialog" aria-modal="true">
+                <h4 class="generic-card-title"><?= omoApiEscape(t('personal_space.editor.catalog', [], $lang, $sourceLang)) ?></h4>
+                <div class="omo-dashboard-picker__list" data-omo-dashboard-picker-list></div>
+                <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-dashboard-picker-close><?= omoApiEscape(t('personal_space.editor.cancel', [], $lang, $sourceLang)) ?></button>
+            </div>
+        </div>
+        <div class="omo-dashboard-picker" data-omo-dashboard-configurator hidden>
+            <div class="omo-dashboard-picker__panel generic-soft-panel generic-soft-panel--stack" role="dialog" aria-modal="true">
+                <h4 class="generic-card-title" data-omo-dashboard-configurator-title></h4>
+                <div class="generic-form-field" data-omo-dashboard-configurator-scope-field>
+                    <span class="generic-form-label"><?= omoApiEscape(t('personal_space.editor.configure_scope', [], $lang, $sourceLang)) ?></span>
+                    <div class="omo-segmented" data-omo-dashboard-configurator-scopes></div>
+                </div>
+                <div class="generic-form-field" data-omo-dashboard-configurator-audience-field>
+                    <span class="generic-form-label"><?= omoApiEscape(t('personal_space.editor.configure_audience', [], $lang, $sourceLang)) ?></span>
+                    <div class="omo-segmented" data-omo-dashboard-configurator-audiences></div>
+                </div>
+                <label class="generic-form-field" data-omo-dashboard-configurator-video-field>
+                    <span class="generic-form-label"><?= omoApiEscape(t('personal_space.editor.configure_video', [], $lang, $sourceLang)) ?></span>
+                    <input class="generic-form-control" type="url" inputmode="url" maxlength="2000" placeholder="https://..." data-omo-dashboard-configurator-video>
+                    <span class="generic-help-text"><?= omoApiEscape(t('personal_space.editor.configure_video_hint', [], $lang, $sourceLang)) ?></span>
+                </label>
+                <div class="generic-form-actions">
+                    <button type="button" class="generic-action-button generic-action-button--main" data-omo-dashboard-configurator-apply><?= omoApiEscape(t('personal_space.editor.configure_apply', [], $lang, $sourceLang)) ?></button>
+                    <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-dashboard-configurator-close><?= omoApiEscape(t('personal_space.editor.cancel', [], $lang, $sourceLang)) ?></button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+</div>
+<script src="/omo/assets/js/personal-space-dashboard.js?v=20260921-organization-model"></script>

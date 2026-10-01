@@ -7,6 +7,7 @@
         offsetX: 0,
         offsetY: 0
     };
+    var modalStack = [];
 
     function getConfig() {
         return window.commonTopbarConfig || {};
@@ -34,6 +35,137 @@
         return typeof current === 'string' && current !== '' ? current : fallback;
     }
 
+    function isProfileModalUrl(url) {
+        return /(?:^|\/)popup\/profil\.php(?:[?#]|$)/i.test(String(url || ''));
+    }
+
+    function setProfileText(selector, value, fallback) {
+        var node = document.querySelector(selector);
+
+        if (node) {
+            node.textContent = value || fallback;
+        }
+    }
+
+    function renderProfileAvatar(container, profile, imageClass, initialClass) {
+        var image;
+        var initial;
+
+        if (!container) {
+            return;
+        }
+
+        container.innerHTML = '';
+        if (profile.photoUrl) {
+            image = document.createElement('img');
+            image.src = String(profile.photoUrl);
+            image.alt = String(profile.displayName || 'Profil');
+            image.className = imageClass;
+            image.width = imageClass === 'common-topbar__avatar-image' ? 30 : 96;
+            image.height = image.width;
+            image.decoding = 'async';
+            container.appendChild(image);
+            container.removeAttribute('style');
+            return;
+        }
+
+        initial = document.createElement('span');
+        initial.className = initialClass;
+        initial.setAttribute('aria-hidden', 'true');
+        initial.textContent = String(profile.initials || 'P');
+        container.appendChild(initial);
+        if (profile.avatarStyle) {
+            container.setAttribute('style', String(profile.avatarStyle));
+        }
+    }
+
+    function updateProfileMenu(profile) {
+        var triggerAvatar = document.querySelector('[data-common-topbar-avatar]');
+        var media = document.querySelector('[data-common-topbar-profile-media]');
+        var mediaAvatar = media
+            ? media.querySelector('.common-topbar-profile-card__photo, .common-topbar-profile-card__placeholder')
+            : null;
+        var emptyValue = getConfigTextValue('profile.details.emptyValueLabel', 'Non renseigne');
+        var summaryFallback = getConfigTextValue('profile.summaryFallback', 'Resume du profil');
+
+        profile = profile && typeof profile === 'object' ? profile : {};
+        renderProfileAvatar(triggerAvatar, profile, 'common-topbar__avatar-image', 'common-topbar__avatar-initial');
+
+        if (triggerAvatar && profile.photoUrl) {
+            triggerAvatar.removeAttribute('style');
+        }
+
+        if (media && mediaAvatar) {
+            if (profile.photoUrl) {
+                var mediaImage = document.createElement('img');
+                mediaImage.src = String(profile.photoUrl);
+                mediaImage.alt = String(profile.displayName || 'Profil');
+                mediaImage.className = 'common-topbar-profile-card__photo';
+                mediaImage.width = 96;
+                mediaImage.height = 96;
+                mediaImage.decoding = 'async';
+                mediaImage.setAttribute('data-common-topbar-profile-photo', '');
+                mediaAvatar.replaceWith(mediaImage);
+            } else {
+                var mediaPlaceholder = document.createElement('div');
+                mediaPlaceholder.className = 'common-topbar-profile-card__placeholder';
+                mediaPlaceholder.setAttribute('data-common-topbar-profile-placeholder', '');
+                mediaPlaceholder.setAttribute('aria-hidden', 'true');
+                mediaPlaceholder.textContent = String(profile.initials || 'P');
+                if (profile.avatarStyle) {
+                    mediaPlaceholder.setAttribute('style', String(profile.avatarStyle));
+                }
+                mediaAvatar.replaceWith(mediaPlaceholder);
+            }
+        }
+
+        setProfileText('[data-common-topbar-display-name]', String(profile.displayName || ''), 'Profil');
+        setProfileText('[data-common-topbar-email]', String(profile.email || ''), summaryFallback);
+        setProfileText('[data-common-topbar-detail-name]', String(profile.displayName || ''), emptyValue);
+        setProfileText('[data-common-topbar-detail-email]', String(profile.email || ''), emptyValue);
+        setProfileText('[data-common-topbar-detail-username]', String(profile.username || ''), emptyValue);
+    }
+
+    function notifyUserProfileChanged(reason) {
+        var profileUrl = '/ajax/user_profile.php?_=' + Date.now();
+
+        window.dispatchEvent(new CustomEvent('common-user-profile-change', {
+            detail: {
+                reason: String(reason || 'change')
+            }
+        }));
+
+        fetch(profileUrl, {
+            credentials: 'same-origin',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+            .then(function (response) {
+                if (!response.ok) {
+                    throw new Error('profile_load');
+                }
+
+                return response.json();
+            })
+            .then(function (payload) {
+                if (!payload || !payload.status || !payload.profile) {
+                    throw new Error('profile_payload');
+                }
+
+                updateProfileMenu(payload.profile);
+                window.dispatchEvent(new CustomEvent('common-user-profile-updated', {
+                    detail: {
+                        reason: String(reason || 'change'),
+                        profile: payload.profile
+                    }
+                }));
+            })
+            .catch(function () {
+            });
+    }
+
     function runContainerCleanup(container) {
         if (!container || container.id !== 'commonTopbarModalBody') {
             return;
@@ -48,53 +180,19 @@
         }
     }
 
-    function executeEmbeddedScripts(container) {
-        var scripts;
-        var sequence;
-
-        if (!container) {
-            return Promise.resolve();
-        }
-
-        scripts = Array.prototype.slice.call(container.querySelectorAll('script'));
-        sequence = Promise.resolve();
-
-        scripts.forEach(function (script) {
-            sequence = sequence.then(function () {
-                return new Promise(function (resolve) {
-                    var replacement = document.createElement('script');
-
-                    Array.prototype.forEach.call(script.attributes, function (attribute) {
-                        replacement.setAttribute(attribute.name, attribute.value);
-                    });
-
-                    if (replacement.src) {
-                        replacement.async = false;
-                        replacement.addEventListener('load', function () {
-                            resolve();
-                        }, { once: true });
-                        replacement.addEventListener('error', function () {
-                            resolve();
-                        }, { once: true });
-                    } else {
-                        replacement.textContent = script.textContent || '';
-                    }
-
-                    script.parentNode.replaceChild(replacement, script);
-
-                    if (!replacement.src) {
-                        resolve();
-                    }
-                });
-            });
+    function executeEmbeddedScripts(container, requestId) {
+        return window.commonExecuteFragmentScripts(container, {
+            isCurrent: function () { return container.isConnected && container.__commonTopbarRemoteRequestId === requestId; }
         });
-
-        return sequence;
     }
 
     function enhanceScrollablePanel(container) {
         if (!container) {
             return;
+        }
+
+        if (typeof window.initGenericTabs === 'function') {
+            container.querySelectorAll('[data-generic-tabs]:not([data-generic-tabs-ready="1"])').forEach(window.initGenericTabs);
         }
 
         Array.prototype.forEach.call(
@@ -135,6 +233,34 @@
         candidates[candidates.length - 1].classList.add('common-topbar__sticky-actions');
     }
 
+    function escapeHtml(value) {
+        return String(value || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function renderRemoteError(container) {
+        var errorLabel = getConfigTextValue('translations.loadErrorLabel', 'Erreur de chargement');
+        var errorDescription = getConfigTextValue(
+            'translations.loadErrorDescription',
+            'Le contenu n’a pas pu être chargé. Vérifiez votre connexion puis réessayez.'
+        );
+        var retryLabel = getConfigTextValue('translations.retryLabel', 'Réessayer');
+
+        container.innerHTML = ''
+            + '<div class="common-topbar-remote-state common-topbar-remote-state--error" role="alert">'
+            + '  <div class="common-topbar-remote-state__icon" aria-hidden="true">!</div>'
+            + '  <div class="common-topbar-remote-state__content">'
+            + '    <h3 class="common-topbar-remote-state__title">' + escapeHtml(errorLabel) + '</h3>'
+            + '    <p class="common-topbar-remote-state__description">' + escapeHtml(errorDescription) + '</p>'
+            + '    <button type="button" class="generic-action-button generic-action-button--main" data-topbar-remote-retry>' + escapeHtml(retryLabel) + '</button>'
+            + '  </div>'
+            + '</div>';
+    }
+
     function renderRemoteContent(container, url) {
         if (!container) {
             return;
@@ -143,7 +269,11 @@
         var resolvedUrl = (typeof window.omoResolveAppUrl === 'function')
             ? window.omoResolveAppUrl(url)
             : url;
+        var requestId = String(Date.now()) + '_' + Math.random().toString(36).slice(2);
 
+        container.setAttribute('data-topbar-remote-container', '1');
+        container.setAttribute('data-topbar-remote-url', String(url || ''));
+        container.__commonTopbarRemoteRequestId = requestId;
         runContainerCleanup(container);
         container.innerHTML = '<div class="loading">' + getConfigTextValue('translations.loadingLabel', 'Chargement...') + '</div>';
 
@@ -161,15 +291,31 @@
                 return response.text();
             })
             .then(function (html) {
+                if (container.__commonTopbarRemoteRequestId !== requestId) {
+                    return;
+                }
+
                 container.innerHTML = html;
-                executeEmbeddedScripts(container);
-                enhanceScrollablePanel(container);
-                window.setTimeout(function () {
+                var stylesReady = typeof window.genericAwaitStylesheets === 'function'
+                    ? window.genericAwaitStylesheets(container)
+                    : Promise.resolve();
+                return stylesReady.then(function () {
+                    if (container.__commonTopbarRemoteRequestId !== requestId) return;
+                    return executeEmbeddedScripts(container, requestId);
+                }).then(function () {
+                    if (container.__commonTopbarRemoteRequestId !== requestId) return;
                     enhanceScrollablePanel(container);
-                }, 0);
+                    if (container.id === 'commonTopbarModalBody') {
+                        syncModalPanelPreferredWidth(container);
+                    }
+                });
             })
             .catch(function () {
-                container.innerHTML = '<div class="loading">' + getConfigTextValue('translations.loadErrorLabel', 'Erreur de chargement') + '</div>';
+                if (container.__commonTopbarRemoteRequestId !== requestId) {
+                    return;
+                }
+
+                renderRemoteError(container);
             });
     }
 
@@ -250,6 +396,28 @@
 
     function getModalPanel() {
         return document.querySelector('#commonTopbarModal .common-topbar-modal__panel');
+    }
+
+    function syncModalPanelPreferredWidth(body) {
+        var panel = getModalPanel();
+        var widthSource;
+        var requestedWidth;
+        if (!panel) {
+            return;
+        }
+
+        panel.style.removeProperty('--common-topbar-modal-max-width');
+        if (!body) {
+            return;
+        }
+
+        widthSource = body.querySelector('[data-topbar-modal-max-width]');
+        requestedWidth = widthSource
+            ? String(widthSource.getAttribute('data-topbar-modal-max-width') || '').trim()
+            : '';
+        if (/^(?:[1-9]\d{1,3})(?:\.\d+)?(?:px|rem|em|vw)$/.test(requestedWidth)) {
+            panel.style.setProperty('--common-topbar-modal-max-width', requestedWidth);
+        }
     }
 
     function applyModalPanelOffset(offsetX, offsetY) {
@@ -382,6 +550,9 @@
             return;
         }
 
+        while (modalStack.length > 0) {
+            popModal();
+        }
         closeModal();
         closeDrawer();
 
@@ -415,8 +586,13 @@
         }
 
         closeDrawer();
+        while (modalStack.length > 0) {
+            popModal();
+        }
         closeModal();
         resetModalPanelOffset();
+        syncModalPanelPreferredWidth(null);
+        body.setAttribute('data-topbar-modal-url', String(content || ''));
         titleNode.textContent = title || getConfigTextValue('modal.defaultTitle', 'Panneau');
         if (mode === 'iframe') {
             body.innerHTML = '<iframe class="common-topbar-modal__iframe" src="' + resolvedContent + '"></iframe>';
@@ -426,6 +602,7 @@
         } else {
             body.innerHTML = content || '';
             enhanceScrollablePanel(body);
+            syncModalPanelPreferredWidth(body);
         }
 
         modal.hidden = false;
@@ -437,6 +614,165 @@
                 mode: mode || 'html'
             }
         }));
+    }
+
+    function getModalBodyDynamicAttributes(body) {
+        var attributes = {};
+
+        if (!body) {
+            return attributes;
+        }
+
+        Array.prototype.forEach.call(body.attributes, function (attribute) {
+            if (attribute.name !== 'id' && attribute.name !== 'class') {
+                attributes[attribute.name] = attribute.value;
+            }
+        });
+
+        return attributes;
+    }
+
+    function clearModalBodyDynamicAttributes(body) {
+        if (!body) {
+            return;
+        }
+
+        Array.prototype.slice.call(body.attributes).forEach(function (attribute) {
+            if (attribute.name !== 'id' && attribute.name !== 'class') {
+                body.removeAttribute(attribute.name);
+            }
+        });
+    }
+
+    function restoreModalBodyDynamicAttributes(body, attributes) {
+        clearModalBodyDynamicAttributes(body);
+        Object.keys(attributes || {}).forEach(function (name) {
+            body.setAttribute(name, attributes[name]);
+        });
+    }
+
+    function pushModal(title, content, mode) {
+        var modal = document.getElementById('commonTopbarModal');
+        var body = document.getElementById('commonTopbarModalBody');
+        var titleNode = document.getElementById('commonTopbarModalTitle');
+        var panel = getModalPanel();
+        var resolvedContent = mode === 'iframe' && typeof window.omoResolveAppUrl === 'function'
+            ? window.omoResolveAppUrl(content)
+            : content;
+        var fragment;
+        var currentScrollTop;
+        var currentScrollLeft;
+
+        if (!modal || !body || !titleNode) {
+            return false;
+        }
+        if (modal.hidden) {
+            openModal(title, content, mode);
+            return true;
+        }
+
+        currentScrollTop = body.scrollTop;
+        currentScrollLeft = body.scrollLeft;
+        fragment = document.createDocumentFragment();
+        while (body.firstChild) {
+            fragment.appendChild(body.firstChild);
+        }
+        modalStack.push({
+            fragment: fragment,
+            title: titleNode.textContent,
+            attributes: getModalBodyDynamicAttributes(body),
+            remoteRequestId: body.__commonTopbarRemoteRequestId,
+            scrollTop: currentScrollTop,
+            scrollLeft: currentScrollLeft,
+            closeGuard: window.commonTopbarModalCanClose,
+            popupCleanup: window.__omoPopupCleanup,
+            faqPopupCleanup: window.__omoFaqPopupCleanup,
+            panelWidth: panel ? panel.style.getPropertyValue('--common-topbar-modal-max-width') : '',
+            offsetX: modalDragState.offsetX,
+            offsetY: modalDragState.offsetY
+        });
+
+        window.commonTopbarModalCanClose = null;
+        window.__omoPopupCleanup = null;
+        window.__omoFaqPopupCleanup = null;
+        body.__commonTopbarRemoteRequestId = String(Date.now()) + '_stacked';
+        clearModalBodyDynamicAttributes(body);
+        resetModalPanelOffset();
+        syncModalPanelPreferredWidth(null);
+        body.setAttribute('data-topbar-modal-url', String(content || ''));
+        titleNode.textContent = title || getConfigTextValue('modal.defaultTitle', 'Panneau');
+
+        if (mode === 'iframe') {
+            body.innerHTML = '<iframe class="common-topbar-modal__iframe" src="' + resolvedContent + '"></iframe>';
+            bindIframeThemeSync(body.querySelector('iframe'));
+        } else if (mode === 'fetch') {
+            renderRemoteContent(body, content);
+        } else {
+            body.innerHTML = content || '';
+            enhanceScrollablePanel(body);
+            syncModalPanelPreferredWidth(body);
+        }
+        body.scrollTop = 0;
+        body.scrollLeft = 0;
+
+        window.dispatchEvent(new CustomEvent('common-topbar-modal-open', {
+            detail: {
+                title: title || getConfigTextValue('modal.defaultTitle', 'Panneau'),
+                content: content,
+                mode: mode || 'html',
+                stacked: true
+            }
+        }));
+        return true;
+    }
+
+    function popModal() {
+        var modal = document.getElementById('commonTopbarModal');
+        var body = document.getElementById('commonTopbarModalBody');
+        var titleNode = document.getElementById('commonTopbarModalTitle');
+        var panel = getModalPanel();
+        var state = modalStack.pop();
+        var childUrl;
+        var restoredRoot;
+
+        if (!state || !modal || !body || !titleNode) {
+            return false;
+        }
+
+        childUrl = body.getAttribute('data-topbar-modal-url') || '';
+        window.dispatchEvent(new CustomEvent('common-topbar-modal-pop', {
+            detail: { url: childUrl }
+        }));
+        runContainerCleanup(body);
+        body.__commonTopbarRemoteRequestId = String(Date.now()) + '_popped';
+        body.innerHTML = '';
+        restoreModalBodyDynamicAttributes(body, state.attributes);
+        body.appendChild(state.fragment);
+        body.__commonTopbarRemoteRequestId = state.remoteRequestId;
+        titleNode.textContent = state.title || getConfigTextValue('modal.defaultTitle', 'Panneau');
+        window.commonTopbarModalCanClose = state.closeGuard || null;
+        window.__omoPopupCleanup = state.popupCleanup || null;
+        window.__omoFaqPopupCleanup = state.faqPopupCleanup || null;
+        if (panel) {
+            panel.style.removeProperty('--common-topbar-modal-max-width');
+            if (state.panelWidth) {
+                panel.style.setProperty('--common-topbar-modal-max-width', state.panelWidth);
+            }
+        }
+        applyModalPanelOffset(state.offsetX, state.offsetY);
+        modal.hidden = false;
+        document.body.classList.add('common-topbar-modal-open');
+        enhanceScrollablePanel(body);
+        restoredRoot = body.firstElementChild;
+        var restoreScrollPosition = function () {
+            if (!restoredRoot || body.contains(restoredRoot)) {
+                body.scrollTop = Number(state.scrollTop) || 0;
+                body.scrollLeft = Number(state.scrollLeft) || 0;
+            }
+        };
+        restoreScrollPosition();
+        window.requestAnimationFrame(restoreScrollPosition);
+        return true;
     }
 
     function closeDrawer() {
@@ -456,11 +792,21 @@
         var modal = document.getElementById('commonTopbarModal');
         var body = document.getElementById('commonTopbarModalBody');
         var wasHidden = !modal || modal.hidden;
+        var modalUrl = body ? body.getAttribute('data-topbar-modal-url') || '' : '';
+        var closeGuard = window.commonTopbarModalCanClose;
         if (!modal) {
+            return;
+        }
+        if (!wasHidden && typeof closeGuard === 'function' && closeGuard() === false) {
+            return;
+        }
+        if (!wasHidden && modalStack.length > 0) {
+            popModal();
             return;
         }
         stopModalDrag();
         modal.hidden = true;
+        syncModalPanelPreferredWidth(null);
         if (body) {
             runContainerCleanup(body);
             body.innerHTML = '';
@@ -468,10 +814,21 @@
             body.removeAttribute('data-omo-popup-key');
             body.removeAttribute('data-omo-popup-url');
             body.removeAttribute('data-omo-popup-live-sync');
+            body.removeAttribute('data-topbar-modal-url');
         }
         document.body.classList.remove('common-topbar-modal-open');
         if (!wasHidden) {
-            window.dispatchEvent(new CustomEvent('common-topbar-modal-close'));
+            if (window.commonTopbarModalCanClose === closeGuard) {
+                window.commonTopbarModalCanClose = null;
+            }
+            window.dispatchEvent(new CustomEvent('common-topbar-modal-close', {
+                detail: {
+                    url: modalUrl
+                }
+            }));
+            if (isProfileModalUrl(modalUrl)) {
+                notifyUserProfileChanged('close');
+            }
         }
     }
 
@@ -566,6 +923,152 @@
         );
     }
 
+    function getSearchPeriodState(form) {
+        if (!form) {
+            return { startDate: '', endDate: '' };
+        }
+
+        var startInput = form.querySelector('[data-topbar-search-period-start]');
+        var endInput = form.querySelector('[data-topbar-search-period-end]');
+        return {
+            startDate: startInput ? String(startInput.value || '') : '',
+            endDate: endInput ? String(endInput.value || '') : ''
+        };
+    }
+
+    function initializeSearchPeriod(form) {
+        if (!form) {
+            return;
+        }
+
+        var period = form.querySelector('[data-topbar-search-period]');
+        if (!period || period.getAttribute('data-topbar-search-period-bound') === '1') {
+            return;
+        }
+
+        var startInput = period.querySelector('[data-topbar-search-period-start]');
+        var endInput = period.querySelector('[data-topbar-search-period-end]');
+        var startSlider = period.querySelector('[data-topbar-search-period-start-slider]');
+        var endSlider = period.querySelector('[data-topbar-search-period-end-slider]');
+        if (!startInput || !endInput || !startSlider || !endSlider) {
+            return;
+        }
+
+        function toDay(value) {
+            var match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+            return match ? Math.floor(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])) / 86400000) : null;
+        }
+
+        function toDate(day) {
+            var date = new Date(Number(day) * 86400000);
+            return date.getUTCFullYear() + '-' + String(date.getUTCMonth() + 1).padStart(2, '0') + '-' + String(date.getUTCDate()).padStart(2, '0');
+        }
+
+        var minDay = toDay(startInput.min);
+        var maxDay = toDay(startInput.max);
+        if (minDay === null || maxDay === null || minDay > maxDay) {
+            return;
+        }
+
+        function renderYearMarks() {
+            var yearContainer = period.querySelector('[data-topbar-search-period-years]');
+            if (!yearContainer) {
+                return;
+            }
+
+            var marks = [];
+            var seenYears = {};
+            var minYear = new Date(minDay * 86400000).getUTCFullYear();
+            var maxYear = new Date(maxDay * 86400000).getUTCFullYear();
+
+            function addMark(year, day) {
+                if (seenYears[year]) {
+                    return;
+                }
+                seenYears[year] = true;
+                marks.push({ year: year, day: day });
+            }
+
+            addMark(minYear, minDay);
+            for (var year = minYear + 1; year <= maxYear; year += 1) {
+                var yearDay = Math.floor(Date.UTC(year, 0, 1) / 86400000);
+                if (yearDay >= minDay && yearDay <= maxDay) {
+                    addMark(year, yearDay);
+                }
+            }
+
+            if (!seenYears[maxYear]) {
+                addMark(maxYear, maxDay);
+            }
+
+            yearContainer.innerHTML = '';
+            marks.forEach(function (mark) {
+                var label = document.createElement('span');
+                var ratio = (mark.day - minDay) / Math.max(1, maxDay - minDay);
+                label.className = 'common-topbar__search-period-year';
+                label.style.left = String(Math.max(0, Math.min(1, ratio)) * 100) + '%';
+                label.textContent = String(mark.year);
+                yearContainer.appendChild(label);
+            });
+        }
+
+        function clampDay(value) {
+            return Math.max(minDay, Math.min(maxDay, value));
+        }
+
+        function dayToSlider(day) {
+            return Math.round(((clampDay(day) - minDay) / Math.max(1, maxDay - minDay)) * 1000);
+        }
+
+        function sliderToDay(value) {
+            return clampDay(minDay + Math.round((Number(value) / 1000) * (maxDay - minDay)));
+        }
+
+        function syncFromDates(changed) {
+            var startDay = toDay(startInput.value);
+            var endDay = toDay(endInput.value);
+            startDay = startDay === null ? minDay : clampDay(startDay);
+            endDay = endDay === null ? maxDay : clampDay(endDay);
+            if (startDay > endDay) {
+                if (changed === 'end') {
+                    startDay = endDay;
+                } else {
+                    endDay = startDay;
+                }
+            }
+            startInput.value = toDate(startDay);
+            endInput.value = toDate(endDay);
+            startSlider.value = String(dayToSlider(startDay));
+            endSlider.value = String(dayToSlider(endDay));
+        }
+
+        function syncFromSliders(changed) {
+            var startDay = sliderToDay(startSlider.value);
+            var endDay = sliderToDay(endSlider.value);
+            if (startDay > endDay) {
+                if (changed === 'end') {
+                    startDay = endDay;
+                    startSlider.value = String(dayToSlider(startDay));
+                } else {
+                    endDay = startDay;
+                    endSlider.value = String(dayToSlider(endDay));
+                }
+            }
+            startInput.value = toDate(startDay);
+            endInput.value = toDate(endDay);
+        }
+
+        startInput.addEventListener('change', function () { syncFromDates('start'); });
+        endInput.addEventListener('change', function () { syncFromDates('end'); });
+        startSlider.addEventListener('input', function () { syncFromSliders('start'); });
+        endSlider.addEventListener('input', function () { syncFromSliders('end'); });
+        renderYearMarks();
+        syncFromDates('start');
+        period.setAttribute('data-topbar-search-period-bound', '1');
+    }
+
+    window.commonTopbarInitializeSearchPeriod = initializeSearchPeriod;
+
     function handleSearchSubmit(event) {
         event.preventDefault();
 
@@ -578,6 +1081,7 @@
         var searchState = {
             query: query,
             scopes: readSelectedSearchScopes(form),
+            dateRange: getSearchPeriodState(form),
             config: config
         };
 
@@ -792,9 +1296,13 @@
             return;
         }
 
+        var notice = button.getAttribute('data-admin-mode-confirm');
+        if (button.getAttribute('data-admin-mode-enabled') === '1' && notice && !window.confirm(notice)) return;
+
         var formData = new FormData();
         formData.append('enabled', button.getAttribute('data-admin-mode-enabled') === '1' ? '1' : '0');
         formData.append('return_to', window.location.pathname + window.location.search);
+        if (button.hasAttribute('data-admin-mode-csrf')) formData.append('csrf_token', button.getAttribute('data-admin-mode-csrf'));
         if (organizationId !== '') {
             formData.append('organization_id', organizationId);
         }
@@ -1060,6 +1568,17 @@
     }
 
     document.addEventListener('click', function (event) {
+        var remoteRetry = event.target.closest('[data-topbar-remote-retry]');
+        if (remoteRetry) {
+            event.preventDefault();
+            var remoteContainer = remoteRetry.closest('[data-topbar-remote-container]');
+            var remoteUrl = remoteContainer ? remoteContainer.getAttribute('data-topbar-remote-url') || '' : '';
+            if (remoteContainer && remoteUrl) {
+                renderRemoteContent(remoteContainer, remoteUrl);
+            }
+            return;
+        }
+
         var preferenceTrigger = event.target.closest('[data-topbar-preference-trigger]');
         if (preferenceTrigger) {
             event.preventDefault();
@@ -1103,6 +1622,7 @@
                 menu.classList.add('is-open');
                 if (name === 'search') {
                     renderSearchScopes(menu);
+                    initializeSearchPeriod(menu.querySelector('[data-topbar-search-form]'));
                     focusSearchInput(menu.querySelector('[data-topbar-search-input]'));
                 }
             }
@@ -1212,8 +1732,11 @@
 
     window.commonTopbarOpenModal = openModal;
     window.commonTopbarCloseModal = closeModal;
+    window.commonTopbarPushModal = pushModal;
+    window.commonTopbarPopModal = popModal;
     window.commonTopbarOpenDrawer = openDrawer;
     window.commonTopbarCloseDrawer = closeDrawer;
+    window.commonTopbarRefreshUserProfile = notifyUserProfileChanged;
     window.commonTopbarRefreshModalContent = function (url) {
         var body = document.getElementById('commonTopbarModalBody');
         if (!body || !url) {

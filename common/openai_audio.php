@@ -181,7 +181,6 @@ function commonOpenAiRequestAudioTranscription($apiKey, $tmpName, $mimeType, $fi
     $response = curl_exec($curl);
     $curlError = curl_error($curl);
     $httpCode = (int)curl_getinfo($curl, CURLINFO_HTTP_CODE);
-    curl_close($curl);
 
     if ($response === false) {
         return array(

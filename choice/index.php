@@ -314,7 +314,7 @@ if ($currentUserId <= 0) {
     commonRenderMagicLoginPage([
         'title' => t('choice.page.title', [], $lang, $sourceLang),
         'appName' => 'Choice',
-        'intro' => 'Connectez-vous pour retrouver toutes les prises de decision qui vous concernent.',
+        'intro' => 'Connectez-vous pour retrouver toutes les prises de décision qui vous concernent.',
         'returnTo' => '/choice/',
     ]);
 }
@@ -324,7 +324,7 @@ if (!$currentUser->load($currentUserId)) {
     commonRenderMagicLoginPage([
         'title' => t('choice.page.title', [], $lang, $sourceLang),
         'appName' => 'Choice',
-        'intro' => 'Connectez-vous pour retrouver toutes les prises de decision qui vous concernent.',
+        'intro' => 'Connectez-vous pour retrouver toutes les prises de décision qui vous concernent.',
         'returnTo' => '/choice/',
     ]);
 }
@@ -370,8 +370,7 @@ foreach ($rows as $row) {
     }
 
     $decision = new DecisionProcess();
-    $decision->loadFromArray($row);
-    $decision->setId((int)$row['id']);
+    $decision->hydrateFromDatabaseRow($row, true);
 
     $organizationId = (int)($row['IDorganization'] ?? 0);
     $holonId = (int)($row['IDholon'] ?? 0);
@@ -566,8 +565,8 @@ $currentUserLabel = trim((string)$currentUser->getScopedDisplayName());
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= $escape(t('choice.page.title', [], $lang, $sourceLang)) ?></title>
-    <link href="/shared_css.css" rel="stylesheet">
-    <link href="/common/choice/decision_cards.css" rel="stylesheet">
+    <?= commonStylesheetTags('/shared_css.css') ?>
+    <link href="/common/choice/decision_cards.css?v=20260923-compact-editor" rel="stylesheet">
     <script src="/shared_functions.js"></script>
     <script>
         if (typeof sharedApplyDocumentTheme === 'function') {

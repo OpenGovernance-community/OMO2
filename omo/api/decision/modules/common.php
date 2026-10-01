@@ -6,12 +6,31 @@ use dbObject\DecisionParticipant;
 use dbObject\DecisionProcess;
 use dbObject\DecisionProposal;
 use dbObject\DecisionResponse;
+use dbObject\ChatThread;
 use dbObject\Holon;
 use dbObject\User;
+
+if (!class_exists('OmoDecisionModuleCapturedResponse', false)) {
+    class OmoDecisionModuleCapturedResponse extends RuntimeException
+    {
+        public int $statusCode;
+        public array $payload;
+
+        public function __construct(int $statusCode, array $payload)
+        {
+            parent::__construct((string)($payload['message'] ?? 'Decision module response.'));
+            $this->statusCode = $statusCode;
+            $this->payload = $payload;
+        }
+    }
+}
 
 if (!function_exists('omoDecisionModuleJsonResponse')) {
     function omoDecisionModuleJsonResponse($statusCode, array $payload)
     {
+        if (!empty($GLOBALS['omoDecisionCaptureModuleResponse'])) {
+            throw new OmoDecisionModuleCapturedResponse((int)$statusCode, $payload);
+        }
         http_response_code((int)$statusCode);
         echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         exit;
@@ -403,197 +422,19 @@ if (!function_exists('omoDecisionRenderVoteWeightEditorAssets')) {
             . '.omo-decision-vote-weight-editor__content{display:grid;gap:12px;}'
             . '.omo-decision-vote-weight-editor__content[hidden]{display:none !important;}'
             . '.omo-decision-vote-weight-editor__list{display:grid;gap:10px;}'
-            . '.omo-decision-vote-weight-editor__row{display:grid;grid-template-columns:minmax(88px,120px) minmax(0,1fr) auto;gap:10px;align-items:end;padding:12px;border:1px solid var(--color-border,#d1d5db);border-radius:12px;background:var(--color-surface,#fff);}'
+            . '.omo-decision-vote-weight-editor__row{display:grid;grid-template-columns:minmax(88px,120px) minmax(0,1fr) auto;gap:10px;align-items:end;padding:12px;border:1px solid var(--color-border,#d1d5db);border-radius:var(--radius-md);background:var(--color-surface,#fff);}'
             . '.omo-decision-vote-weight-editor__row--locked{background:var(--color-surface-alt,#f8fafc);border-style:dashed;}'
             . '.omo-decision-vote-weight-editor__field{display:grid;gap:6px;min-width:0;}'
             . '.omo-decision-vote-weight-editor__actions{display:flex;align-items:flex-end;justify-content:flex-end;min-height:100%;}'
             . '.omo-decision-vote-weight-editor__toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}'
             . '.omo-decision-vote-weight-editor__toggle{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}'
-            . '.omo-decision-vote-weight-editor__empty{margin:0;color:var(--color-text-soft,#6b7280);font-size:.92rem;}'
-            . '.omo-decision-vote-weight-editor__hint{margin:0;color:var(--color-text-soft,#6b7280);font-size:.9rem;}'
             . '.omo-decision-vote-weight-selector{display:grid;gap:12px;}'
             . '.omo-decision-vote-weight-selector__buttons{display:flex;gap:8px;flex-wrap:wrap;}'
             . '.omo-decision-vote-weight-selector__button{display:grid;gap:2px;min-width:120px;text-align:center;}'
             . '.omo-decision-vote-weight-selector__weight{font-size:.78rem;opacity:.78;}'
             . '@media (max-width:700px){.omo-decision-vote-weight-editor__row{grid-template-columns:1fr;}.omo-decision-vote-weight-editor__actions{justify-content:flex-start;}}'
         . '</style>'
-        . '<script>(function(){'
-            . 'if(typeof window.omoDecisionInitVoteWeightEditor==="function"){return;}'
-            . 'var normalizeNumber=function(rawValue){'
-                . 'var normalized=String(rawValue||"").trim().replace(",",".");'
-                . 'var value;'
-                . 'if(normalized===""){return"";}'
-                . 'value=Number(normalized);'
-                . 'if(!Number.isFinite(value)||value<=0){return"";}'
-                . 'return String(value).replace(/\\.0+$/,"").replace(/(\\.\\d*?)0+$/,"$1");'
-            . '};'
-            . 'var parseOptions=function(rawValue,fallbackOptions){'
-                . 'var options=[];'
-                . 'var normalizedOptions=[];'
-                . 'if(Array.isArray(rawValue)){options=rawValue;}else{'
-                    . 'var source=String(rawValue||"").trim();'
-                    . 'if(source!==""){'
-                        . 'try{var decoded=JSON.parse(source);if(Array.isArray(decoded)){options=decoded;}}catch(error){'
-                            . 'options=source.split(/\\r\\n|\\r|\\n/).map(function(line){'
-                                . 'var parts=String(line||"").split("|");'
-                                . 'return{weight:parts.length>0?parts[0]:"",label:parts.length>1?parts.slice(1).join("|"):""};'
-                            . '});'
-                        . '}'
-                    . '}'
-                . '}'
-                . 'options.forEach(function(option){'
-                    . 'if(!option||typeof option!=="object"){return;}'
-                    . 'var weight=normalizeNumber(option.weight||option.value||"");'
-                    . 'var label=String(option.label||"").trim();'
-                    . 'if(weight===""||label===""){return;}'
-                    . 'normalizedOptions.push({weight:weight,label:label});'
-                . '});'
-                . 'if(normalizedOptions.length===0&&fallbackOptions){return parseOptions(fallbackOptions,false);}'
-                . 'return normalizedOptions;'
-            . '};'
-            . 'var buildSummaryText=function(enabled,options,yesLabel,noLabel){'
-                . 'var weights=[];'
-                . 'if(!enabled){return String(noLabel||"Non");}'
-                . 'options=(Array.isArray(options)?options:[]).filter(function(option){return option&&option.weight&&option.label;});'
-                . 'if(options.length===0){return String(yesLabel||"Oui");}'
-                . 'weights=options.map(function(option){return Number(String(option.weight||"").replace(",", "."));}).filter(function(value){return Number.isFinite(value)&&value>0;});'
-                . 'if(weights.length===0){return String(yesLabel||"Oui");}'
-                . 'return String(yesLabel||"Oui")+" ("+String(options.length)+" options de "+normalizeNumber(String(Math.min.apply(Math,weights)))+" a "+normalizeNumber(String(Math.max.apply(Math,weights)))+")";'
-            . '};'
-            . 'window.omoDecisionInitVoteWeightSelector=function(root){'
-                . 'if(!(root instanceof Element)){return null;}'
-                . 'if(root._omoDecisionVoteWeightSelector){return root._omoDecisionVoteWeightSelector;}'
-                . 'var input=root.querySelector("[data-omo-decision-vote-weight-selector-input]");'
-                . 'var buttons=root.querySelectorAll("[data-omo-decision-vote-weight-selector-button]");'
-                . 'var normalizeValue=function(value){return normalizeNumber(value)||"1";};'
-                . 'var applyValue=function(rawValue){'
-                    . 'var selectedValue=normalizeValue(rawValue);'
-                    . 'if(input instanceof HTMLInputElement){input.value=selectedValue;}'
-                    . 'Array.prototype.forEach.call(buttons,function(button){'
-                        . 'var buttonValue=normalizeValue(button.getAttribute("data-omo-decision-vote-weight-selector-button")||"1");'
-                        . 'var isActive=buttonValue===selectedValue;'
-                        . 'button.classList.toggle("is-active",isActive);'
-                        . 'button.setAttribute("aria-pressed",isActive?"true":"false");'
-                    . '});'
-                . '};'
-                . 'Array.prototype.forEach.call(buttons,function(button){'
-                    . 'if(button.dataset.omoDecisionVoteWeightSelectorBound==="1"){return;}'
-                    . 'button.dataset.omoDecisionVoteWeightSelectorBound="1";'
-                    . 'button.addEventListener("click",function(event){event.preventDefault();applyValue(button.getAttribute("data-omo-decision-vote-weight-selector-button")||"1");});'
-                . '});'
-                . 'applyValue(input instanceof HTMLInputElement?input.value:(root.getAttribute("data-selected-weight")||"1"));'
-                . 'root._omoDecisionVoteWeightSelector={setValue:applyValue,getValue:function(){return input instanceof HTMLInputElement?normalizeValue(input.value):normalizeValue(root.getAttribute("data-selected-weight")||"1");}};'
-                . 'return root._omoDecisionVoteWeightSelector;'
-            . '};'
-            . 'window.omoDecisionInitVoteWeightEditor=function(root){'
-                . 'if(!(root instanceof Element)){return null;}'
-                . 'var existing=root._omoDecisionVoteWeightEditor;'
-                . 'if(existing){return existing;}'
-                . 'var enabledInput=root.querySelector("[data-omo-decision-vote-weight-enabled]");'
-                . 'var questionInput=root.querySelector("[data-omo-decision-vote-weight-question]");'
-                . 'var list=root.querySelector("[data-omo-decision-vote-weight-list]");'
-                . 'var addButton=root.querySelector("[data-omo-decision-vote-weight-add]");'
-                . 'var emptyNode=root.querySelector("[data-omo-decision-vote-weight-empty]");'
-                . 'var content=root.querySelector("[data-omo-decision-vote-weight-content]");'
-                . 'var rowTemplate=root.querySelector("[data-omo-decision-vote-weight-row-template]");'
-                . 'var canEdit=root.getAttribute("data-can-edit")==="1";'
-                . 'var defaultOptions=root.getAttribute("data-default-options-json")||"[]";'
-                . 'var baseLabel=root.getAttribute("data-base-label")||"Souhaitable";'
-                . 'var baseWeightTitle=root.getAttribute("data-base-weight-title")||"Reference";'
-                . 'var weightTitle=root.getAttribute("data-weight-title")||"Coefficient";'
-                . 'var controller;'
-                . 'var buildBaseOption=function(options){'
-                    . 'var normalized=parseOptions(options||[],false);'
-                    . 'var lockedOption=null;'
-                    . 'var rows=[];'
-                    . 'normalized.forEach(function(option){'
-                        . 'if(!lockedOption&&String(option.weight||"")==="1"){lockedOption={weight:"1",label:String(option.label||"").trim()||baseLabel};return;}'
-                        . 'rows.push({weight:String(option.weight||""),label:String(option.label||"").trim()});'
-                    . '});'
-                    . 'if(!lockedOption){lockedOption={weight:"1",label:baseLabel};}'
-                    . 'rows.unshift(lockedOption);'
-                    . 'return rows;'
-                . '};'
-                . 'var syncEmptyState=function(){'
-                    . 'if(!(emptyNode instanceof Element)||!(list instanceof Element)){return;}'
-                    . 'emptyNode.hidden=list.children.length>1;'
-                . '};'
-                . 'var syncExpandedState=function(){'
-                    . 'var isEnabled=enabledInput instanceof HTMLInputElement&&enabledInput.checked;'
-                    . 'if(content instanceof Element){content.hidden=!isEnabled;content.setAttribute("aria-hidden",isEnabled?"false":"true");}'
-                    . 'if(questionInput instanceof HTMLInputElement){questionInput.disabled=!canEdit||!isEnabled;}'
-                    . 'if(addButton instanceof HTMLButtonElement){addButton.disabled=!canEdit||!isEnabled;}'
-                    . 'if(list instanceof Element){Array.prototype.forEach.call(list.querySelectorAll("[data-omo-decision-vote-weight-row-weight],[data-omo-decision-vote-weight-row-label],[data-omo-decision-vote-weight-row-remove]"),function(node){'
-                        . 'var row,isLocked;'
-                        . 'if(!(node instanceof HTMLInputElement)&&!(node instanceof HTMLButtonElement)){return;}'
-                        . 'row=node.closest("[data-omo-decision-vote-weight-row]");'
-                        . 'isLocked=!!(row&&row.classList.contains("omo-decision-vote-weight-editor__row--locked"));'
-                        . 'if(node instanceof HTMLInputElement){node.disabled=!canEdit||!isEnabled;if(isLocked&&node.hasAttribute("data-omo-decision-vote-weight-row-weight")){node.readOnly=true;}}'
-                        . 'if(node instanceof HTMLButtonElement){node.hidden=isLocked||!canEdit||!isEnabled;node.disabled=isLocked||!canEdit||!isEnabled;}'
-                    . '});}'
-                . '};'
-                . 'var createRow=function(option,isLocked){'
-                    . 'var fragment,row,weightInput,labelInput,removeButton,weightTitleNode;'
-                    . 'if(!(rowTemplate instanceof HTMLTemplateElement)||!(list instanceof Element)){return;}'
-                    . 'fragment=rowTemplate.content.cloneNode(true);'
-                    . 'row=fragment.querySelector("[data-omo-decision-vote-weight-row]");'
-                    . 'weightInput=fragment.querySelector("[data-omo-decision-vote-weight-row-weight]");'
-                    . 'labelInput=fragment.querySelector("[data-omo-decision-vote-weight-row-label]");'
-                    . 'removeButton=fragment.querySelector("[data-omo-decision-vote-weight-row-remove]");'
-                    . 'weightTitleNode=fragment.querySelector("[data-omo-decision-vote-weight-row-weight-title]");'
-                    . 'if(!(row instanceof Element)||!(weightInput instanceof HTMLInputElement)||!(labelInput instanceof HTMLInputElement)){return;}'
-                    . 'row.classList.toggle("omo-decision-vote-weight-editor__row--locked",!!isLocked);'
-                    . 'if(weightTitleNode instanceof Element){weightTitleNode.textContent=isLocked?baseWeightTitle:weightTitle;}'
-                    . 'weightInput.value=isLocked?"1":String(option.weight||"");'
-                    . 'weightInput.readOnly=!!isLocked;'
-                    . 'weightInput.disabled=!canEdit;'
-                    . 'labelInput.value=String(option.label||"");'
-                    . 'labelInput.disabled=!canEdit;'
-                    . 'if(removeButton instanceof HTMLButtonElement){'
-                        . 'removeButton.hidden=!!isLocked||!canEdit;'
-                        . 'removeButton.disabled=!!isLocked||!canEdit;'
-                        . 'removeButton.addEventListener("click",function(event){event.preventDefault();if(row.parentNode){row.parentNode.removeChild(row);}syncEmptyState();});'
-                    . '}'
-                    . 'list.appendChild(fragment);'
-                    . 'syncExpandedState();'
-                . '};'
-                . 'var render=function(options){'
-                    . 'if(!(list instanceof Element)){return;}'
-                    . 'list.innerHTML="";'
-                    . 'buildBaseOption(options).forEach(function(option,index){createRow(option,index===0);});'
-                    . 'syncEmptyState();'
-                . '};'
-                . 'controller={'
-                    . 'setState:function(state){'
-                        . 'state=state&&typeof state==="object"?state:{};'
-                        . 'if(enabledInput instanceof HTMLInputElement){enabledInput.checked=!!state.enabled;enabledInput.disabled=!canEdit;}'
-                        . 'if(questionInput instanceof HTMLInputElement){questionInput.value=String(state.question||"");questionInput.disabled=!canEdit;}'
-                        . 'render(Array.isArray(state.options)?state.options:parseOptions(root.getAttribute("data-options-json")||"[]",false));'
-                        . 'syncExpandedState();'
-                    . '},'
-                    . 'getState:function(){'
-                        . 'var options=[];'
-                        . 'if(list instanceof Element){Array.prototype.forEach.call(list.querySelectorAll("[data-omo-decision-vote-weight-row]"),function(row,index){'
-                            . 'var weightInput=row.querySelector("[data-omo-decision-vote-weight-row-weight]");'
-                            . 'var labelInput=row.querySelector("[data-omo-decision-vote-weight-row-label]");'
-                            . 'var weight=normalizeNumber(weightInput&&weightInput.value?weightInput.value:(index===0?"1":""));'
-                            . 'var label=String(labelInput&&labelInput.value?labelInput.value:"").trim();'
-                            . 'if(index===0&&weight===""){weight="1";}'
-                            . 'if(index===0&&label===""){label=baseLabel;}'
-                            . 'if(weight===""||label===""){return;}'
-                            . 'options.push({weight:weight,label:label});'
-                        . '});}'
-                        . 'return{enabled:enabledInput instanceof HTMLInputElement&&enabledInput.checked,question:questionInput instanceof HTMLInputElement?String(questionInput.value||"").trim():"",options:options};'
-                    . '}'
-                . '};'
-                . 'if(enabledInput instanceof HTMLInputElement){enabledInput.addEventListener("change",syncExpandedState);}'
-                . 'if(addButton instanceof HTMLButtonElement){addButton.disabled=!canEdit;addButton.addEventListener("click",function(event){event.preventDefault();createRow({weight:"",label:""},false);syncEmptyState();var lastRow=list.lastElementChild;var input=lastRow?lastRow.querySelector("[data-omo-decision-vote-weight-row-weight]"):null;if(input&&typeof input.focus==="function"){input.focus();}});}'
-                . 'controller.setState({enabled:root.getAttribute("data-enabled")==="1",question:root.getAttribute("data-question")||"",options:parseOptions(root.getAttribute("data-options-json")||"[]",false)});'
-                . 'root._omoDecisionVoteWeightEditor=controller;'
-                . 'return controller;'
-            . '};'
-            . 'window.omoDecisionVoteWeightEditor={normalizeNumber:normalizeNumber,parseOptions:parseOptions,buildSummaryText:buildSummaryText};'
-        . '})();</script>';
+        . '<script src="' . commonAssetUrl('/omo/api/decision/modules/vote-weight-editor.js') . '"></script>';
     }
 }
 
@@ -639,7 +480,7 @@ if (!function_exists('omoDecisionRenderVoteWeightEditor')) {
                     <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.edit.block_settings.vote_weighting_question', [], $lang, $sourceLang)) ?></span>
                     <input
                         type="text"
-                        class="generic-form-control"
+                        class="generic-form-control generic-form-control--compact"
                         maxlength="190"
                         placeholder="<?= $escape(t('decisions.edit.block_settings.vote_weighting_placeholder_question', [], $lang, $sourceLang)) ?>"
                         data-omo-decision-vote-weight-question
@@ -651,18 +492,18 @@ if (!function_exists('omoDecisionRenderVoteWeightEditor')) {
                     <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-decision-vote-weight-add <?= $canEdit ? '' : 'disabled' ?>><?= $escape(t('decisions.edit.block_settings.vote_weighting_add', [], $lang, $sourceLang)) ?></button>
                 </div>
                 <div class="omo-decision-vote-weight-editor__list" data-omo-decision-vote-weight-list></div>
-                <p class="omo-decision-vote-weight-editor__empty" data-omo-decision-vote-weight-empty hidden><?= $escape(t('decisions.edit.block_settings.vote_weighting_fixed_hint', [], $lang, $sourceLang)) ?></p>
-                <p class="omo-decision-vote-weight-editor__hint"><?= $escape(t('decisions.edit.block_settings.vote_weighting_fixed_hint', [], $lang, $sourceLang)) ?></p>
+                <p class="omo-decision-vote-weight-editor__empty generic-meta" data-omo-decision-vote-weight-empty hidden><?= $escape(t('decisions.edit.block_settings.vote_weighting_fixed_hint', [], $lang, $sourceLang)) ?></p>
+                <p class="omo-decision-vote-weight-editor__hint generic-meta"><?= $escape(t('decisions.edit.block_settings.vote_weighting_fixed_hint', [], $lang, $sourceLang)) ?></p>
             </div>
             <template data-omo-decision-vote-weight-row-template>
                 <div class="omo-decision-vote-weight-editor__row" data-omo-decision-vote-weight-row>
                     <label class="omo-decision-vote-weight-editor__field">
                         <span class="generic-card-title generic-card-title--small" data-omo-decision-vote-weight-row-weight-title><?= $escape(t('decisions.edit.block_settings.vote_weighting_weight', [], $lang, $sourceLang)) ?></span>
-                        <input type="number" min="0.01" step="0.01" class="generic-form-control" data-omo-decision-vote-weight-row-weight>
+                        <input type="number" min="0.01" step="0.01" class="generic-form-control generic-form-control--compact" data-omo-decision-vote-weight-row-weight>
                     </label>
                     <label class="omo-decision-vote-weight-editor__field">
                         <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.edit.block_settings.vote_weighting_label', [], $lang, $sourceLang)) ?></span>
-                        <input type="text" maxlength="90" class="generic-form-control" data-omo-decision-vote-weight-row-label>
+                        <input type="text" maxlength="90" class="generic-form-control generic-form-control--compact" data-omo-decision-vote-weight-row-label>
                     </label>
                     <div class="omo-decision-vote-weight-editor__actions">
                         <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-decision-vote-weight-row-remove><?= $escape(t('decisions.edit.block_settings.vote_weighting_remove', [], $lang, $sourceLang)) ?></button>
@@ -700,6 +541,7 @@ if (!function_exists('omoDecisionRenderVoteWeightResponseSelector')) {
         if (count($options) === 0) {
             return '';
         }
+        $disabled = !empty($config['disabled']);
 
         ob_start();
         ?>
@@ -725,6 +567,7 @@ if (!function_exists('omoDecisionRenderVoteWeightResponseSelector')) {
                     class="omo-segmented__button omo-decision-vote-weight-selector__button<?= $isSelected ? ' is-active' : '' ?>"
                     data-omo-decision-vote-weight-selector-button="<?= $escape($weight) ?>"
                     aria-pressed="<?= $isSelected ? 'true' : 'false' ?>"
+                    <?= $disabled ? 'disabled' : '' ?>
                 >
                     <span><?= $escape($label) ?></span>
                     <span class="omo-decision-vote-weight-selector__weight"><?= $escape($weight) ?>x</span>
@@ -767,14 +610,167 @@ if (!function_exists('omoDecisionNormalizeProposalInfoUrl')) {
     }
 }
 
+if (!function_exists('omoDecisionGetDefaultProposalContent')) {
+    function omoDecisionGetDefaultProposalContent()
+    {
+        return [
+            'title' => true,
+            'description' => true,
+            'url' => true,
+        ];
+    }
+}
+
+if (!function_exists('omoDecisionNormalizeProposalContent')) {
+    function omoDecisionNormalizeProposalContent($value)
+    {
+        $default = omoDecisionGetDefaultProposalContent();
+        if (is_string($value)) {
+            $decoded = json_decode($value, true);
+            $value = is_array($decoded) ? $decoded : [];
+        }
+        if (!is_array($value)) {
+            return $default;
+        }
+
+        $hasKnownKey = array_key_exists('title', $value)
+            || array_key_exists('description', $value)
+            || array_key_exists('url', $value)
+            || array_key_exists('info_url', $value);
+        if (!$hasKnownKey) {
+            return $default;
+        }
+
+        $content = [
+            'title' => !empty($value['title']),
+            'description' => !empty($value['description']),
+            'url' => array_key_exists('url', $value)
+                ? !empty($value['url'])
+                : !empty($value['info_url']),
+        ];
+        if (!$content['title'] && !$content['description'] && !$content['url']) {
+            $content['description'] = true;
+        }
+
+        return $content;
+    }
+}
+
+if (!function_exists('omoDecisionProposalTitleIsVisible')) {
+    function omoDecisionProposalTitleIsVisible($proposalContent, $title)
+    {
+        $proposalContent = omoDecisionNormalizeProposalContent($proposalContent);
+        return !empty($proposalContent['title']) && trim((string)$title) !== '';
+    }
+}
+
+if (!function_exists('omoDecisionGetProposalLabel')) {
+    function omoDecisionGetProposalLabel($proposal, $proposalContent)
+    {
+        $title = is_object($proposal) && method_exists($proposal, 'get')
+            ? trim((string)$proposal->get('title'))
+            : '';
+        if (omoDecisionProposalTitleIsVisible($proposalContent, $title)) {
+            return $title;
+        }
+
+        $position = is_object($proposal) && method_exists($proposal, 'get')
+            ? (int)$proposal->get('position')
+            : 0;
+        return $position > 0 ? 'Proposition ' . $position : 'Proposition';
+    }
+}
+
+if (!function_exists('omoDecisionShuffleProposalsForParticipant')) {
+    function omoDecisionShuffleProposalsForParticipant(array $proposals, array $context, $scope = '')
+    {
+        if (count($proposals) < 2) {
+            return $proposals;
+        }
+
+        $participantId = omoDecisionGetContextParticipantId($context);
+        $viewerKey = $participantId > 0
+            ? 'participant:' . $participantId
+            : ((int)($context['currentUserId'] ?? 0) > 0
+                ? 'user:' . (int)$context['currentUserId']
+                : 'token:' . trim((string)($context['publicToken'] ?? '')));
+        $scope = trim((string)$scope);
+        usort($proposals, static function ($left, $right) use ($viewerKey, $scope) {
+            $leftId = is_object($left) && method_exists($left, 'getId') ? (int)$left->getId() : 0;
+            $rightId = is_object($right) && method_exists($right, 'getId') ? (int)$right->getId() : 0;
+            return strcmp(
+                hash('sha256', $scope . '|' . $viewerKey . '|' . $leftId),
+                hash('sha256', $scope . '|' . $viewerKey . '|' . $rightId)
+            );
+        });
+        return $proposals;
+    }
+}
+
+if (!function_exists('omoDecisionRenderProposalContentSettings')) {
+    function omoDecisionRenderProposalContentSettings(array $content, $lang, array $sourceLang, $escape, $canEdit, $mode = 'inline')
+    {
+        $content = omoDecisionNormalizeProposalContent($content);
+        if ($mode === 'hidden') {
+            return '<input type="hidden" name="proposal_content_title" value="' . ($content['title'] ? '1' : '') . '" data-omo-decision-proposal-content-hidden-title>'
+                . '<input type="hidden" name="proposal_content_description" value="' . ($content['description'] ? '1' : '') . '" data-omo-decision-proposal-content-hidden-description>'
+                . '<input type="hidden" name="proposal_content_url" value="' . ($content['url'] ? '1' : '') . '" data-omo-decision-proposal-content-hidden-url>';
+        }
+        $disabled = $canEdit ? '' : ' disabled';
+        $titleAttributes = ' data-omo-decision-proposal-content-popup-title';
+        $descriptionAttributes = ' data-omo-decision-proposal-content-popup-description';
+        $urlAttributes = ' data-omo-decision-proposal-content-popup-url';
+        ob_start();
+        ?>
+        <div class="generic-soft-panel generic-soft-panel--stack omo-decision-proposal-content-settings">
+            <strong><?= $escape(t('decisions.edit.proposal_content.title', [], $lang, $sourceLang)) ?></strong>
+            <p class="generic-meta"><?= $escape(t('decisions.edit.proposal_content.hint', [], $lang, $sourceLang)) ?></p>
+            <label class="omo-decision-proposal-content-settings__check">
+                <input type="checkbox" value="1"<?= $content['title'] ? ' checked' : '' ?><?= $disabled . $titleAttributes ?>>
+                <span><?= $escape(t('decisions.edit.proposal_content.title_field', [], $lang, $sourceLang)) ?></span>
+            </label>
+            <label class="omo-decision-proposal-content-settings__check">
+                <input type="checkbox" value="1"<?= $content['description'] ? ' checked' : '' ?><?= $disabled . $descriptionAttributes ?>>
+                <span><?= $escape(t('decisions.edit.proposal_content.description_field', [], $lang, $sourceLang)) ?></span>
+            </label>
+            <label class="omo-decision-proposal-content-settings__check">
+                <input type="checkbox" value="1"<?= $content['url'] ? ' checked' : '' ?><?= $disabled . $urlAttributes ?>>
+                <span><?= $escape(t('decisions.edit.proposal_content.url_field', [], $lang, $sourceLang)) ?></span>
+            </label>
+        </div>
+        <?php
+        return ob_get_clean();
+    }
+}
+
+if (!function_exists('omoDecisionBuildProposalContentSummary')) {
+    function omoDecisionBuildProposalContentSummary(array $content, $lang, array $sourceLang)
+    {
+        $content = omoDecisionNormalizeProposalContent($content);
+        $labels = [];
+        if ($content['title']) {
+            $labels[] = t('decisions.edit.proposal_content.title_field', [], $lang, $sourceLang);
+        }
+        if ($content['description']) {
+            $labels[] = t('decisions.edit.proposal_content.description_field', [], $lang, $sourceLang);
+        }
+        if ($content['url']) {
+            $labels[] = t('decisions.edit.proposal_content.url_field', [], $lang, $sourceLang);
+        }
+        return implode(', ', $labels);
+    }
+}
+
 if (!function_exists('omoDecisionBuildProposalItemsFromInput')) {
-    function omoDecisionBuildProposalItemsFromInput($titles, $descriptions = [], $infoUrls = [])
+    function omoDecisionBuildProposalItemsFromInput($titles, $descriptions = [], $infoUrls = [], $proposalIds = [], $proposalContent = null)
     {
         $titles = is_array($titles) ? array_values($titles) : [];
         $descriptions = is_array($descriptions) ? array_values($descriptions) : [];
         $infoUrls = is_array($infoUrls) ? array_values($infoUrls) : [];
+        $proposalIds = is_array($proposalIds) ? array_values($proposalIds) : [];
+        $proposalContent = omoDecisionNormalizeProposalContent($proposalContent);
 
-        $rowCount = max(count($titles), count($descriptions), count($infoUrls));
+        $rowCount = max(count($titles), count($descriptions), count($infoUrls), count($proposalIds));
         $items = [];
 
         for ($index = 0; $index < $rowCount; $index++) {
@@ -782,11 +778,19 @@ if (!function_exists('omoDecisionBuildProposalItemsFromInput')) {
             $description = trim((string)($descriptions[$index] ?? ''));
             $infoUrl = omoDecisionNormalizeProposalInfoUrl($infoUrls[$index] ?? '');
 
-            if ($title === '') {
+            if (!$proposalContent['description']) {
+                $description = '';
+            }
+            if (!$proposalContent['url']) {
+                $infoUrl = null;
+            }
+
+            if ($title === '' && $description === '' && $infoUrl === null) {
                 continue;
             }
 
             $items[] = [
+                'id' => max(0, (int)($proposalIds[$index] ?? 0)),
                 'title' => $title,
                 'description' => $description !== '' ? $description : null,
                 'info_url' => $infoUrl,
@@ -808,6 +812,7 @@ if (!function_exists('omoDecisionBuildProposalItemsFromDecision')) {
                 }
 
                 $items[] = [
+                    'id' => (int)$proposal->getId(),
                     'title' => trim((string)$proposal->get('title')),
                     'description' => trim((string)$proposal->get('description')) ?: null,
                     'info_url' => omoDecisionNormalizeProposalInfoUrl($proposal->get('info_url')),
@@ -817,6 +822,7 @@ if (!function_exists('omoDecisionBuildProposalItemsFromDecision')) {
 
         while (count($items) < max(0, (int)$minimumCount)) {
             $items[] = [
+                'id' => 0,
                 'title' => '',
                 'description' => null,
                 'info_url' => null,
@@ -824,6 +830,51 @@ if (!function_exists('omoDecisionBuildProposalItemsFromDecision')) {
         }
 
         return $items;
+    }
+}
+
+if (!function_exists('omoDecisionCanSaveEmptyConsultationProposalList')) {
+    function omoDecisionCanSaveEmptyConsultationProposalList($allowConsultationProposals, $consultationStartAt, $consultationEndAt)
+    {
+        if (empty($allowConsultationProposals)) {
+            return false;
+        }
+
+        if (
+            (!($consultationStartAt instanceof \DateTimeInterface) && trim((string)$consultationStartAt) === '')
+            || (!($consultationEndAt instanceof \DateTimeInterface) && trim((string)$consultationEndAt) === '')
+        ) {
+            return false;
+        }
+
+        try {
+            $consultationStart = $consultationStartAt instanceof \DateTimeInterface
+                ? $consultationStartAt
+                : new \DateTimeImmutable(trim((string)$consultationStartAt));
+            $consultationEnd = $consultationEndAt instanceof \DateTimeInterface
+                ? $consultationEndAt
+                : new \DateTimeImmutable(trim((string)$consultationEndAt));
+        } catch (\Throwable $exception) {
+            return false;
+        }
+
+        return $consultationStart instanceof \DateTimeInterface
+            && $consultationEnd instanceof \DateTimeInterface
+            && $consultationStart < $consultationEnd;
+    }
+}
+
+if (!function_exists('omoDecisionResponseIsAnonymous')) {
+    function omoDecisionResponseIsAnonymous($response, $methodKey)
+    {
+        if (!$response instanceof \dbObject\DecisionResponse) {
+            return false;
+        }
+
+        $parameters = omoDecisionModuleDecodeParameters($response->get('parameters'));
+        $methodParameters = omoDecisionModuleGetMethodParameters($parameters, $methodKey);
+
+        return !empty($methodParameters['is_anonymous']);
     }
 }
 
@@ -842,8 +893,14 @@ if (!function_exists('omoDecisionRenderProposalSupplementHtml')) {
 
         $html = '';
         if ($description !== '') {
-            $classAttribute = trim((string)$descriptionClass) !== '' ? ' class="' . $escape(trim((string)$descriptionClass)) . '"' : '';
-            $html .= '<p' . $classAttribute . '>' . nl2br($escape($description)) . '</p>';
+            $descriptionClasses = trim((string)$descriptionClass);
+            $descriptionClasses = trim($descriptionClasses . ' omo-proposal-html-render');
+            $classAttribute = $descriptionClasses !== '' ? ' class="' . $escape($descriptionClasses) . '"' : '';
+            $descriptionHtml = \dbObject\PropertyFormat::sanitizeHtml($description);
+            if ($descriptionHtml !== '' && !preg_match('/<[^>]+>/', $descriptionHtml)) {
+                $descriptionHtml = nl2br($descriptionHtml);
+            }
+            $html .= '<div' . $classAttribute . '>' . $descriptionHtml . '</div>';
         }
 
         if ($infoUrl !== null) {
@@ -852,6 +909,578 @@ if (!function_exists('omoDecisionRenderProposalSupplementHtml')) {
         }
 
         return $html;
+    }
+}
+
+if (!function_exists('omoDecisionRenderGovernanceChanges')) {
+    function omoDecisionRenderGovernanceChanges(DecisionProposal $proposal, $escape)
+    {
+        if (!$proposal->hasGovernanceActions() && !$proposal->hasDeferredProposals()) {
+            return '';
+        }
+        static $sourceLang = [
+            'pending' => ['text' => 'Cette modification sera appliquée si la proposition est retenue.', 'context' => 'Decision modification awaiting a vote'],
+            'move' => ['text' => 'Deplacer', 'context' => 'Deferred holon move action'],
+            'validated' => ['text' => 'Cette modification a été validée et reste en attente d’application.', 'context' => 'Decision modification approved but not applied'],
+            'applied' => ['text' => 'Cette modification a été appliquée.', 'context' => 'Decision modification successfully applied'],
+            'rejected' => ['text' => 'Cette modification n’a pas été appliquée : la proposition n’a pas été retenue.', 'context' => 'Decision modification rejected by the vote'],
+            'conflict' => ['text' => 'Cette modification n’a pas pu être appliquée en raison d’un conflit.', 'context' => 'Decision modification blocked by a conflict'],
+            'failed' => ['text' => 'L’application de cette modification a échoué.', 'context' => 'Decision modification application failed'],
+        ];
+        static $lang = null;
+        $lang ??= omoLoadTranslationBundle('omo_decision_modification_status', $sourceLang);
+        if (!is_callable($escape)) {
+            $escape = 'omoApiEscape';
+        }
+        $labels = [
+            \dbObject\DecisionGovernanceAction::TYPE_RULE_CREATE => 'Créer la règle',
+            \dbObject\DecisionGovernanceAction::TYPE_RULE_UPDATE => 'Modifier la règle',
+            \dbObject\DecisionGovernanceAction::TYPE_RULE_DELETE => 'Supprimer la règle',
+            \dbObject\DecisionGovernanceAction::TYPE_HOLON_CREATE => 'Créer le rôle',
+            \dbObject\DecisionGovernanceAction::TYPE_HOLON_UPDATE => 'Modifier le rôle',
+            \dbObject\DecisionGovernanceAction::TYPE_HOLON_DELETE => 'Supprimer le rôle',
+        ];
+        $items = [];
+        foreach ($proposal->getGovernanceActions() as $action) {
+            if (!$action instanceof \dbObject\DecisionGovernanceAction
+                || (string)$action->get('status') === \dbObject\DecisionGovernanceAction::STATUS_REMOVED) {
+                continue;
+            }
+            $actionType = trim((string)$action->get('action_type'));
+            $before = \dbObject\DecisionGovernanceAction::normalizeState($action->get('before_state'));
+            $after = \dbObject\DecisionGovernanceAction::normalizeState($action->get('after_state'));
+            $isRule = str_starts_with($actionType, 'rule.');
+            $isDelete = str_ends_with($actionType, '.delete');
+            $state = $isDelete ? $before : $after;
+            $target = trim((string)($isRule ? ($state['title'] ?? '') : ($state['name'] ?? '')));
+            if (str_ends_with($actionType, '.create')) {
+                $summary = 'Cette modification crée ' . ($isRule ? 'la règle' : 'le rôle') . '.';
+            } elseif ($isDelete) {
+                $summary = 'Cette modification supprime ' . ($isRule ? 'la règle' : 'le rôle') . '.';
+            } else {
+                $summary = 'Cette modification modifie ' . ($isRule ? 'la règle' : 'le rôle') . '.';
+            }
+
+            $heading = trim((string)($labels[$actionType] ?? 'Modification'));
+            if ($target !== '') {
+                $heading .= ' : ' . $target;
+            }
+            $authorities = [];
+            if ($isRule) {
+                $authorityIds = array_values(array_filter([
+                    (int)($before['IDauthority'] ?? 0),
+                    (int)($after['IDauthority'] ?? 0),
+                ]));
+                foreach (\dbObject\Authority::getLabelsByIds($authorityIds) as $authorityId => $authorityLabel) {
+                    $authorities[] = ['id' => (int)$authorityId, 'label' => (string)$authorityLabel];
+                }
+            }
+            $payload = base64_encode((string)json_encode([
+                'governanceAction' => [
+                    'type' => $actionType,
+                    'before' => $before,
+                    'after' => $after,
+                ],
+                'authorities' => $authorities,
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+            $items[] = '<section class="omo-governance-proposal-changes__item">'
+                . '<strong>' . $escape($heading) . '</strong>'
+                . '<p class="omo-governance-proposal-changes__summary">' . $escape($summary) . '</p>'
+                . '<details class="omo-change-details" data-omo-change-details-payload="' . $escape($payload) . '">'
+                . '<summary>Détail</summary><div data-omo-change-details-container></div></details>'
+                . '</section>';
+        }
+        foreach ($proposal->getDeferredProposals() as $deferredProposal) {
+            if (!$deferredProposal instanceof \dbObject\DeferredProposal
+                || (string)$deferredProposal->get('status') === \dbObject\DeferredProposal::STATUS_REMOVED) {
+                continue;
+            }
+            $summaryData = $deferredProposal->buildPresentationData();
+            $status = (string)$deferredProposal->get('status');
+            $summary = t(isset($sourceLang[$status]) ? $status : 'pending', [], $lang, $sourceLang);
+            $actionType = (string)($summaryData['changeType'] ?? '');
+            $before = (array)($summaryData['beforeState'] ?? []);
+            $after = (array)($summaryData['afterState'] ?? []);
+            $heading = trim((string)($summaryData['targetLabel'] ?? 'Modification'));
+            $operationLabel = match ((string)($summaryData['operation'] ?? '')) {
+                \dbObject\DeferredProposal::OPERATION_CREATE => 'Créer',
+                \dbObject\DeferredProposal::OPERATION_UPDATE => 'Modifier',
+                \dbObject\DeferredProposal::OPERATION_DELETE => 'Supprimer',
+                \dbObject\DeferredProposal::OPERATION_MOVE => t('move', [], $lang, $sourceLang),
+                default => 'Modifier',
+            };
+            $target = trim((string)($summaryData['title'] ?? ''));
+            $payload = base64_encode((string)json_encode([
+                'governanceAction' => ['type' => $actionType, 'before' => $before, 'after' => $after],
+                'authorities' => (array)($summaryData['authorities'] ?? []),
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+            $items[] = '<section class="omo-governance-proposal-changes__item">'
+                . '<strong>' . $escape($operationLabel . ' ' . mb_strtolower($heading) . ($target !== '' ? ' : ' . $target : '')) . '</strong>'
+                . '<p class="omo-governance-proposal-changes__summary">' . $escape($summary) . '</p>'
+                . '<details class="omo-change-details" data-omo-change-details-payload="' . $escape($payload) . '">'
+                . '<summary>Détail</summary><div data-omo-change-details-container></div></details>'
+                . '</section>';
+        }
+        return count($items) > 0
+            ? '<div class="omo-governance-proposal-changes generic-soft-panel generic-soft-panel--stack"><strong>Modifications proposées</strong>' . implode('', $items) . '</div>'
+            : '';
+    }
+}
+
+if (!function_exists('omoDecisionGetContextAccountUserId')) {
+    function omoDecisionGetContextAccountUserId(array $context)
+    {
+        if ((string)($context['accessMode'] ?? '') === 'public') {
+            $participant = $context['participant'] ?? null;
+            if (!$participant instanceof DecisionParticipant || (int)$participant->get('active') !== 1) {
+                return 0;
+            }
+
+            $status = DecisionParticipant::normalizeStatus($participant->get('status'));
+            if (in_array($status, [DecisionParticipant::STATUS_DECLINED, DecisionParticipant::STATUS_REVOKED], true)) {
+                return 0;
+            }
+
+            return (int)$participant->get('IDuser');
+        }
+
+        return (int)($context['currentUserId'] ?? 0);
+    }
+}
+
+if (!function_exists('omoDecisionLoadProposalForContext')) {
+    function omoDecisionLoadProposalForContext($proposalId, array $context, $activeOnly = true)
+    {
+        $decision = $context['decision'] ?? null;
+        $proposal = new DecisionProposal();
+        if (
+            !$decision instanceof DecisionProcess
+            || (int)$proposalId <= 0
+            || !$proposal->load((int)$proposalId)
+            || (int)$proposal->get('IDdecision_process') !== (int)$decision->getId()
+            || ($activeOnly && (int)$proposal->get('active') !== 1)
+        ) {
+            return null;
+        }
+
+        return $proposal;
+    }
+}
+
+if (!function_exists('omoDecisionGetContextParticipant')) {
+    function omoDecisionGetContextParticipant(array $context)
+    {
+        $participant = $context['participant'] ?? null;
+        if (
+            !($participant instanceof DecisionParticipant)
+            || (int)$participant->getId() <= 0
+            || (int)$participant->get('active') !== 1
+        ) {
+            return null;
+        }
+
+        $status = DecisionParticipant::normalizeStatus($participant->get('status'));
+        if (in_array($status, [
+            DecisionParticipant::STATUS_DECLINED,
+            DecisionParticipant::STATUS_REVOKED,
+        ], true)) {
+            return null;
+        }
+
+        return $participant;
+    }
+}
+
+if (!function_exists('omoDecisionGetContextParticipantId')) {
+    function omoDecisionGetContextParticipantId(array $context)
+    {
+        $participant = omoDecisionGetContextParticipant($context);
+        return $participant instanceof DecisionParticipant ? (int)$participant->getId() : 0;
+    }
+}
+
+if (!function_exists('omoDecisionCanAccessProposalDiscussion')) {
+    function omoDecisionCanAccessProposalDiscussion(DecisionProposal $proposal, array $context)
+    {
+        $decision = $context['decision'] ?? null;
+        return (
+                omoDecisionGetContextAccountUserId($context) > 0
+                || omoDecisionGetContextParticipantId($context) > 0
+            )
+            && !empty($context['canView'])
+            && $proposal->areDiscussionsEnabled()
+            && (int)$proposal->get('active') === 1
+            && $decision instanceof DecisionProcess
+            && !$decision->hasConsultationEnded();
+    }
+}
+
+if (!function_exists('omoDecisionFormatProposalDateLabel')) {
+    function omoDecisionFormatProposalDateLabel($value)
+    {
+        if ($value instanceof \DateTimeInterface) {
+            return $value->format('d.m.Y H:i');
+        }
+
+        $value = trim((string)$value);
+        if ($value === '') {
+            return '';
+        }
+        try {
+            return (new \DateTimeImmutable($value))->format('d.m.Y H:i');
+        } catch (\Throwable $exception) {
+            return $value;
+        }
+    }
+}
+
+if (!function_exists('omoDecisionResolveExternalParticipantName')) {
+    function omoDecisionResolveExternalParticipantName(DecisionParticipant $participant)
+    {
+        $displayName = trim((string)$participant->get('display_name'));
+        $email = trim((string)$participant->get('email'));
+        $candidate = $displayName !== '' ? $displayName : $email;
+        $atPosition = strrpos($candidate, '@');
+        if ($atPosition !== false) {
+            $candidate = substr($candidate, 0, $atPosition);
+        }
+
+        return trim((string)$candidate);
+    }
+}
+
+if (!function_exists('omoDecisionResolveProposalParticipantName')) {
+    function omoDecisionResolveProposalParticipantName(DecisionProcess $decision, $userId, $fallbackName = '', $anonymous = false, $participantId = 0)
+    {
+        $userId = (int)$userId;
+        $participantId = (int)$participantId;
+        $fallbackName = trim((string)$fallbackName);
+        $isAdministrator = $userId > 0 && $userId === (int)$decision->get('IDuser');
+        if (!empty($anonymous) && !$isAdministrator) {
+            if ($participantId > 0) {
+                return $decision->getAnonymousPseudonymForParticipant($participantId);
+            }
+            if ($userId > 0) {
+                return $decision->getAnonymousPseudonymForUser($userId);
+            }
+        }
+
+        if ($userId > 0) {
+            $user = new User();
+            if ($user->load($userId)) {
+                $displayName = trim((string)$user->getScopedDisplayName((int)$decision->get('IDorganization')));
+                if ($displayName !== '') {
+                    return $displayName;
+                }
+            }
+        }
+
+        return $fallbackName;
+    }
+}
+
+if (!function_exists('omoDecisionResolveResponseParticipantName')) {
+    function omoDecisionResolveResponseParticipantName(DecisionProcess $decision, DecisionResponse $response): string
+    {
+        $participant = new DecisionParticipant();
+        if (!$participant->load((int)$response->get('IDdecision_participant'))) {
+            return '';
+        }
+        return omoDecisionResolveProposalParticipantName(
+            $decision,
+            (int)$participant->get('IDuser'),
+            omoDecisionResolveExternalParticipantName($participant),
+            false
+        );
+    }
+}
+
+if (!function_exists('omoDecisionGetProposalDiscussionSummary')) {
+    function omoDecisionGetProposalDiscussionSummary(DecisionProposal $proposal, array $context)
+    {
+        static $summaryCache = [];
+        $decision = $context['decision'] ?? null;
+        $decisionGroup = $context['decisionGroup'] ?? null;
+        if (!$decision instanceof DecisionProcess || !$decisionGroup instanceof DecisionGroup) {
+            return [];
+        }
+
+        $viewerUserId = omoDecisionGetContextAccountUserId($context);
+        $viewerParticipantId = omoDecisionGetContextParticipantId($context);
+        $cacheKey = implode(':', [
+            (int)$decision->get('IDorganization'),
+            (int)$decision->getId(),
+            (int)$decisionGroup->getId(),
+            (int)$viewerUserId,
+            (int)$viewerParticipantId,
+        ]);
+        if (!array_key_exists($cacheKey, $summaryCache)) {
+            $proposalIds = [];
+            foreach ($decisionGroup->getProposals(true) as $groupProposal) {
+                if ($groupProposal instanceof DecisionProposal && (int)$groupProposal->getId() > 0) {
+                    $proposalIds[] = (int)$groupProposal->getId();
+                }
+            }
+            $summaryCache[$cacheKey] = ChatThread::getSubjectDiscussionSummaries(
+                (int)$decision->get('IDorganization'),
+                ChatThread::SUBJECT_DECISION_PROPOSAL,
+                $proposalIds,
+                $viewerUserId,
+                $viewerParticipantId
+            );
+        }
+
+        return is_array($summaryCache[$cacheKey][(int)$proposal->getId()] ?? null)
+            ? $summaryCache[$cacheKey][(int)$proposal->getId()]
+            : [];
+    }
+}
+
+if (!function_exists('omoDecisionRenderProposalMetadata')) {
+    function omoDecisionRenderProposalMetadata(DecisionProposal $proposal, array $context, $escape)
+    {
+        $decision = $context['decision'] ?? null;
+        if (!$decision instanceof DecisionProcess) {
+            return '';
+        }
+
+        $isAnonymous = $proposal->isAnonymous();
+        $authorUserId = $proposal->getAuthorUserId();
+        $authorParticipantId = $proposal->getAuthorParticipantId();
+        $authorFallbackName = '';
+        if (!$isAnonymous && method_exists($proposal, 'getAuthorParticipant')) {
+            $authorParticipant = $proposal->getAuthorParticipant();
+            if ($authorParticipant instanceof DecisionParticipant) {
+                $authorFallbackName = omoDecisionResolveExternalParticipantName($authorParticipant);
+            }
+        }
+        $authorName = omoDecisionResolveProposalParticipantName(
+            $decision,
+            $authorUserId,
+            $authorFallbackName,
+            $isAnonymous,
+            $authorParticipantId
+        );
+        if ($authorName === '') {
+            $authorName = $isAnonymous
+                ? omoDecisionProposalT('decisions.proposals.metadata.anonymous_author')
+                : omoDecisionProposalT('decisions.proposals.metadata.unknown_author');
+        }
+
+        $createdAt = $proposal->get('created_at');
+        $updatedAt = $proposal->get('updated_at');
+        $createdValue = $createdAt instanceof \DateTimeInterface ? $createdAt->format('Y-m-d H:i:s') : trim((string)$createdAt);
+        $updatedValue = $updatedAt instanceof \DateTimeInterface ? $updatedAt->format('Y-m-d H:i:s') : trim((string)$updatedAt);
+        $wasModified = $createdValue !== '' && $updatedValue !== '' && $updatedValue > $createdValue;
+        $proposalDate = $wasModified ? $updatedAt : $createdAt;
+        if ($proposalDate instanceof \DateTimeInterface) {
+            $dateLabel = $proposalDate->format('d.m.Y');
+        } else {
+            try {
+                $dateLabel = (new \DateTimeImmutable(trim((string)$proposalDate)))->format('d.m.Y');
+            } catch (\Throwable $exception) {
+                $dateLabel = '';
+            }
+        }
+
+        $items = [];
+        if (!$isAnonymous) {
+            $authorLine = '<span>' . $escape(omoDecisionProposalT('decisions.proposals.metadata.proposed_by')) . ' <strong>' . $escape($authorName) . '</strong>';
+            if ($dateLabel !== '') {
+                $authorLine .= '<span data-omo-proposal-date>, '
+                    . $escape($wasModified
+                        ? omoDecisionProposalT('decisions.proposals.metadata.modified_on')
+                        : omoDecisionProposalT('decisions.proposals.metadata.on'))
+                    . ' '
+                    . $escape($dateLabel)
+                    . '</span>';
+            }
+            $authorLine .= '</span>';
+            $items[] = $authorLine;
+        }
+
+        if ($proposal->areDiscussionsEnabled() && !$decision->hasConsultationEnded()) {
+            $summary = omoDecisionGetProposalDiscussionSummary($proposal, $context);
+            $totalMessages = (int)($summary['total_messages'] ?? 0);
+            $lastViewerMessageId = (int)($summary['last_viewer_message_id'] ?? 0);
+            if ($lastViewerMessageId > 0) {
+                $newMessages = max(0, (int)($summary['messages_since_viewer'] ?? 0));
+                $items[] = '<span class="omo-proposal-meta__discussion">'
+                    . ($newMessages === 0
+                        ? $escape(omoDecisionProposalT('decisions.proposals.metadata.no_new_messages'))
+                        : $escape(omoDecisionProposalT('decisions.proposals.metadata.new_messages', ['count' => $newMessages])))
+                    . '</span>';
+            } elseif ($totalMessages > 0) {
+                $lastMessageType = (string)($summary['last_message_type'] ?? '');
+                $lastMessageUserId = (int)($summary['last_message_user_id'] ?? 0);
+                $lastMessageParticipantId = (int)($summary['last_message_participant_id'] ?? 0);
+                if ($lastMessageType === 'system') {
+                    $lastAuthor = omoDecisionProposalT('decisions.proposals.metadata.system');
+                } elseif ($isAnonymous && $lastMessageUserId <= 0 && $lastMessageParticipantId > 0) {
+                    $lastAuthor = $decision->getAnonymousPseudonymForParticipant($lastMessageParticipantId);
+                } else {
+                    $lastAuthor = omoDecisionResolveProposalParticipantName(
+                        $decision,
+                        $lastMessageUserId,
+                        trim((string)($summary['last_message_author_name'] ?? '')),
+                        $isAnonymous,
+                        $lastMessageParticipantId
+                    );
+                }
+                if ($lastAuthor === '') {
+                    $lastAuthor = (string)($summary['last_message_type'] ?? '') === 'system'
+                        ? omoDecisionProposalT('decisions.proposals.metadata.system')
+                        : omoDecisionProposalT('decisions.proposals.metadata.participant');
+                }
+                $lastDate = omoDecisionFormatProposalDateLabel($summary['last_message_at'] ?? '');
+                $lastDetails = $lastDate !== ''
+                    ? ' · ' . $escape(omoDecisionProposalT('decisions.proposals.metadata.last_message', ['date' => $lastDate, 'author' => $lastAuthor]))
+                    : '';
+                $items[] = '<span class="omo-proposal-meta__discussion">'
+                    . $escape(omoDecisionProposalT('decisions.proposals.metadata.message_count', ['count' => $totalMessages]))
+                    . $lastDetails
+                    . '</span>';
+            } else {
+                $items[] = '<span class="omo-proposal-meta__discussion">' . $escape(omoDecisionProposalT('decisions.proposals.metadata.no_messages')) . '</span>';
+            }
+        }
+
+        if ($items === []) {
+            return '';
+        }
+
+        return '<div class="omo-proposal-meta">' . implode('', $items) . '</div>';
+    }
+}
+
+if (!function_exists('omoDecisionCanEditProposalFromPublicInterface')) {
+    function omoDecisionCanEditProposalFromPublicInterface(DecisionProposal $proposal, array $context)
+    {
+        $decision = $context['decision'] ?? null;
+        $userId = omoDecisionGetContextAccountUserId($context);
+        $participantId = omoDecisionGetContextParticipantId($context);
+        return $decision instanceof DecisionProcess
+            && !$decision->hasConsultationEnded()
+            && !$decision->hasEvaluationStarted()
+            && $proposal->canBeEditedByActor($userId, $participantId);
+    }
+}
+
+if (!function_exists('omoDecisionBuildProposalDiscussionContextPayload')) {
+    function omoDecisionBuildProposalDiscussionContextPayload(array $context)
+    {
+        $decisionGroup = $context['decisionGroup'] ?? null;
+        $decision = $context['decision'] ?? null;
+        $methodConfig = omoDecisionBuildMethodConfig($decisionGroup instanceof DecisionGroup ? $decisionGroup : $decision);
+        return [
+            'oid' => (int)($context['organizationId'] ?? 0),
+            'cid' => (int)($context['targetHolonId'] ?? 0),
+            'id' => $decision instanceof DecisionProcess ? (int)$decision->getId() : 0,
+            'gid' => $decisionGroup instanceof DecisionGroup ? (int)$decisionGroup->getId() : 0,
+            'method' => $decisionGroup instanceof DecisionGroup
+                ? trim((string)$decisionGroup->get('evaluation_method'))
+                : ($decision instanceof DecisionProcess ? trim((string)$decision->get('evaluation_method')) : ''),
+            'intent' => 'view',
+            'token' => trim((string)($context['publicToken'] ?? '')),
+            'proposalContent' => omoDecisionNormalizeProposalContent($methodConfig['proposal_content'] ?? null),
+        ];
+    }
+}
+
+if (!function_exists('omoDecisionRenderProposalDiscussionAssets')) {
+    function omoDecisionRenderProposalDiscussionAssets()
+    {
+        static $alreadyRendered = false;
+        if ($alreadyRendered) {
+            return '';
+        }
+
+        $alreadyRendered = true;
+        return '<link rel="stylesheet" href="/common/chat/thread.css?v=20260821-unified-chat-errors">'
+            . '<link rel="stylesheet" href="/common/choice/proposal-discussion.css?v=20260923-compact-editor">'
+            . '<link rel="stylesheet" href="/common/choice/change-details.css?v=20260923-lifecycle-details">'
+            . '<script src="/common/choice/word-diff.js?v=20260815" defer></script>'
+            . '<script src="/common/choice/change-details.js?v=20260924-readable-diffs" defer></script>'
+            . '<script src="/common/choice/highlight-palette.js?v=20260904-highlight-clear" defer></script>'
+            . '<script src="/omo/assets/js/simple-html-field.js?v=20260904-highlight-clear" defer></script>'
+            . '<script src="/common/choice/decision-anonymity.js?v=20260825-named-vote" defer></script>'
+            . '<script src="/common/choice/decision-notifications.js?v=20260825-topbar-errors" defer></script>'
+            . '<script src="/common/choice/proposal-html.js?v=20260824-proposal-content-refresh" defer></script>'
+            . '<script src="/common/choice/proposal-discussion.js?v=20260923-compact-editor" defer></script>';
+    }
+}
+
+if (!function_exists('omoDecisionRenderOneProposalAtATimeAssets')) {
+    function omoDecisionRenderOneProposalAtATimeAssets()
+    {
+        static $alreadyRendered = false;
+        if ($alreadyRendered) {
+            return '';
+        }
+
+        $alreadyRendered = true;
+        return '<link rel="stylesheet" href="/common/choice/one-proposal-at-a-time.css?v=20260825-1">'
+            . '<script src="/common/choice/one-proposal-at-a-time.js?v=20260825-1" defer></script>';
+    }
+}
+
+if (!function_exists('omoDecisionRenderProposalDiscussionActions')) {
+    function omoDecisionRenderProposalDiscussionActions(DecisionProposal $proposal, array $context, $escape)
+    {
+        if (!is_callable($escape)) {
+            $escape = 'omoApiEscape';
+        }
+        $canDiscuss = omoDecisionCanAccessProposalDiscussion($proposal, $context);
+        $canEdit = omoDecisionCanEditProposalFromPublicInterface($proposal, $context);
+        $discussionSummary = $canDiscuss ? omoDecisionGetProposalDiscussionSummary($proposal, $context) : [];
+        $discussionMessageCount = max(0, (int)($discussionSummary['total_messages'] ?? 0));
+        $contextPayload = omoDecisionModuleEncodeJsonPayload(omoDecisionBuildProposalDiscussionContextPayload($context));
+        $html = '';
+        if ($canDiscuss || $canEdit) {
+            $html = '<div class="omo-proposal-discussion-actions" data-omo-proposal-discussion-actions>';
+        }
+        if ($canDiscuss) {
+            $discussionCountHidden = $discussionMessageCount > 0 ? '' : ' hidden';
+            $discussionCountLabel = omoDecisionProposalT('decisions.proposals.metadata.message_count_label', ['count' => $discussionMessageCount]);
+            $html .= '<span class="omo-proposal-discussion-count" data-omo-proposal-discussion-count data-message-count="' . $escape($discussionMessageCount) . '" title="' . $escape($discussionCountLabel) . '" aria-label="' . $escape($discussionCountLabel) . '"' . $discussionCountHidden . '>'
+                    . '<span class="omo-proposal-discussion-count-value" data-omo-proposal-discussion-count-value>' . $escape($discussionMessageCount) . '</span>'
+                . '</span>';
+            $html .= '<button type="button" class="generic-action-button generic-action-button--secondary omo-proposal-discussion-button"'
+                    . ' data-omo-proposal-discussion-open'
+                    . ' data-proposal-id="' . (int)$proposal->getId() . '"'
+                    . ' data-proposal-context="' . $escape($contextPayload) . '">'
+                    . '<span class="omo-proposal-action-label omo-proposal-action-label--full">' . $escape(omoDecisionProposalT('decisions.proposals.action.discuss_proposal')) . '</span>'
+                    . '<span class="omo-proposal-action-label omo-proposal-action-label--short">' . $escape(omoDecisionProposalT('decisions.proposals.action.discuss')) . '</span>'
+                . '</button>';
+        }
+        if ($canEdit) {
+            $html .= '<button type="button" class="generic-action-button generic-action-button--secondary omo-proposal-edit-button"'
+                    . ' data-omo-proposal-edit-open'
+                    . ' data-proposal-id="' . (int)$proposal->getId() . '"'
+                    . ' data-proposal-context="' . $escape($contextPayload) . '">'
+                    . '<span class="omo-proposal-action-label omo-proposal-action-label--full">' . $escape(omoDecisionProposalT('decisions.proposals.action.edit_proposal')) . '</span>'
+                    . '<span class="omo-proposal-action-label omo-proposal-action-label--short">' . $escape(omoDecisionProposalT('decisions.proposals.action.edit')) . '</span>'
+                . '</button>';
+            $html .= '<div class="omo-proposal-action-menu generic-menu" data-omo-proposal-action-menu>'
+                    . '<button type="button" class="omo-proposal-action-menu__toggle generic-menu-toggle" data-omo-proposal-action-menu-toggle aria-haspopup="menu" aria-expanded="false" aria-label="' . $escape(omoDecisionProposalT('decisions.proposals.action.other_actions')) . '">...</button>'
+                    . '<div class="omo-proposal-action-menu__panel generic-menu-panel generic-menu-panel--wide" data-omo-proposal-action-menu-panel role="menu" hidden>'
+                        . '<button type="button" class="generic-menu-item generic-menu-item--danger" data-omo-proposal-delete-open data-proposal-id="' . (int)$proposal->getId() . '" data-proposal-context="' . $escape($contextPayload) . '" role="menuitem">' . $escape(omoDecisionProposalT('decisions.proposals.action.delete')) . '</button>'
+                    . '</div>'
+                . '</div>';
+        }
+        if ($canDiscuss || $canEdit) {
+            $html .= '</div>';
+        }
+
+        $metadata = omoDecisionRenderProposalMetadata($proposal, $context, $escape);
+        if ($html === '') {
+            return $metadata;
+        }
+
+        return '<div class="omo-proposal-actions-and-meta">'
+            . $metadata
+            . $html
+        . '</div>';
     }
 }
 
@@ -927,6 +1556,11 @@ if (!function_exists('omoDecisionBuildMethodConfig')) {
                     ? omoDecisionVoteBuildConfig($decision)
                     : [];
 
+            case DecisionProcess::METHOD_CONSULTATION_ONLY:
+                return function_exists('omoDecisionConsultationOnlyBuildConfig')
+                    ? omoDecisionConsultationOnlyBuildConfig($decision)
+                    : [];
+
             case DecisionProcess::METHOD_MAJORITY_JUDGMENT:
                 return function_exists('omoDecisionMajorityJudgmentBuildConfig')
                     ? omoDecisionMajorityJudgmentBuildConfig($decision)
@@ -939,6 +1573,203 @@ if (!function_exists('omoDecisionBuildMethodConfig')) {
         }
 
         return [];
+    }
+}
+
+if (!function_exists('omoDecisionProposalGetSourceLang')) {
+    function omoDecisionProposalGetSourceLang()
+    {
+        return [
+            'decisions.proposals.add_title' => [
+                'text' => 'Ajouter une proposition',
+                'context' => 'Title of the public consultation proposal form.',
+            ],
+            'decisions.proposals.open_intro' => [
+                'text' => 'La consultation est ouverte. Vous pouvez proposer une nouvelle option avec son contexte et un lien d’information.',
+                'context' => 'Introduction shown above the public consultation proposal form.',
+            ],
+            'decisions.proposals.feedback_success_one' => [
+                'text' => 'Proposition ajoutée à la consultation.',
+                'context' => 'Success message after adding one public consultation proposal.',
+            ],
+            'decisions.proposals.feedback_success_other' => [
+                'text' => '{count} propositions ajoutées à la consultation.',
+                'context' => 'Success message after adding several public consultation proposals.',
+            ],
+            'decisions.proposals.feedback_duplicate' => [
+                'text' => 'Toutes les propositions soumises existent déjà.',
+                'context' => 'Feedback shown when submitted public proposals are all duplicates.',
+            ],
+            'decisions.proposals.feedback_empty' => [
+                'text' => 'Ajoutez au moins une proposition.',
+                'context' => 'Feedback shown when no public proposal was submitted.',
+            ],
+            'decisions.proposals.feedback_denied' => [
+                'text' => 'Ce lien ne permet pas d’ajouter des propositions pour le moment.',
+                'context' => 'Feedback shown when the public proposal link is no longer available.',
+            ],
+            'decisions.proposals.feedback_error' => [
+                'text' => 'Impossible d’ajouter la proposition pour le moment.',
+                'context' => 'Feedback shown when a public proposal cannot be saved.',
+            ],
+            'decisions.proposals.title_label' => [
+                'text' => 'Titre',
+                'context' => 'Title field label in the public consultation proposal form.',
+            ],
+            'decisions.proposals.title_placeholder' => [
+                'text' => 'Nom de la proposition',
+                'context' => 'Title field placeholder in the public consultation proposal form.',
+            ],
+            'decisions.proposals.description_label' => [
+                'text' => 'Description',
+                'context' => 'Description field label in the public consultation proposal form.',
+            ],
+            'decisions.proposals.description_placeholder' => [
+                'text' => 'Contexte, détails, arguments utiles…',
+                'context' => 'Description field placeholder in the public consultation proposal form.',
+            ],
+            'decisions.proposals.info_url_label' => [
+                'text' => 'URL d’information',
+                'context' => 'Information URL field label in the public consultation proposal form.',
+            ],
+            'decisions.proposals.submit' => [
+                'text' => 'Ajouter la proposition',
+                'context' => 'Submit button in the public consultation proposal form.',
+            ],
+            'decisions.proposals.denied.option_disabled' => [
+                'text' => 'L’ajout de propositions n’est pas activé pour ce scrutin.',
+                'context' => 'Error shown when public proposal submission is disabled for the decision.',
+            ],
+            'decisions.proposals.denied.consultation_not_started' => [
+                'text' => 'La consultation n’a pas encore commencé.',
+                'context' => 'Error shown when the consultation has not started yet.',
+            ],
+            'decisions.proposals.denied.consultation_ended' => [
+                'text' => 'La phase d’élaboration est terminée : il n’est plus possible d’ajouter une proposition.',
+                'context' => 'Error shown when the consultation period has ended.',
+            ],
+            'decisions.proposals.denied.evaluation_started' => [
+                'text' => 'La phase de vote a déjà commencé.',
+                'context' => 'Error shown when evaluation has already started.',
+            ],
+            'decisions.proposals.denied.participant_not_found' => [
+                'text' => 'Aucun participant autorisé n’a été retrouvé pour ce lien ou ce compte.',
+                'context' => 'Error shown when no authorized participant can be found.',
+            ],
+            'decisions.proposals.denied.participant_inactive' => [
+                'text' => 'Ce participant n’est plus actif pour ce scrutin.',
+                'context' => 'Error shown when the participant is inactive.',
+            ],
+            'decisions.proposals.denied.participant_status_declined' => [
+                'text' => 'Votre participation a été refusée pour ce scrutin.',
+                'context' => 'Error shown when the participant declined the decision.',
+            ],
+            'decisions.proposals.denied.participant_status_revoked' => [
+                'text' => 'Votre accès à ce scrutin a été révoqué.',
+                'context' => 'Error shown when the participant access was revoked.',
+            ],
+            'decisions.proposals.denied.invalid_decision' => [
+                'text' => 'Le scrutin n’a pas pu être chargé.',
+                'context' => 'Error shown when the decision cannot be loaded.',
+            ],
+            'decisions.proposals.denied.default' => [
+                'text' => 'Ce lien ne permet pas d’ajouter des propositions pour le moment.',
+                'context' => 'Fallback error for public proposal submission.',
+            ],
+            'decisions.proposals.metadata.anonymous_author' => [
+                'text' => 'Auteur anonyme',
+                'context' => 'Fallback proposal author name when the proposal is anonymous.',
+            ],
+            'decisions.proposals.metadata.unknown_author' => [
+                'text' => 'Auteur inconnu',
+                'context' => 'Fallback proposal author name when it cannot be resolved.',
+            ],
+            'decisions.proposals.metadata.proposed_by' => [
+                'text' => 'Proposée par',
+                'context' => 'Prefix before the proposal author name.',
+            ],
+            'decisions.proposals.metadata.modified_on' => [
+                'text' => 'modifiée le',
+                'context' => 'Date prefix when a proposal was modified.',
+            ],
+            'decisions.proposals.metadata.on' => [
+                'text' => 'le',
+                'context' => 'Date prefix when a proposal was created.',
+            ],
+            'decisions.proposals.metadata.no_new_messages' => [
+                'text' => 'Aucun nouveau message depuis votre dernière intervention',
+                'context' => 'Discussion metadata when no newer message exists.',
+            ],
+            'decisions.proposals.metadata.new_messages' => [
+                'one' => '{count} nouveau message depuis votre dernière intervention',
+                'other' => '{count} nouveaux messages depuis votre dernière intervention',
+                'context' => 'Discussion metadata when newer messages exist.',
+            ],
+            'decisions.proposals.metadata.system' => [
+                'text' => 'Système',
+                'context' => 'System message author label.',
+            ],
+            'decisions.proposals.metadata.participant' => [
+                'text' => 'Participant',
+                'context' => 'Fallback discussion message author label.',
+            ],
+            'decisions.proposals.metadata.last_message' => [
+                'text' => 'dernier le {date}, par {author}',
+                'context' => 'Details about the latest discussion message.',
+            ],
+            'decisions.proposals.metadata.message_count' => [
+                'one' => '{count} message',
+                'other' => '{count} messages',
+                'context' => 'Discussion message count.',
+            ],
+            'decisions.proposals.metadata.message_count_label' => [
+                'one' => 'Nombre de messages : {count}',
+                'other' => 'Nombre de messages : {count}',
+                'context' => 'Accessible discussion message count label.',
+            ],
+            'decisions.proposals.metadata.no_messages' => [
+                'text' => 'Aucun message',
+                'context' => 'Discussion metadata when no messages exist.',
+            ],
+            'decisions.proposals.action.discuss_proposal' => [
+                'text' => 'Discuter la proposition',
+                'context' => 'Button to open the proposal discussion.',
+            ],
+            'decisions.proposals.action.discuss' => [
+                'text' => 'Discuter',
+                'context' => 'Short button label to open the proposal discussion.',
+            ],
+            'decisions.proposals.action.edit_proposal' => [
+                'text' => 'Modifier la proposition',
+                'context' => 'Button to edit a proposal.',
+            ],
+            'decisions.proposals.action.edit' => [
+                'text' => 'Modifier',
+                'context' => 'Short button label to edit a proposal.',
+            ],
+            'decisions.proposals.action.other_actions' => [
+                'text' => 'Autres actions',
+                'context' => 'Accessible label for the proposal actions menu.',
+            ],
+            'decisions.proposals.action.delete' => [
+                'text' => 'Supprimer',
+                'context' => 'Button to delete a proposal.',
+            ],
+        ];
+    }
+}
+
+if (!function_exists('omoDecisionProposalT')) {
+    function omoDecisionProposalT($key, array $variables = [])
+    {
+        static $sourceLang = null;
+        static $lang = null;
+        if ($sourceLang === null) {
+            $sourceLang = omoDecisionProposalGetSourceLang();
+            $lang = omoLoadTranslationBundle('omo_decision_proposals', $sourceLang);
+        }
+
+        return t($key, $variables, $lang, $sourceLang);
     }
 }
 
@@ -967,6 +1798,13 @@ if (!function_exists('omoDecisionCanSubmitConsultationProposal')) {
             return [
                 'allowed' => false,
                 'reason' => 'consultation_not_started',
+            ];
+        }
+
+        if ($decision->hasConsultationEnded()) {
+            return [
+                'allowed' => false,
+                'reason' => 'consultation_ended',
             ];
         }
 
@@ -1067,23 +1905,25 @@ if (!function_exists('omoDecisionGetConsultationProposalDeniedMessage')) {
     {
         switch (trim((string)$reason)) {
             case 'option_disabled':
-                return 'L ajout de propositions n est pas active pour ce scrutin.';
+                return omoDecisionProposalT('decisions.proposals.denied.option_disabled');
             case 'consultation_not_started':
-                return 'La consultation n a pas encore commence.';
+                return omoDecisionProposalT('decisions.proposals.denied.consultation_not_started');
+            case 'consultation_ended':
+                return omoDecisionProposalT('decisions.proposals.denied.consultation_ended');
             case 'evaluation_started':
-                return 'La phase de vote a deja commence.';
+                return omoDecisionProposalT('decisions.proposals.denied.evaluation_started');
             case 'participant_not_found':
-                return 'Aucun participant autorise n a ete retrouve pour ce lien ou ce compte.';
+                return omoDecisionProposalT('decisions.proposals.denied.participant_not_found');
             case 'participant_inactive':
-                return 'Ce participant n est plus actif pour ce scrutin.';
+                return omoDecisionProposalT('decisions.proposals.denied.participant_inactive');
             case 'participant_status_declined':
-                return 'Votre participation a ete refusee pour ce scrutin.';
+                return omoDecisionProposalT('decisions.proposals.denied.participant_status_declined');
             case 'participant_status_revoked':
-                return 'Votre acces a ce scrutin a ete revoque.';
+                return omoDecisionProposalT('decisions.proposals.denied.participant_status_revoked');
             case 'invalid_decision':
-                return 'Le scrutin n a pas pu etre charge.';
+                return omoDecisionProposalT('decisions.proposals.denied.invalid_decision');
             default:
-                return 'Ce lien ne permet pas d ajouter des propositions pour le moment.';
+                return omoDecisionProposalT('decisions.proposals.denied.default');
         }
     }
 }
@@ -1118,6 +1958,40 @@ if (!function_exists('omoDecisionRenderConsultationProposalPublicPanel')) {
             return '';
         }
 
+        $decisionGroup = ($context['decisionGroup'] ?? null) instanceof DecisionGroup
+            ? $context['decisionGroup']
+            : $decision->getPrimaryGroup(false);
+        $methodConfig = omoDecisionBuildMethodConfig($decisionGroup instanceof DecisionGroup ? $decisionGroup : $decision);
+        $proposalContent = omoDecisionNormalizeProposalContent($methodConfig['proposal_content'] ?? null);
+        $proposalFields = '';
+        if ($proposalContent['title']) {
+            $proposalFields .= '<label style="display:grid;gap:6px;">'
+                . '<span class="generic-card-title generic-card-title--small">' . $escape(omoDecisionProposalT('decisions.proposals.title_label')) . '</span>'
+                . '<input type="text" class="generic-form-control generic-form-control--compact" name="consultation_proposal_title" value="" placeholder="' . $escape(omoDecisionProposalT('decisions.proposals.title_placeholder')) . '" required>'
+                . '</label>';
+        } else {
+            $proposalFields .= '<input type="hidden" name="consultation_proposal_title" value="">';
+        }
+        if ($proposalContent['description']) {
+            $proposalFields .= '<label style="display:grid;gap:6px;">'
+                . '<span class="generic-card-title generic-card-title--small">' . $escape(omoDecisionProposalT('decisions.proposals.description_label')) . '</span>'
+                . '<div data-omo-proposal-html-field>'
+                    . '<div class="omo-proposal-html-editor" data-omo-proposal-html-editor></div>'
+                    . '<textarea hidden aria-hidden="true" name="consultation_proposal_description" data-omo-proposal-html-value></textarea>'
+                . '</div>'
+            . '</label>';
+        } else {
+            $proposalFields .= '<input type="hidden" name="consultation_proposal_description" value="">';
+        }
+        if ($proposalContent['url']) {
+            $proposalFields .= '<label style="display:grid;gap:6px;">'
+                . '<span class="generic-card-title generic-card-title--small">' . $escape(omoDecisionProposalT('decisions.proposals.info_url_label')) . '</span>'
+                . '<input type="url" class="generic-form-control generic-form-control--compact" name="consultation_proposal_info_url" value="" placeholder="https://...">'
+                . '</label>';
+        } else {
+            $proposalFields .= '<input type="hidden" name="consultation_proposal_info_url" value="">';
+        }
+
         $extraClass = trim((string)$extraClass);
         if ($extraClass !== '') {
             $extraClass = ' ' . $extraClass;
@@ -1127,36 +2001,43 @@ if (!function_exists('omoDecisionRenderConsultationProposalPublicPanel')) {
         $feedbackCount = max(0, (int)($_GET['consultation_proposal_count'] ?? 0));
         $feedbackMessage = '';
         $feedbackClass = '';
+        $feedbackType = 'warning';
 
         if ($feedbackStatus === 'success') {
             $feedbackClass = ' style="background:color-mix(in srgb, var(--color-success, #16a34a) 10%, var(--color-surface, #ffffff));border-color:color-mix(in srgb, var(--color-success, #16a34a) 28%, var(--color-surface, #ffffff));"';
+            $feedbackType = 'success';
             $feedbackMessage = $feedbackCount > 1
-                ? $feedbackCount . ' propositions ajoutees a la consultation.'
-                : 'Proposition ajoutee a la consultation.';
+                ? omoDecisionProposalT('decisions.proposals.feedback_success_other', ['count' => $feedbackCount])
+                : omoDecisionProposalT('decisions.proposals.feedback_success_one');
         } elseif ($feedbackStatus === 'duplicate') {
             $feedbackClass = ' style="background:color-mix(in srgb, var(--color-warning, #f59e0b) 10%, var(--color-surface, #ffffff));border-color:color-mix(in srgb, var(--color-warning, #f59e0b) 28%, var(--color-surface, #ffffff));"';
-            $feedbackMessage = 'Toutes les propositions soumises existent deja.';
+            $feedbackMessage = omoDecisionProposalT('decisions.proposals.feedback_duplicate');
         } elseif ($feedbackStatus === 'empty') {
             $feedbackClass = ' style="background:color-mix(in srgb, var(--color-warning, #f59e0b) 10%, var(--color-surface, #ffffff));border-color:color-mix(in srgb, var(--color-warning, #f59e0b) 28%, var(--color-surface, #ffffff));"';
-            $feedbackMessage = 'Ajoutez au moins une proposition.';
+            $feedbackMessage = omoDecisionProposalT('decisions.proposals.feedback_empty');
         } elseif ($feedbackStatus === 'denied') {
             $feedbackClass = ' style="background:color-mix(in srgb, var(--color-warning, #f59e0b) 10%, var(--color-surface, #ffffff));border-color:color-mix(in srgb, var(--color-warning, #f59e0b) 28%, var(--color-surface, #ffffff));"';
-            $feedbackMessage = 'Ce lien ne permet pas d ajouter des propositions pour le moment.';
+            $feedbackMessage = omoDecisionProposalT('decisions.proposals.feedback_denied');
         } elseif ($feedbackStatus === 'error') {
             $feedbackClass = ' style="background:color-mix(in srgb, var(--color-danger, #dc2626) 8%, var(--color-surface, #ffffff));border-color:color-mix(in srgb, var(--color-danger, #dc2626) 24%, var(--color-surface, #ffffff));"';
-            $feedbackMessage = 'Impossible d ajouter la proposition pour le moment.';
+            $feedbackType = 'error';
+            $feedbackMessage = omoDecisionProposalT('decisions.proposals.feedback_error');
         }
 
         $returnUrl = omoDecisionBuildConsultationProposalReturnUrl($context);
         $html = '<div class="generic-soft-panel generic-soft-panel--stack' . $extraClass . '">'
             . '<div style="display:grid;gap:6px;">'
-                . '<h2 class="generic-card-title generic-card-title--section" style="margin:0;">Ajouter une proposition</h2>'
-                . '<p style="margin:0;color:var(--color-text-light,#475569);line-height:1.6;">La consultation est ouverte. Vous pouvez proposer une nouvelle option avec son contexte et un lien d information.</p>'
-                . '<p style="margin:0;color:var(--color-text-light,#64748b);font-size:13px;line-height:1.5;">La proposition sera ajoutee a la fin de la liste. Son ordre detaille reste gerable ensuite dans l interface principale.</p>'
+                . '<h2 class="generic-card-title generic-card-title--section" style="margin:0;">' . $escape(omoDecisionProposalT('decisions.proposals.add_title')) . '</h2>'
+                . '<p style="margin:0;color:var(--color-text-light,#475569);line-height:1.6;">' . $escape(omoDecisionProposalT('decisions.proposals.open_intro')) . '</p>'
             . '</div>';
 
         if ($feedbackMessage !== '') {
-            $html .= '<div class="generic-soft-panel generic-soft-panel--stack"' . $feedbackClass . '>'
+            $html .= '<div class="generic-soft-panel generic-soft-panel--stack"'
+                . $feedbackClass
+                . ' data-omo-decision-consultation-proposal-notification'
+                . ' data-omo-decision-consultation-proposal-notification-type="' . $escape($feedbackType) . '"'
+                . ' data-omo-decision-consultation-proposal-notification-message="' . $escape($feedbackMessage) . '"'
+                . ' hidden>'
                 . '<p style="margin:0;line-height:1.5;">' . $escape($feedbackMessage) . '</p>'
             . '</div>';
         }
@@ -1171,23 +2052,10 @@ if (!function_exists('omoDecisionRenderConsultationProposalPublicPanel')) {
                 . '<input type="hidden" name="ajax" value="1">'
                 . '<input type="hidden" name="return_url" value="' . $escape($returnUrl) . '">'
                 . omoDecisionRenderPublicTokenInput($context, $escape)
-                . '<div style="display:grid;gap:10px;">'
-                    . '<label style="display:grid;gap:6px;">'
-                        . '<span class="generic-card-title generic-card-title--small">Titre</span>'
-                        . '<input type="text" class="generic-form-control" name="consultation_proposal_title" value="" placeholder="Nom de la proposition" required>'
-                    . '</label>'
-                    . '<label style="display:grid;gap:6px;">'
-                        . '<span class="generic-card-title generic-card-title--small">Description</span>'
-                        . '<textarea class="generic-form-control" name="consultation_proposal_description" rows="4" placeholder="Contexte, details, arguments utiles..."></textarea>'
-                    . '</label>'
-                    . '<label style="display:grid;gap:6px;">'
-                        . '<span class="generic-card-title generic-card-title--small">URL d information</span>'
-                        . '<input type="url" class="generic-form-control" name="consultation_proposal_info_url" value="" placeholder="https://...">'
-                    . '</label>'
-                . '</div>'
+                . '<div style="display:grid;gap:10px;">' . $proposalFields . '</div>'
                 . '<div data-omo-decision-consultation-proposal-feedback hidden></div>'
                 . '<div style="display:flex;justify-content:flex-end;">'
-                    . '<button type="submit" class="generic-action-button generic-action-button--main">Ajouter la proposition</button>'
+                    . '<button type="submit" class="generic-action-button generic-action-button--main">' . $escape(omoDecisionProposalT('decisions.proposals.submit')) . '</button>'
                 . '</div>'
             . '</form>'
         . '</div>';
@@ -1232,7 +2100,7 @@ if (!function_exists('omoDecisionInvitationGetSourceLang')) {
     {
         return [
             'decisions.invitations.title' => [
-                'text' => 'Participants invites',
+                'text' => 'Participants invités',
                 'context' => 'Shared section title for explicit decision invitations.',
             ],
             'decisions.invitations.configure' => [
@@ -1252,57 +2120,73 @@ if (!function_exists('omoDecisionInvitationGetSourceLang')) {
                 'context' => 'Topbar modal title used by the send invitations popup.',
             ],
             'decisions.invitations.unsaved' => [
-                'text' => 'Enregistrez d abord ce scrutin pour inviter d autres personnes ou structures.',
+                'text' => 'Enregistrez d’abord ce scrutin pour inviter d’autres personnes ou structures.',
                 'context' => 'Hint shown before a decision exists and invitations cannot be configured yet.',
             ],
             'decisions.invitations.default_scope' => [
-                'text' => 'Par defaut, seuls les membres du contexte courant participent.',
+                'text' => 'Par défaut, seuls les membres du contexte courant participent.',
                 'context' => 'Summary shown when no explicit invitations exist.',
             ],
-            'decisions.invitations.current_scope_included' => [
-                'text' => 'Contexte courant inclus',
-                'context' => 'Summary fragment when the current holon is explicitly invited.',
+            'decisions.invitations.additional_members' => [
+                'one' => '{count} autre membre',
+                'other' => '{count} autres membres',
+                'context' => 'Summary fragment for organization members invited outside selected holons.',
             ],
-            'decisions.invitations.current_scope_excluded' => [
-                'text' => 'Contexte courant non inclus',
-                'context' => 'Summary fragment when the current holon is not explicitly invited.',
+            'decisions.invitations.members' => [
+                'one' => '{count} membre',
+                'other' => '{count} membres',
+                'context' => 'Summary fragment for individually invited organization members without selected holons.',
             ],
-            'decisions.invitations.additional_people' => [
-                'one' => '+1 personne supplementaire',
-                'other' => '+{count} personnes supplementaires',
-                'context' => 'Summary fragment for additional invited users and emails.',
+            'decisions.invitations.guests' => [
+                'one' => '{count} invité',
+                'other' => '{count} invités',
+                'context' => 'Summary fragment for external email guests.',
+            ],
+            'decisions.invitations.summary_connector' => [
+                'text' => 'et',
+                'context' => 'Connector placed before the last item of an invitation summary.',
+            ],
+            'decisions.invitations.summary_total_people' => [
+                'one' => '{count} personne',
+                'other' => '{count} personnes',
+                'context' => 'Bold total shown before the explicit invitation summary details.',
+            ],
+            'decisions.invitations.total_people' => [
+                'one' => '1 personne au total',
+                'other' => '{count} personnes au total',
+                'context' => 'Summary fragment showing the total number of unique people represented by the invitations.',
             ],
             'decisions.invitations.public_opt_in_count' => [
-                'one' => '1 personne ajoutee via le lien public',
-                'other' => '{count} personnes ajoutees via le lien public',
+                'one' => '1 personne ajoutée via le lien public',
+                'other' => '{count} personnes ajoutées via le lien public',
                 'context' => 'Summary fragment for participants who requested access from the public link.',
             ],
             'decisions.invitations.public_opt_in_label' => [
-                'text' => 'Ajoutes via lien public',
+                'text' => 'Ajoutés via le lien public',
                 'context' => 'Label shown before listing people who joined through the public link.',
             ],
             'decisions.invitations.public_opt_in_member_badge' => [
-                'text' => 'Ajoute via lien public',
+                'text' => 'Ajouté via le lien public',
                 'context' => 'Small note shown on an organization member row when the person already joined from the public link.',
             ],
             'decisions.invitations.public_opt_in_guest_label' => [
-                'text' => 'Personnes deja ajoutees via le lien public',
+                'text' => 'Personnes déjà ajoutées via le lien public',
                 'context' => 'Label shown near guest emails for people who already joined from the public link.',
             ],
             'decisions.invitations.public_opt_in_guest_hint' => [
-                'text' => 'Ces personnes restent distinctes des invitations explicites, mais elles ont deja demande un acces.',
+                'text' => 'Ces personnes restent distinctes des invitations explicites, mais elles ont déjà demandé un accès.',
                 'context' => 'Hint shown near the list of people who already joined from the public link.',
             ],
             'decisions.invitations.inline_intro' => [
-                'text' => 'Definissez ici les participants explicites du scrutin. Sans invitation explicite, seuls les membres du contexte courant restent autorises.',
+                'text' => 'Définissez ici les participants explicites du scrutin. Sans invitation explicite, seuls les membres du contexte courant restent autorisés.',
                 'context' => 'Intro text shown in the inline invitation editor inside the main decision form.',
             ],
             'decisions.invitations.inline_no_structure' => [
-                'text' => 'Cette organisation n a pas encore de structure. Vous pouvez inviter directement des membres de l organisation ou des adresses e-mail externes.',
+                'text' => 'Cette organisation n’a pas encore de structure. Vous pouvez inviter directement des membres de l’organisation ou des adresses e-mail externes.',
                 'context' => 'Hint shown in the inline invitation editor when the organization has no holon structure.',
             ],
             'decisions.invitations.inline_save_hint' => [
-                'text' => 'Ces invitations seront enregistrees avec le scrutin.',
+                'text' => 'Ces invitations seront enregistrées avec le scrutin.',
                 'context' => 'Helper text shown below the inline invitation editor before the main decision form is saved.',
             ],
             'decisions.invitations.tab.holons' => [
@@ -1314,27 +2198,27 @@ if (!function_exists('omoDecisionInvitationGetSourceLang')) {
                 'context' => 'Tab label for invited members in the inline invitation editor.',
             ],
             'decisions.invitations.tab.guests' => [
-                'text' => 'Invites',
+                'text' => 'Invités',
                 'context' => 'Tab label for invited guest emails in the inline invitation editor.',
             ],
             'decisions.invitations.inline_holons_title' => [
-                'text' => 'Holons invites',
+                'text' => 'Holons invités',
                 'context' => 'Section title for invited holons in the inline invitation editor.',
             ],
             'decisions.invitations.inline_holons_hint' => [
-                'text' => 'Le holon courant apparait ici comme n importe quel autre. S il n est pas coche, ses membres ne seront pas inclus des qu une invitation explicite existe.',
+                'text' => 'Le holon courant apparaît ici comme n’importe quel autre. S’il n’est pas coché, ses membres ne seront pas inclus dès qu’une invitation explicite existe.',
                 'context' => 'Hint for the invited holons tab in the inline invitation editor.',
             ],
             'decisions.invitations.inline_members_title' => [
-                'text' => 'Membres supplementaires de l organisation',
+                'text' => 'Membres supplémentaires de l’organisation',
                 'context' => 'Section title for invited members in the inline invitation editor.',
             ],
             'decisions.invitations.inline_members_hint_structure' => [
-                'text' => 'Cochez les membres a inviter individuellement, en plus des holons selectionnes.',
+                'text' => 'Cochez les membres à inviter individuellement, en plus des holons sélectionnés.',
                 'context' => 'Hint for invited members when a holon structure exists in the inline invitation editor.',
             ],
             'decisions.invitations.inline_members_hint_flat' => [
-                'text' => 'Cochez les membres a inviter individuellement. Sans structure, ils representent le contexte organisationnel.',
+                'text' => 'Cochez les membres à inviter individuellement. Sans structure, ils représentent le contexte organisationnel.',
                 'context' => 'Hint for invited members when no holon structure exists in the inline invitation editor.',
             ],
             'decisions.invitations.inline_guests_title' => [
@@ -1346,7 +2230,7 @@ if (!function_exists('omoDecisionInvitationGetSourceLang')) {
                 'context' => 'Textarea placeholder for guest email invitations in the inline invitation editor.',
             ],
             'decisions.invitations.inline_guests_hint' => [
-                'text' => 'Une adresse par ligne. Les invitations seront envoyees plus tard.',
+                'text' => 'Une adresse par ligne. Les invitations seront envoyées plus tard.',
                 'context' => 'Hint below the guest email textarea in the inline invitation editor.',
             ],
             'decisions.invitations.inline_public_open_title' => [
@@ -1354,14 +2238,112 @@ if (!function_exists('omoDecisionInvitationGetSourceLang')) {
                 'context' => 'Title of the public self-registration checkbox in the inline invitation editor.',
             ],
             'decisions.invitations.inline_public_open_hint' => [
-                'text' => 'Toute personne disposant du lien public peut demander un code par e-mail. Si son adresse n est pas encore associee a ce scrutin, un participant est cree automatiquement.',
+                'text' => 'Toute personne disposant du lien public peut demander un code par e-mail. Si son adresse n’est pas encore associée à ce scrutin, un participant est créé automatiquement.',
                 'context' => 'Hint for the public self-registration checkbox in the inline invitation editor.',
             ],
             'decisions.invitations.inline_current_holon' => [
                 'text' => '(courant)',
                 'context' => 'Suffix shown next to the current holon in the inline invitation editor tree.',
             ],
+            'decisions.invitations.tabs_aria' => [
+                'text' => 'Catégories d’invitations',
+                'context' => 'Accessibility label for the invitation editor tabs.',
+            ],
+            'decisions.invitations.email.context' => [
+                'text' => 'Contexte',
+                'context' => 'Context label in a decision invitation email.',
+            ],
+            'decisions.invitations.email.start' => [
+                'text' => 'Début',
+                'context' => 'Consultation start label in a decision invitation email.',
+            ],
+            'decisions.invitations.email.end' => [
+                'text' => 'Fin',
+                'context' => 'Consultation end label in a decision invitation email.',
+            ],
+            'decisions.invitations.email.default_title' => [
+                'text' => 'Prise de décision',
+                'context' => 'Fallback decision title in a decision invitation email.',
+            ],
+            'decisions.invitations.email.open_decision' => [
+                'text' => 'Ouvrir la prise de décision',
+                'context' => 'Button label in a decision invitation email.',
+            ],
+            'decisions.invitations.email.open_vote' => [
+                'text' => 'Ouvrir directement le scrutin',
+                'context' => 'Button label in a personal access code email.',
+            ],
+            'decisions.invitations.email.footer' => [
+                'text' => 'Ce message a été envoyé depuis {organization}.',
+                'context' => 'Footer in a decision invitation email.',
+            ],
+            'decisions.invitations.email.invalid_recipient' => [
+                'text' => 'Aucune adresse e-mail valide n’a été trouvée pour ce participant.',
+                'context' => 'Error returned when an invitation recipient has no valid email address.',
+            ],
+            'decisions.invitations.email.invalid_link' => [
+                'text' => 'Impossible de générer un lien public valide pour ce participant.',
+                'context' => 'Error returned when a personal invitation link cannot be generated.',
+            ],
+            'decisions.invitations.email.send_link_failed' => [
+                'text' => 'Impossible d’envoyer ce lien pour le moment.',
+                'context' => 'Error returned when a personal invitation email cannot be sent.',
+            ],
+            'decisions.invitations.email.access_subject' => [
+                'text' => 'Code d’accès à la prise de décision',
+                'context' => 'Default subject for a personal access code email.',
+            ],
+            'decisions.invitations.email.greeting' => [
+                'text' => 'Bonjour,',
+                'context' => 'Greeting in a personal access code email.',
+            ],
+            'decisions.invitations.email.request_intro' => [
+                'text' => 'Vous avez demandé un accès à la prise de décision « {title} ».',
+                'context' => 'Introductory sentence in a personal access code email.',
+            ],
+            'decisions.invitations.email.request_instructions' => [
+                'text' => 'Vous pouvez soit cliquer sur le lien personnel reçu dans cet e-mail, soit copier le code ci-dessous sur la page publique pour continuer.',
+                'context' => 'Instructions in a personal access code email.',
+            ],
+            'decisions.invitations.email.code_expiry' => [
+                'text' => 'Ce code est valable jusqu’au {date}.',
+                'context' => 'Code expiry sentence in a personal access code email.',
+            ],
+            'decisions.invitations.email.goodbye' => [
+                'text' => 'À bientôt,',
+                'context' => 'Closing in a personal access code email.',
+            ],
+            'decisions.invitations.email.valid_until' => [
+                'text' => 'Valable jusqu’au {date}.',
+                'context' => 'Code expiry label displayed near the code in an email.',
+            ],
+            'decisions.invitations.email.direct_link' => [
+                'text' => 'Lien direct personnel',
+                'context' => 'Direct link label in a personal access code email.',
+            ],
+            'decisions.invitations.email.invalid_code' => [
+                'text' => 'Impossible de générer un code d’accès pour le moment.',
+                'context' => 'Error returned when an access code cannot be generated.',
+            ],
+            'decisions.invitations.email.send_code_failed' => [
+                'text' => 'Impossible d’envoyer ce code pour le moment.',
+                'context' => 'Error returned when a personal access code email cannot be sent.',
+            ],
         ];
+    }
+}
+
+if (!function_exists('omoDecisionInvitationT')) {
+    function omoDecisionInvitationT($key, array $variables = [])
+    {
+        static $sourceLang = null;
+        static $lang = null;
+        if ($sourceLang === null) {
+            $sourceLang = omoDecisionInvitationGetSourceLang();
+            $lang = omoLoadTranslationBundle('omo_decision_invitations', $sourceLang);
+        }
+
+        return t($key, $variables, $lang, $sourceLang);
     }
 }
 
@@ -1701,7 +2683,7 @@ if (!function_exists('omoDecisionApplyInvitationSelections')) {
             if (!$holon->load($holonId) || !$organization->containsHolon($holon) || !$holon->canViewDetail()) {
                 return [
                     'status' => false,
-                    'message' => 'Un holon selectionne est invalide.',
+                    'message' => \dbObject\Organization::formatLexiconText('Un holon selectionne est invalide.'),
                 ];
             }
 
@@ -1853,34 +2835,7 @@ if (!function_exists('omoDecisionRenderInlineInvitationEditorScript')) {
 
         $alreadyRendered = true;
 
-        return '<script>(function(){'
-            . 'if(typeof window.omoDecisionInitInvitationEditors!=="function"){'
-                . 'window.omoDecisionInitInvitationEditors=function(root){'
-                    . 'var scope=(root&&root.querySelectorAll)?root:document;'
-                    . 'if(typeof window.initGenericComponents==="function"){window.initGenericComponents(scope);}'
-                    . 'Array.prototype.forEach.call(scope.querySelectorAll("[data-omo-decision-invitations-editor]"),function(editor){'
-                        . 'if(editor.dataset.omoDecisionInvitationsReady==="1"){return;}'
-                        . 'editor.dataset.omoDecisionInvitationsReady="1";'
-                        . 'Array.prototype.forEach.call(editor.querySelectorAll("[data-omo-decision-holon-toggle]"),function(toggle){'
-                            . 'if(toggle.dataset.omoDecisionBound==="1"){return;}'
-                            . 'toggle.dataset.omoDecisionBound="1";'
-                            . 'toggle.addEventListener("click",function(event){'
-                                . 'var node,children,isExpanded;'
-                                . 'event.preventDefault();'
-                                . 'event.stopPropagation();'
-                                . 'node=toggle.closest("[data-omo-decision-holon-node]");'
-                                . 'children=node?node.querySelector("[data-omo-decision-holon-children]"):null;'
-                                . 'if(!children){return;}'
-                                . 'isExpanded=toggle.getAttribute("aria-expanded")==="true";'
-                                . 'toggle.setAttribute("aria-expanded",isExpanded?"false":"true");'
-                                . 'children.hidden=isExpanded;'
-                            . '});'
-                        . '});'
-                    . '});'
-                . '};'
-            . '}'
-            . 'if(typeof window.omoDecisionInitInvitationEditors==="function"){window.omoDecisionInitInvitationEditors(document);}'
-        . '})();</script>';
+        return '<script src="' . commonAssetUrl('/omo/api/decision/modules/invitation-editor.js') . '"></script>';
     }
 }
 
@@ -1902,7 +2857,7 @@ if (!function_exists('omoDecisionRenderInlineInvitationSection')) {
         $instanceId = 'omoDecisionInvitationsInline' . $instanceCounter;
         $membersTabId = $instanceId . 'Members';
         $guestsTabId = $instanceId . 'Guests';
-        $holonsTabId = $instanceId . 'Holons';
+        $holonsTabId = $instanceId . \dbObject\Organization::formatLexiconText('Holons');
 
         ob_start();
         ?>
@@ -1917,7 +2872,7 @@ if (!function_exists('omoDecisionRenderInlineInvitationSection')) {
             <input type="hidden" name="invitation_inline_enabled" value="1">
 
             <div class="generic-tabs omo-decision-invitations-editor__tabs" data-generic-tabs>
-                <div class="generic-tabs__list" aria-label="Categories d invitations">
+                <div class="generic-tabs__list" aria-label="<?= $escape(t('decisions.invitations.tabs_aria', [], $lang, $sourceLang)) ?>">
                     <?php if ($hasHolonStructure): ?>
                     <button type="button" class="generic-tabs__tab is-active" data-generic-tab data-generic-tab-target="<?= $escape($holonsTabId) ?>"><?= $escape(t('decisions.invitations.tab.holons', [], $lang, $sourceLang)) ?></button>
                     <button type="button" class="generic-tabs__tab" data-generic-tab data-generic-tab-target="<?= $escape($membersTabId) ?>"><?= $escape(t('decisions.invitations.tab.members', [], $lang, $sourceLang)) ?></button>
@@ -2030,7 +2985,7 @@ if (!function_exists('omoDecisionSendParticipantAccessEmail')) {
         if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
             return [
                 'status' => false,
-                'message' => 'Aucune adresse e-mail valide n a ete trouvee pour ce participant.',
+                'message' => omoDecisionInvitationT('decisions.invitations.email.invalid_recipient'),
             ];
         }
 
@@ -2038,7 +2993,7 @@ if (!function_exists('omoDecisionSendParticipantAccessEmail')) {
         if ($accessUrl === '') {
             return [
                 'status' => false,
-                'message' => 'Impossible de generer un lien public valide pour ce participant.',
+                'message' => omoDecisionInvitationT('decisions.invitations.email.invalid_link'),
             ];
         }
 
@@ -2066,19 +3021,19 @@ if (!function_exists('omoDecisionSendParticipantAccessEmail')) {
         $holon = $decision->getHolonObject();
         $detailsItems = [];
         if ($holon instanceof Holon) {
-            $detailsItems[] = '<li><strong>Contexte</strong>: '
+            $detailsItems[] = '<li><strong>' . commonMailEscape(omoDecisionInvitationT('decisions.invitations.email.context')) . '</strong> : '
                 . commonMailEscape(trim((string)$holon->getTemplateLabel(true)) . ' ' . trim((string)$holon->getDisplayName()))
                 . '</li>';
         }
 
         $consultationStart = DecisionProcess::normalizeDateTimeValue($decision->get('consultation_start_at'));
         if ($consultationStart instanceof DateTimeInterface) {
-            $detailsItems[] = '<li><strong>Debut</strong>: ' . commonMailEscape($consultationStart->format('d.m.Y H:i')) . '</li>';
+            $detailsItems[] = '<li><strong>' . commonMailEscape(omoDecisionInvitationT('decisions.invitations.email.start')) . '</strong> : ' . commonMailEscape($consultationStart->format('d.m.Y H:i')) . '</li>';
         }
 
         $consultationEnd = DecisionProcess::normalizeDateTimeValue($decision->get('consultation_end_at'));
         if ($consultationEnd instanceof DateTimeInterface) {
-            $detailsItems[] = '<li><strong>Fin</strong>: ' . commonMailEscape($consultationEnd->format('d.m.Y H:i')) . '</li>';
+            $detailsItems[] = '<li><strong>' . commonMailEscape(omoDecisionInvitationT('decisions.invitations.email.end')) . '</strong> : ' . commonMailEscape($consultationEnd->format('d.m.Y H:i')) . '</li>';
         }
 
         $detailsHtml = count($detailsItems) > 0
@@ -2090,19 +3045,19 @@ if (!function_exists('omoDecisionSendParticipantAccessEmail')) {
             'brand_color' => $organization ? trim((string)$organization->get('color')) : '',
             'logo_url' => $organization ? trim((string)$organization->get('logo')) : '',
             'banner_url' => $organization ? trim((string)$organization->get('banner')) : '',
-            'heading' => $decisionTitle !== '' ? $decisionTitle : 'Prise de decision',
+            'heading' => $decisionTitle !== '' ? $decisionTitle : omoDecisionInvitationT('decisions.invitations.email.default_title'),
             'intro_html' => commonMailTextToHtml($message),
             'details_html' => $detailsHtml,
-            'button_label' => 'Ouvrir la prise de decision',
+            'button_label' => omoDecisionInvitationT('decisions.invitations.email.open_decision'),
             'button_url' => $accessUrl,
-            'footer_html' => '<p style="margin:0;">Ce message a ete envoye depuis ' . commonMailEscape($organizationName) . '.</p>',
+            'footer_html' => '<p style="margin:0;">' . commonMailEscape(omoDecisionInvitationT('decisions.invitations.email.footer', ['organization' => $organizationName])) . '</p>',
         ]);
 
         $mailSent = myHTMLMail([$fromAddress, $organizationName !== '' ? $organizationName : 'Organisation'], $email, $subject, $html);
         if (!$mailSent) {
             return [
                 'status' => false,
-                'message' => 'Impossible d envoyer ce lien pour le moment.',
+                'message' => omoDecisionInvitationT('decisions.invitations.email.send_link_failed'),
             ];
         }
 
@@ -2125,7 +3080,7 @@ if (!function_exists('omoDecisionSendParticipantAccessCodeEmail')) {
         if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
             return [
                 'status' => false,
-                'message' => 'Aucune adresse e-mail valide n a ete trouvee pour ce participant.',
+                'message' => omoDecisionInvitationT('decisions.invitations.email.invalid_recipient'),
             ];
         }
 
@@ -2133,7 +3088,7 @@ if (!function_exists('omoDecisionSendParticipantAccessCodeEmail')) {
         if (empty($codeResult['status'])) {
             return [
                 'status' => false,
-                'message' => trim((string)($codeResult['message'] ?? 'Impossible de generer un code d acces pour le moment.')),
+                'message' => trim((string)($codeResult['message'] ?? omoDecisionInvitationT('decisions.invitations.email.invalid_code'))),
             ];
         }
 
@@ -2146,7 +3101,7 @@ if (!function_exists('omoDecisionSendParticipantAccessCodeEmail')) {
         if ($publicRequestUrl === '') {
             $publicRequestUrl = $decision->getGenericPublicAccessUrl('participate');
         }
-        $directIntent = $decision->isParticipationOpen() ? 'participate' : 'view';
+        $directIntent = $decision->isParticipationInterfaceOpen() ? 'participate' : 'view';
         $directAccessUrl = trim((string)$participant->getPublicAccessUrl($directIntent));
         if ($directAccessUrl === '') {
             $directAccessUrl = $publicRequestUrl;
@@ -2154,7 +3109,7 @@ if (!function_exists('omoDecisionSendParticipantAccessCodeEmail')) {
 
         $subject = trim((string)$subject);
         if ($subject === '') {
-            $subject = 'Code d acces a la prise de decision';
+            $subject = omoDecisionInvitationT('decisions.invitations.email.access_subject');
             if ($decisionTitle !== '') {
                 $subject .= ' : ' . $decisionTitle;
             }
@@ -2172,28 +3127,28 @@ if (!function_exists('omoDecisionSendParticipantAccessCodeEmail')) {
             : '';
 
         $messageLines = [
-            'Bonjour,',
+            omoDecisionInvitationT('decisions.invitations.email.greeting'),
             '',
-            'Vous avez demande un acces a la prise de decision "' . ($decisionTitle !== '' ? $decisionTitle : 'sans titre') . '".',
-            'Vous pouvez soit cliquer sur le lien personnel recu dans cet e-mail, soit copier le code ci-dessous sur la page publique pour continuer.',
+            omoDecisionInvitationT('decisions.invitations.email.request_intro', ['title' => $decisionTitle !== '' ? $decisionTitle : omoDecisionInvitationT('decisions.invitations.email.default_title')]),
+            omoDecisionInvitationT('decisions.invitations.email.request_instructions'),
         ];
         if ($expiresLabel !== '') {
-            $messageLines[] = 'Ce code est valable jusqu au ' . $expiresLabel . '.';
+            $messageLines[] = omoDecisionInvitationT('decisions.invitations.email.code_expiry', ['date' => $expiresLabel]);
         }
         $messageLines[] = '';
-        $messageLines[] = 'A bientot,';
+        $messageLines[] = omoDecisionInvitationT('decisions.invitations.email.goodbye');
         $messageLines[] = $organizationName;
 
-        $codeHtml = '<div style="display:inline-block;padding:16px 22px;background:#f3f4f6;border-radius:12px;border:1px solid #e5e7eb;font:700 32px/1.2 Consolas, Monaco, monospace;letter-spacing:0.22em;color:#111827;">'
+        $codeHtml = '<div style="display:inline-block;padding:16px 22px;background:#f3f4f6;border-radius:var(--radius-md);border:1px solid #e5e7eb;font:700 32px/1.2 Consolas, Monaco, monospace;letter-spacing:0.22em;color:#111827;">'
             . commonMailEscape((string)($codeResult['code'] ?? ''))
             . '</div>';
         if ($expiresLabel !== '') {
-            $codeHtml .= '<p style="margin:14px 0 0;color:#64748b;line-height:1.6;">Valable jusqu au ' . commonMailEscape($expiresLabel) . '.</p>';
+            $codeHtml .= '<p style="margin:14px 0 0;color:#64748b;line-height:1.6;">' . commonMailEscape(omoDecisionInvitationT('decisions.invitations.email.valid_until', ['date' => $expiresLabel])) . '</p>';
         }
         if ($directAccessUrl !== '') {
             $codeHtml .= '<div style="margin-top:18px;">'
-                . '<p style="margin:0 0 8px;color:#111827;line-height:1.6;"><strong>Lien direct personnel</strong></p>'
-                . '<div style="padding:12px 14px;background:#f8fafc;border:1px solid #e5e7eb;border-radius:12px;word-break:break-all;line-height:1.6;">'
+                . '<p style="margin:0 0 8px;color:#111827;line-height:1.6;"><strong>' . commonMailEscape(omoDecisionInvitationT('decisions.invitations.email.direct_link')) . '</strong></p>'
+                . '<div style="padding:12px 14px;background:#f8fafc;border:1px solid #e5e7eb;border-radius:var(--radius-md);word-break:break-all;line-height:1.6;">'
                 . '<a href="' . commonMailEscape($directAccessUrl) . '" style="color:#2563eb;text-decoration:none;">' . commonMailEscape($directAccessUrl) . '</a>'
                 . '</div>'
                 . '</div>';
@@ -2204,12 +3159,12 @@ if (!function_exists('omoDecisionSendParticipantAccessCodeEmail')) {
             'brand_color' => $organization ? trim((string)$organization->get('color')) : '',
             'logo_url' => $organization ? trim((string)$organization->get('logo')) : '',
             'banner_url' => $organization ? trim((string)$organization->get('banner')) : '',
-            'heading' => $decisionTitle !== '' ? $decisionTitle : 'Prise de decision',
+            'heading' => $decisionTitle !== '' ? $decisionTitle : omoDecisionInvitationT('decisions.invitations.email.default_title'),
             'intro_html' => commonMailTextToHtml(implode("\n", $messageLines)),
             'details_html' => $codeHtml,
-            'button_label' => 'Ouvrir directement le scrutin',
+            'button_label' => omoDecisionInvitationT('decisions.invitations.email.open_vote'),
             'button_url' => $directAccessUrl !== '' ? $directAccessUrl : $publicRequestUrl,
-            'footer_html' => '<p style="margin:0;">Ce message a ete envoye depuis ' . commonMailEscape($organizationName) . '.</p>',
+            'footer_html' => '<p style="margin:0;">' . commonMailEscape(omoDecisionInvitationT('decisions.invitations.email.footer', ['organization' => $organizationName])) . '</p>',
         ]);
 
         $mailSent = myHTMLMail([$fromAddress, $organizationName !== '' ? $organizationName : 'Organisation'], $email, $subject, $html);
@@ -2217,7 +3172,7 @@ if (!function_exists('omoDecisionSendParticipantAccessCodeEmail')) {
             $participant->clearPublicAccessCode();
             return [
                 'status' => false,
-                'message' => 'Impossible d envoyer ce code pour le moment.',
+                'message' => omoDecisionInvitationT('decisions.invitations.email.send_code_failed'),
             ];
         }
 
@@ -2238,7 +3193,6 @@ if (!function_exists('omoDecisionBuildInvitationSummaryData')) {
     function omoDecisionBuildInvitationSummaryData($decision, array $context, $lang = null, array $sourceLang = [])
     {
         $currentHolon = $context['effectiveHolon'] ?? null;
-        $currentHolonId = $currentHolon instanceof Holon ? (int)$currentHolon->getId() : 0;
         $method = $decision instanceof DecisionProcess
             ? DecisionProcess::normalizeEvaluationMethod($decision->get('evaluation_method'))
             : trim((string)($context['method'] ?? ''));
@@ -2250,13 +3204,28 @@ if (!function_exists('omoDecisionBuildInvitationSummaryData')) {
             'publicUrl' => '',
             'sendEnabled' => false,
             'invitationCount' => 0,
+            'recipientCount' => 0,
             'hasExplicitInvitations' => false,
             'publicOptInEntries' => [],
+            'summaryDetails' => '',
+            'totalLabel' => '',
+            'recipientTooltip' => '',
             'summary' => '',
         ];
 
         if (!$data['isPersisted']) {
-            $data['summary'] = t('decisions.invitations.unsaved', [], $lang, $sourceLang);
+            $data['popupUrl'] = omoDecisionBuildInvitationPopupUrl(
+                (int)($context['organizationId'] ?? 0),
+                (int)($context['targetHolonId'] ?? 0),
+                0,
+                $method
+            ) . '&draft=1';
+            $data['summary'] = t('decisions.invitations.default_scope', [], $lang, $sourceLang);
+            if ($currentHolon instanceof Holon) {
+                $data['summary'] = trim(
+                    (string)$currentHolon->getDisplayName()
+                ) . ' ' . t('decisions.invitations.inline_current_holon', [], $lang, $sourceLang);
+            }
             return $data;
         }
 
@@ -2275,6 +3244,9 @@ if (!function_exists('omoDecisionBuildInvitationSummaryData')) {
         $data['publicUrl'] = $decision->getGenericPublicAccessUrl('view');
         $data['sendEnabled'] = count($decision->getInvitationEmailRecipients()) > 0
             && DecisionProcess::normalizeStatus($decision->get('status')) !== DecisionProcess::STATUS_DRAFT;
+        $data['recipientCount'] = method_exists($decision, 'getInvitationRecipientCount')
+            ? (int)$decision->getInvitationRecipientCount(false)
+            : 0;
         $hasPublicSelfRegistration = method_exists($decision, 'isPublicSelfRegistrationEnabled')
             && $decision->isPublicSelfRegistrationEnabled();
         $publicOptInState = omoDecisionExtractPublicOptInSelections($decision);
@@ -2302,28 +3274,54 @@ if (!function_exists('omoDecisionBuildInvitationSummaryData')) {
             if ($publicOptInState['count'] > 0) {
                 $defaultSummary .= ' ' . t('decisions.invitations.public_opt_in_count', ['count' => (string)$publicOptInState['count']], $lang, $sourceLang) . '.';
             }
+            if ($data['recipientCount'] > 0) {
+                $defaultSummary .= ' ' . t('decisions.invitations.total_people', ['count' => (string)$data['recipientCount']], $lang, $sourceLang) . '.';
+            }
 
             $data['summary'] = $defaultSummary;
             return $data;
         }
 
+        $organizationId = (int)($context['organizationId'] ?? 0);
         $holonLabels = [];
-        $additionalPeopleCount = 0;
-        $includesCurrentHolon = false;
+        $holonUserIds = [];
+        $additionalUserIds = [];
+        $guestEmails = [];
+        $membersByUserId = [];
+
+        $organizationMembers = new \dbObject\ArrayUserOrganization();
+        if ($organizationId > 0) {
+            $organizationMembers->loadActiveForOrganization($organizationId);
+        }
+        foreach ($organizationMembers as $membership) {
+            $userId = (int)$membership->get('IDuser');
+            if ($userId > 0) {
+                $membersByUserId[$userId] = $membership;
+            }
+        }
 
         foreach ($invitations as $invitation) {
             $type = DecisionInvitation::normalizeType($invitation->get('invitation_type'));
             if ($type === DecisionInvitation::TYPE_HOLON) {
                 $holonId = (int)$invitation->get('IDholon');
-                if ($holonId === $currentHolonId && $currentHolonId > 0) {
-                    $includesCurrentHolon = true;
-                }
-
                 $holonLabel = trim((string)$invitation->get('display_name'));
-                if ($holonLabel === '' && $holonId > 0) {
+                if ($holonId > 0) {
                     $holon = new Holon();
                     if ($holon->load($holonId)) {
-                        $holonLabel = trim((string)$holon->getDisplayName());
+                        $holonLabel = trim(
+                            trim((string)$holon->getTemplateLabel(true))
+                            . ' '
+                            . trim((string)$holon->getDisplayName())
+                        );
+                        foreach ($holon->getAssociatedMemberUserIds([
+                            'organizationId' => $organizationId,
+                            'skipPermissionFilter' => true,
+                        ]) as $userId) {
+                            $userId = (int)$userId;
+                            if ($userId > 0) {
+                                $holonUserIds[$userId] = $userId;
+                            }
+                        }
                     }
                 }
                 if ($holonLabel !== '') {
@@ -2332,20 +3330,73 @@ if (!function_exists('omoDecisionBuildInvitationSummaryData')) {
                 continue;
             }
 
-            $additionalPeopleCount++;
+            if ($type === DecisionInvitation::TYPE_USER) {
+                $userId = (int)$invitation->get('IDuser');
+                if ($userId > 0) {
+                    $additionalUserIds[$userId] = $userId;
+                }
+                continue;
+            }
+
+            $email = trim(mb_strtolower((string)$invitation->get('email'), 'UTF-8'));
+            if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $guestEmails[$email] = $email;
+            }
         }
 
-        $summaryParts = [];
-        if (count($holonLabels) > 0) {
-            $summaryParts[] = implode(', ', array_slice(array_values(array_unique($holonLabels)), 0, 3));
-        }
-        if ($additionalPeopleCount > 0) {
-            $summaryParts[] = t('decisions.invitations.additional_people', ['count' => (string)$additionalPeopleCount], $lang, $sourceLang);
+        foreach ($holonUserIds as $userId) {
+            unset($additionalUserIds[$userId]);
         }
 
-        $summaryParts[] = $includesCurrentHolon
-            ? t('decisions.invitations.current_scope_included', [], $lang, $sourceLang)
-            : t('decisions.invitations.current_scope_excluded', [], $lang, $sourceLang);
+        $recipientUserIds = $holonUserIds + $additionalUserIds;
+        $recipientEmails = [];
+        foreach ($guestEmails as $email) {
+            $matchesRecipient = false;
+            foreach ($recipientUserIds as $userId) {
+                $membership = $membersByUserId[(int)$userId] ?? null;
+                if (
+                    $membership instanceof \dbObject\UserOrganization
+                    && trim(mb_strtolower((string)$membership->getScopedEmail(), 'UTF-8')) === $email
+                ) {
+                    $matchesRecipient = true;
+                    break;
+                }
+            }
+            if (!$matchesRecipient) {
+                $recipientEmails[$email] = $email;
+            }
+        }
+
+        $recipientLabels = [];
+        foreach ($recipientUserIds as $userId) {
+            $membership = $membersByUserId[(int)$userId] ?? null;
+            if (!($membership instanceof \dbObject\UserOrganization)) {
+                continue;
+            }
+            $displayName = trim((string)$membership->getUserDisplayName());
+            $username = trim((string)$membership->getScopedUsername());
+            $email = trim((string)$membership->getScopedEmail());
+            $secondary = $username !== '' ? '@' . $username : $email;
+            $recipientLabels[] = $secondary !== '' && $secondary !== $displayName
+                ? $displayName . ' - ' . $secondary
+                : ($displayName !== '' ? $displayName : $secondary);
+        }
+        foreach ($recipientEmails as $email) {
+            $recipientLabels[] = $email;
+        }
+
+        $summaryParts = array_values(array_unique($holonLabels));
+        if (count($additionalUserIds) > 0) {
+            $summaryParts[] = omoDecisionInvitationT(
+                count($holonLabels) > 0
+                    ? 'decisions.invitations.additional_members'
+                    : 'decisions.invitations.members',
+                ['count' => (string)count($additionalUserIds)]
+            );
+        }
+        if (count($recipientEmails) > 0) {
+            $summaryParts[] = omoDecisionInvitationT('decisions.invitations.guests', ['count' => (string)count($recipientEmails)]);
+        }
         if ($hasPublicSelfRegistration) {
             $summaryParts[] = 'Participation publique ouverte';
         }
@@ -2353,9 +3404,25 @@ if (!function_exists('omoDecisionBuildInvitationSummaryData')) {
             $summaryParts[] = t('decisions.invitations.public_opt_in_count', ['count' => (string)$publicOptInState['count']], $lang, $sourceLang);
         }
 
-        $data['summary'] = implode(' - ', array_filter($summaryParts, static function ($value) {
+        $data['recipientCount'] = count($recipientUserIds) + count($recipientEmails);
+        $summaryParts = array_values(array_filter($summaryParts, static function ($value) {
             return trim((string)$value) !== '';
         }));
+        if (count($summaryParts) > 1) {
+            $lastSummaryPart = array_pop($summaryParts);
+            $data['summaryDetails'] = implode(', ', $summaryParts)
+                . ' '
+                . omoDecisionInvitationT('decisions.invitations.summary_connector')
+                . ' '
+                . $lastSummaryPart;
+        } else {
+            $data['summaryDetails'] = implode('', $summaryParts);
+        }
+        $data['totalLabel'] = omoDecisionInvitationT('decisions.invitations.summary_total_people', ['count' => (string)$data['recipientCount']]);
+        $data['recipientTooltip'] = implode("\n", array_filter(array_values(array_unique($recipientLabels)), static function ($value) {
+            return trim((string)$value) !== '';
+        }));
+        $data['summary'] = trim($data['totalLabel'] . ($data['summaryDetails'] !== '' ? ' (' . $data['summaryDetails'] . ')' : ''));
 
         return $data;
     }
@@ -2365,21 +3432,33 @@ if (!function_exists('omoDecisionRenderInvitationSection')) {
     function omoDecisionRenderInvitationSection($decision, array $context, $lang, array $sourceLang, $escape, $extraClass = '')
     {
         $summaryData = omoDecisionBuildInvitationSummaryData($decision, $context, $lang, $sourceLang);
-        if (empty($summaryData['hasExplicitInvitations'])) {
-            return omoDecisionRenderInlineInvitationSection($decision, $context, $lang, $sourceLang, $escape, $extraClass);
-        }
 
         $extraClass = trim((string)$extraClass);
         if ($extraClass !== '') {
             $extraClass = ' ' . $extraClass;
         }
 
-        $buttonDisabled = empty($summaryData['isPersisted']) || trim((string)$summaryData['popupUrl']) === '';
+        $buttonDisabled = trim((string)$summaryData['popupUrl']) === '';
         $sendDisabled = empty($summaryData['isPersisted'])
             || trim((string)$summaryData['sendPopupUrl']) === ''
             || empty($summaryData['sendEnabled']);
 
+        $isDraft = empty($summaryData['isPersisted']);
+        $primarySummary = trim((string)($summaryData['totalLabel'] ?? '')) !== ''
+            ? (string)$summaryData['totalLabel']
+            : (string)$summaryData['summary'];
+        $draftFields = '';
+        if ($isDraft) {
+            $targetHolonId = (int)($context['targetHolonId'] ?? 0);
+            $draftFields = '<div hidden data-omo-decision-invitations-draft-fields>'
+                . '<input type="hidden" name="invitation_inline_enabled" value="1">'
+                . ($targetHolonId > 0 ? '<input type="hidden" name="invitation_holon_ids[]" value="' . $targetHolonId . '">' : '')
+                . '<input type="hidden" name="invitation_emails" value="">'
+                . '</div>';
+        }
+
         return '<div class="generic-soft-panel generic-soft-panel--stack' . $extraClass . '">'
+            . $draftFields
             . '<div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;">'
                 . '<span class="generic-card-title">' . $escape(t('decisions.invitations.title', [], $lang, $sourceLang)) . '</span>'
                 . '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">'
@@ -2389,11 +3468,12 @@ if (!function_exists('omoDecisionRenderInvitationSection')) {
                         . ' data-omo-decision-invitations-open'
                         . ' data-omo-decision-invitations-url="' . $escape((string)$summaryData['popupUrl']) . '"'
                         . ' data-omo-decision-invitations-title="' . $escape(t('decisions.invitations.popup_title', [], $lang, $sourceLang)) . '"'
+                        . ($isDraft ? ' data-omo-decision-invitations-draft="1"' : '')
                         . ($buttonDisabled ? ' disabled' : '')
                     . '>'
                         . $escape(t('decisions.invitations.configure', [], $lang, $sourceLang))
                     . '</button>'
-                    . '<button'
+                    . ($isDraft ? '' : '<button'
                         . ' type="button"'
                         . ' class="generic-action-button generic-action-button--main"'
                         . ' data-omo-decision-invitations-send-open'
@@ -2402,8 +3482,8 @@ if (!function_exists('omoDecisionRenderInvitationSection')) {
                         . ($sendDisabled ? ' disabled' : '')
                     . '>'
                         . $escape(t('decisions.invitations.send', [], $lang, $sourceLang))
-                    . '</button>'
-                    . '<a'
+                    . '</button>')
+                    . ($isDraft ? '' : '<a'
                         . ' class="generic-action-button generic-action-button--secondary"'
                         . ' href="' . $escape((string)$summaryData['publicUrl']) . '"'
                         . ' target="_blank"'
@@ -2411,11 +3491,14 @@ if (!function_exists('omoDecisionRenderInvitationSection')) {
                         . (trim((string)$summaryData['publicUrl']) === '' ? ' aria-disabled="true"' : '')
                     . '>'
                         . $escape('Lien public')
-                    . '</a>'
+                    . '</a>')
                 . '</div>'
             . '</div>'
             . '<p style="margin:0;color:var(--color-text-light,#475569);line-height:1.6;" data-omo-decision-invitations-summary>'
-                . $escape((string)$summaryData['summary'])
+                . '<strong'
+                    . (trim((string)($summaryData['recipientTooltip'] ?? '')) !== '' ? ' title="' . $escape((string)$summaryData['recipientTooltip']) . '" tabindex="0"' : '')
+                . '>' . $escape($primarySummary) . '</strong>'
+                . (trim((string)($summaryData['summaryDetails'] ?? '')) !== '' ? ' (' . $escape((string)$summaryData['summaryDetails']) . ')' : '')
             . '</p>'
             . (
                 count((array)($summaryData['publicOptInEntries'] ?? [])) > 0

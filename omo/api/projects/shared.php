@@ -1,0 +1,1259 @@
+<?php
+
+require_once dirname(__DIR__, 3) . '/common/pv_meeting_permissions.php';
+
+use dbObject\Holon;
+use dbObject\Organization;
+use dbObject\ArrayProjectDocument;
+use dbObject\Document;
+use dbObject\OrganizationApplication;
+use dbObject\Project;
+
+if (!function_exists('omoProjectsSourceLang')) {
+    function omoProjectsSourceLang()
+    {
+        return [
+            'projects.title' => ['text' => 'Projets', 'context' => 'Main title of the projects application.'],
+            'projects.action.more' => ['text' => 'Autres options', 'context' => 'Accessible label for the project application actions menu.'],
+            'projects.action.view_archives' => ['text' => 'Voir les archives', 'context' => 'Menu action opening the archived projects popup.'],
+            'projects.action.new' => ['text' => 'Nouveau projet', 'context' => 'Primary action opening project creation.'],
+            'projects.action.propose' => ['text' => 'Proposer', 'context' => 'Primary action opening a project proposal.'],
+            'projects.action.edit' => ['text' => 'Modifier', 'context' => 'Button opening project edition from the detail header.'],
+            'projects.follow.action.follow' => ['text' => 'Suivre', 'context' => 'Context menu action following a project.'],
+            'projects.follow.action.unfollow' => ['text' => 'Ne plus suivre', 'context' => 'Context menu action stopping project follow-up.'],
+            'projects.follow.tooltip' => ['text' => 'Suivi par : {names}', 'context' => 'Tooltip listing the people following a project.'],
+            'projects.action.accept_proposal' => ['text' => 'Accepter le projet', 'context' => 'Action accepting a pending project proposal.'],
+            'projects.action.refuse_proposal' => ['text' => 'Refuser le projet', 'context' => 'Action refusing a pending project proposal.'],
+            'projects.action.discuss' => ['text' => 'Discussion', 'context' => 'Button opening the project discussion.'],
+            'projects.action.close' => ['text' => 'Fermer', 'context' => 'Button closing the project subdrawer.'],
+            'projects.action.save' => ['text' => 'Enregistrer', 'context' => 'Submit action saving a project.'],
+            'projects.action.cancel' => ['text' => 'Annuler', 'context' => 'Button cancelling project creation.'],
+            'projects.action.attach' => ['text' => 'Attacher un projet', 'context' => 'Button attaching an existing orphan project as a subproject.'],
+            'projects.action.move' => ['text' => 'Déplacer', 'context' => 'Context menu action moving a project to another holon.'],
+            'projects.action.archive' => ['text' => 'Archiver', 'context' => 'Context menu action archiving a project.'],
+            'projects.action.delete' => ['text' => 'Supprimer', 'context' => 'Context menu action permanently deleting a project.'],
+            'projects.action.archive_selected' => ['text' => 'Archiver la sélection', 'context' => 'Bulk action archiving selected projects.'],
+            'projects.action.delete_selected' => ['text' => 'Supprimer la sélection', 'context' => 'Bulk action permanently deleting selected projects.'],
+            'projects.selection.toggle' => ['text' => 'Sélectionner ce projet', 'context' => 'Accessible label for a project selection checkbox.'],
+            'projects.selection.count' => ['text' => '{count} sélectionnés', 'context' => 'Count of projects selected for a bulk action.'],
+            'projects.scope.contextual' => ['text' => 'Local', 'context' => 'Scope showing projects attached to the current holon.'],
+            'projects.scope.children' => ['text' => 'Enfants directs', 'context' => 'Scope showing projects attached to the current holon and its direct children.'],
+            'projects.scope.descendants' => ['text' => 'Descendants', 'context' => 'Scope showing projects attached to the current holon and its descendants.'],
+            'projects.assignment.aria' => ['text' => 'Projets affichés', 'context' => 'Accessible label for the project assignment filter.'],
+            'projects.assignment.mine' => ['text' => 'Moi', 'context' => 'Project assignment filter showing projects directly assigned to the current user or unassigned projects in their spaces.'],
+            'projects.assignment.spaces' => ['text' => 'Mes espaces', 'context' => 'Project assignment filter showing projects in the current user spaces regardless of direct assignment.'],
+            'projects.assignment.followed' => ['text' => 'Suivi', 'context' => 'Project assignment filter showing projects followed by at least one person.'],
+            'projects.assignment.everyone' => ['text' => 'Tout le monde', 'context' => 'Project assignment filter showing projects assigned to anyone.'],
+            'projects.filters.aria' => ['text' => 'Filtres des projets', 'context' => 'Accessible label for the compact project filters control.'],
+            'projects.filters.scope' => ['text' => 'Contexte', 'context' => 'Heading for the project scope choices in the filters panel.'],
+            'projects.filters.assignment' => ['text' => 'Attribution', 'context' => 'Heading for the project assignment choices in the filters panel.'],
+            'projects.filters.sort' => ['text' => 'Ordre', 'context' => 'Heading for the project sorting choices in the filters panel.'],
+            'projects.filters.view' => ['text' => 'Représentation', 'context' => 'Heading for the project view choices in the filters panel.'],
+            'projects.filters.apply' => ['text' => 'Appliquer', 'context' => 'Button applying temporary project filter choices without saving them.'],
+            'projects.filters.save_view' => ['text' => 'Enregistrer la vue', 'context' => 'Button applying and saving the project filter choices for the current holon.'],
+            'projects.filters.more_actions' => ['text' => 'Autres options de vue', 'context' => 'Accessible label for additional project view preference actions.'],
+            'projects.filters.apply_everywhere' => ['text' => 'Appliquer partout', 'context' => 'Action setting the current project view as the default and clearing specific views.'],
+            'projects.filters.set_default' => ['text' => 'Définir comme vue par défaut', 'context' => 'Action saving the current project view as the default view.'],
+            'projects.filters.restore_default' => ['text' => 'Restaurer la vue par défaut', 'context' => 'Action removing the current holon specific project view.'],
+            'projects.search.aria' => ['text' => 'Filtrer les projets affichés', 'context' => 'Accessible label for the project quick search input.'],
+            'projects.search.placeholder' => ['text' => 'Filtrer les projets', 'context' => 'Placeholder for the project quick search input.'],
+            'projects.search.empty' => ['text' => 'Aucun projet ne correspond à cette recherche.', 'context' => 'Empty state when the project quick search hides every displayed project.'],
+            'projects.view.aria' => ['text' => "Mode d'affichage", 'context' => 'Accessible label for the project display mode selector.'],
+            'projects.view.kanban' => ['text' => 'Kanban', 'context' => 'Project display mode button.'],
+            'projects.view.list' => ['text' => 'Liste', 'context' => 'Project display mode button.'],
+            'projects.view.gantt' => ['text' => 'Gantt', 'context' => 'Project display mode button.'],
+            'projects.gantt.no_dates' => ['text' => 'Sans dates', 'context' => 'Project without effective planning dates in the Gantt view.'],
+            'projects.gantt.inherited' => ['text' => 'hérité', 'context' => 'Label showing that a Gantt planning date comes from a parent project.'],
+            'projects.gantt.overdue' => ['text' => 'En retard', 'context' => 'Label for an unfinished project whose planned end date has passed.'],
+            'projects.sort.aria' => ['text' => 'Classer les projets', 'context' => 'Accessible label for the project list sort selector.'],
+            'projects.sort.planned' => ['text' => 'Planification', 'context' => 'Project list sort button.'],
+            'projects.sort.priority' => ['text' => 'Priorité', 'context' => 'Project list sort button.'],
+            'projects.sort.importance' => ['text' => 'Importance stratégique', 'context' => 'Project list sort button.'],
+            'projects.sort.holon' => ['text' => 'Espace', 'context' => 'Project list sort button.'],
+            'projects.list.planned.overdue' => ['text' => 'En retard', 'context' => 'Project list planned group for past dates.'],
+            'projects.list.planned.in_progress' => ['text' => 'En cours', 'context' => 'Project list planned group for projects currently within their planned dates.'],
+            'projects.list.planned.tomorrow' => ['text' => 'Demain', 'context' => 'Project list planned group for tomorrow.'],
+            'projects.list.planned.after_tomorrow' => ['text' => 'Après-demain', 'context' => 'Project list planned group for the day after tomorrow.'],
+            'projects.list.planned.this_week' => ['text' => 'Cette semaine', 'context' => 'Project list planned group for the rest of this week.'],
+            'projects.list.planned.next_week' => ['text' => 'La semaine prochaine', 'context' => 'Project list planned group for next week.'],
+            'projects.list.planned.later' => ['text' => 'Plus tard', 'context' => 'Project list planned group for future dates.'],
+            'projects.list.planned.none' => ['text' => 'Sans planification', 'context' => 'Project list planned group without dates.'],
+            'projects.list.done' => ['text' => 'Terminés', 'context' => 'Final project list group containing completed projects.'],
+            'projects.list.priority.none' => ['text' => 'Sans priorité', 'context' => 'Project list priority group without priority.'],
+            'projects.empty.contextual' => ['text' => 'Aucun projet dans ce contexte.', 'context' => 'Empty state for the local project scope.'],
+            'projects.empty.children' => ['text' => 'Aucun projet dans ce contexte ou ses enfants directs.', 'context' => 'Empty state for the direct child holon scope.'],
+            'projects.empty.descendants' => ['text' => 'Aucun projet dans ce contexte ou ses descendants.', 'context' => 'Empty state for the descendant project scope.'],
+            'projects.empty.mine' => ['text' => 'Aucun projet qui vous est attribué dans ce périmètre.', 'context' => 'Empty state when the current user has no assigned project in the selected scope.'],
+            'projects.empty.spaces' => ['text' => 'Aucun projet dans vos espaces pour ce périmètre.', 'context' => 'Empty state when the current user has no project in their associated spaces in the selected scope.'],
+            'projects.empty.followed' => ['text' => 'Aucun projet suivi dans ce périmètre.', 'context' => 'Empty state when no project in the selected scope has a follower.'],
+            'projects.empty.column' => ['text' => 'Aucun projet dans cette colonne.', 'context' => 'Empty state for one empty Kanban column.'],
+            'projects.loading' => ['text' => 'Chargement du projet…', 'context' => 'Loading message shown inside the project subdrawer.'],
+            'projects.loading_error' => ['text' => 'Impossible de charger ce projet.', 'context' => 'Error shown when a project drawer cannot be loaded.'],
+            'projects.status_update_error' => ['text' => 'Impossible de changer le statut.', 'context' => 'Fallback error shown when a project status cannot be changed.'],
+            'projects.blocked.dialog.title' => ['text' => 'Projet bloqué', 'context' => 'Title of the dialog shown when a project is moved to the blocked status.'],
+            'projects.blocked.dialog.hint' => ['text' => 'Indiquez ce qui bloque le projet et la date à laquelle il devra être réexaminé.', 'context' => 'Instruction shown in the blocked project dialog.'],
+            'projects.blocked.reason' => ['text' => 'Sur quoi est-ce que j’attends ?', 'context' => 'Blocked project reason field label.'],
+            'projects.blocked.until' => ['text' => 'Réexaminer à partir du', 'context' => 'Blocked project review date field label.'],
+            'projects.blocked.auto_reactivate' => ['text' => 'Réactiver automatiquement après cette date', 'context' => 'Checkbox enabling automatic blocked project reactivation.'],
+            'projects.blocked.reactivate_status' => ['text' => 'État après la réactivation', 'context' => 'Status selected after automatic blocked project reactivation.'],
+            'projects.blocked.reactivate_ready' => ['text' => 'Prêt', 'context' => 'Status option after automatic blocked project reactivation.'],
+            'projects.blocked.reactivate_in_progress' => ['text' => 'En cours', 'context' => 'Status option after automatic blocked project reactivation.'],
+            'projects.blocked.save' => ['text' => 'Enregistrer le blocage', 'context' => 'Submit button in the blocked project dialog.'],
+            'projects.blocked.display_reason' => ['text' => 'Blocage', 'context' => 'Label shown before the blocked project reason.'],
+            'projects.blocked.display_reason_detail' => ['text' => 'Bloqué par', 'context' => 'Label shown before the blocked project reason in a project detail.'],
+            'projects.blocked.display_until' => ['text' => 'Réexamen le {date}', 'context' => 'Date shown on a blocked project.'],
+            'projects.blocked.display_due' => ['text' => 'Blocage en retard depuis le {date}', 'context' => 'Past blocked review date shown on a project that is not set to reactivate automatically.'],
+            'projects.blocked.display_auto' => ['text' => 'Réactivation automatique le {date} à {status}', 'context' => 'Automatic reactivation information shown on a blocked project.'],
+            'projects.blocked.display_manual' => ['text' => 'À réexaminer', 'context' => 'Manual review information shown on a blocked project.'],
+            'projects.action_error' => ['text' => 'Impossible de mettre à jour le projet.', 'context' => 'Fallback error shown for a project context action.'],
+            'projects.delete.confirm' => ['text' => 'Supprimer définitivement ce projet et ses {count} sous-projets ? Cette action est irréversible.', 'context' => 'Confirmation before permanent project deletion.'],
+            'projects.archive.confirm' => ['text' => "Ce projet n'est pas terminé. L'archiver quand même ?", 'context' => 'Confirmation before archiving an unfinished project.'],
+            'projects.archive.confirm_selected' => ['text' => 'Archiver les {count} projets sélectionnés et leurs sous-projets ?', 'context' => 'Confirmation before bulk project archiving.'],
+            'projects.delete.confirm_selected' => ['text' => 'Supprimer définitivement les {count} projets sélectionnés et leurs sous-projets ? Cette action est irréversible.', 'context' => 'Confirmation before bulk project deletion.'],
+            'projects.move.title' => ['text' => 'Déplacer le projet', 'context' => 'Title of the project holon move dialog.'],
+            'projects.move.hint' => ['text' => 'Choisissez l’espace de destination dans la structure.', 'context' => 'Instruction in the project space move dialog.'],
+            'projects.move.submit' => ['text' => 'Déplacer ici', 'context' => 'Submit button in the project holon move dialog.'],
+            'projects.move.select_required' => ['text' => 'Choisissez un espace de destination.', 'context' => 'Validation message when no target space is selected.'],
+            'projects.column.previous' => ['text' => 'Colonne précédente', 'context' => 'Accessible label for the previous mobile Kanban column button.'],
+            'projects.column.next' => ['text' => 'Colonne suivante', 'context' => 'Accessible label for the next mobile Kanban column button.'],
+            'projects.error.organization' => ['text' => 'Organisation invalide ou inaccessible.', 'context' => 'Error for an invalid organization context.'],
+            'projects.error.context' => ['text' => 'Contexte invalide ou inaccessible.', 'context' => 'Error for an invalid holon context.'],
+            'projects.error.not_found' => ['text' => 'Projet introuvable.', 'context' => 'Error when a project cannot be loaded.'],
+            'projects.error.forbidden' => ['text' => 'Vous ne pouvez pas modifier ce projet.', 'context' => 'Error when project mutation is forbidden.'],
+            'projects.error.method' => ['text' => 'Cette action doit être envoyée en POST.', 'context' => 'Error for a mutation sent with the wrong HTTP method.'],
+            'projects.error.action' => ['text' => 'Action inconnue.', 'context' => 'Error for an unsupported project action.'],
+            'projects.error.title' => ['text' => 'Le titre est obligatoire.', 'context' => 'Validation error for a missing project title.'],
+            'projects.error.status' => ['text' => 'Le statut du projet est invalide.', 'context' => 'Validation error for an invalid project status.'],
+            'projects.error.blocked_details' => ['text' => 'Le motif et la date de réexamen sont obligatoires pour un projet bloqué.', 'context' => 'Validation error for missing blocked project details.'],
+            'projects.error.dates' => ['text' => 'La date de fin doit être postérieure ou égale à la date de début.', 'context' => 'Validation error when the planned end date precedes the planned start date.'],
+            'projects.error.parent_someday' => ['text' => 'Un sous-projet dont le parent a une date de fin ne peut pas être placé dans « Un jour peut-être ».', 'context' => 'Validation error when a dated parent project has a someday subproject.'],
+            'projects.error.parent_end_date' => ['text' => 'La date de fin du sous-projet ne peut pas dépasser celle du projet parent.', 'context' => 'Validation error when a subproject end date exceeds its parent end date.'],
+            'projects.error.save' => ['text' => "Impossible d'enregistrer le projet.", 'context' => 'Generic project persistence error.'],
+            'projects.error.holon' => ['text' => 'L’espace de destination est invalide ou inaccessible.', 'context' => 'Error for an invalid project move target space.'],
+            'projects.success.save' => ['text' => 'Projet enregistré.', 'context' => 'Success message after project creation.'],
+            'projects.success.status' => ['text' => 'Statut mis à jour.', 'context' => 'Success message after changing project status.'],
+            'projects.drawer.title' => ['text' => 'Projet', 'context' => 'Default title of the project subdrawer.'],
+            'projects.drawer.description' => ['text' => 'Détails et informations du projet.', 'context' => 'Default description of the project subdrawer.'],
+            'projects.detail.badge' => ['text' => 'Projet', 'context' => 'Eyebrow label shown above the project detail title.'],
+            'projects.proposal.badge' => ['text' => 'Proposition en attente', 'context' => 'Badge identifying a project that has not been accepted yet.'],
+            'projects.proposal.refused_badge' => ['text' => 'Proposition refusée', 'context' => 'Badge identifying a refused project proposal.'],
+            'projects.proposal.readonly' => ['text' => 'Cette proposition est en attente de votre décision. Ses informations sont en lecture seule.', 'context' => 'Explanation shown to the target of a pending project proposal.'],
+            'projects.proposal.editable' => ['text' => 'Cette proposition est en attente de la décision du rôle. Vous pouvez modifier ou compléter sa description jusqu’à son refus ou son acceptation.', 'context' => 'Explanation shown to the proposer of a pending project proposal.'],
+            'projects.proposal.proposed_by' => ['text' => 'Proposé par', 'context' => 'Label identifying the author of a project proposal.'],
+            'projects.proposal.proposed_at' => ['text' => 'Proposé le', 'context' => 'Label identifying when a project was proposed.'],
+            'projects.proposal.refused_notification_title' => ['text' => 'Projet refusé', 'context' => 'Title of the notification sent after a project proposal is refused.'],
+            'projects.proposal.refused_notification_body' => ['text' => 'Votre proposition de projet "{title}" a été refusée.', 'context' => 'Body of the notification sent after a project proposal is refused.'],
+            'projects.chat.title' => ['text' => 'Discussion du projet', 'context' => 'Title of the chat window for a project.'],
+            'projects.chat.open' => ['text' => 'Ouvrir la discussion du projet', 'context' => 'Accessible label for the button opening the project chat.'],
+            'projects.chat.loading' => ['text' => 'Chargement de la discussion...', 'context' => 'Loading label shown while project chat messages load.'],
+            'projects.chat.empty' => ['text' => 'Aucun message pour le moment.', 'context' => 'Empty state for a project chat.'],
+            'projects.chat.placeholder' => ['text' => 'Écrire un message…', 'context' => 'Placeholder for the project chat composer.'],
+            'projects.chat.send' => ['text' => 'Envoyer', 'context' => 'Submit button for a project chat message.'],
+            'projects.chat.message_count' => ['one' => '{count} message', 'other' => '{count} messages', 'context' => 'Total number of messages in a project chat.'],
+            'projects.chat.messages_since_intervention' => ['one' => '{count} message depuis votre dernière intervention', 'other' => '{count} messages depuis votre dernière intervention', 'context' => 'Messages received since the viewer last wrote in the project chat.'],
+            'projects.chat.error.forbidden' => ['text' => 'Vous ne pouvez pas accéder à cette discussion.', 'context' => 'Error when the viewer cannot access a project chat.'],
+            'projects.chat.error.readonly' => ['text' => 'Cette discussion est archivée et ne peut plus recevoir de message.', 'context' => 'Error when posting to the chat of an archived project.'],
+            'projects.chat.error.invalid_message' => ['text' => 'Le message doit contenir entre 1 et 4000 caractères.', 'context' => 'Validation error for a project chat message.'],
+            'projects.chat.error.send' => ['text' => 'Impossible d envoyer le message.', 'context' => 'Error when saving a project chat message fails.'],
+            'projects.detail.breadcrumb' => ['text' => 'Projets parents', 'context' => 'Accessible label for the project parent breadcrumb.'],
+            'projects.detail.breadcrumb.expand' => ['text' => 'Afficher tous les projets parents', 'context' => 'Accessible title for the collapsed project breadcrumb button.'],
+            'projects.detail.description' => ['text' => 'Description', 'context' => 'Project detail description section label.'],
+            'projects.detail.context' => ['text' => 'Contexte', 'context' => 'Project detail holon section label.'],
+            'projects.detail.schedule' => ['text' => 'Dates planifiées', 'context' => 'Project detail planned dates section label.'],
+            'projects.detail.organisation' => ['text' => 'Organisation', 'context' => 'Project detail organization label.'],
+            'projects.detail.responsible' => ['text' => 'Personne en charge', 'context' => 'Project detail responsible person label.'],
+            'projects.detail.status' => ['text' => 'Statut', 'context' => 'Project detail status label.'],
+            'projects.detail.priority' => ['text' => 'Priorité', 'context' => 'Project detail priority label.'],
+            'projects.detail.importance' => ['text' => 'Importance stratégique', 'context' => 'Project detail importance label.'],
+            'projects.detail.calculated_importance' => ['text' => 'Importance stratégique calculée', 'context' => 'Server-calculated project importance label.'],
+            'projects.detail.calculated_importance_help' => ['text' => "Calculée à partir de l'importance stratégique déclarée, de la chaîne de projets et de la position holarchique.", 'context' => 'Help text for server-calculated project importance.'],
+            'projects.detail.importance_values_help' => ['text' => "Importance stratégique : valeur calculée / valeur définie.", 'context' => 'Help text for the calculated and defined importance values.'],
+            'projects.detail.size' => ['text' => 'Taille', 'context' => 'Project detail project size label.'],
+            'projects.detail.parent' => ['text' => 'Projet parent', 'context' => 'Project detail parent label.'],
+            'projects.detail.subprojects' => ['text' => 'Sous-projets', 'context' => 'Project detail subprojects section label.'],
+            'projects.detail.subprojects_new' => ['text' => 'Nouveau', 'context' => 'Button creating a new subproject from a project detail.'],
+            'projects.detail.subprojects_empty' => ['text' => 'Aucun sous-projet pour le moment.', 'context' => 'Empty state shown in the project detail subprojects section.'],
+            'projects.detail.tabs.label' => ['text' => 'Sections du projet', 'context' => 'Accessible label for the project detail tabs.'],
+            'projects.detail.tabs.information' => ['text' => 'Informations', 'context' => 'Project detail tab containing the project information.'],
+            'projects.detail.tabs.events' => ['text' => 'Événements', 'context' => 'Project detail events tab.'],
+            'projects.detail.tabs.indicators' => ['text' => 'Indicateurs', 'context' => 'Project detail indicators tab.'],
+            'projects.detail.tabs.recurring_tasks' => ['text' => 'Tâches récurrentes', 'context' => 'Project detail recurring tasks tab.'],
+            'projects.detail.tabs.history' => ['text' => 'Historique', 'context' => 'Project detail tab containing the project change history.'],
+            'projects.detail.events.empty' => ['text' => 'Aucun événement planifié', 'context' => 'Empty state for a project without associated events.'],
+            'projects.detail.events.empty_hint' => ['text' => 'Planifiez une séance de travail, un atelier ou un brainstorming pour ce projet.', 'context' => 'Explanation shown in the empty project events tab.'],
+            'projects.detail.events.new' => ['text' => 'Créer un événement', 'context' => 'Action opening the event editor for a project.'],
+            'projects.detail.events.menu' => ['text' => "Options de l'événement", 'context' => 'Accessible label for the project event actions menu.'],
+            'projects.detail.events.edit' => ['text' => 'Modifier l’événement', 'context' => 'Menu action opening the editor for an associated project event.'],
+            'projects.detail.events.duplicate' => ['text' => "Dupliquer l'événement", 'context' => 'Menu action opening a prefilled editor for an associated project event.'],
+            'projects.detail.events.delete' => ['text' => "Supprimer l'événement", 'context' => 'Menu action deleting an associated project event.'],
+            'projects.detail.events.confirm_delete' => ['text' => 'Supprimer cet événement ?', 'context' => 'Confirmation before deleting an associated project event.'],
+            'projects.detail.events.delete_error' => ['text' => "Impossible de supprimer l'événement.", 'context' => 'Error shown when deleting an associated project event fails.'],
+            'projects.detail.events.loading' => ['text' => 'Chargement des événements…', 'context' => 'Loading state for lazy project events.'],
+            'projects.detail.events.error' => ['text' => 'Impossible de charger les événements du projet.', 'context' => 'Error state for lazy project events.'],
+            'projects.detail.events.all_day' => ['text' => 'Toute la journée', 'context' => 'Time label for an all-day project event.'],
+            'projects.detail.events.section.today' => ['text' => "Aujourd'hui", 'context' => 'Project events section for events happening today.'],
+            'projects.detail.events.section.tomorrow' => ['text' => 'Demain', 'context' => 'Project events section for events happening tomorrow.'],
+            'projects.detail.events.section.this_week' => ['text' => 'Cette semaine', 'context' => 'Project events section for events happening later this week.'],
+            'projects.detail.events.section.next_week' => ['text' => 'La semaine prochaine', 'context' => 'Project events section for events happening next week.'],
+            'projects.detail.events.section.this_month' => ['text' => 'Ce mois', 'context' => 'Project events section for events happening later this month.'],
+            'projects.detail.events.section.next_month' => ['text' => 'Le mois prochain', 'context' => 'Project events section for events happening next month.'],
+            'projects.detail.events.month.1' => ['text' => 'Janvier', 'context' => 'Project events section label for January.'],
+            'projects.detail.events.month.2' => ['text' => 'Février', 'context' => 'Project events section label for February.'],
+            'projects.detail.events.month.3' => ['text' => 'Mars', 'context' => 'Project events section label for March.'],
+            'projects.detail.events.month.4' => ['text' => 'Avril', 'context' => 'Project events section label for April.'],
+            'projects.detail.events.month.5' => ['text' => 'Mai', 'context' => 'Project events section label for May.'],
+            'projects.detail.events.month.6' => ['text' => 'Juin', 'context' => 'Project events section label for June.'],
+            'projects.detail.events.month.7' => ['text' => 'Juillet', 'context' => 'Project events section label for July.'],
+            'projects.detail.events.month.8' => ['text' => 'Août', 'context' => 'Project events section label for August.'],
+            'projects.detail.events.month.9' => ['text' => 'Septembre', 'context' => 'Project events section label for September.'],
+            'projects.detail.events.month.10' => ['text' => 'Octobre', 'context' => 'Project events section label for October.'],
+            'projects.detail.events.month.11' => ['text' => 'Novembre', 'context' => 'Project events section label for November.'],
+            'projects.detail.events.month.12' => ['text' => 'Décembre', 'context' => 'Project events section label for December.'],
+            'projects.detail.tabs.documents' => ['text' => 'Documents', 'context' => 'Project detail documents tab.'],
+            'projects.resources.empty' => ['text' => 'Aucun élément lié à ce projet.', 'context' => 'Empty project resource tab.'],
+            'projects.resources.add_indicator' => ['text' => 'Ajouter un indicateur', 'context' => 'Open indicator picker for a project.'],
+            'projects.resources.add_recurring_task' => ['text' => 'Ajouter une tâche récurrente', 'context' => 'Open recurring task picker for a project.'],
+            'projects.resources.existing' => ['text' => 'Élément existant', 'context' => 'Existing resource picker tab.'],
+            'projects.resources.new' => ['text' => 'Nouvel élément', 'context' => 'New resource picker tab.'],
+            'projects.resources.search' => ['text' => 'Rechercher', 'context' => 'Resource picker search field.'],
+            'projects.resources.none' => ['text' => 'Aucun élément ne correspond à votre recherche.', 'context' => 'Empty result in the project resource picker.'],
+            'projects.resources.attach' => ['text' => 'Lier au projet', 'context' => 'Attach resource action.'],
+            'projects.resources.create' => ['text' => 'Créer et lier', 'context' => 'Create and attach resource action.'],
+            'projects.resources.detach' => ['text' => 'Détacher du projet', 'context' => 'Remove resource link action.'],
+            'projects.resources.name' => ['text' => 'Nom', 'context' => 'Indicator name field.'],
+            'projects.resources.title' => ['text' => 'Titre', 'context' => 'Recurring task title field.'],
+            'projects.resources.description' => ['text' => 'Description', 'context' => 'New resource description field.'],
+            'projects.resources.frequency' => ['text' => 'Fréquence', 'context' => 'Recurring task frequency field.'],
+            'projects.resources.schedule' => ['text' => 'Moment attendu', 'context' => 'Recurring task schedule field.'],
+            'projects.resources.error' => ['text' => 'Impossible de lier cet élément au projet.', 'context' => 'Project resource action error.'],
+            'projects.detail.documents.empty' => ['text' => 'Aucun fichier à afficher', 'context' => 'Empty state for a project without attached documents.'],
+            'projects.detail.documents.empty_hint' => ['text' => 'Créez un premier fichier pour le retrouver directement dans ce projet.', 'context' => 'Explanation shown in the empty project documents tab.'],
+            'projects.detail.documents.new' => ['text' => 'Ajouter un document', 'context' => 'Action opening the project document creation drawer.'],
+            'projects.detail.documents.drawer_title' => ['text' => 'Ajouter un document', 'context' => 'Title of the document creation subdrawer opened from a project.'],
+            'projects.detail.documents.drawer_description' => ['text' => 'Ajoutez un document associé à ce projet.', 'context' => 'Description of the document creation subdrawer opened from a project.'],
+            'projects.detail.documents.add' => ['text' => 'Ajouter un document', 'context' => 'Action opening the documents application from an empty project document list.'],
+            'projects.detail.documents.added' => ['text' => 'Ajouté le {date}', 'context' => 'Date label shown for a document attached to a project.'],
+            'projects.detail.documents.loading' => ['text' => 'Chargement des documents…', 'context' => 'Loading state for lazy project documents.'],
+            'projects.detail.documents.error' => ['text' => 'Impossible de charger les documents du projet.', 'context' => 'Error state for lazy project documents.'],
+            'projects.detail.documents.folder_loading' => ['text' => 'Chargement du dossier…', 'context' => 'Loading state for a folder expanded in the project documents list.'],
+            'projects.detail.documents.folder_empty' => ['text' => 'Dossier vide.', 'context' => 'Empty state for a folder expanded in the project documents list.'],
+            'projects.detail.documents.folder_error' => ['text' => 'Impossible de charger le contenu du dossier.', 'context' => 'Error state for a folder expanded in the project documents list.'],
+			'projects.detail.documents.remote_folder' => ['text' => 'Dossier distant', 'context' => 'Type label for an attached remote folder.'],
+			'projects.detail.documents.remote_entry_folder' => ['text' => 'Dossier {storage}', 'context' => 'Type label for a folder shown inside an attached remote folder.'],
+			'projects.detail.documents.remote_entry_file' => ['text' => '{storage}', 'context' => 'Type label for a file shown inside an attached remote folder.'],
+            'projects.history.loading' => ['text' => 'Chargement de l’historique...', 'context' => 'History tab loading message.'],
+            'projects.history.error' => ['text' => 'Impossible de charger l’historique.', 'context' => 'History tab loading error.'],
+            'projects.history.empty' => ['text' => 'Aucune modification n’a encore été enregistrée pour ce projet.', 'context' => 'Empty project history state.'],
+            'projects.history.detail' => ['text' => 'Détail', 'context' => 'Summary opening the detailed field changes of a project history entry.'],
+            'projects.history.system' => ['text' => 'Système', 'context' => 'Author label for an automatic project history action.'],
+            'projects.detail.documents.menu' => ['text' => 'Options du document', 'context' => 'Accessible label for the project document actions menu.'],
+            'projects.detail.documents.open_new_window' => ['text' => 'Ouvrir dans un nouvel onglet', 'context' => 'Menu action opening a project document in a new browser tab.'],
+            'projects.detail.documents.detach' => ['text' => 'Détacher du projet', 'context' => 'Menu action removing only the project-document association.'],
+            'projects.detail.documents.delete' => ['text' => 'Supprimer le document', 'context' => 'Menu action permanently deleting a project-owned document.'],
+            'projects.detail.documents.confirm_detach' => ['text' => 'Détacher ce document du projet ?', 'context' => 'Confirmation before removing a project-document association.'],
+            'projects.detail.documents.confirm_delete' => ['text' => 'Supprimer définitivement ce document ?', 'context' => 'Confirmation before deleting a project-owned document.'],
+            'projects.detail.documents.remove_error' => ['text' => 'Impossible de retirer ce document du projet.', 'context' => 'Error shown when a project document cannot be detached or deleted.'],
+            'projects.detail.documents.picker_title' => ['text' => 'Ajouter un document', 'context' => 'Title of the project document picker.'],
+            'projects.detail.documents.picker_tabs' => ['text' => 'Choix du document', 'context' => 'Accessible label for the project document picker tabs.'],
+            'projects.detail.documents.picker_existing' => ['text' => 'Document existant', 'context' => 'Existing document tab in the project document picker.'],
+            'projects.detail.documents.picker_new' => ['text' => 'Nouveau document', 'context' => 'New document tab in the project document picker.'],
+            'projects.detail.documents.picker_search' => ['text' => 'Rechercher un document', 'context' => 'Search label in the project document picker.'],
+            'projects.detail.documents.picker_visible' => ['text' => 'Documents visibles', 'context' => 'Accessible label for the document selection list.'],
+            'projects.detail.documents.picker_none' => ['text' => 'Aucun document ne correspond à votre recherche.', 'context' => 'Empty state in the project document picker.'],
+            'projects.detail.documents.picker_attach' => ['text' => 'Associer au projet', 'context' => 'Action associating an existing document with a project.'],
+            'projects.detail.documents.picker_select_required' => ['text' => 'Choisissez un document à associer.', 'context' => 'Validation message when no document is selected.'],
+            'projects.detail.documents.picker_error' => ['text' => 'Impossible de charger les documents disponibles.', 'context' => 'Error shown when the project document picker cannot load.'],
+            'projects.detail.documents.picker_attach_error' => ['text' => "Impossible d'associer ce document au projet.", 'context' => 'Error shown when an existing document cannot be associated.'],
+            'projects.detail.documents.picker_create_error' => ['text' => 'Impossible de créer ce document.', 'context' => 'Error shown when a new project document cannot be created.'],
+            'projects.detail.documents.picker_template_hint' => ['text' => 'Choisissez un modèle ou créez un document vide.', 'context' => 'Instruction shown when creating a document from a project.'],
+            'projects.detail.documents.picker_blank' => ['text' => 'Créer un document vide', 'context' => 'Action opening the blank document form from a project.'],
+            'projects.detail.documents.picker_template_error' => ['text' => 'Impossible de créer le document depuis ce modèle.', 'context' => 'Error shown when a document template cannot be copied for a project.'],
+            'projects.detail.task.archive' => ['text' => 'Archiver', 'context' => 'Task action in the project detail status selector.'],
+            'projects.detail.task.delete' => ['text' => 'Supprimer', 'context' => 'Task action in the project detail status selector.'],
+            'projects.detail.task.delete_confirm' => ['text' => 'Supprimer définitivement cette tâche ? Cette action est irréversible.', 'context' => 'Confirmation before permanently deleting a task from the project detail.'],
+            'projects.detail.archives.link' => ['text' => 'Voir les archives', 'context' => 'Text link opening archived subprojects.'],
+            'projects.detail.archives.title' => ['text' => 'Projets archivés', 'context' => 'Title of the archived subprojects popup.'],
+            'projects.detail.archives.empty' => ['text' => 'Aucun projet archivé.', 'context' => 'Empty state for archived subprojects.'],
+            'projects.archives.title' => ['text' => 'Archives des projets', 'context' => 'Title of the global archived projects popup.'],
+            'projects.archives.empty' => ['text' => 'Aucun projet archivé ne correspond à cette vue.', 'context' => 'Empty state for the global archived projects popup.'],
+            'projects.archives.group.today' => ['text' => "Aujourd'hui", 'context' => 'Relative archive date group for projects archived today.'],
+            'projects.archives.group.yesterday' => ['text' => 'Hier', 'context' => 'Relative archive date group for projects archived yesterday.'],
+            'projects.archives.group.this_week' => ['text' => 'Cette semaine', 'context' => 'Relative archive date group for projects archived earlier this week.'],
+            'projects.archives.group.last_week' => ['text' => 'La semaine passée', 'context' => 'Relative archive date group for projects archived last week.'],
+            'projects.archives.group.this_month' => ['text' => 'Ce mois', 'context' => 'Relative archive date group for projects archived earlier this month.'],
+            'projects.archives.group.last_month' => ['text' => 'Le mois passé', 'context' => 'Relative archive date group for projects archived last month.'],
+            'projects.archives.group.this_year' => ['text' => 'Cette année', 'context' => 'Relative archive date group for projects archived earlier this year.'],
+            'projects.archives.group.last_year' => ['text' => "L'année passée", 'context' => 'Relative archive date group for projects archived last year.'],
+            'projects.archives.group.earlier' => ['text' => 'Plus ancien', 'context' => 'Relative archive date group for older archived projects.'],
+            'projects.archives.group.too_far' => ['text' => 'Date inconnue', 'context' => 'Fallback archive date group for projects without a usable date.'],
+            'projects.archives.date.closed' => ['text' => 'Clôturé le {date}', 'context' => 'Date label for an archived project completed before archival.'],
+            'projects.archives.date.archived' => ['text' => 'Archivé le {date}', 'context' => 'Date label for a project archived without a closure date.'],
+            'projects.detail.created' => ['text' => 'Créé le', 'context' => 'Project detail creation date label.'],
+            'projects.detail.empty_description' => ['text' => 'Aucune description pour ce projet.', 'context' => 'Fallback when the project has no description.'],
+            'projects.detail.none' => ['text' => 'Non renseigné', 'context' => 'Fallback for missing project metadata.'],
+            'projects.detail.date_start' => ['text' => 'Début', 'context' => 'Planned start date label.'],
+            'projects.detail.date_end' => ['text' => 'Fin', 'context' => 'Planned end date label.'],
+            'projects.subprojects.label' => ['text' => 'État des sous-projets', 'context' => 'Accessible label for the recursive subproject status bar.'],
+            'projects.detail.priority_level' => ['one' => 'P{count}', 'other' => 'P{count}', 'context' => 'Project priority level.'],
+            'projects.detail.importance_level' => ['one' => '{count}/5', 'other' => '{count}/5', 'context' => 'Project importance level.'],
+            'projects.form.title' => ['text' => 'Nouveau projet', 'context' => 'Project creation form title.'],
+            'projects.form.description' => ['text' => "Définissez le but, les dates et le niveau d'attention du projet.", 'context' => 'Project creation form introduction.'],
+            'projects.form.submit' => ['text' => 'Créer le projet', 'context' => 'Submit button creating a project.'],
+            'projects.form.edit_title' => ['text' => 'Modifier le projet', 'context' => 'Project edition form title.'],
+            'projects.form.edit_description' => ['text' => 'Mettez à jour le but, les dates et les paramètres du projet.', 'context' => 'Project edition form introduction.'],
+            'projects.form.edit_submit' => ['text' => 'Enregistrer les modifications', 'context' => 'Submit button saving project changes.'],
+            'projects.form.description_field' => ['text' => 'Description HTML simple', 'context' => 'Label for the project HTML description editor.'],
+            'projects.form.assignment' => ['text' => 'Responsabilité et hiérarchie', 'context' => 'Section title grouping the responsible person and parent project in the project form.'],
+            'projects.form.planning' => ['text' => 'Planification', 'context' => 'Section title grouping status and planned dates in the project form.'],
+            'projects.form.blocked' => ['text' => 'Détails du blocage', 'context' => 'Project form section shown when the status is blocked.'],
+            'projects.form.attention' => ['text' => "Niveau d'attention", 'context' => 'Section title grouping priority and importance controls in the project form.'],
+            'projects.form.more_options' => ['text' => 'Options supplémentaires', 'context' => 'Collapsed project form section title for secondary settings.'],
+            'projects.form.more_options_toggle' => ['text' => 'Afficher ou masquer les options supplémentaires', 'context' => 'Accessible label for the secondary project form options accordion.'],
+            'projects.status.someday' => ['text' => 'Un jour peut-être', 'context' => 'Project status label.'],
+            'projects.status.ready' => ['text' => 'Prêt', 'context' => 'Project status label.'],
+            'projects.status.in_progress' => ['text' => 'En cours', 'context' => 'Project status label.'],
+            'projects.status.blocked' => ['text' => 'Bloqué', 'context' => 'Project status label.'],
+            'projects.status.review' => ['text' => 'À vérifier', 'context' => 'Project status label.'],
+            'projects.status.done' => ['text' => 'Terminé', 'context' => 'Project status label.'],
+            'projects.status_move' => ['text' => 'Changer le statut', 'context' => 'Accessible label for the project status move control.'],
+            'projects.priority.none' => ['text' => 'Non définie', 'context' => 'Empty option for project priority.'],
+            'projects.importance.none' => ['text' => 'Non définie', 'context' => 'Empty option for project importance.'],
+            'projects.field.priority' => ['text' => 'Priorité', 'context' => 'Project creation priority field label.'],
+            'projects.field.importance' => ['text' => 'Importance stratégique', 'context' => 'Project creation importance field label.'],
+            'projects.field.status' => ['text' => 'Statut initial', 'context' => 'Project creation status field label.'],
+            'projects.field.start_date' => ['text' => 'Début planifié', 'context' => 'Project planned start date field label.'],
+            'projects.field.end_date' => ['text' => 'Fin planifiée', 'context' => 'Project planned end date field label.'],
+            'projects.field.parent' => ['text' => 'Projet parent', 'context' => 'Project parent field label.'],
+            'projects.field.holon' => ['text' => 'Espace associé', 'context' => 'Project assignment holon field label.'],
+            'projects.field.responsible' => ['text' => 'Responsable', 'context' => 'Project responsible user field label.'],
+            'projects.field.title' => ['text' => 'Titre du projet', 'context' => 'Project title field label.'],
+            'projects.field.description' => ['text' => 'Description', 'context' => 'Project description field label.'],
+            'projects.field.description_placeholder' => ['text' => 'Quel résultat voulez-vous obtenir ?', 'context' => 'Placeholder for the project description field.'],
+            'projects.field.size' => ['text' => 'Taille', 'context' => 'Project size field label.'],
+            'projects.field.capture_mode' => ['text' => 'Mode de capture Telegram', 'context' => 'Project Telegram capture mode field label.'],
+            'projects.capture_mode.multiple_documents' => ['text' => 'Documents multiples', 'context' => 'Project Telegram capture mode option.'],
+            'projects.capture_mode.single_journal' => ['text' => 'Journal unique', 'context' => 'Project Telegram capture mode option.'],
+            'projects.responsible.none' => ['text' => 'Aucun responsable', 'context' => 'Empty responsible person option in the project form.'],
+            'projects.responsible.unassigned' => ['text' => 'Non attribué', 'context' => 'Empty person in charge label in project views.'],
+            'projects.responsible.help' => ['text' => 'Seules les personnes actives de cette organisation sont proposées.', 'context' => 'Help text below the responsible person selector in the project form.'],
+            'projects.parent.none' => ['text' => 'Aucun projet parent', 'context' => 'Empty parent project value in the project form.'],
+            'projects.parent.choose' => ['text' => 'Choisir un projet', 'context' => 'Button opening the parent project picker in the project form.'],
+            'projects.parent_picker.title' => ['text' => 'Choisir le projet parent', 'context' => 'Modal title for selecting a parent project.'],
+            'projects.parent_picker.search' => ['text' => 'Rechercher un projet', 'context' => 'Search placeholder in the parent project picker modal.'],
+            'projects.parent_picker.empty' => ['text' => 'Aucun projet ne correspond à la recherche.', 'context' => 'Empty state in the parent project picker modal.'],
+            'projects.parent_picker.none' => ['text' => 'Sans projet parent', 'context' => 'Empty option in the parent project picker modal.'],
+            'projects.parent_picker.choose' => ['text' => 'Utiliser ce projet', 'context' => 'Confirmation button in the parent project picker modal.'],
+            'projects.parent_picker.scope_local' => ['text' => 'Local', 'context' => 'Local scope label in the parent project picker structure navigation.'],
+            'projects.parent_picker.scope_children' => ['text' => 'Enfants directs', 'context' => 'Direct child scope label in the parent project picker structure navigation.'],
+            'projects.parent_picker.scope_descendants' => ['text' => 'Descendants', 'context' => 'Descendant scope label in the parent project picker structure navigation.'],
+            'projects.holon.choose' => ['text' => 'Choisir un espace', 'context' => 'Button opening the project space picker.'],
+            'projects.holon_picker.title' => ['text' => 'Choisir un espace', 'context' => 'Modal title for selecting the project assignment space.'],
+            'projects.holon_picker.hint' => ['text' => 'Choisissez l espace auquel confier ce projet.', 'context' => 'Instruction in the project space picker modal.'],
+            'projects.holon_picker.confirm' => ['text' => 'Utiliser ce contexte', 'context' => 'Confirmation button in the project holon picker modal.'],
+            'projects.attach.title' => ['text' => 'Attacher un projet', 'context' => 'Modal title for attaching an orphan project as a subproject.'],
+            'projects.attach.hint' => ['text' => 'Choisissez un projet sans parent dans la structure.', 'context' => 'Instruction in the attach existing project modal.'],
+            'projects.attach.search' => ['text' => 'Rechercher un projet', 'context' => 'Search placeholder in the attach existing project modal.'],
+            'projects.attach.empty' => ['text' => 'Aucun projet sans parent ne correspond à la recherche.', 'context' => 'Empty state in the attach existing project modal.'],
+            'projects.attach.submit' => ['text' => 'Attacher', 'context' => 'Submit button attaching the selected project.'],
+            'projects.attach.select_required' => ['text' => 'Choisissez un projet à attacher.', 'context' => 'Validation message when no project is selected for attachment.'],
+            'projects.children.show_subprojects' => ['text' => 'Afficher les sous-projets de {title}', 'context' => 'Accessible label for expanding a project child list.'],
+            'projects.level.none' => ['text' => 'Non définie', 'context' => 'Zero level label for priority and importance range controls.'],
+        ];
+    }
+}
+
+if (!function_exists('omoProjectsLoadTranslationBundle')) {
+    function omoProjectsLoadTranslationBundle()
+    {
+        static $bundle = null;
+        if ($bundle === null) {
+            $sourceLang = omoProjectsSourceLang();
+            $bundle = omoLoadTranslationBundle('omo_projects', $sourceLang);
+        }
+        return $bundle;
+    }
+}
+
+if (!function_exists('omoProjectsT')) {
+    function omoProjectsT($key, array $replace = [])
+    {
+        $sourceLang = omoProjectsSourceLang();
+        return t($key, $replace, omoProjectsLoadTranslationBundle(), $sourceLang);
+    }
+}
+
+if (!function_exists('omoProjectsIsStructuralShareRequest')) {
+    function omoProjectsIsStructuralShareRequest(): bool
+    {
+        $shareLink = function_exists('commonGetCurrentShareLink')
+            ? commonGetCurrentShareLink()
+            : null;
+
+        return $shareLink instanceof \dbObject\HolonShareLink;
+    }
+}
+
+if (!function_exists('omoProjectsAreAvailableForCurrentRequest')) {
+    function omoProjectsAreAvailableForCurrentRequest(): bool
+    {
+        // A structural share exposes only the explicitly selected structure
+        // and people data. It never grants access to the Projects application.
+        return !omoProjectsIsStructuralShareRequest();
+    }
+}
+
+if (!function_exists('omoProjectsCanRevealProjectTitle')) {
+    function omoProjectsCanRevealProjectTitle(Project $project): bool
+    {
+        if ((int)$project->getId() <= 0 || (int)$project->get('IDorganization') <= 0) {
+            return false;
+        }
+
+        if (!omoProjectsIsStructuralShareRequest()) {
+            return true;
+        }
+
+        $shareLink = commonGetCurrentShareLink();
+        return $shareLink instanceof \dbObject\HolonShareLink
+            && $shareLink->canViewOrganization((int)$project->get('IDorganization'));
+    }
+}
+
+if (!function_exists('omoProjectsResolveContext')) {
+    function omoProjectsResolveContext($organizationId, $currentHolonId = 0)
+    {
+        $organizationId = (int)$organizationId;
+        $currentHolonId = (int)$currentHolonId;
+
+        if (!omoProjectsAreAvailableForCurrentRequest()) {
+            return ['status' => false, 'message' => omoProjectsT('projects.error.context')];
+        }
+
+        $organization = new Organization();
+
+        if ($organizationId <= 0 || !$organization->load($organizationId) || !$organization->canViewDetail()) {
+            return ['status' => false, 'message' => omoProjectsT('projects.error.organization')];
+        }
+
+        \dbObject\ProjectImportanceCalculator::ensureOrganizationInitialized($organizationId);
+
+        $rootHolon = $organization->getEnabledStructuralRootHolon();
+        $currentHolon = $rootHolon instanceof Holon ? $rootHolon : null;
+        if ($currentHolonId > 0) {
+            $candidate = new Holon();
+            if (
+                !$candidate->load($currentHolonId)
+                || !($rootHolon instanceof Holon)
+                || !$candidate->isDescendantOf((int)$rootHolon->getId(), true)
+                || !$candidate->canViewDetail()
+            ) {
+                return ['status' => false, 'message' => omoProjectsT('projects.error.context')];
+            }
+            $currentHolon = $candidate;
+        }
+
+        return [
+            'status' => true,
+            'organization' => $organization,
+            'rootHolon' => $rootHolon instanceof Holon ? $rootHolon : null,
+            'currentHolon' => $currentHolon,
+            'pvMeetingPermission' => commonResolvePvMeetingPermissionContext((int)$organizationId),
+        ];
+    }
+}
+
+if (!function_exists('omoProjectsCanManageContext')) {
+    function omoProjectsCanManageContext(array $context)
+    {
+        $currentHolon = $context['currentHolon'] ?? null;
+        if ($currentHolon instanceof Holon) {
+            return omoProjectsCanUsePermission($currentHolon, 'CAN_EDIT_PROJECT', $context)
+                || omoProjectsCanUsePermission($currentHolon, 'CAN_CREATE_PROJECT', $context);
+        }
+
+        $organization = $context['organization'] ?? null;
+        return $organization instanceof Organization && (\dbObject\Permission::userCanInOrganization('CAN_EDIT_PROJECT', (int)$organization->getId(), (int)commonGetCurrentUserId()) || \dbObject\Permission::userCanInOrganization('CAN_CREATE_PROJECT', (int)$organization->getId(), (int)commonGetCurrentUserId()));
+    }
+}
+
+if (!function_exists('omoProjectsCanUsePermission')) {
+    function omoProjectsCanUsePermission(Holon $holon, string $permissionKey, array $context): bool
+    {
+        $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
+        if ($currentUserId <= 0) {
+            return false;
+        }
+
+        $useSessionCache = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST';
+        return $holon->isAllowed($permissionKey, $useSessionCache, $currentUserId)
+            || commonPvMeetingCanUseCollectivePermission($context['pvMeetingPermission'] ?? null, $holon, $permissionKey);
+    }
+}
+
+if (!function_exists('omoProjectsPvMeetingQuery')) {
+    function omoProjectsPvMeetingQuery(int $organizationId): string
+    {
+        $meetingContext = commonResolvePvMeetingPermissionContext($organizationId);
+        $request = $_SERVER['REQUEST_METHOD'] === 'POST' ? $_POST : $_GET;
+        $editorToken = trim((string)($request['pv_meeting_editor_token'] ?? ''));
+        $documentId = is_array($meetingContext) ? (int)($meetingContext['documentId'] ?? 0) : 0;
+        return $documentId > 0 && $editorToken !== ''
+            ? '&pv_meeting_document_id=' . $documentId . '&pv_meeting_editor_token=' . rawurlencode($editorToken)
+            : '';
+    }
+}
+
+if (!function_exists('omoProjectsCanCreateContext')) {
+    function omoProjectsCanCreateContext(array $context)
+    {
+        $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
+        if ($currentUserId <= 0) {
+            return false;
+        }
+
+        $currentHolon = $context['currentHolon'] ?? null;
+        if ($currentHolon instanceof Holon) {
+            return omoProjectsCanUsePermission($currentHolon, 'CAN_CREATE_PROJECT', $context);
+        }
+
+        $organization = $context['organization'] ?? null;
+        $rootHolon = $context['rootHolon'] ?? null;
+        if ($rootHolon instanceof Holon) {
+            return omoProjectsCanUsePermission($rootHolon, 'CAN_CREATE_PROJECT', $context);
+        }
+
+        return $organization instanceof Organization && (\dbObject\Permission::userCanInOrganization('CAN_CREATE_PROJECT', (int)$organization->getId(), $currentUserId));
+    }
+}
+
+if (!function_exists('omoProjectsCanProposeContext')) {
+    function omoProjectsCanProposeContext(array $context)
+    {
+        $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
+        if ($currentUserId <= 0 || omoProjectsCanCreateContext($context)) {
+            return false;
+        }
+
+        $useSessionCache = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST';
+        $currentHolon = $context['currentHolon'] ?? null;
+        if ($currentHolon instanceof Holon) {
+            return $currentHolon->isAllowed('CAN_PROPOSE_PROJECT', $useSessionCache, $currentUserId);
+        }
+
+        $rootHolon = $context['rootHolon'] ?? null;
+        return $rootHolon instanceof Holon
+            && $rootHolon->isAllowed('CAN_PROPOSE_PROJECT', $useSessionCache, $currentUserId);
+    }
+}
+
+if (!function_exists('omoProjectsCanRespondToProposal')) {
+    function omoProjectsCanRespondToProposal(Project $project, array $context)
+    {
+        if (!$project->isPendingProposal()) {
+            return false;
+        }
+
+        $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
+        if ($currentUserId <= 0) {
+            return false;
+        }
+        if ((int)$project->get('IDuser') === $currentUserId) {
+            return true;
+        }
+
+        $projectHolon = $project->getHolon();
+        if (!($projectHolon instanceof Holon)) {
+            return false;
+        }
+
+        // A proposal addressed to a role can be decided by a current member
+        // of that exact role. This lookup intentionally bypasses the session
+        // permission cache so a newly added member can act immediately.
+        static $directMembershipCache = [];
+        $membershipKey = $currentUserId . ':' . (int)$projectHolon->getId();
+        if (!array_key_exists($membershipKey, $directMembershipCache)) {
+            $memberships = \dbObject\UserHolon::fetchEffectiveRowsForUserAndHolonIds(
+                $currentUserId,
+                [(int)$projectHolon->getId()]
+            );
+            $directMembershipCache[$membershipKey] = count($memberships) > 0;
+        }
+        if ($directMembershipCache[$membershipKey]) {
+            return true;
+        }
+
+        return omoProjectsCanUsePermission($projectHolon, 'CAN_CREATE_PROJECT', $context);
+    }
+}
+
+if (!function_exists('omoProjectsCanViewProject')) {
+    function omoProjectsCanViewProject(Project $project, array $context)
+    {
+        if (empty($context['status']) || !omoProjectsAreAvailableForCurrentRequest()) {
+            return false;
+        }
+
+        if (!$project->isPrivateProposal()) {
+            return true;
+        }
+
+        $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
+        if ($currentUserId <= 0) {
+            return false;
+        }
+        if (
+            (int)$project->get('IDuser_proposed') === $currentUserId
+            || (int)$project->get('IDuser') === $currentUserId
+            || ($project->isPendingProposal() && omoProjectsCanRespondToProposal($project, $context))
+        ) {
+            return true;
+        }
+
+        $projectHolon = $project->getHolon();
+        return $projectHolon instanceof Holon
+            && omoProjectsCanUsePermission($projectHolon, 'CAN_CREATE_PROJECT', $context);
+    }
+}
+
+if (!function_exists('omoProjectsCanManageProject')) {
+    function omoProjectsCanManageProject(Project $project, array $context)
+    {
+        $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
+        if (commonUserHasAdminOverride($currentUserId, (int)$project->get('IDorganization'))) return true;
+        if ($project->isPendingProposal()) {
+            // When somebody is both proposer and recipient, the recipient
+            // workflow has priority: they can accept or refuse, not edit.
+            if (omoProjectsCanRespondToProposal($project, $context)) {
+                return false;
+            }
+
+            return $currentUserId > 0 && (int)$project->get('IDuser_proposed') === $currentUserId;
+        }
+
+        // A person directly responsible for a project can manage it even
+        // without the project-edit permission on its holon.
+        if ($currentUserId > 0 && (int)$project->get('IDuser') === $currentUserId) {
+            return true;
+        }
+
+        $projectHolon = $project->getHolon();
+        if ($projectHolon instanceof Holon) {
+            if ($currentUserId <= 0) {
+                return false;
+            }
+
+            return omoProjectsCanUsePermission($projectHolon, 'CAN_EDIT_PROJECT', $context);
+        }
+
+        // A task without its own holon inherits the management right of its
+        // project chain. This keeps project-owned tasks editable even when
+        // they are not directly attached to a holon.
+        $parent = $project->getParent();
+        if (
+            $parent instanceof Project
+            && (int)$parent->getId() !== (int)$project->getId()
+            && (int)$parent->get('IDorganization') === (int)$project->get('IDorganization')
+            && (int)$parent->get('active') === 1
+            && omoProjectsCanManageProject($parent, $context)
+        ) {
+            return true;
+        }
+
+        $rootHolon = $context['rootHolon'] ?? null;
+        if ($rootHolon instanceof Holon && omoProjectsCanUsePermission($rootHolon, 'CAN_EDIT_PROJECT', $context)) {
+            return true;
+        }
+
+        $organization = $context['organization'] ?? null;
+        return $organization instanceof Organization && (\dbObject\Permission::userCanInOrganization('CAN_EDIT_PROJECT', (int)$organization->getId(), (int)commonGetCurrentUserId()));
+    }
+}
+
+if (!function_exists('omoProjectsCanCreateDocument')) {
+    function omoProjectsCanCreateDocument(Project $project, $currentUserId = 0)
+    {
+        $currentUserId = (int)$currentUserId;
+        if ($currentUserId <= 0 || (int)$project->get('active') !== 1 || $project->isPendingProposal()) {
+            return false;
+        }
+
+        $projectHolon = $project->getHolon();
+        if ($projectHolon instanceof Holon) {
+            return $projectHolon->isAllowed('CAN_CREATE_DOCUMENT', true, $currentUserId);
+        }
+
+        return Document::canCreateInOrganizationContext((int)$project->get('IDorganization'), null, $currentUserId, 0, false);
+    }
+}
+
+if (!function_exists('omoProjectsCanDeleteProject')) {
+    function omoProjectsCanDeleteProject(Project $project, array $context)
+    {
+        if (commonUserHasAdminOverride((int)commonGetCurrentUserId(), (int)$project->get('IDorganization'))) return true;
+        $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
+        if ($currentUserId <= 0) {
+            return false;
+        }
+        if ($project->isPendingProposal()) {
+            return (int)$project->get('IDuser_proposed') === $currentUserId;
+        }
+
+        $projectHolon = $project->getHolon();
+        if ($projectHolon instanceof Holon) {
+            return omoProjectsCanUsePermission($projectHolon, 'CAN_DELETE_PROJECT', $context);
+        }
+
+        $parent = $project->getParent();
+        if (
+            $parent instanceof Project
+            && (int)$parent->getId() !== (int)$project->getId()
+            && (int)$parent->get('IDorganization') === (int)$project->get('IDorganization')
+        ) {
+            return omoProjectsCanDeleteProject($parent, $context);
+        }
+
+        $rootHolon = $context['rootHolon'] ?? null;
+        if ($rootHolon instanceof Holon) {
+            return omoProjectsCanUsePermission($rootHolon, 'CAN_DELETE_PROJECT', $context);
+        }
+
+        $organization = $context['organization'] ?? null;
+        return $organization instanceof Organization && (\dbObject\Permission::userCanInOrganization('CAN_DELETE_PROJECT', (int)$organization->getId(), $currentUserId));
+    }
+}
+
+if (!function_exists('omoProjectsIsKanbanVisible')) {
+    function omoProjectsIsKanbanVisible(Project $project, array $projectsById, array $projectsByParent, array $visibleProjectIds = [])
+    {
+        $children = $projectsByParent[(int)$project->getId()] ?? [];
+        if (count($children) > 0) {
+            return true;
+        }
+
+        $parentId = (int)$project->get('IDproject_parent');
+        if ($parentId <= 0) {
+            return true;
+        }
+
+        $parent = $projectsById[$parentId] ?? null;
+        if (!($parent instanceof Project)) {
+            return true;
+        }
+
+        return !isset($visibleProjectIds[$parentId]);
+    }
+}
+
+if (!function_exists('omoProjectsCountDescendants')) {
+    function omoProjectsCountDescendants($projectId, array $childrenByParent, array &$visited = [])
+    {
+        $projectId = (int)$projectId;
+        if ($projectId <= 0 || isset($visited[$projectId])) {
+            return 0;
+        }
+
+        $visited[$projectId] = true;
+        $count = 0;
+        foreach ($childrenByParent[$projectId] ?? [] as $child) {
+            if (!($child instanceof Project)) {
+                continue;
+            }
+            $childId = (int)$child->getId();
+            if ($childId <= 0 || isset($visited[$childId])) {
+                continue;
+            }
+            $count++;
+            $count += omoProjectsCountDescendants($childId, $childrenByParent, $visited);
+        }
+        return $count;
+    }
+}
+
+if (!function_exists('omoProjectsFormatDate')) {
+    function omoProjectsFormatDate($value)
+    {
+        return $value instanceof \DateTimeInterface ? $value->format('d.m.Y') : '';
+    }
+}
+
+if (!function_exists('omoProjectsGetArchiveDate')) {
+    function omoProjectsGetArchiveDate(Project $project): array
+    {
+        $plannedEndDate = $project->get('planned_end_date');
+        if (Project::normalizeStatus($project->get('status')) === Project::STATUS_DONE) {
+            $closedAt = $project->get('closed_at');
+            if ($closedAt instanceof \DateTimeInterface) {
+                return [
+                    'date' => \DateTimeImmutable::createFromInterface($closedAt),
+                    'type' => 'closed',
+                ];
+            }
+            if ($plannedEndDate instanceof \DateTimeInterface) {
+                return [
+                    'date' => \DateTimeImmutable::createFromInterface($plannedEndDate),
+                    'type' => 'closed',
+                ];
+            }
+        }
+
+        $archivedAt = $project->get('archived_at');
+        if ($archivedAt instanceof \DateTimeInterface) {
+            return [
+                'date' => \DateTimeImmutable::createFromInterface($archivedAt),
+                'type' => 'archived',
+            ];
+        }
+
+        $updatedAt = $project->get('updated_at');
+        if ($updatedAt instanceof \DateTimeInterface) {
+            return [
+                'date' => \DateTimeImmutable::createFromInterface($updatedAt),
+                'type' => 'archived',
+            ];
+        }
+
+        return [
+            'date' => null,
+            'type' => 'archived',
+        ];
+    }
+}
+
+if (!function_exists('omoProjectsNormalizeSearchText')) {
+    function omoProjectsNormalizeSearchText($value): string
+    {
+        $normalized = (string)$value;
+        if (class_exists('Normalizer')) {
+            $normalized = \Normalizer::normalize($normalized, \Normalizer::FORM_D) ?: $normalized;
+        }
+        $normalized = preg_replace('/\\p{Mn}+/u', '', $normalized) ?: $normalized;
+        return mb_strtolower(trim($normalized), 'UTF-8');
+    }
+}
+
+if (!function_exists('omoProjectsFormatGanttDateRange')) {
+    function omoProjectsFormatGanttDateRange(\DateTimeInterface $start, \DateTimeInterface $end)
+    {
+        if ($start->format('Y-m-d') === $end->format('Y-m-d')) {
+            return $start->format('d.m.Y');
+        }
+        if ($start->format('Y-m') === $end->format('Y-m')) {
+            return $start->format('d') . '-' . $end->format('d.m.Y');
+        }
+        if ($start->format('Y') === $end->format('Y')) {
+            return $start->format('d.m') . '-' . $end->format('d.m.Y');
+        }
+        return $start->format('d.m.Y') . '-' . $end->format('d.m.Y');
+    }
+}
+
+if (!function_exists('omoProjectsResolveGanttDates')) {
+    function omoProjectsResolveGanttDates(Project $project, array $projectsById, array &$memo = [], array $path = [])
+    {
+        $projectId = (int)$project->getId();
+        if ($projectId > 0 && isset($memo[$projectId])) {
+            return $memo[$projectId];
+        }
+
+        $start = $project->get('planned_start_date');
+        $end = $project->get('planned_end_date');
+        $start = $start instanceof \DateTimeInterface ? \DateTimeImmutable::createFromInterface($start) : null;
+        $end = $end instanceof \DateTimeInterface ? \DateTimeImmutable::createFromInterface($end) : null;
+        $inheritedStart = false;
+        $inheritedEnd = false;
+        $parentId = (int)$project->get('IDproject_parent');
+
+        if ($parentId > 0 && !isset($path[$projectId])) {
+            $parent = $projectsById[$parentId] ?? null;
+            if ($parent instanceof Project && (int)$parent->getId() !== $projectId) {
+                $path[$projectId] = true;
+                $parentDates = omoProjectsResolveGanttDates($parent, $projectsById, $memo, $path);
+                if (!($start instanceof \DateTimeImmutable) && $parentDates['start'] instanceof \DateTimeImmutable) {
+                    $start = $parentDates['start'];
+                    $inheritedStart = true;
+                }
+                if (!($end instanceof \DateTimeImmutable) && $parentDates['end'] instanceof \DateTimeImmutable) {
+                    $end = $parentDates['end'];
+                    $inheritedEnd = true;
+                }
+            }
+        }
+
+        $dates = [
+            'start' => $start,
+            'end' => $end,
+            'inheritedStart' => $inheritedStart,
+            'inheritedEnd' => $inheritedEnd,
+        ];
+        if ($projectId > 0) {
+            $memo[$projectId] = $dates;
+        }
+        return $dates;
+    }
+}
+
+if (!function_exists('omoProjectsGetDocumentTypeIconUrl')) {
+    function omoProjectsGetDocumentTypeIconUrl(Document $document): string
+    {
+        return match ($document->getDocumentType()) {
+            Document::TYPE_EXTERNAL_LINK => '/omo/assets/images/documents/link.png',
+            Document::TYPE_UPLOADED_FILE => '/omo/assets/images/documents/download.png',
+            Document::TYPE_FOLDER, Document::TYPE_NEXTCLOUD_FOLDER => '/omo/assets/images/documents/folder.png',
+            Document::TYPE_PV => '/omo/assets/images/documents/pv.png',
+            Document::TYPE_ETHERPAD => '/omo/assets/images/documents/collaborative.png',
+            Document::TYPE_ETHERCALC => '/omo/assets/images/documents/spreadsheet.png',
+            default => '/omo/assets/images/documents/file.png',
+        };
+    }
+}
+
+if (!function_exists('omoProjectsGetVisibleDocuments')) {
+    function omoProjectsGetVisibleDocuments(Project $project, $organizationId, $projectHolon = null)
+    {
+        $projectDocuments = new ArrayProjectDocument();
+        $projectDocuments->loadForProject((int)$project->getId());
+        $visibleDocuments = [];
+
+        foreach ($projectDocuments as $projectDocument) {
+            $document = $projectDocument->getDocument();
+            if (
+                !is_object($document)
+                || (int)$document->get('IDorganization') !== (int)$organizationId
+                || $document->isArchived()
+                || !(
+                    $document->canViewInOrganizationContext(
+                        (int)$organizationId,
+                        (int)$document->get('IDholon')
+                    )
+                    || $document->canViewDirectlyInOrganization((int)$organizationId)
+                )
+            ) {
+                continue;
+            }
+
+            $createdAt = $projectDocument->get('datecreation');
+            $documentProjects = new ArrayProjectDocument();
+            $documentProjects->loadForDocument((int)$document->getId());
+            $otherProjectCount = 0;
+            foreach ($documentProjects as $documentProject) {
+                if (
+                    $documentProject instanceof \dbObject\ProjectDocument
+                    && (int)$documentProject->get('IDproject') !== (int)$project->getId()
+                ) {
+                    $otherProjectCount++;
+                }
+            }
+            $visibleDocuments[] = [
+                'id' => (int)$document->getId(),
+                'title' => trim((string)$document->get('title')),
+                'type' => $document->isNextcloudFolder() ? omoProjectsT('projects.detail.documents.remote_folder') : $document->getDocumentTypeLabel(),
+                'iconUrl' => omoProjectsGetDocumentTypeIconUrl($document),
+                'documentType' => $document->getDocumentType(),
+                'isFolder' => $document->isFolder(),
+                'isNextcloudFolder' => $document->isNextcloudFolder(),
+                'visibleInHolon' => $document->isVisibleInHolonWhenProjectDocument(),
+                'otherProjectCount' => $otherProjectCount,
+                'canDelete' => $document->canDeleteDocument(),
+                'canDeleteInContext' => $document->canDeleteInOrganizationContext((int)$organizationId, (int)commonGetCurrentUserId()),
+                'addedAt' => $createdAt instanceof \DateTimeInterface ? $createdAt->format('d.m.Y') : '',
+            ];
+        }
+
+        return $visibleDocuments;
+    }
+}
+
+if (!function_exists('omoProjectsStatusLabel')) {
+    function omoProjectsStatusLabel($status, ?int $organizationId = null)
+    {
+        $status = Project::normalizeStatus($status);
+        $organizationId = $organizationId ?? (int)($_SESSION['currentOrganization'] ?? 0);
+        $customLabels = Project::getOrganizationStatusLabels($organizationId);
+        $customLabel = trim((string)($customLabels[$status] ?? ''));
+        return $customLabel !== '' ? $customLabel : omoProjectsT('projects.status.' . $status);
+    }
+}
+
+if (!function_exists('omoProjectsIsBlockedOverdue')) {
+    function omoProjectsIsBlockedOverdue(Project $project)
+    {
+        if (Project::normalizeStatus($project->get('status')) !== Project::STATUS_BLOCKED
+            || (int)$project->get('blocked_auto_reactivate') === 1) {
+            return false;
+        }
+
+        $blockedUntil = $project->get('blocked_until');
+        return $blockedUntil instanceof \DateTimeInterface
+            && $blockedUntil < new \DateTimeImmutable('today');
+    }
+}
+
+if (!function_exists('omoProjectsRenderBlockedInfo')) {
+    function omoProjectsRenderBlockedInfo(Project $project, $extraClass = '', $detailLegend = false)
+    {
+        if (Project::normalizeStatus($project->get('status')) !== Project::STATUS_BLOCKED) {
+            return '';
+        }
+
+        $reason = trim((string)$project->get('blocked_reason'));
+        $blockedUntil = $project->get('blocked_until');
+        $dateLabel = $blockedUntil instanceof \DateTimeInterface
+            ? $blockedUntil->format('d.m.Y')
+            : '';
+        $isDue = $blockedUntil instanceof \DateTimeInterface
+            && $blockedUntil < new \DateTimeImmutable('today');
+        $reactivateStatus = Project::normalizeBlockedReactivateStatus($project->get('blocked_reactivate_status'));
+        $isAutomatic = (int)$project->get('blocked_auto_reactivate') === 1 && $dateLabel !== '';
+        $metaLabel = $isAutomatic
+            ? omoProjectsT('projects.blocked.display_auto', [
+                'date' => $dateLabel,
+                'status' => omoProjectsStatusLabel($reactivateStatus),
+            ])
+            : ($dateLabel !== ''
+                ? omoProjectsT($isDue ? 'projects.blocked.display_due' : 'projects.blocked.display_until', ['date' => $dateLabel])
+                : omoProjectsT('projects.blocked.display_manual'));
+
+        $className = trim('omo-project-blocked-info'
+            . (omoProjectsIsBlockedOverdue($project) ? ' omo-project-blocked-info--overdue' : '')
+            . ' ' . (string)$extraClass);
+        $html = '<div class="' . omoApiEscape($className) . '">';
+        $html .= '<span class="omo-project-blocked-info__reason"><strong>'
+            . omoApiEscape(omoProjectsT($detailLegend ? 'projects.blocked.display_reason_detail' : 'projects.blocked.display_reason'))
+            . '</strong> ' . omoApiEscape($reason !== '' ? $reason : omoProjectsT('projects.detail.none')) . '</span>';
+        $html .= '<span class="omo-project-blocked-info__meta">' . omoApiEscape($metaLabel) . '</span>';
+        return $html . '</div>';
+    }
+}
+
+if (!function_exists('omoProjectsCaptureModeLabel')) {
+    function omoProjectsCaptureModeLabel($captureMode)
+    {
+        $captureMode = Project::normalizeCaptureMode($captureMode);
+        return omoProjectsT('projects.capture_mode.' . $captureMode);
+    }
+}
+
+if (!function_exists('omoProjectsScopeContainsProject')) {
+    function omoProjectsScopeContainsProject(Project $project, $scope, $currentHolonId, array $descendantHolonIds = [], $includeOrganizationProjects = false)
+    {
+        $projectHolonId = (int)$project->get('IDholon');
+        if ($projectHolonId === 0 && $includeOrganizationProjects) {
+            return true;
+        }
+        $scope = trim(mb_strtolower((string)$scope, 'UTF-8'));
+        if ($scope === 'descendants') {
+            return in_array($projectHolonId, array_merge([(int)$currentHolonId], array_map('intval', $descendantHolonIds)), true);
+        }
+        if ($scope === 'children') {
+            return in_array($projectHolonId, array_map('intval', $descendantHolonIds), true);
+        }
+        return $projectHolonId === (int)$currentHolonId || ($projectHolonId === 0 && (int)$currentHolonId === 0);
+    }
+}
+
+if (!function_exists('omoProjectsUserIsAssociatedWithHolon')) {
+    function omoProjectsUserIsAssociatedWithHolon($userId, $organizationId, Holon $holon): bool
+    {
+        static $cache = [];
+
+        $userId = (int)$userId;
+        $organizationId = (int)$organizationId;
+        $holonId = (int)$holon->getId();
+        if ($userId <= 0 || $organizationId <= 0 || $holonId <= 0) {
+            return false;
+        }
+
+        $cacheKey = $organizationId . ':' . $userId . ':' . $holonId;
+        if (!array_key_exists($cacheKey, $cache)) {
+            $cache[$cacheKey] = in_array(
+                $userId,
+                $holon->getAssociatedMemberUserIds([
+                    'organizationId' => $organizationId,
+                    'skipPermissionFilter' => true,
+                ]),
+                true
+            );
+        }
+
+        return $cache[$cacheKey];
+    }
+}
+
+if (!function_exists('omoProjectsMatchesAssignment')) {
+    function omoProjectsMatchesAssignment(Project $project, $assignment, $currentUserId, $organizationId): bool
+    {
+        $assignment = strtolower(trim((string)$assignment));
+        if ($assignment === 'all' || $assignment === 'followed') {
+            return true;
+        }
+
+        $currentUserId = (int)$currentUserId;
+        if ($currentUserId <= 0) {
+            return false;
+        }
+
+        $responsibleUserId = (int)$project->get('IDuser');
+        if ($assignment === 'mine' && $responsibleUserId === $currentUserId) {
+            return true;
+        }
+        if ($assignment === 'mine' && $responsibleUserId > 0) {
+            return false;
+        }
+
+        $projectHolon = $project->getHolon();
+        if ((int)$project->get('IDholon') === 0) {
+            return \dbObject\UserOrganization::hasActiveMembership($currentUserId, (int)$organizationId);
+        }
+        return $projectHolon instanceof Holon
+            && omoProjectsUserIsAssociatedWithHolon($currentUserId, $organizationId, $projectHolon);
+    }
+}
+
+if (!function_exists('omoProjectsGetUserLabel')) {
+    function omoProjectsGetUserLabel($user, $emptyLabelKey = 'projects.responsible.unassigned')
+    {
+        if (!is_object($user)) {
+            return omoProjectsT($emptyLabelKey);
+        }
+
+        $name = trim(trim((string)$user->get('firstname')) . ' ' . trim((string)$user->get('lastname')));
+        if ($name !== '') {
+            return $name;
+        }
+
+        $username = trim((string)$user->get('username'));
+        return $username !== '' ? $username : trim((string)$user->get('email'));
+    }
+}
+
+if (!function_exists('omoProjectsBuildStatusBar')) {
+    function omoProjectsBuildStatusBar(Project $project, array $childrenByParent, array &$memo = [], $includeSelfWhenLeaf = false)
+    {
+        return Project::buildChildrenStatusSummary($project, $childrenByParent, $memo, $includeSelfWhenLeaf);
+    }
+}
+
+if (!function_exists('omoProjectsStatusDisplayOrder')) {
+    function omoProjectsStatusDisplayOrder()
+    {
+        return [
+            Project::STATUS_READY,
+            Project::STATUS_IN_PROGRESS,
+            Project::STATUS_BLOCKED,
+            Project::STATUS_REVIEW,
+            Project::STATUS_DONE,
+            Project::STATUS_SOMEDAY,
+        ];
+    }
+}
+
+if (!function_exists('omoProjectsDefaultDisplayConfig')) {
+    function omoProjectsDefaultDisplayConfig(): array
+    {
+        return [
+            'enabledStatuses' => omoProjectsStatusDisplayOrder(),
+            'statusLabels' => [],
+            'usePriority' => true,
+            'useImportance' => true,
+            'useSize' => true,
+        ];
+    }
+}
+
+if (!function_exists('omoProjectsNormalizeDisplayConfig')) {
+    function omoProjectsNormalizeDisplayConfig($value): array
+    {
+        $default = omoProjectsDefaultDisplayConfig();
+        if (!is_array($value)) {
+            return $default;
+        }
+
+        $allowedStatuses = omoProjectsStatusDisplayOrder();
+        $configuredStatuses = $value['enabledStatuses'] ?? null;
+        if (!is_array($configuredStatuses)) {
+            $enabledStatuses = $default['enabledStatuses'];
+        } else {
+            $enabledStatuses = array_values(array_filter(
+                $allowedStatuses,
+                static fn (string $status): bool => in_array($status, $configuredStatuses, true)
+            ));
+        }
+
+        return [
+            'enabledStatuses' => $enabledStatuses,
+            'statusLabels' => Project::normalizeStatusLabels($value['statusLabels'] ?? []),
+            'usePriority' => array_key_exists('usePriority', $value) ? !empty($value['usePriority']) : true,
+            'useImportance' => array_key_exists('useImportance', $value) ? !empty($value['useImportance']) : true,
+            'useSize' => array_key_exists('useSize', $value) ? !empty($value['useSize']) : true,
+        ];
+    }
+}
+
+if (!function_exists('omoProjectsGetDisplayConfig')) {
+    function omoProjectsGetDisplayConfig(int $organizationId): array
+    {
+        if ($organizationId <= 0) {
+            return omoProjectsDefaultDisplayConfig();
+        }
+
+        $applicationLink = OrganizationApplication::loadByOrganizationAndDirectory($organizationId, 'projects', false);
+        if (!($applicationLink instanceof OrganizationApplication)) {
+            return omoProjectsDefaultDisplayConfig();
+        }
+
+        $parameters = $applicationLink->getParametersArray();
+        return omoProjectsNormalizeDisplayConfig($parameters['display'] ?? null);
+    }
+}
+
+if (!function_exists('omoProjectsStatusSummaryLabel')) {
+    function omoProjectsStatusSummaryLabel(array $summary)
+    {
+        $parts = [];
+        foreach (omoProjectsStatusDisplayOrder() as $status) {
+            $count = (int)($summary['counts'][$status] ?? 0);
+            if ($count > 0) {
+                $weight = (float)($summary['weights'][$status] ?? 0);
+                $percentage = rtrim(rtrim(number_format($weight * 100, 1, '.', ''), '0'), '.');
+                $parts[] = omoProjectsStatusLabel($status) . ': ' . $count . ' (' . $percentage . '%)';
+            }
+        }
+        return omoProjectsT('projects.subprojects.label') . ': ' . implode(', ', $parts);
+    }
+}
+
+if (!function_exists('omoProjectsRenderStatusBar')) {
+    function omoProjectsRenderStatusBar(array $summary, $extraClass = '', $elementTag = 'div', $showTotal = false)
+    {
+        if ((int)($summary['total'] ?? 0) <= 0 || empty($summary['leaves'])) {
+            return '';
+        }
+
+        $elementTag = strtolower(trim((string)$elementTag)) === 'span' ? 'span' : 'div';
+        $className = trim('omo-project-status-bar ' . (string)$extraClass);
+        $label = omoProjectsStatusSummaryLabel($summary);
+        $html = '<' . $elementTag . ' class="' . omoApiEscape($className) . '" role="img" aria-label="' . omoApiEscape($label) . '" title="' . omoApiEscape($label) . '">';
+        $weightsByStatus = array_fill_keys(omoProjectsStatusDisplayOrder(), 0.0);
+        foreach ($summary['leaves'] as $leaf) {
+            $status = Project::normalizeStatus($leaf['status'] ?? '');
+            if (!array_key_exists($status, $weightsByStatus)) {
+                continue;
+            }
+            $weightsByStatus[$status] += max(0, (float)($leaf['weight'] ?? 0));
+        }
+        foreach (omoProjectsStatusDisplayOrder() as $status) {
+            $segmentWidth = max(0, min(100, $weightsByStatus[$status] * 100));
+            if ($segmentWidth <= 0) {
+                continue;
+            }
+            $html .= '<span class="omo-project-status-bar__segment omo-project-status-bar__segment--' . omoApiEscape($status) . '" style="flex: 0 0 ' . omoApiEscape(number_format($segmentWidth, 6, '.', '')) . '%;" aria-hidden="true"></span>';
+        }
+        $html .= '</' . $elementTag . '>';
+        if (!$showTotal) {
+            return $html;
+        }
+
+        return '<' . $elementTag . ' class="omo-project-status-summary"><span class="omo-project-status-summary__count" aria-hidden="true">'
+            . (int)$summary['total'] . '</span>' . $html . '</' . $elementTag . '>';
+    }
+}

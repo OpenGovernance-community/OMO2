@@ -27,6 +27,23 @@ $GLOBALS['openAiUploadApiKey'] = envValue('OPENAI_UPLOAD_API_KEY', $GLOBALS['Ope
 $GLOBALS['openAiTranslationModel'] = envValue('OPENAI_TRANSLATION_MODEL', envValue('OPENAI_MODEL', 'gpt-4o'));
 $GLOBALS['stadiaMapsApiKey'] = envValue('STADIA_MAPS_API_KEY', '');
 
+// Configuration Etherpad globale. ETHERPAD_URL accepte plusieurs URLs separees
+// par des virgules afin de servir un meme Etherpad depuis plusieurs domaines.
+$GLOBALS['etherpadBaseUrl'] = envValue('ETHERPAD_URL', 'https://doc.opengov.tools');
+$GLOBALS['etherpadApiKey'] = envValue('ETHERPAD_API_KEY', '');
+$GLOBALS['etherpadApiVersion'] = envValue('ETHERPAD_API_VERSION', '1');
+$GLOBALS['etherpadCookieDomain'] = envValue('ETHERPAD_COOKIE_DOMAIN', '');
+
+// Configuration EtherCalc globale. OMO utilise l URL interne pour creer et supprimer les feuilles.
+$GLOBALS['ethercalcBaseUrl'] = envValue('ETHERCALC_URL', '');
+$GLOBALS['ethercalcInternalBaseUrl'] = envValue('ETHERCALC_INTERNAL_URL', '');
+$GLOBALS['ethercalcKey'] = envValue('ETHERCALC_KEY', '');
+
+// Configuration SpaceDeck partagee par les tableaux blancs collaboratifs.
+$GLOBALS['spaceDeckBaseUrl'] = envValue('SPACEDECK_URL', 'https://whiteboard.localtest.me');
+$GLOBALS['spaceDeckInternalUrl'] = envValue('SPACEDECK_INTERNAL_URL', '');
+$GLOBALS['spaceDeckProvisioningToken'] = envValue('SPACEDECK_PROVISIONING_TOKEN', '');
+
 // Config du mail
 $GLOBALS['mailHost'] = envValue('MAIL_HOST', 'mail.infomaniak.com');
 $GLOBALS['mailPort'] = envInt('MAIL_PORT', 587);
@@ -42,7 +59,9 @@ $GLOBALS['paypalClientId'] = envValue('PAYPAL_CLIENT_ID', '');
 $GLOBALS['telegramToken'] = envValue('TELEGRAM_BOT_TOKEN', '');
 $GLOBALS['patreonClientId'] = envValue('PATREON_CLIENT_ID', '');
 $GLOBALS['patreonClientSecret'] = envValue('PATREON_CLIENT_SECRET', '');
+$GLOBALS['patreonConnectUrl'] = envValue('PATREON_CONNECT_URL', '');
 $GLOBALS['patreonRedirectUri'] = envValue('PATREON_REDIRECT_URI', '');
+$GLOBALS['patreonConnectAllowedOrigins'] = envValue('PATREON_CONNECT_ALLOWED_ORIGINS', '');
 $GLOBALS['patreonCreatorCampaignId'] = envValue('PATREON_CREATOR_CAMPAIGN_ID', '');
 $GLOBALS['patreonUserAgent'] = envValue('PATREON_USER_AGENT', 'EasyPV Patreon Sync');
 $GLOBALS['githubBugReportToken'] = envValue('GITHUB_BUGREPORT_TOKEN', '');

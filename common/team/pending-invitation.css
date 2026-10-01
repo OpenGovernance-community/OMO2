@@ -1,0 +1,121 @@
+/* popup/user.php */
+.omo-user-pending-invitation {
+    display: grid;
+    gap: 16px;
+    padding: 18px;
+    box-sizing: border-box;
+    color: var(--color-text, #1f2937);
+}
+
+.omo-user-pending-invitation__hero {
+    --generic-hero-gap: 10px;
+    --generic-hero-padding: 20px;
+    --generic-hero-radius: 22px;
+}
+
+.omo-user-pending-invitation__hero h2 {
+    margin: 0;
+}
+
+.omo-user-pending-invitation__secondary,
+.omo-user-pending-invitation__copy,
+.omo-user-pending-invitation__detail,
+.omo-user-pending-invitation__meta-value,
+.omo-user-pending-invitation__empty,
+.omo-user-pending-invitation__feedback {
+    color: var(--color-text-light, #6b7280);
+}
+
+.omo-user-pending-invitation__secondary,
+.omo-user-pending-invitation__copy,
+.omo-user-pending-invitation__detail,
+.omo-user-pending-invitation__feedback {
+    line-height: 1.5;
+}
+
+.omo-user-pending-invitation__badge-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.omo-user-pending-invitation__badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 0 10px;
+    border-radius: 999px;
+    background: rgba(100, 116, 139, 0.14);
+    color: var(--color-text-light, #6b7280);
+    border: 1px solid var(--color-border, #e5e7eb);
+    font-size: 0.76rem;
+    font-weight: 700;
+}
+
+.omo-user-pending-invitation__section {
+    --generic-section-gap: 12px;
+    --generic-section-padding-block: 18px;
+    --generic-section-padding-inline: 18px;
+    --generic-section-radius: 20px;
+}
+
+.omo-user-pending-invitation__section h3 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.omo-user-pending-invitation__meta {
+    display: grid;
+    gap: 10px;
+}
+
+.omo-user-pending-invitation__meta-row {
+    display: grid;
+    gap: 4px;
+}
+
+.omo-user-pending-invitation__meta-label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text, #1f2937);
+}
+
+.omo-user-pending-invitation__holon-list {
+    margin: 0;
+    padding-left: 18px;
+    display: grid;
+    gap: 8px;
+}
+
+.omo-user-pending-invitation__holon-list li {
+    line-height: 1.45;
+}
+
+.omo-user-pending-invitation__holon-type {
+    color: var(--color-text-light, #6b7280);
+}
+
+.omo-user-pending-invitation__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.omo-user-pending-invitation__action {
+    text-decoration: none;
+}
+
+.omo-user-pending-invitation__feedback {
+    min-height: 24px;
+    font-size: 0.92rem;
+}
+
+.omo-user-pending-invitation__feedback.is-success {
+    color: #166534;
+}
+
+.omo-user-pending-invitation__feedback.is-error {
+    color: #b91c1c;
+}

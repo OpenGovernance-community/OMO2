@@ -18,19 +18,16 @@
 	if ($media->get("IDstorage")==1) {
 			$file_info = getTelegramFile($media->get("accesskey"));
 			// Récupérer le lien direct vers le fichier
-			$file_url = $file_info['result']['file_path'];
-			$tmp_url = "https://api.telegram.org/file/bot".TOKEN."/$file_url";
-			$file_content = file_get_contents($tmp_url);
+			$file_url = is_array($file_info) ? ($file_info['result']['file_path'] ?? null) : null;
+			$download = $file_url ? telegramDownloadFile($file_url) : null;
+			if (!is_array($download) || empty($download['ok'])) {
+				http_response_code(502);
+				die('Unable to download Telegram file');
+			}
 
-			$headers = get_headers($tmp_url, 1);
-			if (isset($headers['Content-Type'])) {
-				$fileType = $headers['Content-Type'];
-				header('Content-Type: '.$media->get("contenttype"));
-				header('Content-Disposition: inline; filename="'.$media->get("filename").'"');
-				//header('Content-Disposition: attachment; filename="downloaded.pdf"');
-			} 
-
-			echo $file_content;			
+			header('Content-Type: '.$media->get("contenttype"));
+			header('Content-Disposition: inline; filename="'.$media->get("filename").'"');
+			echo $download['content'];
 		
 	}
 	

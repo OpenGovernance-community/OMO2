@@ -12,23 +12,23 @@ if (
 ) {
     http_response_code(403);
     ?>
-    <div class="omo-import-popup__feedback omo-import-popup__feedback--error generic-soft-panel">Acces refuse.</div>
+    <div class="omo-import-popup__feedback omo-import-popup__feedback--error generic-drawer-content">Acces refuse.</div>
     <?php
     exit;
 }
 ?>
-<div class="omo-import-popup" data-omo-org-import-popup="1" data-organization-id="<?= (int)$organizationId ?>">
+<div class="omo-import-popup generic-drawer-content" data-omo-org-import-popup="1" data-organization-id="<?= (int)$organizationId ?>">
     <div class="omo-import-popup__hero generic-hero-panel accent">
         <div class="omo-import-popup__kicker generic-card-title generic-card-title--eyebrow">Import JSON</div>
         <h3 class="omo-import-popup__title generic-card-title generic-card-title--large">Importer une organisation</h3>
-        <p class="omo-import-popup__text">Selectionnez un fichier JSON exporte depuis le menu structure. L'import reconstruit les holons, roles, proprietes et les references internes du sous-arbre.</p>
+        <p class="omo-import-popup__text generic-description"><?= htmlspecialchars(\dbObject\Organization::formatLexiconText('Selectionnez un fichier JSON exporte depuis le menu structure. L\'import reconstruit les holons, roles, proprietes et les references internes du sous-arbre.', $organization->getLexicon()), ENT_QUOTES, 'UTF-8') ?></p>
     </div>
 
     <form class="omo-import-popup__form" data-omo-org-import-form="1" enctype="multipart/form-data">
         <input type="hidden" name="oid" value="<?= (int)$organizationId ?>">
 
         <label class="omo-import-popup__field">
-            <span class="omo-import-popup__label">Fichier JSON</span>
+            <span class="omo-import-popup__label generic-form-label">Fichier JSON</span>
             <input
                 type="file"
                 name="structure_file"
@@ -38,7 +38,7 @@ if (
             >
         </label>
 
-        <div class="omo-import-popup__hint">
+        <div class="omo-import-popup__hint generic-help-text">
             Conseil: creez d'abord une organisation vide, puis importez un fichier genere par `Export` depuis la vue structure.
         </div>
 
@@ -51,74 +51,7 @@ if (
     <div class="omo-import-popup__feedback generic-soft-panel" data-omo-org-import-feedback="1" hidden></div>
 </div>
 
-<style>
-.omo-import-popup {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    color: var(--color-text, #1f2937);
-}
-
-.omo-import-popup__hero {
-    --generic-hero-radius: 16px;
-}
-
-.omo-import-popup__title {
-    margin: 0;
-}
-
-.omo-import-popup__text {
-    margin: 10px 0 0;
-    line-height: 1.5;
-    color: var(--color-text-light, #6b7280);
-}
-
-.omo-import-popup__form {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    padding: 18px;
-    border-radius: 16px;
-    border: 1px solid var(--color-border, #d1d5db);
-    background: var(--color-surface, #fff);
-}
-
-.omo-import-popup__field {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.omo-import-popup__label {
-    font-weight: 600;
-}
-
-.omo-import-popup__input {
-    --generic-form-control-padding-block: 10px;
-}
-
-.omo-import-popup__hint {
-    font-size: 13px;
-    line-height: 1.5;
-    color: var(--color-text-light, #6b7280);
-}
-
-.omo-import-popup__actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-}
-
-.omo-import-popup__feedback {
-    color: var(--color-text-light, #6b7280);
-}
-
-.omo-import-popup__feedback--error {
-    color: #b91c1c;
-    border-color: rgba(220, 38, 38, 0.18);
-    background: rgba(220, 38, 38, 0.06);
-}
-</style>
+<link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/organizations/import.css') ?>">
 
 <script>
 (function () {

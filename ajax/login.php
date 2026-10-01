@@ -9,31 +9,10 @@
 	require_once("../shared_functions.php");
 	require_once("../common/auth.php");
 
-	$currentUserCookieName = function_exists('appGetCurrentUserCookieName')
-		? appGetCurrentUserCookieName()
-		: 'currentUser';
-	$currentCodeCookieName = function_exists('appGetCurrentCodeCookieName')
-		? appGetCurrentCodeCookieName()
-		: 'currentCode';
-
 	// Si c'est une déconnexion
 	if (!isset($_POST["user"]) && !isset($_POST["email"])) {
-		unset($_SESSION["currentUser"]);
-		unset($_COOKIE[$currentUserCookieName]);
-		unset($_COOKIE[$currentCodeCookieName]);
-		unset($_COOKIE['currentUser']); 
-		unset($_COOKIE['currentCode']); 
-		if (function_exists('appExpireCookieAcrossDomains')) {
-			appExpireCookieAcrossDomains($currentUserCookieName, false);
-			appExpireCookieAcrossDomains($currentCodeCookieName, false);
-			appExpireCookieAcrossDomains('currentUser', false);
-			appExpireCookieAcrossDomains('currentCode', false);
-		} else {
-			appExpireCookie($currentUserCookieName, false);
-			appExpireCookie($currentCodeCookieName, false);
-			appExpireCookie('currentUser', false);
-			appExpireCookie('currentCode', false);
-		}
+		commonLogoutUser();
+		commonAuthSecurityLog('logout', 'success', ['legacy' => true]);
 		echo '{"status":true, "script":"location.reload()"} ';
 		exit;
 	} else
@@ -50,34 +29,32 @@
 			exit;
 		}
 
-		// S'assure que l'adresse e-mail n'existe pas déjà dans la table, ou que les données n'ont pas été complétées
-		$user=new \dbObject\user();
-		$user->load(["email",$_POST["email"]]); // Chargement sur la base de l'email
-		
-		// Pas trouvé
-		if (!$user->get("id")>0 || !commonVerifyUserPassword($_POST["password"], (string)$user->get("password"))) {
+		$loginResult = commonAttemptPasswordLogin(
+			$_POST["email"],
+			$_POST["password"],
+			isset($_POST["remember"]) ? (int)$_POST["remember"] : 0
+		);
+		if (empty($loginResult['status'])) {
+			if (($loginResult['error'] ?? '') === 'rate_limited') {
+				commonAuthSetLimitHttpResponse(is_array($loginResult['limit'] ?? null) ? $loginResult['limit'] : []);
+				echo json_encode([
+					'status' => false,
+					'message' => 'Trop de tentatives. Veuillez patienter avant de réessayer.',
+				]);
+				exit;
+			}
+			if (($loginResult['error'] ?? '') === 'password_login_disabled') {
+				echo json_encode([
+					'status' => false,
+					'message' => 'La connexion avec mot de passe n est pas autorisee pour ce compte. Utilisez le code recu par e-mail.',
+				]);
+				exit;
+			}
+
 			echo '{"status":false, "message":"Utilisateur inconnu","script":"$(\'#password\').focus()"} ';
 			exit;
 		}
-		
-		// Stock l'info dans la session
-		$_SESSION["currentUser"]=$user->get("id");
-		commonUpdateLastConnection((int)$user->get("id"));
-		
-		// Si demande de se souvenir, stock l'info dans un cookie pendant 30 jours
-		if (isset($_POST["remember"]) && $_POST["remember"]=="1") {
-			appSetCookie($currentUserCookieName, (string)$user->get("id"), time()+60*60*24*30, false);
-			appSetCookie($currentCodeCookieName, (string)$user->get("password"), time()+60*60*24*30, false);
-		} else {
-			// Sinon, enregistre malgré tout des cookies, mais sur la durée d'ouverture du navigateur afin d'éviter
-			// la déconnexion pour fin de session.
-			appSetCookie($currentUserCookieName, (string)$user->get("id"), 0, false);
-			appSetCookie($currentCodeCookieName, (string)$user->get("password"), 0, false);
-		}
-		if (function_exists('appExpireCookieAcrossDomains')) {
-			appExpireCookieAcrossDomains('currentUser', false);
-			appExpireCookieAcrossDomains('currentCode', false);
-		}
+
 		echo '{"status":true, "script":"location.reload()"} ';
 		
 		exit;
@@ -94,6 +71,22 @@
 			echo '{"status":false, "message":"Format d\'email invalide.","script":"$(\'#email\').focus()"} ';
 			exit;
 
+		}
+
+		$legacyFlow = isset($_POST["check"]) ? 'magic' : 'reset';
+		$deliveryLimit = commonAuthEmailDeliveryLimits($legacyFlow, $_POST["email"]);
+		if (empty($deliveryLimit['available']) || empty($deliveryLimit['allowed'])) {
+			commonAuthSetLimitHttpResponse($deliveryLimit);
+			commonAuthSecurityLog('legacy_account_email', 'rate_limited', [
+				'email' => $_POST["email"],
+				'retry_after' => (int)($deliveryLimit['retry_after'] ?? 60),
+				'legacy' => true,
+			]);
+			echo json_encode([
+				'status' => false,
+				'message' => 'Trop de tentatives. Veuillez patienter avant de réessayer.',
+			]);
+			exit;
 		}
 		
 		// S'assure que l'adresse e-mail n'existe pas déjà dans la table, ou que les données n'ont pas été complétées
@@ -172,9 +165,18 @@
 			if (myHTMLMail("info@systemdd.ch",$_POST["email"],$title,$txt)) {
 				// Confirme que tout s'est bien passé
 				$user->save();
+				commonAuthSecurityLog('legacy_account_email', 'sent', [
+					'email' => $_POST["email"],
+					'user_id' => (int)$user->get("id"),
+					'legacy' => true,
+				]);
 				echo '{"status":true, "message":"'.$msg.'","script": "'.$formCode.'"} ';
 			} else {	
 				// Problème d'envoi de mail
+				commonAuthSecurityLog('legacy_account_email', 'failed', [
+					'email' => $_POST["email"],
+					'legacy' => true,
+				]);
 				echo '{"status":false, "message":"Problème d\'envoi de mail."} ';
 			}
 			// Sauve les infos

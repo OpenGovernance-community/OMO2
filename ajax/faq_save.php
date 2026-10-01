@@ -3,6 +3,7 @@
 require_once("../config.php");
 require_once("../shared_functions.php");
 require_once("../common/auth.php");
+require_once("../omo/api/lms/inc/access.php");
 require_once("../common/faq_popup_helper.php");
 
 if (!checklogin()) {
@@ -36,8 +37,9 @@ $canManageFaqCollection = !empty($viewerAccess['canManageAllFaqs']) || !empty($v
 $canCreateContextualFaq = $contextHolon
 	? \dbObject\FAQ::canCreateContextualForHolon($contextHolon, $currentUserId, $contextOrganizationId, false)
 	: false;
+$canCreateParcoursFaqs = faqPopupCanCreateParcoursFaqs($faqContext ?: array(), $currentUserId, false);
 
-if (!$canManageFaqCollection && !$canCreateContextualFaq) {
+if (!$canManageFaqCollection && !$canCreateContextualFaq && !$canCreateParcoursFaqs) {
 	echo json_encode([
 		'status' => false,
 		'success' => false,
@@ -48,6 +50,7 @@ if (!$canManageFaqCollection && !$canCreateContextualFaq) {
 
 $scope = faqPopupResolveSubmittedScope($faqContext ?: array(), $_POST, array(
 	'allowContextualCreate' => $canCreateContextualFaq,
+	'allowParcoursCreate' => $canCreateParcoursFaqs,
 ));
 if (empty($scope['status'])) {
 	echo json_encode([
@@ -61,10 +64,34 @@ if (empty($scope['status'])) {
 $faq = new \dbObject\FAQ();
 $data = $_POST;
 unset($data['id']);
+$linkedApplicationId = 0;
+if (\dbObject\FAQ::hasApplicationColumn() && $canManageFaqCollection) {
+	$linkedApplicationId = isset($data['IDapplication']) && is_numeric($data['IDapplication'])
+		? (int)$data['IDapplication']
+		: 0;
+}
+unset($data['IDapplication']);
 $faq->loadFromArray($data);
 $faq->set('IDorganization', $scope['organizationId'] ?? null);
 $faq->set('IDholon', $scope['holonId'] ?? null);
 $faq->set('IDparcours', $scope['parcoursId'] ?? null);
+if (\dbObject\FAQ::hasApplicationColumn() && $canManageFaqCollection) {
+	if ($linkedApplicationId > 0) {
+		$application = new \dbObject\Application();
+		if (!$application->load($linkedApplicationId) || (int)$application->getId() <= 0) {
+			echo json_encode([
+				'status' => false,
+				'success' => false,
+				'message' => 'Application invalide.',
+			], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+			exit;
+		}
+
+		$faq->set('IDapplication', $linkedApplicationId);
+	} else {
+		$faq->set('IDapplication', null);
+	}
+}
 if (!$canManageFaqCollection) {
 	$faq->set('isactive', true);
 }

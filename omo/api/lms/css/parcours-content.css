@@ -1,0 +1,65 @@
+/* omo/api/lms/inc/parcours_content.php */
+.lms-pack-children__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 350px));
+    justify-content: center;
+    gap: 20px;
+    align-items: stretch;
+}
+
+.lms-pack-children__grid .card {
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    flex: none;
+}
+
+.lms-pack-children__grid .card-image {
+    aspect-ratio: 5 / 2 !important;
+    overflow: hidden;
+}
+
+.lms-pack-children__grid .card-image img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.lms-pack-children__grid .progress-circle {
+    position: relative;
+    width: 60px;
+    height: 60px;
+    display: inline-block;
+    margin: 5px;
+}
+
+.lms-pack-children__grid .progress-circle svg {
+    transform: rotate(-90deg);
+}
+
+.lms-pack-children__grid .progress-circle circle {
+    fill: none;
+    stroke-width: 5;
+}
+
+.lms-pack-children__grid .progress-circle .bg {
+    stroke: var(--progress-bg);
+}
+
+.lms-pack-children__grid .progress-circle .progress {
+    stroke: var(--primary);
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.6s ease;
+}
+
+.lms-pack-children__grid .progress-circle .label {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-main);
+    white-space: nowrap;
+}

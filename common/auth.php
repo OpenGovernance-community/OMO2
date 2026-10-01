@@ -1,6 +1,9 @@
 <?php
 
 require_once __DIR__ . '/environment_subdomains.php';
+require_once __DIR__ . '/runtime_log.php';
+require_once __DIR__ . '/totp.php';
+require_once __DIR__ . '/assets.php';
 
 function commonGetDemoOrganizationId()
 {
@@ -503,7 +506,7 @@ function commonGetAuthSharedSourceLang(): array
             'context' => 'Password input placeholder in the shared authentication user interface.'
         ],
         'auth.placeholder.username' => [
-            'text' => 'username',
+            'text' => "Nom d'utilisateur",
             'context' => 'Email input placeholder when the organization domain is appended automatically in the shared authentication user interface.'
         ],
         'auth.remember_me' => [
@@ -525,6 +528,18 @@ function commonGetAuthSharedSourceLang(): array
         'auth.link.reset_password' => [
             'text' => 'Réinitialiser le mot de passe',
             'context' => 'Link label used on the shared authentication page to request a password reset email.'
+        ],
+        'auth.error.rate_limited' => [
+            'text' => 'Trop de tentatives. Veuillez patienter avant de réessayer.',
+            'context' => 'Generic error shown when an authentication request is temporarily rate limited.'
+        ],
+        'auth.error.password_login_disabled' => [
+            'text' => 'La connexion avec mot de passe n’est pas autorisée pour ce compte. Utilisez le code reçu par e-mail.',
+            'context' => 'Error shown after a correct password is refused because the account only allows CalDAV or CardDAV use.'
+        ],
+        'auth.error.secondary_email_in_use' => [
+            'text' => 'Cette adresse est déjà enregistrée comme adresse secondaire sur un profil. Aucun nouveau compte ne sera créé. Utilisez l’adresse principale de ce profil pour vous connecter.',
+            'context' => 'Error shown when automatic account creation is blocked because the email already belongs to an organization-specific profile field.'
         ],
     ];
 }
@@ -747,12 +762,25 @@ function commonGetAuthJsSourceLang(): array
             'context' => 'Error shown in the shared authentication JavaScript component when the password reset email could not be sent.'
         ],
         'auth.error.invalid_credentials' => [
-            'text' => 'Identifiants invalides.',
+            'text' => "Nom d'utilisateur ou mot de passe invalide.",
             'context' => 'Error shown in the shared authentication JavaScript component when the provided email and password do not match an account.'
         ],
         'auth.error.missing_password' => [
             'text' => 'Veuillez saisir votre mot de passe.',
             'context' => 'Error shown in the shared authentication JavaScript component when the password field is empty in password login mode.'
+        ],
+        'auth.error.missing_mfa_code' => [
+            'text' => 'Veuillez saisir le code de validation.',
+            'context' => 'Error shown when the TOTP second factor is empty.'
+        ],
+        'auth.error.wrong_mfa_code' => [
+            'one' => 'Code de validation incorrect. Il reste {count} essai.',
+            'other' => 'Code de validation incorrect. Il reste {count} essais.',
+            'context' => 'Error shown when the TOTP second factor is wrong.'
+        ],
+        'auth.error.password_login_disabled' => [
+            'text' => 'La connexion avec mot de passe n’est pas autorisée pour ce compte. Utilisez le code reçu par e-mail.',
+            'context' => 'Error shown in the shared authentication JavaScript component after a correct password is refused because password login is disabled.'
         ],
         'auth.error.restart_login' => [
             'text' => 'Merci de relancer la connexion.',
@@ -779,6 +807,22 @@ function commonGetAuthJsSourceLang(): array
             'other' => 'Code incorrect. Il reste {count} essais.',
             'context' => 'Error shown in the shared authentication JavaScript component when the verification code is wrong and the remaining attempts count is displayed.'
         ],
+        'auth.button.validate_mfa' => [
+            'text' => 'Valider',
+            'context' => 'Button used to submit the TOTP second factor during login.'
+        ],
+        'auth.totp.title' => [
+            'text' => 'Double authentification',
+            'context' => 'Title displayed above the TOTP second-factor instructions during login.'
+        ],
+        'auth.totp.instructions' => [
+            'text' => 'Ouvrez votre application de validation et saisissez le code à 6 chiffres.',
+            'context' => 'Instruction displayed while a TOTP second factor is required.'
+        ],
+        'auth.totp.placeholder' => [
+            'text' => 'Code à 6 chiffres',
+            'context' => 'Placeholder for the TOTP second factor input.'
+        ],
         'auth.status.answer_verification' => [
             'text' => 'Veuillez répondre à la question de vérification.',
             'context' => 'Status message shown in the shared authentication JavaScript component when a challenge question is displayed.'
@@ -794,6 +838,14 @@ function commonGetAuthJsSourceLang(): array
         'auth.status.password_signing_in' => [
             'text' => 'Connexion en cours...',
             'context' => 'Status message shown in the shared authentication JavaScript component while a password login request is being sent.'
+        ],
+        'auth.status.mfa_required' => [
+            'text' => 'Saisissez le code de votre application de validation.',
+            'context' => 'Status shown after the first login factor requires TOTP.'
+        ],
+        'auth.status.verifying_mfa' => [
+            'text' => 'Vérification de la double authentification…',
+            'context' => 'Status shown while the TOTP code is being verified.'
         ],
         'auth.status.reset_email_sent' => [
             'text' => "Si cette adresse existe, un lien de réinitialisation vient d'être envoyé.",
@@ -907,6 +959,11 @@ function commonResolveOrganizationContext($defaultOrganizationId = 1)
         'logo' => (string)$organization->get('logo'),
         'banner' => (string)$organization->get('banner'),
         'color' => trim((string)$organization->get('color')),
+        'interface_level' => $organization->getInterfaceLevel(),
+        'lexicon' => $organization->getLexicon(),
+        'datecreation' => $organization->get('datecreation') instanceof \DateTimeInterface
+            ? $organization->get('datecreation')->format('Y-m-d')
+            : '',
         'host' => $host,
         'error' => null,
         'isDemo' => commonIsDemoHost($host),
@@ -960,11 +1017,11 @@ function commonResolveLoginActivityOrganizationId($returnTo = null)
     return 0;
 }
 
-function commonUpdateLastConnection($userId, $returnTo = null, $activateUser = false)
+function commonUpdateGlobalLastConnection($userId, $activateUser = false)
 {
-    $userId = (int)$userId;
-    if ($userId <= 0) {
-        return false;
+	$userId = (int)$userId;
+	if ($userId <= 0) {
+		return false;
     }
 
     $now = new \DateTimeImmutable();
@@ -977,25 +1034,39 @@ function commonUpdateLastConnection($userId, $returnTo = null, $activateUser = f
             $user->set('active', 1);
         }
 
-        $saveResult = $user->save();
-        $updated = !empty($saveResult['status']);
-    }
+		$saveResult = $user->save();
+		$updated = !empty($saveResult['status']);
+	}
 
-    $organizationId = commonResolveLoginActivityOrganizationId($returnTo);
-    if ($organizationId > 0) {
-        $membership = new \dbObject\UserOrganization();
-        if ($membership->load([
-            ['IDuser', $userId],
-            ['IDorganization', $organizationId],
-            ['active', 1],
-        ])) {
-            $membership->set('dateconnexion', $now);
-            $saveResult = $membership->save();
-            $updated = !empty($saveResult['status']) || $updated;
-        }
-    }
+	return $updated;
+}
 
-    return $updated;
+function commonUpdateOrganizationLastConnection($userId, $organizationId)
+{
+	$userId = (int)$userId;
+	$organizationId = (int)$organizationId;
+	if ($userId <= 0 || $organizationId <= 0) {
+		return false;
+	}
+
+	$now = new \DateTimeImmutable();
+	$membership = new \dbObject\UserOrganization();
+	if (!$membership->load([
+		['IDuser', $userId],
+		['IDorganization', $organizationId],
+		['active', 1],
+	])) {
+		return false;
+	}
+
+	$membership->set('dateconnexion', $now);
+	$saveResult = $membership->save();
+	return !empty($saveResult['status']);
+}
+
+function commonUpdateLastConnection($userId, $returnTo = null, $activateUser = false)
+{
+	return commonUpdateGlobalLastConnection($userId, $activateUser);
 }
 
 function commonRestoreRememberedUser()
@@ -1029,16 +1100,18 @@ function commonRestoreRememberedUser()
 
     $remember = \dbObject\UserRemember::findValidByToken($rememberCookie);
     if (!$remember) {
+        commonAuthSecurityLog('remember_login', 'failed', ['reason' => 'invalid_or_expired_token']);
         commonExpireCookieValue(commonGetRememberCookieName(), true);
         commonExpireLegacyRememberCookie();
         return 0;
     }
 
-    unset($_SESSION['permissionCacheByOrganization']);
-    commonClearCurrentUserAllAdminModes();
-    $_SESSION['currentUser'] = (int)$remember->get('IDuser');
-    commonUpdateLastConnection((int)$_SESSION['currentUser']);
-    commonRefreshRememberedUser($remember);
+	unset($_SESSION['permissionCacheByOrganization']);
+	commonClearCurrentUserAllAdminModes();
+	$_SESSION['currentUser'] = (int)$remember->get('IDuser');
+	commonUpdateGlobalLastConnection((int)$_SESSION['currentUser']);
+	commonRefreshRememberedUser($remember);
+    commonAuthSecurityLog('remember_login', 'success', ['user_id' => (int)$_SESSION['currentUser']]);
     return (int)$_SESSION['currentUser'];
 }
 
@@ -1049,6 +1122,18 @@ function commonGetCurrentUserId()
     }
 
     return (int)($_SESSION['currentUser'] ?? 0);
+}
+
+/** Call after the last session write, including form tokens, on read-only endpoints. */
+function commonReleaseReadOnlySession(): void
+{
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        // Persist the current permission cache before rendering can refresh it lazily.
+        if (commonGetCurrentUserId() > 0) {
+            commonGetCurrentUserOrganizationPermissionSet();
+        }
+        session_write_close();
+    }
 }
 
 function commonGetCurrentUserDisplayName()
@@ -1118,6 +1203,28 @@ function commonClearCurrentUserAllAdminModes()
 {
     commonClearCurrentUserAdminMode();
     commonClearCurrentUserSiteAdminMode();
+    unset($_SESSION['extendedAuthoritiesByOrganization']);
+}
+
+function commonCurrentUserCanUseExtendedAuthorities($organizationId): bool
+{
+    return \dbObject\HolonPermission::userHasExtendedAuthorities((int)commonGetCurrentUserId(), (int)$organizationId);
+}
+
+function commonCurrentUserIsExtendedAuthoritiesEnabled($organizationId): bool
+{
+    $userId = (int)commonGetCurrentUserId();
+    return $userId > 0 && (int)($_SESSION['extendedAuthoritiesByOrganization'][(int)$organizationId] ?? 0) === $userId;
+}
+
+function commonSetCurrentUserExtendedAuthorities(bool $enabled, int $organizationId): bool
+{
+    $active = $enabled && $organizationId > 0 && commonCurrentUserCanUseExtendedAuthorities($organizationId);
+    if ($active) $_SESSION['extendedAuthoritiesByOrganization'][$organizationId] = (int)commonGetCurrentUserId();
+    else unset($_SESSION['extendedAuthoritiesByOrganization'][$organizationId]);
+    commonClearCurrentUserPermissionCache();
+    commonGetCurrentUserOrganizationPermissionSet($organizationId, true);
+    return $active;
 }
 
 function commonCurrentUserCanUseAdminMode($organizationId = null)
@@ -1531,6 +1638,10 @@ function commonIsCurrentUserPermissionCacheEntryFresh(array $permissionCacheEntr
         return false;
     }
 
+    if (!empty($permissionCacheEntry['extendedAuthoritiesActive']) !== commonCurrentUserIsExtendedAuthoritiesEnabled($organizationId)) {
+        return false;
+    }
+
     $cachedAtHistoryId = (int)($permissionCacheEntry['cachedAtHistoryId'] ?? -1);
     if ($cachedAtHistoryId < 0) {
         return false;
@@ -1602,7 +1713,15 @@ function commonCurrentUserHasPermission($permissionKey, $contextHolon = null, $o
 
     $permissionSet = commonGetCurrentUserOrganizationPermissionSet($organizationId, $forceRefresh);
     if (empty($permissionSet['definedPermissionKeys'][$permissionKey])) {
-        return false;
+        $fallback = \dbObject\Permission::getUnconfiguredFallbackPermissionKey($permissionKey);
+        if ($fallback !== null) {
+            return commonCurrentUserHasPermission($fallback, $contextHolon, $organizationId);
+        }
+        if (\dbObject\Permission::requiresExplicitAssignment($permissionKey)) {
+            return false;
+        }
+        // An unconfigured permission is open to organization members.
+        return commonUserHasOrganizationMembership($currentUserId, $organizationId);
     }
 
     $scope = $permissionSet['permissions'][$permissionKey] ?? null;
@@ -1669,15 +1788,46 @@ function commonCurrentUserHasPermission($permissionKey, $contextHolon = null, $o
     return false;
 }
 
+function commonGetLegacyAuthCookieNames()
+{
+    $names = ['currentUser', 'currentCode'];
+    if (function_exists('appGetCurrentUserCookieName')) {
+        $names[] = appGetCurrentUserCookieName(commonGetRequestHost());
+    }
+    if (function_exists('appGetCurrentCodeCookieName')) {
+        $names[] = appGetCurrentCodeCookieName(commonGetRequestHost());
+    }
+
+    return array_values(array_unique(array_filter(array_map('trim', $names))));
+}
+
+function commonHasLegacyAuthCookies()
+{
+    foreach (commonGetLegacyAuthCookieNames() as $cookieName) {
+        if (array_key_exists($cookieName, $_COOKIE)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function commonExpireLegacyAuthCookies()
+{
+    $expired = false;
+    foreach (commonGetLegacyAuthCookieNames() as $cookieName) {
+        if (array_key_exists($cookieName, $_COOKIE)) {
+            unset($_COOKIE[$cookieName]);
+            $expired = true;
+        }
+        commonExpireCookieValue($cookieName, true);
+    }
+
+    return $expired;
+}
+
 function commonLogoutUser()
 {
-    $currentUserCookieName = function_exists('appGetCurrentUserCookieName')
-        ? appGetCurrentUserCookieName(commonGetRequestHost())
-        : 'currentUser';
-    $currentCodeCookieName = function_exists('appGetCurrentCodeCookieName')
-        ? appGetCurrentCodeCookieName(commonGetRequestHost())
-        : 'currentCode';
-
     unset($_SESSION['currentUser']);
     commonClearCurrentUserAllAdminModes();
     unset($_SESSION['permissionCacheByOrganization']);
@@ -1686,16 +1836,468 @@ function commonLogoutUser()
 
     commonExpireCookieValue(commonGetRememberCookieName(), true);
     commonExpireLegacyRememberCookie();
-
-    commonExpireCookieValue($currentUserCookieName, false);
-    commonExpireCookieValue($currentCodeCookieName, false);
-    commonExpireCookieValue('currentUser', false);
-    commonExpireCookieValue('currentCode', false);
+    commonExpireLegacyAuthCookies();
 }
 
 function commonGetRequestIp()
 {
-    return substr((string)($_SERVER['REMOTE_ADDR'] ?? ''), 0, 45);
+    $remoteAddress = commonNormalizeIpAddress($_SERVER['REMOTE_ADDR'] ?? '');
+    if ($remoteAddress === '') {
+        return '';
+    }
+
+    $trustedProxies = commonGetTrustedProxyRanges();
+    if ($trustedProxies === [] || !commonIpMatchesAnyRange($remoteAddress, $trustedProxies)) {
+        return $remoteAddress;
+    }
+
+    $forwardedAddresses = array_filter(array_map(
+        'commonNormalizeIpAddress',
+        explode(',', (string)($_SERVER['HTTP_X_FORWARDED_FOR'] ?? ''))
+    ));
+    if ($forwardedAddresses === []) {
+        return $remoteAddress;
+    }
+
+    $chain = array_merge(array_values($forwardedAddresses), [$remoteAddress]);
+    for ($index = count($chain) - 1; $index >= 0; $index--) {
+        $candidate = $chain[$index];
+        if (!commonIpMatchesAnyRange($candidate, $trustedProxies)) {
+            return $candidate;
+        }
+    }
+
+    return $remoteAddress;
+}
+
+function commonNormalizeIpAddress($value)
+{
+    $value = trim((string)$value);
+    if ($value === '' || filter_var($value, FILTER_VALIDATE_IP) === false) {
+        return '';
+    }
+
+    return substr($value, 0, 45);
+}
+
+function commonGetTrustedProxyRanges()
+{
+    $configured = function_exists('envValue')
+        ? (string)envValue('AUTH_TRUSTED_PROXY_IPS', '')
+        : (string)(getenv('AUTH_TRUSTED_PROXY_IPS') ?: '');
+
+    return array_values(array_filter(array_map('trim', explode(',', $configured))));
+}
+
+function commonIpMatchesAnyRange($ipAddress, array $ranges)
+{
+    foreach ($ranges as $range) {
+        if (commonIpMatchesRange($ipAddress, $range)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function commonIpMatchesRange($ipAddress, $range)
+{
+    $ipAddress = commonNormalizeIpAddress($ipAddress);
+    $range = trim((string)$range);
+    if ($ipAddress === '' || $range === '') {
+        return false;
+    }
+
+    if (strpos($range, '/') === false) {
+        $rangeAddress = commonNormalizeIpAddress($range);
+        return $rangeAddress !== '' && hash_equals($rangeAddress, $ipAddress);
+    }
+
+    [$networkAddress, $prefixLength] = array_pad(explode('/', $range, 2), 2, '');
+    $networkAddress = commonNormalizeIpAddress($networkAddress);
+    if ($networkAddress === '' || !ctype_digit((string)$prefixLength)) {
+        return false;
+    }
+
+    $ipBinary = @inet_pton($ipAddress);
+    $networkBinary = @inet_pton($networkAddress);
+    if ($ipBinary === false || $networkBinary === false || strlen($ipBinary) !== strlen($networkBinary)) {
+        return false;
+    }
+
+    $maximumBits = strlen($ipBinary) * 8;
+    $prefixLength = (int)$prefixLength;
+    if ($prefixLength < 0 || $prefixLength > $maximumBits) {
+        return false;
+    }
+
+    $wholeBytes = intdiv($prefixLength, 8);
+    $remainingBits = $prefixLength % 8;
+    if ($wholeBytes > 0 && substr($ipBinary, 0, $wholeBytes) !== substr($networkBinary, 0, $wholeBytes)) {
+        return false;
+    }
+    if ($remainingBits === 0) {
+        return true;
+    }
+
+    $mask = (0xff << (8 - $remainingBits)) & 0xff;
+    return (ord($ipBinary[$wholeBytes]) & $mask) === (ord($networkBinary[$wholeBytes]) & $mask);
+}
+
+function commonAuthReadEnvironmentValue($key, $default = null)
+{
+    if (function_exists('envValue')) {
+        return envValue((string)$key, $default);
+    }
+
+    $value = getenv((string)$key);
+    return $value === false ? $default : $value;
+}
+
+function commonAuthEnvironmentBoolean($key, $default)
+{
+    $value = commonAuthReadEnvironmentValue($key, $default ? 'true' : 'false');
+    if (is_bool($value)) {
+        return $value;
+    }
+
+    return in_array(strtolower(trim((string)$value)), ['1', 'true', 'yes', 'on'], true);
+}
+
+function commonAuthRateLimitsEnabled()
+{
+    return commonAuthEnvironmentBoolean('AUTH_RATE_LIMITS_ENABLED', true);
+}
+
+function commonGetAuthRateLimitPolicy($name)
+{
+    $policies = [
+        'password_account' => ['scope' => 'password_account', 'maximum' => 5, 'window' => 900, 'block' => 900],
+        'password_ip' => ['scope' => 'password_ip', 'maximum' => 30, 'window' => 900, 'block' => 900],
+        'magic_email_minute' => ['scope' => 'magic_email_minute', 'maximum' => 1, 'window' => 60, 'block' => 60],
+        'magic_email_hour' => ['scope' => 'magic_email_hour', 'maximum' => 5, 'window' => 3600, 'block' => 3600],
+        'magic_ip_hour' => ['scope' => 'magic_ip_hour', 'maximum' => 30, 'window' => 3600, 'block' => 3600],
+        'magic_request_ip' => ['scope' => 'magic_request_ip', 'maximum' => 60, 'window' => 900, 'block' => 900],
+        'reset_email_short' => ['scope' => 'reset_email_short', 'maximum' => 1, 'window' => 300, 'block' => 300],
+        'reset_email_hour' => ['scope' => 'reset_email_hour', 'maximum' => 3, 'window' => 3600, 'block' => 3600],
+        'reset_ip_hour' => ['scope' => 'reset_ip_hour', 'maximum' => 20, 'window' => 3600, 'block' => 3600],
+        'otp_account' => ['scope' => 'otp_account', 'maximum' => 10, 'window' => 900, 'block' => 900],
+        'otp_ip' => ['scope' => 'otp_ip', 'maximum' => 30, 'window' => 900, 'block' => 900],
+    ];
+
+    return $policies[(string)$name] ?? null;
+}
+
+function commonGetAuthRateLimitSecret()
+{
+    $configured = trim((string)commonAuthReadEnvironmentValue('AUTH_RATE_LIMIT_SECRET', ''));
+    if ($configured !== '') {
+        return $configured;
+    }
+
+    return hash('sha256', implode('|', [
+        (string)($GLOBALS['dbPassword'] ?? ''),
+        (string)($GLOBALS['dbName'] ?? ''),
+        (string)($GLOBALS['siteTitle'] ?? ''),
+        'auth-rate-limit-fallback',
+    ]));
+}
+
+function commonAuthHashIdentifier($kind, $value)
+{
+    $kind = strtolower(trim((string)$kind));
+    $value = strtolower(trim((string)$value));
+    return hash_hmac('sha256', $kind . "\0" . $value, commonGetAuthRateLimitSecret());
+}
+
+function commonAuthRunLimit($policyName, $identityKind, $identityValue, $operation = 'consume')
+{
+    if (!commonAuthRateLimitsEnabled()) {
+        return ['available' => true, 'allowed' => true, 'count' => 0, 'remaining' => PHP_INT_MAX, 'retry_after' => 0];
+    }
+
+    static $purgeAttempted = false;
+    if (!$purgeAttempted) {
+        $purgeAttempted = true;
+        if (random_int(1, 200) === 1) {
+            \dbObject\AuthRateLimit::purgeStale(30, 1000);
+        }
+    }
+
+    $policy = commonGetAuthRateLimitPolicy($policyName);
+    if (!is_array($policy)) {
+        return ['available' => false, 'allowed' => false, 'count' => 0, 'remaining' => 0, 'retry_after' => 60];
+    }
+
+    $keyHash = commonAuthHashIdentifier($identityKind, $identityValue);
+    if ($operation === 'inspect') {
+        return \dbObject\AuthRateLimit::inspect($policy['scope'], $keyHash, $policy['window']);
+    }
+    if ($operation === 'failure') {
+        return \dbObject\AuthRateLimit::recordFailure(
+            $policy['scope'],
+            $keyHash,
+            $policy['maximum'],
+            $policy['window'],
+            $policy['block']
+        );
+    }
+
+    return \dbObject\AuthRateLimit::consume(
+        $policy['scope'],
+        $keyHash,
+        $policy['maximum'],
+        $policy['window'],
+        $policy['block']
+    );
+}
+
+function commonAuthRunLimits(array $limits, $operation = 'consume')
+{
+    $combined = ['available' => true, 'allowed' => true, 'retry_after' => 0];
+    foreach ($limits as $limit) {
+        $result = commonAuthRunLimit(
+            $limit['policy'] ?? '',
+            $limit['kind'] ?? '',
+            $limit['value'] ?? '',
+            $operation
+        );
+        if (empty($result['available'])) {
+            $combined['available'] = false;
+            $combined['allowed'] = false;
+        } elseif (empty($result['allowed'])) {
+            $combined['allowed'] = false;
+        }
+        $combined['retry_after'] = max((int)$combined['retry_after'], (int)($result['retry_after'] ?? 0));
+        if (empty($combined['available']) || empty($combined['allowed'])) {
+            break;
+        }
+    }
+
+    return $combined;
+}
+
+function commonAuthClearLimit($policyName, $identityKind, $identityValue)
+{
+    if (!commonAuthRateLimitsEnabled()) {
+        return true;
+    }
+
+    $policy = commonGetAuthRateLimitPolicy($policyName);
+    if (!is_array($policy)) {
+        return false;
+    }
+
+    return \dbObject\AuthRateLimit::clearBucket(
+        $policy['scope'],
+        commonAuthHashIdentifier($identityKind, $identityValue)
+    );
+}
+
+function commonAuthEmailDeliveryLimits($flow, $email, $operation = 'consume')
+{
+    $email = strtolower(trim((string)$email));
+    $ipAddress = commonGetRequestIp();
+    if ($flow === 'reset') {
+        return commonAuthRunLimits([
+            ['policy' => 'reset_ip_hour', 'kind' => 'ip', 'value' => $ipAddress],
+            ['policy' => 'reset_email_short', 'kind' => 'email', 'value' => $email],
+            ['policy' => 'reset_email_hour', 'kind' => 'email', 'value' => $email],
+        ], $operation);
+    }
+
+    return commonAuthRunLimits([
+        ['policy' => 'magic_ip_hour', 'kind' => 'ip', 'value' => $ipAddress],
+        ['policy' => 'magic_email_minute', 'kind' => 'email', 'value' => $email],
+        ['policy' => 'magic_email_hour', 'kind' => 'email', 'value' => $email],
+    ], $operation);
+}
+
+function commonAuthSetLimitHttpResponse(array $result)
+{
+    $storageAvailable = !empty($result['available']);
+    http_response_code($storageAvailable ? 429 : 503);
+    $retryAfter = max(1, (int)($result['retry_after'] ?? 60));
+    header('Retry-After: ' . $retryAfter);
+}
+
+function commonAuthGetSecurityAlertRecipient()
+{
+    $configured = trim((string)commonAuthReadEnvironmentValue('AUTH_SECURITY_ALERT_EMAIL', ''));
+    if ($configured === '') {
+        $configured = trim((string)($GLOBALS['mailUser'] ?? ''));
+    }
+
+    return filter_var($configured, FILTER_VALIDATE_EMAIL) ? $configured : '';
+}
+
+function commonAuthSecurityAlertsEnabled()
+{
+    return commonAuthEnvironmentBoolean('AUTH_SECURITY_ALERT_ENABLED', true)
+        && commonAuthGetSecurityAlertRecipient() !== ''
+        && function_exists('myHTMLMail');
+}
+
+function commonAuthGetSecurityAlertCooldownSeconds()
+{
+    $configured = (int)commonAuthReadEnvironmentValue('AUTH_SECURITY_ALERT_COOLDOWN_SECONDS', 3600);
+    return max(300, min(86400, $configured));
+}
+
+function commonAuthAcquireSecurityAlertSlot($eventKey)
+{
+    $eventKey = preg_replace('/[^a-z0-9_.-]+/i', '_', (string)$eventKey);
+    if ($eventKey === '') {
+        return false;
+    }
+
+    $path = commonRuntimeLogPath('auth/security-alert-throttle.json');
+    $directory = dirname($path);
+    if (!is_dir($directory) && !@mkdir($directory, 0770, true) && !is_dir($directory)) {
+        return false;
+    }
+
+    $handle = @fopen($path, 'c+');
+    if ($handle === false) {
+        return false;
+    }
+
+    try {
+        if (!flock($handle, LOCK_EX)) {
+            return false;
+        }
+
+        $content = stream_get_contents($handle);
+        $state = json_decode(is_string($content) ? $content : '', true);
+        $state = is_array($state) ? $state : [];
+        $now = time();
+        $cooldown = commonAuthGetSecurityAlertCooldownSeconds();
+        $lastSentAt = (int)($state[$eventKey] ?? 0);
+        if ($lastSentAt > 0 && ($now - $lastSentAt) < $cooldown) {
+            return false;
+        }
+
+        foreach ($state as $key => $sentAt) {
+            if (!is_string($key) || (int)$sentAt < ($now - 172800)) {
+                unset($state[$key]);
+            }
+        }
+        $state[$eventKey] = $now;
+
+        rewind($handle);
+        if (!ftruncate($handle, 0)) {
+            return false;
+        }
+        $encoded = json_encode($state, JSON_UNESCAPED_SLASHES);
+        if (!is_string($encoded) || fwrite($handle, $encoded) === false) {
+            return false;
+        }
+
+        return fflush($handle);
+    } finally {
+        flock($handle, LOCK_UN);
+        fclose($handle);
+    }
+}
+
+function commonAuthSendSecurityAlert(array $payload)
+{
+    if (!commonAuthSecurityAlertsEnabled()) {
+        return false;
+    }
+
+    $eventKey = implode('.', [
+        (string)($payload['event'] ?? 'authentication'),
+        (string)($payload['outcome'] ?? 'rate_limited'),
+        (string)($payload['scope'] ?? 'all'),
+    ]);
+    if (!commonAuthAcquireSecurityAlertSlot($eventKey)) {
+        return false;
+    }
+
+    $recipient = commonAuthGetSecurityAlertRecipient();
+    $siteTitle = trim((string)($GLOBALS['siteTitle'] ?? 'Site'));
+    $fromAddress = trim((string)($GLOBALS['mailUser'] ?? ''));
+    if (!filter_var($fromAddress, FILTER_VALIDATE_EMAIL)) {
+        $fromAddress = $recipient;
+    }
+
+    $fields = [
+        'Heure' => (string)($payload['time'] ?? ''),
+        'Evenement' => (string)($payload['event'] ?? ''),
+        'Resultat' => (string)($payload['outcome'] ?? ''),
+        'Portee' => (string)($payload['scope'] ?? 'all'),
+        'Attente (s)' => (string)($payload['retry_after'] ?? ''),
+        'Empreinte IP' => (string)($payload['ip_hash'] ?? ''),
+        'Empreinte compte' => (string)($payload['account_hash'] ?? ''),
+        'Utilisateur' => (string)($payload['user_id'] ?? ''),
+    ];
+    $rows = '';
+    foreach ($fields as $label => $value) {
+        if ($value === '') {
+            continue;
+        }
+        $rows .= '<tr><th style="text-align:left;padding:4px 10px 4px 0;">'
+            . htmlspecialchars($label, ENT_QUOTES, 'UTF-8')
+            . '</th><td style="padding:4px 0;word-break:break-all;">'
+            . htmlspecialchars($value, ENT_QUOTES, 'UTF-8')
+            . '</td></tr>';
+    }
+
+    $subject = '[' . $siteTitle . '] Limite de sécurité atteinte';
+    $body = '<p>Une limite de protection des connexions a été atteinte.</p>'
+        . '<table>' . $rows . '</table>'
+        . '<p>Consultez le journal privé <code>../log/auth/authentication.jsonl</code> si une investigation est nécessaire.</p>';
+    $sent = myHTMLMail([$fromAddress, $siteTitle], $recipient, $subject, $body);
+    if (!$sent) {
+        error_log('Unable to send authentication security alert.');
+    }
+
+    return $sent;
+}
+
+function commonAuthSecurityLog($event, $outcome, array $context = [])
+{
+    if (!commonAuthEnvironmentBoolean('AUTH_SECURITY_LOG_ENABLED', true)) {
+        return true;
+    }
+
+    $email = strtolower(trim((string)($context['email'] ?? '')));
+    unset($context['email']);
+    $payload = [
+        'time' => date('c'),
+        'event' => preg_replace('/[^a-z0-9_.-]+/i', '_', (string)$event),
+        'outcome' => preg_replace('/[^a-z0-9_.-]+/i', '_', (string)$outcome),
+        'ip_hash' => commonAuthHashIdentifier('ip', commonGetRequestIp()),
+    ];
+    if ($email !== '') {
+        $payload['account_hash'] = commonAuthHashIdentifier('email', $email);
+    }
+
+    foreach (['user_id', 'target_user_id', 'organization_id', 'reason', 'scope', 'retry_after', 'legacy'] as $key) {
+        if (array_key_exists($key, $context)) {
+            $payload[$key] = $context[$key];
+        }
+    }
+
+    $logPath = commonRuntimeLogPath('auth/authentication.jsonl');
+    $logDirectory = dirname($logPath);
+    if (!is_dir($logDirectory) && !@mkdir($logDirectory, 0770, true) && !is_dir($logDirectory)) {
+        error_log('Unable to create authentication log directory.');
+        return false;
+    }
+
+    $line = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    if (!is_string($line) || $line === '') {
+        return false;
+    }
+
+    $written = file_put_contents($logPath, $line . PHP_EOL, FILE_APPEND | LOCK_EX) !== false;
+    if ($payload['outcome'] === 'rate_limited') {
+        commonAuthSendSecurityAlert($payload);
+    }
+
+    return $written;
 }
 
 function commonNormalizeLoginCode($code)
@@ -1771,6 +2373,20 @@ function commonGetPasswordPolicyValidationMessage($minLength = null)
 function commonUserHasPasswordHash($hash)
 {
     return trim((string)$hash) !== '';
+}
+
+function commonUserAllowsPasswordLogin($user)
+{
+    if (!is_object($user) || !method_exists($user, 'get')) {
+        return false;
+    }
+
+    if (method_exists($user, 'allowsPasswordLogin')) {
+        return (bool)$user->allowsPasswordLogin();
+    }
+
+    return commonUserHasPasswordHash((string)$user->get('password'))
+        && (bool)$user->get('allow_password_login');
 }
 
 function commonVerifyUserPassword($password, $hash)
@@ -1874,6 +2490,58 @@ function commonStorePendingLoginToken($token)
     $_SESSION['pending_login_token'] = (string)$token;
 }
 
+function commonCompleteInteractiveLogin($userId, $remember, $ipAddress)
+{
+    $userId = (int)$userId;
+    if ($userId <= 0) {
+        return false;
+    }
+
+    if ((int)$remember > 0) {
+        $rememberToken = bin2hex(random_bytes(32));
+        $ua = (string)($_SERVER['HTTP_USER_AGENT'] ?? '');
+        $browser = strpos($ua, 'Chrome') !== false ? 'Chrome' : (strpos($ua, 'Firefox') !== false ? 'Firefox' : (strpos($ua, 'Safari') !== false ? 'Safari' : 'Unknown'));
+        $os = strpos($ua, 'Windows') !== false ? 'Windows' : (strpos($ua, 'Mac') !== false ? 'MacOS' : (strpos($ua, 'Linux') !== false ? 'Linux' : (strpos($ua, 'Android') !== false ? 'Android' : (strpos($ua, 'iPhone') !== false ? 'iOS' : 'Unknown'))));
+        \dbObject\UserRemember::issue($userId, $rememberToken, $ipAddress, $ua, $browser, $os);
+        commonSetCookieValue(commonGetRememberCookieName(), $rememberToken, time() + commonGetRememberDurationSeconds(), true);
+        commonExpireLegacyRememberCookie();
+    }
+
+    commonUpdateGlobalLastConnection($userId, true);
+    commonExpireLegacyAuthCookies();
+    session_regenerate_id(true);
+    $_SESSION['currentUser'] = $userId;
+    commonClearCurrentUserAllAdminModes();
+    unset($_SESSION['permissionCacheByOrganization']);
+    commonStorePendingLoginToken(null);
+    return true;
+}
+
+function commonBeginTotpLogin($user, $ipAddress, $remember, $loginToken = null)
+{
+    if (!commonUserHasTotpEnabled($user)) {
+        return ['status' => true];
+    }
+
+    if (commonUserGetTotpSecret($user) === null) {
+        return ['status' => false, 'error' => 'mfa_unavailable'];
+    }
+
+    if ($loginToken instanceof \dbObject\UserLoginToken) {
+        $result = $loginToken->beginMfaVerification();
+        if (!is_array($result) || empty($result['status'])) {
+            return ['status' => false, 'error' => 'mfa_unavailable'];
+        }
+    } else {
+        $loginToken = \dbObject\UserLoginToken::issueMfaPending((int)$user->getId(), $ipAddress, $remember);
+        if (!$loginToken) {
+            return ['status' => false, 'error' => 'mfa_unavailable'];
+        }
+    }
+
+    return ['status' => false, 'error' => 'mfa_required', 'mfa_token' => (string)$loginToken->get('token')];
+}
+
 function commonStripLoginFeedbackParams($path, $fallback = '/')
 {
     $normalized = commonNormalizeLocalPath($path, $fallback);
@@ -1891,6 +2559,7 @@ function commonStripLoginFeedbackParams($path, $fallback = '/')
         $params['login_message'],
         $params['login_status_type'],
         $params['login_token'],
+        $params['login_mfa_token'],
         $params['login_remaining_attempts']
     );
 
@@ -1946,7 +2615,7 @@ function commonIsAjaxJsonRequest()
     return strpos($accept, 'application/json') !== false;
 }
 
-function commonSendLoginCode($userId, $email, array $organizationContext, $remember, $returnTo)
+function commonSendLoginCode($userId, $email, array $organizationContext, $remember, $returnTo, $verifyPath = '/common/login_verify.php')
 {
     $sourceLang = commonGetAuthPhpSourceLang();
     $lang = commonAuthLoadBundle('common_auth_page', $sourceLang);
@@ -1961,9 +2630,20 @@ function commonSendLoginCode($userId, $email, array $organizationContext, $remem
     }
 
     $returnTo = commonNormalizeLocalPath($returnTo, '/');
-    $link = commonGetRequestScheme() . "://" . ($_SERVER['HTTP_HOST'] ?? '') . "/common/login_verify.php?token=" . urlencode($requestToken) . "&code=" . urlencode($loginCode) . "&return_to=" . urlencode($returnTo);
+    $verifyPath = commonNormalizeLocalPath($verifyPath, '/common/login_verify.php');
+    $querySeparator = strpos($verifyPath, '?') === false ? '?' : '&';
+    $link = commonGetRequestScheme() . "://" . ($_SERVER['HTTP_HOST'] ?? '') . $verifyPath . $querySeparator . "token=" . urlencode($requestToken) . "&code=" . urlencode($loginCode) . "&return_to=" . urlencode($returnTo);
 
-    $subject = commonAuthT('auth.email.subject', [], $lang, $sourceLang);
+    $codeLabel = commonAuthT('auth.email.subject', [], $lang, $sourceLang);
+    $subject = $codeLabel . ' : ' . $loginCode;
+    // Keep the code contiguous and explicitly labelled in both MIME alternatives.
+    $plainTextMessage = $codeLabel . ' : ' . $loginCode . "\n\n"
+        . ($organizationContext['name'] ?: ($_SERVER['HTTP_HOST'] ?? 'Organisation')) . "\n\n"
+        . commonAuthT('auth.email.body.enter_code', [], $lang, $sourceLang) . "\n"
+        . commonAuthT('auth.email.body.validity_notice', [], $lang, $sourceLang) . "\n\n"
+        . commonAuthT('auth.email.body.open_link', [], $lang, $sourceLang) . "\n"
+        . $link . "\n\n"
+        . commonAuthT('auth.email.body.network_notice', [], $lang, $sourceLang);
     $orgName = htmlspecialchars($organizationContext['name'] ?: ($_SERVER['HTTP_HOST'] ?? 'Organisation'));
     $color = htmlspecialchars(commonGetOrganizationAccentColor($organizationContext, '#004663'));
     $logo = commonBuildAbsoluteAssetUrl($organizationContext['logo'] ?? '');
@@ -1975,7 +2655,7 @@ function commonSendLoginCode($userId, $email, array $organizationContext, $remem
 <table width='100%' cellpadding='0' cellspacing='0'>
 <tr>
 <td align='center'>
-<table width='600' cellpadding='0' cellspacing='0' style='background:white; border-radius:8px; overflow:hidden;'>
+<table width='600' cellpadding='0' cellspacing='0' style='background:white; border-radius:var(--radius-md); overflow:hidden;'>
 <tr>
 <td style='background:$color; text-align:center; padding:30px 20px; position:relative;'>
     " . ($banner ? "<div style='background:url($banner) center/cover; opacity:0.3; position:absolute; inset:0;'></div>" : "") . "
@@ -1993,7 +2673,7 @@ function commonSendLoginCode($userId, $email, array $organizationContext, $remem
 <td style='padding:30px; text-align:center;'>
     <h3 style='margin-top:0;'>" . htmlspecialchars(commonAuthT('auth.email.body.connection_heading', [], $lang, $sourceLang)) . "</h3>
     <p style='color:#555;'>" . htmlspecialchars(commonAuthT('auth.email.body.enter_code', [], $lang, $sourceLang)) . "</p>
-    <div style='display:inline-block;padding:16px 22px;background:#f3f4f6;border-radius:12px;border:1px solid #e5e7eb;font:700 32px/1.2 Consolas, Monaco, monospace;letter-spacing:0.22em;color:#111827;margin-top:10px;'>
+    <div style='display:inline-block;padding:16px 22px;background:#f3f4f6;border-radius:var(--radius-md);border:1px solid #e5e7eb;font:700 32px/1.2 Consolas, Monaco, monospace;letter-spacing:0.22em;color:#111827;margin-top:10px;'>
         $loginCode
     </div>
     <p style='margin:22px 0 0; color:#555;'>" . htmlspecialchars(commonAuthT('auth.email.body.open_link', [], $lang, $sourceLang)) . "</p>
@@ -2015,9 +2695,6 @@ function commonSendLoginCode($userId, $email, array $organizationContext, $remem
 </html>
 ";
 
-    $headers = "MIME-Version: 1.0\r\n";
-    $headers .= "Content-type:text/html;charset=UTF-8\r\n";
-
     $fromAddress = trim((string)($GLOBALS['mailUser'] ?? ''));
     if ($fromAddress === '') {
         $host = preg_replace('/:\d+$/', '', commonGetRootHost() ?: 'localhost');
@@ -2028,7 +2705,7 @@ function commonSendLoginCode($userId, $email, array $organizationContext, $remem
 
     commonStorePendingLoginToken($requestToken);
 
-    if (!myHTMLMail([$fromAddress, $fromName], $email, $subject, $message)) {
+    if (!myHTMLMail([$fromAddress, $fromName], $email, $subject, $message, plainTextBody: $plainTextMessage)) {
         $response = [
             'request_token' => $requestToken,
             'return_to' => $returnTo,
@@ -2097,7 +2774,7 @@ function commonSendPasswordResetEmail(\dbObject\User $user, array $organizationC
 <table width='100%' cellpadding='0' cellspacing='0'>
 <tr>
 <td align='center'>
-<table width='600' cellpadding='0' cellspacing='0' style='background:white; border-radius:8px; overflow:hidden;'>
+<table width='600' cellpadding='0' cellspacing='0' style='background:white; border-radius:var(--radius-md); overflow:hidden;'>
 <tr>
 <td style='background:$color; text-align:center; padding:30px 20px; position:relative;'>
     " . ($banner ? "<div style='background:url($banner) center/cover; opacity:0.3; position:absolute; inset:0;'></div>" : "") . "
@@ -2175,18 +2852,53 @@ function commonHandleMagicLoginSend($defaultReturnTo = '/')
         exit;
     }
 
+    $requestLimit = commonAuthRunLimit('magic_request_ip', 'ip', commonGetRequestIp());
+    if (empty($requestLimit['available']) || empty($requestLimit['allowed'])) {
+        commonAuthSetLimitHttpResponse($requestLimit);
+        commonAuthSecurityLog('magic_login_request', 'rate_limited', [
+            'email' => $email,
+            'retry_after' => (int)($requestLimit['retry_after'] ?? 60),
+        ]);
+        echo json_encode([
+            'error' => 'rate_limited',
+            'message' => commonAuthT('auth.error.rate_limited', [], $lang, $sourceLang),
+        ]);
+        exit;
+    }
+
     $user = new \dbObject\User();
     if ($user->load(['email', $email])) {
+        $deliveryLimit = commonAuthEmailDeliveryLimits('magic', $email);
+        if (empty($deliveryLimit['available']) || empty($deliveryLimit['allowed'])) {
+            commonAuthSetLimitHttpResponse($deliveryLimit);
+            commonAuthSecurityLog('magic_login_email', 'rate_limited', [
+                'email' => $email,
+                'user_id' => (int)$user->getId(),
+                'retry_after' => (int)($deliveryLimit['retry_after'] ?? 60),
+            ]);
+            echo json_encode([
+                'error' => 'rate_limited',
+                'message' => commonAuthT('auth.error.rate_limited', [], $lang, $sourceLang),
+            ]);
+            exit;
+        }
+
         $loginRequest = commonSendLoginCode((int)$user->getId(), $email, $organizationContext, $remember, $returnTo);
         if ($loginRequest === false) {
+            commonAuthSecurityLog('magic_login_email', 'failed', ['email' => $email, 'user_id' => (int)$user->getId()]);
             echo json_encode(['error' => 'send_failed']);
             exit;
         }
         if (!empty($loginRequest['delivery_failed'])) {
+            commonAuthSecurityLog('magic_login_email', 'delivery_uncertain', [
+                'email' => $email,
+                'user_id' => (int)$user->getId(),
+            ]);
             $response = [
                 'status' => 'code_pending',
                 'request_token' => $loginRequest['request_token'],
                 'warning' => 'delivery_uncertain',
+                'password_login_enabled' => commonUserAllowsPasswordLogin($user),
             ];
             if (!empty($loginRequest['mail_error'])) {
                 $response['mail_error'] = (string)$loginRequest['mail_error'];
@@ -2194,7 +2906,24 @@ function commonHandleMagicLoginSend($defaultReturnTo = '/')
             echo json_encode($response);
             exit;
         }
-        echo json_encode(['status' => 'code_sent', 'request_token' => $loginRequest['request_token']]);
+        commonAuthSecurityLog('magic_login_email', 'sent', ['email' => $email, 'user_id' => (int)$user->getId()]);
+        echo json_encode([
+            'status' => 'code_sent',
+            'request_token' => $loginRequest['request_token'],
+            'password_login_enabled' => commonUserAllowsPasswordLogin($user),
+        ]);
+        exit;
+    }
+
+    if (\dbObject\User::isOrganizationEmailInUse($email)) {
+        commonAuthSecurityLog('magic_login_account_creation', 'blocked', [
+            'email' => $email,
+            'reason' => 'secondary_email_in_use',
+        ]);
+        echo json_encode([
+            'error' => 'secondary_email_in_use',
+            'message' => commonAuthT('auth.error.secondary_email_in_use', [], $lang, $sourceLang),
+        ]);
         exit;
     }
 
@@ -2230,6 +2959,20 @@ function commonHandleMagicLoginSend($defaultReturnTo = '/')
 
     unset($_SESSION['challenge']);
 
+    $deliveryLimit = commonAuthEmailDeliveryLimits('magic', $email);
+    if (empty($deliveryLimit['available']) || empty($deliveryLimit['allowed'])) {
+        commonAuthSetLimitHttpResponse($deliveryLimit);
+        commonAuthSecurityLog('magic_login_email', 'rate_limited', [
+            'email' => $email,
+            'retry_after' => (int)($deliveryLimit['retry_after'] ?? 60),
+        ]);
+        echo json_encode([
+            'error' => 'rate_limited',
+            'message' => commonAuthT('auth.error.rate_limited', [], $lang, $sourceLang),
+        ]);
+        exit;
+    }
+
     $user = new \dbObject\User();
     $user->set('email', $email);
     $user->set('active', 0);
@@ -2242,18 +2985,29 @@ function commonHandleMagicLoginSend($defaultReturnTo = '/')
 
     $loginRequest = commonSendLoginCode((int)$user->getId(), $email, $organizationContext, $remember, $returnTo);
     if ($loginRequest === false) {
+        commonAuthSecurityLog('magic_login_email', 'failed', ['email' => $email, 'user_id' => (int)$user->getId()]);
         echo json_encode(['error' => 'send_failed']);
         exit;
     }
     if (!empty($loginRequest['delivery_failed'])) {
+        commonAuthSecurityLog('magic_login_email', 'delivery_uncertain', [
+            'email' => $email,
+            'user_id' => (int)$user->getId(),
+        ]);
         echo json_encode([
             'status' => 'code_pending',
             'request_token' => $loginRequest['request_token'],
             'warning' => 'delivery_uncertain',
+            'password_login_enabled' => false,
         ]);
         exit;
     }
-    echo json_encode(['status' => 'code_sent', 'request_token' => $loginRequest['request_token']]);
+    commonAuthSecurityLog('magic_login_email', 'sent', ['email' => $email, 'user_id' => (int)$user->getId()]);
+    echo json_encode([
+        'status' => 'code_sent',
+        'request_token' => $loginRequest['request_token'],
+        'password_login_enabled' => false,
+    ]);
     exit;
 }
 
@@ -2274,10 +3028,28 @@ function commonHandlePasswordResetRequest($defaultReturnTo = '/')
         exit;
     }
 
+    $deliveryLimit = commonAuthEmailDeliveryLimits('reset', $email);
+    if (empty($deliveryLimit['available']) || empty($deliveryLimit['allowed'])) {
+        commonAuthSetLimitHttpResponse($deliveryLimit);
+        commonAuthSecurityLog('password_reset_request', 'rate_limited', [
+            'email' => $email,
+            'retry_after' => (int)($deliveryLimit['retry_after'] ?? 60),
+        ]);
+        echo json_encode([
+            'error' => 'rate_limited',
+            'message' => commonAuthT('auth.error.rate_limited', [], $lang, $sourceLang),
+        ]);
+        exit;
+    }
+
     $user = new \dbObject\User();
     if ($user->load(['email', $email])) {
         $resetResult = commonSendPasswordResetEmail($user, $organizationContext);
         if (empty($resetResult['status'])) {
+            commonAuthSecurityLog('password_reset_request', 'failed', [
+                'email' => $email,
+                'user_id' => (int)$user->getId(),
+            ]);
             $payload = [
                 'error' => 'send_failed',
                 'message' => commonAuthT('auth.error.reset_send_failed', [], $lang, $sourceLang),
@@ -2290,6 +3062,8 @@ function commonHandlePasswordResetRequest($defaultReturnTo = '/')
             exit;
         }
     }
+
+    commonAuthSecurityLog('password_reset_request', 'accepted', ['email' => $email]);
 
     echo json_encode([
         'status' => 'reset_email_sent',
@@ -2381,14 +3155,48 @@ function commonHandleMagicLoginVerify($defaultReturnTo = '/')
         exit;
     };
 
+    $ipLimit = commonAuthRunLimit('otp_ip', 'ip', $currentIp, 'inspect');
+    if (empty($ipLimit['available']) || empty($ipLimit['allowed'])) {
+        commonAuthSetLimitHttpResponse($ipLimit);
+        commonAuthSecurityLog('login_code_verify', 'rate_limited', [
+            'scope' => 'ip',
+            'retry_after' => (int)($ipLimit['retry_after'] ?? 60),
+        ]);
+        $respondError('rate_limited', [
+            'message' => commonAuthT('auth.error.rate_limited', [], $lang, $sourceLang),
+        ]);
+    }
+
     if ($token === '' || $code === '') {
         $respondError('missing_code');
     }
 
     $loginToken = \dbObject\UserLoginToken::findByToken($token);
     if (!$loginToken) {
+        $failureLimit = commonAuthRunLimit('otp_ip', 'ip', $currentIp, 'failure');
+        commonAuthSecurityLog('login_code_verify', 'failed', ['reason' => 'invalid_token']);
         commonStorePendingLoginToken(null);
+        if (empty($failureLimit['available']) || empty($failureLimit['allowed'])) {
+            commonAuthSetLimitHttpResponse($failureLimit);
+            $respondError('rate_limited', [
+                'message' => commonAuthT('auth.error.rate_limited', [], $lang, $sourceLang),
+            ]);
+        }
         $respondError('invalid');
+    }
+
+    $loginUserId = (int)$loginToken->get('IDuser');
+    $accountLimit = commonAuthRunLimit('otp_account', 'user', (string)$loginUserId, 'inspect');
+    if (empty($accountLimit['available']) || empty($accountLimit['allowed'])) {
+        commonAuthSetLimitHttpResponse($accountLimit);
+        commonAuthSecurityLog('login_code_verify', 'rate_limited', [
+            'user_id' => $loginUserId,
+            'scope' => 'account',
+            'retry_after' => (int)($accountLimit['retry_after'] ?? 60),
+        ]);
+        $respondError('rate_limited', [
+            'message' => commonAuthT('auth.error.rate_limited', [], $lang, $sourceLang),
+        ]);
     }
 
     if ((int)$loginToken->get('used') > 0) {
@@ -2409,13 +3217,49 @@ function commonHandleMagicLoginVerify($defaultReturnTo = '/')
 
     if ((string)$loginToken->get('request_ip') !== $currentIp) {
         $loginToken->markUsed();
+        commonAuthRunLimit('otp_ip', 'ip', $currentIp, 'failure');
+        commonAuthRunLimit('otp_account', 'user', (string)$loginUserId, 'failure');
+        commonAuthSecurityLog('login_code_verify', 'failed', [
+            'user_id' => $loginUserId,
+            'reason' => 'ip_changed',
+        ]);
         commonStorePendingLoginToken(null);
         $respondError('ip_changed');
     }
 
+    if ((bool)$loginToken->get('mfa_pending')) {
+        commonStorePendingLoginToken((string)$loginToken->get('token'));
+        if ($wantsJson) {
+            echo json_encode([
+                'status' => 'mfa_required',
+                'mfa_token' => (string)$loginToken->get('token'),
+            ]);
+            exit;
+        }
+
+        header('Location: ' . commonBuildLoginFeedbackUrl($returnTo, [
+            'login_mfa_token' => (string)$loginToken->get('token'),
+        ]));
+        exit;
+    }
+
     if (!password_verify($code, (string)$loginToken->get('code_hash'))) {
         $loginToken->incrementAttemptCount();
+        $aggregateLimit = commonAuthRunLimits([
+            ['policy' => 'otp_ip', 'kind' => 'ip', 'value' => $currentIp],
+            ['policy' => 'otp_account', 'kind' => 'user', 'value' => (string)$loginUserId],
+        ], 'failure');
         $remainingAttempts = max(0, 5 - (int)$loginToken->get('attempt_count'));
+        commonAuthSecurityLog('login_code_verify', 'failed', [
+            'user_id' => $loginUserId,
+            'reason' => 'wrong_code',
+        ]);
+        if (empty($aggregateLimit['available']) || empty($aggregateLimit['allowed'])) {
+            commonAuthSetLimitHttpResponse($aggregateLimit);
+            $respondError('rate_limited', [
+                'message' => commonAuthT('auth.error.rate_limited', [], $lang, $sourceLang),
+            ]);
+        }
         $respondError(
             $remainingAttempts > 0 ? 'wrong_code' : 'locked',
             [
@@ -2425,40 +3269,40 @@ function commonHandleMagicLoginVerify($defaultReturnTo = '/')
         );
     }
 
-    if ((int)$loginToken->get('remember') > 0) {
-        $rememberToken = bin2hex(random_bytes(32));
-        $ip = $currentIp;
-        $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
-        $browser = (strpos($ua, 'Chrome') !== false) ? 'Chrome' : ((strpos($ua, 'Firefox') !== false) ? 'Firefox' : ((strpos($ua, 'Safari') !== false) ? 'Safari' : 'Unknown'));
-        $os = (strpos($ua, 'Windows') !== false) ? 'Windows' : ((strpos($ua, 'Mac') !== false) ? 'MacOS' : ((strpos($ua, 'Linux') !== false) ? 'Linux' : ((strpos($ua, 'Android') !== false) ? 'Android' : ((strpos($ua, 'iPhone') !== false) ? 'iOS' : 'Unknown'))));
+    $loginUser = new \dbObject\User();
+    if (!$loginUser->load($loginUserId)) {
+        $loginToken->markUsed();
+        commonStorePendingLoginToken(null);
+        $respondError('invalid');
+    }
 
-        \dbObject\UserRemember::issue(
-            (int)$loginToken->get('IDuser'),
-            $rememberToken,
-            $ip,
-            $ua,
-            $browser,
-            $os
-        );
+    $mfaResult = commonBeginTotpLogin($loginUser, $currentIp, (int)$loginToken->get('remember'), $loginToken);
+    if (($mfaResult['error'] ?? '') === 'mfa_required') {
+        commonStorePendingLoginToken((string)$mfaResult['mfa_token']);
+        commonAuthSecurityLog('login_code_verify', 'mfa_required', ['user_id' => $loginUserId]);
+        if ($wantsJson) {
+            echo json_encode([
+                'status' => 'mfa_required',
+                'mfa_token' => (string)$mfaResult['mfa_token'],
+            ]);
+            exit;
+        }
 
-        commonSetCookieValue(
-            commonGetRememberCookieName(),
-            $rememberToken,
-            time() + commonGetRememberDurationSeconds(),
-            true
-        );
-        commonExpireLegacyRememberCookie();
+        header('Location: ' . commonBuildLoginFeedbackUrl($returnTo, [
+            'login_mfa_token' => (string)$mfaResult['mfa_token'],
+        ]));
+        exit;
+    }
+    if (empty($mfaResult['status'])) {
+        $loginToken->markUsed();
+        commonStorePendingLoginToken(null);
+        $respondError('mfa_unavailable');
     }
 
     $loginToken->markUsed();
-    commonStorePendingLoginToken(null);
-
-    commonUpdateLastConnection((int)$loginToken->get('IDuser'), $returnTo, true);
-
-    session_regenerate_id(true);
-    $_SESSION['currentUser'] = (int)$loginToken->get('IDuser');
-    commonClearCurrentUserAllAdminModes();
-    unset($_SESSION['permissionCacheByOrganization']);
+    commonAuthClearLimit('otp_account', 'user', (string)$loginUserId);
+    commonAuthSecurityLog('login_code_verify', 'success', ['user_id' => $loginUserId]);
+    commonCompleteInteractiveLogin($loginUserId, (int)$loginToken->get('remember'), $currentIp);
     session_write_close();
 
     if ($wantsJson) {
@@ -2469,6 +3313,92 @@ function commonHandleMagicLoginVerify($defaultReturnTo = '/')
 
     header('Location: ' . $returnTo);
     exit;
+}
+
+function commonAttemptPasswordLogin($email, $password, $remember = 0)
+{
+    $email = strtolower(trim((string)$email));
+    $password = (string)$password;
+    $ipAddress = commonGetRequestIp();
+    $limits = [
+        ['policy' => 'password_account', 'kind' => 'email', 'value' => $email],
+        ['policy' => 'password_ip', 'kind' => 'ip', 'value' => $ipAddress],
+    ];
+    $currentLimit = commonAuthRunLimits($limits, 'inspect');
+    if (empty($currentLimit['available']) || empty($currentLimit['allowed'])) {
+        commonAuthSecurityLog('password_login', 'rate_limited', [
+            'email' => $email,
+            'retry_after' => (int)($currentLimit['retry_after'] ?? 60),
+        ]);
+        return [
+            'status' => false,
+            'error' => 'rate_limited',
+            'limit' => $currentLimit,
+        ];
+    }
+
+    $user = new \dbObject\User();
+    $userLoaded = $user->load(['email', $email]);
+    $passwordHash = $userLoaded
+        ? (string)$user->get('password')
+        : '$2y$10$BCGA/.XAbfOidWvfvAQItO/AzWcVuOTwmORj54PQTVMULknF8kxBe';
+    if (!$userLoaded || !commonVerifyUserPassword($password, $passwordHash)) {
+        $failedLimit = commonAuthRunLimits($limits, 'failure');
+        commonAuthSecurityLog('password_login', 'failed', [
+            'email' => $email,
+            'reason' => 'invalid_credentials',
+        ]);
+        if (empty($failedLimit['available']) || empty($failedLimit['allowed'])) {
+            return [
+                'status' => false,
+                'error' => 'rate_limited',
+                'limit' => $failedLimit,
+            ];
+        }
+
+        return [
+            'status' => false,
+            'error' => 'invalid_credentials',
+        ];
+    }
+
+    if (!commonUserAllowsPasswordLogin($user)) {
+        commonAuthSecurityLog('password_login', 'disabled', [
+            'email' => $email,
+            'user_id' => (int)$user->getId(),
+        ]);
+        return [
+            'status' => false,
+            'error' => 'password_login_disabled',
+        ];
+    }
+
+    $mfaResult = commonBeginTotpLogin($user, $ipAddress, $remember);
+    if (($mfaResult['error'] ?? '') === 'mfa_required') {
+        commonAuthClearLimit('password_account', 'email', $email);
+        commonAuthSecurityLog('password_login', 'mfa_required', [
+            'email' => $email,
+            'user_id' => (int)$user->getId(),
+        ]);
+        return $mfaResult;
+    }
+    if (empty($mfaResult['status'])) {
+        return $mfaResult;
+    }
+
+    $userId = (int)$user->getId();
+    commonAuthClearLimit('password_account', 'email', $email);
+    commonCompleteInteractiveLogin($userId, $remember, $ipAddress);
+    $_SESSION['userRef'] = $user;
+    commonAuthSecurityLog('password_login', 'success', [
+        'email' => $email,
+        'user_id' => $userId,
+    ]);
+
+    return [
+        'status' => true,
+        'user_id' => $userId,
+    ];
 }
 
 function commonHandlePasswordLogin($defaultReturnTo = '/')
@@ -2482,10 +3412,12 @@ function commonHandlePasswordLogin($defaultReturnTo = '/')
         header('Content-Type: application/json; charset=UTF-8');
     }
 
-    $respondError = function ($error, $message = '') use ($wantsJson, $returnTo) {
-        $payload = array(
-            'error' => $error,
-        );
+    $respondError = function ($error, $message = '', array $limit = []) use ($wantsJson, $returnTo) {
+        if ($error === 'rate_limited') {
+            commonAuthSetLimitHttpResponse($limit);
+        }
+
+        $payload = ['error' => $error];
         if ($message !== '') {
             $payload['message'] = $message;
         }
@@ -2495,11 +3427,11 @@ function commonHandlePasswordLogin($defaultReturnTo = '/')
             exit;
         }
 
-        $target = commonBuildLoginFeedbackUrl($returnTo, array(
+        $target = commonBuildLoginFeedbackUrl($returnTo, [
             'login_error' => $error,
             'login_message' => $message,
             'login_status_type' => 'error',
-        ));
+        ]);
         header('Location: ' . $target);
         exit;
     };
@@ -2511,64 +3443,119 @@ function commonHandlePasswordLogin($defaultReturnTo = '/')
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $respondError('email', commonAuthT('auth.error.invalid_email', [], $lang, $sourceLang));
     }
-
     if ($password === '') {
         $respondError('missing_password', commonAuthT('auth.error.missing_password', [], $lang, $sourceLang));
     }
 
-    $user = new \dbObject\User();
-    if (
-        !$user->load(array('email', $email))
-        || !commonVerifyUserPassword($password, (string)$user->get('password'))
-    ) {
-        $respondError('invalid_credentials', commonAuthT('auth.error.invalid_credentials', [], $lang, $sourceLang));
+    $result = commonAttemptPasswordLogin($email, $password, $remember);
+    if (empty($result['status'])) {
+        $error = (string)($result['error'] ?? 'invalid_credentials');
+        if ($error === 'mfa_required') {
+            if ($wantsJson) {
+                echo json_encode([
+                    'status' => 'mfa_required',
+                    'mfa_token' => (string)($result['mfa_token'] ?? ''),
+                ]);
+                exit;
+            }
+
+            header('Location: ' . commonBuildLoginFeedbackUrl($returnTo, [
+                'login_mfa_token' => (string)($result['mfa_token'] ?? ''),
+            ]));
+            exit;
+        }
+        $messageKey = $error === 'rate_limited'
+            ? 'auth.error.rate_limited'
+            : ($error === 'password_login_disabled' ? 'auth.error.password_login_disabled' : 'auth.error.invalid_credentials');
+        $respondError(
+            $error,
+            commonAuthT($messageKey, [], $lang, $sourceLang),
+            is_array($result['limit'] ?? null) ? $result['limit'] : []
+        );
     }
 
-    if ($remember > 0) {
-        $rememberToken = bin2hex(random_bytes(32));
-        $ip = commonGetRequestIp();
-        $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
-        $browser = (strpos($ua, 'Chrome') !== false) ? 'Chrome' : ((strpos($ua, 'Firefox') !== false) ? 'Firefox' : ((strpos($ua, 'Safari') !== false) ? 'Safari' : 'Unknown'));
-        $os = (strpos($ua, 'Windows') !== false) ? 'Windows' : ((strpos($ua, 'Mac') !== false) ? 'MacOS' : ((strpos($ua, 'Linux') !== false) ? 'Linux' : ((strpos($ua, 'Android') !== false) ? 'Android' : ((strpos($ua, 'iPhone') !== false) ? 'iOS' : 'Unknown'))));
-
-        \dbObject\UserRemember::issue(
-            (int)$user->getId(),
-            $rememberToken,
-            $ip,
-            $ua,
-            $browser,
-            $os
-        );
-
-        commonSetCookieValue(
-            commonGetRememberCookieName(),
-            $rememberToken,
-            time() + commonGetRememberDurationSeconds(),
-            true
-        );
-        commonExpireLegacyRememberCookie();
-    }
-
-    commonUpdateLastConnection((int)$user->getId(), $returnTo, true);
-
-    session_regenerate_id(true);
-    $_SESSION['currentUser'] = (int)$user->getId();
-    $_SESSION['userRef'] = $user;
-    commonClearCurrentUserAllAdminModes();
-    unset($_SESSION['permissionCacheByOrganization']);
-    commonStorePendingLoginToken(null);
     session_write_close();
-
     if ($wantsJson) {
-        echo json_encode(array(
-            'status' => 'ok',
-            'redirect_to' => $returnTo,
-        ));
+        echo json_encode(['status' => 'ok', 'redirect_to' => $returnTo]);
         exit;
     }
 
     header('Location: ' . $returnTo);
     exit;
+}
+
+function commonHandleTotpLoginVerify($defaultReturnTo = '/')
+{
+    $returnTo = commonNormalizeLocalPath($_POST['return_to'] ?? $defaultReturnTo, $defaultReturnTo);
+    $wantsJson = commonIsAjaxJsonRequest();
+    $respond = function (array $payload, $statusCode = 200) use ($wantsJson, $returnTo) {
+        if ($wantsJson) {
+            header('Content-Type: application/json; charset=UTF-8');
+            http_response_code((int)$statusCode);
+            echo json_encode($payload);
+            exit;
+        }
+
+        header('Location: ' . commonBuildLoginFeedbackUrl($returnTo, [
+            'login_error' => (string)($payload['error'] ?? 'mfa_failed'),
+            'login_mfa_token' => (string)($payload['mfa_token'] ?? ''),
+        ]));
+        exit;
+    };
+
+    $token = (string)($_POST['token'] ?? ($_SESSION['pending_login_token'] ?? ''));
+    $code = (string)($_POST['code'] ?? '');
+    $ipAddress = commonGetRequestIp();
+    if ($token === '' || !preg_match('/^\d{6}$/', preg_replace('/\s+/', '', $code))) {
+        $respond(['error' => 'missing_mfa_code'], 400);
+    }
+
+    $loginToken = \dbObject\UserLoginToken::findByToken($token);
+    if (!$loginToken
+        || (int)$loginToken->get('used') > 0
+        || !(bool)$loginToken->get('mfa_pending')
+        || !($loginToken->get('expires_at') instanceof \DateTimeInterface)
+        || $loginToken->get('expires_at') <= new \DateTime()
+        || (string)$loginToken->get('request_ip') !== $ipAddress) {
+        commonStorePendingLoginToken(null);
+        $respond(['error' => 'expired'], 400);
+    }
+
+    $userId = (int)$loginToken->get('IDuser');
+    $user = new \dbObject\User();
+    $secret = $user->load($userId) ? commonUserGetTotpSecret($user) : null;
+    if ($secret === null) {
+        $loginToken->markUsed();
+        commonStorePendingLoginToken(null);
+        $respond(['error' => 'mfa_unavailable'], 503);
+    }
+
+    if ((int)$loginToken->get('mfa_attempt_count') >= 5 || !commonTotpVerifyCode($secret, $code)) {
+        $loginToken->incrementMfaAttemptCount();
+        $limits = commonAuthRunLimits([
+            ['policy' => 'otp_ip', 'kind' => 'ip', 'value' => $ipAddress],
+            ['policy' => 'otp_account', 'kind' => 'user', 'value' => (string)$userId],
+        ], 'failure');
+        $remaining = max(0, 5 - (int)$loginToken->get('mfa_attempt_count'));
+        commonAuthSecurityLog('totp_login', 'failed', ['user_id' => $userId, 'reason' => 'wrong_code']);
+        if (empty($limits['available']) || empty($limits['allowed'])) {
+            commonAuthSetLimitHttpResponse($limits);
+            $respond(['error' => 'rate_limited'], 429);
+        }
+        if ($remaining <= 0) {
+            $loginToken->markUsed();
+            commonStorePendingLoginToken(null);
+            $respond(['error' => 'locked'], 429);
+        }
+        $respond(['error' => 'wrong_mfa_code', 'remaining_attempts' => $remaining, 'mfa_token' => $token], 422);
+    }
+
+    $loginToken->markUsed();
+    commonAuthClearLimit('otp_account', 'user', (string)$userId);
+    commonCompleteInteractiveLogin($userId, (int)$loginToken->get('remember'), $ipAddress);
+    commonAuthSecurityLog('totp_login', 'success', ['user_id' => $userId]);
+    session_write_close();
+    $respond(['status' => 'ok', 'redirect_to' => $returnTo]);
 }
 
 function commonRenderMagicLoginPage(array $options = [])
@@ -2594,11 +3581,13 @@ function commonRenderMagicLoginPage(array $options = [])
         'loginPasswordPath' => '/common/login_password.php',
         'loginResetRequestPath' => '/common/login_reset_request.php',
         'loginVerifyPath' => '/common/login_verify.php',
+        'loginTotpPath' => '/common/login_totp.php',
         'returnTo' => $returnTo,
         'orgDomain' => $organizationContext['domain'] ?? '',
         'orgName' => $organizationContext['name'] ?? '',
         'hasOrgDomain' => !empty($organizationContext['domain']),
         'initialPendingToken' => (string)($_GET['login_token'] ?? ''),
+        'initialPendingTotpToken' => (string)($_GET['login_mfa_token'] ?? ''),
         'initialError' => (string)($_GET['login_error'] ?? ''),
         'initialRemainingAttempts' => (int)($_GET['login_remaining_attempts'] ?? 0),
     ];
@@ -2618,7 +3607,7 @@ function commonRenderMagicLoginPage(array $options = [])
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($title) ?></title>
-    <link rel="stylesheet" href="/shared_css.css">
+    <?= commonStylesheetTags('/shared_css.css') ?>
     <link rel="stylesheet" href="/common/assets/auth.css">
     <?php if ($organizationColor !== ''): ?>
     <style>
@@ -2669,25 +3658,27 @@ function commonRenderMagicLoginPage(array $options = [])
                 </select>
             </label>
 
-            <div class="auth-email-row" id="authEmailRow">
-                <input type="text" id="authEmailInput" placeholder="<?= htmlspecialchars(!empty($organizationContext['domain']) ? commonAuthT('auth.placeholder.username', [], $lang, $sourceLang) : commonAuthT('auth.placeholder.full_email', [], $lang, $sourceLang)) ?>" autofocus>
+            <div id="authFirstFactorFields" class="auth-first-factor-fields">
+                <div class="auth-email-row" id="authEmailRow">
+                    <input type="text" id="authEmailInput" placeholder="<?= htmlspecialchars(!empty($organizationContext['domain']) ? commonAuthT('auth.placeholder.username', [], $lang, $sourceLang) : commonAuthT('auth.placeholder.full_email', [], $lang, $sourceLang)) ?>" autofocus>
+                    <?php if (!empty($organizationContext['domain'])): ?>
+                        <div class="auth-email-domain" id="authEmailDomain">@<?= htmlspecialchars($organizationContext['domain']) ?></div>
+                    <?php endif; ?>
+                </div>
+
+                <div id="authPasswordBox" class="auth-password-box" style="display:none;">
+                    <input type="password" id="authPasswordInput" autocomplete="current-password" placeholder="<?= htmlspecialchars(commonAuthT('auth.placeholder.password', [], $lang, $sourceLang)) ?>">
+                    <a href="#" class="auth-link-btn auth-reset-link" id="authResetPasswordLink"><?= htmlspecialchars(commonAuthT('auth.link.reset_password', [], $lang, $sourceLang)) ?></a>
+                </div>
+
+                <label class="auth-remember">
+                    <input type="checkbox" id="authRememberMe"> <?= htmlspecialchars(commonAuthT('auth.remember_me', [], $lang, $sourceLang)) ?>
+                </label>
+
                 <?php if (!empty($organizationContext['domain'])): ?>
-                    <div class="auth-email-domain" id="authEmailDomain">@<?= htmlspecialchars($organizationContext['domain']) ?></div>
+                    <button type="button" class="auth-link-btn" id="authToggleMode"><?= htmlspecialchars(commonAuthT('auth.toggle.use_other_email', [], $lang, $sourceLang)) ?></button>
                 <?php endif; ?>
             </div>
-
-            <div id="authPasswordBox" class="auth-password-box" style="display:none;">
-                <input type="password" id="authPasswordInput" autocomplete="current-password" placeholder="<?= htmlspecialchars(commonAuthT('auth.placeholder.password', [], $lang, $sourceLang)) ?>">
-                <a href="#" class="auth-link-btn auth-reset-link" id="authResetPasswordLink"><?= htmlspecialchars(commonAuthT('auth.link.reset_password', [], $lang, $sourceLang)) ?></a>
-            </div>
-
-            <?php if (!empty($organizationContext['domain'])): ?>
-                <button type="button" class="auth-link-btn" id="authToggleMode"><?= htmlspecialchars(commonAuthT('auth.toggle.use_other_email', [], $lang, $sourceLang)) ?></button>
-            <?php endif; ?>
-
-            <label class="auth-remember">
-                <input type="checkbox" id="authRememberMe"> <?= htmlspecialchars(commonAuthT('auth.remember_me', [], $lang, $sourceLang)) ?>
-            </label>
 
             <div id="authChallengeBox" class="auth-challenge" style="display:none;">
                 <p id="authChallengeQuestion"></p>
@@ -2697,8 +3688,14 @@ function commonRenderMagicLoginPage(array $options = [])
 
             <div id="authCodeBox" class="auth-code-box" style="display:none;">
                 <p><?= htmlspecialchars(commonAuthT('auth.code.instructions', [], $lang, $sourceLang)) ?></p>
-                <input type="text" id="authCodeInput" inputmode="text" autocomplete="one-time-code" maxlength="6" placeholder="<?= htmlspecialchars(commonAuthT('auth.code.placeholder', [], $lang, $sourceLang)) ?>">
+                <input type="text" id="authCodeInput" name="code" inputmode="text" autocomplete="one-time-code" autocapitalize="characters" autocorrect="off" spellcheck="false" maxlength="6" aria-label="<?= htmlspecialchars(commonAuthT('auth.code.placeholder', [], $lang, $sourceLang)) ?>" placeholder="<?= htmlspecialchars(commonAuthT('auth.code.placeholder', [], $lang, $sourceLang)) ?>">
                 <button type="button" id="authCodeSubmit"><?= htmlspecialchars(commonAuthT('auth.button.validate_code', [], $lang, $sourceLang)) ?></button>
+            </div>
+            <div id="authTotpBox" class="auth-code-box" style="display:none;">
+                <h3><?= htmlspecialchars(commonAuthT('auth.totp.title', [], $lang, $sourceLang)) ?></h3>
+                <p><?= htmlspecialchars(commonAuthT('auth.totp.instructions', [], $lang, $sourceLang)) ?></p>
+                <input type="text" id="authTotpInput" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="<?= htmlspecialchars(commonAuthT('auth.totp.placeholder', [], $lang, $sourceLang)) ?>">
+                <button type="button" id="authTotpSubmit"><?= htmlspecialchars(commonAuthT('auth.button.validate_mfa', [], $lang, $sourceLang)) ?></button>
             </div>
             <form id="authVerifyForm" method="post" action="/common/login_verify.php" style="display:none;">
                 <input type="hidden" name="token" id="authVerifyToken" value="">

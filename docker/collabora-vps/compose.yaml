@@ -1,0 +1,60 @@
+services:
+  collabora:
+    image: collabora/code:25.04.10.3.1
+    restart: unless-stopped
+    privileged: true
+    environment:
+      aliasgroup1: ${WOPI_ALIAS_GROUP}
+      DONT_GEN_SSL_CERT: "true"
+      username: ${COLLABORA_ADMIN_USER}
+      password: ${COLLABORA_ADMIN_PASSWORD}
+    command:
+      - --o:ssl.enable=false
+      - --o:ssl.termination=true
+      - --o:welcome.enable=false
+      - --o:home_mode.enable=true
+      - --o:server_name=collabora.opengov.tools:443
+      - --o:storage.wopi.host[0]=.*\.opengov\.tools:443
+      - --o:storage.wopi.host[1]=opengov\.tools:443
+      - --o:storage.wopi.host[2]=cloud.instantz.org:443
+      - --o:storage.wopi.host[3]=omo2\.org:443
+      - --o:storage.wopi.host[4]=www\.omo2\.org:443
+      - --o:storage.wopi.alias_groups[@mode]=groups
+      - --o:storage.wopi.alias_groups.group[0].host=https://opengov.tools:443
+      - --o:storage.wopi.alias_groups.group[0].host[@allow]=true
+      - --o:storage.wopi.alias_groups.group[0].alias[0]=https://.*\.opengov\.tools:443
+      - --o:storage.wopi.alias_groups.group[1].host=https://.*\.opengov\.tools:443
+      - --o:storage.wopi.alias_groups.group[1].host[@allow]=true
+      - --o:storage.wopi.alias_groups.group[2].host=https://cloud.instantz.org:443
+      - --o:storage.wopi.alias_groups.group[2].host[@allow]=true
+      - --o:storage.wopi.alias_groups.group[3].host=https://omo2.org:443
+      - --o:storage.wopi.alias_groups.group[3].host[@allow]=true
+      - --o:storage.wopi.alias_groups.group[4].host=https://www.omo2.org:443
+      - --o:storage.wopi.alias_groups.group[4].host[@allow]=true
+      - --o:net.content_security_policy=frame-ancestors https://opengov.tools https://*.opengov.tools https://cloud.instantz.org https://omo2.org https://www.omo2.org
+    expose:
+      - "9980"
+    networks:
+      - collabora
+
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    depends_on:
+      - collabora
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - collabora
+
+networks:
+  collabora:
+
+volumes:
+  caddy_data:
+  caddy_config:

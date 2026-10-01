@@ -4,6 +4,7 @@ require_once("../shared_functions.php");
 require_once("../common/auth.php");
 require_once("../common/patreon.php");
 require_once("../common/user_competence_ui.php");
+require_once("../common/user_profile_ui.php");
 require_once("../common/leaflet_helper.php");
 require_once(__DIR__ . "/profil_translation_helper.php");
 
@@ -54,6 +55,7 @@ if ($currentOrganizationId > 0) {
 $canLimitCompetenceToOrganization = $currentOrganizationId > 0;
 $leafletMapsEnabled = function_exists('commonLeafletMapsEnabled') && commonLeafletMapsEnabled();
 $userHasPassword = trim((string)$user->get('password')) !== '';
+$userAllowsPasswordLogin = commonUserAllowsPasswordLogin($user);
 
 function profilScopeFormatDateTime($value)
 {
@@ -70,7 +72,7 @@ function profilScopeFormatAmountCents($value)
     return number_format($amount, 2, '.', "'");
 }
 
-function profilBuildPasswordSectionHtml($userHasPassword)
+function profilBuildPasswordSectionHtml($userHasPassword, $userAllowsPasswordLogin)
 {
     $passwordPolicyStatusEmpty = htmlspecialchars(profilPopupT('profile.popup.password.policy.status.empty'), ENT_QUOTES, 'UTF-8');
     $passwordPolicyStatusValid = htmlspecialchars(profilPopupT('profile.popup.password.policy.status.valid'), ENT_QUOTES, 'UTF-8');
@@ -82,6 +84,14 @@ function profilBuildPasswordSectionHtml($userHasPassword)
     $sectionHelp = htmlspecialchars(profilPopupT('profile.popup.password.section.help'), ENT_QUOTES, 'UTF-8');
     $toggleLabel = htmlspecialchars(profilPopupT('profile.popup.password.toggle.label'), ENT_QUOTES, 'UTF-8');
     $toggleHelp = htmlspecialchars(profilPopupT('profile.popup.password.toggle.help'), ENT_QUOTES, 'UTF-8');
+    $loginPermissionLabel = htmlspecialchars(profilPopupT('profile.popup.password.login_permission.label'), ENT_QUOTES, 'UTF-8');
+    $loginPermissionHelp = htmlspecialchars(
+        profilPopupT($userHasPassword
+            ? 'profile.popup.password.login_permission.help'
+            : 'profile.popup.password.login_permission.unavailable'),
+        ENT_QUOTES,
+        'UTF-8'
+    );
     $statusText = htmlspecialchars(
         $userHasPassword
             ? profilPopupT('profile.popup.password.status.defined')
@@ -109,6 +119,14 @@ function profilBuildPasswordSectionHtml($userHasPassword)
     }
 
     return '
+        <section class="profile-panel__password-toggle generic-soft-panel generic-soft-panel--stack">
+            <input type="hidden" name="allow_password_login" value="0">
+            <label class="profile-panel__password-toggle-label">
+                <input type="checkbox" name="allow_password_login" value="1"' . ($userAllowsPasswordLogin ? ' checked' : '') . ($userHasPassword ? '' : ' disabled') . '>
+                <span>' . $loginPermissionLabel . '</span>
+            </label>
+            <div class="profile-panel__scope-help">' . $loginPermissionHelp . '</div>
+        </section>
         <div class="profile-panel__password-toggle generic-soft-panel generic-soft-panel--stack">
             <label class="profile-panel__password-toggle-label">
                 <input type="checkbox" id="profile_password_toggle" data-profile-password-toggle="1">
@@ -180,7 +198,32 @@ function profilBuildPasswordSectionHtml($userHasPassword)
     ';
 }
 
-function profilRenderProfileFragment($scope, \dbObject\User $user, $organizationMembership, $userHasPassword, $leafletMapsEnabled)
+function profilBuildTotpSectionHtml($totpEnabled)
+{
+    $label = htmlspecialchars(profilPopupT('profile.popup.totp.label'), ENT_QUOTES, 'UTF-8');
+    $help = htmlspecialchars(profilPopupT($totpEnabled ? 'profile.popup.totp.help.enabled' : 'profile.popup.totp.help.disabled'), ENT_QUOTES, 'UTF-8');
+
+    return '
+        <section class="profile-panel__password-toggle generic-soft-panel generic-soft-panel--stack" data-profile-totp-section="1">
+            <label class="profile-panel__password-toggle-label">
+                <input type="checkbox" data-profile-totp-toggle="1"' . ($totpEnabled ? ' checked' : '') . '>
+                <span>' . $label . '</span>
+            </label>
+            <div class="profile-panel__scope-help" data-profile-totp-help="1">' . $help . '</div>
+            <div data-profile-totp-setup="1"></div>
+        </section>
+        ' . commonPageScriptTags('/common/assets/profile-totp.js', [
+        'disableConfirm' => profilPopupT('profile.popup.totp.disable.confirm'),
+        'setupTitle' => profilPopupT('profile.popup.totp.setup.title'),
+        'setupInstructions' => profilPopupT('profile.popup.totp.setup.instructions'),
+        'manualLabel' => profilPopupT('profile.popup.totp.setup.manual_label'),
+        'codePlaceholder' => profilPopupT('profile.popup.totp.setup.code_placeholder'),
+        'confirmLabel' => profilPopupT('profile.popup.totp.setup.confirm'),
+    ]) . '
+    ';
+}
+
+function profilRenderProfileFragment($scope, \dbObject\User $user, $organizationMembership, $userHasPassword, $userAllowsPasswordLogin, $leafletMapsEnabled)
 {
     $fragmentUrl = '/popup/profil_scope.php?section=profile&scope=' . rawurlencode($scope);
     ob_start();
@@ -200,10 +243,21 @@ function profilRenderProfileFragment($scope, \dbObject\User $user, $organization
         "buttons" => false,
         "action" => "/ajax/saveaccount_organization.php?origin=profil&scope=organization",
         "success" => "profileHandleOrganizationSaved()",
+        "sections" => array(
+            array(
+                "title" => profilPopupT('profile.popup.form.identity.organization'),
+                "fields" => array("image", "username", "presentation"),
+            ),
+            array(
+                "title" => profilPopupT('profile.popup.form.contact.organization'),
+                "fields" => array("email", "phone"),
+            ),
+        ),
         "fields" => array(
             "image",
             "username",
             "email",
+			"phone",
             "presentation",
         ),
     );
@@ -223,7 +277,23 @@ function profilRenderProfileFragment($scope, \dbObject\User $user, $organization
         "action" => "/ajax/saveaccount.php?origin=profil&scope=general",
         "success" => "profileHandleGeneralSaved()",
         "allowProtectedFields" => true,
-        "afterTableHtml" => profilBuildPasswordSectionHtml($userHasPassword),
+        "afterTableHtml" => '<section class="profile-panel__security generic-form-section">'
+            . '<h3 class="generic-card-title generic-card-title--section">'
+            . htmlspecialchars(profilPopupT('profile.popup.form.security'), ENT_QUOTES, 'UTF-8')
+            . '</h3>'
+            . profilBuildPasswordSectionHtml($userHasPassword, $userAllowsPasswordLogin)
+            . profilBuildTotpSectionHtml(commonUserHasTotpEnabled($user))
+            . '</section>',
+        "sections" => array(
+            array(
+                "title" => profilPopupT('profile.popup.form.identity.general'),
+                "fields" => array("image", "username", "firstname", "lastname", "presentation"),
+            ),
+            array(
+                "title" => profilPopupT('profile.popup.form.contact.general'),
+                "fields" => array("birthdate", "latlong", "email", "phone"),
+            ),
+        ),
         "fields" => array(
             "image",
             "username",
@@ -232,6 +302,7 @@ function profilRenderProfileFragment($scope, \dbObject\User $user, $organization
             "presentation",
             "birthdate",
             "email",
+			"phone",
         ),
     );
     if ($leafletMapsEnabled) {
@@ -248,86 +319,11 @@ function profilRenderProfileFragment($scope, \dbObject\User $user, $organization
     </div>
     <?php endif; ?>
 
-    <script>
-    (function () {
-        var currentScript = document.currentScript;
-        var fragment = currentScript ? currentScript.closest('.profile-panel__scope-fragment') : null;
-        var passwordFieldActionBlockedMessage = <?= json_encode(profilPopupT('profile.popup.password.js.paste_blocked'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
-        var jqueryRequiredMessage = <?= json_encode(profilPopupT('profile.popup.scope.jquery_required'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
-
-        if (!fragment) {
-            return;
-        }
-
-        function decorateAdminEditForm() {
-            var form = fragment.querySelector('#formulaire-edit');
-            if (!form) {
-                return;
-            }
-
-            Array.prototype.forEach.call(form.querySelectorAll('input, select, textarea'), function (field) {
-                var type = String(field.type || '').toLowerCase();
-
-                if (type === 'hidden' || type === 'checkbox' || type === 'radio' || type === 'button' || type === 'submit' || type === 'color' || type === 'file' || type === 'range') {
-                    return;
-                }
-
-                field.classList.add('generic-form-control');
-            });
-
-            Array.prototype.forEach.call(form.querySelectorAll('[data-profile-password-field="1"]'), function (field) {
-                ['paste', 'copy', 'cut', 'drop'].forEach(function (eventName) {
-                    field.addEventListener(eventName, function (event) {
-                        event.preventDefault();
-                        alert(passwordFieldActionBlockedMessage);
-                    });
-                });
-            });
-        }
-
-        function initPasswordToggle() {
-            var toggle = fragment.querySelector('[data-profile-password-toggle="1"]');
-            var section = fragment.querySelector('[data-profile-password-section="1"]');
-            if (!toggle || !section) {
-                return;
-            }
-
-            function applyPasswordVisibility() {
-                var isVisible = !!toggle.checked;
-                section.hidden = !isVisible;
-
-                if (isVisible) {
-                    return;
-                }
-
-                Array.prototype.forEach.call(section.querySelectorAll('[data-profile-password-field="1"]'), function (field) {
-                    field.value = '';
-                });
-            }
-
-            toggle.addEventListener('change', applyPasswordVisibility);
-            applyPasswordVisibility();
-        }
-
-        decorateAdminEditForm();
-        initPasswordToggle();
-        if (typeof window.commonInitPasswordPolicy === 'function') {
-            window.commonInitPasswordPolicy(fragment);
-        }
-
-        Array.prototype.forEach.call(fragment.querySelectorAll('[data-profile-submit-button="1"]'), function (button) {
-            button.addEventListener('click', function () {
-                var form = fragment.querySelector('#formulaire-edit');
-                if (window.jQuery && form) {
-                    window.jQuery(form).trigger('submit');
-                    return;
-                }
-
-                alert(jqueryRequiredMessage);
-            });
-        });
-    })();
-    </script>
+    <?= commonPageScriptTags('/common/assets/profile-competences.js', [
+    'profileDirtyKey' => 'profile_' . $scope,
+    'passwordFieldActionBlockedMessage' => profilPopupT('profile.popup.password.js.paste_blocked'),
+    'jqueryRequiredMessage' => profilPopupT('profile.popup.scope.jquery_required'),
+]) ?>
 </div>
     <?php
 
@@ -505,366 +501,20 @@ function profilRenderCompetenceFragment(array $scopes, \dbObject\User $user, $cu
 
     <div class="profile-panel__competence-feedback" data-profile-competence-feedback="1"></div>
 
-    <script>
-    (function () {
-        var currentScript = document.currentScript;
-        var fragment = currentScript ? currentScript.closest('.profile-panel__scope-fragment') : null;
-        var feedback = fragment ? fragment.querySelector('[data-profile-competence-feedback="1"]') : null;
-        var reloadErrorMessage = <?= json_encode(profilPopupT('profile.popup.competence.js.reload_error'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
-        var invalidResponseMessage = <?= json_encode(profilPopupT('profile.popup.js.invalid_response'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
-        var saveErrorMessage = <?= json_encode(profilPopupT('profile.popup.competence.js.save_error'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
-        var saveSuccessMessage = <?= json_encode(profilPopupT('profile.popup.competence.js.save_success'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
-        var deleteConfirmMessage = <?= json_encode(profilPopupT('profile.popup.competence.js.delete_confirm'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
-        var deleteErrorMessage = <?= json_encode(profilPopupT('profile.popup.competence.js.delete_error'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
-        var deleteSuccessMessage = <?= json_encode(profilPopupT('profile.popup.competence.js.delete_success'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
-        var createTitle = <?= json_encode(profilPopupT('profile.popup.competence.editor.create_title'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
-        var editTitle = <?= json_encode(profilPopupT('profile.popup.competence.editor.edit_title'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
-        var addLabel = <?= json_encode(profilPopupT('profile.popup.competence.add'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
-        var saveLabel = <?= json_encode(profilPopupT('profile.popup.competence.save'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
-        var editorForm = fragment.querySelector('[data-profile-competence-form="1"]');
-        var editorTitle = editorForm ? editorForm.querySelector('[data-profile-competence-editor-title]') : null;
-        var submitButton = editorForm ? editorForm.querySelector('[data-profile-competence-submit-label="1"]') : null;
-        var deleteButton = editorForm ? editorForm.querySelector('[data-profile-competence-delete="1"]') : null;
-        var cancelButton = editorForm ? editorForm.querySelector('[data-profile-competence-cancel="1"]') : null;
-        var createButton = fragment.querySelector('[data-profile-competence-create="1"]');
-
-        if (!fragment) {
-            return;
-        }
-
-        function setFeedback(message, type) {
-            if (!feedback) {
-                return;
-            }
-
-            feedback.textContent = message || '';
-            feedback.className = 'profile-panel__competence-feedback';
-            if (type === 'success') {
-                feedback.classList.add('is-success');
-            } else if (type === 'error') {
-                feedback.classList.add('is-error');
-            }
-        }
-
-        function parseResponse(response) {
-            return response.text().then(function (text) {
-                try {
-                    return JSON.parse(text);
-                } catch (error) {
-                    return {
-                        status: false,
-                        message: invalidResponseMessage
-                    };
-                }
-            });
-        }
-
-        function executeEmbeddedScripts(container) {
-            Array.prototype.forEach.call(container.querySelectorAll('script'), function (script) {
-                var replacement = document.createElement('script');
-
-                Array.prototype.forEach.call(script.attributes, function (attribute) {
-                    replacement.setAttribute(attribute.name, attribute.value);
-                });
-
-                if (!replacement.src) {
-                    replacement.textContent = script.textContent || '';
-                }
-
-                script.parentNode.replaceChild(replacement, script);
-            });
-        }
-
-        function reloadFragment() {
-            var fragmentUrl = fragment.getAttribute('data-profile-fragment-url') || '';
-            if (fragmentUrl === '') {
-                return;
-            }
-
-            fetch(fragmentUrl, {
-                credentials: 'same-origin',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            })
-                .then(function (response) {
-                    if (!response.ok) {
-                        throw new Error('load');
-                    }
-
-                    return response.text();
-                })
-                .then(function (html) {
-                    var wrapper = document.createElement('div');
-                    wrapper.innerHTML = html;
-                    var replacement = wrapper.firstElementChild;
-
-                    if (!replacement || !fragment.parentNode) {
-                        throw new Error('fragment');
-                    }
-
-                    fragment.parentNode.replaceChild(replacement, fragment);
-                    executeEmbeddedScripts(replacement);
-                })
-                .catch(function () {
-                    setFeedback(reloadErrorMessage, 'error');
-                });
-        }
-
-        function setFieldValue(fieldName, value) {
-            var field = editorForm ? editorForm.querySelector('[name="' + fieldName + '"]') : null;
-            if (field) {
-                field.value = value;
-            }
-        }
-
-        function setCheckboxValue(fieldName, checked) {
-            var field = editorForm ? editorForm.querySelector('[name="' + fieldName + '"]') : null;
-            if (field) {
-                field.checked = !!checked;
-            }
-        }
-
-        function openEditor(payload) {
-            var isEdit = !!(payload && payload.id);
-
-            if (!editorForm) {
-                return;
-            }
-
-            setFieldValue('id', isEdit ? String(payload.id) : '');
-            setFieldValue('scope', payload && payload.scope ? String(payload.scope) : (createButton ? (createButton.getAttribute('data-profile-competence-default-scope') || 'general') : 'general'));
-            setFieldValue('name', payload && payload.name ? String(payload.name) : '');
-            setFieldValue('description', payload && payload.description ? String(payload.description) : '');
-            setFieldValue('category', payload && payload.category ? String(payload.category) : 'technical');
-            setFieldValue('level', payload && payload.level ? String(payload.level) : '');
-            setCheckboxValue('limit_to_organization', !!(payload && payload.limitToOrganization));
-
-            if (editorTitle) {
-                editorTitle.textContent = isEdit ? editTitle : createTitle;
-            }
-            if (submitButton) {
-                submitButton.textContent = isEdit ? saveLabel : addLabel;
-            }
-            if (deleteButton) {
-                deleteButton.hidden = !isEdit;
-            }
-
-            editorForm.hidden = false;
-            editorForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }
-
-        function closeEditor() {
-            if (!editorForm) {
-                return;
-            }
-
-            editorForm.reset();
-            setFieldValue('id', '');
-            setFieldValue('scope', createButton ? (createButton.getAttribute('data-profile-competence-default-scope') || 'general') : 'general');
-            setCheckboxValue('limit_to_organization', createButton && createButton.getAttribute('data-profile-competence-default-scope') === 'organization');
-            if (editorTitle) {
-                editorTitle.textContent = createTitle;
-            }
-            if (submitButton) {
-                submitButton.textContent = addLabel;
-            }
-            if (deleteButton) {
-                deleteButton.hidden = true;
-            }
-            editorForm.hidden = true;
-        }
-
-        if (createButton) {
-            createButton.addEventListener('click', function () {
-                openEditor({
-                    scope: createButton.getAttribute('data-profile-competence-default-scope') || 'general',
-                    limitToOrganization: (createButton.getAttribute('data-profile-competence-default-scope') || 'general') === 'organization'
-                });
-            });
-        }
-
-        Array.prototype.forEach.call(fragment.querySelectorAll('[data-profile-competence-edit="1"]'), function (button) {
-            button.addEventListener('click', function () {
-                var payloadText = button.getAttribute('data-profile-competence-payload') || '';
-                var payload = null;
-
-                try {
-                    payload = JSON.parse(payloadText);
-                } catch (error) {
-                    payload = null;
-                }
-
-                openEditor(payload || {});
-            });
-        });
-
-        if (cancelButton) {
-            cancelButton.addEventListener('click', function () {
-                closeEditor();
-            });
-        }
-
-        if (editorForm) {
-            editorForm.addEventListener('submit', function (event) {
-                event.preventDefault();
-
-                if (typeof window.omoBeginPendingAction === 'function' && !window.omoBeginPendingAction(editorForm)) {
-                    return;
-                }
-
-                setFeedback('', '');
-
-                var formData = new FormData(editorForm);
-
-                fetch('/ajax/user_competence_save.php', {
-                    method: 'POST',
-                    credentials: 'same-origin',
-                    body: formData,
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                })
-                    .then(parseResponse)
-                    .then(function (result) {
-                        if (!result || !result.status) {
-                            setFeedback(result && result.message ? result.message : saveErrorMessage, 'error');
-                            return;
-                        }
-
-                        setFeedback(result.message || saveSuccessMessage, 'success');
-                        reloadFragment();
-                    })
-                    .catch(function () {
-                        setFeedback(saveErrorMessage, 'error');
-                    })
-                    .finally(function () {
-                        if (typeof window.omoEndPendingAction === 'function') {
-                            window.omoEndPendingAction(editorForm);
-                        }
-                    });
-            });
-        }
-
-        if (deleteButton) {
-            deleteButton.addEventListener('click', function () {
-                var identifier = editorForm ? editorForm.querySelector('input[name="id"]') : null;
-                if (!identifier || !identifier.value) {
-                    return;
-                }
-
-                if (!confirm(deleteConfirmMessage)) {
-                    return;
-                }
-
-                if (typeof window.omoBeginPendingAction === 'function' && !window.omoBeginPendingAction(editorForm)) {
-                    return;
-                }
-
-                setFeedback('', '');
-
-                var formData = new FormData();
-                formData.append('id', identifier.value);
-
-                fetch('/ajax/user_competence_delete.php', {
-                    method: 'POST',
-                    credentials: 'same-origin',
-                    body: formData,
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                })
-                    .then(parseResponse)
-                    .then(function (result) {
-                        if (!result || !result.status) {
-                            setFeedback(result && result.message ? result.message : deleteErrorMessage, 'error');
-                            return;
-                        }
-
-                        setFeedback(result.message || deleteSuccessMessage, 'success');
-                        reloadFragment();
-                    })
-                    .catch(function () {
-                        setFeedback(deleteErrorMessage, 'error');
-                    })
-                    .finally(function () {
-                        if (typeof window.omoEndPendingAction === 'function') {
-                            window.omoEndPendingAction(editorForm);
-                        }
-                    });
-            });
-        }
-
-        if (editorForm) {
-            closeEditor();
-        }
-    })();
-    </script>
-</div>
-    <?php
-
-    return ob_get_clean();
-}
-
-function profilRenderCurrentSummaryFragment(
-    \dbObject\User $user,
-    $currentOrganizationId,
-    $hasOrganizationScope,
-    $organization
-) {
-    $activeEmail = $user->getScopedEmail($currentOrganizationId);
-    $activeUsername = $user->getScopedUsername($currentOrganizationId);
-    $activePhotoUrl = $user->getScopedProfilePhotoUrl($currentOrganizationId);
-    $activePresentation = $user->getScopedPresentation($currentOrganizationId);
-    $activeFullName = trim((string)$user->get('firstname') . ' ' . (string)$user->get('lastname'));
-    $birthdate = $user->get('birthdate');
-    $birthdaySummary = commonUserProfileBuildBirthdaySummary($birthdate);
-    $birthdateLabel = commonUserProfileFormatBirthDate($birthdate);
-
-    ob_start();
-    ?>
-<div class="profile-panel__scope-fragment" data-profile-fragment-kind="current">
-    <div class="profile-panel__summary">
-        <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
-            <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.active.context.label')) ?></strong>
-            <?= htmlspecialchars($hasOrganizationScope && $organization
-                ? profilPopupT('profile.popup.active.context.organization', ['organizationName' => (string)$organization->get('name')])
-                : profilPopupT('profile.popup.active.context.general')) ?>
-        </div>
-        <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
-            <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.active.photo.label')) ?></strong>
-            <div class="profile-panel__photo"<?= $activePhotoUrl !== '' ? ' style="background-image:url(' . htmlspecialchars($activePhotoUrl, ENT_QUOTES, 'UTF-8') . ')"' : '' ?>></div>
-        </div>
-        <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
-            <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.active.email.label')) ?></strong>
-            <?= htmlspecialchars($activeEmail !== '' ? $activeEmail : profilPopupT('profile.popup.value.not_provided')) ?>
-        </div>
-        <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
-            <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.active.username.label')) ?></strong>
-            <?= htmlspecialchars($activeUsername !== '' ? $activeUsername : profilPopupT('profile.popup.value.not_provided')) ?>
-        </div>
-        <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
-            <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.active.fullname.label')) ?></strong>
-            <?= htmlspecialchars($activeFullName !== '' ? $activeFullName : profilPopupT('profile.popup.value.not_provided')) ?>
-        </div>
-        <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
-            <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.active.presentation.label')) ?></strong>
-            <?= nl2br(htmlspecialchars($activePresentation !== '' ? $activePresentation : profilPopupT('profile.popup.value.no_presentation'), ENT_QUOTES, 'UTF-8')) ?>
-        </div>
-        <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
-            <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.active.birthdate.label')) ?></strong>
-            <?= htmlspecialchars($birthdateLabel !== '' ? $birthdateLabel : profilPopupT('profile.popup.value.not_provided')) ?>
-        </div>
-        <?php if (is_array($birthdaySummary)): ?>
-        <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
-            <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.active.birthday.label')) ?></strong>
-            <div><?= htmlspecialchars((string)$birthdaySummary['headline'], ENT_QUOTES, 'UTF-8') ?></div>
-            <?php if ((string)($birthdaySummary['detail'] ?? '') !== ''): ?>
-                <small><?= htmlspecialchars((string)$birthdaySummary['detail'], ENT_QUOTES, 'UTF-8') ?></small>
-            <?php endif; ?>
-        </div>
-        <?php endif; ?>
-    </div>
+    <?= commonPageScriptTags('/common/assets/profile-competence-editor.js', [
+    'reloadErrorMessage' => profilPopupT('profile.popup.competence.js.reload_error'),
+    'invalidResponseMessage' => profilPopupT('profile.popup.js.invalid_response'),
+    'saveErrorMessage' => profilPopupT('profile.popup.competence.js.save_error'),
+    'saveSuccessMessage' => profilPopupT('profile.popup.competence.js.save_success'),
+    'deleteConfirmMessage' => profilPopupT('profile.popup.competence.js.delete_confirm'),
+    'deleteErrorMessage' => profilPopupT('profile.popup.competence.js.delete_error'),
+    'deleteSuccessMessage' => profilPopupT('profile.popup.competence.js.delete_success'),
+    'createTitle' => profilPopupT('profile.popup.competence.editor.create_title'),
+    'editTitle' => profilPopupT('profile.popup.competence.editor.edit_title'),
+    'addLabel' => profilPopupT('profile.popup.competence.add'),
+    'saveLabel' => profilPopupT('profile.popup.competence.save'),
+    'profileDirtyKey' => 'profile_competence_' . $scopeValue,
+]) ?>
 </div>
     <?php
 
@@ -944,7 +594,7 @@ function profilRenderPatreonFragment(\dbObject\User $user)
 
 
 if ($requestedSection === 'profile') {
-    echo profilRenderProfileFragment($scope, $user, $organizationMembership, $userHasPassword, $leafletMapsEnabled);
+    echo profilRenderProfileFragment($scope, $user, $organizationMembership, $userHasPassword, $userAllowsPasswordLogin, $leafletMapsEnabled);
     return;
 }
 
@@ -960,15 +610,10 @@ if ($requestedSection === 'competence') {
     return;
 }
 
-if ($requestedSection === 'current') {
-    echo profilRenderCurrentSummaryFragment($user, $currentOrganizationId, $hasOrganizationScope, isset($organization) ? $organization : null);
-    return;
-}
-
 if ($requestedSection === 'patreon') {
     echo profilRenderPatreonFragment($user);
     return;
 }
 
-echo profilRenderProfileFragment($scope, $user, $organizationMembership, $userHasPassword, $leafletMapsEnabled);
+echo profilRenderProfileFragment($scope, $user, $organizationMembership, $userHasPassword, $userAllowsPasswordLogin, $leafletMapsEnabled);
 echo profilRenderCompetenceFragment(array($scope), $user, $currentOrganizationId, $currentUserId, $canLimitCompetenceToOrganization);

@@ -59,6 +59,11 @@ class Tension extends DbObject
         return 'datecreation DESC, id DESC';
     }
 
+    public static function handleUserDeparture($organizationId, $userId, $ghostUserId)
+    {
+        return self::execute("UPDATE tension SET IDuser = :ghost_user_id WHERE IDorganization = :organization_id AND IDuser = :user_id", array('ghost_user_id' => (int)$ghostUserId, 'organization_id' => (int)$organizationId, 'user_id' => (int)$userId));
+    }
+
     public static function countTitleWords($title)
     {
         $title = trim((string)$title);

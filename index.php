@@ -24,7 +24,7 @@
 		exit;
 	} else {
 		if ($hasOrganizationSubdomain) {
-			require __DIR__ . "/lms/index.php";
+			header('Location: /omo/', true, 302);
 			exit;
 		}
 	}
@@ -451,6 +451,21 @@ padding:15px;
   max-width: 100%;
 }
 
+.project-presentation-video {
+  width: min(960px, 100%);
+  aspect-ratio: 16 / 9;
+  margin: 1.5rem auto 2rem;
+  background: #000;
+}
+
+.project-presentation-video iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 12px;
+}
+
 /* texte flexible sur 2 lignes max */
 .cta-text {
   display: -webkit-box;
@@ -538,7 +553,7 @@ padding:15px;
 	<div class='tools'>
 	<div class='tool'><h1 class='box_title omo_title'>OMO 2.0</h1><p>Centralisez les informations de votre organisation dans un seul endroit.</p><p><a href='/omo'>&gt;Découvrez le développement en cours (mais déjà fonctionnel)</a></p></div>
 	<div class='tool'><h1 class='box_title easypv_title'>EasyPV</h1><p>Facilitez vos prises de notes en réunion grâche à cette application permettant de gérer un ordre du jour dynamique!</p><p><a href='/pv'>&gt;Découvrez ce module</a></p></div>
-	<div class='tool'><h1 class='box_title easycircle_title'>EasyCIRCLE</h1><p>Améliorez la lisibilité de la structure de votre organisation grâche à l'affichage en cercles et rôles.</p><p><a href='/circle'>&gt;Découvrez ce module</a></p></div>
+	<div class='tool'><h1 class='box_title easycircle_title'>EasyCIRCLE</h1><p>Améliorez la lisibilité de la structure de votre organisation grâce à l'affichage des espaces.</p><p><a href='/circle'>&gt;Découvrez ce module</a></p></div>
 	<div class='tool'><h1 class='box_title easymemo_title on_dev'>EasyMEMO</h1><p>Générez facilement des mémos depuis votre téléphone portable, en utilisant l'IA pour retranscrire et formater vos propos.</p><p><a target='_blank' href='https://t.me/SD2_MemoBot'>&gt;Connectez le BOT Telegram</a><br><a target='_blank' href='/memo'>&gt;Gérez vos memos</a></p></div>
 	<div class='tool'><h1 class='box_title easymgov_title on_dev'>EasyGOV</h1><p>Définissez des règles de fonctionnement sous la forme d'une constitution claire et accessibles à tous et toutes.</p><p><a target='_blank' href='https://jm.instantz.org/constitution.php'>&gt;Visitez le chantier</a></p></div>
 	<div class='tool'><h1 class='box_title easytask_title on_project'>EasyTASK</h1><p>Augmentez votre productivité grâce à notre application de gestion de tâches pour mobile et PC.</p></div>
@@ -557,7 +572,9 @@ padding:15px;
   </span>
   <img src="/img/down-arrow.png" alt="" class="arrow">
 </a>
-<a name='content' id='content'></a>
+<div class="project-presentation-video" id="content">
+  <iframe src="https://player.vimeo.com/video/1200446731" title="Project presentation video" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>
+</div>
 <div class="contentPres">
 
   <section class="bloc">
@@ -576,7 +593,7 @@ padding:15px;
     <div>
       <h2>Multilingue</h2>
       <p>Désormais, notre application est non seulement multilingue, offrant la possibilité de traduire l'interface dans différentes langues, mais elle s'adapte également aux subtilités des langages propres à la gouvernance partagée.</p>
-      <p>Vous avez désormais la possibilité de personnaliser le vocabulaire spécifique utilisé dans le logiciel, alignant ainsi les termes tels que les cercles, les redevabilités ou les liens de pilotage avec la culture et les pratiques propres à votre organisation.</p>
+      <p>Vous avez désormais la possibilité de personnaliser le vocabulaire spécifique utilisé dans le logiciel, alignant ainsi les termes tels que les espaces, les redevabilités ou les liens de pilotage avec la culture et les pratiques propres à votre organisation.</p>
       <p>Cette flexibilité linguistique vise à créer une expérience utilisateur plus fluide, où chaque utilisateur peut interagir avec le logiciel de manière naturelle et conforme à ses préférences linguistiques et culturelles. Nous croyons que cette approche renforce la pertinence de notre logiciel dans des contextes divers, encourageant l'adoption au sein d'organisations aux structures et aux terminologies spécifiques.</p>
     </div>
   </section>
@@ -753,128 +770,7 @@ padding:15px;
 <?php endif; ?>
 
 </body>
-<script>
-const homepageOrganizationMapRows = <?= is_string($homepageOrganizationMapJson) ? $homepageOrganizationMapJson : '[]' ?>;
-
-function initHomepageOrganizationMap() {
-  if (!Array.isArray(homepageOrganizationMapRows) || homepageOrganizationMapRows.length === 0) {
-    return;
-  }
-
-  const mapElement = document.getElementById('homepageOrganizationMap');
-  if (!mapElement || typeof window.L === 'undefined') {
-    return;
-  }
-
-  const defaultCenter = [46.8182, 8.2275];
-  const map = L.map(mapElement, {
-    scrollWheelZoom: false
-  }).setView(defaultCenter, 7);
-  const tileState = { layer: null, theme: null };
-  if (typeof window.commonBindLeafletTheme === 'function') {
-    window.commonBindLeafletTheme(map, tileState);
-  }
-
-  const bounds = [];
-  homepageOrganizationMapRows.forEach((organizationRow) => {
-    const latlong = organizationRow && organizationRow.latlong ? organizationRow.latlong : null;
-    const lat = latlong ? Number(latlong.lat) : NaN;
-    const lng = latlong ? Number(latlong.long) : NaN;
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-      return;
-    }
-
-    const markerColor = String((organizationRow && organizationRow.color) || '#0b6e7a');
-    const marker = L.circleMarker([lat, lng], {
-      radius: 9,
-      color: markerColor,
-      weight: 2,
-      fillColor: markerColor,
-      fillOpacity: 0.72
-    }).addTo(map);
-
-    const safeName = String((organizationRow && organizationRow.name) || 'Organisation');
-    const safeLogo = String((organizationRow && organizationRow.logo) || '');
-    const safeColor = String((organizationRow && organizationRow.color) || '#0b6e7a');
-    const safeInitial = safeName.trim() ? safeName.trim().charAt(0).toUpperCase() : 'O';
-    const popupHtml = [
-      '<div class="home-organization-map__popup">',
-      safeLogo
-        ? '<img class="home-organization-map__popup-logo" src="' + safeLogo.replace(/"/g, '&quot;') + '" alt="' + safeName.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '">'
-        : '<span class="home-organization-map__popup-placeholder" style="background:' + safeColor.replace(/"/g, '&quot;') + ';">' + safeInitial.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</span>',
-      '<strong>' + safeName.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</strong>',
-      '</div>'
-    ].join('');
-    marker.bindPopup(popupHtml);
-    bounds.push([lat, lng]);
-  });
-
-  if (bounds.length > 0) {
-    map.fitBounds(bounds, {
-      padding: [30, 30],
-      maxZoom: 9
-    });
-  }
-
-  window.setTimeout(() => map.invalidateSize(), 0);
-  window.setTimeout(() => map.invalidateSize(), 250);
-}
-
-if (typeof window.commonWhenLeafletReady === 'function') {
-  window.commonWhenLeafletReady(initHomepageOrganizationMap);
-} else {
-  window.addEventListener('load', initHomepageOrganizationMap);
-}
-
-const intro = document.getElementById('intro');
-const textBlock = intro.querySelector('.vertical');
-const btn = document.getElementById('toggleText');
-
-let isExpanded = false;
-
-// toggle
-btn.addEventListener('click', () => {
-  isExpanded = !isExpanded;
-
-  intro.classList.toggle('expanded', isExpanded);
-
-  btn.textContent = isExpanded
-    ? "Réduire"
-    : "Afficher la suite";
-});
-
-// check overflow sur le BON élément
-function checkOverflow() {
-  // force état fermé pour mesurer
-  intro.classList.remove('expanded');
-
-  const hasOverflow = textBlock.scrollHeight > textBlock.clientHeight + 2;
-
-  btn.style.display = hasOverflow ? "inline-block" : "none";
-
-  // restaure état
-  if (isExpanded || !hasOverflow) {
-    intro.classList.add('expanded');
-  }
-}
-
-// debounce
-function debounce(fn, delay) {
-  let t;
-  return () => {
-    clearTimeout(t);
-    t = setTimeout(fn, delay);
-  };
-}
-
-const debouncedCheck = debounce(checkOverflow, 150);
-
-// events
-window.addEventListener('load', checkOverflow);
-window.addEventListener('resize', debouncedCheck);
-
-if (document.fonts) {
-  document.fonts.ready.then(checkOverflow);
-}
-</script>
+<?= commonPageScriptTags('/common/assets/homepage-map.js', [
+    'rows' => is_string($homepageOrganizationMapJson) ? json_decode($homepageOrganizationMapJson, true, 512, JSON_THROW_ON_ERROR) : [],
+], 'homepageMapConfig') ?>
 </html>

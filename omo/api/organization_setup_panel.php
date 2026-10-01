@@ -4,6 +4,8 @@ if (!function_exists('omoRenderOrganizationSetupPanel')) {
     function omoRenderOrganizationSetupPanel(\dbObject\Organization $organization)
     {
         $setupData = $organization->getStructuralInitializationData();
+        $templates = $setupData['templates'] ?? array();
+        $canStartFromScratch = !$organization->isDiscoveryMode() || count($templates) === 0;
         $organizationName = trim((string)($setupData['organizationName'] ?? ''));
         $organizationColor = trim((string)$organization->get('color'));
         $emptyCardImage = '/omo/images/organization-setup/rien.png';
@@ -28,6 +30,7 @@ if (!function_exists('omoRenderOrganizationSetupPanel')) {
     <div class="omo-setup-panel__section generic-section">
         <div class="omo-setup-panel__section-title generic-card-title generic-card-title--small">Choisissez un point de départ</div>
         <div class="omo-setup-card-grid">
+            <?php if ($canStartFromScratch): ?>
             <button
                 type="button"
                 class="omo-setup-card omo-setup-card--primary"
@@ -39,10 +42,11 @@ if (!function_exists('omoRenderOrganizationSetupPanel')) {
                 </span>
                 <span class="omo-setup-card__content">
                     <span class="omo-setup-card__title generic-card-title generic-card-title--big">Créer à partir de rien</span>
-                    <span class="omo-setup-card__text">Crée uniquement le holon racine de type organisation, sans cercle ni rôle.</span>
+                    <span class="omo-setup-card__text generic-description generic-description--small"><?= htmlspecialchars(\dbObject\Organization::formatLexiconText('Crée uniquement le holon racine de type organisation, sans cercle ni rôle.', $organization->getLexicon()), ENT_QUOTES, 'UTF-8') ?></span>
                     <span class="omo-setup-card__cta">Créer l'organisation</span>
                 </span>
             </button>
+            <?php endif; ?>
 
             <button
                 type="button"
@@ -54,12 +58,12 @@ if (!function_exists('omoRenderOrganizationSetupPanel')) {
                 </span>
                 <span class="omo-setup-card__content">
                     <span class="omo-setup-card__title generic-card-title generic-card-title--big">Importer une organisation</span>
-                    <span class="omo-setup-card__text">Charge un export JSON et reconstruit la structure, les roles et les proprietes dans cette nouvelle organisation.</span>
+                    <span class="omo-setup-card__text generic-description generic-description--small">Charge un export JSON et reconstruit la structure, les roles et les proprietes dans cette nouvelle organisation.</span>
                     <span class="omo-setup-card__cta">Selectionner un fichier</span>
                 </span>
             </button>
 
-            <?php foreach (($setupData['templates'] ?? array()) as $template): ?>
+            <?php foreach ($templates as $template): ?>
                 <?php
                 $templateColor = trim((string)($template['color'] ?? ''));
                 if ($templateColor === '') {
@@ -87,7 +91,7 @@ if (!function_exists('omoRenderOrganizationSetupPanel')) {
                     </span>
                     <span class="omo-setup-card__content">
                         <span class="omo-setup-card__title generic-card-title generic-card-title--big"><?= omoApiEscape($template['name'] ?? 'Modèle') ?></span>
-                        <span class="omo-setup-card__text">
+                        <span class="omo-setup-card__text generic-description generic-description--small">
                             <?php if (!empty($template['sourceOrganizationName'])): ?>
                                 Inspiré de <?= omoApiEscape($template['sourceOrganizationName']) ?>.
                             <?php else: ?>
@@ -100,384 +104,17 @@ if (!function_exists('omoRenderOrganizationSetupPanel')) {
             <?php endforeach; ?>
         </div>
 
-        <?php if (count($setupData['templates'] ?? array()) === 0): ?>
-            <div class="omo-setup-panel__empty">Aucun modèle d'organisation n'est disponible pour le moment.</div>
+        <?php if (count($templates) === 0): ?>
+            <div class="omo-setup-panel__empty generic-description generic-description--small">Aucun modèle d'organisation n'est disponible pour le moment.</div>
         <?php endif; ?>
     </div>
 
-    <div class="omo-setup-panel__feedback generic-soft-panel" data-omo-org-init-feedback="1" hidden></div>
+    <div class="omo-setup-panel__feedback generic-soft-panel generic-description generic-description--small" data-omo-org-init-feedback="1" hidden></div>
 </div>
 
-<style>
-.omo-setup-panel {
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
-    height: 100%;
-    min-height: 0;
-    padding: 24px;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    scrollbar-gutter: stable;
-    color: var(--color-text, #1f2937);
-}
+<link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/organization_setup_panel.css') ?>">
 
-.omo-setup-panel__hero {
-    --generic-hero-padding: 22px;
-    --generic-hero-background:
-        radial-gradient(circle at top right, color-mix(in srgb, var(--color-primary, #2563eb) 18%, transparent), transparent 45%),
-        linear-gradient(135deg, color-mix(in srgb, var(--color-primary, #2563eb) 10%, var(--color-surface, #fff)), var(--color-surface, #fff));
-    --generic-hero-border: color-mix(in srgb, var(--color-primary, #2563eb) 16%, var(--color-border, #d1d5db));
-}
-
-.omo-setup-panel__kicker {
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--color-text-light, #6b7280);
-    margin-bottom: 6px;
-}
-
-.omo-setup-panel__title {
-    margin: 0;
-    font-size: 28px;
-    line-height: 1.1;
-}
-
-.omo-setup-panel__intro {
-    margin: 10px 0 0;
-    max-width: 720px;
-    line-height: 1.5;
-    color: var(--color-text-light, #6b7280);
-}
-
-.omo-setup-panel__section {
-    --generic-section-padding-block: 18px;
-    --generic-section-radius: 16px;
-    --generic-section-shadow: var(--shadow-sm, 0 2px 6px rgba(15, 23, 42, 0.05));
-}
-
-.omo-setup-panel__section-title {
-    margin-bottom: 12px;
-}
-
-.omo-setup-card-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    gap: 14px;
-}
-
-.omo-setup-card {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    padding: 0;
-    border: 1px solid var(--color-border, #d1d5db);
-    border-radius: 16px;
-    overflow: hidden;
-    background: var(--color-surface, #fff);
-    color: inherit;
-    cursor: pointer;
-    text-align: left;
-    transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-.omo-setup-card:hover {
-    transform: translateY(-1px);
-    border-color: color-mix(in srgb, var(--color-primary, #2563eb) 32%, var(--color-border, #d1d5db));
-    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
-}
-
-.omo-setup-card__media {
-    position: relative;
-    display: block;
-    width: 100%;
-    aspect-ratio: 16 / 9;
-    background: linear-gradient(135deg, var(--color-primary, #2563eb), #1d4ed8);
-}
-
-.omo-setup-card__badge {
-    position: absolute;
-    left: 12px;
-    bottom: 12px;
-    padding: 6px 10px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.18);
-    color: #fff;
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    backdrop-filter: blur(4px);
-    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.2);
-}
-
-.omo-setup-card__icon {
-    position: absolute;
-    top: 12px;
-    right: 12px;
-    width: 62px;
-    height: 62px;
-    border-radius: 18px;
-    overflow: hidden;
-    border: 1px solid rgba(255, 255, 255, 0.38);
-    background: rgba(255, 255, 255, 0.18);
-    box-shadow: 0 10px 26px rgba(15, 23, 42, 0.18);
-    backdrop-filter: blur(6px);
-}
-
-.omo-setup-card__icon img {
-    display: block;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.omo-setup-card__content {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 16px;
-    min-height: 164px;
-}
-
-.omo-setup-card__text {
-    color: var(--color-text-light, #6b7280);
-    font-size: 14px;
-    line-height: 1.45;
-    flex: 1 1 auto;
-}
-
-.omo-setup-card__cta {
-    color: var(--color-primary, #2563eb);
-    font-weight: 600;
-}
-
-.omo-setup-panel__empty,
-.omo-setup-panel__feedback {
-    font-size: 14px;
-    color: var(--color-text-light, #6b7280);
-}
-
-.omo-setup-panel__empty {
-    margin-top: 14px;
-}
-
-.omo-setup-panel__feedback {
-}
-
-.omo-setup-panel__feedback.is-error {
-    color: #b91c1c;
-    background: rgba(220, 38, 38, 0.06);
-    border-color: rgba(220, 38, 38, 0.18);
-}
-
-.omo-setup-panel button[disabled] {
-    opacity: 0.7;
-    cursor: wait;
-}
-
-.omo-org-info-panel {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    padding: 18px;
-    color: var(--color-text, #1f2937);
-}
-
-.omo-org-info-panel__hero {
-    position: relative;
-    min-height: 180px;
-    border-radius: 18px;
-    overflow: hidden;
-    border: 1px solid var(--color-border, #d1d5db);
-    background: var(--color-surface-alt, #dbeafe);
-}
-
-.omo-org-info-panel__hero::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(180deg, rgba(15, 23, 42, 0.04), rgba(15, 23, 42, 0.5));
-}
-
-.omo-org-info-panel__hero-content {
-    position: absolute;
-    inset: auto 18px 18px 18px;
-    z-index: 1;
-    color: #fff;
-}
-
-.omo-org-info-panel__kicker {
-    opacity: 0.8;
-}
-
-.omo-org-info-panel__title {
-    margin: 8px 0 0;
-    font-size: 28px;
-    line-height: 1.1;
-}
-
-.omo-org-info-panel__card {
-    background: var(--color-surface, #fff);
-    border: 1px solid var(--color-border, #d1d5db);
-    border-radius: 16px;
-    padding: 16px;
-    box-shadow: var(--shadow-sm, 0 2px 6px rgba(15, 23, 42, 0.05));
-}
-
-.omo-org-info-panel__copy {
-    margin: 0;
-    line-height: 1.5;
-    color: var(--color-text-light, #6b7280);
-}
-
-.omo-org-info-list {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 10px;
-}
-
-.omo-org-info-list__item {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    padding: 12px;
-    border-radius: 12px;
-    background: var(--color-surface-alt, #f8fafc);
-}
-
-.omo-org-info-list__label {
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--color-text-light, #6b7280);
-}
-
-.omo-org-info-list__value {
-    font-size: 15px;
-    font-weight: 600;
-}
-</style>
-
-<script>
-function omoGetOrganizationSetupRoute() {
-    if (typeof parseUrl === 'function') {
-        return parseUrl();
-    }
-
-    return {
-        oid: window.omoConfig && window.omoConfig.oid ? Number(window.omoConfig.oid) : null,
-        cid: null,
-        hash: window.location.hash ? window.location.hash.replace('#', '') : null
-    };
-}
-
-function omoReloadOrganizationPanels(oid) {
-    const targetOid = Number(oid || 0);
-    if (!targetOid || typeof loadContent !== 'function') {
-        return;
-    }
-
-    loadContent(typeof omoGetLeftPanelContentSelector === 'function' ? omoGetLeftPanelContentSelector() : '#panel-left', 'api/getOrg.php?oid=' + targetOid);
-
-    if (typeof window.omoResetMainRightPanel === 'function') {
-        window.omoResetMainRightPanel();
-    } else {
-        $('#panel-right').empty();
-    }
-
-    const route = omoGetOrganizationSetupRoute();
-    let drawerUrl = 'api/getStructure.php?drawer=1&oid=' + targetOid;
-
-    if (route && route.cid) {
-        drawerUrl += '&cid=' + encodeURIComponent(route.cid);
-    }
-
-    if (typeof refreshDrawer === 'function' && refreshDrawer('drawer_structure', drawerUrl)) {
-        return;
-    }
-
-    if (typeof openDrawer === 'function') {
-        openDrawer('drawer_structure', drawerUrl);
-    }
-}
-
-window.omoReloadOrganizationPanels = omoReloadOrganizationPanels;
-
-$(document)
-  .off('click.omoOrgSetup', '[data-omo-org-setup="1"] [data-omo-org-init-button="1"]')
-  .on('click.omoOrgSetup', '[data-omo-org-setup="1"] [data-omo-org-init-button="1"]', function () {
-    const button = $(this);
-    const panel = button.closest('[data-omo-org-setup="1"]');
-    const feedback = panel.find('[data-omo-org-init-feedback="1"]').first();
-    const templateId = Number(button.data('template-id') || 0);
-    const organizationId = Number(panel.data('organization-id') || 0);
-
-    if (!organizationId) {
-        return;
-    }
-
-    panel.find('[data-omo-org-init-button="1"]').prop('disabled', true);
-    feedback.prop('hidden', false).removeClass('is-error').text('Initialisation en cours...');
-
-    fetch('/omo/api/organizations/initialize.php', {
-        method: 'POST',
-        headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            templateId: templateId
-        })
-    })
-    .then(function (response) {
-        return response.json().catch(function () {
-            return null;
-        }).then(function (data) {
-            return {
-                ok: response.ok,
-                data: data
-            };
-        });
-    })
-    .then(function (result) {
-        if (!result.ok || !result.data || result.data.status !== 'ok') {
-            throw new Error(result.data && result.data.message ? result.data.message : "Impossible d'initialiser l'organisation.");
-        }
-
-        feedback.removeClass('is-error').text(result.data.message || 'Organisation initialisée.');
-
-        const route = omoGetOrganizationSetupRoute();
-        omoReloadOrganizationPanels(route.oid || organizationId);
-    })
-    .catch(function (error) {
-        feedback.addClass('is-error').text(error && error.message ? error.message : "Impossible d'initialiser l'organisation.");
-    })
-  .finally(function () {
-        panel.find('[data-omo-org-init-button="1"]').prop('disabled', false);
-    });
-  });
-
-$(document)
-  .off('click.omoOrgImport', '[data-omo-org-setup="1"] [data-omo-org-import-button="1"]')
-  .on('click.omoOrgImport', '[data-omo-org-setup="1"] [data-omo-org-import-button="1"]', function () {
-    const button = $(this);
-    const panel = button.closest('[data-omo-org-setup="1"]');
-    const organizationId = Number(panel.data('organization-id') || 0);
-
-    if (!organizationId || typeof window.commonTopbarOpenModal !== 'function') {
-        return;
-    }
-
-    let popupUrl = '/omo/api/organizations/import_popup.php?oid=' + encodeURIComponent(organizationId);
-
-    if (typeof window.omoResolveAppUrl === 'function') {
-        popupUrl = window.omoResolveAppUrl(popupUrl);
-    }
-
-    window.commonTopbarOpenModal('Importer une organisation', popupUrl, 'fetch');
-  });
-</script>
+<script src="<?= commonAssetUrl('/omo/api/organization_setup_panel.js') ?>"></script>
         <?php
     }
 }
@@ -487,7 +124,7 @@ if (!function_exists('omoRenderOrganizationInfoPanel')) {
     {
         $organizationId = (int)$organization->getId();
         $memberships = new \dbObject\ArrayUserOrganization();
-        $memberships->loadVisibleForOrganization($organizationId);
+        $memberships->loadVisibleForOrganization($organizationId, true);
 
         $memberCards = [];
         foreach ($memberships as $membership) {
@@ -518,15 +155,10 @@ if (!function_exists('omoRenderOrganizationInfoPanel')) {
                 'photoUrl' => trim((string)$membership->getProfilePhotoUrl()),
                 'initials' => $initials,
                 'isPending' => !(bool)$membership->get('active'),
-                'isOrganizationAdmin' => $membership->isOrganizationAdmin(),
             ];
         }
 
         usort($memberCards, static function (array $left, array $right): int {
-            if (($left['isOrganizationAdmin'] ?? false) !== ($right['isOrganizationAdmin'] ?? false)) {
-                return !empty($left['isOrganizationAdmin']) ? -1 : 1;
-            }
-
             if (($left['isPending'] ?? false) !== ($right['isPending'] ?? false)) {
                 return empty($left['isPending']) ? -1 : 1;
             }
@@ -568,182 +200,13 @@ if (!function_exists('omoRenderOrganizationInfoPanel')) {
             : 'background: ' . omoApiEscape($organizationColor) . ';';
         ?>
 <?php if (!$stylesRendered): $stylesRendered = true; ?>
-<style>
-.omo-org-info-panel {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    padding: 18px;
-    color: var(--color-text, #1f2937);
-}
-
-.omo-org-info-panel__hero {
-    position: relative;
-    min-height: 180px;
-    border-radius: 18px;
-    overflow: hidden;
-    border: 1px solid var(--color-border, #d1d5db);
-    background: var(--color-surface-alt, #dbeafe);
-}
-
-.omo-org-info-panel__hero::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(180deg, rgba(15, 23, 42, 0.04), rgba(15, 23, 42, 0.5));
-}
-
-.omo-org-info-panel__hero-content {
-    position: absolute;
-    inset: auto 18px 18px 18px;
-    z-index: 1;
-    color: #fff;
-}
-
-.omo-org-info-panel__kicker {
-    opacity: 0.8;
-}
-
-.omo-org-info-panel__title {
-    margin: 8px 0 0;
-    font-size: 28px;
-    line-height: 1.1;
-}
-
-.omo-org-info-panel__card {
-    background: var(--color-surface, #fff);
-    border: 1px solid var(--color-border, #d1d5db);
-    border-radius: 16px;
-    padding: 16px;
-    box-shadow: var(--shadow-sm, 0 2px 6px rgba(15, 23, 42, 0.05));
-}
-
-.omo-org-info-panel__copy {
-    margin: 0;
-    line-height: 1.5;
-    color: var(--color-text-light, #6b7280);
-}
-
-.omo-org-info-list {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 10px;
-}
-
-.omo-org-info-list__item {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    padding: 12px;
-    border-radius: 12px;
-    background: var(--color-surface-alt, #f8fafc);
-}
-
-.omo-org-info-list__label {
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--color-text-light, #6b7280);
-}
-
-.omo-org-info-list__value {
-    font-size: 15px;
-    font-weight: 600;
-}
-
-.omo-org-members {
-    display: grid;
-    gap: 8px;
-}
-
-.omo-org-members__head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-}
-
-.omo-org-members__list {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-
-.omo-org-members__avatar {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    min-width: 36px;
-    border-radius: 999px;
-    overflow: hidden;
-    border: 1px solid var(--color-border, #d1d5db);
-    background: color-mix(in srgb, var(--color-primary, #2563eb) 12%, var(--color-surface-alt, #f8fafc));
-    box-shadow: var(--shadow-sm, 0 1px 2px rgba(15, 23, 42, 0.08));
-    padding: 0;
-}
-
-.omo-org-members__avatar--button {
-    cursor: pointer;
-}
-
-.omo-org-members__avatar--button:hover,
-.omo-org-members__avatar--button:focus-visible {
-    border-color: color-mix(in srgb, var(--color-primary, #2563eb) 35%, var(--color-border, #d1d5db));
-    background: color-mix(in srgb, var(--color-primary, #2563eb) 16%, var(--color-surface-alt, #f8fafc));
-}
-
-.omo-org-members__avatar--pending {
-    opacity: 0.6;
-    border-style: dashed;
-}
-
-.omo-org-members__avatar img {
-    width: 100%;
-    height: 100%;
-    display: block;
-    object-fit: cover;
-}
-
-.omo-org-members__initials {
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--color-primary, #2563eb);
-}
-
-.omo-org-members__badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 36px;
-    min-height: 36px;
-    padding: 0 10px;
-    border-radius: 999px;
-    background: rgba(37, 99, 235, 0.08);
-    color: var(--color-primary, #2563eb);
-    font-size: 11px;
-    font-weight: 600;
-}
-
-.omo-org-members__badge--pending {
-    background: rgba(148, 163, 184, 0.14);
-    color: var(--color-text-light, #6b7280);
-}
-
-.omo-org-members__empty {
-    color: var(--color-text-light, #6b7280);
-    line-height: 1.5;
-}
-</style>
+<link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/organization_info_panel.css') ?>">
 <?php endif; ?>
 <div class="omo-org-info-panel" data-omo-org-info-panel="1" data-organization-id="<?= (int)$organizationId ?>">
     <div class="omo-org-info-panel__hero" style="<?= $heroStyle ?>">
         <div class="omo-org-info-panel__hero-content">
             <div class="omo-org-info-panel__kicker generic-card-title generic-card-title--eyebrow">Organisation</div>
-            <h2 class="omo-org-info-panel__title"><?= omoApiEscape($organizationName) ?></h2>
+            <h2 class="omo-org-info-panel__title generic-title generic-title--hero"><?= omoApiEscape($organizationName) ?></h2>
         </div>
     </div>
 
@@ -772,9 +235,6 @@ if (!function_exists('omoRenderOrganizationInfoPanel')) {
                         if (!empty($member['isPending'])) {
                             $memberTooltipParts[] = 'invitation en attente';
                         }
-                        if (!empty($member['isOrganizationAdmin'])) {
-                            $memberTooltipParts[] = 'admin';
-                        }
                         $memberTooltip = implode(' - ', array_filter($memberTooltipParts));
                         ?>
                         <button
@@ -787,7 +247,7 @@ if (!function_exists('omoRenderOrganizationInfoPanel')) {
                             aria-label="<?= omoApiEscape($memberTooltip) ?>"
                         >
                                 <?php if (trim((string)($member['photoUrl'] ?? '')) !== ''): ?>
-                                    <img src="<?= omoApiEscape((string)$member['photoUrl']) ?>" alt="">
+                                    <img src="<?= omoApiEscape((string)$member['photoUrl']) ?>" alt="" width="36" height="36" decoding="async">
                                 <?php else: ?>
                                     <span class="omo-org-members__initials"><?= omoApiEscape((string)$member['initials']) ?></span>
                                 <?php endif; ?>
@@ -798,7 +258,7 @@ if (!function_exists('omoRenderOrganizationInfoPanel')) {
                     <?php endif; ?>
                 </div>
             <?php else: ?>
-                <div class="omo-org-members__empty">Aucun membre n est encore rattache a cette organisation.</div>
+                <div class="omo-org-members__empty generic-description">Aucun membre n est encore rattache a cette organisation.</div>
             <?php endif; ?>
         </div>
     </div>
@@ -806,16 +266,16 @@ if (!function_exists('omoRenderOrganizationInfoPanel')) {
     <div class="omo-org-info-panel__card">
         <div class="omo-org-info-list">
             <div class="omo-org-info-list__item">
-                <span class="omo-org-info-list__label">Nom</span>
-                <span class="omo-org-info-list__value"><?= omoApiEscape($organizationName) ?></span>
+                <span class="omo-org-info-list__label generic-title generic-title--eyebrow">Nom</span>
+                <span class="omo-org-info-list__value generic-title generic-title--compact"><?= omoApiEscape($organizationName) ?></span>
             </div>
             <div class="omo-org-info-list__item">
-                <span class="omo-org-info-list__label">Nom court</span>
-                <span class="omo-org-info-list__value"><?= omoApiEscape($organizationShortname !== '' ? $organizationShortname : 'Non défini') ?></span>
+                <span class="omo-org-info-list__label generic-title generic-title--eyebrow">Nom court</span>
+                <span class="omo-org-info-list__value generic-title generic-title--compact"><?= omoApiEscape($organizationShortname !== '' ? $organizationShortname : 'Non défini') ?></span>
             </div>
             <div class="omo-org-info-list__item">
-                <span class="omo-org-info-list__label">Domaine</span>
-                <span class="omo-org-info-list__value"><?= omoApiEscape($organizationDomain !== '' ? $organizationDomain : 'Non défini') ?></span>
+                <span class="omo-org-info-list__label generic-title generic-title--eyebrow">Domaine</span>
+                <span class="omo-org-info-list__value generic-title generic-title--compact"><?= omoApiEscape($organizationDomain !== '' ? $organizationDomain : 'Non défini') ?></span>
             </div>
         </div>
     </div>

@@ -143,117 +143,11 @@ if ($messageValue === '') {
 $canSendPending = !$isDraft && $recipientCount > 0;
 $canSendAll = !$isDraft && $allRecipientCount > 0;
 ?>
-<style>
-.omo-decision-send-invitations-popup {
-    display: grid;
-    gap: 0;
-    color: var(--color-text, #1f2937);
-}
-
-.omo-decision-send-invitations-popup__header {
-    position: sticky;
-    top: 0;
-    z-index: 2;
-}
-
-.omo-decision-send-invitations-popup__header-copy {
-    display: grid;
-    gap: 4px;
-}
-
-.omo-decision-send-invitations-popup__shell {
-    display: grid;
-    gap: 16px;
-    padding: 16px 18px 18px;
-}
-
-.omo-decision-send-invitations-popup__intro,
-.omo-decision-send-invitations-popup__hint {
-    margin: 0;
-    color: var(--topbar-panel-muted, #64748b);
-    line-height: 1.6;
-}
-
-.omo-decision-send-invitations-popup__textarea {
-    min-height: 220px;
-}
-
-.omo-decision-send-invitations-popup__actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-}
-
-.omo-decision-send-invitations-popup__split {
-    position: relative;
-    display: inline-flex;
-    align-items: stretch;
-}
-
-.omo-decision-send-invitations-popup__split-main {
-    border-top-right-radius: 0;
-    border-bottom-right-radius: 0;
-}
-
-.omo-decision-send-invitations-popup__split-toggle {
-    min-width: 44px;
-    padding-inline: 12px;
-    border-top-left-radius: 0;
-    border-bottom-left-radius: 0;
-    border-left-color: color-mix(in srgb, rgba(255, 255, 255, 0.28) 75%, transparent);
-    font-size: 12px;
-}
-
-.omo-decision-send-invitations-popup__split-toggle::before {
-    content: "";
-    display: inline-block;
-    width: 8px;
-    height: 8px;
-    border-right: 2px solid currentColor;
-    border-bottom: 2px solid currentColor;
-    transform: rotate(45deg) translateY(-1px);
-}
-
-.omo-decision-send-invitations-popup__menu {
-    position: absolute;
-    right: 0;
-    bottom: calc(100% + 8px);
-    min-width: 240px;
-    padding: 8px;
-    border: 1px solid var(--topbar-panel-border, #dbe3ef);
-    border-radius: 14px;
-    background: var(--topbar-panel-bg, #ffffff);
-    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.16);
-    display: grid;
-    gap: 6px;
-    z-index: 20;
-}
-
-.omo-decision-send-invitations-popup__menu[hidden] {
-    display: none;
-}
-
-.omo-decision-send-invitations-popup__menu-action {
-    width: 100%;
-    justify-content: flex-start;
-    text-align: left;
-    box-shadow: none;
-}
-
-.omo-decision-send-invitations-popup__feedback {
-    min-height: 22px;
-    color: #b91c1c;
-    font-weight: 600;
-}
-
-.omo-decision-send-invitations-popup__feedback.is-success {
-    color: #15803d;
-}
-</style>
+<link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/decision/send_invitations_popup.css') ?>">
 
 <form
     id="omoDecisionSendInvitationsPopupForm"
-    class="omo-decision-send-invitations-popup"
+    class="omo-decision-send-invitations-popup generic-stack generic-stack--flush"
     action="/omo/api/decision/send_invitations_popup.php?oid=<?= (int)$organizationId ?>&cid=<?= (int)$targetHolonId ?>&id=<?= (int)$decision->getId() ?>&method=<?= urlencode($method) ?>"
     method="post"
 >
@@ -264,9 +158,9 @@ $canSendAll = !$isDraft && $allRecipientCount > 0;
             <h3 class="generic-card-title generic-card-title--medium">Envoyer les invitations</h3>
         </div>
     </div>
-    <div class="omo-decision-send-invitations-popup__shell">
+    <div class="omo-decision-send-invitations-popup__shell generic-drawer-content">
 
-    <p class="omo-decision-send-invitations-popup__intro">
+    <p class="omo-decision-send-invitations-popup__intro generic-description generic-description--relaxed">
         <?php if ($recipientCount > 0): ?>
         Personnalisez le message qui sera envoye a <?= (int)$recipientCount ?> destinataire<?= (int)$recipientCount === 1 ? '' : 's' ?> n ayant pas encore repondu.
         <?php elseif ($allRecipientCount > 0): ?>
@@ -277,15 +171,15 @@ $canSendAll = !$isDraft && $allRecipientCount > 0;
     </p>
 
     <?php if ($isDraft): ?>
-    <p class="omo-decision-send-invitations-popup__hint">
+    <p class="omo-decision-send-invitations-popup__hint generic-description generic-description--relaxed">
         Ce scrutin est encore en brouillon. Sortez-le du brouillon avant d envoyer les invitations.
     </p>
     <?php elseif ($allRecipientCount === 0): ?>
-    <p class="omo-decision-send-invitations-popup__hint">
+    <p class="omo-decision-send-invitations-popup__hint generic-description generic-description--relaxed">
         Aucun destinataire avec une adresse e-mail valide n a ete trouve pour ce scrutin.
     </p>
     <?php else: ?>
-    <p class="omo-decision-send-invitations-popup__hint">
+    <p class="omo-decision-send-invitations-popup__hint generic-description generic-description--relaxed">
         L action principale relance seulement les participants qui n ont pas encore repondu. La fleche permet aussi d envoyer le lien a tout le monde, y compris a l auteur s il fait partie des participants.
     </p>
     <?php endif; ?>
@@ -298,9 +192,9 @@ $canSendAll = !$isDraft && $allRecipientCount > 0;
         <?= ($isDraft || $allRecipientCount === 0) ? 'disabled' : '' ?>
     ><?= omoApiEscape($messageValue) ?></textarea>
 
-    <div id="omoDecisionSendInvitationsPopupFeedback" class="omo-decision-send-invitations-popup__feedback"></div>
+    <div id="omoDecisionSendInvitationsPopupFeedback" class="omo-decision-send-invitations-popup__feedback generic-feedback"></div>
 
-    <div class="omo-decision-send-invitations-popup__actions">
+    <div class="omo-decision-send-invitations-popup__actions generic-action-row">
         <div class="omo-decision-send-invitations-popup__split">
             <button
                 type="submit"
@@ -341,132 +235,7 @@ $canSendAll = !$isDraft && $allRecipientCount > 0;
     </div>
 </form>
 
-<script>
-(function () {
-    var form = document.getElementById('omoDecisionSendInvitationsPopupForm');
-    var feedback = document.getElementById('omoDecisionSendInvitationsPopupFeedback');
-    var submitButton = document.getElementById('omoDecisionSendInvitationsPopupSubmit');
-    var toggleButton = document.getElementById('omoDecisionSendInvitationsPopupToggle');
-    var menu = document.getElementById('omoDecisionSendInvitationsPopupMenu');
-    var scopeField = document.getElementById('omoDecisionSendInvitationsScope');
-    var canSendPending = <?= $canSendPending ? 'true' : 'false' ?>;
-    var canSendAll = <?= $canSendAll ? 'true' : 'false' ?>;
-
-    if (!form || !feedback || !submitButton || !toggleButton || !menu || !scopeField) {
-        return;
-    }
-
-    function closeMenu() {
-        menu.hidden = true;
-        toggleButton.setAttribute('aria-expanded', 'false');
-    }
-
-    function openMenu() {
-        if (toggleButton.disabled) {
-            return;
-        }
-        menu.hidden = false;
-        toggleButton.setAttribute('aria-expanded', 'true');
-    }
-
-    function applyAvailabilityState(isBusy) {
-        submitButton.disabled = isBusy || !canSendPending;
-        toggleButton.disabled = isBusy || !canSendAll;
-    }
-
-    submitButton.addEventListener('click', function () {
-        scopeField.value = 'pending';
-    });
-
-    toggleButton.addEventListener('click', function () {
-        if (menu.hidden) {
-            openMenu();
-            return;
-        }
-
-        closeMenu();
-    });
-
-    document.addEventListener('click', function (event) {
-        if (!menu.hidden && !form.contains(event.target)) {
-            closeMenu();
-        }
-    });
-
-    document.addEventListener('keydown', function (event) {
-        if (event.key === 'Escape') {
-            closeMenu();
-        }
-    });
-
-    menu.addEventListener('click', function (event) {
-        var actionButton = event.target.closest('[data-send-scope]');
-        if (!actionButton) {
-            return;
-        }
-
-        scopeField.value = actionButton.getAttribute('data-send-scope') || 'pending';
-        closeMenu();
-        if (typeof form.requestSubmit === 'function') {
-            form.requestSubmit();
-            return;
-        }
-
-        form.dispatchEvent(new Event('submit', { cancelable: true }));
-    });
-
-    form.addEventListener('submit', function (event) {
-        event.preventDefault();
-        closeMenu();
-        feedback.textContent = '';
-        feedback.classList.remove('is-success');
-        applyAvailabilityState(true);
-
-        fetch(form.getAttribute('action'), {
-            method: 'POST',
-            body: new FormData(form),
-            credentials: 'same-origin',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
-            .then(function (response) {
-                return response.json().then(function (data) {
-                    return {
-                        ok: response.ok,
-                        data: data
-                    };
-                });
-            })
-            .then(function (result) {
-                if (!result.ok || !result.data || !result.data.status) {
-                    feedback.textContent = result.data && result.data.message ? result.data.message : 'Une erreur est survenue.';
-                    applyAvailabilityState(false);
-                    return;
-                }
-
-                feedback.textContent = result.data.message || 'Invitations envoyees.';
-                feedback.classList.add('is-success');
-
-                if (typeof window.commonTopbarCloseModal === 'function') {
-                    window.commonTopbarCloseModal();
-                }
-
-                if (result.data.redirectUrl && typeof window.omoDecisionOpenNestedDrawer === 'function') {
-                    window.omoDecisionOpenNestedDrawer(result.data.drawerTitle || 'Prises de decision', result.data.redirectUrl, '');
-                    return;
-                }
-
-                if (result.data.redirectUrl && typeof window.commonTopbarOpenDrawer === 'function') {
-                    window.commonTopbarOpenDrawer(result.data.drawerTitle || 'Prises de decision', result.data.redirectUrl, 'fetch');
-                }
-            })
-            .catch(function () {
-                feedback.textContent = 'Impossible d envoyer ces invitations pour le moment.';
-                applyAvailabilityState(false);
-            });
-    });
-
-    applyAvailabilityState(false);
-})();
-</script>
+<?= commonPageScriptTags('/omo/api/decision/send_invitations_popup.js', [
+    'canSendPending' => ($canSendPending),
+    'canSendAll' => ($canSendAll),
+]) ?>

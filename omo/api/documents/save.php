@@ -1,5 +1,6 @@
 <?php
 require_once dirname(__DIR__) . '/bootstrap.php';
+require_once dirname(__DIR__) . '/projects/shared.php';
 
 header('Content-Type: application/json; charset=UTF-8');
 
@@ -12,7 +13,7 @@ if ($currentUserId <= 0) {
     http_response_code(403);
     echo json_encode(array(
         'status' => false,
-        'message' => 'Acces refuse.',
+        'message' => 'Accès refusé.',
     ));
     exit;
 }
@@ -23,10 +24,46 @@ $keywords = trim((string)($_POST['keywords'] ?? ''));
 $content = (string)($_POST['content'] ?? '');
 $documentType = trim((string)($_POST['document_type'] ?? ''));
 $externalUrl = trim((string)($_POST['external_url'] ?? ''));
+$nextcloudFolderPath = trim((string)($_POST['nextcloud_folder_path'] ?? ''));
 $openInNewWindow = !empty($_POST['open_in_new_window']);
 $visibilityType = trim((string)($_POST['visibility_type'] ?? 'organization'));
+$editVisibilityType = trim((string)($_POST['edit_visibility_type'] ?? 'self'));
 $isFolder = !empty($_POST['is_folder']) || trim(mb_strtolower($documentType, 'UTF-8')) === \dbObject\Document::TYPE_FOLDER;
 $parentDocumentId = isset($_POST['parent_document_id']) ? (int)$_POST['parent_document_id'] : 0;
+$pvTemplateId = isset($_POST['pv_template_id']) ? max(0, (int)$_POST['pv_template_id']) : 0;
+$projectId = isset($_POST['project_id']) ? max(0, (int)$_POST['project_id']) : 0;
+$projectVisibleInHolon = !empty($_POST['project_visible_in_holon']);
+$canManageProjectVisibility = false;
+
+if ($projectId > 0) {
+    $project = new \dbObject\Project();
+    $projectHolon = null;
+    if (
+        !$project->load($projectId)
+        || (int)$project->get('IDorganization') !== $organizationId
+        || (int)$project->get('active') !== 1
+        || !\omoProjectsCanCreateDocument($project, $currentUserId)
+    ) {
+        http_response_code(403);
+        echo json_encode(array(
+            'status' => false,
+            'message' => 'Accès refusé.',
+        ));
+        exit;
+    }
+
+    $projectHolon = $project->getHolon();
+    if ($holonId !== ($projectHolon instanceof \dbObject\Holon ? (int)$projectHolon->getId() : 0)) {
+        http_response_code(403);
+        echo json_encode(array(
+            'status' => false,
+            'message' => 'Contexte de projet invalide.',
+        ));
+        exit;
+    }
+
+    $canManageProjectVisibility = true;
+}
 
 if (
     $documentId <= 0
@@ -41,12 +78,12 @@ if (
     http_response_code(403);
     echo json_encode(array(
         'status' => false,
-        'message' => 'Acces refuse.',
+        'message' => 'Accès refusé.',
     ));
     exit;
 }
 
-if ($title === '') {
+if ($documentId <= 0 && $title === '') {
     http_response_code(422);
     echo json_encode(array(
         'status' => false,
@@ -63,37 +100,54 @@ $payload = array(
     'content' => $content,
     'document_type' => $documentType,
     'external_url' => $externalUrl,
+	'nextcloud_folder_path' => $nextcloudFolderPath,
     'open_in_new_window' => $openInNewWindow,
     'uploaded_file' => $_FILES['uploaded_file'] ?? null,
     'remove_uploaded_file' => !empty($_POST['remove_uploaded_file']),
-    'visibility_type' => $visibilityType,
     'is_folder' => $isFolder,
     'parent_document_id' => $parentDocumentId,
+    'pv_template_id' => $pvTemplateId,
 );
+
+if (array_key_exists('visibility_type', $_POST)) {
+    $payload['visibility_type'] = $visibilityType;
+}
+
+if (array_key_exists('edit_visibility_type', $_POST)) {
+    $payload['edit_visibility_type'] = $editVisibilityType;
+}
 
 if ($documentId > 0) {
     if (!$document->load($documentId)) {
         http_response_code(403);
         echo json_encode(array(
             'status' => false,
-            'message' => 'Acces refuse.',
+            'message' => 'Accès refusé.',
         ));
         exit;
     }
 
     $organizationId = (int)$document->get('IDorganization');
 
+    $canManagePvDocument = $document->isPvDocument()
+        && $document->canUserManagePvStructure($organizationId, $currentUserId);
+    $canManageDocument = !$document->isPvDocument()
+        && $document->canManageInOrganizationContext($organizationId, $currentUserId, false);
+    $canEditDocumentContent = !$document->isPvDocument()
+        && $document->canEditInOrganizationContext($organizationId, $currentUserId, false);
     if (
         ($organizationId > 0 && !commonCurrentUserHasOrganizationAccess($organizationId))
-        || !$document->canEditInOrganizationContext($organizationId, $currentUserId, false)
+        || (!$canManagePvDocument && !$canManageDocument && !$canEditDocumentContent)
     ) {
         http_response_code(403);
         echo json_encode(array(
             'status' => false,
-            'message' => 'Acces refuse.',
+            'message' => 'Accès refusé.',
         ));
         exit;
     }
+
+    $canManageProjectVisibility = $canManageDocument;
 
     $result = $document->updateInOrganizationContext(
         $organizationId,
@@ -105,7 +159,7 @@ if ($documentId > 0) {
         http_response_code(403);
         echo json_encode(array(
             'status' => false,
-            'message' => 'Acces refuse.',
+            'message' => 'Accès refusé.',
         ));
         exit;
     }
@@ -125,6 +179,36 @@ if (!is_array($result) || ($result['status'] ?? false) !== true) {
         'message' => trim((string)($result['text'] ?? 'Impossible de créer ce document.')),
     ));
     exit;
+}
+
+if ($projectId > 0) {
+    $projectDocument = new \dbObject\ProjectDocument();
+    if (!$projectDocument->load([['IDproject', $projectId], ['IDdocument', (int)$document->getId()]])) {
+        $projectDocument->set('IDproject', $projectId);
+        $projectDocument->set('IDdocument', (int)$document->getId());
+        $projectDocumentResult = $projectDocument->save();
+        if (!is_array($projectDocumentResult) || ($projectDocumentResult['status'] ?? false) !== true) {
+            http_response_code(422);
+            echo json_encode(array(
+                'status' => false,
+                'message' => 'Impossible d associer le document au projet.',
+            ));
+            exit;
+        }
+        $project->recordAssociationHistory('document', (int)$document->getId(), (string)$document->get('title'), 'added', $currentUserId);
+    }
+}
+
+if ($canManageProjectVisibility && $document->hasProjectAssociation()) {
+    $projectVisibilityResult = $document->saveProjectHolonVisibility($projectVisibleInHolon);
+    if (!is_array($projectVisibilityResult) || ($projectVisibilityResult['status'] ?? false) !== true) {
+        http_response_code(422);
+        echo json_encode(array(
+            'status' => false,
+            'message' => \dbObject\Organization::formatLexiconText('Impossible de modifier la visibilite du document dans le holon.'),
+        ));
+        exit;
+    }
 }
 
 echo json_encode(array(

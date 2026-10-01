@@ -1,0 +1,286 @@
+.omo-chat-popup-trigger {
+    position: relative;
+    z-index: 2;
+}
+
+.omo-chat-popup-trigger:hover,
+.omo-chat-popup-trigger:focus-visible {
+    filter: none;
+}
+
+.omo-chat-popup-actions {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.omo-chat-popup-count,
+.omo-proposal-discussion-count {
+    display: inline-flex;
+    flex: 0 0 34px;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    min-height: 34px;
+    background: url('/omo/images/tools/bulle-de-texte.png') center / 34px 34px no-repeat;
+    color: var(--color-text-light, #64748b);
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1;
+    padding-bottom: 6px;
+}
+
+.omo-chat-popup-count-value,
+.omo-proposal-discussion-count-value {
+    display: block;
+    min-width: 1em;
+    text-align: center;
+}
+
+.omo-chat-popup-content,
+.omo-proposal-popup-content {
+    box-sizing: border-box;
+    width: 100%;
+    margin-inline: auto;
+    padding: 18px;
+}
+
+.omo-chat-popup,
+.omo-proposal-chat {
+    display: grid;
+    grid-template-rows: auto minmax(260px, 1fr) auto;
+    width: 100%;
+    min-height: min(620px, 72vh);
+    max-height: 76vh;
+    overflow: hidden;
+}
+
+.omo-chat-popup__toolbar,
+.omo-proposal-chat__toolbar {
+    padding: 0 0 12px;
+}
+
+.omo-chat-popup__point-title,
+.omo-proposal-chat__proposal-title {
+    margin: 0;
+    color: var(--color-text, #0f172a);
+    font-size: 14px;
+    line-height: 1.45;
+}
+
+.omo-chat-popup__messages,
+.omo-proposal-chat__messages {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 0;
+    padding: 18px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border: 1px solid var(--color-border, #dbe3ec);
+    border-radius: var(--radius-card, 14px);
+    background:
+        linear-gradient(rgba(255, 255, 255, .72), rgba(255, 255, 255, .72)),
+        repeating-linear-gradient(45deg, #e8ede7 0, #e8ede7 12px, #eef2ec 12px, #eef2ec 24px);
+}
+
+.omo-chat-popup__loading,
+.omo-chat-popup__empty,
+.omo-proposal-chat__loading,
+.omo-proposal-chat__empty {
+    margin: auto;
+    padding: 22px;
+    color: var(--color-text-light, #64748b);
+    text-align: center;
+    line-height: 1.55;
+}
+
+.omo-chat-popup__message-row,
+.omo-proposal-chat__message-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    width: 100%;
+}
+
+.omo-chat-popup__message-row--own,
+.omo-proposal-chat__message-row--own {
+    justify-content: flex-end;
+}
+
+.omo-chat-popup__message-row--system,
+.omo-proposal-chat__message-row--system {
+    justify-content: center;
+    margin: 2px 0;
+}
+
+.omo-chat-popup__avatar,
+.omo-proposal-chat__avatar {
+    display: inline-flex;
+    flex: 0 0 34px;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    overflow: hidden;
+    border: 1px solid rgba(15, 23, 42, .1);
+    border-radius: 50%;
+    background: var(--color-primary, #2563eb);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .02em;
+}
+
+.omo-chat-popup__avatar img,
+.omo-proposal-chat__avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.omo-chat-popup__bubble,
+.omo-proposal-chat__bubble {
+    max-width: min(78%, 520px);
+    padding: 9px 12px 7px;
+    border: 1px solid rgba(15, 23, 42, .08);
+    border-radius: 14px 14px 14px 4px;
+    background: #fff;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, .08);
+}
+
+.omo-chat-popup__message-row--own .omo-chat-popup__bubble,
+.omo-proposal-chat__message-row--own .omo-proposal-chat__bubble {
+    border-radius: 14px 14px 4px 14px;
+    background: #d9fdd3;
+}
+
+.omo-chat-popup__author-meta,
+.omo-proposal-chat__author-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 6px;
+    margin-bottom: 4px;
+}
+
+.omo-chat-popup__message-row--own .omo-chat-popup__author-meta,
+.omo-proposal-chat__message-row--own .omo-proposal-chat__author-meta {
+    justify-content: flex-end;
+}
+
+.omo-chat-popup__author,
+.omo-proposal-chat__author {
+    color: var(--color-primary, #2563eb);
+    font-size: 12px;
+    font-weight: 750;
+}
+
+.omo-chat-popup__content,
+.omo-proposal-chat__content {
+    margin: 0;
+    color: #17202a;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+}
+
+.omo-chat-popup__time,
+.omo-proposal-chat__time {
+    display: block;
+    margin-top: 4px;
+    color: #667781;
+    font-size: 10px;
+    text-align: right;
+}
+
+.omo-chat-popup__system-message,
+.omo-proposal-chat__system-message {
+    max-width: 86%;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .88);
+    color: #52606d;
+    font-size: 11px;
+    line-height: 1.4;
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, .08);
+}
+
+.omo-chat-popup__system-wrapper {
+    display: grid;
+    justify-items: center;
+    gap: 5px;
+    width: min(92%, 600px);
+}
+
+.omo-chat-popup__system-wrapper .omo-change-details {
+    width: 100%;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, .94);
+    box-shadow: 0 2px 6px rgba(15, 23, 42, .08);
+}
+
+.omo-chat-popup__composer,
+.omo-proposal-chat__composer {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 10px;
+    padding-top: 12px;
+}
+
+.omo-chat-popup__composer-actions,
+.omo-proposal-chat__composer-actions {
+    display: grid;
+    grid-template-rows: auto 1fr;
+    align-self: stretch;
+    min-height: 46px;
+}
+
+.omo-chat-popup__composer-actions > button {
+    grid-row: 2;
+    align-self: end;
+}
+
+.omo-chat-popup__composer textarea,
+.omo-proposal-chat__composer textarea {
+    min-height: 46px;
+    max-height: 140px;
+    resize: vertical;
+}
+
+@media (max-width: 700px) {
+    .omo-chat-popup-content,
+    .omo-proposal-popup-content {
+        padding: 14px;
+    }
+
+    .omo-chat-popup,
+    .omo-proposal-chat {
+        min-height: 68vh;
+        max-height: 78vh;
+    }
+
+    .omo-chat-popup__messages,
+    .omo-proposal-chat__messages {
+        padding: 12px;
+    }
+
+    .omo-chat-popup__bubble,
+    .omo-proposal-chat__bubble {
+        max-width: 86%;
+    }
+
+    .omo-chat-popup__composer,
+    .omo-proposal-chat__composer {
+        grid-template-columns: 1fr;
+    }
+
+    .omo-chat-popup__composer button,
+    .omo-proposal-chat__composer button {
+        justify-self: end;
+    }
+}

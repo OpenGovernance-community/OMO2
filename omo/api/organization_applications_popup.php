@@ -250,227 +250,26 @@ foreach ($activeOrganizationApplications as $organizationApplication) {
     $activeApplicationIds[(int)$organizationApplication->get('IDapplication')] = true;
 }
 ?>
-<style>
-    .omo-app-picker {
-        display: flex;
-        flex-direction: column;
-        gap: 0;
-        color: var(--color-text, #1f2937);
-    }
-
-    .omo-app-picker__header {
-        position: sticky;
-        top: 0;
-        z-index: 2;
-    }
-
-    .omo-app-picker__header-copy {
-        display: grid;
-        gap: 4px;
-    }
-
-    .omo-app-picker__shell {
-        display: grid;
-        gap: 16px;
-        padding: 16px 18px 18px;
-    }
-
-    .omo-app-picker__intro {
-        color: var(--topbar-panel-muted, #64748b);
-        line-height: 1.5;
-    }
-
-    .omo-app-picker__list {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-    }
-
-    .omo-app-picker__card {
-        display: flex;
-        align-items: stretch;
-        gap: 12px;
-        padding: 12px 14px;
-        border: 1px solid var(--topbar-panel-border, #e2e8f0);
-        border-radius: 14px;
-        background: var(--topbar-panel-bg, #ffffff);
-        transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
-    }
-
-    .omo-app-picker__card:hover {
-        border-color: var(--color-primary, #4f46e5);
-        transform: translateY(-1px);
-        box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
-    }
-
-    .omo-app-picker__card.is-active {
-        border-color: rgba(21, 128, 61, 0.25);
-        background: rgba(21, 128, 61, 0.04);
-    }
-
-    .omo-app-picker__card.is-dragging {
-        opacity: 0.55;
-        transform: scale(0.99);
-        box-shadow: 0 16px 28px rgba(15, 23, 42, 0.12);
-    }
-
-    .omo-app-picker__card.is-drop-target {
-        border-color: var(--color-primary, #4f46e5);
-        box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.14);
-    }
-
-    .omo-app-picker__placeholder {
-        min-height: 78px;
-        border: 2px dashed color-mix(in srgb, var(--color-primary, #4f46e5) 46%, var(--topbar-panel-border, #e2e8f0));
-        border-radius: 14px;
-        background:
-            linear-gradient(
-                135deg,
-                rgba(79, 70, 229, 0.08),
-                rgba(79, 70, 229, 0.03)
-            );
-        box-sizing: border-box;
-    }
-
-    .omo-app-picker__drag {
-        width: 34px;
-        min-width: 34px;
-        border: 0;
-        border-radius: 10px;
-        background: rgba(148, 163, 184, 0.14);
-        color: #475569;
-        cursor: grab;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1rem;
-        line-height: 1;
-        touch-action: none;
-    }
-
-    .omo-app-picker__drag:active {
-        cursor: grabbing;
-    }
-
-    .omo-app-picker__card-main {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        min-width: 0;
-        width: 100%;
-        cursor: pointer;
-    }
-
-    .omo-app-picker__checkbox {
-        width: 18px;
-        height: 18px;
-        flex: 0 0 auto;
-    }
-
-    .omo-app-picker__icon {
-        width: 34px;
-        height: 34px;
-        object-fit: contain;
-        flex: 0 0 34px;
-    }
-
-    .omo-app-picker__fallback-icon {
-        width: 34px;
-        height: 34px;
-        border-radius: 10px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        background: rgba(79, 70, 229, 0.12);
-        color: var(--color-primary, #4f46e5);
-        font-weight: 700;
-        flex: 0 0 34px;
-    }
-
-    .omo-app-picker__content {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-        min-width: 0;
-        width: 100%;
-    }
-
-    .omo-app-picker__content-head {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 8px;
-    }
-
-    .omo-app-picker__title {
-        font-weight: 700;
-    }
-
-    .omo-app-picker__state {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: 4px 8px;
-        border-radius: 999px;
-        background: rgba(100, 116, 139, 0.12);
-        color: #475569;
-        font-size: 0.78rem;
-        font-weight: 700;
-        white-space: nowrap;
-    }
-
-    .omo-app-picker__state--active {
-        background: rgba(21, 128, 61, 0.14);
-        color: #15803d;
-    }
-
-    .omo-app-picker__meta {
-        color: var(--topbar-panel-muted, #64748b);
-        font-size: 0.92rem;
-        word-break: break-word;
-    }
-
-    .omo-app-picker__actions {
-        display: flex;
-        justify-content: flex-end;
-        gap: 10px;
-    }
-
-    .omo-app-picker__feedback {
-        min-height: 22px;
-        color: #b91c1c;
-        font-weight: 600;
-    }
-
-    .omo-app-picker__feedback.is-success {
-        color: #15803d;
-    }
-
-    .omo-app-picker__empty {
-        padding: 18px;
-        color: var(--topbar-panel-muted, #64748b);
-        line-height: 1.5;
-    }
-</style>
+<link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/organization_applications_popup.css') ?>">
 
 <?php if (count($orderedApplications) === 0): ?>
     <div class="omo-app-picker__empty">
         <?= htmlspecialchars(omoOrganizationApplicationsT('organization_applications.empty'), ENT_QUOTES, 'UTF-8') ?>
     </div>
 <?php else: ?>
-    <form id="omoApplicationPickerForm" class="omo-app-picker" action="api/organization_applications_popup.php" method="post">
+    <form id="omoApplicationPickerForm" class="omo-app-picker generic-stack generic-stack--flush" action="api/organization_applications_popup.php" method="post">
         <div class="omo-app-picker__header generic-drawer-header generic-drawer-header--sticky">
             <div class="generic-drawer-header__copy omo-app-picker__header-copy">
                 <div class="generic-card-title generic-card-title--eyebrow">Organisation</div>
                 <h3 class="generic-card-title generic-card-title--medium">Configurer les applications</h3>
             </div>
         </div>
-        <div class="omo-app-picker__shell">
-        <p class="omo-app-picker__intro">
+        <div class="omo-app-picker__shell generic-drawer-content">
+        <p class="omo-app-picker__intro generic-description">
             <?= htmlspecialchars(omoOrganizationApplicationsT('organization_applications.intro'), ENT_QUOTES, 'UTF-8') ?>
         </p>
 
-        <div id="omoApplicationPickerList" class="omo-app-picker__list">
+        <div id="omoApplicationPickerList" class="omo-app-picker__list generic-stack">
             <?php foreach ($orderedApplications as $application): ?>
                 <?php
                 $applicationId = (int)$application->getId();
@@ -481,7 +280,7 @@ foreach ($activeOrganizationApplications as $organizationApplication) {
                 $isActive = isset($activeApplicationIds[$applicationId]);
                 ?>
                 <div
-                    class="omo-app-picker__card<?= $isActive ? ' is-active' : '' ?>"
+                    class="omo-app-picker__card generic-section<?= $isActive ? ' is-active' : '' ?>"
                     data-omo-app-picker-card="1"
                     data-omo-app-id="<?= $applicationId ?>"
                     draggable="true"
@@ -513,12 +312,12 @@ foreach ($activeOrganizationApplications as $organizationApplication) {
 
                         <span class="omo-app-picker__content">
                             <span class="omo-app-picker__content-head">
-                                <span class="omo-app-picker__title"><?= htmlspecialchars($applicationLabel, ENT_QUOTES, 'UTF-8') ?></span>
+                                <span class="omo-app-picker__title generic-title generic-title--item"><?= htmlspecialchars($applicationLabel, ENT_QUOTES, 'UTF-8') ?></span>
                                 <span class="omo-app-picker__state<?= $isActive ? ' omo-app-picker__state--active' : '' ?>" data-omo-app-picker-state>
                                     <?= htmlspecialchars($isActive ? omoOrganizationApplicationsT('organization_applications.state.visible') : omoOrganizationApplicationsT('organization_applications.state.hidden'), ENT_QUOTES, 'UTF-8') ?>
                                 </span>
                             </span>
-                            <span class="omo-app-picker__meta">
+                            <span class="omo-app-picker__meta generic-meta">
                                 <?= htmlspecialchars($applicationHash !== '' ? '#' . $applicationHash : $applicationMode, ENT_QUOTES, 'UTF-8') ?>
                             </span>
                         </span>
@@ -527,9 +326,9 @@ foreach ($activeOrganizationApplications as $organizationApplication) {
             <?php endforeach; ?>
         </div>
 
-        <div id="omoApplicationPickerFeedback" class="omo-app-picker__feedback"></div>
+        <div id="omoApplicationPickerFeedback" class="omo-app-picker__feedback generic-feedback"></div>
 
-        <div class="omo-app-picker__actions">
+        <div class="omo-app-picker__actions generic-action-row">
             <button type="submit" id="omoApplicationPickerSubmit" class="omo-app-picker__button generic-action-button generic-action-button--main">
                 <?= htmlspecialchars(omoOrganizationApplicationsT('organization_applications.action.save'), ENT_QUOTES, 'UTF-8') ?>
             </button>
@@ -537,131 +336,13 @@ foreach ($activeOrganizationApplications as $organizationApplication) {
         </div>
     </form>
 
-    <script>
-        (function () {
-            var appPickerText = <?= json_encode([
+    <?= commonPageScriptTags('/omo/api/organization_applications_popup.js', [
+    'appPickerText' => [
                 'visible' => omoOrganizationApplicationsT('organization_applications.state.visible'),
                 'hidden' => omoOrganizationApplicationsT('organization_applications.state.hidden'),
                 'genericError' => omoOrganizationApplicationsT('organization_applications.error.generic'),
                 'savedSimple' => omoOrganizationApplicationsT('organization_applications.status.saved_simple'),
                 'saveLater' => omoOrganizationApplicationsT('organization_applications.error.save_later'),
-            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
-            var form = document.getElementById('omoApplicationPickerForm');
-            var list = document.getElementById('omoApplicationPickerList');
-            var feedback = document.getElementById('omoApplicationPickerFeedback');
-            var submitButton = document.getElementById('omoApplicationPickerSubmit');
-
-            if (!form || !list || !feedback || !submitButton) {
-                return;
-            }
-
-            var clearFeedback = function () {
-                feedback.textContent = '';
-                feedback.classList.remove('is-success');
-            };
-
-            var updateCardState = function (checkbox) {
-                var card = checkbox.closest('[data-omo-app-picker-card]');
-                var state = card ? card.querySelector('[data-omo-app-picker-state]') : null;
-
-                if (card) {
-                    card.classList.toggle('is-active', checkbox.checked);
-                }
-
-                if (state) {
-                    state.textContent = checkbox.checked ? appPickerText.visible : appPickerText.hidden;
-                    state.classList.toggle('omo-app-picker__state--active', checkbox.checked);
-                }
-            };
-
-            Array.prototype.forEach.call(form.querySelectorAll('.omo-app-picker__checkbox'), function (checkbox) {
-                updateCardState(checkbox);
-                checkbox.addEventListener('change', function () {
-                    updateCardState(checkbox);
-                    clearFeedback();
-                });
-            });
-
-            if (typeof window.commonCreateVerticalSortableList === 'function') {
-                window.commonCreateVerticalSortableList({
-                    list: list,
-                    itemSelector: '[data-omo-app-picker-card]',
-                    handleSelector: '[data-omo-app-picker-drag]',
-                    draggingClass: 'is-dragging',
-                    dropTargetClass: 'is-drop-target',
-                    placeholderClass: 'omo-app-picker__placeholder',
-                    createPlaceholder: function (card) {
-                        var placeholderCard = document.createElement('div');
-                        placeholderCard.style.height = card.getBoundingClientRect().height + 'px';
-                        return placeholderCard;
-                    },
-                    onDragStart: function () {
-                        clearFeedback();
-                    },
-                    onDrop: function () {
-                        clearFeedback();
-                    }
-                });
-            }
-
-            form.addEventListener('submit', function (event) {
-                event.preventDefault();
-
-                clearFeedback();
-                submitButton.disabled = true;
-
-                var formData = new FormData(form);
-                Array.prototype.forEach.call(list.querySelectorAll('[data-omo-app-picker-card]'), function (card) {
-                    var applicationId = card.getAttribute('data-omo-app-id');
-                    if (!applicationId) {
-                        return;
-                    }
-
-                    formData.append('order[]', applicationId);
-                });
-
-                fetch(form.getAttribute('action'), {
-                    method: 'POST',
-                    body: formData,
-                    credentials: 'same-origin',
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                })
-                    .then(function (response) {
-                        return response.json();
-                    })
-                    .then(function (data) {
-                        if (!data || !data.status) {
-                            feedback.textContent = data && data.message ? data.message : appPickerText.genericError;
-                            submitButton.disabled = false;
-                            return;
-                        }
-
-                        feedback.textContent = data.message || appPickerText.savedSimple;
-                        feedback.classList.add('is-success');
-
-                        if (typeof window.omoRefreshSidebar === 'function') {
-                            window.omoRefreshSidebar(function () {
-                                if (typeof window.omoRefreshMainRightPanel === 'function') {
-                                    window.omoRefreshMainRightPanel();
-                                }
-                                if (typeof window.commonTopbarCloseModal === 'function') {
-                                    window.commonTopbarCloseModal();
-                                }
-                            });
-                            return;
-                        }
-
-                        if (typeof window.commonTopbarCloseModal === 'function') {
-                            window.commonTopbarCloseModal();
-                        }
-                    })
-                    .catch(function () {
-                        feedback.textContent = appPickerText.saveLater;
-                        submitButton.disabled = false;
-                    });
-            });
-        })();
-    </script>
+            ],
+]) ?>
 <?php endif; ?>

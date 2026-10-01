@@ -1,0 +1,73 @@
+/* omo/api/decision/edit_shared.php */
+.omo-decision-edit__readonly-stat {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 8px;
+}
+
+.omo-decision-edit__module-copy {
+    display: grid;
+    gap: 8px;
+}
+
+.omo-decision-edit__module-card {
+    justify-content: space-between;
+    min-height: 150px;
+}
+
+.omo-decision-edit__module-card.is-available {
+    border: 1px solid color-mix(in srgb, var(--color-primary, #2563eb) 28%, white);
+}
+
+.omo-decision-edit__module-card--governance {
+    background: color-mix(in srgb, var(--color-primary, #2563eb) 7%, var(--color-surface, #ffffff));
+}
+
+.omo-decision-edit__module-headline {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.omo-decision-edit__module-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-text-light, #64748b) 12%, white);
+    color: var(--color-text-light, #475569);
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.omo-decision-edit__module-action {
+    align-self: end;
+}
+
+.omo-decision-edit__import-panel {
+    padding-top: 4px;
+    border-top: 1px solid var(--color-border, #d1d5db);
+}
+
+.omo-decision-edit__import-panel > summary {
+    padding: 12px 0;
+    color: var(--color-text-light, #475569);
+    cursor: pointer;
+}
+
+.omo-decision-edit__import-panel > form {
+    padding: 4px 0 12px;
+}
+
+.omo-decision-edit__feedback {
+    min-height: 20px;
+    color: var(--color-text-light, #475569);
+    line-height: 1.5;
+}
+
+.omo-decision-edit__muted {
+    font-size: 14px;
+}

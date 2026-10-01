@@ -70,13 +70,13 @@ if (!$scopeHolon) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Holon introuvable</title>
+    <title><?= htmlspecialchars(\dbObject\Organization::formatLexiconText('Holon introuvable', $organization->getLexicon()), ENT_QUOTES, 'UTF-8') ?></title>
     <link rel="stylesheet" href="/common/assets/auth.css">
 </head>
 <body class="auth-state-page">
     <main class="auth-state-layout">
         <div class="auth-state-card">
-            <h1>Holon introuvable</h1>
+            <h1><?= htmlspecialchars(\dbObject\Organization::formatLexiconText('Holon introuvable', $organization->getLexicon()), ENT_QUOTES, 'UTF-8') ?></h1>
             <p>Le contexte partage n est plus disponible.</p>
         </div>
     </main>
@@ -156,8 +156,8 @@ $brandHref = $shareLink->buildShareUrl($initialCid);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="/shared_functions.js"></script>
     <script>sharedApplyDocumentTheme();</script>
-    <link rel="stylesheet" href="/common/assets/omo_public_pages.css">
-    <link rel="stylesheet" href="/omo/assets/css/styles.css">
+    <link rel="stylesheet" href="/omo/assets/css/public-pages.css">
+    <?= commonStylesheetTags('/omo/assets/css/styles.css') ?>
     <base href="/omo/">
     <style>
     :root {
@@ -195,7 +195,7 @@ $brandHref = $shareLink->buildShareUrl($initialCid);
         max-width: 520px;
         padding: 24px;
         border: 1px solid var(--color-border, #e5e7eb);
-        border-radius: 18px;
+        border-radius: var(--radius-md);
         background: var(--color-surface, #ffffff);
         box-shadow: var(--shadow-md, 0 12px 24px rgba(0,0,0,0.12));
     }
@@ -245,16 +245,6 @@ $brandHref = $shareLink->buildShareUrl($initialCid);
             <div class="panel panel-left" id="panel-left">
                 <div class="omo-left-panel-shell" id="omoLeftPanelShell">
                     <div class="omo-left-panel-shell__context" id="panel-left-context"></div>
-                    <div
-                        class="omo-left-panel-shell__resizer"
-                        id="panel-left-structure-resizer"
-                        role="separator"
-                        aria-orientation="horizontal"
-                        aria-label="Redimensionner la mini structure"
-                    ></div>
-                    <div class="omo-left-panel-shell__structure" id="panel-left-structure">
-                        <div class="omo-left-panel-shell__structure-host" id="omo-left-structure-map"></div>
-                    </div>
                 </div>
             </div>
             <div class="resizer" id="resizer"></div>
@@ -295,8 +285,7 @@ window.omoConfig = <?= json_encode(array(
     'shareAllowsPeopleDetail' => $shareLink->allowsPeopleDetail(),
 ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 </script>
-<script src="/omo/assets/js/app.js"></script>
-<script src="/omo/assets/js/structure-mini-map.js"></script>
+<script src="<?= commonAssetUrl('/omo/assets/js/app.js') ?>"></script>
 <script>
 $(document).ready(function () {
     if (window.omoConfig && !window.omoConfig.shareAllowsStructure) {

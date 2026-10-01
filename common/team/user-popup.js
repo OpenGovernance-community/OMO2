@@ -1,0 +1,258 @@
+(function () {
+    var root = document.querySelector('.omo-user-context');
+    var modalBody = document.getElementById('commonTopbarModalBody');
+    var fragmentLoadingMessage = 'Chargement...';
+    var fragmentErrorMessage = 'Impossible de charger cet onglet pour le moment.';
+    if (!root) { return; }
+    var availabilityView = window.omoCalendarAvailabilityView;
+    var availabilityRequest = 0;
+    var availabilityData = null;
+    var availabilityMonths = availabilityView.monthCache(function (url) {
+        return fetch(url, {credentials: 'same-origin', headers: {'X-Requested-With': 'XMLHttpRequest'}})
+            .then(function (response) {
+                if (!response.ok) { throw new Error('load'); }
+                return response.text();
+            });
+    });
+
+    function installAvailability(host, html, date) {
+        host.innerHTML = html;
+        var payload = host.querySelector('[data-user-availability-data]');
+        availabilityData = payload ? JSON.parse(payload.textContent) : null;
+        host.setAttribute('data-user-fragment-loaded', '1');
+        if (availabilityData) {
+            availabilityMonths.set(availabilityData.month, html);
+            availabilityView.renderProfile(host, availabilityData, date === undefined ? availabilityData.date : date);
+        }
+    }
+
+    if (modalBody) {
+        modalBody.setAttribute('data-omo-popup-live-sync', '1');
+    }
+
+    var initialTab = String(root.getAttribute('data-user-initial-tab') || '').trim();
+    if (initialTab !== '') {
+        window.setTimeout(function () {
+            root.querySelectorAll('[data-generic-tab]').forEach(function (tab) {
+                var target = String(tab.getAttribute('data-generic-tab-target') || '');
+                if (target === 'omo-user-context-panel-' + initialTab) {
+                    tab.click();
+                }
+            });
+        }, 0);
+    }
+
+    function scrollToAvailabilitySlots(host) {
+        if (!window.matchMedia || !window.matchMedia('(max-width: 640px)').matches) { return; }
+        var panel = host.querySelector('.calendar-freebusy-day-panel');
+        if (panel) {
+            panel.scrollIntoView({block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'});
+        }
+    }
+
+    function loadFragmentHost(host, scrollToSlots) {
+        var fragmentUrl;
+
+        if (!host) {
+            return;
+        }
+
+        fragmentUrl = String(host.getAttribute('data-user-fragment-url') || '').trim();
+        if (fragmentUrl === '') {
+            return;
+        }
+
+        if (host.getAttribute('data-user-fragment-loaded') === '1') {
+            return;
+        }
+
+        if (host.matches('[data-user-availability-host="1"]')) {
+            var target = new URL(fragmentUrl, location.href);
+            var date = target.searchParams.get('date') || '';
+            var month = date.slice(0, 7) || target.searchParams.get('month') || 'initial';
+            var request = ++availabilityRequest;
+            host.setAttribute('aria-busy', 'true');
+            if (availabilityData && availabilityData.month === month) {
+                availabilityView.renderProfile(host, availabilityData, date);
+                host.setAttribute('data-user-fragment-loaded', '1');
+                host.removeAttribute('aria-busy');
+                if (scrollToSlots && date) { scrollToAvailabilitySlots(host); }
+                return;
+            }
+            host.textContent = fragmentLoadingMessage;
+            availabilityMonths.load(month, fragmentUrl).then(function (html) {
+                if (request === availabilityRequest && host.isConnected) {
+                    installAvailability(host, html, date);
+                    if (scrollToSlots && date) { scrollToAvailabilitySlots(host); }
+                }
+            }).catch(function () {
+                if (request === availabilityRequest) { host.textContent = fragmentErrorMessage; }
+            }).finally(function () {
+                if (request === availabilityRequest) { host.removeAttribute('aria-busy'); }
+            });
+            return;
+        }
+
+        host.innerHTML = '<div class="omo-user-context__fragment-feedback">' + fragmentLoadingMessage + '</div>';
+        fetch(fragmentUrl, {
+            credentials: 'same-origin',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+            .then(function (response) {
+                if (!response.ok) {
+                    throw new Error('load');
+                }
+
+                return response.text();
+            })
+            .then(function (html) {
+                host.innerHTML = html;
+                host.setAttribute('data-user-fragment-loaded', '1');
+            })
+            .catch(function () {
+                host.innerHTML = '<div class="omo-user-context__fragment-feedback is-error">' + fragmentErrorMessage + '</div>';
+            });
+    }
+
+    root.querySelectorAll('[data-user-fragment-panel]').forEach(function (button) {
+        button.addEventListener('click', function () {
+            var panelId = String(button.getAttribute('data-user-fragment-panel') || '').trim();
+            var panel = panelId !== '' ? document.getElementById(panelId) : null;
+            var host = panel ? panel.querySelector('[data-user-fragment-host="1"]') : null;
+            loadFragmentHost(host);
+        });
+    });
+
+    root.addEventListener('click', function (event) {
+        var control = event.target.closest('[data-user-availability-url]');
+        var host;
+        var url;
+
+        if (!control || !root.contains(control)) {
+            return;
+        }
+
+        url = String(control.getAttribute('data-user-availability-url') || '').trim();
+        host = root.querySelector('[data-user-availability-host="1"]');
+        if (url === '' || !host) {
+            return;
+        }
+
+        event.preventDefault();
+        host.setAttribute('data-user-fragment-url', url);
+        host.removeAttribute('data-user-fragment-loaded');
+        loadFragmentHost(host, control.classList.contains('calendar-freebusy-day'));
+    });
+
+    root.querySelectorAll('[data-user-role-cid]').forEach(function (button) {
+        button.addEventListener('click', function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            var cid = Number(button.getAttribute('data-user-role-cid') || '0');
+            if (!Number.isInteger(cid) || cid <= 0) {
+                return;
+            }
+
+            if (typeof navigate !== 'function' || typeof parseUrl !== 'function') {
+                return;
+            }
+
+            var route = parseUrl();
+            navigate(route.oid, cid, route.hash || null);
+
+            if (typeof omoFocusStructureNode === 'function') {
+                window.setTimeout(function () {
+                    omoFocusStructureNode(cid, { quickZoom: true });
+                }, 140);
+            }
+        });
+    });
+
+    var openRoleMenu = null;
+
+    function closeRoleMenu(menu) {
+        if (!menu) {
+            return;
+        }
+
+        var panel = menu.querySelector('[data-user-role-menu-panel="1"]');
+        var toggle = menu.querySelector('[data-user-role-menu-toggle="1"]');
+        if (panel) {
+            panel.hidden = true;
+        }
+        if (toggle) {
+            toggle.setAttribute('aria-expanded', 'false');
+        }
+        var role = menu.closest('.omo-user-context__role');
+        if (role) {
+            role.classList.remove('is-menu-open');
+        }
+        if (openRoleMenu === menu) {
+            openRoleMenu = null;
+        }
+    }
+
+    root.querySelectorAll('[data-user-role-menu-toggle="1"]').forEach(function (toggle) {
+        toggle.addEventListener('click', function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            var menu = toggle.closest('[data-user-role-menu="1"]');
+            var panel = menu ? menu.querySelector('[data-user-role-menu-panel="1"]') : null;
+            if (!menu || !panel) {
+                return;
+            }
+
+            if (openRoleMenu === menu) {
+                closeRoleMenu(menu);
+                return;
+            }
+
+            closeRoleMenu(openRoleMenu);
+            panel.hidden = false;
+            toggle.setAttribute('aria-expanded', 'true');
+            var role = menu.closest('.omo-user-context__role');
+            if (role) {
+                role.classList.add('is-menu-open');
+            }
+            openRoleMenu = menu;
+        });
+    });
+
+    root.querySelectorAll('[data-user-role-edit-url]').forEach(function (button) {
+        button.addEventListener('click', function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            var editorUrl = String(button.getAttribute('data-user-role-edit-url') || '').trim();
+            if (editorUrl === '') {
+                return;
+            }
+
+            closeRoleMenu(openRoleMenu);
+            if (typeof window.commonTopbarRefreshModalContent === 'function') {
+                window.commonTopbarRefreshModalContent(editorUrl);
+                return;
+            }
+
+            if (typeof window.commonTopbarOpenModal === 'function') {
+                window.commonTopbarOpenModal('Modifier l’affectation', editorUrl, 'fetch');
+            }
+        });
+    });
+
+    document.addEventListener('click', function (event) {
+        if (openRoleMenu && !openRoleMenu.contains(event.target)) {
+            closeRoleMenu(openRoleMenu);
+        }
+    });
+
+    root.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') {
+            closeRoleMenu(openRoleMenu);
+        }
+    });
+})();

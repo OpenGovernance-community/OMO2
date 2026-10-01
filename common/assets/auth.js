@@ -2,6 +2,7 @@
     const config = window.commonLoginConfig || {};
     const input = document.getElementById('authEmailInput');
     const domain = document.getElementById('authEmailDomain');
+    const firstFactorFields = document.getElementById('authFirstFactorFields');
     const toggle = document.getElementById('authToggleMode');
     const passwordBox = document.getElementById('authPasswordBox');
     const passwordInput = document.getElementById('authPasswordInput');
@@ -17,12 +18,18 @@
     const codeIntro = codeBox ? codeBox.querySelector('p') : null;
     const codeInput = document.getElementById('authCodeInput');
     const codeSubmit = document.getElementById('authCodeSubmit');
+    const totpBox = document.getElementById('authTotpBox');
+    const totpTitle = totpBox ? totpBox.querySelector('h3') : null;
+    const totpIntro = totpBox ? totpBox.querySelector('p') : null;
+    const totpInput = document.getElementById('authTotpInput');
+    const totpSubmit = document.getElementById('authTotpSubmit');
     const verifyForm = document.getElementById('authVerifyForm');
     const verifyToken = document.getElementById('authVerifyToken');
     const verifyCodeInput = document.getElementById('authVerifyCode');
     const resendLink = document.getElementById('authResendLink');
     const status = document.getElementById('authStatus');
     const copy = document.querySelector('.auth-copy');
+    const loginLinks = document.querySelector('.auth-login-links');
     const languageSelect = document.querySelector('[data-auth-language-select]');
 
     if (!input || !submit) {
@@ -37,9 +44,13 @@
         'auth.button.validate': 'Valider',
         'auth.button.validate_and_send_code': 'Valider et envoyer le code',
         'auth.button.validate_code': 'Valider le code',
+        'auth.button.validate_mfa': 'Valider',
         'auth.challenge.answer_placeholder': 'Votre reponse',
         'auth.code.instructions': 'Entrez le code recu par e-mail sur cet appareil.',
         'auth.code.placeholder': 'ABC123',
+        'auth.totp.title': 'Double authentification',
+        'auth.totp.instructions': 'Ouvrez votre application de validation et saisissez le code a 6 chiffres.',
+        'auth.totp.placeholder': 'Code à 6 chiffres',
         'auth.copy.login_code': 'Un code de connexion vous sera envoye par e-mail. Il reste valable 5 minutes.',
         'auth.copy.login_password': 'Utilisez votre mot de passe pour vous connecter directement sur cet appareil.',
         'auth.error.ask_new_code_first': "Demandez d'abord un nouveau code.",
@@ -47,15 +58,20 @@
         'auth.error.enter_full_code': 'Veuillez saisir le code complet a 6 caracteres.',
         'auth.error.expired': 'Le code a expire. Demandez un nouveau code.',
         'auth.error.invalid_code': 'Code invalide. Demandez un nouveau code.',
-        'auth.error.invalid_credentials': 'Identifiants invalides.',
+        'auth.error.invalid_credentials': "Nom d'utilisateur ou mot de passe invalide.",
         'auth.error.invalid_email': 'Veuillez saisir une adresse e-mail valide.',
         'auth.error.ip_changed': 'Votre reseau a change. Pour votre securite, demandez un nouveau code.',
         'auth.error.locked': 'Trop d essais. Demandez un nouveau code.',
         'auth.error.missing_code': 'Veuillez saisir le code recu par e-mail.',
         'auth.error.missing_password': 'Veuillez saisir votre mot de passe.',
+        'auth.error.missing_mfa_code': 'Veuillez saisir le code de validation.',
+        'auth.error.wrong_mfa_code': 'Code de validation incorrect. Il reste {count} essai(s).',
+        'auth.error.password_login_disabled': 'La connexion avec mot de passe n est pas autorisee pour ce compte. Utilisez le code recu par e-mail.',
         'auth.error.request_failed': "Impossible d'envoyer la demande.",
+        'auth.error.rate_limited': 'Trop de tentatives. Veuillez patienter avant de reessayer.',
         'auth.error.reset_send_failed': "Impossible d'envoyer l'e-mail de réinitialisation.",
         'auth.error.restart_login': 'Merci de relancer la connexion.',
+        'auth.error.secondary_email_in_use': 'Cette adresse est déjà enregistrée comme adresse secondaire sur un profil. Aucun nouveau compte ne sera créé. Utilisez l’adresse principale de ce profil pour vous connecter.',
         'auth.error.send_failed': "Impossible d'envoyer le code par e-mail.",
         'auth.error.unexpected': 'Une erreur est survenue.',
         'auth.error.verify_failed': 'Impossible de verifier le code.',
@@ -63,7 +79,7 @@
         'auth.error.wrong_code': 'Code incorrect. Il reste {count} essai(s).',
         'auth.placeholder.full_email': 'nom@domaine.ch',
         'auth.placeholder.password': 'Votre mot de passe',
-        'auth.placeholder.username': 'username',
+        'auth.placeholder.username': "Nom d'utilisateur",
         'auth.link.reset_password': 'Réinitialiser le mot de passe',
         'auth.status.answer_verification': 'Veuillez repondre a la question de verification.',
         'auth.status.code_pending': "Le code a peut-etre deja ete envoye. Si vous l'avez recu, saisissez-le ci-dessous.",
@@ -74,6 +90,8 @@
         'auth.status.enter_received_code': 'Saisissez le code recu par e-mail.',
         'auth.status.sending': 'Envoi en cours...',
         'auth.status.verifying_code': 'Verification du code...',
+        'auth.status.mfa_required': 'Saisissez le code de votre application de validation.',
+        'auth.status.verifying_mfa': 'Verification de la double authentification...',
         'auth.toggle.use_magic_login': 'Se connecter plutot avec un code par e-mail',
         'auth.toggle.use_org_email': "Utiliser l'adresse de l'organisation",
         'auth.toggle.use_other_email': 'Utiliser une autre adresse e-mail',
@@ -83,9 +101,16 @@
     let useOrgDomain = !!config.hasOrgDomain;
     let loginMethod = 'code';
     let pendingToken = '';
+    let pendingTotpToken = '';
+    let pendingTokenExpiresAt = 0;
+    let pendingTotpTokenExpiresAt = 0;
+    let pendingTokenExpiryTimer = null;
     let loginRequestInFlight = false;
     let challengeVisible = false;
+    let passwordLoginAvailable = true;
     const storageKey = 'commonLoginPendingToken';
+    const totpStorageKey = 'commonLoginPendingTotpToken';
+    const pendingTokenLifetimeMs = 5 * 60 * 1000;
     const translationsPath = config.authTranslationsPath || '/common/jstranslation/auth_js.php';
 
     function interpolate(text, variables) {
@@ -125,6 +150,13 @@
         if (config.initialError === 'locked') {
             return {
                 message: t('auth.error.locked'),
+                type: 'error'
+            };
+        }
+
+        if (config.initialError === 'rate_limited') {
+            return {
+                message: t('auth.error.rate_limited'),
                 type: 'error'
             };
         }
@@ -210,17 +242,52 @@
         return value;
     }
 
-    function storePendingToken(token) {
-        pendingToken = token || '';
+    function loadStoredPendingToken(key) {
         if (!window.sessionStorage) {
+            return { token: '', expiresAt: 0 };
+        }
+
+        const rawValue = window.sessionStorage.getItem(key);
+        if (!rawValue) {
+            return { token: '', expiresAt: 0 };
+        }
+
+        try {
+            const storedValue = JSON.parse(rawValue);
+            const token = typeof storedValue.token === 'string' ? storedValue.token : '';
+            const expiresAt = Number(storedValue.expiresAt) || 0;
+            if (!token || !expiresAt || expiresAt <= Date.now()) {
+                window.sessionStorage.removeItem(key);
+                return { token: '', expiresAt: 0 };
+            }
+
+            return { token: token, expiresAt: expiresAt };
+        } catch (error) {
+            // Tokens stored by older versions had no expiry and must not revive a login later.
+            window.sessionStorage.removeItem(key);
+            return { token: '', expiresAt: 0 };
+        }
+    }
+
+    function storePendingToken(token, expiresAt) {
+        pendingToken = token || '';
+        pendingTokenExpiresAt = pendingToken
+            ? (Number(expiresAt) || (Date.now() + pendingTokenLifetimeMs))
+            : 0;
+        if (!window.sessionStorage) {
+            schedulePendingTokenExpiry();
             return;
         }
 
         if (pendingToken) {
-            window.sessionStorage.setItem(storageKey, pendingToken);
+            window.sessionStorage.setItem(storageKey, JSON.stringify({
+                token: pendingToken,
+                expiresAt: pendingTokenExpiresAt
+            }));
         } else {
             window.sessionStorage.removeItem(storageKey);
         }
+        schedulePendingTokenExpiry();
     }
 
     function loadPendingToken() {
@@ -228,7 +295,110 @@
             return '';
         }
 
-        return window.sessionStorage.getItem(storageKey) || '';
+        const storedValue = loadStoredPendingToken(storageKey);
+        pendingTokenExpiresAt = storedValue.expiresAt;
+        return storedValue.token;
+    }
+
+    function storePendingTotpToken(token, expiresAt) {
+        pendingTotpToken = token || '';
+        pendingTotpTokenExpiresAt = pendingTotpToken
+            ? (Number(expiresAt) || (Date.now() + pendingTokenLifetimeMs))
+            : 0;
+        if (!window.sessionStorage) {
+            schedulePendingTokenExpiry();
+            return;
+        }
+        if (pendingTotpToken) {
+            window.sessionStorage.setItem(totpStorageKey, JSON.stringify({
+                token: pendingTotpToken,
+                expiresAt: pendingTotpTokenExpiresAt
+            }));
+        } else {
+            window.sessionStorage.removeItem(totpStorageKey);
+        }
+        schedulePendingTokenExpiry();
+    }
+
+    function loadPendingTotpToken() {
+        const storedValue = loadStoredPendingToken(totpStorageKey);
+        pendingTotpTokenExpiresAt = storedValue.expiresAt;
+        return storedValue.token;
+    }
+
+    function expirePendingTokens() {
+        const now = Date.now();
+        let hasExpiredToken = false;
+
+        if (pendingToken && pendingTokenExpiresAt > 0 && pendingTokenExpiresAt <= now) {
+            storePendingToken('');
+            hasExpiredToken = true;
+        }
+        if (pendingTotpToken && pendingTotpTokenExpiresAt > 0 && pendingTotpTokenExpiresAt <= now) {
+            storePendingTotpToken('');
+            hasExpiredToken = true;
+        }
+
+        if (hasExpiredToken) {
+            hideChallengeBox();
+            if (totpInput) {
+                totpInput.value = '';
+            }
+            refreshLoginMethodUI();
+            setStatus(t('auth.error.expired'), 'error');
+        }
+
+        return hasExpiredToken;
+    }
+
+    function schedulePendingTokenExpiry() {
+        if (pendingTokenExpiryTimer !== null) {
+            window.clearTimeout(pendingTokenExpiryTimer);
+            pendingTokenExpiryTimer = null;
+        }
+
+        const now = Date.now();
+        const expiries = [pendingTokenExpiresAt, pendingTotpTokenExpiresAt]
+            .filter(function (expiresAt) { return expiresAt > now; });
+        if (!expiries.length) {
+            return;
+        }
+
+        pendingTokenExpiryTimer = window.setTimeout(function () {
+            pendingTokenExpiryTimer = null;
+            expirePendingTokens();
+            schedulePendingTokenExpiry();
+        }, Math.max(1, Math.min.apply(null, expiries) - now + 25));
+    }
+
+    function showTotpBox() {
+        setFirstFactorVisible(false);
+        if (totpBox) totpBox.style.display = 'flex';
+        if (codeBox) codeBox.style.display = 'none';
+        if (passwordBox) passwordBox.style.display = 'none';
+        if (totpInput) totpInput.focus();
+        if (submit) submit.style.display = 'none';
+        if (resendLink) resendLink.style.display = 'none';
+    }
+
+    function setFirstFactorVisible(visible) {
+        if (firstFactorFields) {
+            firstFactorFields.style.display = visible ? 'flex' : 'none';
+        }
+        if (copy) {
+            copy.style.display = visible ? '' : 'none';
+        }
+        if (loginLinks) {
+            loginLinks.style.display = visible ? 'flex' : 'none';
+        }
+    }
+
+    function startTotpVerification(token) {
+        storePendingToken('');
+        storePendingTotpToken(token || '');
+        hideChallengeBox();
+        showTotpBox();
+        setStatus(t('auth.status.mfa_required'), 'success');
     }
 
     function showCodeBox() {
@@ -289,6 +459,7 @@
 
     function refreshLoginMethodUI() {
         const isPasswordMode = loginMethod === 'password';
+        setFirstFactorVisible(!pendingTotpToken);
 
         if (passwordBox) {
             passwordBox.style.display = isPasswordMode ? 'flex' : 'none';
@@ -299,10 +470,13 @@
         }
 
         if (codeBox) {
-            codeBox.style.display = !isPasswordMode && pendingToken ? 'flex' : 'none';
+            codeBox.style.display = !pendingTotpToken && !isPasswordMode && pendingToken ? 'flex' : 'none';
         }
 
+        if (totpBox) totpBox.style.display = pendingTotpToken ? 'flex' : 'none';
+
         if (loginMethodSwitch) {
+            loginMethodSwitch.style.display = passwordLoginAvailable ? 'inline-flex' : 'none';
             loginMethodSwitch.textContent = isPasswordMode
                 ? t('auth.toggle.use_magic_login')
                 : t('auth.toggle.use_password_login');
@@ -321,7 +495,7 @@
     }
 
     function setLoginMethod(method) {
-        loginMethod = method === 'password' ? 'password' : 'code';
+        loginMethod = method === 'password' && passwordLoginAvailable ? 'password' : 'code';
         refreshLoginMethodUI();
 
         if (loginMethod === 'password' && passwordInput) {
@@ -331,6 +505,14 @@
         } else if (input) {
             input.focus();
         }
+    }
+
+    function setPasswordLoginAvailable(available) {
+        passwordLoginAvailable = available !== false;
+        if (!passwordLoginAvailable && loginMethod === 'password') {
+            loginMethod = 'code';
+        }
+        refreshLoginMethodUI();
     }
 
     function refreshStaticTexts() {
@@ -349,6 +531,10 @@
         if (codeSubmit) {
             codeSubmit.textContent = t('auth.button.validate_code');
         }
+        if (totpTitle) totpTitle.textContent = t('auth.totp.title');
+        if (totpIntro) totpIntro.textContent = t('auth.totp.instructions');
+        if (totpInput) totpInput.placeholder = t('auth.totp.placeholder');
+        if (totpSubmit) totpSubmit.textContent = t('auth.button.validate_mfa');
         if (resendLink) {
             resendLink.textContent = t('auth.button.resend_code');
         }
@@ -361,6 +547,10 @@
     }
 
     function refreshCurrentStatus() {
+        if (pendingTotpToken) {
+            showTotpBox();
+            return;
+        }
         if (!pendingToken) {
             return;
         }
@@ -445,12 +635,20 @@
                     return;
                 }
 
+                if (data.status === 'mfa_required' && data.mfa_token) {
+                    startTotpVerification(data.mfa_token);
+                    return;
+                }
+
                 if (data.error === 'email') {
                     setStatus(t('auth.error.invalid_email'), 'error');
                 } else if (data.error === 'missing_password') {
                     setStatus(t('auth.error.missing_password'), 'error');
                 } else if (data.error === 'invalid_credentials') {
                     setStatus(t('auth.error.invalid_credentials'), 'error');
+                } else if (data.error === 'password_login_disabled') {
+                    setPasswordLoginAvailable(false);
+                    setStatus(data.message || t('auth.error.password_login_disabled'), 'error');
                 } else {
                     setStatus(data.message || t('auth.error.unexpected'), 'error');
                 }
@@ -599,6 +797,7 @@
                 }
 
                 if ((data.status === 'code_sent' || data.status === 'code_pending') && data.request_token) {
+                    setPasswordLoginAvailable(data.password_login_enabled !== false);
                     storePendingToken(data.request_token);
                     hideChallengeBox();
                     if (challengeAnswer) {
@@ -618,10 +817,15 @@
                     setStatus(t('auth.error.invalid_email'), 'error');
                 } else if (data.error === 'wrong_answer') {
                     setStatus(t('auth.error.wrong_answer'), 'error');
+                } else if (data.error === 'rate_limited') {
+                    setStatus(data.message || t('auth.error.rate_limited'), 'error');
                 } else if (data.error === 'expired') {
                     setStatus(t('auth.error.challenge_expired'), 'error');
                 } else if (data.error === 'no_challenge') {
                     setStatus(t('auth.error.restart_login'), 'error');
+                } else if (data.error === 'secondary_email_in_use') {
+                    hideChallengeBox();
+                    setStatus(data.message || t('auth.error.secondary_email_in_use'), 'error');
                 } else if (data.error === 'send_failed') {
                     setStatus(t('auth.error.send_failed') + (data.mail_error ? ' ' + data.mail_error : ''), 'error');
                 } else {
@@ -636,6 +840,7 @@
     }
 
     function verifyCode() {
+        expirePendingTokens();
         const token = pendingToken || loadPendingToken();
         const code = codeInput ? codeInput.value.trim().toUpperCase() : '';
 
@@ -693,6 +898,11 @@
                     return;
                 }
 
+                if (data.status === 'mfa_required' && data.mfa_token) {
+                    startTotpVerification(data.mfa_token);
+                    return;
+                }
+
                 if (data.error === 'wrong_code') {
                     setStatus(t('auth.error.wrong_code', {
                         count: data.remaining_attempts || 0
@@ -726,6 +936,11 @@
                     return;
                 }
 
+                if (data.error === 'rate_limited') {
+                    setStatus(data.message || t('auth.error.rate_limited'), 'error');
+                    return;
+                }
+
                 storePendingToken('');
                 setStatus(t('auth.error.invalid_code'), 'error');
             })
@@ -735,6 +950,49 @@
                 }
                 setStatus(t('auth.error.verify_failed'), 'error');
             });
+    }
+
+    function verifyTotp() {
+        expirePendingTokens();
+        const token = pendingTotpToken || loadPendingTotpToken();
+        const code = totpInput ? totpInput.value.replace(/\s+/g, '') : '';
+        if (!token) { setStatus(t('auth.error.expired'), 'error'); return; }
+        if (!/^\d{6}$/.test(code)) { setStatus(t('auth.error.missing_mfa_code'), 'error'); return; }
+        if (totpSubmit) totpSubmit.disabled = true;
+        setStatus(t('auth.status.verifying_mfa'));
+        const body = new URLSearchParams();
+        body.set('token', token);
+        body.set('code', code);
+        body.set('return_to', config.returnTo || '/');
+        fetch(config.loginTotpPath || '/common/login_totp.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            credentials: 'same-origin',
+            body: body.toString()
+        }).then(function (response) { return response.json(); }).then(function (data) {
+            if (totpSubmit) totpSubmit.disabled = false;
+            if (data.status === 'ok') {
+                storePendingTotpToken('');
+                window.location.href = data.redirect_to || (config.returnTo || '/');
+                return;
+            }
+            if (data.error === 'wrong_mfa_code') {
+                setStatus(t('auth.error.wrong_mfa_code', { count: data.remaining_attempts || 0 }), 'error');
+                return;
+            }
+            if (data.error === 'missing_mfa_code') { setStatus(t('auth.error.missing_mfa_code'), 'error'); return; }
+            if (data.error === 'rate_limited') { setStatus(t('auth.error.rate_limited'), 'error'); return; }
+            if (data.error === 'locked' || data.error === 'expired') {
+                storePendingTotpToken('');
+                refreshLoginMethodUI();
+                setStatus(data.error === 'locked' ? t('auth.error.locked') : t('auth.error.expired'), 'error');
+                return;
+            }
+            setStatus(t('auth.error.unexpected'), 'error');
+        }).catch(function () {
+            if (totpSubmit) totpSubmit.disabled = false;
+            setStatus(t('auth.error.verify_failed'), 'error');
+        });
     }
 
     if (toggle) {
@@ -780,6 +1038,12 @@
 
     if (codeSubmit) {
         codeSubmit.addEventListener('click', verifyCode);
+    }
+
+    if (totpSubmit) totpSubmit.addEventListener('click', verifyTotp);
+    if (totpInput) {
+        totpInput.addEventListener('input', function () { totpInput.value = totpInput.value.replace(/\D/g, '').slice(0, 6); });
+        totpInput.addEventListener('keydown', function (event) { if (event.key === 'Enter') { event.preventDefault(); verifyTotp(); } });
     }
 
     if (input) {
@@ -840,10 +1104,17 @@
     }
 
     pendingToken = config.initialPendingToken || loadPendingToken();
+    pendingTotpToken = config.initialPendingTotpToken || loadPendingTotpToken();
     if (config.initialPendingToken) {
         storePendingToken(config.initialPendingToken);
     }
-    if (pendingToken) {
+    if (config.initialPendingTotpToken) storePendingTotpToken(config.initialPendingTotpToken);
+    if (pendingTotpToken) {
+        showTotpBox();
+        updateSendControls(false);
+        updateChallengeControls(false);
+        refreshCurrentStatus();
+    } else if (pendingToken) {
         showCodeBox();
         updateSendControls(true);
         updateChallengeControls(false);

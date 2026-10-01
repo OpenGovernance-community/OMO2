@@ -13,8 +13,8 @@ function translationBundleGetBuiltInLanguageCatalog()
     return [
         [
             'locale' => 'fr',
-            'name' => 'Francais',
-            'native_name' => 'Francais',
+            'name' => 'Français',
+            'native_name' => 'Français',
             'sort_order' => 10,
             'active' => 1,
             'is_source' => 1,
@@ -38,7 +38,7 @@ function translationBundleGetBuiltInLanguageCatalog()
         [
             'locale' => 'es',
             'name' => 'Espagnol',
-            'native_name' => 'Espanol',
+            'native_name' => 'Español',
             'sort_order' => 40,
             'active' => 1,
             'is_source' => 0,
@@ -54,14 +54,14 @@ function translationBundleGetBuiltInLanguageCatalog()
         [
             'locale' => 'pt',
             'name' => 'Portugais',
-            'native_name' => 'Portugues',
+            'native_name' => 'Português',
             'sort_order' => 60,
             'active' => 1,
             'is_source' => 0,
         ],
         [
             'locale' => 'nl',
-            'name' => 'Neerlandais',
+            'name' => 'Néerlandais',
             'native_name' => 'Nederlands',
             'sort_order' => 70,
             'active' => 1,
@@ -807,7 +807,7 @@ function translationBundleTranslateWithAi(string $bundleKey, string $locale, arr
         . 'Translate the provided bundle from French into the requested locale. '
         . 'Return only a JSON object. Keep the same top-level keys. '
         . 'For each entry, return only translated text fields named text, one, and other. '
-        . 'Do not return context fields. Preserve placeholders like {username}, HTML, punctuation, and line breaks. '
+        . 'Do not return context fields. Preserve placeholders like {username}, HTML, Markdown markers such as **bold**, punctuation, and line breaks. '
         . 'Do not invent keys. Do not add explanations.';
 
     $userPrompt = [
@@ -990,10 +990,12 @@ function translationBundleTranslate(string $key, array $variables = [], ?array $
         return $key;
     }
 
-    return translationBundleInterpolate(
-        translationBundleResolveText($entry, $variables),
-        $variables
-    );
+    $text = translationBundleResolveText($entry, $variables);
+    // Keep cached translations organization-neutral and user-provided variables intact.
+    if (class_exists(\dbObject\Organization::class)) {
+        $text = \dbObject\Organization::formatLexiconText($text);
+    }
+    return translationBundleInterpolate($text, $variables);
 }
 
 if (!function_exists('t')) {

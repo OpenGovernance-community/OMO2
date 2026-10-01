@@ -259,6 +259,16 @@
 
 			return self::$enabledByOrganizationCache[$cacheKey];
 		}
+
+		public static function fetchFaqAttachmentOptions()
+		{
+			return self::fetchAll(
+				"SELECT id, label
+				FROM application
+				WHERE active = 1
+				ORDER BY position ASC, label ASC, id ASC"
+			);
+		}
 	}
 
 ?>

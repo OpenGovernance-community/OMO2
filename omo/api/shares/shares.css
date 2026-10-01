@@ -1,0 +1,156 @@
+/* omo/api/shares/popup.php */
+.omo-share-popup {
+        color: var(--color-text, #1f2937);
+    }
+
+    .omo-share-popup__header-copy {
+        --generic-drawer-header-copy-gap: var(--generic-space-2);
+        min-width: 0;
+    }
+
+    .omo-share-popup__shell {
+        --generic-drawer-content-gap: var(--generic-space-4);
+    }
+
+    .omo-share-popup--error {
+        color: var(--color-text-light, #6b7280);
+    }
+
+    .omo-share-popup__hero h2,
+    .omo-share-popup__section-title {
+        margin: 0;
+    }
+
+
+    .omo-share-popup__feedback {
+        --generic-feedback-min-height: 20px;
+        font-size: 13px;
+    }
+
+    .omo-share-popup__section,
+    .omo-share-popup__list,
+    .omo-share-popup__form-panel {
+        display: grid;
+        gap: 14px;
+    }
+
+    .omo-share-popup__list[hidden],
+    .omo-share-popup__form-panel[hidden] {
+        display: none;
+    }
+
+    .omo-share-popup__cards {
+        display: grid;
+        gap: 12px;
+    }
+
+    .omo-share-popup__card {
+        --generic-section-gap: 10px;
+        --generic-section-padding-inline: 16px;
+        --generic-section-radius: var(--radius-md);
+        --generic-section-shadow: var(--shadow-sm, 0 1px 2px rgba(0,0,0,0.05));
+    }
+
+    .omo-share-popup__card-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: start;
+        flex-wrap: wrap;
+    }
+
+.omo-share-popup__card-title {
+        margin: 0;
+    }
+
+    .omo-share-popup__badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .omo-share-popup__badge {
+        padding: 4px 8px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 700;
+        background: var(--color-surface-alt, #f0f2f5);
+        color: var(--color-text, #1f2937);
+        border: 1px solid var(--color-border, #e5e7eb);
+    }
+
+    .omo-share-popup__badge--expired {
+        background: color-mix(in srgb, #dc2626 12%, var(--color-surface, #ffffff));
+        color: #dc2626;
+        border-color: color-mix(in srgb, #dc2626 30%, var(--color-border, #e5e7eb));
+    }
+
+    .omo-share-popup__meta {
+        display: grid;
+        gap: 4px;
+        font-size: 12px;
+        color: var(--color-text-light, #6b7280);
+    }
+
+    .omo-share-popup__card-actions,
+    .omo-share-popup__actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        justify-content: flex-end;
+    }
+
+    .omo-share-popup__form {
+        display: grid;
+        gap: 16px;
+    }
+
+    .omo-share-popup__grid {
+        display: grid;
+        gap: 14px;
+    }
+
+    @media (min-width: 760px) {
+        .omo-share-popup__grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    .omo-share-popup__field {
+        display: grid;
+        gap: 8px;
+    }
+
+    .omo-share-popup__field--full {
+        grid-column: 1 / -1;
+    }
+
+    .omo-share-popup__input {
+        --generic-form-control-padding-block: 10px;
+        --generic-form-control-border: var(--color-border-strong, #cbd5e1);
+        --generic-form-control-background: var(--color-surface, #ffffff);
+    }
+
+    .omo-share-popup__permissions {
+        --generic-soft-panel-gap: 12px;
+        --generic-soft-panel-padding-block: 16px;
+        --generic-soft-panel-padding-inline: 16px;
+        --generic-soft-panel-radius: var(--radius-md);
+    }
+
+    .omo-share-popup__check {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 10px;
+        align-items: start;
+    }
+
+    .omo-share-popup__check input {
+        margin-top: 3px;
+    }
+
+    .omo-share-popup__check strong {
+        display: block;
+        margin-bottom: 4px;
+        font-size: 14px;
+    }

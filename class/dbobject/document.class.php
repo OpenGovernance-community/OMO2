@@ -7,6 +7,21 @@
 		public const TYPE_EXTERNAL_LINK = 'external_link';
 		public const TYPE_UPLOADED_FILE = 'uploaded_file';
 		public const TYPE_FOLDER = 'folder';
+		public const TYPE_NEXTCLOUD_FOLDER = 'nextcloud_folder';
+		public const TYPE_PV = 'pv';
+		public const TYPE_ETHERPAD = 'etherpad';
+		public const TYPE_ETHERCALC = 'ethercalc';
+		public const TYPE_COLLABORA_DOCUMENT = 'collabora_document';
+		public const TYPE_COLLABORA_SPREADSHEET = 'collabora_spreadsheet';
+		public const TYPE_COLLABORA_PRESENTATION = 'collabora_presentation';
+		public const TYPE_COLLABORA_DRAWING = 'collabora_drawing';
+		public const TYPE_WHITEBOARD = 'whiteboard';
+		public const PV_STAGE_PREPARATION = 'preparation';
+		public const PV_STAGE_MEETING = 'meeting';
+		public const PV_STAGE_REVIEW = 'review';
+		public const PV_STAGE_VALIDATED = 'validated';
+		public const EDIT_VISIBILITY_OBJECT_TYPE = 'document_edit';
+		public const DEFAULT_EDIT_VISIBILITY_TYPE = \dbObject\ObjectVisibility::TYPE_ROLE;
 
 	    public static function tableName()
 		{
@@ -18,11 +33,11 @@
 		{
 			return [
 				[['title'], 'required'],						// Champs obligatoires
-				[['id', 'version', 'estDossier', 'openinnewwindow', 'storedfilesize'], 'integer'],				// Nombres entiers
-				[['title', 'codeview', 'codeedit', 'keywords', 'documenttype', 'externalurl', 'storedfilepath', 'storedfilename', 'storedfilemime'], 'string'],	// Chaines de caractere
+				[['id', 'version', 'estDossier', 'active', 'is_template', 'pv_editor_handover_open', 'openinnewwindow', 'project_visible_in_holon', 'storedfilesize'], 'integer'],				// Nombres entiers
+				[['title', 'codeview', 'codeedit', 'keywords', 'documenttype', 'pvstage', 'externalurl', 'storedfilepath', 'storedfilename', 'storedfilemime', 'nextcloudfolderpath', 'nextcloudfolderfileid', 'etherpadpadid', 'ethercalcroomid', 'spacedeckspaceid'], 'string'],	// Chaines de caractere
 				[['description', 'content', 'contentedition'], 'text'],			// Textes libres
-				[['datecreation', 'datemodification', 'dateedition', 'datecontentedition'], 'datetime'],	// Date avec precision des heures
-				[['IDuser', 'IDusercreation', 'IDusermodification', 'IDuseredition', 'IDorganization', 'IDholon', 'IDdocument_parent'], 'fk'],	// Cles etrangeres
+				[['datecreation', 'datemodification', 'dateconsultation', 'dateedition', 'datecontentedition'], 'datetime'],	// Date avec precision des heures
+				[['IDuser', 'IDusercreation', 'IDusermodification', 'IDuseredition', 'IDuser_pv_editor', 'IDuser_pv_official_editor', 'IDorganization', 'IDholon', 'IDdocument_parent', 'IDevent'], 'fk'],	// Cles etrangeres
 				[['id'], 'safe'],								// Champs proteges
 			];
 		}
@@ -32,6 +47,7 @@
 		{
 			return [
 				'id' => 'ID',
+				'active' => 'Actif',
 				'title' => 'Titre',
 				'description' => 'Resume',
 				'content' => 'Contenu',
@@ -43,22 +59,35 @@
 				'IDuseredition' => 'Utilisateur en cours d edition',
 				'IDorganization' => 'Organisation',
 				'IDholon' => 'Holon',
+				'IDevent' => 'Evenement associe',
+				'IDuser_pv_editor' => 'Secretaire du PV',
+				'IDuser_pv_official_editor' => 'Dernier secretaire officiel du PV',
+				'pv_editor_handover_open' => 'Passation du secretaire ouverte',
 				'estDossier' => 'Dossier',
 				'IDdocument_parent' => 'Dossier parent',
 				'datecreation' => 'Date de creation',
 				'datemodification' => 'Date de modification',
+				'dateconsultation' => 'Date de consultation',
 				'dateedition' => 'Date d edition en cours',
 				'datecontentedition' => 'Date du brouillon en edition',
 				'version' => 'Version',
 				'codeview' => 'Code d affichage',
 				'codeedit' => 'Code d edition',
 				'documenttype' => 'Type de document',
+				'pvstage' => 'Etape du PV',
+				'is_template' => 'Modele de document',
 				'externalurl' => 'URL externe',
 				'openinnewwindow' => 'Ouvrir dans une nouvelle fenetre',
+				'project_visible_in_holon' => 'Afficher dans le holon si le document est lie a un projet',
 				'storedfilepath' => 'Chemin distant du fichier',
 				'storedfilename' => 'Nom original du fichier',
 				'storedfilemime' => 'Type MIME du fichier',
 				'storedfilesize' => 'Taille du fichier',
+				'nextcloudfolderpath' => 'Chemin du dossier NextCloud',
+				'nextcloudfolderfileid' => 'Identifiant NextCloud du dossier',
+				'etherpadpadid' => 'Identifiant du pad Etherpad',
+				'ethercalcroomid' => 'Identifiant du tableur EtherCalc',
+				'spacedeckspaceid' => 'Identifiant du tableau SpaceDeck',
 			];
 		}
 
@@ -76,17 +105,30 @@
 				'IDuseredition' => 'Utilisateur qui edite actuellement le document',
 				'IDorganization' => 'Organisation a laquelle le document est rattache',
 				'IDholon' => 'Holon concerne si le document est specifique a un contexte local',
+				'IDevent' => 'Evenement auquel ce document est rattache si le fichier provient de l agenda',
 				'estDossier' => 'Permet de traiter cette entree comme un dossier',
 				'IDdocument_parent' => 'Dossier qui contient ce document',
+				'dateconsultation' => 'Derniere fois que le document a ete affiche dans son detail',
 				'dateedition' => 'Date du dernier signal de presence pendant l edition',
 				'datecontentedition' => 'Date de mise a jour du brouillon temporaire',
-				'documenttype' => 'Permet de distinguer les documents HTML, les liens externes et les dossiers',
+				'documenttype' => 'Permet de distinguer les documents HTML, les liens externes, les telechargements, les documents collaboratifs, les tableurs collaboratifs, les PV et les dossiers',
+				'pvstage' => 'Etape actuelle du flux d un document PV: preparation, reunion, relecture ou valide',
+				'is_template' => 'Permet d utiliser le contenu de ce document lors d une nouvelle creation',
+				'IDuser_pv_editor' => 'Personne qui tient le PV pendant la reunion et peut modifier tous les points.',
+				'IDuser_pv_official_editor' => 'Derniere personne officielle a tenir le PV, utilisee pour le retour en relecture.',
+				'pv_editor_handover_open' => 'Indique que le secretaire actuel autorise un invite a reprendre son role.',
 				'externalurl' => 'Adresse du site a ouvrir pour un document de type lien externe',
 				'openinnewwindow' => 'Ouvre le lien externe directement dans une autre fenetre',
-				'storedfilepath' => 'Chemin du fichier sur le stockage Nextcloud de l organisation',
+				'project_visible_in_holon' => 'Autorise l affichage dans la liste du holon pour un document lie a un projet',
+				'storedfilepath' => 'Chemin du fichier sur le stockage de documents de l organisation',
 				'storedfilename' => 'Nom du fichier televerse par l utilisateur',
 				'storedfilemime' => 'Type MIME detecte pour le fichier distant',
 				'storedfilesize' => 'Taille du fichier distant en octets',
+				'nextcloudfolderpath' => 'Chemin du dossier NextCloud, relatif au dossier configure pour les documents',
+				'nextcloudfolderfileid' => 'Identifiant stable NextCloud utilise pour retrouver un dossier renomme ou deplace',
+				'etherpadpadid' => 'Identifiant technique du pad associe a ce document',
+				'ethercalcroomid' => 'Identifiant technique du tableur associe a ce document',
+				'spacedeckspaceid' => 'Identifiant technique du tableau blanc SpaceDeck associe a ce document',
 			];
 		}
 
@@ -95,10 +137,16 @@
 		{
 			return [
 				'title' => 100,									// Nombre de caracteres maximum
+				'pvstage' => 30,
 				'externalurl' => 2000,
 				'storedfilepath' => 1000,
 				'storedfilename' => 255,
 				'storedfilemime' => 255,
+				'nextcloudfolderpath' => 1000,
+				'nextcloudfolderfileid' => 64,
+				'etherpadpadid' => 255,
+				'ethercalcroomid' => 255,
+				'spacedeckspaceid' => 255,
 			];
 		}
 
@@ -108,9 +156,771 @@
 			return "datecreation";
 		}
 
+		public function markConsulted(): bool
+		{
+			$documentId = (int)$this->getId();
+			if ($documentId <= 0) {
+				return false;
+			}
+
+			$consultedAt = new \DateTimeImmutable('now');
+			$saved = self::execute(
+				"UPDATE `document` SET `dateconsultation` = CURRENT_TIMESTAMP() WHERE `id` = :document_id",
+				array('document_id' => $documentId)
+			);
+
+			if ($saved) {
+				$this->set('dateconsultation', $consultedAt);
+			}
+
+			return $saved;
+		}
+
+		public static function getCollectionHydrationFields(): array
+		{
+			return array(
+				'title',
+				'description',
+				'keywords',
+				'IDuser',
+				'IDusercreation',
+				'IDusermodification',
+				'IDuseredition',
+				'IDuser_pv_editor',
+				'IDuser_pv_official_editor',
+				'IDorganization',
+				'IDholon',
+				'IDdocument_parent',
+				'IDevent',
+				'estDossier',
+				'active',
+				'documenttype',
+				'pvstage',
+				'is_template',
+				'pv_editor_handover_open',
+				'externalurl',
+				'openinnewwindow',
+				'project_visible_in_holon',
+				'storedfilepath',
+				'storedfilename',
+				'storedfilemime',
+				'storedfilesize',
+				'nextcloudfolderpath',
+				'nextcloudfolderfileid',
+				'etherpadpadid',
+				'ethercalcroomid',
+				'spacedeckspaceid',
+				'datecreation',
+				'datemodification',
+				'dateconsultation',
+				'dateedition',
+				'datecontentedition',
+				'version',
+				'codeview',
+				'codeedit',
+			);
+		}
+
+		public static function handleUserDeparture($organizationId, $userId, $ghostUserId)
+		{
+			$params = array(
+				'organization_id' => (int)$organizationId,
+				'source_creation' => (int)$userId,
+				'source_owner' => (int)$userId,
+				'source_modification' => (int)$userId,
+				'source_edition' => (int)$userId,
+				'source_pv_editor' => (int)$userId,
+				'source_pv_official_editor' => (int)$userId,
+				'ghost_creation' => (int)$ghostUserId,
+				'ghost_owner' => (int)$ghostUserId,
+				'ghost_modification' => (int)$ghostUserId,
+			);
+			return self::execute("UPDATE document SET IDusercreation = CASE WHEN IDusercreation = :source_creation THEN :ghost_creation ELSE IDusercreation END, IDuser = CASE WHEN IDuser = :source_owner THEN CASE WHEN active = 0 THEN :ghost_owner ELSE NULL END ELSE IDuser END, IDusermodification = CASE WHEN IDusermodification = :source_modification THEN CASE WHEN active = 0 THEN :ghost_modification ELSE NULL END ELSE IDusermodification END, IDuseredition = CASE WHEN IDuseredition = :source_edition THEN NULL ELSE IDuseredition END, IDuser_pv_editor = CASE WHEN IDuser_pv_editor = :source_pv_editor THEN NULL ELSE IDuser_pv_editor END, IDuser_pv_official_editor = CASE WHEN IDuser_pv_official_editor = :source_pv_official_editor THEN NULL ELSE IDuser_pv_official_editor END WHERE IDorganization = :organization_id", $params);
+		}
+
+		public function isArchived(): bool
+		{
+			return (int)$this->get('active') !== 1;
+		}
+
+		public function isVisibleInHolonWhenProjectDocument(): bool
+		{
+			return (int)$this->get('project_visible_in_holon') === 1;
+		}
+
+		public function hasProjectAssociation(): bool
+		{
+			if ((int)$this->getId() <= 0) {
+				return false;
+			}
+
+			$projectDocuments = new \dbObject\ArrayProjectDocument();
+			$projectDocuments->loadForDocument((int)$this->getId());
+			return count($projectDocuments) > 0;
+		}
+
+		public function saveProjectHolonVisibility(bool $visible): array
+		{
+			if ((int)$this->getId() <= 0) {
+				return array('status' => false, 'text' => 'Document introuvable.');
+			}
+
+			$this->set('project_visible_in_holon', $visible ? 1 : 0);
+			$result = $this->save();
+			return is_array($result)
+				? $result
+				: array('status' => false, 'text' => 'Impossible de modifier la visibilite du document.');
+		}
+
+		public function isDocumentTemplate(): bool
+		{
+			return (int)$this->getId() > 0
+				&& !$this->isArchived()
+				&& (int)$this->get('is_template') === 1
+				&& $this->isTemplateEligible();
+		}
+
+		public function isTemplateEligible(): bool
+		{
+			return $this->isPvDocument()
+				|| $this->supportsHtmlContent()
+				|| $this->isExternalLink()
+				|| ($this->isFolder() && !$this->isNextcloudFolder())
+				|| ($this->isUploadedFile() && $this->hasStoredFile())
+				|| ($this->isEtherpadDocument() && $this->getEtherpadPadId() !== '')
+				|| ($this->isEthercalcDocument() && $this->getEthercalcRoomId() !== '');
+		}
+
+		public function isPvTemplate(): bool
+		{
+			return $this->isPvDocument() && $this->isDocumentTemplate();
+		}
+
+		public function canUseAsPvTemplate(int $organizationId): bool
+		{
+			return $this->isPvTemplate() && $this->canUseAsDocumentTemplate($organizationId);
+		}
+
+		public function canUseAsDocumentTemplate(int $organizationId): bool
+		{
+			return $this->isDocumentTemplate()
+				&& (int)$this->get('IDorganization') === (int)$organizationId;
+		}
+
+		/**
+		 * A PV template is selected for the target of the new event, not for the
+		 * current viewer. Its availability is governed by the target context: a
+		 * circle template can therefore be reused by every descendant circle or
+		 * role, while a role template remains local to that exact role.
+		 */
+		public function canUseAsPvTemplateInOrganizationContext(int $organizationId, ?int $contextHolonId): bool
+		{
+			return $this->isPvTemplate()
+				&& $this->canUseAsDocumentTemplateInOrganizationContext($organizationId, $contextHolonId);
+		}
+
+		public function canUseAsDocumentTemplateInOrganizationContext(int $organizationId, ?int $contextHolonId): bool
+		{
+			$organizationId = (int)$organizationId;
+			$contextHolonId = $contextHolonId !== null ? (int)$contextHolonId : 0;
+			if (
+				(int)$this->getId() <= 0
+				|| $this->isArchived()
+				|| !$this->isDocumentTemplate()
+				|| (int)$this->get('IDorganization') !== $organizationId
+			) {
+				return false;
+			}
+
+			$visibilityRule = $this->getPrimaryVisibilityRuleRow();
+			$visibilityType = \dbObject\ObjectVisibility::normalizeVisibilityType(
+				(string)($visibilityRule['visibility_type'] ?? \dbObject\ObjectVisibility::TYPE_ORGANIZATION)
+			);
+			$targetHolonId = (int)($visibilityRule['IDholon'] ?? 0);
+
+			if (in_array($visibilityType, [
+				\dbObject\ObjectVisibility::TYPE_EVERYONE,
+				\dbObject\ObjectVisibility::TYPE_ORGANIZATION,
+			], true)) {
+				return true;
+			}
+
+			if ($contextHolonId <= 0 || $targetHolonId <= 0) {
+				return false;
+			}
+
+			$contextHolon = new \dbObject\Holon();
+			if (
+				!$contextHolon->load($contextHolonId)
+				|| !(bool)$contextHolon->get('active')
+				|| !(bool)$contextHolon->get('visible')
+			) {
+				return false;
+			}
+			$organization = new \dbObject\Organization();
+			if (!$organization->load($organizationId) || !$organization->containsHolon($contextHolon)) {
+				return false;
+			}
+
+			if ($visibilityType === \dbObject\ObjectVisibility::TYPE_CIRCLE) {
+				return $contextHolon->isDescendantOf($targetHolonId, true);
+			}
+
+			return $visibilityType === \dbObject\ObjectVisibility::TYPE_ROLE
+				&& (int)$contextHolon->getId() === $targetHolonId;
+		}
+
+		public function updatePvTemplateState(int $organizationId, int $userId, bool $isTemplate): array
+		{
+			return $this->updateDocumentTemplateState($organizationId, $userId, $isTemplate);
+		}
+
+		public function updateDocumentTemplateState(int $organizationId, int $userId, bool $isTemplate): array
+		{
+			if (
+				(int)$this->getId() <= 0
+				|| (int)$this->get('IDorganization') !== (int)$organizationId
+				|| !$this->isTemplateEligible()
+				|| ($this->isPvDocument()
+					? !$this->canUserManagePvStructure($organizationId, $userId)
+					: !$this->canManageInOrganizationContext($organizationId, $userId, false))
+			) {
+				return array('status' => false, 'text' => 'Acces refuse.');
+			}
+
+			$this->set('is_template', $isTemplate ? 1 : 0);
+			$this->set('IDusermodification', $userId);
+			$this->set('datemodification', new \DateTimeImmutable());
+
+			return $this->save();
+		}
+
+		public function hasObjectPermission(string $permissionKey, int $userId, bool $useSessionCache = false): bool
+		{
+			$organizationId = (int)$this->get('IDorganization');
+			if ($userId <= 0) return false;
+			if (function_exists('commonUserHasAdminOverride') && \commonUserHasAdminOverride($userId, $organizationId)) return true;
+			if ($organizationId <= 0) return $userId === (int)$this->get('IDuser');
+			$holonId = $this->isPvDocument() ? $this->getPvContextHolonId() : (int)$this->get('IDholon');
+			$holon = self::resolveCreationPermissionHolon($organizationId, $holonId ?: null, (int)$this->get('IDdocument_parent'));
+			if ($holon instanceof Holon) return $holon->isAllowed($permissionKey, $useSessionCache, $userId);
+			return $holonId <= 0 && (int)$this->get('IDdocument_parent') <= 0
+				&& Permission::userCanInOrganization($permissionKey, $organizationId, $userId);
+		}
+
+		public function canDeleteInOrganizationContext(int $organizationId, int $userId): bool
+		{
+			return $organizationId === (int)$this->get('IDorganization')
+				&& (!$this->isPvEditor($userId) || $this->canUserManagePvStructure($organizationId, $userId))
+				&& $this->hasObjectPermission('CAN_DELETE_DOCUMENT', $userId)
+				&& ((function_exists('commonUserHasAdminOverride') && \commonUserHasAdminOverride($userId, $organizationId))
+					|| $this->currentViewerCanAccessVisibility($organizationId, null, $userId));
+		}
+
+		public function canManageLifecycle(int $organizationId, int $userId): bool
+		{
+			$organizationId = (int)$organizationId;
+			$userId = (int)$userId;
+			if ($organizationId <= 0 || $userId <= 0 || (int)$this->get('IDorganization') !== $organizationId) {
+				return false;
+			}
+
+			if ($this->isPvDocument()) {
+				return $this->hasObjectPermission('CAN_EDIT_DOCUMENT', $userId)
+					&& (!$this->isPvEditor($userId) || $this->canUserManagePvStructure($organizationId, $userId))
+					&& ($this->isPvCreatorOrEditor($userId) || \commonUserHasAdminOverride($userId, $organizationId));
+			}
+
+			return $this->canManageInOrganizationContext($organizationId, $userId, false);
+		}
+
+		public function canDeleteDocument(bool $allowEventDocument = false): bool
+		{
+			if (!$allowEventDocument && (int)$this->get('IDevent') > 0) {
+				return false;
+			}
+
+			$child = self::fetchRow(
+				'select `id` from `document` where `IDdocument_parent` = :document_id limit 1',
+				['document_id' => (int)$this->getId()]
+			);
+
+			return $child === false;
+		}
+
+		protected function deleteResourceRows(): bool
+		{
+			$invitations = new \dbObject\ArrayDocumentInvitation();
+			$invitations->load([
+				'where' => [
+					['field' => 'resource_type', 'value' => \dbObject\DocumentInvitation::resourceType()],
+					['field' => 'resource_id', 'value' => (int)$this->getId()],
+				],
+			]);
+
+			foreach ($invitations as $invitation) {
+				if (!$invitation->delete()) {
+					return false;
+				}
+			}
+
+			$attendance = new \dbObject\ArrayDocumentAttendance();
+			$attendance->load([
+				'where' => [
+					['field' => 'resource_type', 'value' => \dbObject\DocumentAttendance::resourceType()],
+					['field' => 'resource_id', 'value' => (int)$this->getId()],
+				],
+			]);
+
+			foreach ($attendance as $attendanceRow) {
+				if (!$attendanceRow->delete()) {
+					return false;
+				}
+			}
+
+			return true;
+		}
+
+		public function delete()
+		{
+			$pdo = self::getPdo();
+			$startedTransaction = $pdo instanceof \PDO && !$pdo->inTransaction();
+			$organization = null;
+
+			try {
+				if ($startedTransaction) {
+					$pdo->beginTransaction();
+				}
+
+				if ($this->isEtherpadDocument() && $this->getEtherpadPadId() !== '') {
+					require_once dirname(__DIR__, 2) . '/common/etherpad.php';
+					$organization = new \dbObject\Organization();
+					$organizationId = (int)$this->get('IDorganization');
+					if ($organizationId <= 0 || !$organization->load($organizationId)) {
+						throw new \RuntimeException('etherpad_organization_missing');
+					}
+
+					$etherpadDeleteResult = omoEtherpadDeleteDocumentPad($organization, $this->getEtherpadPadId());
+					if (!is_array($etherpadDeleteResult) || empty($etherpadDeleteResult['status'])) {
+						throw new \RuntimeException('etherpad_delete_failed');
+					}
+				}
+
+				if ($this->isEthercalcDocument() && $this->getEthercalcRoomId() !== '') {
+					require_once dirname(__DIR__, 2) . '/common/ethercalc.php';
+					$ethercalcDeleteResult = omoEthercalcDeleteDocumentSheet($this->getEthercalcRoomId());
+					if (!is_array($ethercalcDeleteResult) || empty($ethercalcDeleteResult['status'])) {
+						throw new \RuntimeException('ethercalc_delete_failed');
+					}
+				}
+
+				if ($this->isWhiteboardDocument() && $this->getSpaceDeckSpaceId() !== '') {
+					require_once dirname(__DIR__, 2) . '/common/spacedeck.php';
+					$spaceDeckDeleteResult = omoSpacedeckDeleteSpace($this->getSpaceDeckSpaceId());
+					if (!is_array($spaceDeckDeleteResult) || empty($spaceDeckDeleteResult['status'])) {
+						throw new \RuntimeException('spacedeck_delete_failed');
+					}
+				}
+
+				if ($this->isUploadedFile() && $this->hasStoredFile()) {
+					$organization = new \dbObject\Organization();
+					$organizationId = (int)$this->get('IDorganization');
+					if ($organizationId <= 0 || !$organization->load($organizationId)) {
+						throw new \RuntimeException('uploaded_file_organization_missing');
+					}
+
+					$deleteResult = $organization->deleteDocumentFileFromStorage((string)$this->get('storedfilepath'));
+					if (!is_array($deleteResult) || empty($deleteResult['status'])) {
+						throw new \RuntimeException('uploaded_file_delete_failed');
+					}
+				}
+
+				if (!$this->deleteResourceRows() || !parent::delete()) {
+					throw new \RuntimeException('document_delete_failed');
+				}
+
+				if ($startedTransaction && $pdo->inTransaction()) {
+					$pdo->commit();
+				}
+
+				return true;
+			} catch (\Throwable $exception) {
+				if ($startedTransaction && $pdo->inTransaction()) {
+					$pdo->rollBack();
+				}
+
+				return false;
+			}
+		}
+
 		public static function getVisibilityObjectType(): string
 		{
 			return \dbObject\ObjectVisibility::OBJECT_TYPE_DOCUMENT;
+		}
+
+		public static function getEditVisibilityObjectType(): string
+		{
+			return self::EDIT_VISIBILITY_OBJECT_TYPE;
+		}
+
+		public static function getDefaultEditVisibilityType(): string
+		{
+			return self::DEFAULT_EDIT_VISIBILITY_TYPE;
+		}
+
+		public static function getApplicationDefaultScopeTypes(int $organizationId): array
+		{
+			$organizationId = (int)$organizationId;
+			$defaults = array(
+				'visibilityType' => \dbObject\ObjectVisibility::TYPE_ORGANIZATION,
+				'editVisibilityType' => self::getDefaultEditVisibilityType(),
+			);
+
+			if ($organizationId <= 0) {
+				return $defaults;
+			}
+
+			$organizationApplication = \dbObject\OrganizationApplication::loadByOrganizationAndDirectory(
+				$organizationId,
+				'documents',
+				false
+			);
+			if (!($organizationApplication instanceof \dbObject\OrganizationApplication)) {
+				return $defaults;
+			}
+
+			$parameters = $organizationApplication->getParametersArray();
+			$storedDefaults = is_array($parameters['documentDefaults'] ?? null)
+				? $parameters['documentDefaults']
+				: array();
+
+			$defaults['visibilityType'] = \dbObject\ObjectVisibility::normalizeVisibilityType(
+				(string)($storedDefaults['visibilityType'] ?? $defaults['visibilityType'])
+			);
+			$defaults['editVisibilityType'] = \dbObject\ObjectVisibility::normalizeVisibilityType(
+				(string)($storedDefaults['editVisibilityType'] ?? $defaults['editVisibilityType'])
+			);
+
+			return $defaults;
+		}
+
+		public static function getDefaultVisibilityTypeForOrganization(int $organizationId): string
+		{
+			$defaults = self::getApplicationDefaultScopeTypes($organizationId);
+			return (string)($defaults['visibilityType'] ?? \dbObject\ObjectVisibility::TYPE_ORGANIZATION);
+		}
+
+		public static function getDefaultEditVisibilityTypeForOrganization(int $organizationId): string
+		{
+			$defaults = self::getApplicationDefaultScopeTypes($organizationId);
+			return (string)($defaults['editVisibilityType'] ?? self::getDefaultEditVisibilityType());
+		}
+
+		public static function resolveCompatibleScopeTypeForHolonId(string $visibilityType, int $organizationId, ?int $holonId, string $fallbackType): string
+		{
+			$resolvedType = \dbObject\ObjectVisibility::normalizeVisibilityType($visibilityType);
+			$fallbackType = \dbObject\ObjectVisibility::normalizeVisibilityType($fallbackType);
+			$holonId = $holonId !== null ? (int)$holonId : 0;
+
+			if (!\dbObject\ObjectVisibility::requiresHolonTarget($resolvedType)) {
+				return $resolvedType;
+			}
+
+			if ($holonId <= 0) {
+				return \dbObject\ObjectVisibility::requiresHolonTarget($fallbackType)
+					? \dbObject\ObjectVisibility::TYPE_SELF
+					: $fallbackType;
+			}
+
+			$holon = new \dbObject\Holon();
+			if (
+				!$holon->load($holonId)
+				|| !(bool)$holon->get('active')
+				|| !(bool)$holon->get('visible')
+				|| ($organizationId > 0 && (int)$holon->get('IDorganization') > 0 && (int)$holon->get('IDorganization') !== $organizationId)
+			) {
+				return $fallbackType;
+			}
+
+			$holonTypeId = (int)$holon->get('IDtypeholon');
+			$circleId = $holonTypeId === 2
+				? (int)$holon->getId()
+				: (int)$holon->getContainingCircleId(false);
+
+			if ($resolvedType === \dbObject\ObjectVisibility::TYPE_ROLE) {
+				if ($holonTypeId === 1) {
+					return \dbObject\ObjectVisibility::TYPE_ROLE;
+				}
+
+				if ($circleId > 0) {
+					return \dbObject\ObjectVisibility::TYPE_CIRCLE;
+				}
+
+				return $fallbackType;
+			}
+
+			if ($resolvedType === \dbObject\ObjectVisibility::TYPE_CIRCLE) {
+				return $circleId > 0
+					? \dbObject\ObjectVisibility::TYPE_CIRCLE
+					: $fallbackType;
+			}
+
+			return $resolvedType;
+		}
+
+		protected function getOwnerDepartureFallbackScopeData(): array
+		{
+			$organizationId = (int)$this->get('IDorganization');
+			$documentHolonId = (int)$this->get('IDholon');
+
+			if ($documentHolonId <= 0) {
+				return array(
+					'type' => \dbObject\ObjectVisibility::TYPE_ORGANIZATION,
+					'holonId' => null,
+				);
+			}
+
+			$holon = new \dbObject\Holon();
+			if (
+				!$holon->load($documentHolonId)
+				|| !(bool)$holon->get('active')
+				|| !(bool)$holon->get('visible')
+			) {
+				return array(
+					'type' => \dbObject\ObjectVisibility::TYPE_ORGANIZATION,
+					'holonId' => null,
+				);
+			}
+
+			if ((int)$holon->get('IDtypeholon') === 1) {
+				return array(
+					'type' => \dbObject\ObjectVisibility::TYPE_ROLE,
+					'holonId' => (int)$holon->getId(),
+				);
+			}
+
+			$circleId = (int)$holon->getContainingCircleId(true);
+			if ($circleId > 0) {
+				return array(
+					'type' => \dbObject\ObjectVisibility::TYPE_CIRCLE,
+					'holonId' => $circleId,
+				);
+			}
+
+			return array(
+				'type' => \dbObject\ObjectVisibility::TYPE_ORGANIZATION,
+				'holonId' => null,
+			);
+		}
+
+		protected function ownerStillBelongsToFallbackContext(array $fallbackScope): bool
+		{
+			$organizationId = (int)$this->get('IDorganization');
+			$ownerUserId = (int)$this->get('IDuser');
+			$fallbackType = \dbObject\ObjectVisibility::normalizeVisibilityType((string)($fallbackScope['type'] ?? ''));
+			$fallbackHolonId = (int)($fallbackScope['holonId'] ?? 0);
+
+			if ($organizationId <= 0 || $ownerUserId <= 0) {
+				return false;
+			}
+
+			if ($fallbackType === \dbObject\ObjectVisibility::TYPE_ROLE && $fallbackHolonId > 0) {
+				$membershipCount = self::fetchValue(
+					"
+						SELECT COUNT(*)
+						FROM `user_holon`
+						WHERE `IDuser` = :user_id
+						  AND `IDholon` = :holon_id
+						  AND `active` = 1
+						  AND `is_membership` = 1
+					",
+					array(
+						'user_id' => $ownerUserId,
+						'holon_id' => $fallbackHolonId,
+					)
+				);
+
+				return (int)$membershipCount > 0;
+			}
+
+			if ($fallbackType === \dbObject\ObjectVisibility::TYPE_CIRCLE && $fallbackHolonId > 0) {
+				$circle = new \dbObject\Holon();
+				if (
+					!$circle->load($fallbackHolonId)
+					|| !(bool)$circle->get('active')
+					|| !(bool)$circle->get('visible')
+				) {
+					return false;
+				}
+
+				$memberUserIds = $circle->getAssociatedMemberUserIds(array(
+					'organizationId' => $organizationId,
+					'includeDescendants' => true,
+					'skipPermissionFilter' => true,
+				));
+
+				return in_array($ownerUserId, array_map('intval', $memberUserIds), true);
+			}
+
+			if (function_exists('commonUserHasOrganizationAccess')) {
+				return \commonUserHasOrganizationAccess($ownerUserId, $organizationId);
+			}
+
+			$membershipCount = self::fetchValue(
+				"
+					SELECT COUNT(*)
+					FROM `user_organization`
+					WHERE `IDuser` = :user_id
+					  AND `IDorganization` = :organization_id
+					  AND `active` = 1
+				",
+				array(
+					'user_id' => $ownerUserId,
+					'organization_id' => $organizationId,
+				)
+			);
+
+			return (int)$membershipCount > 0;
+		}
+
+		public function normalizeSelfScopedRulesAfterOwnerDeparture(): array
+		{
+			$organizationId = (int)$this->get('IDorganization');
+			if ((int)$this->getId() <= 0 || $organizationId <= 0) {
+				return array(
+					'status' => true,
+					'changed' => false,
+				);
+			}
+
+			$visibilityRule = $this->getPrimaryVisibilityRuleRow();
+			$editVisibilityRule = $this->getPrimaryEditVisibilityRuleRow();
+			$hasSelfVisibility = \dbObject\ObjectVisibility::normalizeVisibilityType((string)($visibilityRule['visibility_type'] ?? ''))
+				=== \dbObject\ObjectVisibility::TYPE_SELF;
+			$hasSelfEditVisibility = \dbObject\ObjectVisibility::normalizeVisibilityType((string)($editVisibilityRule['visibility_type'] ?? ''))
+				=== \dbObject\ObjectVisibility::TYPE_SELF;
+
+			if (!$hasSelfVisibility && !$hasSelfEditVisibility) {
+				return array(
+					'status' => true,
+					'changed' => false,
+				);
+			}
+
+			$fallbackScope = $this->getOwnerDepartureFallbackScopeData();
+			if ($this->ownerStillBelongsToFallbackContext($fallbackScope)) {
+				return array(
+					'status' => true,
+					'changed' => false,
+				);
+			}
+
+			$fallbackType = \dbObject\ObjectVisibility::normalizeVisibilityType((string)($fallbackScope['type'] ?? \dbObject\ObjectVisibility::TYPE_ORGANIZATION));
+			if ($fallbackType === \dbObject\ObjectVisibility::TYPE_SELF) {
+				$fallbackType = \dbObject\ObjectVisibility::TYPE_ORGANIZATION;
+			}
+
+			$changed = false;
+
+			if ($hasSelfVisibility) {
+				$saveVisibilityResult = $this->saveVisibilityRule($fallbackType);
+				if (!is_array($saveVisibilityResult) || ($saveVisibilityResult['status'] ?? false) !== true) {
+					return is_array($saveVisibilityResult)
+						? $saveVisibilityResult
+						: array(
+							'status' => false,
+							'text' => 'Impossible de mettre a jour la visibilite du document.',
+						);
+				}
+
+				$changed = true;
+			}
+
+			if ($hasSelfEditVisibility) {
+				$saveEditVisibilityResult = $this->saveEditVisibilityRule($fallbackType);
+				if (!is_array($saveEditVisibilityResult) || ($saveEditVisibilityResult['status'] ?? false) !== true) {
+					return is_array($saveEditVisibilityResult)
+						? $saveEditVisibilityResult
+						: array(
+							'status' => false,
+							'text' => 'Impossible de mettre a jour la portee d edition du document.',
+						);
+				}
+
+				$changed = true;
+			}
+
+			return array(
+				'status' => true,
+				'changed' => $changed,
+				'fallbackType' => $fallbackType,
+			);
+		}
+
+		public static function normalizeSelfScopedDocumentsForAuthorContext(int $organizationId, int $userId): array
+		{
+			$organizationId = (int)$organizationId;
+			$userId = (int)$userId;
+
+			if ($organizationId <= 0 || $userId <= 0) {
+				return array(
+					'status' => true,
+					'changed' => 0,
+				);
+			}
+
+			$rows = self::fetchAll(
+				"
+					SELECT `id`
+					FROM `" . self::tableName() . "`
+					WHERE `IDorganization` = :organization_id
+					  AND `IDuser` = :user_id
+					ORDER BY `id` ASC
+				",
+				array(
+					'organization_id' => $organizationId,
+					'user_id' => $userId,
+				)
+			);
+
+			if ($rows === false) {
+				return array(
+					'status' => false,
+					'text' => 'Impossible de charger les documents a verifier.',
+				);
+			}
+
+			$changedCount = 0;
+			foreach ($rows as $row) {
+				$documentId = (int)($row['id'] ?? 0);
+				if ($documentId <= 0) {
+					continue;
+				}
+
+				$document = new \dbObject\Document();
+				if (!$document->load($documentId)) {
+					continue;
+				}
+
+				$normalizeResult = $document->normalizeSelfScopedRulesAfterOwnerDeparture();
+				if (!is_array($normalizeResult) || ($normalizeResult['status'] ?? false) !== true) {
+					return is_array($normalizeResult)
+						? $normalizeResult
+						: array(
+							'status' => false,
+							'text' => 'Impossible de verifier la portee des documents.',
+						);
+				}
+
+				if (!empty($normalizeResult['changed'])) {
+					$changedCount += 1;
+				}
+			}
+
+			return array(
+				'status' => true,
+				'changed' => $changedCount,
+			);
 		}
 
 		// Retourne l'ensemble des medias attaches a un document
@@ -147,19 +957,33 @@
 			return (isset($_SESSION["currentUser"]) && (int)$_SESSION["currentUser"] === (int)$this->get("IDuser"));
 		}
 
+		public function isAvailableInDocumentsList(?\DateTimeInterface $referenceDate = null): bool
+		{
+			if ($this->isPvDocument()) {
+				$userId = function_exists('commonGetCurrentUserId')
+					? (int)\commonGetCurrentUserId()
+					: (int)($_SESSION['currentUser'] ?? 0);
+				return $this->isVisibleInDocumentsListForUser($userId, $referenceDate);
+			}
+
+			$referenceDate = $referenceDate ?: new \DateTimeImmutable();
+			$createdAt = $this->get('datecreation');
+			if (!($createdAt instanceof \DateTimeInterface)) {
+				return true;
+			}
+
+			return $createdAt->getTimestamp() <= $referenceDate->getTimestamp();
+		}
+
 		public function canEdit()
 		{
-			$currentUserId = function_exists('commonGetCurrentUserId')
-				? (int)\commonGetCurrentUserId()
-				: (int)($_SESSION['currentUser'] ?? 0);
 			$organizationId = (int)$this->get('IDorganization');
-
-			return $currentUserId > 0
-				&& $currentUserId === (int)$this->get('IDuser')
-				&& (
-					$organizationId <= 0
-					|| !function_exists('commonUserHasOrganizationAccess')
-					|| \commonUserHasOrganizationAccess($currentUserId, $organizationId)
+			if (function_exists('commonUserHasAdminOverride') && \commonUserHasAdminOverride((int)($_SESSION['currentUser'] ?? 0), $organizationId)) return true;
+			return $organizationId > 0
+				? $this->canEditInOrganizationContext($organizationId, null, false)
+				: (
+					isset($_SESSION["currentUser"])
+					&& (int)$_SESSION["currentUser"] === (int)$this->get("IDuser")
 				);
 		}
 
@@ -175,12 +999,12 @@
 						: (int)($_SESSION['currentUser'] ?? 0)
 				);
 
-			if ($userId <= 0 || $userId !== (int)$this->get('IDuser')) {
+			if ($userId <= 0) {
 				return false;
 			}
 
 			if ($documentOrganizationId <= 0) {
-				return $organizationId <= 0;
+				return $organizationId <= 0 && $userId === (int)$this->get('IDuser');
 			}
 
 			if (
@@ -190,12 +1014,389 @@
 				return false;
 			}
 
-			return self::canCreateInOrganizationContext(
-				$documentOrganizationId,
-				(int)$this->get('IDholon') > 0 ? (int)$this->get('IDholon') : null,
+			if (!$this->currentViewerCanAccessVisibility($documentOrganizationId, null, $userId)) {
+				return false;
+			}
+
+			return $this->hasObjectPermission('CAN_EDIT_DOCUMENT', $userId, $useSessionCache)
+				&& $this->currentViewerCanAccessEditVisibility($documentOrganizationId, null, $userId);
+		}
+
+		public function canManageInOrganizationContext(int $organizationId, ?int $userId = null, bool $useSessionCache = true): bool
+		{
+			$documentOrganizationId = (int)$this->get('IDorganization');
+			$organizationId = (int)$organizationId;
+			$userId = $userId !== null
+				? (int)$userId
+				: (
+					function_exists('commonGetCurrentUserId')
+						? (int)\commonGetCurrentUserId()
+						: (int)($_SESSION['currentUser'] ?? 0)
+				);
+
+			if ($userId <= 0) {
+				return false;
+			}
+
+			if ($documentOrganizationId <= 0) {
+				return $organizationId <= 0 && $userId === (int)$this->get('IDuser');
+			}
+
+			if (
+				$organizationId !== $documentOrganizationId
+				|| (function_exists('commonUserHasOrganizationAccess')
+					&& !\commonUserHasOrganizationAccess($userId, $documentOrganizationId))
+				|| !$this->currentViewerCanAccessVisibility($documentOrganizationId, null, $userId)
+			) {
+				return false;
+			}
+
+			return $this->hasObjectPermission('CAN_EDIT_DOCUMENT', $userId, $useSessionCache);
+		}
+
+		public function canManageInOrganizationContextWithVisibilityRule(int $organizationId, int $userId, ?array $visibilityRule, array &$viewerContext, bool $useSessionCache = true): bool
+		{
+			$documentOrganizationId = (int)$this->get('IDorganization');
+			if (
+				$userId <= 0
+				|| $organizationId !== $documentOrganizationId
+				|| (function_exists('commonUserHasOrganizationAccess') && !\commonUserHasOrganizationAccess($userId, $documentOrganizationId))
+				|| !\dbObject\ObjectVisibility::viewerCanAccessRule(
+					$visibilityRule,
+					$viewerContext,
+					array(
+						'organizationId' => $documentOrganizationId,
+						'ownerUserId' => (int)$this->get('IDuser'),
+					)
+				)
+			) {
+				return false;
+			}
+
+			return $this->hasObjectPermission('CAN_EDIT_DOCUMENT', $userId, $useSessionCache);
+		}
+
+		public function canEditInOrganizationContextWithVisibilityRules(int $organizationId, int $userId, ?array $visibilityRule, ?array $editVisibilityRule, array &$viewerContext): bool
+		{
+			$documentOrganizationId = (int)$this->get('IDorganization');
+			if (
+				$userId <= 0
+				|| (function_exists('commonUserHasOrganizationAccess') && !\commonUserHasOrganizationAccess($userId, $documentOrganizationId))
+				|| !\dbObject\ObjectVisibility::viewerCanAccessRule(
+					$visibilityRule,
+					$viewerContext,
+					array(
+						'organizationId' => $documentOrganizationId,
+						'ownerUserId' => (int)$this->get('IDuser'),
+					)
+				)
+			) {
+				return false;
+			}
+
+			return $this->hasObjectPermission('CAN_EDIT_DOCUMENT', $userId)
+				&& \dbObject\ObjectVisibility::viewerCanAccessRule(
+				$editVisibilityRule,
+				$viewerContext,
+				array(
+					'organizationId' => $organizationId > 0 ? $organizationId : $documentOrganizationId,
+					'ownerUserId' => (int)$this->get('IDuser'),
+				)
+			);
+		}
+
+		public function canMoveInOrganizationContext(int $organizationId, int $userId): bool
+		{
+			$organizationId = (int)$organizationId;
+			$userId = (int)$userId;
+
+			if ($organizationId <= 0 || $userId <= 0 || (int)$this->get('IDorganization') !== $organizationId) {
+				return false;
+			}
+			if ($this->isPvEditor($userId) && !$this->canUserManagePvStructure($organizationId, $userId)) {
+				return false;
+			}
+
+			return ($this->isPvDocument() && $this->canUserManagePvStructure($organizationId, $userId))
+				|| $this->canManageInOrganizationContext($organizationId, $userId, false);
+		}
+
+		public static function getHtmlMergeEditorData(array $documentIds, int $userId, int $contextDocumentId = 0): array
+		{
+			$documentIds = array_values(array_unique(array_filter(array_map('intval', $documentIds), static function (int $documentId): bool {
+				return $documentId > 0;
+			})));
+			if (count($documentIds) < 2 || $userId <= 0) {
+				return array('status' => false, 'text' => 'Selection invalide.');
+			}
+
+			$documents = array();
+			$organizationId = 0;
+			$keywords = array();
+			$keywordKeys = array();
+			$descriptions = array();
+			$visibilityRanks = array(
+				\dbObject\ObjectVisibility::TYPE_EVERYONE => 0,
+				\dbObject\ObjectVisibility::TYPE_ORGANIZATION => 1,
+				\dbObject\ObjectVisibility::TYPE_CIRCLE => 2,
+				\dbObject\ObjectVisibility::TYPE_ROLE => 3,
+				\dbObject\ObjectVisibility::TYPE_SELF => 4,
+			);
+			$visibilityType = \dbObject\ObjectVisibility::TYPE_EVERYONE;
+			$visibilityRank = $visibilityRanks[$visibilityType];
+			$editVisibilityType = \dbObject\ObjectVisibility::TYPE_EVERYONE;
+			$editVisibilityRank = $visibilityRanks[$editVisibilityType];
+			$canDeleteSources = true;
+
+			foreach ($documentIds as $documentId) {
+				$document = new self();
+				if (!$document->load($documentId) || $document->getDocumentType() !== self::TYPE_HTML) {
+					return array('status' => false, 'text' => 'Seuls les documents HTML peuvent etre fusionnes.');
+				}
+
+				$documentOrganizationId = (int)$document->get('IDorganization');
+				if (
+					$documentOrganizationId <= 0
+					|| ($organizationId > 0 && $organizationId !== $documentOrganizationId)
+					|| !$document->canEditInOrganizationContext($documentOrganizationId, $userId, false)
+				) {
+					return array('status' => false, 'text' => 'Acces refuse.');
+				}
+
+				$organizationId = $documentOrganizationId;
+				$documents[] = $document;
+				$documentVisibilityRule = $document->getPrimaryVisibilityRuleRow();
+				$documentVisibilityType = \dbObject\ObjectVisibility::normalizeVisibilityType(
+					(string)($documentVisibilityRule['visibility_type'] ?? \dbObject\ObjectVisibility::TYPE_ORGANIZATION)
+				);
+				$documentVisibilityRank = (int)($visibilityRanks[$documentVisibilityType] ?? $visibilityRanks[\dbObject\ObjectVisibility::TYPE_ORGANIZATION]);
+				if ($documentVisibilityRank > $visibilityRank) {
+					$visibilityRank = $documentVisibilityRank;
+					$visibilityType = $documentVisibilityType;
+				}
+				$documentEditVisibilityRule = $document->getPrimaryEditVisibilityRuleRow();
+				$documentEditVisibilityType = \dbObject\ObjectVisibility::normalizeVisibilityType(
+					(string)($documentEditVisibilityRule['visibility_type'] ?? self::getDefaultEditVisibilityType())
+				);
+				$documentEditVisibilityRank = (int)($visibilityRanks[$documentEditVisibilityType] ?? $visibilityRanks[self::getDefaultEditVisibilityType()]);
+				if ($documentEditVisibilityRank > $editVisibilityRank) {
+					$editVisibilityRank = $documentEditVisibilityRank;
+					$editVisibilityType = $documentEditVisibilityType;
+				}
+				if (!$document->canDeleteInOrganizationContext($documentOrganizationId, $userId) || !$document->canDeleteDocument(false)) {
+					$canDeleteSources = false;
+				}
+				$description = trim((string)$document->get('description'));
+				if ($description !== '') {
+					$descriptions[] = $description;
+				}
+				foreach (preg_split('/[,;]+/', (string)$document->get('keywords')) as $keyword) {
+					$keyword = trim($keyword);
+					$keywordKey = mb_strtolower($keyword, 'UTF-8');
+					if ($keyword !== '' && !isset($keywordKeys[$keywordKey])) {
+						$keywordKeys[$keywordKey] = true;
+						$keywords[] = $keyword;
+					}
+				}
+			}
+
+			$firstDocument = $documents[0];
+			if ($contextDocumentId > 0) {
+				foreach ($documents as $document) {
+					if ((int)$document->getId() === $contextDocumentId) {
+						$firstDocument = $document;
+						break;
+					}
+				}
+			}
+			$compatibleVisibilityType = self::resolveCompatibleScopeTypeForHolonId(
+				$visibilityType,
+				$organizationId,
+				(int)$firstDocument->get('IDholon') > 0 ? (int)$firstDocument->get('IDholon') : null,
+				\dbObject\ObjectVisibility::TYPE_SELF
+			);
+			if ($compatibleVisibilityType !== $visibilityType) {
+				$visibilityType = \dbObject\ObjectVisibility::TYPE_SELF;
+			}
+			$compatibleEditVisibilityType = self::resolveCompatibleScopeTypeForHolonId(
+				$editVisibilityType,
+				$organizationId,
+				(int)$firstDocument->get('IDholon') > 0 ? (int)$firstDocument->get('IDholon') : null,
+				\dbObject\ObjectVisibility::TYPE_SELF
+			);
+			if ($compatibleEditVisibilityType !== $editVisibilityType) {
+				$editVisibilityType = \dbObject\ObjectVisibility::TYPE_SELF;
+			}
+			if (!self::canCreateInOrganizationContext(
+				$organizationId,
+				(int)$firstDocument->get('IDholon') > 0 ? (int)$firstDocument->get('IDholon') : null,
 				$userId,
-				(int)$this->get('IDdocument_parent'),
-				$useSessionCache
+				(int)$firstDocument->get('IDdocument_parent'),
+				false
+			)) {
+				return array('status' => false, 'text' => 'Acces refuse.');
+			}
+
+			$items = array();
+			foreach ($documents as $document) {
+				$items[] = array(
+					'id' => (int)$document->getId(),
+					'title' => trim((string)$document->get('title')),
+					'description' => trim((string)$document->get('description')),
+					'content' => (string)$document->get('content'),
+				);
+			}
+			$titleSuffix = ' (' . count($documents) . ' documents fusionnés)';
+			$firstTitle = trim((string)$firstDocument->get('title'));
+			$mergedTitle = mb_substr($firstTitle, 0, max(1, 100 - mb_strlen($titleSuffix, 'UTF-8')), 'UTF-8') . $titleSuffix;
+
+			return array(
+				'status' => true,
+				'organizationId' => $organizationId,
+				'contextDocumentId' => (int)$firstDocument->getId(),
+				'holonId' => (int)$firstDocument->get('IDholon'),
+				'parentDocumentId' => (int)$firstDocument->get('IDdocument_parent'),
+				'title' => $mergedTitle,
+				'description' => implode("\n\n", $descriptions),
+				'keywords' => $keywords,
+				'visibilityType' => $visibilityType,
+				'editVisibilityType' => $editVisibilityType,
+				'canDeleteSources' => $canDeleteSources,
+				'documents' => $items,
+			);
+		}
+
+		public static function mergeHtmlDocumentsInOrganizationContext(
+			array $documentIds,
+			int $userId,
+			string $title,
+			array $keywords,
+			int $contextDocumentId = 0,
+			string $visibilityType = '',
+			string $editVisibilityType = '',
+			bool $keepSources = true
+		): array
+		{
+			$mergeData = self::getHtmlMergeEditorData($documentIds, $userId, $contextDocumentId);
+			if (($mergeData['status'] ?? false) !== true) {
+				return $mergeData;
+			}
+
+			$title = trim($title);
+			if ($title === '') {
+				return array('status' => false, 'text' => 'Le titre est obligatoire.');
+			}
+			if (!$keepSources && empty($mergeData['canDeleteSources'])) {
+				return array('status' => false, 'text' => 'Un ou plusieurs documents source ne peuvent pas etre supprimes.');
+			}
+			$visibilityType = trim($visibilityType) !== ''
+				? \dbObject\ObjectVisibility::normalizeVisibilityType($visibilityType)
+				: (string)$mergeData['visibilityType'];
+			$editVisibilityType = trim($editVisibilityType) !== ''
+				? \dbObject\ObjectVisibility::normalizeVisibilityType($editVisibilityType)
+				: (string)$mergeData['editVisibilityType'];
+
+			$normalizedKeywords = array();
+			$keywordKeys = array();
+			foreach ($keywords as $keyword) {
+				$keyword = trim((string)$keyword);
+				$keywordKey = mb_strtolower($keyword, 'UTF-8');
+				if ($keyword !== '' && !isset($keywordKeys[$keywordKey])) {
+					$keywordKeys[$keywordKey] = true;
+					$normalizedKeywords[] = $keyword;
+				}
+			}
+
+			$contentParts = array();
+			foreach ($mergeData['documents'] as $document) {
+				$contentParts[] = (string)($document['content'] ?? '');
+			}
+
+			$pdo = self::getPdo();
+			$startedTransaction = $pdo instanceof \PDO && !$pdo->inTransaction();
+			try {
+				if ($startedTransaction) {
+					$pdo->beginTransaction();
+				}
+				$mergedDocument = new self();
+				$result = $mergedDocument->createInOrganizationContext(
+					(int)$mergeData['organizationId'],
+					(int)$mergeData['holonId'] > 0 ? (int)$mergeData['holonId'] : null,
+					$userId,
+					array(
+						'title' => $title,
+						'description' => (string)$mergeData['description'],
+						'keywords' => implode(',', $normalizedKeywords),
+						'content' => implode("\n<hr>\n", $contentParts),
+						'document_type' => self::TYPE_HTML,
+						'parent_document_id' => (int)$mergeData['parentDocumentId'],
+						'visibility_type' => $visibilityType,
+						'edit_visibility_type' => $editVisibilityType,
+					)
+				);
+				if (!is_array($result) || ($result['status'] ?? false) !== true) {
+					if ($startedTransaction && $pdo->inTransaction()) {
+						$pdo->rollBack();
+					}
+					return $result;
+				}
+
+				if (!$keepSources) {
+					foreach ($mergeData['documents'] as $sourceData) {
+						$sourceDocument = new self();
+						if (
+							!$sourceDocument->load((int)($sourceData['id'] ?? 0))
+							|| !$sourceDocument->canDeleteInOrganizationContext((int)$mergeData['organizationId'], $userId)
+							|| !$sourceDocument->canDeleteDocument(false)
+							|| !$sourceDocument->delete()
+						) {
+							throw new \RuntimeException('document_merge_source_delete_failed');
+						}
+					}
+				}
+
+				if ($startedTransaction && $pdo->inTransaction()) {
+					$pdo->commit();
+				}
+				$result['document'] = $mergedDocument;
+				$result['sourcesDeleted'] = !$keepSources;
+				return $result;
+			} catch (\Throwable $exception) {
+				if ($startedTransaction && $pdo instanceof \PDO && $pdo->inTransaction()) {
+					$pdo->rollBack();
+				}
+				return array('status' => false, 'text' => 'Impossible de finaliser la fusion des documents.');
+			}
+		}
+
+		protected function normalizeScopeTypeForCurrentContext(string $visibilityType, string $fallbackType): string
+		{
+			return self::resolveCompatibleScopeTypeForHolonId(
+				$visibilityType,
+				(int)$this->get('IDorganization'),
+				(int)$this->get('IDholon') > 0 ? (int)$this->get('IDholon') : null,
+				$fallbackType
+			);
+		}
+
+		protected function resolveScopeTypeInput(array $values, string $inputKey, string $fallbackType, bool $isCreate): string
+		{
+			$hasExplicitValue = array_key_exists($inputKey, $values)
+				&& trim((string)$values[$inputKey]) !== '';
+			if ($hasExplicitValue) {
+				return \dbObject\ObjectVisibility::normalizeVisibilityType((string)$values[$inputKey]);
+			}
+
+			if ($isCreate) {
+				return $this->normalizeScopeTypeForCurrentContext($fallbackType, $fallbackType);
+			}
+
+			$currentRule = $inputKey === 'edit_visibility_type'
+				? $this->getPrimaryEditVisibilityRuleRow()
+				: $this->getPrimaryVisibilityRuleRow();
+
+			return \dbObject\ObjectVisibility::normalizeVisibilityType(
+				(string)($currentRule['visibility_type'] ?? $fallbackType)
 			);
 		}
 
@@ -216,6 +1417,987 @@
 			return false;
 		}
 
+		public function getAssociatedEvent()
+		{
+			$eventId = (int)$this->get('IDevent');
+			if ($eventId <= 0) {
+				return null;
+			}
+
+			$event = new \dbObject\Event();
+			if (!$event->load($eventId)) {
+				return null;
+			}
+
+			return $event;
+		}
+
+		public function getPvEditorPollingRevision(int $organizationId = 0): string
+		{
+			$documentId = (int)$this->getId();
+			$organizationId = $organizationId > 0
+				? $organizationId
+				: (int)$this->get('IDorganization');
+			if ($documentId <= 0 || $organizationId <= 0 || !$this->isPvDocument()) {
+				return '';
+			}
+
+			$pointRows = self::fetchAll(
+				"SELECT
+					id,
+					SHA2(CONCAT_WS(CHAR(31),
+						COALESCE(item_type, ''),
+						COALESCE(IDparent, 0),
+						COALESCE(position, 0),
+						COALESCE(title, ''),
+						COALESCE(IDuser_author, 0),
+						COALESCE(author_email, ''),
+						COALESCE(IDholon_concerned, 0),
+						COALESCE(content, ''),
+						COALESCE(desired_duration_minutes, 0),
+						COALESCE(actual_duration_minutes, 0),
+						COALESCE(pointtype, ''),
+						COALESCE(is_handled, 0),
+						COALESCE(is_confidential, 0),
+						COALESCE(active, 1),
+						COALESCE(IDuser_modification, 0)
+					), 256) AS row_version,
+					COALESCE(IDuser_editing, 0) AS editing_user_id,
+					COALESCE(edit_lock_token, '') AS edit_lock_token,
+					dateedition,
+					COALESCE(IDuser_edit_takeover_request, 0) AS takeover_user_id,
+					COALESCE(edit_takeover_request_token, '') AS takeover_request_token,
+					COALESCE(edit_takeover_target_token, '') AS takeover_target_token,
+					date_edit_takeover_request
+				FROM document_pv_point
+				WHERE IDdocument = :document_id
+				ORDER BY id ASC",
+				['document_id' => $documentId]
+			);
+
+			$lockCutoff = time() - \dbObject\DocumentPvPoint::getEditLockTimeoutSeconds();
+			foreach (is_array($pointRows) ? $pointRows : [] as &$pointRow) {
+				$editingTimestamp = strtotime((string)($pointRow['dateedition'] ?? ''));
+				$lockActive = (int)($pointRow['editing_user_id'] ?? 0) > 0
+					&& trim((string)($pointRow['edit_lock_token'] ?? '')) !== ''
+					&& $editingTimestamp !== false
+					&& $editingTimestamp >= $lockCutoff;
+				$pointRow['lock_user_id'] = $lockActive ? (int)$pointRow['editing_user_id'] : 0;
+				$pointRow['lock_token'] = $lockActive
+					? hash('sha256', (string)$pointRow['edit_lock_token'])
+					: '';
+				$takeoverTimestamp = strtotime((string)($pointRow['date_edit_takeover_request'] ?? ''));
+				$takeoverActive = (int)($pointRow['takeover_user_id'] ?? 0) > 0
+					&& trim((string)($pointRow['takeover_request_token'] ?? '')) !== ''
+					&& trim((string)($pointRow['takeover_target_token'] ?? '')) !== ''
+					&& $takeoverTimestamp !== false
+					&& ($takeoverTimestamp + \dbObject\DocumentPvPoint::EDIT_TAKEOVER_REQUEST_TIMEOUT_SECONDS) >= time();
+				$pointRow['takeover_user_id'] = $takeoverActive ? (int)$pointRow['takeover_user_id'] : 0;
+				$pointRow['takeover_request'] = $takeoverActive
+					? hash('sha256', (string)$pointRow['takeover_request_token'])
+					: '';
+				$pointRow['takeover_target'] = $takeoverActive
+					? hash('sha256', (string)$pointRow['takeover_target_token'])
+					: '';
+				unset(
+					$pointRow['editing_user_id'],
+					$pointRow['edit_lock_token'],
+					$pointRow['dateedition'],
+					$pointRow['takeover_request_token'],
+					$pointRow['takeover_target_token'],
+					$pointRow['date_edit_takeover_request']
+				);
+			}
+			unset($pointRow);
+
+			$linkRows = self::fetchAll(
+				"SELECT 'holon' AS link_type, link.IDdocument_pv_point AS point_id, link.IDholon AS target_id, COALESCE(link.position, 0) AS position
+				FROM document_pv_point_holon link
+				INNER JOIN document_pv_point point ON point.id = link.IDdocument_pv_point
+				WHERE point.IDdocument = :document_id_holon
+				UNION ALL
+				SELECT 'tension' AS link_type, link.IDdocument_pv_point AS point_id, link.IDtension AS target_id, COALESCE(link.position, 0) AS position
+				FROM document_pv_point_tension link
+				INNER JOIN document_pv_point point ON point.id = link.IDdocument_pv_point
+				WHERE point.IDdocument = :document_id_tension
+				ORDER BY link_type ASC, point_id ASC, position ASC, target_id ASC",
+				[
+					'document_id_holon' => $documentId,
+					'document_id_tension' => $documentId,
+				]
+			);
+
+			$resourceType = (int)$this->get('IDevent') > 0 ? 'event' : 'document';
+			$resourceId = (int)$this->get('IDevent') > 0 ? (int)$this->get('IDevent') : $documentId;
+			$attendanceRows = self::fetchAll(
+				"SELECT 'invitation' AS row_type, id,
+					SHA2(CONCAT_WS(CHAR(31), COALESCE(invitation_type, ''), COALESCE(IDholon, 0), COALESCE(IDuser, 0), COALESCE(email, ''), COALESCE(display_name, ''), COALESCE(status, ''), COALESCE(accepted, 0), COALESCE(parameters, ''), COALESCE(active, 1)), 256) AS row_version
+				FROM resource_invitation
+				WHERE resource_type = :invitation_resource_type
+				  AND resource_id = :invitation_resource_id
+				UNION ALL
+				SELECT 'attendance' AS row_type, id,
+					SHA2(CONCAT_WS(CHAR(31), COALESCE(IDuser, 0), COALESCE(email, ''), COALESCE(display_name, ''), COALESCE(is_present, 0), COALESCE(active, 1)), 256) AS row_version
+				FROM resource_attendance
+				WHERE resource_type = :attendance_resource_type
+				  AND resource_id = :attendance_resource_id
+				ORDER BY row_type ASC, id ASC",
+				[
+					'invitation_resource_type' => $resourceType,
+					'invitation_resource_id' => $resourceId,
+					'attendance_resource_type' => $resourceType,
+					'attendance_resource_id' => $resourceId,
+				]
+			);
+
+			$discussionRows = self::fetchAll(
+				"SELECT thread.subject_id,
+					COALESCE(thread.active, 1) AS active,
+					COUNT(message.id) AS message_count,
+					COALESCE(MAX(message.id), 0) AS last_message_id
+				FROM chat_thread thread
+				INNER JOIN document_pv_point point
+					ON point.id = thread.subject_id
+				LEFT JOIN chat_message message
+					ON message.IDchat_thread = thread.id
+				WHERE thread.IDorganization = :organization_id
+				  AND thread.subject_type = :subject_type
+				  AND point.IDdocument = :document_id
+				GROUP BY thread.id, thread.subject_id, thread.active
+				ORDER BY thread.subject_id ASC, thread.id ASC",
+				[
+					'organization_id' => $organizationId,
+					'subject_type' => \dbObject\ChatThread::SUBJECT_DOCUMENT_PV_POINT,
+					'document_id' => $documentId,
+				]
+			);
+
+			$modifiedAt = $this->get('datemodification');
+			$documentState = [
+				'id' => $documentId,
+				'event_id' => (int)$this->get('IDevent'),
+				'title' => trim((string)$this->get('title')),
+				'description' => trim((string)$this->get('description')),
+				'pv_stage' => $this->getPvStage(),
+				'pv_editor_user_id' => $this->getPvEditorUserId(),
+				'pv_editor_handover_open' => $this->isPvEditorHandoverOpen() ? 1 : 0,
+				'is_template' => $this->isPvTemplate() ? 1 : 0,
+				'active' => !empty($this->get('active')) ? 1 : 0,
+				'modified_at' => $modifiedAt instanceof \DateTimeInterface
+					? $modifiedAt->format('Y-m-d H:i:s.u')
+					: trim((string)$modifiedAt),
+			];
+
+			return hash('sha256', (string)json_encode([
+				'document' => $documentState,
+				'points' => is_array($pointRows) ? $pointRows : [],
+				'links' => is_array($linkRows) ? $linkRows : [],
+				'attendance' => is_array($attendanceRows) ? $attendanceRows : [],
+				'discussions' => is_array($discussionRows) ? $discussionRows : [],
+				'organization_history_id' => \dbObject\History::getLatestOrganizationEntryId($organizationId),
+			], JSON_UNESCAPED_SLASHES));
+		}
+
+		public function getPvEditorUserId(): int
+		{
+			return $this->isPvDocument() ? (int)$this->get('IDuser_pv_editor') : 0;
+		}
+
+		public function getLastOfficialPvEditorUserId(): int
+		{
+			return $this->isPvDocument() ? (int)$this->get('IDuser_pv_official_editor') : 0;
+		}
+
+		public function getPvReviewEditorUserId(): int
+		{
+			$officialEditorUserId = $this->getLastOfficialPvEditorUserId();
+			return $officialEditorUserId > 0 ? $officialEditorUserId : $this->getCreatedByUserId();
+		}
+
+		public function getPvDiscussionThread(bool $create = false, int $creatorUserId = 0)
+		{
+			if (!$this->isPvDocument() || (int)$this->getId() <= 0) {
+				return null;
+			}
+
+			$organizationId = (int)$this->get('IDorganization');
+			return $create
+				? \dbObject\ChatThread::getOrCreateForSubject($organizationId, \dbObject\ChatThread::SUBJECT_DOCUMENT_PV, (int)$this->getId(), $creatorUserId, trim((string)$this->get('title')))
+				: \dbObject\ChatThread::findBySubject($organizationId, \dbObject\ChatThread::SUBJECT_DOCUMENT_PV, (int)$this->getId());
+		}
+
+		public function isPvEditor(int $userId): bool
+		{
+			return $userId > 0 && $userId === $this->getPvEditorUserId();
+		}
+
+		public function isPvEditorHandoverOpen(): bool
+		{
+			return $this->isPvDocument() && (int)$this->get('pv_editor_handover_open') === 1;
+		}
+
+		public function isPvCreatorOrEditor(int $userId): bool
+		{
+			return $this->isPvDocument()
+				&& $userId > 0
+				&& ($userId === $this->getCreatedByUserId() || $this->isPvEditor($userId));
+		}
+
+		public function canUserManagePvDocument(int $userId): bool
+		{
+			if (!$this->isPvDocument() || $this->isPvValidated() || $userId <= 0) {
+				return false;
+			}
+			if ($this->isPvEditor($userId)) {
+				return true;
+			}
+			if (!$this->hasObjectPermission('CAN_EDIT_DOCUMENT', $userId)) {
+				return false;
+			}
+
+			return \commonUserHasAdminOverride($userId, (int)$this->get('IDorganization'))
+				|| ($this->getPvEditorUserId() <= 0 && $userId === $this->getCreatedByUserId());
+		}
+
+		public function isVisibleInDocumentsListForUser(int $userId, ?\DateTimeInterface $referenceDate = null): bool
+		{
+			if (!$this->isPvDocument()) {
+				return true;
+			}
+
+			if ($this->isPvCreatorOrEditor($userId)) {
+				return true;
+			}
+
+			$stage = $this->getPvStage();
+			if (in_array($stage, [self::PV_STAGE_PREPARATION, self::PV_STAGE_MEETING], true)) {
+				return $this->canUserAccessPvBeforeValidation($userId);
+			}
+
+			if (!($this->getAssociatedEvent() instanceof \dbObject\Event)) {
+				return true;
+			}
+
+			if ($stage === self::PV_STAGE_REVIEW) {
+				return true;
+			}
+
+			if ($this->canUserAccessPvBeforeValidation($userId)) {
+				$stage = $this->getPvStage();
+				return $stage === self::PV_STAGE_REVIEW || $stage === self::PV_STAGE_VALIDATED;
+			}
+
+			return $this->isPvValidated()
+				&& $this->hasAssociatedEventStarted($referenceDate);
+		}
+
+		public function hasAssociatedEventStarted(?\DateTimeInterface $referenceDate = null): bool
+		{
+			$event = $this->getAssociatedEvent();
+			$startAt = $event instanceof \dbObject\Event ? $event->get('start_at') : null;
+			if (!($startAt instanceof \DateTimeInterface)) {
+				return false;
+			}
+
+			if (!($referenceDate instanceof \DateTimeInterface)) {
+				$timezone = $startAt->getTimezone();
+				$referenceDate = $timezone instanceof \DateTimeZone
+					? new \DateTimeImmutable('now', $timezone)
+					: new \DateTimeImmutable('now');
+			}
+
+			return $startAt <= $referenceDate;
+		}
+
+		public function canUserPassPvMeetingVisibilityGate(int $userId, int $organizationId = 0, ?\DateTimeInterface $referenceDate = null): bool
+		{
+			if (!$this->isPvDocument()) {
+				return true;
+			}
+
+			$organizationId = $organizationId > 0 ? (int)$organizationId : (int)$this->get('IDorganization');
+			if ($organizationId <= 0 || (int)$this->get('IDorganization') !== $organizationId) {
+				return false;
+			}
+
+			$stage = $this->getPvStage();
+			if (in_array($stage, [self::PV_STAGE_PREPARATION, self::PV_STAGE_MEETING], true)) {
+				return $this->canUserAccessPvBeforeValidation($userId, $organizationId);
+			}
+
+			if ($stage === self::PV_STAGE_REVIEW) {
+				return true;
+			}
+
+			if (!($this->getAssociatedEvent() instanceof \dbObject\Event)) {
+				return true;
+			}
+
+			return $this->canUserAccessPvBeforeValidation($userId, $organizationId)
+				|| ($this->isPvValidated() && $this->hasAssociatedEventStarted($referenceDate));
+		}
+
+		public function canUserViewPvReadOnly(int $userId, int $organizationId = 0, ?int $holonId = null): bool
+		{
+			$organizationId = $organizationId > 0 ? (int)$organizationId : (int)$this->get('IDorganization');
+			if (
+				!$this->isPvDocument()
+				|| $userId <= 0
+				|| $organizationId <= 0
+				|| (int)$this->get('IDorganization') !== $organizationId
+				|| !in_array($this->getPvStage(), [self::PV_STAGE_REVIEW, self::PV_STAGE_VALIDATED], true)
+			) {
+				return false;
+			}
+
+			return $this->canUserPassPvMeetingVisibilityGate($userId, $organizationId)
+				&& (
+					$this->canViewInOrganizationContext($organizationId, $holonId)
+					|| $this->canViewDirectlyInOrganization($organizationId)
+				);
+		}
+
+		public function canUserAccessPvBeforeValidation(int $userId, int $organizationId = 0): bool
+		{
+			$organizationId = $organizationId > 0 ? (int)$organizationId : (int)$this->get('IDorganization');
+			if (
+				!$this->isPvDocument()
+				|| $userId <= 0
+				|| $organizationId <= 0
+				|| (int)$this->get('IDorganization') !== $organizationId
+			) {
+				return false;
+			}
+
+			if ($this->isPvCreatorOrEditor($userId)) {
+				return true;
+			}
+
+			$event = $this->getAssociatedEvent();
+			if ($event instanceof \dbObject\Event) {
+				return $event->isVisibleToInvitationViewer($userId, $organizationId);
+			}
+			if ($this->hasExplicitInvitations()) {
+				return $this->isUserInvited($userId, $organizationId);
+			}
+
+			return false;
+		}
+
+		public function canUserAccessPvReview(int $userId, int $organizationId = 0): bool
+		{
+			$organizationId = $organizationId > 0 ? (int)$organizationId : (int)$this->get('IDorganization');
+			if (
+				!$this->isPvDocument()
+				|| $this->getPvStage() !== self::PV_STAGE_REVIEW
+				|| $userId <= 0
+				|| $organizationId <= 0
+				|| (int)$this->get('IDorganization') !== $organizationId
+			) {
+				return false;
+			}
+
+			if ($this->isPvCreatorOrEditor($userId)) {
+				return true;
+			}
+
+			$event = $this->getAssociatedEvent();
+			if ($event instanceof \dbObject\Event) {
+				return $event->isVisibleToInvitationViewer($userId, $organizationId);
+			}
+
+			return $this->hasExplicitInvitations()
+				&& $this->isUserInvited($userId, $organizationId);
+		}
+
+		public function getPvPermissionHolon(int $organizationId = 0)
+		{
+			$organizationId = $organizationId > 0 ? (int)$organizationId : (int)$this->get('IDorganization');
+			if ($organizationId <= 0 || (int)$this->get('IDorganization') !== $organizationId) {
+				return null;
+			}
+
+			$holonId = $this->getPvContextHolonId();
+
+			return self::resolveCreationPermissionHolon($organizationId, $holonId > 0 ? $holonId : null);
+		}
+
+		public function getPvContextHolonId(): int
+		{
+			if (!$this->isPvDocument()) {
+				return 0;
+			}
+
+			$holonId = (int)$this->get('IDholon');
+			if ($holonId > 0) {
+				return $holonId;
+			}
+
+			$event = $this->getAssociatedEvent();
+			return $event instanceof \dbObject\Event ? (int)$event->get('IDholon') : 0;
+		}
+
+		public function canUserClaimPvEditor(int $organizationId, int $userId): bool
+		{
+			if (!$this->isPvDocument() || $this->isPvValidated() || $userId <= 0) {
+				return false;
+			}
+			if ($this->getPvStage() === self::PV_STAGE_REVIEW) {
+				return false;
+			}
+
+			if ($this->getPvContextHolonId() <= 0 && $userId === $this->getCreatedByUserId()) {
+				return true;
+			}
+
+			$permissionHolon = $this->getPvPermissionHolon($organizationId);
+			if (!($permissionHolon instanceof \dbObject\Holon)) {
+				return false;
+			}
+
+			return (int)$permissionHolon->getId() > 0
+				&& $permissionHolon->isAllowed('CAN_CLAIM_PV', false, $userId);
+		}
+
+		public function canUserManagePvStructure(int $organizationId, int $userId): bool
+		{
+			// Older PVs may not have an official editor until their first handover.
+			return $this->canUserManagePvDocument($userId)
+				&& (!$this->isPvEditor($userId)
+					|| $this->getLastOfficialPvEditorUserId() <= 0
+					|| $userId === $this->getLastOfficialPvEditorUserId()
+					|| $this->canUserClaimPvEditor($organizationId, $userId));
+		}
+
+		public function canUserReplacePvEditor(int $organizationId, int $userId): bool
+		{
+			if (
+				!$this->isPvDocument()
+				|| $this->isPvValidated()
+				|| $userId <= 0
+				|| $this->getPvEditorUserId() <= 0
+				|| $this->isPvEditor($userId)
+				|| !$this->isPvEditorHandoverOpen()
+			) {
+				return false;
+			}
+
+			if ($this->canUserClaimPvEditor($organizationId, $userId)) {
+				return false;
+			}
+
+			$event = $this->getAssociatedEvent();
+			if ($event instanceof \dbObject\Event) {
+				return $event->isVisibleToInvitationViewer($userId, $organizationId);
+			}
+
+			return $this->hasExplicitInvitations() && $this->isUserInvited($userId, $organizationId);
+		}
+
+		public function claimPvEditor(int $organizationId, int $userId): array
+		{
+			if (!$this->canUserClaimPvEditor($organizationId, $userId)) {
+				return array('status' => false, 'text' => 'Acces refuse.');
+			}
+
+			$this->set('IDuser_pv_editor', $userId);
+			$this->set('IDuser_pv_official_editor', $userId);
+			$this->set('pv_editor_handover_open', 0);
+			$this->set('IDusermodification', $userId);
+			$this->set('datemodification', new \DateTimeImmutable());
+			$saveResult = $this->save();
+			if (!is_array($saveResult) || ($saveResult['status'] ?? false) !== true) {
+				return array('status' => false, 'text' => 'Impossible de devenir editeur du PV.');
+			}
+
+			$this->load((int)$this->getId());
+			if (!$this->isPvEditor($userId)) {
+				return array('status' => false, 'text' => 'Le PV est deja attribue a une autre personne.');
+			}
+
+			return array('status' => true);
+		}
+
+		public function openPvEditorHandover(int $userId): array
+		{
+			if (!$this->isPvEditor($userId) || $this->isPvValidated() || $this->getPvStage() === self::PV_STAGE_REVIEW) {
+				return array('status' => false, 'text' => 'Acces refuse.');
+			}
+
+			$this->set('pv_editor_handover_open', 1);
+			if ($this->getLastOfficialPvEditorUserId() <= 0) {
+				$this->set('IDuser_pv_official_editor', $userId);
+			}
+			$this->set('IDusermodification', $userId);
+			$this->set('datemodification', new \DateTimeImmutable());
+			$saveResult = $this->save();
+			if (!is_array($saveResult) || ($saveResult['status'] ?? false) !== true) {
+				return array('status' => false, 'text' => 'Impossible de passer la main pour ce PV.');
+			}
+
+			$this->load((int)$this->getId());
+			return array('status' => $this->isPvEditorHandoverOpen());
+		}
+
+		public function replacePvEditor(int $organizationId, int $userId): array
+		{
+			if (!$this->canUserReplacePvEditor($organizationId, $userId)) {
+				return array('status' => false, 'text' => 'Acces refuse.');
+			}
+
+			if ($this->getLastOfficialPvEditorUserId() <= 0) {
+				$this->set('IDuser_pv_official_editor', $this->getPvEditorUserId());
+			}
+			$this->set('IDuser_pv_editor', $userId);
+			$this->set('pv_editor_handover_open', 0);
+			$this->set('IDusermodification', $userId);
+			$this->set('datemodification', new \DateTimeImmutable());
+			$saveResult = $this->save();
+			if (!is_array($saveResult) || ($saveResult['status'] ?? false) !== true) {
+				return array('status' => false, 'text' => 'Impossible de remplacer l editeur du PV.');
+			}
+
+			$this->load((int)$this->getId());
+			return array('status' => $this->isPvEditor($userId));
+		}
+
+		public function canUserEditPvPoint(\dbObject\DocumentPvPoint $point, int $userId): bool
+		{
+			if (!$this->isPvDocument() || $this->isPvValidated() || (int)$point->get('IDdocument') !== (int)$this->getId()) {
+				return false;
+			}
+
+			if ($this->getPvStage() === self::PV_STAGE_REVIEW) {
+				return $this->canUserManagePvDocument($userId);
+			}
+			if ($point->isHandled()) {
+				return false;
+			}
+
+			return $this->canUserManagePvDocument($userId) || $point->isEditableByUser($userId);
+		}
+
+		public function canUserReorderPvPoints(int $userId): bool
+		{
+			return $this->isPvDocument() && !$this->isPvValidated() && $this->getPvStage() !== self::PV_STAGE_REVIEW && (
+				$this->canUserManagePvStructure((int)$this->get('IDorganization'), $userId)
+				|| ($this->getPvStage() === self::PV_STAGE_PREPARATION && !$this->isPvEditor($userId))
+			);
+		}
+
+		public function canUserReorderPvItem(\dbObject\DocumentPvPoint $item, int $userId): bool
+		{
+			if (!$this->canUserReorderPvPoints($userId) || (int)$item->get('IDdocument') !== (int)$this->getId()) {
+				return false;
+			}
+
+			return $this->canUserManagePvStructure((int)$this->get('IDorganization'), $userId)
+				|| (!$this->isPvEditor($userId) && !$item->isGroup() && $this->getPvStage() === self::PV_STAGE_PREPARATION && $item->isEditableByUser($userId));
+		}
+
+		public function canUserCreatePvGroups(int $userId): bool
+		{
+			return !$this->isPvValidated()
+				&& $this->getPvStage() !== self::PV_STAGE_REVIEW
+				&& $this->canUserManagePvStructure((int)$this->get('IDorganization'), $userId);
+		}
+
+		public function getInvitations(bool $activeOnly = false)
+		{
+			$items = new \dbObject\ArrayDocumentInvitation();
+			$params = ['where' => [
+				['field' => 'resource_type', 'value' => \dbObject\DocumentInvitation::resourceType()],
+				['field' => 'resource_id', 'value' => (int)$this->getId()],
+			]];
+			if ($activeOnly) {
+				$params['where'][] = ['field' => 'active', 'value' => 1];
+			}
+			$items->load($params);
+			return $items;
+		}
+
+		public function getInvitationEntries(int $organizationId = 0): array
+		{
+			$organizationId = $organizationId > 0 ? $organizationId : (int)$this->get('IDorganization');
+			$entries = [];
+			foreach ($this->getInvitations(true) as $invitation) {
+				if (!($invitation instanceof \dbObject\DocumentInvitation) || \dbObject\DocumentInvitation::normalizeStatus($invitation->get('status')) === \dbObject\DocumentInvitation::STATUS_REVOKED) {
+					continue;
+				}
+				$type = \dbObject\DocumentInvitation::normalizeType($invitation->get('invitation_type'));
+				if ($type === \dbObject\DocumentInvitation::TYPE_HOLON) {
+					$holon = new \dbObject\Holon();
+					if ($holon->load((int)$invitation->get('IDholon'))) {
+						foreach ($holon->getAssociatedMemberUserIds(['organizationId' => $organizationId, 'skipPermissionFilter' => true]) as $userId) {
+							$entries['user:' . (int)$userId] = ['userId' => (int)$userId, 'email' => '', 'displayLabel' => '', 'identityKey' => 'user:' . (int)$userId, 'accepted' => $invitation->get('accepted')];
+						}
+					}
+					continue;
+				}
+				if ($type === \dbObject\DocumentInvitation::TYPE_USER) {
+					$userId = (int)$invitation->get('IDuser');
+					if ($userId > 0) {
+						$entries['user:' . $userId] = ['userId' => $userId, 'email' => '', 'displayLabel' => trim((string)$invitation->get('display_name')), 'identityKey' => 'user:' . $userId, 'accepted' => $invitation->get('accepted')];
+					}
+					continue;
+				}
+				$email = trim(mb_strtolower((string)$invitation->get('email'), 'UTF-8'));
+				if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+					$entries['email:' . $email] = ['userId' => 0, 'email' => $email, 'displayLabel' => trim((string)$invitation->get('display_name')), 'identityKey' => 'email:' . $email, 'accepted' => $invitation->get('accepted')];
+				}
+			}
+			foreach ($entries as &$entry) {
+				if ((int)$entry['userId'] > 0 && trim((string)$entry['displayLabel']) === '') {
+					$entry['displayLabel'] = \dbObject\DocumentPvPoint::getUserDisplayNameForOrganization((int)$entry['userId'], $organizationId);
+				}
+				if (trim((string)$entry['displayLabel']) === '') {
+					$entry['displayLabel'] = (string)$entry['email'];
+				}
+			}
+			unset($entry);
+			return array_values($entries);
+		}
+
+		public function getInvitationEmailRecipients(int $organizationId = 0): array
+		{
+			$organizationId = $organizationId > 0 ? $organizationId : (int)$this->get('IDorganization');
+			$recipients = array();
+			foreach ($this->getInvitationEntries($organizationId) as $entry) {
+				$userId = (int)($entry['userId'] ?? 0);
+				$email = trim(mb_strtolower((string)($entry['email'] ?? ''), 'UTF-8'));
+				if ($userId > 0) {
+					$user = new \dbObject\User();
+					if ($user->load($userId)) {
+						$email = trim(mb_strtolower((string)$user->getScopedEmail($organizationId), 'UTF-8'));
+					}
+				}
+
+				if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+					continue;
+				}
+
+				$recipients[$email] = array(
+					'email' => $email,
+					'display_name' => trim((string)($entry['displayLabel'] ?? '')),
+					'user_id' => $userId,
+				);
+			}
+
+			return array_values($recipients);
+		}
+
+		public function hasExplicitInvitations(): bool
+		{
+			foreach ($this->getInvitations(true) as $invitation) {
+				if (
+					$invitation instanceof \dbObject\DocumentInvitation
+					&& \dbObject\DocumentInvitation::normalizeStatus($invitation->get('status')) !== \dbObject\DocumentInvitation::STATUS_REVOKED
+				) {
+					return true;
+				}
+			}
+			return false;
+		}
+
+		public function isUserInvited(int $userId, int $organizationId = 0): bool
+		{
+			if ($userId <= 0) {
+				return false;
+			}
+			$organizationId = $organizationId > 0 ? $organizationId : (int)$this->get('IDorganization');
+			$userEmails = array();
+			$user = new \dbObject\User();
+			if ($user->load($userId)) {
+				$email = trim(mb_strtolower((string)$user->get('email'), 'UTF-8'));
+				if ($email !== '') {
+					$userEmails[$email] = true;
+				}
+			}
+			$membership = new \dbObject\UserOrganization();
+			if ($membership->load([['IDorganization', $organizationId], ['IDuser', $userId]])) {
+				$email = trim(mb_strtolower((string)$membership->get('email'), 'UTF-8'));
+				if ($email !== '') {
+					$userEmails[$email] = true;
+				}
+			}
+			foreach ($this->getInvitationEntries($organizationId) as $entry) {
+				if ((int)($entry['userId'] ?? 0) === $userId) {
+					return true;
+				}
+				$email = trim(mb_strtolower((string)($entry['email'] ?? ''), 'UTF-8'));
+				if ($email !== '' && isset($userEmails[$email])) {
+					return true;
+				}
+			}
+			return false;
+		}
+
+		public function getInvitationAttendanceEntries(int $organizationId = 0): array
+		{
+			$entries = $this->getInvitationEntries($organizationId);
+			foreach ($entries as &$entry) {
+				$attendance = new \dbObject\DocumentAttendance();
+				$conditions = [
+					['resource_type', \dbObject\DocumentAttendance::resourceType()],
+					['resource_id', (int)$this->getId()],
+				];
+				$conditions[] = (int)($entry['userId'] ?? 0) > 0
+					? ['IDuser', (int)$entry['userId']]
+					: ['email', (string)($entry['email'] ?? '')];
+				$loaded = $attendance->load($conditions);
+				$entry['isPresent'] = $loaded ? !empty($attendance->get('is_present')) : $entry['accepted'] === 1 || $entry['accepted'] === '1';
+			}
+			unset($entry);
+			return $entries;
+		}
+
+		public function setInvitationAttendance(int $organizationId, int $checkedByUserId, string $identityKey, bool $isPresent): array
+		{
+			foreach ($this->getInvitationEntries($organizationId) as $entry) {
+				if ((string)($entry['identityKey'] ?? '') !== $identityKey) {
+					continue;
+				}
+				$userId = (int)($entry['userId'] ?? 0);
+				$attendance = new \dbObject\DocumentAttendance();
+				$conditions = [
+					['resource_type', \dbObject\DocumentAttendance::resourceType()],
+					['resource_id', (int)$this->getId()],
+					$userId > 0 ? ['IDuser', $userId] : ['email', (string)($entry['email'] ?? '')],
+				];
+				if (!$attendance->load($conditions)) {
+					$attendance->set('IDdocument', (int)$this->getId());
+					$attendance->set('IDuser', $userId > 0 ? $userId : null);
+					$attendance->set('email', $userId > 0 ? null : (string)($entry['email'] ?? ''));
+				}
+				$attendance->set('display_name', (string)($entry['displayLabel'] ?? ''));
+				$attendance->set('is_present', $isPresent ? 1 : 0);
+				$attendance->set('IDuser_checked_by', $checkedByUserId);
+				$attendance->set('checked_at', new \DateTimeImmutable());
+				$attendance->set('active', 1);
+				$saveResult = $attendance->save();
+				if (is_array($saveResult) && !empty($saveResult['status'])) {
+					foreach ($this->getInvitations(true) as $invitation) {
+						if ($invitation instanceof \dbObject\DocumentInvitation && $invitation->getIdentityKey() === $identityKey) {
+							$invitation->set('accepted', $isPresent ? 1 : 0);
+							$invitation->save();
+							break;
+						}
+					}
+				}
+				return $saveResult;
+			}
+			return ['status' => false, 'text' => 'Participant introuvable.'];
+		}
+
+		public function getPvPointAuthorOptions(int $organizationId = 0): array
+		{
+			$organizationId = $organizationId > 0 ? (int)$organizationId : (int)$this->get('IDorganization');
+			if (!$this->isPvDocument() || $organizationId <= 0) {
+				return array();
+			}
+
+			$userIds = array();
+			$externalAuthors = array();
+			$event = $this->getAssociatedEvent();
+			if ($event instanceof \dbObject\Event) {
+				foreach ($event->getAttendanceEntries($organizationId) as $entry) {
+					$userId = (int)($entry['userId'] ?? 0);
+					if ($userId > 0) {
+						$userIds[$userId] = $userId;
+						continue;
+					}
+
+					$email = trim(mb_strtolower((string)($entry['email'] ?? ''), 'UTF-8'));
+					if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+						$label = trim((string)($entry['displayLabel'] ?? ''));
+						$externalAuthors[$email] = $label !== '' && $label !== $email
+							? ($label . ' (' . $email . ')')
+							: $email;
+					}
+				}
+			} elseif (count($this->getInvitationEntries($organizationId)) > 0) {
+				foreach ($this->getInvitationEntries($organizationId) as $entry) {
+					$userId = (int)($entry['userId'] ?? 0);
+					if ($userId > 0) {
+						$userIds[$userId] = $userId;
+						continue;
+					}
+					$email = trim(mb_strtolower((string)($entry['email'] ?? ''), 'UTF-8'));
+					if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+						$externalAuthors[$email] = trim((string)($entry['displayLabel'] ?? '')) ?: $email;
+					}
+				}
+			} else {
+				$memberships = new \dbObject\ArrayUserOrganization();
+				$memberships->loadActiveForOrganization($organizationId);
+				foreach ($memberships as $membership) {
+					if ($membership instanceof \dbObject\UserOrganization) {
+						$userId = (int)$membership->get('IDuser');
+						if ($userId > 0) {
+							$userIds[$userId] = $userId;
+						}
+					}
+				}
+			}
+
+			$authorRows = self::fetchAll(
+				'SELECT DISTINCT IDuser_author, author_email FROM document_pv_point WHERE IDdocument = :document_id',
+				array('document_id' => (int)$this->getId())
+			);
+			foreach ((array)$authorRows as $row) {
+				$userId = (int)($row['IDuser_author'] ?? 0);
+				if ($userId > 0) {
+					$userIds[$userId] = $userId;
+				}
+
+				$email = trim(mb_strtolower((string)($row['author_email'] ?? ''), 'UTF-8'));
+				if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL) && !isset($externalAuthors[$email])) {
+					$externalAuthors[$email] = $email;
+				}
+			}
+
+			$creatorId = (int)$this->get('IDuser');
+			if ($creatorId > 0) {
+				$userIds[$creatorId] = $creatorId;
+			}
+
+			$options = array();
+			foreach ($userIds as $userId) {
+				$label = \dbObject\DocumentPvPoint::getUserDisplayNameForOrganization($userId, $organizationId);
+				if ($label !== '') {
+					$options[] = array(
+						'value' => 'user:' . $userId,
+						'userId' => $userId,
+						'email' => '',
+						'label' => $label,
+					);
+				}
+			}
+
+			foreach ($externalAuthors as $email => $label) {
+				$options[] = array(
+					'value' => 'email:' . $email,
+					'userId' => 0,
+					'email' => $email,
+					'label' => $label,
+				);
+			}
+
+			usort($options, static function (array $left, array $right): int {
+				return strcasecmp((string)$left['label'], (string)$right['label']);
+			});
+			return $options;
+		}
+
+		public function canUserPrepareUpcomingPv(int $userId = 0, int $organizationId = 0): bool
+		{
+			$userId = (int)$userId;
+			$organizationId = $organizationId > 0
+				? (int)$organizationId
+				: (int)$this->get('IDorganization');
+
+			if (
+				!$this->isPvDocument()
+				|| $userId <= 0
+				|| $organizationId <= 0
+				|| (int)$this->get('IDorganization') !== $organizationId
+			) {
+				return false;
+			}
+
+			$event = $this->getAssociatedEvent();
+			if (!($event instanceof \dbObject\Event) || !$event->isUpcoming()) {
+				return false;
+			}
+
+			if ($this->canEditInOrganizationContext($organizationId, $userId, false)) {
+				return true;
+			}
+
+			return $event->canUserPrepareUpcomingPv($userId, $organizationId);
+		}
+
+		public function canUserOpenPvEditor(int $userId = 0, int $organizationId = 0): bool
+		{
+			$userId = (int)$userId;
+			$organizationId = $organizationId > 0
+				? (int)$organizationId
+				: (int)$this->get('IDorganization');
+
+			if (
+				!$this->isPvDocument()
+				|| $userId <= 0
+				|| $organizationId <= 0
+				|| (int)$this->get('IDorganization') !== $organizationId
+			) {
+				return false;
+			}
+
+			if ($this->isPvValidated()) {
+				return false;
+			}
+
+			$stage = $this->getPvStage();
+			if (in_array($stage, [self::PV_STAGE_PREPARATION, self::PV_STAGE_MEETING], true)
+				&& !$this->canUserAccessPvBeforeValidation($userId, $organizationId)) {
+				return false;
+			}
+
+			if ($stage === self::PV_STAGE_REVIEW
+				&& !$this->canUserAccessPvReview($userId, $organizationId)) {
+				return false;
+			}
+
+			$event = $this->getAssociatedEvent();
+			if ($event instanceof \dbObject\Event && !$this->canUserAccessPvBeforeValidation($userId, $organizationId)) {
+				return false;
+			}
+
+			if ($this->canUserManagePvDocument($userId) || $this->canEditInOrganizationContext($organizationId, $userId, false)) {
+				return true;
+			}
+
+			if ($event instanceof \dbObject\Event) {
+				return $this->canUserAccessPvBeforeValidation($userId, $organizationId);
+			}
+			if ($this->hasExplicitInvitations()) {
+				return $this->isUserInvited($userId, $organizationId);
+			}
+
+			return $this->canViewDirectlyInOrganization($organizationId);
+		}
+
+		public function hasUpcomingAssociatedEvent(): bool
+		{
+			if (!$this->isPvDocument()) {
+				return false;
+			}
+
+			$event = $this->getAssociatedEvent();
+			return $event instanceof \dbObject\Event && $event->isUpcoming();
+		}
+
+		public function buildPvEditorUrl(int $organizationId = 0): string
+		{
+			$organizationId = $organizationId > 0
+				? (int)$organizationId
+				: (int)$this->get('IDorganization');
+
+			if (!$this->isPvDocument() || (int)$this->getId() <= 0 || $organizationId <= 0) {
+				return '';
+			}
+
+			return '/omo/api/documents/pv/editor.php?id='
+				. rawurlencode((string)(int)$this->getId())
+				. '&oid='
+				. rawurlencode((string)$organizationId);
+		}
+
+		public function buildUpcomingPvEditorUrl(int $organizationId = 0): string
+		{
+			return $this->buildPvEditorUrl($organizationId);
+		}
+
 		public function isFolder(): bool
 		{
 			return (bool)$this->get('estDossier');
@@ -223,11 +2405,14 @@
 
 		public static function normalizeDocumentType($rawType, bool $isFolder = false): string
 		{
-			if ($isFolder) {
+			$documentType = trim(mb_strtolower((string)$rawType, 'UTF-8'));
+			if ($isFolder && $documentType !== self::TYPE_NEXTCLOUD_FOLDER) {
 				return self::TYPE_FOLDER;
 			}
 
-			$documentType = trim(mb_strtolower((string)$rawType, 'UTF-8'));
+			if ($documentType === self::TYPE_NEXTCLOUD_FOLDER) {
+				return self::TYPE_NEXTCLOUD_FOLDER;
+			}
 			if ($documentType === self::TYPE_EXTERNAL_LINK) {
 				return self::TYPE_EXTERNAL_LINK;
 			}
@@ -236,7 +2421,160 @@
 				return self::TYPE_UPLOADED_FILE;
 			}
 
+			if ($documentType === self::TYPE_PV) {
+				return self::TYPE_PV;
+			}
+
+			if ($documentType === self::TYPE_ETHERPAD) {
+				return self::TYPE_ETHERPAD;
+			}
+
+			if ($documentType === self::TYPE_ETHERCALC) {
+				return self::TYPE_ETHERCALC;
+			}
+
+			if ($documentType === self::TYPE_COLLABORA_DOCUMENT) {
+				return self::TYPE_COLLABORA_DOCUMENT;
+			}
+
+			if ($documentType === self::TYPE_COLLABORA_SPREADSHEET) {
+				return self::TYPE_COLLABORA_SPREADSHEET;
+			}
+
+			if ($documentType === self::TYPE_COLLABORA_PRESENTATION) {
+				return self::TYPE_COLLABORA_PRESENTATION;
+			}
+
+			if ($documentType === self::TYPE_COLLABORA_DRAWING) {
+				return self::TYPE_COLLABORA_DRAWING;
+			}
+
+			if ($documentType === self::TYPE_WHITEBOARD) {
+				return self::TYPE_WHITEBOARD;
+			}
+
 			return self::TYPE_HTML;
+		}
+
+		public static function getPvStageOptions(): array
+		{
+			return [
+				self::PV_STAGE_PREPARATION => 'Preparation',
+				self::PV_STAGE_MEETING => 'Reunion',
+				self::PV_STAGE_REVIEW => 'Relecture',
+				self::PV_STAGE_VALIDATED => 'Valide',
+			];
+		}
+
+		public static function normalizePvStage($rawStage): string
+		{
+			$stage = trim(mb_strtolower((string)$rawStage, 'UTF-8'));
+			$options = self::getPvStageOptions();
+			if (isset($options[$stage])) {
+				return $stage;
+			}
+
+			return self::PV_STAGE_PREPARATION;
+		}
+
+		public function getPvStage(): string
+		{
+			if (!$this->isPvDocument()) {
+				return '';
+			}
+
+			return self::normalizePvStage($this->get('pvstage'));
+		}
+
+		public function getPvStageLabel(): string
+		{
+			$stage = $this->getPvStage();
+			$options = self::getPvStageOptions();
+			return (string)($options[$stage] ?? $options[self::PV_STAGE_PREPARATION]);
+		}
+
+		public function isPvValidated(): bool
+		{
+			return $this->isPvDocument() && $this->getPvStage() === self::PV_STAGE_VALIDATED;
+		}
+
+		public function canManagePvStage(int $organizationId = 0, ?int $userId = null): bool
+		{
+			if (!$this->isPvDocument() || $this->isPvValidated()) {
+				return false;
+			}
+
+			$organizationId = $organizationId > 0
+				? (int)$organizationId
+				: (int)$this->get('IDorganization');
+
+			if ($organizationId <= 0 || (int)$this->get('IDorganization') !== $organizationId) {
+				return false;
+			}
+
+			$resolvedUserId = $userId !== null
+				? (int)$userId
+				: (
+					function_exists('commonGetCurrentUserId')
+						? (int)\commonGetCurrentUserId()
+						: (int)($_SESSION['currentUser'] ?? 0)
+				);
+
+			return $this->canUserManagePvStructure($organizationId, $resolvedUserId);
+		}
+
+		public function updatePvStageInOrganizationContext(int $organizationId, int $userId, string $stage): array
+		{
+			$organizationId = (int)$organizationId;
+			$userId = (int)$userId;
+
+			if ((int)$this->getId() <= 0 || !$this->isPvDocument()) {
+				return [
+					'status' => false,
+					'text' => 'Document PV introuvable.',
+				];
+			}
+
+			if (!$this->canManagePvStage($organizationId, $userId)) {
+				return [
+					'status' => false,
+					'text' => 'Acces refuse.',
+				];
+			}
+
+			$nextStage = self::normalizePvStage($stage);
+			if ($nextStage === self::PV_STAGE_REVIEW) {
+				$reviewEditorUserId = $this->getPvReviewEditorUserId();
+				if ($reviewEditorUserId > 0) {
+					$this->set('IDuser_pv_editor', $reviewEditorUserId);
+				}
+				$this->set('pv_editor_handover_open', 0);
+			}
+
+			$this->set('pvstage', $nextStage);
+			$this->set('IDusermodification', $userId);
+			$this->set('datemodification', new \DateTimeImmutable());
+
+			return $this->save();
+		}
+
+		public static function getDocumentTypeCatalog(): array
+		{
+			return array(
+				self::TYPE_HTML => 'HTML',
+				self::TYPE_EXTERNAL_LINK => 'Lien externe',
+				self::TYPE_UPLOADED_FILE => 'Telechargement',
+				self::TYPE_FOLDER => 'Dossier',
+				self::TYPE_NEXTCLOUD_FOLDER => 'Dossier NextCloud',
+				self::TYPE_PV => 'PV',
+				self::TYPE_ETHERPAD => 'Pad coopératif',
+				self::TYPE_ETHERCALC => 'Tableur collaboratif',
+				self::TYPE_COLLABORA_DOCUMENT => 'Document Coopératif',
+				self::TYPE_COLLABORA_SPREADSHEET => 'Classeur collaboratif',
+				self::TYPE_COLLABORA_PRESENTATION => 'Présentation collaborative',
+				self::TYPE_COLLABORA_DRAWING => 'Dessin collaboratif',
+				self::TYPE_WHITEBOARD => 'Tableau blanc collaboratif',
+			);
 		}
 
 		public function getDocumentType(): string
@@ -244,9 +2582,191 @@
 			return self::normalizeDocumentType($this->get('documenttype'), $this->isFolder());
 		}
 
+		public function getDocumentTypeLabel(): string
+		{
+			$catalog = self::getDocumentTypeCatalog();
+			$documentType = $this->getDocumentType();
+			return (string)($catalog[$documentType] ?? $catalog[self::TYPE_HTML]);
+		}
+
 		public function isExternalLink(): bool
 		{
 			return $this->getDocumentType() === self::TYPE_EXTERNAL_LINK;
+		}
+
+		public function isNextcloudFolder(): bool
+		{
+			return $this->isFolder() && $this->getDocumentType() === self::TYPE_NEXTCLOUD_FOLDER;
+		}
+
+		public static function normalizeNextcloudFolderPath($path): string
+		{
+			$path = trim(str_replace('\\', '/', (string)$path));
+			if ($path === '') {
+				return '';
+			}
+
+			$segments = array();
+			foreach (explode('/', trim($path, '/')) as $segment) {
+				$segment = trim(rawurldecode($segment));
+				if ($segment === '' || $segment === '.') {
+					continue;
+				}
+				if ($segment === '..' || str_contains($segment, "\0")) {
+					return '';
+				}
+				$segments[] = $segment;
+			}
+
+			return implode('/', $segments);
+		}
+
+		public function getNextcloudFolderPath(): string
+		{
+			return $this->isNextcloudFolder()
+				? self::normalizeNextcloudFolderPath($this->get('nextcloudfolderpath'))
+				: '';
+		}
+
+		public function getNextcloudFolderFileId(): string
+		{
+			return $this->isNextcloudFolder()
+				? trim((string)$this->get('nextcloudfolderfileid'))
+				: '';
+		}
+
+		public function buildNextcloudFolderRemotePath(\dbObject\Organization $organization, string $childPath = ''): string
+		{
+			if (!$this->isNextcloudFolder()) {
+				return '';
+			}
+
+			$config = $organization->getNextcloudDocumentsConfig();
+			$baseParts = array_filter(array(
+				self::normalizeNextcloudFolderPath($config['folder'] ?? ''),
+				$this->getNextcloudFolderPath(),
+				self::normalizeNextcloudFolderPath($childPath),
+			), static function ($part): bool {
+				return $part !== '';
+			});
+
+			return implode('/', $baseParts);
+		}
+
+		public function isNextcloudFolderRemotePathAllowed(\dbObject\Organization $organization, string $remotePath): bool
+		{
+			$remotePath = self::normalizeNextcloudFolderPath($remotePath);
+			$basePath = $this->buildNextcloudFolderRemotePath($organization);
+			return $remotePath !== ''
+				&& $basePath !== ''
+				&& ($remotePath === $basePath || str_starts_with($remotePath, $basePath . '/'));
+		}
+
+		public function resolveNextcloudFolderLocation(\dbObject\Organization $organization): array
+		{
+			if (!$this->isNextcloudFolder() || !$organization->hasNextcloudDocumentStorage()) {
+				return array('status' => false, 'text' => 'Le dossier NextCloud est indisponible.');
+			}
+
+			$currentRelativePath = $this->getNextcloudFolderPath();
+			$currentRemotePath = $this->buildNextcloudFolderRemotePath($organization);
+			$storedFileId = $this->getNextcloudFolderFileId();
+			$currentLocation = $currentRemotePath !== ''
+				? $organization->getNextcloudDocumentsDirectoryInfo($currentRemotePath)
+				: array('status' => false, 'text' => 'Chemin NextCloud invalide.');
+
+			if (
+				!empty($currentLocation['status'])
+				&& !empty($currentLocation['isFolder'])
+				&& (
+					$storedFileId === ''
+					|| trim((string)($currentLocation['fileId'] ?? '')) === ''
+					|| (string)($currentLocation['fileId'] ?? '') === $storedFileId
+				)
+			) {
+				return array(
+					'status' => true,
+					'relativePath' => $currentRelativePath,
+					'remotePath' => $currentRemotePath,
+					'fileId' => trim((string)($currentLocation['fileId'] ?? '')),
+				);
+			}
+
+			if ($storedFileId === '') {
+				return array(
+					'status' => false,
+					'text' => trim((string)($currentLocation['text'] ?? 'Le dossier NextCloud est introuvable.')),
+				);
+			}
+
+			$locatedFolder = $organization->findNextcloudDocumentsPathByFileId($storedFileId);
+			$locatedRemotePath = self::normalizeNextcloudFolderPath($locatedFolder['path'] ?? '');
+			$configFolder = self::normalizeNextcloudFolderPath(($organization->getNextcloudDocumentsConfig()['folder'] ?? ''));
+			$relativePath = $configFolder === ''
+				? $locatedRemotePath
+				: (
+					str_starts_with($locatedRemotePath, $configFolder . '/')
+						? substr($locatedRemotePath, strlen($configFolder) + 1)
+						: ''
+				);
+			if (empty($locatedFolder['status']) || empty($locatedFolder['isFolder']) || $relativePath === '') {
+				return array(
+					'status' => false,
+					'text' => trim((string)($locatedFolder['text'] ?? 'Le dossier NextCloud est introuvable ou a quitte le dossier configure.')),
+				);
+			}
+
+			return array(
+				'status' => true,
+				'relativePath' => $relativePath,
+				'remotePath' => $locatedRemotePath,
+				'fileId' => $storedFileId,
+				'wasRelocated' => $relativePath !== $currentRelativePath,
+			);
+		}
+
+		public function buildRemoteFolderStoragePath(\dbObject\Organization $organization, string $childPath = ''): string
+		{
+			if (!$this->isNextcloudFolder()) {
+				return '';
+			}
+			if (!$organization->isKdriveDocumentStorage()) {
+				return $this->buildNextcloudFolderRemotePath($organization, $childPath);
+			}
+			return implode('/', array_filter(array(
+				$this->getNextcloudFolderPath(),
+				self::normalizeNextcloudFolderPath($childPath),
+			), static function ($part): bool {
+				return $part !== '';
+			}));
+		}
+
+		public function isRemoteFolderStoragePathAllowed(\dbObject\Organization $organization, string $remotePath): bool
+		{
+			$remotePath = self::normalizeNextcloudFolderPath($remotePath);
+			$basePath = $this->buildRemoteFolderStoragePath($organization);
+			return $remotePath !== ''
+				&& $basePath !== ''
+				&& ($remotePath === $basePath || str_starts_with($remotePath, $basePath . '/'));
+		}
+
+		public function resolveRemoteFolderStorageLocation(\dbObject\Organization $organization): array
+		{
+			if (!$this->isNextcloudFolder() || !$organization->hasDocumentStorage()) {
+				return array('status' => false, 'text' => 'Le stockage de dossiers distants est indisponible.');
+			}
+			if (!$organization->isKdriveDocumentStorage()) {
+				return $this->resolveNextcloudFolderLocation($organization);
+			}
+			$relativePath = $this->getNextcloudFolderPath();
+			$remotePath = $this->buildRemoteFolderStoragePath($organization);
+			$location = $remotePath !== ''
+				? $organization->getDocumentStorageDirectoryInfo($remotePath)
+				: array('status' => false, 'text' => 'Chemin kDrive invalide.');
+			if (empty($location['status']) || empty($location['isFolder'])) {
+				return array('status' => false, 'text' => trim((string)($location['text'] ?? 'Le dossier kDrive est introuvable.')));
+			}
+			return array('status' => true, 'relativePath' => $relativePath, 'remotePath' => $remotePath, 'fileId' => '');
 		}
 
 		public function supportsHtmlContent(): bool
@@ -259,9 +2779,179 @@
 			return $this->getDocumentType() === self::TYPE_UPLOADED_FILE;
 		}
 
+		public function isPvDocument(): bool
+		{
+			return $this->getDocumentType() === self::TYPE_PV;
+		}
+
+		public function isEtherpadDocument(): bool
+		{
+			return $this->getDocumentType() === self::TYPE_ETHERPAD;
+		}
+
+		public function getEtherpadPadId(): string
+		{
+			return $this->isEtherpadDocument() ? trim((string)$this->get('etherpadpadid')) : '';
+		}
+
+		public function isEthercalcDocument(): bool
+		{
+			return $this->getDocumentType() === self::TYPE_ETHERCALC;
+		}
+
+		public function isWhiteboardDocument(): bool
+		{
+			return $this->getDocumentType() === self::TYPE_WHITEBOARD;
+		}
+
+		public function getSpaceDeckSpaceId(): string
+		{
+			return $this->isWhiteboardDocument() ? trim((string)$this->get('spacedeckspaceid')) : '';
+		}
+
+		public function buildSpaceDeckOpenUrl(int $userId = 0): string
+		{
+			if (!$this->isWhiteboardDocument()) {
+				return '';
+			}
+
+			require_once dirname(__DIR__, 2) . '/common/spacedeck.php';
+			$resolvedUserId = $userId > 0
+				? $userId
+				: (function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0);
+			return omoSpacedeckBuildDocumentOpenUrl($this, $resolvedUserId);
+		}
+
+		public function canOpenWithCollabora(): bool
+		{
+			if (!$this->isUploadedFile() || !$this->hasStoredFile()) {
+				return false;
+			}
+
+			require_once dirname(__DIR__, 2) . '/common/collabora.php';
+			return omoCollaboraSupportsFilename($this->getStoredFileDownloadName());
+		}
+
+		public static function organizationHasStoredDocumentFiles(int $organizationId): bool
+		{
+			$organizationId = (int)$organizationId;
+			if ($organizationId <= 0) {
+				return false;
+			}
+
+			return self::fetchRow(
+				'select `id` from `document` where `IDorganization` = :organization_id and `documenttype` = :uploaded_type and `storedfilepath` is not null and `storedfilepath` <> :empty_path limit 1',
+				array(
+					'organization_id' => $organizationId,
+					'uploaded_type' => self::TYPE_UPLOADED_FILE,
+					'empty_path' => '',
+				)
+			) !== false;
+		}
+
+		public static function deleteOrganizationStoredFiles(int $organizationId, \dbObject\Organization $organization, array $storageConfig): array
+		{
+			$organizationId = (int)$organizationId;
+			if ($organizationId <= 0) {
+				return array('status' => false, 'text' => 'Organisation invalide.');
+			}
+
+			$documents = new \dbObject\ArrayDocument();
+			$documents->load(array(
+				'where' => array(
+					array('field' => 'IDorganization', 'value' => $organizationId),
+				),
+			));
+
+			$deletedCount = 0;
+			foreach ($documents as $document) {
+				if (!$document instanceof self || $document->getDocumentType() !== self::TYPE_UPLOADED_FILE) {
+					continue;
+				}
+
+				$storedPath = trim((string)$document->get('storedfilepath'));
+				if ($storedPath === '') {
+					continue;
+				}
+
+				$deleteResult = $organization->deleteDocumentFileFromStorage($storedPath, $storageConfig);
+				if (!is_array($deleteResult) || empty($deleteResult['status'])) {
+					return array('status' => false, 'text' => trim((string)($deleteResult['text'] ?? 'Impossible de supprimer un fichier distant.')));
+				}
+
+				$document->clearStoredFileState();
+				$saveResult = $document->save();
+				if (!is_array($saveResult) || empty($saveResult['status'])) {
+					return array('status' => false, 'text' => 'Impossible de mettre à jour un document après suppression de son fichier.');
+				}
+
+				$deletedCount++;
+			}
+
+			return array('status' => true, 'deletedCount' => $deletedCount);
+		}
+
+		public function buildCollaboraOpenUrl(): string
+		{
+			if (!$this->canOpenWithCollabora() || (int)$this->getId() <= 0) {
+				return '';
+			}
+
+			return '/omo/api/documents/collabora/open.php?id='
+				. rawurlencode((string)(int)$this->getId());
+		}
+
+		public function getEthercalcRoomId(): string
+		{
+			return $this->isEthercalcDocument() ? trim((string)$this->get('ethercalcroomid')) : '';
+		}
+
+		public static function organizationHasEtherpadDocuments(int $organizationId): bool
+		{
+			$organizationId = (int)$organizationId;
+			if ($organizationId <= 0) {
+				return false;
+			}
+
+			return self::fetchRow(
+				'select `id` from `document` where `IDorganization` = :organization_id and `documenttype` = :document_type and `etherpadpadid` is not null and `etherpadpadid` <> :empty_pad_id limit 1',
+				array(
+					'organization_id' => $organizationId,
+					'document_type' => self::TYPE_ETHERPAD,
+					'empty_pad_id' => '',
+				)
+			) !== false;
+		}
+
+		public function buildEtherpadOpenUrl(): string
+		{
+			if (!$this->isEtherpadDocument() || (int)$this->getId() <= 0) {
+				return '';
+			}
+
+			return '/omo/api/documents/etherpad/open.php?id='
+				. rawurlencode((string)(int)$this->getId());
+		}
+
+		public function buildEthercalcOpenUrl(): string
+		{
+			if (!$this->isEthercalcDocument() || (int)$this->getId() <= 0) {
+				return '';
+			}
+
+			return '/omo/api/documents/ethercalc/open.php?id='
+				. rawurlencode((string)(int)$this->getId());
+		}
+
 		public function canBeEmbedded(): bool
 		{
-			return !$this->isFolder() && $this->supportsHtmlContent();
+			return !$this->isFolder()
+				&& (
+					$this->supportsHtmlContent()
+				|| $this->isExternalLink()
+				|| $this->isUploadedFile()
+				|| $this->isWhiteboardDocument()
+			);
 		}
 
 		public static function sanitizeExternalUrl($url): string
@@ -290,7 +2980,13 @@
 
 		public function hasStoredFile(): bool
 		{
-			return $this->isUploadedFile() && trim((string)$this->get('storedfilepath')) !== '';
+			return $this->isUploadedFile()
+				&& trim((string)$this->get('storedfilepath')) !== '';
+		}
+
+		public function hasMissingUploadedFile(): bool
+		{
+			return $this->isUploadedFile() && !$this->hasStoredFile();
 		}
 
 		public function getStoredFileDownloadName(): string
@@ -310,9 +3006,96 @@
 			return $mimeType !== '' ? $mimeType : 'application/octet-stream';
 		}
 
+		public function isStoredPdfFile(): bool
+		{
+			if (!$this->isUploadedFile() || !$this->hasStoredFile()) {
+				return false;
+			}
+
+			$mimeType = strtolower(trim($this->getStoredFileMimeType()));
+			if (in_array($mimeType, array('application/pdf', 'application/x-pdf'), true)) {
+				return true;
+			}
+
+			return strtolower((string)pathinfo($this->getStoredFileDownloadName(), PATHINFO_EXTENSION)) === 'pdf';
+		}
+
+		public function getStoredPdfDownloadName(): string
+		{
+			$filename = $this->getStoredFileDownloadName();
+			if (strtolower((string)pathinfo($filename, PATHINFO_EXTENSION)) !== 'pdf') {
+				$filename .= '.pdf';
+			}
+
+			return $filename;
+		}
+
+		public function buildStoredFileDownloadUrl(bool $inline = false, int $organizationId = 0, int $holonId = 0): string
+		{
+			if (!$this->isUploadedFile() || !$this->hasStoredFile() || (int)$this->getId() <= 0) {
+				return '';
+			}
+
+			$url = '/omo/api/documents/upload/download.php';
+			if ($this->isStoredPdfFile()) {
+				$previewFilename = str_replace(array('/', '\\'), '-', $this->getStoredPdfDownloadName());
+				$url .= '/' . rawurlencode($previewFilename);
+			}
+
+			$query = array('id=' . rawurlencode((string)(int)$this->getId()));
+			if ($organizationId > 0) {
+				$query[] = 'oid=' . rawurlencode((string)$organizationId);
+			}
+			if ($holonId > 0) {
+				$query[] = 'cid=' . rawurlencode((string)$holonId);
+			}
+			if ($inline) {
+				$query[] = 'inline=1';
+			}
+
+			return $url . '?' . implode('&', $query);
+		}
+
 		public function getStoredFileSize(): int
 		{
 			return max(0, (int)$this->get('storedfilesize'));
+		}
+
+		public function getStoredFileKind(): string
+		{
+			$filename = strtolower($this->getStoredFileDownloadName());
+			$extension = strtolower((string)pathinfo($filename, PATHINFO_EXTENSION));
+			$mimeType = strtolower($this->getStoredFileMimeType());
+
+			if (str_starts_with($mimeType, 'image/') || in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'avif', 'heic', 'heif', 'svg'], true)) {
+				return 'image';
+			}
+
+			if (str_starts_with($mimeType, 'video/') || in_array($extension, ['mp4', 'webm', 'mov', 'avi', 'mkv', 'm4v'], true)) {
+				return 'video';
+			}
+
+			if (str_starts_with($mimeType, 'audio/') || in_array($extension, ['mp3', 'wav', 'ogg', 'oga', 'm4a', 'aac', 'flac', 'opus', 'wma', 'aif', 'aiff', 'alac'], true)) {
+				return 'audio';
+			}
+
+			if (in_array($extension, ['ods', 'fods', 'ots', 'xls', 'xlsx', 'xlsb', 'xlsm', 'xltx', 'xltm', 'csv', 'tsv'], true) || str_contains($mimeType, 'spreadsheet') || str_contains($mimeType, 'excel')) {
+				return 'spreadsheet';
+			}
+
+			if (in_array($extension, ['odp', 'fodp', 'otp', 'ppt', 'pptx', 'pptm', 'potx', 'potm', 'ppsx'], true) || str_contains($mimeType, 'presentation')) {
+				return 'presentation';
+			}
+
+			if (in_array($extension, ['odg', 'fodg', 'otg', 'vsd', 'vsdx', 'vss', 'pub', 'dxf', 'emf', 'wmf'], true) || str_contains($mimeType, 'graphics') || str_contains($mimeType, 'drawing')) {
+				return 'drawing';
+			}
+
+			if (str_starts_with($mimeType, 'text/') || in_array($extension, ['odt', 'fodt', 'ott', 'doc', 'docx', 'docm', 'dotx', 'dotm', 'rtf', 'txt', 'md', 'pdf', 'xml', 'json'], true) || str_contains($mimeType, 'word') || str_contains($mimeType, 'opendocument.text') || $mimeType === 'application/pdf') {
+				return 'text';
+			}
+
+			return 'file';
 		}
 
 		protected function clearStoredFileState(): void
@@ -349,6 +3132,31 @@
 
 			$cache[$userId] = $displayName;
 			return $cache[$userId];
+		}
+
+		protected static function resolveOwnerDisplayNameById(int $userId, int $organizationId = 0): string
+		{
+			static $cache = array();
+
+			$userId = (int)$userId;
+			$organizationId = (int)$organizationId;
+			if ($userId <= 0) {
+				return '';
+			}
+
+			$cacheKey = $userId . ':' . $organizationId;
+			if (array_key_exists($cacheKey, $cache)) {
+				return $cache[$cacheKey];
+			}
+
+			$user = new \dbObject\User();
+			if (!$user->load($userId)) {
+				$cache[$cacheKey] = '';
+				return '';
+			}
+
+			$cache[$cacheKey] = trim((string)$user->getScopedDisplayName($organizationId));
+			return $cache[$cacheKey];
 		}
 
 		public function getCreatedByUserId(): int
@@ -483,6 +3291,48 @@
 			return (int)trim((string)$element->getAttribute('data-omo-document-id')) > 0;
 		}
 
+		protected static function isDecisionEmbedElement(\DOMElement $element): bool
+		{
+			if (trim((string)$element->getAttribute('data-omo-embed-type')) !== 'decision') {
+				return false;
+			}
+
+			return (int)trim((string)$element->getAttribute('data-omo-decision-id')) > 0;
+		}
+
+		protected static function isEventEmbedElement(\DOMElement $element): bool
+		{
+			if (trim((string)$element->getAttribute('data-omo-embed-type')) !== 'event') {
+				return false;
+			}
+
+			return (int)trim((string)$element->getAttribute('data-omo-event-id')) > 0;
+		}
+
+		protected static function isProjectEmbedElement(\DOMElement $element): bool
+		{
+			if (trim((string)$element->getAttribute('data-omo-embed-type')) !== 'project') {
+				return false;
+			}
+
+			return (int)trim((string)$element->getAttribute('data-omo-project-id')) > 0;
+		}
+
+		protected static function isChecklistEmbedElement(\DOMElement $element): bool
+		{
+			return trim((string)$element->getAttribute('data-omo-embed-type')) === 'checklist'
+				&& (int)$element->getAttribute('data-omo-checklist-id') > 0;
+		}
+
+		protected static function isIndicatorEmbedElement(\DOMElement $element): bool
+		{
+			if (trim((string)$element->getAttribute('data-omo-embed-type')) !== 'indicator') {
+				return false;
+			}
+
+			return (int)trim((string)$element->getAttribute('data-omo-indicator-id')) > 0;
+		}
+
 		protected static function buildDocumentEmbedDisplayHtml(
 			int $documentId,
 			string $title,
@@ -496,14 +3346,35 @@
 				$variantClass = 'reference';
 			}
 
+			if ($variantClass === 'resolved') {
+				$sourceTitle = trim($title) !== '' ? trim($title) : ('Document #' . (int)$documentId);
+				$sourceLabel = 'Texte importe depuis : ' . $sourceTitle;
+				return '<div class="omo-document-embed omo-document-embed--resolved"'
+					. ' data-omo-embed-type="document"'
+					. ' data-omo-document-id="' . (int)$documentId . '"'
+					. ' title="' . htmlspecialchars($sourceLabel, ENT_QUOTES, 'UTF-8') . '">'
+					. $bodyHtml
+					. '</div>';
+			}
+
 			$html = '<div class="omo-document-embed omo-document-embed--' . htmlspecialchars($variantClass, ENT_QUOTES, 'UTF-8') . '"'
 				. ' data-omo-embed-type="document"'
 				. ' data-omo-document-id="' . (int)$documentId . '">';
 
-			$html .= '<div class="omo-document-embed__label">Document lie</div>';
-
 			if (trim($title) !== '') {
-				$html .= '<div class="omo-document-embed__title">' . htmlspecialchars(trim($title), ENT_QUOTES, 'UTF-8') . '</div>';
+				$titleHtml = htmlspecialchars(trim($title), ENT_QUOTES, 'UTF-8');
+				if ($variantClass === 'forbidden') {
+					$html .= '<div class="omo-document-embed__title-wrap">'
+						. '<span class="omo-document-embed__title">' . $titleHtml . '</span>'
+						. '</div>';
+				} else {
+					$documentUrl = '#documents-d' . (int)$documentId;
+					$html .= '<div class="omo-document-embed__title-wrap">'
+						. '<a class="omo-document-embed__title" href="' . htmlspecialchars($documentUrl, ENT_QUOTES, 'UTF-8') . '">'
+						. $titleHtml . '</a>'
+						. '<a class="omo-document-embed__external" href="' . htmlspecialchars($documentUrl, ENT_QUOTES, 'UTF-8') . '" target="_blank" rel="noopener noreferrer" title="Ouvrir dans une nouvelle fenetre" aria-label="Ouvrir dans une nouvelle fenetre">&#8599;</a>'
+						. '</div>';
+				}
 			}
 
 			if (trim($description) !== '') {
@@ -523,11 +3394,400 @@
 			return $html;
 		}
 
+		protected static function truncateEmbeddedReferenceSummary(string $value, int $maximumLength = 420, int $maximumSentences = 3): string
+		{
+			$value = trim(strip_tags($value));
+			$value = preg_replace('/\s+/u', ' ', $value);
+			$value = trim(is_string($value) ? $value : '');
+			if ($value === '') {
+				return '';
+			}
+
+			$sentences = preg_split('/(?<=[.!?])\s+/u', $value) ?: array($value);
+			if (count($sentences) > $maximumSentences) {
+				$value = trim(implode(' ', array_slice($sentences, 0, $maximumSentences))) . '...';
+			}
+
+			if (function_exists('mb_strlen') && function_exists('mb_substr')) {
+				if (mb_strlen($value, 'UTF-8') > $maximumLength) {
+					return rtrim(mb_substr($value, 0, max(1, $maximumLength - 3), 'UTF-8')) . '...';
+				}
+			} elseif (strlen($value) > $maximumLength) {
+				return rtrim(substr($value, 0, max(1, $maximumLength - 3))) . '...';
+			}
+
+			return $value;
+		}
+
+		protected static function buildDecisionEmbedDisplayHtml(int $decisionId, string $title, string $type, string $summary = ''): string
+		{
+			$decisionUrl = '#decision-d' . $decisionId;
+			$summary = trim(implode(' - ', array_filter(array(trim($type), trim($summary)))));
+			$html = '<div class="omo-decision-embed" data-omo-embed-type="decision" data-omo-decision-id="' . $decisionId . '">';
+			$html .= '<a class="omo-decision-embed__title" href="' . htmlspecialchars($decisionUrl, ENT_QUOTES, 'UTF-8') . '">'
+				. htmlspecialchars($title !== '' ? $title : ('Decision #' . $decisionId), ENT_QUOTES, 'UTF-8')
+				. '</a>';
+			if ($summary !== '') {
+				$html .= '<div class="omo-decision-embed__summary">' . htmlspecialchars($summary, ENT_QUOTES, 'UTF-8') . '</div>';
+			}
+			return $html . '</div>';
+		}
+
+		protected static function buildEventEmbedDisplayHtml(int $eventId, string $title, string $schedule, string $location): string
+		{
+			$eventUrl = '#calendar-e' . $eventId;
+			$summary = trim(implode(' - ', array_filter(array(trim($schedule), trim($location)))));
+			$html = '<div class="omo-event-embed" data-omo-embed-type="event" data-omo-event-id="' . $eventId . '">';
+			$html .= '<a class="omo-event-embed__title" href="' . htmlspecialchars($eventUrl, ENT_QUOTES, 'UTF-8') . '">'
+				. htmlspecialchars($title !== '' ? $title : ('Evenement #' . $eventId), ENT_QUOTES, 'UTF-8')
+				. '</a>';
+			if ($summary !== '') {
+				$html .= '<div class="omo-event-embed__summary">' . htmlspecialchars($summary, ENT_QUOTES, 'UTF-8') . '</div>';
+			}
+			return $html . '</div>';
+		}
+
+		protected static function getProjectEmbedTree(int $organizationId): array
+		{
+			static $trees = array();
+			if (isset($trees[$organizationId])) {
+				return $trees[$organizationId];
+			}
+
+			$tree = array(
+				'projectsById' => array(),
+				'childrenByParent' => array(),
+			);
+			if ($organizationId <= 0) {
+				$trees[$organizationId] = $tree;
+				return $tree;
+			}
+
+			$projects = new \dbObject\ArrayProject();
+			$projects->loadForOrganization($organizationId);
+			foreach ($projects as $project) {
+				if (!($project instanceof \dbObject\Project) || (int)$project->getId() <= 0) {
+					continue;
+				}
+
+				$projectId = (int)$project->getId();
+				$tree['projectsById'][$projectId] = $project;
+				$parentId = (int)$project->get('IDproject_parent');
+				if ($parentId > 0) {
+					$tree['childrenByParent'][$parentId][] = $project;
+				}
+			}
+
+			$trees[$organizationId] = $tree;
+			return $tree;
+		}
+
+		protected static function getProjectStatusDisplayOrder(): array
+		{
+			return array(
+				\dbObject\Project::STATUS_READY,
+				\dbObject\Project::STATUS_IN_PROGRESS,
+				\dbObject\Project::STATUS_BLOCKED,
+				\dbObject\Project::STATUS_REVIEW,
+				\dbObject\Project::STATUS_DONE,
+				\dbObject\Project::STATUS_SOMEDAY,
+			);
+		}
+
+		protected static function buildProjectStatusBarDisplayHtml(array $summary, int $organizationId = 0): string
+		{
+			if ((int)($summary['total'] ?? 0) <= 0 || empty($summary['leaves'])) {
+				return '';
+			}
+
+			$weightsByStatus = array_fill_keys(self::getProjectStatusDisplayOrder(), 0.0);
+			foreach ($summary['leaves'] as $leaf) {
+				$status = \dbObject\Project::normalizeStatus($leaf['status'] ?? '');
+				if (array_key_exists($status, $weightsByStatus)) {
+					$weightsByStatus[$status] += max(0, (float)($leaf['weight'] ?? 0));
+				}
+			}
+
+			$labelParts = array();
+			$html = '<span class="omo-project-status-bar" role="img"';
+			foreach (self::getProjectStatusDisplayOrder() as $status) {
+				$count = (int)($summary['counts'][$status] ?? 0);
+				if ($count > 0) {
+					$percentage = rtrim(rtrim(number_format($weightsByStatus[$status] * 100, 1, '.', ''), '0'), '.');
+					$labelParts[] = \dbObject\Project::getOrganizationStatusLabel($organizationId, $status) . ': ' . $count . ' (' . $percentage . '%)';
+				}
+			}
+			$label = 'Etat des sous-projets: ' . implode(', ', $labelParts);
+			$html .= ' aria-label="' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '" title="' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '">';
+			foreach (self::getProjectStatusDisplayOrder() as $status) {
+				$segmentWidth = max(0, min(100, $weightsByStatus[$status] * 100));
+				if ($segmentWidth <= 0) {
+					continue;
+				}
+				$html .= '<span class="omo-project-status-bar__segment omo-project-status-bar__segment--'
+					. htmlspecialchars($status, ENT_QUOTES, 'UTF-8')
+					. '" style="flex:0 0 ' . htmlspecialchars(number_format($segmentWidth, 6, '.', ''), ENT_QUOTES, 'UTF-8')
+					. '%;width:' . htmlspecialchars(number_format($segmentWidth, 6, '.', ''), ENT_QUOTES, 'UTF-8')
+					. '%;" aria-hidden="true"></span>';
+			}
+			return $html . '</span>';
+		}
+
+		protected static function buildProjectEmbedDisplayHtml(\dbObject\Project $project, array $summary, bool $hasDirectChildren, string $fallbackTitle = ''): string
+		{
+			$projectId = (int)$project->getId();
+			$title = trim((string)$project->get('title'));
+			$title = $title !== '' ? $title : ($fallbackTitle !== '' ? $fallbackTitle : ('Projet #' . $projectId));
+			$projectUrl = '#projects-d' . $projectId;
+			$status = \dbObject\Project::normalizeStatus($project->get('status'));
+			$organizationId = (int)$project->get('IDorganization');
+			$projectHolon = $project->getHolon();
+			$contextLabel = $projectHolon instanceof \dbObject\Holon
+				? trim((string)$projectHolon->getDisplayName())
+				: '';
+			$responsible = $project->getResponsible();
+			$responsibleLabel = '';
+			if (is_object($responsible)) {
+				$responsibleLabel = trim(trim((string)$responsible->get('firstname')) . ' ' . trim((string)$responsible->get('lastname')));
+				if ($responsibleLabel === '') {
+					$responsibleLabel = trim((string)$responsible->get('username'));
+				}
+				if ($responsibleLabel === '') {
+					$responsibleLabel = trim((string)$responsible->get('email'));
+				}
+			}
+			$priority = \dbObject\Project::normalizeLevel($project->get('priority'));
+			$size = \dbObject\Project::normalizeSize($project->get('project_size'));
+			$metadata = array_filter(array(
+				$contextLabel,
+				$responsibleLabel,
+			));
+
+			$html = '<div class="omo-project-embed omo-project-embed--resolved" data-omo-project-node data-omo-embed-type="project" data-omo-project-id="' . $projectId
+				. '" data-omo-project-children-loading="Chargement des sous-projets..." data-omo-project-children-empty="Aucun sous-projet direct." data-omo-project-children-error="Impossible de charger les sous-projets.">';
+			$html .= '<div class="omo-project-embed__head"><a class="omo-project-embed__title" href="'
+				. htmlspecialchars($projectUrl, ENT_QUOTES, 'UTF-8') . '">' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . '</a>';
+			$html .= '<a class="omo-project-embed__external" href="' . htmlspecialchars($projectUrl, ENT_QUOTES, 'UTF-8')
+				. '" target="_blank" rel="noopener noreferrer" aria-label="Ouvrir le projet dans une nouvelle fenetre" title="Ouvrir le projet dans une nouvelle fenetre">&#8599;</a>';
+			$html .= '<span class="omo-project-embed__status omo-project-embed__status--' . htmlspecialchars($status, ENT_QUOTES, 'UTF-8') . '">'
+				. htmlspecialchars(\dbObject\Project::getOrganizationStatusLabel($organizationId, $status), ENT_QUOTES, 'UTF-8') . '</span>';
+			if ($priority !== null) {
+				$html .= '<span class="omo-project-embed__priority">P' . (int)$priority . '</span>';
+			}
+			if ($size !== '') {
+				$html .= '<span class="omo-project-embed__size">' . htmlspecialchars($size, ENT_QUOTES, 'UTF-8') . '</span>';
+			}
+			$html .= '</div>';
+			if (count($metadata) > 0) {
+				$html .= '<span class="omo-project-embed__meta">' . htmlspecialchars(implode(' - ', $metadata), ENT_QUOTES, 'UTF-8') . '</span>';
+			}
+			if ($hasDirectChildren) {
+				$html .= '<button type="button" class="omo-project-embed__toggle" data-omo-project-embed-toggle aria-expanded="false" aria-label="Afficher les sous-projets de '
+					. htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . '"><span class="omo-project-embed__toggle-label">Sous-projets</span>'
+					. self::buildProjectStatusBarDisplayHtml($summary, $organizationId) . '</button>';
+				$html .= '<div class="omo-project-embed__children" data-omo-project-embed-children hidden></div>';
+			}
+			return $html . '</div>';
+		}
+
+		protected static function renderEmbeddedProjectReference(\DOMElement $element, int $organizationId): string
+		{
+			$projectId = (int)$element->getAttribute('data-omo-project-id');
+			$fallbackTitle = trim((string)self::getDocumentEmbedAttributeValue($element, 'data-omo-project-title'));
+			$tree = self::getProjectEmbedTree($organizationId);
+			$project = $tree['projectsById'][$projectId] ?? null;
+			if (!($project instanceof \dbObject\Project)) {
+				return '<span class="omo-project-embed" data-omo-embed-type="project" data-omo-project-id="' . $projectId . '">'
+					. htmlspecialchars($fallbackTitle !== '' ? $fallbackTitle : ('Projet #' . $projectId), ENT_QUOTES, 'UTF-8') . '</span>';
+			}
+
+			$statusSummaryMemo = array();
+			$childrenByParent = (array)($tree['childrenByParent'] ?? array());
+			$summary = \dbObject\Project::buildChildrenStatusSummary($project, $childrenByParent, $statusSummaryMemo);
+			return self::buildProjectEmbedDisplayHtml($project, $summary, !empty($childrenByParent[$projectId]), $fallbackTitle);
+		}
+
+		protected static function renderEmbeddedChecklistReference(\DOMElement $element, int $organizationId): string
+		{
+			$checklistId = (int)$element->getAttribute('data-omo-checklist-id');
+			$fallbackTitle = trim((string)self::getDocumentEmbedAttributeValue($element, 'data-omo-checklist-title'));
+			$checklist = new \dbObject\Checklist();
+			if ($checklistId <= 0 || !$checklist->load($checklistId) || (int)$checklist->get('IDorganization') !== $organizationId || (int)$checklist->get('active') !== 1) {
+				return '<span class="omo-checklist-embed" data-omo-embed-type="checklist">' . htmlspecialchars($fallbackTitle !== '' ? $fallbackTitle : 'Processus', ENT_QUOTES, 'UTF-8') . '</span>';
+			}
+			$summary = $checklist->getPvReviewSummary();
+			$title = trim((string)($summary['title'] ?? '')) ?: $fallbackTitle;
+			$title = $title !== '' ? $title : ('Processus #' . $checklistId);
+			$total = (int)($summary['total'] ?? 0);
+			$counts = (array)($summary['counts'] ?? []);
+			$html = '<div class="omo-checklist-embed omo-checklist-embed--resolved" data-omo-embed-type="checklist" data-omo-checklist-id="' . $checklistId . '">';
+			$html .= '<div class="omo-project-embed__head"><a class="omo-project-embed__title" href="#processus-c' . $checklistId . '">' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . '</a></div>';
+			$html .= '<span class="omo-checklist-embed__review-label">' . (!empty($summary['isContainer']) ? 'Taches recurrentes' : 'Instances en cours') . ((int)($summary['overdueCount'] ?? 0) > 0 ? ' &#9888;' : '') . '</span>';
+			if ($total > 0) {
+				$html .= '<span class="omo-project-status-bar">';
+				foreach (self::getProjectStatusDisplayOrder() as $status) { $count = (int)($counts[$status] ?? 0); if ($count > 0) { $width = ($count / $total) * 100; $html .= '<span class="omo-project-status-bar__segment omo-project-status-bar__segment--' . htmlspecialchars($status, ENT_QUOTES, 'UTF-8') . '" style="flex-basis:' . number_format($width, 4, '.', '') . '%"></span>'; } }
+				$html .= '</span>';
+			}
+			return $html . '</div>';
+		}
+
+		protected static function renderIndicatorEmbedChart(\DOMElement $element): string
+		{
+			$sourceCharts = $element->getElementsByTagName('svg');
+			$sourceChart = $sourceCharts->length > 0 ? $sourceCharts->item(0) : null;
+			if (!($sourceChart instanceof \DOMElement) || strpos(' ' . $sourceChart->getAttribute('class') . ' ', ' omo-stats-chart ') === false) {
+				return '';
+			}
+
+			$shapes = '';
+			$hasScaleLine = false;
+			$hasScaleLabel = false;
+			foreach (array('polyline', 'circle', 'line', 'text') as $tagName) {
+				foreach (iterator_to_array($sourceChart->getElementsByTagName($tagName)) as $sourceShape) {
+					if (!($sourceShape instanceof \DOMElement)) {
+						continue;
+					}
+
+					$className = trim((string)$sourceShape->getAttribute('class'));
+					if ($tagName === 'polyline' && $className !== 'omo-stats-chart__reference' && !preg_match('/^omo-stats-chart__line(?: omo-stats-chart__line--(?:background|sum))?$/', $className)) {
+						continue;
+					}
+					if ($tagName === 'circle' && $className !== 'omo-stats-chart__point') {
+						continue;
+					}
+					if ($tagName === 'line' && !in_array($className, array(
+						'omo-stats-chart__scale-line',
+						'omo-stats-chart__reference omo-stats-chart__reference--ceiling',
+						'omo-stats-chart__baseline',
+					), true)) {
+						continue;
+					}
+					if ($tagName === 'text' && $className !== 'omo-stats-chart__scale-label') {
+						continue;
+					}
+					if ($tagName === 'line') {
+						$hasScaleLine = true;
+					}
+					if ($tagName === 'text') {
+						$hasScaleLabel = true;
+					}
+
+					if ($tagName === 'polyline') {
+						$points = trim((string)$sourceShape->getAttribute('points'));
+						if (strlen($points) > 4000 || !preg_match('/^-?[0-9.]+,-?[0-9.]+(?:\s+-?[0-9.]+,-?[0-9.]+)*$/', $points)) {
+							continue;
+						}
+						$style = trim((string)$sourceShape->getAttribute('style'));
+						$styleAttribute = preg_match('/^stroke:\s*#[0-9a-f]{6};?$/i', $style)
+							? ' style="' . htmlspecialchars($style, ENT_QUOTES, 'UTF-8') . '"'
+							: '';
+						$shapes .= '<polyline class="' . htmlspecialchars($className, ENT_QUOTES, 'UTF-8') . '" points="' . htmlspecialchars($points, ENT_QUOTES, 'UTF-8') . '"' . $styleAttribute . '></polyline>';
+						continue;
+					}
+
+					if ($tagName === 'circle') {
+						$cx = trim((string)$sourceShape->getAttribute('cx'));
+						$cy = trim((string)$sourceShape->getAttribute('cy'));
+						$radius = trim((string)$sourceShape->getAttribute('r'));
+						if (!preg_match('/^-?[0-9.]+$/', $cx) || !preg_match('/^-?[0-9.]+$/', $cy) || !preg_match('/^-?[0-9.]+$/', $radius)) {
+							continue;
+						}
+						$shapes .= '<circle class="' . htmlspecialchars($className, ENT_QUOTES, 'UTF-8') . '" cx="' . htmlspecialchars($cx, ENT_QUOTES, 'UTF-8') . '" cy="' . htmlspecialchars($cy, ENT_QUOTES, 'UTF-8') . '" r="' . htmlspecialchars($radius, ENT_QUOTES, 'UTF-8') . '"></circle>';
+						continue;
+					}
+
+					if ($tagName === 'line') {
+						$x1 = trim((string)$sourceShape->getAttribute('x1'));
+						$y1 = trim((string)$sourceShape->getAttribute('y1'));
+						$x2 = trim((string)$sourceShape->getAttribute('x2'));
+						$y2 = trim((string)$sourceShape->getAttribute('y2'));
+						if (!preg_match('/^-?[0-9.]+$/', $x1) || !preg_match('/^-?[0-9.]+$/', $y1) || !preg_match('/^-?[0-9.]+$/', $x2) || !preg_match('/^-?[0-9.]+$/', $y2)) {
+							continue;
+						}
+						$shapes .= '<line class="' . htmlspecialchars($className, ENT_QUOTES, 'UTF-8') . '" x1="' . htmlspecialchars($x1, ENT_QUOTES, 'UTF-8') . '" y1="' . htmlspecialchars($y1, ENT_QUOTES, 'UTF-8') . '" x2="' . htmlspecialchars($x2, ENT_QUOTES, 'UTF-8') . '" y2="' . htmlspecialchars($y2, ENT_QUOTES, 'UTF-8') . '"></line>';
+						continue;
+					}
+
+					$x = trim((string)$sourceShape->getAttribute('x'));
+					$y = trim((string)$sourceShape->getAttribute('y'));
+					$label = trim((string)$sourceShape->textContent);
+					if (!preg_match('/^-?[0-9.]+$/', $x) || !preg_match('/^-?[0-9.]+$/', $y) || !preg_match('/^-?[0-9.,\s]+$/', $label)) {
+						continue;
+					}
+					$shapes .= '<text class="' . htmlspecialchars($className, ENT_QUOTES, 'UTF-8') . '" x="' . htmlspecialchars($x, ENT_QUOTES, 'UTF-8') . '" y="' . htmlspecialchars($y, ENT_QUOTES, 'UTF-8') . '">' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '</text>';
+				}
+			}
+
+			if ($shapes === '') {
+				return '';
+			}
+
+			$chartMin = trim((string)self::getDocumentEmbedAttributeValue($element, 'data-omo-indicator-chart-min'));
+			$chartMax = trim((string)self::getDocumentEmbedAttributeValue($element, 'data-omo-indicator-chart-max'));
+			if (!$hasScaleLine && $chartMin !== '' && $chartMax !== '') {
+				$shapes .= '<line class="omo-stats-chart__scale-line" x1="20" y1="2" x2="178" y2="2"></line><line class="omo-stats-chart__scale-line" x1="20" y1="52" x2="178" y2="52"></line>';
+			}
+			if (!$hasScaleLabel && $chartMin !== '' && $chartMax !== '') {
+				$shapes .= '<text class="omo-stats-chart__scale-label" x="0" y="6">' . htmlspecialchars($chartMax, ENT_QUOTES, 'UTF-8') . '</text><text class="omo-stats-chart__scale-label" x="0" y="52">' . htmlspecialchars($chartMin, ENT_QUOTES, 'UTF-8') . '</text>';
+			}
+			$indicatorKind = trim((string)self::getDocumentEmbedAttributeValue($element, 'data-omo-indicator-kind')) === 'group' ? 'group' : 'indicator';
+			$chartClass = 'omo-stats-chart omo-stats-chart--compact' . ($indicatorKind === 'group' ? ' omo-stats-chart--group' : '');
+			$chartHtml = '<span class="omo-indicator-embed__chart"><span class="omo-indicator-embed__chart-plot">';
+			$chartHtml .= '<span class="omo-indicator-embed__chart-svg"><svg xmlns="http://www.w3.org/2000/svg" class="' . htmlspecialchars($chartClass, ENT_QUOTES, 'UTF-8') . '" width="180" height="54" viewBox="0 0 180 54" aria-hidden="true">' . $shapes . '</svg></span>';
+			return $chartHtml . '</span></span>';
+		}
+
+		protected static function buildIndicatorEmbedDisplayHtml(\DOMElement $element): string
+		{
+			$indicatorId = (int)$element->getAttribute('data-omo-indicator-id');
+			$indicatorKind = trim((string)self::getDocumentEmbedAttributeValue($element, 'data-omo-indicator-kind')) === 'group' ? 'group' : 'indicator';
+			$rawSourceStatus = trim((string)self::getDocumentEmbedAttributeValue($element, 'data-omo-indicator-source-status'));
+			$sourceStatus = in_array($rawSourceStatus, array('archived', 'unavailable'), true) ? $rawSourceStatus : '';
+			$isOverdue = trim((string)self::getDocumentEmbedAttributeValue($element, 'data-omo-indicator-overdue')) === '1';
+			if ($sourceStatus !== '') {
+				$isOverdue = false;
+			}
+			$overdueSeverity = trim((string)self::getDocumentEmbedAttributeValue($element, 'data-omo-indicator-overdue-severity')) === 'warning' ? 'warning' : 'error';
+			$title = trim((string)self::getDocumentEmbedAttributeValue($element, 'data-omo-indicator-title'));
+			$value = trim((string)self::getDocumentEmbedAttributeValue($element, 'data-omo-indicator-value'));
+			$date = trim((string)self::getDocumentEmbedAttributeValue($element, 'data-omo-indicator-date'));
+			$status = trim((string)self::getDocumentEmbedAttributeValue($element, 'data-omo-indicator-status'));
+			$description = trim((string)self::getDocumentEmbedAttributeValue($element, 'data-omo-indicator-description'));
+			$title = $title !== '' ? $title : ('Indicateur #' . $indicatorId);
+			$targetUrl = $indicatorKind === 'group' ? '#stats' : ('#stats-i' . $indicatorId);
+
+			$html = '<span class="omo-indicator-embed' . ($sourceStatus !== '' ? ' omo-indicator-embed--unavailable' : ($isOverdue ? ($overdueSeverity === 'warning' ? ' omo-indicator-embed--warning' : ' omo-indicator-embed--overdue') : ($status !== '' ? ' omo-indicator-embed--current' : ''))) . '"'
+				. ' data-omo-embed-type="indicator"'
+				. ' data-omo-indicator-id="' . $indicatorId . '"'
+				. ($sourceStatus !== '' ? ' data-omo-indicator-source-status="' . $sourceStatus . '"' : '')
+				. ' data-omo-indicator-kind="' . $indicatorKind . '">';
+			$statusDotClass = $sourceStatus !== '' ? ' omo-indicator-embed__status-dot--unknown' : ($isOverdue ? ($overdueSeverity === 'warning' ? ' omo-indicator-embed__status-dot--warning' : ' omo-indicator-embed__status-dot--overdue') : ($status !== '' ? ' omo-indicator-embed__status-dot--current' : ' omo-indicator-embed__status-dot--unknown'));
+			$html .= '<span class="omo-indicator-embed__main">' . self::renderIndicatorEmbedChart($element) . '<span class="omo-indicator-embed__copy">';
+			$html .= '<strong><a class="omo-indicator-embed__title" href="' . htmlspecialchars($targetUrl, ENT_QUOTES, 'UTF-8') . '">'
+				. '<span class="omo-indicator-embed__status-dot' . $statusDotClass . '" aria-hidden="true"></span><span>'
+				. htmlspecialchars($title, ENT_QUOTES, 'UTF-8')
+				. '</span></a></strong>';
+			if ($description !== '') {
+				$html .= '<span class="omo-indicator-embed__description">' . htmlspecialchars($description, ENT_QUOTES, 'UTF-8') . '</span>';
+			}
+			$html .= '</span><span class="omo-indicator-embed__values">';
+			if ($value !== '') {
+				$html .= '<b>' . htmlspecialchars($value, ENT_QUOTES, 'UTF-8') . '</b>';
+			}
+			if ($date !== '') {
+				$html .= '<time>' . htmlspecialchars($date, ENT_QUOTES, 'UTF-8') . '</time>';
+			}
+			if ($status !== '') {
+				$html .= '<em>' . htmlspecialchars($status, ENT_QUOTES, 'UTF-8') . '</em>';
+			}
+			return $html . '</span></span></span></span>';
+		}
+
 		protected function renderExternalLinkForViewer(): string
 		{
 			$externalUrl = $this->getExternalUrl();
 			if ($externalUrl === '') {
-				return '<div class="omo-document-external omo-document-external--invalid">Lien externe invalide.</div>';
+				return '<div class="omo-document-external omo-document-external--invalid">Aucune URL n est encore definie pour ce document.</div>';
 			}
 
 			$escapedUrl = htmlspecialchars($externalUrl, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
@@ -552,13 +3812,121 @@
 				. '</div>';
 		}
 
+		protected function renderEtherpadForViewer(): string
+		{
+			$openUrl = $this->buildEtherpadOpenUrl();
+			if ($openUrl === '' || $this->getEtherpadPadId() === '') {
+				return '<div class="omo-document-etherpad omo-document-etherpad--empty">Aucun pad Etherpad n est associe a ce document.</div>';
+			}
+
+			require_once dirname(__DIR__, 2) . '/common/etherpad.php';
+			$organization = new \dbObject\Organization();
+			$etherpadOrigin = $organization->load((int)$this->get('IDorganization'))
+				? omoEtherpadGetOrigin($organization)
+				: '';
+			$themeOriginAttribute = $etherpadOrigin !== ''
+				? ' data-omo-theme-message-origin="' . htmlspecialchars($etherpadOrigin, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '"'
+				: '';
+
+			return '<div class="omo-document-etherpad">'
+				. '<iframe class="omo-document-etherpad__frame" src="'
+				. htmlspecialchars($openUrl, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+				. '"' . $themeOriginAttribute . ' loading="lazy" allow="clipboard-read; clipboard-write; fullscreen" allowfullscreen referrerpolicy="same-origin"></iframe>'
+				. '</div>';
+		}
+
+		protected function renderEtherpadSnapshotForViewer(): string
+		{
+			$padId = $this->getEtherpadPadId();
+			$organizationId = (int)$this->get('IDorganization');
+			if ($padId === '' || $organizationId <= 0) {
+				return '<div class="omo-document-etherpad omo-document-etherpad--empty">Aucun pad Etherpad n est associe a ce document.</div>';
+			}
+
+			require_once dirname(__DIR__, 2) . '/common/etherpad.php';
+			$organization = new \dbObject\Organization();
+			if (!$organization->load($organizationId) || !omoEtherpadHasConfig($organization)) {
+				return '<div class="omo-document-etherpad omo-document-etherpad--empty">Le serveur Etherpad n est pas disponible.</div>';
+			}
+
+			$htmlResult = omoEtherpadApiRequest($organization, 'getHTML', array('padID' => $padId));
+			$html = (string)($htmlResult['data']['html'] ?? '');
+			if (!($htmlResult['status'] ?? false)) {
+				return '<div class="omo-document-etherpad omo-document-etherpad--empty">Impossible de charger le contenu Etherpad.</div>';
+			}
+
+			return '<div class="omo-document-etherpad-snapshot">'
+				. \dbObject\PropertyFormat::sanitizeHtml($html)
+				. '</div>';
+		}
+
+		protected function renderEthercalcForViewer(): string
+		{
+			$openUrl = $this->buildEthercalcOpenUrl();
+			if ($openUrl === '' || $this->getEthercalcRoomId() === '') {
+				return '<div class="omo-document-ethercalc omo-document-ethercalc--empty">Aucun tableur collaboratif n est associe a ce document.</div>';
+			}
+
+			return '<iframe class="omo-document-ethercalc__frame" src="'
+				. htmlspecialchars($openUrl, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+				. '" loading="lazy" scrolling="no" allow="clipboard-read; clipboard-write; fullscreen" allowfullscreen referrerpolicy="no-referrer"></iframe>';
+		}
+
+		protected function renderEthercalcSnapshotForViewer(): string
+		{
+			return '<div class="omo-document-ethercalc-snapshot">Tableur collaboratif a consulter dans OMO.</div>';
+		}
+
+		protected function renderSpaceDeckFrameForViewer(string $openUrl): string
+		{
+			return '<div class="omo-document-spacedeck">'
+				. '<iframe class="omo-document-spacedeck__frame" src="'
+				. htmlspecialchars($openUrl, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+				. '" loading="lazy" allow="clipboard-read; clipboard-write; fullscreen" allowfullscreen referrerpolicy="same-origin"></iframe>'
+				. '</div>';
+		}
+
+		protected function renderCollaboraFrameForViewer(string $openUrl): string
+		{
+			return '<div class="omo-document-collabora">'
+				. '<iframe class="omo-document-collabora__frame" src="'
+				. htmlspecialchars($openUrl, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+				. '" data-omo-collabora-document-id="' . (int)$this->getId()
+				. '" loading="lazy" allow="clipboard-read *; clipboard-write *; fullscreen" allowfullscreen referrerpolicy="same-origin"></iframe>'
+				. '</div>';
+		}
+
 		protected function renderUploadedFileForViewer(): string
 		{
 			if (!$this->hasStoredFile()) {
 				return '<div class="omo-document-file omo-document-file--empty">Aucun fichier n est actuellement televerse pour ce document.</div>';
 			}
 
-			$downloadUrl = '/omo/api/documents/download.php?id=' . (int)$this->getId();
+			$isStoredPdf = $this->isStoredPdfFile();
+			$collaboraOpenUrl = $isStoredPdf ? '' : $this->buildCollaboraOpenUrl();
+			if ($collaboraOpenUrl !== '') {
+				require_once dirname(__DIR__, 2) . '/common/collabora.php';
+				$organization = new \dbObject\Organization();
+				if (
+					$organization->load((int)$this->get('IDorganization'))
+					&& $organization->hasDocumentStorage()
+					&& omoCollaboraHasConfig($organization)
+				) {
+					return $this->renderCollaboraFrameForViewer($collaboraOpenUrl);
+				}
+			}
+
+			$downloadUrl = $this->buildStoredFileDownloadUrl();
+			$inlineMediaUrl = $this->buildStoredFileDownloadUrl(true);
+			$storedFileKind = $this->getStoredFileKind();
+			if ($isStoredPdf) {
+				return '<div class="omo-document-file__media omo-document-file__media--pdf">'
+					. '<iframe class="omo-document-file__pdf-frame" src="'
+					. htmlspecialchars($inlineMediaUrl, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+					. '" title="' . htmlspecialchars($this->getStoredFileDownloadName(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+					. '" loading="lazy" allow="fullscreen" allowfullscreen></iframe>'
+					. '</div>';
+			}
 			$fileSize = $this->getStoredFileSize();
 			$fileMeta = array();
 			if ($this->getStoredFileMimeType() !== '') {
@@ -568,8 +3936,23 @@
 				$fileMeta[] = number_format($fileSize, 0, '.', '\'') . ' octets';
 			}
 
-			return '<div class="omo-document-file">'
+			$mediaHtml = '';
+			if ($storedFileKind === 'image') {
+				$mediaHtml = '<div class="omo-document-file__media omo-document-file__media--image">'
+					. '<img src="' . htmlspecialchars($inlineMediaUrl, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '" alt="'
+					. htmlspecialchars($this->getStoredFileDownloadName(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '" loading="lazy">'
+					. '</div>';
+			} elseif ($storedFileKind === 'audio') {
+				$mediaHtml = '<div class="omo-document-file__media omo-document-file__media--audio">'
+					. '<audio controls preload="metadata" src="' . htmlspecialchars($inlineMediaUrl, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '">'
+					. 'Votre navigateur ne peut pas lire ce fichier audio.'
+					. '</audio>'
+					. '</div>';
+			}
+
+			return '<div class="omo-document-file omo-document-file--' . htmlspecialchars($storedFileKind, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '">'
 				. '<div class="omo-document-file__title">' . htmlspecialchars($this->getStoredFileDownloadName(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</div>'
+				. $mediaHtml
 				. (count($fileMeta) > 0
 					? '<div class="omo-document-file__meta">' . implode(' · ', $fileMeta) . '</div>'
 					: '')
@@ -591,6 +3974,37 @@
 
 			if (self::isDocumentEmbedElement($node)) {
 				return $this->renderEmbeddedDocumentReference($node, $organizationId, $options);
+			}
+
+			if (self::isDecisionEmbedElement($node)) {
+				return self::buildDecisionEmbedDisplayHtml(
+					(int)$node->getAttribute('data-omo-decision-id'),
+					trim((string)self::getDocumentEmbedAttributeValue($node, 'data-omo-decision-title')),
+					trim((string)self::getDocumentEmbedAttributeValue($node, 'data-omo-decision-type')),
+					trim((string)self::getDocumentEmbedAttributeValue($node, 'data-omo-decision-summary'))
+				);
+			}
+
+			if (self::isEventEmbedElement($node)) {
+				return self::buildEventEmbedDisplayHtml(
+					(int)$node->getAttribute('data-omo-event-id'),
+					trim((string)self::getDocumentEmbedAttributeValue($node, 'data-omo-event-title')),
+					trim((string)self::getDocumentEmbedAttributeValue($node, 'data-omo-event-schedule')),
+					trim((string)self::getDocumentEmbedAttributeValue($node, 'data-omo-event-location'))
+					?: trim((string)self::getDocumentEmbedAttributeValue($node, 'data-omo-event-description'))
+				);
+			}
+
+			if (self::isProjectEmbedElement($node)) {
+				return self::renderEmbeddedProjectReference($node, $organizationId);
+			}
+
+			if (self::isChecklistEmbedElement($node)) {
+				return self::renderEmbeddedChecklistReference($node, $organizationId);
+			}
+
+			if (self::isIndicatorEmbedElement($node)) {
+				return self::buildIndicatorEmbedDisplayHtml($node);
 			}
 
 			$tagName = strtolower((string)$node->tagName);
@@ -620,6 +4034,11 @@
 				}
 			}
 
+			$backgroundColorStyle = \dbObject\PropertyFormat::sanitizeBackgroundColorStyle($node->getAttribute('style'));
+			if ($backgroundColorStyle !== '') {
+				$attributes .= ' style="' . htmlspecialchars($backgroundColorStyle, ENT_QUOTES, 'UTF-8') . '"';
+			}
+
 			$childrenHtml = '';
 			foreach ($node->childNodes as $childNode) {
 				$childrenHtml .= $this->renderResolvedHtmlNode($childNode, $organizationId, $options);
@@ -633,6 +4052,10 @@
 			$targetDocumentId = (int)trim((string)$element->getAttribute('data-omo-document-id'));
 			$fallbackTitle = trim((string)self::getDocumentEmbedAttributeValue($element, 'data-omo-document-title'));
 			$fallbackDescription = trim((string)self::getDocumentEmbedAttributeValue($element, 'data-omo-document-description'));
+			$isCompactEmbed = !empty($options['compactEmbeds']);
+			if ($isCompactEmbed) {
+				$fallbackDescription = self::truncateEmbeddedReferenceSummary($fallbackDescription);
+			}
 
 			if ($targetDocumentId <= 0) {
 				return self::buildDocumentEmbedDisplayHtml(0, $fallbackTitle, $fallbackDescription, '', 'unresolved', 'Reference invalide.');
@@ -685,6 +4108,32 @@
 				);
 			}
 
+			$sourceTitle = $targetTitle !== ''
+				? $targetTitle
+				: ($fallbackTitle !== '' ? $fallbackTitle : ('Document #' . $targetDocumentId));
+			$sourceHolonLabel = '';
+			if ($targetHolonId > 0) {
+				$sourceHolon = new \dbObject\Holon();
+				if ($sourceHolon->load($targetHolonId)) {
+					$sourceHolonLabel = trim((string)$sourceHolon->getDisplayName());
+				}
+			}
+			if ($sourceHolonLabel !== '') {
+				$sourceTitle .= ' (' . $sourceHolonLabel . ')';
+			}
+
+			if ($isCompactEmbed) {
+				return self::buildDocumentEmbedDisplayHtml(
+					$targetDocumentId,
+					$targetTitle !== '' ? $targetTitle : $fallbackTitle,
+					self::truncateEmbeddedReferenceSummary(
+						$targetDescription !== '' ? $targetDescription : $fallbackDescription
+					),
+					'',
+					'compact'
+				);
+			}
+
 			$childOptions = $options;
 			$childOptions['visitedIds'] = $visitedIds;
 			$childOptions['visitedIds'][$targetDocumentId] = true;
@@ -698,7 +4147,7 @@
 
 			return self::buildDocumentEmbedDisplayHtml(
 				$targetDocumentId,
-				$targetTitle !== '' ? $targetTitle : $fallbackTitle,
+				$sourceTitle,
 				$targetDescription !== '' ? $targetDescription : $fallbackDescription,
 				$bodyHtml,
 				'resolved'
@@ -739,14 +4188,33 @@
 			return $html;
 		}
 
-		public function getRenderedContentForCurrentViewer(): string
+		public function getRenderedContentForCurrentViewer(array $renderOptions = array()): string
 		{
+			if ($this->isPvDocument()) {
+				return $this->renderPvForViewer($renderOptions);
+			}
+
 			if ($this->isExternalLink()) {
 				return $this->renderExternalLinkForViewer();
 			}
 
 			if ($this->isUploadedFile()) {
 				return $this->renderUploadedFileForViewer();
+			}
+
+			if ($this->isEtherpadDocument()) {
+				return $this->renderEtherpadForViewer();
+			}
+
+			if ($this->isEthercalcDocument()) {
+				return $this->renderEthercalcForViewer();
+			}
+
+			if ($this->isWhiteboardDocument()) {
+				$openUrl = $this->buildSpaceDeckOpenUrl();
+				return $openUrl !== ''
+					? $this->renderSpaceDeckFrameForViewer($openUrl)
+					: '<div class="omo-document-spacedeck omo-document-spacedeck--empty">Le tableau blanc collaboratif n est pas disponible.</div>';
 			}
 
 			return $this->renderResolvedHtmlForViewer(
@@ -779,24 +4247,592 @@
 			$updatedAt = $dateValue instanceof \DateTimeInterface
 				? $dateValue->format(\DateTimeInterface::ATOM)
 				: null;
+			$renderedContent = '';
+			$contentHashSource = '';
+
+			if ($this->isPvDocument()) {
+				$renderedContent = $this->renderPvForViewer();
+				$contentHashSource = $renderedContent;
+			} elseif ($this->isExternalLink()) {
+				$renderedContent = $this->renderExternalLinkForViewer();
+				$contentHashSource = implode('|', array(
+					$this->getExternalUrl(),
+					$this->shouldOpenExternalLinkInNewWindow() ? '1' : '0',
+				));
+			} elseif ($this->isUploadedFile()) {
+				$renderedContent = $this->renderUploadedFileForViewer();
+				$contentHashSource = implode('|', array(
+					trim((string)$this->get('storedfilepath')),
+					$this->getStoredFileDownloadName(),
+					$this->getStoredFileMimeType(),
+					(string)$this->getStoredFileSize(),
+				));
+			} elseif ($this->isEtherpadDocument()) {
+				$renderedContent = $this->renderEtherpadSnapshotForViewer();
+				$contentHashSource = $renderedContent;
+			} elseif ($this->isEthercalcDocument()) {
+				$renderedContent = $this->renderEthercalcSnapshotForViewer();
+				$contentHashSource = $renderedContent;
+			} elseif ($this->isWhiteboardDocument()) {
+					$renderedContent = '<div class="omo-document-spacedeck-snapshot">Tableau blanc collaboratif a consulter dans OMO.</div>';
+				$contentHashSource = $renderedContent;
+			} else {
+				$renderedContent = $this->renderResolvedHtmlForViewer($content, (int)$this->get('IDorganization'));
+				$contentHashSource = $content;
+			}
 
 			$payload = array(
 				'title' => trim((string)$this->get('title')),
 				'description' => trim((string)$this->get('description')),
-				'content' => $this->isExternalLink()
-					? $this->renderExternalLinkForViewer()
-					: ($this->isUploadedFile()
-						? $this->renderUploadedFileForViewer()
-						: $this->renderResolvedHtmlForViewer($content, (int)$this->get('IDorganization'))),
+				'content' => $renderedContent,
 				'isDraft' => !empty($snapshot['isDraft']),
 				'editingUserName' => trim((string)($snapshot['editingUserName'] ?? '')),
 				'updatedAt' => $updatedAt,
 			);
 
-			$payload['contentHash'] = sha1($content);
+			$payload['contentHash'] = sha1($contentHashSource);
 			$payload['stateHash'] = self::buildLiveShareStateHash($payload);
 
 			return $payload;
+		}
+
+		public function getPvPoints(bool $activeOnly = true)
+		{
+			$points = new \dbObject\ArrayDocumentPvPoint();
+			$points->loadForDocument((int)$this->getId(), $activeOnly, true);
+			return $points;
+		}
+
+		public function isUserPresentAtPvMeeting(int $userId, int $organizationId = 0): bool
+		{
+			$userId = (int)$userId;
+			$organizationId = $organizationId > 0 ? (int)$organizationId : (int)$this->get('IDorganization');
+			if (!$this->isPvDocument() || $userId <= 0 || $organizationId <= 0) {
+				return false;
+			}
+
+			$event = $this->getAssociatedEvent();
+			$attendanceEntries = $event instanceof \dbObject\Event
+				? $event->getAttendanceEntries($organizationId)
+				: $this->getInvitationAttendanceEntries($organizationId);
+			foreach ($attendanceEntries as $attendanceEntry) {
+				if (
+					is_array($attendanceEntry)
+					&& (int)($attendanceEntry['userId'] ?? 0) === $userId
+					&& !empty($attendanceEntry['isPresent'])
+				) {
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		public function canUserViewPvPoint(\dbObject\DocumentPvPoint $point, int $userId): bool
+		{
+			return (int)$point->get('IDdocument') === (int)$this->getId()
+				&& (!$point->isConfidential()
+					|| $this->isUserPresentAtPvMeeting($userId)
+					|| $this->isPvEditor($userId)
+					|| $point->isEditableByUser($userId));
+		}
+
+		public function getVisiblePvPointsForUser(int $userId, bool $activeOnly = true)
+		{
+			$points = $this->getPvPoints($activeOnly);
+			if (!$this->isPvDocument()) {
+				return $points;
+			}
+
+			$itemsById = array();
+			$visibleIds = array();
+			$isUserPresent = $this->isUserPresentAtPvMeeting($userId);
+			$isUserPvEditor = $this->isPvEditor($userId);
+			foreach ($points as $point) {
+				if (!($point instanceof \dbObject\DocumentPvPoint) || (int)$point->getId() <= 0) {
+					continue;
+				}
+				$itemsById[(int)$point->getId()] = $point;
+				if ($point->isGroup()) {
+					$visibleIds[(int)$point->getId()] = true;
+					continue;
+				}
+				if (!$point->isConfidential()
+					|| $isUserPresent
+					|| $isUserPvEditor
+					|| $point->isEditableByUser($userId)) {
+					$visibleIds[(int)$point->getId()] = true;
+				}
+			}
+
+			foreach (array_keys($visibleIds) as $pointId) {
+				$parentId = (int)($itemsById[$pointId]->get('IDparent') ?? 0);
+				$visitedParentIds = array();
+				while ($parentId > 0 && isset($itemsById[$parentId]) && !isset($visitedParentIds[$parentId])) {
+					$visitedParentIds[$parentId] = true;
+					$parent = $itemsById[$parentId];
+					if (!$parent->isGroup()) {
+						break;
+					}
+					$visibleIds[$parentId] = true;
+					$parentId = (int)$parent->get('IDparent');
+				}
+			}
+
+			$points->exchangeArray(array_values(array_filter($points->getArrayCopy(), static function ($point) use ($visibleIds): bool {
+				return $point instanceof \dbObject\DocumentPvPoint && isset($visibleIds[(int)$point->getId()]);
+			})));
+			return $points;
+		}
+
+		public function getPvApplicationTabs(bool $hydrate = false)
+		{
+			$tabs = new \dbObject\ArrayDocumentApplicationTab();
+			$tabs->loadForDocument((int)$this->getId(), $hydrate);
+			return $tabs;
+		}
+
+		public function copyPvApplicationTabsFromTemplate(\dbObject\Document $template): array
+		{
+			if (
+				(int)$this->getId() <= 0
+				|| !$this->isPvDocument()
+				|| !$template->isPvTemplate()
+				|| (int)$this->get('IDorganization') !== (int)$template->get('IDorganization')
+			) {
+				return array('status' => false, 'text' => 'Modele de PV invalide pour les applications de reunion.');
+			}
+
+			$copiedCount = 0;
+			foreach ($template->getPvApplicationTabs(true) as $sourceTab) {
+				if (!($sourceTab instanceof \dbObject\DocumentApplicationTab)) {
+					continue;
+				}
+
+				$targetTab = new \dbObject\DocumentApplicationTab();
+				$targetTab->set('IDdocument', (int)$this->getId());
+				$targetTab->set('IDapplication', (int)$sourceTab->get('IDapplication'));
+				$targetTab->set('position', (int)$sourceTab->get('position'));
+				$targetTab->setViewParametersArray($sourceTab->getViewParametersArray());
+				$targetTab->set('datecreation', new \DateTimeImmutable());
+
+				$saveResult = $targetTab->save();
+				if (!is_array($saveResult) || empty($saveResult['status'])) {
+					return is_array($saveResult)
+						? $saveResult
+						: array('status' => false, 'text' => 'Impossible de copier une application du modele de PV.');
+				}
+				$copiedCount++;
+			}
+
+			return array('status' => true, 'copiedCount' => $copiedCount);
+		}
+
+		public function copyPvAgendaFromTemplate(\dbObject\Document $template, int $organizationId, int $userId, ?int $contextHolonId = null): array
+		{
+			if (
+				(int)$this->getId() <= 0
+				|| !$this->isPvDocument()
+				|| (int)$this->get('IDorganization') !== $organizationId
+				|| !$template->canUseAsPvTemplateInOrganizationContext($organizationId, $contextHolonId)
+			) {
+				return array('status' => false, 'text' => 'Modele de PV invalide ou inaccessible.');
+			}
+
+			$sourceItems = $template->getPvPoints(true);
+			$childrenByParent = array();
+			foreach ($sourceItems as $sourceItem) {
+				if (!($sourceItem instanceof \dbObject\DocumentPvPoint) || (int)$sourceItem->getId() <= 0) {
+					continue;
+				}
+				$childrenByParent[max(0, (int)$sourceItem->get('IDparent'))][] = $sourceItem;
+			}
+
+			foreach ($childrenByParent as &$siblings) {
+				usort($siblings, static function ($left, $right): int {
+					$positionComparison = (int)$left->get('position') <=> (int)$right->get('position');
+					return $positionComparison !== 0
+						? $positionComparison
+						: (int)$left->getId() <=> (int)$right->getId();
+				});
+			}
+			unset($siblings);
+
+			$copiedIds = array();
+			$visitedIds = array();
+			$copyChildren = function (int $sourceParentId, int $targetParentId = 0) use (&$copyChildren, &$copiedIds, &$visitedIds, &$childrenByParent, $userId): array {
+				foreach ($childrenByParent[$sourceParentId] ?? array() as $sourceItem) {
+					$sourceItemId = (int)$sourceItem->getId();
+					if ($sourceItemId <= 0 || isset($visitedIds[$sourceItemId])) {
+						continue;
+					}
+					$visitedIds[$sourceItemId] = true;
+
+					$targetItem = new \dbObject\DocumentPvPoint();
+					$targetItem->set('IDdocument', (int)$this->getId());
+					$targetItem->set('item_type', $sourceItem->get('item_type'));
+					$targetItem->set('IDparent', $targetParentId > 0 ? $targetParentId : null);
+					$targetItem->set('title', $sourceItem->get('title'));
+					$targetItem->set('content', $sourceItem->isGroup() ? '' : $sourceItem->get('content'));
+					$targetItem->set('position', (int)$sourceItem->get('position'));
+					$targetItem->set('desired_duration_minutes', $sourceItem->isGroup() ? null : $sourceItem->get('desired_duration_minutes'));
+					$targetItem->set('actual_duration_minutes', null);
+					$targetItem->set('pointtype', $sourceItem->get('pointtype'));
+					$targetItem->set('IDuser_author', null);
+					$targetItem->set('author_email', null);
+					$targetItem->set('IDholon_concerned', null);
+					$targetItem->set('IDuser_modification', $userId > 0 ? $userId : null);
+					$targetItem->set('IDuser_editing', null);
+					$targetItem->set('edit_lock_token', null);
+					$targetItem->set('dateedition', null);
+					$targetItem->set('is_handled', 0);
+					$targetItem->set('is_confidential', $sourceItem->isGroup() ? 0 : $sourceItem->isConfidential());
+					$targetItem->set('active', 1);
+
+					$saveResult = $targetItem->save();
+					if (!is_array($saveResult) || ($saveResult['status'] ?? false) !== true) {
+						return is_array($saveResult)
+							? $saveResult
+							: array('status' => false, 'text' => 'Impossible de copier un element du modele.');
+					}
+
+					$copiedIds[$sourceItemId] = (int)$targetItem->getId();
+					if ($sourceItem->isGroup()) {
+						$childrenResult = $copyChildren($sourceItemId, (int)$targetItem->getId());
+						if (($childrenResult['status'] ?? false) !== true) {
+							return $childrenResult;
+						}
+					}
+				}
+
+				return array('status' => true);
+			};
+
+			$copyResult = $copyChildren(0, 0);
+			if (($copyResult['status'] ?? false) !== true) {
+				return $copyResult;
+			}
+
+			// Invalid legacy parent links must not make an otherwise usable template fail.
+			foreach ($sourceItems as $sourceItem) {
+				if (!($sourceItem instanceof \dbObject\DocumentPvPoint) || isset($visitedIds[(int)$sourceItem->getId()])) {
+					continue;
+				}
+				$childrenByParent[0] = array($sourceItem);
+				$copyResult = $copyChildren(0, 0);
+				if (($copyResult['status'] ?? false) !== true) {
+					return $copyResult;
+				}
+			}
+
+			$applicationTabsResult = $this->copyPvApplicationTabsFromTemplate($template);
+			if (($applicationTabsResult['status'] ?? false) !== true) {
+				return $applicationTabsResult;
+			}
+
+			return array(
+				'status' => true,
+				'copiedCount' => count($copiedIds),
+				'copiedApplicationTabCount' => (int)($applicationTabsResult['copiedCount'] ?? 0),
+			);
+		}
+
+		protected static function escapeViewerText($value): string
+		{
+			return htmlspecialchars((string)$value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+		}
+
+		protected static function buildPvSummaryPill(string $label): string
+		{
+			$label = trim($label);
+			if ($label === '') {
+				return '';
+			}
+
+			return '<span class="omo-pill">' . self::escapeViewerText($label) . '</span>';
+		}
+
+		protected static function buildPvFieldHtml(string $label, string $value): string
+		{
+			$label = trim($label);
+			$value = trim($value);
+			if ($label === '' || $value === '') {
+				return '';
+			}
+
+			return '<span class="omo-document-pv__field">'
+				. '<strong>' . self::escapeViewerText($label) . '</strong>'
+				. '<span>' . self::escapeViewerText($value) . '</span>'
+				. '</span>';
+		}
+
+		protected static function buildPvChipGroupHtml(string $label, array $items, string $modifier = ''): string
+		{
+			$cleanItems = array();
+			foreach ($items as $item) {
+				if (!is_array($item)) {
+					continue;
+				}
+
+				$itemLabel = trim((string)($item['label'] ?? ''));
+				if ($itemLabel === '') {
+					continue;
+				}
+
+				$cleanItems[] = $itemLabel;
+			}
+
+			if (count($cleanItems) === 0) {
+				return '';
+			}
+
+			$modifierClass = trim($modifier) !== ''
+				? ' omo-document-pv__chip-group--' . preg_replace('/[^a-z0-9_-]+/i', '-', trim($modifier))
+				: '';
+			$html = '<div class="omo-document-pv__chip-group' . $modifierClass . '">';
+			$html .= '<span class="omo-document-pv__chip-group-label">' . self::escapeViewerText($label) . '</span>';
+			$html .= '<div class="omo-document-pv__chip-list">';
+
+			foreach ($cleanItems as $itemLabel) {
+				$html .= '<span class="omo-document-pv__chip">' . self::escapeViewerText($itemLabel) . '</span>';
+			}
+
+			$html .= '</div></div>';
+
+			return $html;
+		}
+
+		protected static function formatPvDurationLabel($minutes, string $suffix): string
+		{
+			if ($minutes === null || $minutes === '') {
+				return '';
+			}
+
+			return max(0, (int)$minutes) . ' min ' . trim($suffix);
+		}
+
+		protected function renderPvForViewer(array $renderOptions = array()): string
+		{
+			if (!\dbObject\DocumentPvPoint::hasPointTable()) {
+				return '<div class="omo-document-pv omo-document-pv--empty">'
+					. '<p class="omo-document-pv__empty">La structure PV n est pas encore disponible dans cette base.</p>'
+					. '</div>';
+			}
+
+			$organizationId = (int)$this->get('IDorganization');
+			$currentUserId = function_exists('commonGetCurrentUserId')
+				? (int)\commonGetCurrentUserId()
+				: (int)($_SESSION['currentUser'] ?? 0);
+			$points = $this->getVisiblePvPointsForUser($currentUserId, true);
+			$includeDiscussionLinks = !empty($renderOptions['includePvDiscussionLinks']);
+			$discussionLabels = is_array($renderOptions['pvDiscussionLabels'] ?? null)
+				? $renderOptions['pvDiscussionLabels']
+				: array();
+			$discussionSummaries = array();
+			if ($includeDiscussionLinks && in_array($this->getPvStage(), [self::PV_STAGE_REVIEW, self::PV_STAGE_VALIDATED], true)) {
+				$discussionPointIds = array();
+				foreach ($points as $discussionPoint) {
+					if ($discussionPoint instanceof \dbObject\DocumentPvPoint && !$discussionPoint->isGroup()) {
+						$discussionPointIds[] = (int)$discussionPoint->getId();
+					}
+				}
+				if (count($discussionPointIds) > 0) {
+					$discussionSummaries = \dbObject\ChatThread::getSubjectDiscussionSummaries(
+						$organizationId,
+						\dbObject\ChatThread::SUBJECT_DOCUMENT_PV_POINT,
+						$discussionPointIds,
+						$currentUserId
+					);
+				}
+			}
+			$positionLabels = \dbObject\DocumentPvPoint::buildHierarchyPositionLabels($points);
+			$itemsByParent = array();
+			foreach ($points as $item) {
+				if (!($item instanceof \dbObject\DocumentPvPoint)) {
+					continue;
+				}
+				$itemsByParent[max(0, (int)$item->get('IDparent'))][] = $item;
+			}
+			foreach ($itemsByParent as &$siblings) {
+				usort($siblings, static function ($left, $right): int {
+					$positionComparison = (int)$left->get('position') <=> (int)$right->get('position');
+					return $positionComparison !== 0 ? $positionComparison : (int)$left->getId() <=> (int)$right->getId();
+				});
+			}
+			unset($siblings);
+			$orderedItems = array();
+			$visitedItemIds = array();
+			$appendItems = function (int $parentId, int $depth) use (&$appendItems, &$orderedItems, &$visitedItemIds, $itemsByParent): void {
+				foreach ($itemsByParent[$parentId] ?? array() as $item) {
+					$itemId = (int)$item->getId();
+					if ($itemId <= 0 || isset($visitedItemIds[$itemId])) {
+						continue;
+					}
+					$visitedItemIds[$itemId] = true;
+					$orderedItems[] = array('item' => $item, 'depth' => $depth);
+					if ($item->isGroup()) {
+						$appendItems($itemId, $depth + 1);
+					}
+				}
+			};
+			$appendItems(0, 0);
+			$pointCount = 0;
+			$totalDesiredMinutes = 0;
+			$totalActualMinutes = 0;
+			$hasDesiredMinutes = false;
+			$hasActualMinutes = false;
+
+			foreach ($points as $point) {
+				if (!($point instanceof \dbObject\DocumentPvPoint)) {
+					continue;
+				}
+				if ($point->isGroup()) {
+					continue;
+				}
+				$pointCount += 1;
+
+				$desiredMinutes = $point->getDurationMinutesValue('desired_duration_minutes');
+				if ($desiredMinutes !== null) {
+					$totalDesiredMinutes += $desiredMinutes;
+					$hasDesiredMinutes = true;
+				}
+
+				$actualMinutes = $point->getDurationMinutesValue('actual_duration_minutes');
+				if ($actualMinutes !== null) {
+					$totalActualMinutes += $actualMinutes;
+					$hasActualMinutes = true;
+				}
+			}
+
+			$html = '<div class="omo-document-pv">';
+			$html .= '<section class="omo-document-pv__summary">';
+			$html .= '<div class="omo-document-pv__summary-pills">';
+			$html .= self::buildPvSummaryPill($pointCount . ' point' . ($pointCount > 1 ? 's' : ''));
+
+			if ($hasDesiredMinutes) {
+				$html .= self::buildPvSummaryPill('Souhaite ' . $totalDesiredMinutes . ' min');
+			}
+
+			if ($hasActualMinutes) {
+				$html .= self::buildPvSummaryPill('Reel ' . $totalActualMinutes . ' min');
+			}
+
+			$html .= '</div>';
+			$html .= '</section>';
+
+			if ($pointCount === 0) {
+				$html .= '<p class="omo-document-pv__empty">Aucun point a l ordre du jour pour ce PV.</p>';
+				$html .= '</div>';
+				return $html;
+			}
+
+			$html .= '<div class="omo-document-pv__points">';
+
+			foreach ($orderedItems as $orderedItem) {
+				$point = $orderedItem['item'] ?? null;
+				$depth = max(0, (int)($orderedItem['depth'] ?? 0));
+				if (!($point instanceof \dbObject\DocumentPvPoint)) {
+					continue;
+				}
+
+				if ($point->isGroup()) {
+					$html .= '<section class="omo-document-pv__group" style="margin-left:' . min(120, $depth * 18) . 'px">'
+						. '<h3 class="omo-document-pv__group-title"><span class="omo-document-pv__group-order">' . self::escapeViewerText((string)($positionLabels[(int)$point->getId()] ?? '')) . '</span>'
+						. self::escapeViewerText((string)$point->get('title')) . '</h3>'
+						. '</section>';
+					continue;
+				}
+
+				$pointData = $point->buildViewerData($organizationId);
+				$pointData['positionLabel'] = (string)($positionLabels[(int)$point->getId()] ?? '');
+				$pointTypeClass = preg_replace('/[^a-z0-9_-]+/i', '-', (string)($pointData['pointType'] ?? 'information'));
+				$pointTypeIconMap = array(
+					'information' => '/omo/assets/images/documents/pv-point-type/information.png',
+					'consultation' => '/omo/assets/images/documents/pv-point-type/consultation.png',
+					'decision' => '/omo/assets/images/documents/pv-point-type/decision.png',
+				);
+				$pointTypeIcon = isset($pointTypeIconMap[$pointTypeClass])
+					? $pointTypeIconMap[$pointTypeClass]
+					: $pointTypeIconMap['information'];
+				$pointFields = '';
+				$pointFields .= self::buildPvFieldHtml('Auteur', (string)($pointData['authorLabel'] ?? ''));
+				$pointFields .= self::buildPvFieldHtml(Organization::formatLexiconText('Holon concerne', Organization::getLexiconForOrganizationId($organizationId)), (string)($pointData['concernedHolonLabel'] ?? ''));
+				$pointChips = '';
+				$pointChips .= self::buildPvChipGroupHtml(Organization::formatLexiconText('Holons adresses', Organization::getLexiconForOrganizationId($organizationId)), (array)($pointData['addressedHolons'] ?? array()), 'holons');
+				$pointChips .= self::buildPvChipGroupHtml('Tensions', (array)($pointData['tensions'] ?? array()), 'tensions');
+				$desiredLabel = self::formatPvDurationLabel($pointData['desiredDurationMinutes'] ?? null, 'souhaites');
+				$actualLabel = self::formatPvDurationLabel($pointData['actualDurationMinutes'] ?? null, 'reelles');
+
+				$html .= '<article class="omo-document-pv__point" style="margin-left:' . min(120, $depth * 18) . 'px">';
+				$html .= '<header class="omo-document-pv__point-head">';
+				$html .= '<div class="omo-document-pv__point-order">' . self::escapeViewerText((string)($pointData['positionLabel'] ?? '')) . '</div>';
+				$html .= '<div class="omo-document-pv__point-main">';
+				$html .= '<div class="omo-document-pv__point-topline">';
+				$html .= '<span class="omo-document-pv__point-type omo-document-pv__point-type--' . self::escapeViewerText($pointTypeClass) . '">'
+					. '<img src="' . self::escapeViewerText($pointTypeIcon) . '" alt="" aria-hidden="true" class="omo-document-pv__point-type-icon">'
+					. self::escapeViewerText((string)($pointData['pointTypeLabel'] ?? 'Information'))
+					. '</span>';
+
+				if ($desiredLabel !== '') {
+					$html .= '<span class="omo-document-pv__point-duration">' . self::escapeViewerText($desiredLabel) . '</span>';
+				}
+
+				if ($actualLabel !== '') {
+					$html .= '<span class="omo-document-pv__point-duration omo-document-pv__point-duration--actual">' . self::escapeViewerText($actualLabel) . '</span>';
+				}
+
+				$html .= '</div>';
+				$html .= '<h3 class="omo-document-pv__point-title">' . self::escapeViewerText((string)($pointData['title'] ?? '')) . '</h3>';
+
+				if ($pointFields !== '') {
+					$html .= '<div class="omo-document-pv__point-fields">' . $pointFields . '</div>';
+				}
+
+				$html .= '</div>';
+				$html .= '</header>';
+
+				if ($pointChips !== '') {
+					$html .= '<div class="omo-document-pv__point-chips">' . $pointChips . '</div>';
+				}
+
+				if (!empty($pointData['contentHtml'])) {
+					$html .= '<div class="omo-document-pv__point-content prose">' . (string)$pointData['contentHtml'] . '</div>';
+				}
+
+				$discussionSummary = $discussionSummaries[(int)$point->getId()] ?? array();
+				if ($includeDiscussionLinks && (int)($discussionSummary['total_messages'] ?? 0) > 0) {
+					$chatContext = json_encode(array(
+						'oid' => $organizationId,
+						'document_id' => (int)$this->getId(),
+						'point_id' => (int)$point->getId(),
+						'cid' => max(0, (int)($renderOptions['pvDiscussionContextHolonId'] ?? 0)),
+					), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+					$chatLabels = json_encode(array(
+						'loading' => (string)($discussionLabels['loading'] ?? 'Chargement de la discussion...'),
+						'empty' => (string)($discussionLabels['empty'] ?? 'Aucun message pour le moment.'),
+						'placeholder' => (string)($discussionLabels['placeholder'] ?? 'Lecture seule'),
+						'send' => (string)($discussionLabels['send'] ?? 'Envoyer'),
+						'changeDetails' => (string)($discussionLabels['changeDetails'] ?? 'Voir les modifications'),
+						'contentExcerpt' => (string)($discussionLabels['contentExcerpt'] ?? 'Contenu (extrait)'),
+					), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+					$html .= '<div class="omo-document-pv__point-discussion">'
+						. '<a href="#" class="omo-document-pv__point-discussion-link" data-omo-chat-open data-omo-chat-readonly="1"'
+						. ' data-omo-chat-endpoint="/omo/api/documents/pv/discussion.php"'
+						. ' data-omo-chat-context="' . self::escapeViewerText($chatContext === false ? '{}' : $chatContext) . '"'
+						. ' data-omo-chat-title="' . self::escapeViewerText((string)($discussionLabels['title'] ?? 'Discussion de relecture')) . '"'
+						. ' data-omo-chat-point-title="' . self::escapeViewerText((string)($pointData['title'] ?? '')) . '"'
+						. ' data-omo-chat-labels="' . self::escapeViewerText($chatLabels === false ? '{}' : $chatLabels) . '"'
+						. '>' . self::escapeViewerText((string)($discussionLabels['link'] ?? 'Voir les corrections effectuées')) . '</a>'
+						. '</div>';
+				}
+
+				$html .= '</article>';
+			}
+
+			$html .= '</div>';
+			$html .= '</div>';
+
+			return $html;
 		}
 
 		public function isEditLockActive(?\DateTimeInterface $referenceDate = null): bool
@@ -1249,11 +5285,11 @@
 			return $documentHolonId === 0;
 		}
 
-		public function canViewInOrganizationContext(int $organizationId, ?int $holonId = null): bool
+		public function canViewInOrganizationContext(int $organizationId, ?int $holonId = null, ?int $userId = null): bool
 		{
 			if (
 				!$this->matchesOrganizationContext($organizationId, $holonId)
-				|| !$this->currentViewerCanAccessVisibility($organizationId)
+				|| !$this->currentViewerCanAccessVisibility($organizationId, null, $userId)
 			) {
 				return false;
 			}
@@ -1262,6 +5298,38 @@
 				if (
 					!($parentFolder instanceof \dbObject\Document)
 					|| !$parentFolder->isFolder()
+					|| !$parentFolder->currentViewerCanAccessVisibility($organizationId, null, $userId)
+				) {
+					return false;
+				}
+			}
+
+			return true;
+		}
+
+		public function canViewDirectlyInOrganization(int $organizationId): bool
+		{
+			$organizationId = (int)$organizationId;
+			if ($organizationId <= 0 || (int)$this->get('IDorganization') !== $organizationId) {
+				return false;
+			}
+
+			$currentUserId = function_exists('commonGetCurrentUserId')
+				? (int)\commonGetCurrentUserId()
+				: (int)($_SESSION['currentUser'] ?? 0);
+			if ($this->isPvDocument() && $this->isPvCreatorOrEditor($currentUserId)) {
+				return true;
+			}
+
+			if (!$this->currentViewerCanAccessVisibility($organizationId)) {
+				return false;
+			}
+
+			foreach ($this->getParentFolderChain() as $parentFolder) {
+				if (
+					!($parentFolder instanceof \dbObject\Document)
+					|| !$parentFolder->isFolder()
+					|| (int)$parentFolder->get('IDorganization') !== $organizationId
 					|| !$parentFolder->currentViewerCanAccessVisibility($organizationId)
 				) {
 					return false;
@@ -1302,7 +5370,7 @@
 				) {
 					return array(
 						'status' => false,
-						'text' => "Holon introuvable pour cette organisation.",
+						'text' => \dbObject\Organization::formatLexiconText("Holon introuvable pour cette organisation."),
 					);
 				}
 
@@ -1312,7 +5380,67 @@
 			$this->set('IDorganization', $organizationId);
 			$this->set('IDholon', $resolvedHolonId);
 
-			return $this->save();
+			$saveResult = $this->save();
+			if (!is_array($saveResult) || ($saveResult['status'] ?? false) !== true) {
+				return $saveResult;
+			}
+
+			return $this->ensureOrganizationVisibilityRules();
+		}
+
+		/**
+		 * Add the default visibility rules required by a document that entered an
+		 * organization outside the regular document editor, for example Telegram.
+		 * Existing rules are intentionally left unchanged.
+		 */
+		public function ensureOrganizationVisibilityRules(): array
+		{
+			$documentId = (int)$this->getId();
+			$organizationId = (int)$this->get('IDorganization');
+			if ($documentId <= 0 || $organizationId <= 0) {
+				return array(
+					'status' => false,
+					'text' => 'Contexte de visibilite du document invalide.',
+				);
+			}
+
+			$visibilityRule = \dbObject\ObjectVisibility::loadActiveRuleRow(
+				self::getVisibilityObjectType(),
+				$documentId,
+				$organizationId
+			);
+			if (!is_array($visibilityRule)) {
+				$visibilityType = $this->normalizeScopeTypeForCurrentContext(
+					self::getDefaultVisibilityTypeForOrganization($organizationId),
+					\dbObject\ObjectVisibility::TYPE_ORGANIZATION
+				);
+				$visibilitySaveResult = $this->saveVisibilityRule($visibilityType);
+				if (!is_array($visibilitySaveResult) || ($visibilitySaveResult['status'] ?? false) !== true) {
+					return is_array($visibilitySaveResult)
+						? $visibilitySaveResult
+						: array('status' => false, 'text' => 'Impossible de creer la visibilite du document.');
+				}
+			}
+
+			$editVisibilityRule = \dbObject\ObjectVisibility::loadActiveRuleRow(
+				self::getEditVisibilityObjectType(),
+				$documentId,
+				$organizationId
+			);
+			if (!is_array($editVisibilityRule)) {
+				$editVisibilityType = $this->normalizeScopeTypeForCurrentContext(
+					self::getDefaultEditVisibilityTypeForOrganization($organizationId),
+					self::getDefaultEditVisibilityType()
+				);
+				$editVisibilitySaveResult = $this->saveEditVisibilityRule($editVisibilityType);
+				if (!is_array($editVisibilitySaveResult) || ($editVisibilitySaveResult['status'] ?? false) !== true) {
+					return is_array($editVisibilitySaveResult)
+						? $editVisibilitySaveResult
+						: array('status' => false, 'text' => 'Impossible de creer la portee d edition du document.');
+				}
+			}
+
+			return array('status' => true);
 		}
 
 		public static function resolveCreationPermissionHolon(int $organizationId, ?int $requestedHolonId = null, int $parentDocumentId = 0)
@@ -1384,9 +5512,7 @@
 				return false;
 			}
 
-			return function_exists('commonUserHasOrganizationAccess')
-				? \commonUserHasOrganizationAccess($userId, $organizationId)
-				: false;
+			return Permission::userCanInOrganization('CAN_CREATE_DOCUMENT', $organizationId, $userId);
 		}
 
 		protected static function extractValidUploadedFile($uploadedFile): ?array
@@ -1412,7 +5538,7 @@
 				return array('status' => true);
 			}
 
-			$deleteResult = $organization->deleteDocumentFileFromNextcloud($storedPath);
+			$deleteResult = $organization->deleteDocumentFileFromStorage($storedPath);
 			if (!is_array($deleteResult) || empty($deleteResult['status'])) {
 				return $deleteResult;
 			}
@@ -1423,7 +5549,7 @@
 
 		protected function applyUploadedFileToOrganizationStorage(\dbObject\Organization $organization, array $uploadedFile): array
 		{
-			$uploadResult = $organization->uploadDocumentFileToNextcloud((int)$this->getId(), $uploadedFile);
+			$uploadResult = $organization->uploadDocumentFileToStorage((int)$this->getId(), $uploadedFile);
 			if (!is_array($uploadResult) || empty($uploadResult['status'])) {
 				return $uploadResult;
 			}
@@ -1459,9 +5585,26 @@
 
 			$description = trim((string)($values['description'] ?? ''));
 			$requestedDocumentType = (string)($values['document_type'] ?? '');
-			$isFolder = !empty($values['is_folder']) || trim(mb_strtolower($requestedDocumentType, 'UTF-8')) === self::TYPE_FOLDER;
-			$documentType = self::normalizeDocumentType($requestedDocumentType, $isFolder);
-			$uploadedFile = $documentType === self::TYPE_UPLOADED_FILE
+			$isNextcloudFolder = trim(mb_strtolower($requestedDocumentType, 'UTF-8')) === self::TYPE_NEXTCLOUD_FOLDER;
+			$isFolder = !empty($values['is_folder']) || trim(mb_strtolower($requestedDocumentType, 'UTF-8')) === self::TYPE_FOLDER || $isNextcloudFolder;
+			$normalizedRequestedDocumentType = self::normalizeDocumentType($requestedDocumentType, $isFolder);
+			$nextcloudFolderPath = $isNextcloudFolder
+				? self::normalizeNextcloudFolderPath($values['nextcloud_folder_path'] ?? '')
+				: '';
+			$isCollaboraTemplate = in_array($normalizedRequestedDocumentType, [self::TYPE_COLLABORA_DOCUMENT, self::TYPE_COLLABORA_SPREADSHEET, self::TYPE_COLLABORA_PRESENTATION, self::TYPE_COLLABORA_DRAWING], true);
+			$isWhiteboard = $normalizedRequestedDocumentType === self::TYPE_WHITEBOARD;
+			$collaboraTemplateKind = $normalizedRequestedDocumentType === self::TYPE_COLLABORA_SPREADSHEET
+				? 'spreadsheet'
+				: ($normalizedRequestedDocumentType === self::TYPE_COLLABORA_PRESENTATION
+				? 'presentation'
+				: ($normalizedRequestedDocumentType === self::TYPE_COLLABORA_DRAWING ? 'drawing' : 'document'));
+			$documentType = $isCollaboraTemplate ? self::TYPE_UPLOADED_FILE : $normalizedRequestedDocumentType;
+			$allowEmptyTypePayload = !empty($values['allow_empty_type_payload']);
+			$eventId = isset($values['event_id']) ? (int)$values['event_id'] : 0;
+			$pvTemplateId = $documentType === self::TYPE_PV && isset($values['pv_template_id'])
+				? max(0, (int)$values['pv_template_id'])
+				: 0;
+			$uploadedFile = $documentType === self::TYPE_UPLOADED_FILE && !$isCollaboraTemplate
 				? self::extractValidUploadedFile($values['uploaded_file'] ?? null)
 				: null;
 			$parentDocumentId = isset($values['parent_document_id']) ? (int)$values['parent_document_id'] : 0;
@@ -1472,20 +5615,37 @@
 				? self::sanitizeExternalUrl($values['external_url'] ?? '')
 				: '';
 			$openInNewWindow = $documentType === self::TYPE_EXTERNAL_LINK && !empty($values['open_in_new_window']);
-			if ($documentType === self::TYPE_EXTERNAL_LINK && $externalUrl === '') {
+			if ($documentType === self::TYPE_EXTERNAL_LINK && $externalUrl === '' && !$allowEmptyTypePayload) {
 				return array(
 					'status' => false,
 					'text' => "L URL externe est obligatoire.",
 				);
 			}
-			if ($documentType === self::TYPE_UPLOADED_FILE && $uploadedFile === null) {
+			if ($documentType === self::TYPE_UPLOADED_FILE && !$isCollaboraTemplate && $uploadedFile === null && !$allowEmptyTypePayload) {
 				return array(
 					'status' => false,
 					'text' => 'Un fichier est obligatoire pour ce type de document.',
 				);
 			}
+			if ($documentType === self::TYPE_NEXTCLOUD_FOLDER && $nextcloudFolderPath === '') {
+				return array(
+					'status' => false,
+					'text' => 'Le chemin du dossier NextCloud est obligatoire et ne peut pas contenir de remontee de dossier.',
+				);
+			}
 			$keywords = trim((string)($values['keywords'] ?? ''));
-			$visibilityType = (string)($values['visibility_type'] ?? \dbObject\ObjectVisibility::getDefaultVisibilityType());
+			$visibilityType = $this->resolveScopeTypeInput(
+				$values,
+				'visibility_type',
+				self::getDefaultVisibilityTypeForOrganization($organizationId),
+				true
+			);
+			$editVisibilityType = $this->resolveScopeTypeInput(
+				$values,
+				'edit_visibility_type',
+				self::getDefaultEditVisibilityTypeForOrganization($organizationId),
+				true
+			);
 			$now = new \DateTimeImmutable();
 
 			$this->set('title', $title);
@@ -1496,8 +5656,16 @@
 			$this->set('keywords', $keywords);
 			$this->set('estDossier', $isFolder ? 1 : 0);
 			$this->set('documenttype', $documentType);
+			$this->set('pvstage', $documentType === self::TYPE_PV ? self::normalizePvStage($values['pv_stage'] ?? null) : null);
+			$this->set('is_template', 0);
 			$this->set('externalurl', $externalUrl !== '' ? $externalUrl : null);
 			$this->set('openinnewwindow', $openInNewWindow ? 1 : 0);
+			$previousNextcloudFolderPath = $this->getNextcloudFolderPath();
+			$this->set('nextcloudfolderpath', $nextcloudFolderPath !== '' ? $nextcloudFolderPath : null);
+			if ($documentType === self::TYPE_NEXTCLOUD_FOLDER && $nextcloudFolderPath !== $previousNextcloudFolderPath) {
+				$this->set('nextcloudfolderfileid', null);
+			}
+			$this->set('IDevent', $eventId > 0 ? $eventId : null);
 			$this->set('IDuser', $userId);
 			$this->set('IDusercreation', $userId);
 			$this->set('IDusermodification', $userId);
@@ -1515,6 +5683,35 @@
 			$pdo = self::getPdo();
 			$startedTransaction = $pdo instanceof \PDO && !$pdo->inTransaction();
 			$organization = new \dbObject\Organization();
+			$createdEtherpadPadId = '';
+			$createdEthercalcRoomId = '';
+			$createdCollaboraPath = '';
+			$createdSpaceDeckSpaceId = '';
+			$cleanupCreatedCollaboraFile = static function () use (&$createdCollaboraPath, $organization): void {
+				if ($createdCollaboraPath !== '' && $organization instanceof \dbObject\Organization && (int)$organization->getId() > 0) {
+					$organization->deleteDocumentFileFromStorage($createdCollaboraPath);
+					$createdCollaboraPath = '';
+				}
+			};
+			$cleanupCreatedSpaceDeckSpace = static function () use (&$createdSpaceDeckSpaceId): void {
+				if ($createdSpaceDeckSpaceId !== '') {
+					require_once dirname(__DIR__, 2) . '/common/spacedeck.php';
+					omoSpacedeckDeleteSpace($createdSpaceDeckSpaceId);
+					$createdSpaceDeckSpaceId = '';
+				}
+			};
+			if ($documentType === self::TYPE_ETHERPAD) {
+				require_once dirname(__DIR__, 2) . '/common/etherpad.php';
+			}
+			if ($documentType === self::TYPE_ETHERCALC) {
+				require_once dirname(__DIR__, 2) . '/common/ethercalc.php';
+			}
+			if ($isCollaboraTemplate) {
+				require_once dirname(__DIR__, 2) . '/common/collabora.php';
+			}
+			if ($isWhiteboard) {
+				require_once dirname(__DIR__, 2) . '/common/spacedeck.php';
+			}
 
 			try {
 				if ($startedTransaction) {
@@ -1532,14 +5729,113 @@
 					);
 				}
 
-				if ($documentType === self::TYPE_UPLOADED_FILE && !$organization->hasNextcloudDocumentStorage()) {
+				if ($documentType === self::TYPE_PV && !$organization->isPvDocumentEnabled()) {
 					if ($startedTransaction && $pdo->inTransaction()) {
 						$pdo->rollBack();
 					}
 
 					return array(
 						'status' => false,
-						'text' => 'Le stockage Nextcloud n est pas configure pour cette organisation.',
+						'text' => 'Le format PV n est pas active pour cette organisation.',
+					);
+				}
+
+				if ($eventId > 0) {
+					$event = new \dbObject\Event();
+					if (
+						!$event->load($eventId)
+						|| (int)$event->get('IDorganization') !== $organizationId
+					) {
+						if ($startedTransaction && $pdo->inTransaction()) {
+							$pdo->rollBack();
+						}
+
+						return array(
+							'status' => false,
+							'text' => 'Evenement associe introuvable.',
+						);
+					}
+				}
+
+				if ($documentType === self::TYPE_UPLOADED_FILE && !$organization->hasDocumentStorage()) {
+					if ($startedTransaction && $pdo->inTransaction()) {
+						$pdo->rollBack();
+					}
+
+					return array(
+						'status' => false,
+						'text' => 'Le stockage de documents n est pas configure pour cette organisation.',
+					);
+				}
+
+				if ($documentType === self::TYPE_NEXTCLOUD_FOLDER && !$organization->hasDocumentStorage()) {
+					if ($startedTransaction && $pdo->inTransaction()) {
+						$pdo->rollBack();
+					}
+
+					return array(
+						'status' => false,
+					'text' => 'Le stockage de documents n est pas configure pour cette organisation.',
+					);
+				}
+
+				if ($documentType === self::TYPE_NEXTCLOUD_FOLDER) {
+					$nextcloudFolderLocation = $this->resolveRemoteFolderStorageLocation($organization);
+					if (empty($nextcloudFolderLocation['status'])) {
+						if ($startedTransaction && $pdo->inTransaction()) {
+							$pdo->rollBack();
+						}
+						return array('status' => false, 'text' => trim((string)($nextcloudFolderLocation['text'] ?? 'Le dossier NextCloud est introuvable.')));
+					}
+					$this->set('nextcloudfolderfileid', trim((string)($nextcloudFolderLocation['fileId'] ?? '')) ?: null);
+				}
+
+				if ($isCollaboraTemplate) {
+					require_once dirname(__DIR__, 2) . '/common/collabora.php';
+					if (!$organization->hasDocumentStorage()) {
+						if ($startedTransaction && $pdo->inTransaction()) {
+							$pdo->rollBack();
+						}
+
+						return array('status' => false, 'text' => 'Un stockage de documents doit etre configure avant Collabora.');
+					}
+
+					if (!omoCollaboraHasConfig($organization)) {
+						if ($startedTransaction && $pdo->inTransaction()) {
+							$pdo->rollBack();
+						}
+
+						return array('status' => false, 'text' => 'Le serveur Collabora n est pas configure pour cette organisation.');
+					}
+				}
+
+				if ($isWhiteboard && !omoSpacedeckHasConfig()) {
+					if ($startedTransaction && $pdo->inTransaction()) {
+						$pdo->rollBack();
+					}
+
+					return array('status' => false, 'text' => 'Le serveur SpaceDeck n est pas configure pour cette organisation.');
+				}
+
+				if ($documentType === self::TYPE_ETHERPAD && !omoEtherpadCanUseEditingSessions($organization)) {
+					if ($startedTransaction && $pdo->inTransaction()) {
+						$pdo->rollBack();
+					}
+
+					return array(
+						'status' => false,
+						'text' => 'Le serveur Etherpad ou son domaine de session n est pas configure pour cette organisation.',
+					);
+				}
+
+				if ($documentType === self::TYPE_ETHERCALC && !omoEthercalcHasConfig()) {
+					if ($startedTransaction && $pdo->inTransaction()) {
+						$pdo->rollBack();
+					}
+
+					return array(
+						'status' => false,
+						'text' => 'Le serveur EtherCalc n est pas configure.',
 					);
 				}
 
@@ -1570,7 +5866,94 @@
 					return $contextSaveResult;
 				}
 
-				if ($documentType === self::TYPE_UPLOADED_FILE) {
+				if ($documentType === self::TYPE_PV && $this->canUserClaimPvEditor($organizationId, $userId)) {
+					$this->set('IDuser_pv_editor', $userId);
+					$this->set('IDuser_pv_official_editor', $userId);
+					$pvEditorSaveResult = $this->save();
+					if (!is_array($pvEditorSaveResult) || ($pvEditorSaveResult['status'] ?? false) !== true) {
+						if ($startedTransaction && $pdo->inTransaction()) {
+							$pdo->rollBack();
+						}
+						return $pvEditorSaveResult;
+					}
+				}
+
+				if ($isCollaboraTemplate) {
+					$blankFileResult = omoCollaboraBuildBlankDocumentFile($title, $collaboraTemplateKind);
+					if (!is_array($blankFileResult) || empty($blankFileResult['status'])) {
+						if ($startedTransaction && $pdo->inTransaction()) {
+							$pdo->rollBack();
+						}
+
+						return is_array($blankFileResult)
+							? $blankFileResult
+							: array('status' => false, 'text' => 'Impossible de creer le fichier Collabora.');
+					}
+
+					$uploadedFile = array(
+						'error' => UPLOAD_ERR_OK,
+						'tmp_name' => (string)$blankFileResult['tmpName'],
+						'name' => (string)$blankFileResult['name'],
+						'type' => (string)$blankFileResult['type'],
+						'size' => (int)$blankFileResult['size'],
+					);
+					$fileStorageResult = $this->applyUploadedFileToOrganizationStorage($organization, $uploadedFile);
+					@unlink((string)$blankFileResult['tmpName']);
+					if (!is_array($fileStorageResult) || empty($fileStorageResult['status'])) {
+						if ($startedTransaction && $pdo->inTransaction()) {
+							$pdo->rollBack();
+						}
+
+						return $fileStorageResult;
+					}
+
+					$createdCollaboraPath = trim((string)($fileStorageResult['uploadedPath'] ?? ''));
+					$collaboraFileSaveResult = $this->save();
+					if (!is_array($collaboraFileSaveResult) || ($collaboraFileSaveResult['status'] ?? false) !== true) {
+						if ($createdCollaboraPath !== '') {
+						$organization->deleteDocumentFileFromStorage($createdCollaboraPath);
+						}
+						if ($startedTransaction && $pdo->inTransaction()) {
+							$pdo->rollBack();
+						}
+
+						return $collaboraFileSaveResult;
+					}
+				}
+
+				if ($isWhiteboard) {
+					$spaceDeckResult = omoSpacedeckProvisionSpace($title);
+					$createdSpaceDeckSpaceId = trim((string)($spaceDeckResult['data']['id'] ?? ''));
+					if (!is_array($spaceDeckResult) || empty($spaceDeckResult['status']) || $createdSpaceDeckSpaceId === '') {
+						if ($startedTransaction && $pdo->inTransaction()) {
+							$pdo->rollBack();
+						}
+
+						return array('status' => false, 'text' => 'Impossible de creer le tableau blanc SpaceDeck.');
+					}
+
+					$this->set('spacedeckspaceid', $createdSpaceDeckSpaceId);
+					$spaceDeckSaveResult = $this->save();
+					if (!is_array($spaceDeckSaveResult) || ($spaceDeckSaveResult['status'] ?? false) !== true) {
+						$cleanupCreatedSpaceDeckSpace();
+						if ($startedTransaction && $pdo->inTransaction()) {
+							$pdo->rollBack();
+						}
+
+						return $spaceDeckSaveResult;
+					}
+				}
+
+				$visibilityType = $this->normalizeScopeTypeForCurrentContext(
+					$visibilityType,
+					\dbObject\ObjectVisibility::TYPE_ORGANIZATION
+				);
+				$editVisibilityType = $this->normalizeScopeTypeForCurrentContext(
+					$editVisibilityType,
+					self::getDefaultEditVisibilityType()
+				);
+
+				if ($documentType === self::TYPE_UPLOADED_FILE && !$isCollaboraTemplate && $uploadedFile !== null) {
 					$fileStorageResult = $this->applyUploadedFileToOrganizationStorage($organization, $uploadedFile);
 					if (!is_array($fileStorageResult) || empty($fileStorageResult['status'])) {
 						if ($startedTransaction && $pdo->inTransaction()) {
@@ -1584,7 +5967,7 @@
 					if (!is_array($fileMetadataSaveResult) || ($fileMetadataSaveResult['status'] ?? false) !== true) {
 						$uploadedPath = trim((string)($fileStorageResult['uploadedPath'] ?? ''));
 						if ($uploadedPath !== '') {
-							$organization->deleteDocumentFileFromNextcloud($uploadedPath);
+						$organization->deleteDocumentFileFromStorage($uploadedPath);
 						}
 						if ($startedTransaction && $pdo->inTransaction()) {
 							$pdo->rollBack();
@@ -1596,6 +5979,8 @@
 
 				$visibilitySaveResult = $this->saveVisibilityRule($visibilityType);
 				if (!is_array($visibilitySaveResult) || ($visibilitySaveResult['status'] ?? false) !== true) {
+					$cleanupCreatedCollaboraFile();
+					$cleanupCreatedSpaceDeckSpace();
 					if ($startedTransaction && $pdo->inTransaction()) {
 						$pdo->rollBack();
 					}
@@ -1603,8 +5988,110 @@
 					return $visibilitySaveResult;
 				}
 
+				$editVisibilitySaveResult = $this->saveEditVisibilityRule($editVisibilityType);
+				if (!is_array($editVisibilitySaveResult) || ($editVisibilitySaveResult['status'] ?? false) !== true) {
+					$cleanupCreatedCollaboraFile();
+					$cleanupCreatedSpaceDeckSpace();
+					if ($startedTransaction && $pdo->inTransaction()) {
+						$pdo->rollBack();
+					}
+
+					return $editVisibilitySaveResult;
+				}
+
+				if ($pvTemplateId > 0) {
+					$pvTemplate = new self();
+					if (!$pvTemplate->load($pvTemplateId)) {
+						if ($startedTransaction && $pdo->inTransaction()) {
+							$pdo->rollBack();
+						}
+						return array('status' => false, 'text' => 'Modele de PV introuvable.');
+					}
+
+					$templateCopyResult = $this->copyPvAgendaFromTemplate($pvTemplate, $organizationId, $userId, $resolvedHolonId);
+					if (!is_array($templateCopyResult) || ($templateCopyResult['status'] ?? false) !== true) {
+						if ($startedTransaction && $pdo->inTransaction()) {
+							$pdo->rollBack();
+						}
+						return is_array($templateCopyResult)
+							? $templateCopyResult
+							: array('status' => false, 'text' => 'Impossible de copier le modele de PV.');
+					}
+				}
+
+				if ($documentType === self::TYPE_ETHERPAD) {
+					$etherpadResult = omoEtherpadCreateDocumentPad(
+						$organization,
+						$organizationId,
+						$userId,
+						$this->getCreatedByDisplayName(),
+						''
+					);
+					if (!is_array($etherpadResult) || empty($etherpadResult['status'])) {
+						if ($startedTransaction && $pdo->inTransaction()) {
+							$pdo->rollBack();
+						}
+
+						return is_array($etherpadResult)
+							? $etherpadResult
+							: array('status' => false, 'text' => 'Impossible de creer le pad Etherpad.');
+					}
+
+					$createdEtherpadPadId = trim((string)($etherpadResult['padId'] ?? ''));
+					$this->set('etherpadpadid', $createdEtherpadPadId !== '' ? $createdEtherpadPadId : null);
+					$etherpadSaveResult = $this->save();
+					if (!is_array($etherpadSaveResult) || ($etherpadSaveResult['status'] ?? false) !== true) {
+						if ($createdEtherpadPadId !== '') {
+							omoEtherpadDeleteDocumentPad($organization, $createdEtherpadPadId);
+						}
+						if ($startedTransaction && $pdo->inTransaction()) {
+							$pdo->rollBack();
+						}
+
+						return is_array($etherpadSaveResult)
+							? $etherpadSaveResult
+							: array('status' => false, 'text' => 'Impossible d enregistrer le pad Etherpad.');
+					}
+				}
+
+				if ($documentType === self::TYPE_ETHERCALC) {
+					$ethercalcResult = omoEthercalcCreateDocumentSheet($organizationId);
+					if (!is_array($ethercalcResult) || empty($ethercalcResult['status'])) {
+						if ($startedTransaction && $pdo->inTransaction()) {
+							$pdo->rollBack();
+						}
+
+						return is_array($ethercalcResult)
+							? $ethercalcResult
+							: array('status' => false, 'text' => 'Impossible de creer le tableur EtherCalc.');
+					}
+
+					$createdEthercalcRoomId = trim((string)($ethercalcResult['roomId'] ?? ''));
+					$this->set('ethercalcroomid', $createdEthercalcRoomId !== '' ? $createdEthercalcRoomId : null);
+					$ethercalcSaveResult = $this->save();
+					if (!is_array($ethercalcSaveResult) || ($ethercalcSaveResult['status'] ?? false) !== true) {
+						if ($createdEthercalcRoomId !== '') {
+							omoEthercalcDeleteDocumentSheet($createdEthercalcRoomId);
+						}
+						if ($startedTransaction && $pdo->inTransaction()) {
+							$pdo->rollBack();
+						}
+
+						return is_array($ethercalcSaveResult)
+							? $ethercalcSaveResult
+							: array('status' => false, 'text' => 'Impossible d enregistrer le tableur EtherCalc.');
+					}
+				}
+
 				if ($startedTransaction && $pdo->inTransaction()) {
 					$pdo->commit();
+				}
+
+				if ($createdEtherpadPadId !== '') {
+					$contextSaveResult['etherpadPadId'] = $createdEtherpadPadId;
+				}
+				if ($createdEthercalcRoomId !== '') {
+					$contextSaveResult['ethercalcRoomId'] = $createdEthercalcRoomId;
 				}
 
 				if ($resolvedParentDocument instanceof \dbObject\Document) {
@@ -1613,6 +6100,18 @@
 
 				return $contextSaveResult;
 			} catch (\Throwable $exception) {
+				if ($createdEtherpadPadId !== '' && $organization instanceof \dbObject\Organization && (int)$organization->getId() > 0) {
+					omoEtherpadDeleteDocumentPad($organization, $createdEtherpadPadId);
+				}
+				if ($createdEthercalcRoomId !== '') {
+					omoEthercalcDeleteDocumentSheet($createdEthercalcRoomId);
+				}
+				if ($createdCollaboraPath !== '' && $organization instanceof \dbObject\Organization && (int)$organization->getId() > 0) {
+					$organization->deleteDocumentFileFromStorage($createdCollaboraPath);
+				}
+				if ($createdSpaceDeckSpaceId !== '') {
+					omoSpacedeckDeleteSpace($createdSpaceDeckSpaceId);
+				}
 				if ($startedTransaction && $pdo instanceof \PDO && $pdo->inTransaction()) {
 					$pdo->rollBack();
 				}
@@ -1622,6 +6121,169 @@
 					'text' => 'Impossible de creer ce document.',
 				);
 			}
+		}
+
+		public function createFromDocumentTemplateInOrganizationContext(
+			\dbObject\Document $template,
+			int $organizationId,
+			?int $holonId,
+			int $userId,
+			array $overrides = array()
+		): array {
+			if (!$template->canUseAsDocumentTemplateInOrganizationContext($organizationId, $holonId)) {
+				return array('status' => false, 'text' => 'Modele de document invalide ou inaccessible.');
+			}
+
+			$sourceDocumentIds = array();
+			return $this->copyDocumentTemplateInOrganizationContext($template, $organizationId, $holonId, $userId, $overrides, $sourceDocumentIds);
+		}
+
+		protected function copyDocumentTemplateInOrganizationContext(
+			\dbObject\Document $template,
+			int $organizationId,
+			?int $holonId,
+			int $userId,
+			array $overrides,
+			array &$sourceDocumentIds
+		): array {
+			$templateId = (int)$template->getId();
+			if ($templateId <= 0 || isset($sourceDocumentIds[$templateId])) {
+				return array('status' => false, 'text' => 'La structure du dossier modele est invalide.');
+			}
+			$sourceDocumentIds[$templateId] = true;
+
+			$templateType = $template->getDocumentType();
+			$values = array(
+				'title' => trim((string)($overrides['title'] ?? $template->get('title'))),
+				'description' => trim((string)($overrides['description'] ?? $template->get('description'))),
+				'keywords' => trim((string)($overrides['keywords'] ?? $template->get('keywords'))),
+				'document_type' => $templateType,
+			);
+			foreach (array('event_id', 'allow_empty_type_payload', 'parent_document_id', 'visibility_type', 'edit_visibility_type') as $overrideKey) {
+				if (array_key_exists($overrideKey, $overrides)) {
+					$values[$overrideKey] = $overrides[$overrideKey];
+				}
+			}
+
+			$temporaryFile = '';
+			if ($template->isFolder() && !$template->isNextcloudFolder()) {
+				$values['document_type'] = self::TYPE_FOLDER;
+				$values['is_folder'] = true;
+			} elseif ($templateType === self::TYPE_PV) {
+				$values['pv_template_id'] = (int)$template->getId();
+			} elseif ($templateType === self::TYPE_HTML) {
+				$values['content'] = (string)$template->get('content');
+			} elseif ($templateType === self::TYPE_EXTERNAL_LINK) {
+				$values['external_url'] = $template->getExternalUrl();
+				$values['open_in_new_window'] = $template->shouldOpenExternalLinkInNewWindow();
+			} elseif ($templateType === self::TYPE_UPLOADED_FILE && $template->hasStoredFile()) {
+				$organization = new \dbObject\Organization();
+				if (!$organization->load($organizationId)) {
+					return array('status' => false, 'text' => 'Organisation introuvable.');
+				}
+				$downloadResult = $organization->downloadDocumentFileFromStorage((string)$template->get('storedfilepath'));
+				if (!is_array($downloadResult) || empty($downloadResult['status'])) {
+					return is_array($downloadResult)
+						? $downloadResult
+						: array('status' => false, 'text' => 'Impossible de récupérer le fichier du modèle.');
+				}
+
+				$temporaryFile = tempnam(sys_get_temp_dir(), 'omo-document-template-');
+				$fileContents = (string)($downloadResult['body'] ?? '');
+				if ($temporaryFile === false || file_put_contents($temporaryFile, $fileContents) !== strlen($fileContents)) {
+					if (is_string($temporaryFile) && $temporaryFile !== '') {
+						@unlink($temporaryFile);
+					}
+					return array('status' => false, 'text' => 'Impossible de préparer le fichier du modèle.');
+				}
+
+				$values['uploaded_file'] = array(
+					'error' => UPLOAD_ERR_OK,
+					'tmp_name' => $temporaryFile,
+					'name' => $template->getStoredFileDownloadName(),
+					'type' => $template->getStoredFileMimeType(),
+					'size' => strlen($fileContents),
+				);
+			} elseif ($templateType !== self::TYPE_ETHERPAD && $templateType !== self::TYPE_ETHERCALC) {
+				return array('status' => false, 'text' => 'Ce type de document ne peut pas etre utilise comme modele.');
+			}
+
+			try {
+				$createResult = $this->createInOrganizationContext($organizationId, $holonId, $userId, $values);
+			} finally {
+				if ($temporaryFile !== '') {
+					@unlink($temporaryFile);
+				}
+			}
+			if (!is_array($createResult) || empty($createResult['status'])) {
+				return $createResult;
+			}
+
+			if ($template->isFolder()) {
+				$visibilityRule = $this->getPrimaryVisibilityRuleRow();
+				$editVisibilityRule = $this->getPrimaryEditVisibilityRuleRow();
+				$childOverrides = array(
+					'parent_document_id' => (int)$this->getId(),
+					'visibility_type' => (string)($visibilityRule['visibility_type'] ?? self::getDefaultVisibilityTypeForOrganization($organizationId)),
+					'edit_visibility_type' => (string)($editVisibilityRule['visibility_type'] ?? self::getDefaultEditVisibilityTypeForOrganization($organizationId)),
+				);
+				foreach ($template->getDirectChildren() as $templateChild) {
+					if (!($templateChild instanceof \dbObject\Document) || $templateChild->isArchived()) {
+						continue;
+					}
+
+					$childCopy = new \dbObject\Document();
+					$childCopyResult = $childCopy->copyDocumentTemplateInOrganizationContext(
+						$templateChild,
+						$organizationId,
+						$holonId,
+						$userId,
+						$childOverrides,
+						$sourceDocumentIds
+					);
+					if (!is_array($childCopyResult) || empty($childCopyResult['status'])) {
+						$this->deleteDocumentTree();
+						return is_array($childCopyResult)
+							? $childCopyResult
+							: array('status' => false, 'text' => 'Impossible de copier le contenu du dossier modele.');
+					}
+				}
+
+				return $createResult;
+			}
+
+			if ($templateType === self::TYPE_ETHERPAD) {
+				require_once dirname(__DIR__, 2) . '/common/etherpad.php';
+				$organization = new \dbObject\Organization();
+				$copyResult = $organization->load($organizationId)
+					? omoEtherpadCopyDocumentPadContents($organization, $template->getEtherpadPadId(), $this->getEtherpadPadId())
+					: array('status' => false, 'text' => 'Organisation introuvable.');
+			} elseif ($templateType === self::TYPE_ETHERCALC) {
+				require_once dirname(__DIR__, 2) . '/common/ethercalc.php';
+				$copyResult = omoEthercalcCopyDocumentSheetContents($template->getEthercalcRoomId(), $this->getEthercalcRoomId());
+			} else {
+				return $createResult;
+			}
+
+			if (is_array($copyResult) && !empty($copyResult['status'])) {
+				return $createResult;
+			}
+
+			$this->delete();
+			return is_array($copyResult)
+				? $copyResult
+				: array('status' => false, 'text' => 'Impossible de copier le contenu du modèle.');
+		}
+
+		protected function deleteDocumentTree(): bool
+		{
+			foreach ($this->getDirectChildren() as $child) {
+				if ($child instanceof \dbObject\Document && !$child->deleteDocumentTree()) {
+					return false;
+				}
+			}
+
+			return (bool)$this->delete();
 		}
 
 		public function updateInOrganizationContext(int $organizationId, int $userId, array $values = array())
@@ -1637,19 +6299,33 @@
 				);
 			}
 
-			if ($userId <= 0 || $userId !== (int)$this->get('IDuser') || !$this->canEditInOrganizationContext($organizationId, $userId, false)) {
+			$canManagePvDocument = $this->isPvDocument() && $this->canUserManagePvStructure($organizationId, $userId);
+			$canManageDocument = !$this->isPvDocument()
+				&& $this->canManageInOrganizationContext($organizationId, $userId, false);
+			$canEditContent = !$this->isPvDocument()
+				&& $this->canEditInOrganizationContext($organizationId, $userId, false);
+			if (
+				$userId <= 0
+				|| ($this->isPvDocument() && !$canManagePvDocument)
+				|| (!$this->isPvDocument() && !$canManageDocument && !$canEditContent)
+			) {
 				return array(
 					'status' => false,
 					'text' => 'Acces refuse.',
 				);
 			}
 
-			$lockResult = $this->touchEditLock($organizationId, $userId);
-			if (!is_array($lockResult) || ($lockResult['status'] ?? false) !== true) {
-				return $lockResult;
+			$usesEditLock = $canEditContent && $this->supportsHtmlContent();
+			if ($usesEditLock) {
+				$lockResult = $this->touchEditLock($organizationId, $userId);
+				if (!is_array($lockResult) || ($lockResult['status'] ?? false) !== true) {
+					return $lockResult;
+				}
 			}
 
-			$title = trim((string)($values['title'] ?? ''));
+			$title = $canManageDocument || $canManagePvDocument
+				? trim((string)($values['title'] ?? ''))
+				: trim((string)$this->get('title'));
 			if ($title === '') {
 				return array(
 					'status' => false,
@@ -1657,19 +6333,37 @@
 				);
 			}
 
-			$description = trim((string)($values['description'] ?? ''));
+			$description = $canManageDocument || $canManagePvDocument
+				? trim((string)($values['description'] ?? ''))
+				: trim((string)$this->get('description'));
 			$documentType = $this->getDocumentType();
-			$uploadedFile = $documentType === self::TYPE_UPLOADED_FILE
+			$nextcloudFolderPath = $documentType === self::TYPE_NEXTCLOUD_FOLDER
+				? ($canManageDocument
+					? self::normalizeNextcloudFolderPath($values['nextcloud_folder_path'] ?? '')
+					: $this->getNextcloudFolderPath())
+				: '';
+			if ($documentType === self::TYPE_NEXTCLOUD_FOLDER && $nextcloudFolderPath === '') {
+				return array(
+					'status' => false,
+					'text' => 'Le chemin du dossier NextCloud est obligatoire et ne peut pas contenir de remontee de dossier.',
+				);
+			}
+			$uploadedFile = $canEditContent && $documentType === self::TYPE_UPLOADED_FILE
 				? self::extractValidUploadedFile($values['uploaded_file'] ?? null)
 				: null;
-			$removeUploadedFile = $documentType === self::TYPE_UPLOADED_FILE && !empty($values['remove_uploaded_file']);
+			$removeUploadedFile = $canEditContent && $documentType === self::TYPE_UPLOADED_FILE && !empty($values['remove_uploaded_file']);
 			$content = $documentType === self::TYPE_HTML
-				? \dbObject\PropertyFormat::sanitizeHtml((string)($values['content'] ?? ''))
+				? ($canEditContent
+					? \dbObject\PropertyFormat::sanitizeHtml((string)($values['content'] ?? ''))
+					: (string)$this->get('content'))
 				: '';
 			$externalUrl = $documentType === self::TYPE_EXTERNAL_LINK
-				? self::sanitizeExternalUrl($values['external_url'] ?? '')
+				? ($canEditContent
+					? self::sanitizeExternalUrl($values['external_url'] ?? '')
+					: $this->getExternalUrl())
 				: '';
-			$openInNewWindow = $documentType === self::TYPE_EXTERNAL_LINK && !empty($values['open_in_new_window']);
+			$openInNewWindow = $documentType === self::TYPE_EXTERNAL_LINK
+				&& ($canEditContent ? !empty($values['open_in_new_window']) : $this->shouldOpenExternalLinkInNewWindow());
 			if ($documentType === self::TYPE_EXTERNAL_LINK && $externalUrl === '') {
 				return array(
 					'status' => false,
@@ -1682,17 +6376,43 @@
 					'text' => 'Aucun fichier n est actuellement associe a ce document.',
 				);
 			}
-			$keywords = trim((string)($values['keywords'] ?? ''));
-			$visibilityType = (string)($values['visibility_type'] ?? \dbObject\ObjectVisibility::getDefaultVisibilityType());
+			$keywords = $canManageDocument || $canManagePvDocument
+				? trim((string)($values['keywords'] ?? ''))
+				: trim((string)$this->get('keywords'));
+			$visibilityType = $canManageDocument || $canManagePvDocument
+				? $this->resolveScopeTypeInput(
+					$values,
+					'visibility_type',
+					self::getDefaultVisibilityTypeForOrganization($organizationId),
+					false
+				)
+				: '';
+			$editVisibilityType = $canManageDocument || $canManagePvDocument
+				? $this->resolveScopeTypeInput(
+					$values,
+					'edit_visibility_type',
+					self::getDefaultEditVisibilityTypeForOrganization($organizationId),
+					false
+				)
+				: '';
 			$now = new \DateTimeImmutable();
-
 			$this->set('title', $title);
 			$this->set('description', $description);
 			$this->set('content', $content);
 			$this->set('keywords', $keywords);
 			$this->set('documenttype', $documentType);
+			if ($documentType === self::TYPE_PV) {
+				$this->set('pvstage', self::normalizePvStage($values['pv_stage'] ?? $this->get('pvstage')));
+			} else {
+				$this->set('pvstage', null);
+			}
 			$this->set('externalurl', $externalUrl !== '' ? $externalUrl : null);
 			$this->set('openinnewwindow', $openInNewWindow ? 1 : 0);
+			$previousNextcloudFolderPath = $this->getNextcloudFolderPath();
+			$this->set('nextcloudfolderpath', $nextcloudFolderPath !== '' ? $nextcloudFolderPath : null);
+			if ($documentType === self::TYPE_NEXTCLOUD_FOLDER && $nextcloudFolderPath !== $previousNextcloudFolderPath) {
+				$this->set('nextcloudfolderfileid', null);
+			}
 			if ($documentType !== self::TYPE_HTML) {
 				$this->clearDraftContentState();
 			}
@@ -1737,7 +6457,8 @@
 				if (
 					!$isWithoutContext
 					&& $documentType === self::TYPE_UPLOADED_FILE
-					&& !$organization->hasNextcloudDocumentStorage()
+					&& ($uploadedFile !== null || $removeUploadedFile)
+					&& !$organization->hasDocumentStorage()
 				) {
 					if ($startedTransaction && $pdo->inTransaction()) {
 						$pdo->rollBack();
@@ -1745,8 +6466,35 @@
 
 					return array(
 						'status' => false,
-						'text' => 'Le stockage Nextcloud n est pas configure pour cette organisation.',
+						'text' => 'Le stockage de documents n est pas configure pour cette organisation.',
 					);
+				}
+
+				if (
+					!$isWithoutContext
+					&& $documentType === self::TYPE_NEXTCLOUD_FOLDER
+					&& !$organization->hasDocumentStorage()
+				) {
+					if ($startedTransaction && $pdo->inTransaction()) {
+						$pdo->rollBack();
+					}
+
+					return array(
+						'status' => false,
+					'text' => 'Le stockage de documents n est pas configure pour cette organisation.',
+					);
+				}
+
+				if (!$isWithoutContext && $documentType === self::TYPE_NEXTCLOUD_FOLDER) {
+					$nextcloudFolderLocation = $this->resolveRemoteFolderStorageLocation($organization);
+					if (empty($nextcloudFolderLocation['status'])) {
+						if ($startedTransaction && $pdo->inTransaction()) {
+							$pdo->rollBack();
+						}
+						return array('status' => false, 'text' => trim((string)($nextcloudFolderLocation['text'] ?? 'Le dossier NextCloud est introuvable.')));
+					}
+					$this->set('nextcloudfolderpath', (string)$nextcloudFolderLocation['relativePath']);
+					$this->set('nextcloudfolderfileid', trim((string)($nextcloudFolderLocation['fileId'] ?? '')) ?: null);
 				}
 
 				$saveResult = $this->save();
@@ -1783,7 +6531,7 @@
 
 						$newStoredPath = trim((string)($fileStorageResult['uploadedPath'] ?? ''));
 						if ($previousStoredPath !== '' && $previousStoredPath !== $newStoredPath) {
-							$organization->deleteDocumentFileFromNextcloud($previousStoredPath);
+						$organization->deleteDocumentFileFromStorage($previousStoredPath);
 						}
 					}
 
@@ -1799,7 +6547,7 @@
 					}
 				}
 
-				if (!$isWithoutContext) {
+				if (!$isWithoutContext && ($canManageDocument || $canManagePvDocument)) {
 					$visibilitySaveResult = $this->saveVisibilityRule($visibilityType);
 					if (!is_array($visibilitySaveResult) || ($visibilitySaveResult['status'] ?? false) !== true) {
 						if ($startedTransaction && $pdo->inTransaction()) {
@@ -1807,6 +6555,15 @@
 						}
 
 						return $visibilitySaveResult;
+					}
+
+					$editVisibilitySaveResult = $this->saveEditVisibilityRule($editVisibilityType);
+					if (!is_array($editVisibilitySaveResult) || ($editVisibilitySaveResult['status'] ?? false) !== true) {
+						if ($startedTransaction && $pdo->inTransaction()) {
+							$pdo->rollBack();
+						}
+
+						return $editVisibilitySaveResult;
 					}
 				}
 
@@ -1818,7 +6575,9 @@
 					$this->refreshAncestorFolderActivity();
 				}
 
-				$this->releaseEditLock($userId, true);
+				if ($usesEditLock) {
+					$this->releaseEditLock($userId, true);
+				}
 
 				return $saveResult;
 			} catch (\Throwable $exception) {
@@ -1845,6 +6604,12 @@
 			);
 			$visibilityNeedsHolonTarget = \dbObject\ObjectVisibility::requiresHolonTarget($visibilityType);
 			$finalVisibilityType = $visibilityType;
+			$editVisibilityRule = $this->getPrimaryEditVisibilityRuleRow();
+			$editVisibilityType = \dbObject\ObjectVisibility::normalizeVisibilityType(
+				$editVisibilityRule['visibility_type'] ?? self::getDefaultEditVisibilityType()
+			);
+			$editVisibilityNeedsHolonTarget = \dbObject\ObjectVisibility::requiresHolonTarget($editVisibilityType);
+			$finalEditVisibilityType = $editVisibilityType;
 
 			$this->set('IDorganization', $organizationId);
 			$this->set('IDholon', $targetHolonId > 0 ? $targetHolonId : null);
@@ -1881,9 +6646,34 @@
 				}
 			}
 
+			if ($editVisibilityNeedsHolonTarget) {
+				$editVisibilitySaveResult = $this->saveEditVisibilityRule($editVisibilityType);
+				if (!is_array($editVisibilitySaveResult) || ($editVisibilitySaveResult['status'] ?? false) !== true) {
+					if (
+						$editVisibilityType === \dbObject\ObjectVisibility::TYPE_ROLE
+						&& $targetHolonId > 0
+					) {
+						$editVisibilitySaveResult = $this->saveEditVisibilityRule(\dbObject\ObjectVisibility::TYPE_CIRCLE);
+						if (is_array($editVisibilitySaveResult) && ($editVisibilitySaveResult['status'] ?? false) === true) {
+							$finalEditVisibilityType = \dbObject\ObjectVisibility::TYPE_CIRCLE;
+						}
+					}
+
+					if (!is_array($editVisibilitySaveResult) || ($editVisibilitySaveResult['status'] ?? false) !== true) {
+						$editVisibilitySaveResult = $this->saveEditVisibilityRule(self::getDefaultEditVisibilityType());
+						$finalEditVisibilityType = self::getDefaultEditVisibilityType();
+					}
+				}
+
+				if (!is_array($editVisibilitySaveResult) || ($editVisibilitySaveResult['status'] ?? false) !== true) {
+					return $editVisibilitySaveResult;
+				}
+			}
+
 			return array(
 				'status' => true,
 				'visibilityType' => $finalVisibilityType,
+				'editVisibilityType' => $finalEditVisibilityType,
 			);
 		}
 
@@ -1937,7 +6727,7 @@
 				);
 			}
 
-			if ($userId <= 0 || $userId !== (int)$this->get('IDuser') || !$this->canEditInOrganizationContext($organizationId, $userId, false)) {
+			if ($userId <= 0 || !$this->canMoveInOrganizationContext($organizationId, $userId)) {
 				return array(
 					'status' => false,
 					'text' => 'Acces refuse.',
@@ -2150,6 +6940,30 @@
 				: \dbObject\ObjectVisibility::buildFallbackRuleData($organizationId);
 		}
 
+		public function getPrimaryEditVisibilityRuleRow()
+		{
+			$organizationId = (int)$this->get('IDorganization');
+			if ((int)$this->getId() <= 0 || $organizationId <= 0) {
+				return \dbObject\ObjectVisibility::buildFallbackRuleData(
+					$organizationId,
+					self::getDefaultEditVisibilityType()
+				);
+			}
+
+			$ruleRow = \dbObject\ObjectVisibility::loadActiveRuleRow(
+				self::getEditVisibilityObjectType(),
+				(int)$this->getId(),
+				$organizationId
+			);
+
+			return is_array($ruleRow)
+				? $ruleRow
+				: \dbObject\ObjectVisibility::buildFallbackRuleData(
+					$organizationId,
+					self::getDefaultEditVisibilityType()
+				);
+		}
+
 		protected function resolveVisibilityTargetHolonId($visibilityType): array
 		{
 			$visibilityType = \dbObject\ObjectVisibility::normalizeVisibilityType($visibilityType);
@@ -2165,8 +6979,8 @@
 				return array(
 					'status' => false,
 					'text' => $visibilityType === \dbObject\ObjectVisibility::TYPE_ROLE
-						? 'La visibilite role demande un document lie a un role.'
-						: 'La visibilite cercle demande un document lie a un cercle ou a un role.',
+                        ? 'La visibilite role demande un document lie a un role.'
+                        : 'La visibilite cercle demande un document lie a un cercle ou a un role.',
 				);
 			}
 
@@ -2178,7 +6992,7 @@
 			) {
 				return array(
 					'status' => false,
-					'text' => 'Holon du document introuvable.',
+					'text' => \dbObject\Organization::formatLexiconText('Holon du document introuvable.'),
 				);
 			}
 
@@ -2186,7 +7000,7 @@
 				if ((int)$holon->get('IDtypeholon') !== 1) {
 					return array(
 						'status' => false,
-						'text' => 'La visibilite role demande un document lie a un role.',
+                        'text' => 'La visibilite role demande un document lie a un role.',
 					);
 				}
 
@@ -2207,7 +7021,7 @@
 			if ($circleId <= 0) {
 				return array(
 					'status' => false,
-					'text' => 'La visibilite cercle demande un document place dans un cercle ou dans un role de cercle.',
+                    'text' => 'La visibilite cercle demande un document place dans un cercle ou dans un role de cercle.',
 				);
 			}
 
@@ -2243,7 +7057,33 @@
 			);
 		}
 
-		public function currentViewerCanAccessVisibility($organizationId = 0, $ruleRow = null): bool
+		public function saveEditVisibilityRule($visibilityType, $targetHolonId = null)
+		{
+			$organizationId = (int)$this->get('IDorganization');
+			if ((int)$this->getId() <= 0 || $organizationId <= 0) {
+				return array(
+					'status' => false,
+					'text' => 'Contexte d edition invalide.',
+				);
+			}
+
+			$resolvedTarget = $targetHolonId !== null
+				? array('status' => true, 'holonId' => (int)$targetHolonId)
+				: $this->resolveVisibilityTargetHolonId($visibilityType);
+			if (($resolvedTarget['status'] ?? false) !== true) {
+				return $resolvedTarget;
+			}
+
+			return \dbObject\ObjectVisibility::saveSingleRule(
+				self::getEditVisibilityObjectType(),
+				(int)$this->getId(),
+				$organizationId,
+				$visibilityType,
+				$resolvedTarget['holonId'] ?? null
+			);
+		}
+
+		public function currentViewerCanAccessVisibility($organizationId = 0, $ruleRow = null, ?int $viewerUserId = null): bool
 		{
 			$organizationId = (int)$organizationId > 0
 				? (int)$organizationId
@@ -2252,7 +7092,7 @@
 				return false;
 			}
 
-			$viewerContext = \dbObject\ObjectVisibility::buildCurrentViewerContext($organizationId);
+			$viewerContext = \dbObject\ObjectVisibility::buildCurrentViewerContext($organizationId, $viewerUserId);
 			return \dbObject\ObjectVisibility::viewerCanAccessRule(
 				is_array($ruleRow) ? $ruleRow : $this->getPrimaryVisibilityRuleRow(),
 				$viewerContext,
@@ -2268,10 +7108,52 @@
 			$organizationId = (int)$organizationId > 0
 				? (int)$organizationId
 				: (int)$this->get('IDorganization');
+			$ownerUserId = (int)$this->get('IDuser');
 
 			return \dbObject\ObjectVisibility::buildDisplayData(
 				is_array($ruleRow) ? $ruleRow : $this->getPrimaryVisibilityRuleRow(),
-				$organizationId
+				$organizationId,
+				array(
+					'ownerUserId' => $ownerUserId,
+					'ownerLabel' => self::resolveOwnerDisplayNameById($ownerUserId, $organizationId),
+				)
+			);
+		}
+
+		public function currentViewerCanAccessEditVisibility($organizationId = 0, $ruleRow = null, ?int $viewerUserId = null): bool
+		{
+			$organizationId = (int)$organizationId > 0
+				? (int)$organizationId
+				: (int)$this->get('IDorganization');
+			if ($organizationId <= 0) {
+				return false;
+			}
+
+			$viewerContext = \dbObject\ObjectVisibility::buildCurrentViewerContext($organizationId, $viewerUserId);
+			return \dbObject\ObjectVisibility::viewerCanAccessRule(
+				is_array($ruleRow) ? $ruleRow : $this->getPrimaryEditVisibilityRuleRow(),
+				$viewerContext,
+				array(
+					'organizationId' => $organizationId,
+					'ownerUserId' => (int)$this->get('IDuser'),
+				)
+			);
+		}
+
+		public function getEditVisibilityDisplayData($organizationId = 0, $ruleRow = null): array
+		{
+			$organizationId = (int)$organizationId > 0
+				? (int)$organizationId
+				: (int)$this->get('IDorganization');
+			$ownerUserId = (int)$this->get('IDuser');
+
+			return \dbObject\ObjectVisibility::buildDisplayData(
+				is_array($ruleRow) ? $ruleRow : $this->getPrimaryEditVisibilityRuleRow(),
+				$organizationId,
+				array(
+					'ownerUserId' => $ownerUserId,
+					'ownerLabel' => self::resolveOwnerDisplayNameById($ownerUserId, $organizationId),
+				)
 			);
 		}
 
@@ -2355,6 +7237,34 @@
 			}
 
 			return count($labels) > 0 ? implode(" > ", $labels) : '';
+		}
+
+		public function getTemplateGroupLabel(): string
+		{
+			static $labels = array();
+
+			$organizationId = (int)$this->get('IDorganization');
+			$holonId = (int)$this->get('IDholon');
+			$cacheKey = $organizationId . ':' . $holonId;
+			if (array_key_exists($cacheKey, $labels)) {
+				return $labels[$cacheKey];
+			}
+
+			if ($holonId > 0) {
+				$holon = new \dbObject\Holon();
+				if ($holon->load($holonId)) {
+					$label = trim((string)$holon->get('name'));
+					if ($label !== '') {
+						return $labels[$cacheKey] = $label;
+					}
+				}
+			}
+
+			$organization = new \dbObject\Organization();
+			$labels[$cacheKey] = $organizationId > 0 && $organization->load($organizationId)
+				? trim((string)$organization->get('name'))
+				: '';
+			return $labels[$cacheKey];
 		}
 	}
 

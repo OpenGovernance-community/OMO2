@@ -45,7 +45,7 @@ if (!function_exists('omoRenderCompetenceAvatar')) {
 		$title = implode(' - ', $titleParts);
 
 		if ($photoUrl !== '') {
-			echo '<img src="' . htmlspecialchars($photoUrl, ENT_QUOTES, 'UTF-8') . '" alt="' . htmlspecialchars($displayName !== '' ? $displayName : $initials, ENT_QUOTES, 'UTF-8') . '" class="' . htmlspecialchars($className, ENT_QUOTES, 'UTF-8') . '"' . ($title !== '' ? ' title="' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . '"' : '') . '>';
+			echo '<img src="' . htmlspecialchars($photoUrl, ENT_QUOTES, 'UTF-8') . '" alt="' . htmlspecialchars($displayName !== '' ? $displayName : $initials, ENT_QUOTES, 'UTF-8') . '" class="' . htmlspecialchars($className, ENT_QUOTES, 'UTF-8') . '" width="28" height="28" decoding="async"' . ($title !== '' ? ' title="' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . '"' : '') . '>';
 			return;
 		}
 

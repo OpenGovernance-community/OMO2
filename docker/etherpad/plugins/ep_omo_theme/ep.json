@@ -1,0 +1,10 @@
+{
+  "parts": [
+    {
+      "name": "omoTheme",
+      "client_hooks": {
+        "postAceInit": "ep_omo_theme/static/js/omo_theme"
+      }
+    }
+  ]
+}

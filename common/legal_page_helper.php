@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/assets.php';
+
 function commonLegalEnsureTranslationHelpers(): void
 {
     if (!function_exists('loadTranslationBundle')) {
@@ -76,6 +78,7 @@ function commonRenderLegalPage(array $config): void
     $sections = array_values($config['sections'] ?? []);
     $note = array_values($config['note'] ?? []);
     $embed = commonLegalPageIsEmbedded();
+    $forceLightEmbed = $embed && !empty($config['forceLightEmbed']);
 
     $accent = trim((string)($config['accent'] ?? '#2563eb'));
     $accentSoft = trim((string)($config['accentSoft'] ?? '#dbeafe'));
@@ -84,6 +87,19 @@ function commonRenderLegalPage(array $config): void
     $noteBackground = trim((string)($config['noteBackground'] ?? '#f8fbff'));
     $borderColor = trim((string)($config['borderColor'] ?? '#dbe4ee'));
     $locale = trim((string)($config['locale'] ?? 'fr'));
+    $embedStyle = $forceLightEmbed ? <<<CSS
+    .common-legal-page-content--embed {
+        --legal-bg: {$pageBackground};
+        --legal-surface: #ffffff;
+        --legal-text: #0f172a;
+        --legal-muted: #475569;
+        --legal-border: {$borderColor};
+        --legal-note-bg: {$noteBackground};
+        --legal-bg-start: {$backgroundStart};
+        color-scheme: light !important;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+CSS : '';
 
     $style = <<<CSS
 <style>
@@ -134,7 +150,7 @@ function commonRenderLegalPage(array $config): void
     .common-legal-page-card {
         background: var(--legal-surface);
         border: 1px solid var(--legal-border);
-        border-radius: 24px;
+        border-radius: var(--radius-md);
         padding: 28px;
         box-shadow: 0 24px 60px rgba(15, 23, 42, 0.08);
     }
@@ -175,7 +191,7 @@ function commonRenderLegalPage(array $config): void
         padding: 14px 16px;
         border-left: 4px solid var(--legal-accent);
         background: var(--legal-note-bg);
-        border-radius: 12px;
+        border-radius: var(--radius-md);
     }
 
     .common-legal-page-content a {
@@ -194,13 +210,15 @@ function commonRenderLegalPage(array $config): void
     }
 
     .common-legal-page-content--embed {
-        padding: 0;
+        padding: 24px;
         color: var(--legal-text);
     }
 
     .common-legal-page-content--embed .common-legal-page-note {
         margin-bottom: 0;
     }
+
+{$embedStyle}
 </style>
 CSS;
 
@@ -259,7 +277,7 @@ CSS;
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($pageTitle) ?></title>
-    <link href="/shared_css.css" rel="stylesheet">
+    <?= commonStylesheetTags('/shared_css.css') ?>
     <?= $style . PHP_EOL ?>
     <script src="/shared_functions.js"></script>
     <script>

@@ -11,11 +11,11 @@
 		public static function rules()
 		{
 			return [
-				[['id', 'IDuser'], 'integer'],
+				[['id', 'IDuser', 'mfa_attempt_count'], 'integer'],
 				[['token', 'code_hash', 'request_ip'], 'string'],
 				[['expires_at', 'created_at', 'last_attempt_at'], 'datetime'],
 				[['attempt_count'], 'integer'],
-				[['used', 'remember'], 'boolean'],
+				[['used', 'remember', 'mfa_pending'], 'boolean'],
 				[['id'], 'safe'],
 			];
 		}
@@ -72,8 +72,28 @@
 			$item->set('created_at', new \DateTime());
 			$item->set('used', 0);
 			$item->set('remember', (int)$remember);
+			$item->set('mfa_pending', 0);
+			$item->set('mfa_attempt_count', 0);
 			$result = $item->save();
 			return !empty($result['status']) ? $item : false;
+		}
+
+		public static function issueMfaPending($userId, $requestIp, $remember = 0) {
+			$token = bin2hex(random_bytes(32));
+			$item = self::issue($userId, $token, '', $requestIp, $remember);
+			if (!$item) {
+				return false;
+			}
+
+			$item->set('mfa_pending', 1);
+			$result = $item->save();
+			return is_array($result) && !empty($result['status']) ? $item : false;
+		}
+
+		public function beginMfaVerification() {
+			$this->set('mfa_pending', 1);
+			$this->set('mfa_attempt_count', 0);
+			return $this->save();
 		}
 
 		public static function findByToken($token) {
@@ -124,6 +144,12 @@
 
 		public function incrementAttemptCount() {
 			$this->set('attempt_count', (int)$this->get('attempt_count') + 1);
+			$this->set('last_attempt_at', new \DateTime());
+			return $this->save();
+		}
+
+		public function incrementMfaAttemptCount() {
+			$this->set('mfa_attempt_count', (int)$this->get('mfa_attempt_count') + 1);
 			$this->set('last_attempt_at', new \DateTime());
 			return $this->save();
 		}

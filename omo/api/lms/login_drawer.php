@@ -28,7 +28,7 @@ $config = [
 	padding: 24px;
 	background: rgba(255, 255, 255, 0.96);
 	border: 1px solid var(--auth-border, #e5e7eb);
-	border-radius: 18px;
+	border-radius: var(--radius-md);
 	box-shadow: 0 24px 80px rgba(15, 23, 42, 0.08);
 }
 
@@ -43,7 +43,6 @@ $config = [
 <?php if ($organizationColor !== ''): ?>
 <style>
 	:root {
-		--color-primary: <?php echo htmlspecialchars($organizationColor); ?>;
 		--auth-primary: <?php echo htmlspecialchars($organizationColor); ?>;
 	}
 </style>
@@ -76,7 +75,7 @@ $config = [
 
 		<div id="authCodeBox" class="auth-code-box" style="display:none;">
 			<p><?php echo htmlspecialchars(commonAuthT('auth.code.instructions', [], $authLang, $authSourceLang)); ?></p>
-			<input type="text" id="authCodeInput" inputmode="text" autocomplete="one-time-code" maxlength="6" placeholder="<?php echo htmlspecialchars(commonAuthT('auth.code.placeholder', [], $authLang, $authSourceLang)); ?>">
+			<input type="text" id="authCodeInput" name="code" inputmode="text" autocomplete="one-time-code" autocapitalize="characters" autocorrect="off" spellcheck="false" maxlength="6" aria-label="<?php echo htmlspecialchars(commonAuthT('auth.code.placeholder', [], $authLang, $authSourceLang)); ?>" placeholder="<?php echo htmlspecialchars(commonAuthT('auth.code.placeholder', [], $authLang, $authSourceLang)); ?>">
 			<button type="button" id="authCodeSubmit"><?php echo htmlspecialchars(commonAuthT('auth.button.validate_code', [], $authLang, $authSourceLang)); ?></button>
 		</div>
 

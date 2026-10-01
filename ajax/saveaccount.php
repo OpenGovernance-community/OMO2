@@ -64,13 +64,21 @@
 	unset(
 		$data['current_password'],
 		$data['new_password'],
-		$data['new_password_confirm']
+		$data['new_password_confirm'],
+		$data['allow_password_login']
 	);
 	$data["id"] = $currentUserId;
 	$object->loadFromArray($data);
 	if (!empty($passwordValidation['shouldUpdate'])) {
 		$object->set('password', commonHashUserPassword((string)$_POST['new_password']));
 	}
+	$object->set(
+		'allow_password_login',
+		commonUserHasPasswordHash((string)$object->get('password'))
+			&& !empty($_POST['allow_password_login'])
+			? 1
+			: 0
+	);
 	$saveResult = $object->save();
 
 	if (!is_array($saveResult) || empty($saveResult['status'])) {

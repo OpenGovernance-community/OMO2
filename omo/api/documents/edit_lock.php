@@ -14,7 +14,7 @@ if ($documentId <= 0 || $currentUserId <= 0) {
     http_response_code(400);
     echo json_encode(array(
         'status' => false,
-        'message' => 'Requete invalide.',
+        'message' => 'Requête invalide.',
     ));
     exit;
 }
@@ -33,7 +33,7 @@ if ($organizationId <= 0 || !commonCurrentUserHasOrganizationAccess($organizatio
     http_response_code(403);
     echo json_encode(array(
         'status' => false,
-        'message' => 'Acces refuse.',
+        'message' => 'Accès refusé.',
     ));
     exit;
 }
@@ -48,7 +48,7 @@ if (!is_array($result) || ($result['status'] ?? false) !== true) {
     http_response_code(423);
     echo json_encode(array(
         'status' => false,
-        'message' => trim((string)($result['text'] ?? 'Document verrouille.')),
+        'message' => trim((string)($result['text'] ?? 'Document verrouillé.')),
         'lock' => is_array($result['lock'] ?? null) ? $result['lock'] : null,
     ));
     exit;

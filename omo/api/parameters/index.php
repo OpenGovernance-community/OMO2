@@ -6,21 +6,30 @@ require_once dirname(__DIR__, 3) . '/includes/server_env_admin.php';
 $currentUserId = commonGetCurrentUserId();
 $currentOrganizationId = (int)($_SESSION['currentOrganization'] ?? 0);
 $organization = null;
-$canEditOrganization = false;
+$isOrganizationAdmin = false;
+$isOrganizationAdminModeEnabled = false;
 $hasStructureTemplates = false;
+$canUseHolonTemplateEditor = false;
+$isDiscoveryMode = false;
 $organizationName = '';
 $isSiteAdmin = commonCurrentUserIsSiteAdminModeEnabled();
-$canManageApplicationSettings = false;
 $applicationSettingsCards = [];
+$organizationAdminLabel = 'Admin';
+$organizationLexicon = \dbObject\Organization::getDefaultLexicon();
+$spaceLabels = \dbObject\Organization::getLexiconLabel($organizationLexicon, 'space', true);
 if ($currentOrganizationId > 0) {
     $organization = new \dbObject\Organization();
     if ($organization->load($currentOrganizationId)) {
-        $canEditOrganization = $organization->canEdit();
+        $organizationLexicon = $organization->getLexicon();
+        $spaceLabels = \dbObject\Organization::getLexiconLabel($organizationLexicon, 'space', true);
+        $isOrganizationAdmin = commonCurrentUserCanUseAdminMode($currentOrganizationId)
+            || commonCurrentUserIsSiteAdminModeEnabled();
+        $isOrganizationAdminModeEnabled = commonCurrentUserIsAdminModeEnabled($currentOrganizationId)
+            || commonCurrentUserIsSiteAdminModeEnabled();
         $hasStructureTemplates = $organization->getEnabledStructuralRootHolon() !== null;
+        $isDiscoveryMode = $organization->isDiscoveryMode();
+        $canUseHolonTemplateEditor = !$isDiscoveryMode && $isOrganizationAdminModeEnabled;
         $organizationName = trim((string)$organization->get('name'));
-        $canManageApplicationSettings = $currentUserId > 0
-            && commonUserHasAdminOverride((int)$currentUserId, $currentOrganizationId);
-
         $installedApplications = new \dbObject\ArrayApplication();
         $installedApplications->loadEnabledForOrganization($currentOrganizationId, (int)$currentUserId);
         foreach ($installedApplications as $installedApplication) {
@@ -37,13 +46,26 @@ if ($organizationName === '') {
     $organizationName = omoParametersIndexT('parameters.index.card.organization.fallback_name');
 }
 
+$spaceLabelsForTitle = function_exists('mb_strtolower')
+    ? mb_strtolower($spaceLabels, 'UTF-8')
+    : strtolower($spaceLabels);
+
+$holonTemplateEditorTitle = omoParametersIndexT(
+    'parameters.index.card.holon_templates.title',
+    ['spaceLabels' => $spaceLabelsForTitle]
+);
+
 $parametersIndexClientTexts = [
     'title' => omoParametersIndexT('parameters.index.title'),
     'loading' => omoParametersIndexT('parameters.index.drawer.loading'),
     'loadError' => omoParametersIndexT('parameters.index.drawer.error'),
 ];
 $profileCardIconUrl = '/img/omo-parameters/profile.png';
+$notificationCardIconUrl = '/img/omo-parameters/notification.png';
 $organizationCardIconUrl = '/img/omo-parameters/organization.png';
+$lexiconCardIconUrl = '/img/omo-parameters/dictionnaire.png';
+$structureDisplayCardIconUrl = '/img/omo-parameters/connection.png';
+$exportCardIconUrl = '/img/download.png';
 $holonTemplateCardIconUrl = '/img/omo-parameters/holon-template.png';
 ?>
 <div class="omo-settings omo-panel-view">
@@ -72,19 +94,71 @@ $holonTemplateCardIconUrl = '/img/omo-parameters/holon-template.png';
                         <strong class="generic-card-title generic-card-title--big"><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.profile.title'), ENT_QUOTES, 'UTF-8') ?></strong>
                     </span>
                 </span>
-                <span class="omo-settings__card-description"><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.profile.description'), ENT_QUOTES, 'UTF-8') ?></span>
+                <span class="omo-settings__card-description generic-description"><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.profile.description'), ENT_QUOTES, 'UTF-8') ?></span>
                 <span class="omo-settings__card-footer" aria-hidden="true">
-                    <span class="omo-settings__card-cta generic-action-button generic-action-button--main">editer</span>
+                    <span class="omo-settings__card-cta generic-action-button generic-action-button--compact generic-action-button--main">editer</span>
                 </span>
             </button>
 
             <button
                 type="button"
                 class="omo-settings__card omo-card omo-card--interactive"
-                data-omo-settings-modal-title="<?= htmlspecialchars(omoParametersIndexT('parameters.index.card.organization.title'), ENT_QUOTES, 'UTF-8') ?>"
-                data-omo-settings-modal-url="/popup/organization_create.php?oid=<?= (int)$currentOrganizationId ?>"
-                data-omo-settings-modal-mode="fetch"
-                <?= $canEditOrganization ? '' : 'disabled' ?>
+                data-omo-settings-drawer-title="<?= htmlspecialchars(omoParametersIndexT('parameters.index.card.notifications.title'), ENT_QUOTES, 'UTF-8') ?>"
+                data-omo-settings-drawer-url="/omo/api/parameters/notifications/index.php"
+                data-omo-settings-drawer-mode="fetch"
+            >
+                <span class="omo-settings__card-head">
+                    <span class="omo-settings__card-icon-shell">
+                        <img class="omo-settings__card-icon black-icon" src="<?= htmlspecialchars($notificationCardIconUrl, ENT_QUOTES, 'UTF-8') ?>" alt="" loading="lazy">
+                    </span>
+                    <span class="omo-settings__card-title-wrap">
+                        <span class="generic-card-title generic-card-title--eyebrow"><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.notifications.eyebrow'), ENT_QUOTES, 'UTF-8') ?></span>
+                        <strong class="generic-card-title generic-card-title--big"><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.notifications.title'), ENT_QUOTES, 'UTF-8') ?></strong>
+                    </span>
+                </span>
+                <span class="omo-settings__card-description generic-description"><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.notifications.description'), ENT_QUOTES, 'UTF-8') ?></span>
+                <span class="omo-settings__card-footer" aria-hidden="true">
+                    <span class="omo-settings__card-cta generic-action-button generic-action-button--compact generic-action-button--main"><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.notifications.cta'), ENT_QUOTES, 'UTF-8') ?></span>
+                </span>
+            </button>
+
+            <?php if ($isOrganizationAdmin): ?>
+            <button
+                type="button"
+                class="omo-settings__card omo-card omo-card--interactive omo-settings__card--admin-mode-required"
+                data-omo-settings-drawer-title="<?= htmlspecialchars(omoParametersIndexT('parameters.index.card.lexicon.title'), ENT_QUOTES, 'UTF-8') ?>"
+                data-omo-settings-drawer-url="/omo/api/parameters/lexicon/index.php"
+                data-omo-settings-drawer-mode="fetch"
+                <?= $isOrganizationAdminModeEnabled ? '' : 'disabled aria-disabled="true"' ?>
+            >
+                <span class="omo-settings__card-head">
+                    <span class="omo-settings__card-icon-shell">
+                        <img class="omo-settings__card-icon black-icon" src="<?= htmlspecialchars($lexiconCardIconUrl, ENT_QUOTES, 'UTF-8') ?>" alt="" loading="lazy">
+                    </span>
+                    <span class="omo-settings__card-title-wrap">
+                        <span class="generic-card-title generic-card-title--eyebrow"><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.lexicon.eyebrow'), ENT_QUOTES, 'UTF-8') ?></span>
+                        <strong class="generic-card-title generic-card-title--big"><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.lexicon.title'), ENT_QUOTES, 'UTF-8') ?></strong>
+                    </span>
+                </span>
+                <span class="omo-settings__card-description generic-description"><?= htmlspecialchars(
+                    $isOrganizationAdminModeEnabled
+                        ? omoParametersIndexT('parameters.index.card.lexicon.description')
+                        : omoParametersIndexT('parameters.index.card.lexicon.admin_mode_required', ['adminLabel' => $organizationAdminLabel]),
+                    ENT_QUOTES,
+                    'UTF-8'
+                ) ?></span>
+                <span class="omo-settings__card-footer" aria-hidden="true">
+                    <span class="omo-settings__card-cta generic-action-button generic-action-button--compact <?= $isOrganizationAdminModeEnabled ? 'generic-action-button--main' : 'generic-action-button--secondary' ?>"><?= htmlspecialchars($isOrganizationAdminModeEnabled ? 'editer' : omoParametersIndexT('parameters.index.card.lexicon.admin_mode_cta', ['adminLabel' => $organizationAdminLabel]), ENT_QUOTES, 'UTF-8') ?></span>
+                </span>
+            </button>
+
+            <button
+                type="button"
+                class="omo-settings__card omo-card omo-card--interactive omo-settings__card--admin-mode-required"
+                data-omo-settings-drawer-title="<?= htmlspecialchars(omoParametersIndexT('parameters.index.card.organization.title'), ENT_QUOTES, 'UTF-8') ?>"
+                data-omo-settings-drawer-url="/popup/organization_create.php?oid=<?= (int)$currentOrganizationId ?>"
+                data-omo-settings-drawer-mode="fetch"
+                <?= $isOrganizationAdminModeEnabled ? '' : 'disabled aria-disabled="true"' ?>
             >
                 <span class="omo-settings__card-head">
                     <span class="omo-settings__card-icon-shell">
@@ -95,15 +169,37 @@ $holonTemplateCardIconUrl = '/img/omo-parameters/holon-template.png';
                         <strong class="generic-card-title generic-card-title--big"><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.organization.title'), ENT_QUOTES, 'UTF-8') ?></strong>
                     </span>
                 </span>
-                <span class="omo-settings__card-description"><?= htmlspecialchars(
-                    $canEditOrganization
+                <span class="omo-settings__card-description generic-description"><?= htmlspecialchars(
+                    $isOrganizationAdminModeEnabled
                         ? omoParametersIndexT('parameters.index.card.organization.description', ['organizationName' => $organizationName])
-                        : omoParametersIndexT('parameters.index.card.organization.forbidden'),
+                        : omoParametersIndexT('parameters.index.card.organization.admin_mode_required', ['adminLabel' => $organizationAdminLabel]),
                     ENT_QUOTES,
                     'UTF-8'
                 ) ?></span>
                 <span class="omo-settings__card-footer" aria-hidden="true">
-                    <span class="omo-settings__card-cta generic-action-button generic-action-button--main">editer</span>
+                    <span class="omo-settings__card-cta generic-action-button generic-action-button--compact <?= $isOrganizationAdminModeEnabled ? 'generic-action-button--main' : 'generic-action-button--secondary' ?>"><?= htmlspecialchars($isOrganizationAdminModeEnabled ? 'editer' : omoParametersIndexT('parameters.index.card.organization.admin_mode_cta', ['adminLabel' => $organizationAdminLabel]), ENT_QUOTES, 'UTF-8') ?></span>
+                </span>
+            </button>
+
+            <button
+                type="button"
+                class="omo-settings__card omo-card omo-card--interactive"
+                data-omo-settings-modal-title="<?= htmlspecialchars(omoParametersIndexT('parameters.index.card.export.title'), ENT_QUOTES, 'UTF-8') ?>"
+                data-omo-settings-modal-url="/omo/api/organizations/export_popup.php"
+                data-omo-settings-modal-mode="fetch"
+            >
+                <span class="omo-settings__card-head">
+                    <span class="omo-settings__card-icon-shell">
+                        <img class="omo-settings__card-icon black-icon" src="<?= htmlspecialchars($exportCardIconUrl, ENT_QUOTES, 'UTF-8') ?>" alt="" loading="lazy">
+                    </span>
+                    <span class="omo-settings__card-title-wrap">
+                        <span class="generic-card-title generic-card-title--eyebrow"><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.export.eyebrow'), ENT_QUOTES, 'UTF-8') ?></span>
+                        <strong class="generic-card-title generic-card-title--big"><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.export.title'), ENT_QUOTES, 'UTF-8') ?></strong>
+                    </span>
+                </span>
+                <span class="omo-settings__card-description generic-description"><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.export.description', ['organizationName' => $organizationName]), ENT_QUOTES, 'UTF-8') ?></span>
+                <span class="omo-settings__card-footer" aria-hidden="true">
+                    <span class="omo-settings__card-cta generic-action-button generic-action-button--compact generic-action-button--main">exporter</span>
                 </span>
             </button>
 
@@ -120,7 +216,6 @@ $holonTemplateCardIconUrl = '/img/omo-parameters/holon-template.png';
                 data-omo-settings-drawer-title="<?= htmlspecialchars($applicationLabel, ENT_QUOTES, 'UTF-8') ?>"
                 data-omo-settings-drawer-url="<?= htmlspecialchars((string)$applicationSettingsCard->getOrganizationParametersUrl(), ENT_QUOTES, 'UTF-8') ?>"
                 data-omo-settings-drawer-mode="fetch"
-                <?= $canManageApplicationSettings ? '' : 'disabled' ?>
             >
                 <span class="omo-settings__card-head">
                     <span class="omo-settings__card-icon-shell">
@@ -131,20 +226,12 @@ $holonTemplateCardIconUrl = '/img/omo-parameters/holon-template.png';
                         <strong class="generic-card-title generic-card-title--big"><?= htmlspecialchars($applicationLabel, ENT_QUOTES, 'UTF-8') ?></strong>
                     </span>
                 </span>
-                <span class="omo-settings__card-description"><?= htmlspecialchars(
-                    $canManageApplicationSettings
-                        ? omoParametersIndexT('parameters.index.card.application.description', [
-                            'applicationName' => $applicationLabel,
-                            'organizationName' => $organizationName,
-                        ])
-                        : omoParametersIndexT('parameters.index.card.application.forbidden', [
-                            'applicationName' => $applicationLabel,
-                        ]),
-                    ENT_QUOTES,
-                    'UTF-8'
-                ) ?></span>
+                <span class="omo-settings__card-description generic-description"><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.application.description', [
+                    'applicationName' => $applicationLabel,
+                    'organizationName' => $organizationName,
+                ]), ENT_QUOTES, 'UTF-8') ?></span>
                 <span class="omo-settings__card-footer" aria-hidden="true">
-                    <span class="omo-settings__card-cta generic-action-button generic-action-button--main">editer</span>
+                    <span class="omo-settings__card-cta generic-action-button generic-action-button--compact generic-action-button--main">editer</span>
                 </span>
             </button>
             <?php endforeach; ?>
@@ -152,11 +239,40 @@ $holonTemplateCardIconUrl = '/img/omo-parameters/holon-template.png';
             <?php if ($hasStructureTemplates): ?>
             <button
                 type="button"
-                class="omo-settings__card omo-card omo-card--interactive noMobile"
-                data-omo-settings-drawer-title="<?= htmlspecialchars(omoParametersIndexT('parameters.index.card.holon_templates.title'), ENT_QUOTES, 'UTF-8') ?>"
+                class="omo-settings__card omo-card omo-card--interactive omo-settings__card--admin-mode-required"
+                data-omo-settings-drawer-title="<?= htmlspecialchars(omoParametersIndexT('parameters.index.card.structure_display.title'), ENT_QUOTES, 'UTF-8') ?>"
+                data-omo-settings-drawer-url="/omo/api/parameters/structure-display/index.php"
+                data-omo-settings-drawer-mode="fetch"
+                <?= $isOrganizationAdminModeEnabled ? '' : 'disabled aria-disabled="true"' ?>
+            >
+                <span class="omo-settings__card-head">
+                    <span class="omo-settings__card-icon-shell">
+                        <img class="omo-settings__card-icon black-icon" src="<?= htmlspecialchars($structureDisplayCardIconUrl, ENT_QUOTES, 'UTF-8') ?>" alt="" loading="lazy">
+                    </span>
+                    <span class="omo-settings__card-title-wrap">
+                        <span class="generic-card-title generic-card-title--eyebrow"><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.structure_display.eyebrow'), ENT_QUOTES, 'UTF-8') ?></span>
+                        <strong class="generic-card-title generic-card-title--big"><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.structure_display.title'), ENT_QUOTES, 'UTF-8') ?></strong>
+                    </span>
+                </span>
+                <span class="omo-settings__card-description generic-description"><?= htmlspecialchars(
+                    $isOrganizationAdminModeEnabled
+                        ? omoParametersIndexT('parameters.index.card.structure_display.description')
+                        : omoParametersIndexT('parameters.index.card.structure_display.admin_mode_required', ['adminLabel' => $organizationAdminLabel]),
+                    ENT_QUOTES,
+                    'UTF-8'
+                ) ?></span>
+                <span class="omo-settings__card-footer" aria-hidden="true">
+                    <span class="omo-settings__card-cta generic-action-button generic-action-button--compact <?= $isOrganizationAdminModeEnabled ? 'generic-action-button--main' : 'generic-action-button--secondary' ?>"><?= htmlspecialchars($isOrganizationAdminModeEnabled ? 'editer' : omoParametersIndexT('parameters.index.card.structure_display.admin_mode_cta', ['adminLabel' => $organizationAdminLabel]), ENT_QUOTES, 'UTF-8') ?></span>
+                </span>
+            </button>
+
+            <button
+                type="button"
+                class="omo-settings__card omo-card omo-card--interactive omo-settings__card--admin-mode-required noMobile"
+                data-omo-settings-drawer-title="<?= htmlspecialchars($holonTemplateEditorTitle, ENT_QUOTES, 'UTF-8') ?>"
                 data-omo-settings-drawer-url="/omo/api/parameters/holon-templates/index.php"
                 data-omo-settings-drawer-mode="fetch"
-                data-omo-settings-contextual="1"
+                <?= $canUseHolonTemplateEditor ? '' : 'disabled aria-disabled="true"' ?>
             >
                 <span class="omo-settings__card-head">
                     <span class="omo-settings__card-icon-shell">
@@ -164,14 +280,23 @@ $holonTemplateCardIconUrl = '/img/omo-parameters/holon-template.png';
                     </span>
                     <span class="omo-settings__card-title-wrap">
                         <span class="generic-card-title generic-card-title--eyebrow"><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.holon_templates.eyebrow'), ENT_QUOTES, 'UTF-8') ?></span>
-                        <strong class="generic-card-title generic-card-title--big"><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.holon_templates.title'), ENT_QUOTES, 'UTF-8') ?></strong>
+                        <strong class="generic-card-title generic-card-title--big"><?= htmlspecialchars($holonTemplateEditorTitle, ENT_QUOTES, 'UTF-8') ?></strong>
                     </span>
                 </span>
-                <span class="omo-settings__card-description"><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.holon_templates.description'), ENT_QUOTES, 'UTF-8') ?></span>
+                <span class="omo-settings__card-description generic-description"><?= htmlspecialchars(
+                    $canUseHolonTemplateEditor
+                        ? omoParametersIndexT('parameters.index.card.holon_templates.description')
+                        : ($isDiscoveryMode
+                            ? omoParametersIndexT('parameters.index.card.holon_templates.discovery_mode')
+                            : omoParametersIndexT('parameters.index.card.holon_templates.admin_mode_required', ['adminLabel' => $organizationAdminLabel])),
+                    ENT_QUOTES,
+                    'UTF-8'
+                ) ?></span>
                 <span class="omo-settings__card-footer" aria-hidden="true">
-                    <span class="omo-settings__card-cta generic-action-button generic-action-button--main">editer</span>
+                    <span class="omo-settings__card-cta generic-action-button generic-action-button--compact <?= $canUseHolonTemplateEditor ? 'generic-action-button--main' : 'generic-action-button--secondary' ?>"><?= htmlspecialchars($canUseHolonTemplateEditor ? 'editer' : ($isDiscoveryMode ? omoParametersIndexT('parameters.index.card.holon_templates.discovery_mode_cta') : omoParametersIndexT('parameters.index.card.holon_templates.admin_mode_cta', ['adminLabel' => $organizationAdminLabel])), ENT_QUOTES, 'UTF-8') ?></span>
                 </span>
             </button>
+            <?php endif; ?>
             <?php endif; ?>
 
             <?php if ($isSiteAdmin): ?>
@@ -191,9 +316,9 @@ $holonTemplateCardIconUrl = '/img/omo-parameters/holon-template.png';
                         <strong class="generic-card-title generic-card-title--big"><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.server_admin.title'), ENT_QUOTES, 'UTF-8') ?></strong>
                     </span>
                 </span>
-                <span class="omo-settings__card-description"><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.server_admin.description'), ENT_QUOTES, 'UTF-8') ?></span>
+                <span class="omo-settings__card-description generic-description"><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.server_admin.description'), ENT_QUOTES, 'UTF-8') ?></span>
                 <span class="omo-settings__card-footer" aria-hidden="true">
-                    <span class="omo-settings__card-cta generic-action-button generic-action-button--main">editer</span>
+                    <span class="omo-settings__card-cta generic-action-button generic-action-button--compact generic-action-button--main">editer</span>
                 </span>
             </button>
             <?php endif; ?>
@@ -210,7 +335,7 @@ $holonTemplateCardIconUrl = '/img/omo-parameters/holon-template.png';
                     <p class="omo-overlay-drawer__description" data-omo-settings-nested-description></p>
                 </div>
                 <div class="generic-drawer-header__actions">
-                    <button type="button" class="omo-overlay-drawer__close" data-omo-settings-nested-close><?= htmlspecialchars(omoParametersIndexT('parameters.index.action.close'), ENT_QUOTES, 'UTF-8') ?></button>
+                    <button type="button" class="omo-overlay-drawer__close generic-action-button generic-action-button--secondary" data-omo-settings-nested-close><?= htmlspecialchars(omoParametersIndexT('parameters.index.action.close'), ENT_QUOTES, 'UTF-8') ?></button>
                 </div>
             </div>
             <div class="omo-overlay-drawer__body" data-omo-settings-nested-body></div>
@@ -218,320 +343,9 @@ $holonTemplateCardIconUrl = '/img/omo-parameters/holon-template.png';
     </div>
 </div>
 
-<style>
-.omo-settings {
-    position: relative;
-    min-height: 100%;
-}
+<link rel="stylesheet" href="/omo/api/parameters/settings.css?v=20260924-mobile-cards">
 
-.omo-settings__grid {
-    align-items: stretch;
-    grid-auto-rows: 1fr;
-    margin: 10px;
-}
-
-.omo-settings__card {
-    display: grid;
-    grid-template-rows: auto 1fr auto;
-    gap: 16px;
-    min-height: 220px;
-    height: 100%;
-    padding: 20px;
-    text-align: left;
-    cursor: pointer;
-    border-radius: 22px;
-    border-color: color-mix(in srgb, var(--color-primary, #2563eb) 12%, var(--color-border, #d1d5db));
-    background:
-        radial-gradient(circle at top right, color-mix(in srgb, var(--color-primary, #2563eb) 10%, transparent), transparent 38%),
-        linear-gradient(180deg, color-mix(in srgb, var(--color-surface, #ffffff) 94%, white), color-mix(in srgb, var(--color-surface-alt, #f8fafc) 92%, white));
-    box-shadow: 0 18px 36px rgba(15, 23, 42, 0.08);
-    transition:
-        transform 0.18s ease,
-        box-shadow 0.18s ease,
-        border-color 0.18s ease,
-        background-color 0.18s ease;
-}
-
-.omo-settings__card:not(:disabled):hover,
-.omo-settings__card:not(:disabled):focus-visible {
-    transform: translateY(-3px);
-    box-shadow: 0 24px 44px rgba(15, 23, 42, 0.12);
-    border-color: color-mix(in srgb, var(--color-primary, #2563eb) 28%, var(--color-border, #d1d5db));
-}
-
-.omo-settings__card:focus-visible {
-    outline: 0;
-}
-
-.omo-settings__card:disabled {
-    cursor: not-allowed;
-    opacity: 0.78;
-    box-shadow: none;
-}
-
-.omo-settings__card-head {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-}
-
-.omo-settings__card-icon-shell {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 64px;
-    height: 64px;
-    min-width: 64px;
-    border-radius: 18px;
-    background: color-mix(in srgb, var(--color-primary, #2563eb) 10%, var(--color-surface, #ffffff));
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-primary, #2563eb) 12%, var(--color-border, #d1d5db));
-}
-
-.omo-settings__card-icon-shell--fallback {
-    background: linear-gradient(135deg, color-mix(in srgb, var(--color-primary, #2563eb) 18%, var(--color-surface, #ffffff)), color-mix(in srgb, var(--color-surface-alt, #f8fafc) 82%, white));
-}
-
-.omo-settings__card-icon {
-    width: 34px;
-    height: 34px;
-    object-fit: contain;
-}
-
-.omo-settings__card-fallback-icon {
-    color: var(--color-primary, #2563eb);
-    font-size: 12px;
-    font-weight: 800;
-    letter-spacing: 0.12em;
-}
-
-.omo-settings__card-title-wrap {
-    display: grid;
-    gap: 5px;
-    min-width: 0;
-}
-
-.omo-settings__card-title-wrap strong {
-    margin: 0;
-}
-
-.omo-settings__card-description {
-    margin: 0;
-    color: var(--color-text-light);
-    line-height: 1.55;
-}
-
-.omo-settings__card-footer {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 12px;
-    margin-top: auto;
-}
-
-.omo-settings__card-cta {
-    min-height: 36px;
-    padding: 8px 14px;
-    border-radius: 999px;
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    pointer-events: none;
-}
-
-@media (max-width: 768px) {
-    .omo-settings__grid {
-        margin: 0;
-    }
-
-    .omo-settings__card {
-        min-height: 0;
-        padding: 18px;
-    }
-}
-</style>
-
-<script>
-(function () {
-var settingsTexts = <?= json_encode($parametersIndexClientTexts, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
-document.querySelectorAll('.omo-settings').forEach(function (root) {
-    if (!root || root.dataset.omoSettingsInitialized === '1') {
-        return;
-    }
-
-    root.dataset.omoSettingsInitialized = '1';
-
-    var nestedDrawer = root.querySelector('[data-omo-settings-nested-drawer]');
-    var nestedTitle = root.querySelector('[data-omo-settings-nested-title]');
-    var nestedDescription = root.querySelector('[data-omo-settings-nested-description]');
-    var nestedBody = root.querySelector('[data-omo-settings-nested-body]');
-    var nestedRequestToken = 0;
-
-    function resolveSettingsDrawerUrl(button) {
-        var drawerUrl = button.getAttribute('data-omo-settings-drawer-url');
-        if (!drawerUrl) {
-            return '';
-        }
-
-        if (button.getAttribute('data-omo-settings-contextual') === '1' && typeof window.parseUrl === 'function') {
-            var route = window.parseUrl();
-            var cid = Number(route && route.cid ? route.cid : 0);
-            if (cid > 0) {
-                drawerUrl += (drawerUrl.indexOf('?') === -1 ? '?' : '&') + 'cid=' + cid;
-            }
-        }
-
-        return drawerUrl;
-    }
-
-    function renderNestedDrawerLoading() {
-        if (!nestedBody) {
-            return;
-        }
-
-        if (typeof window.getSkeleton === 'function') {
-            nestedBody.innerHTML = window.getSkeleton('panel');
-            return;
-        }
-
-        nestedBody.innerHTML = '<div class="loading">' + String(settingsTexts.loading || '') + '</div>';
-    }
-
-    function renderNestedDrawerError() {
-        if (!nestedBody) {
-            return;
-        }
-
-        nestedBody.innerHTML = '<div class="omo-empty-state">' + String(settingsTexts.loadError || '') + '</div>';
-    }
-
-    function closeNestedDrawer() {
-        if (!nestedDrawer) {
-            return;
-        }
-
-        nestedDrawer.classList.remove('is-open');
-        window.setTimeout(function () {
-            if (!nestedDrawer.classList.contains('is-open')) {
-                nestedDrawer.hidden = true;
-                if (nestedBody) {
-                    nestedBody.innerHTML = '';
-                }
-            }
-        }, 200);
-    }
-
-    function openNestedDrawer(title, url, mode, description) {
-        if (!url) {
-            return;
-        }
-
-        if (!nestedDrawer || !nestedBody || mode !== 'fetch' || typeof window.jQuery !== 'function') {
-            if (typeof window.commonTopbarOpenDrawer === 'function') {
-                window.commonTopbarOpenDrawer(title || settingsTexts.title || '', url, mode || 'iframe');
-                return;
-            }
-
-            window.location.href = url;
-            return;
-        }
-
-        if (nestedTitle) {
-            nestedTitle.textContent = title || settingsTexts.title || '';
-        }
-        if (nestedDescription) {
-            nestedDescription.textContent = description || '';
-        }
-
-        renderNestedDrawerLoading();
-        nestedDrawer.hidden = false;
-        window.requestAnimationFrame(function () {
-            nestedDrawer.classList.add('is-open');
-        });
-
-        var requestToken = ++nestedRequestToken;
-        var resolvedUrl = typeof window.omoResolveAppUrl === 'function'
-            ? window.omoResolveAppUrl(url)
-            : url;
-
-        window.jQuery.ajax({
-            url: resolvedUrl,
-            method: 'GET',
-            cache: false,
-            success: function (data) {
-                if (requestToken !== nestedRequestToken || !nestedBody) {
-                    return;
-                }
-
-                window.jQuery(nestedBody).html(data);
-            },
-            error: function () {
-                if (requestToken !== nestedRequestToken) {
-                    return;
-                }
-
-                renderNestedDrawerError();
-            }
-        });
-    }
-
-    root.querySelectorAll('[data-omo-settings-nested-close]').forEach(function (button) {
-        button.addEventListener('click', closeNestedDrawer);
-    });
-
-    root.querySelectorAll('[data-omo-settings-drawer-url]').forEach(function (button) {
-        if (button.dataset.omoSettingsReady === '1') {
-            return;
-        }
-
-        button.dataset.omoSettingsReady = '1';
-        button.addEventListener('click', function () {
-            if (button.disabled) {
-                return;
-            }
-
-            var drawerUrl = resolveSettingsDrawerUrl(button);
-            if (!drawerUrl) {
-                return;
-            }
-
-            openNestedDrawer(
-                button.getAttribute('data-omo-settings-drawer-title') || settingsTexts.title || '',
-                drawerUrl,
-                button.getAttribute('data-omo-settings-drawer-mode') || 'iframe',
-                (button.querySelector('.omo-settings__card-description') || {}).textContent || ''
-            );
-        });
-    });
-
-    root.querySelectorAll('[data-omo-settings-modal-url]').forEach(function (button) {
-        if (button.dataset.omoSettingsModalReady === '1') {
-            return;
-        }
-
-        button.dataset.omoSettingsModalReady = '1';
-        button.addEventListener('click', function () {
-            if (button.disabled) {
-                return;
-            }
-
-            var modalUrl = button.getAttribute('data-omo-settings-modal-url');
-            if (!modalUrl) {
-                return;
-            }
-
-            if (typeof window.commonTopbarOpenModal !== 'function') {
-                window.location.href = modalUrl;
-                return;
-            }
-
-            window.commonTopbarOpenModal(
-                button.getAttribute('data-omo-settings-modal-title') || settingsTexts.title || '',
-                modalUrl,
-                button.getAttribute('data-omo-settings-modal-mode') || 'iframe'
-            );
-        });
-    });
-});
-})();
-</script>
+<script src="/omo/api/projects/params/params.js?v=20260917-calculation"></script>
+<?= commonPageScriptTags('/omo/api/parameters/index.js', [
+    'settingsTexts' => $parametersIndexClientTexts,
+]) ?>

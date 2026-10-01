@@ -54,17 +54,69 @@ if (!omoDocumentsParamsCanManage($organizationId, $currentUserId)) {
     exit;
 }
 
-$result = omoDocumentsParamsStoreNextcloudConfig($organization, $_POST, true);
-if (!is_array($result) || empty($result['status'])) {
+$pdo = \dbObject\DbObject::getPdo();
+$startedTransaction = $pdo instanceof \PDO && !$pdo->inTransaction();
+$failureMessage = '';
+
+try {
+    if ($startedTransaction) {
+        $pdo->beginTransaction();
+    }
+
+    $pvResult = omoDocumentsParamsStorePvSettings($organization, $_POST);
+    if (!is_array($pvResult) || empty($pvResult['status'])) {
+        $failureMessage = trim((string)($pvResult['text'] ?? omoDocumentsParamsT('documents.params.error.save_failed')));
+        throw new \RuntimeException('documents_settings_save_failed');
+    }
+
+    $collaboraResult = omoDocumentsParamsStoreCollaboraConfig($organization, $_POST);
+    if (!is_array($collaboraResult) || empty($collaboraResult['status'])) {
+        $failureMessage = trim((string)($collaboraResult['text'] ?? omoDocumentsParamsT('documents.params.error.save_failed')));
+        throw new \RuntimeException('documents_settings_save_failed');
+    }
+
+    $defaultsResult = omoDocumentsParamsStoreVisibilityDefaults($organization, $_POST);
+    if (!is_array($defaultsResult) || empty($defaultsResult['status'])) {
+        $failureMessage = trim((string)($defaultsResult['text'] ?? omoDocumentsParamsT('documents.params.error.save_failed')));
+        throw new \RuntimeException('documents_settings_save_failed');
+    }
+
+    $result = omoDocumentsParamsStoreDocumentStorageConfig($organization, $_POST, true);
+    if (!is_array($result) || empty($result['status'])) {
+        if (is_array($result) && !empty($result['confirmationRequired'])) {
+            if ($startedTransaction && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            http_response_code(409);
+            echo json_encode(array(
+                'status' => false,
+                'confirmationRequired' => true,
+                'message' => trim((string)($result['text'] ?? omoDocumentsParamsT('documents.params.feedback.storage_change_warning'))),
+            ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            exit;
+        }
+
+        $failureMessage = trim((string)($result['text'] ?? omoDocumentsParamsT('documents.params.error.save_failed')));
+        throw new \RuntimeException('documents_settings_save_failed');
+    }
+
+    if ($startedTransaction && $pdo->inTransaction()) {
+        $pdo->commit();
+    }
+} catch (\Throwable $exception) {
+    if ($startedTransaction && $pdo instanceof \PDO && $pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
+
     http_response_code(422);
     echo json_encode(array(
         'status' => false,
-        'message' => trim((string)($result['text'] ?? omoDocumentsParamsT('documents.params.error.save_failed'))),
+        'message' => $failureMessage !== '' ? $failureMessage : omoDocumentsParamsT('documents.params.error.save_failed'),
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
 
 echo json_encode(array(
     'status' => true,
-    'message' => trim((string)($result['text'] ?? omoDocumentsParamsT('documents.params.feedback.saved'))),
+    'message' => trim((string)($pvResult['text'] ?? $defaultsResult['text'] ?? $collaboraResult['text'] ?? $result['text'] ?? omoDocumentsParamsT('documents.params.feedback.saved'))),
 ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

@@ -1,12 +1,16 @@
-<?
-	function say($demand) {
+<?php
+	function say($demand, $systemInstruction = null) {
 
 		ini_set('default_socket_timeout', 240);
 		
 		$system_param=array();
 		$data=array();
 
-		$system_param[]=array('role' => 'system', 'content' => 'Tu es un assistant spécialisé dans les synthèses efficaces et pertinentes. Tu ne rajoute pas de titre, de fioritures ou de contexte aux résumés et listes produits.');
+		$defaultSystemInstruction = 'Tu es un assistant spécialisé dans les synthèses efficaces et pertinentes. Tu ne rajoute pas de titre, de fioritures ou de contexte aux résumés et listes produits.';
+		$systemInstruction = is_string($systemInstruction) && trim($systemInstruction) !== ''
+			? $systemInstruction
+			: $defaultSystemInstruction;
+		$system_param[]=array('role' => 'system', 'content' => $systemInstruction);
 
 		// Endpoint de l'API de l'OpenAI
 		$apiUrl = 'https://api.openai.com/v1/chat/completions';
@@ -19,21 +23,34 @@
 			'messages' => array_merge($system_param,$data),
 			'temperature' => 0.7
 		   );
+		$payload = json_encode($params, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+		if ($payload === false) {
+			return "";
+		}
 
 		// Configuration de la requête HTTP
-		$options = array(
-			'http' => array(
-				'header'  => "Authorization: Bearer ".OpenAI."\r\nContent-Type: application/json\r\n",
-				'method'  => 'POST',
-				'content' => json_encode($params)
-			)
-		);
-
 		// Créez le contexte HTTP
-		$context  = stream_context_create($options);
-
 		// Faites la requête HTTP à l'API
-		$response = file_get_contents($apiUrl, true, $context);
+		if (!function_exists('curl_init')) {
+			return "";
+		}
+
+		$ch = curl_init($apiUrl);
+		curl_setopt_array($ch, array(
+			CURLOPT_POST => true,
+			CURLOPT_HTTPHEADER => array(
+				'Authorization: Bearer '.OpenAI,
+				'Content-Type: application/json',
+			),
+			CURLOPT_POSTFIELDS => $payload,
+			CURLOPT_RETURNTRANSFER => true,
+			CURLOPT_FOLLOWLOCATION => false,
+			CURLOPT_CONNECTTIMEOUT => 15,
+			CURLOPT_TIMEOUT => 240,
+			CURLOPT_FAILONERROR => false,
+		));
+
+		$response = curl_exec($ch);
 
 		// Si la requête a réussi, décodez la réponse JSON
 		if ($response !== false) {

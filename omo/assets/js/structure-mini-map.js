@@ -2,6 +2,14 @@
   const D3_V3_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js';
   const STRUCTURE_DATA_PATH = 'api/getStructureData.php';
   const MOBILE_MEDIA_QUERY = '(max-width: 768px)';
+  const DEFAULT_DISPLAY_SETTINGS = {
+    fadeOpacityStep: 0.18,
+    maxDescendantDepth: 0,
+    labelAutoMinRadius: 18,
+    labelHoverMinRadius: 18,
+    labelMinFontSize: 0,
+    textOutlineEnabled: true
+  };
   let d3Promise = null;
 
   function ensureD3() {
@@ -68,6 +76,41 @@
 
   function clampNumber(value, min, max) {
     return Math.min(Math.max(value, min), max);
+  }
+
+  function normalizeDisplaySettings(settings) {
+    const source = settings && typeof settings === 'object' ? settings : {};
+    const fadeOpacityStep = Number(source.fadeOpacityStep);
+    const maxDescendantDepth = Number(source.maxDescendantDepth);
+    const legacyLabelMinRadius = Number(source.labelMinRadius);
+    const labelAutoMinRadius = Number(source.labelAutoMinRadius);
+    const labelHoverMinRadius = Number(source.labelHoverMinRadius);
+    const labelMinFontSize = Number(source.labelMinFontSize);
+
+    return {
+      fadeOpacityStep: Number.isFinite(fadeOpacityStep)
+        ? clampNumber(fadeOpacityStep, 0, 1)
+        : DEFAULT_DISPLAY_SETTINGS.fadeOpacityStep,
+      maxDescendantDepth: Number.isFinite(maxDescendantDepth)
+        ? Math.floor(clampNumber(maxDescendantDepth, 0, 20))
+        : DEFAULT_DISPLAY_SETTINGS.maxDescendantDepth,
+      labelAutoMinRadius: Number.isFinite(labelAutoMinRadius)
+        ? Math.floor(clampNumber(labelAutoMinRadius, 3, 200))
+        : (Number.isFinite(legacyLabelMinRadius)
+          ? Math.floor(clampNumber(legacyLabelMinRadius, 3, 200))
+          : DEFAULT_DISPLAY_SETTINGS.labelAutoMinRadius),
+      labelHoverMinRadius: Number.isFinite(labelHoverMinRadius)
+        ? Math.floor(clampNumber(labelHoverMinRadius, 3, 200))
+        : (Number.isFinite(legacyLabelMinRadius)
+          ? Math.floor(clampNumber(legacyLabelMinRadius, 3, 200))
+          : DEFAULT_DISPLAY_SETTINGS.labelHoverMinRadius),
+      labelMinFontSize: Number.isFinite(labelMinFontSize)
+        ? clampNumber(labelMinFontSize, 0, 30)
+        : DEFAULT_DISPLAY_SETTINGS.labelMinFontSize,
+      textOutlineEnabled: source.textOutlineEnabled === undefined
+        ? DEFAULT_DISPLAY_SETTINGS.textOutlineEnabled
+        : !(source.textOutlineEnabled === false || source.textOutlineEnabled === 0 || source.textOutlineEnabled === '0')
+    };
   }
 
   function addMediaQueryChangeListener(mediaQueryList, handler) {
@@ -189,7 +232,8 @@
     }
 
     if (!roleHasAttachedUsers(node)) {
-      return colorToDesaturatedGray(baseColor, fallbackColor);
+      const unassignedColor = String(node && node.unassignedColor || '').trim();
+      return unassignedColor || colorToDesaturatedGray(baseColor, fallbackColor);
     }
 
     return baseColor;
@@ -220,6 +264,7 @@
     normalizedNode.name = String(node.name || '');
     normalizedNode.type = String(node.type || '');
     normalizedNode.mycolor = String(node.mycolor || '');
+    normalizedNode.unassignedColor = String(node.unassignedColor || '');
     normalizedNode.userIds = Array.isArray(node.userIds) ? node.userIds.slice() : [];
     normalizedNode.size = getNodePackSize(normalizedNode, node.size);
 
@@ -267,48 +312,25 @@
     return json;
   }
 
-  function findNodeById(node, nodeId) {
-    if (!node || nodeId === null || nodeId === undefined || nodeId === '') {
-      return null;
-    }
-
-    if (String(node.ID) === String(nodeId)) {
-      return node;
-    }
-
-    if (!Array.isArray(node.children)) {
-      return null;
-    }
-
-    for (let index = 0; index < node.children.length; index += 1) {
-      const foundNode = findNodeById(node.children[index], nodeId);
-      if (foundNode) {
-        return foundNode;
-      }
-    }
-
-    return null;
-  }
-
   function getNodeDepth(node) {
     const depth = Number(node && node.depth);
     return Number.isFinite(depth) && depth >= 0 ? depth : 0;
   }
 
-  function getNodeDepthOpacity(node, currentNode, rootNode, minOpacity, maxOpacity) {
+  function getNodeDepthOpacity(node, currentNode, rootNode, minOpacity, maxOpacity, opacityStep) {
     const safeMinOpacity = clampNumber(Number(minOpacity), 0, 1);
     const safeMaxOpacity = clampNumber(Number(maxOpacity), safeMinOpacity, 1);
     const referenceNode = currentNode || rootNode || null;
     const referenceDepth = referenceNode ? getNodeDepth(referenceNode) : 0;
-    const distanceFromCurrentLevel = Math.abs(getNodeDepth(node) - referenceDepth);
-    const opacityStep = 0.18;
+    const distanceFromCurrentLevel = Math.max(0, getNodeDepth(node) - referenceDepth);
+    const safeOpacityStep = clampNumber(Number(opacityStep), 0, 1);
     const fadeDistance = Math.max(0, distanceFromCurrentLevel - 1);
 
-    return clampNumber(safeMaxOpacity - (fadeDistance * opacityStep), safeMinOpacity, safeMaxOpacity);
+    return clampNumber(safeMaxOpacity - (fadeDistance * safeOpacityStep), safeMinOpacity, safeMaxOpacity);
   }
 
-  function getNodeVisualOpacity(node, currentNode, rootNode) {
-    return getNodeDepthOpacity(node, currentNode, rootNode, 0.24, 1);
+  function getNodeVisualOpacity(node, currentNode, rootNode, displaySettings) {
+    return getNodeDepthOpacity(node, currentNode, rootNode, 0.24, 1, displaySettings.fadeOpacityStep);
   }
 
   function getNodeFill(node, nodeOpacity, chartColors) {
@@ -340,13 +362,19 @@
     return null;
   }
 
-  function drawNodeLabel(ctx, node, textColor) {
-    if (!node || !node.name || node.r < 18) {
+  function drawNodeLabel(ctx, node, textColor, strokeColor, minimumRadius, displaySettings) {
+    const labelMinimumRadius = clampNumber(Number(minimumRadius), 3, 200);
+    if (!node || !node.name || node.r < labelMinimumRadius) {
       return;
     }
 
     const maxWidth = node.r * 1.4;
-    let fontSize = Math.max(10, Math.min(15, node.r * 0.28));
+    const configuredMinimumFontSize = displaySettings.labelMinFontSize;
+    let fontSize = configuredMinimumFontSize > 0
+      ? Math.max(configuredMinimumFontSize, Math.min(15, node.r * 0.28))
+      : (labelMinimumRadius < 6
+        ? Math.max(1, Math.min(15, node.r * 0.28))
+        : Math.max(10, Math.min(15, node.r * 0.28)));
     const words = String(node.name).split(/\s+/).filter(Boolean);
     const lines = [];
     let currentLine = '';
@@ -355,6 +383,11 @@
     ctx.textBaseline = 'middle';
     ctx.fillStyle = String(textColor || 'rgba(15, 23, 42, 0.82)');
     ctx.font = '600 ' + fontSize + 'px system-ui, sans-serif';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = String(strokeColor || 'rgba(0, 0, 0, 0)');
+    ctx.lineWidth = labelMinimumRadius < 6
+      ? Math.max(0.25, Math.min(1, fontSize * 0.35))
+      : Math.max(2, Math.min(4, fontSize * 0.24));
 
     words.forEach(function (word) {
       const candidate = currentLine ? currentLine + ' ' + word : word;
@@ -380,8 +413,91 @@
       }
 
       const y = node.y + ((index + 0.5) * fontSize * 1.15) - (totalHeight / 2);
+      if (strokeColor) {
+        ctx.strokeText(output, node.x, y);
+      }
       ctx.fillText(output, node.x, y);
     });
+  }
+
+  function isDirectChildNode(node, currentNode) {
+    if (!node || !currentNode || !node.parent || !node.parent.ID) {
+      return false;
+    }
+
+    return String(node.parent.ID) === String(currentNode.ID);
+  }
+
+  function isSameLevelSiblingNode(node, currentNode) {
+    if (!node || !currentNode || !node.parent || !currentNode.parent || !node.parent.ID || !currentNode.parent.ID) {
+      return false;
+    }
+
+    return String(node.parent.ID) === String(currentNode.parent.ID);
+  }
+
+  function getInlineNodeLabelMinimumRadius(node, currentNode, hoveredNode, screenR, displaySettings) {
+    const automaticMinimumRadius = displaySettings.labelAutoMinRadius;
+    const hoverMinimumRadius = displaySettings.labelHoverMinRadius;
+    const contextualMinimumRadius = automaticMinimumRadius < 18
+      ? automaticMinimumRadius
+      : Math.max(22, automaticMinimumRadius);
+
+    if (!node || !currentNode) {
+      return null;
+    }
+
+    const nodeId = String(node.ID || '');
+    const currentNodeId = String(currentNode.ID || '');
+    const currentNodeType = String(currentNode.type || '');
+
+    if (!nodeId) {
+      return null;
+    }
+
+    if (hoveredNode && nodeId === String(hoveredNode.ID || '')) {
+      return screenR >= hoverMinimumRadius ? hoverMinimumRadius : null;
+    }
+
+    if (currentNodeType === '1') {
+      if (nodeId === currentNodeId) {
+        return screenR >= automaticMinimumRadius ? automaticMinimumRadius : null;
+      }
+
+      return isSameLevelSiblingNode(node, currentNode) && screenR >= contextualMinimumRadius
+        ? contextualMinimumRadius
+        : null;
+    }
+
+    if (nodeId === currentNodeId) {
+      return null;
+    }
+
+    return isDirectChildNode(node, currentNode) && screenR >= contextualMinimumRadius
+      ? contextualMinimumRadius
+      : null;
+  }
+
+  function getNodeLabelStyle(node, chartColors, displaySettings) {
+    if (String(node && node.type || '') === '1') {
+      return {
+        fill: chartColors.labelDark,
+        stroke: null
+      };
+    }
+
+    return {
+      fill: chartColors.labelLight,
+      stroke: displaySettings.textOutlineEnabled ? chartColors.labelDark : null
+    };
+  }
+
+  function isNodeWithinDisplayDepth(node, currentNode, displaySettings) {
+    if (displaySettings.maxDescendantDepth <= 0) {
+      return true;
+    }
+
+    return getNodeDepth(node) <= getNodeDepth(currentNode) + displaySettings.maxDescendantDepth;
   }
 
   function getPackTypeOrder(node) {
@@ -466,6 +582,8 @@
       resizeObserver: null,
       currentOid: null,
       rootData: null,
+      // Normalize only when loading data, then reuse the settings for every frame.
+      displaySettings: normalizeDisplaySettings(null),
       packedNodes: [],
       packedNodesById: Object.create(null),
       renderedNodes: [],
@@ -691,10 +809,21 @@
       state.centerY = height / 2;
       state.diameter = Math.min(width * 0.9, height * 0.9);
       state.dpr = window.devicePixelRatio || 1;
-      state.canvas.width = Math.max(1, Math.floor(width * state.dpr));
-      state.canvas.height = Math.max(1, Math.floor(height * state.dpr));
-      state.canvas.style.width = width + 'px';
-      state.canvas.style.height = height + 'px';
+      const pixelWidth = Math.max(1, Math.floor(width * state.dpr));
+      const pixelHeight = Math.max(1, Math.floor(height * state.dpr));
+      // Assigning even the same canvas dimensions resets its drawing buffer.
+      if (state.canvas.width !== pixelWidth) {
+        state.canvas.width = pixelWidth;
+      }
+      if (state.canvas.height !== pixelHeight) {
+        state.canvas.height = pixelHeight;
+      }
+      if (state.canvas.style.width !== width + 'px') {
+        state.canvas.style.width = width + 'px';
+      }
+      if (state.canvas.style.height !== height + 'px') {
+        state.canvas.style.height = height + 'px';
+      }
 
       return true;
     }
@@ -729,7 +858,10 @@
         nodeMap[String(node.ID)] = node;
       });
 
-      state.packedNodes = nodes;
+      // Keep the drawing order until the next layout rebuild.
+      state.packedNodes = nodes.slice().sort(function (left, right) {
+        return (left.depth || 0) - (right.depth || 0);
+      });
       state.packedNodesById = nodeMap;
       state.layoutDirty = false;
     }
@@ -757,10 +889,10 @@
       }
 
       const chartColors = getChartColors();
+      const displaySettings = state.displaySettings;
       const currentNode = getTargetNode();
       const hoveredNode = state.hoveredNodeId ? state.packedNodesById[String(state.hoveredNodeId)] : null;
       const rootNode = state.packedNodes.length ? state.packedNodes[0] : null;
-      const currentDepth = currentNode ? getNodeDepth(currentNode) : 0;
 
       ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
       ctx.clearRect(0, 0, state.width, state.height);
@@ -770,19 +902,20 @@
       const labelsToDraw = [];
 
       state.packedNodes
-        .slice()
-        .sort(function (left, right) {
-          return (left.depth || 0) - (right.depth || 0);
-        })
         .forEach(function (node) {
-          if (!node || !node.ID || !state.zoomInfo) {
+          if (
+            !node
+            || !node.ID
+            || !state.zoomInfo
+            || !isNodeWithinDisplayDepth(node, currentNode, displaySettings)
+          ) {
             return;
           }
 
           const nodeId = String(node.ID);
           const isActive = currentNode && nodeId === String(currentNode.ID);
           const isHovered = hoveredNode && nodeId === String(hoveredNode.ID);
-          const nodeOpacity = getNodeVisualOpacity(node, currentNode, rootNode);
+          const nodeOpacity = getNodeVisualOpacity(node, currentNode, rootNode, displaySettings);
           const screenX = ((node.x - state.zoomInfo.centerX) * state.zoomInfo.scale) + state.centerX;
           const screenY = ((node.y - state.zoomInfo.centerY) * state.zoomInfo.scale) + state.centerY;
           const screenR = Math.max(1, node.r * state.zoomInfo.scale * getNodeRadiusFactor(node));
@@ -808,8 +941,8 @@
 
           if (String(node.type || '') === '3') {
             ctx.fillStyle = 'rgba(0,0,0,0)';
-            ctx.lineWidth = 2;
-            ctx.setLineDash([10, 10]);
+            ctx.lineWidth = 1;
+            ctx.setLineDash([4, 4]);
             ctx.strokeStyle = getNodeStroke(node, nodeOpacity, chartColors) || chartColors.strokeSoft;
             ctx.stroke();
             ctx.fill();
@@ -825,7 +958,7 @@
           if (isActive) {
             ctx.beginPath();
             ctx.arc(screenX, screenY, screenR, 0, Math.PI * 2);
-            ctx.lineWidth = Math.max(2.6, Math.min(6.5, screenR * 0.16));
+            ctx.lineWidth = 2;
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.92)';
             ctx.stroke();
           } else if (isHovered) {
@@ -836,21 +969,34 @@
             ctx.stroke();
           }
 
-          const shouldAutoShowLabel = ((node.depth || 0) <= 1 && screenR >= 24)
-            && Number(node.depth || 0) >= currentDepth;
-
-          if (isHovered || isActive || shouldAutoShowLabel) {
+          const labelMinimumRadius = getInlineNodeLabelMinimumRadius(node, currentNode, hoveredNode, screenR, displaySettings);
+          if (labelMinimumRadius !== null) {
+            const labelStyle = getNodeLabelStyle(node, chartColors, displaySettings);
             labelsToDraw.push({
               node: labelNode,
-              color: String(node.type || '') === '1'
-                ? chartColors.labelDark
-                : chartColors.labelLight
+              color: labelStyle.fill,
+              stroke: labelStyle.stroke,
+              depth: Number(node.depth || 0),
+              isRole: String(node.type || '') === '1',
+              isHovered: isHovered,
+              minimumRadius: labelMinimumRadius
             });
           }
         });
 
+      labelsToDraw.sort(function (left, right) {
+        const leftPriority = left.isHovered ? 2 : (left.isRole ? 0 : 1);
+        const rightPriority = right.isHovered ? 2 : (right.isRole ? 0 : 1);
+
+        if (leftPriority !== rightPriority) {
+          return leftPriority - rightPriority;
+        }
+
+        return left.depth - right.depth;
+      });
+
       labelsToDraw.forEach(function (labelEntry) {
-        drawNodeLabel(ctx, labelEntry.node, labelEntry.color);
+        drawNodeLabel(ctx, labelEntry.node, labelEntry.color, labelEntry.stroke, labelEntry.minimumRadius, displaySettings);
       });
 
       updateTooltip();
@@ -953,8 +1099,9 @@
       const normalizedNodeId = nodeId === null || nodeId === undefined || nodeId === ''
         ? null
         : String(nodeId);
+      const nextNodeId = normalizedNodeId || getCurrentNodeIdFromRoute();
 
-      state.currentNodeId = normalizedNodeId || getCurrentNodeIdFromRoute();
+      state.currentNodeId = nextNodeId;
       return focusCurrentNode(options);
     }
 
@@ -975,16 +1122,27 @@
 
       renderStaticState('Chargement de la structure...', true);
 
-      return ensureD3()
-        .then(function () {
-          return $.ajax({
-            url: buildStructureDataUrl(oid),
+      const url = buildStructureDataUrl(oid);
+      const structureRequest = typeof window.omoFetchStructureData === 'function'
+        ? window.omoFetchStructureData(url, {
+            forceRefresh: Boolean(settings.forceRefresh)
+          })
+        : fetch(url, {
             method: 'GET',
-            cache: false,
-            dataType: 'json'
+            credentials: 'same-origin',
+            headers: {
+              Accept: 'application/json'
+            }
+          }).then(function (response) {
+            if (!response.ok) {
+              throw new Error('Structure indisponible.');
+            }
+            return response.json();
           });
-        })
-        .then(function (response) {
+
+      return Promise.all([ensureD3(), structureRequest])
+        .then(function (results) {
+          const response = results[1];
           if (requestId !== state.requestId) {
             return null;
           }
@@ -999,6 +1157,7 @@
           }
 
           state.rootData = normalizedRoot;
+          state.displaySettings = normalizeDisplaySettings(response.displaySettings);
           state.layoutDirty = true;
           if (!ensureShell()) {
             return null;
@@ -1155,7 +1314,8 @@
       }
 
       loadStructureData(oid, cid, {
-        quickZoom: Boolean(detail.quickZoom)
+        quickZoom: Boolean(detail.quickZoom),
+        forceRefresh: true
       });
     }
 
@@ -1240,7 +1400,8 @@
             }
 
             return loadStructureData(oid, nodeId, {
-              quickZoom: true
+              quickZoom: true,
+              forceRefresh: true
             });
           },
           getCurrentHolonId: function () {

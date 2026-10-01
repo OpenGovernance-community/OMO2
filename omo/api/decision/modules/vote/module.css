@@ -1,0 +1,360 @@
+/* omo/api/decision/modules/vote/module.php */
+.omo-decision-vote {
+    display: grid;
+    gap: 18px;
+}
+
+.omo-decision-vote__head,
+.omo-decision-vote__copy,
+.omo-decision-vote__notice {
+    display: grid;
+    gap: 8px;
+}
+
+.omo-decision-vote__form {
+    display: grid;
+    gap: var(--generic-form-gap, var(--generic-space-4, 16px));
+}
+
+.omo-decision-vote__head {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 12px;
+}
+
+.omo-decision-vote__grid,
+.omo-decision-vote__summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+}
+
+.omo-decision-vote__textarea {
+    min-height: 120px;
+    resize: vertical;
+}
+
+.omo-decision-vote-popup__actions {
+    display: grid;
+    gap: 12px;
+}
+
+.omo-decision-vote-popup__choice-grid {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.omo-decision-vote-popup__field {
+    display: grid;
+    gap: 8px;
+}
+
+.omo-decision-vote-popup__actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.omo-decision-vote__field[hidden] {
+    display: none !important;
+}
+
+.omo-decision-vote__check-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.omo-decision-vote__proposal-list,
+.omo-decision-vote__readonly-list {
+    display: grid;
+    gap: 10px;
+}
+
+.omo-decision-vote__consultation-proposals {
+    display: grid;
+    gap: var(--generic-space-2);
+    margin-block-end: var(--generic-space-3);
+}
+
+.omo-decision-vote__consultation-proposals .omo-decision-vote__readonly-list {
+    gap: 0;
+}
+
+.omo-decision-vote__consultation-proposals .omo-decision-vote__readonly-item {
+    padding: var(--generic-space-3) 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+}
+
+.omo-decision-vote__consultation-proposals .omo-decision-vote__readonly-item + .omo-decision-vote__readonly-item {
+    border-top: 1px solid color-mix(in srgb, var(--color-border, #d1d5db) 72%, var(--color-surface, #ffffff));
+}
+
+.omo-decision-vote__results-panel {
+    display: grid;
+    gap: 12px;
+}
+
+.omo-decision-vote__results-controls {
+    justify-content: flex-end;
+}
+
+.omo-decision-vote__results-compare {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--color-text-light, #475569);
+    font-size: 0.92rem;
+}
+
+.omo-decision-vote__readonly-item,
+.omo-decision-vote__option {
+    display: grid;
+    gap: 10px;
+    align-items: start;
+    padding: 12px;
+    border: 1px solid var(--color-border, #d1d5db);
+    border-radius: var(--radius-md);
+    background: var(--color-surface, #fff);
+}
+
+.omo-decision-vote__proposal-card {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease, transform 0.2s ease;
+}
+
+.omo-decision-vote__proposal-card.is-dragging {
+    opacity: 0.55;
+    transform: scale(0.995);
+    box-shadow: 0 16px 28px rgba(15, 23, 42, 0.12);
+}
+
+.omo-decision-vote__proposal-card.is-drop-target {
+    border-color: var(--color-primary, #4f46e5);
+    box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.14);
+}
+
+.omo-decision-vote__proposal-placeholder {
+    min-height: 78px;
+    border: 2px dashed color-mix(in srgb, var(--color-primary, #4f46e5) 46%, var(--color-border, #d1d5db));
+    border-radius: var(--radius-md);
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.08), rgba(79, 70, 229, 0.03));
+    box-sizing: border-box;
+}
+
+.omo-decision-vote__proposal-drag {
+    width: 36px;
+    min-width: 36px;
+    min-height: 42px;
+    border: 0;
+    border-radius: var(--radius-md);
+    background: rgba(148, 163, 184, 0.14);
+    color: #475569;
+    cursor: grab;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    line-height: 1;
+    touch-action: none;
+}
+
+.omo-decision-vote__proposal-drag:disabled {
+    cursor: default;
+    opacity: 0.55;
+}
+
+.omo-decision-vote__proposal-main {
+    display: grid;
+    gap: 6px;
+}
+
+.omo-decision-vote__proposal-menu {
+    position: relative;
+    align-self: start;
+}
+
+.omo-decision-vote__proposal-card:has(.omo-decision-vote__proposal-menu-toggle[aria-expanded="true"]) {
+    position: relative;
+    z-index: 8;
+}
+
+.omo-decision-vote__proposal-menu-toggle {
+    min-width: 42px;
+    padding-inline: 12px;
+}
+
+.omo-decision-vote__proposal-menu-item {
+    width: 100%;
+    justify-content: flex-start;
+    box-shadow: none;
+}
+
+.omo-decision-vote__proposal-label {
+    font-size: 13px;
+    color: var(--color-text-light, #475569);
+    font-weight: 600;
+}
+
+.omo-decision-vote__proposal-add {
+    align-self: start;
+}
+
+.omo-decision-vote__footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+}
+
+.omo-decision-vote__feedback {
+    min-height: 20px;
+    color: var(--color-text-light, #475569);
+    font-size: 14px;
+}
+
+.omo-decision-vote__feedback.is-error {
+    color: #b91c1c;
+}
+
+.omo-decision-vote__feedback.is-success {
+    color: #166534;
+}
+
+.omo-decision-vote__fieldset {
+    display: grid;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.omo-decision-vote__option {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    cursor: pointer;
+}
+
+.omo-decision-vote__readonly-item.is-selected {
+    border-color: color-mix(in srgb, var(--color-primary, #2563eb) 30%, var(--color-border, #d1d5db));
+    background: color-mix(in srgb, var(--color-primary, #2563eb) 8%, var(--color-surface, #fff));
+}
+
+.omo-decision-vote__readonly-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.omo-decision-vote__readonly-stats--settings {
+    display: grid;
+    gap: 8px;
+}
+
+.omo-decision-vote__readonly-stat {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.12);
+    color: var(--color-text-light, #475569);
+    font-size: 0.84rem;
+}
+
+.omo-decision-vote__readonly-stats--settings .omo-decision-vote__readonly-stat {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 4px 8px;
+    align-items: baseline;
+    padding: 10px 12px;
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--color-text-light, #64748b) 8%, var(--color-surface-alt, #f8fafc));
+}
+
+.omo-decision-vote__readonly-stat strong {
+    color: var(--color-text, #1f2937);
+    font-weight: 600;
+}
+
+.omo-decision-vote__distribution {
+    --omo-decision-vote-distribution-padding: 4px;
+    display: flex;
+    align-items: stretch;
+    min-height: 18px;
+    padding: var(--omo-decision-vote-distribution-padding);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-text-light, #64748b) 8%, white);
+    overflow: hidden;
+}
+
+.omo-decision-vote__distribution-track {
+    display: block;
+    flex: 1 1 auto;
+    min-height: 10px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--color-surface, #ffffff) 78%, var(--color-text-light, #64748b) 22%);
+}
+
+.omo-decision-vote__distribution-fill {
+    display: block;
+    height: 100%;
+    min-height: 10px;
+    border-radius: 999px;
+    background: hsl(calc(var(--omo-decision-vote-share-ratio, 0) * 120deg) 72% 46%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+
+.omo-decision-vote__distribution-scale {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    color: var(--color-text-light, #475569);
+    font-size: 12px;
+}
+
+.omo-decision-vote__comparison {
+    display: grid;
+    gap: 8px;
+    padding-top: 4px;
+    border-top: 1px dashed color-mix(in srgb, var(--color-border, #d1d5db) 82%, transparent);
+}
+
+.omo-decision-vote__comparison[hidden] {
+    display: none !important;
+}
+
+.omo-decision-vote__comparison-title {
+    color: var(--color-text-light, #475569);
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+
+.omo-decision-vote__distribution-fill--secondary {
+    background: color-mix(in srgb, var(--color-primary, #2563eb) 42%, var(--color-surface-alt, #cbd5e1));
+}
+
+@media (max-width: 720px) {
+    .omo-decision-vote__head {
+        grid-template-columns: 1fr;
+    }
+
+    .omo-decision-vote__settings-head {
+        grid-template-columns: 1fr;
+    }
+
+    .omo-decision-vote__results-controls {
+        justify-content: flex-start;
+    }
+
+    .omo-decision-vote__proposal-card {
+        grid-template-columns: auto 1fr;
+    }
+
+    .omo-decision-vote__proposal-remove {
+        grid-column: 1 / -1;
+        justify-self: start;
+    }
+}

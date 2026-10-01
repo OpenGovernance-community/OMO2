@@ -109,7 +109,7 @@
         }
 
         if (ownerPhotoUrl !== '') {
-            ownerAvatarHtml = '<img src="' + escapeHtml(ownerPhotoUrl) + '" alt="' + escapeHtml(ownerName !== '' ? ownerName : ownerInitials) + '" class="omo-decisions-card__owner-photo">';
+            ownerAvatarHtml = '<img src="' + escapeHtml(ownerPhotoUrl) + '" alt="' + escapeHtml(ownerName !== '' ? ownerName : ownerInitials) + '" class="omo-decisions-card__owner-photo" width="42" height="42" decoding="async">';
         } else {
             ownerAvatarHtml = '<span class="omo-decisions-card__owner-placeholder">' + escapeHtml(ownerInitials) + '</span>';
         }
@@ -157,7 +157,7 @@
                 + '<span class="omo-decisions-card__owner-avatar">' + ownerAvatarHtml + '</span>'
                 + '<span class="omo-decisions-card__summary-copy">'
                     + '<span class="omo-decisions-card__summary-top">'
-                        + '<span class="omo-decisions-card__title-line"><span class="omo-decisions-card__title">' + escapeHtml(title) + '</span>' + titleIconHtml + '</span>'
+                        + '<span class="omo-decisions-card__title-line"><span class="omo-decisions-card__title generic-title generic-title--item">' + escapeHtml(title) + '</span>' + titleIconHtml + '</span>'
                         + (statusLabel !== '' ? '<span class="omo-decisions-card__status">' + escapeHtml(statusLabel) + '</span>' : '')
                     + '</span>'
                     + '<span class="omo-decisions-card__summary-bottom">'
@@ -170,7 +170,7 @@
             + actionsHtml
             + '</div>'
             + '<div class="omo-decisions-card__content generic-accordion__content">'
-                + (description !== '' ? '<p class="omo-decisions-card__description">' + escapeHtml(description) + '</p>' : '')
+                + (description !== '' ? '<p class="omo-decisions-card__description generic-description">' + escapeHtml(description) + '</p>' : '')
                 + (metaHtml !== '' ? '<div class="omo-decisions-card__meta">' + metaHtml + '</div>' : '')
                 + (statsHtml !== '' ? '<div class="omo-decisions-card__stats">' + statsHtml + '</div>' : '')
                 + (dateHtml !== '' ? '<div class="omo-decisions-card__dates">' + dateHtml + '</div>' : '')

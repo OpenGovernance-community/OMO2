@@ -22,7 +22,9 @@ if (!function_exists('omoDecisionVoteImportBlock')) {
             'choice_mode' => (string)($config['choice_mode'] ?? 'single'),
             'max_choices' => (int)($config['max_choices'] ?? 1),
             'is_anonymous' => !empty($config['is_anonymous']),
+            'allow_anonymous_votes' => !empty($config['allow_anonymous_votes']),
             'allow_consultation_proposals' => !empty($config['allow_consultation_proposals']),
+            'allow_proposal_discussions' => !empty($config['allow_proposal_discussions']),
         ], [
             'proposal_count' => count($proposals),
             'created_from_module' => 'vote',

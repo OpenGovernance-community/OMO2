@@ -1,10 +1,14 @@
 <?php
 
 if (!function_exists('commonUserPermissionBuildCatalogMap')) {
-    function commonUserPermissionBuildCatalogMap()
+    function commonUserPermissionBuildCatalogMap(int $organizationId = 0)
     {
         $catalog = [];
-        foreach (\dbObject\Permission::getEditorCatalog() as $permissionEntry) {
+        $organization = new \dbObject\Organization();
+        $entries = $organizationId > 0 && $organization->load($organizationId)
+            ? $organization->getPermissionEditorCatalog()
+            : \dbObject\Permission::getEditorCatalog();
+        foreach ($entries as $permissionEntry) {
             $permissionKey = trim((string)($permissionEntry['key'] ?? ''));
             if ($permissionKey === '') {
                 continue;
@@ -36,10 +40,10 @@ if (!function_exists('commonUserPermissionBuildHolonMetaMap')) {
             $name = trim((string)$holon->get('name'));
             $typeLabel = trim((string)$holon->getTemplateLabel(true));
             if ($typeLabel === '') {
-                $typeLabel = 'Holon';
+                $typeLabel = \dbObject\Organization::formatLexiconText('Holon');
             }
 
-            $labelsById[$holonId] = $name !== '' ? $name : ('Holon #' . $holonId);
+            $labelsById[$holonId] = $name !== '' ? $name : (\dbObject\Organization::formatLexiconText('Holon #') . $holonId);
             $typeLabelsById[$holonId] = $typeLabel;
         }
 
@@ -55,11 +59,11 @@ if (!function_exists('commonUserPermissionFormatHolonLabel')) {
     {
         $holonId = (int)$holonId;
         if ($holonId <= 0) {
-            return 'Holon inconnu';
+            return 'Espace inconnu';
         }
 
-        $name = $labelsById[$holonId] ?? ('Holon #' . $holonId);
-        $typeLabel = $typeLabelsById[$holonId] ?? 'Holon';
+        $name = $labelsById[$holonId] ?? (\dbObject\Organization::formatLexiconText('Holon #') . $holonId);
+        $typeLabel = $typeLabelsById[$holonId] ?? \dbObject\Organization::formatLexiconText('Holon');
         return $name . ' [' . $typeLabel . '] #' . $holonId;
     }
 }

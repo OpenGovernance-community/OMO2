@@ -12,9 +12,10 @@ $organizationId = (int)($org['id'] ?? 0);
 $managementContext = lmsResolveParcoursManagementContext($organizationId, 0, $currentUserId, false);
 $hasOrganizationAccess = !empty($managementContext['hasOrganizationAccess']);
 $canCreateParcours = !empty($managementContext['canCreate']);
+$canDeleteParcours = !empty($managementContext['canDelete']);
 $parcoursId = (int)($_POST['id'] ?? ($_GET['id'] ?? 0));
 
-if ($currentUserId <= 0 || !$hasOrganizationAccess || !$canCreateParcours || $organizationId <= 0) {
+if ($currentUserId <= 0 || !$hasOrganizationAccess || (!$canCreateParcours && !$canDeleteParcours) || $organizationId <= 0) {
 	http_response_code(403);
 	echo json_encode(array(
 		'status' => false,
@@ -43,6 +44,12 @@ if ($link === null || !$parcours->load($parcoursId)) {
 		'success' => false,
 		'message' => 'Parcours introuvable.',
 	), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+	exit;
+}
+
+if ($parcours->isOwnedByOrganization($organizationId) ? !$canDeleteParcours : !$canCreateParcours) {
+	http_response_code(403);
+	echo json_encode(['status' => false, 'success' => false, 'message' => 'Vous n avez pas le droit de supprimer ou detacher ce parcours.']);
 	exit;
 }
 

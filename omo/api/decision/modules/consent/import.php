@@ -20,7 +20,9 @@ if (!function_exists('omoDecisionConsentImportBlock')) {
         $config = omoDecisionConsentBuildConfig($blockBlueprint['method_config'] ?? []);
         $parameters = omoDecisionConsentMergeConfigIntoParameters([], [
             'is_anonymous' => !empty($config['is_anonymous']),
+            'allow_anonymous_votes' => !empty($config['allow_anonymous_votes']),
             'allow_consultation_proposals' => !empty($config['allow_consultation_proposals']),
+            'allow_proposal_discussions' => !empty($config['allow_proposal_discussions']),
         ], [
             'proposal_count' => count($proposals),
             'created_from_module' => 'consent',

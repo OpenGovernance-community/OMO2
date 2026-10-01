@@ -55,34 +55,24 @@
 			return null;
 		}
 
-		$result = false;
-
-		if (function_exists('curl_init')) {
-			$ch = curl_init($url);
-			curl_setopt($ch, CURLOPT_POST, true);
-			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-			curl_setopt($ch, CURLOPT_HTTPHEADER, array(
-				'Content-Type: application/json; charset=UTF-8',
-				'Accept: application/json',
-			));
-			curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
-			$result = curl_exec($ch);
-			curl_close($ch);
-		} else {
-			$context = stream_context_create(array(
-				'http' => array(
-					'method' => 'POST',
-					'header' => implode("\r\n", array(
-						'Content-Type: application/json; charset=UTF-8',
-						'Accept: application/json',
-					)),
-					'content' => $payload,
-					'ignore_errors' => true,
-				),
-			));
-			$result = @file_get_contents($url, false, $context);
+		if (!function_exists('curl_init')) {
+			return null;
 		}
 
+		$ch = curl_init($url);
+		curl_setopt_array($ch, array(
+			CURLOPT_POST => true,
+			CURLOPT_RETURNTRANSFER => true,
+			CURLOPT_HTTPHEADER => array(
+				'Content-Type: application/json; charset=UTF-8',
+				'Accept: application/json',
+			),
+			CURLOPT_POSTFIELDS => $payload,
+			CURLOPT_CONNECTTIMEOUT => 15,
+			CURLOPT_TIMEOUT => 60,
+			CURLOPT_FAILONERROR => false,
+		));
+		$result = curl_exec($ch);
 		if ($result === false) {
 			return null;
 		}
@@ -158,5 +148,30 @@
 		));
 
 		return is_array($response) ? $response : null;
+	}
+
+	function telegramDownloadFile($file_path) {
+		$file_path = ltrim((string)$file_path, '/');
+		$url = "https://api.telegram.org/file/bot".TOKEN."/".$file_path;
+
+		$ch = curl_init($url);
+		curl_setopt_array($ch, array(
+			CURLOPT_RETURNTRANSFER => true,
+			CURLOPT_FOLLOWLOCATION => true,
+			CURLOPT_MAXREDIRS => 3,
+			CURLOPT_CONNECTTIMEOUT => 15,
+			CURLOPT_TIMEOUT => 240,
+			CURLOPT_FAILONERROR => false,
+			CURLOPT_USERAGENT => 'SystemDD Telegram file downloader',
+		));
+
+		$content = curl_exec($ch);
+		$httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+		$ok = $content !== false && $httpCode >= 200 && $httpCode < 300;
+
+		return array(
+			'ok' => $ok,
+			'content' => $ok ? $content : false,
+		);
 	}
 ?>

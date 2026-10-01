@@ -45,6 +45,8 @@ if (!function_exists('omoDecisionCanUsePublicTokenForPath')) {
             '/omo/api/decision/modules/majority_judgment/respond.php',
             '/omo/api/decision/modules/consent/respond.php',
             '/omo/api/decision/modules/proposals/consultation_add.php',
+            '/omo/api/decision/modules/proposals/discussion.php',
+            '/omo/api/decision/modules/proposals/edit.php',
         ], true);
     }
 }

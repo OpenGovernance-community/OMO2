@@ -1,0 +1,120 @@
+/* popup/profil_tools.php */
+.profile-tools-list,
+.profile-account-tool__content {
+    display: grid;
+    gap: 16px;
+}
+
+.profile-account-tool__copy,
+.profile-merge-tool__step,
+.profile-merge-tool__choices {
+    display: grid;
+    gap: 12px;
+}
+
+.profile-account-tool__copy p,
+.profile-merge-tool__step p {
+    margin: 0;
+    color: var(--color-text-light, #64748b);
+    line-height: 1.5;
+}
+
+.profile-account-tool__header .generic-action-button {
+    flex-shrink: 0;
+}
+
+.profile-merge-tool__field {
+    display: grid;
+    gap: 7px;
+    font-weight: 650;
+}
+
+.profile-merge-tool__current-email {
+    overflow-wrap: anywhere;
+    font-weight: 700;
+}
+
+.profile-merge-tool__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+}
+
+.profile-merge-tool__method {
+    border: 0;
+    padding: 0;
+    background: transparent;
+    color: var(--color-primary, #004663);
+    cursor: pointer;
+    font: inherit;
+    font-weight: 700;
+    text-decoration: underline;
+}
+
+.profile-merge-tool__choice,
+.profile-merge-tool__confirmation {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+}
+
+.profile-merge-tool__choice input,
+.profile-merge-tool__confirmation input {
+    margin-top: 4px;
+}
+
+.profile-merge-tool__choice-copy {
+    display: grid;
+    gap: 3px;
+}
+
+.profile-merge-tool__choice-copy small {
+    color: var(--color-text-light, #64748b);
+    overflow-wrap: anywhere;
+}
+
+.profile-merge-tool__warning {
+    border-color: color-mix(in srgb, #dc2626 28%, var(--color-border, #dbe4ee));
+    background: color-mix(in srgb, #dc2626 7%, var(--color-surface, #fff));
+    color: color-mix(in srgb, #dc2626 82%, var(--color-text, #0f172a));
+}
+
+.profile-merge-tool__status {
+    min-height: 24px;
+    line-height: 1.45;
+    font-weight: 650;
+}
+
+.profile-merge-tool__status.is-error {
+    color: #b91c1c;
+}
+
+.profile-merge-tool__status.is-success {
+    color: #15803d;
+}
+
+.profile-account-delete__plan,
+.profile-account-delete__confirmation {
+    display: grid;
+    gap: 12px;
+}
+
+.profile-account-delete__plan p {
+    margin: 0;
+    color: var(--color-text-light, #64748b);
+    line-height: 1.5;
+}
+
+.profile-account-delete__list {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.profile-account-delete__status {
+    min-height: 24px;
+    font-weight: 650;
+}
+
+.profile-account-delete__status.is-error { color: #b91c1c; }
+.profile-account-delete__status.is-success { color: #15803d; }

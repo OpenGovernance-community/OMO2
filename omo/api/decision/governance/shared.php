@@ -1,0 +1,290 @@
+<?php
+
+use dbObject\DecisionGovernanceAction;
+use dbObject\DecisionProcess;
+use dbObject\DecisionProposal;
+use dbObject\DeferredProposal;
+use dbObject\Rule;
+
+if (!function_exists('omoDecisionGovernanceGetSourceLang')) {
+    function omoDecisionGovernanceGetSourceLang()
+    {
+        return [
+            'governance.title.create' => ['text' => 'Nouvelle décision hors réorg', 'context' => 'Governance decision creation title.'],
+            'governance.title.edit' => ['text' => 'Modifier la décision hors réorg', 'context' => 'Governance decision editor title.'],
+            'governance.intro' => ['text' => 'Préparez une ou plusieurs propositions. Chaque proposition peut regrouper plusieurs modifications qui seront appliquées ensemble si elle ne reçoit aucune objection.', 'context' => 'Governance decision editor introduction.'],
+            'governance.field.title' => ['text' => 'Titre', 'context' => 'Governance process title field.'],
+            'governance.section.identity' => ['text' => 'Décision', 'context' => 'Heading for the decision title and optional context.'],
+            'governance.section.schedule' => ['text' => 'Calendrier et consultation', 'context' => 'Heading for the decision deadlines and voting question.'],
+            'governance.field.intention' => ['text' => 'Intention et contexte', 'context' => 'Governance process description field.'],
+            'governance.field.intention.add' => ['text' => 'Ajouter une intention ou un contexte', 'context' => 'Reveal the optional governance process description field.'],
+            'governance.field.consultation_end' => ['text' => 'Fin de la consultation', 'context' => 'Governance consultation end field.'],
+            'governance.field.vote_end' => ['text' => 'Fin du vote', 'context' => 'Governance evaluation end field.'],
+            'governance.question.label' => ['text' => 'Question soumise au consentement', 'context' => 'Governance consent question label.'],
+            'governance.question.help' => ['text' => 'Cette question est définie pour cette prise de décision.', 'context' => 'Governance custom consent question help.'],
+            'governance.question.vote_label' => ['text' => 'Question soumise au vote', 'context' => 'Governance simple vote question label.'],
+            'governance.question.vote_help' => ['text' => 'Cette question est définie pour cette prise de décision.', 'context' => 'Governance custom simple vote question help.'],
+            'governance.question.default' => ['text' => 'Voyez-vous une raison pour laquelle appliquer les modifications suivantes nous causerait du tort ou nous éloignerait de notre raison d’être ?', 'context' => 'Default governance consent question.'],
+            'governance.proposals.title' => ['text' => 'Propositions', 'context' => 'Governance proposals section title.'],
+            'governance.proposals.help' => ['text' => 'Les modifications d’une même proposition sont indissociables et seront appliquées dans une seule transaction.', 'context' => 'Governance proposal atomicity help.'],
+            'governance.proposal.add' => ['text' => 'Ajouter une proposition', 'context' => 'Add governance proposal button.'],
+            'governance.proposal.default' => ['text' => 'Proposition {index}', 'context' => 'Default governance proposal title.'],
+            'governance.proposal.title' => ['text' => 'Titre de la proposition', 'context' => 'Governance proposal title field.'],
+            'governance.proposal.description' => ['text' => 'Description de la proposition', 'context' => 'Governance proposal description field.'],
+            'governance.proposal.summary.generate' => ['text' => 'Rédiger un résumé avec l’IA', 'context' => 'Generate a short proposal description from its prepared changes.'],
+            'governance.proposal.summary.loading' => ['text' => 'Rédaction du résumé…', 'context' => 'Proposal summary generation in progress.'],
+            'governance.proposal.summary.empty' => ['text' => 'Ajoutez d’abord une modification à cette proposition.', 'context' => 'No changes are available to summarize.'],
+            'governance.proposal.summary.failed' => ['text' => 'Impossible de générer le résumé.', 'context' => 'Proposal summary generation error.'],
+            'governance.proposal.summary.ready' => ['text' => 'Résumé ajouté à la description. Vous pouvez le modifier.', 'context' => 'Proposal summary generation success.'],
+            'governance.proposal.summary.unavailable' => ['text' => 'L’IA n’est pas disponible pour cette prise de décision.', 'context' => 'AI access is unavailable for the governance summary request.'],
+            'governance.proposal.remove' => ['text' => 'Retirer la proposition', 'context' => 'Remove governance proposal button.'],
+            'governance.action.add' => ['text' => 'Ajouter une modification', 'context' => 'Add a deferred proposal to one governance ballot option.'],
+            'governance.action.more' => ['text' => 'Actions de la modification', 'context' => 'Accessible label for the menu of one change within a ballot proposal.'],
+            'governance.action.edit' => ['text' => 'Modifier', 'context' => 'Edit governance action button.'],
+            'governance.action.remove' => ['text' => 'Retirer', 'context' => 'Remove governance action button.'],
+            'governance.action.rule_update' => ['text' => 'Modifier une règle', 'context' => 'Rule update governance action label.'],
+            'governance.action.rule_create' => ['text' => 'Créer une règle', 'context' => 'Rule creation governance action label.'],
+            'governance.action.rule_delete' => ['text' => 'Supprimer une règle', 'context' => 'Rule deletion governance action label.'],
+            'governance.action.role_update' => ['text' => 'Modifier un rôle', 'context' => 'Role update governance action label.'],
+            'governance.action.role_create' => ['text' => 'Créer un rôle', 'context' => 'Role creation governance action label.'],
+            'governance.action.role_move' => ['text' => 'Deplacer un role ou cercle', 'context' => 'Deferred holon move action'],
+            'governance.action.move' => ['text' => 'Deplacement', 'context' => 'Deferred holon move operation'],
+            'governance.action.role_delete' => ['text' => 'Supprimer un rôle', 'context' => 'Role deletion governance action label.'],
+            'governance.action.project_update' => ['text' => 'Modifier un projet', 'context' => 'Project update deferred proposal label.'],
+            'governance.action.project_create' => ['text' => 'Créer un projet', 'context' => 'Project creation deferred proposal label.'],
+            'governance.action.project_propose' => ['text' => 'Proposer un projet', 'context' => 'Project proposal label when the collective can propose but not create projects.'],
+            'governance.action.project_delete' => ['text' => 'Supprimer un projet', 'context' => 'Project deletion deferred proposal label.'],
+            'governance.action.recurring_task_update' => ['text' => 'Modifier une tâche récurrente', 'context' => 'Recurring task update deferred proposal label.'],
+            'governance.action.recurring_task_create' => ['text' => 'Créer une tâche récurrente', 'context' => 'Recurring task creation deferred proposal label.'],
+            'governance.action.recurring_task_delete' => ['text' => 'Supprimer une tâche récurrente', 'context' => 'Recurring task deletion deferred proposal label.'],
+            'governance.action.indicator_update' => ['text' => 'Modifier un indicateur', 'context' => 'Indicator update deferred proposal label.'],
+            'governance.action.indicator_create' => ['text' => 'Créer un indicateur', 'context' => 'Indicator creation deferred proposal label.'],
+            'governance.action.indicator_delete' => ['text' => 'Supprimer un indicateur', 'context' => 'Indicator deletion deferred proposal label.'],
+            'governance.action.object_type' => ['text' => 'Objet', 'context' => 'Deferred proposal object type label.'],
+            'governance.action.context' => ['text' => 'Contexte', 'context' => 'Deferred proposal holon context label.'],
+            'governance.action.object' => ['text' => 'Élément concerné', 'context' => 'Deferred proposal target object label.'],
+            'governance.action.open_context' => ['text' => 'Choisir un contexte dans la structure', 'context' => 'Open the collective holon context picker.'],
+            'governance.action.open_editor' => ['text' => 'Ouvrir l’éditeur', 'context' => 'Open deferred proposal editor button.'],
+            'governance.action.empty' => ['text' => 'Aucun élément disponible dans ce contexte.', 'context' => 'No deferred proposal target available.'],
+            'governance.action.loading' => ['text' => 'Chargement…', 'context' => 'Deferred proposal target loading label.'],
+            'governance.action.choose' => ['text' => 'Choisissez une modification', 'context' => 'Governance action chooser title.'],
+            'governance.action.rule' => ['text' => 'Règle', 'context' => 'Rule selection field.'],
+            'governance.action.authority' => ['text' => 'Domaine d’autorité', 'context' => 'Rule authority field.'],
+            'governance.action.local_rule' => ['text' => 'Règle locale à l’espace', 'context' => 'Local space rule option.'],
+            'governance.action.intention' => ['text' => 'Intention', 'context' => 'Rule intention field.'],
+            'governance.action.content' => ['text' => 'Règle', 'context' => 'Rule content field.'],
+            'governance.action.review_date' => ['text' => 'Date de requestionnement', 'context' => 'Rule review date field.'],
+            'governance.action.expiration_date' => ['text' => 'Date d’échéance', 'context' => 'Rule expiration date field.'],
+            'governance.action.cancel' => ['text' => 'Annuler', 'context' => 'Governance action modal cancel button.'],
+            'governance.action.apply' => ['text' => 'Ajouter à la proposition', 'context' => 'Governance action modal apply button.'],
+            'governance.action.update' => ['text' => 'Mettre à jour la modification', 'context' => 'Governance action modal update button.'],
+            'governance.action.delete_help' => ['text' => 'La règle complète sera supprimée uniquement si cette proposition est acceptée et si son contenu n’a pas changé entre-temps.', 'context' => 'Deferred rule deletion explanation.'],
+            'governance.action.confirm_delete' => ['text' => 'Ajouter la suppression', 'context' => 'Add deferred rule deletion button.'],
+            'governance.save' => ['text' => 'Créer la prise de décision', 'context' => 'Governance decision create button.'],
+            'governance.save_short' => ['text' => 'Créer', 'context' => 'Compact create button in the governance editor header.'],
+            'governance.update_short' => ['text' => 'Enregistrer', 'context' => 'Compact save button in the governance editor header.'],
+            'governance.update' => ['text' => 'Enregistrer les modifications', 'context' => 'Governance decision update button.'],
+            'governance.saving' => ['text' => 'Enregistrement…', 'context' => 'Governance decision saving label.'],
+            'governance.error.generic' => ['text' => 'Impossible d’enregistrer cette prise de décision.', 'context' => 'Governance editor generic error.'],
+            'governance.error.rule_content' => ['text' => 'Le contenu de la règle est obligatoire.', 'context' => 'Governance rule editor empty HTML content error.'],
+            'governance.error.holon' => ['text' => 'Une décision hors réorg doit être créée dans un espace.', 'context' => 'Governance editor invalid space error.'],
+            'governance.error.disabled' => ['text' => 'Les décisions hors réorg ne sont pas activées dans les paramètres de cette organisation.', 'context' => 'Governance workflow disabled error.'],
+            'governance.error.owner' => ['text' => 'Seul le créateur peut modifier les propositions de cette prise de décision.', 'context' => 'Governance editor owner error.'],
+            'governance.error.locked' => ['text' => 'Les propositions sont verrouillées depuis la fin de la consultation.', 'context' => 'Governance editor locked error.'],
+            'governance.empty.rules' => ['text' => 'Aucune règle n’est définie directement dans ce contexte.', 'context' => 'Governance editor no rules message.'],
+            'governance.status.pending' => ['text' => 'En attente', 'context' => 'Governance action pending status.'],
+            'governance.status.applied' => ['text' => 'Appliquée', 'context' => 'Governance action applied status.'],
+            'governance.status.rejected' => ['text' => 'Non acceptée', 'context' => 'Governance action rejected status.'],
+            'governance.status.conflict' => ['text' => 'Conflit', 'context' => 'Governance action conflict status.'],
+            'governance.status.failed' => ['text' => 'Échec', 'context' => 'Governance action failed status.'],
+        ];
+    }
+}
+
+if (!function_exists('omoDecisionGovernanceT')) {
+    function omoDecisionGovernanceT($key, array $variables = [])
+    {
+        static $sourceLang = null;
+        static $bundle = null;
+        if ($sourceLang === null) {
+            $sourceLang = omoDecisionGovernanceGetSourceLang();
+            $bundle = omoLoadTranslationBundle('omo_decision_governance', $sourceLang);
+        }
+        return t((string)$key, $variables, $bundle, $sourceLang);
+    }
+}
+
+if (!function_exists('omoDecisionGovernanceEncodeJson')) {
+    function omoDecisionGovernanceEncodeJson($value, $fallback = '[]')
+    {
+        $encoded = json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+        return is_string($encoded) ? $encoded : $fallback;
+    }
+}
+
+if (!function_exists('omoDecisionGovernanceBuildRuleClientData')) {
+    function omoDecisionGovernanceBuildRuleClientData(Rule $rule)
+    {
+        $state = DecisionGovernanceAction::captureRuleState($rule);
+        return [
+            'id' => (int)$rule->getId(),
+            'label' => trim((string)$rule->get('title')),
+            'state' => $state,
+        ];
+    }
+}
+
+if (!function_exists('omoDecisionGovernanceDecorateRoleProperties')) {
+    function omoDecisionGovernanceDecorateRoleProperties(array $properties)
+    {
+        foreach ($properties as &$property) {
+            if (!is_array($property) || (string)($property['listItemType'] ?? '') !== 'authority') continue;
+            $decodedValue = json_decode((string)($property['value'] ?? ''), true);
+            $items = is_array($decodedValue['items'] ?? null)
+                ? array_values($decodedValue['items'])
+                : (is_array($decodedValue) ? array_values($decodedValue) : []);
+            $authorityIds = [];
+            foreach ($items as $item) {
+                if (is_array($item) && !empty($item['delete'])) continue;
+                $authorityId = is_array($item) ? (int)($item['id'] ?? 0) : (int)$item;
+                if ($authorityId > 0) $authorityIds[] = $authorityId;
+            }
+            $labelsById = \dbObject\Authority::getLabelsByIds($authorityIds);
+            $displayItems = [];
+            foreach ($items as $item) {
+                if (is_array($item) && !empty($item['delete'])) continue;
+                $authorityId = is_array($item) ? (int)($item['id'] ?? 0) : (int)$item;
+                $label = is_array($item) ? trim((string)($item['label'] ?? '')) : '';
+                if ($label === '' && $authorityId > 0) $label = trim((string)($labelsById[$authorityId] ?? ''));
+                if ($label !== '') $displayItems[] = $label;
+            }
+            $property['displayValue'] = implode('; ', $displayItems);
+        }
+        unset($property);
+        return array_values($properties);
+    }
+}
+
+if (!function_exists('omoDecisionGovernanceBuildRoleClientData')) {
+    function omoDecisionGovernanceBuildRoleClientData(\dbObject\Holon $role, ?\dbObject\Organization $organization = null, $contextHolonId = 0)
+    {
+        $state = DecisionGovernanceAction::captureRoleState($role);
+        $labelParts = [trim((string)$role->getDisplayName())];
+        $parent = $role->getParentHolon();
+        $guard = 0;
+        while ($parent instanceof \dbObject\Holon && (int)$parent->getId() !== (int)$contextHolonId && $guard < 100) {
+            if ((int)$parent->get('IDtypeholon') !== 3) break;
+            array_unshift($labelParts, trim((string)$parent->getDisplayName()));
+            $parent = $parent->getParentHolon();
+            $guard++;
+        }
+        if ($organization instanceof \dbObject\Organization) {
+            $editorData = $organization->getHolonCreationEditorData((int)$contextHolonId, (int)$role->getId(), true);
+            $holon = is_array($editorData['holon'] ?? null) ? $editorData['holon'] : [];
+            if (count($holon) > 0) {
+                $properties = omoDecisionGovernanceDecorateRoleProperties(
+                    is_array($holon['properties'] ?? null) ? array_values($holon['properties']) : []
+                );
+                $state['editor_payload'] = [
+                    'templateId' => (int)($holon['templateId'] ?? 0),
+                    'name' => (string)($holon['name'] ?? ''),
+                    'fullName' => (string)($holon['fullName'] ?? ''),
+                    'color' => (string)($holon['color'] ?? ''),
+                    'icon' => (string)($holon['icon'] ?? ''),
+                    'adminMin' => $holon['adminMin'] ?? 0,
+                    'adminMax' => $holon['adminMax'] ?? null,
+                    'adminMinOverride' => !empty($holon['adminMinOverride']),
+                    'adminMaxOverride' => !empty($holon['adminMaxOverride']),
+                    'permissions' => is_array($holon['permissionAssignments'] ?? null) ? $holon['permissionAssignments'] : [],
+                    'properties' => $properties,
+                ];
+            }
+        }
+        return [
+            'id' => (int)$role->getId(),
+            'label' => implode(' > ', array_filter($labelParts, static function ($label) { return $label !== ''; })),
+            'state' => $state,
+        ];
+    }
+}
+
+if (!function_exists('omoDecisionGovernanceBuildBlueprint')) {
+    function omoDecisionGovernanceBuildBlueprint(?DecisionProcess $decision)
+    {
+        if (!$decision instanceof DecisionProcess) {
+            return [];
+        }
+        $organization = new \dbObject\Organization();
+        $hasOrganization = $organization->load((int)$decision->get('IDorganization'));
+        $blueprint = [];
+        foreach ($decision->getProposals(true) as $proposal) {
+            if (!$proposal instanceof DecisionProposal) {
+                continue;
+            }
+            $actions = [];
+            foreach ($proposal->getGovernanceActions() as $action) {
+                if (!$action instanceof DecisionGovernanceAction || (string)$action->get('status') === DecisionGovernanceAction::STATUS_REMOVED) {
+                    continue;
+                }
+                $beforeState = DecisionGovernanceAction::normalizeState($action->get('before_state'));
+                $afterState = DecisionGovernanceAction::normalizeState($action->get('after_state'));
+                if ((string)$action->get('target_type') === DecisionGovernanceAction::TARGET_HOLON) {
+                    if (is_array($beforeState['editor_payload']['properties'] ?? null)) {
+                        $beforeState['editor_payload']['properties'] = omoDecisionGovernanceDecorateRoleProperties($beforeState['editor_payload']['properties']);
+                    }
+                    if (is_array($afterState['editor_payload']['properties'] ?? null)) {
+                        $afterState['editor_payload']['properties'] = omoDecisionGovernanceDecorateRoleProperties($afterState['editor_payload']['properties']);
+                    }
+                    if ($hasOrganization) {
+                        $beforeState = DeferredProposal::decorateHolonListDisplayState($beforeState, $organization);
+                        $afterState = DeferredProposal::decorateHolonListDisplayState($afterState, $organization);
+                    }
+                }
+                $actions[] = [
+                    'id' => (int)$action->getId(),
+                    'storage' => 'legacy',
+                    'type' => (string)$action->get('action_type'),
+                    'targetId' => (int)$action->get('target_id'),
+                    'holonId' => (int)$decision->get('IDholon'),
+                    'before' => $beforeState,
+                    'after' => $afterState,
+                    'status' => (string)$action->get('status'),
+                    'statusMessage' => trim((string)$action->get('status_message')),
+                ];
+            }
+            foreach (DeferredProposal::getForDecisionProposal((int)$proposal->getId()) as $deferredProposal) {
+                if (!$deferredProposal instanceof DeferredProposal
+                    || (string)$deferredProposal->get('status') === DeferredProposal::STATUS_REMOVED) {
+                    continue;
+                }
+                $beforeState = DeferredProposal::normalizeState($deferredProposal->get('before_state'));
+                $afterState = DeferredProposal::normalizeState($deferredProposal->get('after_state'));
+                if ($hasOrganization && (string)$deferredProposal->get('target_type') === DeferredProposal::TARGET_HOLON) {
+                    $beforeState = DeferredProposal::decorateHolonListDisplayState($beforeState, $organization);
+                    $afterState = DeferredProposal::decorateHolonListDisplayState($afterState, $organization);
+                }
+                $actions[] = [
+                    'id' => (int)$deferredProposal->getId(),
+                    'storage' => 'deferred',
+                    'type' => (string)$deferredProposal->get('target_type') . '.' . (string)$deferredProposal->get('operation'),
+                    'targetId' => (int)$deferredProposal->get('target_id'),
+                    'holonId' => (int)$deferredProposal->get('IDholon'),
+                    'before' => $beforeState,
+                    'after' => $afterState,
+                    'status' => (string)$deferredProposal->get('status'),
+                    'statusMessage' => trim((string)$deferredProposal->get('status_message')),
+                ];
+            }
+            if (!$actions) continue;
+            $blueprint[] = [
+                'id' => (int)$proposal->getId(),
+                'title' => trim((string)$proposal->get('title')),
+                'description' => trim((string)$proposal->get('description')),
+                'actions' => $actions,
+            ];
+        }
+        return $blueprint;
+    }
+}
+
+?>

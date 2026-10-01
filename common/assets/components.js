@@ -1,8 +1,117 @@
 (function () {
     var tabContainerCount = 0;
+    var contextHelpPositionFrame = 0;
+    var fragmentDisplays = new WeakMap();
+    var stylesheetLoads = new WeakMap();
 
     function toArray(items) {
         return Array.prototype.slice.call(items || []);
+    }
+
+    // Native innerHTML leaves scripts inert. Replay only executable scripts in
+    // source order, retaining their DOM position and the host application's context.
+    function executeFragmentScripts(container, options) {
+        options = options || {};
+        var scripts = options.scripts || toArray(container.querySelectorAll('script'));
+        var reveal = deferFragmentDisplay(container);
+        return waitForStylesheets(container).then(function () {
+        return scripts.reduce(function (sequence, script) {
+            return sequence.then(function () {
+                if (options.isCurrent && !options.isCurrent()) return;
+                var type = (script.getAttribute('type') || '').trim().toLowerCase();
+                if (type && !/^(?:module|(?:text|application)\/(?:java|ecma)script)$/.test(type)) return;
+                if (!script.isConnected && options.target) options.target.appendChild(script);
+                if (!script.parentNode) return;
+                return new Promise(function (resolve, reject) {
+                    var replacement = document.createElement('script');
+                    toArray(script.attributes).forEach(function (attribute) {
+                        replacement.setAttribute(attribute.name, attribute.value);
+                    });
+                    if (options.target) replacement.__omoLoadTarget = options.target;
+                    var waitsForLoad = !!replacement.src || type === 'module';
+                    if (waitsForLoad) {
+                        replacement.async = false;
+                        replacement.addEventListener('load', resolve, { once: true });
+                        replacement.addEventListener('error', function () {
+                            reject(new Error('Unable to load page script: ' + (replacement.src || 'module')));
+                        }, { once: true });
+                    }
+                    replacement.textContent = script.textContent || '';
+                    script.parentNode.replaceChild(replacement, script);
+                    if (!waitsForLoad) resolve();
+                });
+            });
+        }, Promise.resolve());
+        }).then(function () {
+            // Initializers can add styles for editors or other shared widgets.
+            if (options.isCurrent && !options.isCurrent()) return;
+            return waitForStylesheets(container);
+        }).finally(reveal);
+    }
+
+    // Opacity keeps the real layout available to maps, editors and size checks.
+    // A newer load owns the reveal: an older request cannot uncover its content.
+    function deferFragmentDisplay(container) {
+        if (!container || !container.classList) return function () {};
+        var previous = fragmentDisplays.get(container);
+        var state = {
+            busy: previous ? previous.busy : container.getAttribute('aria-busy'),
+            pending: previous ? previous.pending : container.classList.contains('generic-fragment-pending')
+        };
+        if (previous) window.clearTimeout(previous.timer);
+        fragmentDisplays.set(container, state);
+        container.classList.add('generic-fragment-pending');
+        container.setAttribute('aria-busy', 'true');
+
+        function reveal() {
+            if (fragmentDisplays.get(container) !== state) return;
+            window.clearTimeout(state.timer);
+            fragmentDisplays.delete(container);
+            if (!state.pending) container.classList.remove('generic-fragment-pending');
+            if (state.busy === null) container.removeAttribute('aria-busy');
+            else container.setAttribute('aria-busy', state.busy);
+        }
+
+        // An unavailable asset must not leave an entire screen invisible.
+        state.timer = window.setTimeout(reveal, 8000);
+        return reveal;
+    }
+
+    // Keep styles attached to their panel: moving them into the head would let
+    // screen-specific selectors affect unrelated screens after navigation.
+    function awaitStylesheets(container) {
+        var reveal = deferFragmentDisplay(container);
+        return waitForStylesheets(container).finally(reveal);
+    }
+
+    function waitForStylesheets(container) {
+        if (!container || !container.querySelectorAll) return Promise.resolve();
+        var links = toArray(container.querySelectorAll('link[rel~="stylesheet"]'));
+        if (document.head && container !== document) {
+            links = links.concat(toArray(document.head.querySelectorAll('link[rel~="stylesheet"]')));
+        }
+        return Promise.all(links.map(function (link) {
+            if (link.sheet || link.disabled || !link.href) return Promise.resolve();
+            if (link.media && window.matchMedia && !window.matchMedia(link.media).matches) return Promise.resolve();
+            var previousLoad = stylesheetLoads.get(link);
+            if (previousLoad && previousLoad.href === link.href) return previousLoad.promise;
+            var loaded = new Promise(function (resolve) {
+                var timer;
+                function finish() {
+                    window.clearTimeout(timer);
+                    link.removeEventListener('load', finish);
+                    link.removeEventListener('error', finish);
+                    resolve();
+                }
+                link.addEventListener('load', finish, { once: true });
+                link.addEventListener('error', finish, { once: true });
+                // A removed panel or a failed request must not stall navigation.
+                timer = window.setTimeout(finish, 8000);
+                if (link.sheet) finish();
+            });
+            stylesheetLoads.set(link, { href: link.href, promise: loaded });
+            return loaded;
+        }));
     }
 
     function ensureId(element, prefix) {
@@ -43,8 +152,12 @@
             return null;
         }
 
-        sourceTabs = toArray(container.querySelectorAll('[data-generic-tab]'));
-        sourcePanels = toArray(container.querySelectorAll('[data-generic-tab-panel]'));
+        sourceTabs = toArray(container.querySelectorAll('[data-generic-tab]')).filter(function (tab) {
+            return findClosestByAttribute(tab.parentNode, 'data-generic-tabs', document) === container;
+        });
+        sourcePanels = toArray(container.querySelectorAll('[data-generic-tab-panel]')).filter(function (panel) {
+            return findClosestByAttribute(panel.parentNode, 'data-generic-tabs', document) === container;
+        });
         tabs = [];
         panels = [];
 
@@ -152,6 +265,84 @@
         return findClosestByAttribute(startNode, 'data-generic-tabs', document);
     }
 
+    function initMobileTabs(container, state) {
+        var list = state.tabs[0].closest('.generic-tabs__list');
+        var wrapper;
+        var select;
+
+        if (!list || list.hasAttribute('data-generic-tabs-mobile-ready')) {
+            return;
+        }
+
+        wrapper = document.createElement('div');
+        wrapper.className = 'generic-tabs__mobile';
+        select = document.createElement('select');
+        select.className = 'generic-form-control generic-tabs__select';
+        wrapper.appendChild(select);
+        list.parentNode.insertBefore(wrapper, list);
+
+        function availableTabs() {
+            return toArray(list.querySelectorAll('[data-generic-tab]')).filter(function (tab) {
+                var node = tab;
+                if (findClosestTabContainer(tab) !== container) { return false; }
+                while (node && node !== list) {
+                    if (node.hidden || node.getAttribute('aria-hidden') === 'true'
+                        || window.getComputedStyle(node).display === 'none') { return false; }
+                    node = node.parentElement;
+                }
+                return true;
+            });
+        }
+
+        function sync() {
+            var tabs = availableTabs();
+            var active = getFirstActiveTab(tabs);
+            var options = tabs.map(function (tab) {
+                var option = document.createElement('option');
+                option.value = ensureId(tab, container.id + '-tab');
+                option.textContent = String(tab.getAttribute('aria-label') || tab.textContent || '').replace(/\s+/g, ' ').trim();
+                option.disabled = tab.disabled || tab.getAttribute('aria-disabled') === 'true';
+                option.selected = tab === active;
+                return option;
+            });
+            select.replaceChildren.apply(select, options);
+            select.disabled = !tabs.some(function (tab) {
+                return !tab.disabled && tab.getAttribute('aria-disabled') !== 'true';
+            });
+            select.setAttribute('aria-label', list.getAttribute('aria-label')
+                || (active && (active.getAttribute('aria-label') || active.textContent).trim()) || '');
+            if (list.hasAttribute('aria-labelledby')) {
+                select.setAttribute('aria-labelledby', list.getAttribute('aria-labelledby'));
+            } else {
+                select.removeAttribute('aria-labelledby');
+            }
+            if (active && active.getAttribute('aria-controls')) {
+                select.setAttribute('aria-controls', active.getAttribute('aria-controls'));
+            } else {
+                select.removeAttribute('aria-controls');
+            }
+            wrapper.hidden = tabs.length < 2;
+        }
+
+        select.addEventListener('change', function () {
+            var tab = availableTabs().find(function (item) { return item.id === select.value; });
+            if (tab && !tab.disabled && tab.getAttribute('aria-disabled') !== 'true') {
+                // Keep module-specific click handlers (lazy loading, charts, etc.).
+                tab.click();
+            }
+            sync();
+        });
+        sync();
+        list.setAttribute('data-generic-tabs-mobile-ready', '1');
+        new MutationObserver(sync).observe(list, {
+            subtree: true,
+            childList: true,
+            characterData: true,
+            attributes: true,
+            attributeFilter: ['class', 'style', 'hidden', 'disabled', 'aria-disabled', 'aria-hidden', 'aria-selected', 'aria-label', 'aria-labelledby', 'aria-controls']
+        });
+    }
+
     function initTabs(container) {
         var state;
 
@@ -165,6 +356,7 @@
         }
 
         activateTab(container, getFirstActiveTab(state.tabs), false);
+        initMobileTabs(container, state);
         container.dataset.genericTabsReady = '1';
     }
 
@@ -179,6 +371,7 @@
         }
 
         accordion.dataset.genericAccordionReady = '1';
+        toggle.setAttribute('aria-expanded', accordion.classList.contains('is-collapsed') ? 'false' : 'true');
         toggle.addEventListener('click', function (event) {
             var interactiveTarget = event.target.closest('a, button, input, select, textarea, label, [data-generic-accordion-ignore-toggle]');
 
@@ -187,6 +380,200 @@
             }
 
             accordion.classList.toggle('is-collapsed');
+            toggle.setAttribute('aria-expanded', accordion.classList.contains('is-collapsed') ? 'false' : 'true');
+        });
+    }
+
+    function getContextHelpViewport() {
+        var visualViewport = window.visualViewport || null;
+
+        return {
+            top: visualViewport ? visualViewport.offsetTop : 0,
+            right: visualViewport ? visualViewport.offsetLeft + visualViewport.width : window.innerWidth,
+            bottom: visualViewport ? visualViewport.offsetTop + visualViewport.height : window.innerHeight,
+            left: visualViewport ? visualViewport.offsetLeft : 0
+        };
+    }
+
+    function getContextHelpBounds(details) {
+        var bounds = getContextHelpViewport();
+        var node = details ? details.parentElement : null;
+        var style;
+        var overflowX;
+        var overflowY;
+        var nodeBounds;
+
+        while (node && node !== document.body) {
+            style = window.getComputedStyle(node);
+            overflowX = style.overflowX;
+            overflowY = style.overflowY;
+
+            if (overflowX !== 'visible' || overflowY !== 'visible') {
+                nodeBounds = node.getBoundingClientRect();
+                if (overflowX !== 'visible') {
+                    bounds.left = Math.max(bounds.left, nodeBounds.left);
+                    bounds.right = Math.min(bounds.right, nodeBounds.right);
+                }
+                if (overflowY !== 'visible') {
+                    bounds.top = Math.max(bounds.top, nodeBounds.top);
+                    bounds.bottom = Math.min(bounds.bottom, nodeBounds.bottom);
+                }
+            }
+
+            node = node.parentElement;
+        }
+
+        return bounds;
+    }
+
+    function positionContextHelp(details) {
+        var content;
+        var viewport;
+        var triggerBounds;
+        var contentBounds;
+        var availableAbove;
+        var availableBelow;
+        var availableHeight;
+        var horizontalShift = 0;
+        var margin = 12;
+
+        if (!details || !details.open || !details.classList.contains('generic-context-help')) {
+            return;
+        }
+
+        content = details.querySelector('.generic-context-help__content');
+        if (!content) {
+            return;
+        }
+
+        viewport = getContextHelpBounds(details);
+        triggerBounds = details.getBoundingClientRect();
+        content.style.setProperty('--generic-context-help-shift-x', '0px');
+        content.style.removeProperty('--generic-context-help-max-height');
+        content.style.removeProperty('--generic-context-help-max-width');
+        details.classList.remove('is-positioned-above');
+        content.style.setProperty('--generic-context-help-max-width', String(Math.max(0, Math.floor(viewport.right - viewport.left - (margin * 2)))) + 'px');
+        contentBounds = content.getBoundingClientRect();
+        availableAbove = triggerBounds.top - viewport.top - margin;
+        availableBelow = viewport.bottom - triggerBounds.bottom - margin;
+
+        if (contentBounds.height > availableBelow && availableAbove > availableBelow) {
+            details.classList.add('is-positioned-above');
+            availableHeight = availableAbove;
+        } else {
+            availableHeight = availableBelow;
+        }
+
+        content.style.setProperty('--generic-context-help-max-height', String(Math.max(0, Math.floor(availableHeight))) + 'px');
+        contentBounds = content.getBoundingClientRect();
+
+        if (contentBounds.left < viewport.left + margin) {
+            horizontalShift += viewport.left + margin - contentBounds.left;
+        }
+
+        if (contentBounds.right + horizontalShift > viewport.right - margin) {
+            horizontalShift -= contentBounds.right + horizontalShift - (viewport.right - margin);
+        }
+
+        content.style.setProperty('--generic-context-help-shift-x', String(Math.round(horizontalShift)) + 'px');
+    }
+
+    function positionOpenContextHelps(root) {
+        var scope = root || document;
+        var contextHelps = toArray(scope.querySelectorAll('.generic-context-help[open]'));
+
+        if (scope.nodeType === 1 && scope.matches('.generic-context-help[open]')) {
+            contextHelps.unshift(scope);
+        }
+
+        contextHelps.forEach(positionContextHelp);
+    }
+
+    function scheduleOpenContextHelpPositioning() {
+        if (contextHelpPositionFrame) {
+            return;
+        }
+
+        contextHelpPositionFrame = window.requestAnimationFrame(function () {
+            contextHelpPositionFrame = 0;
+            positionOpenContextHelps(document);
+        });
+    }
+
+    function handleContextHelpToggle(event) {
+        var details = event.target;
+
+        if (!details || !details.classList || !details.classList.contains('generic-context-help')) {
+            return;
+        }
+
+        if (!details.open) {
+            details.classList.remove('is-positioned-above');
+            return;
+        }
+
+        window.requestAnimationFrame(function () {
+            positionContextHelp(details);
+        });
+    }
+
+    function handleContextHelpClick(event) {
+        var summary = event.target.closest('.generic-context-help > summary');
+        var details = summary ? summary.parentElement : null;
+
+        toArray(document.querySelectorAll('[data-generic-context-help-hover][open]')).forEach(function (other) {
+            if (!other.contains(event.target)) {
+                other.open = false;
+                other.__contextHelpPinned = false;
+            }
+        });
+
+        if (!details) {
+            return;
+        }
+
+        if (details.hasAttribute('data-generic-context-help-hover')) {
+            event.preventDefault();
+            window.clearTimeout(details.__contextHelpCloseTimer);
+            details.__contextHelpPinned = !details.__contextHelpPinned;
+            details.open = details.__contextHelpPinned;
+        }
+
+        window.requestAnimationFrame(function () {
+            positionContextHelp(details);
+        });
+    }
+
+    // Opt-in hover keeps existing click-only help controls unchanged.
+    function handleContextHelpPointer(event) {
+        if (event.pointerType !== 'mouse') {
+            return;
+        }
+        var details = event.target.closest('[data-generic-context-help-hover]');
+        if (!details || (event.relatedTarget && details.contains(event.relatedTarget))) {
+            return;
+        }
+        window.clearTimeout(details.__contextHelpCloseTimer);
+        if (event.type === 'pointerover') {
+            details.open = true;
+            positionContextHelp(details);
+        } else if (!details.__contextHelpPinned) {
+            details.__contextHelpCloseTimer = window.setTimeout(function () {
+                if (!details.__contextHelpPinned) {
+                    details.open = false;
+                }
+            }, 180);
+        }
+    }
+
+    function handleContextHelpEscape(event) {
+        if (event.key !== 'Escape') {
+            return;
+        }
+        toArray(document.querySelectorAll('[data-generic-context-help-hover][open]')).forEach(function (details) {
+            window.clearTimeout(details.__contextHelpCloseTimer);
+            details.open = false;
+            details.__contextHelpPinned = false;
         });
     }
 
@@ -636,11 +1023,42 @@
         };
     }
 
+    var expandedMenuMedia = window.matchMedia('(max-width: 768px)');
+
+    // Reset a responsive header menu while retaining its inline mobile actions.
+    function resetExpandedMenu(menu) {
+        if (!menu || !menu.classList.contains('generic-menu--expanded-mobile')) { return false; }
+        var expanded = expandedMenuMedia.matches;
+        var panel = menu.querySelector('.generic-menu-panel');
+        var toggle = menu.querySelector('.generic-menu-toggle');
+        menu.classList.remove('is-open');
+        if (toggle) { toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false'); }
+        if (panel) {
+            panel.hidden = !expanded;
+            panel.setAttribute('role', expanded ? 'group' : 'menu');
+            panel.querySelectorAll('button').forEach(function (button) {
+                if (expanded) { button.removeAttribute('role'); }
+                else { button.setAttribute('role', 'menuitem'); }
+            });
+        }
+        return expanded;
+    }
+
+    expandedMenuMedia.addEventListener('change', function () {
+        document.querySelectorAll('.generic-menu--expanded-mobile').forEach(resetExpandedMenu);
+    });
+    window.resetGenericExpandedMenu = resetExpandedMenu;
+
     function initGenericComponents(root) {
         var scope = root || document;
 
+        scope.querySelectorAll('.generic-menu--expanded-mobile').forEach(resetExpandedMenu);
         initFileLists(scope);
         initEditableSelects(scope);
+        positionOpenContextHelps(scope);
+        if (scope.matches && scope.matches('[data-generic-tabs]')) {
+            initTabs(scope);
+        }
         toArray(scope.querySelectorAll('[data-generic-tabs]')).forEach(initTabs);
         toArray(scope.querySelectorAll('[data-generic-accordion]')).forEach(initAccordion);
     }
@@ -648,6 +1066,7 @@
     function collectPendingActionControls(root) {
         var selector = 'button, input[type="submit"], input[type="button"]';
         var controls = [];
+        var formId;
 
         if (!root || root.nodeType !== 1) {
             return controls;
@@ -657,6 +1076,24 @@
 
         if (typeof root.matches === 'function' && root.matches(selector)) {
             controls.unshift(root);
+        }
+
+        // Drawer action bars often live outside the form and target it through
+        // the HTML `form` attribute. They must share the same pending state.
+        if (root.tagName === 'FORM') {
+            formId = String(root.getAttribute('id') || '');
+            if (formId !== '') {
+                toArray(document.querySelectorAll('[form]')).forEach(function (control) {
+                    if (
+                        control.getAttribute('form') === formId
+                        && typeof control.matches === 'function'
+                        && control.matches(selector)
+                        && controls.indexOf(control) === -1
+                    ) {
+                        controls.push(control);
+                    }
+                });
+            }
         }
 
         return controls;
@@ -948,14 +1385,30 @@
     document.addEventListener('keydown', handleEditableSelectKeydown);
     document.addEventListener('click', handleGenericTabClick);
     document.addEventListener('keydown', handleGenericTabKeydown);
+    document.addEventListener('toggle', handleContextHelpToggle, true);
+    document.addEventListener('click', handleContextHelpClick);
+    document.addEventListener('pointerover', handleContextHelpPointer);
+    document.addEventListener('pointerout', handleContextHelpPointer);
+    document.addEventListener('keydown', handleContextHelpEscape);
+    window.addEventListener('resize', scheduleOpenContextHelpPositioning);
+    window.addEventListener('scroll', scheduleOpenContextHelpPositioning, true);
+
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', scheduleOpenContextHelpPositioning);
+        window.visualViewport.addEventListener('scroll', scheduleOpenContextHelpPositioning);
+    }
 
     window.initGenericTabs = initTabs;
     window.initGenericComponents = initGenericComponents;
+    window.genericAwaitStylesheets = awaitStylesheets;
+    window.commonExecuteFragmentScripts = executeFragmentScripts;
     window.initGenericEditableSelects = initEditableSelects;
     window.initGenericFileLists = initFileLists;
     window.syncGenericFileLists = function (root) {
         collectFileLists(root).forEach(syncFileList);
     };
+    window.initGenericContextHelps = positionOpenContextHelps;
+    window.positionGenericContextHelp = positionContextHelp;
     window.commonCreateVerticalSortableList = createVerticalSortableList;
     window.omoBeginPendingAction = beginPendingAction;
     window.omoEndPendingAction = endPendingAction;

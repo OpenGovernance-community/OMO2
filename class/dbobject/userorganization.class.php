@@ -3,6 +3,93 @@
 
 	class UserOrganization extends DbObject
 	{
+		/** Batch the data needed by team cards; visibility remains checked by the caller. */
+		public static function loadTeamMemberContext($organizationId, array $userIds, array $membershipsByUserId = array()): array
+		{
+			$organizationId = (int)$organizationId;
+			$userIds = array_values(array_unique(array_filter(array_map('intval', $userIds), static fn ($id) => $id > 0)));
+			$usersById = array();
+			if ($organizationId <= 0 || $userIds === array()) {
+				return array('memberships' => array(), 'users' => array());
+			}
+
+			$missingMembershipIds = array();
+			$missingUserIds = array();
+			foreach ($userIds as $userId) {
+				$membership = $membershipsByUserId[$userId] ?? null;
+				if (!($membership instanceof self)
+					|| (int)$membership->get('IDorganization') !== $organizationId
+					|| (int)$membership->get('IDuser') !== $userId) {
+					unset($membershipsByUserId[$userId]);
+					$missingMembershipIds[] = $userId;
+				}
+				$cachedUser = self::$preload[User::tableName() . '_' . $userId] ?? null;
+				if ($cachedUser instanceof User) {
+					$usersById[$userId] = $cachedUser;
+				} else {
+					$missingUserIds[] = $userId;
+				}
+			}
+			if ($missingMembershipIds !== array()) {
+				$memberships = new ArrayUserOrganization();
+				$memberships->loadHydrated(array('where' => array(
+					array('field' => 'IDorganization', 'value' => $organizationId),
+					array('field' => 'IDuser', 'op' => 'in', 'value' => $missingMembershipIds),
+				)));
+				foreach ($memberships as $membership) {
+					$membershipsByUserId[(int)$membership->get('IDuser')] = $membership;
+				}
+			}
+			if ($missingUserIds !== array()) {
+				$users = new ArrayUser();
+				$users->loadHydrated(array('where' => array(
+					array('field' => 'id', 'op' => 'in', 'value' => $missingUserIds),
+				)));
+				foreach ($users as $user) {
+					$usersById[(int)$user->getId()] = $user;
+				}
+			}
+			return array('memberships' => $membershipsByUserId, 'users' => $usersById);
+		}
+
+		public static function fetchStructureUserIds($organizationId)
+		{
+			$organizationId = (int)$organizationId;
+			if ($organizationId <= 0) {
+				return array();
+			}
+
+			$rows = self::fetchAll(
+				"SELECT DISTINCT uo.IDuser
+				FROM user_organization uo
+				INNER JOIN `user` u ON u.id = uo.IDuser
+				WHERE uo.IDorganization = :organization_id
+				ORDER BY
+					COALESCE(NULLIF(u.lastname, ''), NULLIF(u.firstname, ''), NULLIF(u.username, ''), u.email) ASC,
+					COALESCE(NULLIF(u.firstname, ''), NULLIF(u.username, ''), u.email) ASC,
+					u.id ASC",
+				array('organization_id' => $organizationId)
+			);
+
+			if (!is_array($rows)) {
+				return array();
+			}
+
+			return array_values(array_unique(array_filter(array_map(static function ($row) {
+				return (int)($row['IDuser'] ?? 0);
+			}, $rows))));
+		}
+
+		public static function hasActiveMembership($userId, $organizationId)
+		{
+			return (int)self::fetchValue(
+				' SELECT COUNT(*) FROM user_organization WHERE IDuser = :user_id AND IDorganization = :organization_id AND active = 1 ',
+				array(
+					'user_id' => (int)$userId,
+					'organization_id' => (int)$organizationId,
+				)
+			) > 0;
+		}
 	    public static function tableName()
 		{
 			return 'user_organization';
@@ -14,7 +101,7 @@
 				[['IDuser', 'IDorganization'], 'required'],
 				[['id'], 'integer'],
 				[['IDuser', 'IDorganization'], 'fk'],
-				[['username', 'email'], 'string'],
+				[['username', 'email', 'phone'], 'string'],
 				[['presentation'], 'text'],
 				[['image'], 'sizedimage'],
 				[['parameters'], 'parameters'],
@@ -30,8 +117,9 @@
 				'id' => 'ID',
 				'IDuser' => 'Personne',
 				'IDorganization' => 'Organisation',
-				'username' => 'Identifiant',
+				'username' => 'Nom d\'utilisateur',
 				'email' => 'E-mail',
+				'phone' => 'Téléphone',
 				'presentation' => 'Presentation',
 				'image' => 'Photo',
 				'parameters' => 'Parametres',
@@ -46,8 +134,9 @@
 			return [
 				'IDuser' => 'Utilisateur associe a cette organisation.',
 				'IDorganization' => 'Organisation concernee par ce lien.',
-				'username' => 'Identifiant affiche specifiquement dans cette organisation. Laissez vide pour utiliser la valeur generale.',
+				'username' => 'Nom d\'utilisateur affiche specifiquement dans cette organisation. Laissez vide pour utiliser la valeur generale.',
 				'email' => 'Adresse e-mail affichee specifiquement dans cette organisation. Laissez vide pour utiliser la valeur generale.',
+				'phone' => 'Numéro de téléphone affiché spécifiquement dans cette organisation. Laissez vide pour utiliser la valeur générale.',
 				'presentation' => 'Presentation visible uniquement dans cette organisation. Laissez vide pour reutiliser la presentation generale.',
 				'image' => 'Photo de profil specifique a cette organisation. Si elle est vide, la photo generale est utilisee.',
 				'parameters' => 'Parametres specifiques au role de cette personne dans l organisation.',
@@ -59,9 +148,10 @@
 		public static function attributeLength()
 		{
 			return [
-				'image' => [320, 320],
+				'image' => [[320, 320], [160, 160]],
 				'username' => 250,
 				'email' => 250,
+				'phone' => 50,
 				'presentation' => 2000,
 			];
 		}
@@ -211,6 +301,21 @@
 			}
 
 			return trim((string)$user->get('email'));
+		}
+
+		public function getScopedPhone()
+		{
+			$phone = trim((string)$this->get('phone'));
+			if ($phone !== '') {
+				return $phone;
+			}
+
+			$user = $this->get('user');
+			if (!$user || (int)$user->getId() <= 0) {
+				return '';
+			}
+
+			return trim((string)$user->get('phone'));
 		}
 
 		public function getScopedPresentation()

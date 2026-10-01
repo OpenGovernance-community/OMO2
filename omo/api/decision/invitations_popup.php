@@ -15,23 +15,23 @@ function omoDecisionInvitationsPopupSourceLang()
 {
     return [
         'decisions.invitations_popup.denied' => [
-            'text' => 'Vous ne pouvez pas gerer les invitations de ce scrutin.',
+            'text' => 'Vous ne pouvez pas gérer les invitations de ce scrutin.',
             'context' => 'Message shown when the current user cannot manage invitations for the decision.',
         ],
         'decisions.invitations_popup.db_error' => [
-            'text' => 'Connexion a la base impossible.',
+            'text' => 'Connexion à la base impossible.',
             'context' => 'Error returned when the invitation popup cannot access the database.',
         ],
         'decisions.invitations_popup.save_error' => [
-            'text' => 'Impossible d enregistrer les invitations pour le moment.',
+            'text' => 'Impossible d’enregistrer les invitations pour le moment.',
             'context' => 'Generic error returned when invitation changes cannot be saved.',
         ],
         'decisions.invitations_popup.updated' => [
-            'text' => 'Invitations mises a jour.',
+            'text' => 'Invitations mises à jour.',
             'context' => 'Success message returned after saving invitation changes.',
         ],
         'decisions.invitations_popup.drawer_title' => [
-            'text' => 'Prises de decision',
+            'text' => 'Prises de décision',
             'context' => 'Drawer title used when reopening the decision editor after saving invitation changes.',
         ],
         'decisions.invitations_popup.current' => [
@@ -43,23 +43,23 @@ function omoDecisionInvitationsPopupSourceLang()
             'context' => 'Suffix used in the intro when a current holon context exists.',
         ],
         'decisions.invitations_popup.context.organization' => [
-            'text' => 'de l organisation',
+            'text' => 'de l’organisation',
             'context' => 'Suffix used in the intro when the organization is the active context.',
         ],
         'decisions.invitations_popup.intro' => [
-            'text' => 'Definissez ici les participants explicites du scrutin. Si vous laissez tout vide, seuls les membres {context_label} restent autorises.',
+            'text' => 'Définissez ici les participants explicites du scrutin. Si vous laissez tout vide, seuls les membres {context_label} restent autorisés.',
             'context' => 'Introductory text displayed at the top of the invitation popup.',
         ],
         'decisions.invitations_popup.no_structure' => [
-            'text' => 'Cette organisation n a pas encore de structure. Vous pouvez inviter directement des membres de l organisation ou des adresses e-mail externes.',
+            'text' => 'Cette organisation n’a pas encore de structure. Vous pouvez inviter directement des membres de l’organisation ou des adresses e-mail externes.',
             'context' => 'Hint shown when the organization has no holon structure.',
         ],
         'decisions.invitations_popup.tabs_aria' => [
-            'text' => 'Categories d invitations',
+            'text' => 'Catégories d’invitations',
             'context' => 'Accessible label for the invitation popup tabs.',
         ],
         'decisions.invitations_popup.tab.holons' => [
-            'text' => 'Holons',
+            'text' => 'Espaces',
             'context' => 'Tab label for invited holons.',
         ],
         'decisions.invitations_popup.tab.members' => [
@@ -67,7 +67,7 @@ function omoDecisionInvitationsPopupSourceLang()
             'context' => 'Tab label for invited organization members.',
         ],
         'decisions.invitations_popup.tab.guests' => [
-            'text' => 'Invites',
+            'text' => 'Invités',
             'context' => 'Tab label for invited guest emails.',
         ],
         'decisions.invitations_popup.tab.public' => [
@@ -75,23 +75,23 @@ function omoDecisionInvitationsPopupSourceLang()
             'context' => 'Tab label for public participation settings and public-link additions.',
         ],
         'decisions.invitations_popup.holons_title' => [
-            'text' => 'Holons invites',
+            'text' => 'Espaces invités',
             'context' => 'Section title for invited holons in the invitation popup.',
         ],
         'decisions.invitations_popup.holons_hint' => [
-            'text' => 'Le holon courant apparait ici comme n importe quel autre. S il n est pas coche, ses membres ne seront pas inclus des qu une invitation explicite existe.',
+            'text' => 'L’espace courant apparaît ici comme n’importe quel autre. S’il n’est pas coché, ses membres ne seront plus inclus dès qu’une invitation explicite existe.',
             'context' => 'Hint shown under the invited holons section.',
         ],
         'decisions.invitations_popup.members_title' => [
-            'text' => 'Membres supplementaires de l organisation',
+            'text' => 'Membres supplémentaires de l’organisation',
             'context' => 'Section title for invited organization members.',
         ],
         'decisions.invitations_popup.members_hint_structure' => [
-            'text' => 'Cochez les membres a inviter individuellement, en plus des holons selectionnes.',
+            'text' => 'Cochez les membres à inviter individuellement, en plus des espaces sélectionnés.',
             'context' => 'Hint shown below invited members when a holon structure exists.',
         ],
         'decisions.invitations_popup.members_hint_flat' => [
-            'text' => 'Cochez les membres a inviter individuellement. Sans structure, ils representent le contexte organisationnel.',
+            'text' => 'Cochez les membres à inviter individuellement. Sans structure, ils représentent le contexte organisationnel.',
             'context' => 'Hint shown below invited members when there is no holon structure.',
         ],
         'decisions.invitations_popup.guests_title' => [
@@ -103,7 +103,7 @@ function omoDecisionInvitationsPopupSourceLang()
             'context' => 'Placeholder used in the external guest emails textarea.',
         ],
         'decisions.invitations_popup.guests_hint' => [
-            'text' => 'Une adresse par ligne. Les invitations seront envoyees plus tard.',
+            'text' => 'Une adresse par ligne. Les invitations seront envoyées plus tard.',
             'context' => 'Hint shown below the external guest emails textarea.',
         ],
         'decisions.invitations_popup.public_title' => [
@@ -111,27 +111,27 @@ function omoDecisionInvitationsPopupSourceLang()
             'context' => 'Title of the checkbox enabling public self-registration.',
         ],
         'decisions.invitations_popup.public_hint' => [
-            'text' => 'Toute personne disposant du lien public peut demander un code par e-mail. Si son adresse n est pas encore associee a ce scrutin, un participant est cree automatiquement.',
+            'text' => 'Toute personne disposant du lien public peut demander un code par e-mail. Si son adresse n’est pas encore associée à ce scrutin, un participant est créé automatiquement.',
             'context' => 'Hint shown under the public self-registration checkbox.',
         ],
         'decisions.invitations_popup.public_people_title' => [
-            'text' => 'Personnes deja ajoutees via le lien public',
+            'text' => 'Personnes déjà ajoutées via le lien public',
             'context' => 'Title of the list showing people already added from the public link.',
         ],
         'decisions.invitations_popup.public_people_empty' => [
-            'text' => 'Personne ne s est encore ajoute via le lien public.',
+            'text' => 'Personne ne s’est encore ajouté via le lien public.',
             'context' => 'Empty-state text for the public-link participant list.',
         ],
         'decisions.invitations_popup.public_people_hint' => [
-            'text' => 'Ces personnes restent distinctes des invitations explicites, mais elles ont deja demande un acces.',
+            'text' => 'Ces personnes restent distinctes des invitations explicites, mais elles ont déjà demandé un accès.',
             'context' => 'Hint shown below the public-link participant list.',
         ],
         'decisions.invitations_popup.public_member_badge' => [
-            'text' => 'Ajoute via lien public',
+            'text' => 'Ajouté via le lien public',
             'context' => 'Tooltip shown on a disabled checked member checkbox when the person joined via the public link.',
         ],
         'decisions.invitations_popup.public_member_type' => [
-            'text' => 'Membre de l organisation',
+            'text' => 'Membre de l’organisation',
             'context' => 'Secondary label shown for a public-link participant tied to an existing organization member.',
         ],
         'decisions.invitations_popup.public_guest_type' => [
@@ -147,7 +147,7 @@ function omoDecisionInvitationsPopupSourceLang()
             'context' => 'Fallback error message shown by the popup JavaScript when the server does not return a message.',
         ],
         'decisions.invitations_popup.js_request_error' => [
-            'text' => 'Impossible d enregistrer ces invitations pour le moment.',
+            'text' => 'Impossible d’enregistrer ces invitations pour le moment.',
             'context' => 'Network error message shown by the popup JavaScript when the request fails.',
         ],
     ];
@@ -235,14 +235,14 @@ function omoDecisionInvitationsRenderHolonTreeNode(array $node, $currentLabel)
             <?php if ($hasChildren): ?>
             <button
                 type="button"
-                class="omo-decision-invitations-popup__tree-toggle"
+                class="omo-decision-invitations-popup__tree-toggle generic-tree-toggle"
                 data-omo-decision-holon-toggle
                 aria-expanded="<?= $isExpanded ? 'true' : 'false' ?>"
             >
                 <span aria-hidden="true">&#9662;</span>
             </button>
             <?php else: ?>
-            <span class="omo-decision-invitations-popup__tree-spacer" aria-hidden="true"></span>
+            <span class="omo-decision-invitations-popup__tree-spacer generic-tree-spacer" aria-hidden="true"></span>
             <?php endif; ?>
 
             <label class="omo-decision-invitations-popup__check">
@@ -272,7 +272,15 @@ $context = omoDecisionResolveEditorContext($input);
 $sourceLang = omoDecisionInvitationsPopupSourceLang();
 $lang = omoLoadTranslationBundle('omo_decision_invitations_popup', $sourceLang);
 
-if (empty($context['status']) || empty($context['decision']) || !($context['decision'] instanceof DecisionProcess) || empty($context['canManage'])) {
+$isDraft = !empty($input['draft'])
+    && empty($context['decision'])
+    && !empty($context['status'])
+    && !empty($context['canManage']);
+if (
+    empty($context['status'])
+    || empty($context['canManage'])
+    || (!$isDraft && (empty($context['decision']) || !($context['decision'] instanceof DecisionProcess)))
+) {
     $statusCode = (int)($context['code'] ?? 403);
     http_response_code($statusCode);
     ?>
@@ -281,14 +289,19 @@ if (empty($context['status']) || empty($context['decision']) || !($context['deci
     exit;
 }
 
-$decision = $context['decision'];
+$decision = ($context['decision'] ?? null) instanceof DecisionProcess ? $context['decision'] : null;
 $organization = $context['organization'];
 $effectiveHolon = $context['effectiveHolon'];
 $organizationId = (int)$context['organizationId'];
 $targetHolonId = (int)$context['targetHolonId'];
-$method = DecisionProcess::normalizeEvaluationMethod($decision->get('evaluation_method'));
+$method = $decision instanceof DecisionProcess
+    ? DecisionProcess::normalizeEvaluationMethod($decision->get('evaluation_method'))
+    : DecisionProcess::normalizeEvaluationMethod($input['method'] ?? '');
+$draftFormId = preg_match('/^[A-Za-z][A-Za-z0-9_-]*$/', (string)($input['draft_form_id'] ?? ''))
+    ? (string)$input['draft_form_id']
+    : '';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isDraft) {
     header('Content-Type: application/json; charset=UTF-8');
 
     $selectedHolonIds = array_values(array_unique(array_filter(array_map('intval', $_POST['holon_ids'] ?? []), static function ($holonId) {
@@ -362,10 +375,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ]);
 }
 
-$selectedHolonIds = [];
+$selectedHolonIds = $isDraft && $targetHolonId > 0 ? [$targetHolonId] : [];
 $selectedUserIds = [];
 $selectedEmails = [];
-foreach ($decision->getInvitations(true) as $invitation) {
+foreach ($decision instanceof DecisionProcess ? $decision->getInvitations(true) : [] as $invitation) {
     if (!$invitation instanceof DecisionInvitation || DecisionInvitation::normalizeStatus($invitation->get('status')) === DecisionInvitation::STATUS_REVOKED) {
         continue;
     }
@@ -386,7 +399,7 @@ foreach ($decision->getInvitations(true) as $invitation) {
 $selectedHolonIds = array_values(array_unique(array_filter($selectedHolonIds)));
 $selectedUserIds = array_values(array_unique(array_filter($selectedUserIds)));
 $selectedEmails = array_values(array_unique(array_filter($selectedEmails)));
-$allowPublicSelfRegistration = $decision->isPublicSelfRegistrationEnabled();
+$allowPublicSelfRegistration = $decision instanceof DecisionProcess && $decision->isPublicSelfRegistrationEnabled();
 $publicOptInState = function_exists('omoDecisionExtractPublicOptInSelections')
     ? omoDecisionExtractPublicOptInSelections($decision)
     : ['entries' => [], 'user_ids' => [], 'emails' => [], 'count' => 0];
@@ -405,196 +418,27 @@ $currentContextLabel = $effectiveHolon instanceof Holon
 $memberships = new ArrayUserOrganization();
 $memberships->loadActiveForOrganization($organizationId);
 ?>
-<style>
-.omo-decision-invitations-popup {
-    display: grid;
-    gap: 0;
-    color: var(--color-text, #1f2937);
-}
-
-.omo-decision-invitations-popup__header {
-    position: sticky;
-    top: 0;
-    z-index: 2;
-}
-
-.omo-decision-invitations-popup__header-copy {
-    display: grid;
-    gap: 4px;
-}
-
-.omo-decision-invitations-popup__shell {
-    display: grid;
-    gap: 16px;
-    padding: 16px 18px 18px;
-}
-
-.omo-decision-invitations-popup__intro,
-.omo-decision-invitations-popup__hint {
-    margin: 0;
-    color: var(--topbar-panel-muted, #64748b);
-    line-height: 1.5;
-}
-
-.omo-decision-invitations-popup__group {
-    display: grid;
-    gap: 10px;
-}
-
-.omo-decision-invitations-popup__tabs {
-    --generic-tabs-panel-padding-block: 14px;
-    --generic-tabs-panel-padding-inline: 14px;
-}
-
-.omo-decision-invitations-popup__tab-panel {
-    display: grid;
-    gap: 10px;
-}
-
-.omo-decision-invitations-popup__checklist {
-    display: grid;
-    gap: 8px;
-    max-height: 360px;
-    overflow: auto;
-    padding-right: 4px;
-}
-
-.omo-decision-invitations-popup__tree-node {
-    display: grid;
-    gap: 6px;
-}
-
-.omo-decision-invitations-popup__tree-row {
-    display: flex;
-    gap: 8px;
-    align-items: flex-start;
-}
-
-.omo-decision-invitations-popup__tree-toggle,
-.omo-decision-invitations-popup__tree-spacer {
-    width: 28px;
-    min-width: 28px;
-    height: 28px;
-    margin-top: 2px;
-}
-
-.omo-decision-invitations-popup__tree-toggle {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border: 0;
-    border-radius: 999px;
-    background: rgba(148, 163, 184, 0.12);
-    color: inherit;
-    cursor: pointer;
-}
-
-.omo-decision-invitations-popup__tree-toggle span {
-    display: inline-block;
-    transition: transform 0.18s ease;
-}
-
-.omo-decision-invitations-popup__tree-toggle[aria-expanded="false"] span {
-    transform: rotate(-90deg);
-}
-
-.omo-decision-invitations-popup__tree-spacer {
-    display: inline-block;
-}
-
-.omo-decision-invitations-popup__tree-children {
-    display: grid;
-    gap: 8px;
-    margin-left: 18px;
-    padding-left: 14px;
-    border-left: 1px solid var(--topbar-panel-border, #dbe3ef);
-}
-
-.omo-decision-invitations-popup__tree-children[hidden] {
-    display: none !important;
-}
-
-.omo-decision-invitations-popup__check {
-    display: flex;
-    gap: 10px;
-    align-items: flex-start;
-    flex: 1 1 auto;
-}
-
-.omo-decision-invitations-popup__check-meta {
-    display: grid;
-    gap: 2px;
-}
-
-.omo-decision-invitations-popup__check-type {
-    color: var(--topbar-panel-muted, #64748b);
-    font-size: 0.9rem;
-}
-
-.omo-decision-invitations-popup__member-list {
-    display: grid;
-    gap: 8px;
-    max-height: 260px;
-    overflow: auto;
-    padding-right: 4px;
-}
-
-.omo-decision-invitations-popup__member-email {
-    color: var(--topbar-panel-muted, #64748b);
-    font-size: 0.9rem;
-}
-
-.omo-decision-invitations-popup__textarea {
-    min-height: 120px;
-}
-
-.omo-decision-invitations-popup__actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-}
-
-.omo-decision-invitations-popup__feedback {
-    min-height: 22px;
-    color: #b91c1c;
-    font-weight: 600;
-}
-
-.omo-decision-invitations-popup__feedback.is-success {
-    color: #15803d;
-}
-
-.omo-decision-invitations-popup__public-empty {
-    margin: 0;
-    color: var(--topbar-panel-muted, #64748b);
-    line-height: 1.5;
-}
-</style>
+<link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/decision/invitations_popup.css') ?>">
 
 <form
     id="omoDecisionInvitationsPopupForm"
-    class="omo-decision-invitations-popup"
-    action="/omo/api/decision/invitations_popup.php?oid=<?= (int)$organizationId ?>&cid=<?= (int)$targetHolonId ?>&id=<?= (int)$decision->getId() ?>&method=<?= urlencode($method) ?>"
+    class="omo-decision-invitations-popup generic-stack generic-stack--flush"
+    data-topbar-modal-max-width="760px"
+    action="/omo/api/decision/invitations_popup.php?oid=<?= (int)$organizationId ?>&cid=<?= (int)$targetHolonId ?>&id=<?= $decision instanceof DecisionProcess ? (int)$decision->getId() : 0 ?>&method=<?= urlencode($method) ?><?= $isDraft ? '&draft=1' : '' ?>"
     method="post"
+    <?= $isDraft ? 'data-omo-decision-invitations-draft="1"' : '' ?>
+    <?= $isDraft ? 'data-omo-decision-invitations-draft-form-id="' . omoApiEscape($draftFormId) . '"' : '' ?>
 >
-    <div class="omo-decision-invitations-popup__header generic-drawer-header generic-drawer-header--sticky">
-        <div class="generic-drawer-header__copy omo-decision-invitations-popup__header-copy">
-            <div class="generic-card-title generic-card-title--eyebrow">Prises de decision</div>
-            <h3 class="generic-card-title generic-card-title--medium">Invitations</h3>
-        </div>
-    </div>
-    <div class="omo-decision-invitations-popup__shell">
-    <p class="omo-decision-invitations-popup__intro">
-        <?= omoApiEscape(omoDecisionInvitationsPopupT('decisions.invitations_popup.intro', ['context_label' => $currentContextLabel])) ?>
-    </p>
+
+    <div class="omo-decision-invitations-popup__shell generic-drawer-content">
 
     <?php if (!$hasHolonStructure): ?>
-    <p class="omo-decision-invitations-popup__hint">
+    <p class="omo-decision-invitations-popup__hint generic-description">
         <?= omoApiEscape(omoDecisionInvitationsPopupT('decisions.invitations_popup.no_structure')) ?>
     </p>
     <?php endif; ?>
 
-    <div class="generic-tabs omo-decision-invitations-popup__tabs" data-generic-tabs>
+    <div class="generic-tabs generic-tabs--no-lift omo-decision-invitations-popup__tabs" data-generic-tabs>
         <div class="generic-tabs__list" aria-label="<?= omoApiEscape(omoDecisionInvitationsPopupT('decisions.invitations_popup.tabs_aria')) ?>">
             <?php if ($hasHolonStructure): ?>
             <button type="button" class="generic-tabs__tab is-active" data-generic-tab data-generic-tab-target="omoDecisionInvitationsTabHolons"><?= omoApiEscape(omoDecisionInvitationsPopupT('decisions.invitations_popup.tab.holons')) ?></button>
@@ -611,7 +455,7 @@ $memberships->loadActiveForOrganization($organizationId);
             <?php if ($hasHolonStructure): ?>
             <div id="omoDecisionInvitationsTabHolons" class="generic-tabs__panel omo-decision-invitations-popup__tab-panel" data-generic-tab-panel>
                 <strong><?= omoApiEscape(omoDecisionInvitationsPopupT('decisions.invitations_popup.holons_title')) ?></strong>
-                <p class="omo-decision-invitations-popup__hint">
+                <p class="omo-decision-invitations-popup__hint generic-description">
                     <?= omoApiEscape(omoDecisionInvitationsPopupT('decisions.invitations_popup.holons_hint')) ?>
                 </p>
                 <div class="omo-decision-invitations-popup__checklist">
@@ -653,7 +497,7 @@ $memberships->loadActiveForOrganization($organizationId);
                         </label>
                     <?php endforeach; ?>
                 </div>
-                <p class="omo-decision-invitations-popup__hint">
+                <p class="omo-decision-invitations-popup__hint generic-description">
                     <?= omoApiEscape($hasHolonStructure
                         ? omoDecisionInvitationsPopupT('decisions.invitations_popup.members_hint_structure')
                         : omoDecisionInvitationsPopupT('decisions.invitations_popup.members_hint_flat')) ?>
@@ -668,7 +512,7 @@ $memberships->loadActiveForOrganization($organizationId);
                     class="omo-decision-invitations-popup__textarea generic-form-control"
                     placeholder="<?= omoApiEscape(omoDecisionInvitationsPopupT('decisions.invitations_popup.guests_placeholder')) ?>"
                 ><?= omoApiEscape(implode("\n", $selectedEmails)) ?></textarea>
-                <p class="omo-decision-invitations-popup__hint">
+                <p class="omo-decision-invitations-popup__hint generic-description">
                     <?= omoApiEscape(omoDecisionInvitationsPopupT('decisions.invitations_popup.guests_hint')) ?>
                 </p>
             </div>
@@ -709,107 +553,26 @@ $memberships->loadActiveForOrganization($organizationId);
                 </p>
                 <?php endif; ?>
 
-                <p class="omo-decision-invitations-popup__hint">
+                <p class="omo-decision-invitations-popup__hint generic-description">
                     <?= omoApiEscape(omoDecisionInvitationsPopupT('decisions.invitations_popup.public_people_hint')) ?>
                 </p>
             </div>
         </div>
     </div>
 
-    <div id="omoDecisionInvitationsPopupFeedback" class="omo-decision-invitations-popup__feedback"></div>
+    <div id="omoDecisionInvitationsPopupFeedback" class="omo-decision-invitations-popup__feedback generic-feedback"></div>
 
-    <div class="omo-decision-invitations-popup__actions">
-        <button type="submit" id="omoDecisionInvitationsPopupSubmit" class="generic-action-button generic-action-button--main">
+    <div class="omo-decision-invitations-popup__actions generic-action-row">
+        <button type="submit" id="omoDecisionInvitationsPopupSubmit" class="generic-action-button generic-action-button--main generic-action-button--no-lift">
             <?= omoApiEscape(omoDecisionInvitationsPopupT('decisions.invitations_popup.submit')) ?>
         </button>
     </div>
     </div>
 </form>
 
-<script>
-(function () {
-    var form = document.getElementById('omoDecisionInvitationsPopupForm');
-    var feedback = document.getElementById('omoDecisionInvitationsPopupFeedback');
-    var submitButton = document.getElementById('omoDecisionInvitationsPopupSubmit');
-
-    if (!form || !feedback || !submitButton) {
-        return;
-    }
-
-    if (typeof window.initGenericComponents === 'function') {
-        window.initGenericComponents(form);
-    }
-
-    Array.prototype.forEach.call(form.querySelectorAll('[data-omo-decision-holon-toggle]'), function (toggle) {
-        toggle.addEventListener('click', function (event) {
-            var node;
-            var children;
-            var isExpanded;
-
-            event.preventDefault();
-            event.stopPropagation();
-
-            node = toggle.closest('[data-omo-decision-holon-node]');
-            children = node ? node.querySelector('[data-omo-decision-holon-children]') : null;
-            if (!children) {
-                return;
-            }
-
-            isExpanded = toggle.getAttribute('aria-expanded') === 'true';
-            toggle.setAttribute('aria-expanded', isExpanded ? 'false' : 'true');
-            children.hidden = isExpanded;
-        });
-    });
-
-    form.addEventListener('submit', function (event) {
-        event.preventDefault();
-        feedback.textContent = '';
-        feedback.classList.remove('is-success');
-        submitButton.disabled = true;
-
-        fetch(form.getAttribute('action'), {
-            method: 'POST',
-            body: new FormData(form),
-            credentials: 'same-origin',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
-            .then(function (response) {
-                return response.json().then(function (data) {
-                    return {
-                        ok: response.ok,
-                        data: data
-                    };
-                });
-            })
-            .then(function (result) {
-                if (!result.ok || !result.data || !result.data.status) {
-                    feedback.textContent = result.data && result.data.message ? result.data.message : <?= json_encode(omoDecisionInvitationsPopupT('decisions.invitations_popup.js_error')) ?>;
-                    submitButton.disabled = false;
-                    return;
-                }
-
-                feedback.textContent = result.data.message || <?= json_encode(omoDecisionInvitationsPopupT('decisions.invitations_popup.updated')) ?>;
-                feedback.classList.add('is-success');
-
-                if (typeof window.commonTopbarCloseModal === 'function') {
-                    window.commonTopbarCloseModal();
-                }
-
-                if (result.data.redirectUrl && typeof window.omoDecisionOpenNestedDrawer === 'function') {
-                    window.omoDecisionOpenNestedDrawer(result.data.drawerTitle || <?= json_encode(omoDecisionInvitationsPopupT('decisions.invitations_popup.drawer_title')) ?>, result.data.redirectUrl, '');
-                    return;
-                }
-
-                if (result.data.redirectUrl && typeof window.commonTopbarOpenDrawer === 'function') {
-                    window.commonTopbarOpenDrawer(result.data.drawerTitle || <?= json_encode(omoDecisionInvitationsPopupT('decisions.invitations_popup.drawer_title')) ?>, result.data.redirectUrl, 'fetch');
-                }
-            })
-            .catch(function () {
-                feedback.textContent = <?= json_encode(omoDecisionInvitationsPopupT('decisions.invitations_popup.js_request_error')) ?>;
-                submitButton.disabled = false;
-            });
-    });
-})();
-</script>
+<?= commonPageScriptTags('/omo/api/decision/invitations_popup.js', [
+    'message' => omoDecisionInvitationsPopupT('decisions.invitations_popup.js_error'),
+    'decisionsInvitationsPopupUpdated' => omoDecisionInvitationsPopupT('decisions.invitations_popup.updated'),
+    'decisionsInvitationsPopupDrawerTitle' => omoDecisionInvitationsPopupT('decisions.invitations_popup.drawer_title'),
+    'decisionsInvitationsPopupJsRequestError' => omoDecisionInvitationsPopupT('decisions.invitations_popup.js_request_error'),
+]) ?>

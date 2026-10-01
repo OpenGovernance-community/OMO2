@@ -11,11 +11,11 @@ $holon = new Holon();
 $errorMessage = '';
 
 if ($organizationId <= 0 || $holonId <= 0) {
-    $errorMessage = "Le holon a supprimer est invalide.";
+$errorMessage = "L’espace à supprimer est invalide.";
 } elseif (!$organization->load($organizationId) || !$holon->load($holonId) || !$organization->containsHolon($holon)) {
-    $errorMessage = 'Le holon demande est introuvable.';
-} elseif (!$holon->canEdit() || !$holon->canDelete() || !in_array((int)$holon->get('IDtypeholon'), array(1, 2, 3), true)) {
-    $errorMessage = "Vous n'avez pas les droits pour supprimer ce holon.";
+$errorMessage = 'L’espace demandé est introuvable.';
+} elseif (!$holon->isAllowed('CAN_DELETE_HOLON') || !$holon->canDelete() || !in_array((int)$holon->get('IDtypeholon'), array(1, 2, 3), true)) {
+$errorMessage = "Vous n'avez pas les droits pour supprimer cet espace.";
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -35,7 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         http_response_code(422);
         echo json_encode(array(
             'status' => false,
-            'message' => (string)($result['message'] ?? "Le holon n'a pas pu etre supprime."),
+        'message' => (string)($result['message'] ?? "L’espace n’a pas pu être supprimé."),
             'parent' => $result['parent'] ?? null,
             'holon' => $result['holon'] ?? null,
         ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -44,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     echo json_encode(array(
         'status' => true,
-        'message' => (string)($result['message'] ?? 'Holon supprime.'),
+        'message' => (string)($result['message'] ?? 'Espace supprimé.'),
         'parent' => $result['parent'] ?? null,
         'holon' => $result['holon'] ?? null,
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -58,24 +58,24 @@ $descendantCount = $holon->countVisibleDescendants();
 $typeLabel = strtolower((string)$holon->getTemplateLabel(true));
 ?>
 <?php if ($errorMessage !== ''): ?>
-    <div class="omo-holon-delete__empty"><?= omoApiEscape($errorMessage) ?></div>
+    <div class="omo-holon-delete__empty generic-description"><?= omoApiEscape($errorMessage) ?></div>
 <?php else: ?>
     <form
         id="omoHolonDeletePopupForm"
-        class="omo-holon-delete"
+        class="omo-holon-delete generic-stack generic-stack--flush"
         action="api/holons/delete_popup.php?hid=<?= (int)$holon->getId() ?>"
         method="post"
     >
         <div class="omo-holon-delete__header generic-drawer-header generic-drawer-header--sticky">
             <div class="generic-drawer-header__copy omo-holon-delete__header-copy">
                 <div class="generic-card-title generic-card-title--eyebrow">Suppression</div>
-                <h3 class="generic-card-title generic-card-title--medium">Supprimer un holon</h3>
+    <h3 class="generic-card-title generic-card-title--medium">Supprimer un espace</h3>
             </div>
         </div>
-        <div class="omo-holon-delete__shell">
+        <div class="omo-holon-delete__shell generic-drawer-content">
         <div class="omo-holon-delete__intro">
-            <div class="omo-holon-delete__eyebrow">Suppression</div>
-            <div class="omo-holon-delete__title">
+            <div class="omo-holon-delete__eyebrow generic-title generic-title--eyebrow">Suppression</div>
+            <div class="omo-holon-delete__title generic-title generic-title--medium">
                 Supprimer <?= omoApiEscape($typeLabel) ?> <strong><?= omoApiEscape($holon->getDisplayName()) ?></strong> ?
             </div>
         </div>
@@ -86,13 +86,13 @@ $typeLabel = strtolower((string)$holon->getTemplateLabel(true));
             </div>
         <?php endif; ?>
 
-        <div class="omo-holon-delete__hint">
+        <div class="omo-holon-delete__hint generic-description generic-description--compact">
             Cette fenetre pourra ensuite accueillir des options complementaires pour gerer le contenu rattache.
         </div>
 
-        <div id="omoHolonDeletePopupFeedback" class="omo-holon-delete__feedback"></div>
+        <div id="omoHolonDeletePopupFeedback" class="omo-holon-delete__feedback generic-feedback"></div>
 
-        <div class="omo-holon-delete__actions">
+        <div class="omo-holon-delete__actions generic-action-row">
             <button type="button" id="omoHolonDeletePopupCancel" class="omo-holon-delete__button generic-action-button generic-action-button--secondary">
                 Annuler
             </button>
@@ -103,151 +103,21 @@ $typeLabel = strtolower((string)$holon->getTemplateLabel(true));
         </div>
     </form>
 
-    <script>
-    (function () {
-        var form = document.getElementById('omoHolonDeletePopupForm');
-        var feedback = document.getElementById('omoHolonDeletePopupFeedback');
-        var submitButton = document.getElementById('omoHolonDeletePopupSubmit');
-        var cancelButton = document.getElementById('omoHolonDeletePopupCancel');
-        var parentId = <?= (int)$parentId ?>;
-        var parentIsRoot = <?= $parentIsRoot ? 'true' : 'false' ?>;
-        var organizationId = <?= (int)$organizationId ?>;
-
-        if (!form || !feedback || !submitButton || !cancelButton) {
-            return;
-        }
-
-        function closePopup() {
-            if (typeof window.omoSetPopupHashState === 'function') {
-                window.omoSetPopupHashState({
-                    open: false
-                });
-                return;
-            }
-
-            if (typeof window.commonTopbarCloseModal === 'function') {
-                window.commonTopbarCloseModal();
-            }
-        }
-
-        cancelButton.addEventListener('click', function () {
-            closePopup();
-        });
-
-        form.addEventListener('submit', function (event) {
-            event.preventDefault();
-
-            feedback.textContent = '';
-            feedback.classList.remove('is-success');
-            submitButton.disabled = true;
-
-            fetch(form.getAttribute('action'), {
-                method: 'POST',
-                body: new FormData(form),
-                credentials: 'same-origin',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            })
-                .then(function (response) {
-                    return response.json().catch(function () {
-                        return null;
-                    }).then(function (data) {
-                        return {
-                            ok: response.ok,
-                            data: data
-                        };
-                    });
-                })
-                .then(function (result) {
-                    if (!result.ok || !result.data || !result.data.status) {
-                        feedback.textContent = result.data && result.data.message ? result.data.message : 'Une erreur est survenue.';
-                        submitButton.disabled = false;
-                        return;
-                    }
-
-                    closePopup();
-
-                    var targetCid = parentId > 0 && !parentIsRoot ? parentId : null;
-                    var route = typeof parseUrl === 'function'
-                        ? parseUrl()
-                        : { oid: organizationId, cid: null, hash: null };
-
-                    if (typeof navigate === 'function') {
-                        navigate(route.oid, targetCid, route.hash || null);
-                    } else if (typeof loadContent === 'function') {
-                        var leftUrl = 'api/getOrg.php?oid=' + Number(route.oid || organizationId || 0);
-                        if (targetCid) {
-                            leftUrl += '&cid=' + targetCid;
-                        }
-                        loadContent(typeof omoGetLeftPanelContentSelector === 'function' ? omoGetLeftPanelContentSelector() : '#panel-left', leftUrl);
-                    }
-
-                    if (typeof window.omoReloadStructureAndFocus === 'function') {
-                        window.omoReloadStructureAndFocus(targetCid, {
-                            quickZoom: true
-                        });
-                    } else {
-                        window.dispatchEvent(new CustomEvent('omo-structure-refresh', {
-                            detail: {
-                                cid: targetCid
-                            }
-                        }));
-                    }
-                })
-                .catch(function () {
-                    feedback.textContent = 'Impossible de supprimer ce holon pour le moment.';
-                    submitButton.disabled = false;
-                });
-        });
-    })();
-    </script>
+    <?= commonPageScriptTags('/omo/api/holons/delete_popup.js', [
+    'parentId' => (int)$parentId,
+    'parentIsRoot' => ($parentIsRoot),
+    'organizationId' => (int)$organizationId,
+]) ?>
 
     <style>
-        .omo-holon-delete,
         .omo-holon-delete__empty {
             display: grid;
             gap: 16px;
             color: var(--color-text, #1f2937);
         }
 
-        .omo-holon-delete {
-            gap: 0;
-        }
-
-        .omo-holon-delete__header {
-            position: sticky;
-            top: 0;
-            z-index: 2;
-        }
-
-        .omo-holon-delete__header-copy {
-            display: grid;
-            gap: 4px;
-        }
-
-        .omo-holon-delete__shell {
-            display: grid;
-            gap: 16px;
-            padding: 16px 18px 18px;
-        }
-
-        .omo-holon-delete__eyebrow,
-        .omo-holon-delete__hint,
-        .omo-holon-delete__empty {
-            color: var(--topbar-panel-muted, #64748b);
-            line-height: 1.45;
-        }
-
         .omo-holon-delete__empty {
             padding: 18px;
-        }
-
-        .omo-holon-delete__eyebrow {
-            font-size: 0.82rem;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            font-weight: 700;
         }
 
         .omo-holon-delete__intro,
@@ -256,28 +126,12 @@ $typeLabel = strtolower((string)$holon->getTemplateLabel(true));
             gap: 8px;
         }
 
-        .omo-holon-delete__title {
-            line-height: 1.45;
-        }
-
         .omo-holon-delete__warning {
             padding: 12px 14px;
-            border-radius: 12px;
+            border-radius: var(--radius-md);
             background: color-mix(in srgb, #dc2626 10%, white);
             color: #991b1b;
             border: 1px solid color-mix(in srgb, #dc2626 22%, transparent);
-        }
-
-        .omo-holon-delete__feedback {
-            min-height: 22px;
-            color: #b91c1c;
-            font-weight: 600;
-        }
-
-        .omo-holon-delete__actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
         }
 
     </style>

@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/avatar.php';
+require_once __DIR__ . '/assets.php';
 
 function commonResolveTopbarProfileData($organizationContext = null, array $profileOptions = [])
 {
@@ -48,6 +49,10 @@ function commonResolveTopbarProfileData($organizationContext = null, array $prof
                     $profileData['email'] = (string)$user->getScopedEmail($organizationId);
                 }
 
+				if ($profileData['phone'] === '') {
+					$profileData['phone'] = (string)$user->getScopedPhone($organizationId);
+				}
+
                 if ($profileData['username'] === '') {
                     $profileData['username'] = (string)$user->getScopedUsername($organizationId);
                 }
@@ -90,6 +95,44 @@ function commonRenderTopbarJqueryAssets()
     $jqueryLoaded = true;
 }
 
+function commonRenderTopbarSearchPeriod(array $period, $idPrefix = 'commonTopbar')
+{
+    $minDate = trim((string)($period['minDate'] ?? ''));
+    $maxDate = trim((string)($period['maxDate'] ?? ''));
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $minDate) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $maxDate) || $minDate > $maxDate) {
+        return;
+    }
+
+    $startDate = trim((string)($period['startDate'] ?? $minDate));
+    $endDate = trim((string)($period['endDate'] ?? $maxDate));
+    if ($startDate < $minDate || $startDate > $maxDate) {
+        $startDate = $minDate;
+    }
+    if ($endDate < $startDate || $endDate > $maxDate) {
+        $endDate = $maxDate;
+    }
+    $prefix = preg_replace('/[^a-zA-Z0-9_-]/', '', (string)$idPrefix);
+    ?>
+    <div class="common-topbar__search-period" data-topbar-search-period>
+        <div class="common-topbar__search-period-row">
+            <label class="common-topbar__search-period-field">
+                <span><?= htmlspecialchars((string)($period['startLabel'] ?? 'Du')) ?></span>
+                <input type="date" id="<?= htmlspecialchars($prefix) ?>SearchPeriodStart" class="generic-form-control" min="<?= htmlspecialchars($minDate) ?>" max="<?= htmlspecialchars($maxDate) ?>" value="<?= htmlspecialchars($startDate) ?>" data-topbar-search-period-start>
+            </label>
+            <div class="common-topbar__search-period-sliders" data-topbar-search-period-sliders>
+                <input type="range" min="0" max="1000" value="0" step="1" data-topbar-search-period-start-slider aria-label="<?= htmlspecialchars((string)($period['startLabel'] ?? 'Du')) ?>">
+                <input type="range" min="0" max="1000" value="1000" step="1" data-topbar-search-period-end-slider aria-label="<?= htmlspecialchars((string)($period['endLabel'] ?? 'Au')) ?>">
+                <div class="common-topbar__search-period-years" data-topbar-search-period-years aria-hidden="true"></div>
+            </div>
+            <label class="common-topbar__search-period-field">
+                <span><?= htmlspecialchars((string)($period['endLabel'] ?? 'Au')) ?></span>
+                <input type="date" id="<?= htmlspecialchars($prefix) ?>SearchPeriodEnd" class="generic-form-control" min="<?= htmlspecialchars($minDate) ?>" max="<?= htmlspecialchars($maxDate) ?>" value="<?= htmlspecialchars($endDate) ?>" data-topbar-search-period-end>
+            </label>
+        </div>
+    </div>
+    <?php
+}
+
 function commonRenderTopbar(array $options = [])
 {
     static $assetsLoaded = false;
@@ -108,12 +151,12 @@ function commonRenderTopbar(array $options = [])
             function_exists('translationBundleGetLanguageOptions')
                 ? translationBundleGetLanguageOptions()
                 : [
-                    ['locale' => 'fr', 'label' => 'Francais'],
+                    ['locale' => 'fr', 'label' => 'Français'],
                     ['locale' => 'en', 'label' => 'English'],
                     ['locale' => 'de', 'label' => 'Deutsch'],
-                    ['locale' => 'es', 'label' => 'Espanol'],
+                    ['locale' => 'es', 'label' => 'Español'],
                     ['locale' => 'it', 'label' => 'Italiano'],
-                    ['locale' => 'pt', 'label' => 'Portugues'],
+                    ['locale' => 'pt', 'label' => 'Português'],
                     ['locale' => 'nl', 'label' => 'Nederlands'],
                     ['locale' => 'pl', 'label' => 'Polski'],
                 ]
@@ -173,12 +216,22 @@ function commonRenderTopbar(array $options = [])
         array_splice($helpItems, $faqTargetIndex, 0, [$faqHelpItem]);
     }
 
+    $publicParticipantLogoutPath = trim((string)($options['publicParticipant']['logoutPath'] ?? ''));
+    if ($publicParticipantLogoutPath !== '') {
+        $normalizedPublicParticipantLogoutPath = commonNormalizeLocalPath($publicParticipantLogoutPath, '/');
+        $publicParticipantLogoutPath = ($normalizedPublicParticipantLogoutPath === '/' && $publicParticipantLogoutPath !== '/')
+            ? ''
+            : $normalizedPublicParticipantLogoutPath;
+    }
+
     $config = [
         'appKey' => (string)($options['appKey'] ?? 'app'),
         'appLabel' => (string)($options['appLabel'] ?? 'Application'),
         'userName' => (string)($options['userName'] ?? commonGetCurrentUserDisplayName() ?: 'Profil'),
         'brandAlt' => (string)($options['brandAlt'] ?? ($organizationContext['name'] ?? ($options['appLabel'] ?? 'Application'))),
         'brandHref' => (string)($options['brandHref'] ?? $brandHref),
+        'brandLogoHref' => (string)($options['brandLogoHref'] ?? ($options['brandHref'] ?? $brandHref)),
+        'brandLabelHref' => (string)($options['brandLabelHref'] ?? ($options['brandHref'] ?? $brandHref)),
         'brandLabel' => $brandLabel,
         'logoutPath' => (string)($options['logoutPath'] ?? '/common/logout.php'),
         'logoutReturnTo' => commonNormalizeLocalPath($options['logoutReturnTo'] ?? ($_SERVER['REQUEST_URI'] ?? '/'), '/'),
@@ -192,6 +245,13 @@ function commonRenderTopbar(array $options = [])
             'scopeLabel' => (string)($options['search']['scopeLabel'] ?? 'Chercher dans'),
             'scopeHint' => (string)($options['search']['scopeHint'] ?? ''),
             'advancedHint' => (string)($options['search']['advancedHint'] ?? 'D autres filtres avances pourront s ajouter ici.'),
+            'period' => [
+                'minDate' => (string)($options['search']['periodMinDate'] ?? ''),
+                'maxDate' => (string)($options['search']['periodMaxDate'] ?? ''),
+                'label' => (string)($options['search']['periodLabel'] ?? 'Periode'),
+                'startLabel' => (string)($options['search']['periodStartLabel'] ?? 'Du'),
+                'endLabel' => (string)($options['search']['periodEndLabel'] ?? 'Au'),
+            ],
         ],
         'bugReport' => [
             'enabled' => !empty($options['bugReport']['enabled']),
@@ -211,9 +271,24 @@ function commonRenderTopbar(array $options = [])
             'iconUrl' => (string)($options['tension']['iconUrl'] ?? '/common/assets/icon-topbar-tension.png'),
             'appendCurrentRouteContext' => !empty($options['tension']['appendCurrentRouteContext']),
         ],
+        'notifications' => [
+            'enabled' => !empty($options['notifications']['enabled']),
+            'buttonLabel' => (string)($options['notifications']['buttonLabel'] ?? 'Notifications'),
+            'markAllReadLabel' => (string)($options['notifications']['markAllReadLabel'] ?? 'Tout marquer comme lu'),
+            'inboxUrl' => (string)($options['notifications']['inboxUrl'] ?? ''),
+            'markReadUrl' => (string)($options['notifications']['markReadUrl'] ?? ''),
+            'csrfToken' => (string)($options['notifications']['csrfToken'] ?? ''),
+        ],
+        'organizationLevel' => [
+            'enabled' => !empty($options['organizationLevel']['enabled']),
+            'label' => (string)($options['organizationLevel']['label'] ?? ''),
+            'routeHash' => (string)($options['organizationLevel']['routeHash'] ?? ''),
+            'ariaLabel' => (string)($options['organizationLevel']['ariaLabel'] ?? ''),
+        ],
+        'lexicon' => is_array($options['lexicon'] ?? null) ? $options['lexicon'] : [],
         'profile' => [
             'enabled' => array_key_exists('enabled', $options['profile'] ?? []) ? !empty($options['profile']['enabled']) : true,
-            'editLabel' => (string)($options['profile']['editLabel'] ?? 'Editer le profil'),
+            'editLabel' => (string)($options['profile']['editLabel'] ?? 'Modifier le profil'),
             'editTitle' => (string)($options['profile']['editTitle'] ?? 'Profil'),
             'editMode' => (string)($options['profile']['editMode'] ?? 'fetch'),
             'editUrl' => (string)($options['profile']['editUrl'] ?? '/popup/profil.php'),
@@ -229,6 +304,15 @@ function commonRenderTopbar(array $options = [])
                 'statusActiveLabel' => (string)($options['profile']['adminMode']['statusActiveLabel'] ?? 'Mode admin d organisation actif'),
                 'statusInactiveLabel' => (string)($options['profile']['adminMode']['statusInactiveLabel'] ?? 'Mode admin d organisation inactif'),
                 'toggleUrl' => (string)($options['profile']['adminMode']['toggleUrl'] ?? '/common/admin_mode.php'),
+            ],
+            'extendedAuthorities' => [
+                'enabled' => !empty($options['profile']['extendedAuthorities']['enabled']),
+                'active' => !empty($options['profile']['extendedAuthorities']['active']),
+                'organizationId' => (int)($options['profile']['extendedAuthorities']['organizationId'] ?? 0),
+                'enableLabel' => (string)($options['profile']['extendedAuthorities']['enableLabel'] ?? ''),
+                'disableLabel' => (string)($options['profile']['extendedAuthorities']['disableLabel'] ?? ''),
+                'notice' => (string)($options['profile']['extendedAuthorities']['notice'] ?? ''),
+                'csrfToken' => (string)($options['profile']['extendedAuthorities']['csrfToken'] ?? ''),
             ],
             'siteAdminMode' => [
                 'enabled' => !empty($options['profile']['siteAdminMode']['enabled']),
@@ -262,7 +346,7 @@ function commonRenderTopbar(array $options = [])
             'details' => [
                 'nameLabel' => (string)($options['profile']['details']['nameLabel'] ?? 'Nom'),
                 'emailLabel' => (string)($options['profile']['details']['emailLabel'] ?? 'E-mail'),
-                'usernameLabel' => (string)($options['profile']['details']['usernameLabel'] ?? 'Identifiant'),
+            'usernameLabel' => (string)($options['profile']['details']['usernameLabel'] ?? "Nom d'utilisateur"),
                 'emptyValueLabel' => (string)($options['profile']['details']['emptyValueLabel'] ?? 'Non renseigne'),
             ],
             'data' => commonResolveTopbarProfileData($organizationContext, $options['profile'] ?? []),
@@ -270,6 +354,13 @@ function commonRenderTopbar(array $options = [])
         'helpLabel' => (string)($options['helpLabel'] ?? 'Aide'),
         'helpItems' => $helpItems,
         'helpLinks' => array_values($options['helpLinks'] ?? []),
+        'publicParticipant' => [
+            'enabled' => !empty($options['publicParticipant']['enabled']) && $publicParticipantLogoutPath !== '',
+            'name' => (string)($options['publicParticipant']['name'] ?? ''),
+            'logoutLabel' => (string)($options['publicParticipant']['logoutLabel'] ?? 'Se deconnecter'),
+            'logoutPath' => $publicParticipantLogoutPath,
+            'token' => (string)($options['publicParticipant']['token'] ?? ''),
+        ],
         'logoutLabel' => (string)($options['logoutLabel'] ?? 'Se deconnecter'),
         'modal' => [
             'defaultTitle' => (string)($options['modal']['defaultTitle'] ?? 'Panneau'),
@@ -312,6 +403,14 @@ function commonRenderTopbar(array $options = [])
         )
     );
     $profileAvatarStyle = 'background-color: ' . $profileAvatarPalette['background'] . '; color: ' . $profileAvatarPalette['foreground'] . ';';
+    $publicParticipantName = trim((string)$config['publicParticipant']['name']);
+    $publicParticipantInitials = \dbObject\User::buildInitials($publicParticipantName);
+    $publicParticipantAvatarPalette = commonBuildAvatarPalette(
+        $publicParticipantInitials,
+        0,
+        $publicParticipantName
+    );
+    $publicParticipantAvatarStyle = 'background-color: ' . $publicParticipantAvatarPalette['background'] . '; color: ' . $publicParticipantAvatarPalette['foreground'] . ';';
     $currentLocaleCode = trim((string)$config['profile']['preferences']['currentLocale']);
     if ($currentLocaleCode === '' || $currentLocaleCode === 'system') {
         $currentLocaleCode = trim((string)$config['profile']['preferences']['resolvedLocale']);
@@ -332,27 +431,52 @@ function commonRenderTopbar(array $options = [])
 
     if (!$assetsLoaded) {
         commonRenderTopbarJqueryAssets();
-        echo '<link rel="stylesheet" href="/common/assets/components.css">' . PHP_EOL;
-        echo '<script src="/common/assets/components.js" defer></script>' . PHP_EOL;
-        echo '<link rel="stylesheet" href="/common/assets/topbar.css">' . PHP_EOL;
-        echo '<script src="/common/assets/topbar.js" defer></script>' . PHP_EOL;
+        echo '<link rel="stylesheet" href="' . commonAssetUrl('/common/assets/components.css') . '">' . PHP_EOL;
+        echo '<script src="' . commonAssetUrl('/common/assets/components.js') . '" defer></script>' . PHP_EOL;
+        echo '<script src="/common/holon_scope_picker.js?v=20260908-picker-resize" defer></script>' . PHP_EOL;
+        echo '<script src="/common/project-picker/project-picker.js?v=20260922-shared" defer></script>' . PHP_EOL;
+        echo '<link rel="stylesheet" href="' . commonAssetUrl('/common/assets/topbar.css') . '">' . PHP_EOL;
+        echo '<link rel="stylesheet" href="/common/notifications/notifications.css">' . PHP_EOL;
+        echo '<script src="/common/notifications/notifications.js" defer></script>' . PHP_EOL;
+        echo '<script src="/common/notifications/inbox.js?v=20260821-mark-all-read" defer></script>' . PHP_EOL;
+        echo '<script src="' . commonAssetUrl('/common/assets/topbar.js') . '" defer></script>' . PHP_EOL;
         $assetsLoaded = true;
     }
     ?>
 <header class="topbar common-topbar" data-app-key="<?= htmlspecialchars($config['appKey']) ?>">
     <div class="common-topbar__left">
         <a
-            href="<?= htmlspecialchars($config['brandHref']) ?>"
-            class="common-topbar__brand-link"
+            href="<?= htmlspecialchars($config['brandLogoHref']) ?>"
+            class="common-topbar__brand-link common-topbar__brand-link--logo"
             title="<?= htmlspecialchars($config['brandAlt']) ?>"
+            aria-label="<?= htmlspecialchars($config['brandAlt']) ?>"
+            data-common-topbar-brand-link
         >
             <span class="common-topbar__brand">
-                <img src="<?= htmlspecialchars($brandLogo) ?>" alt="<?= htmlspecialchars($config['brandAlt']) ?>" class="common-topbar__brand-logo">
+                <img src="<?= htmlspecialchars($brandLogo) ?>" alt="<?= htmlspecialchars($config['brandAlt']) ?>" class="common-topbar__brand-logo" data-common-topbar-brand-logo>
             </span>
-            <?php if ($config['brandLabel'] !== ''): ?>
-                <span class="common-topbar__brand-name"><?= htmlspecialchars($config['brandLabel']) ?></span>
-            <?php endif; ?>
         </a>
+        <?php if ($config['brandLabel'] !== ''): ?>
+            <a
+                href="<?= htmlspecialchars($config['brandLabelHref']) ?>"
+                class="common-topbar__brand-link common-topbar__brand-link--name"
+                title="<?= htmlspecialchars($config['brandLabel']) ?>"
+            >
+                <span class="common-topbar__brand-name"><?= htmlspecialchars($config['brandLabel']) ?></span>
+            </a>
+        <?php endif; ?>
+        <?php if (!empty($config['organizationLevel']['enabled']) && $config['organizationLevel']['label'] !== '' && $config['organizationLevel']['routeHash'] !== ''): ?>
+        <div class="common-topbar__organization-level">
+            <button
+                type="button"
+                class="generic-filter-chip"
+                data-hash="<?= htmlspecialchars($config['organizationLevel']['routeHash']) ?>"
+                data-navigation-mode="drawer"
+                aria-label="<?= htmlspecialchars($config['organizationLevel']['ariaLabel']) ?>"
+                title="<?= htmlspecialchars($config['organizationLevel']['ariaLabel']) ?>"
+            ><?= htmlspecialchars($config['organizationLevel']['label']) ?></button>
+        </div>
+        <?php endif; ?>
     </div>
 
     <div class="common-topbar__actions">
@@ -411,6 +535,7 @@ function commonRenderTopbar(array $options = [])
                     <?php else: ?>
                     <div class="common-topbar__search-panel-hint"><?= htmlspecialchars($config['search']['advancedHint']) ?></div>
                     <?php endif; ?>
+                    <?php commonRenderTopbarSearchPeriod($config['search']['period']); ?>
                 </form>
             </div>
         </div>
@@ -441,7 +566,13 @@ function commonRenderTopbar(array $options = [])
                         <?php foreach ($config['helpLinks'] as $link): ?>
                             <?php
                             $href = trim((string)($link['href'] ?? ''));
-                            if ($href === '') {
+                            $groupLinks = [];
+                            foreach (is_array($link['links'] ?? null) ? $link['links'] : [] as $groupLink) {
+                                if (is_array($groupLink) && trim((string)($groupLink['href'] ?? '')) !== '') {
+                                    $groupLinks[] = $groupLink;
+                                }
+                            }
+                            if ($href === '' && $groupLinks === []) {
                                 continue;
                             }
                             $label = trim((string)($link['label'] ?? $href));
@@ -455,31 +586,83 @@ function commonRenderTopbar(array $options = [])
                                 }
                             }
                             ?>
-                            <a
-                                href="<?= htmlspecialchars($href) ?>"
-                                class="common-topbar__help-link"
-                                <?php if (!empty($helpLinkItem)): ?>data-topbar-help-link-item='<?= htmlspecialchars(json_encode($helpLinkItem, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ENT_QUOTES, 'UTF-8') ?>'<?php endif; ?>
-                                <?php if ($target !== ''): ?>target="<?= htmlspecialchars($target) ?>"<?php endif; ?>
-                                <?php if ($rel !== ''): ?>rel="<?= htmlspecialchars($rel) ?>"<?php endif; ?>
-                            ><?= htmlspecialchars($label) ?></a>
+                            <span class="common-topbar__help-link-item">
+                                <?php if ($groupLinks !== []): ?>
+                                    <span class="common-topbar__help-link-group-label"><?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?></span>
+                                    <?php foreach ($groupLinks as $groupIndex => $groupLink): ?>
+                                        <?= $groupIndex > 0 ? ', ' : '' ?><a
+                                            href="<?= htmlspecialchars(trim((string)$groupLink['href']), ENT_QUOTES, 'UTF-8') ?>"
+                                            class="common-topbar__help-link"
+                                        ><?= htmlspecialchars(trim((string)($groupLink['label'] ?? $groupLink['href'])), ENT_QUOTES, 'UTF-8') ?></a>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <a
+                                        href="<?= htmlspecialchars($href) ?>"
+                                        class="common-topbar__help-link"
+                                        <?php if (!empty($helpLinkItem)): ?>data-topbar-help-link-item='<?= htmlspecialchars(json_encode($helpLinkItem, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ENT_QUOTES, 'UTF-8') ?>'<?php endif; ?>
+                                        <?php if ($target !== ''): ?>target="<?= htmlspecialchars($target) ?>"<?php endif; ?>
+                                        <?php if ($rel !== ''): ?>rel="<?= htmlspecialchars($rel) ?>"<?php endif; ?>
+                                    ><?= htmlspecialchars($label) ?></a>
+                                <?php endif; ?>
+                            </span>
                         <?php endforeach; ?>
                     </div>
                 <?php endif; ?>
             </div>
         </div>
 
+        <?php if (!empty($config['publicParticipant']['enabled']) && $config['publicParticipant']['token'] !== ''): ?>
+        <form method="post" action="<?= htmlspecialchars($config['publicParticipant']['logoutPath'], ENT_QUOTES, 'UTF-8') ?>" class="common-topbar__menu-wrap">
+            <input type="hidden" name="token" value="<?= htmlspecialchars($config['publicParticipant']['token'], ENT_QUOTES, 'UTF-8') ?>">
+            <button
+                type="submit"
+                class="common-topbar__action common-topbar__action--square common-topbar__profile"
+                title="<?= htmlspecialchars($config['publicParticipant']['logoutLabel']) ?>"
+            >
+                <span class="common-topbar__avatar" style="<?= htmlspecialchars($publicParticipantAvatarStyle, ENT_QUOTES, 'UTF-8') ?>" aria-hidden="true">
+                    <span class="common-topbar__avatar-initial"><?= htmlspecialchars($publicParticipantInitials) ?></span>
+                </span>
+                <span class="common-topbar__action-label"><?= htmlspecialchars($config['publicParticipant']['logoutLabel']) ?></span>
+            </button>
+        </form>
+        <?php endif; ?>
+
+        <?php if (!empty($config['notifications']['enabled'])): ?>
+        <div class="common-topbar__menu-wrap common-topbar__menu-wrap--panel">
+            <button type="button" class="common-topbar__action common-topbar__action--square common-topbar__action--icon-only common-topbar__notification-button" data-topbar-menu-trigger="notifications" aria-label="<?= htmlspecialchars($config['notifications']['buttonLabel']) ?>" title="<?= htmlspecialchars($config['notifications']['buttonLabel']) ?>">
+                <span class="common-topbar__action-icon" aria-hidden="true">
+                    <img src="/common/assets/icon-topbar-notifications.png" alt="" class="common-topbar__icon-image black-icon">
+                </span>
+                <span class="common-topbar__notification-badge" data-omo-notification-badge hidden>0</span>
+                <span class="common-topbar__visually-hidden generic-visually-hidden"><?= htmlspecialchars($config['notifications']['buttonLabel']) ?></span>
+            </button>
+            <div class="common-topbar__menu common-topbar__menu--panel common-topbar__menu--right" data-topbar-menu="notifications">
+                <div class="omo-notification-inbox__header">
+                    <button type="button" class="omo-notification-inbox__mark-all-read" data-omo-notification-mark-all-read><?= htmlspecialchars($config['notifications']['markAllReadLabel']) ?></button>
+                </div>
+                <div class="omo-notification-inbox" data-omo-notification-inbox>
+                    <p class="omo-notification-inbox__empty">Chargement...</p>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <?php if (!empty($config['profile']['enabled'])): ?>
         <div class="common-topbar__menu-wrap">
             <button type="button" class="common-topbar__action common-topbar__action--square common-topbar__profile" data-topbar-menu-trigger="profile">
-                <span class="common-topbar__avatar"<?= empty($config['profile']['data']['photoUrl']) ? ' style="' . htmlspecialchars($profileAvatarStyle, ENT_QUOTES, 'UTF-8') . '"' : '' ?>>
+                <span class="common-topbar__avatar" data-common-topbar-avatar<?= empty($config['profile']['data']['photoUrl']) ? ' style="' . htmlspecialchars($profileAvatarStyle, ENT_QUOTES, 'UTF-8') . '"' : '' ?>>
                     <?php if (!empty($config['profile']['data']['photoUrl'])): ?>
                         <img
                             src="<?= htmlspecialchars((string)$config['profile']['data']['photoUrl']) ?>"
                             alt="<?= htmlspecialchars($profileDisplayName) ?>"
                             class="common-topbar__avatar-image"
+                            data-common-topbar-avatar-image
+                            width="30"
+                            height="30"
+                            decoding="async"
                         >
                     <?php else: ?>
-                        <span class="common-topbar__avatar-initial" aria-hidden="true"><?= htmlspecialchars($profileInitials) ?></span>
+                        <span class="common-topbar__avatar-initial" data-common-topbar-avatar-initial aria-hidden="true"><?= htmlspecialchars($profileInitials) ?></span>
                     <?php endif; ?>
                 </span>
                 <span class="common-topbar__action-label"><?= htmlspecialchars($config['profile']['buttonLabel']) ?></span>
@@ -487,19 +670,23 @@ function commonRenderTopbar(array $options = [])
             <div class="common-topbar__menu common-topbar__menu--right" data-topbar-menu="profile">
                 <div class="common-topbar-profile-panel" data-common-topbar-profile-panel>
                     <section class="common-topbar-profile-panel__section common-topbar-profile-panel__section--media">
-                        <div class="common-topbar-profile-card generic-section">
+                        <div class="common-topbar-profile-card generic-section" data-common-topbar-profile-media>
                             <?php if (!empty($config['profile']['data']['photoUrl'])): ?>
                                 <img
                                     src="<?= htmlspecialchars((string)$config['profile']['data']['photoUrl']) ?>"
                                     alt="<?= htmlspecialchars($profileDisplayName) ?>"
                                     class="common-topbar-profile-card__photo"
+                                    data-common-topbar-profile-photo
+                                    width="96"
+                                    height="96"
+                                    decoding="async"
                                 >
                             <?php else: ?>
-                                <div class="common-topbar-profile-card__placeholder" style="<?= htmlspecialchars($profileAvatarStyle, ENT_QUOTES, 'UTF-8') ?>" aria-hidden="true"><?= htmlspecialchars($profileInitials) ?></div>
+                                <div class="common-topbar-profile-card__placeholder" data-common-topbar-profile-placeholder style="<?= htmlspecialchars($profileAvatarStyle, ENT_QUOTES, 'UTF-8') ?>" aria-hidden="true"><?= htmlspecialchars($profileInitials) ?></div>
                             <?php endif; ?>
                             <div class="common-topbar-profile-card__identity">
-                                <strong><?= htmlspecialchars($profileDisplayName) ?></strong>
-                                <span><?= htmlspecialchars((string)($config['profile']['data']['email'] ?: $config['profile']['summaryFallback'])) ?></span>
+                                <strong data-common-topbar-display-name><?= htmlspecialchars($profileDisplayName) ?></strong>
+                                <span data-common-topbar-email><?= htmlspecialchars((string)($config['profile']['data']['email'] ?: $config['profile']['summaryFallback'])) ?></span>
                             </div>
                         </div>
                     </section>
@@ -508,15 +695,15 @@ function commonRenderTopbar(array $options = [])
                         <div class="common-topbar-profile-details generic-section">
                             <div class="common-topbar-profile-details__row">
                                 <span class="common-topbar-profile-details__label"><?= htmlspecialchars($config['profile']['details']['nameLabel']) ?></span>
-                                <span class="common-topbar-profile-details__value"><?= htmlspecialchars($profileDisplayName) ?></span>
+                                <span class="common-topbar-profile-details__value" data-common-topbar-detail-name><?= htmlspecialchars($profileDisplayName) ?></span>
                             </div>
                             <div class="common-topbar-profile-details__row">
                                 <span class="common-topbar-profile-details__label"><?= htmlspecialchars($config['profile']['details']['emailLabel']) ?></span>
-                                <span class="common-topbar-profile-details__value"><?= htmlspecialchars((string)($config['profile']['data']['email'] ?: $config['profile']['details']['emptyValueLabel'])) ?></span>
+                                <span class="common-topbar-profile-details__value" data-common-topbar-detail-email><?= htmlspecialchars((string)($config['profile']['data']['email'] ?: $config['profile']['details']['emptyValueLabel'])) ?></span>
                             </div>
                             <div class="common-topbar-profile-details__row">
                                 <span class="common-topbar-profile-details__label"><?= htmlspecialchars($config['profile']['details']['usernameLabel']) ?></span>
-                                <span class="common-topbar-profile-details__value"><?= htmlspecialchars((string)($config['profile']['data']['username'] ?: $config['profile']['details']['emptyValueLabel'])) ?></span>
+                                <span class="common-topbar-profile-details__value" data-common-topbar-detail-username><?= htmlspecialchars((string)($config['profile']['data']['username'] ?: $config['profile']['details']['emptyValueLabel'])) ?></span>
                             </div>
                         </div>
                     </section>
@@ -607,6 +794,17 @@ function commonRenderTopbar(array $options = [])
                                 </div>
                             <?php endif; ?>
                             <button type="button" class="common-topbar__menu-item common-topbar-profile-actions__button" data-topbar-profile-edit><?= htmlspecialchars($config['profile']['editLabel']) ?></button>
+                            <?php if (!empty($config['profile']['extendedAuthorities']['enabled'])): ?>
+                                <button type="button"
+                                    class="common-topbar__menu-item common-topbar-profile-actions__button common-topbar-profile-actions__button--mode <?= !empty($config['profile']['extendedAuthorities']['active']) ? 'common-topbar-profile-actions__button--active' : 'common-topbar-profile-actions__button--inactive' ?>"
+                                    data-topbar-admin-mode-toggle
+                                    data-admin-mode-url="/common/extended_authorities.php"
+                                    data-admin-mode-organization-id="<?= (int)$config['profile']['extendedAuthorities']['organizationId'] ?>"
+                                    data-admin-mode-enabled="<?= !empty($config['profile']['extendedAuthorities']['active']) ? '0' : '1' ?>"
+                                    data-admin-mode-confirm="<?= htmlspecialchars($config['profile']['extendedAuthorities']['notice']) ?>"
+                                    data-admin-mode-csrf="<?= htmlspecialchars($config['profile']['extendedAuthorities']['csrfToken']) ?>"
+                                ><?= htmlspecialchars(!empty($config['profile']['extendedAuthorities']['active']) ? $config['profile']['extendedAuthorities']['disableLabel'] : $config['profile']['extendedAuthorities']['enableLabel']) ?></button>
+                            <?php endif; ?>
                             <?php if (!empty($config['profile']['adminMode']['enabled'])): ?>
                                 <button
                                     type="button"
@@ -643,7 +841,7 @@ function commonRenderTopbar(array $options = [])
             <h3 id="commonTopbarModalTitle"><?= htmlspecialchars($config['modal']['defaultTitle']) ?></h3>
             <button type="button" class="common-topbar-modal__close" data-topbar-modal-close aria-label="<?= htmlspecialchars($config['modal']['closeLabel']) ?>">
                 <span aria-hidden="true">&times;</span>
-                <span class="common-topbar__visually-hidden"><?= htmlspecialchars($config['modal']['closeLabel']) ?></span>
+                <span class="common-topbar__visually-hidden generic-visually-hidden"><?= htmlspecialchars($config['modal']['closeLabel']) ?></span>
             </button>
         </div>
         <div class="common-topbar-modal__body" id="commonTopbarModalBody"></div>
@@ -660,7 +858,7 @@ function commonRenderTopbar(array $options = [])
             <div class="generic-drawer-header__actions">
                 <button type="button" class="common-topbar-drawer__close" data-topbar-drawer-close aria-label="<?= htmlspecialchars($config['drawer']['closeLabel']) ?>">
                     <span aria-hidden="true">&times;</span>
-                    <span class="common-topbar__visually-hidden"><?= htmlspecialchars($config['drawer']['closeLabel']) ?></span>
+                    <span class="common-topbar__visually-hidden generic-visually-hidden"><?= htmlspecialchars($config['drawer']['closeLabel']) ?></span>
                 </button>
             </div>
         </div>
@@ -668,6 +866,9 @@ function commonRenderTopbar(array $options = [])
     </div>
 </div>
 
+<div class="common-notifications" id="commonNotifications" aria-live="polite" aria-atomic="false"></div>
+
+<script src="/common/drawer/subdrawer.js?v=20260816-header-help"></script>
 <script>
 window.commonTopbarConfig = <?= json_encode($config, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 </script>

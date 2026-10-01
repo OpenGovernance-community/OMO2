@@ -1,0 +1,747 @@
+<?php
+require_once dirname(__DIR__, 2) . '/bootstrap.php';
+require_once dirname(__DIR__) . '/modules/context.php';
+require_once dirname(__DIR__) . '/modules/consent/shared.php';
+require_once dirname(__DIR__) . '/modules/vote/shared.php';
+require_once __DIR__ . '/shared.php';
+require_once dirname(__DIR__) . '/params/shared.php';
+require_once dirname(__DIR__, 4) . '/common/notification_center.php';
+
+use dbObject\ChatMessage;
+use dbObject\DbObject;
+use dbObject\DecisionGovernanceAction;
+use dbObject\DecisionGroup;
+use dbObject\DecisionParticipant;
+use dbObject\DecisionProcess;
+use dbObject\DecisionProposal;
+use dbObject\DeferredProposal;
+use dbObject\Holon;
+use dbObject\ObjectVisibility;
+use dbObject\Project;
+use dbObject\Rule;
+
+header('Content-Type: application/json; charset=UTF-8');
+
+$respond = static function ($code, array $payload) {
+    http_response_code((int)$code);
+    echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
+};
+
+if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
+    $respond(405, ['status' => false, 'message' => 'Methode non autorisee.']);
+}
+
+$context = omoDecisionResolveEditorContext($_POST);
+if (empty($context['status'])) {
+    $respond((int)($context['code'] ?? 400), [
+        'status' => false,
+        'message' => 'Contexte de creation invalide.',
+    ]);
+}
+
+$decision = ($context['decision'] ?? null) instanceof DecisionProcess ? $context['decision'] : null;
+$currentUserId = (int)($context['currentUserId'] ?? 0);
+$organizationId = (int)($context['organizationId'] ?? 0);
+$targetHolonId = (int)($context['targetHolonId'] ?? 0);
+$wasExistingDecision = $decision instanceof DecisionProcess;
+$decisionSettings = omoDecisionParamsGetConfig($context['organization'] ?? null);
+$governanceSettings = $decisionSettings['governance'];
+$existingGovernanceGroup = $wasExistingDecision ? $decision->getPrimaryGroup(false) : null;
+$governanceMethod = $existingGovernanceGroup instanceof DecisionGroup
+    ? DecisionProcess::normalizeEvaluationMethod($existingGovernanceGroup->get('evaluation_method'))
+    : (string)($governanceSettings['evaluation_method'] ?? DecisionProcess::METHOD_CONSENT);
+if (!in_array($governanceMethod, [DecisionProcess::METHOD_SIMPLE_VOTE, DecisionProcess::METHOD_CONSENT], true)) {
+    $governanceMethod = DecisionProcess::METHOD_CONSENT;
+}
+$governanceConsentConfig = $governanceMethod === DecisionProcess::METHOD_CONSENT && $existingGovernanceGroup instanceof DecisionGroup
+    ? omoDecisionConsentBuildConfig($existingGovernanceGroup)
+    : [
+        'is_anonymous' => !empty($governanceSettings['show_live_votes']) && !empty($governanceSettings['live_votes_anonymous']),
+        'allow_anonymous_votes' => false,
+        'allow_consultation_proposals' => false,
+        'allow_proposal_discussions' => true,
+        'show_live_results' => !empty($governanceSettings['show_live_votes']),
+    ];
+$governanceVoteConfig = $governanceMethod === DecisionProcess::METHOD_SIMPLE_VOTE && $existingGovernanceGroup instanceof DecisionGroup
+    ? omoDecisionVoteBuildConfig($existingGovernanceGroup)
+    : [
+        'choice_mode' => 'single',
+        'max_choices' => 1,
+        'is_anonymous' => !empty($governanceSettings['show_live_votes']) && !empty($governanceSettings['live_votes_anonymous']),
+        'allow_anonymous_votes' => false,
+        'allow_consultation_proposals' => false,
+        'allow_proposal_discussions' => true,
+        'show_live_results' => !empty($governanceSettings['show_live_votes']),
+    ];
+
+if ($targetHolonId <= 0) {
+    $respond(422, ['status' => false, 'message' => omoDecisionGovernanceT('governance.error.holon')]);
+}
+if (!$wasExistingDecision && empty($governanceSettings['enabled'])) {
+    $respond(403, ['status' => false, 'message' => omoDecisionGovernanceT('governance.error.disabled')]);
+}
+
+$targetHolon = new Holon();
+if (!$targetHolon->load($targetHolonId)
+    || !(bool)$targetHolon->get('active')
+    || !in_array((int)$targetHolon->get('IDtypeholon'), [1, 2], true)) {
+    $respond(422, ['status' => false, 'message' => omoDecisionGovernanceT('governance.error.holon')]);
+}
+
+if ($wasExistingDecision) {
+    if (!$decision->isGovernanceWorkflow()) {
+        $respond(400, ['status' => false, 'message' => 'Cette prise de decision n est pas un processus hors reorg.']);
+    }
+    if ((int)$decision->get('IDuser') !== $currentUserId) {
+        $respond(403, ['status' => false, 'message' => omoDecisionGovernanceT('governance.error.owner')]);
+    }
+    if ($decision->hasConsultationEnded()) {
+        $respond(409, ['status' => false, 'message' => omoDecisionGovernanceT('governance.error.locked')]);
+    }
+} else {
+    $decision = new DecisionProcess();
+    $decision->set('IDorganization', $organizationId);
+    $decision->set('IDholon', $targetHolonId);
+    $decision->set('IDuser', $currentUserId);
+}
+
+$processTitle = trim((string)($_POST['process_title'] ?? ''));
+$processDescription = trim((string)($_POST['process_description'] ?? ''));
+$consentQuestion = trim((string)($_POST['consent_question'] ?? ''));
+if ($processTitle === '' || mb_strlen($processTitle, 'UTF-8') > 190) {
+    $respond(422, ['status' => false, 'message' => 'Le titre est obligatoire et doit contenir 190 caractères au maximum.']);
+}
+if ($consentQuestion === '' || mb_strlen($consentQuestion, 'UTF-8') > 1000) {
+    $respond(422, ['status' => false, 'message' => 'La question est obligatoire.']);
+}
+
+try {
+    $consultationEnd = new DateTimeImmutable(trim((string)($_POST['consultation_end_at'] ?? '')));
+    $evaluationEnd = new DateTimeImmutable(trim((string)($_POST['evaluation_end_at'] ?? '')));
+} catch (Throwable $exception) {
+    $respond(422, ['status' => false, 'message' => 'Les dates du processus sont invalides.']);
+}
+if ($evaluationEnd <= $consultationEnd) {
+    $respond(422, ['status' => false, 'message' => 'La fin du vote doit suivre la fin de la consultation.']);
+}
+
+$blueprint = json_decode((string)($_POST['governance_blueprint'] ?? ''), true);
+if (!is_array($blueprint) || count($blueprint) < 1 || count($blueprint) > 50) {
+    $respond(422, ['status' => false, 'message' => 'Ajoutez au moins une proposition valide.']);
+}
+
+$rulesById = [];
+foreach (Rule::findDefinedInHolon($targetHolonId) as $rule) {
+    if ($rule instanceof Rule) {
+        $rulesById[(int)$rule->getId()] = $rule;
+    }
+}
+$rolesById = [];
+$roleStatesById = [];
+$contextOrganization = ($context['organization'] ?? null) instanceof \dbObject\Organization ? $context['organization'] : null;
+foreach (DecisionGovernanceAction::findRolesInGovernanceContext($targetHolon) as $role) {
+    $rolesById[(int)$role->getId()] = $role;
+    $roleStatesById[(int)$role->getId()] = omoDecisionGovernanceBuildRoleClientData($role, $contextOrganization, $targetHolonId)['state'];
+}
+
+$existingProposals = [];
+$existingActionsByProposal = [];
+$existingDeferredByProposal = [];
+if ($wasExistingDecision) {
+    foreach ($decision->getProposals(false) as $proposal) {
+        if (!$proposal instanceof DecisionProposal || (int)$proposal->get('active') !== 1) {
+            continue;
+        }
+        $proposalId = (int)$proposal->getId();
+        $existingProposals[$proposalId] = $proposal;
+        $existingActionsByProposal[$proposalId] = [];
+        $existingDeferredByProposal[$proposalId] = [];
+        foreach ($proposal->getGovernanceActions() as $action) {
+            if ($action instanceof DecisionGovernanceAction) {
+                $existingActionsByProposal[$proposalId][(int)$action->getId()] = $action;
+            }
+        }
+        foreach (DeferredProposal::getForDecisionProposal($proposalId) as $deferredProposal) {
+            if ($deferredProposal instanceof DeferredProposal) $existingDeferredByProposal[$proposalId][(int)$deferredProposal->getId()] = $deferredProposal;
+        }
+    }
+}
+
+$normalizedProposals = [];
+$usedTargetIds = [];
+foreach (array_values($blueprint) as $proposalIndex => $proposalInput) {
+    if (!is_array($proposalInput)) {
+        $respond(422, ['status' => false, 'message' => 'Une proposition est invalide.']);
+    }
+    $proposalId = (int)($proposalInput['id'] ?? 0);
+    if ($proposalId > 0 && !isset($existingProposals[$proposalId])) {
+        $respond(422, ['status' => false, 'message' => 'Une proposition ne correspond pas a ce scrutin.']);
+    }
+    if ($proposalId > 0 && !$existingProposals[$proposalId]->canBeEditedByUser($currentUserId)) {
+        $respond(403, ['status' => false, 'message' => omoDecisionGovernanceT('governance.error.owner')]);
+    }
+    $actionInputs = is_array($proposalInput['actions'] ?? null) ? array_values($proposalInput['actions']) : [];
+    if (count($actionInputs) < 1 || count($actionInputs) > 50) {
+        $respond(422, ['status' => false, 'message' => 'Chaque proposition doit contenir au moins une modification.']);
+    }
+
+    $normalizedActions = [];
+    $actionDescriptions = [];
+    $ruleTitles = [];
+    $suggestedTitles = [];
+    foreach ($actionInputs as $actionIndex => $actionInput) {
+        $actionType = is_array($actionInput) ? trim((string)($actionInput['type'] ?? '')) : '';
+        $actionStorage = is_array($actionInput) ? trim((string)($actionInput['storage'] ?? 'deferred')) : 'deferred';
+        $clientActionId = is_array($actionInput) ? (int)($actionInput['id'] ?? 0) : 0;
+        $existingDeferred = $actionStorage === 'deferred' && $clientActionId > 0
+            ? ($existingDeferredByProposal[$proposalId][$clientActionId] ?? null)
+            : null;
+        if ($actionStorage === 'deferred' && $clientActionId > 0
+            && (!$existingDeferred instanceof DeferredProposal || (string)$existingDeferred->get('status') !== DeferredProposal::STATUS_PENDING)) {
+            $respond(422, ['status' => false, 'message' => 'Cette modification différée ne peut plus être modifiée.']);
+        }
+        $actionId = $actionStorage === 'legacy' ? $clientActionId : 0;
+        $actionContextHolonId = (int)($actionInput['holonId'] ?? $targetHolonId);
+        if ($existingDeferred instanceof DeferredProposal) {
+            $existingType = (string)$existingDeferred->get('target_type') . '.' . (string)$existingDeferred->get('operation');
+            if ($existingType !== $actionType
+                || (int)$existingDeferred->get('target_id') !== (int)($actionInput['targetId'] ?? 0)
+                || (int)$existingDeferred->get('IDholon') !== $actionContextHolonId) {
+                $respond(422, ['status' => false, 'message' => 'Le contexte d’une modification existante ne peut pas être remplacé.']);
+            }
+        }
+        $isRoleAction = in_array($actionType, [
+            DecisionGovernanceAction::TYPE_HOLON_CREATE,
+            DecisionGovernanceAction::TYPE_HOLON_UPDATE,
+            DecisionGovernanceAction::TYPE_HOLON_DELETE,
+            'holon.move',
+        ], true);
+        if ($isRoleAction) {
+            $targetId = (int)($actionInput['targetId'] ?? 0);
+            $isCreate = $actionType === DecisionGovernanceAction::TYPE_HOLON_CREATE;
+            $operation = substr($actionType, strpos($actionType, '.') + 1);
+            $allowedHolon = DeferredProposal::loadAllowedHolonTargetHolon(
+                $organizationId,
+                $isCreate ? $actionContextHolonId : $targetId,
+                $operation,
+                $targetHolonId
+            );
+            $role = new Holon();
+            $roleParent = !$isCreate && $role->load($targetId) ? $role->getParentHolon() : null;
+            $roleContext = new Holon();
+            if (($isCreate && $targetId !== 0)
+                || !($allowedHolon instanceof Holon)
+                || !$roleContext->load($actionContextHolonId)
+                || (!$isCreate && (!($roleParent instanceof Holon) || (int)$roleParent->getId() !== $actionContextHolonId))) {
+                $respond(422, ['status' => false, 'message' => 'Le role choisi n appartient pas a ce cercle.']);
+            }
+            if (!$isCreate && isset($usedTargetIds['role:' . $targetId])) {
+                $respond(422, ['status' => false, 'message' => 'Un meme role ne peut pas etre modifie plusieurs fois dans ce scrutin.']);
+            }
+            if (!$isCreate) $usedTargetIds['role:' . $targetId] = true;
+            $existingAction = $actionId > 0 ? ($existingActionsByProposal[$proposalId][$actionId] ?? null) : null;
+            if ($actionId > 0 && (!$existingAction instanceof DecisionGovernanceAction || (string)$existingAction->get('action_type') !== $actionType || (int)$existingAction->get('target_id') !== $targetId || (string)$existingAction->get('status') !== DecisionGovernanceAction::STATUS_PENDING)) {
+                $respond(422, ['status' => false, 'message' => 'Une modification existante ne peut plus etre remplacee.']);
+            }
+            $beforeState = [];
+            $afterState = [];
+            $roleName = '';
+            if ($isCreate) {
+                $validation = DecisionGovernanceAction::validateRoleState((array)($actionInput['after'] ?? []), $roleContext);
+                if (empty($validation['status'])) $respond(422, ['status' => false, 'message' => (string)$validation['message']]);
+                $afterState = (array)$validation['state'];
+                $roleName = $afterState['name'];
+                $suggestedTitles[] = 'Creer le role ' . $roleName;
+                $actionDescriptions[] = '<h4>Creer le role ' . htmlspecialchars($roleName, ENT_QUOTES, 'UTF-8') . '</h4>' . DecisionGovernanceAction::buildRoleStateDescription($afterState);
+            } else {
+                $beforeState = $existingDeferred instanceof DeferredProposal
+                    ? DeferredProposal::normalizeState($existingDeferred->get('before_state'))
+                    : ($existingAction instanceof DecisionGovernanceAction ? DecisionGovernanceAction::normalizeState($existingAction->get('before_state')) : DecisionGovernanceAction::captureHolonEditorState($role, $contextOrganization));
+                $roleName = (string)$beforeState['name'];
+                if ($actionType === 'holon.move') {
+                    $validation = DeferredProposal::validateHolonMove($contextOrganization, $role, (int)($actionInput['after']['parent_id'] ?? 0), $targetHolonId);
+                    if (empty($validation['status'])) $respond(422, $validation);
+                    $beforeState = $existingDeferred instanceof DeferredProposal
+                        ? DeferredProposal::normalizeState($existingDeferred->get('before_state'))
+                        : DeferredProposal::captureHolonMoveState($role);
+                    $afterState = $validation['state'];
+                    $moveTitle = omoDecisionGovernanceT('governance.action.role_move') . ' : ' . $roleName;
+                    $suggestedTitles[] = $moveTitle;
+                    $actionDescriptions[] = '<h4>' . htmlspecialchars($moveTitle, ENT_QUOTES, 'UTF-8') . '</h4><p>'
+                        . htmlspecialchars((string)$beforeState['parent_label'], ENT_QUOTES, 'UTF-8') . ' &rarr; '
+                        . htmlspecialchars((string)$afterState['parent_label'], ENT_QUOTES, 'UTF-8') . '</p>';
+                } elseif ($actionType === DecisionGovernanceAction::TYPE_HOLON_DELETE) {
+                    $suggestedTitles[] = 'Supprimer le role ' . $roleName;
+                    $actionDescriptions[] = '<h4>Supprimer le role ' . htmlspecialchars($roleName, ENT_QUOTES, 'UTF-8') . '</h4>' . DecisionGovernanceAction::buildRoleStateDescription($beforeState);
+                } else {
+                    $validation = DecisionGovernanceAction::validateRoleState((array)($actionInput['after'] ?? []), $roleContext, $role);
+                    if (empty($validation['status'])) $respond(422, ['status' => false, 'message' => (string)$validation['message']]);
+                    $afterState = (array)$validation['state'];
+                    if ($beforeState === $afterState) $respond(422, ['status' => false, 'message' => 'La modification du role ne contient aucun changement.']);
+                    $suggestedTitles[] = 'Modifier le role ' . $roleName;
+                    $actionDescriptions[] = '<h4>Modifier le role ' . htmlspecialchars($roleName, ENT_QUOTES, 'UTF-8') . '</h4>' . DecisionGovernanceAction::buildRoleUpdateDescription($beforeState, $afterState);
+                }
+            }
+            $normalizedActions[] = ['id' => $actionId, 'existing' => $existingAction, 'existing_deferred' => $existingDeferred, 'action_type' => $actionType, 'operation' => $operation, 'holon_id' => $actionContextHolonId, 'target_id' => $targetId, 'target_type' => DeferredProposal::TARGET_HOLON, 'before' => $beforeState, 'after' => $afterState, 'position' => $actionIndex + 1];
+            continue;
+        }
+        if (in_array($actionType, ['project.create', 'project.update', 'project.delete'], true)) {
+            $operation = substr($actionType, strpos($actionType, '.') + 1);
+            $targetId = (int)($actionInput['targetId'] ?? 0);
+            $contextHolon = DeferredProposal::loadAllowedProjectTargetHolon($organizationId, $actionContextHolonId, $operation, $targetHolonId);
+            if (!($contextHolon instanceof Holon)) $respond(403, ['status' => false, 'message' => 'Le collectif ne dispose pas du droit nécessaire pour ce projet.']);
+            $project = new Project();
+            if ($operation !== DeferredProposal::OPERATION_CREATE
+                && (!$project->load($targetId) || (int)$project->get('IDorganization') !== $organizationId || (int)$project->get('IDholon') !== $actionContextHolonId)) {
+                $respond(422, ['status' => false, 'message' => 'Le projet choisi n appartient pas a cet espace.']);
+            }
+            if ($operation !== DeferredProposal::OPERATION_CREATE && isset($usedTargetIds['project:' . $targetId])) $respond(422, ['status' => false, 'message' => 'Un meme projet ne peut pas etre modifie plusieurs fois dans ce scrutin.']);
+            if ($operation !== DeferredProposal::OPERATION_CREATE) $usedTargetIds['project:' . $targetId] = true;
+            $beforeState = $operation === DeferredProposal::OPERATION_CREATE ? [] : ($existingDeferred instanceof DeferredProposal ? DeferredProposal::normalizeState($existingDeferred->get('before_state')) : DeferredProposal::captureProjectState($project));
+            $afterState = $operation === DeferredProposal::OPERATION_DELETE ? [] : DeferredProposal::normalizeProjectState((array)($actionInput['after'] ?? []), $operation === DeferredProposal::OPERATION_UPDATE ? $project : null);
+            if ($operation !== DeferredProposal::OPERATION_DELETE) $afterState['IDholon'] = $actionContextHolonId;
+            if ($operation !== DeferredProposal::OPERATION_DELETE && trim((string)($afterState['title'] ?? '')) === '') $respond(422, ['status' => false, 'message' => 'Le titre du projet est obligatoire.']);
+            if ($operation !== DeferredProposal::OPERATION_DELETE
+                && (string)($afterState['planned_start_date'] ?? '') !== ''
+                && (string)($afterState['planned_end_date'] ?? '') !== ''
+                && (string)$afterState['planned_end_date'] < (string)$afterState['planned_start_date']) {
+                $respond(422, ['status' => false, 'message' => 'La fin planifiée doit suivre le début planifié.']);
+            }
+            if ($operation !== DeferredProposal::OPERATION_DELETE
+                && (string)($afterState['status'] ?? '') === Project::STATUS_BLOCKED
+                && (trim((string)($afterState['blocked_reason'] ?? '')) === '' || (string)($afterState['blocked_until'] ?? '') === '')) {
+                $respond(422, ['status' => false, 'message' => 'Un projet bloqué doit préciser le motif et la date de relance.']);
+            }
+            $projectTitle = trim((string)(($operation === DeferredProposal::OPERATION_DELETE ? $beforeState : $afterState)['title'] ?? ''));
+            $verb = $operation === DeferredProposal::OPERATION_CREATE ? 'Créer' : ($operation === DeferredProposal::OPERATION_UPDATE ? 'Modifier' : 'Supprimer');
+            $suggestedTitles[] = $verb . ' le projet ' . $projectTitle;
+            $actionDescriptions[] = '<h4>' . htmlspecialchars($verb . ' le projet ' . $projectTitle, ENT_QUOTES, 'UTF-8') . '</h4>';
+            $normalizedActions[] = ['id' => $actionId, 'existing' => null, 'existing_deferred' => $existingDeferred, 'action_type' => $actionType, 'operation' => $operation, 'holon_id' => $actionContextHolonId, 'target_id' => $targetId, 'target_type' => DeferredProposal::TARGET_PROJECT, 'before' => $beforeState, 'after' => $afterState, 'position' => $actionIndex + 1];
+            continue;
+        }
+        if (in_array($actionType, ['recurring_task.create', 'recurring_task.update', 'recurring_task.delete', 'indicator.create', 'indicator.update', 'indicator.delete'], true)) {
+            [$targetType, $operation] = explode('.', $actionType, 2);
+            $targetId = (int)($actionInput['targetId'] ?? 0);
+            $contextHolon = DeferredProposal::loadAllowedObjectTargetHolon($organizationId, $actionContextHolonId, $operation, $targetHolonId, $targetType);
+            if (!($contextHolon instanceof Holon)) $respond(403, ['status' => false, 'message' => 'Le collectif ne dispose pas du droit nécessaire pour cet élément.']);
+            $object = $targetType === DeferredProposal::TARGET_RECURRING_TASK ? new \dbObject\ControlActivity() : new \dbObject\StatIndicator();
+            if ($operation !== DeferredProposal::OPERATION_CREATE
+                && (!$object->load($targetId) || (int)$object->get('IDorganization') !== $organizationId || (int)$object->get('IDholon') !== $actionContextHolonId)) {
+                $respond(422, ['status' => false, 'message' => 'L’élément choisi n’appartient pas à cet espace.']);
+            }
+            $uniqueTargetKey = $targetType . ':' . $targetId;
+            if ($operation !== DeferredProposal::OPERATION_CREATE && isset($usedTargetIds[$uniqueTargetKey])) $respond(422, ['status' => false, 'message' => 'Un même élément ne peut pas être modifié plusieurs fois dans ce scrutin.']);
+            if ($operation !== DeferredProposal::OPERATION_CREATE) $usedTargetIds[$uniqueTargetKey] = true;
+            $beforeState = $operation === DeferredProposal::OPERATION_CREATE ? [] : ($existingDeferred instanceof DeferredProposal
+                ? DeferredProposal::normalizeState($existingDeferred->get('before_state'))
+                : ($targetType === DeferredProposal::TARGET_RECURRING_TASK ? DeferredProposal::captureRecurringTaskState($object) : DeferredProposal::captureIndicatorState($object)));
+            if ($operation === DeferredProposal::OPERATION_DELETE) {
+                $afterState = [];
+            } elseif ($targetType === DeferredProposal::TARGET_RECURRING_TASK) {
+                $afterState = DeferredProposal::normalizeRecurringTaskState((array)($actionInput['after'] ?? []), $operation === DeferredProposal::OPERATION_UPDATE ? $object : null);
+                if ($afterState['title'] === '') $respond(422, ['status' => false, 'message' => 'Le titre de la tâche récurrente est obligatoire.']);
+            } else {
+                try {
+                    $afterState = DeferredProposal::normalizeIndicatorEditorState((array)($actionInput['after'] ?? []), $organizationId, $operation === DeferredProposal::OPERATION_UPDATE ? $object : null);
+                } catch (InvalidArgumentException $exception) {
+                    $respond(422, ['status' => false, 'message' => $exception->getMessage()]);
+                }
+                if ($afterState['name'] === '') $respond(422, ['status' => false, 'message' => 'Le nom de l’indicateur est obligatoire.']);
+            }
+            if ((int)($afterState['IDuser_responsible'] ?? 0) > 0 && !\dbObject\UserOrganization::hasActiveMembership((int)$afterState['IDuser_responsible'], $organizationId)) $afterState['IDuser_responsible'] = null;
+            if ($operation === DeferredProposal::OPERATION_UPDATE && $beforeState === $afterState) $respond(422, ['status' => false, 'message' => 'Cette modification ne contient aucun changement.']);
+            if ($operation !== DeferredProposal::OPERATION_DELETE) $afterState['IDholon'] = $actionContextHolonId;
+            $displayState = $operation === DeferredProposal::OPERATION_DELETE ? $beforeState : $afterState;
+            $objectLabel = trim((string)($displayState[$targetType === DeferredProposal::TARGET_INDICATOR ? 'name' : 'title'] ?? ''));
+            $noun = $targetType === DeferredProposal::TARGET_INDICATOR ? 'l’indicateur' : 'la tâche récurrente';
+            $verb = $operation === DeferredProposal::OPERATION_CREATE ? 'Créer' : ($operation === DeferredProposal::OPERATION_UPDATE ? 'Modifier' : 'Supprimer');
+            $suggestedTitles[] = $verb . ' ' . $noun . ' ' . $objectLabel;
+            $actionDescriptions[] = '<h4>' . htmlspecialchars($verb . ' ' . $noun . ' ' . $objectLabel, ENT_QUOTES, 'UTF-8') . '</h4>';
+            $normalizedActions[] = ['id' => $actionId, 'existing' => null, 'existing_deferred' => $existingDeferred, 'action_type' => $actionType, 'operation' => $operation, 'holon_id' => $actionContextHolonId, 'target_id' => $targetId, 'target_type' => $targetType, 'before' => $beforeState, 'after' => $afterState, 'position' => $actionIndex + 1];
+            continue;
+        }
+        if (!DecisionGovernanceAction::isImplementedType($actionType)
+            || !in_array($actionType, [
+                DecisionGovernanceAction::TYPE_RULE_CREATE,
+                DecisionGovernanceAction::TYPE_RULE_UPDATE,
+                DecisionGovernanceAction::TYPE_RULE_DELETE,
+            ], true)) {
+            $respond(422, ['status' => false, 'message' => 'Cette modification n est pas encore disponible.']);
+        }
+        $targetId = (int)($actionInput['targetId'] ?? 0);
+        $operation = substr($actionType, strpos($actionType, '.') + 1);
+        $allowedRuleHolon = DeferredProposal::loadAllowedRuleTargetHolon($organizationId, $actionContextHolonId, $operation, $targetHolonId);
+        if (!($allowedRuleHolon instanceof Holon)) $respond(403, ['status' => false, 'message' => 'Le collectif ne dispose pas du droit nécessaire pour cette règle.']);
+        $requiresExistingRule = $actionType !== DecisionGovernanceAction::TYPE_RULE_CREATE;
+        if (!$requiresExistingRule && $targetId !== 0) {
+            $respond(422, ['status' => false, 'message' => 'La création d’une règle ne peut pas cibler une règle existante.']);
+        }
+        $rule = new Rule();
+        $ruleHolon = $requiresExistingRule && $rule->load($targetId) ? $rule->getHolon() : null;
+        if ($requiresExistingRule && ($targetId <= 0 || !($ruleHolon instanceof Holon) || (int)$ruleHolon->getId() !== $actionContextHolonId)) {
+            $respond(422, ['status' => false, 'message' => 'La règle choisie n’appartient pas à ce contexte.']);
+        }
+        if ($requiresExistingRule && isset($usedTargetIds[$targetId])) {
+            $respond(422, ['status' => false, 'message' => 'Une même règle ne peut pas être modifiée ou supprimée plusieurs fois dans ce scrutin.']);
+        }
+        if ($requiresExistingRule) {
+            $usedTargetIds[$targetId] = true;
+        }
+
+        $existingAction = null;
+        if ($actionId > 0) {
+            $existingAction = $existingActionsByProposal[$proposalId][$actionId] ?? null;
+            if (!$existingAction instanceof DecisionGovernanceAction
+                || (string)$existingAction->get('action_type') !== $actionType
+                || (int)$existingAction->get('target_id') !== $targetId
+                || (string)$existingAction->get('status') !== DecisionGovernanceAction::STATUS_PENDING) {
+                $respond(422, ['status' => false, 'message' => 'Une modification existante ne peut plus etre remplacee.']);
+            }
+        }
+
+        $beforeState = [];
+        $afterState = [];
+        $ruleTitle = '';
+        if ($actionType === DecisionGovernanceAction::TYPE_RULE_CREATE) {
+            $validation = DecisionGovernanceAction::validateRuleCreate(
+                is_array($actionInput['after'] ?? null) ? $actionInput['after'] : [],
+                $actionContextHolonId
+            );
+            if (empty($validation['status'])) {
+                $respond(422, ['status' => false, 'message' => (string)($validation['message'] ?? 'Creation invalide.')]);
+            }
+            $beforeState = $existingDeferred instanceof DeferredProposal
+                ? DeferredProposal::normalizeState($existingDeferred->get('before_state'))
+                : ($existingAction instanceof DecisionGovernanceAction
+                ? DecisionGovernanceAction::normalizeState($existingAction->get('before_state'))
+                : []);
+            $afterState = (array)$validation['state'];
+            $ruleTitle = trim((string)$afterState['title']);
+            $suggestedTitles[] = 'Créer la règle ' . $ruleTitle;
+            $actionDescriptions[] = '<h4>Créer la règle ' . htmlspecialchars($ruleTitle, ENT_QUOTES, 'UTF-8') . '</h4>'
+                . DecisionGovernanceAction::buildRuleStateDescription($afterState);
+        } elseif ($actionType === DecisionGovernanceAction::TYPE_RULE_DELETE) {
+            $validation = DecisionGovernanceAction::validateRuleDelete($rule, $actionContextHolonId);
+            if (empty($validation['status'])) {
+                $respond(422, ['status' => false, 'message' => (string)($validation['message'] ?? 'Suppression invalide.')]);
+            }
+            $beforeState = $existingDeferred instanceof DeferredProposal
+                ? DeferredProposal::normalizeState($existingDeferred->get('before_state'))
+                : ($existingAction instanceof DecisionGovernanceAction
+                ? DecisionGovernanceAction::normalizeState($existingAction->get('before_state'))
+                : (array)$validation['state']);
+            $afterState = [];
+            $ruleTitle = trim((string)$beforeState['title']);
+            $suggestedTitles[] = 'Supprimer la règle ' . $ruleTitle;
+            $actionDescriptions[] = '<h4>Supprimer la règle ' . htmlspecialchars($ruleTitle, ENT_QUOTES, 'UTF-8') . '</h4>'
+                . DecisionGovernanceAction::buildRuleStateDescription($beforeState);
+        } else {
+            $beforeState = $existingDeferred instanceof DeferredProposal
+                ? DeferredProposal::normalizeState($existingDeferred->get('before_state'))
+                : ($existingAction instanceof DecisionGovernanceAction
+                ? DecisionGovernanceAction::normalizeState($existingAction->get('before_state'))
+                : DecisionGovernanceAction::captureRuleState($rule));
+            $validation = DecisionGovernanceAction::validateRuleUpdate(
+                $rule,
+                is_array($actionInput['after'] ?? null) ? $actionInput['after'] : [],
+                $actionContextHolonId
+            );
+            if (empty($validation['status'])) {
+                $respond(422, ['status' => false, 'message' => (string)($validation['message'] ?? 'Modification invalide.')]);
+            }
+            $afterState = (array)$validation['state'];
+            if ($beforeState === $afterState) {
+                $respond(422, ['status' => false, 'message' => 'La modification de la règle ' . trim((string)$rule->get('title')) . ' ne contient aucun changement.']);
+            }
+            $ruleTitle = trim((string)$rule->get('title'));
+            $suggestedTitles[] = 'Modifier la règle ' . $ruleTitle;
+            $actionDescriptions[] = '<h4>Modifier la règle ' . htmlspecialchars($ruleTitle, ENT_QUOTES, 'UTF-8') . '</h4>'
+                . DecisionGovernanceAction::buildRuleUpdateDescription($beforeState, $afterState);
+        }
+        $ruleTitles[] = $ruleTitle;
+        $normalizedActions[] = [
+            'id' => $actionId,
+            'existing' => $existingAction,
+            'existing_deferred' => $existingDeferred,
+            'action_type' => $actionType,
+            'operation' => $operation,
+            'holon_id' => $actionContextHolonId,
+            'target_id' => $targetId,
+            'target_type' => DeferredProposal::TARGET_RULE,
+            'before' => $beforeState,
+            'after' => $afterState,
+            'position' => $actionIndex + 1,
+        ];
+    }
+
+    $proposalTitle = trim((string)($proposalInput['title'] ?? ''));
+    if ($proposalTitle === '') {
+        $proposalTitle = count($suggestedTitles) === 1
+            ? $suggestedTitles[0]
+            : 'Modifier la gouvernance';
+    }
+    if (mb_strlen($proposalTitle, 'UTF-8') > 190) {
+        $respond(422, ['status' => false, 'message' => 'Le titre d une proposition est trop long.']);
+    }
+    $proposalDescription = \dbObject\PropertyFormat::sanitizeHtml((string)($proposalInput['description'] ?? ''));
+    if (mb_strlen($proposalDescription, 'UTF-8') > 10000) {
+        $respond(422, ['status' => false, 'message' => 'La description d une proposition est trop longue.']);
+    }
+    if (trim($proposalDescription) === '') {
+        $proposalDescription = implode('', $actionDescriptions);
+    }
+    $normalizedProposals[] = [
+        'id' => $proposalId,
+        'title' => $proposalTitle,
+        'description' => $proposalDescription,
+        'actions' => $normalizedActions,
+        'position' => $proposalIndex + 1,
+    ];
+}
+
+$pdo = DbObject::getPdo();
+if (!$pdo) {
+    $respond(500, ['status' => false, 'message' => 'Connexion a la base impossible.']);
+}
+
+$newProposalIds = [];
+try {
+    $pdo->beginTransaction();
+
+    $visibilityType = (int)$targetHolon->get('IDtypeholon') === 1
+        ? ObjectVisibility::TYPE_ROLE
+        : ObjectVisibility::TYPE_CIRCLE;
+    $decision->set('title', $processTitle);
+    $decision->set('description', $processDescription);
+    $decision->set('decision_type', DecisionProcess::TYPE_DECISION);
+    $decision->set('evaluation_method', $governanceMethod);
+    $decision->set('visibility_type', $visibilityType);
+    $decision->set('status', $wasExistingDecision ? $decision->get('status') : DecisionProcess::STATUS_CONSULTATION);
+    if (!$wasExistingDecision) {
+        $decision->set('consultation_start_at', new DateTimeImmutable('now'));
+    }
+    $decision->set('consultation_end_at', $consultationEnd);
+    $decision->set('evaluation_start_at', $consultationEnd);
+    $decision->set('evaluation_end_at', $evaluationEnd);
+
+    $parameters = $governanceMethod === DecisionProcess::METHOD_CONSENT
+        ? omoDecisionConsentMergeConfigIntoParameters(
+            $decision->get('parameters'),
+            [
+                'is_anonymous' => !empty($governanceConsentConfig['is_anonymous']),
+                'allow_anonymous_votes' => !empty($governanceConsentConfig['allow_anonymous_votes']),
+                'allow_consultation_proposals' => !empty($governanceConsentConfig['allow_consultation_proposals']),
+                'allow_proposal_discussions' => !empty($governanceConsentConfig['allow_proposal_discussions']),
+                'show_live_results' => !empty($governanceConsentConfig['show_live_results']),
+            ],
+            [
+                'proposal_count' => count($normalizedProposals),
+                'created_from_module' => 'consent',
+                'governance_payload_version' => 1,
+            ]
+        )
+        : omoDecisionVoteMergeConfigIntoParameters(
+            $decision->get('parameters'),
+            $governanceVoteConfig,
+            [
+                'proposal_count' => count($normalizedProposals),
+                'created_from_module' => 'vote',
+                'governance_payload_version' => 1,
+            ]
+        );
+    $parameters['workflow_type'] = DecisionProcess::WORKFLOW_GOVERNANCE;
+    $decision->set('parameters', $parameters);
+
+    $saveDecision = $decision->save();
+    if (!is_array($saveDecision) || empty($saveDecision['status'])) {
+        throw new RuntimeException('decision_save_failed');
+    }
+    $decisionId = (int)$decision->getId();
+
+    $group = $decision->ensurePrimaryGroup();
+    if (!$group instanceof DecisionGroup) {
+        throw new RuntimeException('decision_group_missing');
+    }
+    $group->set('title', $consentQuestion);
+    $group->set('description', $processDescription);
+    $group->set('decision_type', DecisionProcess::TYPE_DECISION);
+    $group->set('evaluation_method', $governanceMethod);
+    $group->set('parameters', $parameters);
+    $group->set('active', 1);
+    $saveGroup = $group->save();
+    if (!is_array($saveGroup) || empty($saveGroup['status'])) {
+        throw new RuntimeException('decision_group_save_failed');
+    }
+    $groupId = (int)$group->getId();
+
+    $savedProposalIds = [];
+    foreach ($normalizedProposals as $normalizedProposal) {
+        $proposalId = (int)$normalizedProposal['id'];
+        $proposal = $proposalId > 0 ? $existingProposals[$proposalId] : new DecisionProposal();
+        $oldValues = $proposalId > 0 ? [
+            'title' => trim((string)$proposal->get('title')),
+            'description' => trim((string)$proposal->get('description')),
+            'info_url' => trim((string)$proposal->get('info_url')),
+        ] : null;
+        $proposal->set('IDdecision_process', $decisionId);
+        $proposal->set('IDdecision_group', $groupId);
+        if ($proposalId <= 0) {
+            $proposal->set('IDuser_author', $currentUserId);
+        }
+        $proposal->set('title', $normalizedProposal['title']);
+        $proposal->set('description', $normalizedProposal['description']);
+        $proposal->set('info_url', null);
+        $proposal->set('position', (int)$normalizedProposal['position']);
+        $proposal->set('active', 1);
+        $proposalParameters = omoDecisionModuleDecodeParameters($proposal->get('parameters'));
+        $proposalParameters[$governanceMethod] = ['ballot_position' => (int)$normalizedProposal['position']];
+        $proposalParameters['proposal_type'] = 'governance';
+        $proposal->set('parameters', $proposalParameters);
+        $saveProposal = $proposal->save();
+        if (!is_array($saveProposal) || empty($saveProposal['status'])) {
+            throw new RuntimeException('proposal_save_failed');
+        }
+        $proposalId = (int)$proposal->getId();
+        if ((int)$normalizedProposal['id'] <= 0) {
+            $newProposalIds[] = $proposalId;
+        }
+        $savedProposalIds[$proposalId] = true;
+
+        $savedActionIds = [];
+        $savedDeferredIds = [];
+        foreach ($normalizedProposal['actions'] as $normalizedAction) {
+            $deferredProposal = $normalizedAction['existing_deferred'] instanceof DeferredProposal
+                ? $normalizedAction['existing_deferred']
+                : new DeferredProposal();
+            $deferredProposal->set('IDorganization', $organizationId);
+            $deferredProposal->set('IDholon', (int)$normalizedAction['holon_id']);
+            $deferredProposal->set('IDuser_author', $currentUserId);
+            $deferredProposal->set('IDdecision_proposal', $proposalId);
+            $deferredProposal->set('IDdocument_pv_point', null);
+            $deferredProposal->set('target_type', (string)$normalizedAction['target_type']);
+            $deferredProposal->set('operation', (string)$normalizedAction['operation']);
+            $deferredProposal->set('target_id', (int)$normalizedAction['target_id'] > 0 ? (int)$normalizedAction['target_id'] : null);
+            $deferredProposal->set('before_state', $normalizedAction['before']);
+            $deferredProposal->set('after_state', $normalizedAction['after']);
+            $deferredProposal->set('parameters', ['payload_version' => 1, 'source' => 'governance_decision']);
+            $deferredProposal->set('position', (int)$normalizedAction['position']);
+            $deferredProposal->set('status', DeferredProposal::STATUS_PENDING);
+            $deferredProposal->set('status_message', null);
+            $deferredProposal->set('updated_at', new DateTimeImmutable('now'));
+            if ((int)$deferredProposal->getId() <= 0) $deferredProposal->set('created_at', new DateTimeImmutable('now'));
+            $saveDeferred = $deferredProposal->save();
+            if (!is_array($saveDeferred) || empty($saveDeferred['status'])) throw new RuntimeException('deferred_proposal_save_failed');
+            $savedDeferredIds[(int)$deferredProposal->getId()] = true;
+        }
+
+        foreach (($existingActionsByProposal[$proposalId] ?? []) as $existingActionId => $existingAction) {
+            if (isset($savedActionIds[(int)$existingActionId])) {
+                continue;
+            }
+            if ((string)$existingAction->get('status') === DecisionGovernanceAction::STATUS_PENDING) {
+                $existingAction->set('status', DecisionGovernanceAction::STATUS_REMOVED);
+                $existingAction->set('status_message', 'Modification retiree pendant la consultation.');
+                $existingAction->set('updated_at', new DateTimeImmutable('now'));
+                $existingAction->save();
+            }
+        }
+        foreach (($existingDeferredByProposal[$proposalId] ?? []) as $existingDeferredId => $existingDeferredProposal) {
+            if (isset($savedDeferredIds[(int)$existingDeferredId])) continue;
+            if ((string)$existingDeferredProposal->get('status') === DeferredProposal::STATUS_PENDING) {
+                $existingDeferredProposal->set('status', DeferredProposal::STATUS_REMOVED);
+                $existingDeferredProposal->set('status_message', 'Modification retirée pendant la consultation.');
+                $existingDeferredProposal->set('updated_at', new DateTimeImmutable('now'));
+                $existingDeferredProposal->save();
+            }
+        }
+
+        if (is_array($oldValues)) {
+            $newValues = [
+                'title' => trim((string)$proposal->get('title')),
+                'description' => trim((string)$proposal->get('description')),
+                'info_url' => '',
+            ];
+            if ($oldValues !== $newValues) {
+                $thread = $proposal->getChatThread(true, $currentUserId);
+                if ($thread) {
+                    ChatMessage::createSystemMessage(
+                        $thread,
+                        'La proposition de gouvernance a ete modifiee.',
+                        $currentUserId,
+                        [
+                            'action' => 'decision_proposal_updated',
+                            'proposal_id' => $proposalId,
+                            'old' => $oldValues,
+                            'new' => $newValues,
+                        ]
+                    );
+                }
+            }
+        }
+    }
+
+    foreach ($existingProposals as $existingProposalId => $existingProposal) {
+        if (isset($savedProposalIds[(int)$existingProposalId])) {
+            continue;
+        }
+        $existingProposal->set('active', 0);
+        $existingProposal->set('updated_at', new DateTimeImmutable('now'));
+        $archiveResult = $existingProposal->save();
+        if (!is_array($archiveResult) || empty($archiveResult['status'])) {
+            throw new RuntimeException('proposal_archive_failed');
+        }
+    }
+
+    $owner = DecisionParticipant::findByDecisionAndUser($decisionId, $currentUserId);
+    if (!$owner) {
+        $owner = new DecisionParticipant();
+    }
+    $owner->set('IDdecision_process', $decisionId);
+    $owner->set('IDuser', $currentUserId);
+    $owner->set('role', DecisionParticipant::ROLE_OWNER);
+    $owner->set('status', DecisionParticipant::STATUS_ACTIVE);
+    $owner->set('active', 1);
+    $ownerSave = $owner->save();
+    if (!is_array($ownerSave) || empty($ownerSave['status'])) {
+        throw new RuntimeException('owner_save_failed');
+    }
+    $participantSync = $decision->syncParticipantsFromInvitations();
+    if (!is_array($participantSync) || empty($participantSync['status'])) {
+        throw new RuntimeException('participant_sync_failed');
+    }
+
+    $pdo->commit();
+} catch (Throwable $exception) {
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
+    error_log('decision_governance_save_failed: ' . $exception->getMessage());
+    $respond(500, ['status' => false, 'message' => omoDecisionGovernanceT('governance.error.generic')]);
+}
+
+foreach ($newProposalIds as $newProposalId) {
+    $proposal = new DecisionProposal();
+    if ($proposal->load($newProposalId)) {
+        try {
+            notificationCenterDispatchDecisionProposal($proposal);
+        } catch (Throwable $exception) {
+            error_log('decision_governance_notification_failed: ' . $exception->getMessage());
+        }
+    }
+}
+
+$respond(200, [
+    'status' => true,
+    'message' => $wasExistingDecision ? 'Prise de decision mise a jour.' : 'Prise de decision creee.',
+    'decisionId' => (int)$decision->getId(),
+    'redirectUrl' => omoDecisionBuildEditorUrl(
+        $organizationId,
+        $targetHolonId,
+        (int)$decision->getId(),
+        $governanceMethod,
+        'manage',
+        (int)$group->getId()
+    ),
+    'drawerTitle' => 'Prises de decision',
+]);

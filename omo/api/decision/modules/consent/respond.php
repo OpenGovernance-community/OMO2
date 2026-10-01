@@ -26,6 +26,13 @@ if (empty($context['status']) || (string)($context['intent'] ?? '') !== 'partici
 }
 
 $decision = $context['decision'];
+if (!$decision instanceof DecisionProcess || !$decision->isParticipationOpen()) {
+    omoDecisionModuleJsonResponse(403, [
+        'status' => false,
+        'message' => 'Le vote n est pas ouvert pour le moment.',
+    ]);
+}
+
 $participant = $context['participant'] ?? null;
 $currentUserId = (int)($context['currentUserId'] ?? 0);
 if ($decision instanceof DecisionProcess && (!$participant || (int)$participant->getId() <= 0) && !empty($context['isOwner']) && $currentUserId > 0) {
@@ -75,6 +82,11 @@ if (DecisionProcess::normalizeEvaluationMethod($decisionGroup->get('evaluation_m
     ]);
 }
 
+$config = omoDecisionConsentBuildConfig($decisionGroup);
+$draftRequested = !empty($_POST['draft']) && !empty($config['one_proposal_at_a_time']);
+$responseIsAnonymous = !empty($config['is_anonymous'])
+    || (!empty($config['allow_anonymous_votes']) && !empty($_POST['is_anonymous']));
+
 $choiceMap = [];
 $proposalMeta = [];
 $activeProposals = $decisionGroup->getProposals(true);
@@ -83,6 +95,9 @@ foreach ($activeProposals as $proposal) {
     $proposalId = (int)$proposal->getId();
     $choiceValue = isset($_POST['choices'][$proposalId]) ? $_POST['choices'][$proposalId] : null;
     if ($choiceValue === null || $choiceValue === '') {
+        if ($draftRequested) {
+            continue;
+        }
         omoDecisionModuleJsonResponse(400, [
             'status' => false,
             'message' => 'Veuillez vous prononcer sur chaque proposition.',
@@ -96,7 +111,7 @@ foreach ($activeProposals as $proposal) {
     ];
 }
 
-if (count($choiceMap) === 0) {
+if (count($choiceMap) === 0 && !$draftRequested) {
     omoDecisionModuleJsonResponse(400, [
         'status' => false,
         'message' => 'Aucune proposition active pour ce scrutin.',
@@ -104,6 +119,16 @@ if (count($choiceMap) === 0) {
 }
 
 $response = DecisionResponse::findByDecisionAndParticipant((int)$decision->getId(), (int)$participant->getId(), (int)$decisionGroup->getId());
+if (
+    $response instanceof DecisionResponse
+    && DecisionResponse::normalizeStatus($response->get('status')) === DecisionResponse::STATUS_SUBMITTED
+    && !$decision->areParticipantResponsesEditable()
+) {
+    omoDecisionModuleJsonResponse(403, [
+        'status' => false,
+        'message' => 'Votre réponse a déjà été soumise et ne peut plus être modifiée.',
+    ]);
+}
 if (!$response) {
     $response = new DecisionResponse();
     $response->set('IDdecision_process', (int)$decision->getId());
@@ -111,8 +136,8 @@ if (!$response) {
     $response->set('IDdecision_participant', (int)$participant->getId());
 }
 
-$response->set('status', DecisionResponse::STATUS_SUBMITTED);
-$response->set('parameters', omoDecisionConsentBuildResponseParameters($choiceMap, $proposalMeta));
+$response->set('status', $draftRequested ? DecisionResponse::STATUS_DRAFT : DecisionResponse::STATUS_SUBMITTED);
+$response->set('parameters', omoDecisionConsentBuildResponseParameters($choiceMap, $proposalMeta, $responseIsAnonymous));
 
 $saveResult = $response->save();
 if (empty($saveResult['status'])) {
@@ -124,7 +149,7 @@ if (empty($saveResult['status'])) {
 
 omoDecisionModuleJsonResponse(200, [
     'status' => true,
-    'message' => 'Vote enregistre.',
+    'message' => $draftRequested ? 'Brouillon enregistre.' : 'Vote enregistre.',
     'redirectUrl' => omoDecisionBuildContextualEditorUrl($context, 'participate'),
     'drawerTitle' => 'Prises de decision',
 ]);

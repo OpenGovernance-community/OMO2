@@ -4,50 +4,189 @@ require_once($_SERVER['DOCUMENT_ROOT'] . "/shared_functions.php");
 require_once($_SERVER['DOCUMENT_ROOT'] . "/common/auth.php");
 require_once($_SERVER['DOCUMENT_ROOT'] . "/common/patreon.php");
 require_once($_SERVER['DOCUMENT_ROOT'] . "/common/leaflet_helper.php");
+require_once($_SERVER['DOCUMENT_ROOT'] . "/omo/translations.php");
+
+$sourceLang = array(
+    'organization.error.login' => array('text' => 'Connexion requise.', 'context' => 'Authentication error in the organization editor.'),
+    'organization.error.user' => array('text' => 'Utilisateur inconnu.', 'context' => 'Unknown user error in the organization editor.'),
+    'organization.error.unknown' => array('text' => 'Organisation inconnue.', 'context' => 'Unknown organization error in the editor.'),
+    'organization.error.forbidden' => array('text' => 'Accès refusé.', 'context' => 'Permission error in the organization editor.'),
+    'organization.error.model' => array('text' => 'Modèle public introuvable.', 'context' => 'Unknown public model error in the organization editor.'),
+    'organization.title.edit' => array('text' => 'Modifier une organisation', 'context' => 'Organization editor page title.'),
+    'organization.title.from_model' => array('text' => 'Créer à partir d’un modèle', 'context' => 'Create organization from model page title.'),
+    'organization.title.create' => array('text' => 'Créer une organisation', 'context' => 'Create organization page title.'),
+    'organization.action.save' => array('text' => 'Enregistrer les modifications', 'context' => 'Save existing organization button.'),
+    'organization.action.create_from_model' => array('text' => 'Créer depuis ce modèle', 'context' => 'Create from model button.'),
+    'organization.action.create' => array('text' => 'Créer l’organisation', 'context' => 'Create organization button.'),
+    'organization.action.cancel' => array('text' => 'Annuler', 'context' => 'Cancel organization editor button.'),
+    'organization.state.saving' => array('text' => 'Enregistrement en cours…', 'context' => 'Organization save pending state.'),
+    'organization.state.creating' => array('text' => 'Création en cours…', 'context' => 'Organization create pending state.'),
+    'organization.state.saved' => array('text' => 'Organisation enregistrée.', 'context' => 'Organization saved confirmation.'),
+    'organization.state.created_from_model' => array('text' => 'Organisation créée depuis le modèle.', 'context' => 'Organization created from model confirmation.'),
+    'organization.state.created' => array('text' => 'Organisation créée.', 'context' => 'Organization created confirmation.'),
+    'organization.error.save' => array('text' => 'Impossible d’enregistrer l’organisation.', 'context' => 'Organization save error.'),
+    'organization.error.create' => array('text' => 'Impossible de créer l’organisation.', 'context' => 'Organization create error.'),
+    'organization.refresh_prompt' => array('text' => 'Les modifications de l’organisation seront visibles après un rechargement de l’application. Recharger maintenant ?', 'context' => 'Prompt to refresh the application after editing an organization.'),
+    'organization.routing.locked' => array('text' => 'Le nom court et le domaine sont réservés aux associations et aux organisations.', 'context' => 'Restricted organization routing fields guidance.'),
+    'organization.routing.access_restricted' => array('text' => 'Accès réservé.', 'context' => 'Heading for restricted organization routing fields.'),
+    'organization.routing.preview' => array('text' => 'Ce nom court sera utilisé dans l’URL de base du site :', 'context' => 'Short name URL preview introduction.'),
+    'organization.routing.preview_disabled' => array('text' => 'Les sous-domaines d’organisation sont désactivés sur ce serveur. L’accès se fera via une URL de type :', 'context' => 'Short name URL preview without subdomain routing.'),
+    'organization.routing.preview_example' => array('text' => 'Ce nom court sera utilisé dans l’URL de base du site, par exemple :', 'context' => 'Short name URL example introduction.'),
+    'organization.form.unavailable' => array('text' => 'Le formulaire n’est pas disponible.', 'context' => 'Missing organization form error.'),
+    'organization.field.name' => array('text' => 'Nom', 'context' => 'Organization name field label.'),
+    'organization.field.shortname' => array('text' => 'Nom court', 'context' => 'Organization short name field label.'),
+    'organization.field.color' => array('text' => 'Couleur', 'context' => 'Organization color field label.'),
+    'organization.field.domain' => array('text' => 'Domaine', 'context' => 'Organization domain field label.'),
+    'organization.field.interface_level' => array('text' => 'Niveau d’utilisation', 'context' => 'Organization interface level field label.'),
+    'organization.field.interface_level_help' => array('text' => 'Définit la quantité d’options affichées progressivement dans le logiciel.', 'context' => 'Organization interface level field help.'),
+    'organization.interface_level.discovery' => array('text' => 'Découverte', 'context' => 'Discovery interface level choice.'),
+    'organization.interface_level.autonomous' => array('text' => 'Autonome', 'context' => 'Autonomous interface level choice.'),
+    'organization.interface_level.expert' => array('text' => 'Expert', 'context' => 'Expert interface level choice.'),
+    'organization.visual.title' => array('text' => 'Identité visuelle', 'context' => 'Organization visual identity section heading.'),
+    'organization.visual.help' => array('text' => 'Les fichiers sont redimensionnés automatiquement à l’enregistrement.', 'context' => 'Organization visual identity image help.'),
+    'organization.visual.logo' => array('text' => 'Logo', 'context' => 'Organization logo field label.'),
+    'organization.visual.logo_current' => array('text' => 'Logo actuel', 'context' => 'Alternative text for current organization logo.'),
+    'organization.visual.banner' => array('text' => 'Bannière', 'context' => 'Organization banner field label.'),
+    'organization.visual.banner_current' => array('text' => 'Bannière actuelle', 'context' => 'Alternative text for current organization banner.'),
+    'organization.visual.choose' => array('text' => 'Choisir une image', 'context' => 'Choose organization image button.'),
+    'organization.visual.zoom' => array('text' => 'Zoom', 'context' => 'Image crop zoom control label.'),
+    'organization.location.title' => array('text' => 'Position géographique', 'context' => 'Organization location section heading.'),
+    'organization.location.latitude' => array('text' => 'Latitude', 'context' => 'Organization latitude field label.'),
+    'organization.location.longitude' => array('text' => 'Longitude', 'context' => 'Organization longitude field label.'),
+    'organization.location.map_help' => array('text' => 'Cliquez sur la carte pour choisir l’emplacement.', 'context' => 'Organization map location picker help.'),
+    'organization.location.manual_help' => array('text' => 'Renseignez la latitude et la longitude manuellement si la carte n’est pas disponible.', 'context' => 'Organization location help without a map.'),
+    'organization.location.address' => array('text' => 'Adresse à rechercher', 'context' => 'Address input label in the organization location editor.'),
+    'organization.location.address_placeholder' => array('text' => 'Rue, numéro, code postal, ville, pays', 'context' => 'Address search example in the organization location editor.'),
+    'organization.location.search' => array('text' => 'Chercher les coordonnées', 'context' => 'Action to geocode an organization address.'),
+    'organization.location.searching' => array('text' => 'Recherche en cours…', 'context' => 'Busy state for organization address geocoding.'),
+    'organization.location.empty' => array('text' => 'Saisissez une adresse avant de lancer la recherche.', 'context' => 'Empty organization address search error.'),
+    'organization.location.not_found' => array('text' => 'Aucun lieu trouvé pour cette adresse.', 'context' => 'Organization address search with no results.'),
+    'organization.location.error' => array('text' => 'La recherche d’adresse est indisponible pour le moment.', 'context' => 'Organization geocoding service error.'),
+    'organization.location.result' => array('text' => 'Coordonnées trouvées : {place}. Vérifiez le point sur la carte, puis enregistrez.', 'context' => 'Organization geocoding result guidance.'),
+    'organization.location.result_no_map' => array('text' => 'Coordonnées trouvées : {place}. Vérifiez la latitude et la longitude, puis enregistrez.', 'context' => 'Organization geocoding result guidance without a map.'),
+    'organization.location.help' => array('text' => 'L’adresse sert à chercher le lieu. Seules les coordonnées seront enregistrées.', 'context' => 'Explain what is stored after organization address geocoding.'),
+    'organization.location.attribution' => array('text' => 'Recherche : OpenStreetMap / Nominatim', 'context' => 'Attribution for address geocoding in the organization editor.'),
+);
+$lang = translationBundleInit('omo_organization_location', omoGetTranslationLocale(), $sourceLang);
 
 $connected = checklogin();
 if (!$connected) {
-    die("Login requis");
+    die(htmlspecialchars(t('organization.error.login', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8'));
 }
 
 $currentUserId = (int)($_SESSION["currentUser"] ?? 0);
 if ($currentUserId <= 0) {
-    die("Utilisateur inconnu");
+    die(htmlspecialchars(t('organization.error.user', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8'));
 }
 
 $organizationId = isset($_GET['oid']) && is_numeric($_GET['oid']) ? (int)$_GET['oid'] : 0;
+$modelOrganizationId = isset($_GET['model_id']) && is_numeric($_GET['model_id']) ? (int)$_GET['model_id'] : 0;
 $organization = new \dbObject\Organization();
 $isEditMode = false;
+$isModelCreateMode = false;
 
 if ($organizationId > 0) {
     if (!$organization->load($organizationId) || (int)$organization->getId() <= 0) {
-        die("Organisation inconnue");
+        die(htmlspecialchars(t('organization.error.unknown', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8'));
     }
 
     if (!$organization->canEdit()) {
-        die("Acces refuse");
+        die(htmlspecialchars(t('organization.error.forbidden', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8'));
     }
 
     $isEditMode = true;
 }
 
-$pageTitle = $isEditMode ? "Modifier une organisation" : "Creer une organisation";
-$heroKicker = $isEditMode ? "Parametres de l'organisation" : "Nouvelle organisation";
-$heroTitle = $isEditMode ? "Modifier cet espace OMO" : "Creer un nouvel espace OMO";
-$heroText = $isEditMode
-    ? "Mettez a jour le nom, le nom court, le domaine, l emplacement geographique, les illustrations et la couleur de cette organisation."
-    : "Renseignez les informations principales de l'organisation. Le formulaire reutilise le canvas d'administration standard pour le logo, la banniere, l emplacement geographique et les autres champs editables.";
-$submitLabel = $isEditMode ? "Enregistrer les modifications" : "Creer l'organisation";
-$pendingLabel = $isEditMode ? "Enregistrement en cours..." : "Creation en cours...";
-$successLabel = $isEditMode ? "Organisation enregistree." : "Organisation creee.";
-$errorLabel = $isEditMode ? "Impossible d'enregistrer l'organisation." : "Impossible de creer l'organisation.";
+if (!$isEditMode && $modelOrganizationId > 0) {
+    $modelOrganization = new \dbObject\Organization();
+    if (!$modelOrganization->load($modelOrganizationId) || !$modelOrganization->isSharedAsTemplate()) {
+        die(htmlspecialchars(t('organization.error.model', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8'));
+    }
+
+    foreach (array('color', 'latlong', 'interface_level', 'logo', 'banner') as $field) {
+        $organization->set($field, $modelOrganization->get($field));
+    }
+    $organization->set('name', '');
+    // Routes must remain unique to the newly created organization.
+    $organization->set('shortname', '');
+    $organization->set('domain', '');
+    $isModelCreateMode = true;
+}
+
+$pageTitle = t($isEditMode ? 'organization.title.edit' : ($isModelCreateMode ? 'organization.title.from_model' : 'organization.title.create'), array(), $lang, $sourceLang);
+$submitLabel = t($isEditMode ? 'organization.action.save' : ($isModelCreateMode ? 'organization.action.create_from_model' : 'organization.action.create'), array(), $lang, $sourceLang);
+$pendingLabel = t($isEditMode ? 'organization.state.saving' : 'organization.state.creating', array(), $lang, $sourceLang);
+$successLabel = t($isEditMode ? 'organization.state.saved' : ($isModelCreateMode ? 'organization.state.created_from_model' : 'organization.state.created'), array(), $lang, $sourceLang);
+$errorLabel = t($isEditMode ? 'organization.error.save' : 'organization.error.create', array(), $lang, $sourceLang);
+$formAction = $isEditMode
+    ? '/ajax/saveorganization.php?oid=' . (int)$organization->getId()
+    : ($isModelCreateMode ? '/omo/api/organizations/model_create.php' : '/ajax/saveorganization.php');
+$refreshApplicationPrompt = t('organization.refresh_prompt', array(), $lang, $sourceLang);
 $shortnamePreviewScheme = commonGetRequestScheme();
 $shortnamePreviewHost = commonGetRootHost();
 $shortnamePreviewPath = '/omo/';
 $organizationSubdomainRoutingEnabled = commonUseOrganizationSubdomains();
 $isFetchRequest = strtolower((string)($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')) === 'xmlhttprequest';
+$leafletMapsEnabled = commonLeafletMapsEnabled();
 $canManageOrganizationRouting = patreonCanManageOrganizationRouting($currentUserId);
-$organizationRoutingLockedMessage = "Le nom court et le domaine sont reserves aux associations et aux organisations.";
+$organizationRoutingLockedMessage = t('organization.routing.locked', array(), $lang, $sourceLang);
+$organizationInterfaceLevel = $organization->getInterfaceLevel();
+$organizationInterfaceLevels = \dbObject\Organization::interfaceLevelCatalog();
+$organizationInterfaceLevelLabels = array(
+    \dbObject\Organization::INTERFACE_LEVEL_DISCOVERY => t('organization.interface_level.discovery', array(), $lang, $sourceLang),
+    \dbObject\Organization::INTERFACE_LEVEL_AUTONOMOUS => t('organization.interface_level.autonomous', array(), $lang, $sourceLang),
+    \dbObject\Organization::INTERFACE_LEVEL_EXPERT => t('organization.interface_level.expert', array(), $lang, $sourceLang),
+);
+$organizationLatlong = $organization->get('latlong');
+$organizationLatitude = is_object($organizationLatlong) && isset($organizationLatlong->lat) ? (string)$organizationLatlong->lat : '';
+$organizationLongitude = is_object($organizationLatlong) && isset($organizationLatlong->long) ? (string)$organizationLatlong->long : '';
+$organizationColor = trim((string)$organization->get('color'));
+if (!preg_match('/^#[0-9a-fA-F]{6}$/', $organizationColor)) {
+    $organizationColor = '#45a9aa';
+}
+$organizationLogo = trim((string)$organization->get('logo'));
+$organizationBanner = trim((string)$organization->get('banner'));
+$organizationImageDisplaySizes = array();
+foreach (array('logo', 'banner') as $organizationImageField) {
+    $organizationImageSize = \dbObject\Organization::attributeLength()[$organizationImageField] ?? null;
+    $organizationImageWidth = 200;
+    $organizationImageHeight = 200;
+    $organizationImageOutputWidth = 200;
+    $organizationImageOutputHeight = 200;
+    if (is_array($organizationImageSize)) {
+        if (isset($organizationImageSize[0]) && is_array($organizationImageSize[0])) {
+            $organizationImageOutputWidth = (int)($organizationImageSize[0][0] ?? $organizationImageOutputWidth);
+            $organizationImageOutputHeight = (int)($organizationImageSize[0][1] ?? $organizationImageOutputHeight);
+            $organizationImageWidth = (int)($organizationImageSize[1][0] ?? $organizationImageSize[0][0] ?? $organizationImageWidth);
+            $organizationImageHeight = (int)($organizationImageSize[1][1] ?? $organizationImageSize[0][1] ?? $organizationImageHeight);
+        } else {
+            $organizationImageWidth = (int)($organizationImageSize[0] ?? $organizationImageWidth);
+            $organizationImageHeight = (int)($organizationImageSize[1] ?? $organizationImageHeight);
+            $organizationImageOutputWidth = $organizationImageWidth;
+            $organizationImageOutputHeight = $organizationImageHeight;
+        }
+    }
+    $organizationImageDisplaySizes[$organizationImageField] = array(
+        'width' => max(1, $organizationImageWidth),
+        'height' => max(1, $organizationImageHeight),
+        'outputWidth' => max(1, $organizationImageOutputWidth),
+        'outputHeight' => max(1, $organizationImageOutputHeight),
+    );
+}
+$organizationIllustrationPreviewHeight = max(1, (int)round(1.5 * min(
+    (int)$organizationImageDisplaySizes['logo']['height'],
+    (int)floor($organizationImageDisplaySizes['banner']['height'] / 2)
+)));
+$organizationLogoPreviewWidth = max(1, (int)round(
+    $organizationImageDisplaySizes['logo']['width']
+    * $organizationIllustrationPreviewHeight
+    / $organizationImageDisplaySizes['logo']['height']
+));
+$organizationBannerPreviewWidth = max(1, (int)round(
+    $organizationImageDisplaySizes['banner']['width']
+    * $organizationIllustrationPreviewHeight
+    / $organizationImageDisplaySizes['banner']['height']
+));
 ?>
 <?php if (!$isFetchRequest) { ?>
 <!DOCTYPE html>
@@ -59,603 +198,208 @@ $organizationRoutingLockedMessage = "Le nom court et le domaine sont reserves au
     <script src="/shared_functions.js"></script>
     <script>sharedApplyDocumentTheme();</script>
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <link rel="stylesheet" href="/common/assets/components.css">
+    <link rel="stylesheet" href="<?= commonAssetUrl('/common/assets/components.css') ?>">
     <link rel="stylesheet" href="/common/assets/auth.css">
+<?php if ($leafletMapsEnabled) { commonRenderLeafletAssets(); } ?>
 </head>
 <body class="organization-create-page">
 <?php } ?>
 
-<style>
-    .organization-create-page {
-        margin: 0;
-        padding: 20px;
-        background: var(--color-bg, var(--auth-page-bg, #f8fafc));
-        color: var(--color-text, var(--auth-page-text, #0f172a));
-        font-family: system-ui, sans-serif;
-    }
+<?php if ($isFetchRequest && $leafletMapsEnabled) { commonRenderLeafletAssets(); } ?>
 
-    .organization-create-view {
-        display: flex;
-        flex-direction: column;
-        gap: 18px;
-        max-width: 980px;
-        margin: 0 auto;
-        color: var(--color-text, var(--auth-page-text, #0f172a));
-    }
-
-    .organization-create-kicker {
-        margin-bottom: 0;
-    }
-
-    .organization-create-header {
-        --generic-drawer-header-z: 900;
-        position: relative;
-        z-index: 900;
-    }
-
-    .organization-create-header__title {
-        margin: 0;
-        font-size: clamp(1.5rem, 2.4vw, 1.9rem);
-        line-height: 1.12;
-        color: var(--color-text, #0f172a);
-    }
-
-    .organization-create-header__description {
-        margin: 0;
-        max-width: 760px;
-        line-height: 1.5;
-        color: var(--color-text-light, #475569);
-    }
-
-    .organization-create-shell {
-        display: flex;
-        flex-direction: column;
-        gap: 18px;
-    }
-
-    .organization-create-view .leaflet-container {
-        z-index: 0;
-    }
-
-    .organization-create-view .leaflet-pane,
-    .organization-create-view .leaflet-top,
-    .organization-create-view .leaflet-bottom,
-    .organization-create-view .leaflet-control {
-        z-index: 100;
-    }
-
-    .organization-create-card {
-        --generic-section-padding-block: 18px;
-        --generic-section-padding-inline: 18px;
-        --generic-section-border: var(--color-border, #dbe4ee);
-        --generic-section-radius: 18px;
-        --generic-section-background: var(--color-surface, #ffffff);
-        --generic-section-shadow: var(--shadow-sm, none);
-        --generic-section-gap: 18px;
-    }
-
-    .organization-create-card .admin-edit__panel {
-        padding: 0;
-        border: 0;
-        border-radius: 0;
-        background: transparent;
-        box-shadow: none;
-    }
-
-    .organization-create-card .admin-edit__toolbar {
-        display: none;
-    }
-
-    .organization-create-card .admin-edit__control,
-    .organization-create-card #formulaire-edit select,
-    .organization-create-card #formulaire-edit textarea,
-    .organization-create-card #formulaire-edit input[type='text'],
-    .organization-create-card #formulaire-edit input[type='email'],
-    .organization-create-card #formulaire-edit input[type='password'],
-    .organization-create-card #formulaire-edit input[type='number'],
-    .organization-create-card #formulaire-edit input[type='date'],
-    .organization-create-card #formulaire-edit input[type='time'],
-    .organization-create-card #formulaire-edit input[type='datetime-local'] {
-        --generic-form-control-border: var(--color-border, #d1d5db);
-        --generic-form-control-background: var(--color-surface-alt, #f8fafc);
-        --generic-form-control-background-focus: var(--color-surface, #ffffff);
-        --generic-form-control-color: var(--color-text, #0f172a);
-    }
-
-    .organization-create-card table.dbobjecttable th {
-        color: var(--color-text, #0f172a);
-    }
-
-    .organization-create-card .char_count,
-    .organization-create-card .admin-edit__latlong-help {
-        color: var(--color-text-light, #64748b);
-    }
-
-    .organization-create-actions {
-        display: flex;
-        gap: 12px;
-        justify-content: flex-end;
-        margin-top: 4px;
-        flex-wrap: wrap;
-    }
-
-    .organization-create-feedback {
-        display: none;
-        padding: 12px 14px;
-        border-radius: 12px;
-        border: 1px solid var(--color-border, #dbe4ee);
-        background: var(--color-surface-alt, #f8fafc);
-        color: var(--color-text-light, #475569);
-    }
-
-    .organization-create-feedback.is-error {
-        display: block;
-        color: #b91c1c;
-        border-color: color-mix(in srgb, #dc2626 18%, var(--color-border, #dbe4ee));
-        background: color-mix(in srgb, #dc2626 8%, var(--color-surface, #ffffff));
-    }
-
-    .organization-create-feedback.is-success {
-        display: block;
-        color: #166534;
-        border-color: color-mix(in srgb, #16a34a 18%, var(--color-border, #dbe4ee));
-        background: color-mix(in srgb, #16a34a 8%, var(--color-surface, #ffffff));
-    }
-
-    .organization-create-shortname-hint {
-        margin-top: 8px;
-        font-size: 13px;
-        line-height: 1.45;
-        color: var(--color-text-light, #475569);
-    }
-
-    .organization-create-shortname-hint code {
-        display: inline-block;
-        margin-top: 4px;
-        padding: 3px 8px;
-        border-radius: 999px;
-        background: color-mix(in srgb, var(--color-primary, #2563eb) 10%, var(--color-surface, #ffffff));
-        color: var(--color-primary, #1d4ed8);
-        font-size: 12px;
-    }
-
-    .organization-create-routing-lock {
-        margin-top: 8px;
-        font-size: 13px;
-        line-height: 1.45;
-        color: var(--color-text-light, #64748b);
-    }
-
-    .organization-create-routing-lock strong {
-        color: var(--color-text, #0f172a);
-    }
-
-    .organization-create-card tr.organization-create-row--locked td,
-    .organization-create-card tr.organization-create-row--locked th {
-        opacity: 0.72;
-    }
-
-    .organization-create-card tr.organization-create-row--locked input[disabled] {
-        cursor: not-allowed;
-        background: color-mix(in srgb, var(--color-surface-alt, #f8fafc) 92%, #cbd5e1);
-        color: var(--color-text-light, #64748b);
-    }
-
-    #commonTopbarModalBody .organization-create-view {
-        max-width: none;
-        gap: 0;
-    }
-
-    #commonTopbarModalBody .organization-create-shell {
-        padding: 16px 18px 18px;
-        box-sizing: border-box;
-    }
-
-    @media (max-width: 860px) {
-        .organization-create-page {
-            padding: 14px;
-        }
-
-        .organization-create-view {
-            gap: 14px;
-        }
-
-        .organization-create-card {
-            --generic-section-padding-block: 14px;
-            --generic-section-padding-inline: 14px;
-        }
-
-        .organization-create-actions {
-            justify-content: stretch;
-        }
-
-        .organization-create-actions .generic-action-button {
-            flex: 1 1 220px;
-        }
-
-    }
-</style>
+<link rel="stylesheet" href="<?= commonAssetUrl('/omo/assets/css/organization-create.css') ?>">
 
 <div class="organization-create-view" id="organizationCreateRoot" data-render-mode="<?= $isFetchRequest ? 'fetch' : 'document' ?>">
-    <section class="organization-create-header generic-drawer-header<?= $isFetchRequest ? ' generic-drawer-header--sticky' : '' ?>">
-        <div class="generic-drawer-header__copy">
-            <div class="organization-create-kicker generic-card-title generic-card-title--eyebrow"><?= htmlspecialchars($heroKicker, ENT_QUOTES, 'UTF-8') ?></div>
-            <h2 class="organization-create-header__title"><?= htmlspecialchars($heroTitle, ENT_QUOTES, 'UTF-8') ?></h2>
-            <p class="organization-create-header__description"><?= htmlspecialchars($heroText, ENT_QUOTES, 'UTF-8') ?></p>
-        </div>
-    </section>
     <div class="organization-create-shell">
 
-    <section class="organization-create-card generic-section generic-section--stack">
-<?php
-        $params = array(
-            "buttons" => false,
-            "fields" => array(
-                "{title:Informations principales}",
-                "name",
-                "shortname",
-                "domain",
-                "latlong",
-                "color",
-                "{title:Identite visuelle}",
-                "logo",
-                "banner",
-            ),
-        );
-        $organization->display("adminEdit.php", $params);
-?>
+    <section class="organization-create-card generic-stack">
+        <form id="organization_create_form" class="generic-form-stack" action="<?= htmlspecialchars($formAction, ENT_QUOTES, 'UTF-8') ?>" method="post" enctype="multipart/form-data">
+<?php if ($isEditMode) { ?>
+            <input type="hidden" name="id" value="<?= (int)$organization->getId() ?>">
+<?php } ?>
+<?php if ($isModelCreateMode) { ?>
+            <input type="hidden" name="model_id" value="<?= (int)$modelOrganizationId ?>">
+<?php } ?>
+            <section class="generic-form-section generic-section generic-section--stack">
+                <div class="generic-form-grid">
+                    <label class="generic-form-field generic-form-field--full">
+                        <span class="generic-form-label"><?= htmlspecialchars(t('organization.field.name', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></span>
+                        <input class="generic-form-control" type="text" name="name" id="name" maxlength="100" required value="<?= htmlspecialchars((string)$organization->get('name'), ENT_QUOTES, 'UTF-8') ?>">
+                    </label>
 
-        <div class="organization-create-actions">
-            <button type="button" class="generic-action-button generic-action-button--secondary" id="organization_create_cancel">Annuler</button>
-            <button type="button" class="generic-action-button generic-action-button--main" id="organization_create_submit"><?= htmlspecialchars($submitLabel, ENT_QUOTES, 'UTF-8') ?></button>
-        </div>
+                    <label class="generic-form-field">
+                        <span class="generic-form-label"><?= htmlspecialchars(t('organization.field.shortname', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></span>
+                        <input class="generic-form-control" type="text" name="shortname" id="shortname" maxlength="50" pattern="[A-Za-z0-9_-]+" value="<?= htmlspecialchars((string)$organization->get('shortname'), ENT_QUOTES, 'UTF-8') ?>">
+                    </label>
 
-        <div class="organization-create-feedback" id="organization_create_feedback"></div>
+                    <label class="generic-form-field">
+                        <span class="generic-form-label"><?= htmlspecialchars(t('organization.field.color', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></span>
+                        <input class="organization-create-color-control" type="color" name="color" id="color" value="<?= htmlspecialchars($organizationColor, ENT_QUOTES, 'UTF-8') ?>">
+                    </label>
+
+                    <label class="generic-form-field">
+                        <span class="generic-form-label"><?= htmlspecialchars(t('organization.field.domain', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></span>
+                        <input class="generic-form-control" type="text" name="domain" id="domain" maxlength="100" value="<?= htmlspecialchars((string)$organization->get('domain'), ENT_QUOTES, 'UTF-8') ?>">
+                    </label>
+
+                    <div class="generic-form-field generic-form-field--full">
+                        <span class="generic-form-label"><?= htmlspecialchars(t('organization.field.interface_level', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></span>
+                        <p class="organization-create-help"><?= htmlspecialchars(t('organization.field.interface_level_help', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></p>
+                        <input type="hidden" name="interface_level" id="interface_level" value="<?= (int)$organizationInterfaceLevel ?>">
+                        <div class="generic-filter-chips generic-filter-chips--unconstrained" id="organization-interface-level-select" role="group" aria-label="<?= htmlspecialchars(t('organization.field.interface_level', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?>">
+<?php foreach ($organizationInterfaceLevels as $level => $option) { ?>
+                            <button type="button" class="generic-filter-chip" data-organization-interface-level="<?= (int)$level ?>" aria-pressed="<?= (int)$level === $organizationInterfaceLevel ? 'true' : 'false' ?>"><?= htmlspecialchars((string)($organizationInterfaceLevelLabels[$level] ?? $option['label'] ?? ''), ENT_QUOTES, 'UTF-8') ?></button>
+<?php } ?>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="generic-form-section generic-section generic-section--stack">
+                <div class="generic-form-section__heading">
+                    <div class="generic-form-section__copy">
+                        <h3 class="generic-card-title"><?= htmlspecialchars(t('organization.visual.title', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></h3>
+                        <p class="organization-create-help"><?= htmlspecialchars(t('organization.visual.help', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></p>
+                    </div>
+                </div>
+
+                <div class="generic-form-grid organization-create-illustration-grid">
+                    <div class="generic-form-field">
+                        <span class="generic-form-label"><?= htmlspecialchars(t('organization.visual.logo', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></span>
+                        <div class="organization-create-image-editor" data-organization-image-editor="logo">
+                            <input type="hidden" name="logo" id="logo" value="<?= htmlspecialchars($organizationLogo, ENT_QUOTES, 'UTF-8') ?>">
+                            <input type="file" id="imageFileInput_logo" accept="image/jpeg,image/png,image/webp" hidden data-organization-image-file="logo">
+                            <button type="button" class="generic-action-button generic-action-button--secondary" data-organization-image-choose="logo"><?= htmlspecialchars(t('organization.visual.choose', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></button>
+                            <div class="organization-create-image-crop" style="width: min(100%, <?= $organizationLogoPreviewWidth ?>px); aspect-ratio: <?= (int)$organizationImageDisplaySizes['logo']['width'] ?> / <?= (int)$organizationImageDisplaySizes['logo']['height'] ?>;" data-organization-image-crop="logo" data-output-width="<?= (int)$organizationImageDisplaySizes['logo']['outputWidth'] ?>" data-output-height="<?= (int)$organizationImageDisplaySizes['logo']['outputHeight'] ?>">
+<?php if ($organizationLogo !== '') { ?>
+                                <img src="<?= htmlspecialchars($organizationLogo, ENT_QUOTES, 'UTF-8') ?>" alt="<?= htmlspecialchars(t('organization.visual.logo_current', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?>" data-organization-image-preview="logo">
+<?php } ?>
+                            </div>
+                            <label class="organization-create-image-zoom" style="width: min(100%, <?= $organizationLogoPreviewWidth ?>px);">
+                                <span><?= htmlspecialchars(t('organization.visual.zoom', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></span>
+                                <input type="range" min="0" max="100" step="1" value="0" data-organization-image-zoom="logo">
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="generic-form-field">
+                        <span class="generic-form-label"><?= htmlspecialchars(t('organization.visual.banner', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></span>
+                        <div class="organization-create-image-editor" data-organization-image-editor="banner">
+                            <input type="hidden" name="banner" id="banner" value="<?= htmlspecialchars($organizationBanner, ENT_QUOTES, 'UTF-8') ?>">
+                            <input type="file" id="imageFileInput_banner" accept="image/jpeg,image/png,image/webp" hidden data-organization-image-file="banner">
+                            <button type="button" class="generic-action-button generic-action-button--secondary" data-organization-image-choose="banner"><?= htmlspecialchars(t('organization.visual.choose', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></button>
+                            <div class="organization-create-image-crop" style="width: min(100%, <?= $organizationBannerPreviewWidth ?>px); aspect-ratio: <?= (int)$organizationImageDisplaySizes['banner']['width'] ?> / <?= (int)$organizationImageDisplaySizes['banner']['height'] ?>;" data-organization-image-crop="banner" data-output-width="<?= (int)$organizationImageDisplaySizes['banner']['outputWidth'] ?>" data-output-height="<?= (int)$organizationImageDisplaySizes['banner']['outputHeight'] ?>">
+<?php if ($organizationBanner !== '') { ?>
+                                <img src="<?= htmlspecialchars($organizationBanner, ENT_QUOTES, 'UTF-8') ?>" alt="<?= htmlspecialchars(t('organization.visual.banner_current', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?>" data-organization-image-preview="banner">
+<?php } ?>
+                            </div>
+                            <label class="organization-create-image-zoom" style="width: min(100%, <?= $organizationBannerPreviewWidth ?>px);">
+                                <span><?= htmlspecialchars(t('organization.visual.zoom', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></span>
+                                <input type="range" min="0" max="100" step="1" value="0" data-organization-image-zoom="banner">
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="generic-form-section generic-section generic-section--stack">
+                <div class="generic-form-section__heading">
+                    <div class="generic-form-section__copy">
+                        <h3 class="generic-card-title"><?= htmlspecialchars(t('organization.location.title', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></h3>
+                    </div>
+                </div>
+                <div class="generic-form-field generic-form-field--full">
+                    <label class="generic-form-label" for="organization_location_address"><?= htmlspecialchars(t('organization.location.address', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></label>
+                    <div class="organization-create-address-search">
+                        <input class="generic-form-control" type="search" id="organization_location_address" maxlength="200" autocomplete="street-address" placeholder="<?= htmlspecialchars(t('organization.location.address_placeholder', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?>">
+                        <button type="button" class="generic-action-button generic-action-button--secondary" id="organization_location_search"><?= htmlspecialchars(t('organization.location.search', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></button>
+                    </div>
+                    <p class="organization-create-help" id="organization_location_feedback" role="status" aria-live="polite" hidden><span id="organization_location_feedback_text"></span> <a class="organization-create-location-attribution" id="organization_location_attribution" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" hidden><?= htmlspecialchars(t('organization.location.attribution', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></a></p>
+                    <p class="organization-create-help"><?= htmlspecialchars(t('organization.location.help', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></p>
+                </div>
+                <div class="generic-form-grid">
+                    <label class="generic-form-field">
+                        <span class="generic-form-label"><?= htmlspecialchars(t('organization.location.latitude', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></span>
+                        <input class="generic-form-control" type="number" name="latlong[]" id="latlong_lat" min="-90" max="90" step="any" value="<?= htmlspecialchars($organizationLatitude, ENT_QUOTES, 'UTF-8') ?>">
+                    </label>
+                    <label class="generic-form-field">
+                        <span class="generic-form-label"><?= htmlspecialchars(t('organization.location.longitude', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></span>
+                        <input class="generic-form-control" type="number" name="latlong[]" id="latlong_long" min="-180" max="180" step="any" value="<?= htmlspecialchars($organizationLongitude, ENT_QUOTES, 'UTF-8') ?>">
+                    </label>
+                </div>
+<?php if ($leafletMapsEnabled) { ?>
+                <div class="organization-create-location-map" id="organization-create-location-map"></div>
+                <p class="organization-create-help"><?= htmlspecialchars(t('organization.location.map_help', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></p>
+<?php } else { ?>
+                <p class="organization-create-help"><?= htmlspecialchars(t('organization.location.manual_help', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></p>
+<?php } ?>
+            </section>
+
+            <div class="organization-create-actions generic-form-actions">
+                <button type="button" class="generic-action-button generic-action-button--secondary" id="organization_create_cancel"><?= htmlspecialchars(t('organization.action.cancel', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></button>
+                <button type="button" class="generic-action-button generic-action-button--main" id="organization_create_submit"><?= htmlspecialchars($submitLabel, ENT_QUOTES, 'UTF-8') ?></button>
+            </div>
+
+            <div class="organization-create-feedback" id="organization_create_feedback"></div>
+        </form>
     </section>
     </div>
 </div>
 
 <script>
     (function () {
-        var root = document.getElementById('organizationCreateRoot');
-        var isEditMode = <?= $isEditMode ? 'true' : 'false' ?>;
-        var organizationId = <?= (int)$organization->getId() ?>;
-        var shortnamePreviewScheme = <?= json_encode($shortnamePreviewScheme, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
-        var shortnamePreviewHost = <?= json_encode($shortnamePreviewHost, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
-        var shortnamePreviewPath = <?= json_encode($shortnamePreviewPath, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
-        var organizationSubdomainRoutingEnabled = <?= $organizationSubdomainRoutingEnabled ? 'true' : 'false' ?>;
-        var canManageOrganizationRouting = <?= $canManageOrganizationRouting ? 'true' : 'false' ?>;
-        var organizationRoutingLockedMessage = <?= json_encode($organizationRoutingLockedMessage, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
-        var submitButton = document.getElementById('organization_create_submit');
-        var cancelButton = document.getElementById('organization_create_cancel');
-        var form = document.getElementById('formulaire-edit');
-        var feedback = document.getElementById('organization_create_feedback');
-        var shortnameInput = document.getElementById('shortname') || document.querySelector('input[name="shortname"]');
-        var domainInput = document.getElementById('domain') || document.querySelector('input[name="domain"]');
+        function syncInterfaceLevelValue(event) {
+            var option = event.target.closest('[data-organization-interface-level]');
+            var hiddenInput;
+            var selector;
 
-        if (!root || !submitButton || !cancelButton || !feedback) {
-            return;
-        }
-
-        function decorateAdminEditForm() {
-            if (!form) {
+            selector = document.getElementById('organization-interface-level-select');
+            if (!option || !selector || !selector.contains(option)) {
                 return;
             }
 
-            Array.prototype.forEach.call(
-                form.querySelectorAll('input, select, textarea'),
-                function (field) {
-                    var type = String(field.type || '').toLowerCase();
-
-                    if (type === 'hidden' || type === 'checkbox' || type === 'radio' || type === 'button' || type === 'submit' || type === 'color' || type === 'file' || type === 'range') {
-                        return;
-                    }
-
-                    field.classList.add('generic-form-control');
-                }
-            );
+            hiddenInput = document.getElementById('interface_level');
+            if (hiddenInput) {
+                hiddenInput.value = option.getAttribute('data-organization-interface-level') || '1';
+            }
+            selector.querySelectorAll('[data-organization-interface-level]').forEach(function (candidate) {
+                candidate.setAttribute('aria-pressed', candidate === option ? 'true' : 'false');
+            });
         }
 
-        function ensureRoutingLockHint(input, hintId) {
-            if (!input) {
-                return null;
-            }
-
-            var existingHint = document.getElementById(hintId);
-            if (existingHint) {
-                return existingHint;
-            }
-
-            var row = input.closest('tr');
-            var cell = row ? row.querySelector('td') : null;
-            var hint = document.createElement('div');
-            hint.id = hintId;
-            hint.className = 'organization-create-routing-lock';
-            hint.innerHTML = '<strong>Acces reserve.</strong> ' + organizationRoutingLockedMessage;
-
-            if (cell) {
-                cell.appendChild(hint);
-            } else {
-                input.insertAdjacentElement('afterend', hint);
-            }
-
-            return hint;
-        }
-
-        function lockRoutingField(input, hintId) {
-            if (!input) {
-                return;
-            }
-
-            input.disabled = true;
-            input.setAttribute('aria-disabled', 'true');
-
-            var row = input.closest('tr');
-            if (row) {
-                row.classList.add('organization-create-row--locked');
-            }
-
-            ensureRoutingLockHint(input, hintId);
-        }
-
-        function applyRoutingRestrictions() {
-            if (canManageOrganizationRouting) {
-                return;
-            }
-
-            lockRoutingField(shortnameInput, 'organization_create_shortname_lock');
-            lockRoutingField(domainInput, 'organization_create_domain_lock');
-        }
-
-        if (form) {
-            form.setAttribute('action', isEditMode ? ('/ajax/saveorganization.php?oid=' + encodeURIComponent(String(organizationId))) : '/ajax/saveorganization.php');
-            form.setAttribute('method', 'post');
-            form.setAttribute('enctype', 'multipart/form-data');
-            decorateAdminEditForm();
-            applyRoutingRestrictions();
-        }
-
-        function buildShortnamePreviewUrl(value) {
-            var normalizedValue = String(value || '').trim().toLowerCase();
-            if (!shortnamePreviewHost) {
-                return '';
-            }
-
-            if (!organizationSubdomainRoutingEnabled) {
-                var targetId = organizationId > 0 ? organizationId : 123;
-                return shortnamePreviewScheme + '://' + shortnamePreviewHost + '/omo/o/' + targetId;
-            }
-
-            if (!normalizedValue) {
-                return '';
-            }
-
-            return shortnamePreviewScheme + '://' + normalizedValue + '.' + shortnamePreviewHost + shortnamePreviewPath;
-        }
-
-        function ensureShortnameHint() {
-            if (!shortnameInput) {
-                return null;
-            }
-
-            var existingHint = document.getElementById('organization_create_shortname_hint');
-            if (existingHint) {
-                return existingHint;
-            }
-
-            var shortnameRow = document.getElementById('row_shortname');
-            var shortnameCell = shortnameRow ? shortnameRow.querySelector('td') : null;
-            var hint = document.createElement('div');
-            hint.id = 'organization_create_shortname_hint';
-            hint.className = 'organization-create-shortname-hint';
-            if (shortnameCell) {
-                shortnameCell.appendChild(hint);
-            } else {
-                shortnameInput.insertAdjacentElement('afterend', hint);
-            }
-            return hint;
-        }
-
-        function updateShortnameHint() {
-            var hint = ensureShortnameHint();
-            if (!hint) {
-                return;
-            }
-
-            if (!canManageOrganizationRouting) {
-                hint.style.display = 'none';
-                return;
-            }
-
-            hint.style.display = '';
-
-            var previewUrl = buildShortnamePreviewUrl(shortnameInput ? shortnameInput.value : '');
-            if (previewUrl) {
-                if (organizationSubdomainRoutingEnabled) {
-                    hint.innerHTML = "Ce nom court sera utilise dans l'URL de base du site :<br><code>" + previewUrl + "</code>";
-                } else {
-                    hint.innerHTML = "Les sous-domaines d'organisation sont desactives sur ce serveur. L'acces se fera via une URL de type :<br><code>" + previewUrl + "</code>";
-                }
-                return;
-            }
-
-            hint.innerHTML = "Ce nom court sera utilise dans l'URL de base du site, par exemple :<br><code>" + shortnamePreviewScheme + "://nomcourt." + shortnamePreviewHost + shortnamePreviewPath + "</code>";
-        }
-
-        function setFeedback(message, isError) {
-            feedback.textContent = message || '';
-            feedback.className = 'organization-create-feedback' + (message ? (isError ? ' is-error' : ' is-success') : '');
-            feedback.style.display = message ? 'block' : 'none';
-        }
-
-        function closeModal() {
-            if (typeof window.commonTopbarCloseModal === 'function') {
-                window.commonTopbarCloseModal();
-                return;
-            }
-
-            if (window.parent && window.parent !== window && typeof window.parent.commonTopbarCloseModal === 'function') {
-                window.parent.commonTopbarCloseModal();
-                return;
-            }
-
-            if (window.parent && window.parent !== window) {
-                window.parent.location.reload();
-                return;
-            }
-
-            window.close();
-        }
-
-        function redirectTargetWindow(url) {
-            if (!url) {
-                return;
-            }
-
-            if (window.parent && window.parent !== window) {
-                window.parent.location.href = url;
-                return;
-            }
-
-            window.location.href = url;
-        }
-
-        function reloadTargetWindow() {
-            if (window.parent && window.parent !== window) {
-                window.parent.location.reload();
-                return;
-            }
-
-            window.location.reload();
-        }
-
-        function getComparableLocationHref() {
-            if (window.parent && window.parent !== window && window.parent.location) {
-                return window.parent.location.href;
-            }
-
-            return window.location.href;
-        }
-
-        function normalizeComparableUrl(url) {
-            return String(url.protocol || '') + '//' + String(url.host || '') + String(url.pathname || '') + String(url.search || '');
-        }
-
-        function handleSuccessfulSave(result) {
-            var redirectUrl = result && result.redirect ? String(result.redirect) : '';
-
-            if (!isEditMode) {
-                if (redirectUrl) {
-                    redirectTargetWindow(redirectUrl);
-                    return;
-                }
-
-                closeModal();
-                return;
-            }
-
-            if (!redirectUrl) {
-                reloadTargetWindow();
-                return;
-            }
-
-            try {
-                var currentUrl = new URL(getComparableLocationHref());
-                var targetUrl = new URL(redirectUrl, currentUrl.href);
-
-                if (normalizeComparableUrl(currentUrl) !== normalizeComparableUrl(targetUrl)) {
-                    redirectTargetWindow(targetUrl.href);
-                    return;
-                }
-            } catch (error) {
-                redirectTargetWindow(redirectUrl);
-                return;
-            }
-
-            reloadTargetWindow();
-        }
-
-        cancelButton.addEventListener('click', function () {
-            closeModal();
-        });
-
-        if (shortnameInput) {
-            shortnameInput.addEventListener('input', updateShortnameHint);
-            shortnameInput.addEventListener('change', updateShortnameHint);
-            updateShortnameHint();
-        }
-
-        submitButton.addEventListener('click', function () {
-            if (!form) {
-                setFeedback("Le formulaire n'est pas disponible.", true);
-                return;
-            }
-
-            submitButton.disabled = true;
-            setFeedback(<?= json_encode($pendingLabel, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>, false);
-
-            var formData = new FormData(form);
-            if (isEditMode && organizationId > 0) {
-                formData.set('id', String(organizationId));
-            }
-
-            if (window.croppedImages) {
-                Object.keys(window.croppedImages).forEach(function (key) {
-                    var blob = window.croppedImages[key];
-
-                    if (blob) {
-                        var extension = 'jpg';
-
-                        if (blob.type === 'image/png') {
-                            extension = 'png';
-                        } else if (blob.type === 'image/webp') {
-                            extension = 'webp';
-                        }
-
-                        formData.append(key, blob, key + '.' + extension);
-                    }
-                });
-            }
-
-            fetch(form.getAttribute('action'), {
-                method: 'POST',
-                body: formData,
-                credentials: 'same-origin'
-            })
-                .then(function (response) {
-                    return response.text().then(function (text) {
-                        var data = null;
-
-                        try {
-                            data = JSON.parse(text);
-                        } catch (error) {
-                            data = null;
-                        }
-
-                        return {
-                            ok: response.ok,
-                            data: data
-                        };
-                    });
-                })
-                .then(function (result) {
-                    if (!result.ok || !result.data || result.data.success !== true) {
-                        throw new Error(result.data && result.data.message ? result.data.message : <?= json_encode($errorLabel, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>);
-                    }
-
-                    setFeedback(result.data.message || <?= json_encode($successLabel, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>, false);
-
-                    window.setTimeout(function () {
-                        handleSuccessfulSave(result.data);
-                    }, 250);
-                })
-                .catch(function (error) {
-                    setFeedback(error && error.message ? error.message : <?= json_encode($errorLabel, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>, true);
-                    submitButton.disabled = false;
-                });
-        });
+        document.addEventListener('click', syncInterfaceLevelValue);
     })();
 </script>
+
+<?= commonPageScriptTags('/omo/assets/js/organization-create.js', [
+    'isEditMode' => ($isEditMode),
+    'organizationId' => (int)$organization->getId(),
+    'formAction' => $formAction,
+    'shortnamePreviewScheme' => $shortnamePreviewScheme,
+    'shortnamePreviewHost' => $shortnamePreviewHost,
+    'shortnamePreviewPath' => $shortnamePreviewPath,
+    'organizationSubdomainRoutingEnabled' => ($organizationSubdomainRoutingEnabled),
+    'canManageOrganizationRouting' => ($canManageOrganizationRouting),
+    'organizationRoutingLockedMessage' => $organizationRoutingLockedMessage,
+    'refreshApplicationPrompt' => $refreshApplicationPrompt,
+    'pendingLabel' => $pendingLabel,
+    'message' => $errorLabel,
+    'successLabel' => $successLabel,
+    'uiLabels' => array(
+        'accessRestricted' => t('organization.routing.access_restricted', array(), $lang, $sourceLang),
+        'shortnamePreview' => t('organization.routing.preview', array(), $lang, $sourceLang),
+        'shortnamePreviewDisabled' => t('organization.routing.preview_disabled', array(), $lang, $sourceLang),
+        'shortnamePreviewExample' => t('organization.routing.preview_example', array(), $lang, $sourceLang),
+        'formUnavailable' => t('organization.form.unavailable', array(), $lang, $sourceLang),
+    ),
+    'locationLabels' => array(
+        'searching' => t('organization.location.searching', array(), $lang, $sourceLang),
+        'empty' => t('organization.location.empty', array(), $lang, $sourceLang),
+        'notFound' => t('organization.location.not_found', array(), $lang, $sourceLang),
+        'error' => t('organization.location.error', array(), $lang, $sourceLang),
+        'result' => t($leafletMapsEnabled ? 'organization.location.result' : 'organization.location.result_no_map', array(), $lang, $sourceLang),
+    ),
+]) ?>
 
 <?php if (!$isFetchRequest) { ?>
 </body>

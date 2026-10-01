@@ -1,6 +1,357 @@
 .omo-decisions__list {
     display: grid;
-    gap: 10px;
+    gap: var(--generic-space-2, 8px);
+}
+
+.omo-decision-proposal-card {
+    --generic-section-padding-block: var(--generic-space-3, 12px);
+    --generic-section-padding-inline: var(--generic-space-3, 12px);
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: var(--generic-space-2, 8px);
+    align-items: center;
+}
+
+.omo-decision-proposal-card--locked {
+    grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.omo-decision-proposal-card .generic-drag-handle {
+    min-width: var(--generic-drag-handle-min-width);
+    min-height: var(--generic-drag-handle-min-height);
+    padding: var(--generic-drag-handle-padding);
+    margin: 0;
+    border: 1px dashed var(--generic-drag-handle-border);
+    border-radius: var(--generic-drag-handle-radius);
+    background: var(--generic-drag-handle-background);
+    color: var(--generic-drag-handle-color);
+    font: inherit;
+    line-height: 1;
+    letter-spacing: 1px;
+}
+
+.omo-decision-proposal-card .generic-drag-handle--stretch {
+    align-self: stretch;
+    min-width: 40px;
+    padding: 10px 8px;
+}
+
+.omo-decision-settings-head.omo-decision-settings-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.omo-decision-settings-button {
+    justify-content: center;
+    white-space: nowrap;
+}
+
+.omo-decision-settings-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--generic-space-3, 12px);
+}
+
+.omo-decision-proposal-menu-panel {
+    --generic-soft-panel-padding-block: var(--generic-space-2, 8px);
+    --generic-soft-panel-padding-inline: var(--generic-space-2, 8px);
+    --generic-soft-panel-background: var(--generic-container-surface, var(--color-surface, #ffffff));
+    position: absolute;
+    top: calc(100% + var(--generic-space-1, 4px));
+    right: 0;
+    z-index: 7;
+    display: grid;
+    min-width: 180px;
+    gap: var(--generic-space-1, 4px);
+    box-shadow: 0 16px 30px rgba(15, 23, 42, 0.14);
+}
+
+.omo-decision-proposal-menu-panel[hidden] {
+    display: none;
+}
+
+.omo-decision-edit__lead,
+.omo-decision-edit__text,
+.omo-decision-consent__text,
+.omo-decision-majority-judgment__text,
+.omo-decision-vote__text,
+.omo-decision-vote__hint {
+    margin: 0;
+    color: var(--color-text-light, #475569);
+    line-height: var(--generic-type-line-relaxed, 1.6);
+}
+
+.omo-decision-settings-overview {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--generic-space-4, 16px);
+}
+
+.omo-decision-settings-overview__group {
+    display: grid;
+    align-content: start;
+    gap: var(--generic-space-2, 8px);
+    min-width: 0;
+    padding: var(--generic-space-3, 12px);
+    border: 1px solid var(--color-border, #d1d5db);
+    border-radius: var(--generic-radius-md, 10px);
+    background: color-mix(in srgb, var(--color-surface-alt, #f8fafc) 52%, var(--color-surface, #ffffff));
+}
+
+.omo-decision-settings-overview__group + .omo-decision-settings-overview__group {
+    padding-left: var(--generic-space-3, 12px);
+    border-left: 1px solid var(--color-border, #d1d5db);
+}
+
+.omo-decision-settings-overview__title {
+    color: var(--color-text-light, #64748b);
+    font-size: var(--generic-type-size-xs, 0.78rem);
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.omo-decision-settings-overview__items {
+    display: grid;
+    gap: 0;
+}
+
+.omo-decision-settings-overview .omo-decision-consent__readonly-stat,
+.omo-decision-settings-overview .omo-decision-vote__readonly-stat,
+.omo-decision-settings-overview .omo-decision-majority-judgment__readonly-stat,
+.omo-decision-settings-overview .omo-decision-edit__readonly-stat {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--generic-space-2, 8px);
+    align-items: baseline;
+    padding: 7px 0;
+    border: 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--color-border, #d1d5db) 62%, transparent);
+    border-radius: 0;
+    background: transparent;
+    font-size: var(--generic-type-size-sm, 0.84rem);
+}
+
+.omo-decision-settings-overview .omo-decision-consent__readonly-stat > span,
+.omo-decision-settings-overview .omo-decision-vote__readonly-stat > span,
+.omo-decision-settings-overview .omo-decision-majority-judgment__readonly-stat > span,
+.omo-decision-settings-overview .omo-decision-edit__readonly-stat > span {
+    text-align: right;
+    padding: 2px 6px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-primary, #2563eb) 9%, var(--color-surface, #ffffff));
+    color: var(--color-text, #1f2937);
+    font-size: var(--generic-type-size-xs, 0.78rem);
+    font-weight: 700;
+}
+
+.omo-decision-settings-overview .omo-decision-consent__readonly-stat:last-child,
+.omo-decision-settings-overview .omo-decision-vote__readonly-stat:last-child,
+.omo-decision-settings-overview .omo-decision-majority-judgment__readonly-stat:last-child,
+.omo-decision-settings-overview .omo-decision-edit__readonly-stat:last-child {
+    border-bottom: 0;
+}
+
+.omo-decision-settings-popup__stack,
+.omo-decision-settings-popup__groups {
+    display: grid;
+    gap: var(--generic-space-4, 16px);
+}
+
+.omo-decision-settings-popup__group-title {
+    color: var(--color-text, #1f2937);
+    font-size: var(--generic-type-size-sm, 0.84rem);
+    font-weight: 800;
+    line-height: var(--generic-type-line-title, 1.3);
+}
+
+.omo-decision-settings-popup__options,
+.omo-decision-settings-popup__choice-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--generic-space-2, 8px);
+}
+
+.omo-decision-settings-popup__option,
+.omo-decision-settings-popup__option-with-help {
+    display: flex;
+    align-items: center;
+    gap: var(--generic-space-2, 8px);
+    min-height: 38px;
+    margin: 0;
+    padding: 8px 10px;
+    border: 1px solid color-mix(in srgb, var(--color-border, #d1d5db) 80%, transparent);
+    border-radius: var(--generic-radius-sm, 7px);
+    background: var(--color-surface, #ffffff);
+    color: var(--color-text, #1f2937);
+    font-size: var(--generic-type-size-sm, 0.9rem);
+    line-height: 1.35;
+}
+
+.omo-decision-settings-popup__option {
+    cursor: pointer;
+}
+
+.omo-decision-settings-popup__option input {
+    flex: 0 0 auto;
+    margin: 0;
+}
+
+.omo-decision-settings-popup__option-with-help {
+    justify-content: space-between;
+}
+
+.omo-decision-settings-popup__option-with-help .omo-decision-settings-popup__option {
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+}
+
+.omo-decision-consent__grid.omo-decision-schedule__primary,
+.omo-decision-vote__grid.omo-decision-schedule__primary,
+.omo-decision-majority-judgment__grid.omo-decision-schedule__primary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.omo-decision-edit__question-nav {
+    display: flex;
+    align-items: flex-end;
+    gap: var(--generic-space-3, 12px);
+    min-width: 0;
+    border-bottom: 1px solid var(--color-border, #d1d5db);
+}
+
+.omo-decision-edit__question-nav[aria-busy="true"] {
+    opacity: 0.68;
+    cursor: progress;
+}
+
+.omo-decision-edit__question-nav[aria-busy="true"] a {
+    pointer-events: none;
+}
+
+.omo-decision-edit__question-tabs {
+    display: flex;
+    align-items: flex-end;
+    gap: var(--generic-space-1, 4px);
+    min-width: 0;
+    scrollbar-width: thin;
+}
+
+.omo-decision-edit__question-tab {
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
+    margin-bottom: -1px;
+    padding: 8px 12px 7px;
+    border-bottom: 4px solid transparent;
+    color: var(--color-text-light, #64748b);
+    font-size: var(--generic-type-size-sm, 0.84rem);
+    font-weight: 700;
+    line-height: 1.3;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.omo-decision-edit__question-tab:hover,
+.omo-decision-edit__question-tab:focus-visible {
+    color: var(--color-primary, #2563eb);
+    outline: none;
+}
+
+.omo-decision-edit__question-tab.is-active {
+    border-bottom-color: var(--color-primary, #2563eb);
+    color: var(--color-text, #1f2937);
+}
+
+.omo-decision-edit__question-add {
+    min-height: 36px;
+    margin: 0 0 6px auto;
+    padding: 7px 11px;
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
+.omo-decision-edit__multi {
+    display: grid;
+    gap: var(--generic-space-5, 20px);
+}
+
+.omo-decision-edit__process-primary {
+    display: grid;
+    gap: var(--generic-space-3, 12px);
+}
+
+.omo-decision-edit__process-primary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.omo-decision-edit__questions-section,
+.omo-decision-edit__question-panels,
+.omo-decision-edit__question-panel {
+    min-width: 0;
+}
+
+.omo-decision-edit__question-panel > .generic-section {
+    padding: 0;
+    border: 0;
+    box-shadow: none;
+}
+
+.omo-decision-edit__question-add-wrap {
+    position: relative;
+    margin-left: auto;
+    flex: 0 0 auto;
+}
+
+.omo-decision-edit__question-add-wrap .omo-decision-edit__question-add {
+    margin-left: 0;
+}
+
+.omo-decision-edit__question-methods {
+    position: absolute;
+    z-index: 20;
+    top: calc(100% + 4px);
+    right: 0;
+    width: min(360px, calc(100vw - 32px));
+    padding: var(--generic-space-3, 12px);
+    box-shadow: 0 16px 32px rgba(15, 23, 42, 0.18);
+}
+
+.omo-decision-edit__question-method-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--generic-space-2, 8px);
+    margin-top: var(--generic-space-2, 8px);
+}
+
+.omo-decision-edit__question-tab-badge {
+    margin-left: 6px;
+    font-size: var(--generic-type-size-xs, 0.72rem);
+    font-weight: 600;
+    color: var(--color-text-light, #64748b);
+}
+
+.omo-decision-edit__multi-actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 8;
+    padding-block: var(--generic-space-3, 12px);
+    background: var(--color-background, #fff);
+    border-top: 1px solid var(--color-border, #d1d5db);
+}
+
+.omo-decision-consent__field > .generic-card-title--small,
+.omo-decision-majority-judgment__field > .generic-card-title--small,
+.omo-decision-vote__field > .generic-card-title--small {
+    color: var(--color-text, #1f2937);
+    font-size: var(--generic-type-size-sm, 0.84rem);
+    font-weight: 700;
+    line-height: var(--generic-type-line-title, 1.3);
+    letter-spacing: normal;
+    text-transform: none;
 }
 
 .omo-decisions-card {
@@ -34,13 +385,6 @@
     background: transparent;
     color: inherit;
     border-color: transparent;
-}
-
-.omo-decisions-card__title {
-    margin: 0;
-    font-size: 0.98rem;
-    font-weight: 700;
-    color: var(--color-text, #1f2937);
 }
 
 .omo-decisions-card__title-line {
@@ -110,12 +454,6 @@
 .omo-decisions-card__owner-name {
     color: var(--color-text-light, #475569);
     font-size: 0.9rem;
-}
-
-.omo-decisions-card__description {
-    margin: 0;
-    color: var(--color-text-light, #475569);
-    line-height: 1.55;
 }
 
 .omo-decisions-card__status {
@@ -218,6 +556,53 @@
 }
 
 @media (max-width: 720px) {
+    .omo-decision-proposal-card.omo-decision-proposal-card {
+        grid-template-columns: auto minmax(0, 1fr) auto;
+    }
+
+    .omo-decision-proposal-card--locked.omo-decision-proposal-card--locked {
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .omo-decision-settings-head.omo-decision-settings-head {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .omo-decision-settings-title-row {
+        align-items: flex-start;
+    }
+
+    .omo-decision-edit__question-nav {
+        gap: var(--generic-space-2, 8px);
+    }
+
+    .omo-decision-edit__question-tab {
+        padding-inline: 10px;
+    }
+
+    .omo-decision-edit__question-add {
+        font-size: var(--generic-type-size-xs, 0.78rem);
+    }
+
+    .omo-decision-edit__process-primary {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .omo-decision-consent__grid.omo-decision-schedule__primary,
+    .omo-decision-vote__grid.omo-decision-schedule__primary,
+    .omo-decision-majority-judgment__grid.omo-decision-schedule__primary {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .omo-decision-settings-overview {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .omo-decision-settings-overview__group + .omo-decision-settings-overview__group {
+        padding-left: var(--generic-space-3, 12px);
+        border-left: 1px solid var(--color-border, #d1d5db);
+    }
+
     .omo-decisions-card__header {
         flex-direction: column;
         align-items: stretch;

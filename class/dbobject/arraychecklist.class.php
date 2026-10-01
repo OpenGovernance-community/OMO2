@@ -1,0 +1,66 @@
+<?php
+namespace dbObject;
+
+class ArrayChecklist extends ArrayDbObject
+{
+    public static function objectName()
+    {
+        return '\\dbObject\\Checklist';
+    }
+
+    public function loadForOrganization($organizationId, $activeOnly = true, $hydrate = false)
+    {
+        $this->exchangeArray([]);
+        $organizationId = (int)$organizationId;
+        if ($organizationId <= 0) {
+            return;
+        }
+
+        $where = [['field' => 'IDorganization', 'value' => $organizationId]];
+        if ($activeOnly) {
+            $where[] = ['field' => 'active', 'value' => 1];
+        }
+        $params = [
+            'where' => $where,
+            'orderBy' => [
+                ['field' => 'updated_at', 'dir' => 'DESC'],
+                ['field' => 'id', 'dir' => 'DESC'],
+            ],
+        ];
+        if ($hydrate !== false) {
+            $params['hydrate'] = $hydrate;
+        }
+
+        $this->load($params);
+    }
+
+    public function loadForContext($organizationId, $holonId, $scope = 'contextual', array $scopeHolonIds = [], $includeOrganizationProcesses = false)
+    {
+        $this->loadForOrganization((int)$organizationId, true, true);
+
+        $holonId = (int)$holonId;
+        $scope = trim(mb_strtolower((string)$scope, 'UTF-8'));
+        $allowedHolonIds = $scope === 'contextual'
+            ? [$holonId]
+            : array_values(array_unique(array_filter(array_map('intval', $scopeHolonIds), static function ($candidateId) {
+                return (int)$candidateId > 0;
+            })));
+        $allowedHolonMap = count($allowedHolonIds) > 0 ? array_fill_keys($allowedHolonIds, true) : [];
+
+        $matches = [];
+        foreach ($this as $checklist) {
+            if (!($checklist instanceof Checklist)) {
+                continue;
+            }
+            $templateRoot = $checklist->getTemplateRoot();
+            $templateHolonId = $templateRoot instanceof Project ? $templateRoot->get('IDholon') : null;
+            if (($templateRoot instanceof Project && $templateHolonId === null
+                    && ($includeOrganizationProcesses || ($holonId === 0 && $scope === 'contextual')))
+                || ((int)$templateHolonId > 0 && isset($allowedHolonMap[(int)$templateHolonId]))) {
+                $matches[] = $checklist;
+            }
+        }
+        $this->exchangeArray($matches);
+    }
+}
+?>

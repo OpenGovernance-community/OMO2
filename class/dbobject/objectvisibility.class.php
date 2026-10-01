@@ -69,7 +69,18 @@
 				self::TYPE_ORGANIZATION => 'Organisation',
 				self::TYPE_CIRCLE => 'Cercle',
 				self::TYPE_ROLE => 'Role',
-				self::TYPE_SELF => 'Moi uniquement',
+				self::TYPE_SELF => 'Propriétaire uniquement',
+			];
+		}
+
+		public static function getVisibilityTypeDescriptions(): array
+		{
+			return [
+				self::TYPE_EVERYONE => 'Visible ou editable depuis l exterieur, sans appartenance a l organisation.',
+				self::TYPE_ORGANIZATION => 'Reserve aux membres de l organisation.',
+				self::TYPE_CIRCLE => 'Reserve aux membres du cercle concerne.',
+				self::TYPE_ROLE => 'Reserve aux membres du role concerne.',
+				self::TYPE_SELF => 'Reserve a la personne proprietaire du document.',
 			];
 		}
 
@@ -126,7 +137,7 @@
 			if ($holonId <= 0) {
 				return [
 					'status' => false,
-					'text' => 'Le holon de visibilite est obligatoire.',
+            'text' => 'L’espace de visibilité est obligatoire.',
 				];
 			}
 
@@ -139,7 +150,7 @@
 			) {
 				return [
 					'status' => false,
-					'text' => 'Holon de visibilite introuvable pour cette organisation.',
+            'text' => 'Espace de visibilité introuvable pour cette organisation.',
 				];
 			}
 
@@ -230,9 +241,11 @@
 
 		public static function loadActiveRuleRow($objectType, $objectId, $organizationId = 0)
 		{
-			$rows = self::loadActiveRuleRows($objectType, [(int)$objectId], $organizationId);
-			$objectId = (int)$objectId;
-			return $rows[$objectId] ?? null;
+			return self::memoizeRead(['activeRule', self::getObjectKey($objectType), (int)$objectId, (int)$organizationId],
+				static function () use ($objectType, $objectId, $organizationId) {
+					$rows = self::loadActiveRuleRows($objectType, [(int)$objectId], $organizationId);
+					return $rows[(int)$objectId] ?? null;
+				});
 		}
 
 		public static function loadActiveRuleRows($objectType, array $objectIds, $organizationId = 0): array
@@ -299,31 +312,42 @@
 				$ruleMap[$resolvedObjectId] = $row;
 			}
 
+			// Reuse batch results in later per-object checks, including missing rules.
+			foreach ($objectIds as $objectId) {
+				self::memoizeRead(['activeRule', $objectType, $objectId, $organizationId],
+					static fn () => $ruleMap[$objectId] ?? null);
+			}
 			return $ruleMap;
 		}
 
-		public static function buildFallbackRuleData($organizationId = 0): array
+		public static function buildFallbackRuleData($organizationId = 0, ?string $defaultVisibilityType = null): array
 		{
+			$visibilityType = $defaultVisibilityType !== null
+				? self::normalizeVisibilityType($defaultVisibilityType)
+				: self::TYPE_ORGANIZATION;
+
 			return [
 				'id' => 0,
 				'object_type' => '',
 				'object_id' => 0,
 				'IDorganization' => (int)$organizationId,
-				'visibility_type' => self::TYPE_ORGANIZATION,
+				'visibility_type' => $visibilityType,
 				'IDholon' => null,
 				'active' => 1,
 			];
 		}
 
-		public static function buildCurrentViewerContext(int $organizationId): array
+		public static function buildCurrentViewerContext(int $organizationId, ?int $viewerUserId = null): array
 		{
 			$organizationId = (int)$organizationId;
 			$shareLink = function_exists('commonGetCurrentShareLink')
 				? \commonGetCurrentShareLink()
 				: null;
-			$userId = function_exists('commonGetCurrentUserId')
-				? (int)\commonGetCurrentUserId()
-				: (int)($_SESSION['currentUser'] ?? 0);
+			$userId = $viewerUserId !== null
+				? (int)$viewerUserId
+				: (function_exists('commonGetCurrentUserId')
+					? (int)\commonGetCurrentUserId()
+					: (int)($_SESSION['currentUser'] ?? 0));
 
 			return [
 				'organizationId' => $organizationId,
@@ -425,6 +449,7 @@
 						ON h.`id` = uh.`IDholon`
 					WHERE uh.`IDuser` = :user_id
 					  AND uh.`active` = 1
+					  AND uh.`is_membership` = 1
 					  AND h.`active` = 1
 					  AND h.`visible` = 1
 					  AND " . $whereOrganization . "
@@ -522,7 +547,7 @@
 			}
 		}
 
-		public static function buildDisplayData($ruleRow, int $organizationId = 0): array
+		public static function buildDisplayData($ruleRow, int $organizationId = 0, array $objectContext = []): array
 		{
 			$ruleRow = is_array($ruleRow)
 				? $ruleRow
@@ -531,6 +556,14 @@
 			$targetHolonId = (int)($ruleRow['IDholon'] ?? 0);
 			$typeLabels = self::getVisibilityTypeOptions();
 			$typeLabel = (string)($typeLabels[$visibilityType] ?? $typeLabels[self::TYPE_ORGANIZATION]);
+
+			if ($visibilityType === self::TYPE_SELF) {
+				$ownerLabel = trim((string)($objectContext['ownerLabel'] ?? ''));
+				if ($ownerLabel !== '') {
+					$typeLabel = $ownerLabel . ' uniquement';
+				}
+			}
+
 			$targetLabel = '';
 
 			if ($targetHolonId > 0 && self::requiresHolonTarget($visibilityType)) {

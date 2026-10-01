@@ -1,11 +1,16 @@
-<?
+<?php
 	require_once("../config.php");
 	require_once("../shared_functions.php");
+	require_once("../common/patreon.php");
 
 	// Il faut être connecté pour pouvoir partager.
 	// Initialise le login
 	$connected=checklogin();
 	if ($connected) {
+		if (!patreonUserCanUseAi((int)($_SESSION['currentUser'] ?? 0))) {
+			echo 'Les fonctions IA sont reservees aux contributeurs Patreon actifs.';
+			exit;
+		}
 		// Affichage des champs de formulaires
 	echo "<form name='formulaire' id='param_cretetxt' action='/ajax/create_txt.php'>";
 
@@ -39,7 +44,7 @@
 	});
 });
 </script>
-<?		
+<?php
 	} else {
 		// Affiche un bouton pour soit se connecter, soit s'inscrire
 		echo T_("Vous devez être connecté pour pouvoir charger un ordre du jour ou un PV.");

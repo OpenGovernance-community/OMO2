@@ -1,7 +1,12 @@
 (function (window, document) {
     'use strict';
 
-    if (window.omoSimpleHtmlField) {
+    const OMO_SIMPLE_HTML_FIELD_VERSION = '20260912-toolbar-always-visible';
+
+    if (
+        window.omoSimpleHtmlField
+        && String(window.omoSimpleHtmlField.version || '') === OMO_SIMPLE_HTML_FIELD_VERSION
+    ) {
         return;
     }
 
@@ -30,11 +35,18 @@
 
         const style = document.createElement('style');
         style.textContent = ''
-            + '.omo-simple-html-field{display:grid;gap:10px;}'
-            + '.omo-simple-html-field .note-editor.note-frame{border:1px solid var(--color-border,#d1d5db);border-radius:14px;background:var(--color-surface,#fff);}'
-            + '.omo-simple-html-field .note-toolbar{border-bottom:1px solid var(--color-border,#d1d5db);background:color-mix(in srgb,var(--color-surface-alt,#f8fafc) 70%,white);border-top-left-radius:14px;border-top-right-radius:14px;padding:8px;}'
-            + '.omo-simple-html-field .note-btn{border-radius:10px;border-color:var(--color-border,#d1d5db);}'
-            + '.omo-simple-html-field .note-editing-area .note-editable{min-height:140px;padding:14px;line-height:1.55;color:var(--color-text,#1f2937);}'
+            + '.omo-simple-html-field{position:relative;display:grid;gap:10px;}'
+            + '.omo-html-resource-gap-helper{position:absolute;z-index:7;display:none;align-items:center;justify-content:center;width:24px;height:24px;padding:0;border:1px solid color-mix(in srgb,var(--color-primary,#2563eb) 48%,var(--color-border,#d1d5db));border-radius:999px;background:var(--color-surface,#fff);box-shadow:0 5px 12px -7px rgba(15,23,42,.55);color:var(--color-primary,#2563eb);font-size:18px;font-weight:800;line-height:1;cursor:pointer;transform:translate(-50%,-50%);}'
+            + '.omo-html-resource-gap-helper:hover,.omo-html-resource-gap-helper:focus-visible{border-color:var(--color-primary,#2563eb);background:color-mix(in srgb,var(--color-primary,#2563eb) 10%,var(--color-surface,#fff));outline:none;}'
+            + '.omo-simple-html-field .note-editor.note-frame{border:1px solid var(--color-border,#d1d5db);border-radius:var(--radius-md);background:var(--color-surface,#fff);}'
+            + '.omo-simple-html-field .note-toolbar{position:sticky;top:0;z-index:6;overflow:visible;max-height:none;border:0;background:var(--color-surface,#fff);border-top-left-radius:var(--radius-md);border-top-right-radius:var(--radius-md);padding:6px 8px;box-shadow:none;}'
+            + '.omo-simple-html-field .note-toolbar .note-btn-group{margin:0 2px 0 0;}'
+            + '.omo-simple-html-field .note-toolbar .note-btn,.omo-simple-html-field .note-toolbar .note-btn-group>.note-btn,.omo-simple-html-field .note-toolbar .note-btn-group>.note-btn:not(:first-child),.omo-simple-html-field .note-toolbar .note-btn-group>.note-btn:not(:last-child):not(.dropdown-toggle){border:0!important;border-radius:var(--radius-sm)!important;background:transparent!important;box-shadow:none!important;color:var(--color-text,#1f2937);}'
+            + '.omo-simple-html-field .note-toolbar .note-btn:hover,.omo-simple-html-field .note-toolbar .note-btn:focus-visible,.omo-simple-html-field .note-toolbar .note-btn.active{background:color-mix(in srgb,var(--color-primary,#2563eb) 12%,var(--color-surface,#fff))!important;color:var(--color-primary,#2563eb);outline:none;}'
+            + '.omo-simple-html-field .note-toolbar .note-btn:focus-visible{box-shadow:0 0 0 2px color-mix(in srgb,var(--color-primary,#2563eb) 32%,transparent)!important;}'
+            + '.omo-simple-html-field .omo-simple-html-highlight-icon{display:block;width:18px;height:18px;object-fit:contain;}'
+            + '.omo-simple-html-field .note-editing-area{overflow:visible;}'
+            + '.omo-simple-html-field .note-editing-area .note-editable{min-height:140px;height:auto!important;overflow-y:hidden!important;padding:14px;background:var(--color-surface,#fff);line-height:1.55;color:var(--color-text,#1f2937);}'
             + '.omo-simple-html-field .note-placeholder{color:var(--color-text-light,#6b7280);}'
             + '.omo-simple-html-field .note-statusbar{display:none;}'
             + '.omo-simple-html-field .note-editable h1,.omo-simple-html-render h1{margin:0 0 .6em;font-size:1.8rem;line-height:1.15;font-weight:850;color:var(--color-text,#1f2937);}'
@@ -45,16 +57,83 @@
             + '.omo-simple-html-field .note-editable th,.omo-simple-html-field .note-editable td,.omo-simple-html-render th,.omo-simple-html-render td{padding:9px 12px;border:1px solid color-mix(in srgb,var(--color-border,#d1d5db) 88%,var(--color-text,#1f2937) 12%);text-align:left;vertical-align:top;}'
             + '.omo-simple-html-field .note-editable th,.omo-simple-html-render th{background:color-mix(in srgb,var(--color-surface-alt,#f8fafc) 82%,var(--color-text,#1f2937) 18%);font-weight:700;}'
             + '.omo-simple-html-field .note-editable tbody tr:nth-child(even),.omo-simple-html-render tbody tr:nth-child(even){background:color-mix(in srgb,var(--color-surface,#fff) 92%,var(--color-surface-alt,#f8fafc) 8%);}'
-            + '.omo-simple-html-field .note-editable .omo-document-embed,.omo-simple-html-render .omo-document-embed{display:block;margin:0 0 1em;padding:12px 14px;border:1px solid color-mix(in srgb,var(--color-border,#d1d5db) 88%,#2563eb 12%);border-radius:14px;background:color-mix(in srgb,var(--color-surface,#fff) 90%,#eff6ff 10%);box-shadow:0 10px 24px -20px rgba(37,99,235,.45);cursor:pointer;white-space:normal;line-height:1.5;}'
+            + '.omo-simple-html-field .note-editable .omo-document-embed,.omo-simple-html-render .omo-document-embed{display:block;margin:0 0 1em;padding:12px 14px;border:1px solid color-mix(in srgb,var(--color-border,#d1d5db) 88%,#2563eb 12%);border-radius:var(--radius-md);background:color-mix(in srgb,var(--color-surface,#fff) 90%,#eff6ff 10%);box-shadow:0 10px 24px -20px rgba(37,99,235,.45);cursor:pointer;white-space:normal;line-height:1.5;}'
+            + '.omo-simple-html-field .note-editable .omo-decision-embed,.omo-simple-html-field .note-editable .omo-event-embed,.omo-simple-html-field .note-editable .omo-project-embed,.omo-simple-html-field .note-editable .omo-checklist-embed,.omo-simple-html-render .omo-decision-embed,.omo-simple-html-render .omo-event-embed,.omo-simple-html-render .omo-project-embed,.omo-simple-html-render .omo-checklist-embed{display:block;margin:0 0 1em;padding:12px 14px;border:1px solid color-mix(in srgb,var(--color-border,#d1d5db) 88%,#2563eb 12%);border-radius:var(--radius-md);background:color-mix(in srgb,var(--color-surface,#fff) 90%,#eff6ff 10%);box-shadow:0 10px 24px -20px rgba(37,99,235,.45);cursor:pointer;white-space:normal;line-height:1.5;}'
             + '.omo-simple-html-field .note-editable .omo-document-embed:last-child,.omo-simple-html-render .omo-document-embed:last-child{margin-bottom:0;}'
             + '.omo-simple-html-field .note-editable .omo-document-embed__label,.omo-simple-html-render .omo-document-embed__label{display:block;margin:0 0 6px;color:var(--color-text-light,#6b7280);font-size:12px;font-weight:600;letter-spacing:.02em;text-transform:uppercase;}'
             + '.omo-simple-html-field .note-editable .omo-document-embed__title,.omo-simple-html-render .omo-document-embed__title{display:block;margin:0;color:var(--color-text,#1f2937);font-weight:700;}'
             + '.omo-simple-html-field .note-editable .omo-document-embed__description,.omo-simple-html-render .omo-document-embed__description{display:block;margin:6px 0 0;color:var(--color-text-light,#6b7280);font-size:13px;line-height:1.5;}'
+            + '.omo-simple-html-field .note-editable .omo-decision-embed__title,.omo-simple-html-field .note-editable .omo-event-embed__title,.omo-simple-html-render .omo-decision-embed__title,.omo-simple-html-render .omo-event-embed__title{display:block;margin:0;color:var(--color-text,#1f2937);font-weight:700;}'
+            + '.omo-simple-html-field .note-editable .omo-project-embed>strong,.omo-simple-html-render .omo-project-embed>strong{display:flex;align-items:center;gap:6px;margin:0;color:var(--color-text,#1f2937);font-weight:700;}.omo-simple-html-field .note-editable .omo-project-embed>strong>a:first-child,.omo-simple-html-render .omo-project-embed>strong>a:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}.omo-simple-html-field .note-editable .omo-project-embed>strong>a:nth-child(2),.omo-simple-html-render .omo-project-embed>strong>a:nth-child(2){flex:0 0 auto;font-size:13px;text-decoration:none;}.omo-simple-html-field .note-editable .omo-project-embed>strong>em,.omo-simple-html-render .omo-project-embed>strong>em{flex:0 0 auto;margin:0;padding:1px 5px;border-radius:999px;background:color-mix(in srgb,#2563eb 10%,var(--color-surface,#fff));color:#1d4ed8;font-size:11px;font-style:normal;font-weight:800;line-height:1.35;}.omo-simple-html-field .note-editable .omo-project-embed>em,.omo-simple-html-render .omo-project-embed>em{display:block;margin:5px 0 0;color:var(--color-text-light,#6b7280);font-size:12px;font-style:normal;line-height:1.35;}'
+            + '.omo-simple-html-field .note-editable .omo-decision-embed__summary,.omo-simple-html-field .note-editable .omo-event-embed__summary,.omo-simple-html-render .omo-decision-embed__summary,.omo-simple-html-render .omo-event-embed__summary{display:block;margin:6px 0 0;color:var(--color-text-light,#6b7280);font-size:13px;line-height:1.5;}'
             + '.omo-simple-html-field .note-editable .omo-document-embed > p:first-child,.omo-simple-html-render .omo-document-embed > p:first-child{margin:0 0 6px;color:var(--color-text-light,#6b7280);font-size:12px;font-weight:600;letter-spacing:.02em;text-transform:uppercase;}'
             + '.omo-simple-html-field .note-editable .omo-document-embed > p:nth-child(2),.omo-simple-html-render .omo-document-embed > p:nth-child(2){margin:0;color:var(--color-text,#1f2937);font-weight:700;}'
             + '.omo-simple-html-field .note-editable .omo-document-embed > p:nth-child(3),.omo-simple-html-render .omo-document-embed > p:nth-child(3){margin:6px 0 0;color:var(--color-text-light,#6b7280);font-size:13px;line-height:1.5;}'
             + '.omo-simple-html-field .note-editable .omo-document-embed > strong:first-child,.omo-simple-html-render .omo-document-embed > strong:first-child{display:block;margin:0 0 6px;color:var(--color-text-light,#6b7280);font-size:12px;font-weight:600;letter-spacing:.02em;text-transform:uppercase;}'
             + '.omo-simple-html-field .note-editable .omo-document-embed > strong:nth-of-type(2),.omo-simple-html-render .omo-document-embed > strong:nth-of-type(2){display:block;margin:0;color:var(--color-text,#1f2937);font-weight:700;}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-document-embed,.omo-pv-editor .omo-simple-html-field .note-editable .omo-decision-embed,.omo-pv-editor .omo-simple-html-field .note-editable .omo-event-embed,.omo-pv-editor .omo-simple-html-field .note-editable .omo-project-embed,.omo-pv-editor .omo-simple-html-field .note-editable .omo-checklist-embed,.omo-pv-editor .omo-simple-html-render .omo-document-embed,.omo-pv-editor .omo-simple-html-render .omo-decision-embed,.omo-pv-editor .omo-simple-html-render .omo-event-embed,.omo-pv-editor .omo-simple-html-render .omo-project-embed,.omo-pv-editor .omo-simple-html-render .omo-checklist-embed{position:relative;min-height:54px;margin-bottom:10px;padding:9px 12px 9px 58px;}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-document-embed:before,.omo-pv-editor .omo-simple-html-field .note-editable .omo-decision-embed:before,.omo-pv-editor .omo-simple-html-field .note-editable .omo-event-embed:before,.omo-pv-editor .omo-simple-html-field .note-editable .omo-project-embed:before,.omo-pv-editor .omo-simple-html-field .note-editable .omo-checklist-embed:before,.omo-pv-editor .omo-simple-html-render .omo-document-embed:before,.omo-pv-editor .omo-simple-html-render .omo-decision-embed:before,.omo-pv-editor .omo-simple-html-render .omo-event-embed:before,.omo-pv-editor .omo-simple-html-render .omo-project-embed:before,.omo-pv-editor .omo-simple-html-render .omo-checklist-embed:before{content:"";position:absolute;top:50%;left:14px;width:30px;height:30px;transform:translateY(-50%);background:var(--color-primary,#2563eb);-webkit-mask:url("/omo/images/tools/documents-folder.png") center/contain no-repeat;mask:url("/omo/images/tools/documents-folder.png") center/contain no-repeat;}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-decision-embed:before,.omo-pv-editor .omo-simple-html-render .omo-decision-embed:before{background:#7c3aed;-webkit-mask-image:url("/omo/images/tools/decision.png");mask-image:url("/omo/images/tools/decision.png");}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-event-embed:before,.omo-pv-editor .omo-simple-html-render .omo-event-embed:before{background:#0f766e;-webkit-mask-image:url("/omo/images/tools/calendar.png");mask-image:url("/omo/images/tools/calendar.png");}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-project-embed:before,.omo-pv-editor .omo-simple-html-render .omo-project-embed:before{background:#2563eb;-webkit-mask-image:url("/omo/images/tools/product.png");mask-image:url("/omo/images/tools/product.png");}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-checklist-embed:before,.omo-pv-editor .omo-simple-html-render .omo-checklist-embed:before{background:#0f766e;-webkit-mask-image:url("/omo/images/tools/checklist.png");mask-image:url("/omo/images/tools/checklist.png");}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-checklist-embed>strong,.omo-pv-editor .omo-simple-html-render .omo-checklist-embed .omo-project-embed__head{display:block;margin:0;font-weight:750;}.omo-pv-editor .omo-simple-html-field .note-editable .omo-checklist-embed a,.omo-pv-editor .omo-simple-html-render .omo-checklist-embed a{color:var(--color-text,#1f2937);text-decoration:none;}.omo-checklist-embed__review{display:grid;gap:4px;margin-top:7px;}.omo-checklist-embed__review-label{font-size:11px;font-weight:750;color:var(--color-text-light,#64748b);}.omo-checklist-embed__review.is-overdue .omo-checklist-embed__review-label{color:#b45309;}.omo-pv-editor .note-editable .omo-checklist-embed__container-toggle{display:block;width:100%;padding:3px 0;border:0;background:transparent;cursor:pointer;}.omo-pv-editor .note-editable .omo-checklist-embed__container-toggle:hover,.omo-pv-editor .note-editable .omo-checklist-embed__container-toggle.is-expanded{filter:brightness(.96);}.omo-pv-editor .note-editable .omo-checklist-embed__instances{display:grid;gap:5px;}.omo-pv-editor .note-editable .omo-checklist-embed__instance{display:grid;gap:3px;}.omo-pv-editor .note-editable .omo-checklist-embed__instance-toggle{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;padding:4px 5px;border:0;border-radius:var(--radius-sm);background:transparent;color:var(--color-text,#1f2937);cursor:pointer;font:inherit;text-align:left;}.omo-pv-editor .note-editable .omo-checklist-embed__instance-toggle:hover,.omo-pv-editor .note-editable .omo-checklist-embed__instance-toggle.is-expanded{background:color-mix(in srgb,var(--color-primary,#2563eb) 8%,transparent);}.omo-pv-editor .note-editable .omo-checklist-embed__instance-title{min-width:0;overflow:hidden;font-size:.78rem;font-weight:700;text-overflow:ellipsis;white-space:nowrap;}.omo-pv-editor .note-editable .omo-checklist-embed__instance-bar{display:block;min-height:7px;}.omo-pv-editor .note-editable .omo-checklist-embed__items-bar{height:7px;}.omo-pv-editor .note-editable .omo-checklist-embed__item-segment{display:flex;min-width:0;}.omo-pv-editor .note-editable .omo-checklist-embed__item-segment .omo-project-status-bar__segment{width:100%;}.omo-pv-editor .note-editable .omo-checklist-embed__item-segment:last-child .omo-project-status-bar__segment{border-right:0;}.omo-pv-editor .note-editable .omo-checklist-embed__items-list{display:grid;gap:4px;margin-top:2px;}.omo-pv-editor .note-editable .omo-checklist-embed__item{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:3px 5px;border-radius:var(--radius-sm);background:color-mix(in srgb,var(--color-surface,#fff) 70%,var(--color-surface-alt,#f8fafc));}.omo-pv-editor .note-editable .omo-checklist-embed__item-copy{display:flex;flex-wrap:wrap;gap:3px 6px;align-items:baseline;min-width:0;}.omo-pv-editor .note-editable .omo-checklist-embed__item .omo-project-embed__child-title{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}.omo-pv-editor .note-editable .omo-checklist-embed__item-summary{display:flex;flex:0 1 42%;justify-content:flex-end;min-width:64px;}.omo-pv-editor .note-editable .omo-checklist-embed__item-summary.is-project-summary{min-width:92px;}.omo-pv-editor .note-editable .omo-checklist-embed__item-summary.is-project-summary .omo-project-status-bar{width:100%;}'
+            + '.omo-pv-editor .note-editable .omo-checklist-embed__complete-archive{flex:0 0 auto;min-height:22px;padding:3px 6px;font-size:.68rem;line-height:1.1;white-space:nowrap;}.omo-pv-editor .note-editable .omo-checklist-embed__complete-archive:disabled{cursor:wait;opacity:.6;}'
+            + '.omo-pv-editor .note-editable .omo-checklist-embed__empty-runs{display:block;margin:4px 0 0;color:var(--color-text-light,#64748b);font-size:.78rem;font-style:italic;line-height:1.35;}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-document-embed>strong:first-of-type:not(:only-of-type),.omo-pv-editor .omo-simple-html-field .note-editable .omo-decision-embed>strong:first-of-type:not(:only-of-type),.omo-pv-editor .omo-simple-html-field .note-editable .omo-project-embed>strong:first-of-type:not(:only-of-type),.omo-pv-editor .omo-simple-html-render .omo-document-embed__label,.omo-pv-editor .omo-simple-html-render .omo-decision-embed__label{display:none;}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-document-embed>strong:last-of-type,.omo-pv-editor .omo-simple-html-field .note-editable .omo-decision-embed>strong:last-of-type,.omo-pv-editor .omo-simple-html-field .note-editable .omo-event-embed>strong:last-of-type,.omo-pv-editor .omo-simple-html-field .note-editable .omo-project-embed>strong:last-of-type,.omo-pv-editor .omo-simple-html-render .omo-document-embed__title,.omo-pv-editor .omo-simple-html-render .omo-decision-embed__title,.omo-pv-editor .omo-simple-html-render .omo-event-embed__title{display:block;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:1;line-clamp:1;text-overflow:ellipsis;}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-document-embed>em,.omo-pv-editor .omo-simple-html-field .note-editable .omo-decision-embed>em,.omo-pv-editor .omo-simple-html-field .note-editable .omo-event-embed>em,.omo-pv-editor .omo-simple-html-field .note-editable .omo-project-embed>em,.omo-pv-editor .omo-simple-html-render .omo-document-embed__description,.omo-pv-editor .omo-simple-html-render .omo-decision-embed__summary,.omo-pv-editor .omo-simple-html-render .omo-event-embed__summary{display:-webkit-box;overflow:hidden;margin-top:3px;color:var(--color-text-light,#6b7280);font-size:12px;font-style:normal;line-height:1.3;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable p:has(>.omo-document-embed),.omo-pv-editor .omo-simple-html-field .note-editable p:has(>.omo-decision-embed),.omo-pv-editor .omo-simple-html-field .note-editable p:has(>.omo-event-embed),.omo-pv-editor .omo-simple-html-field .note-editable p:has(>.omo-project-embed){margin:0 0 10px;}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-project-embed,.omo-pv-editor .omo-simple-html-render .omo-project-embed{min-height:68px;}.omo-pv-editor .omo-simple-html-field .note-editable .omo-project-embed>strong,.omo-pv-editor .omo-simple-html-render .omo-project-embed>strong{display:flex!important;align-items:center;gap:6px;min-width:0;overflow:hidden;white-space:normal;}.omo-pv-editor .omo-simple-html-field .note-editable .omo-project-embed>strong>a:first-child,.omo-pv-editor .omo-simple-html-render .omo-project-embed>strong>a:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}.omo-pv-editor .omo-simple-html-field .note-editable .omo-project-embed>strong>a:nth-child(2),.omo-pv-editor .omo-simple-html-render .omo-project-embed>strong>a:nth-child(2){flex:0 0 auto;font-size:13px;text-decoration:none;}.omo-pv-editor .omo-simple-html-field .note-editable .omo-project-embed>strong>em,.omo-pv-editor .omo-simple-html-render .omo-project-embed>strong>em{display:block!important;flex:0 0 auto;margin:0;padding:1px 5px;border-radius:999px;background:color-mix(in srgb,#2563eb 10%,var(--color-surface,#fff));color:#1d4ed8;font-size:11px;font-style:normal;font-weight:800;line-height:1.35;}.omo-pv-editor .omo-simple-html-field .note-editable .omo-project-embed>em,.omo-pv-editor .omo-simple-html-render .omo-project-embed>em{display:block!important;overflow:hidden;margin-top:5px;white-space:nowrap;text-overflow:ellipsis;-webkit-line-clamp:unset;line-clamp:unset;}'
+            + '.omo-pv-editor .omo-simple-html-render .omo-project-embed--resolved{display:grid;gap:7px;min-height:0;margin-bottom:10px;padding:11px 13px 11px 58px;cursor:default;line-height:1.4;}.omo-pv-editor .omo-simple-html-render .omo-project-embed--resolved .omo-project-embed__head{display:flex;align-items:center;gap:7px;min-width:0;}.omo-pv-editor .omo-simple-html-render .omo-project-embed--resolved .omo-project-embed__title{min-width:0;overflow:hidden;color:var(--color-text,#1f2937);font-size:.92rem;font-weight:750;text-decoration:none;text-overflow:ellipsis;white-space:nowrap;}.omo-pv-editor .omo-simple-html-render .omo-project-embed--resolved .omo-project-embed__external{flex:0 0 auto;color:var(--color-text-light,#64748b);font-size:.86rem;text-decoration:none;}.omo-pv-editor .omo-simple-html-render .omo-project-embed--resolved .omo-project-embed__meta{color:var(--color-text-light,#64748b);font-size:.76rem;}.omo-pv-editor .omo-simple-html-render .omo-project-embed--resolved .omo-project-embed__status{--omo-project-status-color:#99a3b1;--omo-project-status-text:#4d5968;flex:0 0 auto;display:inline-flex;align-items:center;min-height:20px;padding:2px 7px;border-radius:999px;background:color-mix(in srgb,var(--omo-project-status-color) 19%,var(--color-surface,#fff));color:var(--omo-project-status-text);font-size:.72rem;font-style:normal;font-weight:750;line-height:1.2;}.omo-pv-editor .omo-simple-html-render .omo-project-embed--resolved .omo-project-embed__status--ready{--omo-project-status-color:#5e88d5;--omo-project-status-text:#294c8b;}.omo-pv-editor .omo-simple-html-render .omo-project-embed--resolved .omo-project-embed__status--in_progress{--omo-project-status-color:#d0a857;--omo-project-status-text:#735518;}.omo-pv-editor .omo-simple-html-render .omo-project-embed--resolved .omo-project-embed__status--blocked{--omo-project-status-color:#d67272;--omo-project-status-text:#842f35;}.omo-pv-editor .omo-simple-html-render .omo-project-embed--resolved .omo-project-embed__status--review{--omo-project-status-color:#9884c7;--omo-project-status-text:#5f4b91;}.omo-pv-editor .omo-simple-html-render .omo-project-embed--resolved .omo-project-embed__status--done{--omo-project-status-color:#6fa98d;--omo-project-status-text:#2f6d4a;}.omo-pv-editor .omo-simple-html-render .omo-project-embed--resolved .omo-project-embed__status--someday{--omo-project-status-color:#99a3b1;--omo-project-status-text:#4d5968;}.omo-pv-editor .omo-simple-html-render .omo-project-embed--resolved .omo-project-embed__toggle,.omo-pv-editor .omo-simple-html-render .omo-project-embed--resolved .omo-project-embed__children{display:none!important;}'
+            + '.omo-pv-editor .omo-simple-html-render .omo-project-embed--resolved .omo-project-embed__priority,.omo-pv-editor .omo-simple-html-render .omo-project-embed--resolved .omo-project-embed__size{flex:0 0 auto;display:inline-flex;align-items:center;min-height:20px;padding:2px 7px;border-radius:999px;background:color-mix(in srgb,#2563eb 11%,var(--color-surface,#fff));color:#1d4ed8;font-size:.72rem;font-weight:750;line-height:1.2;}'
+            + '.omo-simple-html-field .note-editable .omo-indicator-embed,.omo-simple-html-render .omo-indicator-embed{display:block;margin:0 0 1em;padding:12px 14px;border:1px solid color-mix(in srgb,var(--color-border,#d1d5db) 88%,#2563eb 12%);border-radius:var(--radius-md);background:color-mix(in srgb,var(--color-surface,#fff) 90%,#eff6ff 10%);box-shadow:0 10px 24px -20px rgba(37,99,235,.45);cursor:pointer;white-space:normal;line-height:1.3;}'
+            + '.omo-indicator-embed--overdue{border-color:color-mix(in srgb,#dc2626 36%,var(--color-border,#d1d5db));background:color-mix(in srgb,var(--color-surface,#fff) 92%,#fef2f2 8%);}'
+            + '.omo-indicator-embed--overdue .omo-indicator-embed__chart{border-color:color-mix(in srgb,#dc2626 36%,var(--color-border,#d1d5db));background:linear-gradient(135deg,color-mix(in srgb,#dc2626 10%,var(--color-surface,#fff)),color-mix(in srgb,#dc2626 4%,var(--color-surface-alt,#f8fafc)));}'
+            + '.omo-indicator-embed--warning{border-color:color-mix(in srgb,#eab308 42%,var(--color-border,#d1d5db));background:color-mix(in srgb,var(--color-surface,#fff) 94%,#fef9c3 6%);}'
+            + '.omo-indicator-embed--warning .omo-indicator-embed__chart{border-color:color-mix(in srgb,#eab308 42%,var(--color-border,#d1d5db));background:linear-gradient(135deg,color-mix(in srgb,#eab308 10%,var(--color-surface,#fff)),color-mix(in srgb,#eab308 4%,var(--color-surface-alt,#f8fafc)));}'
+            + '.omo-indicator-embed--current .omo-indicator-embed__values em{color:#15803d;}'
+            + '.omo-indicator-embed--unavailable{border-color:#cbd5e1;background:#f8fafc;box-shadow:none;color:#64748b;}'
+            + '.omo-indicator-embed--unavailable .omo-indicator-embed__chart{border-color:#cbd5e1;background:#f8fafc;box-shadow:none;color:#64748b;}'
+            + '.omo-indicator-embed--unavailable .omo-indicator-embed__title,.omo-indicator-embed--unavailable .omo-indicator-embed__values em{color:#64748b;}'
+            + '.omo-indicator-embed--warning .omo-indicator-embed__values em{color:#a16207;}'
+            + '.omo-indicator-embed__main{display:grid;grid-template-columns:minmax(0,210px) minmax(0,1fr) 128px;gap:12px;align-items:stretch;}'
+            + '.omo-indicator-embed__chart{grid-column:1;grid-row:1;position:relative;display:block;width:100%;max-width:210px;min-width:0;aspect-ratio:16 / 9;padding:6px 7px;border:1px solid color-mix(in srgb,var(--color-border,#d1d5db) 68%,#2563eb 32%);border-radius:var(--radius-md);background:linear-gradient(135deg,color-mix(in srgb,var(--color-primary,#2563eb) 9%,var(--color-surface,#fff)),color-mix(in srgb,var(--color-primary,#2563eb) 3%,var(--color-surface-alt,#f8fafc)));box-shadow:0 12px 26px -21px color-mix(in srgb,var(--color-primary,#2563eb) 68%,transparent);box-sizing:border-box;color:#2563eb;}'
+            + '.omo-indicator-embed__chart-plot{position:absolute;left:7px;right:7px;top:50%;aspect-ratio:180 / 54;transform:translateY(-50%);}'
+            + '.omo-indicator-embed__chart-svg{position:absolute;inset:0;display:block;width:100%;height:100%;}'
+            + '.omo-indicator-embed__chart-svg svg{display:block;width:100%;height:100%;overflow:visible;}'
+            + '.omo-indicator-embed__copy{grid-column:2;grid-row:1;display:flex;flex-direction:column;justify-content:center;min-width:0;gap:5px;}'
+            + '.omo-indicator-embed__title{display:flex;align-items:center;gap:6px;min-width:0;color:var(--color-text,#1f2937);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}'
+            + '.omo-indicator-embed__title>span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}'
+            + '.omo-indicator-embed__description{display:-webkit-box;overflow:hidden;margin-top:1px;color:var(--color-text-light,#64748b);font-size:inherit;font-weight:400;line-height:1.3;-webkit-box-orient:vertical;-webkit-line-clamp:3;line-clamp:3;}'
+            + '.omo-indicator-embed__status-dot{width:8px;height:8px;flex:0 0 auto;border-radius:999px;background:#94a3b8;box-shadow:0 0 0 3px color-mix(in srgb,#94a3b8 14%,transparent);}'
+            + '.omo-indicator-embed__status-dot--current{background:#16a34a;box-shadow:0 0 0 3px color-mix(in srgb,#16a34a 14%,transparent);}'
+            + '.omo-indicator-embed__status-dot--warning{background:#eab308;box-shadow:0 0 0 3px color-mix(in srgb,#eab308 18%,transparent);}'
+            + '.omo-indicator-embed__status-dot--overdue{background:#dc2626;box-shadow:0 0 0 3px color-mix(in srgb,#dc2626 14%,transparent);}'
+            + '.omo-indicator-embed--warning .omo-indicator-embed__chart{color:#ca8a04;}'
+            + '.omo-indicator-embed--overdue .omo-indicator-embed__chart{color:#dc2626;}'
+            + '.omo-indicator-embed--warning .omo-indicator-embed__chart .omo-stats-chart--overdue{color:#ca8a04;}'
+            + '.omo-indicator-embed__chart-svg .omo-stats-chart__line{fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;}'
+            + '.omo-indicator-embed__chart-svg .omo-stats-chart__line--background{stroke-width:2;opacity:.18;}'
+            + '.omo-indicator-embed__chart-svg .omo-stats-chart__line--sum{stroke-width:4;}'
+            + '.omo-indicator-embed__chart-svg .omo-stats-chart__reference{fill:none;stroke:color-mix(in srgb,currentColor 42%,transparent);stroke-width:1.7;stroke-dasharray:4 3;}'
+            + '.omo-indicator-embed__chart-svg .omo-stats-chart__reference--ceiling{stroke-dasharray:none;stroke-width:3;}'
+            + '.omo-indicator-embed__chart-svg .omo-stats-chart__baseline{fill:none;stroke:color-mix(in srgb,var(--color-text-light,#64748b) 72%,transparent);stroke-width:1.5;stroke-dasharray:3 5;}'
+            + '.omo-indicator-embed__chart-svg .omo-stats-chart__point{fill:currentColor;stroke:var(--color-surface,#fff);stroke-width:1.5;}'
+            + '.omo-indicator-embed__chart-svg .omo-stats-chart__scale-line{fill:none;stroke:color-mix(in srgb,currentColor 48%,transparent);stroke-width:1.2;stroke-dasharray:4 3;}'
+            + '.omo-indicator-embed__chart-svg .omo-stats-chart__scale-label{fill:var(--color-text-light,#64748b);font-size:9px;}'
+            + '.omo-indicator-embed__values{grid-column:3;grid-row:1;display:grid;justify-items:end;align-content:center;gap:1px;width:128px;min-width:128px;color:var(--color-text-light,#6b7280);font-size:12px;text-align:right;}'
+            + '.omo-indicator-embed__values b{color:var(--color-text,#1f2937);font-size:1.05rem;}'
+            + '.omo-indicator-embed__values time{font-size:11px;}'
+            + '.omo-indicator-embed__values em{font-style:normal;color:#b91c1c;font-weight:700;}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-indicator-embed,.omo-pv-editor .omo-simple-html-render .omo-indicator-embed{margin-bottom:10px;padding:9px 12px;}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-indicator-embed__value-entry{display:flex;align-items:center;justify-content:flex-end;gap:5px;margin-top:3px;padding-top:3px;border-top:1px solid color-mix(in srgb,var(--color-border,#d1d5db) 72%,transparent);}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-indicator-embed__value-input{min-width:0;width:74px;padding:3px 6px;border:1px solid var(--color-border,#d1d5db);border-radius:var(--radius-md);background:var(--color-surface,#fff);color:var(--color-text,#1f2937);font-size:11px;}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-indicator-embed__value-button{width:22px;height:22px;padding:0;border:0;border-radius:999px;background:var(--color-primary,#2563eb);color:#fff;font-size:16px;font-weight:800;line-height:1;cursor:pointer;}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-indicator-embed__value-button:disabled{opacity:.55;cursor:wait;}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable p:has(>.omo-indicator-embed){margin:0 0 10px;}'
+            + '@media (max-width:760px){.omo-indicator-embed__main{grid-template-columns:minmax(0,1fr) 120px;}.omo-indicator-embed__chart{grid-column:1 / -1;grid-row:1;}.omo-indicator-embed__copy{grid-column:1;grid-row:2;}.omo-indicator-embed__values{grid-column:2;grid-row:2;width:120px;min-width:120px;}}'
+            + '.omo-pv-editor__indicator-embed-button{min-width:34px!important;font-size:0!important;background-image:url("/omo/images/tools/stats.png")!important;background-position:center!important;background-repeat:no-repeat!important;background-size:20px 20px!important;}'
             + '.omo-simple-html-field__meta{font-size:12px;line-height:1.45;color:var(--color-text-light,#6b7280);}'
             + '.omo-simple-html-render{line-height:1.55;word-break:break-word;white-space:normal;}'
             + '.omo-simple-html-render > :first-child{margin-top:0;}'
@@ -123,10 +202,10 @@
                     throw new Error('jQuery est requis pour Summernote.');
                 }
 
-                ensureLocalStyles();
                 return ensureStylesheet(SUMMERNOTE_CSS_URL);
             })
             .then(function () {
+                ensureLocalStyles();
                 return ensureScript(SUMMERNOTE_JS_URL);
             })
             .then(function () {
@@ -180,6 +259,35 @@
         return Number.isInteger(parsed) && parsed > 0 ? parsed : 0;
     }
 
+    function getDecisionEmbedElementId(element) {
+        const rawValue = getElementAttributeValue(element, 'data-omo-decision-id').trim();
+        const parsed = Number.parseInt(rawValue, 10);
+        return Number.isInteger(parsed) && parsed > 0 ? parsed : 0;
+    }
+
+    function getProjectEmbedElementId(element) {
+        const rawValue = getElementAttributeValue(element, 'data-omo-project-id').trim();
+        const parsed = Number.parseInt(rawValue, 10);
+        return Number.isInteger(parsed) && parsed > 0 ? parsed : 0;
+    }
+
+    function getChecklistEmbedElementId(element) {
+        const parsed = Number.parseInt(getElementAttributeValue(element, 'data-omo-checklist-id').trim(), 10);
+        return Number.isInteger(parsed) && parsed > 0 ? parsed : 0;
+    }
+
+    function getEventEmbedElementId(element) {
+        const rawValue = getElementAttributeValue(element, 'data-omo-event-id').trim();
+        const parsed = Number.parseInt(rawValue, 10);
+        return Number.isInteger(parsed) && parsed > 0 ? parsed : 0;
+    }
+
+    function getIndicatorEmbedElementId(element) {
+        const rawValue = getElementAttributeValue(element, 'data-omo-indicator-id').trim();
+        const parsed = Number.parseInt(rawValue, 10);
+        return Number.isInteger(parsed) && parsed > 0 ? parsed : 0;
+    }
+
     function isTemporaryCursorMarkerElement(element) {
         return !!(element && element.nodeType === 1 && getElementAttributeValue(element, 'data-omo-cursor-marker').trim() !== '');
     }
@@ -193,7 +301,310 @@
             && getDocumentEmbedElementId(element) > 0;
     }
 
-    function buildSanitizedNode(sourceNode, ownerDocument) {
+    function isAllowedDecisionEmbedElement(element) {
+        if (!element || element.nodeType !== 1) {
+            return false;
+        }
+
+        return getElementAttributeValue(element, 'data-omo-embed-type').trim() === 'decision'
+            && getDecisionEmbedElementId(element) > 0;
+    }
+
+    function isAllowedEventEmbedElement(element) {
+        if (!element || element.nodeType !== 1) {
+            return false;
+        }
+
+        return getElementAttributeValue(element, 'data-omo-embed-type').trim() === 'event'
+            && getEventEmbedElementId(element) > 0;
+    }
+
+    function isAllowedProjectEmbedElement(element) {
+        if (!element || element.nodeType !== 1) {
+            return false;
+        }
+
+        return getElementAttributeValue(element, 'data-omo-embed-type').trim() === 'project'
+            && getProjectEmbedElementId(element) > 0;
+    }
+
+    function isAllowedChecklistEmbedElement(element) {
+        return !!element && element.nodeType === 1
+            && getElementAttributeValue(element, 'data-omo-embed-type').trim() === 'checklist'
+            && getChecklistEmbedElementId(element) > 0;
+    }
+
+    function isAllowedIndicatorEmbedElement(element) {
+        return !!element
+            && element.nodeType === 1
+            && getElementAttributeValue(element, 'data-omo-embed-type').trim() === 'indicator'
+            && getIndicatorEmbedElementId(element) > 0;
+    }
+
+    function isSafeSvgNumber(value) {
+        return /^-?\d+(?:\.\d+)?$/.test(String(value || '').trim());
+    }
+
+    function isSafeSvgPoints(value) {
+        const normalizedValue = String(value || '').trim();
+        return normalizedValue.length <= 4000 && /^-?[\d.]+,-?[\d.]+(?:\s+-?[\d.]+,-?[\d.]+)*$/.test(normalizedValue);
+    }
+
+    function getIndicatorEmbedStatusLabel(element) {
+        const attributeValue = getElementAttributeValue(element, 'data-omo-indicator-status').trim();
+        if (attributeValue) {
+            return attributeValue;
+        }
+
+        const statusNode = element && element.querySelector
+            ? element.querySelector('.omo-indicator-embed__values em')
+            : null;
+        return statusNode ? String(statusNode.textContent || '').trim() : '';
+    }
+
+    function appendSanitizedIndicatorChart(embedNode, sourceNode, ownerDocument) {
+        const sourceChart = sourceNode.querySelector && sourceNode.querySelector('svg.omo-stats-chart');
+        if (!sourceChart) {
+            return;
+        }
+
+        const chart = ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        const indicatorKind = getElementAttributeValue(sourceNode, 'data-omo-indicator-kind').trim() === 'group' ? 'group' : 'indicator';
+        chart.setAttribute('class', 'omo-stats-chart omo-stats-chart--compact' + (indicatorKind === 'group' ? ' omo-stats-chart--group' : ''));
+        chart.setAttribute('viewBox', '0 0 180 54');
+        chart.setAttribute('aria-hidden', 'true');
+        ['polyline', 'circle'].forEach(function (tagName) {
+            Array.from(sourceChart.querySelectorAll(tagName)).forEach(function (sourceShape) {
+                const className = String(sourceShape.getAttribute('class') || '');
+                if (tagName === 'polyline' && !/^omo-stats-chart__line(?: omo-stats-chart__line--(?:background|sum))?$/.test(className) && className !== 'omo-stats-chart__reference') {
+                    return;
+                }
+                if (tagName === 'circle' && className !== 'omo-stats-chart__point') {
+                    return;
+                }
+
+                const shape = ownerDocument.createElementNS('http://www.w3.org/2000/svg', tagName);
+                shape.setAttribute('class', className);
+                if (tagName === 'polyline') {
+                    const points = String(sourceShape.getAttribute('points') || '').trim();
+                    if (!isSafeSvgPoints(points)) {
+                        return;
+                    }
+                    shape.setAttribute('points', points);
+                    const strokeStyle = String(sourceShape.getAttribute('style') || '').trim();
+                    if (/^stroke:\s*#[0-9a-f]{6};?$/i.test(strokeStyle)) {
+                        shape.setAttribute('style', strokeStyle);
+                    }
+                } else {
+                    const cx = String(sourceShape.getAttribute('cx') || '').trim();
+                    const cy = String(sourceShape.getAttribute('cy') || '').trim();
+                    const radius = String(sourceShape.getAttribute('r') || '').trim();
+                    if (!isSafeSvgNumber(cx) || !isSafeSvgNumber(cy) || !isSafeSvgNumber(radius)) {
+                        return;
+                    }
+                    shape.setAttribute('cx', cx);
+                    shape.setAttribute('cy', cy);
+                    shape.setAttribute('r', radius);
+                }
+                chart.appendChild(shape);
+            });
+        });
+
+        ['line', 'text'].forEach(function (tagName) {
+            Array.from(sourceChart.querySelectorAll(tagName)).forEach(function (sourceShape) {
+                const className = String(sourceShape.getAttribute('class') || '');
+                if (tagName === 'line' && [
+                    'omo-stats-chart__scale-line',
+                    'omo-stats-chart__reference omo-stats-chart__reference--ceiling',
+                    'omo-stats-chart__baseline'
+                ].indexOf(className) < 0) {
+                    return;
+                }
+                if (tagName === 'text' && className !== 'omo-stats-chart__scale-label') {
+                    return;
+                }
+
+                const shape = ownerDocument.createElementNS('http://www.w3.org/2000/svg', tagName);
+                shape.setAttribute('class', className);
+                if (tagName === 'line') {
+                    const x1 = String(sourceShape.getAttribute('x1') || '').trim();
+                    const y1 = String(sourceShape.getAttribute('y1') || '').trim();
+                    const x2 = String(sourceShape.getAttribute('x2') || '').trim();
+                    const y2 = String(sourceShape.getAttribute('y2') || '').trim();
+                    if (![x1, y1, x2, y2].every(isSafeSvgNumber)) {
+                        return;
+                    }
+                    shape.setAttribute('x1', x1);
+                    shape.setAttribute('y1', y1);
+                    shape.setAttribute('x2', x2);
+                    shape.setAttribute('y2', y2);
+                } else {
+                    const x = String(sourceShape.getAttribute('x') || '').trim();
+                    const y = String(sourceShape.getAttribute('y') || '').trim();
+                    const label = String(sourceShape.textContent || '').trim();
+                    if (!isSafeSvgNumber(x) || !isSafeSvgNumber(y) || !/^-?[\d.,\s]+$/.test(label)) {
+                        return;
+                    }
+                    shape.setAttribute('x', x);
+                    shape.setAttribute('y', y);
+                    shape.textContent = label;
+                }
+                chart.appendChild(shape);
+            });
+        });
+
+        const chartMinLabel = getElementAttributeValue(sourceNode, 'data-omo-indicator-chart-min').trim();
+        const chartMaxLabel = getElementAttributeValue(sourceNode, 'data-omo-indicator-chart-max').trim();
+        if (chartMinLabel && chartMaxLabel && !chart.querySelector('.omo-stats-chart__scale-line')) {
+            const scaleLineTop = ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'line');
+            scaleLineTop.setAttribute('class', 'omo-stats-chart__scale-line');
+            scaleLineTop.setAttribute('x1', '20');
+            scaleLineTop.setAttribute('y1', '2');
+            scaleLineTop.setAttribute('x2', '178');
+            scaleLineTop.setAttribute('y2', '2');
+            chart.appendChild(scaleLineTop);
+            const scaleLineBottom = ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'line');
+            scaleLineBottom.setAttribute('class', 'omo-stats-chart__scale-line');
+            scaleLineBottom.setAttribute('x1', '20');
+            scaleLineBottom.setAttribute('y1', '52');
+            scaleLineBottom.setAttribute('x2', '178');
+            scaleLineBottom.setAttribute('y2', '52');
+            chart.appendChild(scaleLineBottom);
+        }
+        if (chartMinLabel && chartMaxLabel && !chart.querySelector('.omo-stats-chart__scale-label')) {
+            const scaleLabelTop = ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'text');
+            scaleLabelTop.setAttribute('class', 'omo-stats-chart__scale-label');
+            scaleLabelTop.setAttribute('x', '0');
+            scaleLabelTop.setAttribute('y', '6');
+            scaleLabelTop.textContent = chartMaxLabel;
+            chart.appendChild(scaleLabelTop);
+            const scaleLabelBottom = ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'text');
+            scaleLabelBottom.setAttribute('class', 'omo-stats-chart__scale-label');
+            scaleLabelBottom.setAttribute('x', '0');
+            scaleLabelBottom.setAttribute('y', '52');
+            scaleLabelBottom.textContent = chartMinLabel;
+            chart.appendChild(scaleLabelBottom);
+        }
+
+        if (chart.childNodes.length === 0) {
+            return;
+        }
+
+        const chartWrapper = ownerDocument.createElement('span');
+        chartWrapper.setAttribute('class', 'omo-indicator-embed__chart-svg');
+        chartWrapper.appendChild(chart);
+        embedNode.appendChild(chartWrapper);
+    }
+
+    function refreshIndicatorValueControls(editable, ui) {
+        if (!editable) {
+            return;
+        }
+
+        const config = ui && typeof ui === 'object' ? ui : null;
+        const allowedIds = config && Array.isArray(config.allowedIndicatorIds)
+            ? config.allowedIndicatorIds.map(function (value) { return String(value); })
+            : [];
+        editable.querySelectorAll('.omo-indicator-embed[data-omo-embed-type="indicator"]').forEach(function (embedNode) {
+            const existingEntry = embedNode.querySelector('.omo-indicator-embed__value-entry');
+            if (existingEntry) {
+                existingEntry.remove();
+            }
+
+            const indicatorKind = getElementAttributeValue(embedNode, 'data-omo-indicator-kind').trim();
+            const indicatorId = String(getIndicatorEmbedElementId(embedNode));
+            if (!config || !config.enabled || indicatorKind === 'group' || allowedIds.indexOf(indicatorId) < 0) {
+                return;
+            }
+
+            const entryNode = editable.ownerDocument.createElement('span');
+            entryNode.setAttribute('class', 'omo-indicator-embed__value-entry');
+            entryNode.setAttribute('contenteditable', 'false');
+            const inputNode = editable.ownerDocument.createElement('input');
+            inputNode.setAttribute('class', 'omo-indicator-embed__value-input');
+            inputNode.setAttribute('type', 'text');
+            inputNode.setAttribute('inputmode', 'decimal');
+            inputNode.setAttribute('data-omo-indicator-value-input', '1');
+            inputNode.setAttribute('placeholder', String(config.placeholder || 'Nouvelle valeur'));
+            inputNode.setAttribute('aria-label', String(config.inputLabel || config.placeholder || 'Nouvelle valeur'));
+            inputNode.addEventListener('input', function (event) {
+                event.stopPropagation();
+            });
+            const buttonNode = editable.ownerDocument.createElement('button');
+            buttonNode.setAttribute('class', 'omo-indicator-embed__value-button');
+            buttonNode.setAttribute('type', 'button');
+            buttonNode.setAttribute('data-omo-indicator-add-value', '1');
+            buttonNode.setAttribute('aria-label', String(config.addLabel || 'Ajouter maintenant'));
+            buttonNode.setAttribute('title', String(config.addLabel || 'Ajouter maintenant'));
+            buttonNode.textContent = '+';
+            inputNode.addEventListener('keydown', function (event) {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    buttonNode.click();
+                }
+            });
+            entryNode.appendChild(inputNode);
+            entryNode.appendChild(buttonNode);
+            const valuesNode = embedNode.querySelector('.omo-indicator-embed__values')
+                || embedNode.querySelector('.omo-indicator-embed__copy')
+                || embedNode;
+            valuesNode.appendChild(entryNode);
+        });
+    }
+
+    function emitIndicatorValueAdd(targetNode, event) {
+        if (!targetNode || !targetNode.closest) {
+            return;
+        }
+
+        const buttonNode = targetNode.closest('[data-omo-indicator-add-value="1"]');
+        if (!buttonNode) {
+            return;
+        }
+
+        const embedNode = buttonNode.closest('.omo-indicator-embed[data-omo-embed-type="indicator"]');
+        const inputNode = embedNode ? embedNode.querySelector('[data-omo-indicator-value-input="1"]') : null;
+        if (!embedNode || !inputNode) {
+            return;
+        }
+
+        if (event && typeof event.preventDefault === 'function') {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        return {
+            indicatorId: getIndicatorEmbedElementId(embedNode),
+            node: embedNode,
+            input: inputNode,
+            button: buttonNode,
+            api: null,
+        };
+    }
+
+    function sanitizeBackgroundColorStyle(styleValue) {
+        var safeDeclarations = [];
+        String(styleValue || '').split(';').forEach(function (declaration) {
+            var separator = declaration.indexOf(':');
+            if (separator < 1) {
+                return;
+            }
+
+            var property = declaration.slice(0, separator).trim().toLowerCase();
+            var value = declaration.slice(separator + 1).trim().toLowerCase();
+            if (property !== 'background-color') {
+                return;
+            }
+
+            if (!/^(?:#[0-9a-f]{3,8}|(?:rgb|hsl)a?\(\s*[-+0-9.%]+(?:\s*,\s*[-+0-9.%]+){2,3}\s*\)|[a-z]{1,32})$/i.test(value)) {
+                return;
+            }
+
+            safeDeclarations.push(property + ': ' + value);
+        });
+        return safeDeclarations.join('; ');
+    }
+
+    function buildSanitizedNode(sourceNode, ownerDocument, options) {
         if (!sourceNode) {
             return ownerDocument.createDocumentFragment();
         }
@@ -219,7 +630,11 @@
             return ownerDocument.createDocumentFragment();
         }
 
-        if (isAllowedDocumentEmbedElement(sourceNode)) {
+        if (sourceNode.hasAttribute('data-omo-project-embed-runtime') || sourceNode.hasAttribute('data-omo-checklist-embed-runtime')) {
+            return ownerDocument.createDocumentFragment();
+        }
+
+        if ((!options || !options.simpleOnly) && isAllowedDocumentEmbedElement(sourceNode)) {
             const embedNode = ownerDocument.createElement('span');
             embedNode.setAttribute('class', 'omo-document-embed');
             embedNode.setAttribute('contenteditable', 'false');
@@ -237,9 +652,223 @@
             }
 
             Array.from(sourceNode.childNodes || []).forEach(function (childNode) {
-                appendSanitizedChild(embedNode, buildSanitizedNode(childNode, ownerDocument));
+                appendSanitizedChild(embedNode, buildSanitizedNode(childNode, ownerDocument, options));
             });
 
+            return embedNode;
+        }
+
+        if ((!options || !options.simpleOnly) && isAllowedDecisionEmbedElement(sourceNode)) {
+            const embedNode = ownerDocument.createElement('span');
+            embedNode.setAttribute('class', 'omo-decision-embed');
+            embedNode.setAttribute('contenteditable', 'false');
+            embedNode.setAttribute('data-omo-embed-type', 'decision');
+            embedNode.setAttribute('data-omo-decision-id', String(getDecisionEmbedElementId(sourceNode)));
+
+            const title = getElementAttributeValue(sourceNode, 'data-omo-decision-title').trim();
+            if (title) {
+                embedNode.setAttribute('data-omo-decision-title', title);
+            }
+
+            const type = getElementAttributeValue(sourceNode, 'data-omo-decision-type').trim();
+            if (type) {
+                embedNode.setAttribute('data-omo-decision-type', type);
+            }
+
+            const summary = getElementAttributeValue(sourceNode, 'data-omo-decision-summary').trim();
+            if (summary) {
+                embedNode.setAttribute('data-omo-decision-summary', summary);
+            }
+
+            Array.from(sourceNode.childNodes || []).forEach(function (childNode) {
+                appendSanitizedChild(embedNode, buildSanitizedNode(childNode, ownerDocument, options));
+            });
+
+            return embedNode;
+        }
+
+        if ((!options || !options.simpleOnly) && isAllowedEventEmbedElement(sourceNode)) {
+            const embedNode = ownerDocument.createElement('span');
+            embedNode.setAttribute('class', 'omo-event-embed');
+            embedNode.setAttribute('contenteditable', 'false');
+            embedNode.setAttribute('data-omo-embed-type', 'event');
+            embedNode.setAttribute('data-omo-event-id', String(getEventEmbedElementId(sourceNode)));
+
+            ['title', 'schedule', 'location', 'description'].forEach(function (attributeName) {
+                const value = getElementAttributeValue(sourceNode, 'data-omo-event-' + attributeName).trim();
+                if (value) {
+                    embedNode.setAttribute('data-omo-event-' + attributeName, value);
+                }
+            });
+
+            Array.from(sourceNode.childNodes || []).forEach(function (childNode) {
+                appendSanitizedChild(embedNode, buildSanitizedNode(childNode, ownerDocument, options));
+            });
+
+            return embedNode;
+        }
+
+        if ((!options || !options.simpleOnly) && isAllowedProjectEmbedElement(sourceNode)) {
+            const embedNode = ownerDocument.createElement('span');
+            embedNode.setAttribute('class', 'omo-project-embed');
+            embedNode.setAttribute('contenteditable', 'false');
+            embedNode.setAttribute('data-omo-embed-type', 'project');
+            embedNode.setAttribute('data-omo-project-id', String(getProjectEmbedElementId(sourceNode)));
+
+            const title = getElementAttributeValue(sourceNode, 'data-omo-project-title').trim();
+            if (title) {
+                embedNode.setAttribute('data-omo-project-title', title);
+            }
+
+            const projectStatus = getElementAttributeValue(sourceNode, 'data-omo-project-status').trim();
+            const projectStatusLabel = getElementAttributeValue(sourceNode, 'data-omo-project-status-label').trim();
+            if (/^(?:someday|ready|in_progress|blocked|review|done)$/.test(projectStatus)) {
+                embedNode.setAttribute('data-omo-project-status', projectStatus);
+            }
+            if (projectStatusLabel) {
+                embedNode.setAttribute('data-omo-project-status-label', projectStatusLabel);
+            }
+
+            Array.from(sourceNode.childNodes || []).forEach(function (childNode) {
+                appendSanitizedChild(embedNode, buildSanitizedNode(childNode, ownerDocument, options));
+            });
+
+            const sourceStatusNode = sourceNode.querySelector('.omo-project-embed__status');
+            const canonicalStatusLabel = projectStatusLabel
+                || (sourceStatusNode ? String(sourceStatusNode.textContent || '').trim() : '');
+            const canonicalStatus = /^(?:someday|ready|in_progress|blocked|review|done)$/.test(projectStatus)
+                ? projectStatus
+                : (sourceStatusNode
+                    ? ((String(sourceStatusNode.getAttribute('class') || '').match(/omo-project-embed__status--(someday|ready|in_progress|blocked|review|done)/) || [])[1] || '')
+                    : '');
+            const headerNode = Array.from(embedNode.children || []).find(function (childNode) {
+                return String(childNode.tagName || '').toUpperCase() === 'STRONG';
+            });
+            if (headerNode && canonicalStatusLabel) {
+                Array.from(headerNode.children || []).filter(function (childNode) {
+                    if (String(childNode.tagName || '').toUpperCase() !== 'EM') {
+                        return false;
+                    }
+                    const capsuleLabel = String(childNode.textContent || '').trim().toUpperCase();
+                    return !/^P[1-5]$/.test(capsuleLabel) && !/^(?:S|M|L|XL|XXL)$/.test(capsuleLabel);
+                }).forEach(function (statusNode) {
+                    statusNode.remove();
+                });
+
+                const statusNode = ownerDocument.createElement('em');
+                statusNode.setAttribute('class', 'omo-project-embed__status'
+                    + (canonicalStatus ? ' omo-project-embed__status--' + canonicalStatus : ''));
+                statusNode.textContent = canonicalStatusLabel;
+                const firstCapsule = Array.from(headerNode.children || []).find(function (childNode) {
+                    return String(childNode.tagName || '').toUpperCase() === 'EM';
+                });
+                headerNode.insertBefore(statusNode, firstCapsule || null);
+            }
+
+            return embedNode;
+        }
+
+        if ((!options || !options.simpleOnly) && isAllowedChecklistEmbedElement(sourceNode)) {
+            const embedNode = ownerDocument.createElement('span');
+            embedNode.setAttribute('class', 'omo-checklist-embed');
+            embedNode.setAttribute('contenteditable', 'false');
+            embedNode.setAttribute('data-omo-embed-type', 'checklist');
+            embedNode.setAttribute('data-omo-checklist-id', String(getChecklistEmbedElementId(sourceNode)));
+            const title = getElementAttributeValue(sourceNode, 'data-omo-checklist-title').trim();
+            if (title) { embedNode.setAttribute('data-omo-checklist-title', title); }
+            ['STRONG', 'EM'].forEach(function (tagName) {
+                const childNode = Array.from(sourceNode.children || []).find(function (candidate) {
+                    return String(candidate.tagName || '').toUpperCase() === tagName;
+                });
+                if (childNode) appendSanitizedChild(embedNode, buildSanitizedNode(childNode, ownerDocument, options));
+            });
+            return embedNode;
+        }
+
+        if ((!options || !options.simpleOnly) && isAllowedIndicatorEmbedElement(sourceNode)) {
+            const embedNode = ownerDocument.createElement('span');
+            const sourceClassName = ' ' + String(sourceNode.getAttribute('class') || '').trim() + ' ';
+            let isOverdue = getElementAttributeValue(sourceNode, 'data-omo-indicator-overdue').trim() === '1'
+                || sourceClassName.indexOf(' omo-indicator-embed--overdue ') >= 0
+                || sourceClassName.indexOf(' omo-indicator-embed--warning ') >= 0;
+            const overdueSeverity = getElementAttributeValue(sourceNode, 'data-omo-indicator-overdue-severity').trim() === 'warning'
+                || sourceClassName.indexOf(' omo-indicator-embed--warning ') >= 0
+                ? 'warning'
+                : 'error';
+            const statusLabel = getIndicatorEmbedStatusLabel(sourceNode);
+            const rawSourceStatus = getElementAttributeValue(sourceNode, 'data-omo-indicator-source-status').trim();
+            const sourceStatus = rawSourceStatus === 'archived' || rawSourceStatus === 'unavailable' ? rawSourceStatus : '';
+            if (sourceStatus) {
+                isOverdue = false;
+            }
+            const hasStatus = statusLabel !== '' || sourceClassName.indexOf(' omo-indicator-embed--current ') >= 0;
+            embedNode.setAttribute('class', 'omo-indicator-embed' + (sourceStatus ? ' omo-indicator-embed--unavailable' : (isOverdue ? (overdueSeverity === 'warning' ? ' omo-indicator-embed--warning' : ' omo-indicator-embed--overdue') : (hasStatus ? ' omo-indicator-embed--current' : ''))));
+            embedNode.setAttribute('contenteditable', 'false');
+            embedNode.setAttribute('data-omo-embed-type', 'indicator');
+            embedNode.setAttribute('data-omo-indicator-id', String(getIndicatorEmbedElementId(sourceNode)));
+            const indicatorKind = getElementAttributeValue(sourceNode, 'data-omo-indicator-kind').trim() === 'group' ? 'group' : 'indicator';
+            embedNode.setAttribute('data-omo-indicator-kind', indicatorKind);
+            if (sourceStatus) {
+                embedNode.setAttribute('data-omo-indicator-source-status', sourceStatus);
+            }
+            ['title', 'description', 'value', 'date', 'context', 'chart-min', 'chart-max', 'overdue-severity'].forEach(function (attributeName) {
+                const value = getElementAttributeValue(sourceNode, 'data-omo-indicator-' + attributeName).trim();
+                if (value) {
+                    embedNode.setAttribute('data-omo-indicator-' + attributeName, value);
+                }
+            });
+            if (statusLabel) {
+                embedNode.setAttribute('data-omo-indicator-status', statusLabel);
+            }
+            if (isOverdue) {
+                embedNode.setAttribute('data-omo-indicator-overdue', '1');
+            }
+
+            const title = getElementAttributeValue(sourceNode, 'data-omo-indicator-title').trim() || ('Indicateur #' + String(getIndicatorEmbedElementId(sourceNode)));
+            const description = getElementAttributeValue(sourceNode, 'data-omo-indicator-description').trim();
+            const chartMinLabel = getElementAttributeValue(sourceNode, 'data-omo-indicator-chart-min').trim();
+            const chartMaxLabel = getElementAttributeValue(sourceNode, 'data-omo-indicator-chart-max').trim();
+            const chartNode = ownerDocument.createElement('span');
+            chartNode.setAttribute('class', 'omo-indicator-embed__chart');
+            const chartPlotNode = ownerDocument.createElement('span');
+            chartPlotNode.setAttribute('class', 'omo-indicator-embed__chart-plot');
+            appendSanitizedIndicatorChart(chartPlotNode, sourceNode, ownerDocument);
+            chartNode.appendChild(chartPlotNode);
+            const titleNode = ownerDocument.createElement('strong');
+            const linkNode = ownerDocument.createElement('a');
+            linkNode.setAttribute('class', 'omo-indicator-embed__title');
+            linkNode.setAttribute('href', indicatorKind === 'group' ? ('#stats-g' + String(getIndicatorEmbedElementId(sourceNode))) : ('#stats-i' + String(getIndicatorEmbedElementId(sourceNode))));
+            const statusDotNode = ownerDocument.createElement('span');
+            statusDotNode.setAttribute('class', 'omo-indicator-embed__status-dot'
+                + (sourceStatus ? ' omo-indicator-embed__status-dot--unknown' : (isOverdue ? (overdueSeverity === 'warning' ? ' omo-indicator-embed__status-dot--warning' : ' omo-indicator-embed__status-dot--overdue') : (hasStatus ? ' omo-indicator-embed__status-dot--current' : ' omo-indicator-embed__status-dot--unknown'))));
+            statusDotNode.setAttribute('aria-hidden', 'true');
+            const titleTextNode = ownerDocument.createElement('span');
+            titleTextNode.textContent = title;
+            linkNode.appendChild(statusDotNode);
+            linkNode.appendChild(titleTextNode);
+            titleNode.appendChild(linkNode);
+            const mainNode = ownerDocument.createElement('span');
+            mainNode.setAttribute('class', 'omo-indicator-embed__main');
+            mainNode.appendChild(chartNode);
+            const copyNode = ownerDocument.createElement('span');
+            copyNode.setAttribute('class', 'omo-indicator-embed__copy');
+            copyNode.appendChild(titleNode);
+            if (description) {
+                const descriptionNode = ownerDocument.createElement('span');
+                descriptionNode.setAttribute('class', 'omo-indicator-embed__description');
+                descriptionNode.textContent = description;
+                copyNode.appendChild(descriptionNode);
+            }
+            const valuesNode = ownerDocument.createElement('span');
+            valuesNode.setAttribute('class', 'omo-indicator-embed__values');
+            const valueLabel = getElementAttributeValue(sourceNode, 'data-omo-indicator-value').trim();
+            const dateLabel = getElementAttributeValue(sourceNode, 'data-omo-indicator-date').trim();
+            if (valueLabel) { const valueNode = ownerDocument.createElement('b'); valueNode.textContent = valueLabel; valuesNode.appendChild(valueNode); }
+            if (dateLabel) { const dateNode = ownerDocument.createElement('time'); dateNode.textContent = dateLabel; valuesNode.appendChild(dateNode); }
+            if (statusLabel) { const statusNode = ownerDocument.createElement('em'); statusNode.textContent = statusLabel; valuesNode.appendChild(statusNode); }
+            mainNode.appendChild(copyNode);
+            mainNode.appendChild(valuesNode);
+            embedNode.appendChild(mainNode);
             return embedNode;
         }
 
@@ -250,28 +879,32 @@
             H2: true,
             H3: true,
             BLOCKQUOTE: true,
-            TABLE: true,
-            THEAD: true,
-            TBODY: true,
-            TR: true,
-            TH: true,
-            TD: true,
             BR: true,
             STRONG: true,
             B: true,
             EM: true,
             I: true,
             U: true,
+            SPAN: true,
             UL: true,
             OL: true,
             LI: true,
             A: true
         };
 
+        if (!options || !options.simpleOnly) {
+            allowedTags.TABLE = true;
+            allowedTags.THEAD = true;
+            allowedTags.TBODY = true;
+            allowedTags.TR = true;
+            allowedTags.TH = true;
+            allowedTags.TD = true;
+        }
+
         if (!allowedTags[normalizedTagName]) {
             const fragment = ownerDocument.createDocumentFragment();
             Array.from(sourceNode.childNodes || []).forEach(function (childNode) {
-                appendSanitizedChild(fragment, buildSanitizedNode(childNode, ownerDocument));
+                appendSanitizedChild(fragment, buildSanitizedNode(childNode, ownerDocument, options));
             });
             return fragment;
         }
@@ -281,7 +914,7 @@
             if (!href) {
                 const anchorFragment = ownerDocument.createDocumentFragment();
                 Array.from(sourceNode.childNodes || []).forEach(function (childNode) {
-                    appendSanitizedChild(anchorFragment, buildSanitizedNode(childNode, ownerDocument));
+                    appendSanitizedChild(anchorFragment, buildSanitizedNode(childNode, ownerDocument, options));
                 });
                 return anchorFragment;
             }
@@ -295,14 +928,23 @@
                 anchorNode.setAttribute('rel', 'noopener noreferrer');
             }
 
+            const safeAnchorBackgroundColorStyle = sanitizeBackgroundColorStyle(sourceNode.getAttribute('style') || '');
+            if (safeAnchorBackgroundColorStyle) {
+                anchorNode.setAttribute('style', safeAnchorBackgroundColorStyle);
+            }
+
             Array.from(sourceNode.childNodes || []).forEach(function (childNode) {
-                appendSanitizedChild(anchorNode, buildSanitizedNode(childNode, ownerDocument));
+                appendSanitizedChild(anchorNode, buildSanitizedNode(childNode, ownerDocument, options));
             });
 
             return anchorNode;
         }
 
         const elementNode = ownerDocument.createElement(normalizedTagName.toLowerCase());
+        const safeBackgroundColorStyle = sanitizeBackgroundColorStyle(sourceNode.getAttribute('style') || '');
+        if (safeBackgroundColorStyle) {
+            elementNode.setAttribute('style', safeBackgroundColorStyle);
+        }
         if (normalizedTagName === 'TH' || normalizedTagName === 'TD') {
             const colspan = Number.parseInt(sourceNode.getAttribute('colspan') || '', 10);
             const rowspan = Number.parseInt(sourceNode.getAttribute('rowspan') || '', 10);
@@ -317,7 +959,7 @@
         }
 
         Array.from(sourceNode.childNodes || []).forEach(function (childNode) {
-            appendSanitizedChild(elementNode, buildSanitizedNode(childNode, ownerDocument));
+            appendSanitizedChild(elementNode, buildSanitizedNode(childNode, ownerDocument, options));
         });
 
         return elementNode;
@@ -340,7 +982,7 @@
         return textValue ? rawHtml : '';
     }
 
-    function sanitizeHtml(html) {
+    function sanitizeHtml(html, options) {
         const parser = new window.DOMParser();
         const parsed = parser.parseFromString('<div>' + String(html || '') + '</div>', 'text/html');
         const sourceRoot = parsed.body && parsed.body.firstElementChild ? parsed.body.firstElementChild : parsed.body;
@@ -348,7 +990,7 @@
         const wrapper = cleanDocument.createElement('div');
 
         Array.from(sourceRoot.childNodes || []).forEach(function (childNode) {
-            appendSanitizedChild(wrapper, buildSanitizedNode(childNode, cleanDocument));
+            appendSanitizedChild(wrapper, buildSanitizedNode(childNode, cleanDocument, options));
         });
 
         const sanitized = wrapper.innerHTML
@@ -400,18 +1042,31 @@
             placeholder: 'Saisissez du contenu HTML simple.',
             disabled: false,
             height: 180,
+            minHeight: null,
+            simpleOnly: false,
             customButtons: [],
+            indicatorValueUi: null,
+            resourceGapHelperLabel: '',
             onChange: null,
+            onIndicatorValueAdd: null,
+            onReady: null,
             onDoubleClick: null
         }, options || {});
 
-        const safeInitialValue = sanitizeHtml(state.value);
+        const sanitizerOptions = state.simpleOnly ? {simpleOnly: true} : null;
+        const sanitizeEditorHtml = function (value) {
+            return sanitizeHtml(value, sanitizerOptions);
+        };
+        const safeInitialValue = sanitizeEditorHtml(state.value);
         const editorId = 'omo-html-field-' + Math.random().toString(36).slice(2);
         const textareaId = editorId + '-textarea';
         let destroyed = false;
         let initialized = false;
         let $editor = null;
         let nativeSavedRange = null;
+        let resourceGapHelper = null;
+        let resourceGapTarget = null;
+        let resourceGapHideTimer = null;
         const toolbarButtons = {};
         const toolbarButtonState = {};
         const customToolbarButtons = Array.isArray(state.customButtons)
@@ -432,7 +1087,6 @@
         container.innerHTML = ''
             + '<div class="omo-simple-html-field">'
             + '  <textarea id="' + escapeHtml(textareaId) + '"></textarea>'
-            + '  <div class="omo-simple-html-field__meta">Edition HTML via Summernote: titres H1 a H3, citation, gras, italic, listes, liens et tableaux simples.</div>'
             + '</div>';
 
         const textarea = container.querySelector('textarea');
@@ -441,7 +1095,7 @@
         }
 
         function setRawValue(nextValue) {
-            state.value = sanitizeHtml(nextValue);
+            state.value = sanitizeEditorHtml(nextValue);
             if (textarea) {
                 textarea.value = state.value;
             }
@@ -449,14 +1103,39 @@
 
         function getValue() {
             if (initialized && $editor) {
-                return sanitizeHtml($editor.summernote('code'));
+                return sanitizeEditorHtml($editor.summernote('code'));
             }
 
-            return sanitizeHtml(state.value);
+            return sanitizeEditorHtml(state.value);
         }
 
         function getEditableElement() {
             return container.querySelector('.note-editable');
+        }
+
+        function resizeEditableToContent() {
+            const editable = getEditableElement();
+            if (!editable) {
+                return;
+            }
+
+            const minimumHeight = Math.max(80, Number(state.minHeight || state.height || 180));
+            editable.style.minHeight = minimumHeight + 'px';
+            editable.style.height = 'auto';
+            editable.style.overflowY = 'hidden';
+            editable.style.height = Math.max(minimumHeight, editable.scrollHeight) + 'px';
+        }
+
+        function scheduleResizeEditableToContent() {
+            const schedule = typeof window.requestAnimationFrame === 'function'
+                ? window.requestAnimationFrame.bind(window)
+                : function (callback) { window.setTimeout(callback, 16); };
+
+            schedule(function () {
+                if (!destroyed) {
+                    resizeEditableToContent();
+                }
+            });
         }
 
         function cloneRange(range) {
@@ -548,7 +1227,10 @@
 
             if (initialized && $editor) {
                 $editor.summernote('code', state.value);
+                normalizeResourceEmbedBlocks(getEditableElement());
+                refreshIndicatorValueControls(getEditableElement(), state.indicatorValueUi);
                 saveRange();
+                scheduleResizeEditableToContent();
             }
 
             if (typeof state.onChange === 'function') {
@@ -577,6 +1259,23 @@
                     state.onChange(getValue(), container.__omoSimpleHtmlField || null);
                 } catch (error) {
                 }
+            }
+        }
+
+        function applyBackgroundColor(color) {
+            color = String(color || '').trim();
+            if ((color !== '' && !/^#[0-9a-f]{6}$/i.test(color)) || !initialized || !$editor) {
+                return false;
+            }
+
+            restoreRange();
+            try {
+                $editor.summernote('backColor', color || 'transparent');
+                setRawValue($editor.summernote('code'));
+                emitChange();
+                return true;
+            } catch (error) {
+                return false;
             }
         }
 
@@ -612,11 +1311,16 @@
             const title = resolvedState && resolvedState.title !== undefined
                 ? String(resolvedState.title || '')
                 : null;
+            const contents = resolvedState && resolvedState.contents !== undefined
+                ? String(resolvedState.contents || '')
+                : null;
             const isDisabled = !!(resolvedState && resolvedState.disabled);
             const isHidden = !!(resolvedState && resolvedState.hidden);
             const isActive = !!(resolvedState && resolvedState.active);
 
-            if (label !== null) {
+            if (contents !== null) {
+                $button.html(contents);
+            } else if (label !== null) {
                 $button.html(escapeHtml(label));
             }
 
@@ -641,18 +1345,412 @@
             }
         }
 
+        function isResourceEmbedElement(element) {
+            if (!(element instanceof Element)) {
+                return false;
+            }
+
+            return /^(?:document|decision|project|checklist|event|indicator)$/i.test(
+                String(element.getAttribute('data-omo-embed-type') || '')
+            );
+        }
+
+        function getSingleResourceEmbedFromHtml(safeHtml) {
+            const temp = document.createElement('div');
+            temp.innerHTML = safeHtml;
+            const meaningfulNodes = Array.from(temp.childNodes || []).filter(function (node) {
+                return node.nodeType !== Node.TEXT_NODE || String(node.textContent || '').trim() !== '';
+            });
+
+            if (meaningfulNodes.length !== 1 || !isResourceEmbedElement(meaningfulNodes[0])) {
+                return null;
+            }
+
+            return meaningfulNodes[0];
+        }
+
+        function createNormalParagraph() {
+            const paragraph = document.createElement('p');
+            paragraph.appendChild(document.createElement('br'));
+            return paragraph;
+        }
+
+        function isParagraphEmpty(paragraph) {
+            if (!(paragraph instanceof HTMLParagraphElement)) {
+                return false;
+            }
+
+            return Array.from(paragraph.childNodes || []).every(function (node) {
+                return node.nodeType === Node.TEXT_NODE
+                    ? String(node.textContent || '').trim() === ''
+                    : (node instanceof HTMLBRElement);
+            });
+        }
+
+        function isResourceEmbedOnlyParagraph(paragraph) {
+            if (!(paragraph instanceof HTMLParagraphElement)) {
+                return false;
+            }
+
+            let containsEmbed = false;
+            const isValid = Array.from(paragraph.childNodes || []).every(function (node) {
+                if (node.nodeType === Node.TEXT_NODE) {
+                    return String(node.textContent || '').trim() === '';
+                }
+
+                if (node instanceof HTMLBRElement) {
+                    return true;
+                }
+
+                if (isResourceEmbedElement(node)) {
+                    containsEmbed = true;
+                    return true;
+                }
+
+                return false;
+            });
+
+            return isValid && containsEmbed;
+        }
+
+        function setCursorInParagraph(paragraph) {
+            if (!(paragraph instanceof HTMLParagraphElement) || !window.getSelection) {
+                return;
+            }
+
+            const selection = window.getSelection();
+            const range = document.createRange();
+            range.selectNodeContents(paragraph);
+            range.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(range);
+        }
+
+        function ensureEditableCaret(editable) {
+            if (!editable || String(editable.textContent || '').trim() !== '' || editable.querySelector('[data-omo-embed-type]')) {
+                return false;
+            }
+
+            let paragraph = Array.from(editable.children || []).find(function (child) {
+                return isParagraphEmpty(child);
+            });
+            if (!(paragraph instanceof HTMLParagraphElement)) {
+                paragraph = createNormalParagraph();
+                editable.appendChild(paragraph);
+            }
+
+            setCursorInParagraph(paragraph);
+            saveRange();
+            return true;
+        }
+
+        function focusForInsertion() {
+            const editable = getEditableElement();
+            if (!editable) {
+                return false;
+            }
+
+            if (initialized && $editor) {
+                try {
+                    $editor.summernote('focus');
+                } catch (error) {
+                    // The native selection fallback below is sufficient.
+                }
+            }
+
+            let range = captureCurrentSelectionRange();
+            if (!range && restoreNativeSavedRange()) {
+                range = captureCurrentSelectionRange();
+            }
+
+            if (!range && ensureEditableCaret(editable)) {
+                return true;
+            }
+
+            if (!range && window.getSelection) {
+                const selection = window.getSelection();
+                const fallbackRange = document.createRange();
+                fallbackRange.selectNodeContents(editable);
+                fallbackRange.collapse(false);
+                selection.removeAllRanges();
+                selection.addRange(fallbackRange);
+            }
+
+            saveRange();
+            return !!captureCurrentSelectionRange();
+        }
+
+        function insertResourceEmbedAtMarker(markerNode, embedNode) {
+            const editable = getEditableElement();
+            if (!editable || !markerNode || !editable.contains(markerNode) || !embedNode) {
+                return false;
+            }
+
+            let markerParagraph = markerNode.parentElement
+                ? markerNode.parentElement.closest('p')
+                : null;
+            if (!(markerParagraph instanceof HTMLParagraphElement) && markerNode.parentNode === editable) {
+                markerParagraph = document.createElement('p');
+                editable.insertBefore(markerParagraph, markerNode);
+                markerParagraph.appendChild(markerNode);
+
+                while (markerParagraph.previousSibling instanceof Text) {
+                    markerParagraph.insertBefore(markerParagraph.previousSibling, markerParagraph.firstChild);
+                }
+                while (markerParagraph.nextSibling instanceof Text) {
+                    markerParagraph.appendChild(markerParagraph.nextSibling);
+                }
+            }
+            const embedParagraph = document.createElement('p');
+            embedParagraph.appendChild(embedNode);
+            if (markerParagraph instanceof HTMLParagraphElement && editable.contains(markerParagraph)) {
+                const trailingParagraph = markerParagraph.cloneNode(false);
+                const splitRange = document.createRange();
+                splitRange.setStartAfter(markerNode);
+                splitRange.setEnd(markerParagraph, markerParagraph.childNodes.length);
+                trailingParagraph.appendChild(splitRange.extractContents());
+                markerNode.remove();
+
+                if (isParagraphEmpty(markerParagraph)) {
+                    markerParagraph.replaceWith(embedParagraph);
+                } else {
+                    markerParagraph.after(embedParagraph);
+                }
+
+                if (!isParagraphEmpty(trailingParagraph)) {
+                    embedParagraph.after(trailingParagraph);
+                    setCursorInParagraph(trailingParagraph);
+                }
+
+                return true;
+            }
+
+            markerNode.replaceWith(embedParagraph);
+            return true;
+        }
+
+        function normalizeResourceEmbedBlocks(editable) {
+            if (!editable) {
+                return;
+            }
+
+            Array.from(editable.children || []).forEach(function (child) {
+                if (!isResourceEmbedElement(child)) {
+                    return;
+                }
+
+                const paragraph = document.createElement('p');
+                child.replaceWith(paragraph);
+                paragraph.appendChild(child);
+            });
+
+        }
+
+        function clearResourceGapHideTimer() {
+            if (resourceGapHideTimer !== null) {
+                window.clearTimeout(resourceGapHideTimer);
+                resourceGapHideTimer = null;
+            }
+        }
+
+        function hideResourceGapHelper() {
+            clearResourceGapHideTimer();
+            resourceGapTarget = null;
+            if (resourceGapHelper) {
+                resourceGapHelper.style.display = 'none';
+            }
+        }
+
+        function scheduleResourceGapHelperHide() {
+            if (!resourceGapHelper) {
+                return;
+            }
+
+            clearResourceGapHideTimer();
+            resourceGapHideTimer = window.setTimeout(function () {
+                if (!resourceGapHelper.matches(':hover')) {
+                    hideResourceGapHelper();
+                }
+            }, 160);
+        }
+
+        function getResourceGapTarget(target) {
+            const editable = getEditableElement();
+            const targetElement = target instanceof Element ? target : null;
+            const embed = targetElement ? targetElement.closest('[data-omo-embed-type]') : null;
+            if (!editable || !embed || !editable.contains(embed)) {
+                return null;
+            }
+
+            const paragraph = embed.parentElement ? embed.parentElement.closest('p') : null;
+            if (!isResourceEmbedOnlyParagraph(paragraph) || !editable.contains(paragraph)) {
+                return null;
+            }
+
+            if (!paragraph.nextElementSibling || isResourceEmbedOnlyParagraph(paragraph.nextElementSibling)) {
+                return paragraph;
+            }
+
+            return isResourceEmbedOnlyParagraph(paragraph.previousElementSibling)
+                ? paragraph.previousElementSibling
+                : null;
+        }
+
+        function showResourceGapHelper(paragraph) {
+            const editable = getEditableElement();
+            const field = container.querySelector('.omo-simple-html-field');
+            if (!resourceGapHelper || !editable || !field || !paragraph || !editable.contains(paragraph)) {
+                return;
+            }
+
+            const nextParagraph = paragraph.nextElementSibling;
+            if (
+                !isResourceEmbedOnlyParagraph(paragraph)
+                || (nextParagraph && !isResourceEmbedOnlyParagraph(nextParagraph))
+            ) {
+                hideResourceGapHelper();
+                return;
+            }
+
+            const fieldRect = field.getBoundingClientRect();
+            const firstRect = paragraph.getBoundingClientRect();
+            const nextRect = nextParagraph ? nextParagraph.getBoundingClientRect() : null;
+            resourceGapTarget = paragraph;
+            resourceGapHelper.style.left = ((firstRect.left + firstRect.right) / 2 - fieldRect.left) + 'px';
+            resourceGapHelper.style.top = (nextRect
+                ? ((firstRect.bottom + nextRect.top) / 2 - fieldRect.top)
+                : (firstRect.bottom - fieldRect.top + 8)) + 'px';
+            resourceGapHelper.style.display = 'inline-flex';
+            clearResourceGapHideTimer();
+        }
+
+        function mountResourceGapHelper() {
+            const editable = getEditableElement();
+            const field = container.querySelector('.omo-simple-html-field');
+            const label = String(state.resourceGapHelperLabel || '').trim();
+            if (!editable || !field || !label || state.disabled || resourceGapHelper) {
+                return;
+            }
+
+            resourceGapHelper = document.createElement('button');
+            resourceGapHelper.type = 'button';
+            resourceGapHelper.className = 'omo-html-resource-gap-helper';
+            resourceGapHelper.textContent = '+';
+            resourceGapHelper.setAttribute('aria-label', label);
+            resourceGapHelper.title = label;
+            resourceGapHelper.addEventListener('pointerdown', function (event) {
+                event.preventDefault();
+            });
+            resourceGapHelper.addEventListener('mouseenter', clearResourceGapHideTimer);
+            resourceGapHelper.addEventListener('mouseleave', scheduleResourceGapHelperHide);
+            resourceGapHelper.addEventListener('click', function () {
+                const paragraph = resourceGapTarget;
+                const nextParagraph = paragraph ? paragraph.nextElementSibling : null;
+                if (
+                    !paragraph
+                    || !editable.contains(paragraph)
+                    || (nextParagraph && !isResourceEmbedOnlyParagraph(nextParagraph))
+                ) {
+                    hideResourceGapHelper();
+                    return;
+                }
+
+                const normalParagraph = createNormalParagraph();
+                paragraph.after(normalParagraph);
+                editable.focus();
+                setCursorInParagraph(normalParagraph);
+                saveRange();
+                scheduleResizeEditableToContent();
+                hideResourceGapHelper();
+            });
+            field.appendChild(resourceGapHelper);
+
+            editable.addEventListener('mousemove', function (event) {
+                const paragraph = getResourceGapTarget(event.target);
+                if (paragraph) {
+                    showResourceGapHelper(paragraph);
+                } else {
+                    scheduleResourceGapHelperHide();
+                }
+            });
+            editable.addEventListener('mouseleave', scheduleResourceGapHelperHide);
+        }
+
+        function handleResourceEmbedParagraphEnter(event) {
+            if (!event || event.key !== 'Enter' || event.isComposing) {
+                return;
+            }
+
+            const editable = getEditableElement();
+            const range = getSelectionRange();
+            if (!editable || !range || !range.collapsed) {
+                return;
+            }
+
+            const startElement = range.startContainer instanceof Element
+                ? range.startContainer
+                : range.startContainer.parentElement;
+            const paragraph = startElement ? startElement.closest('p') : null;
+            if (!isResourceEmbedOnlyParagraph(paragraph) || !editable.contains(paragraph)) {
+                return;
+            }
+
+            event.preventDefault();
+            const normalParagraph = createNormalParagraph();
+            paragraph.after(normalParagraph);
+            setCursorInParagraph(normalParagraph);
+            saveRange();
+        }
+
+        function preventResourceEmbedPointerFocus(event) {
+            const editable = getEditableElement();
+            const target = event && event.target instanceof Element ? event.target : null;
+            const embedNode = target ? target.closest('[data-omo-embed-type]') : null;
+            if (!editable || !embedNode || !editable.contains(embedNode)) {
+                return;
+            }
+
+            const interactiveControl = target.closest('input, select, textarea, button');
+            if (interactiveControl && embedNode.contains(interactiveControl)) {
+                return;
+            }
+
+            event.preventDefault();
+        }
+
         function insertHtmlAtCursor(nextHtml) {
-            const safeHtml = sanitizeHtml(nextHtml);
+            const safeHtml = sanitizeEditorHtml(nextHtml);
             if (!safeHtml) {
                 return '';
             }
+
+            const resourceEmbed = getSingleResourceEmbedFromHtml(safeHtml);
 
             if (initialized && $editor) {
                 try {
                     $editor.summernote('focus');
                     restoreRange();
 
-                    const selectionRange = getSelectionRange();
+                    let selectionRange = getSelectionRange();
+                    if (!selectionRange) {
+                        const editable = getEditableElement();
+                        if (ensureEditableCaret(editable)) {
+                            selectionRange = getSelectionRange();
+                        }
+                    }
+                    if (resourceEmbed && selectionRange) {
+                        const markerNode = buildCursorMarkerNode();
+                        selectionRange.deleteContents();
+                        selectionRange.insertNode(markerNode);
+                        if (insertResourceEmbedAtMarker(markerNode, resourceEmbed)) {
+                            saveRange();
+                            setRawValue($editor.summernote('code'));
+                            refreshIndicatorValueControls(getEditableElement(), state.indicatorValueUi);
+                            emitChange();
+                            return safeHtml;
+                        }
+                    }
+
                     if (selectionRange) {
                         const temp = document.createElement('div');
                         const selection = window.getSelection ? window.getSelection() : null;
@@ -683,9 +1781,11 @@
 
                     saveRange();
                     setRawValue($editor.summernote('code'));
+                    refreshIndicatorValueControls(getEditableElement(), state.indicatorValueUi);
                 } catch (error) {
                     setRawValue((state.value || '') + safeHtml);
                     $editor.summernote('code', state.value);
+                    refreshIndicatorValueControls(getEditableElement(), state.indicatorValueUi);
                     saveRange();
                 }
 
@@ -700,12 +1800,47 @@
             return insertHtmlAtCursor(buildTextInsertionHtml(text));
         }
 
-        function replaceNodeWithHtml(targetNode, nextHtml) {
-            const safeHtml = sanitizeHtml(nextHtml);
+        function replaceNodeWithHtml(targetNode, nextHtml, shouldEmitChange) {
+            const safeHtml = sanitizeEditorHtml(nextHtml);
             const editable = getEditableElement();
+            const emitChangeAfterReplace = shouldEmitChange !== false;
 
             if (!safeHtml || !editable || !targetNode || !editable.contains(targetNode)) {
                 return insertHtmlAtCursor(safeHtml);
+            }
+
+            const resourceEmbed = getSingleResourceEmbedFromHtml(safeHtml);
+            if (resourceEmbed) {
+                const markerNode = buildCursorMarkerNode();
+                const targetParent = targetNode.parentNode;
+                const targetNextSibling = targetNode.nextSibling;
+
+                try {
+                    targetNode.replaceWith(markerNode);
+                    if (insertResourceEmbedAtMarker(markerNode, resourceEmbed)) {
+                        saveRange();
+
+                        if (initialized && $editor) {
+                            setRawValue($editor.summernote('code'));
+                        } else {
+                            setRawValue(editable.innerHTML);
+                        }
+                        refreshIndicatorValueControls(editable, state.indicatorValueUi);
+
+                        if (emitChangeAfterReplace) {
+                            emitChange();
+                        }
+                        return safeHtml;
+                    }
+                } catch (error) {
+                    // Restore the original embed below when the block insertion cannot complete.
+                }
+
+                if (markerNode.parentNode) {
+                    markerNode.replaceWith(targetNode);
+                } else if (targetParent) {
+                    targetParent.insertBefore(targetNode, targetNextSibling);
+                }
             }
 
             const temp = document.createElement('div');
@@ -741,8 +1876,11 @@
             } else {
                 setRawValue(editable.innerHTML);
             }
+            refreshIndicatorValueControls(editable, state.indicatorValueUi);
 
-            emitChange();
+            if (emitChangeAfterReplace) {
+                emitChange();
+            }
             return safeHtml;
         }
 
@@ -755,11 +1893,13 @@
             return markerNode;
         }
 
-        function createTemporaryCursorMarker() {
+        function createTemporaryCursorMarker(options) {
             const editable = getEditableElement();
             if (!editable) {
                 return null;
             }
+
+            const preserveSelection = !!(options && options.preserveSelection === true);
 
             restoreRange();
             let range = getSelectionRange();
@@ -772,10 +1912,23 @@
             }
 
             const markerNode = buildCursorMarkerNode();
+            const preservesSelectedContent = preserveSelection && !range.collapsed;
 
             try {
-                range.deleteContents();
-                range.insertNode(markerNode);
+                if (preservesSelectedContent) {
+                    const endMarkerNode = buildCursorMarkerNode();
+                    const endRange = cloneRange(range) || range;
+                    endRange.collapse(false);
+                    endRange.insertNode(endMarkerNode);
+
+                    const startRange = cloneRange(range) || range;
+                    startRange.collapse(true);
+                    startRange.insertNode(markerNode);
+                    markerNode.__omoSelectionEndMarker = endMarkerNode;
+                } else {
+                    range.deleteContents();
+                    range.insertNode(markerNode);
+                }
             } catch (error) {
                 editable.appendChild(markerNode);
             }
@@ -795,10 +1948,40 @@
 
         function replaceMarkerWithHtml(markerNode, nextHtml) {
             const editable = getEditableElement();
-            const safeHtml = sanitizeHtml(nextHtml);
+            const safeHtml = sanitizeEditorHtml(nextHtml);
 
             if (!editable || !markerNode || !editable.contains(markerNode)) {
                 return insertHtmlAtCursor(safeHtml);
+            }
+
+            const selectionEndMarker = markerNode.__omoSelectionEndMarker;
+            if (selectionEndMarker && editable.contains(selectionEndMarker)) {
+                try {
+                    const selectedRange = document.createRange();
+                    selectedRange.setStartAfter(markerNode);
+                    selectedRange.setEndBefore(selectionEndMarker);
+                    selectedRange.deleteContents();
+                } catch (error) {
+                    // Fall back to inserting at the marker if the preserved range is no longer valid.
+                }
+                if (editable.contains(selectionEndMarker)) {
+                    selectionEndMarker.remove();
+                }
+            }
+            delete markerNode.__omoSelectionEndMarker;
+
+            const resourceEmbed = getSingleResourceEmbedFromHtml(safeHtml);
+            if (resourceEmbed && insertResourceEmbedAtMarker(markerNode, resourceEmbed)) {
+                saveRange();
+
+                if (initialized && $editor) {
+                    setRawValue($editor.summernote('code'));
+                } else {
+                    setRawValue(editable.innerHTML);
+                }
+
+                emitChange();
+                return safeHtml;
             }
 
             const temp = document.createElement('div');
@@ -846,6 +2029,12 @@
                 return false;
             }
 
+            const selectionEndMarker = markerNode.__omoSelectionEndMarker;
+            if (selectionEndMarker && editable.contains(selectionEndMarker)) {
+                selectionEndMarker.remove();
+            }
+            delete markerNode.__omoSelectionEndMarker;
+
             if (window.getSelection) {
                 const selection = window.getSelection();
                 const range = document.createRange();
@@ -866,9 +2055,15 @@
                 return false;
             }
 
-            const nextSibling = targetNode.nextSibling;
-            const previousSibling = targetNode.previousSibling;
-            targetNode.remove();
+            const containingParagraph = isResourceEmbedElement(targetNode) && targetNode.parentElement
+                ? targetNode.parentElement.closest('p')
+                : null;
+            const removalNode = isResourceEmbedOnlyParagraph(containingParagraph) && editable.contains(containingParagraph)
+                ? containingParagraph
+                : targetNode;
+            const nextSibling = removalNode.nextSibling;
+            const previousSibling = removalNode.previousSibling;
+            removalNode.remove();
 
             if (window.getSelection) {
                 const selection = window.getSelection();
@@ -928,6 +2123,11 @@
 
         function destroy() {
             destroyed = true;
+            hideResourceGapHelper();
+            if (resourceGapHelper) {
+                resourceGapHelper.remove();
+                resourceGapHelper = null;
+            }
 
             if (initialized && $editor) {
                 try {
@@ -954,7 +2154,7 @@
                     ['style', ['style']],
                     ['font', ['bold', 'italic', 'underline', 'clear']],
                     ['para', ['ul', 'ol']],
-                    ['insert', ['link', 'table']]
+                    ['insert', ['link']]
                 ];
                 const toolbarGroups = {};
                 const buttonsConfig = {};
@@ -975,15 +2175,26 @@
                         }
 
                         const $button = ui.button({
-                            contents: escapeHtml(buttonConfig.label),
+                            contents: buttonConfig.contents !== undefined
+                                ? String(buttonConfig.contents || '')
+                                : escapeHtml(buttonConfig.label),
                             tooltip: buttonConfig.title,
                             className: buttonConfig.className,
                             click: function (event) {
+                                const fieldApi = container.__omoSimpleHtmlField || null;
+                                if (
+                                    buttonConfig.focusForInsertion
+                                    && fieldApi
+                                    && typeof fieldApi.focusForInsertion === 'function'
+                                ) {
+                                    fieldApi.focusForInsertion();
+                                }
+
                                 if (typeof buttonConfig.onClick === 'function') {
                                     buttonConfig.onClick({
                                         event: event,
                                         name: buttonConfig.name,
-                                        api: container.__omoSimpleHtmlField || null
+                                        api: fieldApi
                                     });
                                 }
                             }
@@ -1000,6 +2211,7 @@
                         $button.attr('data-omo-toolbar-button-name', buttonConfig.name);
                         applyToolbarButtonState(buttonConfig.name, {
                             label: buttonConfig.label,
+                            contents: buttonConfig.contents,
                             title: buttonConfig.title,
                             hidden: !!buttonConfig.hidden,
                             disabled: !!buttonConfig.disabled,
@@ -1018,7 +2230,8 @@
                 $editor.summernote({
                     lang: 'fr-FR',
                     placeholder: state.placeholder,
-                    height: Number(state.height || 180),
+                    minHeight: Math.max(80, Number(state.minHeight || state.height || 180)),
+                    maxHeight: null,
                     dialogsInBody: true,
                     disableDragAndDrop: true,
                     styleTags: [
@@ -1031,9 +2244,34 @@
                     toolbar: toolbar,
                     buttons: buttonsConfig,
                     callbacks: {
+                        onPaste: function (event) {
+                            const nativeEvent = event && event.originalEvent ? event.originalEvent : event;
+                            const clipboard = nativeEvent && nativeEvent.clipboardData;
+                            if (!clipboard || typeof clipboard.getData !== 'function') {
+                                return;
+                            }
+
+                            const pastedHtml = clipboard.getData('text/html') || '';
+                            const pastedText = clipboard.getData('text/plain') || '';
+                            if (pastedHtml === '' && pastedText === '') {
+                                return;
+                            }
+
+                            if (typeof nativeEvent.preventDefault === 'function') {
+                                nativeEvent.preventDefault();
+                            }
+                            if (event && event !== nativeEvent && typeof event.preventDefault === 'function') {
+                                event.preventDefault();
+                            }
+
+                            insertHtmlAtCursor(pastedHtml !== '' ? pastedHtml : buildTextInsertionHtml(pastedText));
+                            scheduleResizeEditableToContent();
+                            emitChange();
+                        },
                         onChange: function (contents) {
                             setRawValue(contents);
                             saveRange();
+                            scheduleResizeEditableToContent();
                             emitChange();
                         },
                         onFocus: function () {
@@ -1044,6 +2282,7 @@
                         },
                         onKeyup: function () {
                             saveRange();
+                            scheduleResizeEditableToContent();
                         },
                         onMouseup: function () {
                             saveRange();
@@ -1052,19 +2291,47 @@
                 });
 
                 $editor.summernote('code', state.value);
+                normalizeResourceEmbedBlocks(getEditableElement());
+                refreshIndicatorValueControls(getEditableElement(), state.indicatorValueUi);
                 if (state.disabled) {
                     $editor.summernote('disable');
                 }
 
                 initialized = true;
                 saveRange();
+                scheduleResizeEditableToContent();
 
                 const editable = getEditableElement();
                 if (editable) {
+                    mountResourceGapHelper();
+                    editable.addEventListener('input', scheduleResizeEditableToContent);
+                    editable.addEventListener('mousedown', preventResourceEmbedPointerFocus, true);
+                    editable.addEventListener('keydown', handleResourceEmbedParagraphEnter);
+                    editable.addEventListener('click', function (event) {
+                        const context = emitIndicatorValueAdd(event.target || null, event);
+                        if (context && typeof state.onIndicatorValueAdd === 'function') {
+                            context.api = container.__omoSimpleHtmlField || null;
+                            try {
+                                state.onIndicatorValueAdd(context);
+                            } catch (error) {
+                            }
+                        }
+                    });
                     editable.addEventListener('dblclick', function (event) {
+                        if (event.target && event.target.closest && event.target.closest('.omo-indicator-embed__value-entry')) {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            return;
+                        }
                         saveRange();
                         emitDoubleClick(event.target || null, event);
                     });
+                }
+                if (typeof state.onReady === 'function') {
+                    try {
+                        state.onReady(container.__omoSimpleHtmlField || null);
+                    } catch (error) {
+                    }
                 }
             })
             .catch(function (error) {
@@ -1079,6 +2346,7 @@
             });
 
         container.__omoSimpleHtmlField = {
+            version: OMO_SIMPLE_HTML_FIELD_VERSION,
             getValue: getValue,
             setValue: setValue,
             focus: function () {
@@ -1086,6 +2354,7 @@
                     $editor.summernote('focus');
                 }
             },
+            focusForInsertion: focusForInsertion,
             saveRange: saveRange,
             restoreRange: restoreRange,
             insertHtmlAtCursor: insertHtmlAtCursor,
@@ -1099,6 +2368,7 @@
             getSelectedText: getSelectedText,
             hasSelection: hasSelection,
             getPlainText: getPlainText,
+            applyBackgroundColor: applyBackgroundColor,
             getEditableElement: getEditableElement,
             setToolbarButtonState: applyToolbarButtonState,
             destroy: destroy
@@ -1124,7 +2394,10 @@
         return '<div class="' + escapeHtml(classes.join(' ')) + '">' + safeValue + '</div>';
     }
 
+    ensureLocalStyles();
+
     window.omoSimpleHtmlField = {
+        version: OMO_SIMPLE_HTML_FIELD_VERSION,
         mount: mount,
         sanitizeHtml: sanitizeHtml,
         renderPreviewHtml: renderPreviewHtml

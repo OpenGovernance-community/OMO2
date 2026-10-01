@@ -56,6 +56,33 @@ $response = array(
 );
 
 switch ($action) {
+	case 'toggle-model':
+		$membership = $organization->getMembership($currentUserId, true);
+		if (
+			!$membership
+			|| !$membership->isOrganizationAdmin()
+			|| !commonCurrentUserIsAdminModeEnabled($organizationId)
+			|| !$organization->getStructuralRootHolon()
+		) {
+			http_response_code(403);
+			$response = array(
+				'status' => false,
+				'message' => 'Le partage comme modele requiert une organisation structuree et le mode administrateur actif.',
+			);
+			break;
+		}
+
+		$willShareAsModel = !$organization->isSharedAsTemplate();
+		$organization->set('isModel', $willShareAsModel);
+		$saveResult = $organization->save();
+		$response = array(
+			'status' => is_array($saveResult) && !empty($saveResult['status']),
+			'message' => $willShareAsModel
+				? 'Organisation partagee comme modele public.'
+				: 'Organisation retiree des modeles publics.',
+		);
+		break;
+
 	case 'leave':
 		$response = $organization->removeMember($currentUserId, array(
 			'actorUserId' => $currentUserId,
@@ -63,6 +90,15 @@ switch ($action) {
 		break;
 
 	case 'delete':
+		if ($organization->isSystemOrganization()) {
+			http_response_code(403);
+			$response = array(
+				'status' => false,
+				'message' => 'L organisation de base est utilisee par le systeme et ne peut pas etre supprimee.',
+			);
+			break;
+		}
+
 		if (!$organization->canDelete()) {
 			http_response_code(403);
 			$response = array(
@@ -74,11 +110,14 @@ switch ($action) {
 
 		$organizationName = trim((string)$organization->get('name'));
 		$deleted = $organization->delete();
+		$deleteError = method_exists($organization, 'getLastDeleteError')
+			? trim((string)$organization->getLastDeleteError())
+			: '';
 		$response = array(
 			'status' => (bool)$deleted,
 			'message' => $deleted
 				? (($organizationName !== '' ? $organizationName : 'L organisation') . ' a ete supprimee.')
-				: "L'organisation n'a pas pu etre supprimee.",
+				: ($deleteError !== '' ? $deleteError : "L'organisation n'a pas pu etre supprimee."),
 		);
 		break;
 }

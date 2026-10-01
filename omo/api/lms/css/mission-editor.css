@@ -1,0 +1,349 @@
+/* omo/api/lms/mission_edit.php */
+.lms-mission-editor-view {
+    display: grid;
+    gap: 0;
+}
+
+.lms-mission-related {
+    --generic-section-gap: var(--generic-space-4, 16px);
+}
+
+.lms-mission-editor-header {
+    top: 0;
+    margin: 0;
+    z-index: 8;
+}
+
+.lms-mission-editor-header.generic-drawer-header {
+    --generic-drawer-header-z: 8;
+}
+
+.lms-mission-editor-branch {
+    margin-top: 18px;
+    display: grid;
+    gap: 6px;
+}
+
+.lms-mission-editor-branch span {
+    font-weight: 600;
+}
+
+.lms-mission-related {
+    display: grid;
+}
+
+.lms-parcours-mission-item {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr);
+    gap: 14px;
+    align-items: start;
+    padding: 14px 16px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    background: var(--bg-main);
+    position: relative;
+}
+
+.lms-parcours-mission-item__handle {
+    user-select: none;
+}
+
+.lms-parcours-mission-item__menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    min-width: 180px;
+    padding: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    background: var(--bg-card);
+    box-shadow: 0 16px 40px rgba(15,23,42,0.16);
+    display: none;
+    z-index: 30;
+}
+
+.lms-parcours-mission-item__body p {
+    margin: 0 0 8px;
+    color: var(--text-light);
+    line-height: 1.5;
+}
+
+.lms-mission-related__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+}
+
+.lms-mission-related__header h3 {
+    margin: 0 0 6px;
+}
+
+.lms-mission-related__header p {
+    margin: 0;
+    color: var(--text-light);
+    line-height: 1.5;
+}
+
+.lms-mission-related__list {
+    display: grid;
+    gap: 12px;
+}
+
+.lms-mission-related__item {
+    padding: 14px 16px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    background: var(--bg-main);
+    position: relative;
+}
+
+.lms-mission-related__item.is-dragging {
+    opacity: 0.7;
+}
+
+.lms-mission-related__item.is-drop-target {
+    border-color: color-mix(in srgb, var(--primary) 45%, var(--border-color));
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 12%, transparent);
+}
+
+.lms-mission-related__item-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+.lms-mission-related__item-head--structured {
+    align-items: stretch;
+    margin-bottom: 0;
+}
+
+.lms-mission-related__item-main {
+    min-width: 0;
+    flex: 1;
+    display: grid;
+    gap: 6px;
+}
+
+.lms-mission-related__item-topbar {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.lms-mission-related__item-topbar > * {
+    margin-top: 0;
+}
+
+.lms-mission-related__item strong {
+    display: block;
+    margin-bottom: 6px;
+}
+
+.lms-mission-related__item-topbar strong {
+    margin-bottom: 0;
+    min-width: 0;
+}
+
+.lms-mission-related__item p {
+    margin: 0;
+    color: var(--text-light);
+    line-height: 1.5;
+}
+
+.lms-mission-related__item-html {
+    color: var(--text-light);
+    line-height: 1.55;
+}
+
+.lms-mission-related__item-html > :first-child {
+    margin-top: 0;
+}
+
+.lms-mission-related__item-html > :last-child {
+    margin-bottom: 0;
+}
+
+.lms-mission-related__item-html ul,
+.lms-mission-related__item-html ol {
+    margin: 10px 0 10px 20px;
+}
+
+.lms-mission-related__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+    color: var(--text-light);
+    font-size: 0.92rem;
+}
+
+.lms-mission-related__meta span {
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--primary) 8%, var(--bg-card));
+}
+
+.lms-mission-related__item-actions button {
+    min-width: 0;
+    padding: 8px 12px;
+    margin: 0;
+    align-self: flex-start;
+}
+
+.lms-mission-related__drag-handle {
+    margin: 0;
+}
+
+.lms-mission-related__item--structured .lms-mission-related__drag-handle {
+    align-self: stretch;
+}
+
+.lms-mission-creator-form[hidden] {
+    display: none !important;
+}
+
+.lms-mission-creator-form {
+    padding-top: 4px;
+    border-top: 1px solid var(--border-color);
+}
+
+.lms-mission-creator-form__grid {
+    --generic-form-grid-min: 240px;
+}
+
+.lms-mission-creator-form__check {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    color: var(--text-main);
+}
+
+.lms-mission-creator-form__check input[type='checkbox'] {
+    margin-top: 2px;
+}
+
+.lms-mission-creator-form__field .note-editor {
+    border-color: var(--color-border, #d1d5db);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    background: var(--color-surface, #ffffff);
+}
+
+.lms-mission-creator-form__field .note-toolbar {
+    background: var(--color-surface-alt, #f8fafc);
+    border-bottom-color: var(--color-border, #d1d5db);
+}
+
+.lms-mission-creator-form__field .note-editing-area .note-editable {
+    background: var(--color-surface, #ffffff);
+    color: var(--color-text, #1f2937);
+}
+
+.lms-mission-creator-form__actions {
+    --generic-action-row-gap: var(--generic-space-3, 12px);
+}
+
+.lms-question-choice-list {
+    display: grid;
+    gap: 10px;
+}
+
+.lms-question-choice-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 10px;
+    align-items: end;
+    padding: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    background: var(--bg-main);
+}
+
+.lms-question-choice-row__label,
+.lms-question-choice-row__correct {
+    display: grid;
+    gap: 6px;
+}
+
+.lms-question-choice-row__correct {
+    grid-auto-flow: column;
+    align-items: center;
+}
+
+.lms-question-choice-list__add {
+    margin-top: 10px;
+}
+
+.lms-parcours-mission-picker__panel {
+    position: relative;
+    z-index: 1;
+    width: min(760px, calc(100vw - 32px));
+    max-height: min(78vh, 760px);
+    margin: 7vh auto 0;
+    padding: 18px;
+    border-radius: var(--radius-md);
+    background: var(--bg-card);
+    box-shadow: 0 28px 80px rgba(15,23,42,0.28);
+    display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr);
+    gap: 14px;
+    overflow: hidden;
+}
+
+.lms-parcours-mission-picker__header p {
+    margin: 0;
+    color: var(--text-light);
+    line-height: 1.5;
+}
+
+.lms-parcours-mission-picker__list {
+    display: grid;
+    gap: 12px;
+    overflow: auto;
+    padding-right: 4px;
+}
+
+.lms-parcours-mission-picker__item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 14px;
+    align-items: start;
+    padding: 14px 16px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    background: var(--bg-main);
+}
+
+.lms-parcours-mission-picker__copy {
+    display: grid;
+    gap: 8px;
+}
+
+.lms-parcours-mission-picker__copy strong {
+    display: block;
+}
+
+@media (max-width: 720px) {
+    .lms-mission-editor-header .generic-drawer-header__actions,
+    .lms-mission-related__header,
+    .lms-mission-creator-form__actions,
+    .lms-question-choice-row {
+        width: 100%;
+        flex-direction: column-reverse;
+        align-items: stretch;
+    }
+
+    .lms-mission-related__item-head {
+        align-items: stretch;
+    }
+
+    .lms-mission-creator-form__grid,
+    .lms-question-choice-row,
+    .lms-parcours-mission-picker__item {
+        grid-template-columns: 1fr;
+    }
+}

@@ -3,6 +3,33 @@ namespace dbObject;
 
 class DecisionProcess extends DbObject
 {
+    public function canUseManagementPermission(string $permissionKey, int $userId): bool
+    {
+        if ($userId <= 0 || !in_array($permissionKey, ['CAN_EDIT_DECISION', 'CAN_DELETE_DECISION'], true)) {
+            return false;
+        }
+        $organizationId = (int)$this->get('IDorganization');
+        if (function_exists('commonUserHasAdminOverride') && \commonUserHasAdminOverride($userId, $organizationId)) return true;
+        if ($organizationId <= 0) {
+            return (int)$this->get('IDuser') === $userId;
+        }
+        $organization = new Organization();
+        if (!$organization->load($organizationId)
+            || !\commonUserHasOrganizationAccess($userId, $organizationId)) {
+            return false;
+        }
+        $holonId = (int)$this->get('IDholon');
+        $holon = $holonId > 0 ? new Holon() : $organization->getEnabledStructuralRootHolon();
+        if ($holonId > 0 && (!$holon->load($holonId) || !$organization->containsHolon($holon))) {
+            return false;
+        }
+        return $holon instanceof Holon
+            ? $holon->isAllowed($permissionKey, false, $userId)
+            : Permission::userCanInOrganization($permissionKey, $organizationId, $userId);
+    }
+
+    const WORKFLOW_GOVERNANCE = 'out_of_gouv';
+
     const TYPE_DECISION = 'decision';
     const TYPE_CONSULTATION = 'consultation';
 
@@ -16,11 +43,70 @@ class DecisionProcess extends DbObject
     const METHOD_SIMPLE_VOTE = 'simple_vote';
     const METHOD_MAJORITY_JUDGMENT = 'majority_judgment';
     const METHOD_CONSENT = 'consent';
+    const METHOD_CONSULTATION_ONLY = 'consultation_only';
 
-    public static function tableName()
+    public function getAnonymousPseudonymForUser($userId)
     {
-        return 'decision_process';
+        $userId = (int)$userId;
+        if ($userId <= 0) {
+            return 'Participant anonyme';
+        }
+
+        $animals = [
+            'Renard', 'Lynx', 'Hibou', 'Faucon', 'Castor', 'Panda', 'Koala', 'Jaguar',
+            'Bison', 'Dauphin', 'Gecko', 'Lama', 'Manchot', 'Pélican', 'Blaireau', 'Chamois',
+            'Corbeau', 'Écureuil', 'Héron', 'Léopard', 'Morse', 'Orque', 'Puma', 'Toucan',
+        ];
+        $traits = [
+            'serein', 'curieux', 'vaillant', 'patient', 'inventif', 'attentif', 'jovial', 'paisible',
+            'audacieux', 'discret', 'solidaire', 'vif', 'réfléchi', 'créatif', 'tenace', 'chaleureux',
+            'prudent', 'malicieux', 'loyal', 'agile', 'calme', 'brillant', 'franc', 'rêveur',
+        ];
+        $hash = hash('sha256', (int)$this->getId() . ':' . $userId);
+        $animalIndex = (int)(hexdec(substr($hash, 0, 6)) % count($animals));
+        $traitIndex = (int)(hexdec(substr($hash, 6, 6)) % count($traits));
+        $suffix = strtoupper(substr($hash, 12, 3));
+
+        return $animals[$animalIndex] . ' ' . $traits[$traitIndex] . ' · ' . $suffix;
     }
+
+    public function getAnonymousPseudonymForParticipant($participantId)
+    {
+        $participantId = (int)$participantId;
+        if ($participantId <= 0) {
+            return 'Participant anonyme';
+        }
+
+        $animals = [
+            'Renard', 'Lynx', 'Hibou', 'Faucon', 'Castor', 'Panda', 'Koala', 'Jaguar',
+            'Bison', 'Dauphin', 'Gecko', 'Lama', 'Manchot', 'Pelican', 'Blaireau', 'Chamois',
+            'Corbeau', 'Ecureuil', 'Heron', 'Leopard', 'Morse', 'Orque', 'Puma', 'Toucan',
+        ];
+        $traits = [
+            'serein', 'curieux', 'vaillant', 'patient', 'inventif', 'attentif', 'jovial', 'paisible',
+            'audacieux', 'discret', 'solidaire', 'vif', 'reflechi', 'creatif', 'tenace', 'chaleureux',
+            'prudent', 'malicieux', 'loyal', 'agile', 'calme', 'brillant', 'franc', 'reveur',
+        ];
+        $hash = hash('sha256', (int)$this->getId() . ':participant:' . $participantId);
+        $animalIndex = (int)(hexdec(substr($hash, 0, 6)) % count($animals));
+        $traitIndex = (int)(hexdec(substr($hash, 6, 6)) % count($traits));
+        $suffix = strtoupper(substr($hash, 12, 3));
+
+        return $animals[$animalIndex] . ' ' . $traits[$traitIndex] . ' - ' . $suffix;
+    }
+
+	public static function tableName()
+	{
+		return 'decision_process';
+	}
+
+	public static function handleUserDeparture($organizationId, $userId, $ghostUserId)
+	{
+		return self::execute(
+			'UPDATE decision_process SET IDuser = :ghost_user_id WHERE IDorganization = :organization_id AND IDuser = :user_id',
+			array('ghost_user_id' => (int)$ghostUserId, 'organization_id' => (int)$organizationId, 'user_id' => (int)$userId)
+		);
+	}
 
     public static function getVisibilityObjectType(): string
     {
@@ -98,7 +184,7 @@ class DecisionProcess extends DbObject
             'evaluation_method' => 'Cle technique de la methode modulaire utilisee.',
             'visibility_type' => 'Controle qui peut voir la decision hors participants et proprietaires.',
             'parameters' => 'Configuration method-specific et options complementaires.',
-            'IDholon' => 'Contexte holon optionnel si la prise de decision est rattachee a un groupe.',
+            'IDholon' => 'Contexte espace optionnel si la prise de décision est rattachée à un groupe.',
         ];
     }
 
@@ -183,6 +269,12 @@ class DecisionProcess extends DbObject
                 'response_shape' => 'consent_objection',
                 'supports_multiple_proposals' => true,
             ],
+            self::METHOD_CONSULTATION_ONLY => [
+                'label' => 'Consultation seule',
+                'description' => 'Les participants consultent, discutent et peuvent proposer sans phase de vote.',
+                'response_shape' => 'none',
+                'supports_multiple_proposals' => true,
+            ],
         ];
     }
 
@@ -234,6 +326,20 @@ class DecisionProcess extends DbObject
         return self::isValidEvaluationMethod($method) ? $method : self::METHOD_SIMPLE_VOTE;
     }
 
+    public function getWorkflowType()
+    {
+        $parameters = $this->get('parameters');
+        if (!is_array($parameters)) {
+            $parameters = json_decode(trim((string)$parameters), true);
+        }
+        return is_array($parameters) ? trim((string)($parameters['workflow_type'] ?? '')) : '';
+    }
+
+    public function isGovernanceWorkflow()
+    {
+        return $this->getWorkflowType() === self::WORKFLOW_GOVERNANCE;
+    }
+
     public function save()
     {
         $this->set('decision_type', self::normalizeDecisionType($this->get('decision_type')));
@@ -254,6 +360,132 @@ class DecisionProcess extends DbObject
         return $saveResult;
     }
 
+    public function canMoveInOrganizationContext(int $organizationId, int $userId): bool
+    {
+        $organizationId = (int)$organizationId;
+        $userId = (int)$userId;
+
+        if (
+            $organizationId <= 0
+            || $userId <= 0
+            || (int)$this->getId() <= 0
+            || (int)$this->get('IDorganization') !== $organizationId
+        ) {
+            return false;
+        }
+
+        return $this->canUseManagementPermission('CAN_EDIT_DECISION', $userId);
+    }
+
+    public function moveToHolonContext(int $organizationId, int $targetHolonId, int $userId): array
+    {
+        $organizationId = (int)$organizationId;
+        $targetHolonId = (int)$targetHolonId;
+        $userId = (int)$userId;
+
+        if ($targetHolonId <= 0) {
+            return [
+                'status' => false,
+                'text' => 'Destination invalide.',
+            ];
+        }
+
+        if (!$this->canMoveInOrganizationContext($organizationId, $userId)) {
+            return [
+                'status' => false,
+                'text' => 'Accès refusé.',
+            ];
+        }
+
+        $organization = new \dbObject\Organization();
+        $targetHolon = new \dbObject\Holon();
+        if (
+            !$organization->load($organizationId)
+            || !$targetHolon->load($targetHolonId)
+            || !(bool)$targetHolon->get('active')
+            || !(bool)$targetHolon->get('visible')
+            || !$organization->containsHolon($targetHolon)
+            || !$targetHolon->isAllowed('CAN_CREATE_DECISION', false, $userId)
+        ) {
+            return [
+                'status' => false,
+                'text' => 'Accès refusé pour cette destination.',
+            ];
+        }
+
+        $currentHolonId = (int)$this->get('IDholon');
+        if ($currentHolonId === $targetHolonId) {
+            return [
+                'status' => false,
+                'text' => 'Cette prise de décision est déjà à cette destination.',
+            ];
+        }
+
+        $previousVisibilityType = self::normalizeVisibilityType($this->get('visibility_type'));
+        $this->set('IDholon', $targetHolonId);
+        $resolvedVisibility = $this->resolveVisibilityRuleInput($previousVisibilityType);
+        if (($resolvedVisibility['status'] ?? false) !== true) {
+            $resolvedVisibility = $this->resolveVisibilityRuleInput(self::getDefaultVisibilityType());
+        }
+        if (($resolvedVisibility['status'] ?? false) !== true) {
+            $this->set('IDholon', $currentHolonId > 0 ? $currentHolonId : null);
+            return [
+                'status' => false,
+                'text' => trim((string)($resolvedVisibility['text'] ?? 'Visibilité invalide pour cette destination.')),
+            ];
+        }
+
+        $pdo = self::getPdo();
+        $ownsTransaction = $pdo instanceof \PDO && !$pdo->inTransaction();
+        try {
+            if ($ownsTransaction) {
+                $pdo->beginTransaction();
+            }
+
+            $this->set('visibility_type', (string)($resolvedVisibility['type'] ?? self::getDefaultVisibilityType()));
+            $saveResult = $this->save();
+            if (!is_array($saveResult) || empty($saveResult['status'])) {
+                throw new \RuntimeException('decision_move_save_failed');
+            }
+
+            $visibilityResult = \dbObject\ObjectVisibility::saveSingleRule(
+                self::getVisibilityObjectType(),
+                (int)$this->getId(),
+                $organizationId,
+                (string)($resolvedVisibility['type'] ?? self::getDefaultVisibilityType()),
+                $resolvedVisibility['holonId'] ?? null
+            );
+            if (!is_array($visibilityResult) || empty($visibilityResult['status'])) {
+                throw new \RuntimeException(trim((string)($visibilityResult['text'] ?? 'decision_move_visibility_failed')));
+            }
+
+            if ($ownsTransaction) {
+                $pdo->commit();
+            }
+        } catch (\Throwable $exception) {
+            if ($ownsTransaction && $pdo instanceof \PDO && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+
+            $this->set('IDholon', $currentHolonId > 0 ? $currentHolonId : null);
+            $this->set('visibility_type', $previousVisibilityType);
+            return [
+                'status' => false,
+                'text' => trim((string)$exception->getMessage()) !== ''
+                    ? trim((string)$exception->getMessage())
+                    : 'Impossible de déplacer cette prise de décision.',
+            ];
+        }
+
+        return [
+            'status' => true,
+            'text' => 'Prise de décision déplacée.',
+            'previousHolonId' => $currentHolonId,
+            'targetHolonId' => $targetHolonId,
+            'visibilityType' => (string)$this->get('visibility_type'),
+        ];
+    }
+
     public function resolveAutomaticStatus($referenceDateTime = null)
     {
         $currentStatus = self::normalizeStatus($this->get('status'));
@@ -264,6 +496,7 @@ class DecisionProcess extends DbObject
         }
 
         $consultationStart = self::normalizeDateTimeValue($this->get('consultation_start_at'));
+        $consultationEnd = self::normalizeDateTimeValue($this->get('consultation_end_at'));
         $evaluationStart = self::normalizeDateTimeValue($this->get('evaluation_start_at'));
         $evaluationEnd = self::normalizeDateTimeValue($this->get('evaluation_end_at'));
         $resultsPublishedAt = self::normalizeDateTimeValue($this->get('results_published_at'));
@@ -298,6 +531,18 @@ class DecisionProcess extends DbObject
             $derivedStatus = self::STATUS_ARCHIVED;
         }
 
+        $consultationEndedWithoutCurrentEvaluation = $consultationEnd instanceof \DateTimeInterface
+            && $consultationEnd <= $referenceDateTime
+            && (!$evaluationStart instanceof \DateTimeInterface || $evaluationStart > $referenceDateTime);
+        if (
+            $consultationEndedWithoutCurrentEvaluation
+            && in_array($currentStatus, [self::STATUS_DRAFT, self::STATUS_SCHEDULED, self::STATUS_CONSULTATION], true)
+        ) {
+            $hasUpcomingEvaluation = ($evaluationStart instanceof \DateTimeInterface && $evaluationStart > $referenceDateTime)
+                || ($evaluationEnd instanceof \DateTimeInterface && $evaluationEnd > $referenceDateTime);
+            return $hasUpcomingEvaluation ? self::STATUS_SCHEDULED : self::STATUS_DRAFT;
+        }
+
         return self::getStatusRank($derivedStatus) > self::getStatusRank($currentStatus)
             ? $derivedStatus
             : $currentStatus;
@@ -313,6 +558,9 @@ class DecisionProcess extends DbObject
         $nextStatus = $this->resolveAutomaticStatus($referenceDateTime);
         $currentStatus = self::normalizeStatus($this->get('status'));
         if ($nextStatus === $currentStatus) {
+            if ($currentStatus === self::STATUS_RESULTS) {
+                $this->applyAcceptedGovernanceActions();
+            }
             return false;
         }
 
@@ -327,7 +575,38 @@ class DecisionProcess extends DbObject
         }
 
         $saveResult = $this->save();
-        return !empty($saveResult['status']);
+        $wasUpdated = !empty($saveResult['status']);
+        if ($wasUpdated && $nextStatus === self::STATUS_RESULTS) {
+            $this->applyAcceptedGovernanceActions();
+        }
+        if ($wasUpdated && function_exists('notificationCenterDispatchDecisionPhase')) {
+            try {
+                notificationCenterDispatchDecisionPhase($this, $nextStatus);
+            } catch (\Throwable $exception) {
+                error_log('decision_lifecycle_notification_failed: ' . $exception->getMessage());
+            }
+        }
+        if ($wasUpdated && function_exists('notificationCenterDispatchDecisionPhaseFinished')) {
+            try {
+                notificationCenterDispatchDecisionPhaseFinished($this, $currentStatus, $nextStatus, $referenceDateTime);
+            } catch (\Throwable $exception) {
+                error_log('decision_lifecycle_completion_notification_failed: ' . $exception->getMessage());
+            }
+        }
+        return $wasUpdated;
+    }
+
+    protected function applyAcceptedGovernanceActions()
+    {
+        if (!$this->isGovernanceWorkflow()) {
+            return;
+        }
+        try {
+            \dbObject\DecisionGovernanceAction::applyAcceptedForDecision($this);
+            \dbObject\DeferredProposal::applyAcceptedForDecision($this);
+        } catch (\Throwable $exception) {
+            error_log('decision_governance_application_failed: ' . $exception->getMessage());
+        }
     }
 
     public static function syncLifecycleStatusesForOrganization($organizationId, $referenceDateTime = null)
@@ -362,8 +641,7 @@ class DecisionProcess extends DbObject
             }
 
             $decision = new self();
-            $decision->loadFromArray($row);
-            $decision->setId((int)$row['id']);
+            $decision->hydrateFromDatabaseRow($row, true);
 
             if ($decision->syncLifecycleStatus($referenceDateTime)) {
                 $updatedCount++;
@@ -371,6 +649,32 @@ class DecisionProcess extends DbObject
         }
 
         return $updatedCount;
+    }
+
+    public static function getLifecycleNotificationCandidates($limit = 200)
+    {
+        $limit = max(1, min(1000, (int)$limit));
+        $rows = self::fetchAll(
+            'SELECT * FROM `decision_process`
+             WHERE `status` IN (:scheduled_status, :consultation_status, :evaluation_status)
+             ORDER BY `id` ASC
+             LIMIT ' . $limit,
+            [
+                'scheduled_status' => self::STATUS_SCHEDULED,
+                'consultation_status' => self::STATUS_CONSULTATION,
+                'evaluation_status' => self::STATUS_EVALUATION,
+            ]
+        );
+        $items = [];
+        foreach (is_array($rows) ? $rows : [] as $row) {
+            if (!is_array($row) || !isset($row['id'])) {
+                continue;
+            }
+            $item = new self();
+            $item->hydrateFromDatabaseRow($row, true);
+            $items[] = $item;
+        }
+        return $items;
     }
 
     public function getMethodDefinition()
@@ -390,7 +694,7 @@ class DecisionProcess extends DbObject
         $organizationId = (int)$organizationId;
         $holonId = (int)$holonId;
         $disabledTypes = array();
-        $helpText = 'Les portees cercle et role suivent automatiquement le holon de la decision.';
+            $helpText = 'Les portées cercle et rôle suivent automatiquement l’espace de la décision.';
 
         if ($organizationId <= 0) {
             return array(
@@ -407,7 +711,7 @@ class DecisionProcess extends DbObject
         if ($holonId <= 0) {
             $disabledTypes[\dbObject\ObjectVisibility::TYPE_CIRCLE] = true;
             $disabledTypes[\dbObject\ObjectVisibility::TYPE_ROLE] = true;
-            $helpText = 'Cette decision n est pas liee a un holon. Les portees cercle et role ne sont pas disponibles.';
+            $helpText = 'Cette décision n’est pas liée à un espace. Les portées cercle et rôle ne sont pas disponibles.';
         } else {
             $holon = new \dbObject\Holon();
             if (
@@ -417,7 +721,7 @@ class DecisionProcess extends DbObject
             ) {
                 $disabledTypes[\dbObject\ObjectVisibility::TYPE_CIRCLE] = true;
                 $disabledTypes[\dbObject\ObjectVisibility::TYPE_ROLE] = true;
-                $helpText = 'Le holon de cette decision est introuvable. Les portees cercle et role ne sont pas disponibles.';
+            $helpText = 'L’espace de cette décision est introuvable. Les portées cercle et rôle ne sont pas disponibles.';
             } else {
                 if ((int)$holon->get('IDtypeholon') !== 1) {
                     $disabledTypes[\dbObject\ObjectVisibility::TYPE_ROLE] = true;
@@ -467,7 +771,7 @@ class DecisionProcess extends DbObject
         ) {
             return array(
                 'status' => false,
-                'text' => 'Holon de la decision introuvable.',
+                'text' => 'Espace de la décision introuvable.',
             );
         }
 
@@ -763,7 +1067,8 @@ class DecisionProcess extends DbObject
         $items = new \dbObject\ArrayDecisionInvitation();
         $params = [
             'where' => [
-                ['field' => 'IDdecision_process', 'value' => (int)$this->getId()],
+                ['field' => 'resource_type', 'value' => \dbObject\DecisionInvitation::resourceType()],
+                ['field' => 'resource_id', 'value' => (int)$this->getId()],
             ],
             'orderBy' => [
                 ['field' => 'created_at', 'dir' => 'ASC'],
@@ -851,7 +1156,7 @@ class DecisionProcess extends DbObject
         return \dbObject\DecisionResult::findByDecisionProcessId((int)$this->getId());
     }
 
-    protected static function normalizeDateTimeValue($value)
+    public static function normalizeDateTimeValue($value)
     {
         if ($value instanceof \DateTimeInterface) {
             return $value;
@@ -867,6 +1172,44 @@ class DecisionProcess extends DbObject
         } catch (\Throwable $exception) {
             return null;
         }
+    }
+
+    public static function getManualEvaluationStartConflict($status, $evaluationStartAt, $referenceDateTime = null)
+    {
+        if (self::normalizeStatus($status) !== self::STATUS_EVALUATION) {
+            return null;
+        }
+
+        $referenceDateTime = self::normalizeDateTimeValue($referenceDateTime);
+        if (!$referenceDateTime instanceof \DateTimeInterface) {
+            $referenceDateTime = new \DateTimeImmutable('now');
+        }
+
+        $evaluationStartAt = self::normalizeDateTimeValue($evaluationStartAt);
+        if (!$evaluationStartAt instanceof \DateTimeInterface || $evaluationStartAt > $referenceDateTime) {
+            return $evaluationStartAt;
+        }
+
+        return null;
+    }
+
+    public static function getManualConsultationStartConflict($status, $consultationStartAt, $referenceDateTime = null)
+    {
+        if (self::normalizeStatus($status) !== self::STATUS_CONSULTATION) {
+            return null;
+        }
+
+        $referenceDateTime = self::normalizeDateTimeValue($referenceDateTime);
+        if (!$referenceDateTime instanceof \DateTimeInterface) {
+            $referenceDateTime = new \DateTimeImmutable('now');
+        }
+
+        $consultationStartAt = self::normalizeDateTimeValue($consultationStartAt);
+        if (!$consultationStartAt instanceof \DateTimeInterface || $consultationStartAt > $referenceDateTime) {
+            return $consultationStartAt;
+        }
+
+        return null;
     }
 
     public function getSubmittedResponseCount()
@@ -886,9 +1229,245 @@ class DecisionProcess extends DbObject
         );
     }
 
+    protected static function truncateCompactEmbedSummary(string $value, int $maximumLength = 420): string
+    {
+        $value = trim(strip_tags($value));
+        $value = preg_replace('/\s+/u', ' ', $value);
+        $value = trim(is_string($value) ? $value : '');
+        if ($value === '') {
+            return '';
+        }
+
+        $sentences = preg_split('/(?<=[.!?])\s+/u', $value) ?: array($value);
+        if (count($sentences) > 3) {
+            $value = trim(implode(' ', array_slice($sentences, 0, 3))) . '...';
+        }
+
+        if (function_exists('mb_strlen') && function_exists('mb_substr')) {
+            if (mb_strlen($value, 'UTF-8') > $maximumLength) {
+                return rtrim(mb_substr($value, 0, max(1, $maximumLength - 3), 'UTF-8')) . '...';
+            }
+        } elseif (strlen($value) > $maximumLength) {
+            return rtrim(substr($value, 0, max(1, $maximumLength - 3))) . '...';
+        }
+
+        return $value;
+    }
+
+    protected static function normalizeCompactEmbedResponseParameters($value): array
+    {
+        if (is_array($value)) {
+            return $value;
+        }
+
+        $decoded = json_decode(trim((string)$value), true);
+        return is_array($decoded) ? $decoded : array();
+    }
+
+    protected function getCompactEmbedComputedResult(): string
+    {
+        $method = self::normalizeEvaluationMethod($this->get('evaluation_method'));
+        $items = array();
+
+        foreach ($this->getResponses(\dbObject\DecisionResponse::STATUS_SUBMITTED) as $response) {
+            if (!($response instanceof \dbObject\DecisionResponse)) {
+                continue;
+            }
+
+            $parameters = self::normalizeCompactEmbedResponseParameters($response->get('parameters'));
+            $items[] = is_array($parameters[$method] ?? null) ? $parameters[$method] : array();
+        }
+
+        if (count($items) === 0) {
+            return '';
+        }
+
+        if ($method === self::METHOD_SIMPLE_VOTE) {
+            $votes = array();
+            foreach ($items as $item) {
+                $titles = is_array($item['selected_titles'] ?? null)
+                    ? $item['selected_titles']
+                    : array($item['selected_title'] ?? '');
+                foreach ($titles as $title) {
+                    $title = trim((string)$title);
+                    if ($title !== '') {
+                        $votes[$title] = (int)($votes[$title] ?? 0) + 1;
+                    }
+                }
+            }
+
+            arsort($votes, SORT_NUMERIC);
+            $title = trim((string)array_key_first($votes));
+            if ($title !== '') {
+                return 'En tete : ' . $title . ' (' . (string)$votes[$title] . ' voix).';
+            }
+        }
+
+        $firstProposalResults = array();
+        foreach ($items as $item) {
+            $details = is_array($item['details'] ?? null) ? $item['details'] : array();
+            foreach ($details as $detail) {
+                if (!is_array($detail)) {
+                    continue;
+                }
+
+                $title = trim((string)($detail['title'] ?? ''));
+                if ($title === '') {
+                    continue;
+                }
+
+                if (!isset($firstProposalResults[$title])) {
+                    $firstProposalResults[$title] = array();
+                }
+
+                $value = $method === self::METHOD_CONSENT
+                    ? trim((string)($detail['choice'] ?? ''))
+                    : trim((string)($detail['mention'] ?? ''));
+                if ($value !== '') {
+                    $firstProposalResults[$title][$value] = (int)($firstProposalResults[$title][$value] ?? 0) + 1;
+                }
+            }
+        }
+
+        $title = trim((string)array_key_first($firstProposalResults));
+        $resultValues = is_array($firstProposalResults[$title] ?? null) ? $firstProposalResults[$title] : array();
+        if ($title === '' || count($resultValues) === 0) {
+            return '';
+        }
+
+        arsort($resultValues, SORT_NUMERIC);
+        $value = trim((string)array_key_first($resultValues));
+        if ($value === '') {
+            return '';
+        }
+
+        if ($method === self::METHOD_CONSENT) {
+            $labels = array(
+                'favor' => 'pour',
+                'no_objection' => 'sans objection',
+                'objection' => 'objection',
+            );
+            return $title . ' : ' . (string)($resultValues[$value] ?? 0) . ' ' . (string)($labels[$value] ?? $value) . '.';
+        }
+
+        return $title . ' : ' . $value . '.';
+    }
+
+    public function getCompactEmbedSummary(): string
+    {
+        $status = $this->resolveAutomaticStatus();
+        if (in_array($status, [self::STATUS_RESULTS, self::STATUS_ARCHIVED], true)) {
+            $result = $this->getResult();
+            $summary = $result instanceof \dbObject\DecisionResult
+                ? self::truncateCompactEmbedSummary((string)$result->get('summary'))
+                : '';
+
+            if ($summary === '') {
+                $summary = self::truncateCompactEmbedSummary($this->getCompactEmbedComputedResult());
+            }
+
+            return $summary !== '' ? $summary : 'Resultats disponibles.';
+        }
+
+        $participantCount = 0;
+        foreach ($this->getParticipants(true) as $participant) {
+            if (!($participant instanceof \dbObject\DecisionParticipant)) {
+                continue;
+            }
+
+            $participantStatus = \dbObject\DecisionParticipant::normalizeStatus($participant->get('status'));
+            if (in_array($participantStatus, [
+                \dbObject\DecisionParticipant::STATUS_DECLINED,
+                \dbObject\DecisionParticipant::STATUS_REVOKED,
+            ], true)) {
+                continue;
+            }
+
+            $participantCount++;
+        }
+
+        if ($participantCount <= 0) {
+            return $this->isParticipationOpen()
+                ? 'Participation ouverte.'
+                : 'Participation a venir.';
+        }
+
+        $submittedParticipantCount = count($this->getSubmittedResponseParticipantIds());
+        return (string)$submittedParticipantCount . '/' . (string)$participantCount . ' participations.';
+    }
+
     public function hasSubmittedResponses()
     {
         return $this->getSubmittedResponseCount() > 0;
+    }
+
+    public function hasProposalsFromOtherPeople()
+    {
+        $decisionId = (int)$this->getId();
+        $ownerUserId = (int)$this->get('IDuser');
+        if ($decisionId <= 0) {
+            return false;
+        }
+
+        return (int)self::fetchValue(
+            'SELECT COUNT(*)
+             FROM `decision_proposal`
+             WHERE `IDdecision_process` = :decision_process_id
+               AND (
+                    `IDuser_author` IS NULL
+                    OR `IDuser_author` != :owner_user_id
+               )',
+            [
+                'decision_process_id' => $decisionId,
+                'owner_user_id' => $ownerUserId,
+            ]
+        ) > 0;
+    }
+
+    public function hasProposalDiscussionMessages()
+    {
+        $decisionId = (int)$this->getId();
+        $organizationId = (int)$this->get('IDorganization');
+        if ($decisionId <= 0 || $organizationId <= 0) {
+            return false;
+        }
+
+        return (int)self::fetchValue(
+            'SELECT COUNT(*)
+             FROM `chat_message` message
+             INNER JOIN `chat_thread` thread ON thread.`id` = message.`IDchat_thread`
+             INNER JOIN `decision_proposal` proposal ON proposal.`id` = thread.`subject_id`
+             WHERE proposal.`IDdecision_process` = :decision_process_id
+               AND thread.`IDorganization` = :organization_id
+               AND thread.`subject_type` = :subject_type
+               AND message.`message_type` = :message_type',
+            [
+                'decision_process_id' => $decisionId,
+                'organization_id' => $organizationId,
+                'subject_type' => \dbObject\ChatThread::SUBJECT_DECISION_PROPOSAL,
+                'message_type' => \dbObject\ChatMessage::TYPE_USER,
+            ]
+        ) > 0;
+    }
+
+    public function hasParticipationPreventingNamedVote()
+    {
+        return $this->hasSubmittedResponses()
+            || $this->hasProposalsFromOtherPeople()
+            || $this->hasProposalDiscussionMessages();
+    }
+
+    public function canEnableNamedVote($referenceDateTime = null)
+    {
+        if ((int)$this->getId() <= 0) {
+            return true;
+        }
+
+        if ($this->hasEvaluationStarted($referenceDateTime)) {
+            return false;
+        }
+
+        return !$this->hasParticipationPreventingNamedVote();
     }
 
     public function resolveManagerCloseAction()
@@ -1001,7 +1580,7 @@ class DecisionProcess extends DbObject
                 'DELETE FROM `decision_result` WHERE `IDdecision_process` = :decision_process_id',
                 'DELETE FROM `decision_response` WHERE `IDdecision_process` = :decision_process_id',
                 'DELETE FROM `decision_participant` WHERE `IDdecision_process` = :decision_process_id',
-                'DELETE FROM `decision_invitation` WHERE `IDdecision_process` = :decision_process_id',
+                "DELETE FROM `resource_invitation` WHERE `resource_type` = 'decision_process' AND `resource_id` = :decision_process_id",
                 'DELETE FROM `decision_proposal` WHERE `IDdecision_process` = :decision_process_id',
                 'DELETE FROM `decision_group` WHERE `IDdecision_process` = :decision_process_id',
             ];
@@ -1055,12 +1634,14 @@ class DecisionProcess extends DbObject
     {
         return (int)self::fetchValue(
             'SELECT COUNT(*)
-             FROM `decision_invitation`
-             WHERE `IDdecision_process` = :decision_process_id
+             FROM `resource_invitation`
+             WHERE `resource_type` = :resource_type
+               AND `resource_id` = :decision_process_id
                AND `active` = 1
                AND `status` != :revoked_status',
             [
                 'decision_process_id' => (int)$this->getId(),
+                'resource_type' => \dbObject\DecisionInvitation::resourceType(),
                 'revoked_status' => \dbObject\DecisionInvitation::STATUS_REVOKED,
             ]
         ) > 0;
@@ -1087,6 +1668,58 @@ class DecisionProcess extends DbObject
         $this->set('parameters', $parameters);
         $saveResult = $this->save();
         return is_array($saveResult) && !empty($saveResult['status']);
+    }
+
+    public function hasOwnerIntermediateResultsAccess(): bool
+    {
+        $parameters = $this->getRootParametersArray();
+        return !empty($parameters['owner_intermediate_results_access']);
+    }
+
+    public static function mergeOwnerIntermediateResultsAccessParameter($parameters, $enabled): array
+    {
+        if (!is_array($parameters)) {
+            $decoded = json_decode(trim((string)$parameters), true);
+            $parameters = is_array($decoded) ? $decoded : [];
+        }
+
+        $parameters['owner_intermediate_results_access'] = !empty($enabled) ? 1 : 0;
+        return $parameters;
+    }
+
+    public function hasParticipantIntermediateResultsAccess(): bool
+    {
+        $parameters = $this->getRootParametersArray();
+        return !empty($parameters['participant_intermediate_results_access']);
+    }
+
+    public static function mergeParticipantIntermediateResultsAccessParameter($parameters, $enabled): array
+    {
+        if (!is_array($parameters)) {
+            $decoded = json_decode(trim((string)$parameters), true);
+            $parameters = is_array($decoded) ? $decoded : [];
+        }
+
+        $parameters['participant_intermediate_results_access'] = !empty($enabled) ? 1 : 0;
+        return $parameters;
+    }
+
+    public function areParticipantResponsesEditable(): bool
+    {
+        $parameters = $this->getRootParametersArray();
+        return !array_key_exists('participant_responses_editable', $parameters)
+            || !empty($parameters['participant_responses_editable']);
+    }
+
+    public static function mergeParticipantResponsesEditableParameter($parameters, $enabled): array
+    {
+        if (!is_array($parameters)) {
+            $decoded = json_decode(trim((string)$parameters), true);
+            $parameters = is_array($decoded) ? $decoded : [];
+        }
+
+        $parameters['participant_responses_editable'] = !empty($enabled) ? 1 : 0;
+        return $parameters;
     }
 
     public function getPublicAccessSettings()
@@ -1143,12 +1776,16 @@ class DecisionProcess extends DbObject
              INNER JOIN `user` u ON u.`id` = uo.`IDuser`
              WHERE uo.`IDorganization` = :organization_id
                AND uo.`active` = 1
-               AND LOWER(COALESCE(NULLIF(uo.`email`, ''), u.`email`)) = :email
+               AND (
+                    LOWER(NULLIF(uo.`email`, '')) = :scoped_email
+                    OR LOWER(u.`email`) = :user_email
+               )
              ORDER BY uo.`id` DESC
              LIMIT 1",
             [
                 'organization_id' => $organizationId,
-                'email' => $email,
+                'scoped_email' => $email,
+                'user_email' => $email,
             ]
         );
 
@@ -1180,6 +1817,103 @@ class DecisionProcess extends DbObject
 
         $organization = new \dbObject\Organization();
         return $organization->load($organizationId) ? $organization : null;
+    }
+
+    public function getInvitationRecipientCount($includeOwner = false)
+    {
+        $organizationId = (int)$this->get('IDorganization');
+        $ownerUserId = (int)$this->get('IDuser');
+        $userIds = [];
+        $emails = [];
+        $holonIds = [];
+        $activeInvitations = [];
+
+        foreach ($this->getInvitations(true) as $invitation) {
+            if (!($invitation instanceof \dbObject\DecisionInvitation)) {
+                continue;
+            }
+
+            if (\dbObject\DecisionInvitation::normalizeStatus($invitation->get('status')) === \dbObject\DecisionInvitation::STATUS_REVOKED) {
+                continue;
+            }
+
+            $activeInvitations[] = $invitation;
+        }
+
+        if (count($activeInvitations) === 0) {
+            $defaultHolonId = (int)$this->get('IDholon');
+            if ($defaultHolonId > 0) {
+                $holonIds[] = $defaultHolonId;
+            }
+        } else {
+            foreach ($activeInvitations as $invitation) {
+                $type = \dbObject\DecisionInvitation::normalizeType($invitation->get('invitation_type'));
+                if ($type === \dbObject\DecisionInvitation::TYPE_HOLON) {
+                    $holonId = (int)$invitation->get('IDholon');
+                    if ($holonId > 0) {
+                        $holonIds[] = $holonId;
+                    }
+                    continue;
+                }
+
+                if ($type === \dbObject\DecisionInvitation::TYPE_USER) {
+                    $userId = (int)$invitation->get('IDuser');
+                    if ($userId > 0) {
+                        $userIds[$userId] = true;
+                    }
+                    continue;
+                }
+
+                $email = mb_strtolower(trim((string)$invitation->get('email')), 'UTF-8');
+                if ($email !== '') {
+                    $emails[$email] = true;
+                }
+            }
+        }
+
+        $holonIds = array_values(array_unique(array_filter(array_map('intval', $holonIds), static function ($holonId) {
+            return $holonId > 0;
+        })));
+
+        if (count($holonIds) > 0) {
+            $holonMembers = new \dbObject\ArrayUserHolon();
+            $holonMembers->loadActiveForHolonIds($holonIds);
+            foreach ($holonMembers as $membership) {
+                $userId = (int)$membership->get('IDuser');
+                if ($userId > 0) {
+                    $userIds[$userId] = true;
+                }
+            }
+
+            $organization = $this->getOrganizationObject();
+            $rootHolon = $organization ? $organization->getEnabledStructuralRootHolon() : null;
+            $rootHolonId = $rootHolon instanceof \dbObject\Holon ? (int)$rootHolon->getId() : 0;
+            if ($rootHolonId > 0 && in_array($rootHolonId, $holonIds, true)) {
+                $organizationMembers = new \dbObject\ArrayUserOrganization();
+                $organizationMembers->loadActiveForOrganization($organizationId);
+                foreach ($organizationMembers as $membership) {
+                    $userId = (int)$membership->get('IDuser');
+                    if ($userId > 0) {
+                        $userIds[$userId] = true;
+                    }
+                }
+            }
+        } elseif (count($activeInvitations) === 0 && $organizationId > 0) {
+            $organizationMembers = new \dbObject\ArrayUserOrganization();
+            $organizationMembers->loadActiveForOrganization($organizationId);
+            foreach ($organizationMembers as $membership) {
+                $userId = (int)$membership->get('IDuser');
+                if ($userId > 0) {
+                    $userIds[$userId] = true;
+                }
+            }
+        }
+
+        if (!$includeOwner && $ownerUserId > 0) {
+            unset($userIds[$ownerUserId]);
+        }
+
+        return count($userIds) + count($emails);
     }
 
     public function getHolonObject()
@@ -1277,27 +2011,27 @@ class DecisionProcess extends DbObject
         $messageLines = [
             'Bonjour,',
             '',
-            'Vous etes invite a participer a la prise de decision "' . ($title !== '' ? $title : 'sans titre') . '" dans ' . $organizationName . '.',
+            'Vous êtes invité à participer à la prise de décision « ' . ($title !== '' ? $title : 'sans titre') . ' » dans ' . $organizationName . '.',
         ];
 
         if ($holon) {
-            $messageLines[] = 'Contexte: ' . trim((string)$holon->getTemplateLabel(true)) . ' ' . trim((string)$holon->getDisplayName()) . '.';
+            $messageLines[] = 'Contexte : ' . trim((string)$holon->getTemplateLabel(true)) . ' ' . trim((string)$holon->getDisplayName()) . '.';
         }
 
         $consultationStart = self::normalizeDateTimeValue($this->get('consultation_start_at'));
         $consultationEnd = self::normalizeDateTimeValue($this->get('consultation_end_at'));
 
         if ($consultationStart instanceof \DateTimeInterface) {
-            $messageLines[] = 'Debut: ' . $consultationStart->format('d.m.Y H:i') . '.';
+            $messageLines[] = 'Début : ' . $consultationStart->format('d.m.Y H:i') . '.';
         }
         if ($consultationEnd instanceof \DateTimeInterface) {
-            $messageLines[] = 'Fin: ' . $consultationEnd->format('d.m.Y H:i') . '.';
+            $messageLines[] = 'Fin : ' . $consultationEnd->format('d.m.Y H:i') . '.';
         }
 
         $messageLines[] = '';
-        $messageLines[] = 'Vous pouvez consulter les details du scrutin en ouvrant le lien ci-dessous.';
+        $messageLines[] = 'Vous pouvez consulter les détails du scrutin en ouvrant le lien ci-dessous.';
         $messageLines[] = '';
-        $messageLines[] = 'A bientot,';
+        $messageLines[] = 'À bientôt,';
         $messageLines[] = $organizationName;
 
         return implode("\n", $messageLines);
@@ -1306,7 +2040,7 @@ class DecisionProcess extends DbObject
     public function buildDefaultInvitationEmailSubject()
     {
         $title = trim((string)$this->get('title'));
-        $subject = 'Acces a la prise de decision';
+        $subject = 'Accès à la prise de décision';
         if ($title !== '') {
             $subject .= ' : ' . $title;
         }
@@ -1596,12 +2330,23 @@ class DecisionProcess extends DbObject
                     }
                 } else {
                     $registerParticipantCandidate($userParticipant);
+                    $participantCandidates = array_values(array_filter($participantCandidates, static function ($candidate) use ($userParticipant) {
+                        return (int)$candidate->getId() !== (int)$userParticipant->getId();
+                    }));
+                    array_unshift($participantCandidates, $userParticipant);
                 }
             }
         }
 
         $emailParticipant = \dbObject\DecisionParticipant::findByDecisionAndEmail((int)$this->getId(), $email);
         if ($emailParticipant instanceof \dbObject\DecisionParticipant) {
+            if (is_array($organizationMember) && (int)$emailParticipant->get('IDuser') <= 0) {
+                $emailParticipant->set('IDuser', (int)$organizationMember['user_id']);
+                $emailParticipant->set('email', null);
+                $emailParticipant->set('display_name', trim((string)$organizationMember['display_name']) !== '' ? trim((string)$organizationMember['display_name']) : $email);
+                $emailParticipant->set('parameters', $buildPublicAccessParticipantParameters('user'));
+                $emailParticipant->save();
+            }
             $participantStatus = \dbObject\DecisionParticipant::normalizeStatus($emailParticipant->get('status'));
             if ((int)$emailParticipant->get('active') !== 1 || in_array($participantStatus, [
                 \dbObject\DecisionParticipant::STATUS_DECLINED,
@@ -1720,10 +2465,10 @@ class DecisionProcess extends DbObject
         $messageLines = [
             'Bonjour,',
             '',
-            'Vous avez demande un acces a la prise de decision "' . ($title !== '' ? $title : 'sans titre') . '" dans ' . $organizationName . '.',
+            'Vous avez demandé un accès à la prise de décision « ' . ($title !== '' ? $title : 'sans titre') . ' » dans ' . $organizationName . '.',
             'Utilisez le lien ci-dessous pour ouvrir directement la page de participation.',
             '',
-            'A bientot,',
+            'À bientôt,',
             $organizationName,
         ];
 
@@ -1991,7 +2736,6 @@ class DecisionProcess extends DbObject
     {
         $status = self::normalizeStatus($this->get('status'));
         if (in_array($status, [
-            self::STATUS_CONSULTATION,
             self::STATUS_EVALUATION,
             self::STATUS_RESULTS,
             self::STATUS_ARCHIVED,
@@ -2000,7 +2744,27 @@ class DecisionProcess extends DbObject
         }
 
         $consultationStart = self::normalizeDateTimeValue($this->get('consultation_start_at'));
-        if (!$consultationStart instanceof \DateTimeInterface) {
+        $referenceDateTime = self::normalizeDateTimeValue($referenceDateTime);
+        if (!$referenceDateTime instanceof \DateTimeInterface) {
+            $referenceDateTime = new \DateTimeImmutable('now');
+        }
+
+        return $consultationStart instanceof \DateTimeInterface && $consultationStart <= $referenceDateTime;
+    }
+
+    public function hasConsultationEnded($referenceDateTime = null)
+    {
+        $status = self::normalizeStatus($this->get('status'));
+        if (in_array($status, [
+            self::STATUS_EVALUATION,
+            self::STATUS_RESULTS,
+            self::STATUS_ARCHIVED,
+        ], true)) {
+            return true;
+        }
+
+        $consultationEnd = self::normalizeDateTimeValue($this->get('consultation_end_at'));
+        if (!$consultationEnd instanceof \DateTimeInterface) {
             return false;
         }
 
@@ -2009,7 +2773,7 @@ class DecisionProcess extends DbObject
             $referenceDateTime = new \DateTimeImmutable('now');
         }
 
-        return $consultationStart <= $referenceDateTime;
+        return $consultationEnd <= $referenceDateTime;
     }
 
     public function isParticipationOpen($referenceDateTime = null)
@@ -2022,28 +2786,42 @@ class DecisionProcess extends DbObject
         return $this->hasEvaluationStarted($referenceDateTime);
     }
 
+    public function isConsultationOpen($referenceDateTime = null)
+    {
+        $status = self::normalizeStatus($this->get('status'));
+        if (in_array($status, [self::STATUS_RESULTS, self::STATUS_ARCHIVED], true)) {
+            return false;
+        }
+
+        return $this->hasConsultationStarted($referenceDateTime)
+            && !$this->hasConsultationEnded($referenceDateTime)
+            && !$this->hasEvaluationStarted($referenceDateTime);
+    }
+
+    public function isParticipationInterfaceOpen($referenceDateTime = null)
+    {
+        return $this->isConsultationOpen($referenceDateTime)
+            || $this->isParticipationOpen($referenceDateTime);
+    }
+
     public function hasEvaluationStarted($referenceDateTime = null)
     {
         $status = self::normalizeStatus($this->get('status'));
-        if (in_array($status, [
-            self::STATUS_EVALUATION,
-            self::STATUS_RESULTS,
-            self::STATUS_ARCHIVED,
-        ], true)) {
+        if (in_array($status, [self::STATUS_RESULTS, self::STATUS_ARCHIVED], true)) {
             return true;
         }
 
         $evaluationStart = self::normalizeDateTimeValue($this->get('evaluation_start_at'));
-        if (!$evaluationStart instanceof \DateTimeInterface) {
-            return false;
-        }
-
         $referenceDateTime = self::normalizeDateTimeValue($referenceDateTime);
         if (!$referenceDateTime instanceof \DateTimeInterface) {
             $referenceDateTime = new \DateTimeImmutable('now');
         }
 
-        return $evaluationStart <= $referenceDateTime;
+        if ($status === self::STATUS_EVALUATION) {
+            return $evaluationStart instanceof \DateTimeInterface && $evaluationStart <= $referenceDateTime;
+        }
+
+        return $evaluationStart instanceof \DateTimeInterface && $evaluationStart <= $referenceDateTime;
     }
 
     public static function fetchListRowsForOrganization($organizationId, $userId = 0, $userEmail = '')
@@ -2284,8 +3062,7 @@ class DecisionProcess extends DbObject
             }
 
             $decision = new self();
-            $decision->loadFromArray($row);
-            $decision->setId((int)$row['id']);
+            $decision->hydrateFromDatabaseRow($row, true);
             $decision->syncLifecycleStatus();
 
             $rows[$index]['status'] = (string)$decision->get('status');

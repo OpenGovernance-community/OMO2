@@ -1,0 +1,95 @@
+/* omo/api/documents/merge.php */
+.omo-document-merge__visibility-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--color-border);
+}
+.omo-document-merge__tag-section {
+    padding: 0;
+}
+.omo-document-merge__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+}
+.omo-document-merge__tag {
+    display: inline-flex;
+    gap: 7px;
+    align-items: center;
+    padding: 5px 6px 5px 10px;
+    border: 1px solid color-mix(in srgb, var(--color-primary) 26%, var(--color-border));
+    border-radius: 999px;
+    background: var(--color-surface);
+    color: var(--color-text);
+}
+.omo-document-merge__tag-remove {
+    display: inline-grid;
+    place-items: center;
+    width: 20px;
+    height: 20px;
+    border: 0;
+    border-radius: 50%;
+    padding: 0;
+    background: color-mix(in srgb, var(--color-primary) 9%, transparent);
+    color: var(--color-primary);
+    cursor: pointer;
+    font: inherit;
+    line-height: 1;
+}
+.omo-document-merge__tag-remove:hover,
+.omo-document-merge__tag-remove:focus-visible {
+    background: color-mix(in srgb, var(--color-primary) 18%, transparent);
+}
+.omo-document-merge__documents {
+    gap: 0;
+    border-top: 1px solid var(--color-border);
+}
+.omo-document-merge__document {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+    min-height: 52px;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--color-border);
+    background: transparent;
+}
+.omo-document-merge__document.is-dragging {
+    opacity: .45;
+}
+.omo-document-merge__document-actions {
+    display: flex;
+    gap: 6px;
+}
+.omo-document-merge__document-actions svg {
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.omo-document-merge .generic-drag-handle svg {
+    width: 16px;
+    height: 24px;
+    fill: currentColor;
+}
+.omo-document-merge__source-choice {
+    margin-right: auto;
+}
+.omo-document-merge__footer {
+    align-items: center;
+}
+@media (max-width: 680px) {
+    .omo-document-merge__visibility-fields {
+        grid-template-columns: 1fr;
+    }
+    .omo-document-merge__footer {
+        align-items: stretch;
+    }
+    .omo-document-merge__source-choice {
+        width: 100%;
+    }
+}

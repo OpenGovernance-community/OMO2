@@ -1,0 +1,125 @@
+.omo-setup-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    height: 100%;
+    min-height: 0;
+    padding: 24px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    color: var(--color-text, #1f2937);
+}
+
+.omo-setup-panel__section {
+    --generic-section-padding-block: 18px;
+    --generic-section-radius: var(--radius-md);
+    --generic-section-shadow: var(--shadow-sm, 0 2px 6px rgba(15, 23, 42, 0.05));
+}
+
+.omo-setup-panel__section-title {
+    margin-bottom: 12px;
+}
+
+.omo-setup-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 14px;
+}
+
+.omo-setup-card {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    padding: 0;
+    border: 1px solid var(--color-border, #d1d5db);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    background: var(--color-surface, #fff);
+    color: inherit;
+    cursor: pointer;
+    text-align: left;
+    transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.omo-setup-card:hover {
+    transform: translateY(-1px);
+    border-color: color-mix(in srgb, var(--color-primary, #2563eb) 32%, var(--color-border, #d1d5db));
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+}
+
+.omo-setup-card__media {
+    position: relative;
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background: linear-gradient(135deg, var(--color-primary, #2563eb), #1d4ed8);
+}
+
+.omo-setup-card__badge {
+    position: absolute;
+    left: 12px;
+    bottom: 12px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.18);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    backdrop-filter: blur(4px);
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.2);
+}
+
+.omo-setup-card__icon {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 62px;
+    height: 62px;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.38);
+    background: rgba(255, 255, 255, 0.18);
+    box-shadow: 0 10px 26px rgba(15, 23, 42, 0.18);
+    backdrop-filter: blur(6px);
+}
+
+.omo-setup-card__icon img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.omo-setup-card__content {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px;
+    min-height: 164px;
+}
+
+.omo-setup-card__text {
+    flex: 1 1 auto;
+}
+
+.omo-setup-card__cta {
+    color: var(--color-primary, #2563eb);
+    font-weight: 600;
+}
+
+.omo-setup-panel__empty {
+    margin-top: 14px;
+}
+
+.omo-setup-panel__feedback.is-error {
+    color: #b91c1c;
+    background: rgba(220, 38, 38, 0.06);
+    border-color: rgba(220, 38, 38, 0.18);
+}
+
+.omo-setup-panel button[disabled] {
+    opacity: 0.7;
+    cursor: wait;
+}

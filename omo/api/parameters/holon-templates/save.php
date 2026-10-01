@@ -1,6 +1,7 @@
 <?php
 require_once dirname(__DIR__, 2) . '/bootstrap.php';
 require_once dirname(__DIR__) . '/translation.php';
+require_once __DIR__ . '/access.php';
 
 use dbObject\Organization;
 
@@ -32,11 +33,40 @@ if (!$organization->load($organizationId)) {
     exit;
 }
 
+$adminModeAccess = omoHolonTemplateAdminModeAccess($organizationId, (int)($_GET['hid'] ?? $_POST['hid'] ?? 0));
+if (empty($adminModeAccess['status'])) {
+    http_response_code(403);
+    echo json_encode(
+        array(
+            'status' => 'error',
+            'message' => (string)($adminModeAccess['message'] ?? omoHolonTemplateT('parameters.holon_templates.error.admin_required')),
+        ),
+        JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+    );
+    exit;
+}
+
 $contextHolonId = (int)($_GET['cid'] ?? $_POST['cid'] ?? 0);
 $holonId = (int)($_GET['hid'] ?? $_POST['hid'] ?? 0);
 $templateScope = strtolower(trim((string)($_GET['template_scope'] ?? $_POST['template_scope'] ?? 'contextual')));
-if ($templateScope !== 'global') {
+if ($templateScope === 'global') {
+    $templateScope = 'descendants';
+}
+if (!in_array($templateScope, array('contextual', 'children', 'descendants'), true)) {
     $templateScope = 'contextual';
+}
+
+$discoveryModeAccess = omoHolonTemplateDiscoveryModeAccess($organization, $holonId);
+if (empty($discoveryModeAccess['status'])) {
+    http_response_code(403);
+    echo json_encode(
+        array(
+            'status' => 'error',
+            'message' => (string)($discoveryModeAccess['message'] ?? omoHolonTemplateT('parameters.holon_templates.error.discovery_mode')),
+        ),
+        JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+    );
+    exit;
 }
 
 $rawPayload = $_POST['payload'] ?? file_get_contents('php://input');
