@@ -18,6 +18,18 @@
   .interface-top:has(> input#id:valid):has(> input#saved:valid) {background-image:url(/img/diskette_warning.png);}
   input#id, input#saved {display:none}
 
+  #popup_close button {
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+  }
+  #popup_close button > img {
+    width:18px;
+    height:18px;
+    flex:0 0 18px;
+    object-fit:contain;
+  }
+
 </style>		
 		<!-- Script spécifique à la page -->
 		<?= commonPageScriptTags('/pv/editor.js', [
@@ -350,7 +362,7 @@
 
 					
 <!-- Texte d'intro si PV vide-->
-<?=T_("<h2><b>Bienvenue sur l'éditeur spécial procès verbal de OpenMyOrganization</b></h2><p></p><h5>Pour démarrer un nouveau PV, effacez le texte de ce bloc ou cliquez sur Nouveau (en haut à droite)</h5><p></p><p>Voici un petit outil vous permettant facilement de prendre en main une réunion, en tenant un procès verbal sur un écran que vous pouvez partager. L'avantage, au regard d'un traitement de texte classique, est que l'ordre du jour reste constamment accessible, et qu'il est facile de naviguer entre les points.</p><p>Actuellement, il n'est pas possible de sauver les documents autrement qu'en les imprimant en PDF. Prochainement, il sera possible de sauvegarder les PV ou de les télécharger dans un format Word, vous permettant de finaliser la mise en page à l'issue de la réunion si vous le souhaitez.</p><h3>Vous pouvez utiliser la barre ci-dessus pour ajouter du formatage, comme:</h3><ul><li>Des listes à puces</li><li>Des textes <b>en gras</b> ou en <i>italique</i></li><li>Des couleurs de <font color='#000000' style='background-color: rgb(255, 255, 0);'>surlignage</font></li><li>Des <a href='https://www.linkedin.com/in/daviddraeyer/' target='_blank'>liens</a></li><li>Et même des images.</li></ul><h4>Dans les options de formatage, il existe des options particulières pour faire ressortir les décision.</h4>");?>
+<?=T_("<h2><b>Bienvenue sur l'éditeur spécial procès verbal de OpenMyOrganization</b></h2><p></p><h5>Pour démarrer un nouveau PV, effacez le texte de ce bloc ou cliquez sur Nouveau (en haut à droite)</h5><p></p><p>Voici un petit outil vous permettant facilement de prendre en main une réunion, en tenant un procès verbal sur un écran que vous pouvez partager. L'avantage, au regard d'un traitement de texte classique, est que l'ordre du jour reste constamment accessible, et qu'il est facile de naviguer entre les points.</p><p>Vous pouvez imprimer un PV en PDF ou le télécharger au format Word (.docx) ou OpenDocument (.odt), puis finaliser sa mise en page dans un traitement de texte.</p><h3>Vous pouvez utiliser la barre ci-dessus pour ajouter du formatage, comme:</h3><ul><li>Des listes à puces</li><li>Des textes <b>en gras</b> ou en <i>italique</i></li><li>Des couleurs de <font color='#000000' style='background-color: rgb(255, 255, 0);'>surlignage</font></li><li>Des <a href='https://www.linkedin.com/in/daviddraeyer/' target='_blank'>liens</a></li><li>Et même des images.</li></ul><h4>Dans les options de formatage, il existe des options particulières pour faire ressortir les décision.</h4>");?>
 
 
 								</div>
@@ -397,7 +409,7 @@
 		<tr><td class='interface-bottom' colspan=3><span style='float:right;'><img src='/img/support.png' style='height:40px;' id='btn_support'></span></td></tr>
 		</table>
 		<div id='popupbackground'></div>
-		<div id='popup'><div id='popup_content'></div><div id='popup_close'><button><img src='/img/icon_close.png'><?=T_("Fermer");?></button></div></div>
+		<div id='popup'><div id='popup_content'></div><div id='popup_close'><button type='button'><img src='/img/icon_close.png' width='18' height='18' alt=''><?=T_("Fermer");?></button></div></div>
 
 <style>
 .support-bar {
