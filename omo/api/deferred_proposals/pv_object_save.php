@@ -17,7 +17,7 @@ $point = new DocumentPvPoint(); $document = new Document();
 if (!in_array($targetType, [DeferredProposal::TARGET_RECURRING_TASK, DeferredProposal::TARGET_INDICATOR], true)
     || !in_array($operation, [DeferredProposal::OPERATION_CREATE, DeferredProposal::OPERATION_UPDATE, DeferredProposal::OPERATION_DELETE], true)
     || !$point->load($pointId) || !$document->load((int)$point->get('IDdocument'))
-    || (int)$document->get('IDorganization') !== $organizationId || !$document->canUserManagePvDocument($userId)
+    || (int)$document->get('IDorganization') !== $organizationId || !$document->canUserProposePvPointChange($point, $userId)
     || $point->isHandled() || $document->getPvStage() === Document::PV_STAGE_REVIEW) $respond(403, ['status' => false, 'message' => 'Accès refusé.']);
 $proposal = new DeferredProposal();
 if ($proposalId > 0 && (!$proposal->load($proposalId) || (int)$proposal->get('IDdocument_pv_point') !== $pointId || (string)$proposal->get('target_type') !== $targetType || (string)$proposal->get('status') !== DeferredProposal::STATUS_PENDING)) $respond(404, ['status' => false, 'message' => 'Cette modification ne peut plus être modifiée.']);
