@@ -522,7 +522,7 @@ foreach ($rawMemberCards as $rawCard) {
         $hasPendingInvitation
             ? omoTeamT('team.member.invitation_pending', [], $lang, $sourceLang)
             : ($isPending ? omoTeamT('team.member.to_invite', [], $lang, $sourceLang) : ''),
-        $isContextAdmin ? omoTeamT('team.member.admin_context', ['adminLabel' => $contextAdminLabel], $lang, $sourceLang) : '',
+        !$isOrganizationTeamContext && $isContextAdmin ? omoTeamT('team.member.admin_context', ['adminLabel' => $contextAdminLabel], $lang, $sourceLang) : '',
         $isOrganizationAdmin ? omoTeamT('team.member.admin_organization', ['adminLabel' => $organizationAdminLabel], $lang, $sourceLang) : '',
     ), static fn ($value): bool => trim((string)$value) !== '')));
 
@@ -565,8 +565,8 @@ foreach ($rawMemberCards as $rawCard) {
     );
 }
 
-usort($memberCards, static function (array $left, array $right): int {
-    if ($left['isContextAdmin'] !== $right['isContextAdmin']) {
+usort($memberCards, static function (array $left, array $right) use ($isOrganizationTeamContext): int {
+    if (!$isOrganizationTeamContext && $left['isContextAdmin'] !== $right['isContextAdmin']) {
         return $left['isContextAdmin'] ? -1 : 1;
     }
 
@@ -607,7 +607,7 @@ $leafletMapsEnabled = function_exists('commonLeafletMapsEnabled') && commonLeafl
 $mapMembers = array_values(array_filter($memberCards, static function (array $card): bool {
     return is_array($card['latlong'] ?? null);
 }));
-$mapMemberPayload = array_map(static function (array $card): array {
+$mapMemberPayload = array_map(static function (array $card) use ($isOrganizationTeamContext): array {
     return array(
         'userId' => (int)$card['userId'],
         'displayName' => (string)$card['displayName'],
@@ -620,7 +620,7 @@ $mapMemberPayload = array_map(static function (array $card): array {
         'lastSeenLabel' => (string)($card['lastSeenLabel'] ?? ''),
         'photoUrl' => (string)($card['photoUrl'] ?? ''),
         'initials' => (string)($card['initials'] ?? 'P'),
-        'isContextAdmin' => !empty($card['isContextAdmin']),
+        'isContextAdmin' => !$isOrganizationTeamContext && !empty($card['isContextAdmin']),
         'isOrganizationAdmin' => !empty($card['isOrganizationAdmin']),
         'isPending' => !empty($card['isPending']),
         'hasPendingInvitation' => !empty($card['hasPendingInvitation']),
@@ -739,7 +739,7 @@ if ($leafletMapsEnabled) {
                         data-user-id="<?= (int)$card['userId'] ?>"
                         data-team-member-item
                         data-team-member-search="<?= omoApiEscape((string)$card['searchText']) ?>"
-                        data-context-admin="<?= $card['isContextAdmin'] ? '1' : '0' ?>"
+                        data-context-admin="<?= !$isOrganizationTeamContext && $card['isContextAdmin'] ? '1' : '0' ?>"
                         data-member-pending="<?= $card['isPending'] ? '1' : '0' ?>"
                         <?php if ($card['canViewDetail']): ?>
                         tabindex="0"
@@ -824,8 +824,10 @@ if ($leafletMapsEnabled) {
                                     <span class="omo-team-card__badge omo-team-card__badge--pending"><?= omoApiEscape(omoTeamT('team.member.invitation_pending', [], $lang, $sourceLang)) ?></span>
                                 <?php elseif ($card['isPending']): ?>
                                     <span class="omo-team-card__badge omo-team-card__badge--pending"><?= omoApiEscape(omoTeamT('team.member.to_invite', [], $lang, $sourceLang)) ?></span>
-                                <?php elseif ($card['isContextAdmin']): ?>
+                                <?php elseif (!$isOrganizationTeamContext && $card['isContextAdmin']): ?>
                                     <span class="omo-team-card__badge"><?= omoApiEscape(omoTeamT('team.member.admin_short', ['adminLabel' => $contextAdminLabel], $lang, $sourceLang)) ?></span>
+                                <?php elseif ($isOrganizationTeamContext && $card['isOrganizationAdmin']): ?>
+                                    <span class="omo-team-card__badge"><?= omoApiEscape(omoTeamT('team.member.admin_organization', ['adminLabel' => $organizationAdminLabel], $lang, $sourceLang)) ?></span>
                                 <?php endif; ?>
                             </div>
 
@@ -993,7 +995,7 @@ if ($leafletMapsEnabled) {
                                 'className' => 'omo-team__compact-badge omo-team__compact-badge--pending',
                             );
                         } else {
-                            if ($card['isContextAdmin']) {
+                            if (!$isOrganizationTeamContext && $card['isContextAdmin']) {
                                 $compactPrivilegeLabels[] = array(
                                     'label' => omoTeamT('team.member.admin_context', ['adminLabel' => $contextAdminLabel], $lang, $sourceLang),
                                     'className' => 'omo-team__compact-badge',

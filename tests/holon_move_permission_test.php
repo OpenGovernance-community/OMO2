@@ -29,6 +29,11 @@ namespace dbObject {
         }
         public function canEdit() { throw new \RuntimeException('Moving must not require edit rights.'); }
         public function isTemplateNode($root) { return !empty($this->fields['template']); }
+        public function isMandatoryTemplateInstance() {
+            $templateId = (int)$this->get('IDholon_template');
+            return $templateId > 0 && !empty(self::$rows[$templateId]['mandatory']);
+        }
+        public function getMandatoryTemplateAncestorIds() { return []; }
         public function getDisplayName() { return (string)$this->get('name'); }
         public function getFullDisplayName() { return $this->getDisplayName(); }
         public function getTypeLabel() { return 'Cercle'; }
@@ -38,9 +43,10 @@ namespace dbObject {
             return $parent->load($this->get('IDholon_parent')) ? $parent : null;
         }
         public function getPathHolons() { return [$this]; }
-        public function getChildren() {
+        public function getChildren($includeHidden = false) {
             $children = [];
-            foreach (self::$rows as $id => $row) if (($row['IDholon_parent'] ?? 0) === $this->id) {
+            foreach (self::$rows as $id => $row) if (($row['IDholon_parent'] ?? 0) === $this->id
+                && ($includeHidden || !array_key_exists('visible', $row) || !empty($row['visible']))) {
                 $child = new self(); $child->load($id); $children[] = $child;
             }
             return $children;
@@ -86,12 +92,27 @@ namespace dbObject {
 
     final class MandatoryCircleGuardTestOrganization extends Organization {
         public int $templateLookups = 0;
+        public array $templateIds = [];
+        public array $createdTemplateIds = [];
         public function getAvailableTemplateDefinitionHolons($contextHolonId = 0) {
             $this->templateLookups++;
-            return [];
+            $templates = [];
+            foreach ($this->templateIds as $id) {
+                $template = new Holon();
+                $template->load($id);
+                $templates[] = $template;
+            }
+            return $templates;
+        }
+        protected function createMandatoryTemplateChild(Holon $parentHolon, Holon $template, $rootHolonId, $userId = 0) {
+            $this->createdTemplateIds[] = (int)$template->getId();
+            return null;
         }
         public function checkMandatoryChildren(Holon $holon): void {
             $this->createMandatoryChildrenForCircle($holon, 1);
+        }
+        public function canCreateFromTemplate(Holon $template, Holon $parent, int $existingId = 0): bool {
+            return $this->isTemplateAvailableForHolonCreation($template, $parent, $existingId);
         }
     }
 }
@@ -162,5 +183,33 @@ namespace {
     $circle = new Holon(); $circle->load(4);
     $guardOrganization->checkMandatoryChildren($circle);
     moveAssert($guardOrganization->templateLookups === 1, 'Mandatory child creation must remain available for a circle.');
+
+    Holon::$rows[9] = ['IDholon_parent' => 1, 'IDtypeholon' => 1, 'IDholon_template' => 0, 'template' => true, 'mandatory' => true, 'active' => 1];
+    Holon::$rows[10] = ['IDholon_parent' => 1, 'IDtypeholon' => 2, 'IDholon_template' => 0, 'template' => true, 'mandatory' => true, 'active' => 1];
+    Holon::$rows[11] = ['IDholon_parent' => 4, 'IDtypeholon' => 2, 'IDholon_template' => 10, 'IDorganization' => 42, 'active' => 1];
+    Holon::$rows[12] = ['IDholon_parent' => 11, 'IDtypeholon' => 2, 'IDholon_template' => 0, 'IDorganization' => 42, 'active' => 1];
+    Holon::$rows[13] = ['IDholon_parent' => 4, 'IDtypeholon' => 3, 'IDholon_template' => 0, 'IDorganization' => 42, 'active' => 1];
+    Holon::$rows[14] = ['IDholon_parent' => 13, 'IDtypeholon' => 2, 'IDholon_template' => 10, 'IDorganization' => 42, 'active' => 1, 'visible' => 0];
+    $roleTemplate = new Holon(); $roleTemplate->load(9);
+    $circleTemplate = new Holon(); $circleTemplate->load(10);
+    $mandatoryCircle = new Holon(); $mandatoryCircle->load(11);
+    $nestedCircle = new Holon(); $nestedCircle->load(12);
+    $baseCircle = new Holon(); $baseCircle->load(2);
+    $guardOrganization->templateIds = [9, 10];
+    $guardOrganization->checkMandatoryChildren($baseCircle);
+    moveAssert($guardOrganization->createdTemplateIds === [9, 10], 'A regular circle may receive both mandatory role and circle templates.');
+    $guardOrganization->createdTemplateIds = [];
+    $guardOrganization->checkMandatoryChildren($mandatoryCircle);
+    $guardOrganization->checkMandatoryChildren($nestedCircle);
+    moveAssert($guardOrganization->createdTemplateIds === [9, 9], 'A mandatory circle and its descendants may receive mandatory roles but no mandatory circles.');
+    moveAssert($guardOrganization->canCreateFromTemplate($circleTemplate, $baseCircle), 'A mandatory circle template remains available outside mandatory circles.');
+    moveAssert(!$guardOrganization->canCreateFromTemplate($circleTemplate, $mandatoryCircle), 'A mandatory circle template must be unavailable in a mandatory circle.');
+    moveAssert(!$guardOrganization->canCreateFromTemplate($circleTemplate, $nestedCircle), 'An intermediate circle must not bypass the mandatory circle guard.');
+    moveAssert($guardOrganization->canCreateFromTemplate($roleTemplate, $mandatoryCircle), 'Mandatory role templates remain available in mandatory circles.');
+    Holon::$rows[15] = ['IDholon_parent' => 11, 'IDtypeholon' => 2, 'IDholon_template' => 10, 'IDorganization' => 42, 'active' => 1];
+    moveAssert($guardOrganization->canCreateFromTemplate($circleTemplate, $mandatoryCircle, 15), 'An existing nested circle must remain editable in place.');
+    Holon::$personal[7] = [11 => true, 13 => true];
+    $groupWithMandatoryCircle = new Holon(); $groupWithMandatoryCircle->load(13);
+    moveAssert(!$organization->canMoveHolonToParent($groupWithMandatoryCircle, $mandatoryCircle), 'Moving a group must not nest its hidden mandatory circle below another mandatory circle.');
     echo "holon_move_permission_test: OK\n";
 }

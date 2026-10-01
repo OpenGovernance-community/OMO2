@@ -1,5 +1,33 @@
 # Journal Des Nouveautes
 
+- EasyPV : les boutons de fermeture des panneaux lateraux conservent une icone de 18 px, alignee avec le libelle ; les styles sont limites a la page /pv/.
+
+- EasyPV : suppression des anciens modeles et de la configuration PHPDocX ; les exports utilisent PHPWord et Dompdf, sans dependance PHPDocX restante.
+
+- Structure : un modele de cercle obligatoire ne peut plus creer un cercle obligatoire sous un cercle deja issu d un modele obligatoire, meme avec des espaces intermediaires. La creation et le deplacement manuels respectent aussi cette limite.
+
+- EasyPV : les exports Word, ODT et PDF reprennent les blocs Decision et Action, avec leurs icones integrees, un fond vert ou jaune sur le paragraphe et une taille de texte coherente avec le PV.
+
+- EasyPV : amelioration des exports ODT avec conservation du surlignage, styles de titres explicites, espacements, separateurs et listes sans retours a la ligne parasites entre les textes en gras, en italique ou les liens.
+
+- EasyPV : correction du XHTML transmis a PHPWord (balises fermees, entites et accents) ; les erreurs de generation sont journalisees sans corrompre les fichiers telecharges.
+
+- EasyPV : les exports transmettent le contenu courant au moment du telechargement, y compris les points en cours d edition, sans dependre de la sauvegarde locale ni du script de la popup.
+
+- Organisations : les avatars des admins ont la meme presentation que ceux des membres sur le holon organisation ; les vues Equipe conservent les badges admin d organisation et un marqueur distinct sur la carte, sans les presenter comme pilotes.
+
+- EasyPV : correction de l adresse des exports Word, OpenDocument et PDF depuis /pv/ pour utiliser /genWord.php et eviter une erreur 404.
+
+- Menu Aide : regroupement de deux admins au maximum sous le libelle « Admins : », avec un lien individuel vers leur e-mail d organisation et un separateur entre les liens du bas du menu.
+
+- Licence : ajout du texte AGPL-3.0-only, mise a jour des metadonnees Composer et du plugin Etherpad, lien vers le code source de l instance dans le menu Aide et clarification des CGU.
+
+- PV : remplacement de la génération PHPDocX par PHPWord pour les exports Word et OpenDocument ; l impression PDF continue par Dompdf.
+
+- Organisations : correction du depart d un membre lorsque des regles conservent ses references de creation ou de modification.
+
+- Conditions generales : remplacement du texte provisoire par des conditions adaptees au logiciel libre, a l instance hebergee et aux installations auto-hebergees, couvrant les dons, les mises a jour, les sauvegardes, les signalements et les limites de responsabilite.
+
 - Inscriptions publiques : les e-mails de confirmation affichent le createur et son organisation comme expediteur, presentent ses coordonnees et dirigent les reponses vers son adresse e-mail dans cette organisation.
 
 - Inscriptions publiques : ajout des etapes Vos informations, Envoi e-mail et Confirmation en haut des ecrans, avec le meme composant de progression que /meeting/.

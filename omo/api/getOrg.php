@@ -1095,13 +1095,13 @@ $memberCards = $currentHolon->getAssociatedMemberCards(array(
     'organizationId' => $organizationId,
 ));
 $isRoleHolon = (int)$currentHolon->get('IDtypeholon') === 1;
+$isOrganizationDefinitionHolon = $currentHolon->isOrganizationHolon();
 if (function_exists('commonGetCurrentShareToken') && commonGetCurrentShareToken() !== '' && !commonCurrentShareAllowsPeople()) {
     $memberCards = array();
 } else {
-    $directContextAdminUserIds = array_fill_keys(
-        $currentHolon->getDirectContextAdminUserIds($organizationId),
-        true
-    );
+    $directContextAdminUserIds = $isOrganizationDefinitionHolon
+        ? array()
+        : array_fill_keys($currentHolon->getDirectContextAdminUserIds($organizationId), true);
 
     foreach ($memberCards as &$memberCard) {
         $memberCard['isAdmin'] = isset($directContextAdminUserIds[(int)($memberCard['userId'] ?? 0)]);
@@ -1122,7 +1122,6 @@ if (function_exists('commonGetCurrentShareToken') && commonGetCurrentShareToken(
 $regularMemberCount = count(array_filter($memberCards, static function (array $member): bool {
     return empty($member['isAdmin']);
 }));
-$isOrganizationDefinitionHolon = (int)$currentHolon->get('IDtypeholon') === 4;
 $isCurrentTemplateHolon = !$isOrganizationDefinitionHolon && $root ? $currentHolon->isTemplateNode((int)$root->getId()) : false;
 $editTemplateContextId = $isCurrentTemplateHolon && $currentHolon->getParentHolon()
     ? (int)$currentHolon->getParentHolon()->getId()

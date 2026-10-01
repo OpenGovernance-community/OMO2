@@ -392,10 +392,21 @@
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    gap: 10px 14px;
+    gap: 10px 0;
     padding-top: 4px;
     border-top: 1px solid rgba(255,255,255,0.14);
     text-align: center;
+}
+
+.common-topbar__help-link-item {
+    color: rgba(255,255,255,0.8);
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.common-topbar__help-link-item + .common-topbar__help-link-item::before {
+    content: "-";
+    margin: 0 10px;
 }
 
 .common-topbar__help-link {
@@ -1258,6 +1269,7 @@ html[data-theme] .common-topbar__help-links {
     border-top-color: var(--topbar-menu-border);
 }
 
+html[data-theme] .common-topbar__help-link-item,
 html[data-theme] .common-topbar__help-link {
     color: var(--topbar-menu-text-muted);
 }
@@ -1371,7 +1383,7 @@ html[data-theme] .common-help-card p {
     }
 
     .common-topbar__help-links {
-        gap: 8px 12px;
+        gap: 8px 0;
         padding-top: 0;
         border-top: 0;
     }

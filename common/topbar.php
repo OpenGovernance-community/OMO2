@@ -566,7 +566,13 @@ function commonRenderTopbar(array $options = [])
                         <?php foreach ($config['helpLinks'] as $link): ?>
                             <?php
                             $href = trim((string)($link['href'] ?? ''));
-                            if ($href === '') {
+                            $groupLinks = [];
+                            foreach (is_array($link['links'] ?? null) ? $link['links'] : [] as $groupLink) {
+                                if (is_array($groupLink) && trim((string)($groupLink['href'] ?? '')) !== '') {
+                                    $groupLinks[] = $groupLink;
+                                }
+                            }
+                            if ($href === '' && $groupLinks === []) {
                                 continue;
                             }
                             $label = trim((string)($link['label'] ?? $href));
@@ -580,13 +586,25 @@ function commonRenderTopbar(array $options = [])
                                 }
                             }
                             ?>
-                            <a
-                                href="<?= htmlspecialchars($href) ?>"
-                                class="common-topbar__help-link"
-                                <?php if (!empty($helpLinkItem)): ?>data-topbar-help-link-item='<?= htmlspecialchars(json_encode($helpLinkItem, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ENT_QUOTES, 'UTF-8') ?>'<?php endif; ?>
-                                <?php if ($target !== ''): ?>target="<?= htmlspecialchars($target) ?>"<?php endif; ?>
-                                <?php if ($rel !== ''): ?>rel="<?= htmlspecialchars($rel) ?>"<?php endif; ?>
-                            ><?= htmlspecialchars($label) ?></a>
+                            <span class="common-topbar__help-link-item">
+                                <?php if ($groupLinks !== []): ?>
+                                    <span class="common-topbar__help-link-group-label"><?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?></span>
+                                    <?php foreach ($groupLinks as $groupIndex => $groupLink): ?>
+                                        <?= $groupIndex > 0 ? ', ' : '' ?><a
+                                            href="<?= htmlspecialchars(trim((string)$groupLink['href']), ENT_QUOTES, 'UTF-8') ?>"
+                                            class="common-topbar__help-link"
+                                        ><?= htmlspecialchars(trim((string)($groupLink['label'] ?? $groupLink['href'])), ENT_QUOTES, 'UTF-8') ?></a>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <a
+                                        href="<?= htmlspecialchars($href) ?>"
+                                        class="common-topbar__help-link"
+                                        <?php if (!empty($helpLinkItem)): ?>data-topbar-help-link-item='<?= htmlspecialchars(json_encode($helpLinkItem, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ENT_QUOTES, 'UTF-8') ?>'<?php endif; ?>
+                                        <?php if ($target !== ''): ?>target="<?= htmlspecialchars($target) ?>"<?php endif; ?>
+                                        <?php if ($rel !== ''): ?>rel="<?= htmlspecialchars($rel) ?>"<?php endif; ?>
+                                    ><?= htmlspecialchars($label) ?></a>
+                                <?php endif; ?>
+                            </span>
                         <?php endforeach; ?>
                     </div>
                 <?php endif; ?>

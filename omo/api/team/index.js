@@ -709,11 +709,12 @@ function omoTeamEnsureMapReady() {
 
             popupBits.push('</div>');
 
+            const isOrganizationAdminMarker = member.isOrganizationAdmin && !member.isContextAdmin;
             const marker = L.circleMarker([lat, lng], {
-                radius: member.isContextAdmin ? 9 : 7,
+                radius: member.isContextAdmin ? 9 : (isOrganizationAdminMarker ? 8 : 7),
                 color: member.isContextAdmin ? '#b45309' : '#0f766e',
                 weight: 2,
-                fillColor: member.isContextAdmin ? '#f59e0b' : '#14b8a6',
+                fillColor: member.isContextAdmin ? '#f59e0b' : (isOrganizationAdminMarker ? '#5eead4' : '#14b8a6'),
                 fillOpacity: 0.88
             });
 

@@ -384,7 +384,10 @@ function drawPieChart(data) {
 
 				$("#btn_download").click(function () {
 					showPopup("/popup/download.php", ("" + window.pvEditorPageConfig.text6 + ""));
-				});	
+				});
+				$(document).on("submit", "#pv-download-form", function () {
+					$(this).find("input[name='data']").val(JSON.stringify(collectPvData()));
+				});
 				$("#btn_share").click(function () {
 					showPopup("/popup/pv_share.php", ("" + window.pvEditorPageConfig.text7 + ""));
 				});	
@@ -615,8 +618,13 @@ function drawPieChart(data) {
 				});			
 			}	
 						
-			function save() {
-				saveArray = {};
+			function pvEditorContent(selector) {
+				var content = $(selector);
+				return content.data('summernote') ? content.summernote('code') : content.html();
+			}
+
+			function collectPvData() {
+				var saveArray = {};
 				saveArray.id = $("#id").val();
 				saveArray.saved = $("#saved").val();
 				saveArray.title = $("#title").val();
@@ -637,13 +645,13 @@ function drawPieChart(data) {
 				
 				// Enregistre les sections s'il y en a
 				$.each($(".section"),function (index,value) {
-					section ={};
+					var section = {};
 					section.title=$(value).find("h3 input").first().val();
 					section.oj = [];
 					
 					// Enregistre les points à l'ordre du jour non hiérarchisé
 					$.each($(value).find(".list-group-item"),function (index,value) {
-						tension = {};
+						var tension = {};
 						index=$(value).attr("data");
 						tension.checked=$("#cb_"+index).is(":checked");
 						tension.title=$("#tension_"+index).val();
@@ -651,7 +659,7 @@ function drawPieChart(data) {
 						tension.who=$("#qui_"+index).val();
 						tension.duration=$("#duree_"+index).val();
 						tension.realduration=$("#realduree_"+index).val();
-						tension.content=$("#page_"+index+" .content").html();
+						tension.content=pvEditorContent("#page_"+index+" .content");
 						section.oj.push(tension);
 					});	
 					saveArray.section.push(section);			
@@ -660,7 +668,7 @@ function drawPieChart(data) {
 				
 				// Enregistre les points à l'ordre du jour non hiérarchisé
 				$.each($("div.screenOJ>ul>li.list-group-item"),function (index,value) {
-					tension = {};
+					var tension = {};
 					index=$(value).attr("data");
 					tension.checked=$("#cb_"+index).is(":checked");
 					tension.title=$("#tension_"+index).val();
@@ -668,12 +676,15 @@ function drawPieChart(data) {
 					tension.who=$("#qui_"+index).val();
 					tension.duration=$("#duree_"+index).val();
 					tension.realduration=$("#realduree_"+index).val();
-					tension.content=$("#page_"+index+" .content").html();
+					tension.content=pvEditorContent("#page_"+index+" .content");
 					saveArray.oj.push(tension);
 				})
 				
-				localStorage.setItem("savedata", JSON.stringify(saveArray));
-			
+				return saveArray;
+			}
+
+			function save() {
+				localStorage.setItem("savedata", JSON.stringify(collectPvData()));
 			}
 			
 

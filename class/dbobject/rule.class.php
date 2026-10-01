@@ -96,12 +96,13 @@ class Rule extends DbObject
              LEFT JOIN holon holon_record ON holon_record.id = COALESCE(rule_record.IDholon, authority_record.IDholon)
              LEFT JOIN holon root_holon ON root_holon.id = holon_record.IDholon_org
              SET rule_record.IDuser_creation = CASE WHEN rule_record.IDuser_creation = :source_creation THEN :ghost_user_id ELSE rule_record.IDuser_creation END,
-                 rule_record.IDuser_modification = CASE WHEN rule_record.IDuser_modification = :source_modification THEN :ghost_user_id ELSE rule_record.IDuser_modification END
+                 rule_record.IDuser_modification = CASE WHEN rule_record.IDuser_modification = :source_modification THEN :ghost_modification_user_id ELSE rule_record.IDuser_modification END
              WHERE COALESCE(rule_record.IDorganization, NULLIF(holon_record.IDorganization, 0), root_holon.IDorganization, 0) = :organization_id',
             array(
                 'source_creation' => (int)$userId,
                 'source_modification' => (int)$userId,
                 'ghost_user_id' => (int)$ghostUserId,
+                'ghost_modification_user_id' => (int)$ghostUserId,
                 'organization_id' => (int)$organizationId,
             )
         );
