@@ -79,14 +79,13 @@ if ($targetType === DeferredProposal::TARGET_RULE) {
             $respond(403, ['status' => false, 'message' => 'Le collectif du PV ne peut pas créer d’espace ici.']);
         }
     } else {
-        foreach ($contextHolon->getChildren() as $child) {
-            if (!$child instanceof Holon) continue;
+        foreach (DeferredProposal::getHolonTargetsForContext($contextHolon, $operation, $catalog) as $child) {
             $childId = (int)$child->getId();
-            if ($childId <= 0 || empty($catalog[$childId]['permissions'][$operation])) continue;
             $objects[] = [
                 'id' => $childId,
                 'label' => trim((string)$child->getDisplayName()),
                 'typeLabel' => trim((string)$child->getTemplateLabel()),
+                'holonType' => (int)$child->get('IDtypeholon'),
             ];
         }
     }
