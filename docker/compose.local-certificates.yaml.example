@@ -1,0 +1,5 @@
+services:
+  app:
+    volumes:
+      - ./docker/apache/certs/dev-localtest.crt:/etc/apache2/ssl/dev-localhost.crt:ro
+      - ./docker/apache/certs/dev-localtest.key:/etc/apache2/ssl/dev-localhost.key:ro

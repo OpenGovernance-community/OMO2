@@ -47,6 +47,25 @@ if (!function_exists('omoDecisionBuildEditorUrl')) {
     }
 }
 
+if (!function_exists('omoDecisionBuildGovernanceEditorUrl')) {
+    function omoDecisionBuildGovernanceEditorUrl($organizationId, $holonId = 0, $decisionId = 0)
+    {
+        $query = [
+            'oid' => (int)$organizationId,
+            'method' => DecisionProcess::METHOD_CONSENT,
+            'intent' => 'manage',
+            'workflow' => DecisionProcess::WORKFLOW_GOVERNANCE,
+        ];
+        if ((int)$holonId > 0) {
+            $query['cid'] = (int)$holonId;
+        }
+        if ((int)$decisionId > 0) {
+            $query['id'] = (int)$decisionId;
+        }
+        return '/omo/api/decision/edit.php?' . http_build_query($query);
+    }
+}
+
 if (!function_exists('omoDecisionBuildActionUrl')) {
     function omoDecisionBuildActionUrl()
     {
@@ -243,8 +262,7 @@ if (!function_exists('omoDecisionCanCreateAtOrganizationLevel')) {
             return $rootHolon->isAllowed('CAN_CREATE_DECISION', (bool)$useSessionCache, $userId);
         }
 
-        return function_exists('commonUserHasOrganizationMembership')
-            && commonUserHasOrganizationMembership($userId, $organizationId);
+        return \dbObject\Permission::userCanInOrganization('CAN_CREATE_DECISION', $organizationId, $userId);
     }
 }
 
@@ -309,7 +327,7 @@ if (!function_exists('omoDecisionResolveEditorContext')) {
             $canManage = false;
             $canCreate = false;
             $canView = $hasParticipation;
-            $canParticipate = $hasParticipation && $decision->isParticipationOpen();
+            $canParticipate = $hasParticipation && $decision->isParticipationInterfaceOpen();
 
             $intent = $canParticipate ? 'participate' : 'view';
             if (in_array($requestedIntent, ['view', 'participate'], true)) {
@@ -364,6 +382,7 @@ if (!function_exists('omoDecisionResolveEditorContext')) {
         $requestedHolonId = isset($input['cid']) ? (int)$input['cid'] : 0;
         $decisionId = isset($input['id']) ? (int)$input['id'] : 0;
         $decisionGroupId = isset($input['gid']) ? (int)$input['gid'] : 0;
+        $duplicateDecisionId = isset($input['duplicate_id']) ? (int)$input['duplicate_id'] : 0;
         $requestedIntent = isset($input['intent']) ? trim((string)$input['intent']) : '';
         $currentUserId = function_exists('commonGetCurrentUserId')
             ? (int)commonGetCurrentUserId()
@@ -512,13 +531,19 @@ if (!function_exists('omoDecisionResolveEditorContext')) {
         $canCreate = $effectiveHolon
             ? $effectiveHolon->isAllowed('CAN_CREATE_DECISION', $usePermissionSessionCache, $currentUserId)
             : omoDecisionCanCreateAtOrganizationLevel($organization, $currentUserId, $usePermissionSessionCache);
-        $canManage = $decision instanceof DecisionProcess ? $isOwner : $canCreate;
+        $canManage = $decision instanceof DecisionProcess
+            ? $decision->canUseManagementPermission('CAN_EDIT_DECISION', $currentUserId)
+            : $canCreate;
+        $canDelete = $decision instanceof DecisionProcess
+            && $decision->canUseManagementPermission('CAN_DELETE_DECISION', $currentUserId);
         $visibilityAccess = $decision instanceof DecisionProcess
             ? $decision->currentViewerCanAccessVisibility($organizationId)
             : false;
         $canView = $decision instanceof DecisionProcess
             ? (
                 $canManage
+                || $canDelete
+                || $isOwner
                 || $hasParticipation
                 || (
                     DecisionProcess::normalizeStatus($decision->get('status')) !== DecisionProcess::STATUS_DRAFT
@@ -527,7 +552,7 @@ if (!function_exists('omoDecisionResolveEditorContext')) {
             )
             : $canCreate;
         $canParticipate = $decision instanceof DecisionProcess
-            ? (($isOwner || $hasParticipation) && $decision->isParticipationOpen())
+            ? (($isOwner || $hasParticipation) && $decision->isParticipationInterfaceOpen())
             : false;
 
         $intent = 'manage';
@@ -580,6 +605,52 @@ if (!function_exists('omoDecisionResolveEditorContext')) {
             }
         }
 
+        $duplicateDecision = null;
+        $duplicateDecisionGroups = [];
+        if ($decisionId === 0 && $duplicateDecisionId > 0) {
+            $duplicateDecision = new DecisionProcess();
+            if (!$duplicateDecision->load($duplicateDecisionId)) {
+                return [
+                    'status' => false,
+                    'code' => 404,
+                    'error_key' => 'decisions.edit.context.decision_not_found',
+                ];
+            }
+
+            if ((int)$duplicateDecision->get('IDorganization') !== $organizationId) {
+                return [
+                    'status' => false,
+                    'code' => 403,
+                    'error_key' => 'decisions.edit.context.decision_mismatch',
+                ];
+            }
+
+            $duplicateOwner = $currentUserId > 0
+                && (int)$duplicateDecision->get('IDuser') === $currentUserId;
+            if (!$duplicateOwner && $currentUserId > 0) {
+                $duplicateParticipant = DecisionParticipant::findByDecisionAndUser($duplicateDecisionId, $currentUserId);
+                $duplicateOwner = $duplicateParticipant instanceof DecisionParticipant
+                    && (int)$duplicateParticipant->get('active') === 1
+                    && DecisionParticipant::normalizeRole($duplicateParticipant->get('role')) === DecisionParticipant::ROLE_OWNER;
+            }
+
+            if (!$canCreate || !$duplicateOwner) {
+                return [
+                    'status' => false,
+                    'code' => 403,
+                    'error_key' => 'decisions.edit.context.decision_denied',
+                ];
+            }
+
+            $duplicateDecisionGroups = $duplicateDecision->getDecisionGroups(false);
+            if (count($duplicateDecisionGroups) === 0) {
+                $primaryDuplicateGroup = $duplicateDecision->getPrimaryGroup(false);
+                if ($primaryDuplicateGroup instanceof DecisionGroup) {
+                    $duplicateDecisionGroups = [$primaryDuplicateGroup];
+                }
+            }
+        }
+
         return [
             'status' => true,
             'accessMode' => 'app',
@@ -601,10 +672,13 @@ if (!function_exists('omoDecisionResolveEditorContext')) {
             'intent' => $intent,
             'canCreate' => $canCreate,
             'canManage' => $canManage,
+            'canDelete' => $canDelete,
             'canView' => $canView,
             'canParticipate' => $canParticipate,
             'hasParticipation' => $hasParticipation,
             'isOwner' => $isOwner,
+            'duplicateDecision' => $duplicateDecision,
+            'duplicateDecisionGroups' => $duplicateDecisionGroups,
         ];
     }
 }

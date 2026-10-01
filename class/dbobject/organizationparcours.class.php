@@ -68,6 +68,28 @@
 
 		public static function attachParcoursToOrganization($organizationId, $parcoursId, array $options = array())
 		{
+			$pdo = self::getPdo();
+			$startedTransaction = !$pdo->inTransaction();
+			try {
+				if ($startedTransaction) $pdo->beginTransaction();
+				$parcours = self::fetchRow('SELECT id, isarchived FROM parcours WHERE id = :id FOR UPDATE', ['id' => (int)$parcoursId]);
+				if (!$parcours || (!empty($parcours['isarchived']) && !self::loadForOrganizationParcours((int)$organizationId, (int)$parcoursId))) {
+					if ($startedTransaction) $pdo->rollBack();
+					return ['status' => false, 'message' => 'Ce parcours n est plus disponible pour de nouvelles organisations.'];
+				}
+				$result = self::saveOrganizationAttachment($organizationId, $parcoursId, $options);
+				if ($startedTransaction) {
+					if (!empty($result['status'])) $pdo->commit(); else $pdo->rollBack();
+				}
+				return $result;
+			} catch (\Throwable $error) {
+				if ($startedTransaction && $pdo->inTransaction()) $pdo->rollBack();
+				throw $error;
+			}
+		}
+
+		protected static function saveOrganizationAttachment($organizationId, $parcoursId, array $options)
+		{
 			$organizationId = (int)$organizationId;
 			$parcoursId = (int)$parcoursId;
 			if ($organizationId <= 0 || $parcoursId <= 0) {
@@ -164,7 +186,10 @@
 			}
 
 			$parcours = new \dbObject\Parcours();
-			$parcoursVisible = (!$parcours->load($parcoursId) || $parcours->isVisibleInOrganization($organizationId));
+			$parcoursVisible = $parcours->load($parcoursId) && $parcours->isVisibleInOrganization($organizationId);
+			if ($parcours->get('isarchived')) {
+				$parcoursVisible = $parcoursVisible && ($hasOrganizationAccess || Parcours::hasLearnerActivity($parcoursId, $userId));
+			}
 
 			return [
 				'exists' => true,

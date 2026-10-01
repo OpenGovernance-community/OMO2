@@ -12,7 +12,15 @@ git clone -b Dev <url-du-repo> .
 
 Le point final `.` est important si vous voulez copier les fichiers directement dans le dossier courant.
 
-## 2. Ouvrir le site dans le navigateur
+## 2. Installer les dependances PHP
+
+Installer les versions verrouillees par `composer.lock` :
+
+```bash
+composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader
+```
+
+## 3. Ouvrir le site dans le navigateur
 
 Si aucun fichier `.env` n'est present, le site redirige automatiquement vers `install.php`.
 
@@ -27,9 +35,10 @@ L'assistant permet de :
 Le parcours le plus simple pour une premiere installation est donc :
 
 1. cloner le depot
-2. ouvrir l'URL du site
-3. suivre l'assistant
-4. se connecter avec le compte admin cree pendant l'installation
+2. installer les dependances PHP
+3. ouvrir l'URL du site
+4. suivre l'assistant
+5. se connecter avec le compte admin cree pendant l'installation
 
 ## 3. Choisir le mode d'URL des organisations
 
@@ -134,6 +143,7 @@ Procedure manuelle typique :
 cd /chemin/du/site
 git fetch origin Dev
 git reset --hard origin/Dev
+composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader
 php scripts/run-migrations.php
 ```
 
@@ -146,3 +156,67 @@ Si vous avez fait des modifications locales non versionnees sur le serveur, evit
 - Si le SMTP est mal configure, l'assistant d'installation teste l'envoi avec un timeout court.
 - Si la base cible est vide, l'installation importe le seed de depart.
 - Si la base existe deja mais ne correspond pas au seed attendu, l'installation s'arrete pour eviter un ecrasement involontaire.
+- Composer doit etre disponible sur le serveur pour installer les dependances verrouillees par `composer.lock`.
+- Le processus PHP doit pouvoir creer et ecrire dans `../log/`. Il est preferable de creer ce repertoire avant la premiere requete afin que les erreurs de demarrage puissent aussi y etre journalisees.
+
+## 7. Diagnostiquer les requetes SQL lentes
+
+Le journal est desactive par defaut. Pour enregistrer les requetes dont la duree totale atteint 50 ms :
+
+```env
+DB_QUERY_LOG_ENABLED=true
+DB_QUERY_LOG_MIN_MS=50
+DB_QUERY_LOG_PATH=
+RUNTIME_LOG_DIR=
+```
+
+Sans chemin explicite, les evenements JSONL sont ecrits dans `../log/sql-performance/sql-performance-AAAA-MM-JJ.jsonl`, hors de la racine publique. Un chemin relatif est resolu depuis la racine du projet. `RUNTIME_LOG_DIR` permet de changer le repertoire commun utilise par les journaux qui n ont pas de chemin specifique.
+
+Chaque requete conserve sa duree, son type, son empreinte, son appelant et son nombre de lignes. Le journal ajoute aussi un resume par requete HTTP avec le temps SQL cumule. Les valeurs liees, les litteraux SQL, les messages d erreur et les parametres de l URL ne sont pas enregistres.
+
+## 8. Mesurer les appels de maintenance OMO
+
+La journalisation des appels de maintenance est activee par defaut. Elle peut etre configuree avec :
+
+```env
+OMO_CRON_LOG_ENABLED=true
+OMO_CRON_LOG_PATH=
+```
+
+Sans chemin explicite, tous les evenements JSONL sont ajoutes dans le fichier unique `../log/omo-cron/omo-cron.jsonl`, hors de la racine publique. Chaque ligne indique l heure, la source de l appel, son statut et sa duree totale. Les traitements en echec ne sont precises que lorsqu il y en a. Les appels provenant de l endpoint partiel, du cron HTTP, du cron CLI et d un import sont distingues. Un appel evite par le verrou porte le statut `skipped` et une raison.
+
+Les parametres de l URL et le jeton du cron ne sont jamais enregistres. Les tentatives refusees par le cron HTTP sont comptees avec le statut `rejected` sans conserver le jeton fourni.
+
+### Planification et verrou de maintenance
+
+La page `/omo/` ne lance plus la maintenance dans sa reponse PHP. Le navigateur conserve un secours asynchrone, deux secondes apres le chargement complet, puis lors du retour sur l application. Ce secours ne remplace pas une planification serveur quand aucun utilisateur ne visite le site.
+
+Configurer de preference le planificateur de l hebergement pour appeler chaque minute le script existant avec un executable **PHP CLI 8.5** explicite (pas PHP-FPM ou CGI) :
+
+```sh
+/chemin/vers/php-cli /chemin/du/site/scripts/run-omo-maintenance.php
+```
+
+Le cron HTTP existant reste disponible avec son jeton habituel. Aucun planificateur n est installe automatiquement par ce changement.
+
+CLI, cron HTTP, import et secours navigateur partagent un verrou non bloquant par serveur/base de donnees dans `RUNTIME_LOG_DIR/omo-cron/maintenance-<empreinte>.lock` (par defaut `../log/omo-cron/`). Le navigateur evite aussi une nouvelle execution pendant 60 secondes apres une execution terminee ; les crons forces et la maintenance suivant un import ignorent ce delai, jamais le verrou. Le fichier est conserve apres execution : ne pas le supprimer pendant un traitement.
+
+Le compte CLI et le serveur web doivent pouvoir ouvrir les memes fichiers de verrou en lecture/ecriture. Le verrou est local au systeme de fichiers : pour plusieurs serveurs applicatifs, un repertoire partage supportant `flock` ou une coordination distribuee sera necessaire. Conserver ce repertoire hors de la racine publique, comme les journaux.
+
+## 9. Reduire les anciennes images de profil
+
+Les nouvelles images redimensionnables sont automatiquement enregistrees en WebP. Les photos de profil sont plafonnees a 320 x 320 pixels.
+
+Pour examiner les gains possibles sur les anciennes photos sans modifier les fichiers :
+
+```bash
+php scripts/optimize-profile-images.php
+```
+
+Pour appliquer ensuite la reduction en conservant les noms de fichiers et les URL stockees en base :
+
+```bash
+php scripts/optimize-profile-images.php --apply
+```
+
+Une sauvegarde des fichiers concernes est recommandee avant l execution sur le serveur.

@@ -1,0 +1,7 @@
+-- @migration
+UPDATE `permission` SET `description` = 'Autorise a creer les proprietes type1 et a modifier leur structure (nom, format, type et configuration) dans le contexte cible.', `updated_at` = NOW() WHERE `permission_key` = 'CAN_CREATE_TYPE1_PROPERTIES';
+UPDATE `permission` SET `description` = 'Autorise uniquement a modifier les valeurs des proprietes type1 (textes, listes et elements de liste), sans changer leur structure.', `updated_at` = NOW() WHERE `permission_key` = 'CAN_EDIT_TYPE1_PROPERTIES';
+UPDATE `permission` SET `description` = 'Autorise a creer les proprietes type2 et a modifier leur structure (nom, format, type et configuration) dans le contexte cible.', `updated_at` = NOW() WHERE `permission_key` = 'CAN_CREATE_TYPE2_PROPERTIES';
+UPDATE `permission` SET `description` = 'Autorise uniquement a modifier les valeurs des proprietes type2 (textes, listes et elements de liste), sans changer leur structure.', `updated_at` = NOW() WHERE `permission_key` = 'CAN_EDIT_TYPE2_PROPERTIES';
+UPDATE `permission` SET `description` = 'Autorise a creer les proprietes type3 et a modifier leur structure (nom, format, type et configuration) dans le contexte cible.', `updated_at` = NOW() WHERE `permission_key` = 'CAN_CREATE_TYPE3_PROPERTIES';
+UPDATE `permission` SET `description` = 'Autorise uniquement a modifier les valeurs des proprietes type3 (textes, listes et elements de liste), sans changer leur structure.', `updated_at` = NOW() WHERE `permission_key` = 'CAN_EDIT_TYPE3_PROPERTIES';

@@ -463,7 +463,9 @@ if (!function_exists('commonCardDavSendOptions')) {
 if (!function_exists('commonCardDavReadXmlBody')) {
     function commonCardDavReadXmlBody()
     {
-        $raw = file_get_contents('php://input');
+        $raw = array_key_exists('commonCardDavRawInput', $GLOBALS)
+            ? $GLOBALS['commonCardDavRawInput']
+            : file_get_contents('php://input');
         if (!is_string($raw)) {
             return array('raw' => '', 'xml' => null);
         }
@@ -818,17 +820,20 @@ if (!function_exists('commonCardDavFoldVCardLine')) {
         $chunks = array();
         $remaining = $line;
 
-        while (strlen($remaining) > 75) {
+        // Continuation lines also count their leading space in the 75-octet limit.
+        $limit = 75;
+        while (strlen($remaining) > $limit) {
             if (function_exists('mb_strcut')) {
-                $chunk = mb_strcut($remaining, 0, 75, 'UTF-8');
+                $chunk = mb_strcut($remaining, 0, $limit, 'UTF-8');
             } else {
-                $chunk = substr($remaining, 0, 75);
+                $chunk = substr($remaining, 0, $limit);
             }
             if ($chunk === '') {
                 break;
             }
             $chunks[] = $chunk;
             $remaining = (string)substr($remaining, strlen($chunk));
+            $limit = 74;
         }
 
         $chunks[] = $remaining;

@@ -64,7 +64,7 @@ function adminEditBuildSourceLang($object): array
             'context' => 'Longitude placeholder shown in adminEdit latlong fields.',
         ],
         'admin_edit.latlong.help.manual' => [
-            'text' => 'Renseignez latitude et longitude manuellement si la carte n est pas disponible.',
+            'text' => 'Renseignez la latitude et la longitude manuellement si la carte n’est pas disponible.',
             'context' => 'Help text shown when leaflet is unavailable in adminEdit latlong fields.',
         ],
         'admin_edit.latlong.help.map' => [
@@ -80,7 +80,7 @@ function adminEditBuildSourceLang($object): array
             'context' => 'Live character count helper shown below adminEdit text fields.',
         ],
         'admin_edit.image.choose_disk' => [
-            'text' => 'Choose image on disk...',
+            'text' => 'Choisir une image sur le disque',
             'context' => 'Button label shown in the sized image adminEdit field.',
         ],
     ];

@@ -78,7 +78,7 @@ $config = [
 
 		<div id="authCodeBox" class="auth-code-box" style="display:none;">
 			<p><?php echo htmlspecialchars(commonAuthT('auth.code.instructions', [], $authLang, $authSourceLang)); ?></p>
-			<input type="text" id="authCodeInput" inputmode="text" autocomplete="one-time-code" maxlength="6" placeholder="<?php echo htmlspecialchars(commonAuthT('auth.code.placeholder', [], $authLang, $authSourceLang)); ?>">
+			<input type="text" id="authCodeInput" name="code" inputmode="text" autocomplete="one-time-code" autocapitalize="characters" autocorrect="off" spellcheck="false" maxlength="6" aria-label="<?php echo htmlspecialchars(commonAuthT('auth.code.placeholder', [], $authLang, $authSourceLang)); ?>" placeholder="<?php echo htmlspecialchars(commonAuthT('auth.code.placeholder', [], $authLang, $authSourceLang)); ?>">
 			<button type="button" id="authCodeSubmit"><?php echo htmlspecialchars(commonAuthT('auth.button.validate_code', [], $authLang, $authSourceLang)); ?></button>
 		</div>
 

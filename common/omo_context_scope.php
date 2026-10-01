@@ -2,6 +2,22 @@
 
 use dbObject\Holon;
 
+if (!function_exists('omoApiIsStructuralScopeHolon')) {
+    function omoApiIsStructuralScopeHolon($candidateHolon = null, $contextHolon = null)
+    {
+        if (!($candidateHolon instanceof Holon) || (int)$candidateHolon->getId() <= 0) {
+            return false;
+        }
+
+        $rootHolonId = $contextHolon instanceof Holon ? (int)$contextHolon->get('IDholon_org') : 0;
+        if ($rootHolonId <= 0 && $contextHolon instanceof Holon) {
+            $rootHolonId = (int)$contextHolon->getId();
+        }
+
+        return !$candidateHolon->isTemplateNode($rootHolonId);
+    }
+}
+
 if (!function_exists('omoApiCanUseDescendantScope')) {
     function omoApiCanUseDescendantScope($currentHolon = null, $rootHolon = null)
     {
@@ -9,11 +25,7 @@ if (!function_exists('omoApiCanUseDescendantScope')) {
             return false;
         }
 
-        if ($rootHolon instanceof Holon && (int)$rootHolon->getId() === (int)$currentHolon->getId()) {
-            return false;
-        }
-
-        return true;
+        return count(omoApiGetDirectChildHolonIds($currentHolon)) > 0;
     }
 }
 
@@ -27,16 +39,16 @@ if (!function_exists('omoApiGetAvailableContextScopes')) {
         }
 
         if (omoApiCanUseDescendantScope($currentHolon, $rootHolon)) {
+            $scopes[] = 'children';
             $scopes[] = 'descendants';
         }
 
-        $scopes[] = 'global';
         return $scopes;
     }
 }
 
 if (!function_exists('omoApiNormalizeContextScope')) {
-    function omoApiNormalizeContextScope($rawScope, array $allowedScopes = ['contextual', 'global'])
+    function omoApiNormalizeContextScope($rawScope, array $allowedScopes = ['contextual', 'children', 'descendants'])
     {
         $allowedScopes = array_values(array_unique(array_filter(array_map(static function ($scope) {
             return trim(mb_strtolower((string)$scope, 'UTF-8'));
@@ -49,6 +61,9 @@ if (!function_exists('omoApiNormalizeContextScope')) {
         }
 
         $scope = trim(mb_strtolower((string)$rawScope, 'UTF-8'));
+        if ($scope === 'global') {
+            $scope = 'descendants';
+        }
         if (in_array($scope, $allowedScopes, true)) {
             return $scope;
         }
@@ -66,9 +81,65 @@ if (!function_exists('omoApiGetDescendantHolonIds')) {
             return [];
         }
 
-        return array_values(array_unique(array_filter(array_map('intval', $currentHolon->getVisibleDescendantIds(true)), static function ($holonId) {
-            return $holonId > 0;
-        })));
+        $holonIds = [];
+        $visitedHolonIds = [];
+        $collectHolonIds = static function (Holon $holon) use (&$collectHolonIds, &$holonIds, &$visitedHolonIds, $currentHolon) {
+            $holonId = (int)$holon->getId();
+            if ($holonId <= 0 || isset($visitedHolonIds[$holonId])) {
+                return;
+            }
+
+            $visitedHolonIds[$holonId] = true;
+            if ((int)$holon->get('IDtypeholon') !== 3 || $holon === $currentHolon) {
+                $holonIds[$holonId] = $holonId;
+            }
+            foreach ($holon->getChildren() as $childHolon) {
+                if ($childHolon instanceof Holon && omoApiIsStructuralScopeHolon($childHolon, $currentHolon)) {
+                    $collectHolonIds($childHolon);
+                }
+            }
+        };
+        $collectHolonIds($currentHolon);
+
+        return array_values($holonIds);
+    }
+}
+
+if (!function_exists('omoApiGetDirectChildHolonIds')) {
+    function omoApiGetDirectChildHolonIds($currentHolon = null)
+    {
+        if (!($currentHolon instanceof Holon) || (int)$currentHolon->getId() <= 0) {
+            return [];
+        }
+
+        $holonIds = [];
+        $visitedGroupIds = [];
+        $appendChildren = static function (Holon $parentHolon) use (&$appendChildren, &$holonIds, &$visitedGroupIds, $currentHolon) {
+            foreach ($parentHolon->getChildren() as $childHolon) {
+                if (!omoApiIsStructuralScopeHolon($childHolon, $currentHolon)) {
+                    continue;
+                }
+
+                $childHolonId = (int)$childHolon->getId();
+                if ($childHolonId <= 0) {
+                    continue;
+                }
+
+                if ((int)$childHolon->get('IDtypeholon') === 3) {
+                    if (isset($visitedGroupIds[$childHolonId])) {
+                        continue;
+                    }
+                    $visitedGroupIds[$childHolonId] = true;
+                    $appendChildren($childHolon);
+                    continue;
+                }
+
+                $holonIds[$childHolonId] = $childHolonId;
+            }
+        };
+        $appendChildren($currentHolon);
+
+        return array_values($holonIds);
     }
 }
 
@@ -80,8 +151,38 @@ if (!function_exists('omoApiGetDescendantHolonIdMap')) {
     }
 }
 
+if (!function_exists('omoApiGetDirectChildHolonIdMap')) {
+    function omoApiGetDirectChildHolonIdMap($currentHolon = null)
+    {
+        $holonIds = omoApiGetDirectChildHolonIds($currentHolon);
+        return count($holonIds) > 0 ? array_fill_keys($holonIds, true) : [];
+    }
+}
+
+if (!function_exists('omoApiGetDirectChildScopeHolonIds')) {
+    function omoApiGetDirectChildScopeHolonIds($currentHolon = null)
+    {
+        if (!($currentHolon instanceof Holon) || (int)$currentHolon->getId() <= 0) {
+            return [];
+        }
+
+        return array_values(array_unique(array_merge(
+            [(int)$currentHolon->getId()],
+            omoApiGetDirectChildHolonIds($currentHolon)
+        )));
+    }
+}
+
+if (!function_exists('omoApiGetDirectChildScopeHolonIdMap')) {
+    function omoApiGetDirectChildScopeHolonIdMap($currentHolon = null)
+    {
+        $holonIds = omoApiGetDirectChildScopeHolonIds($currentHolon);
+        return count($holonIds) > 0 ? array_fill_keys($holonIds, true) : [];
+    }
+}
+
 if (!function_exists('omoApiResolveContextScopeIndex')) {
-    function omoApiResolveContextScopeIndex($currentScope, array $allowedScopes = ['contextual', 'global'])
+    function omoApiResolveContextScopeIndex($currentScope, array $allowedScopes = ['contextual', 'children', 'descendants'])
     {
         $normalizedScope = omoApiNormalizeContextScope($currentScope, $allowedScopes);
         $index = array_search($normalizedScope, $allowedScopes, true);

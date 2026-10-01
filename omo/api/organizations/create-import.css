@@ -1,0 +1,36 @@
+/* omo/api/organizations/create_import_popup.php */
+.omo-create-import { display: flex; flex-direction: column; gap: 0; color: var(--color-text, #1f2937); }
+.omo-create-import .generic-drawer-header p { margin: 8px 0 0; color: var(--color-text-light, #64748b); line-height: 1.45; }
+.omo-create-import__form { --generic-section-padding-block: 18px; --generic-section-padding-inline: 18px; }
+.omo-create-import__form[hidden], .omo-create-import__waiting[hidden] { display: none !important; }
+.omo-create-import__field { display: flex; flex-direction: column; gap: 7px; font-weight: 600; }
+.omo-create-import__field small, .omo-create-import__module small { color: var(--color-text-light, #64748b); font-size: 12px; font-weight: 400; }
+.omo-create-import__modules { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 9px; margin: 0; padding: 14px; border: 1px solid var(--color-border, #d1d5db); border-radius: var(--radius-md); }
+.omo-create-import__modules legend { padding: 0 6px; font-weight: 700; }
+.omo-create-import__module { display: grid; grid-template-columns: auto 1fr; column-gap: 8px; align-items: center; padding: 7px; border-radius: 8px; }
+.omo-create-import__module input { grid-row: 1 / span 2; }
+.omo-create-import__module.is-unavailable { opacity: 0.5; }
+.omo-create-import__invitation-option { gap: 7px; font-weight: 600; }
+.omo-create-import__invitation-option small { color: var(--color-text-light, #64748b); font-size: 12px; font-weight: 400; }
+.omo-create-import__actions { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
+.omo-create-import__feedback { line-height: 1.45; }
+.omo-create-import__feedback.is-error { color: #b91c1c; border-color: rgba(220, 38, 38, 0.25); background: rgba(220, 38, 38, 0.06); }
+.omo-create-import__mappings { display: flex; flex-direction: column; gap: 10px; }
+.omo-create-import__mappings p { margin: 0; color: var(--color-text-light, #64748b); line-height: 1.45; }
+.omo-create-import__mapping-list { display: grid; gap: 9px; }
+.omo-create-import__template-mapping { display: grid; gap: 10px; }
+.omo-create-import__mapping-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 10px; }
+.omo-create-import__mapping-source { font-weight: 600; }
+.omo-create-import__mapping-empty { margin: 0; color: var(--color-text-light, #64748b); }
+.omo-create-import__property-mappings { display: grid; gap: 9px; margin-left: 22px; padding: 12px; border-left: 3px solid color-mix(in srgb, var(--color-primary, #2563eb) 35%, transparent); background: color-mix(in srgb, var(--color-primary, #2563eb) 4%, transparent); border-radius: 0 var(--radius-md) var(--radius-md) 0; }
+.omo-create-import__property-mappings > p { font-size: 13px; }
+.omo-create-import__waiting { min-height: 290px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; text-align: center; }
+.omo-create-import__waiting h3, .omo-create-import__waiting p { margin: 0; }
+.omo-create-import__waiting p { max-width: 440px; color: var(--color-text-light, #64748b); line-height: 1.5; }
+.omo-create-import__waiting-spinner { width: 34px; height: 34px; border: 4px solid color-mix(in srgb, var(--color-primary, #2563eb) 22%, transparent); border-top-color: var(--color-primary, #2563eb); border-radius: 50%; animation: omo-create-import-spin 0.9s linear infinite; }
+.omo-create-import__waiting-progress { width: min(100%, 400px); height: 10px; overflow: hidden; border-radius: 999px; background: color-mix(in srgb, var(--color-primary, #2563eb) 16%, transparent); }
+.omo-create-import__waiting-progress span { display: block; width: 38%; height: 100%; border-radius: inherit; background: var(--color-primary, #2563eb); animation: omo-create-import-progress 1.45s ease-in-out infinite; }
+.omo-create-import__waiting small { color: var(--color-text-light, #64748b); }
+@keyframes omo-create-import-spin { to { transform: rotate(360deg); } }
+@keyframes omo-create-import-progress { from { transform: translateX(-120%); } to { transform: translateX(365%); } }
+@media (max-width: 620px) { .omo-create-import__mapping-row { grid-template-columns: 1fr; } .omo-create-import__property-mappings { margin-left: 0; } }

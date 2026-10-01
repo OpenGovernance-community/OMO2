@@ -97,6 +97,86 @@
 			return $item;
 		}
 
+		public static function getPendingAdminUserIdsForOrganization($organizationId)
+		{
+			$organizationId = (int)$organizationId;
+			if ($organizationId <= 0) {
+				return array();
+			}
+
+			$rows = self::fetchAll(
+				"SELECT DISTINCT IDuser
+				 FROM invitation
+				 WHERE IDorganization = :organization_id
+				   AND status = 'pending'
+				   AND active = 1
+				   AND (dateexpiration IS NULL OR dateexpiration > NOW())
+				   AND (request_origin IS NULL OR request_origin != :request_origin_member)",
+				array(
+					'organization_id' => $organizationId,
+					'request_origin_member' => self::REQUEST_ORIGIN_MEMBER,
+				)
+			);
+			if ($rows === false) {
+				return array();
+			}
+
+			$userIds = array();
+			foreach ($rows as $row) {
+				$userId = (int)($row['IDuser'] ?? 0);
+				if ($userId > 0) {
+					$userIds[$userId] = $userId;
+				}
+			}
+
+			return $userIds;
+		}
+
+		public static function countPendingRequestedHolonAdmins($organizationId, $holonId, $excludeUserId = 0)
+		{
+			$organizationId = (int)$organizationId;
+			$holonId = (int)$holonId;
+			$excludeUserId = (int)$excludeUserId;
+			if ($organizationId <= 0 || $holonId <= 0) {
+				return 0;
+			}
+
+			$rows = self::fetchAll(
+				"SELECT `IDuser`, `parameters`
+				 FROM `invitation`
+				 WHERE `IDorganization` = :organization_id
+				   AND `status` = 'pending'
+				   AND `active` = 1
+				   AND (`dateexpiration` IS NULL OR `dateexpiration` > NOW())",
+				array('organization_id' => $organizationId)
+			);
+			if ($rows === false) {
+				return 0;
+			}
+
+			$userIds = array();
+			foreach ($rows as $row) {
+				$userId = (int)($row['IDuser'] ?? 0);
+				if ($userId <= 0 || $userId === $excludeUserId) {
+					continue;
+				}
+
+				$parameters = json_decode((string)($row['parameters'] ?? ''), true);
+				if (!is_array($parameters)) {
+					continue;
+				}
+
+				foreach ((array)($parameters['holon_admin_ids'] ?? array()) as $requestedHolonId) {
+					if ((int)$requestedHolonId === $holonId) {
+						$userIds[$userId] = $userId;
+						break;
+					}
+				}
+			}
+
+			return count($userIds);
+		}
+
 		public static function findPendingForUser($userId)
 		{
 			$userId = (int)$userId;
@@ -211,6 +291,7 @@
 			$email = trim(mb_strtolower((string)$email, 'UTF-8'));
 			$requestOrigin = self::normalizeRequestOrigin($options['requestOrigin'] ?? self::REQUEST_ORIGIN_ADMIN);
 			$requestMessage = trim((string)($options['requestMessage'] ?? ''));
+			$holonAdminId = (int)($options['holonAdminId'] ?? 0);
 
 			if ($organizationId <= 0 || $userId <= 0) {
 				throw new \RuntimeException("L'invitation demandee est invalide.");
@@ -218,10 +299,17 @@
 
 			$existing = self::findPendingForOrganizationUser($organizationId, $userId);
 			if ($existing) {
+				if ($holonAdminId > 0) {
+					$requestedAdminResult = $existing->addRequestedHolonAdmin($holonAdminId);
+					if (!is_array($requestedAdminResult) || empty($requestedAdminResult['status'])) {
+						throw new \RuntimeException("Le statut admin demande n'a pas pu etre memorise.");
+					}
+				}
 				if ($requestOrigin === self::REQUEST_ORIGIN_MEMBER && $existing->isMemberInitiatedRequest() && $requestMessage !== '') {
 					$parameters = $existing->get('parameters');
 					if (!is_array($parameters)) {
-						$parameters = [];
+						$decodedParameters = json_decode((string)$parameters, true);
+						$parameters = is_array($decodedParameters) ? $decodedParameters : [];
 					}
 					$parameters['request_message'] = $requestMessage;
 					$existing->set('parameters', $parameters);
@@ -251,6 +339,9 @@
 			}
 			if ($requestMessage !== '') {
 				$parameters['request_message'] = $requestMessage;
+			}
+			if ($holonAdminId > 0) {
+				$parameters['holon_admin_ids'] = array($holonAdminId);
 			}
 			$item->set('parameters', $parameters);
 
@@ -313,6 +404,111 @@
 			return '';
 		}
 
+		public function addRequestedHolonAdmin($holonId)
+		{
+			$holonId = (int)$holonId;
+			if ($holonId <= 0) {
+				return array(
+					'status' => false,
+					'message' => \dbObject\Organization::formatLexiconText('Le holon admin demande est invalide.'),
+				);
+			}
+
+			$parameters = $this->get('parameters');
+			if (!is_array($parameters)) {
+				$decodedParameters = json_decode((string)$parameters, true);
+				$parameters = is_array($decodedParameters) ? $decodedParameters : array();
+			}
+
+			$holonIds = array();
+			foreach ((array)($parameters['holon_admin_ids'] ?? array()) as $requestedHolonId) {
+				$requestedHolonId = (int)$requestedHolonId;
+				if ($requestedHolonId > 0 && !in_array($requestedHolonId, $holonIds, true)) {
+					$holonIds[] = $requestedHolonId;
+				}
+			}
+
+			if (!in_array($holonId, $holonIds, true)) {
+				$holonIds[] = $holonId;
+			}
+
+			$parameters['holon_admin_ids'] = array_values($holonIds);
+			$this->set('parameters', $parameters);
+			$saveResult = $this->save();
+			return is_array($saveResult) ? $saveResult : array('status' => false);
+		}
+
+		protected function applyRequestedHolonAdmins($userId, $organizationId, $rootHolonId)
+		{
+			$parameters = $this->get('parameters');
+			if (!is_array($parameters)) {
+				$decodedParameters = json_decode((string)$parameters, true);
+				$parameters = is_array($decodedParameters) ? $decodedParameters : array();
+			}
+
+			$organization = $this->getOrganizationObject();
+			if (!$organization) {
+				throw new \RuntimeException("L'organisation invitee est introuvable.");
+			}
+
+			foreach ((array)($parameters['holon_admin_ids'] ?? array()) as $requestedHolonId) {
+				$requestedHolonId = (int)$requestedHolonId;
+				if ($requestedHolonId <= 0) {
+					continue;
+				}
+
+				$holon = new \dbObject\Holon();
+				if (
+					!$holon->load($requestedHolonId)
+					|| !(bool)$holon->get('active')
+					|| ((int)$holon->getId() !== (int)$rootHolonId && !$holon->isDescendantOf((int)$rootHolonId))
+				) {
+					continue;
+				}
+
+				if ($holon->isOrganizationHolon()) {
+					$constraintResult = $holon->validateMemberAdditionAdminBounds((int)$userId, true, array(
+						'organizationId' => (int)$organizationId,
+					));
+					if (empty($constraintResult['status'])) {
+						throw new \RuntimeException((string)($constraintResult['message'] ?? 'Les contraintes d admins ne sont pas respectees.'));
+					}
+
+					$membership = new \dbObject\UserOrganization();
+					if (!$membership->load([
+						['IDuser', (int)$userId],
+						['IDorganization', (int)$organizationId],
+					])) {
+						continue;
+					}
+
+					$saveResult = $membership->setOrganizationAdmin(true);
+				} else {
+					$constraintResult = $holon->validateMemberAdditionAdminBounds((int)$userId, true, array(
+						'organizationId' => (int)$organizationId,
+					));
+					if (empty($constraintResult['status'])) {
+						throw new \RuntimeException((string)($constraintResult['message'] ?? 'Les contraintes d admins ne sont pas respectees.'));
+					}
+
+					$link = new \dbObject\UserHolon();
+					if (!$link->load([
+						['IDuser', (int)$userId],
+						['IDholon', $requestedHolonId],
+					])) {
+						$link->set('IDuser', (int)$userId);
+						$link->set('IDholon', $requestedHolonId);
+					}
+					$link->set('active', true);
+					$saveResult = $link->setHolonAdmin(true);
+				}
+
+				if (!is_array($saveResult) || empty($saveResult['status'])) {
+					throw new \RuntimeException("Le statut admin n'a pas pu etre applique.");
+				}
+			}
+		}
+
 		protected function getOrganizationObject()
 		{
 			$organization = new \dbObject\Organization();
@@ -371,6 +567,7 @@
 		{
 			$holons = [];
 			$organization = $this->getOrganizationObject();
+			$rootHolonId = (int)$this->getOrganizationRootHolonId();
 			$hasActiveOrganizationMembership = (int)self::fetchValue(
 				"SELECT COUNT(*) FROM user_organization WHERE IDuser = :user_id AND IDorganization = :organization_id AND active = 1",
 				[
@@ -396,6 +593,9 @@
 			foreach ($this->getScopedUserHolonLinks(false) as $link) {
 				$holon = new \dbObject\Holon();
 				if (!$holon->load((int)$link->get('IDholon'))) {
+					continue;
+				}
+				if ((int)$holon->getId() === $rootHolonId) {
 					continue;
 				}
 				if (!(bool)$holon->get('active') || !(bool)$holon->get('visible')) {
@@ -424,6 +624,7 @@
 				SELECT id
 				FROM user_holon
 				WHERE IDuser = :user_id
+				  AND is_membership = 1
 			";
 			$params = [
 				'user_id' => $userId,
@@ -811,6 +1012,28 @@
 					}
 				}
 
+				$this->applyRequestedHolonAdmins($userId, $organizationId, $rootHolonId);
+
+				if ($rootHolonId > 0) {
+					foreach ($this->getScopedUserHolonLinks(false) as $link) {
+						if (!(bool)$link->get('active') || $link->isHolonAdmin()) {
+							continue;
+						}
+
+						$holon = new \dbObject\Holon();
+						if (!$holon->load((int)$link->get('IDholon'))) {
+							continue;
+						}
+
+						$constraintResult = $holon->validateMemberAdditionAdminBounds($userId, false, array(
+							'organizationId' => $organizationId,
+						));
+						if (empty($constraintResult['status'])) {
+							throw new \RuntimeException((string)($constraintResult['message'] ?? 'Les contraintes d admins ne sont pas respectees.'));
+						}
+					}
+				}
+
 				$parameters = $this->get('parameters');
 				if (!is_array($parameters)) {
 					$parameters = [];
@@ -896,6 +1119,14 @@
 
 			try {
 				$pdo->beginTransaction();
+				$organization = $this->getOrganizationObject();
+				if (!$organization) {
+					throw new \RuntimeException("L'organisation de l'invitation est introuvable.");
+				}
+				$departureResult = $organization->disconnectUserPreservingHistory($userId);
+				if (empty($departureResult['status'])) {
+					throw new \RuntimeException((string)($departureResult['message'] ?? "Le retrait de l'invitation n'a pas pu etre finalise."));
+				}
 
 				if ($rootHolonId > 0) {
 					$linkIds = [];

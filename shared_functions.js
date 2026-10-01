@@ -126,10 +126,42 @@ function sharedBroadcastThemeToChildFrames(detail = {}) {
 		}
 
 		try {
-			frame.contentWindow.postMessage(payload, window.location.origin);
+			const configuredOrigin = String(frame.getAttribute('data-omo-theme-message-origin') || '').trim();
+			const targetOrigin = /^https?:\/\/[^/?#]+$/i.test(configuredOrigin)
+				? configuredOrigin
+				: window.location.origin;
+			frame.contentWindow.postMessage(payload, targetOrigin);
 		} catch (error) {
 		}
 	});
+}
+
+function sharedEnsureChildFrameThemeLoadListener() {
+	if (typeof document === 'undefined' || typeof window === 'undefined' || window.sharedChildFrameThemeLoadListenerBound) {
+		return;
+	}
+
+	window.sharedChildFrameThemeLoadListenerBound = true;
+	document.addEventListener('load', function (event) {
+		const frame = event && event.target;
+		if (!frame || frame.tagName !== 'IFRAME' || !frame.contentWindow) {
+			return;
+		}
+
+		const configuredOrigin = String(frame.getAttribute('data-omo-theme-message-origin') || '').trim();
+		if (!/^https?:\/\/[^/?#]+$/i.test(configuredOrigin)) {
+			return;
+		}
+
+		try {
+			frame.contentWindow.postMessage({
+				type: 'omo-theme-sync',
+				preference: sharedGetThemePreference(),
+				colorStyle: sharedGetColorStylePreference()
+			}, configuredOrigin);
+		} catch (error) {
+		}
+	}, true);
 }
 
 function sharedApplyDocumentTheme(options = {}) {
@@ -154,6 +186,7 @@ function sharedApplyDocumentTheme(options = {}) {
 		: sharedResolveTheme(preference, mediaQuery);
 
 	sharedEnsureThemeMessageListener();
+	sharedEnsureChildFrameThemeLoadListener();
 
 	root.dataset.themePreference = preference;
 	root.dataset.theme = resolvedTheme;
@@ -185,6 +218,7 @@ function countChar(objet, limit) {
 
 // Ouvre et ferme la fenêtre popup
 function showPopup(target, title=null, close=true) {
+	$("#popup").data("popup-target", target);
 	$("#popup_content").load(target);
 	$("#popupbackground").show();
 	$("#popupbackground").animate({
@@ -199,6 +233,17 @@ function showPopup(target, title=null, close=true) {
 }
 	
 function closePopup() {
+	var popupTarget = String($("#popup").data("popup-target") || "");
+	if (/(?:^|\/)popup\/profil\.php(?:[?#]|$)/i.test(popupTarget) && typeof window.commonTopbarModalCanClose === "function" && window.commonTopbarModalCanClose() === false) {
+		return;
+	}
+	if (/(?:^|\/)popup\/profil\.php(?:[?#]|$)/i.test(popupTarget) && typeof window.commonTopbarRefreshUserProfile === "function") {
+		window.commonTopbarRefreshUserProfile("close");
+	}
+	if (/(?:^|\/)popup\/profil\.php(?:[?#]|$)/i.test(popupTarget) && typeof window.commonTopbarModalCanClose === "function") {
+		window.commonTopbarModalCanClose = null;
+	}
+	$("#popup").removeData("popup-target");
 	$("#popupbackground").animate({
 		opacity:0,
 	  }, 500, function() {

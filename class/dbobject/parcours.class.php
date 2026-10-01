@@ -19,7 +19,7 @@
 				[['title'], 'required'],
 				[['IDapplication'], 'fk'],
 				[['id'], 'integer'],
-				[['ispublic', 'isbasic', 'ispack'], 'boolean'],
+				[['ispublic', 'isbasic', 'ispack', 'isarchived'], 'boolean'],
 				[['title'], 'string'],
 				[['description'], 'text'],
 				[['datecreation', 'datemodification'], 'datetime'],
@@ -44,6 +44,7 @@
 				'ispublic' => 'Public',
 				'isbasic' => 'Basic',
 				'ispack' => 'Pack',
+				'isarchived' => 'Retire du partage',
 			];
 		}
 
@@ -122,6 +123,9 @@
 		public function isVisibleInOrganization($organizationId)
 		{
 			$organizationId = (int)$organizationId;
+			if ($this->get('isarchived') && !OrganizationParcours::loadForOrganizationParcours($organizationId, (int)$this->getId())) {
+				return false;
+			}
 			if ($organizationId <= 0 || !self::hasApplicationColumn()) {
 				return true;
 			}
@@ -283,10 +287,19 @@
 			$userId = (int)$userId;
 			$completedParcoursIds = self::normalizePositiveIds($completedParcoursIds);
 			$enrichedRows = [];
+			$ids = self::normalizePositiveIds(array_column($rows, 'id'));
+			$archivedIds = $ids ? array_column(self::fetchAll('SELECT id FROM parcours WHERE isarchived = 1 AND id IN (' . implode(',', $ids) . ')'), 'id') : [];
 
 			foreach ($rows as $row) {
 				if (!is_array($row)) {
 					continue;
+				}
+				$row['isarchived'] = in_array((int)$row['id'], $archivedIds) ? 1 : 0;
+				if ($row['isarchived']) {
+					$existingOrganization = $organizationId > 0
+						&& OrganizationParcours::loadForOrganizationParcours($organizationId, (int)$row['id'])
+						&& \commonUserHasOrganizationAccess($userId, $organizationId);
+					if (!$existingOrganization && !self::hasLearnerActivity((int)$row['id'], $userId)) continue;
 				}
 
 				$applicationVisible = self::rowHasVisibleApplication($row, $organizationId);
@@ -449,6 +462,9 @@
 		public function save()
 		{
 			$isNew = (int)$this->getId() <= 0;
+			if (!$isNew && self::fetchValue('SELECT isarchived FROM parcours WHERE id = :id', ['id' => (int)$this->getId()])) {
+				return ['status' => false, 'text' => 'Ce parcours retire du partage est conserve en lecture seule.'];
+			}
 			$now = new \DateTimeImmutable();
 			$currentUserId = self::resolveCurrentUserId();
 			$currentOrganizationId = self::resolveCurrentOrganizationId();
@@ -485,7 +501,7 @@
 			return self::fetchAll(
 				"SELECT id
 				FROM parcours
-				WHERE isbasic = 1
+				WHERE isbasic = 1 AND isarchived = 0
 				ORDER BY datecreation ASC, id ASC"
 			);
 		}
@@ -668,6 +684,7 @@
 					child.title,
 					child.description,
 					child.image,
+					child.datecreation,
 					COALESCE(child.IDorganization, (SELECT MIN(op_owner.IDorganization) FROM organization_parcours op_owner WHERE op_owner.IDparcours = child.id)) AS owner_organization_id,
 					" . (self::hasApplicationColumn() ? "child.IDapplication AS linked_application_id" : "NULL AS linked_application_id") . ",
 					" . self::buildIsPackSelectSql('child') . ",
@@ -696,7 +713,7 @@
 					AND lm.IDparcours = child.id
 					AND lm.IDuser = :user_id
 				WHERE " . implode(" AND ", $where) . "
-				GROUP BY child.id, child.title, child.description, child.image, child.IDorganization" . (self::hasApplicationColumn() ? ", child.IDapplication" : "") . (self::hasIsPackColumn() ? ", child.ispack" : "") . "
+				GROUP BY child.id, child.title, child.description, child.image, child.datecreation, child.IDorganization" . (self::hasApplicationColumn() ? ", child.IDapplication" : "") . (self::hasIsPackColumn() ? ", child.ispack" : "") . "
 				ORDER BY MIN(COALESCE(op_pack.position, 0)) ASC, MIN(COALESCE(pp.position, 0)) ASC, child.title ASC, child.id ASC",
 				(function () use ($organizationId, $userId, $includeHidden) {
 					$params = [
@@ -761,6 +778,7 @@
 					p.title,
 					p.description,
 					p.image,
+					p.datecreation,
 					" . $ownerOrganizationSelect . ",
 					" . $applicationSelect . ",
 					" . $isPackSelect . ",
@@ -784,7 +802,7 @@
 					AND lm.IDparcours = p.id
 					AND lm.IDuser = :user_id
 				WHERE " . implode(" AND ", $where) . "
-				GROUP BY p.id, p.title, p.description, p.image, p.IDorganization" . $applicationGroupBy . $isPackGroupBy . ", op.position, op.everybody" . $anonymousGroupBy . "
+				GROUP BY p.id, p.title, p.description, p.image, p.datecreation, p.IDorganization" . $applicationGroupBy . $isPackGroupBy . ", op.position, op.everybody" . $anonymousGroupBy . "
 				ORDER BY op.position ASC, p.title ASC
 			";
 
@@ -825,6 +843,7 @@
 					p.title,
 					p.description,
 					p.image,
+					p.datecreation,
 					" . $ownerOrganizationSelect . ",
 					" . $applicationSelect . ",
 					" . $isPackSelect . ",
@@ -864,7 +883,7 @@
 						: "1=1") . "
 				  )
 				  AND " . self::buildPrerequisiteVisibilityWhereSql('p', $userId) . "
-				GROUP BY p.id, p.title, p.description, p.image, p.IDorganization" . $applicationGroupBy . $isPackGroupBy . ", op.position, op.everybody" . $anonymousGroupBy . "
+				GROUP BY p.id, p.title, p.description, p.image, p.datecreation, p.IDorganization" . $applicationGroupBy . $isPackGroupBy . ", op.position, op.everybody" . $anonymousGroupBy . "
 				ORDER BY op.position ASC, p.title ASC
 			";
 
@@ -901,6 +920,7 @@
 					p.title,
 					p.description,
 					p.image,
+					p.datecreation,
 					" . $ownerOrganizationSelect . ",
 					" . $applicationSelect . ",
 					" . $isPackSelect . ",
@@ -940,7 +960,7 @@
 						: "1=1") . "
 				  )
 				  AND " . self::buildPrerequisiteVisibilityWhereSql('p', $userId) . "
-				GROUP BY p.id, p.title, p.description, p.image, p.IDorganization" . $applicationGroupBy . $isPackGroupBy . ", op.position, op.everybody" . $anonymousGroupBy . "
+				GROUP BY p.id, p.title, p.description, p.image, p.datecreation, p.IDorganization" . $applicationGroupBy . $isPackGroupBy . ", op.position, op.everybody" . $anonymousGroupBy . "
 				ORDER BY op.position ASC, p.title ASC
 			";
 
@@ -965,7 +985,11 @@
 			$userId = (int)$userId;
 			$completedParcoursIds = self::normalizePositiveIds($completedParcoursIds);
 			$where = [
-				"(p.ispublic = 1 OR p.isbasic = 1)",
+				"((p.isarchived = 0 AND (p.ispublic = 1 OR p.isbasic = 1)) OR (p.isarchived = 1 AND " . $userId . " > 0 AND (
+				 EXISTS (SELECT 1 FROM user_mission started WHERE (started.IDparcours = p.id OR started.IDparcours IN
+				     (SELECT IDparcours_child FROM parcours_parcours WHERE IDparcours_parent = p.id)) AND started.IDuser = " . $userId . ")
+				 OR EXISTS (SELECT 1 FROM user_homework started WHERE (started.IDparcours = p.id OR started.IDparcours IN
+				     (SELECT IDparcours_child FROM parcours_parcours WHERE IDparcours_parent = p.id)) AND started.IDuser = " . $userId . "))))",
 				self::buildPrerequisiteVisibilityWhereSql('p', $userId, $completedParcoursIds),
 			];
 			if (self::hasApplicationColumn()) {
@@ -1034,6 +1058,7 @@
 					id,
 					ispublic,
 					isbasic,
+					isarchived,
 					" . (self::hasApplicationColumn() ? "IDapplication" : "NULL AS IDapplication") . "
 				FROM parcours
 				WHERE id = :parcours_id
@@ -1047,7 +1072,9 @@
 			$isPublic = $exists && !empty($row['ispublic']);
 			$isBasic = $exists && !empty($row['isbasic']);
 			$hasLinkedApplication = self::hasApplicationColumn() && (int)($row['IDapplication'] ?? 0) > 0;
-			$canView = ($isPublic || $isBasic) && !$hasLinkedApplication;
+			$canView = !empty($row['isarchived'])
+				? self::hasLearnerActivity($parcoursId, $userId)
+				: ($isPublic || $isBasic) && !$hasLinkedApplication;
 
 			return [
 				'exists' => $exists,
@@ -1090,7 +1117,7 @@
 					ON pm.IDparcours = p.id
 				LEFT JOIN parcours_parcours pp_child
 					ON pp_child.IDparcours_parent = p.id
-				WHERE (p.ispublic = 1 OR p.isbasic = 1)
+				WHERE p.isarchived = 0 AND (p.ispublic = 1 OR p.isbasic = 1)
 				  AND EXISTS (
 					SELECT 1
 					FROM organization_parcours op_owner_link
@@ -1144,7 +1171,7 @@
 					" . self::buildIsPackSelectSql('p') . "
 				FROM parcours p
 				WHERE p.id = :parcours_id
-				  AND (p.ispublic = 1 OR p.isbasic = 1)
+				  AND p.isarchived = 0 AND (p.ispublic = 1 OR p.isbasic = 1)
 				  AND EXISTS (
 					SELECT 1
 					FROM organization_parcours op_owner_link
@@ -1191,19 +1218,46 @@
 				return [];
 			}
 
+			$packTargetsSql = '';
+			$params = array(
+				'organization_id' => $organizationId,
+			);
+			if (self::tableExists('parcours_parcours')) {
+				$packTargetsSql = "
+					UNION
+					SELECT
+						child.id,
+						child.title
+					FROM organization_parcours op_pack
+					INNER JOIN parcours parent
+						ON parent.id = op_pack.IDparcours
+					INNER JOIN parcours_parcours pp
+						ON pp.IDparcours_parent = parent.id
+					INNER JOIN parcours child
+						ON child.id = pp.IDparcours_child
+					WHERE op_pack.IDorganization = :pack_organization_id
+					  AND (child.isarchived = 0 OR EXISTS (SELECT 1 FROM organization_parcours existing
+					      WHERE existing.IDparcours = child.id AND existing.IDorganization = op_pack.IDorganization))
+					  AND " . (self::hasIsPackColumn() ? "COALESCE(parent.ispack, 0) = 1" : "1=1") . "
+					  AND " . (self::hasIsPackColumn() ? "COALESCE(child.ispack, 0) = 0" : "1=1");
+				$params['pack_organization_id'] = $organizationId;
+			}
+
 			$rows = self::fetchAll(
-				"SELECT
-					p.id,
-					p.title
-				FROM organization_parcours op
-				INNER JOIN parcours p
-					ON p.id = op.IDparcours
-				WHERE op.IDorganization = :organization_id
-				  AND " . (self::hasIsPackColumn() ? "COALESCE(p.ispack, 0) = 0" : "1=1") . "
-				ORDER BY p.title ASC, p.id ASC",
-				[
-					'organization_id' => $organizationId,
-				]
+				"SELECT available_targets.id, available_targets.title
+				FROM (
+					SELECT
+						p.id,
+						p.title
+					FROM organization_parcours op
+					INNER JOIN parcours p
+						ON p.id = op.IDparcours
+					WHERE op.IDorganization = :organization_id
+					  AND " . (self::hasIsPackColumn() ? "COALESCE(p.ispack, 0) = 0" : "1=1") . "
+					" . $packTargetsSql . "
+				) available_targets
+				ORDER BY available_targets.title ASC, available_targets.id ASC",
+				$params
 			);
 
 			return is_array($rows) ? $rows : [];
@@ -1281,6 +1335,7 @@
 				WHERE COALESCE(p.IDorganization, (SELECT MIN(op_owner.IDorganization) FROM organization_parcours op_owner WHERE op_owner.IDparcours = p.id), 0) = :organization_id
 				  AND " . (self::hasIsPackColumn() ? "COALESCE(p.ispack, 0) = 0" : "1=1") . "
 				  AND p.id <> :parent_parcours_id
+				  AND p.isarchived = 0
 				  AND NOT EXISTS (
 					SELECT 1
 					FROM parcours_parcours pp
@@ -1798,9 +1853,9 @@
 			if (self::tableExists('mission_dependencies')) {
 				$result = self::execute(
 					"DELETE FROM mission_dependencies
-					WHERE IDmission_parent = :mission_id
-					   OR IDmission_child = :mission_id",
-					['mission_id' => $missionId]
+					WHERE IDmission_parent = :parent_mission_id
+					   OR IDmission_child = :child_mission_id",
+					['parent_mission_id' => $missionId, 'child_mission_id' => $missionId]
 				);
 				if ($result === false) {
 					throw new \RuntimeException('mission_dependencies_delete_failed');
@@ -1853,6 +1908,66 @@
 			];
 		}
 
+		public static function hasLearnerActivity(int $parcoursId, ?int $userId = null): bool
+		{
+			if ($parcoursId <= 0 || ($userId !== null && $userId <= 0)) return false;
+			foreach (['user_mission', 'user_homework'] as $table) {
+				$params = ['parcours' => $parcoursId, 'parent' => $parcoursId];
+				$whereUser = '';
+				if ($userId !== null) { $params['user'] = $userId; $whereUser = ' AND IDuser = :user'; }
+				if (self::fetchValue('SELECT 1 FROM ' . $table . ' WHERE (IDparcours = :parcours OR IDparcours IN
+					(SELECT IDparcours_child FROM parcours_parcours WHERE IDparcours_parent = :parent))' . $whereUser . ' LIMIT 1', $params)) return true;
+			}
+			return false;
+		}
+
+		protected function getDeletionUsage(int $organizationId): array
+		{
+			$id = (int)$this->getId();
+			$otherOrganizations = (int)self::fetchValue(
+				'SELECT COUNT(DISTINCT op.IDorganization) FROM organization_parcours op
+				 WHERE op.IDorganization <> :organization AND (op.IDparcours = :parcours OR op.IDparcours IN
+				 (SELECT IDparcours_parent FROM parcours_parcours WHERE IDparcours_child = :child))',
+				['organization' => $organizationId, 'parcours' => $id, 'child' => $id]
+			);
+			$hasLearners = self::hasLearnerActivity($id);
+			// Answers can exist before the learner completes a mission.
+			$hasLearners = $hasLearners || (bool)self::fetchValue(
+				'SELECT 1 FROM user_question_response response INNER JOIN parcours_mission pm ON pm.IDmission = response.IDmission
+				 WHERE pm.IDparcours = :id LIMIT 1', ['id' => $id]
+			);
+			$hasReferences = (bool)self::fetchValue(
+				'SELECT 1 FROM parcours_parcours WHERE IDparcours_child = :id LIMIT 1', ['id' => $id]
+			) || (self::hasPrerequisiteTable() && (bool)self::fetchValue(
+				'SELECT 1 FROM parcours_prerequisite WHERE IDparcours_required = :id LIMIT 1', ['id' => $id]
+			));
+			return ['otherOrganizationCount' => $otherOrganizations, 'hasLearners' => $hasLearners,
+				'inUse' => $otherOrganizations > 0 || $hasLearners || $hasReferences];
+		}
+
+		protected function archiveForExistingUsers(): void
+		{
+			if ($this->get('isarchived')) return;
+			$id = (int)$this->getId();
+			// Freeze current pack exposure before making further attachment impossible.
+			$packOrganizations = self::fetchAll(
+				'SELECT op.IDorganization, MAX(op.everybody) AS everybody, MAX(op.anonymous) AS anonymous
+				 FROM organization_parcours op INNER JOIN parcours_parcours pp ON pp.IDparcours_parent = op.IDparcours
+				 WHERE pp.IDparcours_child = :id GROUP BY op.IDorganization', ['id' => $id]
+			);
+			foreach ($packOrganizations as $row) {
+				if (OrganizationParcours::loadForOrganizationParcours((int)$row['IDorganization'], $id)) continue;
+				$result = OrganizationParcours::attachParcoursToOrganization((int)$row['IDorganization'], $id,
+					['everybody' => (bool)$row['everybody'], 'anonymous' => (bool)$row['anonymous']]);
+				if (empty($result['status'])) throw new \RuntimeException('parcours_archive_access_failed');
+			}
+			$this->set('isarchived', true);
+			$this->set('ispublic', false);
+			$this->set('isbasic', false);
+			$result = $this->save();
+			if (empty($result['status'])) throw new \RuntimeException('parcours_archive_failed');
+		}
+
 		public function previewDeleteForOrganization($organizationId)
 		{
 			$organizationId = (int)$organizationId;
@@ -1876,7 +1991,7 @@
 				];
 			}
 
-			if (self::hasAttachedPackParentInOrganization($organizationId, $parcoursId)) {
+			if ($ownerOrganizationId !== $organizationId && self::hasAttachedPackParentInOrganization($organizationId, $parcoursId)) {
 				return [
 					'status' => false,
 					'action' => 'none',
@@ -1902,18 +2017,15 @@
 				WHERE IDparcours = :parcours_id",
 				['parcours_id' => $parcoursId]
 			);
-			$otherOrganizationCount = max(0, $totalOrganizationCount - 1);
+			$usage = $this->getDeletionUsage($organizationId);
+			$otherOrganizationCount = $usage['otherOrganizationCount'];
 
-			if ($otherOrganizationCount > 0) {
+			if ($usage['inUse']) {
 				return [
 					'status' => true,
-					'action' => 'detach',
-					'message' => $otherOrganizationCount === 1
-						? 'Ce parcours est utilise par 1 autre organisation. Il sera seulement detache de votre organisation.'
-						: 'Ce parcours est utilise par ' . $otherOrganizationCount . ' autres organisations. Il sera seulement detache de votre organisation.',
-					'confirmMessage' => $otherOrganizationCount === 1
-						? 'Ce parcours est utilise par 1 autre organisation.' . "\n\n" . 'Il sera seulement detache de votre organisation.' . "\n\n" . 'Voulez vous continuer ?'
-						: 'Ce parcours est utilise par ' . $otherOrganizationCount . ' autres organisations.' . "\n\n" . 'Il sera seulement detache de votre organisation.' . "\n\n" . 'Voulez vous continuer ?',
+					'action' => 'archive',
+					'message' => 'Ce parcours est encore utilise. Il sera retire du partage et conserve pour ses utilisateurs existants.',
+					'confirmMessage' => "Ce parcours est encore utilise.\n\nSon contenu et les progressions seront conserves. Il ne sera plus modifiable ni accessible aux nouvelles organisations.\n\nVoulez vous continuer ?",
 					'totalOrganizationCount' => $totalOrganizationCount,
 					'otherOrganizationCount' => $otherOrganizationCount,
 					'isOwner' => true,
@@ -1960,6 +2072,18 @@
 			try {
 				if ($startedTransaction) {
 					$pdo->beginTransaction();
+				}
+				self::fetchValue('SELECT id FROM parcours WHERE id = :id FOR UPDATE', ['id' => $parcoursId]);
+				$this->load($parcoursId, true);
+				$preview = $this->previewDeleteForOrganization($organizationId);
+				if (empty($preview['status'])) throw new \RuntimeException('parcours_delete_access_changed');
+				if ($preview['action'] === 'archive') {
+					$this->archiveForExistingUsers();
+					if ($startedTransaction) $pdo->commit();
+					return ['status' => true, 'action' => 'archive',
+						'message' => 'Le parcours a ete retire du partage. Son contenu et les progressions restent accessibles a ses utilisateurs existants.',
+						'remainingOrganizationCount' => (int)$preview['otherOrganizationCount'],
+						'deletedMissionCount' => 0, 'deletedQuestionCount' => 0, 'deletedHomeworkCount' => 0];
 				}
 
 				if ($this->isPack()) {

@@ -3,10 +3,11 @@
 - All text files must use UTF-8 without BOM.
 - All text files must use LF line endings.
 - Never add invisible characters such as BOM, zero-width spaces, or directional markers.
-- Default to ASCII only for code, comments, and string literals unless the user explicitly asks for non-ASCII content.
 - Keep UTF-8 intact across the project.
 - Keep French accents in user-visible strings when the product copy is meant to display them.
 - Do not replace intended visible accents with ASCII unless explicitly requested.
+- Write French user-visible copy with its normal accents, apostrophes, quotation marks, and punctuation.
+- When reading or checking UTF-8 text with Windows PowerShell, use an explicit UTF-8 encoding (for example `Get-Content -Encoding utf8`) or PowerShell 7. Do not treat mojibake in a legacy console as proof that a UTF-8 file is corrupted; verify its bytes before changing it.
 - Prefer the existing dbObject autoload over direct `require_once` of dbObject class files. Only add a direct class include when a file is intentionally isolated from the shared bootstrap that normally initializes autoloading.
 - In `dbObject::rules()`, never declare a foreign key field in an `integer` rule. Foreign keys must live only in their `fk` rule, otherwise `adminEdit` can render them as plain text inputs instead of automatic selects.
 - Name SQL migrations with an explicit sortable sequence when several files share the same date, using `YYYY-MM-DD-NN-description.sql`, so dependency order is guaranteed by filename sorting.
@@ -14,10 +15,14 @@
 - For shared JavaScript used by multiple pages, do not duplicate translated strings in every page. Prefer a dedicated PHP JSON endpoint under a shared location such as `/common/jstranslation/`, keep the JS source strings in one shared PHP file, load one bundle server-side, and let the JS fetch that payload at startup with a small local fallback only when needed.
 - When several PHP files or JS endpoints share the same translation domain, extract the source language arrays and bundle-loading wrappers into a shared helper instead of duplicating them, but keep page-specific strings in the page or module that owns them.
 - For PHP background workers, cron scripts, and async CLI dispatch, do not trust `PHP_BINARY` blindly on hosted environments. It may point to `php-fpm` or `php-cgi` under FPM. Prefer an explicit CLI binary, reject FPM/CGI executables for worker launchers, and add enough logging to diagnose failed async dispatch.
+- Develop and validate PHP code against PHP 8.5. Avoid APIs deprecated in PHP 8.5, including direct use of `$http_response_header` and `curl_close()`. Prefer `http_get_last_response_headers()` with a fallback when older PHP support is required, and use explicit `<?php` opening tags instead of short tags.
 - Before adding page-local CSS for panels, titles, buttons, form fields, or accordions, first check whether an existing generic primitive in `/common/assets/components.css` should be reused or extended.
 - Prefer `generic-section`, `generic-soft-panel`, `generic-hero-panel`, `generic-card-title`, `generic-action-button`, `generic-form-control`, and `generic-accordion` over duplicating the same structure with local selectors.
 - For sortable list grips and reorder handles, prefer `generic-drag-handle` with modifiers like `generic-drag-handle--stretch` instead of rebuilding per-module handle styles.
 - For drawer headers that need the standard full-width gradient band, prefer `generic-drawer-header`, `generic-drawer-header__copy`, `generic-drawer-header__actions`, and `generic-drawer-header--sticky` instead of rebuilding the same header locally in each app.
+- Reserve the `generic-*` prefix for shared primitives and their baseline implementation in `/common/assets/components.css`. Never redefine a `--generic-*` custom property in a page or app stylesheet.
+- Name CSS custom properties that are intended to be configured by a consumer with the `--param-*` prefix. Keep their defaults in the owning shared component; only set them locally for a meaningful, documented variation, never merely to cancel a generic default with values such as `0`, `transparent`, or `none`.
+- When a local screen needs a different shared component behavior, first use an existing modifier or add a focused shared modifier or parameter. Do not neutralize a generic component through page-local CSS overrides.
 - When a page directly combines shared design tokens like border, radius, surface, spacing, and text styles in a repeated pattern, stop and consider creating or extending a generic reusable object instead of duplicating the CSS.
 - Before creating a new shared helper or asset, first try to reuse an existing predefined object, component, or shared style primitive. Avoid duplication before deciding on file placement.
 - Prefer the simplest implementation that keeps the code safe and clear. Do not multiply helper functions, layers, or abstractions for a one-off need; extract them mainly when the same logic is reused in several places or when it meaningfully improves safety.

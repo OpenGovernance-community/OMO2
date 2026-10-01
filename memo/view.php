@@ -23,7 +23,7 @@ if (!$hasAccess && $currentUserId <= 0) {
         'organization' => commonResolveOrganizationContext(1),
         'headHtml' => implode(PHP_EOL, array(
             '<script src="/shared_functions.js"></script>',
-            '<link rel="stylesheet" href="/shared_css.css">',
+            commonStylesheetTags('/shared_css.css'),
             '<script>sharedApplyDocumentTheme();</script>',
         )),
     ));
@@ -35,19 +35,30 @@ if (!$hasAccess) {
 
 if ($hasAccess) {
     $_SESSION['doc_' . $document->getId()] = true;
+    $document->markConsulted();
 }
 ?>
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="fr" class="memo-view-page-html">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= $hasAccess ? memoApiEscape((string)$document->get('title')) : 'EasyMEMO' ?></title>
     <script src="/shared_functions.js"></script>
-    <link rel="stylesheet" href="/shared_css.css">
-    <link rel="stylesheet" href="/omo/assets/css/styles.css">
+    <?= commonStylesheetTags('/shared_css.css') ?>
+    <?= commonStylesheetTags('/omo/assets/css/styles.css') ?>
+    <link rel="stylesheet" href="/omo/api/stats/stats.css?v=20260807-range-handles">
     <script>sharedApplyDocumentTheme();</script>
     <style>
+        html.memo-view-page-html,
+        body.memo-view-page {
+            height: auto;
+            min-height: 100%;
+            max-height: none;
+            overflow-x: hidden;
+            overflow-y: auto;
+        }
+
         body.memo-view-page {
             margin: 0;
             background:
@@ -62,14 +73,12 @@ if ($hasAccess) {
             padding: 28px 16px 40px;
         }
 
-        .memo-view-page__back {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 18px;
-            color: var(--color-primary);
-            text-decoration: none;
-            font-weight: 700;
+        .memo-view-page__title {
+            max-width: 920px;
+            margin: 0 auto 18px;
+            color: var(--color-text);
+            font-size: clamp(1.55rem, 3vw, 2.2rem);
+            line-height: 1.2;
         }
 
         .memo-view-page__error {
@@ -81,8 +90,8 @@ if ($hasAccess) {
 </head>
 <body class="memo-view-page">
     <main class="memo-view-page__main">
-        <a class="memo-view-page__back" href="/memo/">Retour a mes documents</a>
         <?php if ($hasAccess): ?>
+            <h1 class="memo-view-page__title"><?= memoApiEscape((string)$document->get('title')) ?></h1>
             <?php memoRenderDocumentDetail($document); ?>
         <?php else: ?>
             <div class="memo-view-page__error omo-card">

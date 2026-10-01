@@ -17,6 +17,17 @@ class DecisionParticipant extends DbObject
         return 'decision_participant';
     }
 
+    public static function handleUserDeparture($organizationId, $userId, $ghostUserId)
+    {
+        return self::execute(
+            'UPDATE decision_participant participant
+             INNER JOIN decision_process process ON process.id = participant.IDdecision_process
+             SET participant.IDuser = :ghost_user_id
+             WHERE process.IDorganization = :organization_id AND participant.IDuser = :user_id',
+            array('ghost_user_id' => (int)$ghostUserId, 'organization_id' => (int)$organizationId, 'user_id' => (int)$userId)
+        );
+    }
+
     public static function rules()
     {
         return [
@@ -164,6 +175,52 @@ class DecisionParticipant extends DbObject
         return $item;
     }
 
+    public static function getActiveUserIdsForDecision($decisionProcessId)
+    {
+        $rows = self::fetchAll(
+            'SELECT DISTINCT `IDuser` FROM `decision_participant`
+             WHERE `IDdecision_process` = :decision_process_id
+               AND `IDuser` IS NOT NULL
+               AND `IDuser` > 0
+               AND `active` = 1
+               AND `status` NOT IN (:declined_status, :revoked_status)',
+            [
+                'decision_process_id' => (int)$decisionProcessId,
+                'declined_status' => self::STATUS_DECLINED,
+                'revoked_status' => self::STATUS_REVOKED,
+            ]
+        );
+        return array_values(array_unique(array_filter(array_map(static function ($row) {
+            return is_array($row) ? (int)($row['IDuser'] ?? 0) : 0;
+        }, is_array($rows) ? $rows : []), static function ($userId) {
+            return $userId > 0;
+        })));
+    }
+
+    public static function getInvitedUserIdsForDecision($decisionProcessId)
+    {
+        $rows = self::fetchAll(
+            'SELECT DISTINCT `IDuser` FROM `decision_participant`
+             WHERE `IDdecision_process` = :decision_process_id
+               AND `IDuser` IS NOT NULL
+               AND `IDuser` > 0
+               AND `active` = 1
+               AND `role` != :owner_role
+               AND `status` NOT IN (:declined_status, :revoked_status)',
+            [
+                'decision_process_id' => (int)$decisionProcessId,
+                'owner_role' => self::ROLE_OWNER,
+                'declined_status' => self::STATUS_DECLINED,
+                'revoked_status' => self::STATUS_REVOKED,
+            ]
+        );
+        return array_values(array_unique(array_filter(array_map(static function ($row) {
+            return is_array($row) ? (int)($row['IDuser'] ?? 0) : 0;
+        }, is_array($rows) ? $rows : []), static function ($userId) {
+            return $userId > 0;
+        })));
+    }
+
     public static function findByAccessToken($token)
     {
         $row = self::fetchRow(
@@ -254,11 +311,22 @@ class DecisionParticipant extends DbObject
         return (int)$this->get('IDuser') <= 0 && trim((string)$this->get('email')) !== '';
     }
 
-    public function getIdentityLabel()
+    public function getIdentityLabel($organizationId = 0)
     {
         $displayName = trim((string)$this->get('display_name'));
         if ($displayName !== '') {
             return $displayName;
+        }
+
+        $userId = (int)$this->get('IDuser');
+        if ($userId > 0) {
+            $user = new user();
+            if ($user->load($userId)) {
+                $userDisplayName = trim((string)$user->getScopedDisplayName((int)$organizationId));
+                if ($userDisplayName !== '') {
+                    return $userDisplayName;
+                }
+            }
         }
 
         $email = trim((string)$this->get('email'));
@@ -342,6 +410,18 @@ class DecisionParticipant extends DbObject
 
         unset($parameters['public_access_code']);
         $this->set('parameters', $parameters);
+        $saveResult = $this->save();
+        return is_array($saveResult) && !empty($saveResult['status']);
+    }
+
+    public function revokePublicAccess()
+    {
+        $parameters = $this->getRootParametersArray();
+        unset($parameters['public_access_code']);
+
+        $this->set('access_token', '');
+        $this->set('parameters', $parameters);
+
         $saveResult = $this->save();
         return is_array($saveResult) && !empty($saveResult['status']);
     }

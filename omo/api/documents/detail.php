@@ -1,5 +1,6 @@
 <?php
 require_once dirname(__DIR__) . '/bootstrap.php';
+require_once dirname(__DIR__, 3) . '/common/spacedeck.php';
 
 $sourceLang = [
     'documents.detail.error.invalid' => ['text' => 'Document invalide.', 'context' => 'Error shown when the document id is invalid.'],
@@ -7,10 +8,35 @@ $sourceLang = [
     'documents.detail.meta.updated' => ['text' => 'Mise à jour : {date}', 'context' => 'Metadata pill showing the last update date of the document.'],
     'documents.detail.meta.author' => ['text' => 'Par {name}', 'context' => 'Metadata pill showing the author of the document.'],
     'documents.detail.meta.updated_by' => ['text' => 'Modifié par {name}', 'context' => 'Metadata pill showing who updated the document.'],
+    'documents.detail.event.title' => ['text' => 'Rencontre associée', 'context' => 'Section title shown when a document is linked to an event.'],
+    'documents.detail.event.schedule' => ['text' => 'Horaire', 'context' => 'Label for the event schedule in the document detail summary.'],
+    'documents.detail.event.location' => ['text' => 'Lieu', 'context' => 'Label for the event location in the document detail summary.'],
+    'documents.detail.event.context' => ['text' => 'Contexte', 'context' => 'Label for the event context in the document detail summary.'],
+    'documents.detail.event.virtual_fallback' => ['text' => 'Visio', 'context' => 'Fallback location label when only a virtual meeting link exists.'],
+    'documents.detail.action.more' => ['text' => 'Plus d’actions', 'context' => 'Accessible label for the read-only document action menu.'],
+    'documents.detail.action.export_pdf' => ['text' => 'Exporter en PDF', 'context' => 'Action used to download a PV document as a PDF file.'],
+    'documents.detail.action.export_pdf_waiting' => ['text' => 'Veuillez patienter', 'context' => 'Temporary label shown while a PV PDF is being generated.'],
+    'documents.detail.action.export_pdf_notice' => ['text' => 'Génération du PDF en préparation.', 'context' => 'Topbar notification shown when a PV PDF export starts.'],
+    'documents.detail.action.export_pdf_error' => ['text' => 'Impossible de générer le PDF.', 'context' => 'Notification shown when a PV PDF export fails.'],
+    'documents.detail.action.edit' => ['text' => 'Modifier', 'context' => 'Button opening the document editor from the document detail drawer.'],
+    'documents.detail.action.delete' => ['text' => 'Effacer', 'context' => 'Icon-only button permanently deleting a document from the document detail drawer.'],
+    'documents.detail.confirm_delete' => ['text' => 'Effacer définitivement ce document ?', 'context' => 'Confirmation shown before permanently deleting a document from its detail drawer.'],
+    'documents.detail.delete_error' => ['text' => 'Impossible d effacer le document.', 'context' => 'Error shown when permanent document deletion fails from its detail drawer.'],
+    'documents.detail.action.fullscreen' => ['text' => 'Plein écran', 'context' => 'Button used to show a collaborative document iframe in fullscreen.'],
+    'documents.detail.action.exit_fullscreen' => ['text' => 'Quitter le plein écran', 'context' => 'Button used to leave the collaborative document fullscreen mode.'],
+    'documents.detail.action.download' => ['text' => 'Télécharger', 'context' => 'Button used to download an uploaded PDF displayed in the document detail drawer.'],
     'documents.detail.alt_texts.title' => ['text' => 'Versions texte', 'context' => 'Section title listing alternate text versions.'],
     'documents.detail.alt_texts.fallback' => ['text' => 'Version texte', 'context' => 'Fallback title for an alternate text variant.'],
     'documents.detail.media.title' => ['text' => 'Médias associés', 'context' => 'Section title listing associated media.'],
     'documents.detail.media.open' => ['text' => 'Ouvrir le média', 'context' => 'Link label used to open a media item.'],
+    'documents.detail.pv_discussion.title' => ['text' => 'Discussion de relecture', 'context' => 'Read-only title for the discussion attached to a validated PV point.'],
+    'documents.detail.pv_discussion.link' => ['text' => 'Voir les corrections effectuées', 'context' => 'Subtle link opening a read-only validated PV point discussion.'],
+    'documents.detail.pv_discussion.loading' => ['text' => 'Chargement de la discussion…', 'context' => 'Loading state in a validated PV point discussion.'],
+    'documents.detail.pv_discussion.empty' => ['text' => 'Aucun message pour le moment.', 'context' => 'Empty state in a validated PV point discussion.'],
+    'documents.detail.pv_discussion.readonly' => ['text' => 'Lecture seule', 'context' => 'Placeholder for the disabled composer in a validated PV discussion.'],
+    'documents.detail.pv_discussion.send' => ['text' => 'Envoyer', 'context' => 'Send label shared by the chat popup.'],
+    'documents.detail.pv_discussion.changes' => ['text' => 'Voir les modifications', 'context' => 'Label opening before and after changes in a PV discussion.'],
+    'documents.detail.pv_discussion.content_excerpt' => ['text' => 'Contenu (extrait)', 'context' => 'Label for an excerpted PV point content change.'],
 ];
 
 $lang = omoLoadTranslationBundle('omo_documents_detail', $sourceLang);
@@ -58,10 +84,22 @@ if ($documentId <= 0) {
 }
 
 $document = new \dbObject\Document();
+$currentUserId = (int)commonGetCurrentUserId();
+$canAccessDocument = false;
+if ($documentId > 0 && $organizationId > 0 && $document->load($documentId)) {
+	$hasPvInvitationAccess = $document->isPvDocument()
+		&& !$document->isPvValidated()
+		&& $document->canUserAccessPvBeforeValidation($currentUserId, $organizationId);
+	$canAccessDocument = $document->canUserPassPvMeetingVisibilityGate($currentUserId, $organizationId)
+		&& (
+			$hasPvInvitationAccess
+			|| $document->canViewInOrganizationContext($organizationId, $holonId)
+			|| $document->canViewDirectlyInOrganization($organizationId)
+		);
+}
 
 if (
-    !$document->load($documentId)
-    || !$document->canViewInOrganizationContext($organizationId, $holonId)
+    !$canAccessDocument
 ) {
     http_response_code(404);
     ?>
@@ -73,6 +111,7 @@ if (
 }
 
 $_SESSION['doc_' . $document->getId()] = true;
+$document->markConsulted();
 
 $altTexts = $document->getAltText();
 $medias = $document->getMedias();
@@ -83,60 +122,257 @@ $updatedAt = $document->get('datemodification');
 $author = $document->getCreatedByDisplayName();
 $updatedBy = $document->getUpdatedByDisplayName();
 $visibility = $document->getVisibilityDisplayData($organizationId);
-$renderedContent = $document->getRenderedContentForCurrentViewer();
+$includePvDiscussionLinks = $document->isPvDocument()
+    && (
+            $document->getPvStage() === \dbObject\Document::PV_STAGE_VALIDATED
+        || (
+            $document->getPvStage() === \dbObject\Document::PV_STAGE_REVIEW
+            && $document->canUserAccessPvReview($currentUserId, $organizationId)
+        )
+    );
+$renderedContent = $document->getRenderedContentForCurrentViewer([
+    'includePvDiscussionLinks' => $includePvDiscussionLinks,
+    'pvDiscussionContextHolonId' => $holonId,
+    'pvDiscussionLabels' => [
+        'title' => omoDocumentsDetailT('documents.detail.pv_discussion.title'),
+        'link' => omoDocumentsDetailT('documents.detail.pv_discussion.link'),
+        'loading' => omoDocumentsDetailT('documents.detail.pv_discussion.loading'),
+        'empty' => omoDocumentsDetailT('documents.detail.pv_discussion.empty'),
+        'placeholder' => omoDocumentsDetailT('documents.detail.pv_discussion.readonly'),
+        'send' => omoDocumentsDetailT('documents.detail.pv_discussion.send'),
+        'changeDetails' => omoDocumentsDetailT('documents.detail.pv_discussion.changes'),
+        'contentExcerpt' => omoDocumentsDetailT('documents.detail.pv_discussion.content_excerpt'),
+    ],
+]);
+$uploadedFileCollaboraAvailable = false;
+$collaboraPostMessageOrigin = '';
+if ($document->isUploadedFile() && $document->canOpenWithCollabora()) {
+    require_once dirname(__DIR__, 3) . '/common/collabora.php';
+    $detailOrganization = new \dbObject\Organization();
+    $uploadedFileCollaboraAvailable = $detailOrganization->load($organizationId)
+        && $detailOrganization->hasDocumentStorage()
+        && omoCollaboraHasConfig($detailOrganization);
+    if ($uploadedFileCollaboraAvailable) {
+        $collaboraPostMessageOrigin = omoCollaboraBuildPostMessageOrigin(
+            (string)(omoCollaboraGetConfig($detailOrganization)['baseUrl'] ?? '')
+        );
+    }
+}
+$spaceDeckOpenUrl = $document->isWhiteboardDocument()
+    ? $document->buildSpaceDeckOpenUrl($currentUserId)
+    : '';
+$hasCollaborativeFrame = $document->isEtherpadDocument()
+    || $document->isEthercalcDocument()
+    || $uploadedFileCollaboraAvailable
+    || $spaceDeckOpenUrl !== '';
+$uploadedPdfDownloadUrl = $document->isStoredPdfFile()
+    ? $document->buildStoredFileDownloadUrl(false, $organizationId, $holonId)
+    : '';
+$uploadedPdfDownloadName = $uploadedPdfDownloadUrl !== ''
+    ? $document->getStoredPdfDownloadName()
+    : '';
+$drawerTitle = trim((string)$document->get('title'));
+$drawerDescription = $createdAt instanceof DateTimeInterface ? $formatDateTime($createdAt) : '';
+$associatedEvent = $document->getAssociatedEvent();
+$associatedEventSchedule = '';
+$associatedEventLocation = '';
+$associatedEventContext = '';
+$pdfExportUrl = $document->isPvDocument()
+    ? '/omo/api/documents/pv/export_pdf.php?id=' . rawurlencode((string)(int)$document->getId())
+        . '&oid=' . rawurlencode((string)$organizationId)
+    : '';
+$showPvDiscussion = $includePvDiscussionLinks;
+$canManageDocument = !$document->isPvDocument()
+    && $document->canManageInOrganizationContext($organizationId, $currentUserId, false);
+$canEditDocumentContent = !$document->isPvDocument()
+    && $document->canEditInOrganizationContext($organizationId, $currentUserId, false);
+$canEditDocument = !$document->isPvDocument()
+    && ($canManageDocument || (!$document->isEtherpadDocument() && !$document->isEthercalcDocument() && !$document->isWhiteboardDocument() && $canEditDocumentContent));
+$canDeleteDocument = $document->canDeleteInOrganizationContext($organizationId, $currentUserId)
+    && $document->canDeleteDocument(true);
+$editUrl = $canEditDocument
+    ? '/omo/api/documents/create.php?oid=' . rawurlencode((string)$organizationId)
+        . ($holonId > 0 ? '&cid=' . rawurlencode((string)$holonId) : '')
+        . '&id=' . rawurlencode((string)(int)$document->getId())
+    : '';
+
+if ($associatedEvent instanceof \dbObject\Event) {
+    $startAt = $associatedEvent->get('start_at');
+    $endAt = $associatedEvent->get('end_at');
+    if ($startAt instanceof DateTimeInterface && $endAt instanceof DateTimeInterface) {
+        $associatedEventSchedule = $formatDateTime($startAt) . ' - ' . $formatDateTime($endAt);
+    }
+
+    $locationData = $associatedEvent->getLocationDisplayData();
+    $locationParts = array();
+    if (trim((string)($locationData['address'] ?? '')) !== '') {
+        $locationParts[] = trim((string)$locationData['address']);
+    }
+    if (trim((string)($locationData['videoUrl'] ?? '')) !== '') {
+        $locationParts[] = trim((string)$locationData['videoUrl']);
+    } elseif (count($locationParts) === 0 && trim((string)($locationData['mode'] ?? '')) === \dbObject\Event::LOCATION_MODE_VIRTUAL) {
+        $locationParts[] = omoDocumentsDetailT('documents.detail.event.virtual_fallback');
+    }
+    $associatedEventLocation = implode(' | ', $locationParts);
+
+    $associatedEventHolonId = (int)$associatedEvent->get('IDholon');
+    if ($associatedEventHolonId > 0) {
+        $eventHolon = new \dbObject\Holon();
+        if ($eventHolon->load($associatedEventHolonId)) {
+            $associatedEventContext = trim((string)$eventHolon->getLabel());
+        }
+    }
+}
 ?>
-<div class="omo-document-detail">
-    <article class="omo-document-detail__article">
-        <header class="omo-document-detail__intro">
-            <div class="omo-document-detail__meta">
-                <?php if ($createdAt instanceof DateTimeInterface): ?>
-                    <span class="omo-pill"><?= $escape($formatDateTime($createdAt)) ?></span>
-                <?php endif; ?>
+<?php if ($showPvDiscussion): ?>
+<link rel="stylesheet" href="/common/chat/thread.css?v=20260821-pv-review-access-2">
+<link rel="stylesheet" href="/common/choice/change-details.css?v=20260923-lifecycle-details">
+<?php endif; ?>
+<div
+    class="omo-document-detail"
+    data-omo-document-drawer-title="<?= $escape($drawerTitle) ?>"
+    data-omo-document-drawer-description="<?= $escape($drawerDescription) ?>"
+    data-omo-collabora-origin="<?= $escape($collaboraPostMessageOrigin) ?>"
+>
+    <div
+        hidden
+        data-omo-subdrawer-header
+        data-omo-subdrawer-title="<?= $escape($drawerTitle) ?>"
+        data-omo-subdrawer-description="<?= $escape($drawerDescription) ?>"
+    >
+        <?php if ($editUrl !== ''): ?>
+            <button
+                type="button"
+                class="generic-action-button generic-action-button--main"
+                data-omo-subdrawer-action
+                data-omo-document-open-editor-url="<?= $escape($editUrl) ?>"
+            ><?= $escape(omoDocumentsDetailT('documents.detail.action.edit')) ?></button>
+        <?php endif; ?>
+        <?php if ($canDeleteDocument): ?>
+            <button
+                type="button"
+                class="generic-action-button generic-action-button--danger generic-action-button--icon-only"
+                data-omo-subdrawer-action
+                data-omo-document-delete-id="<?= (int)$document->getId() ?>"
+                data-omo-document-delete-confirm="<?= $escape(omoDocumentsDetailT('documents.detail.confirm_delete')) ?>"
+                data-omo-document-delete-error="<?= $escape(omoDocumentsDetailT('documents.detail.delete_error')) ?>"
+                title="<?= $escape(omoDocumentsDetailT('documents.detail.action.delete')) ?>"
+                aria-label="<?= $escape(omoDocumentsDetailT('documents.detail.action.delete')) ?>"
+            >
+                <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                    <path d="M5 7h14M10 11v6M14 11v6M9 7V5h6v2m-9 0 1 13h10l1-13"></path>
+                </svg>
+            </button>
+        <?php endif; ?>
+    </div>
 
-                <?php if ($updatedAt instanceof DateTimeInterface && (!$createdAt instanceof DateTimeInterface || $updatedAt != $createdAt)): ?>
-                    <span class="omo-pill"><?= $escape(omoDocumentsDetailT('documents.detail.meta.updated', ['date' => $formatDateTime($updatedAt)])) ?></span>
-                <?php endif; ?>
-
-                <?php if ($author !== ''): ?>
-                    <span class="omo-pill"><?= $escape(omoDocumentsDetailT('documents.detail.meta.author', ['name' => $author])) ?></span>
-                <?php endif; ?>
-
-                <?php if ($updatedBy !== '' && $updatedBy !== $author): ?>
-                    <span class="omo-pill"><?= $escape(omoDocumentsDetailT('documents.detail.meta.updated_by', ['name' => $updatedBy])) ?></span>
-                <?php endif; ?>
-
-                <?php if (trim((string)($visibility['badgeText'] ?? '')) !== ''): ?>
-                    <span class="omo-pill"><?= $escape((string)$visibility['badgeText']) ?></span>
-                <?php endif; ?>
-            </div>
-
+    <article class="omo-document-detail__article generic-stack generic-stack--roomy">
+        <header class="omo-document-detail__intro generic-stack">
+            <?php if ($pdfExportUrl !== ''): ?>
+                <div class="omo-document-detail__actions">
+                    <details class="omo-document-detail__more-actions">
+                        <summary
+                            aria-label="<?= $escape(omoDocumentsDetailT('documents.detail.action.more')) ?>"
+                            title="<?= $escape(omoDocumentsDetailT('documents.detail.action.more')) ?>"
+                        >...</summary>
+                        <div class="omo-document-detail__more-actions-menu">
+                            <a
+                                class="generic-action-button omo-document-detail__pdf-export"
+                                href="<?= $escape($pdfExportUrl) ?>"
+                                download
+                                data-omo-pv-pdf-export
+                                data-omo-pv-pdf-label="<?= $escape(omoDocumentsDetailT('documents.detail.action.export_pdf')) ?>"
+                                data-omo-pv-pdf-waiting-label="<?= $escape(omoDocumentsDetailT('documents.detail.action.export_pdf_waiting')) ?>"
+                                data-omo-pv-pdf-notice="<?= $escape(omoDocumentsDetailT('documents.detail.action.export_pdf_notice')) ?>"
+                                data-omo-pv-pdf-error="<?= $escape(omoDocumentsDetailT('documents.detail.action.export_pdf_error')) ?>"
+                            >
+                                <?= $escape(omoDocumentsDetailT('documents.detail.action.export_pdf')) ?>
+                            </a>
+                        </div>
+                    </details>
+                </div>
+            <?php endif; ?>
             <?php if ($description !== ''): ?>
                 <div class="omo-document-detail__summary omo-card">
                     <?= nl2br($escape($description)) ?>
                 </div>
             <?php endif; ?>
 
-            <?php if ($keywords !== ''): ?>
-                <div class="omo-document-detail__keywords">
+            <?php if ($keywords !== '' || $hasCollaborativeFrame || $uploadedPdfDownloadUrl !== ''): ?>
+                <div class="omo-document-detail__keyword-actions">
+                    <div class="omo-document-detail__keywords">
+                        <?php if ($keywords !== ''): ?>
                     <?php foreach (preg_split('/\s*,\s*/', $keywords) as $keyword): ?>
                         <?php if (trim((string)$keyword) !== ''): ?>
                             <span class="omo-pill"><?= $escape(trim((string)$keyword)) ?></span>
                         <?php endif; ?>
                     <?php endforeach; ?>
+                        <?php endif; ?>
+                    </div>
+                    <?php if ($uploadedPdfDownloadUrl !== '' || $hasCollaborativeFrame): ?>
+                        <div class="omo-document-detail__preview-actions">
+                    <?php if ($uploadedPdfDownloadUrl !== ''): ?>
+                        <a
+                            class="generic-action-button generic-action-button--secondary omo-document-detail__fullscreen-button"
+                            href="<?= $escape($uploadedPdfDownloadUrl) ?>"
+                            download="<?= $escape($uploadedPdfDownloadName) ?>"
+                        ><?= $escape(omoDocumentsDetailT('documents.detail.action.download')) ?></a>
+                    <?php endif; ?>
+                    <?php if ($hasCollaborativeFrame || $uploadedPdfDownloadUrl !== ''): ?>
+                        <button
+                            type="button"
+                            class="generic-action-button generic-action-button--secondary omo-document-detail__fullscreen-button"
+                            data-omo-document-fullscreen
+                            data-omo-document-fullscreen-label="<?= $escape(omoDocumentsDetailT('documents.detail.action.fullscreen')) ?>"
+                            data-omo-document-exit-fullscreen-label="<?= $escape(omoDocumentsDetailT('documents.detail.action.exit_fullscreen')) ?>"
+                            aria-pressed="false"
+                        ><?= $escape(omoDocumentsDetailT('documents.detail.action.fullscreen')) ?></button>
+                    <?php endif; ?>
+                        </div>
+                    <?php endif; ?>
                 </div>
+            <?php endif; ?>
+
+            <?php if ($associatedEvent instanceof \dbObject\Event): ?>
+                <section class="omo-document-detail__event omo-card generic-stack">
+                    <h3 class="omo-document-detail__section-title generic-card-title generic-card-title--medium"><?= $escape(omoDocumentsDetailT('documents.detail.event.title')) ?></h3>
+                    <div class="omo-document-detail__event-title">
+                        <?= $escape(trim((string)$associatedEvent->get('title')) !== '' ? trim((string)$associatedEvent->get('title')) : ('Événement n°' . (int)$associatedEvent->getId())) ?>
+                    </div>
+                    <div class="omo-document-detail__event-grid generic-form-grid">
+                        <?php if ($associatedEventSchedule !== ''): ?>
+                            <div class="omo-document-detail__event-item generic-stack generic-stack--compact">
+                                <span class="omo-document-detail__event-label"><?= $escape(omoDocumentsDetailT('documents.detail.event.schedule')) ?></span>
+                                <strong><?= $escape($associatedEventSchedule) ?></strong>
+                            </div>
+                        <?php endif; ?>
+                        <?php if ($associatedEventLocation !== ''): ?>
+                            <div class="omo-document-detail__event-item generic-stack generic-stack--compact">
+                                <span class="omo-document-detail__event-label"><?= $escape(omoDocumentsDetailT('documents.detail.event.location')) ?></span>
+                                <strong><?= $escape($associatedEventLocation) ?></strong>
+                            </div>
+                        <?php endif; ?>
+                        <?php if ($associatedEventContext !== ''): ?>
+                            <div class="omo-document-detail__event-item generic-stack generic-stack--compact">
+                                <span class="omo-document-detail__event-label"><?= $escape(omoDocumentsDetailT('documents.detail.event.context')) ?></span>
+                                <strong><?= $escape($associatedEventContext) ?></strong>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </section>
             <?php endif; ?>
         </header>
 
-        <section class="omo-document-detail__section omo-card">
+        <section class="omo-document-detail__section generic-stack">
             <div class="omo-document-detail__content prose">
                 <?= $renderedContent ?>
             </div>
         </section>
 
         <?php if (count($altTexts) > 0): ?>
-            <section class="omo-document-detail__section">
-                <h3 class="omo-document-detail__section-title"><?= $escape(omoDocumentsDetailT('documents.detail.alt_texts.title')) ?></h3>
-                <div class="omo-document-detail__stack">
+            <section class="omo-document-detail__section generic-stack">
+                <h3 class="omo-document-detail__section-title generic-card-title generic-card-title--medium"><?= $escape(omoDocumentsDetailT('documents.detail.alt_texts.title')) ?></h3>
+                <div class="omo-document-detail__stack generic-stack">
                     <?php foreach ($altTexts as $altText): ?>
                         <?php
                         $prompt = $altText->get('aiprompt');
@@ -145,7 +381,7 @@ $renderedContent = $document->getRenderedContentForCurrentViewer();
                             : '';
                         ?>
                         <article class="omo-document-detail__variant omo-card">
-                            <div class="omo-document-detail__variant-head">
+                            <div class="omo-document-detail__variant-head generic-stack generic-stack--compact">
                                 <strong><?= $escape($promptTitle !== '' ? $promptTitle : omoDocumentsDetailT('documents.detail.alt_texts.fallback')) ?></strong>
                             </div>
                             <div class="omo-document-detail__variant-body">
@@ -158,12 +394,12 @@ $renderedContent = $document->getRenderedContentForCurrentViewer();
         <?php endif; ?>
 
         <?php if (count($medias) > 0): ?>
-            <section class="omo-document-detail__section">
-                <h3 class="omo-document-detail__section-title"><?= $escape(omoDocumentsDetailT('documents.detail.media.title')) ?></h3>
-                <div class="omo-document-detail__stack">
+            <section class="omo-document-detail__section generic-stack">
+                <h3 class="omo-document-detail__section-title generic-card-title generic-card-title--medium"><?= $escape(omoDocumentsDetailT('documents.detail.media.title')) ?></h3>
+                <div class="omo-document-detail__stack generic-stack">
                     <?php foreach ($medias as $media): ?>
                         <article class="omo-document-detail__media omo-card">
-                            <div class="omo-document-detail__media-head">
+                            <div class="omo-document-detail__media-head generic-stack generic-stack--compact">
                                 <strong><?= $escape((string)$media->get('title')) ?></strong>
                                 <?php if (trim((string)$media->get('filename')) !== ''): ?>
                                     <span><?= $escape((string)$media->get('filename')) ?></span>
@@ -193,234 +429,37 @@ $renderedContent = $document->getRenderedContentForCurrentViewer();
                 </div>
             </section>
         <?php endif; ?>
+
+        <footer class="omo-document-detail__meta">
+            <?php if ($createdAt instanceof DateTimeInterface): ?>
+                <span class="omo-pill"><?= $escape($formatDateTime($createdAt)) ?></span>
+            <?php endif; ?>
+
+            <?php if ($updatedAt instanceof DateTimeInterface && (!$createdAt instanceof DateTimeInterface || $updatedAt != $createdAt)): ?>
+                <span class="omo-pill"><?= $escape(omoDocumentsDetailT('documents.detail.meta.updated', ['date' => $formatDateTime($updatedAt)])) ?></span>
+            <?php endif; ?>
+
+            <?php if ($author !== ''): ?>
+                <span class="omo-pill"><?= $escape(omoDocumentsDetailT('documents.detail.meta.author', ['name' => $author])) ?></span>
+            <?php endif; ?>
+
+            <?php if ($updatedBy !== '' && $updatedBy !== $author): ?>
+                <span class="omo-pill"><?= $escape(omoDocumentsDetailT('documents.detail.meta.updated_by', ['name' => $updatedBy])) ?></span>
+            <?php endif; ?>
+
+            <?php if (trim((string)($visibility['badgeText'] ?? '')) !== ''): ?>
+                <span class="omo-pill"><?= $escape((string)$visibility['badgeText']) ?></span>
+            <?php endif; ?>
+        </footer>
     </article>
 </div>
 
-<style>
-.omo-document-detail {
-    min-height: 100%;
-    padding: 20px;
-    background: var(--color-bg);
-}
-
-.omo-document-detail__article {
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
-    max-width: 920px;
-    margin: 0 auto;
-}
-
-.omo-document-detail__intro {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-}
-
-.omo-document-detail__meta,
-.omo-document-detail__keywords {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-
-.omo-document-detail__summary {
-    color: var(--color-text-light);
-    line-height: 1.6;
-}
-
-.omo-document-detail__section {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.omo-document-detail__section-title {
-    margin: 0;
-    font-size: 1rem;
-}
-
-.omo-document-detail__content {
-    line-height: 1.7;
-    word-break: break-word;
-}
-
-.omo-document-detail__content > :first-child {
-    margin-top: 0;
-}
-
-.omo-document-detail__content > :last-child {
-    margin-bottom: 0;
-}
-
-.omo-document-detail__content .omo-document-external {
-    display: grid;
-    gap: 14px;
-}
-
-.omo-document-detail__content .omo-document-external--iframe {
-    gap: 12px;
-}
-
-.omo-document-detail__content .omo-document-external__toolbar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-}
-
-.omo-document-detail__content .omo-document-external__hint,
-.omo-document-detail__content .omo-document-external__fallback {
-    color: var(--color-text-light);
-    line-height: 1.6;
-}
-
-.omo-document-detail__content .omo-document-external__frame {
-    width: 100%;
-    min-height: 72vh;
-    border: 1px solid var(--color-border);
-    border-radius: 16px;
-    background: #fff;
-}
-
-.omo-document-detail__content .omo-document-file {
-    display: grid;
-    gap: 10px;
-    padding: 16px 18px;
-    border-radius: 16px;
-    border: 1px solid color-mix(in srgb, var(--color-border) 85%, #2563eb 15%);
-    background: color-mix(in srgb, var(--color-surface) 92%, #eff6ff 8%);
-}
-
-.omo-document-detail__content .omo-document-file--empty {
-    color: var(--color-text-light);
-}
-
-.omo-document-detail__content .omo-document-file__title {
-    font-size: 1.02rem;
-    font-weight: 700;
-    color: var(--color-text);
-    word-break: break-word;
-}
-
-.omo-document-detail__content .omo-document-file__meta {
-    color: var(--color-text-light);
-    font-size: 0.9rem;
-}
-
-.omo-document-detail__content .omo-document-file__download {
-    justify-self: flex-start;
-}
-
-.omo-document-detail__content .omo-document-embed {
-    display: grid;
-    gap: 10px;
-    margin: 0 0 1em;
-    padding: 14px 16px;
-    border-radius: 16px;
-    border: 1px solid color-mix(in srgb, var(--color-border) 85%, #2563eb 15%);
-    background: color-mix(in srgb, var(--color-surface) 90%, #eff6ff 10%);
-}
-
-.omo-document-detail__content .omo-document-embed:last-child {
-    margin-bottom: 0;
-}
-
-.omo-document-detail__content .omo-document-embed__label {
-    color: var(--color-text-light);
-    font-size: 0.75rem;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-}
-
-.omo-document-detail__content .omo-document-embed__title {
-    font-weight: 700;
-    color: var(--color-text);
-}
-
-.omo-document-detail__content .omo-document-embed__description,
-.omo-document-detail__content .omo-document-embed__message {
-    color: var(--color-text-light);
-    line-height: 1.6;
-}
-
-.omo-document-detail__content .omo-document-embed__body {
-    display: grid;
-    gap: 0.9em;
-    padding-top: 2px;
-}
-
-.omo-document-detail__content .omo-document-embed__body > :first-child {
-    margin-top: 0;
-}
-
-.omo-document-detail__content .omo-document-embed__body > :last-child {
-    margin-bottom: 0;
-}
-
-.omo-document-detail__stack {
-    display: grid;
-    gap: 12px;
-}
-
-.omo-document-detail__variant,
-.omo-document-detail__media {
-    display: grid;
-    gap: 10px;
-}
-
-.omo-document-detail__variant-head,
-.omo-document-detail__media-head {
-    display: grid;
-    gap: 4px;
-}
-
-.omo-document-detail__variant-head span,
-.omo-document-detail__media-head span {
-    color: var(--color-text-light);
-    font-size: 0.92rem;
-}
-
-.omo-document-detail__variant-body {
-    color: var(--color-text-light);
-    line-height: 1.6;
-    white-space: normal;
-}
-
-.omo-document-detail__audio {
-    width: 100%;
-}
-
-.omo-document-detail__image-link {
-    display: inline-flex;
-    align-self: flex-start;
-    max-width: 100%;
-}
-
-.omo-document-detail__image {
-    display: block;
-    max-width: 100%;
-    max-height: 420px;
-    border-radius: var(--radius-md);
-    border: 1px solid var(--color-border);
-    object-fit: contain;
-    background: var(--color-surface-alt);
-}
-
-.omo-document-detail__download {
-    color: var(--color-primary);
-    text-decoration: none;
-}
-
-.omo-document-detail__download:hover {
-    text-decoration: underline;
-}
-
-@media (max-width: 768px) {
-    .omo-document-detail {
-        padding: 14px;
-    }
-}
-</style>
+<link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/documents/detail.css') ?>">
+<?php if ($pdfExportUrl !== ''): ?>
+<script src="<?= commonAssetUrl('/omo/api/documents/detail.js') ?>"></script>
+<?php endif; ?>
+<?php if ($showPvDiscussion): ?>
+<script src="/common/choice/word-diff.js?v=20260821-pv-review-access-2"></script>
+<script src="/common/choice/change-details.js?v=20260924-readable-diffs"></script>
+<script src="/common/chat/thread.js?v=20260821-pv-review-access-2"></script>
+<?php endif; ?>

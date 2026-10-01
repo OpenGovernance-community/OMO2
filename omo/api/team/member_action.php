@@ -5,6 +5,7 @@ require_once dirname(__DIR__, 3) . '/common/team/translations.php';
 use dbObject\Holon;
 use dbObject\Invitation;
 use dbObject\Organization;
+use dbObject\User;
 
 header('Content-Type: application/json; charset=UTF-8');
 $sourceLang = omoTeamSourceLang();
@@ -36,9 +37,32 @@ if (!$organization->load($organizationId) || !$holon->load($holonId) || !$organi
     exit;
 }
 
+$organizationLexicon = $organization->getLexicon();
+$adminLabel = trim((string)($organizationLexicon['admin']['label'] ?? '')) ?: 'Admin';
+$adminLabelLower = function_exists('mb_strtolower')
+	? mb_strtolower($adminLabel, 'UTF-8')
+	: strtolower($adminLabel);
+
 switch ($action) {
+    case 'remove_preview':
+        if (!$holon->isAllowed('CAN_DELETE_MEMBER', false)) {
+            http_response_code(403);
+            echo json_encode(array(
+                'status' => false,
+                'message' => omoTeamT('team.api.no_right_modify_context', [], $lang, $sourceLang),
+            ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            exit;
+        }
+        $result = array(
+            'status' => true,
+            'summary' => $holon->getMemberRemovalSummary($userId, array(
+                'organizationId' => $organizationId,
+            )),
+        );
+        break;
+
     case 'remove':
-        if (!$holon->canEdit()) {
+        if (!$holon->isAllowed('CAN_DELETE_MEMBER', false)) {
             http_response_code(403);
             echo json_encode(array(
                 'status' => false,
@@ -56,7 +80,7 @@ switch ($action) {
             http_response_code(403);
             echo json_encode(array(
                 'status' => false,
-                'message' => omoTeamT('team.api.no_right_manage_admin', [], $lang, $sourceLang),
+                'message' => omoTeamT('team.api.no_right_manage_admin', ['adminLabel' => $adminLabelLower], $lang, $sourceLang),
             ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             exit;
         }
@@ -68,7 +92,7 @@ switch ($action) {
             http_response_code(403);
             echo json_encode(array(
                 'status' => false,
-                'message' => omoTeamT('team.api.no_right_manage_admin', [], $lang, $sourceLang),
+                'message' => omoTeamT('team.api.no_right_manage_admin', ['adminLabel' => $adminLabelLower], $lang, $sourceLang),
             ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             exit;
         }
@@ -76,7 +100,7 @@ switch ($action) {
         break;
 
     case 'cancel_invitation':
-        if (!$holon->canEdit()) {
+        if (!$holon->isAllowed('CAN_DELETE_MEMBER', false)) {
             http_response_code(403);
             echo json_encode(array(
                 'status' => false,
@@ -115,7 +139,7 @@ switch ($action) {
             http_response_code(404);
             echo json_encode(array(
                 'status' => false,
-                'message' => omoTeamT('team.api.pending_admin_invitation_not_found', [], $lang, $sourceLang),
+                'message' => omoTeamT('team.api.pending_admin_invitation_not_found', ['adminLabel' => $adminLabelLower], $lang, $sourceLang),
             ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             exit;
         }
@@ -136,6 +160,73 @@ switch ($action) {
         }
         break;
 
+    case 'send_invitation':
+        if (!$holon->isAllowed('CAN_ADD_MEMBER', false)) {
+            http_response_code(403);
+            echo json_encode(array(
+                'status' => false,
+                'message' => omoTeamT('team.api.no_right_add_member', [], $lang, $sourceLang),
+            ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            exit;
+        }
+
+        $user = new User();
+        if (!$user->load($userId)) {
+            $result = array(
+                'status' => false,
+                'message' => omoTeamT('team.api.member_not_ready_for_invitation', [], $lang, $sourceLang),
+            );
+            break;
+        }
+
+        $membership = $user->getOrganizationMembership($organizationId);
+        if (!$membership || (bool)$membership->get('active')) {
+            $result = array(
+                'status' => false,
+                'message' => omoTeamT('team.api.member_not_ready_for_invitation', [], $lang, $sourceLang),
+            );
+            break;
+        }
+
+        $pendingInvitation = Invitation::findPendingForOrganizationUser($organizationId, $userId);
+        if ($pendingInvitation instanceof Invitation && !$pendingInvitation->isAdminInitiatedInvitation()) {
+            $result = array(
+                'status' => false,
+                'message' => omoTeamT('team.api.member_not_ready_for_invitation', [], $lang, $sourceLang),
+            );
+            break;
+        }
+
+        try {
+            if (!($pendingInvitation instanceof Invitation)) {
+                $invitationIssue = Invitation::issue(
+                    $organizationId,
+                    $userId,
+                    (int)commonGetCurrentUserId(),
+                    trim((string)$user->getScopedEmail($organizationId))
+                );
+                $pendingInvitation = $invitationIssue['invitation'] ?? null;
+            }
+
+            if (!($pendingInvitation instanceof Invitation) || !$pendingInvitation->isAdminInitiatedInvitation()) {
+                throw new \RuntimeException(omoTeamT('team.api.member_not_ready_for_invitation', [], $lang, $sourceLang));
+            }
+
+            $pendingInvitation->sendEmail();
+            $result = array(
+                'status' => true,
+                'message' => omoTeamT('team.api.invitation_sent', [], $lang, $sourceLang),
+            );
+        } catch (\Throwable $exception) {
+            $result = array(
+                'status' => false,
+                'message' => trim((string)$exception->getMessage()) !== ''
+                    ? (string)$exception->getMessage()
+                    : omoTeamT('team.api.invitation_send_failed', [], $lang, $sourceLang),
+            );
+        }
+        break;
+
     default:
         $result = array(
             'status' => false,
@@ -151,4 +242,5 @@ if (!($result['status'] ?? false)) {
 echo json_encode(array(
     'status' => (bool)($result['status'] ?? false),
     'message' => (string)($result['message'] ?? omoTeamT('team.api.action_completed', [], $lang, $sourceLang)),
+    'removalSummary' => is_array($result['summary'] ?? null) ? $result['summary'] : null,
 ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

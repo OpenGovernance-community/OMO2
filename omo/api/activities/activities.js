@@ -1,0 +1,861 @@
+(function (window, document) {
+    'use strict';
+
+    var root = typeof window.omoFindApplicationRoot === 'function'
+        ? window.omoFindApplicationRoot('omo-activities-root')
+        : document.getElementById('omo-activities-root');
+    if (!root || root.dataset.activitiesReady === '1') {
+        return;
+    }
+    root.dataset.activitiesReady = '1';
+
+    var useLocalDrawerNavigation = typeof window.omoIsPvApplicationTabContext === 'function'
+        && window.omoIsPvApplicationTabContext(root);
+
+    var drawer = root.querySelector('[data-activity-drawer]');
+    var body = root.querySelector('[data-activity-drawer-body]');
+    var drawerController = drawer && typeof window.omoCreateSubdrawerController === 'function'
+        ? window.omoCreateSubdrawerController({drawer: drawer})
+        : null;
+    var requestToken = 0;
+    var rootNeedsRefresh = false;
+    var filterPanelOpen = false;
+    var pendingFilters = null;
+    var currentScope = normalizeScope(root.getAttribute('data-activity-scope'));
+    var currentAssignment = normalizeAssignment(root.getAttribute('data-activity-assignment'));
+    var currentState = 'all';
+    var currentSearch = '';
+    var currentUrl = root.getAttribute('data-activity-current-url') || '';
+    var baseUrl = root.getAttribute('data-activity-base-url') || currentUrl;
+    var initialOpenActivityId = Number(root.getAttribute('data-activity-open-id') || 0);
+    var savedViewsStorageKey = 'omo.activities.saved-views.v1';
+    var sessionViewsStorageKey = 'omo.activities.session-views.v1';
+    var searchStorageKey = 'omo.activities.quick-search.v1';
+    var texts = {
+        loading: 'Chargement de la tâche récurrente...',
+        loadingError: 'Impossible de charger cette tâche récurrente.',
+        actionError: 'Action impossible.'
+    };
+
+    function notify(message, type) {
+        if (typeof window.commonNotify === 'function') {
+            window.commonNotify(String(message || ''), type || 'error');
+        }
+    }
+
+    try {
+        texts = Object.assign(texts, JSON.parse(root.getAttribute('data-activity-texts') || '{}'));
+    } catch (error) {
+        // Keep the local fallbacks.
+    }
+
+    function resolveUrl(url) {
+        return typeof window.omoResolveAppUrl === 'function' ? window.omoResolveAppUrl(url) : url;
+    }
+
+    function appendPvMeetingContext(formData) {
+        var currentUrlValue = root.getAttribute('data-activity-current-url') || '';
+        var currentUrl;
+        try {
+            currentUrl = new URL(currentUrlValue, window.location.origin);
+        } catch (error) {
+            return;
+        }
+        var documentId = currentUrl.searchParams.get('pv_meeting_document_id') || '';
+        var editorToken = currentUrl.searchParams.get('pv_meeting_editor_token') || '';
+        if (documentId !== '' && editorToken !== '') {
+            formData.set('pv_meeting_document_id', documentId);
+            formData.set('pv_meeting_editor_token', editorToken);
+        }
+    }
+
+    function normalizeScope(value) {
+        value = String(value || '').trim().toLowerCase();
+        return value === 'children' || value === 'descendants' ? value : 'contextual';
+    }
+
+    function normalizeState(value) {
+        value = String(value || '').trim().toLowerCase();
+        if (value === 'overdue') {
+            value = 'missed';
+        }
+        return ['all', 'attention', 'missed', 'checked', 'upcoming'].indexOf(value) !== -1 ? value : 'all';
+    }
+
+    function normalizeAssignment(value) {
+        value = String(value || '').trim().toLowerCase();
+        return ['mine', 'spaces'].indexOf(value) !== -1 ? value : 'all';
+    }
+
+    function normalizeSearch(value) {
+        return String(value || '').toLocaleLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+    }
+
+    function getPreferencesContextKey() {
+        var regularKey = String(root.getAttribute('data-activity-oid') || '0')
+            + ':' + String(root.getAttribute('data-activity-cid') || '0');
+        return typeof window.omoApplicationViewPreferencesGetStorageContextKey === 'function'
+            ? window.omoApplicationViewPreferencesGetStorageContextKey(root, regularKey)
+            : regularKey;
+    }
+
+    function readStoredValue(storage, storageKey) {
+        try {
+            var values = JSON.parse(storage.getItem(storageKey) || '{}');
+            return values && typeof values === 'object' ? values[getPreferencesContextKey()] || null : null;
+        } catch (error) {
+            return null;
+        }
+    }
+
+    function writeStoredValue(storage, storageKey, value) {
+        try {
+            var values = JSON.parse(storage.getItem(storageKey) || '{}');
+            if (!values || typeof values !== 'object') {
+                values = {};
+            }
+            values[getPreferencesContextKey()] = value;
+            storage.setItem(storageKey, JSON.stringify(values));
+        } catch (error) {
+            // Storage can be disabled without blocking the application.
+        }
+    }
+
+    function clearTemporaryFilters() {
+        clearStoredValue(window.sessionStorage, sessionViewsStorageKey);
+    }
+
+    function clearStoredValue(storage, storageKey) {
+        try {
+            var values = JSON.parse(storage.getItem(storageKey) || '{}');
+            if (!values || typeof values !== 'object') {
+                return;
+            }
+            delete values[getPreferencesContextKey()];
+            storage.setItem(storageKey, JSON.stringify(values));
+        } catch (error) {
+            // Storage can be disabled without blocking the application.
+        }
+    }
+
+    function setRootLoading(loading) {
+        root.classList.toggle('is-loading', Boolean(loading));
+        root.querySelectorAll('[data-activity-filter-toggle], [data-activity-filter-apply], [data-activity-filter-save], [data-activity-scope-option], [data-activity-assignment-option], [data-activity-state-option]').forEach(function (button) {
+            button.disabled = Boolean(loading);
+        });
+    }
+
+    function refreshRoot(url) {
+        var targetUrl = url || currentUrl;
+        if (!targetUrl) {
+            return Promise.resolve(null);
+        }
+        if (typeof window.omoReplaceFetchedPanelRoot !== 'function') {
+            window.location.href = resolveUrl(targetUrl);
+            return Promise.resolve(null);
+        }
+        return window.omoReplaceFetchedPanelRoot({
+            rootSelector: '#omo-activities-root',
+            currentRoot: root,
+            url: resolveUrl(targetUrl),
+            setLoadingState: setRootLoading,
+            beforeReplace: function () {
+                document.removeEventListener('pointerdown', handleFilterOutsidePointerDown, true);
+            }
+        });
+    }
+
+    function buildFilterUrl(scope, assignment) {
+        var normalizedScope = normalizeScope(scope);
+        var normalizedAssignment = normalizeAssignment(assignment);
+        var url = baseUrl + (baseUrl.indexOf('?') === -1 ? '?' : '&')
+            + 'activity_scope=' + encodeURIComponent(normalizedScope)
+            + '&activity_assignment=' + encodeURIComponent(normalizedAssignment);
+        if (Number.isInteger(initialOpenActivityId) && initialOpenActivityId > 0) {
+            url += (url.indexOf('?') === -1 ? '?' : '&') + 'open_activity_id=' + encodeURIComponent(String(initialOpenActivityId));
+        }
+        return url;
+    }
+
+    function stateMatches(itemState) {
+        if (currentState === 'all') {
+            return true;
+        }
+        if (currentState === 'attention') {
+            return itemState === 'due' || itemState === 'missed';
+        }
+        if (currentState === 'checked') {
+            return itemState === 'checked' || itemState === 'late';
+        }
+        return itemState === currentState;
+    }
+
+    function applyListFilters() {
+        var query = normalizeSearch(currentSearch);
+        var visibleCount = 0;
+
+        root.querySelectorAll('[data-activity-search-item]').forEach(function (item) {
+            var itemState = String(item.getAttribute('data-activity-state') || '');
+            var matchesSearch = query === '' || normalizeSearch(item.textContent || '').indexOf(query) !== -1;
+            var matches = matchesSearch && stateMatches(itemState);
+            item.hidden = !matches;
+            if (matches) {
+                visibleCount++;
+            }
+        });
+
+        root.querySelectorAll('[data-activity-group]').forEach(function (group) {
+            var groupVisibleCount = Array.prototype.filter.call(group.querySelectorAll('[data-activity-search-item]'), function (item) {
+                return !item.hidden;
+            }).length;
+            group.hidden = groupVisibleCount === 0;
+            var count = group.querySelector('[data-activity-group-count]');
+            if (count) {
+                count.textContent = String(groupVisibleCount);
+            }
+        });
+
+        var headerCount = root.querySelector('[data-activity-header-count]');
+        if (headerCount) {
+            headerCount.textContent = String(visibleCount);
+        }
+        var defaultEmpty = root.querySelector('[data-activity-default-empty]');
+        if (defaultEmpty) {
+            defaultEmpty.hidden = query !== '' || currentState !== 'all';
+        }
+        var searchEmpty = root.querySelector('[data-activity-search-empty]');
+        if (searchEmpty) {
+            searchEmpty.hidden = visibleCount > 0 || (query === '' && currentState === 'all');
+        }
+    }
+
+    function syncFilterChoices() {
+        if (!pendingFilters) {
+            return;
+        }
+        pendingFilters.scope = normalizeScope(pendingFilters.scope);
+        pendingFilters.assignment = normalizeAssignment(pendingFilters.assignment);
+        pendingFilters.state = normalizeState(pendingFilters.state);
+        if (!root.querySelector('[data-activity-scope-option="' + pendingFilters.scope + '"]')) {
+            pendingFilters.scope = currentScope;
+        }
+        root.querySelectorAll('[data-activity-scope-option]').forEach(function (button) {
+            var active = normalizeScope(button.getAttribute('data-activity-scope-option')) === pendingFilters.scope;
+            button.classList.toggle('is-active', active);
+            button.setAttribute('aria-pressed', active ? 'true' : 'false');
+        });
+        root.querySelectorAll('[data-activity-assignment-option]').forEach(function (button) {
+            var active = normalizeAssignment(button.getAttribute('data-activity-assignment-option')) === pendingFilters.assignment;
+            button.classList.toggle('is-active', active);
+            button.setAttribute('aria-pressed', active ? 'true' : 'false');
+        });
+        root.querySelectorAll('[data-activity-state-option]').forEach(function (button) {
+            var active = normalizeState(button.getAttribute('data-activity-state-option')) === pendingFilters.state;
+            button.classList.toggle('is-active', active);
+            button.setAttribute('aria-pressed', active ? 'true' : 'false');
+        });
+    }
+
+    function syncFilterChips() {
+        var scopeChip = root.querySelector('[data-activity-scope-chip]');
+        var scopeButton = root.querySelector('[data-activity-scope-option="' + currentScope + '"]');
+        var assignmentChip = root.querySelector('[data-activity-assignment-chip]');
+        var assignmentButton = root.querySelector('[data-activity-assignment-option="' + currentAssignment + '"]');
+        var stateChip = root.querySelector('[data-activity-state-chip]');
+        var stateButton = root.querySelector('[data-activity-state-option="' + currentState + '"]');
+        if (scopeChip && scopeButton) {
+            scopeChip.textContent = scopeButton.textContent.trim();
+        }
+        if (assignmentChip && assignmentButton) {
+            assignmentChip.textContent = assignmentButton.textContent.trim();
+        }
+        if (stateChip && stateButton) {
+            stateChip.textContent = stateButton.textContent.trim();
+        }
+    }
+
+    function handleFilterOutsidePointerDown(event) {
+        var control = root.querySelector('[data-activity-filter-control]');
+        if (!control || !control.contains(event.target)) {
+            closeFilterPanel(true, false);
+        }
+    }
+
+    function openFilterPanel() {
+        var panel = root.querySelector('[data-activity-filter-panel]');
+        if (!panel || filterPanelOpen) {
+            return;
+        }
+        pendingFilters = {scope: currentScope, assignment: currentAssignment, state: currentState};
+        syncFilterChoices();
+        panel.hidden = false;
+        filterPanelOpen = true;
+        root.querySelectorAll('[data-activity-filter-toggle]').forEach(function (button) {
+            button.setAttribute('aria-expanded', 'true');
+        });
+        document.addEventListener('pointerdown', handleFilterOutsidePointerDown, true);
+    }
+
+    function closeFilterPanel(applyChanges, saveView) {
+        var panel = root.querySelector('[data-activity-filter-panel]');
+        if (!filterPanelOpen) {
+            return;
+        }
+        filterPanelOpen = false;
+        if (panel) {
+            panel.hidden = true;
+        }
+        root.querySelectorAll('[data-activity-filter-toggle]').forEach(function (button) {
+            button.setAttribute('aria-expanded', 'false');
+        });
+        document.removeEventListener('pointerdown', handleFilterOutsidePointerDown, true);
+
+        if (!applyChanges || !pendingFilters) {
+            pendingFilters = null;
+            return;
+        }
+        var nextScope = normalizeScope(pendingFilters.scope);
+        var nextAssignment = normalizeAssignment(pendingFilters.assignment);
+        var nextState = normalizeState(pendingFilters.state);
+        pendingFilters = null;
+        if (saveView) {
+            writeStoredValue(window.localStorage, savedViewsStorageKey, {scope: nextScope, assignment: nextAssignment, state: nextState});
+            clearTemporaryFilters();
+        } else {
+            writeStoredValue(window.sessionStorage, sessionViewsStorageKey, {scope: nextScope, assignment: nextAssignment, state: nextState});
+        }
+        currentState = nextState;
+        if (nextScope !== currentScope || nextAssignment !== currentAssignment) {
+            currentScope = nextScope;
+            currentAssignment = nextAssignment;
+            refreshRoot(buildFilterUrl(nextScope, nextAssignment));
+            return;
+        }
+        syncFilterChips();
+        applyListFilters();
+    }
+
+    function setDrawerMessage(message, isError) {
+        if (!body) {
+            return;
+        }
+        if (drawerController) {
+            drawerController.resetHeader();
+        }
+        body.innerHTML = '<div class="generic-section omo-activity-feedback' + (isError ? ' is-error' : '') + '"></div>';
+        body.firstElementChild.textContent = String(message || '');
+    }
+
+    function openDrawer(url) {
+        if (!url || !drawer || !body) {
+            return Promise.resolve(false);
+        }
+        var localToken = ++requestToken;
+        setDrawerMessage(texts.loading, false);
+        drawer.hidden = false;
+        window.requestAnimationFrame(function () {
+            drawer.classList.add('is-open');
+        });
+        return fetch(resolveUrl(url), {
+            credentials: 'same-origin',
+            headers: {'X-Requested-With': 'XMLHttpRequest'},
+            cache: 'no-store'
+        }).then(function (response) {
+            if (!response.ok) {
+                throw new Error('load_failed');
+            }
+            return response.text();
+        }).then(function (html) {
+            if (localToken !== requestToken) {
+                return false;
+            }
+            body.innerHTML = html;
+            if (drawerController) {
+                drawerController.applyContentHeader(body);
+            }
+            if (typeof window.initGenericComponents === 'function') {
+                window.initGenericComponents(body);
+            }
+            body.querySelectorAll('[data-activity-task-form]').forEach(updateSchedule);
+            initializeHtmlEditors(body);
+            return true;
+        }).catch(function () {
+            if (localToken === requestToken) {
+                setDrawerMessage(texts.loadingError, true);
+            }
+            return false;
+        });
+    }
+
+    function buildDetailUrl(activityId) {
+        var organizationId = Number(root.getAttribute('data-activity-oid') || 0);
+        var holonId = Number(root.getAttribute('data-activity-cid') || 0);
+        var resolvedActivityId = Number(activityId || 0);
+        if (!Number.isInteger(organizationId) || organizationId <= 0 || !Number.isInteger(resolvedActivityId) || resolvedActivityId <= 0) {
+            return '';
+        }
+        var detailUrl = '/omo/api/activities/detail.php?oid=' + encodeURIComponent(String(organizationId))
+            + '&id=' + encodeURIComponent(String(resolvedActivityId));
+        if (Number.isInteger(holonId) && holonId > 0) {
+            detailUrl += '&cid=' + encodeURIComponent(String(holonId));
+        }
+        return detailUrl;
+    }
+
+    function getCurrentRouteToken() {
+        if (useLocalDrawerNavigation || typeof window.omoParsePopupHashState !== 'function') {
+            return '';
+        }
+        var hashState = window.omoParsePopupHashState();
+        return hashState && hashState.routeToken ? String(hashState.routeToken) : '';
+    }
+
+    function maybeOpenInitialActivity() {
+        var activityId = initialOpenActivityId;
+        var routeMatch = getCurrentRouteToken().match(/^activities-d(\d+)$/i);
+        if (routeMatch) {
+            activityId = Number(routeMatch[1]);
+        }
+        if (!Number.isInteger(activityId) || activityId <= 0) {
+            return;
+        }
+        var detailUrl = buildDetailUrl(activityId);
+        if (!detailUrl) {
+            return;
+        }
+        openDrawer(detailUrl);
+    }
+
+    function closeDrawer(refreshAfterClose) {
+        if (!drawer) {
+            return;
+        }
+        requestToken++;
+        drawer.classList.remove('is-open');
+        window.setTimeout(function () {
+            if (drawer.classList.contains('is-open')) {
+                return;
+            }
+            drawer.hidden = true;
+            if (body) {
+                body.innerHTML = '';
+            }
+            if (drawerController) {
+                drawerController.resetHeader();
+            }
+            if (refreshAfterClose || rootNeedsRefresh) {
+                rootNeedsRefresh = false;
+                refreshRoot(currentUrl);
+            }
+        }, 180);
+    }
+
+    function updateSchedule(form) {
+        var frequency = form.querySelector('[data-activity-frequency]');
+        var schedule = form.querySelector('[data-activity-schedule]');
+        var options;
+        var selected;
+        if (!frequency || !schedule) {
+            return;
+        }
+        try {
+            options = JSON.parse(form.getAttribute('data-activity-schedule-options') || '{}');
+        } catch (error) {
+            options = {};
+        }
+        selected = schedule.getAttribute('data-selected-value') || schedule.value;
+        schedule.innerHTML = '';
+        (options[frequency.value] || []).forEach(function (entry) {
+            var option = document.createElement('option');
+            option.value = entry.value;
+            option.textContent = entry.label;
+            schedule.appendChild(option);
+        });
+        if (Array.prototype.some.call(schedule.options, function (option) { return option.value === selected; })) {
+            schedule.value = selected;
+        }
+        schedule.removeAttribute('data-selected-value');
+    }
+
+    function initializeHtmlEditors(container) {
+        if (!window.omoSimpleHtmlField || typeof window.omoSimpleHtmlField.mount !== 'function') {
+            return;
+        }
+
+        container.querySelectorAll('[data-activity-html-editor]').forEach(function (editorHost) {
+            if (editorHost.dataset.activityHtmlEditorReady === '1') {
+                return;
+            }
+
+            var fieldContainer = editorHost.closest('[data-activity-html-editor-container]');
+            var valueField = fieldContainer
+                ? fieldContainer.querySelector('[data-activity-html-value]')
+                : null;
+            if (!valueField) {
+                return;
+            }
+
+            editorHost.dataset.activityHtmlEditorReady = '1';
+            window.omoSimpleHtmlField.mount(editorHost, {
+                value: valueField.value || '',
+                placeholder: '',
+                minHeight: 120,
+                simpleOnly: true,
+                onChange: function (value) {
+                    valueField.value = String(value || '');
+                },
+                onReady: function (api) {
+                    if (api && typeof api.getValue === 'function') {
+                        valueField.value = String(api.getValue() || '');
+                    }
+                }
+            });
+        });
+    }
+
+    function syncHtmlEditors(form) {
+        form.querySelectorAll('[data-activity-html-editor]').forEach(function (editorHost) {
+            var fieldContainer = editorHost.closest('[data-activity-html-editor-container]');
+            var valueField = fieldContainer
+                ? fieldContainer.querySelector('[data-activity-html-value]')
+                : null;
+            var api = editorHost.__omoSimpleHtmlField;
+
+            if (valueField && api && typeof api.getValue === 'function') {
+                valueField.value = String(api.getValue() || '');
+            }
+        });
+    }
+
+    function postAction(action, id, element) {
+        if (element.getAttribute('data-activity-confirm') && !window.confirm(element.getAttribute('data-activity-confirm'))) {
+            return;
+        }
+        var listCheck = element.hasAttribute('data-activity-list-check');
+        var data = new FormData();
+        data.append('activity_action', action);
+        data.append('id', id);
+        data.append('oid', root.getAttribute('data-activity-oid'));
+        data.append('cid', root.getAttribute('data-activity-cid'));
+        appendPvMeetingContext(data);
+        element.disabled = true;
+        fetch('/omo/api/activities/action.php', {
+            method: 'POST',
+            body: data,
+            credentials: 'same-origin'
+        }).then(function (response) {
+            return response.json();
+        }).then(function (result) {
+            if (!result.status) {
+                throw new Error(result.message || texts.actionError);
+            }
+            if ((action === 'delete_activity' || action === 'archive_activity')
+                && typeof window.omoInvalidateMainRightPanel === 'function') {
+                window.omoInvalidateMainRightPanel();
+            }
+            if (listCheck || action === 'delete_activity' || action === 'archive_activity') {
+                refreshRoot(currentUrl);
+                return;
+            }
+            rootNeedsRefresh = true;
+            if (result.detailUrl) {
+                openDrawer(result.detailUrl);
+            }
+        }).catch(function (error) {
+            element.disabled = false;
+            notify(error && error.message ? error.message : texts.actionError, 'error');
+        });
+    }
+
+    function closeActionMenu() {
+        root.querySelectorAll('[data-activity-action-menu]').forEach(function (menu) {
+            menu.classList.remove('is-open');
+            var rowShell = menu.closest('.omo-activity-row-shell');
+            if (rowShell) {
+                rowShell.classList.remove('is-menu-open');
+            }
+            var toggle = menu.querySelector('[data-activity-action-menu-toggle]');
+            var panel = menu.querySelector('[data-activity-action-menu-panel]');
+            if (toggle) {
+                toggle.setAttribute('aria-expanded', 'false');
+            }
+            if (panel) {
+                panel.hidden = true;
+            }
+        });
+    }
+
+    document.addEventListener('click', function (event) {
+        if (!event.target.closest('[data-activity-action-menu]')) {
+            closeActionMenu();
+        }
+    });
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') {
+            closeActionMenu();
+        }
+    });
+
+    function initializeViewFilter() {
+        var temporary = readStoredValue(window.sessionStorage, sessionViewsStorageKey);
+        var saved = typeof window.omoApplicationViewPreferencesCanUseLegacyPersonal === 'function'
+            && window.omoApplicationViewPreferencesCanUseLegacyPersonal(root)
+            ? readStoredValue(window.localStorage, savedViewsStorageKey)
+            : null;
+        var serverDefault = typeof window.omoApplicationViewPreferencesGetDefault === 'function'
+            ? window.omoApplicationViewPreferencesGetDefault(root)
+            : null;
+        var personalView = typeof window.omoApplicationViewPreferencesGetPersonal === 'function'
+            ? window.omoApplicationViewPreferencesGetPersonal(root)
+            : null;
+        var preferences = temporary || personalView || serverDefault || saved || {};
+        var preferredScope = normalizeScope(preferences.scope || currentScope);
+        var preferredAssignment = normalizeAssignment(preferences.assignment || currentAssignment);
+        currentState = normalizeState(preferences.state || 'all');
+        currentSearch = String(readStoredValue(window.sessionStorage, searchStorageKey) || '');
+        var search = root.querySelector('[data-activity-quick-search]');
+        if (search) {
+            search.value = currentSearch;
+        }
+        if (!root.querySelector('[data-activity-scope-option="' + preferredScope + '"]')) {
+            preferredScope = currentScope;
+        }
+        if (preferredScope !== currentScope || preferredAssignment !== currentAssignment) {
+            currentScope = preferredScope;
+            currentAssignment = preferredAssignment;
+            refreshRoot(buildFilterUrl(preferredScope, preferredAssignment));
+            return;
+        }
+        syncFilterChips();
+        applyListFilters();
+        root.removeAttribute('data-omo-view-filter-pending');
+        root.removeAttribute('aria-busy');
+    }
+
+    root.addEventListener('click', function (event) {
+        var actionMenuToggle = event.target.closest('[data-activity-action-menu-toggle]');
+        if (actionMenuToggle) {
+            event.preventDefault();
+            event.stopPropagation();
+            var actionMenu = actionMenuToggle.closest('[data-activity-action-menu]');
+            var shouldOpen = actionMenuToggle.getAttribute('aria-expanded') !== 'true';
+            closeActionMenu();
+            if (shouldOpen && actionMenu) {
+                actionMenu.classList.add('is-open');
+                var rowShell = actionMenu.closest('.omo-activity-row-shell');
+                if (rowShell) {
+                    rowShell.classList.add('is-menu-open');
+                }
+                actionMenuToggle.setAttribute('aria-expanded', 'true');
+                actionMenu.querySelector('[data-activity-action-menu-panel]').hidden = false;
+            }
+            return;
+        }
+        if (!event.target.closest('[data-activity-action-menu]')) {
+            closeActionMenu();
+        }
+        var closeButton = event.target.closest('[data-activity-close]');
+        if (closeButton) {
+            event.preventDefault();
+            if (/^activities-d\d+$/i.test(getCurrentRouteToken()) && typeof window.omoOpenDrawerHashState === 'function') {
+                window.omoOpenDrawerHashState('activities');
+                return;
+            }
+            closeDrawer(false);
+            return;
+        }
+        var cancelButton = event.target.closest('[data-activity-editor-cancel]');
+        if (cancelButton && !cancelButton.hasAttribute('data-activity-open-url')) {
+            event.preventDefault();
+            closeDrawer(false);
+            return;
+        }
+        var actionButton = event.target.closest('[data-activity-post-action]');
+        if (actionButton) {
+            event.preventDefault();
+            event.stopPropagation();
+            postAction(actionButton.getAttribute('data-activity-post-action'), actionButton.getAttribute('data-activity-id'), actionButton);
+            return;
+        }
+        var openButton = event.target.closest('[data-activity-open-url]');
+        if (openButton) {
+            event.preventDefault();
+            openDrawer(openButton.getAttribute('data-activity-open-url'));
+            return;
+        }
+        var filterToggle = event.target.closest('[data-activity-filter-toggle]');
+        if (filterToggle) {
+            event.preventDefault();
+            if (filterPanelOpen) {
+                closeFilterPanel(true, false);
+            } else {
+                openFilterPanel();
+            }
+            return;
+        }
+        var scopeOption = event.target.closest('[data-activity-scope-option]');
+        if (scopeOption && pendingFilters) {
+            pendingFilters.scope = normalizeScope(scopeOption.getAttribute('data-activity-scope-option'));
+            syncFilterChoices();
+            return;
+        }
+        var assignmentOption = event.target.closest('[data-activity-assignment-option]');
+        if (assignmentOption && pendingFilters) {
+            pendingFilters.assignment = normalizeAssignment(assignmentOption.getAttribute('data-activity-assignment-option'));
+            syncFilterChoices();
+            return;
+        }
+        var stateOption = event.target.closest('[data-activity-state-option]');
+        if (stateOption && pendingFilters) {
+            pendingFilters.state = normalizeState(stateOption.getAttribute('data-activity-state-option'));
+            syncFilterChoices();
+            return;
+        }
+        if (event.target.closest('[data-activity-filter-apply]')) {
+            event.preventDefault();
+            closeFilterPanel(true, false);
+            return;
+        }
+        if (event.target.closest('[data-activity-filter-save]')) {
+            event.preventDefault();
+            closeFilterPanel(true, true);
+            return;
+        }
+        if (event.target.closest('[data-activity-filter-restore]')) {
+            event.preventDefault();
+            closeFilterPanel(false, false);
+            clearStoredValue(window.localStorage, savedViewsStorageKey);
+            clearTemporaryFilters();
+            var serverDefault = typeof window.omoApplicationViewPreferencesGetDefault === 'function'
+                ? window.omoApplicationViewPreferencesGetDefault(root)
+                : null;
+            var nextScope = normalizeScope((serverDefault && serverDefault.scope) || currentScope);
+            var nextAssignment = normalizeAssignment((serverDefault && serverDefault.assignment) || 'all');
+            currentState = normalizeState((serverDefault && serverDefault.state) || 'all');
+            if (!root.querySelector('[data-activity-scope-option="' + nextScope + '"]')) {
+                nextScope = currentScope;
+            }
+            if (nextScope !== currentScope || nextAssignment !== currentAssignment) {
+                currentScope = nextScope;
+                currentAssignment = nextAssignment;
+                refreshRoot(buildFilterUrl(nextScope, nextAssignment));
+                return;
+            }
+            syncFilterChips();
+            applyListFilters();
+        }
+    });
+
+    root.addEventListener('change', function (event) {
+        if (event.target.matches('[data-activity-frequency]')) {
+            updateSchedule(event.target.closest('[data-activity-task-form]'));
+        }
+    });
+
+    root.addEventListener('input', function (event) {
+        if (!event.target.matches('[data-activity-quick-search]')) {
+            return;
+        }
+        currentSearch = event.target.value || '';
+        writeStoredValue(window.sessionStorage, searchStorageKey, currentSearch);
+        applyListFilters();
+    });
+
+    root.addEventListener('submit', function (event) {
+        var form = event.target.closest('[data-activity-form]');
+        if (!form) {
+            return;
+        }
+        event.preventDefault();
+        if (!form.reportValidity()) {
+            return;
+        }
+        syncHtmlEditors(form);
+        var feedback = form.querySelector('[data-activity-feedback]');
+        var formData = new FormData(form);
+        appendPvMeetingContext(formData);
+        var usesSharedPendingState = typeof window.omoBeginPendingAction === 'function';
+        var submitButton = form.querySelector('[type="submit"]');
+        if (usesSharedPendingState && !window.omoBeginPendingAction(form)) {
+            return;
+        }
+        if (!usesSharedPendingState && submitButton) {
+            submitButton.disabled = true;
+        }
+        fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin'
+        }).then(function (response) {
+            return response.json();
+        }).then(function (result) {
+            if (feedback) {
+                feedback.textContent = result.message || '';
+                feedback.classList.toggle('is-error', !result.status);
+            }
+            if (!result.status) {
+                notify(result.message || texts.actionError, 'error');
+                return;
+            }
+            if (result.status && result.detailUrl) {
+                rootNeedsRefresh = true;
+                openDrawer(result.detailUrl);
+            }
+        }).catch(function () {
+            if (feedback) {
+                feedback.textContent = texts.actionError;
+                feedback.classList.add('is-error');
+            }
+            notify(texts.actionError, 'error');
+        }).finally(function () {
+            if (usesSharedPendingState && typeof window.omoEndPendingAction === 'function') {
+                window.omoEndPendingAction(form);
+            } else if (submitButton) {
+                submitButton.disabled = false;
+            }
+        });
+    });
+
+    root.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && filterPanelOpen) {
+            closeFilterPanel(false, false);
+            return;
+        }
+        var row = event.target.closest('[data-activity-open-url]');
+        if (row && !event.target.closest('button, a, input, select, textarea') && (event.key === 'Enter' || event.key === ' ')) {
+            event.preventDefault();
+            openDrawer(row.getAttribute('data-activity-open-url'));
+        }
+    });
+
+    window.omoOpenActivityRoute = function (routeToken) {
+        if (!root.isConnected) {
+            return false;
+        }
+        var routeMatch = String(routeToken || '').replace(/^#/, '').trim().match(/^activities-d(\d+)$/i);
+        if (!routeMatch) {
+            return false;
+        }
+        initialOpenActivityId = Number(routeMatch[1]);
+        var detailUrl = buildDetailUrl(initialOpenActivityId);
+        if (!detailUrl) {
+            return false;
+        }
+        openDrawer(detailUrl);
+        return true;
+    };
+
+    function handleActivityRouteChange(event) {
+        var route = event && event.detail ? event.detail : {};
+        var activityId = Number(route.activityId || 0);
+        if (activityId > 0 && window.omoOpenActivityRoute('activities-d' + String(activityId))) {
+            return;
+        }
+        initialOpenActivityId = 0;
+        closeDrawer(false);
+    }
+
+    initializeViewFilter();
+    window.addEventListener('omo-activities-route-change', handleActivityRouteChange);
+    window.setTimeout(maybeOpenInitialActivity, 40);
+}(window, document));

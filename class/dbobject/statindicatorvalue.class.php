@@ -1,0 +1,94 @@
+<?php
+namespace dbObject;
+
+class StatIndicatorValue extends DbObject
+{
+    public static function tableName()
+    {
+        return 'stat_indicator_value';
+    }
+
+    public static function rules()
+    {
+        return [
+            [['IDstatindicator', 'value', 'measured_at'], 'required'],
+            [['id'], 'integer'],
+            [['IDstatindicator', 'IDuser'], 'fk'],
+            [['value'], 'float'],
+            [['measured_at', 'created_at', 'updated_at'], 'datetime'],
+            [['id'], 'safe'],
+        ];
+    }
+
+    public static function attributeLabels()
+    {
+        return [
+            'id' => 'ID',
+            'IDstatindicator' => 'Indicateur',
+            'IDuser' => 'Auteur',
+            'value' => 'Valeur',
+            'measured_at' => 'Date de la mesure',
+            'created_at' => 'Création',
+            'updated_at' => 'Mise à jour',
+        ];
+    }
+
+    public static function attributeDescriptions()
+    {
+        return [
+            'measured_at' => 'Date et heure auxquelles cette valeur a été constatée.',
+        ];
+    }
+
+    public static function getOrder()
+    {
+        return 'measured_at ASC, id ASC';
+    }
+
+    public static function handleUserDeparture($organizationId, $userId, $ghostUserId)
+    {
+        return self::execute("UPDATE stat_indicator_value v INNER JOIN stat_indicator i ON i.id = v.IDstatindicator SET v.IDuser = :ghost_user_id WHERE i.IDorganization = :organization_id AND v.IDuser = :user_id", array('ghost_user_id' => (int)$ghostUserId, 'organization_id' => (int)$organizationId, 'user_id' => (int)$userId));
+    }
+
+    public static function deleteForIndicator($indicatorId)
+    {
+        $indicatorId = (int)$indicatorId;
+        if ($indicatorId <= 0) {
+            return false;
+        }
+
+        return self::execute('DELETE FROM stat_indicator_value WHERE IDstatindicator = :indicator_id', [
+            'indicator_id' => $indicatorId,
+        ]);
+    }
+
+    public function save()
+    {
+        $now = new \DateTime();
+        if ((int)$this->getId() <= 0 && !($this->get('created_at') instanceof \DateTimeInterface)) {
+            $this->set('created_at', $now);
+        }
+        $this->set('updated_at', $now);
+        return parent::save();
+    }
+
+    public function getIndicator()
+    {
+        $indicator = new \dbObject\StatIndicator();
+        return $indicator->load((int)$this->get('IDstatindicator')) ? $indicator : null;
+    }
+
+    public function canView()
+    {
+        $indicator = $this->getIndicator();
+        return $indicator instanceof \dbObject\StatIndicator && $indicator->canView();
+    }
+
+    public function canEdit()
+    {
+        $indicator = $this->getIndicator();
+        return $indicator instanceof \dbObject\StatIndicator && $indicator->canEdit();
+    }
+}
+
+?>

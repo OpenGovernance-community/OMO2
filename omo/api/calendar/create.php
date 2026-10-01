@@ -1,12 +1,39 @@
 <?php
 require_once dirname(__DIR__) . '/bootstrap.php';
+require_once __DIR__ . '/invitations_shared.php';
+require_once __DIR__ . '/permissions_shared.php';
+require_once dirname(__DIR__, 3) . '/common/etherpad.php';
+require_once dirname(__DIR__, 3) . '/common/ethercalc.php';
+require_once dirname(__DIR__, 3) . '/common/notification_center.php';
+require_once dirname(__DIR__, 3) . '/common/external_calendar.php';
+require_once dirname(__DIR__, 3) . '/common/user_availability.php';
+require_once dirname(__DIR__, 3) . '/common/calendar/availability-grid.php';
 
 use dbObject\ArrayHolon;
+use dbObject\Document;
 use dbObject\Event;
 use dbObject\Holon;
 use dbObject\Organization;
+use dbObject\Project;
 
-$sourceLang = [
+$sourceLang = array_merge([
+    'calendar.availability.warning' => ['text' => 'Un point sur les disponibilites', 'context' => 'Heading of the event availability review.'],
+    'calendar.availability.waiting' => ['text' => 'Verification des disponibilites...', 'context' => 'Animated progress indicator while checking and refreshing invitee calendars.'],
+    'calendar.availability.waiting_hint' => ['text' => 'Les agendas sont actualisés si nécessaire.', 'context' => 'Explanation while refreshing calendars before saving an event.'],
+    'calendar.availability.conflict_label' => ['text' => 'Conflit', 'context' => 'Compact label after a warning icon at the beginning of a conflicting appointment row.'],
+    'calendar.availability.unknown' => ['text' => 'A verifier', 'context' => 'Label on an invitee whose availability could not be verified.'],
+    'calendar.availability.adjust' => ['text' => 'Modifier les horaires', 'context' => 'Return to the event schedule after reviewing availability.'],
+    'calendar.availability.conflict' => ['text' => '{name} - {context} : du {start} au {end}', 'context' => 'Conflicting appointment with its organization and circle or role, and full time range; no event title.'],
+    'calendar.availability.external' => ['text' => 'Agenda externe', 'context' => 'Generic source label for a conflicting external appointment.'],
+    'calendar.availability.omo' => ['text' => 'Agenda OMO', 'context' => 'Fallback source label when an appointment organization has no name.'],
+    'calendar.availability.email' => ['text' => '{name} : agenda non accessible pour cette invitation par e-mail.', 'context' => 'Availability cannot be checked for an email-only invitee.'],
+    'calendar.availability.cache' => ['text' => '{name} : l’agenda n’a pas pu être actualisé ou ne couvre pas cette période.', 'context' => 'Partial external calendar availability check after a refresh attempt.'],
+    'calendar.availability.detail.email' => ['text' => 'Cette invitation par e-mail ne donne pas accès à un agenda.', 'context' => 'Availability card for an email-only invitation.'],
+    'calendar.availability.detail.cache' => ['text' => 'L’agenda n’a pas pu être actualisé ou ne couvre pas cette période.', 'context' => 'Availability card when refreshing is unsuccessful or coverage is incomplete.'],
+    'calendar.availability.detail.storage' => ['text' => 'La verification est momentanement indisponible.', 'context' => 'Availability card when storage cannot be checked.'],
+    'calendar.availability.storage' => ['text' => '{name} : verification indisponible pour le moment.', 'context' => 'Availability storage failure; never imply the guest is free.'],
+    'calendar.availability.note' => ['text' => 'Vous pouvez ajuster les horaires ou conserver ce rendez-vous.', 'context' => 'Options after an availability warning.'],
+    'calendar.availability.confirm' => ['text' => 'Enregistrer quand meme', 'context' => 'Explicit override of an event availability warning.'],
     'calendar.create.title' => [
         'text' => 'Nouvel événement',
         'context' => 'Title shown at the top of the event creation form.',
@@ -16,11 +43,11 @@ $sourceLang = [
         'context' => 'Title shown at the top of the event edition form.',
     ],
     'calendar.create.description' => [
-        'text' => 'Planifiez une date, un horaire et un contexte de rattachement.',
+        'text' => 'Planifiez une date, un horaire, un lieu et un document associé, si besoin.',
         'context' => 'Intro text shown in the event creation form.',
     ],
     'calendar.edit.description' => [
-        'text' => "Mettez à jour la date, l'horaire et le contexte de rattachement.",
+        'text' => "Mettez à jour la date, l'horaire, le lieu et le document associé.",
         'context' => 'Intro text shown in the event edition form.',
     ],
     'calendar.create.field.title' => [
@@ -31,6 +58,22 @@ $sourceLang = [
         'text' => 'Description',
         'context' => 'Label of the event description field.',
     ],
+    'calendar.create.field.status' => [
+        'text' => 'Statut',
+        'context' => 'Label of the event visibility and planning status field.',
+    ],
+    'calendar.create.status.draft' => [
+        'text' => 'Brouillon',
+        'context' => 'Event status visible only to its creator.',
+    ],
+    'calendar.create.status.option' => [
+        'text' => 'Option',
+        'context' => 'Event status for a possible date that is not confirmed yet.',
+    ],
+    'calendar.create.status.confirmed' => [
+        'text' => 'Confirmé',
+        'context' => 'Event status for a confirmed date.',
+    ],
     'calendar.create.field.start' => [
         'text' => 'Début',
         'context' => 'Label of the event start date time field.',
@@ -40,8 +83,8 @@ $sourceLang = [
         'context' => 'Label of the event end date time field.',
     ],
     'calendar.create.field.holon' => [
-        'text' => 'Cercle ou rôle',
-        'context' => 'Label of the optional holon association field.',
+        'text' => 'Espace associé',
+        'context' => 'Label of the optional space association field.',
     ],
     'calendar.create.field.all_day' => [
         'text' => 'Journée entière',
@@ -51,13 +94,145 @@ $sourceLang = [
         'text' => 'Aucun rattachement',
         'context' => 'Empty option shown in the holon select field.',
     ],
+    'calendar.create.field.location_mode' => [
+        'text' => 'Format du lieu',
+        'context' => 'Label of the event location mode field.',
+    ],
+    'calendar.create.field.location_mode_pending' => [
+        'text' => 'À définir',
+        'context' => 'Fallback option when the event location is not specified yet.',
+    ],
+    'calendar.create.field.location_address' => [
+        'text' => 'Adresse',
+        'context' => 'Label of the physical address field.',
+    ],
+    'calendar.create.field.location_address_placeholder' => [
+        'text' => 'Rue, numéro, NPA, localité',
+        'context' => 'Placeholder shown in the physical address field.',
+    ],
+    'calendar.create.field.video_url' => [
+        'text' => 'Lien de visio',
+        'context' => 'Label of the virtual meeting URL field.',
+    ],
+    'calendar.create.field.video_url_placeholder' => [
+        'text' => 'https://...',
+        'context' => 'Placeholder shown in the virtual meeting URL field.',
+    ],
+    'calendar.create.field.document_type' => [
+        'text' => 'Document associé',
+        'context' => 'Label of the linked document type field.',
+    ],
+    'calendar.create.tab.event' => [
+        'text' => 'Événement',
+        'context' => 'First tab label in the event creation form.',
+    ],
+    'calendar.create.tab.invites' => [
+        'text' => 'Invités',
+        'context' => 'Second tab label in the event creation form for invitation settings.',
+    ],
+    'calendar.create.tab.availability' => ['text' => 'Disponibilités', 'context' => 'Third tab showing shared availability of event participants.'],
+    'calendar.create.preview.heading' => ['text' => 'Disponibilités communes', 'context' => 'Heading of the combined invitee calendar.'],
+    'calendar.create.preview.people_count' => ['one' => '{count} personne prise en compte', 'other' => '{count} personnes prises en compte', 'context' => 'Count of OMO people whose calendars are included in the combined preview.'],
+    'calendar.create.preview.organizer' => ['text' => 'Organisateur', 'context' => 'Role of the event owner in the people list above combined availability.'],
+    'calendar.create.preview.member' => ['text' => 'Membre', 'context' => 'Fallback label when a selected member has no display name.'],
+    'calendar.create.preview.filter_hint' => ['text' => 'Cochez les personnes à prendre en compte pour rechercher une date. Cela ne modifie pas les invitations.', 'context' => 'Local participant filters in the availability preview.'],
+    'calendar.create.preview.busy_names' => ['text' => 'Occupé: {names}', 'context' => 'Tooltip listing busy people in a half-hour slot.'],
+    'calendar.create.preview.day_availability' => ['text' => '{free} / {total} créneaux libres en commun', 'context' => 'Daily count of common free half-hours, excluding breaks and outside working hours.'],
+    'calendar.create.preview.occupation_scale' => ['text' => 'Plus disponible → Moins disponible', 'context' => 'Yellow-to-red gradient legend for common daily availability.'],
+    'calendar.create.preview.selected_count' => ['text' => '{selected} / {total} personnes prises en compte', 'context' => 'Number of checked people in the availability preview.'],
+    'calendar.create.preview.busy_count' => ['text' => '{busy} / {total} occupés', 'context' => 'Number of busy people in a half-hour slot.'],
+    'calendar.create.preview.no_people' => ['text' => 'Cochez au moins une personne pour afficher les disponibilités.', 'context' => 'Empty availability preview after excluding every person.'],
+    'calendar.create.preview.hint' => ['text' => 'Créneaux communs aux invités et à l’organisateur, selon leurs agendas OMO et externes.', 'context' => 'Explanation of the combined availability preview.'],
+    'calendar.create.preview.email_warning' => ['text' => 'Les invitations par e-mail ne peuvent pas être vérifiées.', 'context' => 'Caution when the preview includes guests without an OMO account.'],
+    'calendar.create.preview.cache_warning' => ['text' => 'Certains agendas externes ne sont pas à jour ou ne couvrent pas cette période.', 'context' => 'Caution when external calendar cache is incomplete.'],
+    'calendar.create.preview.error' => ['text' => 'Impossible de calculer les disponibilités pour le moment.', 'context' => 'Combined availability preview failure.'],
+    'calendar.create.preview.loading' => ['text' => 'Calcul des disponibilités…', 'context' => 'Loading state of the combined availability tab.'],
+    'calendar.create.preview.select_day' => ['text' => 'Choisissez un jour', 'context' => 'Prompt to choose a day in the invitee availability preview.'],
+    'calendar.create.preview.select_day_hint' => ['text' => 'Sélectionnez une date pour afficher les créneaux communs.', 'context' => 'Explanation before a day is selected.'],
+    'calendar.create.preview.no_hours' => ['text' => 'Aucun créneau commun pour cette journée.', 'context' => 'Combined availability when participants have no overlapping working hours.'],
+    'calendar.create.preview.free' => ['text' => 'Libre', 'context' => 'All participants are free.'],
+    'calendar.create.preview.partial' => ['text' => 'Partiellement occupé', 'context' => 'Some common slots are occupied.'],
+    'calendar.create.preview.full' => ['text' => 'Occupé', 'context' => 'All common slots are occupied.'],
+    'calendar.create.preview.closed' => ['text' => 'Indisponible', 'context' => 'No shared working hours.'],
+    'calendar.create.preview.busy' => ['text' => 'Occupé', 'context' => 'A half-hour slot is occupied.'],
+    'calendar.create.preview.pause' => ['text' => 'Pause', 'context' => 'A participant has a configured break.'],
+    'calendar.create.preview.previous_month' => ['text' => 'Mois précédent', 'context' => 'Navigate combined availability calendar backward.'],
+    'calendar.create.preview.next_month' => ['text' => 'Mois suivant', 'context' => 'Navigate combined availability calendar forward.'],
+    'calendar.create.preview.select_slot' => ['text' => 'Sélectionner ce créneau', 'context' => 'Accessible label for a free half-hour slot used to set event times.'],
+    'calendar.create.preview.selection_hint' => ['text' => 'Un clic sélectionne la durée de l’événement par créneaux de 30 minutes, vers l’avant ou vers l’arrière si nécessaire. Maj + clic permet d’ajuster la plage.', 'context' => 'Instructions for selecting event start and end from shared availability.'],
+    'calendar.create.preview.range_blocked' => ['text' => 'Aucune plage libre consécutive ne permet cette sélection sans traverser une pause ou un créneau occupé.', 'context' => 'Invalid duration or shift-click range in shared availability.'],
+    'calendar.create.preview.range_selected' => ['text' => 'Début et fin de l’événement mis à jour.', 'context' => 'Confirmation after choosing a time range from shared availability.'],
+    'calendar.create.tabs_aria' => [
+        'text' => "Configuration de l'événement",
+        'context' => 'Accessible label of the tabs used in the event creation form.',
+    ],
+    'calendar.create.field.document_title' => [
+        'text' => 'Nom du document',
+        'context' => 'Optional label of the linked document title field.',
+    ],
+    'calendar.create.field.document_template' => [
+        'text' => 'Modèle',
+        'context' => 'Label of the optional document template selector in event creation.',
+    ],
+    'calendar.create.field.document_template_none' => [
+        'text' => 'Document vide',
+        'context' => 'Empty option of the document template selector in event creation.',
+    ],
+    'calendar.create.field.document_template_hint' => [
+        'text' => 'Le contenu du modèle est copié dans le nouveau document. Pour un PV, les groupes et points sont copiés sans leurs auteurs ni leurs invités.',
+        'context' => 'Help text below the document template selector in event creation.',
+    ],
+    'calendar.create.document.help_create' => [
+        'text' => "Si vous choisissez un type, un document vide sera créé automatiquement avec le titre de l'événement, sa description et des tags par défaut. Vous pourrez ensuite le modifier depuis le module Documents.",
+        'context' => 'Help text shown when the user chooses a linked document type from the event form.',
+    ],
+    'calendar.create.document.help_existing' => [
+        'text' => 'Le document lié reste modifiable depuis le module Documents.',
+        'context' => 'Help text shown when an event already has a linked document.',
+    ],
+    'calendar.create.document.open' => [
+        'text' => 'Ouvrir le document',
+        'context' => 'Button label used to open the linked document from the event form.',
+    ],
+    'calendar.create.document.empty_title' => [
+        'text' => 'Document sans titre',
+        'context' => 'Fallback title shown when a linked document has no title yet.',
+    ],
+    'calendar.create.document.created_notice' => [
+        'text' => 'Le document sera créé vide avec ses métadonnées par défaut.',
+        'context' => 'Notice shown below the document type selector before creating the linked document.',
+    ],
+    'calendar.create.document.current' => [
+        'text' => 'Document actuel',
+        'context' => 'Label shown above the existing linked document summary.',
+    ],
+    'calendar.create.document.no_permission' => [
+        'text' => 'Vous ne disposez pas du droit de créer un document dans ce contexte.',
+        'context' => 'Notice shown when the current user can edit an event but cannot create a linked document in its context.',
+    ],
+    'calendar.create.document.keyword_pv' => [
+        'text' => 'PV',
+        'context' => 'Localized keyword used as the default tag for PV documents created from the calendar.',
+    ],
+    'calendar.create.document.default_pv_title' => [
+        'text' => '{pvLabel} {eventTitle} du {eventDate}',
+        'context' => 'Default linked PV document title generated when no custom title is provided.',
+    ],
+    'calendar.create.document.none' => [
+        'text' => 'Aucun document',
+        'context' => 'Option shown when no linked document should be created.',
+    ],
     'calendar.create.submit' => [
         'text' => "Créer l'événement",
         'context' => 'Submit button label of the event creation form.',
     ],
     'calendar.edit.submit' => [
-        'text' => 'Enregistrer les modifications',
+        'text' => 'Enregistrer',
         'context' => 'Submit button label of the event edition form.',
+    ],
+    'calendar.edit.cancel' => [
+        'text' => 'Annuler',
+        'context' => 'Button returning from the event edition form to the event detail without saving.',
     ],
     'calendar.create.success' => [
         'text' => 'Événement créé.',
@@ -79,15 +254,39 @@ $sourceLang = [
         'text' => 'La date de fin est invalide.',
         'context' => 'Validation error returned when the end date is invalid.',
     ],
+    'calendar.create.error.status' => [
+        'text' => 'Le statut choisi est invalide.',
+        'context' => 'Validation error returned when the event status is invalid.',
+    ],
     'calendar.create.error.holon' => [
         'text' => 'Le contexte choisi est invalide.',
         'context' => 'Validation error returned when the selected holon is not allowed.',
+    ],
+    'calendar.create.error.project' => [
+        'text' => 'Le projet associé est invalide ou inaccessible.',
+        'context' => 'Validation error returned when an event is created for an invalid project.',
+    ],
+    'calendar.create.error.duplicate' => [
+        'text' => "Impossible de préparer la duplication de cet événement.",
+        'context' => 'Validation error returned when an event duplication source cannot be used.',
+    ],
+    'calendar.create.error.document_type' => [
+        'text' => 'Le type de document associé est invalide.',
+        'context' => 'Validation error returned when the selected linked document type is invalid.',
+    ],
+    'calendar.create.error.document_permission' => [
+        'text' => 'Vous ne pouvez pas créer de document dans ce contexte.',
+        'context' => 'Validation error returned when the linked document cannot be created in the selected context.',
     ],
     'calendar.create.error.save' => [
         'text' => "Impossible d'enregistrer cet événement.",
         'context' => 'Generic error returned when the event could not be saved.',
     ],
-];
+    'calendar.edit.error.forbidden' => [
+        'text' => "Vous ne pouvez pas modifier cet événement.",
+        'context' => 'Error returned when the current user cannot edit the requested event.',
+    ],
+], omoCalendarInvitationSourceLang());
 
 $lang = omoLoadTranslationBundle('omo_calendar_create', $sourceLang);
 
@@ -119,10 +318,81 @@ function omoCalendarParseLocalDateTime($rawValue)
     }
 }
 
+function omoCalendarDocumentTypeOptions(bool $nextcloudDocumentsAvailable, bool $etherpadDocumentsAvailable = false, bool $ethercalcDocumentsAvailable = false, bool $pvDocumentsEnabled = true): array
+{
+    $options = [
+        '' => omoCalendarCreateT('calendar.create.document.none'),
+        Document::TYPE_HTML => (string)Document::getDocumentTypeCatalog()[Document::TYPE_HTML],
+        Document::TYPE_EXTERNAL_LINK => (string)Document::getDocumentTypeCatalog()[Document::TYPE_EXTERNAL_LINK],
+        Document::TYPE_ETHERPAD => (string)Document::getDocumentTypeCatalog()[Document::TYPE_ETHERPAD],
+        Document::TYPE_ETHERCALC => (string)Document::getDocumentTypeCatalog()[Document::TYPE_ETHERCALC],
+    ];
+
+    if ($pvDocumentsEnabled) {
+        $options[Document::TYPE_PV] = (string)Document::getDocumentTypeCatalog()[Document::TYPE_PV];
+    }
+
+    if ($nextcloudDocumentsAvailable) {
+        $options[Document::TYPE_UPLOADED_FILE] = (string)Document::getDocumentTypeCatalog()[Document::TYPE_UPLOADED_FILE];
+    }
+
+    if (!$etherpadDocumentsAvailable) {
+        unset($options[Document::TYPE_ETHERPAD]);
+    }
+
+    if (!$ethercalcDocumentsAvailable) {
+        unset($options[Document::TYPE_ETHERCALC]);
+    }
+
+    return $options;
+}
+
+function omoCalendarBuildDefaultLinkedDocumentValues(string $eventTitle, string $eventDescription, \DateTimeInterface $startAt, string $documentType, string $documentTitle = ''): array
+{
+    $normalizedEventTitle = trim($eventTitle);
+    $normalizedTitle = trim($documentTitle);
+
+    if ($normalizedTitle === '') {
+        if ($documentType === Document::TYPE_PV) {
+            $normalizedTitle = omoCalendarCreateT('calendar.create.document.default_pv_title', [
+                'pvLabel' => omoCalendarCreateT('calendar.create.document.keyword_pv'),
+                'eventTitle' => $normalizedEventTitle !== '' ? $normalizedEventTitle : 'Événement',
+                'eventDate' => $startAt->format('d.m.Y H:i'),
+            ]);
+        } elseif ($normalizedEventTitle !== '') {
+            $normalizedTitle = $normalizedEventTitle;
+        } else {
+            $normalizedTitle = 'Événement du ' . $startAt->format('d.m.Y H:i');
+        }
+    }
+
+    $description = trim($eventDescription);
+    if ($description === '') {
+        if ($normalizedEventTitle !== '') {
+            $description = "Document associé à l'événement \"" . $normalizedEventTitle . '\".';
+        } else {
+            $description = "Document associé à l'événement du " . $startAt->format('d.m.Y H:i') . '.';
+        }
+    }
+
+    $keywords = $documentType === Document::TYPE_PV
+        ? trim(omoCalendarCreateT('calendar.create.document.keyword_pv'))
+        : '';
+
+    return [
+        'title' => $normalizedTitle,
+        'description' => $description,
+        'keywords' => $keywords,
+    ];
+}
+
 $organizationId = (int)($_SESSION['currentOrganization'] ?? ($_REQUEST['oid'] ?? 0));
 $currentHolonId = isset($_REQUEST['cid']) && is_numeric($_REQUEST['cid']) ? (int)$_REQUEST['cid'] : 0;
 $currentUserId = (int)commonGetCurrentUserId();
 $eventId = isset($_REQUEST['id']) && is_numeric($_REQUEST['id']) ? (int)$_REQUEST['id'] : 0;
+$duplicateEventId = isset($_REQUEST['duplicate_id']) && is_numeric($_REQUEST['duplicate_id']) ? (int)$_REQUEST['duplicate_id'] : 0;
+$requestedProjectId = isset($_REQUEST['project_id']) && is_numeric($_REQUEST['project_id']) ? (int)$_REQUEST['project_id'] : 0;
+$editorHost = trim((string)($_REQUEST['editor_host'] ?? '')) === 'project' ? 'project' : 'calendar';
 
 if ($organizationId <= 0 || $currentUserId <= 0) {
     http_response_code(403);
@@ -130,10 +400,10 @@ if ($organizationId <= 0 || $currentUserId <= 0) {
         header('Content-Type: application/json; charset=UTF-8');
         echo json_encode([
             'status' => false,
-            'message' => 'Acces refuse.',
+            'message' => 'Accès refusé.',
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     } else {
-        echo '<div class="omo-empty-state">Acces refuse.</div>';
+        echo '<div class="omo-empty-state">Accès refusé.</div>';
     }
     exit;
 }
@@ -153,26 +423,82 @@ if (!$organization->load($organizationId) || !$organization->canViewDetail()) {
     exit;
 }
 
-$rootHolon = $organization->getEnabledStructuralRootHolon();
+$hasStructureApplication = $organization->isStructureApplicationEnabled($currentUserId);
+$rootHolon = $hasStructureApplication ? $organization->getEnabledStructuralRootHolon($currentUserId) : null;
+$nextcloudDocumentsAvailable = $organization->hasDocumentStorage();
+$pvDocumentsEnabled = $organization->isPvDocumentEnabled();
+$project = null;
+
+if ($requestedProjectId > 0) {
+    $candidateProject = new Project();
+    $candidateProjectHolon = null;
+    $projectIsValid = $candidateProject->load($requestedProjectId)
+        && (int)$candidateProject->get('IDorganization') === $organizationId
+        && (int)$candidateProject->get('active') === 1;
+
+    if ($projectIsValid) {
+        $candidateProjectHolon = $candidateProject->getHolon();
+        if ($candidateProjectHolon instanceof Holon) {
+            $projectIsValid = $rootHolon instanceof Holon
+                && $candidateProjectHolon->isDescendantOf((int)$rootHolon->getId(), true)
+                && $candidateProjectHolon->canViewDetail();
+        }
+    }
+
+    if (!$projectIsValid) {
+        http_response_code(403);
+        if (commonIsAjaxJsonRequest()) {
+            header('Content-Type: application/json; charset=UTF-8');
+            echo json_encode([
+                'status' => false,
+                'message' => omoCalendarCreateT('calendar.create.error.project'),
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        } else {
+            echo '<div class="omo-empty-state">' . omoApiEscape(omoCalendarCreateT('calendar.create.error.project')) . '</div>';
+        }
+        exit;
+    }
+
+    $project = $candidateProject;
+    $currentHolonId = $candidateProjectHolon instanceof Holon ? (int)$candidateProjectHolon->getId() : 0;
+}
+
+$etherpadDocumentsAvailable = omoEtherpadCanUseEditingSessions($organization);
+$ethercalcDocumentsAvailable = omoEthercalcHasConfig();
 
 $event = new Event();
 $isEditMode = false;
+$duplicateEvent = null;
 
 if ($eventId > 0) {
     if (
         !$event->load($eventId)
         || (int)$event->get('IDorganization') !== $organizationId
-        || (int)$event->get('IDuser') !== $currentUserId
+        || !$event->isDraftVisibleToViewer($currentUserId)
     ) {
         http_response_code(403);
         if (commonIsAjaxJsonRequest()) {
             header('Content-Type: application/json; charset=UTF-8');
             echo json_encode([
                 'status' => false,
-                'message' => 'Evenement invalide.',
+                'message' => 'Événement invalide.',
             ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         } else {
-            echo '<div class="omo-empty-state">Evenement invalide.</div>';
+            echo '<div class="omo-empty-state">Événement invalide.</div>';
+        }
+        exit;
+    }
+
+    if (!omoCalendarCanEditEvent($event, $organizationId, $currentUserId, $rootHolon, false)) {
+        http_response_code(403);
+        if (commonIsAjaxJsonRequest()) {
+            header('Content-Type: application/json; charset=UTF-8');
+            echo json_encode([
+                'status' => false,
+                'message' => omoCalendarCreateT('calendar.edit.error.forbidden'),
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        } else {
+            echo '<div class="omo-empty-state">' . omoApiEscape(omoCalendarCreateT('calendar.edit.error.forbidden')) . '</div>';
         }
         exit;
     }
@@ -180,14 +506,56 @@ if ($eventId > 0) {
     $isEditMode = true;
 }
 
+$isDuplicateMode = !$isEditMode && $duplicateEventId > 0;
+if ($isDuplicateMode) {
+    $candidateDuplicateEvent = new Event();
+    $duplicateIsValid = $candidateDuplicateEvent->load($duplicateEventId)
+        && (int)$candidateDuplicateEvent->get('IDorganization') === $organizationId
+        && (int)$candidateDuplicateEvent->get('active') === 1
+        && $candidateDuplicateEvent->isDraftVisibleToViewer($currentUserId);
+
+    if ($duplicateIsValid && $project instanceof Project) {
+        $duplicateIsValid = (int)$candidateDuplicateEvent->get('IDproject') === (int)$project->getId();
+    }
+
+    if (!$duplicateIsValid) {
+        http_response_code(403);
+        if (commonIsAjaxJsonRequest()) {
+            header('Content-Type: application/json; charset=UTF-8');
+            echo json_encode([
+                'status' => false,
+                'message' => omoCalendarCreateT('calendar.create.error.duplicate'),
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        } else {
+            echo '<div class="omo-empty-state">' . omoApiEscape(omoCalendarCreateT('calendar.create.error.duplicate')) . '</div>';
+        }
+        exit;
+    }
+
+    $duplicateEvent = $candidateDuplicateEvent;
+}
+
+$associatedDocument = $isEditMode ? $event->getAssociatedDocument() : null;
+
 $holons = new ArrayHolon();
-$holons->loadVisibilityTargetsForOrganization($organizationId, [2, 1]);
-$holonOptions = $holons->buildVisibilityTargetOptions();
+$holonOptions = [];
+if ($hasStructureApplication) {
+    $holons->loadVisibilityTargetsForOrganization($organizationId, [2, 1]);
+    $holonOptions = $holons->buildVisibilityTargetOptions();
+}
 $allowedHolonIds = [];
+$holonContextPaths = [];
 
 foreach (['circle', 'role'] as $typeKey) {
     foreach (($holonOptions[$typeKey] ?? []) as $option) {
-        $allowedHolonIds[(int)($option['id'] ?? 0)] = $option;
+        $holonId = (int)($option['id'] ?? 0);
+        $allowedHolonIds[$holonId] = $option;
+        $holon = new Holon();
+        if ($holonId > 0 && $holon->load($holonId)) {
+            $holonContextPaths[$holonId] = implode(',', array_map(static function ($pathHolon): int {
+                return (int)$pathHolon->getId();
+            }, $holon->getPathHolons(true)));
+        }
     }
 }
 
@@ -214,11 +582,142 @@ if (!$isEditMode && !$canCreateEvent) {
         header('Content-Type: application/json; charset=UTF-8');
         echo json_encode([
             'status' => false,
-            'message' => 'Acces refuse.',
+            'message' => 'Accès refusé.',
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     } else {
-        echo '<div class="omo-empty-state">Acces refuse.</div>';
+        echo '<div class="omo-empty-state">Accès refusé.</div>';
     }
+    exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['availability_preview'])) {
+    header('Content-Type: text/html; charset=UTF-8');
+    if (strcasecmp((string)($_SERVER['HTTP_X_REQUESTED_WITH'] ?? ''), 'XMLHttpRequest') !== 0) {
+        http_response_code(403);
+        exit;
+    }
+    $selectedHolons = is_array($_POST['invitation_holon_ids'] ?? null) ? $_POST['invitation_holon_ids'] : [];
+    $selectedUsers = is_array($_POST['invitation_user_ids'] ?? null) ? $_POST['invitation_user_ids'] : [];
+    $selectedEmails = is_string($_POST['invitation_emails'] ?? null) ? $_POST['invitation_emails'] : '';
+    $selection = omoCalendarPrepareInvitationSelections($organization, $organizationId, $selectedHolons, $selectedUsers, $selectedEmails);
+    if (!$selection['status']) {
+        http_response_code(422);
+        echo '<div class="omo-calendar-create__preview-feedback is-error">' . omoApiEscape((string)$selection['message']) . '</div>';
+        exit;
+    }
+
+    $zone = new DateTimeZone('Europe/Zurich');
+    $today = new DateTimeImmutable('today', $zone);
+    $monthValue = trim((string)($_POST['month'] ?? $today->format('Y-m')));
+    $month = DateTimeImmutable::createFromFormat('!Y-m-d', $monthValue . '-01', $zone);
+    if (!$month || $month->format('Y-m') !== $monthValue) {
+        $month = $today->modify('first day of this month');
+    }
+    $selectedValue = trim((string)($_POST['date'] ?? ''));
+    $selectedDay = $selectedValue !== '' ? DateTimeImmutable::createFromFormat('!Y-m-d', $selectedValue, $zone) : null;
+    if (!$selectedDay || $selectedDay->format('Y-m-d') !== $selectedValue || $selectedDay->format('Y-m') !== $month->format('Y-m')) {
+        $selectedDay = null;
+    }
+
+    $previewEvent = $isEditMode ? $event : new Event();
+    $previewEvent->set('IDorganization', $organizationId);
+    if (!$isEditMode) {
+        $previewEvent->set('IDuser', $currentUserId);
+    }
+    $previewHolonId = (int)($_POST['IDholon'] ?? 0);
+    $previewEvent->set('IDholon', $previewHolonId > 0 && isset($allowedHolonIds[$previewHolonId]) ? $previewHolonId : null);
+    $proposedInvitations = [];
+    foreach ($selection['invitations'] as $values) {
+        $invitation = new \dbObject\EventInvitation();
+        foreach ($values as $field => $value) {
+            $invitation->set($field, $value);
+        }
+        $invitation->set('active', 1);
+        $invitation->set('status', \dbObject\EventInvitation::STATUS_INVITED);
+        $proposedInvitations[] = $invitation;
+    }
+    $targets = $previewEvent->getEffectiveInvitationTargets($organizationId, $proposedInvitations);
+    $userIds = array_values(array_unique(array_filter(array_merge($targets['userIds'], [(int)$previewEvent->get('IDuser')]))));
+    $rangeStart = $month->setTime(0, 0);
+    $rangeEnd = $month->modify('+1 month')->setTime(0, 0);
+    $participants = [];
+    $participantNames = [];
+    $participantData = [];
+    $incomplete = false;
+    $refreshDeadline = microtime(true) + 18;
+    try {
+        foreach ($userIds as $userId) {
+            $participantUser = new \dbObject\User();
+            $participantNames[$userId] = $participantUser->load((int)$userId)
+                ? trim((string)$participantUser->getScopedDisplayName($organizationId))
+                : '';
+            if ($participantNames[$userId] === '') {
+                $participantNames[$userId] = omoCalendarCreateT('calendar.create.preview.member');
+            }
+            commonExternalCalendarRefreshForAvailability((int)$userId, $refreshDeadline);
+            $hours = \dbObject\MeetingProfile::isStorageAvailable()
+                ? \dbObject\MeetingProfile::forUser((int)$userId)->hours()
+                : \dbObject\MeetingProfile::defaultHours();
+            $calendarIncomplete = false;
+            $busy = commonUserAvailabilityLoadBusyIntervals((int)$userId, $rangeStart, $rangeEnd, $calendarIncomplete, $isEditMode ? $eventId : 0);
+            $incomplete = $incomplete || $calendarIncomplete;
+            $participants[] = ['hours' => $hours, 'busy' => $busy];
+            $personDays = [];
+            for ($personDay = $rangeStart; $personDay < $rangeEnd; $personDay = $personDay->modify('+1 day')) {
+                $personDays[$personDay->format('Y-m-d')] = commonUserAvailabilityEncodeDay(commonUserAvailabilityBuildDay($personDay, $hours, $busy));
+            }
+            $participantData[] = ['id' => (string)$userId, 'name' => $participantNames[$userId], 'days' => $personDays, 'incomplete' => $calendarIncomplete];
+        }
+    } catch (Throwable $exception) {
+        error_log('Combined calendar availability preview failed: ' . get_class($exception));
+        http_response_code(503);
+        echo '<div class="omo-calendar-create__preview-feedback is-error">' . omoApiEscape(omoCalendarCreateT('calendar.create.preview.error')) . '</div>';
+        exit;
+    }
+
+    $days = [];
+    $dateLabels = [];
+    for ($day = $rangeStart; $day < $rangeEnd; $day = $day->modify('+1 day')) {
+        $days[$day->format('Y-m-d')] = commonUserAvailabilityBuildCombinedDay($day, $participants);
+        $dateLabels[$day->format('Y-m-d')] = commonUserAvailabilityFormatDate($day, true);
+    }
+    $labelKeys = ['heading', 'previous_month', 'next_month', 'free', 'partial', 'full', 'closed', 'select_day', 'select_day_hint', 'no_hours', 'pause', 'busy', 'select_slot', 'selection_hint', 'range_blocked', 'range_selected', 'selected_count', 'busy_count', 'busy_names', 'no_people', 'day_availability', 'occupation_scale'];
+    $labels = [];
+    foreach ($labelKeys as $key) {
+        $labels[$key] = omoCalendarCreateT('calendar.create.preview.' . $key);
+    }
+    $labels['available'] = $labels['free'];
+    ?>
+    <div class="omo-calendar-create__preview-people" aria-label="<?= omoApiEscape(omoCalendarCreateT('calendar.create.preview.people_count', ['count' => (string)count($userIds)])) ?>">
+        <div class="generic-heading-with-help">
+            <strong data-omo-calendar-preview-people-count><?= omoApiEscape(omoCalendarCreateT('calendar.create.preview.people_count', ['count' => (string)count($userIds)])) ?></strong>
+            <details class="generic-context-help generic-context-help--compact" data-generic-context-help-hover>
+                <summary aria-label="<?= omoApiEscape(omoCalendarCreateT('calendar.create.preview.filter_hint')) ?>">?</summary>
+                <div class="generic-context-help__content"><?= omoApiEscape(omoCalendarCreateT('calendar.create.preview.filter_hint')) ?></div>
+            </details>
+        </div>
+        <ul>
+            <?php foreach ($participantNames as $userId => $name): ?>
+                <li><label><input type="checkbox" data-omo-calendar-preview-person="<?= (int)$userId ?>" checked> <?= omoApiEscape($name) ?><?php if ((int)$userId === (int)$previewEvent->get('IDuser')): ?> <span><?= omoApiEscape(omoCalendarCreateT('calendar.create.preview.organizer')) ?></span><?php endif; ?></label></li>
+            <?php endforeach; ?>
+        </ul>
+    </div>
+    <?php
+    if ($targets['emails']) {
+        echo '<p class="omo-calendar-create__preview-warning">' . omoApiEscape(omoCalendarCreateT('calendar.create.preview.email_warning')) . '</p>';
+    }
+    echo '<p class="omo-calendar-create__preview-warning" data-omo-calendar-preview-cache-warning' . ($incomplete ? '' : ' hidden') . '>' . omoApiEscape(omoCalendarCreateT('calendar.create.preview.cache_warning')) . '</p>';
+    $makeControlValue = static function (DateTimeImmutable $targetMonth, ?DateTimeImmutable $targetDay = null): string {
+        return 'month=' . rawurlencode($targetMonth->format('Y-m'))
+            . ($targetDay ? '&date=' . rawurlencode($targetDay->format('Y-m-d')) : '');
+    };
+    commonCalendarRenderAvailabilityGrid($month, $selectedDay, $days, $labels, 'data-omo-calendar-preview-target', $makeControlValue, '', true);
+    ?>
+    <p class="generic-description generic-description--small"><?= omoApiEscape(omoCalendarCreateT('calendar.create.preview.hint')) ?></p>
+    <script type="application/json" data-omo-calendar-preview-data><?= json_encode([
+        'month' => $month->format('Y-m'), 'people' => $participantData, 'dates' => $dateLabels, 'labels' => $labels,
+    ], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR) ?></script>
+    <?php
     exit;
 }
 
@@ -236,20 +735,149 @@ if ($isEditMode) {
     }
 }
 
+$documentTemplatesPayload = [];
+if (!$isEditMode || !($associatedDocument instanceof Document)) {
+    $documentTemplates = new \dbObject\ArrayDocument();
+    $documentTemplates->loadDocumentTemplatesForOrganization($organizationId);
+    foreach ($documentTemplates as $documentTemplate) {
+        if (!($documentTemplate instanceof Document) || (int)$documentTemplate->getId() <= 0) {
+            continue;
+        }
+
+        $visibilityRule = $documentTemplate->getPrimaryVisibilityRuleRow();
+        $visibilityType = \dbObject\ObjectVisibility::normalizeVisibilityType(
+            (string)($visibilityRule['visibility_type'] ?? \dbObject\ObjectVisibility::TYPE_ORGANIZATION)
+        );
+        if (!in_array($visibilityType, [
+            \dbObject\ObjectVisibility::TYPE_EVERYONE,
+            \dbObject\ObjectVisibility::TYPE_ORGANIZATION,
+            \dbObject\ObjectVisibility::TYPE_CIRCLE,
+            \dbObject\ObjectVisibility::TYPE_ROLE,
+        ], true)) {
+            continue;
+        }
+
+        $templateLabel = trim((string)$documentTemplate->get('title'));
+        $templateParent = $documentTemplate->getParentDocument();
+        if ($templateParent instanceof Document && trim((string)$templateParent->get('title')) !== '') {
+            $templateLabel = trim((string)$templateParent->get('title')) . ' / ' . $templateLabel;
+        }
+        $documentTemplatesPayload[] = [
+            'id' => (int)$documentTemplate->getId(),
+            'label' => $templateLabel !== '' ? $templateLabel : ('Document #' . (int)$documentTemplate->getId()),
+            'documentType' => $documentTemplate->getDocumentType(),
+            'visibilityType' => $visibilityType,
+            'targetHolonId' => (int)($visibilityRule['IDholon'] ?? 0),
+            'groupKey' => (int)$documentTemplate->get('IDholon') > 0
+                ? 'holon-' . (int)$documentTemplate->get('IDholon')
+                : 'organization',
+            'groupLabel' => $documentTemplate->getTemplateGroupLabel(),
+        ];
+    }
+}
+$documentTemplateGroups = [];
+foreach ($documentTemplatesPayload as $documentTemplateOption) {
+    $groupKey = (string)($documentTemplateOption['groupKey'] ?? 'organization');
+    if (!isset($documentTemplateGroups[$groupKey])) {
+        $documentTemplateGroups[$groupKey] = [
+            'label' => trim((string)($documentTemplateOption['groupLabel'] ?? '')),
+            'templates' => [],
+        ];
+    }
+    $documentTemplateGroups[$groupKey]['templates'][] = $documentTemplateOption;
+}
+uasort($documentTemplateGroups, static function (array $left, array $right): int {
+    return strnatcasecmp((string)$left['label'], (string)$right['label']);
+});
+foreach ($documentTemplateGroups as &$documentTemplateGroup) {
+    usort($documentTemplateGroup['templates'], static function (array $left, array $right): int {
+        return strnatcasecmp((string)$left['label'], (string)$right['label']);
+    });
+}
+unset($documentTemplateGroup);
+
+$prefillEvent = $isEditMode ? $event : $duplicateEvent;
+$defaultInvitationHolonId = $project instanceof Project ? 0 : $defaultHolonId;
+$defaultInvitationUserId = !$isEditMode && $project instanceof Project ? (int)$project->get('IDuser') : 0;
+$invitationEditorState = omoCalendarBuildInvitationEditorState(
+    $prefillEvent,
+    $organization,
+    $organizationId,
+    $currentContextHolon,
+    $defaultHolonId > 0 ? $defaultHolonId : $currentHolonId,
+    $defaultInvitationHolonId,
+    true,
+    $defaultInvitationUserId
+);
+
+$documentCreationHolonId = $defaultHolonId > 0
+    ? $defaultHolonId
+    : ($currentHolonId > 0 && isset($allowedHolonIds[$currentHolonId]) ? $currentHolonId : 0);
+$canCreateLinkedDocument = Document::canCreateInOrganizationContext(
+    $organizationId,
+    $documentCreationHolonId > 0 ? $documentCreationHolonId : null,
+    $currentUserId,
+    0,
+    false
+);
+$editableEventStatuses = [
+    Event::STATUS_DRAFT => omoCalendarCreateT('calendar.create.status.draft'),
+    Event::STATUS_OPTION => omoCalendarCreateT('calendar.create.status.option'),
+    Event::STATUS_CONFIRMED => omoCalendarCreateT('calendar.create.status.confirmed'),
+];
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Content-Type: application/json; charset=UTF-8');
 
+    $previousLocation = $isEditMode ? [
+        'mode' => trim((string)$event->get('locationmode')),
+        'address' => trim((string)$event->get('locationaddress')),
+        'video' => trim((string)$event->get('videomeetingurl')),
+    ] : null;
+    $previousSchedule = $isEditMode ? [
+        'start' => $event->get('start_at') instanceof \DateTimeInterface ? $event->get('start_at')->format('Y-m-d H:i:s') : '',
+        'end' => $event->get('end_at') instanceof \DateTimeInterface ? $event->get('end_at')->format('Y-m-d H:i:s') : '',
+        'allDay' => !empty($event->get('is_all_day')) ? 1 : 0,
+    ] : null;
+
     $title = trim((string)($_POST['title'] ?? ''));
     $description = trim((string)($_POST['description'] ?? ''));
-    $selectedHolonId = isset($_POST['IDholon']) ? (int)$_POST['IDholon'] : 0;
+    $status = trim((string)($_POST['status'] ?? Event::STATUS_CONFIRMED));
+    $selectedHolonId = $hasStructureApplication && isset($_POST['IDholon']) ? (int)$_POST['IDholon'] : 0;
+    if ($project instanceof Project) {
+        $projectHolon = $project->getHolon();
+        $selectedHolonId = $projectHolon instanceof Holon ? (int)$projectHolon->getId() : 0;
+    }
     $startAt = omoCalendarParseLocalDateTime($_POST['start_at'] ?? '');
     $endAt = omoCalendarParseLocalDateTime($_POST['end_at'] ?? '');
     $isAllDay = !empty($_POST['is_all_day']);
+    $locationMode = Event::normalizeLocationMode($_POST['location_mode'] ?? '');
+    $locationAddress = trim((string)($_POST['location_address'] ?? ''));
+    $videoMeetingUrl = Event::sanitizeVideoMeetingUrl($_POST['video_meeting_url'] ?? '');
+
+    $requestedDocumentType = trim((string)($_POST['document_type'] ?? ''));
+    $documentTitle = trim((string)($_POST['document_title'] ?? ''));
+    $documentTemplateId = isset($_POST['document_template_id']) ? max(0, (int)$_POST['document_template_id']) : 0;
+    $selectedInvitationHolonIds = $hasStructureApplication ? array_values(array_unique(array_filter(array_map('intval', $_POST['invitation_holon_ids'] ?? []), static function ($holonId) {
+        return $holonId > 0;
+    }))) : [];
+    $selectedInvitationUserIds = array_values(array_unique(array_filter(array_map('intval', $_POST['invitation_user_ids'] ?? []), static function ($userId) {
+        return $userId > 0;
+    })));
+    $selectedInvitationEmails = omoCalendarInvitationParseEmails($_POST['invitation_emails'] ?? '');
 
     if ($title === '') {
         echo json_encode([
             'status' => false,
             'message' => omoCalendarCreateT('calendar.create.error.title'),
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
+    if (!array_key_exists($status, $editableEventStatuses)) {
+        echo json_encode([
+            'status' => false,
+            'message' => omoCalendarCreateT('calendar.create.error.status'),
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         exit;
     }
@@ -282,6 +910,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
+    if ($isEditMode) {
+        $targetEditPermissionHolon = $rootHolon;
+        if ($selectedHolonId > 0) {
+            $targetEditPermissionHolon = new Holon();
+            if (!$targetEditPermissionHolon->load($selectedHolonId)) {
+                $targetEditPermissionHolon = null;
+            }
+        }
+
+        if (
+            !($targetEditPermissionHolon instanceof Holon)
+            || !omoCalendarCanUseEditEventPermission($targetEditPermissionHolon, $organizationId, $currentUserId, false)
+        ) {
+            http_response_code(403);
+            echo json_encode([
+                'status' => false,
+                'message' => omoCalendarCreateT('calendar.edit.error.forbidden'),
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            exit;
+        }
+    }
+
     if (!$isEditMode) {
         $targetPermissionHolon = $rootHolon instanceof Holon ? $rootHolon : null;
         if ($selectedHolonId > 0) {
@@ -302,7 +952,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             http_response_code(403);
             echo json_encode([
                 'status' => false,
-                'message' => 'Acces refuse.',
+                'message' => 'Accès refusé.',
             ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             exit;
         }
@@ -313,6 +963,59 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $endAt = (clone $endAt)->setTime(23, 59, 59);
     }
 
+    $linkedDocument = $associatedDocument instanceof Document ? $associatedDocument : null;
+    $resolvedDocumentType = '';
+    $willCreateDocument = false;
+
+    if ($linkedDocument instanceof Document) {
+        $resolvedDocumentType = $linkedDocument->getDocumentType();
+    } elseif ($requestedDocumentType !== '') {
+        $documentOptions = omoCalendarDocumentTypeOptions($nextcloudDocumentsAvailable, $etherpadDocumentsAvailable, $ethercalcDocumentsAvailable, $pvDocumentsEnabled);
+        if (!array_key_exists($requestedDocumentType, $documentOptions)) {
+            echo json_encode([
+                'status' => false,
+                'message' => omoCalendarCreateT('calendar.create.error.document_type'),
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            exit;
+        }
+
+        $resolvedDocumentType = Document::normalizeDocumentType($requestedDocumentType, false);
+        $willCreateDocument = $resolvedDocumentType !== '';
+        if (
+            $willCreateDocument
+            && !Document::canCreateInOrganizationContext(
+                $organizationId,
+                $selectedHolonId > 0 ? $selectedHolonId : null,
+                $currentUserId,
+                0,
+                false
+            )
+        ) {
+            http_response_code(403);
+            echo json_encode([
+                'status' => false,
+                'message' => omoCalendarCreateT('calendar.create.error.document_permission'),
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            exit;
+        }
+    }
+
+    $selectedDocumentTemplate = null;
+    if ($willCreateDocument && $documentTemplateId > 0) {
+        $selectedDocumentTemplate = new Document();
+        if (
+            !$selectedDocumentTemplate->load($documentTemplateId)
+            || $selectedDocumentTemplate->getDocumentType() !== $resolvedDocumentType
+            || !$selectedDocumentTemplate->canUseAsDocumentTemplateInOrganizationContext($organizationId, $selectedHolonId > 0 ? $selectedHolonId : null)
+        ) {
+            echo json_encode([
+                'status' => false,
+                'message' => 'Modèle de document invalide ou inaccessible.',
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            exit;
+        }
+    }
+
     if (!$isEditMode) {
         $event = new Event();
         $event->set('IDuser', $currentUserId);
@@ -321,29 +1024,268 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $event->set('IDorganization', $organizationId);
     $event->set('IDholon', $selectedHolonId > 0 ? $selectedHolonId : null);
+    if ($project instanceof Project) {
+        $event->set('IDproject', (int)$project->getId());
+    }
     $event->set('title', $title);
     $event->set('description', $description !== '' ? $description : null);
-    $event->set('status', Event::STATUS_CONFIRMED);
+    $event->set('status', $status);
     $event->set('timezone', date_default_timezone_get());
+    $event->set('locationmode', $locationMode !== '' ? $locationMode : null);
+    $event->set('locationaddress', $locationAddress !== '' ? $locationAddress : null);
+    $event->set('videomeetingurl', $videoMeetingUrl !== '' ? $videoMeetingUrl : null);
     $event->set('start_at', $startAt);
     $event->set('end_at', $endAt);
     $event->set('is_all_day', $isAllDay ? 1 : 0);
 
-    $saveResult = $event->save();
-    if (!is_array($saveResult) || empty($saveResult['status'])) {
+    // Validate participants before refreshing calendars or creating any event/document.
+    $selection = omoCalendarPrepareInvitationSelections($organization, $organizationId, $selectedInvitationHolonIds, $selectedInvitationUserIds, $selectedInvitationEmails);
+    if (!$selection['status']) {
+        echo json_encode($selection, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+    $proposedInvitations = [];
+    foreach ($selection['invitations'] as $values) {
+        $invitation = new \dbObject\EventInvitation();
+        foreach ($values as $field => $value) { $invitation->set($field, $value); }
+        $invitation->set('active', 1);
+        $invitation->set('status', \dbObject\EventInvitation::STATUS_INVITED);
+        $proposedInvitations[] = $invitation;
+    }
+    $refreshDeadline = microtime(true) + 18;
+    // An explicit override rechecks conflicts but does not retry an unreachable server.
+    $refreshCalendars = empty($_POST['availability_ack'])
+        ? static fn(int $userId) => commonExternalCalendarRefreshForAvailability($userId, $refreshDeadline)
+        : null;
+    $availability = $event->checkInvitationAvailability($proposedInvitations, $refreshCalendars);
+    if ($availability['conflicts'] || $availability['unverified']) {
+        // Bind acknowledgement to this session, schedule, participants and current conflicts.
+        $_SESSION['calendar_availability_secret'] ??= bin2hex(random_bytes(32));
+        $acknowledgement = hash_hmac('sha256', json_encode([
+            $organizationId, $event->getId(), $event->get('IDuser'), $selectedHolonId,
+            $startAt->format('c'), $endAt->format('c'), $isAllDay, $selection['invitations'], $availability,
+        ]), $_SESSION['calendar_availability_secret']);
+        if (!hash_equals($acknowledgement, (string)($_POST['availability_ack'] ?? ''))) {
+            $messages = [];
+            $items = [];
+            foreach ($availability['conflicts'] as $conflict) {
+                $conflict['context'] = $conflict['source'] === 'external'
+                    ? omoCalendarCreateT('calendar.availability.external')
+                    : (implode(' - ', array_filter([$conflict['organization'], $conflict['holon']], static fn($label) => trim($label) !== ''))
+                        ?: omoCalendarCreateT('calendar.availability.omo'));
+                $items[] = $conflict + ['kind' => 'conflict', 'label' => omoCalendarCreateT('calendar.availability.conflict_label')];
+                $conflict['start'] = (new \DateTimeImmutable($conflict['start']))->format('d.m.Y H:i');
+                $conflict['end'] = (new \DateTimeImmutable($conflict['end']))->format('d.m.Y H:i');
+                $messages[] = omoCalendarCreateT('calendar.availability.conflict', $conflict);
+            }
+            foreach ($availability['unverified'] as $unknown) {
+                $messages[] = omoCalendarCreateT('calendar.availability.' . $unknown['reason'], ['name' => $unknown['name']]);
+                $items[] = ['name' => $unknown['name'], 'kind' => 'unknown',
+                    'label' => omoCalendarCreateT('calendar.availability.unknown'),
+                    'detail' => omoCalendarCreateT('calendar.availability.detail.' . $unknown['reason'])];
+            }
+            echo json_encode(['status' => false, 'message' => omoCalendarCreateT('calendar.availability.warning'),
+                'availability' => ['items' => $items, 'messages' => $messages, 'acknowledgement' => $acknowledgement]], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            exit;
+        }
+    }
+
+    $pdo = \dbObject\DbObject::getPdo();
+    $startedTransaction = $pdo instanceof \PDO && !$pdo->inTransaction();
+    $createdEtherpadPadId = '';
+    $cleanupCreatedEtherpadPad = static function () use ($organization, &$createdEtherpadPadId): void {
+        if ($createdEtherpadPadId === '') {
+            return;
+        }
+
+        omoEtherpadDeleteDocumentPad($organization, $createdEtherpadPadId);
+        $createdEtherpadPadId = '';
+    };
+
+    try {
+        if ($startedTransaction) {
+            $pdo->beginTransaction();
+        }
+
+        $saveResult = $event->save();
+        if (!is_array($saveResult) || empty($saveResult['status'])) {
+            if ($startedTransaction && $pdo instanceof \PDO && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+
+            echo json_encode([
+                'status' => false,
+                'message' => trim((string)($saveResult['text'] ?? '')) !== ''
+                    ? trim((string)$saveResult['text'])
+                    : omoCalendarCreateT('calendar.create.error.save'),
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            exit;
+        }
+
+        if ($willCreateDocument) {
+            $linkedDocument = new Document();
+            $defaultDocumentValues = omoCalendarBuildDefaultLinkedDocumentValues(
+                $title,
+                $description,
+                $startAt,
+                $resolvedDocumentType,
+                $documentTitle
+            );
+            $documentValues = [
+                    'title' => $defaultDocumentValues['title'],
+                    'description' => $defaultDocumentValues['description'],
+                    'keywords' => $defaultDocumentValues['keywords'],
+                    'document_type' => $resolvedDocumentType,
+                    'event_id' => (int)$event->getId(),
+                    'allow_empty_type_payload' => 1,
+                ];
+            $documentCreateResult = $selectedDocumentTemplate instanceof Document
+                ? $linkedDocument->createFromDocumentTemplateInOrganizationContext(
+                    $selectedDocumentTemplate,
+                    $organizationId,
+                    $selectedHolonId > 0 ? $selectedHolonId : null,
+                    $currentUserId,
+                    $documentValues
+                )
+                : $linkedDocument->createInOrganizationContext(
+                    $organizationId,
+                    $selectedHolonId > 0 ? $selectedHolonId : null,
+                    $currentUserId,
+                    $documentValues
+                );
+            if (!is_array($documentCreateResult) || empty($documentCreateResult['status'])) {
+                if ($startedTransaction && $pdo instanceof \PDO && $pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+
+                echo json_encode([
+                    'status' => false,
+                    'message' => trim((string)($documentCreateResult['text'] ?? '')) !== ''
+                        ? trim((string)$documentCreateResult['text'])
+                        : omoCalendarCreateT('calendar.create.error.save'),
+                    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                exit;
+            }
+            if ($linkedDocument->isEtherpadDocument()) {
+                $createdEtherpadPadId = trim((string)($documentCreateResult['etherpadPadId'] ?? $linkedDocument->getEtherpadPadId()));
+            }
+            $syncDocumentDateResult = $event->syncAssociatedDocumentEventDate();
+            if (!is_array($syncDocumentDateResult) || empty($syncDocumentDateResult['status'])) {
+                if ($startedTransaction && $pdo instanceof \PDO && $pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                $cleanupCreatedEtherpadPad();
+
+                echo json_encode([
+                    'status' => false,
+                    'message' => trim((string)($syncDocumentDateResult['text'] ?? '')) !== ''
+                        ? trim((string)$syncDocumentDateResult['text'])
+                        : omoCalendarCreateT('calendar.create.error.save'),
+                ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                exit;
+            }
+        } elseif ($linkedDocument instanceof Document) {
+            $syncDocumentDateResult = $event->syncAssociatedDocumentEventDate();
+            if (!is_array($syncDocumentDateResult) || empty($syncDocumentDateResult['status'])) {
+                if ($startedTransaction && $pdo instanceof \PDO && $pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+
+                echo json_encode([
+                    'status' => false,
+                    'message' => trim((string)($syncDocumentDateResult['text'] ?? '')) !== ''
+                        ? trim((string)$syncDocumentDateResult['text'])
+                        : omoCalendarCreateT('calendar.create.error.save'),
+                ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                exit;
+            }
+        }
+
+        $applyInvitationResult = omoCalendarApplyInvitationSelections(
+            $event,
+            $organization,
+            $organizationId,
+            $selectedInvitationHolonIds,
+            $selectedInvitationUserIds,
+            $selectedInvitationEmails
+        );
+        if (!is_array($applyInvitationResult) || empty($applyInvitationResult['status'])) {
+            if ($startedTransaction && $pdo instanceof \PDO && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            $cleanupCreatedEtherpadPad();
+
+            echo json_encode([
+                'status' => false,
+                'message' => trim((string)($applyInvitationResult['message'] ?? '')) !== ''
+                    ? trim((string)$applyInvitationResult['message'])
+                    : omoCalendarCreateT('calendar.invitations.save_error'),
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            exit;
+        }
+
+        if ($startedTransaction && $pdo instanceof \PDO && $pdo->inTransaction()) {
+            $pdo->commit();
+        }
+        \dbObject\CalDavCache::invalidateOrganization($organizationId);
+        $createdEtherpadPadId = '';
+    } catch (\Throwable $exception) {
+        if ($startedTransaction && $pdo instanceof \PDO && $pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        $cleanupCreatedEtherpadPad();
+
         echo json_encode([
             'status' => false,
-            'message' => trim((string)($saveResult['text'] ?? '')) !== ''
-                ? trim((string)$saveResult['text'])
-                : omoCalendarCreateT('calendar.create.error.save'),
+            'message' => omoCalendarCreateT('calendar.create.error.save'),
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         exit;
+    }
+
+    if (!$isEditMode && $project instanceof Project) {
+        $project->recordAssociationHistory('event', (int)$event->getId(), (string)$event->get('title'), 'added', $currentUserId);
+    }
+
+    try {
+        $notificationEvent = new Event();
+        if (
+            $notificationEvent->load((int)$event->getId())
+            && Event::normalizeStatus($notificationEvent->get('status')) !== Event::STATUS_DRAFT
+        ) {
+            if (!$isEditMode) {
+                notificationCenterDispatchEventInvitation($notificationEvent, $currentUserId);
+            } else {
+                $currentLocation = [
+                    'mode' => trim((string)$notificationEvent->get('locationmode')),
+                    'address' => trim((string)$notificationEvent->get('locationaddress')),
+                    'video' => trim((string)$notificationEvent->get('videomeetingurl')),
+                ];
+                $currentSchedule = [
+                    'start' => $notificationEvent->get('start_at') instanceof \DateTimeInterface ? $notificationEvent->get('start_at')->format('Y-m-d H:i:s') : '',
+                    'end' => $notificationEvent->get('end_at') instanceof \DateTimeInterface ? $notificationEvent->get('end_at')->format('Y-m-d H:i:s') : '',
+                    'allDay' => !empty($notificationEvent->get('is_all_day')) ? 1 : 0,
+                ];
+                if ($previousLocation !== $currentLocation) {
+                    notificationCenterDispatchEventChange($notificationEvent, 'location', $currentUserId);
+                }
+                if ($previousSchedule !== $currentSchedule) {
+                    notificationCenterDispatchEventChange($notificationEvent, 'schedule', $currentUserId);
+                }
+            }
+        }
+    } catch (\Throwable $exception) {
+        error_log('OMO calendar notification dispatch failed: ' . $exception->getMessage());
     }
 
     echo json_encode([
         'status' => true,
         'message' => omoCalendarCreateT($isEditMode ? 'calendar.edit.success' : 'calendar.create.success'),
         'eventId' => (int)$event->getId(),
+        'projectId' => $project instanceof Project ? (int)$project->getId() : (int)$event->get('IDproject'),
+        'documentId' => $linkedDocument instanceof Document ? (int)$linkedDocument->getId() : 0,
+        'detailUrl' => '/omo/api/calendar/detail.php?oid=' . rawurlencode((string)$organizationId)
+            . ($selectedHolonId > 0 ? '&cid=' . rawurlencode((string)$selectedHolonId) : '')
+            . '&id=' . rawurlencode((string)(int)$event->getId()),
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -362,164 +1304,339 @@ $initialDateDefault = $initialDate !== ''
 
 $startDefault = $isEditMode
     ? $event->get('start_at')
-    : ($initialStartDefault ?: $initialDateDefault ?: new \DateTime('today 09:00'));
+    : ($isDuplicateMode ? null : ($initialStartDefault ?: $initialDateDefault ?: new \DateTime('today 09:00')));
 $endDefault = $isEditMode
     ? $event->get('end_at')
-    : (clone $startDefault)->modify('+1 hour');
-$titleDefault = $isEditMode ? trim((string)$event->get('title')) : '';
-$descriptionDefault = $isEditMode ? trim((string)$event->get('description')) : '';
-$isAllDayDefault = $isEditMode ? (bool)$event->get('is_all_day') : false;
-?>
-<div class="omo-calendar-create">
-    <div class="generic-section generic-section--stack omo-calendar-create__shell">
-        <div class="omo-calendar-create__head">
-            <h2 class="generic-card-title generic-card-title--medium"><?= omoApiEscape(omoCalendarCreateT($isEditMode ? 'calendar.edit.title' : 'calendar.create.title')) ?></h2>
-            <p class="omo-calendar-create__text"><?= omoApiEscape(omoCalendarCreateT($isEditMode ? 'calendar.edit.description' : 'calendar.create.description')) ?></p>
-        </div>
+    : ($isDuplicateMode ? null : (clone $startDefault)->modify('+1 hour'));
+$titleDefault = $prefillEvent instanceof Event ? trim((string)$prefillEvent->get('title')) : '';
+$descriptionDefault = $prefillEvent instanceof Event ? trim((string)$prefillEvent->get('description')) : '';
+$statusDefault = $prefillEvent instanceof Event ? Event::normalizeStatus($prefillEvent->get('status')) : Event::STATUS_CONFIRMED;
+if (!array_key_exists($statusDefault, $editableEventStatuses)) {
+    $statusDefault = Event::STATUS_CONFIRMED;
+}
+$isAllDayDefault = $prefillEvent instanceof Event ? (bool)$prefillEvent->get('is_all_day') : false;
+$locationDisplayData = $prefillEvent instanceof Event ? $prefillEvent->getLocationDisplayData() : ['mode' => '', 'address' => '', 'videoUrl' => ''];
+$locationModeDefault = $locationDisplayData['mode'] !== ''
+    ? (string)$locationDisplayData['mode']
+    : '';
+$locationAddressDefault = trim((string)($locationDisplayData['address'] ?? ''));
+$videoMeetingUrlDefault = trim((string)($locationDisplayData['videoUrl'] ?? ''));
 
+$duplicateAssociatedDocument = $isDuplicateMode && $duplicateEvent instanceof Event
+    ? $duplicateEvent->getAssociatedDocument()
+    : null;
+$documentTypeDefault = $associatedDocument instanceof Document
+    ? $associatedDocument->getDocumentType()
+    : ($duplicateAssociatedDocument instanceof Document ? $duplicateAssociatedDocument->getDocumentType() : '');
+$documentTitleDefault = $isDuplicateMode && $duplicateAssociatedDocument instanceof Document
+    ? trim((string)$duplicateAssociatedDocument->get('title'))
+    : '';
+$documentTypeOptions = omoCalendarDocumentTypeOptions($nextcloudDocumentsAvailable, $etherpadDocumentsAvailable, $ethercalcDocumentsAvailable, $pvDocumentsEnabled);
+$canOpenAssociatedDocument = $associatedDocument instanceof Document
+    && (
+        $associatedDocument->isPvDocument() && !$associatedDocument->isPvValidated()
+            ? (
+                $associatedDocument->canUserAccessPvBeforeValidation($currentUserId, $organizationId)
+                || ($associatedDocument->getPvStage() === Document::PV_STAGE_REVIEW
+                    && $associatedDocument->canUserViewPvReadOnly($currentUserId, $organizationId, $currentHolonId > 0 ? $currentHolonId : null))
+            )
+            : $associatedDocument->canViewDirectlyInOrganization($organizationId)
+    );
+$associatedDocumentUrl = $canOpenAssociatedDocument
+    ? $event->buildAssociatedDocumentDetailUrl($currentHolonId > 0 ? $currentHolonId : $defaultHolonId)
+    : '';
+$associatedDocumentPvPreparationUrl = $associatedDocument instanceof Document
+    && $associatedDocument->canUserOpenPvEditor($currentUserId, $organizationId)
+    ? $associatedDocument->buildPvEditorUrl($organizationId)
+    : '';
+$locationModeOptions = array_merge(
+    ['' => omoCalendarCreateT('calendar.create.field.location_mode_pending')],
+    array_map(static function (array $definition): string {
+        return (string)($definition['label'] ?? '');
+    }, Event::getLocationModeCatalog())
+);
+$calendarFormId = 'omoCalendarCreateForm' . ucfirst($editorHost);
+$drawerTitle = omoCalendarCreateT($isEditMode ? 'calendar.edit.title' : 'calendar.create.title');
+$drawerDescription = '';
+$drawerSubmitLabel = omoCalendarCreateT($isEditMode ? 'calendar.edit.submit' : 'calendar.create.submit');
+$cancelDetailUrl = '';
+if ($isEditMode) {
+    $cancelDetailContextHolonId = $currentHolonId > 0 ? $currentHolonId : $defaultHolonId;
+    $cancelDetailUrl = '/omo/api/calendar/detail.php?oid=' . rawurlencode((string)$organizationId)
+        . ($cancelDetailContextHolonId > 0 ? '&cid=' . rawurlencode((string)$cancelDetailContextHolonId) : '')
+        . '&id=' . rawurlencode((string)(int)$event->getId());
+}
+?>
+<div class="omo-calendar-create" data-omo-calendar-editor-host="<?= omoApiEscape($editorHost) ?>">
+    <div
+        hidden
+        data-omo-calendar-drawer-header
+        data-omo-calendar-drawer-title="<?= omoApiEscape($drawerTitle) ?>"
+        data-omo-calendar-drawer-description="<?= omoApiEscape($drawerDescription) ?>"
+        data-omo-subdrawer-header
+        data-omo-subdrawer-title="<?= omoApiEscape($drawerTitle) ?>"
+        data-omo-subdrawer-description="<?= omoApiEscape($drawerDescription) ?>"
+    >
+        <?php if ($cancelDetailUrl !== ''): ?>
+            <button
+                type="button"
+                class="generic-action-button generic-action-button--secondary"
+                data-omo-calendar-drawer-action
+                data-omo-calendar-open-detail-url="<?= omoApiEscape($cancelDetailUrl) ?>"
+            ><?= omoApiEscape(omoCalendarCreateT('calendar.edit.cancel')) ?></button>
+        <?php endif; ?>
+        <button
+            type="submit"
+            form="<?= omoApiEscape($calendarFormId) ?>"
+            class="generic-action-button generic-action-button--main"
+            data-omo-calendar-drawer-action
+            data-omo-subdrawer-action
+            data-omo-calendar-create-submit
+        ><?= omoApiEscape($drawerSubmitLabel) ?></button>
+    </div>
+
+    <div class="omo-calendar-create__shell generic-form-stack generic-form-stack--compact">
         <form
-            class="omo-calendar-create__form"
+            id="<?= omoApiEscape($calendarFormId) ?>"
+            class="omo-calendar-create__form generic-form-stack generic-form-stack--compact"
             method="post"
-            action="/omo/api/calendar/create.php?oid=<?= (int)$organizationId ?><?= $currentHolonId > 0 ? '&cid=' . (int)$currentHolonId : '' ?><?= $isEditMode ? '&id=' . (int)$event->getId() : '' ?>"
+            action="/omo/api/calendar/create.php?oid=<?= (int)$organizationId ?><?= $currentHolonId > 0 ? '&cid=' . (int)$currentHolonId : '' ?><?= $isEditMode ? '&id=' . (int)$event->getId() : '' ?><?= $project instanceof Project ? '&project_id=' . (int)$project->getId() . '&editor_host=project' : '' ?>"
             data-omo-calendar-create-form
+            data-omo-calendar-editor-host="<?= omoApiEscape($editorHost) ?>"
         >
             <?php if ($isEditMode): ?>
                 <input type="hidden" name="id" value="<?= (int)$event->getId() ?>">
             <?php endif; ?>
-            <div class="omo-calendar-create__grid">
-                <label class="omo-calendar-create__field">
-                    <span class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.title')) ?></span>
-                    <input
-                        type="text"
-                        name="title"
-                        class="generic-form-control"
-                        value="<?= omoApiEscape($titleDefault) ?>"
-                        maxlength="190"
-                        required
-                    >
-                </label>
+            <?php if ($project instanceof Project): ?>
+                <input type="hidden" name="project_id" value="<?= (int)$project->getId() ?>">
+                <input type="hidden" name="editor_host" value="project">
+            <?php endif; ?>
 
-                <label class="omo-calendar-create__field">
-                    <span class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.holon')) ?></span>
-                    <select name="IDholon" class="generic-form-control">
-                        <option value="0"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.none')) ?></option>
-                        <?php foreach (['circle', 'role'] as $typeKey): ?>
-                            <?php foreach (($holonOptions[$typeKey] ?? []) as $option): ?>
-                                <option value="<?= (int)$option['id'] ?>"<?= (int)$option['id'] === $defaultHolonId ? ' selected' : '' ?>>
-                                    <?= omoApiEscape((string)$option['label']) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        <?php endforeach; ?>
-                    </select>
-                </label>
+            <div class="generic-tabs generic-tabs--embedded omo-calendar-create__tabs" data-generic-tabs>
+                <div class="generic-tabs__list" aria-label="<?= omoApiEscape(omoCalendarCreateT('calendar.create.tabs_aria')) ?>">
+                    <button type="button" class="generic-tabs__tab is-active" data-generic-tab data-generic-tab-target="omoCalendarCreateTabEvent"><?= omoApiEscape(omoCalendarCreateT('calendar.create.tab.event')) ?></button>
+                    <button type="button" class="generic-tabs__tab" data-generic-tab data-generic-tab-target="omoCalendarCreateTabInvites"><?= omoApiEscape(omoCalendarCreateT('calendar.create.tab.invites')) ?></button>
+                    <button type="button" class="generic-tabs__tab" data-generic-tab data-generic-tab-target="omoCalendarCreateTabAvailability" data-omo-calendar-preview-tab><?= omoApiEscape(omoCalendarCreateT('calendar.create.tab.availability')) ?></button>
+                </div>
+                <div class="generic-tabs__panels">
+                    <div id="omoCalendarCreateTabEvent" class="generic-tabs__panel omo-calendar-create__tab-panel" data-generic-tab-panel>
+                        <div class="omo-calendar-create__grid generic-form-grid">
+                            <label class="omo-calendar-create__field generic-form-field">
+                                <span class="generic-form-label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.title')) ?></span>
+                                <input
+                                    type="text"
+                                    name="title"
+                                    class="generic-form-control"
+                                    value="<?= omoApiEscape($titleDefault) ?>"
+                                    maxlength="190"
+                                    required
+                                >
+                            </label>
 
-                <label class="omo-calendar-create__field">
-                    <span class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.start')) ?></span>
-                    <input
-                        type="datetime-local"
-                        name="start_at"
-                        class="generic-form-control"
-                        value="<?= omoApiEscape($startDefault->format('Y-m-d\TH:i')) ?>"
-                        required
-                    >
-                </label>
+                            <label class="omo-calendar-create__field generic-form-field">
+                                <span class="generic-form-label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.status')) ?></span>
+                                <select name="status" class="generic-form-control">
+                                    <?php foreach ($editableEventStatuses as $statusValue => $statusLabel): ?>
+                                        <option value="<?= omoApiEscape($statusValue) ?>"<?= $statusValue === $statusDefault ? ' selected' : '' ?>><?= omoApiEscape($statusLabel) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </label>
 
-                <label class="omo-calendar-create__field">
-                    <span class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.end')) ?></span>
-                    <input
-                        type="datetime-local"
-                        name="end_at"
-                        class="generic-form-control"
-                        value="<?= omoApiEscape($endDefault->format('Y-m-d\TH:i')) ?>"
-                        required
-                    >
-                </label>
+                            <?php if ($hasStructureApplication): ?>
+                            <label class="omo-calendar-create__field generic-form-field">
+                                <span class="generic-form-label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.holon')) ?></span>
+                                <select<?= $project instanceof Project ? '' : ' name="IDholon"' ?> class="generic-form-control" data-omo-calendar-context-holon<?= $project instanceof Project ? ' disabled' : '' ?>>
+                                    <option value="0"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.none')) ?></option>
+                                    <?php foreach (['circle', 'role'] as $typeKey): ?>
+                                        <?php foreach (($holonOptions[$typeKey] ?? []) as $option): ?>
+                                            <option value="<?= (int)$option['id'] ?>" data-omo-calendar-context-path="<?= omoApiEscape((string)($holonContextPaths[(int)$option['id']] ?? '')) ?>"<?= (int)$option['id'] === $defaultHolonId ? ' selected' : '' ?>>
+                                                <?= omoApiEscape((string)$option['label']) ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    <?php endforeach; ?>
+                                </select>
+                                <?php if ($project instanceof Project): ?>
+                                    <input type="hidden" name="IDholon" value="<?= (int)$defaultHolonId ?>">
+                                <?php endif; ?>
+                            </label>
+                            <?php endif; ?>
+
+                            <label class="omo-calendar-create__field generic-form-field">
+                                <span class="generic-form-label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.start')) ?></span>
+                                <input
+                                    type="datetime-local"
+                                    name="start_at"
+                                    class="generic-form-control"
+                                    value="<?= omoApiEscape($startDefault instanceof \DateTimeInterface ? $startDefault->format('Y-m-d\TH:i') : '') ?>"
+                                    required
+                                >
+                            </label>
+
+                            <label class="omo-calendar-create__field generic-form-field">
+                                <span class="generic-form-label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.end')) ?></span>
+                                <input
+                                    type="datetime-local"
+                                    name="end_at"
+                                    class="generic-form-control"
+                                    value="<?= omoApiEscape($endDefault instanceof \DateTimeInterface ? $endDefault->format('Y-m-d\TH:i') : '') ?>"
+                                    required
+                                >
+                            </label>
+                        </div>
+
+                        <label class="omo-calendar-create__field generic-form-field">
+                            <span class="generic-form-label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.description')) ?></span>
+                            <textarea
+                                name="description"
+                                class="generic-form-control"
+                            ><?= omoApiEscape($descriptionDefault) ?></textarea>
+                        </label>
+
+                        <label class="omo-calendar-create__check">
+                            <input type="checkbox" name="is_all_day" value="1"<?= $isAllDayDefault ? ' checked' : '' ?>>
+                            <span><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.all_day')) ?></span>
+                        </label>
+
+                        <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided generic-form-section--compact omo-calendar-create__block">
+                            <div class="omo-calendar-create__block-head generic-form-section__heading">
+                                <h3 class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.location_mode')) ?></h3>
+                            </div>
+
+                            <div class="omo-calendar-create__grid generic-form-grid">
+                                <label class="omo-calendar-create__field generic-form-field">
+                                    <span class="omo-calendar-create__label generic-form-label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.location_mode')) ?></span>
+                                    <select name="location_mode" class="generic-form-control" data-omo-calendar-location-mode>
+                                        <?php foreach ($locationModeOptions as $optionValue => $optionLabel): ?>
+                                            <option value="<?= omoApiEscape((string)$optionValue) ?>"<?= (string)$optionValue === $locationModeDefault ? ' selected' : '' ?>>
+                                                <?= omoApiEscape((string)$optionLabel) ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </label>
+
+                                <label class="omo-calendar-create__field generic-form-field" data-omo-calendar-location-address-field<?= in_array($locationModeDefault, [Event::LOCATION_MODE_IN_PERSON, Event::LOCATION_MODE_HYBRID], true) ? '' : ' hidden' ?>>
+                                    <span class="omo-calendar-create__label generic-form-label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.location_address')) ?></span>
+                                    <input
+                                        type="text"
+                                        name="location_address"
+                                        class="generic-form-control"
+                                        value="<?= omoApiEscape($locationAddressDefault) ?>"
+                                        placeholder="<?= omoApiEscape(omoCalendarCreateT('calendar.create.field.location_address_placeholder')) ?>"
+                                    >
+                                </label>
+
+                                <label class="omo-calendar-create__field generic-form-field" data-omo-calendar-location-video-field<?= in_array($locationModeDefault, [Event::LOCATION_MODE_VIRTUAL, Event::LOCATION_MODE_HYBRID], true) ? '' : ' hidden' ?>>
+                                    <span class="omo-calendar-create__label generic-form-label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.video_url')) ?></span>
+                                    <input
+                                        type="url"
+                                        name="video_meeting_url"
+                                        class="generic-form-control"
+                                        value="<?= omoApiEscape($videoMeetingUrlDefault) ?>"
+                                        placeholder="<?= omoApiEscape(omoCalendarCreateT('calendar.create.field.video_url_placeholder')) ?>"
+                                    >
+                                </label>
+                            </div>
+                        </section>
+
+                        <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided generic-form-section--compact omo-calendar-create__block" data-omo-calendar-document-block>
+                            <div class="omo-calendar-create__block-head generic-form-section__heading">
+                                <h3 class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.document_type')) ?></h3>
+                                <?php if ($associatedDocument instanceof Document): ?>
+                                    <span class="omo-calendar-create__pill"><?= omoApiEscape($associatedDocument->getDocumentTypeLabel()) ?></span>
+                                <?php endif; ?>
+                            </div>
+
+                            <?php if ($associatedDocument instanceof Document): ?>
+                                <input type="hidden" name="document_type" value="<?= omoApiEscape($documentTypeDefault) ?>" data-omo-calendar-document-type>
+                                <div data-omo-calendar-document-fields>
+                                    <div class="omo-calendar-create__document-summary">
+                                        <span class="omo-calendar-create__label generic-form-label generic-form-label--eyebrow"><?= omoApiEscape(omoCalendarCreateT('calendar.create.document.current')) ?></span>
+                                        <strong class="omo-calendar-create__document-title"><?= omoApiEscape(trim((string)$associatedDocument->get('title')) !== '' ? trim((string)$associatedDocument->get('title')) : omoCalendarCreateT('calendar.create.document.empty_title')) ?></strong>
+                                        <p class="omo-calendar-create__hint generic-description generic-description--relaxed"><?= omoApiEscape(omoCalendarCreateT('calendar.create.document.help_existing')) ?></p>
+                                        <?php if ($associatedDocumentUrl !== ''): ?>
+                                            <button
+                                                type="button"
+                                                class="generic-action-button generic-action-button--secondary"
+                                                data-omo-calendar-open-url="<?= omoApiEscape($associatedDocumentUrl) ?>"
+                                                data-omo-calendar-open-url-title="<?= omoApiEscape(trim((string)$associatedDocument->get('title')) !== '' ? trim((string)$associatedDocument->get('title')) : omoCalendarCreateT('calendar.create.document.empty_title')) ?>"
+                                                data-omo-calendar-open-pv-editor-url="<?= omoApiEscape($associatedDocumentPvPreparationUrl) ?>"
+                                            ><?= omoApiEscape(omoCalendarCreateT('calendar.create.document.open')) ?></button>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            <?php else: ?>
+                                <?php if (!$canCreateLinkedDocument): ?>
+                                    <p class="omo-calendar-create__hint generic-description generic-description--relaxed">
+                                        <?= omoApiEscape(omoCalendarCreateT('calendar.create.document.no_permission')) ?>
+                                    </p>
+                                <?php else: ?>
+                                    <label class="omo-calendar-create__field generic-form-field">
+                                        <span class="omo-calendar-create__label generic-form-label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.document_type')) ?></span>
+                                        <select name="document_type" class="generic-form-control" data-omo-calendar-document-type>
+                                            <?php foreach ($documentTypeOptions as $optionValue => $optionLabel): ?>
+                                                <option value="<?= omoApiEscape((string)$optionValue) ?>"<?= (string)$optionValue === $documentTypeDefault ? ' selected' : '' ?>>
+                                                    <?= omoApiEscape((string)$optionLabel) ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </label>
+                                    <div data-omo-calendar-document-fields<?= $documentTypeDefault !== '' ? '' : ' hidden' ?>>
+                                        <label class="omo-calendar-create__field generic-form-field">
+                                            <span class="omo-calendar-create__label generic-form-label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.document_title')) ?></span>
+                                            <input
+                                                type="text"
+                                                name="document_title"
+                                                class="generic-form-control"
+                                                value="<?= omoApiEscape($documentTitleDefault) ?>"
+                                                maxlength="255"
+                                            >
+                                        </label>
+                                        <label class="omo-calendar-create__field generic-form-field" data-omo-calendar-document-template-field<?= $documentTypeDefault !== '' ? '' : ' hidden' ?>>
+                                            <span class="omo-calendar-create__label generic-form-label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.document_template')) ?></span>
+                                            <select name="document_template_id" class="generic-form-control">
+                                                <option value="0"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.document_template_none')) ?></option>
+                                                <?php foreach ($documentTemplateGroups as $documentTemplateGroup): ?>
+                                                    <optgroup label="<?= omoApiEscape((string)$documentTemplateGroup['label']) ?>">
+                                                        <?php foreach ($documentTemplateGroup['templates'] as $documentTemplateOption): ?>
+                                                            <option value="<?= (int)$documentTemplateOption['id'] ?>" data-omo-calendar-document-template-type="<?= omoApiEscape((string)$documentTemplateOption['documentType']) ?>" data-omo-calendar-document-template-scope="<?= omoApiEscape((string)$documentTemplateOption['visibilityType']) ?>" data-omo-calendar-document-template-target="<?= (int)$documentTemplateOption['targetHolonId'] ?>"><?= omoApiEscape((string)$documentTemplateOption['label']) ?></option>
+                                                        <?php endforeach; ?>
+                                                    </optgroup>
+                                                <?php endforeach; ?>
+                                            </select>
+                                            <span class="omo-calendar-create__hint generic-description generic-description--relaxed"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.document_template_hint')) ?></span>
+                                        </label>
+                                        <p class="omo-calendar-create__hint generic-description generic-description--relaxed"><?= omoApiEscape(omoCalendarCreateT('calendar.create.document.help_create')) ?></p>
+                                        <p class="omo-calendar-create__notice"><?= omoApiEscape(omoCalendarCreateT('calendar.create.document.created_notice')) ?></p>
+                                    </div>
+                                <?php endif; ?>
+                            <?php endif; ?>
+                        </section>
+                    </div>
+
+                    <div id="omoCalendarCreateTabInvites" class="generic-tabs__panel omo-calendar-create__tab-panel" data-generic-tab-panel hidden>
+                        <?= omoCalendarRenderInvitationEditor($invitationEditorState, $lang, $sourceLang, 'omoApiEscape', [
+                            'instanceId' => 'omoCalendarCreateInvitations',
+                            'holonFieldName' => 'invitation_holon_ids[]',
+                            'userFieldName' => 'invitation_user_ids[]',
+                            'emailFieldName' => 'invitation_emails',
+                            'showFooterHint' => true,
+                        ]) ?>
+                    </div>
+                    <div id="omoCalendarCreateTabAvailability" class="generic-tabs__panel omo-calendar-create__tab-panel omo-calendar-create__tab-panel--availability" data-generic-tab-panel hidden>
+                        <div data-omo-calendar-preview-host aria-live="polite" data-loading-label="<?= omoApiEscape(omoCalendarCreateT('calendar.create.preview.loading')) ?>" data-error-label="<?= omoApiEscape(omoCalendarCreateT('calendar.create.preview.error')) ?>"></div>
+                    </div>
+                </div>
             </div>
 
-            <label class="omo-calendar-create__field">
-                <span class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.description')) ?></span>
-                <textarea
-                    name="description"
-                    class="generic-form-control"
-                ><?= omoApiEscape($descriptionDefault) ?></textarea>
-            </label>
-
-            <label class="omo-calendar-create__check">
-                <input type="checkbox" name="is_all_day" value="1"<?= $isAllDayDefault ? ' checked' : '' ?>>
-                <span><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.all_day')) ?></span>
-            </label>
-
             <div class="omo-calendar-create__footer">
-                <div class="omo-calendar-create__feedback" data-omo-calendar-create-feedback></div>
-                <button type="submit" class="generic-action-button generic-action-button--main" data-omo-calendar-create-submit>
-                    <?= omoApiEscape(omoCalendarCreateT($isEditMode ? 'calendar.edit.submit' : 'calendar.create.submit')) ?>
-                </button>
+                <?php require dirname(__DIR__, 3) . '/common/calendar/availability-panel.php'; ?>
+                <input type="hidden" name="availability_ack" value="">
+                <div class="omo-calendar-create__feedback generic-feedback" data-omo-calendar-create-feedback></div>
             </div>
         </form>
     </div>
 </div>
 
-<style>
-.omo-calendar-create {
-    padding: 18px;
-}
-
-.omo-calendar-create__shell,
-.omo-calendar-create__form,
-.omo-calendar-create__field,
-.omo-calendar-create__head {
-    display: grid;
-    gap: 10px;
-}
-
-.omo-calendar-create__text {
-    margin: 0;
-    color: var(--color-text-light, #64748b);
-    line-height: 1.6;
-}
-
-.omo-calendar-create__grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-}
-
-.omo-calendar-create__check {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    color: var(--color-text, #1f2937);
-    font-weight: 600;
-}
-
-.omo-calendar-create__footer {
-    display: flex;
-    justify-content: space-between;
-    gap: 12px;
-    align-items: center;
-}
-
-.omo-calendar-create__feedback {
-    min-height: 20px;
-    color: var(--color-text-light, #64748b);
-}
-
-.omo-calendar-create__feedback.is-error {
-    color: var(--color-danger, #b42318);
-}
-
-@media (max-width: 720px) {
-    .omo-calendar-create {
-        padding: 14px;
-    }
-
-    .omo-calendar-create__grid {
-        grid-template-columns: 1fr;
-    }
-
-    .omo-calendar-create__footer {
-        flex-direction: column;
-        align-items: stretch;
-    }
-}
-</style>
+<link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/calendar/invitations.css') ?>">
+<link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/calendar/editor.css') ?>">
+<link rel="stylesheet" href="<?= commonAssetUrl('/common/calendar/availability-grid.css') ?>">

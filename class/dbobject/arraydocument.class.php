@@ -19,6 +19,113 @@
 			return $this->lastVisibilityStats;
 		}
 
+		public static function loadListMetadataForOrganization(int $organizationId): array
+		{
+			$metadata = array(
+				'activityByDocumentId' => array(),
+				'documentsWithChildren' => array(),
+			);
+			if ($organizationId <= 0) {
+				return $metadata;
+			}
+
+			$documents = new self();
+			$documents->load(array(
+				'where' => array(
+					array('field' => 'IDorganization', 'value' => $organizationId),
+				),
+				'orderBy' => array(
+					array('field' => 'datemodification', 'dir' => 'DESC'),
+					array('field' => 'id', 'dir' => 'DESC'),
+				),
+				'hydrate' => array(
+					'IDdocument_parent',
+					'IDuser',
+					'IDusercreation',
+					'IDusermodification',
+					'estDossier',
+					'datecreation',
+					'datemodification',
+				),
+			));
+
+			$documentsById = array();
+			$childrenByParentId = array();
+			foreach ($documents as $document) {
+				if (!($document instanceof \dbObject\Document) || (int)$document->getId() <= 0) {
+					continue;
+				}
+
+				$documentId = (int)$document->getId();
+				$documentsById[$documentId] = $document;
+				$parentDocumentId = (int)$document->get('IDdocument_parent');
+				if ($parentDocumentId > 0) {
+					$childrenByParentId[$parentDocumentId][] = $documentId;
+					$metadata['documentsWithChildren'][$parentDocumentId] = true;
+				}
+			}
+
+			$resolved = array();
+			$resolving = array();
+			$resolveActivity = static function (int $documentId) use (&$resolveActivity, &$resolved, &$resolving, $documentsById, $childrenByParentId): array {
+				if (isset($resolved[$documentId])) {
+					return $resolved[$documentId];
+				}
+
+				$document = $documentsById[$documentId] ?? null;
+				if (!($document instanceof \dbObject\Document)) {
+					return array('date' => null, 'userId' => 0);
+				}
+
+				$ownDate = $document->get('datemodification');
+				if (!($ownDate instanceof \DateTimeInterface)) {
+					$ownDate = $document->get('datecreation');
+				}
+				$ownUserId = (int)$document->get('IDusermodification');
+				if ($ownUserId <= 0) {
+					$ownUserId = (int)$document->get('IDusercreation');
+				}
+				if ($ownUserId <= 0) {
+					$ownUserId = (int)$document->get('IDuser');
+				}
+
+				if (isset($resolving[$documentId])) {
+					return array('date' => $ownDate, 'userId' => $ownUserId);
+				}
+
+				$resolving[$documentId] = true;
+				$latestDate = (int)$document->get('estDossier') === 1 ? null : $ownDate;
+				$latestUserId = $ownUserId;
+				if ((int)$document->get('estDossier') === 1) {
+					foreach ($childrenByParentId[$documentId] ?? array() as $childDocumentId) {
+						$childActivity = $resolveActivity((int)$childDocumentId);
+						$childDate = $childActivity['date'] ?? null;
+						if (
+							$childDate instanceof \DateTimeInterface
+							&& (!($latestDate instanceof \DateTimeInterface) || $childDate->getTimestamp() > $latestDate->getTimestamp())
+						) {
+							$latestDate = $childDate;
+							$latestUserId = (int)($childActivity['userId'] ?? 0);
+						}
+					}
+					if (!($latestDate instanceof \DateTimeInterface)) {
+						$latestDate = $ownDate;
+						$latestUserId = $ownUserId;
+					}
+				}
+
+				unset($resolving[$documentId]);
+				$resolved[$documentId] = array('date' => $latestDate, 'userId' => $latestUserId);
+				return $resolved[$documentId];
+			};
+
+			foreach (array_keys($documentsById) as $documentId) {
+				$metadata['activityByDocumentId'][(int)$documentId] = $resolveActivity((int)$documentId);
+			}
+
+			return $metadata;
+		}
+
 		protected function getVisibilityRuleMap($organizationId = 0): array
 		{
 			$organizationId = (int)$organizationId;
@@ -44,12 +151,20 @@
 			$organizationId = (int)$organizationId;
 			$ruleMap = is_array($ruleMap) ? $ruleMap : $this->getVisibilityRuleMap($organizationId);
 			$viewerContext = \dbObject\ObjectVisibility::buildCurrentViewerContext($organizationId);
+			$referenceDate = new \DateTimeImmutable();
+			$viewerUserId = function_exists('commonGetCurrentUserId')
+				? (int)\commonGetCurrentUserId()
+				: (int)($_SESSION['currentUser'] ?? 0);
 			$candidateVisibleDocuments = array();
 			$documentsById = array();
 			$loadedCount = 0;
 
 			foreach ($this as $document) {
 				if (!($document instanceof \dbObject\Document) || (int)$document->getId() <= 0) {
+					continue;
+				}
+				if ($document->isArchived()) {
+					$loadedCount += 1;
 					continue;
 				}
 
@@ -60,14 +175,27 @@
 				$documentOrganizationId = (int)$document->get('IDorganization');
 				$resolvedOrganizationId = $organizationId > 0 ? $organizationId : $documentOrganizationId;
 
-				if (!\dbObject\ObjectVisibility::viewerCanAccessRule(
+				$canAccessVisibility = \dbObject\ObjectVisibility::viewerCanAccessRule(
 					$ruleMap[$documentId] ?? null,
 					$viewerContext,
 					array(
 						'organizationId' => $resolvedOrganizationId,
 						'ownerUserId' => (int)$document->get('IDuser'),
 					)
-				)) {
+				);
+
+				$hasPvPreValidationAccess = $document->isPvDocument()
+					&& !$document->isPvValidated()
+					&& $document->canUserAccessPvBeforeValidation($viewerUserId, $resolvedOrganizationId);
+				if (!$canAccessVisibility && !$hasPvPreValidationAccess) {
+					continue;
+				}
+
+				if (!$document->canUserPassPvMeetingVisibilityGate($viewerUserId, $resolvedOrganizationId, $referenceDate)) {
+					continue;
+				}
+
+				if (!$document->isAvailableInDocumentsList($referenceDate)) {
 					continue;
 				}
 
@@ -117,12 +245,12 @@
 			return $ruleMap;
 		}
 
-		public function loadVisibleForOrganizationContext($organizationId, $holonId = 0, $documentScope = 'contextual', array $descendantHolonIds = array())
+		public function loadVisibleForOrganizationContext($organizationId, $holonId = 0, $documentScope = 'contextual', array $descendantHolonIds = array(), $includeOrganizationDocuments = false)
 		{
 			$organizationId = (int)$organizationId;
 			$holonId = (int)$holonId;
 			$documentScope = trim(mb_strtolower((string)$documentScope, 'UTF-8'));
-			if (!in_array($documentScope, array('contextual', 'descendants', 'global'), true)) {
+			if (!in_array($documentScope, array('contextual', 'children', 'descendants'), true)) {
 				$documentScope = 'contextual';
 			}
 			$descendantHolonIds = array_values(array_unique(array_filter(array_map('intval', $descendantHolonIds), static function ($candidateHolonId) {
@@ -143,32 +271,179 @@
 			$loadParams = array(
 				'where' => array(
 					array('field' => 'IDorganization', 'value' => $organizationId),
+					array('field' => 'active', 'value' => 1),
 				),
+				'hydrate' => \dbObject\Document::getCollectionHydrationFields(),
 				'orderBy' => array(
 					array('field' => 'datecreation', 'dir' => 'DESC'),
 					array('field' => 'id', 'dir' => 'DESC'),
 				),
 			);
 
-			if ($documentScope === 'descendants') {
-				if (count($descendantHolonIds) === 0) {
+			if ($documentScope === 'children' || $documentScope === 'descendants') {
+				if (count($descendantHolonIds) === 0 && !$includeOrganizationDocuments) {
 					return array();
 				}
-
-				$loadParams['where'][] = array('field' => 'IDholon', 'op' => 'in', 'value' => $descendantHolonIds);
-			} elseif ($documentScope !== 'global') {
+				if (count($descendantHolonIds) > 0) {
+					$loadParams[$includeOrganizationDocuments ? 'whereAny' : 'where'][] = array('field' => 'IDholon', 'op' => 'in', 'value' => $descendantHolonIds);
+				}
+			} else {
 				if ($holonId > 0) {
-					$loadParams['where'][] = array('field' => 'IDholon', 'value' => $holonId);
+					$loadParams[$includeOrganizationDocuments ? 'whereAny' : 'where'][] = array('field' => 'IDholon', 'value' => $holonId);
 				} else {
 					$loadParams['where'][] = array('field' => 'IDholon', 'op' => 'is null');
 				}
 			}
+			if ($includeOrganizationDocuments) {
+				$loadParams['whereAny'][] = array('field' => 'IDholon', 'op' => 'is null');
+			}
 
 			$this->load($loadParams);
+			$this->filterProjectDocumentsNotVisibleInHolon();
 			return $this->filterVisibleForCurrentViewer($organizationId);
 		}
 
-		public function loadRecentForOrganizationContext($organizationId, $holonId = 0, $limit = 5, $documentScope = 'contextual', array $descendantHolonIds = array())
+		protected function filterProjectDocumentsNotVisibleInHolon(): void
+		{
+			$documentIds = array();
+			foreach ($this as $document) {
+				if ($document instanceof \dbObject\Document && (int)$document->getId() > 0) {
+					$documentIds[] = (int)$document->getId();
+				}
+			}
+
+			$documentIds = array_values(array_unique($documentIds));
+			if (count($documentIds) === 0) {
+				return;
+			}
+
+			$placeholders = array();
+			$params = array();
+			foreach ($documentIds as $index => $documentId) {
+				$parameterName = 'project_document_id_' . $index;
+				$placeholders[] = ':' . $parameterName;
+				$params[$parameterName] = $documentId;
+			}
+
+			$rows = \dbObject\DbObject::fetchAll(
+				'SELECT DISTINCT `IDdocument` FROM `project_document` WHERE `IDdocument` IN (' . implode(', ', $placeholders) . ')',
+				$params
+			);
+			if (!is_array($rows) || count($rows) === 0) {
+				return;
+			}
+
+			$projectDocumentIds = array();
+			foreach ($rows as $row) {
+				$projectDocumentId = (int)($row['IDdocument'] ?? 0);
+				if ($projectDocumentId > 0) {
+					$projectDocumentIds[$projectDocumentId] = true;
+				}
+			}
+
+			$this->exchangeArray(array_values(array_filter(
+				$this->getArrayCopy(),
+				static function ($document) use ($projectDocumentIds): bool {
+					if (!($document instanceof \dbObject\Document)) {
+						return false;
+					}
+
+					$documentId = (int)$document->getId();
+					return !isset($projectDocumentIds[$documentId])
+						|| $document->isVisibleInHolonWhenProjectDocument();
+				}
+			)));
+		}
+
+		public function loadVisibleForOrganization($organizationId)
+		{
+			$organizationId = (int)$organizationId;
+			$this->exchangeArray([]);
+			$this->lastVisibilityStats = array(
+				'loaded' => 0,
+				'visible' => 0,
+				'hidden' => 0,
+			);
+
+			if ($organizationId <= 0) {
+				return array();
+			}
+
+			$this->load(array(
+				'where' => array(
+					array('field' => 'IDorganization', 'value' => $organizationId),
+					array('field' => 'active', 'value' => 1),
+				),
+				'hydrate' => \dbObject\Document::getCollectionHydrationFields(),
+				'orderBy' => array(
+					array('field' => 'datecreation', 'dir' => 'DESC'),
+					array('field' => 'id', 'dir' => 'DESC'),
+				),
+			));
+
+			return $this->filterVisibleForCurrentViewer($organizationId);
+		}
+
+		public function loadPvTemplatesForOrganization(int $organizationId): void
+		{
+			$this->exchangeArray([]);
+			if ($organizationId <= 0) {
+				return;
+			}
+
+			$this->load(array(
+				'where' => array(
+					array('field' => 'IDorganization', 'value' => $organizationId),
+					array('field' => 'active', 'value' => 1),
+					array('field' => 'documenttype', 'value' => \dbObject\Document::TYPE_PV),
+					array('field' => 'is_template', 'value' => 1),
+				),
+				'hydrate' => \dbObject\Document::getCollectionHydrationFields(),
+				'orderBy' => array(
+					array('field' => 'title', 'dir' => 'ASC'),
+					array('field' => 'id', 'dir' => 'ASC'),
+				),
+			));
+		}
+
+		public function loadVisiblePvTemplatesForOrganization(int $organizationId): void
+		{
+			$this->loadPvTemplatesForOrganization($organizationId);
+
+			$visibleTemplates = array_values(array_filter($this->getArrayCopy(), static function ($document) use ($organizationId): bool {
+				return $document instanceof \dbObject\Document
+					&& $document->canUseAsPvTemplate($organizationId);
+			}));
+			$this->exchangeArray($visibleTemplates);
+		}
+
+		public function loadDocumentTemplatesForOrganization(int $organizationId): void
+		{
+			$this->exchangeArray([]);
+			if ($organizationId <= 0) {
+				return;
+			}
+
+			$this->load(array(
+				'where' => array(
+					array('field' => 'IDorganization', 'value' => $organizationId),
+					array('field' => 'active', 'value' => 1),
+					array('field' => 'is_template', 'value' => 1),
+				),
+				'hydrate' => \dbObject\Document::getCollectionHydrationFields(),
+				'orderBy' => array(
+					array('field' => 'title', 'dir' => 'ASC'),
+					array('field' => 'id', 'dir' => 'ASC'),
+				),
+			));
+
+			$this->exchangeArray(array_values(array_filter($this->getArrayCopy(), static function ($document) use ($organizationId): bool {
+				return $document instanceof \dbObject\Document
+					&& $document->canUseAsDocumentTemplate($organizationId);
+			})));
+		}
+
+		public function loadRecentForOrganizationContext($organizationId, $holonId = 0, $limit = 5, $documentScope = 'contextual', array $descendantHolonIds = array(), $includeOrganizationDocuments = false)
 		{
 			$organizationId = (int)$organizationId;
 			$holonId = (int)$holonId;
@@ -185,7 +460,7 @@
 				return;
 			}
 
-			$this->loadVisibleForOrganizationContext($organizationId, $holonId, $documentScope, $descendantHolonIds);
+			$this->loadVisibleForOrganizationContext($organizationId, $holonId, $documentScope, $descendantHolonIds, $includeOrganizationDocuments);
 
 			$items = array_values(array_filter($this->getArrayCopy(), function ($document) {
 				return $document instanceof \dbObject\Document

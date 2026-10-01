@@ -1,0 +1,43 @@
+.omo-governance-proposals,
+.omo-governance-actions {
+    display: grid;
+    gap: var(--generic-space-3);
+}
+.omo-governance-actions[hidden] { display: none; }
+.omo-governance-proposal__description-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--generic-space-2);
+}
+.omo-decision-governance__intention-link {
+    justify-self: start;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--color-primary, #2563eb);
+    font: inherit;
+    text-decoration: underline;
+    cursor: pointer;
+}
+.omo-decision-governance__intention-link:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+.omo-governance-action { position: relative; }
+.omo-governance-action__row {
+    display: flex;
+    align-items: center;
+    gap: var(--generic-space-3);
+    padding-inline: var(--generic-space-3);
+    list-style: none;
+}
+.omo-governance-action:has(.omo-governance-action__menu) .omo-governance-action__row { padding-right: 52px; }
+.omo-governance-action__row::-webkit-details-marker { display: none; }
+.omo-governance-action__summary { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-text); }
+.omo-governance-action__summary::before { content: '›'; display: inline-block; margin-right: 8px; transition: transform .16s ease; }
+.omo-governance-action__accordion[open] .omo-governance-action__summary::before { transform: rotate(90deg); }
+.omo-governance-action__detail { padding: 0 var(--generic-space-3) var(--generic-space-3); }
+.omo-governance-action__status { flex: 0 0 auto; color: var(--color-text-light); font-size: .8rem; font-weight: 600; }
+.omo-governance-action__status--conflict,
+.omo-governance-action__status--failed { color: var(--color-danger, #991b1b); }
+.omo-governance-action__status--applied { color: var(--color-success, #166534); }
+.omo-governance-action__menu { position: absolute; top: 4px; right: 8px; }

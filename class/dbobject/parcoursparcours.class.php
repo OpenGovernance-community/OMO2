@@ -83,6 +83,8 @@
 				|| !$childParcours->load($childParcoursId)
 				|| !$parentParcours->isPack()
 				|| $childParcours->isPack()
+				|| $parentParcours->get('isarchived')
+				|| $childParcours->get('isarchived')
 			) {
 				return [
 					'status' => false,

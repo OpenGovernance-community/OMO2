@@ -2,10 +2,19 @@
 	namespace dbObject;
 
 	require_once dirname(__DIR__, 2) . '/common/environment_subdomains.php';
+	require_once dirname(__DIR__, 2) . '/common/search_text.php';
 
 
 	class Organization extends DbObject
 	{
+		public const SYSTEM_ORGANIZATION_ID = 1;
+		public const INTERFACE_LEVEL_DISCOVERY = 1;
+		public const INTERFACE_LEVEL_AUTONOMOUS = 2;
+		public const INTERFACE_LEVEL_EXPERT = 3;
+		public const STRUCTURE_DISPLAY_SETTINGS_PARAMETER = 'structureDisplay';
+		protected $lastDeleteError = '';
+		protected static $omo1ImportJournal = null;
+
 	    public static function tableName()
 		{
 			return 'organization'; // Nom de la table correspondante
@@ -17,7 +26,10 @@
 			return [
 				[['name'], 'required'],								// Champs obligatoires
 				[['id'], 'integer'],								// Nombres entiers
+				[['datecreation'], 'datetime'],
 				[['name','shortname','domain'], 'string'],	// Chaines de caractere
+				[['interface_level'], 'integer'],
+				[['isModel'], 'boolean'],
 				[['latlong'], 'latlong'],
 				[['parameters'], 'parameters'],
 				[['shortname'], 'unique'],
@@ -35,10 +47,13 @@
 				'name' => 'Nom',
 				'shortname' => 'Nom court',
 				'domain' => 'Domaine',
+				'interface_level' => 'Niveau d utilisation',
+				'isModel' => 'Modele public',
 				'latlong' => 'Position geographique',
 				'logo' => 'Logo',
 				'banner' => 'Banniere',
 				'color' => 'Couleur',
+				'datecreation' => 'Date de creation',
 			];
 		}
 
@@ -47,6 +62,7 @@
 				'name' => 'Nom complet de l\'organisation',
 				'shortname' => 'Nom abrege utilise dans l\'interface et dans l\'URL de l\'organisation',
 				'domain' => 'Nom de domaine principal de l\'organisation',
+				'interface_level' => 'Niveau global de complexite de l interface, utilise pour afficher progressivement les options du logiciel.',
 				'latlong' => 'Position geographique facultative de l organisation pour l affichage sur une carte.',
 				'logo' => 'Logo de l\'organisation',
 				'banner' => 'Image de banniere de l\'organisation',
@@ -59,17 +75,79 @@
 				'name' => 100,
 				'shortname' => 50,
 				'domain' => 100,
+				'interface_level' => 1,
 				'latlong' => 100,
-				'logo' => [[500, 500],[180,180]],
+				'logo' => [[320, 320],[160,160]],
 				'banner' => [[960, 540],[480, 270]],
 				'color' => 10,
 			];
+		}
+
+		public static function interfaceLevelCatalog(): array
+		{
+			return array(
+				self::INTERFACE_LEVEL_DISCOVERY => array(
+					'label' => 'Decouverte',
+					'description' => 'Les fonctions essentielles sont mises en avant.',
+				),
+				self::INTERFACE_LEVEL_AUTONOMOUS => array(
+					'label' => 'Autonome',
+					'description' => 'Les fonctions courantes et de configuration sont accessibles.',
+				),
+				self::INTERFACE_LEVEL_EXPERT => array(
+					'label' => 'Expert',
+					'description' => 'Toutes les fonctions et options disponibles sont proposees.',
+				),
+			);
+		}
+
+		public static function attributeValues()
+		{
+			$values = array();
+			foreach (self::interfaceLevelCatalog() as $level => $catalog) {
+				$values[] = array($level, $catalog['label']);
+			}
+
+			return array(
+				'interface_level' => $values,
+			);
+		}
+
+		public static function normalizeInterfaceLevel($value): int
+		{
+			$value = (int)$value;
+			return array_key_exists($value, self::interfaceLevelCatalog())
+				? $value
+				: self::INTERFACE_LEVEL_DISCOVERY;
+		}
+
+		public function getInterfaceLevel(): int
+		{
+			return self::normalizeInterfaceLevel($this->get('interface_level'));
+		}
+
+		public function isDiscoveryMode(): bool
+		{
+			return $this->getInterfaceLevel() === self::INTERFACE_LEVEL_DISCOVERY;
+		}
+
+		public function canManagePermissionAssignments(): bool
+		{
+			return !$this->isDiscoveryMode();
+		}
+
+		public function canManageHolonPermissionAssignments($isTemplate = false): bool
+		{
+			return $this->canManagePermissionAssignments()
+				&& ($isTemplate || $this->getInterfaceLevel() >= self::INTERFACE_LEVEL_EXPERT);
 		}
 
 		public static function publicReadableFields()
 		{
 			return array(
 				'id',
+				'isModel',
+				'interface_level',
 				'name',
 				'shortname',
 				'domain',
@@ -138,6 +216,68 @@
 			return $result;
 		}
 
+		/**
+		 * Returns public organization branding ordered by the latest activity in
+		 * each organization. History is preferred, with member sign-in activity
+		 * used as a fallback. This keeps the homepage query close to its table.
+		 */
+		public static function fetchPublicLogoRowsByLastConnection(): array
+		{
+			$rows = self::fetchAll(
+				"SELECT
+					o.id,
+					o.name,
+					o.shortname,
+					o.logo,
+					COALESCE(history_activity.last_activity, member_activity.last_connection) AS last_activity
+				FROM organization o
+				LEFT JOIN (
+					SELECT IDorganization, MAX(datecreation) AS last_activity
+					FROM history
+					WHERE active = 1
+					GROUP BY IDorganization
+				) history_activity ON history_activity.IDorganization = o.id
+				LEFT JOIN (
+					SELECT IDorganization, MAX(dateconnexion) AS last_connection
+					FROM user_organization
+					WHERE active = 1
+					GROUP BY IDorganization
+				) member_activity ON member_activity.IDorganization = o.id
+				WHERE o.logo IS NOT NULL
+					AND TRIM(o.logo) <> ''
+				ORDER BY
+					last_activity IS NULL ASC,
+					last_activity DESC,
+					o.name ASC,
+					o.id ASC"
+			);
+
+			if (!is_array($rows)) {
+				return array();
+			}
+
+			$result = array();
+			foreach ($rows as $row) {
+				$organization = new self();
+				$organization->loadFromArray($row);
+
+				$organizationId = (int)$organization->getId();
+				$logo = trim((string)$organization->get('logo'));
+				if ($organizationId <= 0 || $logo === '') {
+					continue;
+				}
+
+				$result[] = array(
+					'id' => $organizationId,
+					'name' => trim((string)$organization->get('name')),
+					'shortname' => trim((string)$organization->get('shortname')),
+					'logo' => $logo,
+				);
+			}
+
+			return $result;
+		}
+
 		public function getParametersArray(): array
 		{
 			$parameters = json_decode((string)$this->get('parameters'), true);
@@ -147,6 +287,461 @@
 		public function setParametersArray(array $parameters): void
 		{
 			$this->set('parameters', $parameters);
+		}
+
+		public static function getDefaultStructureDisplaySettings(): array
+		{
+			return array(
+				'fadeOpacityStep' => 0.18,
+				'maxDescendantDepth' => 0,
+				'labelAutoMinRadius' => 18,
+				'labelHoverMinRadius' => 18,
+				'labelMinFontSize' => 0,
+				'textOutlineEnabled' => true,
+				'showTerminalMembers' => false,
+			);
+		}
+
+		public static function normalizeStructureDisplaySettings($settings): array
+		{
+			$defaults = self::getDefaultStructureDisplaySettings();
+			$settings = is_array($settings) ? $settings : array();
+			$normalized = $defaults;
+
+			if (isset($settings['fadeOpacityStep']) && is_numeric($settings['fadeOpacityStep'])) {
+				$normalized['fadeOpacityStep'] = max(0, min(1, round((float)$settings['fadeOpacityStep'], 3)));
+			}
+
+			if (isset($settings['maxDescendantDepth']) && is_numeric($settings['maxDescendantDepth'])) {
+				$normalized['maxDescendantDepth'] = max(0, min(20, (int)$settings['maxDescendantDepth']));
+			}
+
+			$legacyLabelMinRadius = isset($settings['labelMinRadius']) && is_numeric($settings['labelMinRadius'])
+				? max(3, min(200, (int)$settings['labelMinRadius']))
+				: null;
+			if (isset($settings['labelAutoMinRadius']) && is_numeric($settings['labelAutoMinRadius'])) {
+				$normalized['labelAutoMinRadius'] = max(3, min(200, (int)$settings['labelAutoMinRadius']));
+			} elseif ($legacyLabelMinRadius !== null) {
+				$normalized['labelAutoMinRadius'] = $legacyLabelMinRadius;
+			}
+			if (isset($settings['labelHoverMinRadius']) && is_numeric($settings['labelHoverMinRadius'])) {
+				$normalized['labelHoverMinRadius'] = max(3, min(200, (int)$settings['labelHoverMinRadius']));
+			} elseif ($legacyLabelMinRadius !== null) {
+				$normalized['labelHoverMinRadius'] = $legacyLabelMinRadius;
+			}
+			if (isset($settings['labelMinFontSize']) && is_numeric($settings['labelMinFontSize'])) {
+				$normalized['labelMinFontSize'] = max(0, min(30, (float)$settings['labelMinFontSize']));
+			}
+
+			if (array_key_exists('textOutlineEnabled', $settings)) {
+				$value = $settings['textOutlineEnabled'];
+				$normalized['textOutlineEnabled'] = !in_array($value, array(false, 0, '0', 'false', 'off', 'no'), true);
+			}
+
+			if (array_key_exists('showTerminalMembers', $settings)) {
+				$value = $settings['showTerminalMembers'];
+				$normalized['showTerminalMembers'] = !in_array($value, array(false, 0, '0', 'false', 'off', 'no'), true);
+			}
+
+			return $normalized;
+		}
+
+		public function getStructureDisplaySettings(): array
+		{
+			$parameters = $this->getParametersArray();
+			return self::normalizeStructureDisplaySettings(
+				$parameters[self::STRUCTURE_DISPLAY_SETTINGS_PARAMETER] ?? array()
+			);
+		}
+
+		public function setStructureDisplaySettings(array $settings): void
+		{
+			$parameters = $this->getParametersArray();
+			$parameters[self::STRUCTURE_DISPLAY_SETTINGS_PARAMETER] = self::normalizeStructureDisplaySettings($settings);
+			$this->setParametersArray($parameters);
+		}
+
+		public function getApplicationViewTemplateDefault($applicationKey, $templateKey): ?array
+		{
+			$applicationKey = UserHolon::normalizeApplicationViewKey($applicationKey);
+			$templateKey = UserHolon::normalizeDashboardTemplateKey($templateKey);
+			if ($applicationKey === '' || $templateKey === '') {
+				return null;
+			}
+			$parameters = $this->getParametersArray();
+			$views = UserHolon::normalizeApplicationViewTemplateDefaults(
+				$parameters[UserHolon::APPLICATION_VIEW_TEMPLATE_DEFAULTS_PARAMETER] ?? array()
+			);
+			return $views[$templateKey][$applicationKey] ?? null;
+		}
+
+		public function getApplicationViewDefault($applicationKey): ?array
+		{
+			$applicationKey = UserHolon::normalizeApplicationViewKey($applicationKey);
+			if ($applicationKey === '') {
+				return null;
+			}
+
+			$parameters = $this->getParametersArray();
+			$views = UserHolon::normalizeApplicationViewDefaults(
+				$parameters[UserHolon::APPLICATION_VIEW_ORGANIZATION_DEFAULTS_PARAMETER] ?? array()
+			);
+			return $views[$applicationKey] ?? null;
+		}
+
+		public function setApplicationViewDefault($applicationKey, array $view): bool
+		{
+			$applicationKey = UserHolon::normalizeApplicationViewKey($applicationKey);
+			if ($applicationKey === '') {
+				return false;
+			}
+
+			$parameters = $this->getParametersArray();
+			$views = UserHolon::normalizeApplicationViewDefaults(
+				$parameters[UserHolon::APPLICATION_VIEW_ORGANIZATION_DEFAULTS_PARAMETER] ?? array()
+			);
+			$views[$applicationKey] = UserHolon::normalizeApplicationView($view);
+			$parameters[UserHolon::APPLICATION_VIEW_ORGANIZATION_DEFAULTS_PARAMETER] = $views;
+			$this->setParametersArray($parameters);
+			return true;
+		}
+
+		public function clearApplicationViewDefault($applicationKey): bool
+		{
+			$applicationKey = UserHolon::normalizeApplicationViewKey($applicationKey);
+			if ($applicationKey === '') {
+				return false;
+			}
+
+			$parameters = $this->getParametersArray();
+			$views = UserHolon::normalizeApplicationViewDefaults(
+				$parameters[UserHolon::APPLICATION_VIEW_ORGANIZATION_DEFAULTS_PARAMETER] ?? array()
+			);
+			unset($views[$applicationKey]);
+			if ($views === array()) {
+				unset($parameters[UserHolon::APPLICATION_VIEW_ORGANIZATION_DEFAULTS_PARAMETER]);
+			} else {
+				$parameters[UserHolon::APPLICATION_VIEW_ORGANIZATION_DEFAULTS_PARAMETER] = $views;
+			}
+			$this->setParametersArray($parameters);
+			return true;
+		}
+
+		public function getApplicationViewTemplateDefaultForHolon(\dbObject\Holon $holon, $applicationKey): ?array
+		{
+			return $this->getApplicationViewTemplateDefault($applicationKey, $holon->getDashboardDirectTemplateLayoutKey());
+		}
+
+		public function setApplicationViewTemplateDefault($applicationKey, $templateKey, array $view): bool
+		{
+			$applicationKey = UserHolon::normalizeApplicationViewKey($applicationKey);
+			$templateKey = UserHolon::normalizeDashboardTemplateKey($templateKey);
+			if ($applicationKey === '' || $templateKey === '') {
+				return false;
+			}
+			$parameters = $this->getParametersArray();
+			$views = UserHolon::normalizeApplicationViewTemplateDefaults(
+				$parameters[UserHolon::APPLICATION_VIEW_TEMPLATE_DEFAULTS_PARAMETER] ?? array()
+			);
+			if (!isset($views[$templateKey]) || !is_array($views[$templateKey])) {
+				$views[$templateKey] = array();
+			}
+			$views[$templateKey][$applicationKey] = UserHolon::normalizeApplicationView($view);
+			$parameters[UserHolon::APPLICATION_VIEW_TEMPLATE_DEFAULTS_PARAMETER] = $views;
+			$this->setParametersArray($parameters);
+			return true;
+		}
+
+		public function clearApplicationViewTemplateDefault($applicationKey, $templateKey): bool
+		{
+			$applicationKey = UserHolon::normalizeApplicationViewKey($applicationKey);
+			$templateKey = UserHolon::normalizeDashboardTemplateKey($templateKey);
+			if ($applicationKey === '' || $templateKey === '') {
+				return false;
+			}
+			$parameters = $this->getParametersArray();
+			$views = UserHolon::normalizeApplicationViewTemplateDefaults(
+				$parameters[UserHolon::APPLICATION_VIEW_TEMPLATE_DEFAULTS_PARAMETER] ?? array()
+			);
+			if (isset($views[$templateKey])) {
+				unset($views[$templateKey][$applicationKey]);
+				if ($views[$templateKey] === array()) {
+					unset($views[$templateKey]);
+				}
+			}
+			if ($views === array()) {
+				unset($parameters[UserHolon::APPLICATION_VIEW_TEMPLATE_DEFAULTS_PARAMETER]);
+			} else {
+				$parameters[UserHolon::APPLICATION_VIEW_TEMPLATE_DEFAULTS_PARAMETER] = $views;
+			}
+			$this->setParametersArray($parameters);
+			return true;
+		}
+
+		public function getDashboardTemplateDefaultLayout($templateKey): ?array
+		{
+			$templateKey = UserHolon::normalizeDashboardTemplateKey($templateKey);
+			if ($templateKey === '') {
+				return null;
+			}
+
+			$parameters = $this->getParametersArray();
+			$templateLayouts = UserHolon::normalizeDashboardTemplateLayouts(
+				$parameters[UserHolon::DASHBOARD_TEMPLATE_LAYOUTS_PARAMETER] ?? array()
+			);
+			return array_key_exists($templateKey, $templateLayouts) ? $templateLayouts[$templateKey] : null;
+		}
+
+		public function getDashboardTemplateDefaultLayoutForHolon(\dbObject\Holon $holon): ?array
+		{
+			$templateKey = $holon->getDashboardDirectTemplateLayoutKey();
+			return $templateKey === '' ? null : $this->getDashboardTemplateDefaultLayout($templateKey);
+		}
+
+		public function setDashboardTemplateDefaultLayout($templateKey, array $layout): bool
+		{
+			$templateKey = UserHolon::normalizeDashboardTemplateKey($templateKey);
+			if ($templateKey === '') {
+				return false;
+			}
+
+			$parameters = $this->getParametersArray();
+			$templateLayouts = UserHolon::normalizeDashboardTemplateLayouts(
+				$parameters[UserHolon::DASHBOARD_TEMPLATE_LAYOUTS_PARAMETER] ?? array()
+			);
+			$templateLayouts[$templateKey] = UserHolon::normalizeDashboardLayout($layout);
+			$parameters[UserHolon::DASHBOARD_TEMPLATE_LAYOUTS_PARAMETER] = $templateLayouts;
+			$this->setParametersArray($parameters);
+			return true;
+		}
+
+		public function clearDashboardTemplateDefaultLayout($templateKey): bool
+		{
+			$templateKey = UserHolon::normalizeDashboardTemplateKey($templateKey);
+			if ($templateKey === '') {
+				return false;
+			}
+
+			$parameters = $this->getParametersArray();
+			$layouts = UserHolon::normalizeDashboardTemplateLayouts(
+				$parameters[UserHolon::DASHBOARD_TEMPLATE_LAYOUTS_PARAMETER] ?? array()
+			);
+			unset($layouts[$templateKey]);
+			if ($layouts === array()) {
+				unset($parameters[UserHolon::DASHBOARD_TEMPLATE_LAYOUTS_PARAMETER]);
+			} else {
+				$parameters[UserHolon::DASHBOARD_TEMPLATE_LAYOUTS_PARAMETER] = $layouts;
+			}
+			$this->setParametersArray($parameters);
+			return true;
+		}
+
+		public function getDashboardOrganizationDefaultLayout(): ?array
+		{
+			$parameters = $this->getParametersArray();
+			if (!array_key_exists(UserHolon::DASHBOARD_ORGANIZATION_DEFAULT_LAYOUT_PARAMETER, $parameters)) {
+				return null;
+			}
+
+			return UserHolon::normalizeDashboardLayout(
+				$parameters[UserHolon::DASHBOARD_ORGANIZATION_DEFAULT_LAYOUT_PARAMETER]
+			);
+		}
+
+		public function setDashboardOrganizationDefaultLayout(array $layout): void
+		{
+			$parameters = $this->getParametersArray();
+			$parameters[UserHolon::DASHBOARD_ORGANIZATION_DEFAULT_LAYOUT_PARAMETER] = UserHolon::normalizeDashboardLayout($layout);
+			$this->setParametersArray($parameters);
+		}
+
+		public function clearDashboardOrganizationDefaultLayout(): void
+		{
+			$parameters = $this->getParametersArray();
+			unset($parameters[UserHolon::DASHBOARD_ORGANIZATION_DEFAULT_LAYOUT_PARAMETER]);
+			$this->setParametersArray($parameters);
+		}
+
+
+		public static function getDefaultLexicon(): array
+		{
+			return array(
+				'type1' => ['label' => 'Type 1', 'enabled' => true],
+				'type2' => ['label' => 'Type 2', 'enabled' => true],
+				'type3' => ['label' => 'Type 3', 'enabled' => true],
+				'type4' => ['label' => 'Type 4', 'enabled' => false],
+				'type5' => ['label' => 'Type 5', 'enabled' => false],
+				'space' => array(
+					'label' => 'Espace',
+				),
+				'circle' => array(
+					'label' => 'Cercle',
+				),
+				'role' => array(
+					'label' => 'Rôle',
+				),
+				'group' => array(
+					'label' => 'Groupe',
+				),
+				'tension' => array(
+					'label' => 'Tension',
+					'article' => 'une',
+				),
+				'admin' => array(
+					'label' => 'Admin',
+				),
+			);
+		}
+
+		public static function getInitialLexicon(): array
+		{
+			$lexicon = self::getDefaultLexicon();
+			foreach (Property::TYPES as $type) $lexicon[$type]['enabled'] = $type === 'type1';
+			$lexicon['type1']['label'] = "d\u{00e9}fini par le parent";
+			return $lexicon;
+		}
+
+		public function getPropertyTypeSettings(): array
+		{
+			return array_intersect_key($this->getLexicon(), array_flip(Property::TYPES));
+		}
+
+		public function setPropertyTypeSettings(array $settings): void
+		{
+			$this->setLexicon(array_replace($this->getLexicon(), array_intersect_key($settings, array_flip(Property::TYPES))));
+		}
+
+		public static function normalizeLexicon(array $lexicon): array
+		{
+			$defaults = self::getDefaultLexicon();
+			$normalized = $defaults;
+
+			foreach ($defaults as $key => $defaultTerm) {
+				$value = $lexicon[$key] ?? array();
+				if (is_string($value)) {
+					$value = array('label' => $value);
+				}
+				if (!is_array($value)) {
+					$value = array();
+				}
+
+				if (array_key_exists('enabled', $defaultTerm) && array_key_exists('enabled', $value)) {
+					$normalized[$key]['enabled'] = filter_var($value['enabled'], FILTER_VALIDATE_BOOLEAN);
+				}
+
+				$label = trim((string)($value['label'] ?? ''));
+				if ($label !== '') {
+					$normalized[$key]['label'] = function_exists('mb_substr')
+						? mb_substr($label, 0, 80, 'UTF-8')
+						: substr($label, 0, 80);
+				}
+
+				if (array_key_exists('article', $defaultTerm)) {
+					$article = trim((string)($value['article'] ?? ''));
+					if ($article !== '') {
+						$normalized[$key]['article'] = function_exists('mb_substr')
+							? mb_substr($article, 0, 20, 'UTF-8')
+							: substr($article, 0, 20);
+					}
+				}
+			}
+
+			return $normalized;
+		}
+
+		public function getLexicon(): array
+		{
+			$parameters = $this->getLexiconParameters();
+			$lexicon = $parameters['lexicon'] ?? array();
+
+			return self::normalizeLexicon(is_array($lexicon) ? $lexicon : array());
+		}
+
+		protected function getLexiconParameters(): array
+		{
+			// Public labels and type visibility must not depend on access to private parameters.
+			if ($this->needsFullLoadForField('parameters')) $this->load($this->getId());
+			$parameters = json_decode((string)($this->_fields['parameters'] ?? ''), true);
+			return is_array($parameters) ? $parameters : [];
+		}
+
+		protected function getHolonTypeLabelForEditor(int $typeId): string
+		{
+			if ($typeId === 4) {
+				return 'Organisation';
+			}
+
+			switch ($typeId) {
+				case 3:
+					$lexiconKey = 'group';
+					break;
+				case 2:
+					$lexiconKey = 'circle';
+					break;
+				case 1:
+					$lexiconKey = 'role';
+					break;
+				default:
+					$lexiconKey = 'space';
+					break;
+			}
+
+			return self::getLexiconLabel($this->getLexicon(), $lexiconKey);
+		}
+
+		public function setLexicon(array $lexicon): void
+		{
+			$parameters = $this->getLexiconParameters();
+			$parameters['lexicon'] = self::normalizeLexicon($lexicon);
+			$this->setParametersArray($parameters);
+		}
+
+		public static function getLexiconForOrganizationId($organizationId): array
+		{
+			$organizationId = (int)$organizationId;
+			return self::memoizeRead([__FUNCTION__, $organizationId], static function () use ($organizationId) {
+				$organization = new self();
+				return $organizationId > 0 && $organization->load($organizationId) ? $organization->getLexicon() : self::getDefaultLexicon();
+			});
+		}
+
+		public static function getLexiconLabel(array $lexicon, string $key, bool $plural = false): string
+		{
+			$defaults = self::getDefaultLexicon();
+			$defaultLabel = (string)($defaults[$key]['label'] ?? '');
+			$label = trim((string)($lexicon[$key]['label'] ?? $defaultLabel));
+			if ($label === '') {
+				$label = $defaultLabel;
+			}
+
+			if ($plural && $label !== '' && !preg_match('/[sxz]$/iu', $label)) {
+				$label .= 's';
+			}
+
+			return $label;
+		}
+
+		/** Adapt application copy only, before interpolation and HTML escaping. */
+		public static function formatLexiconText(string $text, ?array $lexicon = null): string
+		{
+			$pattern = '~(?<![\pL\pN_/{.\\\\|-])(?:(le|du|au|ce|de)\s+)?(holons?)(?![\pL\pN_}/\\\\|-]|\.[\pL\pN_])~iu';
+			if (!preg_match($pattern, $text)) return $text;
+			$lexicon ??= self::getLexiconForOrganizationId((int)($_SESSION['currentOrganization'] ?? 0));
+			return preg_replace_callback($pattern, static function (array $match) use ($lexicon): string {
+				$plural = strtolower($match[2]) === 'holons';
+				$label = self::getLexiconLabel($lexicon, 'space', $plural);
+				$upper = $match[2][0] === 'H';
+				$label = ($upper ? mb_strtoupper(mb_substr($label, 0, 1)) : mb_strtolower(mb_substr($label, 0, 1))) . mb_substr($label, 1);
+				$prefix = $match[1] ?? '';
+				if ($prefix === '') return $label;
+				if (!$plural && preg_match('/^[aeiouy\x{00e0}\x{00e2}\x{00e4}\x{00e9}\x{00e8}\x{00ea}\x{00eb}\x{00ee}\x{00ef}\x{00f4}\x{00f6}\x{00f9}\x{00fb}\x{00fc}]/iu', $label)) {
+					$elisions = ['le' => "l'", 'du' => "de l'", 'au' => "\u{00e0} l'", 'ce' => 'cet ', 'de' => "d'"];
+					$replacement = $elisions[strtolower($prefix)];
+					if ($prefix[0] !== strtolower($prefix[0])) $replacement = mb_strtoupper(mb_substr($replacement, 0, 1)) . mb_substr($replacement, 1);
+					return $replacement . $label;
+				}
+				return $prefix . ' ' . $label;
+			}, $text) ?? $text;
 		}
 
 		public function getApplicationLinkByDirectory(string $directory, bool $activeOnly = false): ?\dbObject\OrganizationApplication
@@ -173,6 +768,47 @@
 		{
 			$link = $this->getApplicationLinkByDirectory($directory, $activeOnly);
 			return $link ? $link->getParametersArray() : array();
+		}
+
+		public static function normalizePvPriorityLabels(array $labels): array
+		{
+			$normalized = array();
+			for ($priority = 1; $priority <= 5; $priority++) {
+				$label = trim((string)($labels[$priority] ?? $labels[(string)$priority] ?? ''));
+				$label = preg_replace('/\s+/u', ' ', $label) ?? '';
+				$normalized[$priority] = $label !== ''
+					? mb_substr($label, 0, 60, 'UTF-8')
+					: 'P' . $priority;
+			}
+
+			return $normalized;
+		}
+
+		public function getPvDocumentSettings(): array
+		{
+			$parameters = $this->getApplicationParametersByDirectory('documents');
+			$pvSettings = isset($parameters['pv']) && is_array($parameters['pv'])
+				? $parameters['pv']
+				: array();
+
+			return array(
+				'enabled' => !array_key_exists('enabled', $pvSettings) || !empty($pvSettings['enabled']),
+				'priorityLabels' => self::normalizePvPriorityLabels(
+					isset($pvSettings['priorityLabels']) && is_array($pvSettings['priorityLabels'])
+						? $pvSettings['priorityLabels']
+						: array()
+				),
+			);
+		}
+
+		public function isPvDocumentEnabled(): bool
+		{
+			return !empty($this->getPvDocumentSettings()['enabled']);
+		}
+
+		public function getPvPriorityLabels(): array
+		{
+			return $this->getPvDocumentSettings()['priorityLabels'];
 		}
 
 		public function getNextcloudDocumentsConfig(): array
@@ -203,6 +839,484 @@
 			return $config['baseUrl'] !== ''
 				&& $config['username'] !== ''
 				&& $config['appPassword'] !== '';
+		}
+
+		public function getDocumentStorageConfig(): array
+		{
+			require_once dirname(__DIR__, 2) . '/omo/api/documents/params/shared.php';
+
+			if (function_exists('omoDocumentsParamsGetDocumentStorageConfig')) {
+				return omoDocumentsParamsGetDocumentStorageConfig($this);
+			}
+
+			return array(
+				'type' => '',
+				'baseUrl' => '',
+				'driveId' => '',
+				'username' => '',
+				'appPassword' => '',
+				'folder' => '',
+			);
+		}
+
+		public function hasDocumentStorage(): bool
+		{
+			require_once dirname(__DIR__, 2) . '/omo/api/documents/params/shared.php';
+
+			if (function_exists('omoDocumentsParamsHasDocumentStorageConfig')) {
+				return omoDocumentsParamsHasDocumentStorageConfig($this->getDocumentStorageConfig());
+			}
+
+			return false;
+		}
+
+		public function isKdriveDocumentStorage(): bool
+		{
+			return ($this->getDocumentStorageConfig()['type'] ?? '') === 'kdrive' && $this->hasDocumentStorage();
+		}
+
+		public function testDocumentStorageConnection(array $config): array
+		{
+			require_once dirname(__DIR__, 2) . '/omo/api/documents/params/shared.php';
+			$config = function_exists('omoDocumentsParamsNormalizeDocumentStorageConfig')
+				? omoDocumentsParamsNormalizeDocumentStorageConfig($config)
+				: $config;
+
+			if (($config['type'] ?? '') === 'nextcloud') {
+				return $this->testNextcloudDocumentStorageConnection($config);
+			}
+
+			if (($config['type'] ?? '') !== 'kdrive') {
+				return array('status' => false, 'text' => 'Type de stockage invalide.');
+			}
+
+			if (!function_exists('curl_init')) {
+				return array('status' => false, 'text' => 'cURL est requis pour tester la connexion kDrive.');
+			}
+
+			$testConfig = $config;
+			$testConfig['folder'] = '';
+			$result = $this->executeKdriveDocumentsRequest('PROPFIND', '', $testConfig, array(
+				'timeout' => 30,
+				'headers' => array('Depth: 0', 'Content-Length: 0'),
+			));
+			if (is_array($result) && !empty($result['status'])) {
+				return array('status' => true, 'text' => 'Connexion kDrive réussie. Le compte WebDAV est accessible.');
+			}
+
+			$httpCode = (int)($result['httpCode'] ?? 0);
+			if ($httpCode === 403) {
+				return array('status' => false, 'text' => 'kDrive a refusé la connexion (HTTP 403). Vérifiez votre offre : l’accès WebDAV nécessite kSuite Business ou supérieur ; kSuite Standard ne le permet pas.');
+			}
+			if ($httpCode === 401) {
+				return array('status' => false, 'text' => 'kDrive refuse les identifiants ou le mot de passe d’application.');
+			}
+
+			return array('status' => false, 'text' => trim((string)($result['text'] ?? 'La connexion kDrive a échoué.')));
+		}
+
+		protected function buildKdriveDocumentsDavUrl(array $config, string $relativePath = ''): string
+		{
+			$driveId = preg_replace('/[^0-9]/', '', trim((string)($config['driveId'] ?? '')));
+			if ($driveId === '') {
+				return '';
+			}
+
+			$segments = array_filter(
+				array_map('trim', explode('/', trim((string)($config['folder'] ?? '') . '/' . trim($relativePath, '/'), '/'))),
+				static function ($segment) {
+					return $segment !== '';
+				}
+			);
+
+			$encodedPath = count($segments) > 0
+				? '/' . implode('/', array_map('rawurlencode', $segments))
+				: '';
+			return 'https://' . $driveId . '.connect.kdrive.infomaniak.com' . $encodedPath;
+		}
+
+		protected function executeKdriveDocumentsRequest(string $method, string $relativePath, array $config, array $options = array()): array
+		{
+			$url = $this->buildKdriveDocumentsDavUrl($config, $relativePath);
+			$username = trim((string)($config['username'] ?? ''));
+			$appPassword = trim((string)($config['appPassword'] ?? ''));
+			if ($url === '' || $username === '' || $appPassword === '') {
+				return array('status' => false, 'text' => 'Configuration kDrive invalide.');
+			}
+
+			$curl = curl_init($url);
+			$body = array_key_exists('body', $options) ? $options['body'] : null;
+			$headers = !empty($options['headers']) && is_array($options['headers']) ? array_values($options['headers']) : array();
+			$timeout = isset($options['timeout']) ? max(5, (int)$options['timeout']) : 120;
+			curl_setopt_array($curl, array(
+				CURLOPT_RETURNTRANSFER => true,
+				CURLOPT_FOLLOWLOCATION => false,
+				CURLOPT_CUSTOMREQUEST => strtoupper($method),
+				CURLOPT_HTTPAUTH => CURLAUTH_BASIC,
+				CURLOPT_USERPWD => $username . ':' . $appPassword,
+				CURLOPT_TIMEOUT => $timeout,
+				CURLOPT_HEADER => true,
+				CURLOPT_HTTPHEADER => $headers,
+				CURLOPT_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
+			));
+			if ($body !== null) {
+				curl_setopt($curl, CURLOPT_POSTFIELDS, $body);
+			}
+
+			$response = curl_exec($curl);
+			$curlError = trim((string)curl_error($curl));
+			$httpCode = (int)curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
+			$headerSize = (int)curl_getinfo($curl, CURLINFO_HEADER_SIZE);
+			if ($response === false) {
+				return array('status' => false, 'httpCode' => $httpCode, 'text' => $curlError !== '' ? $curlError : 'La requête kDrive a échoué.');
+			}
+
+			$rawHeaders = substr((string)$response, 0, max(0, $headerSize));
+			$responseBody = substr((string)$response, max(0, $headerSize));
+			$headerMap = array();
+			foreach (preg_split("/\r\n|\n|\r/", $rawHeaders) as $headerLine) {
+				$separatorPosition = strpos($headerLine, ':');
+				if ($separatorPosition === false) {
+					continue;
+				}
+				$headerName = strtolower(trim(substr($headerLine, 0, $separatorPosition)));
+				if ($headerName !== '') {
+					$headerMap[$headerName] = trim(substr($headerLine, $separatorPosition + 1));
+				}
+			}
+
+			return array(
+				'status' => $httpCode >= 200 && $httpCode < 300,
+				'httpCode' => $httpCode,
+				'headers' => $headerMap,
+				'body' => $responseBody,
+				'text' => $httpCode >= 200 && $httpCode < 300 ? 'OK' : 'Requête kDrive refusée (' . $httpCode . ').',
+			);
+		}
+
+		protected function ensureKdriveDocumentsFolder(string $relativeFolder, array $config): array
+		{
+			$normalizedFolder = trim(str_replace('\\', '/', $relativeFolder), '/');
+			if ($normalizedFolder === '') {
+				return array('status' => true);
+			}
+
+			$currentPath = '';
+			foreach (array_filter(explode('/', $normalizedFolder), static function ($segment) { return trim((string)$segment) !== ''; }) as $segment) {
+				$currentPath = $currentPath === '' ? $segment : $currentPath . '/' . $segment;
+				$result = $this->executeKdriveDocumentsRequest('MKCOL', $currentPath, $config, array('timeout' => 30));
+				$httpCode = (int)($result['httpCode'] ?? 0);
+				if (!is_array($result) || (!empty($result['status']) ? false : !in_array($httpCode, array(201, 405), true))) {
+					return array('status' => false, 'text' => trim((string)($result['text'] ?? 'Impossible de préparer le dossier kDrive.')));
+				}
+			}
+
+			return array('status' => true);
+		}
+
+		protected function buildKdriveDocumentStorageRoot(array $config): string
+		{
+			return 'omo-documents';
+		}
+
+		public function uploadDocumentFileToStorage(int $documentId, array $uploadedFile): array
+		{
+			$config = $this->getDocumentStorageConfig();
+			if (($config['type'] ?? '') !== 'kdrive') {
+				if (($config['type'] ?? '') !== 'nextcloud' || !$this->hasDocumentStorage()) {
+					return array('status' => false, 'text' => 'Le stockage de documents n est pas configure pour cette organisation.');
+				}
+				return $this->uploadDocumentFileToNextcloud($documentId, $uploadedFile);
+			}
+
+			$documentId = (int)$documentId;
+			$tmpName = trim((string)($uploadedFile['tmp_name'] ?? ''));
+			$errorCode = (int)($uploadedFile['error'] ?? UPLOAD_ERR_NO_FILE);
+			if ($documentId <= 0 || $errorCode !== UPLOAD_ERR_OK || $tmpName === '' || !is_file($tmpName)) {
+				return array('status' => false, 'text' => 'Aucun fichier valide n’a été téléversé.');
+			}
+
+			$originalName = trim((string)($uploadedFile['name'] ?? ''));
+			$mimeType = trim((string)($uploadedFile['type'] ?? ''));
+			if ($mimeType === '' && function_exists('mime_content_type')) {
+				$mimeType = trim((string)mime_content_type($tmpName));
+			}
+			$mimeType = $mimeType !== '' ? $mimeType : 'application/octet-stream';
+			$fileSize = isset($uploadedFile['size']) ? (int)$uploadedFile['size'] : (int)filesize($tmpName);
+			$remoteFilename = self::sanitizeNextcloudRemoteFilename($originalName !== '' ? $originalName : ('document-' . $documentId));
+			$storageDirectory = $this->buildKdriveDocumentStorageRoot($config) . '/' . $documentId;
+			$directoryResult = $this->ensureKdriveDocumentsFolder($storageDirectory, $config);
+			if (!is_array($directoryResult) || empty($directoryResult['status'])) {
+				return $directoryResult;
+			}
+
+			$fileContent = file_get_contents($tmpName);
+			if ($fileContent === false) {
+				return array('status' => false, 'text' => 'Impossible de lire le fichier à envoyer.');
+			}
+			$relativePath = $storageDirectory . '/' . $remoteFilename;
+			$uploadResult = $this->executeKdriveDocumentsRequest('PUT', $relativePath, $config, array(
+				'body' => $fileContent,
+				'timeout' => 300,
+				'headers' => array('Content-Type: ' . $mimeType, 'Content-Length: ' . strlen($fileContent)),
+			));
+			if (!is_array($uploadResult) || empty($uploadResult['status'])) {
+				return array('status' => false, 'text' => trim((string)($uploadResult['text'] ?? 'Impossible d’envoyer le fichier vers kDrive.')));
+			}
+
+			return array(
+				'status' => true,
+				'relativePath' => $relativePath,
+				'originalName' => $originalName !== '' ? $originalName : $remoteFilename,
+				'mimeType' => $mimeType,
+				'size' => max(0, $fileSize),
+			);
+		}
+
+		public function deleteDocumentFileFromStorage(string $relativePath, ?array $storageConfig = null): array
+		{
+			$config = $storageConfig ?: $this->getDocumentStorageConfig();
+			if (($config['type'] ?? '') !== 'kdrive') {
+				if (($config['type'] ?? '') !== 'nextcloud' || !$this->hasDocumentStorage()) {
+					return array('status' => false, 'text' => 'Le stockage de documents n est pas configure pour cette organisation.');
+				}
+				return $this->deleteDocumentFileFromNextcloud($relativePath);
+			}
+
+			$normalizedPath = trim(str_replace('\\', '/', $relativePath), '/');
+			if ($normalizedPath === '') {
+				return array('status' => true);
+			}
+			$result = $this->executeKdriveDocumentsRequest('DELETE', $normalizedPath, $config, array('timeout' => 120));
+			$httpCode = (int)($result['httpCode'] ?? 0);
+			return in_array($httpCode, array(204, 404), true) || !empty($result['status'])
+				? array('status' => true)
+				: array('status' => false, 'text' => trim((string)($result['text'] ?? 'Impossible de supprimer le fichier distant.')));
+		}
+
+		public function downloadDocumentFileFromStorage(string $relativePath): array
+		{
+			$config = $this->getDocumentStorageConfig();
+			if (($config['type'] ?? '') !== 'kdrive') {
+				if (($config['type'] ?? '') !== 'nextcloud' || !$this->hasDocumentStorage()) {
+					return array('status' => false, 'text' => 'Le stockage de documents n est pas configure pour cette organisation.');
+				}
+				return $this->downloadDocumentFileFromNextcloud($relativePath);
+			}
+
+			$normalizedPath = trim(str_replace('\\', '/', $relativePath), '/');
+			if ($normalizedPath === '') {
+				return array('status' => false, 'text' => 'Chemin de fichier distant invalide.');
+			}
+			$result = $this->executeKdriveDocumentsRequest('GET', $normalizedPath, $config, array('timeout' => 300, 'headers' => array('Accept: */*')));
+			if (!is_array($result) || empty($result['status'])) {
+				return array('status' => false, 'text' => trim((string)($result['text'] ?? 'Impossible de récupérer le fichier distant.')));
+			}
+
+			return array(
+				'status' => true,
+				'body' => (string)($result['body'] ?? ''),
+				'contentType' => trim((string)($result['headers']['content-type'] ?? 'application/octet-stream')),
+				'contentLength' => isset($result['headers']['content-length']) ? (int)$result['headers']['content-length'] : strlen((string)($result['body'] ?? '')),
+			);
+		}
+
+		public function updateDocumentFileContentsOnStorage(string $relativePath, string $contents, string $mimeType = 'application/octet-stream'): array
+		{
+			$config = $this->getDocumentStorageConfig();
+			if (($config['type'] ?? '') !== 'kdrive') {
+				if (($config['type'] ?? '') !== 'nextcloud' || !$this->hasDocumentStorage()) {
+					return array('status' => false, 'text' => 'Le stockage de documents n est pas configure pour cette organisation.');
+				}
+				return $this->updateDocumentFileContentsOnNextcloud($relativePath, $contents, $mimeType);
+			}
+
+			$normalizedPath = trim(str_replace('\\', '/', $relativePath), '/');
+			if ($normalizedPath === '') {
+				return array('status' => false, 'text' => 'Chemin de fichier distant invalide.');
+			}
+			$result = $this->executeKdriveDocumentsRequest('PUT', $normalizedPath, $config, array(
+				'body' => $contents,
+				'timeout' => 300,
+				'headers' => array('Content-Type: ' . ($mimeType !== '' ? $mimeType : 'application/octet-stream'), 'Content-Length: ' . strlen($contents)),
+			));
+			return !is_array($result) || empty($result['status'])
+				? array('status' => false, 'text' => trim((string)($result['text'] ?? 'Impossible de mettre à jour le fichier distant.')))
+				: array('status' => true, 'size' => strlen($contents));
+		}
+
+		public function listKdriveDocumentsDirectory(string $relativePath): array
+		{
+			$config = $this->getDocumentStorageConfig();
+			if (($config['type'] ?? '') !== 'kdrive' || !$this->hasDocumentStorage()) {
+				return array('status' => false, 'text' => 'Le stockage kDrive est indisponible.');
+			}
+
+			$relativePath = trim(str_replace('\\', '/', $relativePath), '/');
+			$result = $this->executeKdriveDocumentsRequest('PROPFIND', $relativePath, $config, array(
+				'timeout' => 60,
+				'headers' => array('Depth: 1', 'Content-Length: 0'),
+			));
+			if (!is_array($result) || empty($result['status'])) {
+				return array('status' => false, 'text' => trim((string)($result['text'] ?? 'Impossible de lire le dossier kDrive.')));
+			}
+
+			$xml = @simplexml_load_string((string)($result['body'] ?? ''));
+			if (!($xml instanceof \SimpleXMLElement)) {
+				return array('status' => false, 'text' => 'La reponse WebDAV du dossier kDrive est invalide.');
+			}
+			$xml->registerXPathNamespace('d', 'DAV:');
+			$responses = $xml->xpath('//d:response');
+			if (!is_array($responses)) {
+				return array('status' => true, 'entries' => array());
+			}
+
+			$configFolder = trim(str_replace('\\', '/', (string)($config['folder'] ?? '')), '/');
+			$entries = array();
+			foreach ($responses as $response) {
+				$propertyNodes = $response->xpath('./d:propstat/d:prop');
+				$property = is_array($propertyNodes) && isset($propertyNodes[0]) ? $propertyNodes[0] : null;
+				if (!($property instanceof \SimpleXMLElement)) {
+					continue;
+				}
+				$hrefNodes = $response->xpath('./d:href');
+				$hrefPath = is_array($hrefNodes) && isset($hrefNodes[0]) ? (string)parse_url((string)$hrefNodes[0], PHP_URL_PATH) : '';
+				$path = trim(rawurldecode($hrefPath), '/');
+				if ($configFolder !== '' && ($path === $configFolder || str_starts_with($path, $configFolder . '/'))) {
+					$path = $path === $configFolder ? '' : substr($path, strlen($configFolder) + 1);
+				}
+				if ($path === '' || $path === $relativePath) {
+					continue;
+				}
+				$collectionNodes = $property->xpath('./d:resourcetype/d:collection');
+				$nameNodes = $property->xpath('./d:displayname');
+				$name = is_array($nameNodes) && isset($nameNodes[0]) ? trim((string)$nameNodes[0]) : basename($path);
+				$typeNodes = $property->xpath('./d:getcontenttype');
+				$sizeNodes = $property->xpath('./d:getcontentlength');
+				$modifiedNodes = $property->xpath('./d:getlastmodified');
+				$entries[] = array(
+					'path' => $path,
+					'name' => $name !== '' ? $name : basename($path),
+					'isFolder' => is_array($collectionNodes) && count($collectionNodes) > 0,
+					'mimeType' => is_array($typeNodes) && isset($typeNodes[0]) ? trim((string)$typeNodes[0]) : '',
+					'size' => is_array($sizeNodes) && isset($sizeNodes[0]) ? max(0, (int)$sizeNodes[0]) : 0,
+					'modifiedAt' => is_array($modifiedNodes) && isset($modifiedNodes[0]) ? trim((string)$modifiedNodes[0]) : '',
+				);
+			}
+			usort($entries, static function (array $left, array $right): int {
+				if ((bool)$left['isFolder'] !== (bool)$right['isFolder']) {
+					return (bool)$left['isFolder'] ? -1 : 1;
+				}
+				return strnatcasecmp((string)$left['name'], (string)$right['name']);
+			});
+			return array('status' => true, 'entries' => $entries);
+		}
+
+		public function getKdriveDocumentsDirectoryInfo(string $relativePath): array
+		{
+			$config = $this->getDocumentStorageConfig();
+			$relativePath = trim(str_replace('\\', '/', $relativePath), '/');
+			if (($config['type'] ?? '') !== 'kdrive' || !$this->hasDocumentStorage() || $relativePath === '') {
+				return array('status' => false, 'text' => 'Chemin kDrive invalide.');
+			}
+			$result = $this->executeKdriveDocumentsRequest('PROPFIND', $relativePath, $config, array(
+				'timeout' => 60,
+				'headers' => array('Depth: 0', 'Content-Length: 0'),
+			));
+			if (!is_array($result) || empty($result['status'])) {
+				return array('status' => false, 'text' => trim((string)($result['text'] ?? 'Impossible de lire le dossier kDrive.')));
+			}
+			$xml = @simplexml_load_string((string)($result['body'] ?? ''));
+			if (!($xml instanceof \SimpleXMLElement)) {
+				return array('status' => false, 'text' => 'La reponse WebDAV du dossier kDrive est invalide.');
+			}
+			$xml->registerXPathNamespace('d', 'DAV:');
+			$responses = $xml->xpath('//d:response');
+			$response = is_array($responses) && isset($responses[0]) ? $responses[0] : null;
+			$propertyNodes = $response instanceof \SimpleXMLElement ? $response->xpath('./d:propstat/d:prop') : array();
+			$property = is_array($propertyNodes) && isset($propertyNodes[0]) ? $propertyNodes[0] : null;
+			if (!($property instanceof \SimpleXMLElement)) {
+				return array('status' => false, 'text' => 'Le dossier kDrive est introuvable.');
+			}
+			$collectionNodes = $property->xpath('./d:resourcetype/d:collection');
+			return array('status' => true, 'path' => $relativePath, 'fileId' => '', 'isFolder' => is_array($collectionNodes) && count($collectionNodes) > 0);
+		}
+
+		public function listDocumentStorageDirectory(string $relativePath): array
+		{
+			return $this->isKdriveDocumentStorage()
+				? $this->listKdriveDocumentsDirectory($relativePath)
+				: $this->listNextcloudDocumentsDirectory($relativePath);
+		}
+
+		public function getDocumentStorageDirectoryInfo(string $relativePath): array
+		{
+			return $this->isKdriveDocumentStorage()
+				? $this->getKdriveDocumentsDirectoryInfo($relativePath)
+				: $this->getNextcloudDocumentsDirectoryInfo($relativePath);
+		}
+
+		public function testNextcloudDocumentStorageConnection(array $config): array
+		{
+			$baseUrl = rtrim(trim((string)($config['baseUrl'] ?? '')), '/');
+			$username = trim((string)($config['username'] ?? ''));
+			$appPassword = trim((string)($config['appPassword'] ?? ''));
+			$parsedUrl = parse_url($baseUrl);
+			if (
+				$baseUrl === ''
+				|| !is_array($parsedUrl)
+				|| !in_array(strtolower((string)($parsedUrl['scheme'] ?? '')), array('http', 'https'), true)
+				|| trim((string)($parsedUrl['host'] ?? '')) === ''
+				|| $username === ''
+				|| $appPassword === ''
+			) {
+				return array('status' => false, 'text' => 'Renseignez une URL, un utilisateur et un mot de passe applicatif Nextcloud valides.');
+			}
+
+			if (!function_exists('curl_init')) {
+				return array('status' => false, 'text' => 'cURL est requis pour tester la connexion Nextcloud.');
+			}
+
+			$url = $baseUrl . '/remote.php/dav/files/' . rawurlencode($username) . '/';
+			$curl = curl_init($url);
+			curl_setopt_array($curl, array(
+				CURLOPT_RETURNTRANSFER => true,
+				CURLOPT_HEADER => true,
+				CURLOPT_CUSTOMREQUEST => 'PROPFIND',
+				CURLOPT_HTTPAUTH => CURLAUTH_BASIC,
+				CURLOPT_USERPWD => $username . ':' . $appPassword,
+				CURLOPT_HTTPHEADER => array(
+					'Depth: 0',
+					'Content-Length: 0',
+				),
+				CURLOPT_CONNECTTIMEOUT => 10,
+				CURLOPT_TIMEOUT => 30,
+				CURLOPT_FOLLOWLOCATION => false,
+				CURLOPT_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
+			));
+
+			$host = strtolower(trim((string)($parsedUrl['host'] ?? '')));
+			$localCertificate = '/etc/apache2/ssl/dev-localhost.crt';
+			if ($host !== '' && ($host === 'localtest.me' || str_ends_with($host, '.localtest.me')) && is_file($localCertificate)) {
+				curl_setopt($curl, CURLOPT_CAINFO, $localCertificate);
+			}
+
+			$response = curl_exec($curl);
+			$curlError = trim((string)curl_error($curl));
+			$httpCode = (int)curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
+			if ($response === false) {
+				return array('status' => false, 'text' => $curlError !== '' ? $curlError : 'La connexion Nextcloud a echoue.');
+			}
+
+			if ($httpCode >= 200 && $httpCode < 300) {
+				return array('status' => true, 'text' => 'Connexion Nextcloud reussie. Le compte WebDAV est accessible.');
+			}
+
+			if (in_array($httpCode, array(401, 403), true)) {
+				return array('status' => false, 'text' => 'Nextcloud refuse les identifiants ou le mot de passe applicatif.');
+			}
+
+			return array('status' => false, 'text' => 'Nextcloud a repondu avec le code HTTP ' . $httpCode . '.');
 		}
 
 		protected function buildNextcloudDocumentsDavUrl(string $relativePath = ''): string
@@ -247,7 +1361,9 @@
 			}
 
 			$config = $this->getNextcloudDocumentsConfig();
-			$url = $this->buildNextcloudDocumentsDavUrl($relativePath);
+			$url = !empty($options['davRoot'])
+				? rtrim((string)$config['baseUrl'], '/') . '/remote.php/dav/'
+				: $this->buildNextcloudDocumentsDavUrl($relativePath);
 			if ($url === '') {
 				return array(
 					'status' => false,
@@ -273,6 +1389,12 @@
 			curl_setopt($curl, CURLOPT_HEADER, true);
 			curl_setopt($curl, CURLOPT_HTTPHEADER, $headers);
 
+			$nextcloudHost = strtolower(trim((string)parse_url($url, PHP_URL_HOST)));
+			$localCertificate = '/etc/apache2/ssl/dev-localhost.crt';
+			if ($nextcloudHost !== '' && ($nextcloudHost === 'localtest.me' || str_ends_with($nextcloudHost, '.localtest.me')) && is_file($localCertificate)) {
+				curl_setopt($curl, CURLOPT_CAINFO, $localCertificate);
+			}
+
 			if ($body !== null) {
 				curl_setopt($curl, CURLOPT_POSTFIELDS, $body);
 			}
@@ -281,7 +1403,6 @@
 			$curlError = curl_error($curl);
 			$httpCode = (int)curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
 			$headerSize = (int)curl_getinfo($curl, CURLINFO_HEADER_SIZE);
-			curl_close($curl);
 
 			if ($response === false) {
 				return array(
@@ -514,6 +1635,201 @@
 			);
 		}
 
+		public function listNextcloudDocumentsDirectory(string $relativePath): array
+		{
+			$relativePath = trim(str_replace('\\', '/', $relativePath), '/');
+			$result = $this->executeNextcloudDocumentsRequest('PROPFIND', $relativePath, array(
+				'timeout' => 60,
+				'headers' => array('Depth: 1', 'Content-Length: 0'),
+			));
+			if (!is_array($result) || empty($result['status'])) {
+				return array(
+					'status' => false,
+					'text' => trim((string)($result['text'] ?? 'Impossible de lire le dossier NextCloud.')),
+				);
+			}
+
+			$xml = @simplexml_load_string((string)($result['body'] ?? ''));
+			if (!($xml instanceof \SimpleXMLElement)) {
+				return array('status' => false, 'text' => 'La reponse WebDAV du dossier NextCloud est invalide.');
+			}
+
+			$xml->registerXPathNamespace('d', 'DAV:');
+			$responses = $xml->xpath('//d:response');
+			if (!is_array($responses)) {
+				return array('status' => true, 'entries' => array());
+			}
+
+			$config = $this->getNextcloudDocumentsConfig();
+			$davPrefix = '/remote.php/dav/files/' . rawurlencode((string)$config['username']) . '/';
+			$currentPath = trim($relativePath, '/');
+			$entries = array();
+			foreach ($responses as $response) {
+				$hrefNodes = $response->xpath('./d:href');
+				$href = is_array($hrefNodes) && isset($hrefNodes[0]) ? (string)$hrefNodes[0] : '';
+				$hrefPath = (string)parse_url($href, PHP_URL_PATH);
+				$relativeHref = trim(rawurldecode(str_starts_with($hrefPath, $davPrefix) ? substr($hrefPath, strlen($davPrefix)) : $hrefPath), '/');
+				if ($relativeHref === '' || $relativeHref === $currentPath) {
+					continue;
+				}
+
+				$propertyNodes = $response->xpath('./d:propstat/d:prop');
+				$property = is_array($propertyNodes) && isset($propertyNodes[0]) ? $propertyNodes[0] : null;
+				if (!($property instanceof \SimpleXMLElement)) {
+					continue;
+				}
+				$collectionNodes = $property->xpath('./d:resourcetype/d:collection');
+				$isFolder = is_array($collectionNodes) && count($collectionNodes) > 0;
+				$nameNodes = $property->xpath('./d:displayname');
+				$name = is_array($nameNodes) && isset($nameNodes[0]) ? trim((string)$nameNodes[0]) : '';
+				if ($name === '') {
+					$name = basename($relativeHref);
+				}
+				$typeNodes = $property->xpath('./d:getcontenttype');
+				$sizeNodes = $property->xpath('./d:getcontentlength');
+				$modifiedNodes = $property->xpath('./d:getlastmodified');
+				$entries[] = array(
+					'path' => $relativeHref,
+					'name' => $name,
+					'isFolder' => $isFolder,
+					'mimeType' => is_array($typeNodes) && isset($typeNodes[0]) ? trim((string)$typeNodes[0]) : '',
+					'size' => is_array($sizeNodes) && isset($sizeNodes[0]) ? max(0, (int)$sizeNodes[0]) : 0,
+					'modifiedAt' => is_array($modifiedNodes) && isset($modifiedNodes[0]) ? trim((string)$modifiedNodes[0]) : '',
+				);
+			}
+
+			usort($entries, static function (array $left, array $right): int {
+				if ((bool)$left['isFolder'] !== (bool)$right['isFolder']) {
+					return (bool)$left['isFolder'] ? -1 : 1;
+				}
+				return strnatcasecmp((string)$left['name'], (string)$right['name']);
+			});
+
+			return array('status' => true, 'entries' => $entries);
+		}
+
+		public function getNextcloudDocumentsDirectoryInfo(string $relativePath): array
+		{
+			$relativePath = trim(str_replace('\\', '/', $relativePath), '/');
+			if ($relativePath === '') {
+				return array('status' => false, 'text' => 'Chemin NextCloud invalide.');
+			}
+
+			$result = $this->executeNextcloudDocumentsRequest('PROPFIND', $relativePath, array(
+				'timeout' => 60,
+				'headers' => array('Depth: 0', 'Content-Length: 0'),
+			));
+			if (!is_array($result) || empty($result['status'])) {
+				return array('status' => false, 'text' => trim((string)($result['text'] ?? 'Impossible de lire le dossier NextCloud.')));
+			}
+
+			$xml = @simplexml_load_string((string)($result['body'] ?? ''));
+			if (!($xml instanceof \SimpleXMLElement)) {
+				return array('status' => false, 'text' => 'La reponse WebDAV du dossier NextCloud est invalide.');
+			}
+			$xml->registerXPathNamespace('d', 'DAV:');
+			$xml->registerXPathNamespace('oc', 'http://owncloud.org/ns');
+			$responses = $xml->xpath('//d:response');
+			$response = is_array($responses) && isset($responses[0]) ? $responses[0] : null;
+			if (!($response instanceof \SimpleXMLElement)) {
+				return array('status' => false, 'text' => 'Le dossier NextCloud est introuvable.');
+			}
+
+			$propertyNodes = $response->xpath('./d:propstat/d:prop');
+			$property = is_array($propertyNodes) && isset($propertyNodes[0]) ? $propertyNodes[0] : null;
+			if (!($property instanceof \SimpleXMLElement)) {
+				return array('status' => false, 'text' => 'Les informations du dossier NextCloud sont indisponibles.');
+			}
+			$property->registerXPathNamespace('d', 'DAV:');
+			$property->registerXPathNamespace('oc', 'http://owncloud.org/ns');
+			$fileIdNodes = $property->xpath('./oc:fileid');
+			$collectionNodes = $property->xpath('./d:resourcetype/d:collection');
+			return array(
+				'status' => true,
+				'path' => $relativePath,
+				'fileId' => is_array($fileIdNodes) && isset($fileIdNodes[0]) ? trim((string)$fileIdNodes[0]) : '',
+				'isFolder' => is_array($collectionNodes) && count($collectionNodes) > 0,
+			);
+		}
+
+		public function findNextcloudDocumentsPathByFileId(string $fileId): array
+		{
+			$fileId = trim($fileId);
+			if ($fileId === '' || !preg_match('/^[0-9]+$/', $fileId)) {
+				return array('status' => false, 'text' => 'Identifiant NextCloud invalide.');
+			}
+
+			$config = $this->getNextcloudDocumentsConfig();
+			$username = trim((string)($config['username'] ?? ''));
+			if ($username === '') {
+				return array('status' => false, 'text' => 'Configuration NextCloud invalide.');
+			}
+			$escapedUsername = htmlspecialchars($username, ENT_XML1 | ENT_QUOTES, 'UTF-8');
+			$searchBody = '<?xml version="1.0" encoding="UTF-8"?>'
+				. '<d:searchrequest xmlns:d="DAV:" xmlns:oc="http://owncloud.org/ns"><d:basicsearch><d:select><d:prop><d:resourcetype/><oc:fileid/></d:prop></d:select><d:from><d:scope><d:href>/files/' . $escapedUsername . '</d:href><d:depth>infinity</d:depth></d:scope></d:from><d:where><d:eq><d:prop><oc:fileid/></d:prop><d:literal>' . $fileId . '</d:literal></d:eq></d:where><d:orderby/></d:basicsearch></d:searchrequest>';
+			$result = $this->executeNextcloudDocumentsRequest('SEARCH', '', array(
+				'davRoot' => true,
+				'timeout' => 60,
+				'body' => $searchBody,
+				'headers' => array('Content-Type: text/xml; charset=UTF-8', 'Content-Length: ' . strlen($searchBody)),
+			));
+			if (!is_array($result) || empty($result['status'])) {
+				return array('status' => false, 'text' => trim((string)($result['text'] ?? 'Impossible de rechercher le dossier NextCloud.')));
+			}
+
+			$xml = @simplexml_load_string((string)($result['body'] ?? ''));
+			if (!($xml instanceof \SimpleXMLElement)) {
+				return array('status' => false, 'text' => 'La reponse de recherche NextCloud est invalide.');
+			}
+			$xml->registerXPathNamespace('d', 'DAV:');
+			$xml->registerXPathNamespace('oc', 'http://owncloud.org/ns');
+			$responses = $xml->xpath('//d:response');
+			$response = is_array($responses) && isset($responses[0]) ? $responses[0] : null;
+			if (!($response instanceof \SimpleXMLElement)) {
+				return array('status' => false, 'text' => 'Le dossier NextCloud est introuvable.');
+			}
+
+			$hrefNodes = $response->xpath('./d:href');
+			$hrefPath = is_array($hrefNodes) && isset($hrefNodes[0]) ? (string)parse_url((string)$hrefNodes[0], PHP_URL_PATH) : '';
+			$davPrefix = '/remote.php/dav/files/' . rawurlencode($username) . '/';
+			$relativePath = trim(rawurldecode(str_starts_with($hrefPath, $davPrefix) ? substr($hrefPath, strlen($davPrefix)) : $hrefPath), '/');
+			$propertyNodes = $response->xpath('./d:propstat/d:prop');
+			$property = is_array($propertyNodes) && isset($propertyNodes[0]) ? $propertyNodes[0] : null;
+			if ($property instanceof \SimpleXMLElement) {
+				$property->registerXPathNamespace('d', 'DAV:');
+			}
+			$collectionNodes = $property instanceof \SimpleXMLElement ? $property->xpath('./d:resourcetype/d:collection') : array();
+			return $relativePath === ''
+				? array('status' => false, 'text' => 'Le chemin du dossier NextCloud est introuvable.')
+				: array('status' => true, 'path' => $relativePath, 'isFolder' => is_array($collectionNodes) && count($collectionNodes) > 0);
+		}
+
+		public function updateDocumentFileContentsOnNextcloud(string $relativePath, string $contents, string $mimeType = 'application/octet-stream'): array
+		{
+			$relativePath = trim(str_replace('\\', '/', $relativePath), '/');
+			if ($relativePath === '') {
+				return array('status' => false, 'text' => 'Chemin de fichier distant invalide.');
+			}
+
+			$mimeType = trim($mimeType) !== '' ? trim($mimeType) : 'application/octet-stream';
+			$result = $this->executeNextcloudDocumentsRequest('PUT', $relativePath, array(
+				'body' => $contents,
+				'timeout' => 300,
+				'headers' => array(
+					'Content-Type: ' . $mimeType,
+					'Content-Length: ' . strlen($contents),
+				),
+			));
+			if (!is_array($result) || empty($result['status'])) {
+				return array(
+					'status' => false,
+					'text' => trim((string)($result['text'] ?? 'Impossible de mettre a jour le fichier distant.')),
+				);
+			}
+
+			return array('status' => true, 'size' => strlen($contents));
+		}
+
 		public static function attributePattern()
 		{
 			return [
@@ -580,6 +1896,9 @@
 			if ($field === 'shortname') {
 				$value = $this->normalizeShortname($value);
 			}
+			if ($field === 'interface_level') {
+				$value = self::normalizeInterfaceLevel($value);
+			}
 
 			parent::set($field, $value);
 		}
@@ -591,6 +1910,9 @@
 
 		public function save()
 		{
+			if ((int)$this->getId() <= 0 && !isset($this->getLexiconParameters()['lexicon'])) {
+				$this->setLexicon(self::getInitialLexicon());
+			}
 			$shortnameValidation = $this->validateShortnameValue($this->get('shortname'));
 			if (!is_array($shortnameValidation) || empty($shortnameValidation['status'])) {
 				return is_array($shortnameValidation)
@@ -686,7 +2008,12 @@
 
 		public function canDelete()
 		{
-			return $this->canEdit();
+			return !$this->isSystemOrganization() && $this->canEdit();
+		}
+
+		public function isSystemOrganization()
+		{
+			return (int)$this->getId() === self::SYSTEM_ORGANIZATION_ID;
 		}
 
 		public function countActiveAdminMemberships($excludeUserId = 0)
@@ -760,6 +2087,105 @@
 			);
 		}
 
+		public function synchronizeOmo1ImportedApplicationLinks(array $selectedModules, array $sourceModules): array
+		{
+			$organizationId = (int)$this->getId();
+			if ($organizationId <= 0) {
+				return array(
+					'status' => false,
+					'message' => 'Organisation invalide.',
+				);
+			}
+
+			$activeApplicationKeys = array(
+				'structure' => true,
+			);
+			$moduleApplicationMap = array(
+				'rules' => array('policy'),
+				'members' => array('team'),
+				'documents' => array('documents'),
+				'projects' => array('projects'),
+				'tasks' => array('projects'),
+				'checklists' => array('activities'),
+				'indicators' => array('stats'),
+				'calendar' => array('calendar'),
+				'pv' => array('calendar'),
+			);
+			foreach ($moduleApplicationMap as $module => $applicationKeys) {
+				if (empty($selectedModules[$module])) {
+					continue;
+				}
+				foreach ($applicationKeys as $applicationKey) {
+					$activeApplicationKeys[$applicationKey] = true;
+				}
+			}
+
+			$importedAllAvailableModules = true;
+			foreach (array_keys($moduleApplicationMap) as $module) {
+				if (empty($sourceModules[$module]['selected']) || empty($selectedModules[$module])) {
+					$importedAllAvailableModules = false;
+					break;
+				}
+			}
+
+			$applications = new \dbObject\ArrayApplication();
+			$applications->load(array(
+				'orderBy' => array(
+					array('field' => 'position', 'dir' => 'ASC'),
+					array('field' => 'id', 'dir' => 'ASC'),
+				),
+			));
+			$links = new \dbObject\ArrayOrganizationApplication();
+			$links->load(array(
+				'where' => array(
+					array('field' => 'IDorganization', 'value' => $organizationId),
+				),
+			));
+			$linksByApplicationId = array();
+			foreach ($links as $link) {
+				$linksByApplicationId[(int)$link->get('IDapplication')] = $link;
+			}
+
+			$activeDirectories = array();
+			foreach ($applications as $application) {
+				$applicationId = (int)$application->getId();
+				if ($applicationId <= 0) {
+					continue;
+				}
+
+				$directory = strtolower(trim((string)$application->get('directory')));
+				$hash = strtolower(trim((string)$application->get('hash')));
+				$applicationKey = $directory !== '' ? $directory : $hash;
+				$shouldBeActive = $importedAllAvailableModules
+					|| ($applicationKey !== '' && isset($activeApplicationKeys[$applicationKey]));
+				$link = $linksByApplicationId[$applicationId] ?? null;
+				if (!($link instanceof \dbObject\OrganizationApplication)) {
+					$link = new \dbObject\OrganizationApplication();
+					$link->set('IDorganization', $organizationId);
+					$link->set('IDapplication', $applicationId);
+					$link->set('position', (int)$application->get('position'));
+				}
+				$link->set('active', $shouldBeActive ? 1 : 0);
+				$saveResult = $link->save();
+				if (!is_array($saveResult) || empty($saveResult['status'])) {
+					return array(
+						'status' => false,
+						'message' => 'Impossible de configurer les applications de l organisation importee.',
+					);
+				}
+
+				if ($shouldBeActive && $applicationKey !== '') {
+					$activeDirectories[] = $applicationKey;
+				}
+			}
+
+			return array(
+				'status' => true,
+				'activeApplications' => array_values(array_unique($activeDirectories)),
+				'importedAllAvailableModules' => $importedAllAvailableModules,
+			);
+		}
+
 		protected static function buildIntPlaceholders(array $ids, $prefix, array &$params)
 		{
 			$placeholders = array();
@@ -812,12 +2238,13 @@
 			}
 
 			$params = array();
-			$placeholders = self::buildIntPlaceholders($rootIds, 'root_holon', $params);
+			$idPlaceholders = self::buildIntPlaceholders($rootIds, 'root_holon_id', $params);
+			$organizationRootPlaceholders = self::buildIntPlaceholders($rootIds, 'root_holon_org', $params);
 			$rows = self::fetchAll(
 				"SELECT id
 				FROM holon
-				WHERE id IN (" . implode(', ', $placeholders) . ")
-				   OR IDholon_org IN (" . implode(', ', $placeholders) . ")
+				WHERE id IN (" . implode(', ', $idPlaceholders) . ")
+				   OR IDholon_org IN (" . implode(', ', $organizationRootPlaceholders) . ")
 				ORDER BY id ASC",
 				$params
 			);
@@ -856,6 +2283,7 @@
 				"SELECT id
 				FROM user_holon
 				WHERE IDuser = :user_id
+				  AND is_membership = 1
 				  AND IDholon IN (" . implode(', ', $placeholders) . ")",
 				$params
 			);
@@ -883,6 +2311,86 @@
 			}
 
 			return true;
+		}
+
+		protected function removeUserHolonLinks($userId, array $holonIds)
+		{
+			$holonIds = array_values(array_unique(array_filter(array_map('intval', $holonIds))));
+			if (count($holonIds) === 0) {
+				return true;
+			}
+			$params = array('user_id' => (int)$userId);
+			$placeholders = self::buildIntPlaceholders($holonIds, 'holon', $params);
+			$rows = self::fetchAll("SELECT id FROM user_holon WHERE IDuser = :user_id AND IDholon IN (" . implode(', ', $placeholders) . ')', $params);
+			if ($rows === false) {
+				return false;
+			}
+			foreach ($rows as $row) {
+				$link = new \dbObject\UserHolon();
+				if ($link->load((int)($row['id'] ?? 0)) && !$link->delete()) {
+					return false;
+				}
+			}
+
+			return true;
+		}
+
+		public function disconnectUserPreservingHistory($userId)
+		{
+			$organizationId = (int)$this->getId();
+			$userId = (int)$userId;
+			if ($organizationId <= 0 || $userId <= 0) {
+				return array('status' => false, 'message' => 'Membre ou organisation invalide.');
+			}
+			$user = new \dbObject\User();
+			if (!$user->load($userId) || $user->isHistoricalPlaceholder()) {
+				return array('status' => false, 'message' => 'Le compte a retirer est introuvable.');
+			}
+			if ($this->isSystemOrganization()
+				&& $this->getMembership($userId, true)
+				&& $user->isSiteAdmin()
+				&& \dbObject\User::countOtherActiveSiteAdminsInBaseOrganization($userId) === 0) {
+				return array('status' => false, 'message' => "Le dernier superadmin ne peut pas quitter l'organisation de base.");
+			}
+			$pdo = \dbObject\DbObject::getPdo();
+			if (!$pdo) {
+				return array('status' => false, 'message' => 'Connexion base de donnees indisponible.');
+			}
+
+			try {
+				$ownsTransaction = !$pdo->inTransaction();
+				if ($ownsTransaction) {
+					$pdo->beginTransaction();
+				}
+				$ghostUser = \dbObject\User::getOrCreateHistoricalPlaceholder($organizationId, $user);
+				$scopeUpdateResult = \dbObject\Document::normalizeSelfScopedDocumentsForAuthorContext($organizationId, $userId);
+				if (!is_array($scopeUpdateResult) || empty($scopeUpdateResult['status'])) {
+					throw new \RuntimeException('Les portees des documents lies a ce membre n ont pas pu etre mises a jour.');
+				}
+				$handlers = array('Holon', 'Rule', 'Project', 'ProjectUser', 'ProjectFollower', 'StatIndicator', 'StatIndicatorValue', 'Checklist', 'ControlActivity', 'Document', 'DocumentPvPoint', 'Event', 'History', 'Tension', 'DecisionProcess', 'DecisionParticipant', 'DecisionProposal', 'ChatThread', 'ChatMessage', 'DeferredProposal', 'UserCompetenceValidation');
+				foreach ($handlers as $handler) {
+					$className = '\\dbObject\\' . $handler;
+					if (!$className::handleUserDeparture($organizationId, $userId, (int)$ghostUser->getId())) {
+						throw new \RuntimeException('Les references de ' . $handler . ' n ont pas pu etre mises a jour.');
+					}
+				}
+				if (!$this->removeUserHolonLinks($userId, $this->getOrganizationHolonIds())) {
+					throw new \RuntimeException(self::formatLexiconText('Les liens aux holons n ont pas pu etre retires.', $this->getLexicon()));
+				}
+				$membership = $this->getMembership($userId);
+				if ($membership && !$membership->delete()) {
+					throw new \RuntimeException('L adhesion a l organisation n a pas pu etre retiree.');
+				}
+				if ($ownsTransaction && $pdo->inTransaction()) {
+					$pdo->commit();
+				}
+				return array('status' => true, 'ghostUserId' => (int)$ghostUser->getId());
+			} catch (\Throwable $exception) {
+				if (isset($ownsTransaction) && $ownsTransaction && $pdo->inTransaction()) {
+					$pdo->rollBack();
+				}
+				return array('status' => false, 'message' => $exception->getMessage());
+			}
 		}
 
 		protected function deleteOrganizationDocuments(array $holonIds)
@@ -953,6 +2461,80 @@
 			);
 		}
 
+		protected function deleteOrganizationChecklists()
+		{
+			$organizationId = (int)$this->getId();
+			if ($organizationId <= 0 || !self::tableExists('checklist')) {
+				return true;
+			}
+
+			$params = array('organization_id' => $organizationId);
+
+			if (self::tableExists('checklist_run_item') && self::tableExists('checklist_run')) {
+				$runItemParams = array(
+					'run_organization_id' => $organizationId,
+					'checklist_organization_id' => $organizationId,
+				);
+				if (!self::execute(
+					"DELETE run_item
+					FROM process_run_item run_item
+					INNER JOIN process_run run ON run.id = run_item.IDchecklistrun
+					LEFT JOIN process checklist ON checklist.id = run.IDchecklist
+					WHERE run.IDorganization = :run_organization_id
+					   OR checklist.IDorganization = :checklist_organization_id",
+					$runItemParams
+				)) {
+					return false;
+				}
+			}
+
+			if (self::tableExists('checklist_item_occurrence') && self::tableExists('checklist_item')) {
+				if (!self::execute(
+					"DELETE occurrence
+					FROM process_item_occurrence occurrence
+					INNER JOIN process_item item ON item.id = occurrence.IDchecklistitem
+					INNER JOIN process checklist ON checklist.id = item.IDchecklist
+					WHERE checklist.IDorganization = :organization_id",
+					$params
+				)) {
+					return false;
+				}
+			}
+
+			if (self::tableExists('checklist_run')) {
+				$runParams = array(
+					'run_organization_id' => $organizationId,
+					'checklist_organization_id' => $organizationId,
+				);
+				if (!self::execute(
+					"DELETE run
+					FROM process_run run
+					LEFT JOIN process checklist ON checklist.id = run.IDchecklist
+					WHERE run.IDorganization = :run_organization_id
+					   OR checklist.IDorganization = :checklist_organization_id",
+					$runParams
+				)) {
+					return false;
+				}
+			}
+
+			if (!self::execute(
+				"UPDATE process current_checklist
+				INNER JOIN process previous_checklist ON previous_checklist.id = current_checklist.IDchecklist_previous
+				SET current_checklist.IDchecklist_previous = NULL
+				WHERE previous_checklist.IDorganization = :organization_id",
+				$params
+			)) {
+				return false;
+			}
+
+			return self::execute(
+				"DELETE FROM process
+				WHERE IDorganization = :organization_id",
+				$params
+			);
+		}
+
 		public function removeMember($userId, array $options = array())
 		{
 			$organizationId = (int)$this->getId();
@@ -975,6 +2557,18 @@
 			}
 
 			$isSelfRemoval = $actorUserId > 0 && $actorUserId === $userId;
+			if ($isSelfRemoval && $this->isSystemOrganization()) {
+				$activeMemberCount = (int)self::fetchValue(
+					'SELECT COUNT(*) FROM user_organization WHERE IDorganization = :organization_id AND active = 1',
+					array('organization_id' => $organizationId)
+				);
+				if ($activeMemberCount <= 1) {
+					return array(
+						'status' => false,
+						'message' => "Le dernier membre ne peut pas quitter l'organisation de base.",
+					);
+				}
+			}
 			$actorIsAdmin = $this->isUserOrganizationAdmin($actorUserId);
 			if (!$isSelfRemoval && !$actorIsAdmin) {
 				return array(
@@ -1001,14 +2595,9 @@
 			try {
 				$pdo->beginTransaction();
 
-				if (!$this->deactivateUserHolonLinks($userId, $this->getOrganizationHolonIds())) {
-					throw new \RuntimeException("Le retrait des roles et cercles n'a pas pu etre finalise.");
-				}
-
-				$membership->set('active', false);
-				$saveResult = $membership->setOrganizationAdmin(false);
-				if (!is_array($saveResult) || empty($saveResult['status'])) {
-					throw new \RuntimeException("Le retrait de l'organisation n'a pas pu etre enregistre.");
+				$departureResult = $this->disconnectUserPreservingHistory($userId);
+				if (empty($departureResult['status'])) {
+					throw new \RuntimeException((string)($departureResult['message'] ?? 'Le retrait du membre n a pas pu etre finalise.'));
 				}
 
 				$pdo->commit();
@@ -1234,28 +2823,71 @@
 
 		public function delete()
 		{
-			if (!$this->canDelete()) {
+			return $this->deleteInternal(true);
+		}
+
+		/**
+		 * Delete an organization as part of the deletion of its sole active member.
+		 * The caller has already established the account-deletion constraints; this
+		 * deliberately does not rely on the current session's organization rights.
+		 */
+		public function deleteForAccountDeletion($userId)
+		{
+			$userId = (int)$userId;
+			if ($userId <= 0 || $this->isSystemOrganization()) {
+				$this->lastDeleteError = "L'organisation ne peut pas etre supprimee avec ce profil.";
+				return false;
+			}
+
+			$activeMemberCount = (int)self::fetchValue(
+				"SELECT COUNT(*) FROM user_organization WHERE IDorganization = :organization_id AND active = 1",
+				array('organization_id' => (int)$this->getId())
+			);
+			$membership = $this->getMembership($userId, true);
+			if (!$membership || $activeMemberCount !== 1) {
+				$this->lastDeleteError = "L'organisation doit avoir exactement un membre actif pour etre supprimee avec ce profil.";
+				return false;
+			}
+
+			return $this->deleteInternal(false);
+		}
+
+		protected function deleteInternal($requirePermission)
+		{
+			$this->lastDeleteError = '';
+
+			if ($requirePermission && !$this->canDelete()) {
+				$this->lastDeleteError = "Vous n'avez pas le droit de supprimer cette organisation.";
 				return false;
 			}
 
 			$organizationId = (int)$this->getId();
 			if ($organizationId <= 0) {
+				$this->lastDeleteError = "L'organisation est invalide.";
 				return false;
 			}
 
 			$pdo = \dbObject\DbObject::getPdo();
 			if (!$pdo) {
+				$this->lastDeleteError = "La connexion a la base de donnees n'est pas disponible.";
 				return false;
 			}
 
 			try {
-				$pdo->beginTransaction();
+				$ownsTransaction = !$pdo->inTransaction();
+				if ($ownsTransaction) {
+					$pdo->beginTransaction();
+				}
 
 				$rootHolonIds = $this->getOrganizationRootHolonIds();
 				$holonIds = $this->getOrganizationHolonIds();
 
 				if (!$this->deleteOrganizationDocuments($holonIds)) {
 					throw new \RuntimeException("Les documents de l'organisation n'ont pas pu etre supprimes.");
+				}
+
+				if (!$this->deleteOrganizationChecklists()) {
+					throw new \RuntimeException("Les processus de l'organisation n'ont pas pu etre supprimes.");
 				}
 
 				if (!self::execute(
@@ -1307,7 +2939,37 @@
 						WHERE IDholon IN (" . implode(', ', $holonPlaceholders) . ")",
 						$holonParams
 					)) {
-						throw new \RuntimeException("Les liens membres des holons n'ont pas pu etre supprimes.");
+						throw new \RuntimeException(self::formatLexiconText("Les liens membres des holons n'ont pas pu etre supprimes.", $this->getLexicon()));
+					}
+
+					// Les regles rattachees a une autorite bloquent sa suppression (FK restrictive).
+					// Nettoyer ces regles et les autorites avant la suppression recursive des holons.
+					if (!self::execute(
+						"DELETE FROM rule
+						WHERE IDauthority IN (
+							SELECT id FROM authority
+							WHERE IDholon IN (" . implode(', ', $holonPlaceholders) . ")
+						)",
+						$holonParams
+					)) {
+						throw new \RuntimeException("Les regles d'autorite n'ont pas pu etre supprimees.");
+					}
+
+					if (!self::execute(
+						"UPDATE authority
+						SET IDauthority_parent = NULL
+						WHERE IDholon IN (" . implode(', ', $holonPlaceholders) . ")",
+						$holonParams
+					)) {
+						throw new \RuntimeException("Les liens entre domaines d'autorite n'ont pas pu etre supprimes.");
+					}
+
+					if (!self::execute(
+						"DELETE FROM authority
+						WHERE IDholon IN (" . implode(', ', $holonPlaceholders) . ")",
+						$holonParams
+					)) {
+						throw new \RuntimeException("Les domaines d'autorite n'ont pas pu etre supprimes.");
 					}
 				}
 
@@ -1343,15 +3005,32 @@
 					throw new \RuntimeException("L'organisation n'a pas pu etre supprimee.");
 				}
 
-				$pdo->commit();
+				if ($ownsTransaction && $pdo->inTransaction()) {
+					$pdo->commit();
+				}
 				return true;
 			} catch (\Throwable $exception) {
-				if ($pdo->inTransaction()) {
+				if (isset($ownsTransaction) && $ownsTransaction && $pdo->inTransaction()) {
 					$pdo->rollBack();
 				}
 
+				$this->lastDeleteError = trim((string)$exception->getMessage());
+				if ($this->lastDeleteError === '') {
+					$this->lastDeleteError = "L'organisation n'a pas pu etre supprimee.";
+				}
+				\dbObject\DbObject::registerDbError(
+					'organization_delete',
+					array('organization_id' => $organizationId),
+					$exception
+				);
+
 				return false;
 			}
+		}
+
+		public function getLastDeleteError()
+		{
+			return (string)$this->lastDeleteError;
 		}
 
 		public static function resolveFromHost($host, $defaultId = 1) {
@@ -1382,6 +3061,18 @@
 		}
 
 		public function getStructuralRootHolon()
+		{
+			$rootId = self::memoizeRead([__FUNCTION__, (int)$this->getId()],
+				fn () => (int)($this->loadStructuralRootHolon()?->getId() ?? 0));
+			if ($rootId <= 0) {
+				return null;
+			}
+			$holon = new \dbObject\Holon();
+			$holon->setId($rootId);
+			return $holon;
+		}
+
+		protected function loadStructuralRootHolon()
 		{
 			if ((int)$this->getId() <= 0) {
 				return null;
@@ -1436,15 +3127,11 @@
 				$inheritedLocked = $template->getEffectiveTemplateBooleanField($lockField);
 				if ($field === 'icon') {
 					$inheritedValue = $template->getEffectiveIcon();
-				} elseif ($field === 'banner') {
-					$inheritedValue = $template->getEffectiveBanner();
 				}
 			}
 
 			if ($field === 'icon') {
 				$effectiveValue = $holon->getEffectiveIcon();
-			} elseif ($field === 'banner') {
-				$effectiveValue = $holon->getEffectiveBanner();
 			}
 
 			return array(
@@ -1460,7 +3147,6 @@
 		protected function getHolonIllustrationData(\dbObject\Holon $holon)
 		{
 			$icon = $this->getHolonMediaFieldData($holon, 'icon', 'lockedicon');
-			$banner = $this->getHolonMediaFieldData($holon, 'banner', 'lockedbanner');
 
 			return array(
 				'icon' => $icon['value'],
@@ -1469,54 +3155,65 @@
 				'lockedIcon' => $icon['locked'],
 				'inheritedLockedIcon' => $icon['inheritedLocked'],
 				'effectiveLockedIcon' => $icon['effectiveLocked'],
-				'banner' => $banner['value'],
-				'inheritedBanner' => $banner['inheritedValue'],
-				'effectiveBanner' => $banner['effectiveValue'],
-				'lockedBanner' => $banner['locked'],
-				'inheritedLockedBanner' => $banner['inheritedLocked'],
-				'effectiveLockedBanner' => $banner['effectiveLocked'],
 			);
 		}
 
 		public function getStructuralInitializationTemplates()
 		{
 			$templates = array();
-			$holons = new \dbObject\ArrayHolon();
-			$holons->load(array(
-				'filter' => 'active = 1'
-					. ' and IDtypeholon = 4'
-					. ' and templatename is not null'
-					. ' and templatename != ""'
-					. ' and (IDholon_parent is null or IDholon_parent = 0)',
-				'orderBy' => array(
-					array('field' => 'templatename', 'dir' => 'ASC'),
-					array('field' => 'name', 'dir' => 'ASC'),
-					array('field' => 'id', 'dir' => 'ASC'),
-				),
-			));
-
-			foreach ($holons as $holon) {
-				$sourceOrganizationName = '';
-				$sourceOrganizationId = (int)$holon->get('IDorganization');
-				if ($sourceOrganizationId > 0) {
-					$sourceOrganization = new self();
-					if ($sourceOrganization->load($sourceOrganizationId)) {
-						$sourceOrganizationName = trim((string)$sourceOrganization->get('name'));
-					}
-				}
-
+			foreach (self::getPublicModelCatalog() as $model) {
 				$templates[] = array(
-					'id' => (int)$holon->getId(),
-					'name' => $this->getStructuralInitializationTemplateName($holon),
-					'sourceOrganizationId' => $sourceOrganizationId,
-					'sourceOrganizationName' => $sourceOrganizationName,
-					'color' => trim((string)$holon->getEffectiveColor()),
-					'icon' => $holon->getEffectiveIcon(),
-					'banner' => $holon->getEffectiveBanner(),
+					'id' => (int)$model['rootHolonId'],
+					'name' => (string)$model['name'],
+					'sourceOrganizationId' => (int)$model['id'],
+					'sourceOrganizationName' => (string)$model['name'],
+					'color' => (string)$model['color'],
+					'icon' => (string)$model['logo'],
+					'banner' => (string)$model['banner'],
 				);
 			}
 
 			return $templates;
+		}
+
+		public static function getPublicModelCatalog(): array
+		{
+			$rows = self::fetchAll(
+				"SELECT o.id, o.name, o.color, o.logo, o.banner, h.id AS root_holon_id
+				FROM organization o
+				INNER JOIN holon h ON h.IDorganization = o.id
+					AND h.IDtypeholon = 4
+					AND h.active = 1
+					AND h.visible = 1
+					AND (h.IDholon_parent IS NULL OR h.IDholon_parent = 0)
+				WHERE o.isModel = 1
+				ORDER BY o.name ASC, o.id ASC"
+			);
+			if (!is_array($rows)) {
+				return array();
+			}
+
+			return array_map(static function (array $row): array {
+				return array(
+					'id' => (int)($row['id'] ?? 0),
+					'name' => trim((string)($row['name'] ?? '')),
+					'color' => trim((string)($row['color'] ?? '')),
+					'logo' => trim((string)($row['logo'] ?? '')),
+					'banner' => trim((string)($row['banner'] ?? '')),
+					'rootHolonId' => (int)($row['root_holon_id'] ?? 0),
+				);
+			}, $rows);
+		}
+
+		public static function isPublicModelRootHolon(\dbObject\Holon $holon): bool
+		{
+			if ((int)$holon->get('IDtypeholon') !== 4 || !(bool)$holon->get('active')) {
+				return false;
+			}
+			$organization = new self();
+			return $organization->load((int)$holon->get('IDorganization'))
+				&& $organization->isSharedAsTemplate()
+				&& (int)($organization->getSharedTemplateRootHolon() ? $organization->getSharedTemplateRootHolon()->getId() : 0) === (int)$holon->getId();
 		}
 
 		public function getStructuralInitializationData()
@@ -1542,20 +3239,14 @@
 				return $cache[$organizationId] ?: null;
 			}
 
+			if (!(bool)$this->get('isModel')) {
+				$cache[$organizationId] = false;
+				return null;
+			}
+
 			$row = self::fetchRow(
-				"SELECT id
-				FROM holon
-				WHERE IDorganization = :organization_id
-				  AND IDtypeholon = 4
-				  AND active = 1
-				  AND templatename IS NOT NULL
-				  AND templatename != ''
-				  AND (IDholon_parent IS NULL OR IDholon_parent = 0)
-				ORDER BY id ASC
-				LIMIT 1",
-				array(
-					'organization_id' => $organizationId,
-				)
+				"SELECT id FROM holon WHERE IDorganization = :organization_id AND IDtypeholon = 4 AND active = 1 AND visible = 1 AND (IDholon_parent IS NULL OR IDholon_parent = 0) ORDER BY id ASC LIMIT 1",
+				array('organization_id' => $organizationId)
 			);
 
 			$holonId = $row !== false ? (int)($row['id'] ?? 0) : 0;
@@ -1572,14 +3263,12 @@
 
 		public function isSharedAsTemplate()
 		{
-			return $this->getSharedTemplateRootHolon() !== null;
+			return (bool)$this->get('isModel') && $this->getSharedTemplateRootHolon() !== null;
 		}
 
 		public function getSharedTemplateName()
 		{
-			$templateHolon = $this->getSharedTemplateRootHolon();
-
-			return $templateHolon ? $this->getStructuralInitializationTemplateName($templateHolon) : '';
+			return $this->isSharedAsTemplate() ? trim((string)$this->get('name')) : '';
 		}
 
 		protected function createStructuralRootHolon($userId = 0, ?\dbObject\Holon $sourceTemplate = null)
@@ -1605,12 +3294,11 @@
 			$rootHolon->set('mandatory', false);
 			$rootHolon->set('lockedname', false);
 			$rootHolon->set('lockedicon', false);
-			$rootHolon->set('lockedbanner', false);
 			$rootHolon->set('unique', false);
 			$rootHolon->set('link', false);
 			$rootHolon->set('color', $sourceTemplate ? ($sourceTemplate->getEffectiveColor() ?: null) : null);
+			$rootHolon->set('color_unassigned', $sourceTemplate ? ($sourceTemplate->getEffectiveUnassignedColor() ?: null) : null);
 			$rootHolon->set('icon', $sourceTemplate ? ($sourceTemplate->getEffectiveIcon() ?: null) : null);
-			$rootHolon->set('banner', $sourceTemplate ? ($sourceTemplate->getEffectiveBanner() ?: null) : null);
 			$rootHolon->set('accesskey', null);
 			$rootHolon->save();
 
@@ -1692,6 +3380,13 @@
 				throw new \RuntimeException("Impossible d'attacher cette personne a l'organisation.");
 			}
 
+			if (!$isActive) {
+				$scopeUpdateResult = \dbObject\Document::normalizeSelfScopedDocumentsForAuthorContext($organizationId, (int)$user->getId());
+				if (!is_array($scopeUpdateResult) || empty($scopeUpdateResult['status'])) {
+					throw new \RuntimeException("Impossible de mettre a jour les documents de cette personne.");
+				}
+			}
+
 			return $membership;
 		}
 
@@ -1751,7 +3446,8 @@
 					'IDorganization' => $organizationId,
 					'authorUserId' => $authorUserId,
 				),
-				0
+				'organization',
+				$organizationId
 			);
 
 			if (!is_array($saveResult) || empty($saveResult['status'])) {
@@ -1875,9 +3571,161 @@
 			return $rawValue;
 		}
 
-		protected function cloneStructuralPropertyValue(\dbObject\Property $property, $rawValue, array $holonIdMap)
+		protected function remapProjectReferenceItems($items, array $projectIdMap)
 		{
-			return $this->remapHolonReferenceValueByListType($property->get('listitemtype'), $rawValue, $holonIdMap);
+			if (!is_array($items)) {
+				return $items;
+			}
+
+			$remapped = array();
+			foreach ($items as $item) {
+				if (is_array($item) && array_key_exists('id', $item)) {
+					$sourceProjectId = (int)$item['id'];
+					if ($sourceProjectId > 0 && !isset($projectIdMap[$sourceProjectId])) {
+						continue;
+					}
+					if ($sourceProjectId > 0) {
+						$item['id'] = (int)$projectIdMap[$sourceProjectId];
+					}
+					$remapped[] = $item;
+					continue;
+				}
+
+				if (is_scalar($item)) {
+					$sourceProjectId = (int)$item;
+					if ($sourceProjectId > 0) {
+						if (isset($projectIdMap[$sourceProjectId])) {
+							$remapped[] = (int)$projectIdMap[$sourceProjectId];
+						}
+						continue;
+					}
+				}
+
+				$remapped[] = $item;
+			}
+
+			return array_values($remapped);
+		}
+
+		protected function remapProjectReferenceValue($rawValue, array $projectIdMap)
+		{
+			$rawValue = is_scalar($rawValue) || $rawValue === null ? (string)$rawValue : '';
+			$trimmedValue = trim($rawValue);
+			if ($trimmedValue === '') {
+				return $rawValue;
+			}
+
+			$decoded = json_decode($trimmedValue, true);
+			if (json_last_error() !== JSON_ERROR_NONE || !is_array($decoded)) {
+				$sourceProjectId = (int)$trimmedValue;
+				return $sourceProjectId > 0 && isset($projectIdMap[$sourceProjectId])
+					? (string)$projectIdMap[$sourceProjectId]
+					: $rawValue;
+			}
+
+			if (array_key_exists('items', $decoded) && is_array($decoded['items'])) {
+				$decoded['items'] = $this->remapProjectReferenceItems($decoded['items'], $projectIdMap);
+			} elseif (array_is_list($decoded)) {
+				$decoded = $this->remapProjectReferenceItems($decoded, $projectIdMap);
+			} elseif (array_key_exists('id', $decoded)) {
+				$remapped = $this->remapProjectReferenceItems(array($decoded), $projectIdMap);
+				$decoded = $remapped[0] ?? array();
+			}
+
+			return json_encode($decoded, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+		}
+
+		protected function remapImportedProjectPropertyValues(array $projectIdMap, array $taskIdMap)
+		{
+			$projectIdMap = $projectIdMap + $taskIdMap;
+
+			$rootHolon = $this->getStructuralRootHolon();
+			if (!($rootHolon instanceof \dbObject\Holon)) {
+				return;
+			}
+
+			$holons = new \dbObject\ArrayHolon();
+			$holons->load(array(
+				'whereAny' => array(
+					array('field' => 'IDorganization', 'value' => (int)$this->getId()),
+					array('field' => 'IDholon_org', 'value' => (int)$rootHolon->getId()),
+				),
+				'orderBy' => array(
+					array('field' => 'id', 'dir' => 'ASC'),
+				),
+			));
+
+			foreach ($holons as $holon) {
+				if (!($holon instanceof \dbObject\Holon)) {
+					continue;
+				}
+
+				foreach ($holon->getHolonProperties() as $holonProperty) {
+					$property = new \dbObject\Property();
+					if (!$property->load((int)$holonProperty->get('IDproperty'))
+						|| (string)$property->get('listitemtype') !== \dbObject\Property::LIST_ITEM_PROJECT) {
+						continue;
+					}
+
+					$currentValue = $holonProperty->get('value');
+					$remappedValue = $this->remapProjectReferenceValue($currentValue, $projectIdMap);
+					if ((string)$remappedValue === (string)$currentValue) {
+						continue;
+					}
+
+					$holonProperty->set('value', $remappedValue);
+					self::omo1ImportSave($holonProperty, 'Une liste de projets n a pas pu etre restauree');
+				}
+			}
+		}
+
+		protected function remapAuthorityReferenceValueByListType($listItemType, $rawValue, array $authorityIdMap)
+		{
+			if ((string)$listItemType !== \dbObject\Property::LIST_ITEM_AUTHORITY) {
+				return $rawValue;
+			}
+
+			$rawValue = is_scalar($rawValue) || $rawValue === null ? (string)$rawValue : '';
+			$decoded = json_decode(trim($rawValue), true);
+			if (!is_array($decoded) || count($authorityIdMap) === 0) {
+				return $rawValue;
+			}
+
+			$items = isset($decoded['items']) && is_array($decoded['items']) ? $decoded['items'] : $decoded;
+			if (!is_array($items)) {
+				return $rawValue;
+			}
+
+			foreach ($items as $index => $item) {
+				$sourceAuthorityId = is_array($item) ? (int)($item['id'] ?? 0) : (int)$item;
+				if ($sourceAuthorityId <= 0 || !isset($authorityIdMap[$sourceAuthorityId])) {
+					continue;
+				}
+				if (is_array($item)) {
+					$items[$index]['id'] = (int)$authorityIdMap[$sourceAuthorityId];
+				} else {
+					$items[$index] = (int)$authorityIdMap[$sourceAuthorityId];
+				}
+			}
+
+			if (isset($decoded['items']) && is_array($decoded['items'])) {
+				$decoded['items'] = array_values($items);
+			} else {
+				$decoded = array_values($items);
+			}
+
+			return json_encode($decoded, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+		}
+
+		protected function cloneStructuralPropertyValue(\dbObject\Property $property, $rawValue, array $holonIdMap, array $authorityIdMap = array())
+		{
+			$value = $this->remapHolonReferenceValueByListType($property->get('listitemtype'), $rawValue, $holonIdMap);
+			$value = $this->remapAuthorityReferenceValueByListType($property->get('listitemtype'), $value, $authorityIdMap);
+			if (\dbObject\PropertyFormat::isHtmlFormat((int)$property->get('IDpropertyformat'))) {
+				return \dbObject\PropertyFormat::normalizeValueForStorage((int)$property->get('IDpropertyformat'), $value);
+			}
+
+			return $value;
 		}
 
 		protected function cloneStructuralProperty(\dbObject\Property $sourceProperty, $sourceRootHolonId, $targetRootHolonId, array &$propertyIdMap)
@@ -1900,6 +3748,7 @@
 			$targetProperty->set('name', $sourceProperty->get('name'));
 			$targetProperty->set('shortname', $sourceProperty->get('shortname'));
 			$targetProperty->set('IDpropertyformat', (int)$sourceProperty->get('IDpropertyformat'));
+			$targetProperty->set('type', Property::normalizeType($sourceProperty->get('type')));
 			$targetProperty->set('listitemtype', $sourceProperty->get('listitemtype'));
 			$targetProperty->set('listholontypeids', $sourceProperty->get('listholontypeids'));
 			$targetProperty->set('IDholon_organization', (int)$targetRootHolonId);
@@ -1911,7 +3760,7 @@
 			return (int)$targetProperty->getId();
 		}
 
-		protected function cloneStructuralHolonProperties(\dbObject\Holon $sourceHolon, \dbObject\Holon $targetHolon, $sourceRootHolonId, $targetRootHolonId, array $holonIdMap, array &$propertyIdMap)
+		protected function cloneStructuralHolonProperties(\dbObject\Holon $sourceHolon, \dbObject\Holon $targetHolon, $sourceRootHolonId, $targetRootHolonId, array $holonIdMap, array &$propertyIdMap, array $authorityIdMap = array())
 		{
 			foreach ($sourceHolon->getHolonProperties() as $sourceHolonProperty) {
 				$sourceProperty = new \dbObject\Property();
@@ -1932,13 +3781,80 @@
 				$targetHolonProperty = new \dbObject\HolonProperty();
 				$targetHolonProperty->set('IDholon', (int)$targetHolon->getId());
 				$targetHolonProperty->set('IDproperty', $targetPropertyId);
-				$targetHolonProperty->set('value', $this->cloneStructuralPropertyValue($sourceProperty, $sourceHolonProperty->get('value'), $holonIdMap));
+				$targetHolonProperty->set('value', $this->cloneStructuralPropertyValue($sourceProperty, $sourceHolonProperty->get('value'), $holonIdMap, $authorityIdMap));
 				$targetHolonProperty->set('position', (int)$sourceHolonProperty->get('position'));
 				$targetHolonProperty->set('mandatory', (bool)$sourceHolonProperty->get('mandatory'));
 				$targetHolonProperty->set('locked', (bool)$sourceHolonProperty->get('locked'));
 				$targetHolonProperty->set('active', (bool)$sourceHolonProperty->get('active'));
 				$targetHolonProperty->save();
 			}
+		}
+
+		protected function cloneStructuralAuthorities(array $sourceHolonsById, array $targetHolonsBySourceId)
+		{
+			$authorityIdMap = array();
+			$copiedAuthorities = array();
+
+			foreach ($sourceHolonsById as $sourceHolonId => $sourceHolon) {
+				$targetHolon = $targetHolonsBySourceId[(int)$sourceHolonId] ?? null;
+				if (!($sourceHolon instanceof \dbObject\Holon) || !($targetHolon instanceof \dbObject\Holon)) {
+					continue;
+				}
+
+				$sourceAuthorities = new \dbObject\ArrayAuthority();
+				$sourceAuthorities->loadForHolon((int)$sourceHolon->getId());
+				foreach ($sourceAuthorities as $sourceAuthority) {
+					$sourceAuthorityId = (int)$sourceAuthority->getId();
+					if ($sourceAuthorityId <= 0) {
+						continue;
+					}
+
+					$targetAuthority = new \dbObject\Authority();
+					$targetAuthority->set('IDholon', (int)$targetHolon->getId());
+					$targetAuthority->set('IDauthority_parent', null);
+					$targetAuthority->set('IDauthority_template', null);
+					$targetAuthority->set('label', $sourceAuthority->get('label'));
+					$targetAuthority->set('description', $sourceAuthority->get('description'));
+					$targetAuthority->set('is_shell', (bool)$sourceAuthority->get('is_shell'));
+					$targetAuthority->set(
+						'is_local',
+						(bool)$sourceAuthority->get('is_local')
+							|| ($sourceHolon->isTemplateNode() && (int)$sourceAuthority->get('IDauthority_parent') <= 0)
+					);
+					$targetAuthority->set('template_origin_lost', false);
+					$saveResult = $targetAuthority->save();
+					if (!is_array($saveResult) || empty($saveResult['status']) || (int)$targetAuthority->getId() <= 0) {
+						throw new \RuntimeException('Une autorite du modele n a pas pu etre copiee.');
+					}
+
+					$authorityIdMap[$sourceAuthorityId] = (int)$targetAuthority->getId();
+					$copiedAuthorities[$sourceAuthorityId] = array(
+						'source' => $sourceAuthority,
+						'target' => $targetAuthority,
+					);
+				}
+			}
+
+			foreach ($copiedAuthorities as $sourceAuthorityId => $copiedAuthority) {
+				$targetAuthority = $copiedAuthority['target'];
+				$sourceParentId = (int)$copiedAuthority['source']->get('IDauthority_parent');
+				$sourceTemplateAuthorityId = (int)$copiedAuthority['source']->get('IDauthority_template');
+				$targetParentId = isset($authorityIdMap[$sourceParentId]) ? (int)$authorityIdMap[$sourceParentId] : 0;
+				$targetTemplateAuthorityId = isset($authorityIdMap[$sourceTemplateAuthorityId])
+					? (int)$authorityIdMap[$sourceTemplateAuthorityId]
+					: 0;
+				if ($targetParentId <= 0 && $targetTemplateAuthorityId <= 0) {
+					continue;
+				}
+				$targetAuthority->set('IDauthority_parent', $targetParentId > 0 ? $targetParentId : null);
+				$targetAuthority->set('IDauthority_template', $targetTemplateAuthorityId > 0 ? $targetTemplateAuthorityId : null);
+				$saveResult = $targetAuthority->save();
+				if (!is_array($saveResult) || empty($saveResult['status'])) {
+					throw new \RuntimeException('La hierarchie des autorites du modele n a pas pu etre copiee.');
+				}
+			}
+
+			return $authorityIdMap;
 		}
 
 		protected function cloneStructuralHolonPermissions(\dbObject\Holon $sourceHolon, \dbObject\Holon $targetHolon)
@@ -2003,10 +3919,17 @@
 					continue;
 				}
 
+				$formatId = (int)($definition['formatId'] ?? 0);
+				if (strtolower(trim((string)($definition['shortname'] ?? ''))) === 'strategie' && $formatId <= 0) {
+					$formatId = ($definition['listItemType'] ?? '') === \dbObject\Property::LIST_ITEM_PROJECT
+						? \dbObject\PropertyFormat::FORMAT_HTML_LIST
+						: \dbObject\PropertyFormat::FORMAT_HTML;
+				}
 				$property = new \dbObject\Property();
 				$property->set('name', trim((string)($definition['name'] ?? '')) !== '' ? $definition['name'] : 'Propriete');
 				$property->set('shortname', trim((string)($definition['shortname'] ?? '')) !== '' ? $definition['shortname'] : \dbObject\Property::buildShortnameFromName((string)($definition['name'] ?? 'Propriete')));
-				$property->set('IDpropertyformat', (int)($definition['formatId'] ?? 0));
+				$property->set('IDpropertyformat', $formatId);
+				$property->set('type', Property::normalizeType($definition['type'] ?? null));
 				$property->set('listitemtype', \dbObject\Property::normalizeListItemType($definition['listItemType'] ?? null));
 				$property->set('listholontypeids', \dbObject\Property::serializeHolonTypeIds($definition['listHolonTypeIds'] ?? array()));
 				$property->set('IDholon_organization', (int)$targetRootHolonId);
@@ -2022,17 +3945,17 @@
 		{
 			$name = trim((string)($record['name'] ?? ''));
 			$fullName = trim((string)($record['fullName'] ?? ''));
-			if ($name === '') {
-				$name = 'Holon';
+			$templateName = trim((string)($record['templateName'] ?? ''));
+			if ($name === '' && $templateName === '') {
+				$name = self::formatLexiconText('Holon', $this->getLexicon());
 			}
 
 			if (!$preserveName) {
-				$targetHolon->set('name', $name);
+				$targetHolon->set('name', $name !== '' ? $name : null);
 			}
 
 			$targetHolon->set('nomcomplet', $fullName !== '' ? $fullName : null);
-			$templateName = trim((string)($record['templateName'] ?? ''));
-			$targetHolon->set('templatename', $templateName !== '' ? $templateName : null);
+			$targetHolon->set('templatename', $isOrganizationRoot ? null : ($templateName !== '' ? $templateName : null));
 			$targetHolon->set('IDtypeholon', $isOrganizationRoot ? 4 : max(1, (int)($record['typeId'] ?? 1)));
 			$targetHolon->set('IDuser', (int)$userId > 0 ? (int)$userId : (int)$targetHolon->get('IDuser'));
 			$targetHolon->set('active', true);
@@ -2040,12 +3963,22 @@
 			$targetHolon->set('mandatory', !empty($record['mandatory']));
 			$targetHolon->set('lockedname', !empty($record['lockedName']));
 			$targetHolon->set('lockedicon', !empty($record['lockedIcon']));
-			$targetHolon->set('lockedbanner', !empty($record['lockedBanner']));
 			$targetHolon->set('unique', !empty($record['unique']));
 			$targetHolon->set('link', !empty($record['link']));
+			$targetHolon->set('adminparent', !empty($record['adminParent']) && (int)$targetHolon->get('IDtypeholon') === 1);
+			$targetHolon->set('admin_min', array_key_exists('adminMin', $record) && trim((string)$record['adminMin']) !== ''
+				? max(0, (int)$record['adminMin'])
+				: null);
+			$targetHolon->set('admin_max', array_key_exists('adminMax', $record) && trim((string)$record['adminMax']) !== ''
+				? max(0, (int)$record['adminMax'])
+				: null);
+			$targetHolon->set('lockedadminmin', !empty($record['lockedAdminMin']));
+			$targetHolon->set('lockedadminmax', !empty($record['lockedAdminMax']));
+			$targetHolon->set('adminminoverride', !empty($record['adminMinOverride']));
+			$targetHolon->set('adminmaxoverride', !empty($record['adminMaxOverride']));
 			$targetHolon->set('color', trim((string)($record['color'] ?? '')) !== '' ? $record['color'] : null);
+			$targetHolon->set('color_unassigned', trim((string)($record['unassignedColor'] ?? '')) !== '' ? $record['unassignedColor'] : null);
 			$targetHolon->set('icon', trim((string)($record['icon'] ?? '')) !== '' ? $record['icon'] : null);
-			$targetHolon->set('banner', trim((string)($record['banner'] ?? '')) !== '' ? $record['banner'] : null);
 			$targetHolon->set('accesskey', trim((string)($record['accessKey'] ?? '')) !== '' ? $record['accessKey'] : null);
 
 			if ($isOrganizationRoot) {
@@ -2055,6 +3988,88 @@
 			}
 
 			$targetHolon->save();
+		}
+
+		protected static function omo1ImportExistingImagePath($value): ?string
+		{
+			$path = trim((string)$value);
+			if (
+				$path === ''
+				|| strpos($path, "\0") !== false
+				|| $path[0] !== '/'
+				|| preg_match('/^(?:[a-z][a-z0-9+.-]*:|\/\/)/i', $path)
+			) {
+				return null;
+			}
+
+			$documentRoot = realpath((string)($_SERVER['DOCUMENT_ROOT'] ?? ''));
+			if (!is_string($documentRoot) || $documentRoot === '') {
+				return null;
+			}
+
+			$absolutePath = realpath($documentRoot . DIRECTORY_SEPARATOR . ltrim(str_replace('\\', '/', $path), '/'));
+			if (!is_string($absolutePath) || $absolutePath === '') {
+				return null;
+			}
+
+			$normalizedRoot = rtrim(str_replace('\\', '/', $documentRoot), '/') . '/';
+			$normalizedPath = str_replace('\\', '/', $absolutePath);
+			if (stripos($normalizedPath, $normalizedRoot) !== 0 || !is_file($absolutePath) || !is_readable($absolutePath)) {
+				return null;
+			}
+
+			return @getimagesize($absolutePath) === false
+				? null
+				: '/' . ltrim(substr($normalizedPath, strlen($normalizedRoot)), '/');
+		}
+
+		protected static function sanitizeOmo1ImportedMediaReferences(array $payload, array &$warnings): array
+		{
+			$discardedCount = 0;
+			$sanitizeRecord = function (array &$record, array $fields) use (&$discardedCount) {
+				foreach ($fields as $field) {
+					$value = trim((string)($record[$field] ?? ''));
+					if ($value === '') {
+						continue;
+					}
+
+					$imagePath = self::omo1ImportExistingImagePath($value);
+					if ($imagePath === null) {
+						$record[$field] = null;
+						$discardedCount += 1;
+						continue;
+					}
+
+					$record[$field] = $imagePath;
+				}
+			};
+
+			if (isset($payload['organization']) && is_array($payload['organization'])) {
+				$sanitizeRecord($payload['organization'], array('logo', 'banner'));
+			}
+
+			$sanitizeHolons = null;
+			$sanitizeHolons = function (array &$nodes) use (&$sanitizeHolons, $sanitizeRecord) {
+				foreach ($nodes as &$node) {
+					if (!is_array($node)) {
+						continue;
+					}
+					$sanitizeRecord($node, array('icon'));
+					if (isset($node['children']) && is_array($node['children'])) {
+						$sanitizeHolons($node['children']);
+					}
+				}
+				unset($node);
+			};
+			if (isset($payload['holons']) && is_array($payload['holons'])) {
+				$sanitizeHolons($payload['holons']);
+			}
+
+			if ($discardedCount > 0) {
+				$warnings[] = $discardedCount . ' image(s) indisponible(s) sur ce serveur ont ete ignorees.';
+			}
+
+			return $payload;
 		}
 
 		protected function createImportedHolonFromCompactRecord(array $record, $targetParentId, $targetRootHolonId, $userId = 0)
@@ -2069,7 +4084,183 @@
 			return $targetHolon;
 		}
 
-		protected function importCompactHolonPropertyRows(array $record, \dbObject\Holon $targetHolon, array $propertyIdMap, array $holonIdMap)
+		protected function resolveImportedCompactEffectivePropertyValues($sourceHolonId, array $recordsBySourceId, array $propertyDefinitionsById, array &$cache, array $resolving = array())
+		{
+			$sourceHolonId = (int)$sourceHolonId;
+			if ($sourceHolonId <= 0 || !isset($recordsBySourceId[$sourceHolonId])) {
+				return array();
+			}
+			if (isset($cache[$sourceHolonId])) {
+				return $cache[$sourceHolonId];
+			}
+			if (isset($resolving[$sourceHolonId])) {
+				return array();
+			}
+
+			$resolving[$sourceHolonId] = true;
+			$record = $recordsBySourceId[$sourceHolonId];
+			$templateSourceId = (int)($record['templateId'] ?? 0);
+			$valuesByPropertyId = $templateSourceId > 0
+				? $this->resolveImportedCompactEffectivePropertyValues(
+					$templateSourceId,
+					$recordsBySourceId,
+					$propertyDefinitionsById,
+					$cache,
+					$resolving
+				)
+				: array();
+
+			foreach (is_array($record['properties'] ?? null) ? $record['properties'] : array() as $row) {
+				if (!is_array($row) || !array_key_exists('value', $row)) {
+					continue;
+				}
+
+				$propertyId = (int)($row['propertyId'] ?? 0);
+				if ($propertyId <= 0) {
+					continue;
+				}
+
+				$formatId = (int)($propertyDefinitionsById[$propertyId]['formatId'] ?? 0);
+				$currentValue = \dbObject\PropertyFormat::normalizeValueForStorage($formatId, $row['value']);
+				if ($formatId === \dbObject\PropertyFormat::FORMAT_LIST) {
+					$currentValue = $this->mergeHolonHistoryListValues(
+						$valuesByPropertyId[$propertyId] ?? '',
+						$currentValue
+					);
+				}
+
+				if (!\dbObject\PropertyFormat::isHtmlFormat($formatId)) {
+					$currentValue = trim((string)$currentValue);
+				}
+				if ($currentValue !== '') {
+					$valuesByPropertyId[$propertyId] = $currentValue;
+				}
+			}
+
+			$cache[$sourceHolonId] = $valuesByPropertyId;
+			return $valuesByPropertyId;
+		}
+
+		protected function getImportedCompactListItemComparisonKey($item)
+		{
+			if (is_array($item)) {
+				return 'array:' . (string)json_encode($item, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+			}
+
+			return 'value:' . trim((string)$item);
+		}
+
+		protected function subtractImportedCompactInheritedListValue($value, $inheritedValue, $formatId)
+		{
+			$formatId = (int)$formatId;
+			$currentParts = $formatId === \dbObject\PropertyFormat::FORMAT_HTML_LIST
+				? \dbObject\PropertyFormat::getHtmlListParts($value)
+				: array('before' => '', 'items' => $this->parseHolonHistoryListValue($value), 'after' => '');
+			$inheritedParts = $formatId === \dbObject\PropertyFormat::FORMAT_HTML_LIST
+				? \dbObject\PropertyFormat::getHtmlListParts($inheritedValue)
+				: array('before' => '', 'items' => $this->parseHolonHistoryListValue($inheritedValue), 'after' => '');
+
+			$inheritedItemKeys = array();
+			foreach ($inheritedParts['items'] as $item) {
+				$inheritedItemKeys[$this->getImportedCompactListItemComparisonKey($item)] = true;
+			}
+
+			$localItems = array();
+			foreach ($currentParts['items'] as $item) {
+				if (isset($inheritedItemKeys[$this->getImportedCompactListItemComparisonKey($item)])) {
+					continue;
+				}
+				$localItems[] = $item;
+			}
+
+			if ($formatId === \dbObject\PropertyFormat::FORMAT_HTML_LIST) {
+				$currentParts['before'] = trim((string)$currentParts['before']) === trim((string)$inheritedParts['before'])
+					? ''
+					: $currentParts['before'];
+				$currentParts['after'] = trim((string)$currentParts['after']) === trim((string)$inheritedParts['after'])
+					? ''
+					: $currentParts['after'];
+				$currentParts['items'] = $localItems;
+				$localValue = \dbObject\PropertyFormat::normalizeValueForStorage($formatId, $currentParts);
+
+				return \dbObject\PropertyFormat::isEmptyValue($formatId, $localValue) ? null : $localValue;
+			}
+
+			return count($localItems) > 0
+				? json_encode(array_values($localItems), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+				: null;
+		}
+
+		protected function getImportedCompactLocalPropertyRowsForMappedTemplate(array $record, array $recordsBySourceId, array $propertyDefinitionsById, array &$effectiveValueCache)
+		{
+			$rows = is_array($record['properties'] ?? null) ? $record['properties'] : array();
+			$templateSourceId = (int)($record['templateId'] ?? 0);
+			$inheritedValuesByPropertyId = $templateSourceId > 0
+				? $this->resolveImportedCompactEffectivePropertyValues(
+					$templateSourceId,
+					$recordsBySourceId,
+					$propertyDefinitionsById,
+					$effectiveValueCache
+				)
+				: array();
+			$localRows = array();
+
+			foreach ($rows as $row) {
+				if (!is_array($row)) {
+					continue;
+				}
+
+				$valueOrigin = strtolower(trim((string)($row['valueOrigin'] ?? '')));
+				if ($valueOrigin !== '') {
+					if ($valueOrigin === 'local') {
+						$localRows[] = $row;
+					}
+					continue;
+				}
+
+				$propertyId = (int)($row['propertyId'] ?? 0);
+				if ($propertyId <= 0 || !array_key_exists('value', $row)) {
+					continue;
+				}
+				if (!array_key_exists($propertyId, $inheritedValuesByPropertyId)) {
+					$localRows[] = $row;
+					continue;
+				}
+
+				$formatId = (int)($propertyDefinitionsById[$propertyId]['formatId'] ?? 0);
+				$currentValue = \dbObject\PropertyFormat::normalizeValueForStorage($formatId, $row['value']);
+				$inheritedValue = \dbObject\PropertyFormat::normalizeValueForStorage(
+					$formatId,
+					$inheritedValuesByPropertyId[$propertyId]
+				);
+
+				if (\dbObject\PropertyFormat::isListFormat($formatId)) {
+					$localValue = $this->subtractImportedCompactInheritedListValue(
+						$currentValue,
+						$inheritedValue,
+						$formatId
+					);
+					if ($localValue === null) {
+						continue;
+					}
+					$row['value'] = $localValue;
+					$localRows[] = $row;
+					continue;
+				}
+
+				if (!\dbObject\PropertyFormat::isHtmlFormat($formatId)) {
+					$currentValue = trim((string)$currentValue);
+					$inheritedValue = trim((string)$inheritedValue);
+				}
+				if ((string)$currentValue !== (string)$inheritedValue) {
+					$localRows[] = $row;
+				}
+			}
+
+			return $localRows;
+		}
+
+		protected function importCompactHolonPropertyRows(array $record, \dbObject\Holon $targetHolon, array $propertyIdMap, array $holonIdMap, array $authorityIdMap = array())
 		{
 			$rows = $record['properties'] ?? array();
 			if (!is_array($rows)) {
@@ -2092,7 +4283,7 @@
 				}
 
 				$value = array_key_exists('value', $row)
-					? $this->cloneStructuralPropertyValue($targetProperty, $row['value'], $holonIdMap)
+					? $this->cloneStructuralPropertyValue($targetProperty, $row['value'], $holonIdMap, $authorityIdMap)
 					: null;
 
 				$holonProperty = new \dbObject\HolonProperty();
@@ -2107,6 +4298,183 @@
 			}
 		}
 
+		protected function importCompactAuthorityRecords(array $payload, array $targetHolonsBySourceId, array $ignoredSourceHolonIds = array())
+		{
+			$records = isset($payload['authorities']) && is_array($payload['authorities'])
+				? $payload['authorities']
+				: array();
+			$authorityIdMap = array();
+			$createdAuthorities = array();
+			$warnings = array();
+
+			foreach ($records as $record) {
+				if (!is_array($record)) {
+					continue;
+				}
+
+				$sourceAuthorityId = (int)($record['id'] ?? $record['sourceId'] ?? 0);
+				$sourceHolonId = (int)($record['holonId'] ?? $record['sourceHolonId'] ?? 0);
+				$targetHolon = $targetHolonsBySourceId[$sourceHolonId] ?? null;
+				if ($sourceAuthorityId <= 0 || !($targetHolon instanceof \dbObject\Holon)) {
+					if ($sourceAuthorityId > 0 && empty($ignoredSourceHolonIds[$sourceHolonId])) {
+						$warnings[] = self::formatLexiconText('Une autorite exportee n a pas pu etre rattachee a son holon importe.', $this->getLexicon());
+					}
+					continue;
+				}
+
+				$label = trim((string)($record['label'] ?? ''));
+				if ($label === '') {
+					$warnings[] = 'Une autorite exportee sans libelle a ete ignoree.';
+					continue;
+				}
+
+				$authority = new \dbObject\Authority();
+				$authority->set('IDholon', (int)$targetHolon->getId());
+				$authority->set('IDauthority_parent', null);
+				$authority->set('IDauthority_template', null);
+				$authority->set('label', $label);
+				$authority->set('description', trim((string)($record['description'] ?? '')) ?: null);
+				$authority->set('is_shell', !empty($record['isShell']));
+				$authority->set('is_local', !empty($record['isLocal']));
+				$authority->set('template_origin_lost', !empty($record['templateOriginLost']));
+				$saveResult = $authority->save();
+				if (!is_array($saveResult) || empty($saveResult['status']) || (int)$authority->getId() <= 0) {
+					throw new \RuntimeException('Une autorite exportee n a pas pu etre importee.');
+				}
+
+				$authorityIdMap[$sourceAuthorityId] = (int)$authority->getId();
+				$createdAuthorities[$sourceAuthorityId] = array(
+					'authority' => $authority,
+					'record' => $record,
+				);
+			}
+
+			foreach ($createdAuthorities as $sourceAuthorityId => $entry) {
+				$authority = $entry['authority'];
+				$record = $entry['record'];
+				$sourceParentId = (int)($record['parentAuthorityId'] ?? $record['parentId'] ?? 0);
+				$sourceTemplateAuthorityId = (int)($record['templateAuthorityId'] ?? 0);
+				$targetParentId = $authorityIdMap[$sourceParentId] ?? 0;
+				$targetTemplateAuthorityId = $authorityIdMap[$sourceTemplateAuthorityId] ?? 0;
+				$templateOriginLost = !empty($record['templateOriginLost']);
+
+				if ($sourceParentId > 0 && $targetParentId <= 0) {
+					$warnings[] = 'Une autorite importee a perdu son rattachement parent hors du perimetre exporte.';
+				}
+				if ($sourceTemplateAuthorityId > 0 && $targetTemplateAuthorityId <= 0) {
+					$templateOriginLost = true;
+					$warnings[] = 'Une autorite importee a perdu son lien vers son autorite source de modele.';
+				}
+
+				$authority->set('IDauthority_parent', $targetParentId > 0 ? $targetParentId : null);
+				$authority->set('IDauthority_template', $targetTemplateAuthorityId > 0 ? $targetTemplateAuthorityId : null);
+				$authority->set('template_origin_lost', $templateOriginLost);
+				$saveResult = $authority->save();
+				if (!is_array($saveResult) || empty($saveResult['status'])) {
+					throw new \RuntimeException('Les liens entre les autorites importees n ont pas pu etre restaures.');
+				}
+			}
+
+			return array(
+				'authorityIdMap' => $authorityIdMap,
+				'warnings' => array_values(array_unique($warnings)),
+			);
+		}
+
+		protected function importCompactRuleRecords(array $payload, array $authorityIdMap, array $targetHolonsBySourceId, $userId = 0)
+		{
+			$records = isset($payload['rules']) && is_array($payload['rules'])
+				? $payload['rules']
+				: array();
+			$warnings = array();
+
+			foreach ($records as $record) {
+				if (!is_array($record)) {
+					continue;
+				}
+
+				$sourceAuthorityId = (int)($record['authorityId'] ?? $record['sourceAuthorityId'] ?? 0);
+				$sourceHolonId = (int)($record['holonId'] ?? $record['sourceHolonId'] ?? 0);
+				$targetAuthorityId = $authorityIdMap[$sourceAuthorityId] ?? 0;
+				$targetHolon = $targetHolonsBySourceId[$sourceHolonId] ?? null;
+				if ($sourceAuthorityId > 0 && $targetAuthorityId <= 0) {
+					$warnings[] = 'Une regle exportee a ete ignoree car son autorite est absente de l import.';
+					continue;
+				}
+				if ($sourceAuthorityId <= 0 && !($targetHolon instanceof \dbObject\Holon)) {
+					$warnings[] = self::formatLexiconText('Une regle locale exportee a ete ignoree car son holon est absent de l import.', $this->getLexicon());
+					continue;
+				}
+
+				$title = trim((string)($record['title'] ?? ''));
+				$description = trim((string)($record['description'] ?? ''));
+				$reviewDate = trim((string)($record['reviewDate'] ?? ''));
+				$expirationDate = trim((string)($record['expirationDate'] ?? ''));
+				if ($title === '' || $description === '' || $reviewDate === '' || $expirationDate === '') {
+					$warnings[] = 'Une regle exportee incomplete a ete ignoree.';
+					continue;
+				}
+
+				$rule = new \dbObject\Rule();
+				$rule->set('IDauthority', $targetAuthorityId > 0 ? $targetAuthorityId : null);
+				$rule->set('IDholon', $targetAuthorityId > 0 ? null : (int)$targetHolon->getId());
+				$rule->set('title', $title);
+				$rule->set('intention', trim((string)($record['intention'] ?? '')) ?: null);
+				$rule->set('description', $description);
+				$rule->set('scope', \dbObject\Rule::normalizeScope($record['scope'] ?? null));
+				$rule->set('review_date', $reviewDate);
+				$rule->set('expiration_date', $expirationDate);
+				$saveResult = $rule->save();
+				if (!is_array($saveResult) || empty($saveResult['status'])) {
+					throw new \RuntimeException('Une regle exportee n a pas pu etre importee.');
+				}
+			}
+
+			return array_values(array_unique($warnings));
+		}
+
+		protected function alignImportedHolonPropertyPositionsWithTemplate(\dbObject\Holon $targetHolon, \dbObject\Holon $templateHolon)
+		{
+			$positionsByPropertyId = array();
+			$lastPosition = 0;
+			foreach ($templateHolon->getTemplatePropertyDefinitions() as $definition) {
+				$propertyId = (int)($definition['id'] ?? 0);
+				if ($propertyId <= 0 || isset($positionsByPropertyId[$propertyId])) {
+					continue;
+				}
+
+				$position = (int)($definition['position'] ?? 0);
+				if ($position <= 0) {
+					$position = $lastPosition + 1;
+				}
+				$positionsByPropertyId[$propertyId] = $position;
+				$lastPosition = max($lastPosition, $position);
+			}
+
+			$extraProperties = array();
+			foreach ($targetHolon->getHolonProperties() as $holonProperty) {
+				$propertyId = (int)$holonProperty->get('IDproperty');
+				if (isset($positionsByPropertyId[$propertyId])) {
+					$holonProperty->set('position', (int)$positionsByPropertyId[$propertyId]);
+					$holonProperty->save();
+					continue;
+				}
+				$extraProperties[] = $holonProperty;
+			}
+
+			usort($extraProperties, static function ($left, $right) {
+				$positionComparison = (int)$left->get('position') <=> (int)$right->get('position');
+				return $positionComparison !== 0
+					? $positionComparison
+					: ((int)$left->getId() <=> (int)$right->getId());
+			});
+			foreach ($extraProperties as $holonProperty) {
+				$lastPosition += 1;
+				$holonProperty->set('position', $lastPosition);
+				$holonProperty->save();
+			}
+		}
+
 		protected function importCompactHolonPermissionRows(array $record, \dbObject\Holon $targetHolon)
 		{
 			$targetHolonId = (int)$targetHolon->getId();
@@ -2115,7 +4483,11 @@
 			}
 
 			$rows = $record['permissions'] ?? array();
-			$assignmentsByPermissionKey = array();
+			$assignmentsByPermissionKey = array(
+				\dbObject\HolonPermission::MEMBER_TYPE_MEMBER => array(),
+				\dbObject\HolonPermission::MEMBER_TYPE_ADMIN => array(),
+				\dbObject\HolonPermission::MEMBER_TYPE_COLLECTIVE => array(),
+			);
 
 			if (is_array($rows)) {
 				foreach ($rows as $row) {
@@ -2125,29 +4497,581 @@
 
 					$permissionKey = trim((string)($row['permissionKey'] ?? ''));
 					$range = trim((string)($row['range'] ?? ''));
+					$memberType = \dbObject\HolonPermission::normalizeMemberType($row['memberType'] ?? \dbObject\HolonPermission::MEMBER_TYPE_MEMBER);
 					if ($permissionKey === '' || $range === '') {
 						continue;
 					}
 
-					if (!isset($assignmentsByPermissionKey[$permissionKey])) {
-						$assignmentsByPermissionKey[$permissionKey] = array();
+					if (!isset($assignmentsByPermissionKey[$memberType][$permissionKey])) {
+						$assignmentsByPermissionKey[$memberType][$permissionKey] = array();
 					}
 
-					$assignmentsByPermissionKey[$permissionKey][] = $range;
+					$assignmentsByPermissionKey[$memberType][$permissionKey][] = !empty($row['is_extended'])
+						? ['range' => $range, 'is_extended' => true] : $range;
 				}
 			}
 
 			return \dbObject\HolonPermission::syncAssignmentsForHolon($targetHolonId, $assignmentsByPermissionKey);
 		}
 
-		protected function importStructureFromCompactGraph(array $payload, $userId = 0)
+		protected static function normalizeImportTemplateKey($value)
+		{
+			$value = trim((string)$value);
+			if ($value === '') {
+				return '';
+			}
+
+			$value = function_exists('mb_strtolower') ? mb_strtolower($value, 'UTF-8') : strtolower($value);
+			$asciiValue = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $value);
+			if (is_string($asciiValue) && $asciiValue !== '') {
+				$value = $asciiValue;
+			}
+
+			return trim((string)preg_replace('/[^a-z0-9]+/', '', $value));
+		}
+
+		protected static function getImportPropertyMatchKeys($shortname, $name)
+		{
+			$keys = array();
+			foreach (array($shortname, $name) as $value) {
+				$key = self::normalizeImportTemplateKey($value);
+				if ($key !== '') {
+					$keys[$key] = true;
+				}
+			}
+
+			$rdeKeys = array('rde', 'raisonetre', 'raisondetre', 'purpose');
+			foreach ($rdeKeys as $rdeKey) {
+				if (isset($keys[$rdeKey])) {
+					foreach ($rdeKeys as $aliasKey) {
+						$keys[$aliasKey] = true;
+					}
+					break;
+				}
+			}
+
+			$authorityKeys = array('autorite', 'autorites', 'domainedautorite', 'domainesdautorite', 'domainautorite', 'domainesautorite', 'authority', 'authorities', 'authoritydomain', 'authoritydomains');
+			foreach ($authorityKeys as $authorityKey) {
+				if (isset($keys[$authorityKey])) {
+					foreach ($authorityKeys as $aliasKey) {
+						$keys[$aliasKey] = true;
+					}
+					break;
+				}
+			}
+
+			return array_keys($keys);
+		}
+
+		protected static function isImportedTemplateRecord(array $record)
+		{
+			return trim((string)($record['templateName'] ?? '')) !== ''
+				|| (array_key_exists('visible', $record) && !(bool)$record['visible']);
+		}
+
+		protected function getImportTemplateNodes(\dbObject\Holon $templateRootHolon)
+		{
+			$nodes = array();
+			$visitedHolonIds = array();
+			$templateRootHolonId = (int)$templateRootHolon->getId();
+			$collectNodes = function (\dbObject\Holon $parentHolon) use (&$collectNodes, &$nodes, &$visitedHolonIds, $templateRootHolonId) {
+				$parentHolonId = (int)$parentHolon->getId();
+				if ($parentHolonId <= 0 || isset($visitedHolonIds[$parentHolonId])) {
+					return;
+				}
+				$visitedHolonIds[$parentHolonId] = true;
+
+				$children = new \dbObject\ArrayHolon();
+				$children->load(array(
+					'where' => array(
+						array('field' => 'IDholon_parent', 'value' => $parentHolonId),
+						array('field' => 'active', 'value' => 1),
+					),
+					'orderBy' => array(
+						array('field' => 'IDtypeholon', 'dir' => 'ASC'),
+						array('field' => 'name', 'dir' => 'ASC'),
+						array('field' => 'templatename', 'dir' => 'ASC'),
+						array('field' => 'id', 'dir' => 'ASC'),
+					),
+				));
+				foreach ($children as $childHolon) {
+					if ($childHolon->isTemplateNode()) {
+						$nodes[(int)$childHolon->getId()] = $childHolon;
+					}
+					$collectNodes($childHolon);
+				}
+			};
+
+			$collectNodes($templateRootHolon);
+			return $nodes;
+		}
+
+		protected function getImportTemplateNodePath(\dbObject\Holon $nodeHolon, $templateRootHolonId)
+		{
+			$templateRootHolonId = (int)$templateRootHolonId;
+			$labels = array();
+			$currentHolon = $nodeHolon;
+			$visitedHolonIds = array();
+
+			while ($currentHolon instanceof \dbObject\Holon) {
+				$currentHolonId = (int)$currentHolon->getId();
+				if ($currentHolonId <= 0 || isset($visitedHolonIds[$currentHolonId])) {
+					break;
+				}
+				$visitedHolonIds[$currentHolonId] = true;
+				if ($currentHolonId === $templateRootHolonId) {
+					break;
+				}
+
+				$label = $currentHolon->isTemplateNode()
+					? $this->getStructuralInitializationTemplateName($currentHolon)
+					: $currentHolon->getDisplayName();
+				if (trim((string)$label) !== '') {
+					$labels[] = trim((string)$label);
+				}
+
+				$parentHolonId = (int)$currentHolon->get('IDholon_parent');
+				if ($parentHolonId <= 0) {
+					break;
+				}
+				$parentHolon = new \dbObject\Holon();
+				$currentHolon = $parentHolon->load($parentHolonId) ? $parentHolon : null;
+			}
+
+			return implode(' > ', array_reverse($labels));
+		}
+
+		public function getStructuralImportTemplateCatalog()
+		{
+			$catalog = array();
+			foreach ($this->getStructuralInitializationTemplates() as $template) {
+				$templateRootHolonId = (int)($template['id'] ?? 0);
+				if ($templateRootHolonId <= 0) {
+					continue;
+				}
+
+				$templateRootHolon = new \dbObject\Holon();
+				if (!$templateRootHolon->load($templateRootHolonId)) {
+					continue;
+				}
+
+				$nodes = array();
+				foreach ($this->getImportTemplateNodes($templateRootHolon) as $nodeHolon) {
+					$properties = array();
+					foreach ($nodeHolon->getTemplatePropertyDefinitions() as $definition) {
+						$propertyId = (int)($definition['id'] ?? 0);
+						if ($propertyId <= 0) {
+							continue;
+						}
+						$properties[] = array(
+							'id' => $propertyId,
+							'type' => Property::normalizeType($definition['type'] ?? null),
+							'name' => (string)($definition['name'] ?? ''),
+							'shortname' => (string)($definition['shortname'] ?? ''),
+							'formatId' => (int)($definition['formatId'] ?? 0),
+							'formatName' => (string)($definition['formatName'] ?? ''),
+							'listItemType' => (string)($definition['listItemType'] ?? ''),
+							'position' => (int)($definition['position'] ?? 0),
+						);
+					}
+					$nodes[] = array(
+						'id' => (int)$nodeHolon->getId(),
+						'name' => $this->getStructuralInitializationTemplateName($nodeHolon),
+						'path' => $this->getImportTemplateNodePath($nodeHolon, $templateRootHolonId),
+						'typeId' => (int)$nodeHolon->get('IDtypeholon'),
+						'parentId' => (int)$nodeHolon->get('IDholon_parent'),
+						'properties' => $properties,
+					);
+				}
+
+				$template['nodes'] = $nodes;
+				$catalog[] = $template;
+			}
+
+			return $catalog;
+		}
+
+		protected function cloneImportTemplateNodes(\dbObject\Holon $sourceTemplateRoot, \dbObject\Holon $targetRootHolon, $userId = 0)
+		{
+			$this->setPropertyTypeSettings($sourceTemplateRoot->getPropertyTypeLexicon());
+			if (empty($this->save()['status'])) throw new \RuntimeException('Impossible de copier les types de proprietes du modele.');
+			$sourceNodesById = $this->getImportTemplateNodes($sourceTemplateRoot);
+			$targetNodesBySourceId = array();
+			$targetNodeIdMap = array();
+			$propertyIdMap = array();
+			$sourceRootHolonId = (int)$sourceTemplateRoot->getId();
+			$targetRootHolonId = (int)$targetRootHolon->getId();
+
+			foreach ($sourceNodesById as $sourceNodeId => $sourceNode) {
+				$sourceParentId = (int)$sourceNode->get('IDholon_parent');
+				$targetParentId = isset($targetNodeIdMap[$sourceParentId])
+					? (int)$targetNodeIdMap[$sourceParentId]
+					: $targetRootHolonId;
+
+				$targetNode = new \dbObject\Holon();
+				$targetNode->set('name', $sourceNode->get('name'));
+				$targetNode->set('nomcomplet', trim((string)$sourceNode->get('nomcomplet')) !== '' ? $sourceNode->get('nomcomplet') : null);
+				$targetNode->set('templatename', $sourceNode->get('templatename'));
+				$targetNode->set('IDtypeholon', (int)$sourceNode->get('IDtypeholon'));
+				$targetNode->set('IDholon_parent', $targetParentId);
+				$targetNode->set('IDholon_template', null);
+				$targetNode->set('IDholon_org', $targetRootHolonId);
+				$targetNode->set('IDorganization', null);
+				$targetNode->set('IDuser', (int)$userId > 0 ? (int)$userId : (int)$sourceNode->get('IDuser'));
+				$targetNode->set('active', (bool)$sourceNode->get('active'));
+				$targetNode->set('visible', false);
+				$targetNode->set('mandatory', (bool)$sourceNode->get('mandatory'));
+				$targetNode->set('lockedname', (bool)$sourceNode->get('lockedname'));
+				$targetNode->set('lockedicon', (bool)$sourceNode->get('lockedicon'));
+				$targetNode->set('unique', (bool)$sourceNode->get('unique'));
+				$targetNode->set('link', (bool)$sourceNode->get('link'));
+				$targetNode->set('adminparent', (bool)$sourceNode->get('adminparent'));
+				$targetNode->set('admin_min', max(0, (int)$sourceNode->get('admin_min')));
+				$targetNode->set('admin_max', $sourceNode->get('admin_max') === null ? null : (int)$sourceNode->get('admin_max'));
+				$targetNode->set('lockedadminmin', (bool)$sourceNode->get('lockedadminmin'));
+				$targetNode->set('lockedadminmax', (bool)$sourceNode->get('lockedadminmax'));
+				$targetNode->set('adminminoverride', (bool)$sourceNode->get('adminminoverride'));
+				$targetNode->set('adminmaxoverride', (bool)$sourceNode->get('adminmaxoverride'));
+				$targetNode->set('color', $sourceNode->get('color') ?: null);
+				$targetNode->set('color_unassigned', $sourceNode->get('color_unassigned') ?: null);
+				$targetNode->set('icon', $sourceNode->get('icon') ?: null);
+				$targetNode->set('accesskey', $sourceNode->get('accesskey') ?: null);
+				$targetNode->save();
+				if ((int)$targetNode->getId() <= 0) {
+					throw new \RuntimeException("Un template du modele selectionne n'a pas pu etre copie.");
+				}
+
+				$targetNodesBySourceId[(int)$sourceNodeId] = $targetNode;
+				$targetNodeIdMap[(int)$sourceNodeId] = (int)$targetNode->getId();
+			}
+
+			foreach ($sourceNodesById as $sourceNodeId => $sourceNode) {
+				$targetNode = $targetNodesBySourceId[(int)$sourceNodeId];
+				$sourceTemplateId = (int)$sourceNode->get('IDholon_template');
+				$targetNode->set(
+					'IDholon_template',
+					isset($targetNodeIdMap[$sourceTemplateId]) ? (int)$targetNodeIdMap[$sourceTemplateId] : null
+				);
+				$targetNode->save();
+			}
+
+			$authorityIdMap = $this->cloneStructuralAuthorities($sourceNodesById, $targetNodesBySourceId);
+
+			foreach ($sourceNodesById as $sourceNodeId => $sourceNode) {
+				$targetNode = $targetNodesBySourceId[(int)$sourceNodeId];
+				$this->cloneStructuralHolonProperties(
+					$sourceNode,
+					$targetNode,
+					$sourceRootHolonId,
+					$targetRootHolonId,
+					$targetNodeIdMap,
+					$propertyIdMap,
+					$authorityIdMap
+				);
+				if (!$this->cloneStructuralHolonPermissions($sourceNode, $targetNode)) {
+					throw new \RuntimeException("Les droits d'un template du modele n'ont pas pu etre copies.");
+				}
+			}
+
+			return array(
+				'sourceNodesById' => $sourceNodesById,
+				'targetNodesBySourceId' => $targetNodesBySourceId,
+				'targetNodeIdMap' => $targetNodeIdMap,
+				'propertyIdMap' => $propertyIdMap,
+			);
+		}
+
+		protected function applyImportTemplateCalibration(array $recordsBySourceId, array $propertyDefinitions, \dbObject\Holon $targetRootHolon, array &$holonIdMap, array &$targetHolonsBySourceId, array &$propertyIdMap, array $calibration, $userId = 0)
+		{
+			$templateRootHolonId = (int)($calibration['templateRootHolonId'] ?? 0);
+			$mappings = isset($calibration['mappings']) && is_array($calibration['mappings']) ? $calibration['mappings'] : array();
+			$excludedTemplateIds = isset($calibration['excludedTemplateIds']) && is_array($calibration['excludedTemplateIds'])
+				? $calibration['excludedTemplateIds']
+				: array();
+			$propertyMappings = isset($calibration['propertyMappings']) && is_array($calibration['propertyMappings'])
+				? $calibration['propertyMappings']
+				: array();
+			$templatePropertyMappings = isset($calibration['templatePropertyMappings']) && is_array($calibration['templatePropertyMappings'])
+				? $calibration['templatePropertyMappings']
+				: array();
+			if ($templateRootHolonId <= 0 || (count($mappings) === 0 && count($excludedTemplateIds) === 0)) {
+				return array(
+					'mappedSourceTemplateIds' => array(),
+					'excludedSourceTemplateIds' => array(),
+					'excludedSourceHolonIds' => array(),
+					'templatePropertyIdMaps' => array(),
+					'templateExcludedPropertyIds' => array(),
+					'warnings' => array(),
+					'authorityTemplateApplied' => false,
+					'targetTemplateNodes' => array(),
+				);
+			}
+
+			$templateRootHolon = new \dbObject\Holon();
+			if (
+				!$templateRootHolon->load($templateRootHolonId)
+				|| (int)$templateRootHolon->get('IDtypeholon') !== 4
+				|| !(bool)$templateRootHolon->get('active')
+				|| !self::isPublicModelRootHolon($templateRootHolon)
+			) {
+				throw new \RuntimeException("Le modele d'organisation selectionne est introuvable.");
+			}
+			$authorityTemplateApplied = count($mappings) > 0
+				? $this->templateTreeUsesAuthorityProperties($templateRootHolon)
+				: false;
+
+			$clonedTemplates = count($mappings) > 0
+				? $this->cloneImportTemplateNodes($templateRootHolon, $targetRootHolon, $userId)
+				: array('targetNodesBySourceId' => array(), 'propertyIdMap' => array());
+			$targetTemplateNodes = $clonedTemplates['targetNodesBySourceId'];
+			$clonedPropertyIdMap = isset($clonedTemplates['propertyIdMap']) && is_array($clonedTemplates['propertyIdMap'])
+				? $clonedTemplates['propertyIdMap']
+				: array();
+			$mappedSourceTemplateIds = array();
+			$excludedSourceTemplateIds = array();
+			$excludedSourceHolonIds = array();
+			$templatePropertyIdMaps = array();
+			$templateExcludedPropertyIds = array();
+			$mappedTargetTemplateIds = array();
+			$warnings = array();
+			$propertyDefinitionsById = array();
+			foreach ($propertyDefinitions as $definition) {
+				$propertyDefinitionsById[(int)($definition['id'] ?? 0)] = $definition;
+			}
+			foreach ($excludedTemplateIds as $sourceTemplateId => $isExcluded) {
+				$sourceTemplateId = (int)$sourceTemplateId;
+				if ($sourceTemplateId <= 0) {
+					$sourceTemplateId = (int)$isExcluded;
+				}
+				$sourceRecord = $recordsBySourceId[$sourceTemplateId] ?? null;
+				if ($sourceTemplateId <= 0 || !is_array($sourceRecord) || !self::isImportedTemplateRecord($sourceRecord)) {
+					throw new \RuntimeException('Un template a exclure est invalide.');
+				}
+				if (isset($mappings[$sourceTemplateId])) {
+					throw new \RuntimeException('Un template importe ne peut pas etre a la fois remplace et exclu.');
+				}
+				$excludedSourceTemplateIds[$sourceTemplateId] = true;
+			}
+			$excludedSourceHolonIds = $excludedSourceTemplateIds;
+			do {
+				$exclusionAdded = false;
+				foreach ($recordsBySourceId as $sourceHolonId => $sourceRecord) {
+					$sourceHolonId = (int)$sourceHolonId;
+					if ($sourceHolonId <= 0 || isset($excludedSourceHolonIds[$sourceHolonId])) {
+						continue;
+					}
+
+					$parentSourceId = (int)($sourceRecord['parentId'] ?? 0);
+					if ($parentSourceId > 0 && isset($excludedSourceHolonIds[$parentSourceId])) {
+						$excludedSourceHolonIds[$sourceHolonId] = true;
+						$exclusionAdded = true;
+						continue;
+					}
+
+					$templateSourceId = (int)($sourceRecord['templateId'] ?? 0);
+					if ($templateSourceId <= 0 || !isset($excludedSourceHolonIds[$templateSourceId])) {
+						continue;
+					}
+					if (self::isImportedTemplateRecord($sourceRecord) && isset($mappings[$sourceHolonId])) {
+						continue;
+					}
+
+					$excludedSourceHolonIds[$sourceHolonId] = true;
+					$exclusionAdded = true;
+				}
+			} while ($exclusionAdded);
+
+			foreach ($mappings as $sourceTemplateId => $targetTemplateSourceId) {
+				$sourceTemplateId = (int)$sourceTemplateId;
+				$targetTemplateSourceId = (int)$targetTemplateSourceId;
+				$sourceRecord = $recordsBySourceId[$sourceTemplateId] ?? null;
+				$targetTemplate = $targetTemplateNodes[$targetTemplateSourceId] ?? null;
+				if (!is_array($sourceRecord) || !self::isImportedTemplateRecord($sourceRecord) || !($targetTemplate instanceof \dbObject\Holon)) {
+					throw new \RuntimeException('Une correspondance de template est invalide.');
+				}
+				if ((int)($sourceRecord['typeId'] ?? 0) !== (int)$targetTemplate->get('IDtypeholon')) {
+					throw new \RuntimeException(self::formatLexiconText('Les templates associes doivent etre du meme type de holon.', $this->getLexicon()));
+				}
+				if (isset($mappedTargetTemplateIds[$targetTemplateSourceId])) {
+					throw new \RuntimeException('Un template du modele ne peut etre associe qu a un seul template importe.');
+				}
+
+				$holonIdMap[$sourceTemplateId] = (int)$targetTemplate->getId();
+				$targetHolonsBySourceId[$sourceTemplateId] = $targetTemplate;
+				$mappedSourceTemplateIds[$sourceTemplateId] = true;
+				$mappedTargetTemplateIds[$targetTemplateSourceId] = true;
+
+				$targetPropertiesByKey = array();
+				$targetPropertyIds = array();
+				$mappedTargetPropertyIds = array();
+				foreach ($targetTemplate->getTemplatePropertyDefinitions() as $targetDefinition) {
+					$targetPropertyId = (int)($targetDefinition['id'] ?? 0);
+					if ($targetPropertyId <= 0) {
+						continue;
+					}
+					$targetPropertyIds[$targetPropertyId] = true;
+					foreach (self::getImportPropertyMatchKeys($targetDefinition['shortname'] ?? '', $targetDefinition['name'] ?? '') as $targetPropertyKey) {
+						$targetPropertiesByKey[$targetPropertyKey] = isset($targetPropertiesByKey[$targetPropertyKey])
+							? 0
+							: $targetPropertyId;
+					}
+				}
+
+				$sourcePropertyIds = array();
+				$currentSourceTemplateRecord = $sourceRecord;
+				$visitedSourceTemplateIds = array();
+				while (is_array($currentSourceTemplateRecord)) {
+					$currentSourceTemplateId = (int)($currentSourceTemplateRecord['id'] ?? 0);
+					if ($currentSourceTemplateId <= 0 || isset($visitedSourceTemplateIds[$currentSourceTemplateId])) {
+						break;
+					}
+					$visitedSourceTemplateIds[$currentSourceTemplateId] = true;
+					foreach (($currentSourceTemplateRecord['properties'] ?? array()) as $sourcePropertyRow) {
+						$sourcePropertyId = (int)($sourcePropertyRow['propertyId'] ?? 0);
+						if ($sourcePropertyId > 0) {
+							$sourcePropertyIds[$sourcePropertyId] = true;
+						}
+					}
+					$currentSourceTemplateRecord = $recordsBySourceId[(int)($currentSourceTemplateRecord['templateId'] ?? 0)] ?? null;
+				}
+
+				foreach (array_keys($sourcePropertyIds) as $sourcePropertyId) {
+					$sourcePropertyId = (int)$sourcePropertyId;
+					$sourceDefinition = $propertyDefinitionsById[$sourcePropertyId] ?? null;
+					if (!is_array($sourceDefinition)) {
+						continue;
+					}
+
+					$currentTemplatePropertyMappings = isset($templatePropertyMappings[$sourceTemplateId])
+						&& is_array($templatePropertyMappings[$sourceTemplateId])
+						? $templatePropertyMappings[$sourceTemplateId]
+						: array();
+					$hasExplicitMapping = array_key_exists($sourcePropertyId, $currentTemplatePropertyMappings)
+						|| array_key_exists((string)$sourcePropertyId, $currentTemplatePropertyMappings);
+					$explicitTargetSourcePropertyId = $hasExplicitMapping
+						? (int)($currentTemplatePropertyMappings[$sourcePropertyId] ?? $currentTemplatePropertyMappings[(string)$sourcePropertyId])
+						: 0;
+					if (!$hasExplicitMapping && array_key_exists($sourcePropertyId, $propertyMappings)) {
+						$hasExplicitMapping = true;
+						$explicitTargetSourcePropertyId = (int)$propertyMappings[$sourcePropertyId];
+					}
+
+					$targetPropertyId = 0;
+					if ($hasExplicitMapping && $explicitTargetSourcePropertyId === -1) {
+						$templateExcludedPropertyIds[$sourceTemplateId][$sourcePropertyId] = true;
+						continue;
+					}
+					if ($hasExplicitMapping && $explicitTargetSourcePropertyId <= 0) {
+						continue;
+					}
+					if ($hasExplicitMapping) {
+						$explicitTargetPropertyId = isset($clonedPropertyIdMap[$explicitTargetSourcePropertyId])
+							? (int)$clonedPropertyIdMap[$explicitTargetSourcePropertyId]
+							: $explicitTargetSourcePropertyId;
+						if (isset($targetPropertyIds[$explicitTargetPropertyId])) {
+							$targetPropertyId = $explicitTargetPropertyId;
+						}
+					} else {
+						$sameIdentifierPropertyId = isset($clonedPropertyIdMap[$sourcePropertyId])
+							? (int)$clonedPropertyIdMap[$sourcePropertyId]
+							: $sourcePropertyId;
+						if (isset($targetPropertyIds[$sameIdentifierPropertyId])) {
+							$targetPropertyId = $sameIdentifierPropertyId;
+						} else {
+							foreach (self::getImportPropertyMatchKeys($sourceDefinition['shortname'] ?? '', $sourceDefinition['name'] ?? '') as $sourcePropertyKey) {
+								if (!empty($targetPropertiesByKey[$sourcePropertyKey])) {
+									$targetPropertyId = (int)$targetPropertiesByKey[$sourcePropertyKey];
+									break;
+								}
+							}
+						}
+					}
+					if ($targetPropertyId <= 0) {
+						if ($hasExplicitMapping) {
+							throw new \RuntimeException('Une correspondance de propriete est invalide pour le template selectionne.');
+						}
+						continue;
+					}
+					if (isset($mappedTargetPropertyIds[$targetPropertyId])) {
+						throw new \RuntimeException('Une propriete du modele ne peut remplacer qu une seule propriete importee dans un meme template.');
+					}
+					$mappedTargetPropertyIds[$targetPropertyId] = true;
+
+					$targetProperty = new \dbObject\Property();
+					if (!$targetProperty->load($targetPropertyId)) {
+						continue;
+					}
+
+					$sourceFormatId = (int)($sourceDefinition['formatId'] ?? 0);
+					$sourceListItemType = \dbObject\PropertyFormat::isListFormat($sourceFormatId)
+						? \dbObject\Property::normalizeListItemType($sourceDefinition['listItemType'] ?? null)
+						: null;
+					$sourceListHolonTypeIds = \dbObject\PropertyFormat::isListFormat($sourceFormatId)
+						? \dbObject\Property::serializeHolonTypeIds($sourceDefinition['listHolonTypeIds'] ?? array())
+						: null;
+					if (
+						$sourceFormatId > 0
+						&& (
+							(int)$targetProperty->get('IDpropertyformat') !== $sourceFormatId
+							|| (string)$targetProperty->get('listitemtype') !== (string)$sourceListItemType
+							|| (string)$targetProperty->get('listholontypeids') !== (string)$sourceListHolonTypeIds
+						)
+					) {
+						$warnings[] = 'La propriete ' . trim((string)$targetProperty->get('name')) . ' conserve le format du modele applique.';
+					}
+
+					$templatePropertyIdMaps[$sourceTemplateId][$sourcePropertyId] = $targetPropertyId;
+				}
+			}
+
+			return array(
+				'mappedSourceTemplateIds' => $mappedSourceTemplateIds,
+				'excludedSourceTemplateIds' => $excludedSourceTemplateIds,
+				'excludedSourceHolonIds' => $excludedSourceHolonIds,
+				'templatePropertyIdMaps' => $templatePropertyIdMaps,
+				'templateExcludedPropertyIds' => $templateExcludedPropertyIds,
+				'warnings' => array_values(array_unique($warnings)),
+				'authorityTemplateApplied' => $authorityTemplateApplied,
+				'targetTemplateNodes' => $targetTemplateNodes,
+			);
+		}
+
+		protected function templateTreeUsesAuthorityProperties(\dbObject\Holon $templateRootHolon)
+		{
+			$templatesToVisit = array_merge(
+				array($templateRootHolon),
+				array_values($this->getImportTemplateNodes($templateRootHolon))
+			);
+			$visited = array();
+			while (count($templatesToVisit) > 0) {
+				$template = array_pop($templatesToVisit);
+				$templateId = (int)$template->getId();
+				if ($templateId <= 0 || isset($visited[$templateId])) {
+					continue;
+				}
+				$visited[$templateId] = true;
+
+				foreach ($template->getTemplatePropertyDefinitions() as $definition) {
+					if (
+						\dbObject\PropertyFormat::isListFormat((int)($definition['formatId'] ?? 0))
+						&& \dbObject\Property::normalizeListItemType($definition['listItemType'] ?? null) === \dbObject\Property::LIST_ITEM_AUTHORITY
+					) {
+						return true;
+					}
+				}
+			}
+
+			return false;
+		}
+
+		protected function importStructureFromCompactGraph(array $payload, $userId = 0, array $calibration = array())
 		{
 			$records = $this->getImportedHolonRecords($payload);
 			$propertyDefinitions = $this->getImportedCompactPropertyDefinitions($payload);
 			if (count($records) === 0) {
 				return array(
 					'status' => false,
-					'message' => "Le fichier d'import ne contient pas de holons valides.",
+'message' => "Le fichier d’import ne contient pas d’espaces valides.",
 				);
 			}
 
@@ -2187,10 +5111,13 @@
 
 			try {
 				$pdo->beginTransaction();
+				$settings = is_array($payload['propertyTypes'] ?? null) ? $payload['propertyTypes'] : array_intersect_key(self::getDefaultLexicon(), array_flip(Property::TYPES));
+				$this->setPropertyTypeSettings($settings);
+				if (empty($this->save()['status'])) throw new \RuntimeException('Impossible d importer les types de proprietes.');
 
 				$targetRootHolon = $this->createStructuralRootHolon($userId);
 				if (!$targetRootHolon) {
-					throw new \RuntimeException("Le holon racine n'a pas pu etre cree.");
+					throw new \RuntimeException(self::formatLexiconText("Le holon racine n'a pas pu etre cree.", $this->getLexicon()));
 				}
 
 				$targetRootHolonId = (int)$targetRootHolon->getId();
@@ -2205,9 +5132,35 @@
 				$targetHolonsBySourceId = array(
 					$sourceRootId => $targetRootHolon,
 				);
+				$calibrationResult = $this->applyImportTemplateCalibration(
+					$recordsBySourceId,
+					$propertyDefinitions,
+					$targetRootHolon,
+					$holonIdMap,
+					$targetHolonsBySourceId,
+					$propertyIdMap,
+					$calibration,
+					$userId
+				);
+				$mappedSourceTemplateIds = $calibrationResult['mappedSourceTemplateIds'] ?? array();
+				$excludedSourceTemplateIds = $calibrationResult['excludedSourceTemplateIds'] ?? array();
+				$excludedSourceHolonIds = $calibrationResult['excludedSourceHolonIds'] ?? $excludedSourceTemplateIds;
+				$templatePropertyIdMaps = $calibrationResult['templatePropertyIdMaps'] ?? array();
+				$templateExcludedPropertyIds = $calibrationResult['templateExcludedPropertyIds'] ?? array();
+				$calibrationWarnings = $calibrationResult['warnings'] ?? array();
 
 				$pending = $recordsBySourceId;
 				unset($pending[$sourceRootId]);
+				foreach ($mappedSourceTemplateIds as $mappedSourceTemplateId => $isMapped) {
+					if ($isMapped) {
+						unset($pending[(int)$mappedSourceTemplateId]);
+					}
+				}
+				foreach ($excludedSourceHolonIds as $excludedSourceHolonId => $isExcluded) {
+					if ($isExcluded) {
+						unset($pending[(int)$excludedSourceHolonId]);
+					}
+				}
 
 				$guard = 0;
 				while (count($pending) > 0 && $guard < 1000) {
@@ -2222,7 +5175,7 @@
 						$targetParentId = $parentSourceId > 0 ? (int)$holonIdMap[$parentSourceId] : $targetRootHolonId;
 						$targetHolon = $this->createImportedHolonFromCompactRecord($record, $targetParentId, $targetRootHolonId, $userId);
 						if ((int)$targetHolon->getId() <= 0) {
-							throw new \RuntimeException("Un holon du fichier compact n'a pas pu etre cree.");
+							throw new \RuntimeException(self::formatLexiconText("Un holon du fichier compact n'a pas pu etre cree.", $this->getLexicon()));
 						}
 
 						$holonIdMap[$sourceId] = (int)$targetHolon->getId();
@@ -2242,6 +5195,12 @@
 					if (!isset($targetHolonsBySourceId[$sourceId])) {
 						continue;
 					}
+					if (!empty($mappedSourceTemplateIds[(int)$sourceId])) {
+						continue;
+					}
+					if (!empty($excludedSourceHolonIds[(int)$sourceId])) {
+						continue;
+					}
 
 					$templateSourceId = (int)($record['templateId'] ?? 0);
 					$targetHolon = $targetHolonsBySourceId[$sourceId];
@@ -2251,23 +5210,133 @@
 							? (int)$holonIdMap[$templateSourceId]
 							: null
 					);
+					if ($templateSourceId > 0 && !empty($mappedSourceTemplateIds[$templateSourceId])) {
+						$mappedTemplate = $targetHolonsBySourceId[$templateSourceId] ?? null;
+						if ($mappedTemplate instanceof \dbObject\Holon) {
+							$mappedTemplateName = trim((string)$mappedTemplate->getDisplayName());
+							if ($mappedTemplateName !== '' && (bool)$mappedTemplate->getEffectiveTemplateBooleanField('lockedname')) {
+								$targetHolon->set('name', $mappedTemplateName);
+							}
+							$targetHolon->set('color', null);
+							$targetHolon->set('icon', null);
+							$targetHolon->set('mandatory', false);
+							$targetHolon->set('lockedname', false);
+							$targetHolon->set('lockedicon', false);
+							$targetHolon->set('unique', false);
+							$targetHolon->set('link', false);
+							$targetHolon->set('adminparent', false);
+							$targetHolon->set('admin_min', 0);
+							$targetHolon->set('admin_max', null);
+							$targetHolon->set('lockedadminmin', false);
+							$targetHolon->set('lockedadminmax', false);
+							$targetHolon->set('adminminoverride', false);
+							$targetHolon->set('adminmaxoverride', false);
+						}
+					}
 					$targetHolon->save();
 				}
 
+				if (count($mappedSourceTemplateIds) > 0) {
+					foreach ($targetHolonsBySourceId as $targetHolon) {
+						if (
+							!($targetHolon instanceof \dbObject\Holon)
+							|| (int)$targetHolon->get('IDtypeholon') !== 2
+							|| $targetHolon->isTemplateNode($targetRootHolonId)
+						) {
+							continue;
+						}
+
+						$this->createMandatoryChildrenForCircle($targetHolon, $targetRootHolonId, $userId);
+					}
+				}
+
+				$authorityImportResult = $this->importCompactAuthorityRecords(
+					$payload,
+					$targetHolonsBySourceId,
+					$excludedSourceHolonIds
+				);
+				$authorityIdMap = $authorityImportResult['authorityIdMap'] ?? array();
+				$calibrationWarnings = array_merge(
+					$calibrationWarnings,
+					is_array($authorityImportResult['warnings'] ?? null) ? $authorityImportResult['warnings'] : array()
+				);
+
+				$propertyDefinitionsById = array();
+				foreach ($propertyDefinitions as $propertyDefinition) {
+					$sourcePropertyId = (int)($propertyDefinition['id'] ?? 0);
+					if ($sourcePropertyId > 0) {
+						$propertyDefinitionsById[$sourcePropertyId] = $propertyDefinition;
+					}
+				}
+				$sourceEffectivePropertyValueCache = array();
 				foreach ($recordsBySourceId as $sourceId => $record) {
 					if (!isset($targetHolonsBySourceId[$sourceId])) {
 						continue;
 					}
+					if (!empty($mappedSourceTemplateIds[(int)$sourceId])) {
+						continue;
+					}
+					if (!empty($excludedSourceHolonIds[(int)$sourceId])) {
+						continue;
+					}
 
+					$propertyRecord = $record;
+					$templateSourceId = (int)($record['templateId'] ?? 0);
+					if (!empty($mappedSourceTemplateIds[$templateSourceId])) {
+						$propertyRecord['properties'] = $this->getImportedCompactLocalPropertyRowsForMappedTemplate(
+							$record,
+							$recordsBySourceId,
+							$propertyDefinitionsById,
+							$sourceEffectivePropertyValueCache
+						);
+						if (isset($templateExcludedPropertyIds[$templateSourceId]) && is_array($templateExcludedPropertyIds[$templateSourceId])) {
+							$excludedPropertyIds = $templateExcludedPropertyIds[$templateSourceId];
+							$propertyRecord['properties'] = array_values(array_filter(
+								$propertyRecord['properties'],
+								static function ($propertyRow) use ($excludedPropertyIds) {
+									return !is_array($propertyRow) || empty($excludedPropertyIds[(int)($propertyRow['propertyId'] ?? 0)]);
+								}
+							));
+						}
+					}
+					$effectivePropertyIdMap = $propertyIdMap;
+					if (!empty($mappedSourceTemplateIds[$templateSourceId]) && isset($templatePropertyIdMaps[$templateSourceId])) {
+						$effectivePropertyIdMap = array_replace($effectivePropertyIdMap, $templatePropertyIdMaps[$templateSourceId]);
+					}
 					$this->importCompactHolonPropertyRows(
-						$record,
+						$propertyRecord,
 						$targetHolonsBySourceId[$sourceId],
-						$propertyIdMap,
-						$holonIdMap
+						$effectivePropertyIdMap,
+						$holonIdMap,
+						$authorityIdMap
 					);
 
-					if (!$this->importCompactHolonPermissionRows($record, $targetHolonsBySourceId[$sourceId])) {
-						throw new \RuntimeException("Les droits d'un holon importe n'ont pas pu etre recrees.");
+					if (!empty($mappedSourceTemplateIds[$templateSourceId])) {
+						$mappedTemplate = $targetHolonsBySourceId[$templateSourceId] ?? null;
+						if ($mappedTemplate instanceof \dbObject\Holon) {
+							$this->alignImportedHolonPropertyPositionsWithTemplate(
+								$targetHolonsBySourceId[$sourceId],
+								$mappedTemplate
+							);
+						}
+					}
+					if (
+						empty($mappedSourceTemplateIds[$templateSourceId])
+						&& !$this->importCompactHolonPermissionRows($record, $targetHolonsBySourceId[$sourceId])
+					) {
+						throw new \RuntimeException(self::formatLexiconText("Les droits d'un holon importe n'ont pas pu etre recrees.", $this->getLexicon()));
+					}
+				}
+
+				$calibrationWarnings = array_merge(
+					$calibrationWarnings,
+					$this->importCompactRuleRecords($payload, $authorityIdMap, $targetHolonsBySourceId, $userId)
+				);
+
+				foreach (($calibrationResult['targetTemplateNodes'] ?? array()) as $template) {
+					if ($template instanceof \dbObject\Holon) {
+						$this->normalizeTemplateLocalAuthorities($template);
+						$this->syncTemplateAuthorityInstances($template);
 					}
 				}
 
@@ -2277,6 +5346,15 @@
 					'status' => true,
 					'message' => "L'organisation a ete importee depuis le format compact.",
 					'rootHolon' => $targetRootHolon,
+					'holonIdMap' => $holonIdMap,
+					'propertyIdMap' => $propertyIdMap,
+					'mappedSourceTemplateIds' => $mappedSourceTemplateIds,
+					'excludedSourceTemplateIds' => $excludedSourceTemplateIds,
+					'excludedSourceHolonIds' => $excludedSourceHolonIds,
+					'templatePropertyIdMaps' => $templatePropertyIdMaps,
+					'templateExcludedPropertyIds' => $templateExcludedPropertyIds,
+					'authorityTemplateApplied' => !empty($calibrationResult['authorityTemplateApplied']),
+					'warnings' => $calibrationWarnings,
 				);
 			} catch (\Throwable $exception) {
 				if ($pdo->inTransaction()) {
@@ -2290,7 +5368,2914 @@
 			}
 		}
 
-		public function importStructure(array $payload, $userId = 0)
+		protected static function omo1ImportModuleRecords(array $payload, $module)
+		{
+			$modules = isset($payload['modules']) && is_array($payload['modules']) ? $payload['modules'] : array();
+			$moduleData = isset($modules[$module]) && is_array($modules[$module]) ? $modules[$module] : array();
+			return isset($moduleData['records']) && is_array($moduleData['records']) ? array_values($moduleData['records']) : array();
+		}
+
+		protected static function omo1ImportEarliestImportedDate(array $payload, array $selectedModules)
+		{
+			$dateFields = array_flip(array('createdAt', 'measuredAt', 'scheduledAt', 'openedAt', 'closedAt', 'archivedAt', 'checkedAt', 'scratchpadAt', 'completedAt', 'deletedAt'));
+			$earliestDate = null;
+			$scanValue = null;
+			$scanValue = function ($value) use (&$scanValue, &$earliestDate, $dateFields) {
+				if (!is_array($value)) {
+					return;
+				}
+
+				foreach ($value as $field => $fieldValue) {
+					if (isset($dateFields[$field])) {
+						$date = self::omo1ImportDate($fieldValue);
+						if ($date && (!$earliestDate || $date < $earliestDate)) {
+							$earliestDate = $date;
+						}
+					}
+					if (is_array($fieldValue)) {
+						$scanValue($fieldValue);
+					}
+				}
+			};
+
+			foreach ($selectedModules as $module => $isSelected) {
+				if (!$isSelected) {
+					continue;
+				}
+				$scanValue(self::omo1ImportModuleRecords($payload, $module));
+			}
+
+			return $earliestDate;
+		}
+
+		protected static function omo1ImportDate($value)
+		{
+			if ($value instanceof \DateTimeInterface) {
+				return \DateTimeImmutable::createFromInterface($value);
+			}
+
+			$value = trim((string)$value);
+			if ($value === '' || strpos($value, '0000-00-00') === 0) {
+				return null;
+			}
+
+			try {
+				return new \DateTimeImmutable($value, new \DateTimeZone('Europe/Zurich'));
+			} catch (\Throwable $exception) {
+				return null;
+			}
+		}
+
+		protected static function omo1ImportScheduledDate($dateValue, $timeValue)
+		{
+			$date = self::omo1ImportDate($dateValue);
+			if (!$date) {
+				return null;
+			}
+
+			$timeValue = trim((string)$timeValue);
+			if (!preg_match('/^([01][0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?$/', $timeValue)) {
+				return $date;
+			}
+
+			try {
+				return new \DateTimeImmutable($date->format('Y-m-d') . ' ' . $timeValue, new \DateTimeZone('Europe/Zurich'));
+			} catch (\Throwable $exception) {
+				return $date;
+			}
+		}
+
+		protected static function omo1ImportSave($object, $label)
+		{
+			$result = $object->save();
+			if (!is_array($result) || empty($result['status']) || (int)$object->getId() <= 0) {
+				$message = is_array($result) ? trim((string)($result['text'] ?? '')) : '';
+				if ($message === '' && is_array($result)) {
+					$message = trim((string)($result['errorCode'] ?? ''));
+				}
+				throw new \RuntimeException($label . ($message !== '' ? ': ' . $message : '.'));
+			}
+		}
+
+		protected static function omo1ImportLimitText($value, $length)
+		{
+			$value = trim((string)$value);
+			if ($value === '') {
+				return '';
+			}
+
+			return function_exists('mb_substr') ? mb_substr($value, 0, (int)$length, 'UTF-8') : substr($value, 0, (int)$length);
+		}
+
+		protected static function omo1ImportUseTextListsForAuthorityDomains(array $payload): array
+		{
+			if (!isset($payload['propertyDefinitions']) || !is_array($payload['propertyDefinitions'])) {
+				return $payload;
+			}
+
+			foreach ($payload['propertyDefinitions'] as &$definition) {
+				if (!is_array($definition)) {
+					continue;
+				}
+				$propertyKey = self::normalizeImportTemplateKey($definition['shortname'] ?? ($definition['name'] ?? ''));
+				if (!in_array($propertyKey, array('domainesautorite', 'domainautorite', 'authoritydomains'), true)) {
+					continue;
+				}
+
+				$definition['formatId'] = \dbObject\PropertyFormat::FORMAT_LIST;
+				$definition['listItemType'] = \dbObject\Property::LIST_ITEM_TEXT;
+				unset($definition['listHolonTypeIds']);
+			}
+			unset($definition);
+
+			return $payload;
+		}
+
+		protected static function omo1ImportProjectStatus($legacyStatusId, $completedAt = null, $deletedAt = null)
+		{
+			if (self::omo1ImportDate($completedAt) || self::omo1ImportDate($deletedAt)) {
+				return \dbObject\Project::STATUS_DONE;
+			}
+
+			$legacyStatusId = (int)$legacyStatusId;
+			$statusMap = array(
+				1 => \dbObject\Project::STATUS_IN_PROGRESS,
+				2 => \dbObject\Project::STATUS_BLOCKED,
+				4 => \dbObject\Project::STATUS_DONE,
+				8 => \dbObject\Project::STATUS_SOMEDAY,
+				16 => \dbObject\Project::STATUS_SOMEDAY,
+				32 => \dbObject\Project::STATUS_SOMEDAY,
+				64 => \dbObject\Project::STATUS_DONE,
+			);
+
+			return isset($statusMap[$legacyStatusId]) ? $statusMap[$legacyStatusId] : \dbObject\Project::STATUS_SOMEDAY;
+		}
+
+		protected static function omo1ImportUserMembership(\dbObject\Organization $organization, $userId, $isAdmin, array $record = array(), $isActive = true)
+		{
+			$userId = (int)$userId;
+			if ($userId <= 0) {
+				return;
+			}
+
+			$membership = new \dbObject\UserOrganization();
+			if (!$membership->load(array(array('IDuser', $userId), array('IDorganization', (int)$organization->getId())))) {
+				$membership->set('IDuser', $userId);
+				$membership->set('IDorganization', (int)$organization->getId());
+			}
+
+			$membership->set('active', (bool)$isActive);
+			if (!empty($record['username'])) {
+				$membership->set('username', self::omo1ImportLimitText($record['username'], 250));
+			}
+			if (!empty($record['email'])) {
+				$membership->set('email', self::omo1ImportLimitText($record['email'], 250));
+			}
+			if (!empty($record['presentation'])) {
+				$membership->set('presentation', $record['presentation']);
+			}
+			$createdAt = self::omo1ImportDate($record['createdAt'] ?? null);
+			if ($createdAt) {
+				$membership->set('datecreation', $createdAt);
+			}
+			$lastConnectionAt = self::omo1ImportDate($record['lastConnectionAt'] ?? null);
+			if ($lastConnectionAt) {
+				$membership->set('dateconnexion', $lastConnectionAt);
+			}
+
+			$parameters = json_decode((string)$membership->get('parameters'), true);
+			if (!is_array($parameters)) {
+				$parameters = array();
+			}
+			$parameters['isAdmin'] = (bool)$isAdmin;
+			$membership->set('parameters', $parameters);
+			self::omo1ImportSave($membership, 'Le lien membre n a pas pu etre cree');
+		}
+
+		protected static function omo1ImportMembers(\dbObject\Organization $organization, array $records, $actorUserId, array &$userIdMap, array &$pendingUserIds, array &$pendingInvitations, array &$stats, array &$warnings, $createMemberInvitations = true)
+		{
+			$createMemberInvitations = (bool)$createMemberInvitations;
+			foreach ($records as $record) {
+				if (!is_array($record)) {
+					continue;
+				}
+
+				$sourceId = (int)($record['sourceId'] ?? 0);
+				$email = trim((string)($record['email'] ?? ''));
+				if ($sourceId <= 0 || $email === '') {
+					$warnings[] = 'Un membre sans adresse e-mail n a pas pu etre importe.';
+					continue;
+				}
+
+				$user = \dbObject\User::findByLoginIdentifier($email);
+				if (!($user instanceof \dbObject\User)) {
+					$emailMatchSummary = \dbObject\User::debugLoginIdentifierMatchSummary($email);
+					if ((int)($emailMatchSummary['globalEmailMatches'] ?? 0) > 0) {
+						$warnings[] = 'Le membre ' . $email . ' n a pas ete importe car plusieurs comptes existants utilisent deja cette adresse e-mail.';
+						continue;
+					}
+
+					$user = new \dbObject\User();
+					$user->set('email', self::omo1ImportLimitText($email, 250));
+					$user->set('firstname', self::omo1ImportLimitText($record['firstname'] ?? '', 25));
+					$user->set('lastname', self::omo1ImportLimitText($record['lastname'] ?? '', 25));
+					$user->set('username', self::omo1ImportLimitText($record['username'] ?? '', 30));
+					$user->set('presentation', $record['presentation'] ?? null);
+					$user->set('active', !array_key_exists('active', $record) || !empty($record['active']));
+					$createdAt = self::omo1ImportDate($record['createdAt'] ?? null);
+					if ($createdAt) {
+						$user->set('datecreation', $createdAt);
+					}
+					$lastConnectionAt = self::omo1ImportDate($record['lastConnectionAt'] ?? null);
+					if ($lastConnectionAt) {
+						$user->set('dateconnexion', $lastConnectionAt);
+					}
+					self::omo1ImportSave($user, 'Le compte membre n a pas pu etre cree');
+				}
+
+				$targetUserId = (int)$user->getId();
+				$userIdMap[$sourceId] = $targetUserId;
+				$isAdmin = !empty($record['organizationMembership']['isAdmin']);
+				$isActor = $targetUserId === (int)$actorUserId;
+				self::omo1ImportUserMembership($organization, $targetUserId, $isAdmin, $record, $isActor);
+				if (!$isActor) {
+					$pendingUserIds[$targetUserId] = true;
+					if ($createMemberInvitations) {
+						$invitationIssue = \dbObject\Invitation::issue(
+							(int)$organization->getId(),
+							$targetUserId,
+							(int)$actorUserId,
+							trim((string)$user->get('email'))
+						);
+						if (!empty($invitationIssue['created']) && isset($invitationIssue['invitation'])) {
+							$pendingInvitations[(int)$invitationIssue['invitation']->getId()] = $invitationIssue['invitation'];
+						}
+					}
+				}
+				$stats['members'] += 1;
+			}
+
+			self::omo1ImportUserMembership($organization, (int)$actorUserId, true);
+		}
+
+		protected function omo1ImportConvertAuthorityPropertyValues(array $payload, array $domainRecords, array $authorityIdMap, array $authorityIdsByHolonId, array $holonIdMap, array $propertyIdMap, array $templatePropertyIdMaps, array $templateExcludedPropertyIds, array $mappedSourceTemplateIds, array &$warnings, $allowSchemaConversion = true)
+		{
+			if (count($domainRecords) === 0 || (count($propertyIdMap) === 0 && count($templatePropertyIdMaps) === 0)) {
+				return;
+			}
+
+			$sourceDomainPropertyId = 0;
+			$propertyDefinitions = $this->getImportedCompactPropertyDefinitions($payload);
+			foreach ($propertyDefinitions as $definition) {
+				$propertyKey = self::normalizeImportTemplateKey($definition['shortname'] ?? ($definition['name'] ?? ''));
+				if (in_array($propertyKey, array('domainesautorite', 'domainautorite', 'authoritydomains'), true)) {
+					$sourceDomainPropertyId = (int)($definition['id'] ?? 0);
+					break;
+				}
+			}
+			if ($sourceDomainPropertyId <= 0) {
+				return;
+			}
+			$recordsBySourceId = array();
+			foreach ($this->getImportedHolonRecords($payload) as $record) {
+				$sourceHolonId = (int)($record['id'] ?? 0);
+				if ($sourceHolonId > 0) {
+					$recordsBySourceId[$sourceHolonId] = $record;
+				}
+			}
+			$targetDomainPropertiesById = array();
+
+			$normalizeValueKey = static function ($value) {
+				$value = html_entity_decode(strip_tags(preg_replace('~<[^>]+>~u', ' ', (string)$value)), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+				$value = preg_replace('/\s+/u', ' ', trim($value));
+				return function_exists('mb_strtolower') ? mb_strtolower((string)$value, 'UTF-8') : strtolower((string)$value);
+			};
+			$authoritySourceIdByValue = array();
+			$authoritySourceIdsBySourceHolonId = array();
+			$sourceIdsByTargetAuthorityId = array();
+			$authorityLabelsBySourceId = array();
+			foreach ($domainRecords as $domain) {
+				if (!is_array($domain)) {
+					continue;
+				}
+				$sourceDomainId = (int)($domain['sourceId'] ?? 0);
+				if ($sourceDomainId <= 0) {
+					continue;
+				}
+				if (isset($authorityIdMap[$sourceDomainId])) {
+					$targetAuthorityId = (int)$authorityIdMap[$sourceDomainId];
+					if (!isset($sourceIdsByTargetAuthorityId[$targetAuthorityId])) {
+						$sourceIdsByTargetAuthorityId[$targetAuthorityId] = array();
+					}
+					$sourceIdsByTargetAuthorityId[$targetAuthorityId][$sourceDomainId] = $sourceDomainId;
+				}
+				$sourceHolonIds = array(
+					(int)($domain['sourceHolonId'] ?? 0),
+					(int)($domain['sourceRoleId'] ?? 0),
+				);
+				foreach (array_values(array_unique($sourceHolonIds)) as $sourceHolonId) {
+					if ($sourceHolonId <= 0) {
+						continue;
+					}
+					if (!isset($authoritySourceIdsBySourceHolonId[$sourceHolonId])) {
+						$authoritySourceIdsBySourceHolonId[$sourceHolonId] = array();
+					}
+					$authoritySourceIdsBySourceHolonId[$sourceHolonId][$sourceDomainId] = $sourceDomainId;
+				}
+				$label = trim((string)($domain['label'] ?? ($domain['sourceScopeLabel'] ?? '')));
+				$description = trim((string)($domain['description'] ?? ($domain['sourceScopeDescription'] ?? '')));
+				if ($label !== '') {
+					$authorityLabelsBySourceId[$sourceDomainId] = $label;
+				}
+				$candidates = array($label, $description);
+				if ($label !== '' && $description !== '') {
+					$candidates[] = $label . "\nPolitiques: " . $description;
+				}
+				foreach ($candidates as $candidate) {
+					$key = $normalizeValueKey($candidate);
+					if ($key !== '') {
+						$authoritySourceIdByValue[$key] = $sourceDomainId;
+					}
+				}
+			}
+
+			$unmatchedCount = 0;
+			foreach ($holonIdMap as $sourceHolonId => $targetHolonId) {
+				if (!empty($mappedSourceTemplateIds[(int)$sourceHolonId])) {
+					continue;
+				}
+				$targetHolon = new \dbObject\Holon();
+				if (!$targetHolon->load((int)$targetHolonId)) {
+					continue;
+				}
+				$templateSourceId = (int)($recordsBySourceId[(int)$sourceHolonId]['templateId'] ?? 0);
+				if (
+					$templateSourceId > 0
+					&& isset($templateExcludedPropertyIds[$templateSourceId])
+					&& !empty($templateExcludedPropertyIds[$templateSourceId][$sourceDomainPropertyId])
+				) {
+					continue;
+				}
+				$targetDomainPropertyId = isset($propertyIdMap[$sourceDomainPropertyId])
+					? (int)$propertyIdMap[$sourceDomainPropertyId]
+					: 0;
+				if (
+					$templateSourceId > 0
+					&& isset($templatePropertyIdMaps[$templateSourceId])
+					&& is_array($templatePropertyIdMaps[$templateSourceId])
+					&& isset($templatePropertyIdMaps[$templateSourceId][$sourceDomainPropertyId])
+				) {
+					$targetDomainPropertyId = (int)$templatePropertyIdMaps[$templateSourceId][$sourceDomainPropertyId];
+				}
+				if ($targetDomainPropertyId <= 0) {
+					continue;
+				}
+				if (!array_key_exists($targetDomainPropertyId, $targetDomainPropertiesById)) {
+					$targetDomainProperty = new \dbObject\Property();
+					if (!$targetDomainProperty->load($targetDomainPropertyId)) {
+						$targetDomainPropertiesById[$targetDomainPropertyId] = null;
+					} else {
+						$isListFormat = \dbObject\PropertyFormat::isListFormat((int)$targetDomainProperty->get('IDpropertyformat'));
+						$listItemType = \dbObject\Property::normalizeListItemType($targetDomainProperty->get('listitemtype'));
+						$isAuthorityList = $isListFormat && $listItemType === \dbObject\Property::LIST_ITEM_AUTHORITY;
+						$isTextList = $isListFormat && $listItemType === \dbObject\Property::LIST_ITEM_TEXT;
+						if (!$isAuthorityList && !$isTextList && !$allowSchemaConversion) {
+							$targetDomainPropertiesById[$targetDomainPropertyId] = null;
+						} else {
+							if (!$isAuthorityList && !$isTextList) {
+								$targetDomainProperty->set('IDpropertyformat', \dbObject\PropertyFormat::FORMAT_LIST);
+								$targetDomainProperty->set('listitemtype', \dbObject\Property::LIST_ITEM_AUTHORITY);
+								$targetDomainProperty->set('listholontypeids', null);
+								self::omo1ImportSave($targetDomainProperty, 'La propriete des domaines n a pas pu etre convertie en liste d autorites');
+							}
+							$targetDomainPropertiesById[$targetDomainPropertyId] = $targetDomainProperty;
+						}
+					}
+				}
+				$targetDomainProperty = $targetDomainPropertiesById[$targetDomainPropertyId];
+				if (!($targetDomainProperty instanceof \dbObject\Property)) {
+					continue;
+				}
+
+				$resolveAuthorityId = static function ($sourceDomainId) use ($targetHolonId, $authorityIdMap, $authorityIdsByHolonId) {
+					$sourceDomainId = (int)$sourceDomainId;
+					if (
+						$sourceDomainId > 0
+						&& isset($authorityIdsByHolonId[(int)$targetHolonId][$sourceDomainId])
+					) {
+						return (int)$authorityIdsByHolonId[(int)$targetHolonId][$sourceDomainId];
+					}
+					return $sourceDomainId > 0 && isset($authorityIdMap[$sourceDomainId])
+						? (int)$authorityIdMap[$sourceDomainId]
+						: 0;
+				};
+				$sourceDomainIds = array_values($authoritySourceIdsBySourceHolonId[(int)$sourceHolonId] ?? array());
+				$sourceAuthorityIds = array();
+				foreach ($sourceDomainIds as $sourceDomainId) {
+					$resolvedAuthorityId = $resolveAuthorityId($sourceDomainId);
+					if ($resolvedAuthorityId > 0) {
+						$sourceAuthorityIds[$resolvedAuthorityId] = $resolvedAuthorityId;
+					}
+				}
+				$sourceAuthorityIds = array_values($sourceAuthorityIds);
+				$targetDomainHolonProperty = null;
+				foreach ($targetHolon->getHolonProperties() as $holonProperty) {
+					if ((int)$holonProperty->get('IDproperty') !== $targetDomainPropertyId) {
+						continue;
+					}
+					$targetDomainHolonProperty = $holonProperty;
+
+					$formatId = (int)$targetDomainProperty->get('IDpropertyformat');
+					$rawValue = $holonProperty->get('value');
+					$items = $formatId === \dbObject\PropertyFormat::FORMAT_HTML_LIST
+						? \dbObject\PropertyFormat::getHtmlListParts($rawValue)['items']
+						: json_decode((string)$rawValue, true);
+					if (!is_array($items)) {
+						$items = array();
+					}
+					$isTextList = \dbObject\PropertyFormat::isListFormat($formatId)
+						&& \dbObject\Property::normalizeListItemType($targetDomainProperty->get('listitemtype')) === \dbObject\Property::LIST_ITEM_TEXT;
+					if ($isTextList) {
+						$convertedTextItems = array();
+						$convertedTextItemKeys = array();
+						$appendTextItem = function ($label) use (&$convertedTextItems, &$convertedTextItemKeys, $normalizeValueKey) {
+							$label = trim((string)$label);
+							$key = $normalizeValueKey($label);
+							if ($key === '' || isset($convertedTextItemKeys[$key])) {
+								return;
+							}
+							$convertedTextItemKeys[$key] = true;
+							$convertedTextItems[] = $label;
+						};
+
+						foreach ($items as $item) {
+							$itemId = is_array($item) ? (int)($item['id'] ?? 0) : (int)$item;
+							$sourceDomainId = isset($authorityLabelsBySourceId[$itemId]) ? $itemId : 0;
+							if ($sourceDomainId <= 0 && isset($sourceIdsByTargetAuthorityId[$itemId])) {
+								foreach ($sourceIdsByTargetAuthorityId[$itemId] as $candidateSourceDomainId) {
+									if (isset($authorityLabelsBySourceId[(int)$candidateSourceDomainId])) {
+										$sourceDomainId = (int)$candidateSourceDomainId;
+										break;
+									}
+								}
+							}
+							if ($sourceDomainId > 0) {
+								$appendTextItem($authorityLabelsBySourceId[$sourceDomainId]);
+								continue;
+							}
+
+							$itemValue = is_array($item)
+								? ($item['label'] ?? ($item['title'] ?? ($item['value'] ?? ($item['text'] ?? ''))))
+								: $item;
+							if (!is_array($item) && is_numeric((string)$itemValue)) {
+								$unmatchedCount += 1;
+								continue;
+							}
+							$appendTextItem($itemValue);
+						}
+						foreach ($sourceDomainIds as $sourceDomainId) {
+							if (isset($authorityLabelsBySourceId[(int)$sourceDomainId])) {
+								$appendTextItem($authorityLabelsBySourceId[(int)$sourceDomainId]);
+							}
+						}
+
+						if ($formatId === \dbObject\PropertyFormat::FORMAT_HTML_LIST) {
+							$htmlList = \dbObject\PropertyFormat::getHtmlListParts($rawValue);
+							$htmlList['items'] = $convertedTextItems;
+							$holonProperty->set('value', \dbObject\PropertyFormat::normalizeValueForStorage($formatId, $htmlList));
+						} else {
+							$holonProperty->set('value', json_encode($convertedTextItems, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+						}
+						$holonProperty->set('active', true);
+						self::omo1ImportSave($holonProperty, self::formatLexiconText('Les domaines d un holon n ont pas pu etre convertis en textes', $this->getLexicon()));
+						continue;
+					}
+
+					$convertedItems = array();
+					foreach ($items as $item) {
+						$itemId = is_array($item) ? (int)($item['id'] ?? 0) : (int)$item;
+						$targetAuthorityId = $resolveAuthorityId($itemId);
+						if ($targetAuthorityId <= 0 && isset($sourceIdsByTargetAuthorityId[$itemId])) {
+							foreach ($sourceIdsByTargetAuthorityId[$itemId] as $sourceDomainId) {
+								$targetAuthorityId = $resolveAuthorityId($sourceDomainId);
+								if ($targetAuthorityId > 0) {
+									break;
+								}
+							}
+						}
+						if ($targetAuthorityId <= 0) {
+							$itemValue = is_array($item)
+								? ($item['label'] ?? ($item['title'] ?? ($item['value'] ?? ($item['text'] ?? ''))))
+								: $item;
+							$key = $normalizeValueKey($itemValue);
+							$targetAuthorityId = $key !== '' && isset($authoritySourceIdByValue[$key])
+								? $resolveAuthorityId($authoritySourceIdByValue[$key])
+								: 0;
+						}
+						if ($targetAuthorityId <= 0) {
+							$unmatchedCount += 1;
+							continue;
+						}
+						$convertedItems[] = is_array($item) ? array_merge($item, array('id' => $targetAuthorityId)) : $targetAuthorityId;
+					}
+					if (count($sourceAuthorityIds) > 0) {
+						$convertedAuthorityIds = array();
+						foreach ($convertedItems as $convertedItem) {
+							$convertedItemId = is_array($convertedItem)
+								? (int)($convertedItem['id'] ?? 0)
+								: (int)$convertedItem;
+							if ($convertedItemId > 0) {
+								$convertedAuthorityIds[$convertedItemId] = true;
+							}
+						}
+						foreach ($sourceAuthorityIds as $sourceAuthorityId) {
+							if (!isset($convertedAuthorityIds[(int)$sourceAuthorityId])) {
+								$convertedItems[] = (int)$sourceAuthorityId;
+								$convertedAuthorityIds[(int)$sourceAuthorityId] = true;
+							}
+						}
+					}
+
+					if ($formatId === \dbObject\PropertyFormat::FORMAT_HTML_LIST) {
+						$htmlList = \dbObject\PropertyFormat::getHtmlListParts($rawValue);
+						$htmlList['items'] = $convertedItems;
+						$holonProperty->set('value', \dbObject\PropertyFormat::normalizeValueForStorage($formatId, $htmlList));
+					} else {
+						$holonProperty->set('value', json_encode($convertedItems, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+					}
+					$holonProperty->set('active', true);
+					self::omo1ImportSave($holonProperty, self::formatLexiconText('Les domaines d un holon n ont pas pu etre rattaches aux autorites', $this->getLexicon()));
+				}
+
+				if ($targetDomainHolonProperty === null && count($sourceAuthorityIds) > 0) {
+					$targetDomainHolonProperty = new \dbObject\HolonProperty();
+					$targetDomainHolonProperty->set('IDholon', (int)$targetHolon->getId());
+					$targetDomainHolonProperty->set('IDproperty', $targetDomainPropertyId);
+					$isTextList = \dbObject\PropertyFormat::isListFormat((int)$targetDomainProperty->get('IDpropertyformat'))
+						&& \dbObject\Property::normalizeListItemType($targetDomainProperty->get('listitemtype')) === \dbObject\Property::LIST_ITEM_TEXT;
+					if ($isTextList) {
+						$textItems = array();
+						foreach ($sourceDomainIds as $sourceDomainId) {
+							if (isset($authorityLabelsBySourceId[(int)$sourceDomainId])) {
+								$textItems[] = $authorityLabelsBySourceId[(int)$sourceDomainId];
+							}
+						}
+						$targetDomainHolonProperty->set('value', json_encode(array_values(array_unique($textItems)), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+					} else {
+						$targetDomainHolonProperty->set('value', json_encode($sourceAuthorityIds, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+					}
+					$targetDomainHolonProperty->set('position', (int)$targetDomainProperty->get('position'));
+					$targetDomainHolonProperty->set('mandatory', false);
+					$targetDomainHolonProperty->set('locked', false);
+					$targetDomainHolonProperty->set('active', true);
+					self::omo1ImportSave($targetDomainHolonProperty, self::formatLexiconText('La liste des domaines d un holon n a pas pu etre creee', $this->getLexicon()));
+				}
+			}
+
+			if ($unmatchedCount > 0) {
+				$warnings[] = $unmatchedCount . ' domaine(s) OMO 1 n ont pas pu etre reconnus dans les proprietes d autorite.';
+			}
+		}
+
+		protected static function omo1ImportRuleDomains(array $payload, array $ruleRecords)
+		{
+			$modules = isset($payload['modules']) && is_array($payload['modules']) ? $payload['modules'] : array();
+			$rulesModule = isset($modules['rules']) && is_array($modules['rules']) ? $modules['rules'] : array();
+			$domains = isset($rulesModule['domains']) && is_array($rulesModule['domains']) ? $rulesModule['domains'] : array();
+			$domainsById = array();
+
+			foreach ($domains as $domain) {
+				if (!is_array($domain) || (int)($domain['sourceId'] ?? 0) <= 0) {
+					continue;
+				}
+				$domainsById[(int)$domain['sourceId']] = $domain;
+			}
+
+			// Compatibilite avec les anciens exports qui ne contenaient que les regles.
+			foreach ($ruleRecords as $record) {
+				$sourceId = (int)($record['sourceScopeId'] ?? 0);
+				if ($sourceId <= 0 || isset($domainsById[$sourceId])) {
+					continue;
+				}
+
+				$domainsById[$sourceId] = array(
+					'sourceId' => $sourceId,
+					'label' => $record['sourceScopeLabel'] ?? '',
+					'description' => $record['sourceScopeDescription'] ?? '',
+					'sourceRoleId' => $record['sourceScopeRoleId'] ?? 0,
+					'sourceHolonId' => $record['sourceScopeHolonId'] ?? 0,
+					'sourceParentScopeId' => $record['sourceParentScopeId'] ?? 0,
+				);
+			}
+
+			return array_values($domainsById);
+		}
+
+		protected static function omo1ImportAuthorityMatchKey($value)
+		{
+			$value = html_entity_decode(strip_tags((string)$value), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+			$value = preg_replace('/\s+/u', ' ', trim($value));
+			return function_exists('mb_strtolower') ? mb_strtolower((string)$value, 'UTF-8') : strtolower((string)$value);
+		}
+
+		protected static function omo1ImportHolonUsesAuthorityDomains(\dbObject\Holon $holon)
+		{
+			foreach ($holon->getHolonEditorPropertyDefinitions() as $definition) {
+				if (
+					\dbObject\PropertyFormat::isListFormat((int)($definition['formatId'] ?? 0))
+					&& \dbObject\Property::normalizeListItemType($definition['listItemType'] ?? null) === \dbObject\Property::LIST_ITEM_AUTHORITY
+				) {
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		protected static function omo1ImportFindMatchingAuthority(\dbObject\Holon $holon, $label, $description)
+		{
+			$labelKey = self::omo1ImportAuthorityMatchKey($label);
+			$descriptionKey = self::omo1ImportAuthorityMatchKey($description);
+			$authorities = new \dbObject\ArrayAuthority();
+			$authorities->loadForHolon((int)$holon->getId());
+
+			foreach ($authorities as $authority) {
+				if (!($authority instanceof \dbObject\Authority)) {
+					continue;
+				}
+				if ($labelKey !== '' && self::omo1ImportAuthorityMatchKey($authority->get('label')) === $labelKey) {
+					return $authority;
+				}
+				if ($descriptionKey !== '' && self::omo1ImportAuthorityMatchKey($authority->get('description')) === $descriptionKey) {
+					return $authority;
+				}
+			}
+
+			return null;
+		}
+
+		protected static function omo1ImportCreateAuthority(\dbObject\Holon $holon, array $record, $isLocal, array &$stats)
+		{
+			$sourceId = (int)($record['sourceId'] ?? 0);
+			$label = self::omo1ImportLimitText($record['label'] ?? ($record['sourceScopeLabel'] ?? ''), 255);
+			if ($label === '') {
+				$label = 'Domaine OMO 1 #' . $sourceId;
+			}
+			$description = trim((string)($record['description'] ?? ($record['sourceScopeDescription'] ?? '')));
+			$authority = new \dbObject\Authority();
+			$authority->set('IDholon', (int)$holon->getId());
+			$authority->set('IDauthority_parent', null);
+			$authority->set('label', $label);
+			$authority->set('description', $description !== '' ? $description : null);
+			$authority->set('is_local', $isLocal);
+			$authority->set('is_shell', false);
+			self::omo1ImportSave($authority, 'Le domaine OMO 1 n a pas pu etre converti en autorite');
+			$stats['authorities'] += 1;
+
+			return $authority;
+		}
+
+		protected static function omo1ImportAttachCreatedAuthorityParents(array $createdAuthoritiesBySourceId, array $authorityIdMap, $rootHolonId)
+		{
+			$manualParentCount = 0;
+			$rootHolonId = (int)$rootHolonId;
+			foreach ($createdAuthoritiesBySourceId as $createdEntry) {
+				$authority = $createdEntry['authority'] ?? null;
+				$entry = $createdEntry['entry'] ?? null;
+				if (!($authority instanceof \dbObject\Authority) || !is_array($entry)) {
+					continue;
+				}
+				$record = isset($entry['record']) && is_array($entry['record']) ? $entry['record'] : array();
+				if (!empty($entry['isTemplate']) || (int)$authority->get('IDholon') === $rootHolonId) {
+					continue;
+				}
+
+				$parentAuthorityId = 0;
+				$sourceParentScopeId = (int)($record['sourceParentScopeId'] ?? 0);
+				if ($sourceParentScopeId > 0 && isset($authorityIdMap[$sourceParentScopeId])) {
+					$parentAuthorityId = (int)$authorityIdMap[$sourceParentScopeId];
+				}
+				if ($parentAuthorityId <= 0) {
+					$holon = $entry['holon'] ?? null;
+					$parentHolon = $holon instanceof \dbObject\Holon ? $holon->getAuthorityParentHolon() : null;
+					if ($parentHolon instanceof \dbObject\Holon) {
+						$parentAuthorities = new \dbObject\ArrayAuthority();
+						$parentAuthorities->loadForHolon((int)$parentHolon->getId());
+						if (count($parentAuthorities) === 1) {
+							$parentAuthority = $parentAuthorities[0] ?? null;
+							if ($parentAuthority instanceof \dbObject\Authority) {
+								$parentAuthorityId = (int)$parentAuthority->getId();
+							}
+						}
+					}
+				}
+				if ($parentAuthorityId > 0) {
+					$authority->set('IDauthority_parent', $parentAuthorityId);
+					self::omo1ImportSave($authority, 'Le rattachement parent de l autorite OMO 1 n a pas pu etre cree');
+					continue;
+				}
+
+				$description = trim((string)$authority->get('description'));
+				$authority->set('description', \dbObject\Authority::IMPORT_NEEDS_PARENT_MARKER . ($description !== '' ? "\n\n" . $description : ''));
+				self::omo1ImportSave($authority, 'Le marquage de l autorite OMO 1 a rattacher n a pas pu etre enregistre');
+				$manualParentCount += 1;
+			}
+
+			return $manualParentCount;
+		}
+
+		protected static function omo1ImportBuildAuthorityIdsByHolon(\dbObject\Organization $organization, array $authorityIdMap)
+		{
+			$sourceIdsByAuthorityId = array();
+			foreach ($authorityIdMap as $sourceId => $authorityId) {
+				$sourceId = (int)$sourceId;
+				$authorityId = (int)$authorityId;
+				if ($sourceId <= 0 || $authorityId <= 0) {
+					continue;
+				}
+				if (!isset($sourceIdsByAuthorityId[$authorityId])) {
+					$sourceIdsByAuthorityId[$authorityId] = array();
+				}
+				$sourceIdsByAuthorityId[$authorityId][$sourceId] = $sourceId;
+			}
+
+			$authorityIdsByHolonId = array();
+			foreach ($organization->getOrganizationHolonIds() as $holonId) {
+				$authorities = new \dbObject\ArrayAuthority();
+				$authorities->loadForHolon((int)$holonId);
+				foreach ($authorities as $authority) {
+					if (!($authority instanceof \dbObject\Authority)) {
+						continue;
+					}
+					$authorityId = (int)$authority->getId();
+					$templateAuthorityId = (int)$authority->get('IDauthority_template');
+					$sourceIds = array();
+					if (isset($sourceIdsByAuthorityId[$authorityId])) {
+						$sourceIds += $sourceIdsByAuthorityId[$authorityId];
+					}
+					if ($templateAuthorityId > 0 && isset($sourceIdsByAuthorityId[$templateAuthorityId])) {
+						$sourceIds += $sourceIdsByAuthorityId[$templateAuthorityId];
+					}
+					foreach ($sourceIds as $sourceId) {
+						$authorityIdsByHolonId[(int)$holonId][(int)$sourceId] = $authorityId;
+					}
+				}
+			}
+
+			return $authorityIdsByHolonId;
+		}
+
+		protected static function omo1ImportAuthorities(\dbObject\Organization $organization, array $records, array $holonIdMap, array &$stats, array &$warnings, array $options = array())
+		{
+			$hasAppliedOrganizationModel = !empty($options['hasAppliedOrganizationModel']);
+			if (!$hasAppliedOrganizationModel) {
+				return array(
+					'authorityIdMap' => array(),
+					'authorityIdsByHolonId' => array(),
+				);
+			}
+
+			$authorityIdMap = array();
+			$createdAuthoritiesBySourceId = array();
+			$entriesBySourceId = array();
+			$rootHolon = $organization->getStructuralRootHolon();
+			$rootHolonId = $rootHolon instanceof \dbObject\Holon ? (int)$rootHolon->getId() : 0;
+
+			foreach ($records as $record) {
+				if (!is_array($record)) {
+					continue;
+				}
+				$sourceId = (int)($record['sourceId'] ?? 0);
+				if ($sourceId <= 0 || isset($entriesBySourceId[$sourceId])) {
+					continue;
+				}
+				$sourceHolonId = (int)($record['sourceHolonId'] ?? 0);
+				$sourceRoleId = (int)($record['sourceRoleId'] ?? 0);
+				$targetHolonId = $sourceHolonId > 0 && isset($holonIdMap[$sourceHolonId])
+					? (int)$holonIdMap[$sourceHolonId]
+					: (isset($holonIdMap[$sourceRoleId]) ? (int)$holonIdMap[$sourceRoleId] : 0);
+				$targetHolon = new \dbObject\Holon();
+				if ($targetHolonId <= 0 || !$targetHolon->load($targetHolonId)) {
+					$warnings[] = 'Le domaine OMO 1 ' . $sourceId . self::formatLexiconText(' n a pas pu etre transforme car son holon est absent.', $organization->getLexicon());
+					continue;
+				}
+				$entriesBySourceId[$sourceId] = array(
+					'record' => $record,
+					'holon' => $targetHolon,
+					'isTemplate' => $rootHolonId > 0 && $targetHolon->isTemplateNode($rootHolonId),
+				);
+			}
+
+			if ($hasAppliedOrganizationModel) {
+				$textDomainCount = 0;
+				$unmatchedTemplateDomainCount = 0;
+				$templatesToSync = array();
+				foreach ($entriesBySourceId as $sourceId => $entry) {
+					$holon = $entry['holon'];
+					if (!self::omo1ImportHolonUsesAuthorityDomains($holon)) {
+						$textDomainCount += 1;
+						continue;
+					}
+					$record = $entry['record'];
+					$authority = self::omo1ImportFindMatchingAuthority(
+						$holon,
+						$record['label'] ?? ($record['sourceScopeLabel'] ?? ''),
+						$record['description'] ?? ($record['sourceScopeDescription'] ?? '')
+					);
+					if ($authority instanceof \dbObject\Authority) {
+						$authorityIdMap[$sourceId] = (int)$authority->getId();
+						if (!empty($entry['isTemplate'])) {
+							$templatesToSync[(int)$holon->getId()] = $holon;
+						}
+						continue;
+					}
+					if (!empty($entry['isTemplate'])) {
+						$unmatchedTemplateDomainCount += 1;
+						continue;
+					}
+
+					$authority = self::omo1ImportCreateAuthority($holon, $record, false, $stats);
+					$createdAuthoritiesBySourceId[$sourceId] = array('authority' => $authority, 'entry' => $entry);
+					$authorityIdMap[$sourceId] = (int)$authority->getId();
+				}
+				foreach ($templatesToSync as $template) {
+					$organization->normalizeTemplateLocalAuthorities($template);
+					$organization->syncTemplateAuthorityInstances($template);
+				}
+				$manualParentCount = self::omo1ImportAttachCreatedAuthorityParents(
+					$createdAuthoritiesBySourceId,
+					$authorityIdMap,
+					$rootHolonId
+				);
+				if ($textDomainCount > 0) {
+					$warnings[] = $textDomainCount . self::formatLexiconText(' domaine(s) OMO 1 correspondent a un format texte du modele : leurs regles restent rattachees aux holons.', $organization->getLexicon());
+				}
+				if ($unmatchedTemplateDomainCount > 0) {
+					$warnings[] = $unmatchedTemplateDomainCount . ' domaine(s) des templates OMO 1 n ont pas d equivalence dans les autorites du modele applique.';
+				}
+				if ($manualParentCount > 0) {
+					$warnings[] = $manualParentCount . ' autorite(s) OMO 1 restent sans parent et sont signalees en rouge pour rattachement manuel.';
+				}
+				return array(
+					'authorityIdMap' => $authorityIdMap,
+					'authorityIdsByHolonId' => self::omo1ImportBuildAuthorityIdsByHolon($organization, $authorityIdMap),
+				);
+			}
+
+		}
+
+		protected static function omo1ImportRules(\dbObject\Organization $organization, array $records, $actorUserId, array $userIdMap, array $holonIdMap, array $authorityIdMap, array $authorityIdsByHolonId, array &$stats, array &$warnings, $authorityConversionExpected = false)
+		{
+			$reviewStartDate = new \DateTimeImmutable('today');
+			$importedRuleIndex = 0;
+			foreach ($records as $record) {
+				if (!is_array($record) || (int)($record['sourceId'] ?? 0) <= 0) {
+					continue;
+				}
+
+				$sourceScopeRoleId = (int)($record['sourceScopeRoleId'] ?? 0);
+				$sourceRoleId = $sourceScopeRoleId > 0
+					? $sourceScopeRoleId
+					: (int)($record['sourceRoleId'] ?? 0);
+				$sourceHolonId = $sourceScopeRoleId > 0
+					? (int)($record['sourceScopeHolonId'] ?? 0)
+					: (int)($record['sourceHolonId'] ?? 0);
+				$targetHolonId = $sourceHolonId > 0 && isset($holonIdMap[$sourceHolonId])
+					? (int)$holonIdMap[$sourceHolonId]
+					: (isset($holonIdMap[$sourceRoleId]) ? (int)$holonIdMap[$sourceRoleId] : 0);
+				if ($targetHolonId <= 0) {
+					$warnings[] = 'La regle ' . (int)$record['sourceId'] . self::formatLexiconText(' n a pas pu etre rattachee a un holon importe.', $organization->getLexicon());
+					continue;
+				}
+
+				$title = self::omo1ImportLimitText($record['title'] ?? '', 255);
+				if ($title === '') {
+					$title = 'Regle OMO 1 #' . (int)$record['sourceId'];
+				}
+				$description = \dbObject\Rule::sanitizeContentHtml((string)($record['description'] ?? ''));
+				if (trim(strip_tags($description)) === '') {
+					$description = '<p>' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . '</p>';
+				}
+				$intention = \dbObject\Rule::sanitizeContentHtml((string)($record['intention'] ?? ''));
+
+				$sourceScopeId = (int)($record['sourceScopeId'] ?? 0);
+				$targetAuthorityId = $sourceScopeId > 0 && isset($authorityIdsByHolonId[$targetHolonId][$sourceScopeId])
+					? (int)$authorityIdsByHolonId[$targetHolonId][$sourceScopeId]
+					: ($sourceScopeId > 0 && isset($authorityIdMap[$sourceScopeId]) ? (int)$authorityIdMap[$sourceScopeId] : 0);
+				if ($authorityConversionExpected && $sourceScopeId > 0 && $targetAuthorityId <= 0) {
+					$warnings[] = 'La regle ' . (int)$record['sourceId'] . ' conserve un rattachement local car son domaine OMO 1 n a pas pu etre converti en autorite.';
+				}
+
+				$rule = new \dbObject\Rule();
+				$rule->set('IDholon', $targetAuthorityId > 0 ? null : $targetHolonId);
+				$rule->set('IDauthority', $targetAuthorityId > 0 ? $targetAuthorityId : null);
+				$rule->set('title', $title);
+				$rule->set('intention', $intention !== '' ? $intention : null);
+				$rule->set('description', $description);
+				$rule->set('scope', \dbObject\Rule::SCOPE_LOCAL);
+				$reviewDate = $reviewStartDate->modify('+' . $importedRuleIndex . ' weeks');
+				$rule->set('review_date', $reviewDate->format('Y-m-d'));
+				$rule->set('expiration_date', $reviewDate->modify('+6 months')->format('Y-m-d'));
+
+				$createdAt = self::omo1ImportDate($record['createdAt'] ?? null);
+				$updatedAt = self::omo1ImportDate($record['updatedAt'] ?? null);
+				$createdAt = $createdAt ?: $updatedAt ?: new \DateTimeImmutable();
+				if ($createdAt) {
+					$rule->set('created_at', $createdAt);
+				}
+				$sourceCreatorId = (int)($record['sourceCreatorId'] ?? 0);
+				if ($sourceCreatorId > 0 && isset($userIdMap[$sourceCreatorId])) {
+					$rule->set('IDuser_creation', (int)$userIdMap[$sourceCreatorId]);
+				}
+				$updatedAt = $updatedAt ?: $createdAt;
+				if ($updatedAt) {
+					$rule->set('updated_at', $updatedAt);
+				}
+				$sourceModifierId = (int)($record['sourceModifierId'] ?? 0);
+				if ($sourceModifierId > 0 && isset($userIdMap[$sourceModifierId])) {
+					$rule->set('IDuser_modification', (int)$userIdMap[$sourceModifierId]);
+				}
+				$rule->preserveImportedAuditMetadata();
+				self::omo1ImportSave($rule, 'Une regle n a pas pu etre importee');
+				$stats['rules'] += 1;
+				$importedRuleIndex += 1;
+			}
+		}
+
+		protected static function omo1ImportRoleAssignments(array $records, array $userIdMap, array $holonIdMap, array $pendingUserIds, array &$stats)
+		{
+			$focusMaximumLength = (int)(\dbObject\UserHolon::attributeLength()['focus'] ?? 250);
+			foreach ($records as $record) {
+				if (!is_array($record)) {
+					continue;
+				}
+				$sourceUserId = (int)($record['sourceId'] ?? 0);
+				$targetUserId = isset($userIdMap[$sourceUserId]) ? (int)$userIdMap[$sourceUserId] : 0;
+				if ($targetUserId <= 0 || empty($record['roleAssignments']) || !is_array($record['roleAssignments'])) {
+					continue;
+				}
+
+				foreach ($record['roleAssignments'] as $assignment) {
+					$sourceHolonId = (int)($assignment['sourceHolonId'] ?? 0);
+					$targetHolonId = isset($holonIdMap[$sourceHolonId]) ? (int)$holonIdMap[$sourceHolonId] : 0;
+					if ($targetHolonId <= 0) {
+						continue;
+					}
+
+					$link = new \dbObject\UserHolon();
+					if (!$link->load(array(array('IDuser', $targetUserId), array('IDholon', $targetHolonId)))) {
+						$link->set('IDuser', $targetUserId);
+						$link->set('IDholon', $targetHolonId);
+					}
+					$importedFocus = self::omo1ImportLimitText($assignment['focus'] ?? '', $focusMaximumLength);
+					$currentFocus = trim((string)$link->get('focus'));
+					if ($importedFocus !== '' && $currentFocus === '') {
+						$link->set('focus', $importedFocus);
+					} elseif ($importedFocus !== '' && $currentFocus !== $importedFocus) {
+						$link->set(
+							'focus',
+							self::omo1ImportLimitText($currentFocus . ' ; ' . $importedFocus, $focusMaximumLength)
+						);
+					}
+					$link->set('active', !isset($pendingUserIds[$targetUserId]));
+					self::omo1ImportSave($link, 'Une attribution de role n a pas pu etre creee');
+
+					$isContextAdmin = !empty($assignment['isContextAdmin'])
+						|| (isset($assignment['kind']) && $assignment['kind'] === 'role_owner');
+					if ($isContextAdmin && !$link->isHolonAdmin()) {
+						$adminSaveResult = $link->setHolonAdmin(true);
+						if (!is_array($adminSaveResult) || empty($adminSaveResult['status'])) {
+							$message = is_array($adminSaveResult) ? trim((string)($adminSaveResult['text'] ?? '')) : '';
+							throw new \RuntimeException('Le statut admin de contexte n a pas pu etre importe'
+								. ($message !== '' ? ': ' . $message : '.'));
+						}
+					}
+					$stats['roleAssignments'] += 1;
+				}
+			}
+		}
+
+		protected static function omo1ImportDocuments(\dbObject\Organization $organization, array $records, $actorUserId, array $userIdMap, array $holonIdMap, array &$documentIdMap, array &$documentProjectSourceMap, array &$documentParentSourceMap, array &$stats, array &$warnings)
+		{
+			foreach ($records as $record) {
+				if (!is_array($record)) {
+					continue;
+				}
+				$sourceId = (int)($record['sourceId'] ?? 0);
+				if ($sourceId <= 0) {
+					continue;
+				}
+				$title = self::omo1ImportLimitText($record['title'] ?? '', 100);
+				if ($title === '') {
+					$title = 'Document OMO 1 #' . $sourceId;
+				}
+				$sourceUserId = (int)($record['sourceUserId'] ?? 0);
+				$targetUserId = isset($userIdMap[$sourceUserId]) ? (int)$userIdMap[$sourceUserId] : (int)$actorUserId;
+				$sourceHolonId = (int)($record['sourceHolonId'] ?? 0);
+				$sourceProjectIds = isset($record['sourceProjectIds']) && is_array($record['sourceProjectIds'])
+					? array_values(array_unique(array_filter(array_map('intval', $record['sourceProjectIds']))))
+					: array();
+				$sourceProjectId = (int)($sourceProjectIds[0] ?? ($record['sourceProjectId'] ?? 0));
+				$targetHolonId = $sourceProjectId > 0
+					? null
+					: (isset($holonIdMap[$sourceHolonId]) ? (int)$holonIdMap[$sourceHolonId] : null);
+				$content = (string)($record['content'] ?? '');
+				$legacyFilePath = trim((string)($record['legacyFilePath'] ?? ''));
+				$isLegacyUploadedFile = !empty($record['fileTransferRequired']) || $legacyFilePath !== '';
+				$description = trim((string)($record['description'] ?? ''));
+				$legacyFilename = self::omo1ImportLimitText($record['filename'] ?? '', 255);
+				if ($legacyFilename === '' && $legacyFilePath !== '') {
+					$legacyFilename = self::omo1ImportLimitText(basename($legacyFilePath), 255);
+				}
+				if ($isLegacyUploadedFile) {
+					$description .= ($description !== '' ? "\n\n" : '')
+						. 'Fichier OMO 1 a transferer manuellement'
+						. ($legacyFilePath !== '' ? ' : ' . $legacyFilePath : '.');
+					$warnings[] = 'Les fichiers joints OMO 1 ne sont pas copies automatiquement.';
+				}
+
+				$documentType = trim((string)($record['documentType'] ?? ''));
+				$allowedDocumentTypes = array(
+					\dbObject\Document::TYPE_HTML,
+					\dbObject\Document::TYPE_EXTERNAL_LINK,
+					\dbObject\Document::TYPE_FOLDER,
+				);
+				if (!in_array($documentType, $allowedDocumentTypes, true)) {
+					$documentType = $isLegacyUploadedFile
+						? \dbObject\Document::TYPE_UPLOADED_FILE
+						: (trim((string)($record['externalUrl'] ?? '')) !== '' ? \dbObject\Document::TYPE_EXTERNAL_LINK : \dbObject\Document::TYPE_HTML);
+				}
+				$document = new \dbObject\Document();
+				$document->set('title', $title);
+				$document->set('description', $description !== '' ? $description : null);
+				$document->set('content', $content !== '' ? $content : null);
+				$document->set('documenttype', $documentType);
+				$document->set('externalurl', $record['externalUrl'] ?? null);
+				$document->set('keywords', self::omo1ImportLimitText($record['keywords'] ?? '', 250) ?: null);
+				$document->set('is_template', !empty($record['isTemplate']) ? 1 : 0);
+				$document->set('openinnewwindow', !empty($record['openInNewWindow']) ? 1 : 0);
+				$document->set('project_visible_in_holon', !empty($record['projectVisibleInHolon']) ? 1 : 0);
+				if ($isLegacyUploadedFile && $legacyFilename !== '') {
+					$document->set('storedfilename', $legacyFilename);
+				}
+				$document->set('IDorganization', (int)$organization->getId());
+				$document->set('IDholon', $targetHolonId);
+				$document->set('IDuser', $targetUserId);
+				$document->set('IDusercreation', $targetUserId);
+				$createdAt = self::omo1ImportDate($record['createdAt'] ?? null);
+				if ($createdAt) {
+					$document->set('datecreation', $createdAt);
+				}
+				$updatedAt = self::omo1ImportDate($record['updatedAt'] ?? null);
+				if ($updatedAt) {
+					$document->set('datemodification', $updatedAt);
+				}
+				$document->set('active', !array_key_exists('active', $record) || (bool)$record['active']);
+				self::omo1ImportSave($document, 'Un document n a pas pu etre cree');
+				self::omo1ImportSaveDocumentVisibility(
+					$document,
+					$record['legacyVisibility'] ?? null,
+					$warnings
+				);
+				self::omo1ImportSaveDocumentEditVisibility($document, $organization, $targetHolonId, $warnings);
+				$documentIdMap[$sourceId] = (int)$document->getId();
+				$documentProjectSourceMap[$sourceId] = $sourceProjectIds !== array() ? $sourceProjectIds : array($sourceProjectId);
+				$documentParentSourceMap[$sourceId] = (int)($record['sourceParentDocumentId'] ?? 0);
+				$stats['documents'] += 1;
+			}
+		}
+
+		protected static function omo1ImportProjects(\dbObject\Organization $organization, array $records, $actorUserId, array $userIdMap, array $holonIdMap, array $documentIdMap, array $documentProjectSourceMap, array &$projectIdMap, array &$stats)
+		{
+			foreach ($records as $record) {
+				if (!is_array($record)) {
+					continue;
+				}
+				$sourceId = (int)($record['sourceId'] ?? 0);
+				if ($sourceId <= 0) {
+					continue;
+				}
+				$sourceUserId = (int)($record['sourceUserId'] ?? 0);
+				$targetUserId = isset($userIdMap[$sourceUserId]) ? (int)$userIdMap[$sourceUserId] : (int)$actorUserId;
+				$sourceHolonId = (int)($record['sourceHolonId'] ?? 0);
+				$targetHolonId = isset($holonIdMap[$sourceHolonId]) ? (int)$holonIdMap[$sourceHolonId] : null;
+				$title = self::omo1ImportLimitText($record['title'] ?? '', 255);
+				$project = new \dbObject\Project();
+				$project->set('IDorganization', (int)$organization->getId());
+				$project->set('IDholon', $targetHolonId);
+				$project->set('IDuser', $targetUserId);
+				$sourceProposerUserId = (int)($record['sourceProposerUserId'] ?? 0);
+				$project->set('IDuser_proposed', isset($userIdMap[$sourceProposerUserId]) ? (int)$userIdMap[$sourceProposerUserId] : null);
+				$project->set('title', $title !== '' ? $title : 'Projet OMO 1 #' . $sourceId);
+				$project->set('description', $record['description'] ?? null);
+				$projectStatus = array_key_exists('legacyStatusId', $record)
+					? self::omo1ImportProjectStatus($record['legacyStatusId'])
+					: \dbObject\Project::normalizeStatus($record['status'] ?? \dbObject\Project::STATUS_SOMEDAY);
+				$project->set('status', $projectStatus);
+				$project->set('planned_start_date', self::omo1ImportDate($record['plannedStartAt'] ?? null));
+				$project->set('planned_end_date', self::omo1ImportDate($record['plannedEndAt'] ?? null));
+				$project->set('priority', \dbObject\Project::normalizeLevel($record['priority'] ?? null));
+				$project->set('importance', \dbObject\Project::normalizeLevel($record['importance'] ?? null));
+				$project->set('calculated_importance', (float)($record['calculatedImportance'] ?? 0));
+				$project->set('capture_mode', \dbObject\Project::normalizeCaptureMode($record['captureMode'] ?? null));
+				$project->set('project_size', \dbObject\Project::normalizeSize($record['projectSize'] ?? \dbObject\Project::SIZE_M));
+				$project->set('project_kind', \dbObject\Project::KIND_STANDARD);
+				$project->set('proposal_status', trim((string)($record['proposalStatus'] ?? '')) ?: \dbObject\Project::PROPOSAL_NONE);
+				$project->set('proposed_at', self::omo1ImportDate($record['proposedAt'] ?? null));
+				$project->set('proposal_decided_at', self::omo1ImportDate($record['proposalDecidedAt'] ?? null));
+				$createdAt = self::omo1ImportDate($record['createdAt'] ?? null);
+				if ($createdAt) {
+					$project->set('created_at', $createdAt);
+				}
+				$projectIsActive = array_key_exists('active', $record)
+					? (bool)$record['active']
+					: true;
+				$project->set('active', $projectIsActive);
+				$statusAt = self::omo1ImportDate($record['statusAt'] ?? null);
+				if ($projectStatus === \dbObject\Project::STATUS_BLOCKED) {
+					$blockedReason = self::omo1ImportLimitText($record['blockedReason'] ?? '', 4000);
+					$project->set(
+						'blocked_reason',
+						$blockedReason !== ''
+							? $blockedReason
+							: 'Projet importe d OMO 1 avec le statut bloque.'
+					);
+					$project->set(
+						'blocked_until',
+						self::omo1ImportDate($record['blockedUntil'] ?? null)
+							?: $statusAt
+							?: self::omo1ImportDate($record['plannedEndAt'] ?? null)
+							?: $createdAt
+							?: new \DateTimeImmutable('today', new \DateTimeZone('Europe/Zurich'))
+					);
+					$project->set('blocked_auto_reactivate', !empty($record['blockedAutoReactivate']) ? 1 : 0);
+					$project->set('blocked_reactivate_status', trim((string)($record['blockedReactivateStatus'] ?? '')) ?: null);
+				}
+				$closedAt = self::omo1ImportDate($record['closedAt'] ?? null);
+				if (!$closedAt && $projectStatus === \dbObject\Project::STATUS_DONE) {
+					$closedAt = $statusAt;
+				}
+				if ($closedAt) {
+					$project->set('closed_at', $closedAt);
+				}
+				$archivedAt = self::omo1ImportDate($record['archivedAt'] ?? null);
+				if (!$archivedAt && !$projectIsActive) {
+					$archivedAt = $statusAt;
+				}
+				if ($archivedAt) {
+					$project->set('archived_at', $archivedAt);
+				}
+				self::omo1ImportSave($project, 'Un projet n a pas pu etre cree');
+				$projectIdMap[$sourceId] = (int)$project->getId();
+				$stats['projects'] += 1;
+			}
+
+			foreach ($records as $record) {
+				$sourceId = (int)($record['sourceId'] ?? 0);
+				$targetProjectId = isset($projectIdMap[$sourceId]) ? (int)$projectIdMap[$sourceId] : 0;
+				if ($targetProjectId <= 0) {
+					continue;
+				}
+				$project = new \dbObject\Project();
+				if (!$project->load($targetProjectId)) {
+					continue;
+				}
+				$sourceParentId = (int)($record['sourceParentProjectId'] ?? 0);
+				$project->set('IDproject_parent', isset($projectIdMap[$sourceParentId]) ? (int)$projectIdMap[$sourceParentId] : null);
+				$sourceJournalDocumentId = (int)($record['sourceJournalDocumentId'] ?? 0);
+				$project->set('IDdocument_journal', isset($documentIdMap[$sourceJournalDocumentId]) ? (int)$documentIdMap[$sourceJournalDocumentId] : null);
+				self::omo1ImportSave($project, 'La hierarchie des projets n a pas pu etre recreee');
+			}
+
+		}
+
+		protected static function omo1ImportProjectUsers(array $records, array $projectIdMap, array $userIdMap)
+		{
+			foreach ($records as $record) {
+				$targetProjectId = (int)($projectIdMap[(int)($record['sourceId'] ?? 0)] ?? 0);
+				if ($targetProjectId <= 0 || !isset($record['teamMembers']) || !is_array($record['teamMembers'])) {
+					continue;
+				}
+				foreach ($record['teamMembers'] as $memberRecord) {
+					if (!is_array($memberRecord)) {
+						continue;
+					}
+					$sourceUserId = (int)($memberRecord['sourceUserId'] ?? 0);
+					$targetUserId = (int)($userIdMap[$sourceUserId] ?? 0);
+					if ($targetUserId <= 0) {
+						continue;
+					}
+					$member = new \dbObject\ProjectUser();
+					if (!$member->load(array(array('IDproject', $targetProjectId), array('IDuser', $targetUserId)))) {
+						$member->set('IDproject', $targetProjectId);
+						$member->set('IDuser', $targetUserId);
+					}
+					$createdAt = self::omo1ImportDate($memberRecord['createdAt'] ?? null);
+					if ($createdAt) {
+						$member->set('datecreation', $createdAt);
+					}
+					$member->set('active', !array_key_exists('active', $memberRecord) || (bool)$memberRecord['active']);
+					self::omo1ImportSave($member, 'Un membre de projet n a pas pu etre importe');
+				}
+			}
+		}
+
+		protected static function omo1ImportProjectFollowers(array $records, array $projectIdMap, array $userIdMap, array &$stats, array &$warnings)
+		{
+			$skippedSourceUserIds = array();
+			foreach ($records as $record) {
+				if (!is_array($record)) {
+					continue;
+				}
+				$sourceProjectId = (int)($record['sourceId'] ?? 0);
+				$targetProjectId = isset($projectIdMap[$sourceProjectId]) ? (int)$projectIdMap[$sourceProjectId] : 0;
+				if ($sourceProjectId <= 0 || $targetProjectId <= 0 || empty($record['followerSourceUserIds']) || !is_array($record['followerSourceUserIds'])) {
+					continue;
+				}
+
+				$processedSourceUserIds = array();
+				foreach ($record['followerSourceUserIds'] as $sourceUserId) {
+					$sourceUserId = (int)$sourceUserId;
+					if ($sourceUserId <= 0 || isset($processedSourceUserIds[$sourceUserId])) {
+						continue;
+					}
+					$processedSourceUserIds[$sourceUserId] = true;
+					if (!isset($userIdMap[$sourceUserId])) {
+						$skippedSourceUserIds[$sourceUserId] = true;
+						continue;
+					}
+					$targetUserId = (int)$userIdMap[$sourceUserId];
+					if ($targetUserId <= 0) {
+						continue;
+					}
+
+					$follower = new \dbObject\ProjectFollower();
+					if (!$follower->load(array(array('IDproject', $targetProjectId), array('IDuser', $targetUserId)))) {
+						$follower->set('IDproject', $targetProjectId);
+						$follower->set('IDuser', $targetUserId);
+					}
+					$follower->set('active', true);
+					self::omo1ImportSave($follower, 'Un suivi de projet n a pas pu etre importe');
+					$stats['projectFollowers'] += 1;
+				}
+			}
+			if (count($skippedSourceUserIds) > 0) {
+				$warnings[] = 'Le suivi de ' . count($skippedSourceUserIds) . ' membre(s) n a pas pu etre importe car ces membres ne figurent pas dans l import.';
+			}
+		}
+
+		protected static function omo1ImportPrepareTaskParent(\dbObject\Project $task, $parentProjectId, $sourceTaskId, array &$warnings)
+		{
+			$parentProjectId = (int)$parentProjectId;
+			if ($parentProjectId <= 0) {
+				$task->set('IDproject_parent', null);
+				return;
+			}
+
+			$parent = new \dbObject\Project();
+			if (!$parent->load($parentProjectId)) {
+				$task->set('IDproject_parent', null);
+				$warnings[] = 'La tache OMO 1 #' . (int)$sourceTaskId . ' a ete importee sans parent car son projet parent est introuvable.';
+				return;
+			}
+			$parentStatus = \dbObject\Project::normalizeStatus($parent->get('status'));
+			if (!$parent->get('active')) {
+				$task->set('active', false);
+			}
+			if ($parentStatus === \dbObject\Project::STATUS_DONE) {
+				$task->set('status', \dbObject\Project::STATUS_DONE);
+			}
+
+			$parentEndDate = $parent->get('planned_end_date');
+			$status = \dbObject\Project::normalizeStatus($task->get('status'));
+			if ($parentEndDate instanceof \DateTimeInterface) {
+				if ($status === \dbObject\Project::STATUS_SOMEDAY) {
+					$task->set('IDproject_parent', null);
+					$warnings[] = 'La tache OMO 1 #' . (int)$sourceTaskId . ' au statut someday a ete importee sans parent date.';
+					return;
+				}
+
+				$taskEndDate = $task->get('planned_end_date');
+				if ($taskEndDate instanceof \DateTimeInterface && $taskEndDate > $parentEndDate) {
+					$task->set('planned_end_date', $parentEndDate->format('Y-m-d'));
+					$warnings[] = 'La date de fin de la tache OMO 1 #' . (int)$sourceTaskId . ' a ete ramenee a celle de son projet parent.';
+				}
+			}
+
+			$task->set('IDproject_parent', $parentProjectId);
+		}
+
+		protected static function omo1ImportTasks(\dbObject\Organization $organization, array $records, $actorUserId, array $userIdMap, array $holonIdMap, array $projectIdMap, array &$taskIdMap, array &$stats, array &$warnings)
+		{
+			$sourceTaskIds = array();
+			foreach ($records as $record) {
+				$sourceTaskId = is_array($record) ? (int)($record['sourceId'] ?? 0) : 0;
+				if ($sourceTaskId > 0) {
+					$sourceTaskIds[$sourceTaskId] = true;
+				}
+			}
+
+			$discardedTaskIds = array();
+			do {
+				$discardedCountBefore = count($discardedTaskIds);
+				foreach ($records as $record) {
+					if (!is_array($record)) {
+						continue;
+					}
+					$sourceTaskId = (int)($record['sourceId'] ?? 0);
+					$sourceParentId = (int)($record['sourceParentProjectId'] ?? ($record['sourceProjectId'] ?? 0));
+					if ($sourceTaskId <= 0 || $sourceParentId <= 0 || isset($discardedTaskIds[$sourceTaskId])) {
+						continue;
+					}
+					if (isset($projectIdMap[$sourceParentId])) {
+						continue;
+					}
+					if (isset($sourceTaskIds[$sourceParentId]) && !isset($discardedTaskIds[$sourceParentId])) {
+						continue;
+					}
+
+					$discardedTaskIds[$sourceTaskId] = true;
+				}
+			} while (count($discardedTaskIds) > $discardedCountBefore);
+
+			foreach ($records as $record) {
+				if (!is_array($record) || (int)($record['sourceId'] ?? 0) <= 0) {
+					continue;
+				}
+				if (isset($discardedTaskIds[(int)$record['sourceId']])) {
+					$warnings[] = 'La tache OMO 1 #' . (int)$record['sourceId'] . ' etait rattachee a un projet inaccessible et n a pas ete importee.';
+					continue;
+				}
+				$sourceUserId = (int)($record['sourceUserId'] ?? 0);
+				$targetUserId = isset($userIdMap[$sourceUserId]) ? (int)$userIdMap[$sourceUserId] : (int)$actorUserId;
+				$sourceHolonId = (int)($record['sourceHolonId'] ?? 0);
+				$targetHolonId = isset($holonIdMap[$sourceHolonId]) ? (int)$holonIdMap[$sourceHolonId] : null;
+				$sourceProjectId = (int)($record['sourceParentProjectId'] ?? ($record['sourceProjectId'] ?? 0));
+				$title = self::omo1ImportLimitText($record['title'] ?? '', 255);
+				$completedAt = $record['completedAt'] ?? null;
+				if (!self::omo1ImportDate($completedAt) && !empty($record['checks']) && is_array($record['checks'])) {
+					foreach ($record['checks'] as $check) {
+						if (is_array($check) && self::omo1ImportDate($check['checkedAt'] ?? null)) {
+							$completedAt = $check['checkedAt'];
+							break;
+						}
+					}
+				}
+				$task = new \dbObject\Project();
+				$task->set('IDorganization', (int)$organization->getId());
+				$task->set('IDholon', $targetHolonId);
+				$task->set('IDuser', $targetUserId);
+				$sourceProposerUserId = (int)($record['sourceProposerUserId'] ?? 0);
+				$task->set('IDuser_proposed', isset($userIdMap[$sourceProposerUserId]) ? (int)$userIdMap[$sourceProposerUserId] : null);
+				$task->set('title', $title !== '' ? $title : 'Tache OMO 1 #' . (int)$record['sourceId']);
+				$task->set('description', $record['description'] ?? null);
+				$task->set('status', array_key_exists('status', $record)
+					? \dbObject\Project::normalizeStatus($record['status'])
+					: self::omo1ImportProjectStatus(0, $completedAt, $record['deletedAt'] ?? null));
+				$task->set('planned_start_date', self::omo1ImportDate($record['plannedStartAt'] ?? null));
+				$task->set('planned_end_date', self::omo1ImportDate($record['plannedEndAt'] ?? null));
+				$task->set('priority', \dbObject\Project::normalizeLevel($record['priority'] ?? null));
+				$task->set('importance', \dbObject\Project::normalizeLevel($record['importance'] ?? null));
+				$task->set('calculated_importance', (float)($record['calculatedImportance'] ?? 0));
+				$task->set('capture_mode', \dbObject\Project::normalizeCaptureMode($record['captureMode'] ?? null));
+				$task->set('project_size', \dbObject\Project::normalizeSize($record['projectSize'] ?? \dbObject\Project::SIZE_S));
+				$task->set('project_kind', \dbObject\Project::KIND_STANDARD);
+				$task->set('proposal_status', trim((string)($record['proposalStatus'] ?? '')) ?: \dbObject\Project::PROPOSAL_NONE);
+				$task->set('proposed_at', self::omo1ImportDate($record['proposedAt'] ?? null));
+				$task->set('proposal_decided_at', self::omo1ImportDate($record['proposalDecidedAt'] ?? null));
+				$createdAt = self::omo1ImportDate($record['createdAt'] ?? null);
+				if ($createdAt) {
+					$task->set('created_at', $createdAt);
+				}
+				$task->set('active', array_key_exists('active', $record) ? (bool)$record['active'] : true);
+				if (\dbObject\Project::normalizeStatus($task->get('status')) === \dbObject\Project::STATUS_BLOCKED) {
+					$blockedReason = self::omo1ImportLimitText($record['blockedReason'] ?? '', 4000);
+					$task->set('blocked_reason', $blockedReason !== '' ? $blockedReason : 'Tache importee avec le statut bloque.');
+					$task->set('blocked_until', self::omo1ImportDate($record['blockedUntil'] ?? null)
+						?: $createdAt
+						?: new \DateTimeImmutable('today', new \DateTimeZone('Europe/Zurich')));
+					$task->set('blocked_auto_reactivate', !empty($record['blockedAutoReactivate']) ? 1 : 0);
+					$task->set('blocked_reactivate_status', trim((string)($record['blockedReactivateStatus'] ?? '')) ?: null);
+				}
+				$closedAt = self::omo1ImportDate($record['closedAt'] ?? null);
+				if ($closedAt) {
+					$task->set('closed_at', $closedAt);
+				}
+				$archivedAt = self::omo1ImportDate($record['archivedAt'] ?? null);
+				if ($archivedAt) {
+					$task->set('archived_at', $archivedAt);
+				}
+				self::omo1ImportPrepareTaskParent(
+					$task,
+					isset($projectIdMap[$sourceProjectId]) ? (int)$projectIdMap[$sourceProjectId] : null,
+					(int)$record['sourceId'],
+					$warnings
+				);
+				self::omo1ImportSave($task, 'La tache source #' . (int)$record['sourceId'] . ' n a pas pu etre importee');
+				$taskIdMap[(int)$record['sourceId']] = (int)$task->getId();
+				$stats['tasks'] += 1;
+			}
+
+			foreach ($records as $record) {
+				$sourceId = (int)($record['sourceId'] ?? 0);
+				if (isset($discardedTaskIds[$sourceId])) {
+					continue;
+				}
+				$targetTaskId = isset($taskIdMap[$sourceId]) ? (int)$taskIdMap[$sourceId] : 0;
+				$sourceParentId = (int)($record['sourceParentProjectId'] ?? ($record['sourceProjectId'] ?? 0));
+				if ($targetTaskId <= 0 || $sourceParentId <= 0 || !isset($taskIdMap[$sourceParentId])) {
+					continue;
+				}
+				$task = new \dbObject\Project();
+				if (!$task->load($targetTaskId)) {
+					continue;
+				}
+				self::omo1ImportPrepareTaskParent($task, (int)$taskIdMap[$sourceParentId], $sourceId, $warnings);
+				self::omo1ImportSave($task, 'La hierarchie des sous-projets n a pas pu etre recreee');
+			}
+		}
+
+		protected static function omo1ImportLinkDocumentsToProjects(array $documentIdMap, array $documentProjectSourceMap, array $projectIdMap, array $taskIdMap)
+		{
+			foreach ($documentIdMap as $sourceDocumentId => $targetDocumentId) {
+				$sourceProjectIds = $documentProjectSourceMap[$sourceDocumentId] ?? array();
+				if (!is_array($sourceProjectIds)) {
+					$sourceProjectIds = array($sourceProjectIds);
+				}
+				foreach (array_values(array_unique(array_filter(array_map('intval', $sourceProjectIds)))) as $sourceProjectId) {
+					$targetProjectId = (int)($projectIdMap[$sourceProjectId] ?? ($taskIdMap[$sourceProjectId] ?? 0));
+					if ($targetProjectId <= 0 || (int)$targetDocumentId <= 0) {
+						continue;
+					}
+					$link = new \dbObject\ProjectDocument();
+					if ($link->load([['IDproject', $targetProjectId], ['IDdocument', (int)$targetDocumentId]])) {
+						continue;
+					}
+					$link->set('IDproject', $targetProjectId);
+					$link->set('IDdocument', (int)$targetDocumentId);
+					self::omo1ImportSave($link, 'Un lien projet-document n a pas pu etre cree');
+				}
+			}
+		}
+
+		protected static function omo1ImportDocumentParents(array $documentIdMap, array $documentParentSourceMap)
+		{
+			foreach ($documentParentSourceMap as $sourceDocumentId => $sourceParentDocumentId) {
+				$targetDocumentId = (int)($documentIdMap[(int)$sourceDocumentId] ?? 0);
+				$targetParentDocumentId = (int)($documentIdMap[(int)$sourceParentDocumentId] ?? 0);
+				if ($targetDocumentId <= 0 || $targetParentDocumentId <= 0 || $targetDocumentId === $targetParentDocumentId) {
+					continue;
+				}
+				$document = new \dbObject\Document();
+				if (!$document->load($targetDocumentId)) {
+					continue;
+				}
+				$document->set('IDdocument_parent', $targetParentDocumentId);
+				self::omo1ImportSave($document, 'La hierarchie des documents n a pas pu etre recreee');
+			}
+		}
+
+		protected static function omo1ImportActivityRecurrence(array $record)
+		{
+			$frequency = \dbObject\RecurrenceSchedule::normalizeFrequency($record['frequency'] ?? null);
+			$schedule = \dbObject\RecurrenceSchedule::normalizeSchedule($frequency, $record['schedule'] ?? null);
+			return array($frequency, $schedule);
+		}
+
+		protected static function omo1ImportActivities(\dbObject\Organization $organization, array $records, array $userIdMap, array $holonIdMap, array &$stats)
+		{
+			$positionsByHolonId = array();
+			foreach ($records as $recordIndex => $record) {
+				if (!is_array($record)) {
+					continue;
+				}
+				$sourceHolonId = (int)($record['sourceHolonId'] ?? 0);
+				$targetHolonId = isset($holonIdMap[$sourceHolonId]) ? (int)$holonIdMap[$sourceHolonId] : 0;
+				if ($targetHolonId <= 0) {
+					continue;
+				}
+				$recordActive = !array_key_exists('active', $record) || (bool)$record['active'];
+				$items = isset($record['items']) && is_array($record['items']) ? $record['items'] : array();
+				foreach ($items as $itemIndex => $itemRecord) {
+					if (!is_array($itemRecord)) {
+						continue;
+					}
+					$itemTitle = self::omo1ImportLimitText($itemRecord['title'] ?? '', 255);
+					if ($itemTitle === '') {
+						$itemTitle = 'Activite OMO 1 #' . (int)($itemRecord['sourceId'] ?? ($itemIndex + 1));
+					}
+					$itemActive = $recordActive && (!array_key_exists('active', $itemRecord) || (bool)$itemRecord['active']);
+					$recurrenceData = isset($itemRecord['recurrence']) && is_array($itemRecord['recurrence']) ? $itemRecord['recurrence'] : array();
+					list($frequency, $schedule) = self::omo1ImportActivityRecurrence($recurrenceData);
+					if ($frequency === null || $schedule === null) {
+						$stats['skippedActivities'] += 1;
+						continue;
+					}
+
+					$positionsByHolonId[$targetHolonId] = (int)($positionsByHolonId[$targetHolonId] ?? 0) + 1;
+					$activity = new \dbObject\ControlActivity();
+					$activity->set('IDorganization', (int)$organization->getId());
+					$activity->set('IDholon', $targetHolonId);
+					$sourceResponsibleUserId = (int)($record['sourceResponsibleUserId'] ?? 0);
+					$activity->set('IDuser_responsible', (int)($userIdMap[$sourceResponsibleUserId] ?? 0) ?: null);
+					$activity->set('title', $itemTitle);
+					$activity->set('description', $itemRecord['description'] ?? null);
+					$activity->set('frequency', $frequency);
+					$activity->set('schedule', $schedule);
+					$activity->set('display_lead_value', max(0, (int)($recurrenceData['displayLeadValue'] ?? 0)));
+					$activity->set('display_lead_unit', \dbObject\ControlActivity::normalizeDelayUnit($recurrenceData['displayLeadUnit'] ?? null));
+					$activity->set('execution_duration_value', max(1, (int)($recurrenceData['executionDurationValue'] ?? 1)));
+					$activity->set('execution_duration_unit', \dbObject\ControlActivity::normalizeDelayUnit($recurrenceData['executionDurationUnit'] ?? null));
+					$activity->set('position', (int)($record['position'] ?? $positionsByHolonId[$targetHolonId]));
+					$activity->set('active', $itemActive);
+					$activity->set('archived_at', self::omo1ImportDate($record['archivedAt'] ?? null));
+					$createdAt = self::omo1ImportDate($record['createdAt'] ?? null);
+					if ($createdAt) {
+						$activity->set('created_at', $createdAt);
+					}
+					$updatedAt = self::omo1ImportDate($record['updatedAt'] ?? null);
+					if ($updatedAt) {
+						$activity->set('updated_at', $updatedAt);
+					}
+					self::omo1ImportSave($activity, 'Une activite recurrente n a pas pu etre creee');
+					foreach ((array)($itemRecord['checks'] ?? array()) as $checkRecord) {
+						if (!is_array($checkRecord)) {
+							continue;
+						}
+						$sourceCheckUserId = (int)($checkRecord['sourceUserId'] ?? 0);
+						$targetCheckUserId = (int)($userIdMap[$sourceCheckUserId] ?? 0);
+						$scheduledFor = self::omo1ImportDate($checkRecord['scheduledFor'] ?? null);
+						$checkedAt = self::omo1ImportDate($checkRecord['checkedAt'] ?? null);
+						if ($targetCheckUserId <= 0 || !$scheduledFor || !$checkedAt) {
+							continue;
+						}
+						$check = new \dbObject\ControlTaskCheck();
+						$check->set('IDcontroltask', (int)$activity->getId());
+						$check->set('IDuser', $targetCheckUserId);
+						$check->set('scheduled_for', $scheduledFor);
+						$check->set('checked_at', $checkedAt);
+						$checkCreatedAt = self::omo1ImportDate($checkRecord['createdAt'] ?? null);
+						if ($checkCreatedAt) {
+							$check->set('created_at', $checkCreatedAt);
+						}
+						self::omo1ImportSave($check, 'Une validation de tache recurrente n a pas pu etre importee');
+					}
+					$stats['activities'] += 1;
+				}
+			}
+		}
+
+		protected static function omo1ImportProcesses(\dbObject\Organization $organization, array $records, array $userIdMap, array $holonIdMap, array &$stats, array &$processImportMaps)
+		{
+			foreach ($records as $record) {
+				if (!is_array($record) || (int)($record['sourceId'] ?? 0) <= 0) {
+					continue;
+				}
+				$sourceHolonId = (int)($record['sourceHolonId'] ?? 0);
+				$targetHolonId = (int)($holonIdMap[$sourceHolonId] ?? 0);
+				if ($targetHolonId <= 0) {
+					continue;
+				}
+
+				$rootProject = new \dbObject\Project();
+				$rootProject->set('IDorganization', (int)$organization->getId());
+				$rootProject->set('IDholon', $targetHolonId);
+				$rootProject->set('IDuser', null);
+				$rootProject->set('IDproject_parent', null);
+				$rootProject->set('title', self::omo1ImportLimitText($record['title'] ?? '', 255) ?: ('Processus #' . (int)$record['sourceId']));
+				$rootProject->set('description', $record['description'] ?? null);
+				$rootProject->set('status', \dbObject\Project::STATUS_SOMEDAY);
+				$rootProject->set('capture_mode', \dbObject\Project::CAPTURE_MULTIPLE_DOCUMENTS);
+				$rootProject->set('project_size', \dbObject\Project::SIZE_M);
+				$rootProject->set('project_kind', \dbObject\Project::KIND_CHECKLIST_TEMPLATE);
+				$rootProject->set('IDproject_template', null);
+				$rootProject->set('active', !array_key_exists('active', $record) || (bool)$record['active']);
+				self::omo1ImportSave($rootProject, 'Le projet modele d un processus n a pas pu etre cree');
+
+				$checklist = new \dbObject\Checklist();
+				$checklist->set('IDorganization', (int)$organization->getId());
+				$sourceResponsibleUserId = (int)($record['sourceResponsibleUserId'] ?? 0);
+				$checklist->set('IDuser_responsible', (int)($userIdMap[$sourceResponsibleUserId] ?? 0) ?: null);
+				$checklist->set('IDchecklist_previous', null);
+				$checklist->set('IDproject_template_root', (int)$rootProject->getId());
+				$checklist->set('IDdocument', null);
+				$checklist->set('status', \dbObject\Checklist::normalizeStatus($record['status'] ?? \dbObject\Checklist::STATUS_DRAFT));
+				$checklist->set('revision_note', self::omo1ImportLimitText($record['revisionNote'] ?? '', 4000) ?: null);
+				$checklist->set('active', !array_key_exists('active', $record) || (bool)$record['active']);
+				self::omo1ImportSave($checklist, 'Un processus n a pas pu etre cree');
+
+				$triggerData = is_array($record['trigger'] ?? null) ? $record['trigger'] : array();
+				$triggerType = \dbObject\ChecklistTrigger::normalizeTriggerType($triggerData['type'] ?? \dbObject\ChecklistTrigger::TYPE_CONTAINER);
+				$frequency = $triggerType === \dbObject\ChecklistTrigger::TYPE_SCHEDULED
+					? \dbObject\RecurrenceSchedule::normalizeFrequency($triggerData['frequency'] ?? null)
+					: null;
+				$schedule = $triggerType === \dbObject\ChecklistTrigger::TYPE_SCHEDULED
+					? \dbObject\RecurrenceSchedule::normalizeSchedule($frequency, $triggerData['schedule'] ?? null)
+					: null;
+				if ($triggerType === \dbObject\ChecklistTrigger::TYPE_SCHEDULED && ($frequency === null || $schedule === null)) {
+					$triggerType = \dbObject\ChecklistTrigger::TYPE_MANUAL;
+					$frequency = null;
+					$schedule = null;
+				}
+				$trigger = new \dbObject\ChecklistTrigger();
+				$trigger->set('IDchecklist', (int)$checklist->getId());
+				$trigger->set('stable_key', self::omo1ImportLimitText($triggerData['stableKey'] ?? 'primary', 64) ?: 'primary');
+				$trigger->set('trigger_type', $triggerType);
+				$trigger->set('frequency', $frequency);
+				$trigger->set('schedule', $schedule);
+				$trigger->set('overlap_policy', \dbObject\ChecklistTrigger::normalizeOverlapPolicy($triggerData['overlapPolicy'] ?? null));
+				$trigger->set('enabled', $triggerType !== \dbObject\ChecklistTrigger::TYPE_CONTAINER && (!array_key_exists('enabled', $triggerData) || (bool)$triggerData['enabled']));
+				$trigger->set('next_trigger_at', $triggerType === \dbObject\ChecklistTrigger::TYPE_SCHEDULED
+					? \dbObject\RecurrenceSchedule::getNextOccurrence($frequency, $schedule, new \DateTimeImmutable())
+					: null);
+				self::omo1ImportSave($trigger, 'Le declenchement d un processus n a pas pu etre cree');
+
+				$itemIdMap = array();
+				$projectIdMap = array((int)($record['sourceRootProjectId'] ?? 0) => (int)$rootProject->getId());
+				$items = is_array($record['items'] ?? null) ? $record['items'] : array();
+				foreach ($items as $itemIndex => $itemRecord) {
+					if (!is_array($itemRecord) || (int)($itemRecord['sourceId'] ?? 0) <= 0) {
+						continue;
+					}
+					$sourceItemId = (int)$itemRecord['sourceId'];
+					$itemHolonId = (int)($holonIdMap[(int)($itemRecord['sourceHolonId'] ?? 0)] ?? $targetHolonId);
+					if ($itemHolonId <= 0) {
+						$itemHolonId = $targetHolonId;
+					}
+					$template = new \dbObject\Project();
+					$template->set('IDorganization', (int)$organization->getId());
+					$template->set('IDholon', $itemHolonId);
+					$template->set('IDuser', null);
+					$template->set('IDproject_parent', (int)$rootProject->getId());
+					$template->set('title', self::omo1ImportLimitText($itemRecord['title'] ?? '', 255) ?: ('Etape #' . $sourceItemId));
+					$template->set('description', $itemRecord['description'] ?? null);
+					$template->set('status', \dbObject\Project::STATUS_SOMEDAY);
+					$template->set('capture_mode', \dbObject\Project::CAPTURE_MULTIPLE_DOCUMENTS);
+					$template->set('project_size', \dbObject\Project::SIZE_M);
+					$template->set('project_kind', \dbObject\Project::KIND_CHECKLIST_TEMPLATE);
+					$template->set('IDproject_template', null);
+					$template->set('active', !array_key_exists('active', $itemRecord) || (bool)$itemRecord['active']);
+					self::omo1ImportSave($template, 'Le modele d une etape de processus n a pas pu etre cree');
+
+					$activation = is_array($itemRecord['activation'] ?? null) ? $itemRecord['activation'] : array();
+					$item = new \dbObject\ChecklistItem();
+					$item->set('IDchecklist', (int)$checklist->getId());
+					$item->set('IDproject_template', (int)$template->getId());
+					$item->set('stable_key', self::omo1ImportLimitText($itemRecord['stableKey'] ?? ('item_' . $sourceItemId), 64) ?: ('item_' . $sourceItemId));
+					$item->set('activation_type', \dbObject\ChecklistItem::normalizeActivationType($activation['type'] ?? null));
+					$item->set('delay_value', (int)($activation['delayValue'] ?? 0));
+					$item->set('delay_unit', \dbObject\ChecklistItem::normalizeDelayUnit($activation['delayUnit'] ?? null));
+					$item->set('display_lead_value', max(0, (int)($activation['displayLeadValue'] ?? 0)));
+					$item->set('display_lead_unit', \dbObject\ChecklistItem::normalizeDelayUnit($activation['displayLeadUnit'] ?? null));
+					$item->set('execution_duration_value', max(0, (int)($activation['executionDurationValue'] ?? 0)));
+					$item->set('execution_duration_unit', \dbObject\ChecklistItem::normalizeDelayUnit($activation['executionDurationUnit'] ?? null));
+					$item->set('position', max(0, (int)($itemRecord['position'] ?? $itemIndex)));
+					$item->set('active', !array_key_exists('active', $itemRecord) || (bool)$itemRecord['active']);
+					self::omo1ImportSave($item, 'Une etape de processus n a pas pu etre creee');
+					$itemIdMap[$sourceItemId] = (int)$item->getId();
+					$projectIdMap[(int)($itemRecord['sourceProjectId'] ?? 0)] = (int)$template->getId();
+
+					$recurrenceData = is_array($itemRecord['recurrence'] ?? null) ? $itemRecord['recurrence'] : null;
+					if ($recurrenceData !== null) {
+						$recurrenceFrequency = \dbObject\RecurrenceSchedule::normalizeFrequency($recurrenceData['frequency'] ?? null);
+						$recurrenceSchedule = \dbObject\RecurrenceSchedule::normalizeSchedule($recurrenceFrequency, $recurrenceData['schedule'] ?? null);
+						if ($recurrenceFrequency !== null && $recurrenceSchedule !== null) {
+							$recurrence = new \dbObject\ChecklistItemRecurrence();
+							$recurrence->set('IDchecklistitem', (int)$item->getId());
+							$recurrence->set('frequency', $recurrenceFrequency);
+							$recurrence->set('schedule', $recurrenceSchedule);
+							$recurrence->set('display_lead_value', max(0, (int)($recurrenceData['displayLeadValue'] ?? 0)));
+							$recurrence->set('display_lead_unit', \dbObject\ChecklistItem::normalizeDelayUnit($recurrenceData['displayLeadUnit'] ?? null));
+							$recurrence->set('execution_duration_value', max(0, (int)($recurrenceData['executionDurationValue'] ?? 0)));
+							$recurrence->set('execution_duration_unit', \dbObject\ChecklistItem::normalizeDelayUnit($recurrenceData['executionDurationUnit'] ?? null));
+							$recurrence->set('enabled', 1);
+							$nextOccurrence = \dbObject\RecurrenceSchedule::getNextOccurrence($recurrenceFrequency, $recurrenceSchedule, new \DateTimeImmutable());
+							$recurrence->set('next_trigger_at', $nextOccurrence instanceof \DateTimeImmutable ? $recurrence->getDisplayTriggerAt($nextOccurrence) : null);
+							self::omo1ImportSave($recurrence, 'La recurrence d une activite de processus n a pas pu etre creee');
+						}
+					}
+				}
+
+				foreach ($items as $itemRecord) {
+					if (!is_array($itemRecord)) {
+						continue;
+					}
+					$sourceItemId = (int)($itemRecord['sourceId'] ?? 0);
+					$itemId = (int)($itemIdMap[$sourceItemId] ?? 0);
+					if ($itemId <= 0) {
+						continue;
+					}
+					$template = new \dbObject\Project();
+					$sourceProjectId = (int)($itemRecord['sourceProjectId'] ?? 0);
+					if ($template->load((int)($projectIdMap[$sourceProjectId] ?? 0))) {
+						$sourceParentProjectId = (int)($itemRecord['sourceParentProjectId'] ?? 0);
+						$template->set('IDproject_parent', (int)($projectIdMap[$sourceParentProjectId] ?? $rootProject->getId()));
+						self::omo1ImportSave($template, 'La hierarchie des etapes de processus n a pas pu etre recreee');
+					}
+					foreach ((array)($itemRecord['dependencies'] ?? array()) as $dependencyRecord) {
+						if (!is_array($dependencyRecord)) {
+							continue;
+						}
+						$requiredItemId = (int)($itemIdMap[(int)($dependencyRecord['sourceRequiredItemId'] ?? 0)] ?? 0);
+						if ($requiredItemId <= 0 || $requiredItemId === $itemId) {
+							continue;
+						}
+						$dependency = new \dbObject\ChecklistItemDependency();
+						$dependency->set('IDchecklistitem', $itemId);
+						$dependency->set('IDchecklistitem_required', $requiredItemId);
+						$dependency->set('delay_value', max(0, (int)($dependencyRecord['delayValue'] ?? 0)));
+						$dependency->set('delay_unit', \dbObject\ChecklistItem::normalizeDelayUnit($dependencyRecord['delayUnit'] ?? null));
+						self::omo1ImportSave($dependency, 'Une dependance de processus n a pas pu etre creee');
+					}
+				}
+
+				$stats['processes'] = (int)($stats['processes'] ?? 0) + 1;
+				$stats['processItems'] = (int)($stats['processItems'] ?? 0) + count($itemIdMap);
+				$processImportMaps[(int)$record['sourceId']] = array(
+					'checklistId' => (int)$checklist->getId(),
+					'triggerIds' => array((int)($triggerData['sourceId'] ?? 0) => (int)$trigger->getId()),
+					'itemIds' => $itemIdMap,
+				);
+			}
+		}
+
+		protected static function omo1ImportProcessRuns(\dbObject\Organization $organization, array $records, array $processImportMaps, array $projectIdMap, array $taskIdMap, array $userIdMap, array $holonIdMap)
+		{
+			foreach ($records as $record) {
+				if (!is_array($record)) {
+					continue;
+				}
+				$processMap = $processImportMaps[(int)($record['sourceId'] ?? 0)] ?? null;
+				if (!is_array($processMap) || empty($record['runs']) || !is_array($record['runs'])) {
+					continue;
+				}
+				foreach ($record['runs'] as $runRecord) {
+					if (!is_array($runRecord)) {
+						continue;
+					}
+					$run = new \dbObject\ChecklistRun();
+					$run->set('IDchecklist', (int)$processMap['checklistId']);
+					$sourceTriggerId = (int)($runRecord['sourceTriggerId'] ?? 0);
+					$run->set('IDchecklisttrigger', (int)($processMap['triggerIds'][$sourceTriggerId] ?? 0) ?: null);
+					$run->set('IDorganization', (int)$organization->getId());
+					$sourceHolonId = (int)($runRecord['sourceHolonId'] ?? 0);
+					$run->set('IDholon', (int)($holonIdMap[$sourceHolonId] ?? 0) ?: null);
+					$sourceRootProjectId = (int)($runRecord['sourceRootProjectId'] ?? 0);
+					$run->set('IDproject_root', (int)($projectIdMap[$sourceRootProjectId] ?? ($taskIdMap[$sourceRootProjectId] ?? 0)) ?: null);
+					$sourceCreatorUserId = (int)($runRecord['sourceCreatorUserId'] ?? 0);
+					$run->set('IDuser_created', (int)($userIdMap[$sourceCreatorUserId] ?? 0) ?: null);
+					$run->set('status', \dbObject\ChecklistRun::normalizeStatus($runRecord['status'] ?? null));
+					$run->set('scheduled_for', self::omo1ImportDate($runRecord['scheduledFor'] ?? null));
+					$createdAt = self::omo1ImportDate($runRecord['createdAt'] ?? null);
+					if ($createdAt) {
+						$run->set('created_at', $createdAt);
+					}
+					$completedAt = self::omo1ImportDate($runRecord['completedAt'] ?? null);
+					if ($completedAt) {
+						$run->set('completed_at', $completedAt);
+					}
+					self::omo1ImportSave($run, 'Une execution de processus n a pas pu etre importee');
+
+					foreach ((array)($runRecord['items'] ?? array()) as $runItemRecord) {
+						if (!is_array($runItemRecord)) {
+							continue;
+						}
+						$sourceChecklistItemId = (int)($runItemRecord['sourceChecklistItemId'] ?? 0);
+						$targetChecklistItemId = (int)($processMap['itemIds'][$sourceChecklistItemId] ?? 0);
+						if ($targetChecklistItemId <= 0) {
+							continue;
+						}
+						$runItem = new \dbObject\ChecklistRunItem();
+						$runItem->set('IDchecklistrun', (int)$run->getId());
+						$runItem->set('IDchecklistitem', $targetChecklistItemId);
+						$sourceProjectId = (int)($runItemRecord['sourceProjectId'] ?? 0);
+						$runItem->set('IDproject', (int)($projectIdMap[$sourceProjectId] ?? ($taskIdMap[$sourceProjectId] ?? 0)) ?: null);
+						$runItem->set('state', \dbObject\ChecklistRunItem::normalizeState($runItemRecord['state'] ?? null));
+						$runItem->set('activation_at', self::omo1ImportDate($runItemRecord['activationAt'] ?? null));
+						foreach (array('createdAt' => 'created_at', 'activatedAt' => 'activated_at', 'completedAt' => 'completed_at') as $sourceField => $targetField) {
+							$date = self::omo1ImportDate($runItemRecord[$sourceField] ?? null);
+							if ($date) {
+								$runItem->set($targetField, $date);
+							}
+						}
+						self::omo1ImportSave($runItem, 'Une etape d execution de processus n a pas pu etre importee');
+					}
+				}
+			}
+		}
+
+		protected static function omo1ImportIndicatorRecurrence(array $record)
+		{
+			$legacyRecurrence = isset($record['legacyRecurrence']) && is_array($record['legacyRecurrence'])
+				? $record['legacyRecurrence']
+				: array();
+			$legacyRecurrenceId = (int)($legacyRecurrence['id'] ?? ($record['legacyRecurrenceId'] ?? 0));
+			$frequencyMap = array(
+				1 => \dbObject\StatIndicator::FREQUENCY_WEEKLY,
+				2 => \dbObject\StatIndicator::FREQUENCY_MONTHLY,
+				3 => \dbObject\StatIndicator::FREQUENCY_QUARTERLY,
+				4 => \dbObject\StatIndicator::FREQUENCY_SEMIANNUAL,
+				5 => \dbObject\StatIndicator::FREQUENCY_DAILY,
+				6 => \dbObject\StatIndicator::FREQUENCY_YEARLY,
+			);
+			$frequency = $frequencyMap[$legacyRecurrenceId] ?? null;
+			if ($frequency === null) {
+				$legacyLabel = mb_strtolower(trim((string)($legacyRecurrence['label'] ?? '')), 'UTF-8');
+				$labelMap = array(
+					'quotidiennement' => \dbObject\StatIndicator::FREQUENCY_DAILY,
+					'hebdomadaire' => \dbObject\StatIndicator::FREQUENCY_WEEKLY,
+					'mensuel' => \dbObject\StatIndicator::FREQUENCY_MONTHLY,
+					'trimestriel' => \dbObject\StatIndicator::FREQUENCY_QUARTERLY,
+					'semestriel' => \dbObject\StatIndicator::FREQUENCY_SEMIANNUAL,
+					'annuel' => \dbObject\StatIndicator::FREQUENCY_YEARLY,
+				);
+				$frequency = $labelMap[$legacyLabel] ?? null;
+			}
+
+			$legacyTrigger = $record['legacyTrigger'] ?? null;
+			if ($legacyTrigger === null && array_key_exists('trigger', $legacyRecurrence)) {
+				$legacyTrigger = $legacyRecurrence['trigger'];
+			}
+			$schedule = \dbObject\StatIndicator::normalizeMeasurementSchedule($frequency, $legacyTrigger);
+
+			return array($frequency, $schedule);
+		}
+
+		protected static function omo1ImportIndicators(\dbObject\Organization $organization, array $records, $actorUserId, array $userIdMap, array $holonIdMap, array &$stats)
+		{
+			foreach ($records as $record) {
+				if (!is_array($record) || (int)($record['sourceId'] ?? 0) <= 0) {
+					continue;
+				}
+				$sourceUserId = (int)($record['sourceUserId'] ?? 0);
+				$targetUserId = isset($userIdMap[$sourceUserId]) ? (int)$userIdMap[$sourceUserId] : (int)$actorUserId;
+				$sourceHolonId = (int)($record['sourceHolonId'] ?? 0);
+				$targetHolonId = isset($holonIdMap[$sourceHolonId]) ? (int)$holonIdMap[$sourceHolonId] : null;
+				$name = self::omo1ImportLimitText($record['name'] ?? '', 190);
+				if ($name === '') {
+					$name = self::omo1ImportLimitText(strip_tags((string)($record['description'] ?? '')), 190);
+				}
+				$indicator = new \dbObject\StatIndicator();
+				$indicator->set('IDorganization', (int)$organization->getId());
+				$indicator->set('IDholon', $targetHolonId);
+				$indicator->set('IDuser', $targetUserId);
+				$indicator->set('name', $name !== '' ? $name : 'Indicateur OMO 1 #' . (int)$record['sourceId']);
+				$indicator->set('description', $record['description'] ?? null);
+				$indicator->set('reference_type', \dbObject\StatIndicator::REFERENCE_NONE);
+				list($measurementFrequency, $measurementSchedule) = self::omo1ImportIndicatorRecurrence($record);
+				$indicator->set('measurement_frequency', $measurementFrequency);
+				$indicator->set('measurement_schedule', $measurementSchedule);
+				$createdAt = self::omo1ImportDate($record['createdAt'] ?? null);
+				if ($createdAt) {
+					$indicator->set('created_at', $createdAt);
+				}
+				$indicator->set('active', !array_key_exists('active', $record) || (bool)$record['active']);
+				$indicator->set('archived_at', self::omo1ImportDate($record['archivedAt'] ?? null));
+				self::omo1ImportSave($indicator, 'Un indicateur n a pas pu etre cree');
+				$stats['indicators'] += 1;
+
+				$values = isset($record['values']) && is_array($record['values']) ? $record['values'] : array();
+				foreach ($values as $valueRecord) {
+					if (!is_array($valueRecord) || !is_numeric($valueRecord['value'] ?? null)) {
+						continue;
+					}
+					$measuredAt = self::omo1ImportDate($valueRecord['measuredAt'] ?? null);
+					if (!$measuredAt) {
+						continue;
+					}
+					$value = new \dbObject\StatIndicatorValue();
+					$value->set('IDstatindicator', (int)$indicator->getId());
+					$value->set('IDuser', $targetUserId);
+					$value->set('value', (float)$valueRecord['value']);
+					$value->set('measured_at', $measuredAt);
+					self::omo1ImportSave($value, 'Une valeur d indicateur n a pas pu etre creee');
+					$stats['indicatorValues'] += 1;
+				}
+			}
+		}
+
+		protected static function omo1ImportPvStage(array $record): string
+		{
+			if (self::omo1ImportDate($record['closedAt'] ?? null)) {
+				return \dbObject\Document::PV_STAGE_VALIDATED;
+			}
+			if (self::omo1ImportDate($record['openedAt'] ?? null)) {
+				return \dbObject\Document::PV_STAGE_MEETING;
+			}
+
+			return \dbObject\Document::PV_STAGE_PREPARATION;
+		}
+
+		protected static function omo1ImportPlainText($value, $length = 0): string
+		{
+			$value = preg_replace('#<\s*/?\s*(br|p|div|li|h[1-6])\b[^>]*>#i', ' ', (string)$value);
+			$value = html_entity_decode(strip_tags($value), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+			$value = preg_replace('/\s+/u', ' ', trim($value));
+			if ($value === '') {
+				return '';
+			}
+
+			return $length > 0 ? self::omo1ImportLimitText($value, $length) : $value;
+		}
+
+		protected static function omo1ImportPvDocumentTitle($meetingTitle, $scheduledAt, $sourceMeetingId): string
+		{
+			$meetingTitle = self::omo1ImportPlainText($meetingTitle, 120);
+			if ($meetingTitle === '') {
+				$meetingTitle = 'Reunion OMO 1';
+			}
+
+			$scheduledAt = self::omo1ImportDate($scheduledAt);
+			if (!$scheduledAt) {
+				return 'PV ' . $meetingTitle . ' #' . (int)$sourceMeetingId;
+			}
+
+			$months = array('', 'janvier', 'fevrier', 'mars', 'avril', 'mai', 'juin', 'juillet', 'aout', 'septembre', 'octobre', 'novembre', 'decembre');
+			return 'PV ' . $meetingTitle . ' du ' . $scheduledAt->format('j') . ' ' . $months[(int)$scheduledAt->format('n')] . ' ' . $scheduledAt->format('Y');
+		}
+
+		protected static function omo1ImportPvPointContent(array $record, $includeTitle = true): string
+		{
+			$content = '';
+			$title = \dbObject\PropertyFormat::sanitizeHtml($record['title'] ?? '');
+			if ($includeTitle && $title !== '') {
+				$content .= '<p>' . $title . '</p>';
+			}
+			$description = trim((string)($record['description'] ?? ''));
+			if ($description !== '') {
+				$content .= '<p>' . nl2br(htmlspecialchars($description, ENT_QUOTES, 'UTF-8')) . '</p>';
+			}
+			$externalUrl = trim((string)($record['externalUrl'] ?? ''));
+			if ($externalUrl !== '' && filter_var($externalUrl, FILTER_VALIDATE_URL)) {
+				$content .= '<p><a href="' . htmlspecialchars($externalUrl, ENT_QUOTES, 'UTF-8') . '" target="_blank" rel="noopener noreferrer">Lien OMO 1</a></p>';
+			}
+
+			return $content;
+		}
+
+		protected static function omo1ImportLegacyDocumentVisibilityType($legacyVisibility): ?string
+		{
+			$legacyVisibility = is_numeric($legacyVisibility) ? (int)$legacyVisibility : 0;
+			$visibilityMap = array(
+				1 => \dbObject\ObjectVisibility::TYPE_EVERYONE,
+				2 => \dbObject\ObjectVisibility::TYPE_ORGANIZATION,
+				3 => \dbObject\ObjectVisibility::TYPE_CIRCLE,
+				4 => \dbObject\ObjectVisibility::TYPE_ROLE,
+				5 => \dbObject\ObjectVisibility::TYPE_SELF,
+			);
+
+			return isset($visibilityMap[$legacyVisibility]) ? $visibilityMap[$legacyVisibility] : null;
+		}
+
+		protected static function omo1ImportSaveDocumentVisibility(\dbObject\Document $document, $legacyVisibility, array &$warnings): void
+		{
+			$visibilityType = self::omo1ImportLegacyDocumentVisibilityType($legacyVisibility);
+			$documentTitle = trim((string)$document->get('title'));
+			$documentLabel = $documentTitle !== '' ? ' "' . $documentTitle . '"' : '';
+
+			if ($visibilityType === null) {
+				$visibilityType = \dbObject\ObjectVisibility::TYPE_SELF;
+				$warnings[] = 'La visibilite OMO 1 du document' . $documentLabel . ' est inconnue : le document est restreint a son proprietaire.';
+			}
+
+			$visibilitySaveResult = $document->saveVisibilityRule($visibilityType);
+			if (is_array($visibilitySaveResult) && !empty($visibilitySaveResult['status'])) {
+				return;
+			}
+
+			if ($visibilityType !== \dbObject\ObjectVisibility::TYPE_SELF) {
+				$fallbackSaveResult = $document->saveVisibilityRule(\dbObject\ObjectVisibility::TYPE_SELF);
+				if (is_array($fallbackSaveResult) && !empty($fallbackSaveResult['status'])) {
+					$warnings[] = 'La visibilite OMO 1 du document' . $documentLabel . self::formatLexiconText(' n a pas pu etre rattachee a son holon : le document est restreint a son proprietaire.', self::getLexiconForOrganizationId((int)$document->get('IDorganization')));
+					return;
+				}
+			}
+
+			$message = is_array($visibilitySaveResult)
+				? trim((string)($visibilitySaveResult['text'] ?? ''))
+				: '';
+			throw new \RuntimeException('La visibilite du document n a pas pu etre creee'
+				. ($message !== '' ? ': ' . $message : '.'));
+		}
+
+		protected static function omo1ImportSaveDocumentEditVisibility(\dbObject\Document $document, \dbObject\Organization $organization, ?int $targetHolonId, array &$warnings): void
+		{
+			$editVisibilityType = \dbObject\Document::resolveCompatibleScopeTypeForHolonId(
+				\dbObject\Document::getDefaultEditVisibilityTypeForOrganization((int)$organization->getId()),
+				(int)$organization->getId(),
+				$targetHolonId,
+				\dbObject\ObjectVisibility::TYPE_SELF
+			);
+			$editVisibilitySaveResult = $document->saveEditVisibilityRule($editVisibilityType, $targetHolonId);
+			if (is_array($editVisibilitySaveResult) && !empty($editVisibilitySaveResult['status'])) {
+				return;
+			}
+
+			if ($editVisibilityType !== \dbObject\ObjectVisibility::TYPE_SELF) {
+				$fallbackSaveResult = $document->saveEditVisibilityRule(\dbObject\ObjectVisibility::TYPE_SELF);
+				if (is_array($fallbackSaveResult) && !empty($fallbackSaveResult['status'])) {
+					$warnings['document_edit_visibility_fallback'] = self::formatLexiconText('Certains droits d edition de documents OMO 1 n ont pas pu etre rattaches a leur holon : l edition est restreinte a leur proprietaire.', $organization->getLexicon());
+					return;
+				}
+			}
+
+			$message = is_array($editVisibilitySaveResult)
+				? trim((string)($editVisibilitySaveResult['text'] ?? ''))
+				: '';
+			throw new \RuntimeException('Le droit d edition du document n a pas pu etre cree'
+				. ($message !== '' ? ': ' . $message : '.'));
+		}
+
+		protected static function omo1ImportPvs(\dbObject\Organization $organization, array $records, $actorUserId, array $userIdMap, array $holonIdMap, array $eventIdMap, array &$stats, array &$warnings)
+		{
+			foreach ($records as $record) {
+				if (!is_array($record)) {
+					continue;
+				}
+				$sourceMeetingId = (int)($record['sourceMeetingId'] ?? ($record['sourceId'] ?? 0));
+				$eventId = isset($eventIdMap[$sourceMeetingId]) ? (int)$eventIdMap[$sourceMeetingId] : 0;
+				if ($sourceMeetingId <= 0 || $eventId <= 0) {
+					continue;
+				}
+				$sourceHolonId = (int)($record['sourceHolonId'] ?? 0);
+				$targetHolonId = isset($holonIdMap[$sourceHolonId]) ? (int)$holonIdMap[$sourceHolonId] : null;
+				$sourceUserId = (int)($record['sourceSecretaryUserId'] ?? 0);
+				$targetUserId = isset($userIdMap[$sourceUserId]) ? (int)$userIdMap[$sourceUserId] : (int)$actorUserId;
+				$event = new \dbObject\Event();
+				$eventTitle = $event->load($eventId) ? $event->get('title') : ($record['meetingTitle'] ?? '');
+				$document = new \dbObject\Document();
+				$document->set('title', self::omo1ImportPvDocumentTitle($eventTitle, $record['scheduledAt'] ?? null, $sourceMeetingId));
+				$document->set('description', trim((string)($record['meetingScratchpad'] ?? '')) ?: null);
+				$document->set('documenttype', \dbObject\Document::TYPE_PV);
+				$document->set('pvstage', self::omo1ImportPvStage($record));
+				$document->set('IDorganization', (int)$organization->getId());
+				$document->set('IDholon', $targetHolonId);
+				$document->set('IDevent', $eventId);
+				$document->set('IDuser', $targetUserId);
+				$document->set('IDusercreation', $targetUserId);
+				$document->set('IDusermodification', $targetUserId);
+				$createdAt = self::omo1ImportDate($record['scheduledAt'] ?? null);
+				if ($createdAt) {
+					$document->set('datecreation', $createdAt);
+				}
+				$updatedAt = self::omo1ImportDate($record['closedAt'] ?? null) ?: $createdAt;
+				if ($updatedAt) {
+					$document->set('datemodification', $updatedAt);
+				}
+				$document->set('active', true);
+				self::omo1ImportSave($document, 'Un proces-verbal n a pas pu etre cree');
+				self::omo1ImportSaveDocumentEditVisibility($document, $organization, $targetHolonId, $warnings);
+				$stats['pv'] += 1;
+
+				$historyRecords = isset($record['history']) && is_array($record['history']) ? $record['history'] : array();
+				$historyById = array();
+				$historyChildrenByParent = array();
+				foreach ($historyRecords as $historyRecord) {
+					if (!is_array($historyRecord)) {
+						continue;
+					}
+					$sourceHistoryId = (int)($historyRecord['sourceId'] ?? 0);
+					if ($sourceHistoryId <= 0) {
+						continue;
+					}
+					$historyById[$sourceHistoryId] = $historyRecord;
+					$sourceParentId = (int)($historyRecord['sourceParentHistoryId'] ?? 0);
+					if ($sourceParentId > 0) {
+						$historyChildrenByParent[$sourceParentId][] = $sourceHistoryId;
+					}
+				}
+
+				$collectHistory = null;
+				$collectHistory = function ($sourceHistoryId, array &$collectedIds) use (&$collectHistory, $historyChildrenByParent) {
+					$sourceHistoryId = (int)$sourceHistoryId;
+					if ($sourceHistoryId <= 0 || isset($collectedIds[$sourceHistoryId])) {
+						return;
+					}
+					$collectedIds[$sourceHistoryId] = $sourceHistoryId;
+					foreach ($historyChildrenByParent[$sourceHistoryId] ?? array() as $childHistoryId) {
+						$collectHistory($childHistoryId, $collectedIds);
+					}
+				};
+
+				$processedHistoryIds = array();
+				$nativePointIdMap = array();
+				$nativePointParentSourceMap = array();
+				$pointGroups = array();
+				foreach ($historyById as $sourceHistoryId => $historyRecord) {
+					if ((int)($historyRecord['sourceTensionId'] ?? 0) <= 0 || isset($processedHistoryIds[$sourceHistoryId])) {
+						continue;
+					}
+					$groupHistoryIds = array();
+					$collectHistory($sourceHistoryId, $groupHistoryIds);
+					foreach ($groupHistoryIds as $groupHistoryId) {
+						$processedHistoryIds[$groupHistoryId] = true;
+					}
+					$pointGroups[] = array('rootId' => $sourceHistoryId, 'historyIds' => array_values($groupHistoryIds), 'isTension' => true);
+				}
+				foreach ($historyById as $sourceHistoryId => $historyRecord) {
+					if (isset($processedHistoryIds[$sourceHistoryId])) {
+						continue;
+					}
+					$groupHistoryIds = array();
+					$collectHistory($sourceHistoryId, $groupHistoryIds);
+					foreach ($groupHistoryIds as $groupHistoryId) {
+						$processedHistoryIds[$groupHistoryId] = true;
+					}
+					$pointGroups[] = array('rootId' => $sourceHistoryId, 'historyIds' => array_values($groupHistoryIds), 'isTension' => false);
+				}
+
+				foreach ($pointGroups as $pointGroup) {
+					$sourceHistoryId = (int)$pointGroup['rootId'];
+					$historyRecord = $historyById[$sourceHistoryId];
+					$pointHolonSourceId = (int)($historyRecord['sourceHolonId'] ?? 0);
+					$pointHolonId = isset($holonIdMap[$pointHolonSourceId]) ? (int)$holonIdMap[$pointHolonSourceId] : null;
+					$pointSourceUserId = !empty($pointGroup['isTension'])
+						? (int)($historyRecord['sourceTensionUserId'] ?? 0)
+						: (int)($historyRecord['sourceUserId'] ?? 0);
+					if ($pointSourceUserId <= 0 && !empty($pointGroup['isTension'])) {
+						$pointSourceUserId = (int)($historyRecord['sourceUserId'] ?? 0);
+					}
+					$pointUserId = isset($userIdMap[$pointSourceUserId]) ? (int)$userIdMap[$pointSourceUserId] : null;
+					$title = !empty($pointGroup['isTension'])
+						? self::omo1ImportPlainText($historyRecord['tensionTitle'] ?? '', 120)
+						: self::omo1ImportPlainText($historyRecord['title'] ?? '', 120);
+					if ($title === '') {
+						$title = 'Point OMO 1 #' . $sourceHistoryId;
+					}
+					$content = '';
+					foreach ($pointGroup['historyIds'] as $groupHistoryId) {
+						$groupHistoryRecord = $historyById[(int)$groupHistoryId];
+						$content .= self::omo1ImportPvPointContent($groupHistoryRecord, (int)$groupHistoryId !== $sourceHistoryId);
+					}
+					$point = new \dbObject\DocumentPvPoint();
+					$point->set('IDdocument', (int)$document->getId());
+					$point->set('item_type', isset($historyRecord['itemType'])
+						? \dbObject\DocumentPvPoint::normalizeItemType($historyRecord['itemType'])
+						: \dbObject\DocumentPvPoint::ITEM_TYPE_POINT);
+					$point->set('title', $title);
+					$point->set('content', $content);
+					$point->set(
+						'pointtype',
+						isset($historyRecord['pointtype'])
+							? \dbObject\DocumentPvPoint::normalizePointType($historyRecord['pointtype'])
+							: (($historyRecord['legacyPointType'] ?? '') === 'information'
+								? \dbObject\DocumentPvPoint::TYPE_INFORMATION
+								: \dbObject\DocumentPvPoint::TYPE_CONSULTATION)
+					);
+					$point->set('position', max(1, (int)($historyRecord['position'] ?? 1)));
+					$point->set('author_email', self::omo1ImportLimitText($historyRecord['authorEmail'] ?? '', 250) ?: null);
+					$point->set('priority', \dbObject\DocumentPvPoint::normalizePriority($historyRecord['priority'] ?? 3));
+					$point->set('desired_duration_minutes', max(0, (int)($historyRecord['desiredDurationMinutes'] ?? 0)));
+					$point->set('actual_duration_minutes', max(0, (int)($historyRecord['actualDurationMinutes'] ?? 0)));
+					$point->set('IDuser_author', $pointUserId);
+					$pointModificationSourceUserId = (int)($historyRecord['sourceModificationUserId'] ?? 0);
+					$point->set('IDuser_modification', (int)($userIdMap[$pointModificationSourceUserId] ?? 0) ?: $targetUserId);
+					$point->set('IDholon_concerned', $pointHolonId);
+					$point->set('is_handled', array_key_exists('isHandled', $historyRecord) ? (bool)$historyRecord['isHandled'] : true);
+					$point->set('is_confidential', !empty($historyRecord['isConfidential']) ? 1 : 0);
+					$point->set('active', true);
+					$pointCreatedAt = self::omo1ImportDate($historyRecord['createdAt'] ?? null);
+					if ($pointCreatedAt) {
+						$point->set('datecreation', $pointCreatedAt);
+						$point->set('datemodification', $pointCreatedAt);
+					}
+					$pointUpdatedAt = self::omo1ImportDate($historyRecord['updatedAt'] ?? null);
+					if ($pointUpdatedAt) {
+						$point->set('datemodification', $pointUpdatedAt);
+					}
+					self::omo1ImportSave($point, 'Un point de proces-verbal n a pas pu etre cree');
+					if (isset($historyRecord['itemType'])) {
+						$nativePointIdMap[$sourceHistoryId] = (int)$point->getId();
+						$nativePointParentSourceMap[$sourceHistoryId] = (int)($historyRecord['sourceParentId'] ?? 0);
+					}
+					$stats['pvPoints'] += 1;
+				}
+
+				foreach ($nativePointParentSourceMap as $sourcePointId => $sourceParentId) {
+					$targetPointId = (int)($nativePointIdMap[$sourcePointId] ?? 0);
+					$targetParentId = (int)($nativePointIdMap[$sourceParentId] ?? 0);
+					if ($targetPointId <= 0 || $targetParentId <= 0 || $targetPointId === $targetParentId) {
+						continue;
+					}
+					$point = new \dbObject\DocumentPvPoint();
+					if (!$point->load($targetPointId)) {
+						continue;
+					}
+					$point->set('IDparent', $targetParentId);
+					self::omo1ImportSave($point, 'La hierarchie des points de proces-verbal n a pas pu etre recreee');
+				}
+			}
+		}
+
+		protected static function omo1ImportCalendar(\dbObject\Organization $organization, array $records, $actorUserId, array $userIdMap, array $holonIdMap, array &$eventIdMap, array &$stats)
+		{
+			foreach ($records as $record) {
+				if (!is_array($record) || (int)($record['sourceId'] ?? 0) <= 0) {
+					continue;
+				}
+				$sourceHolonId = (int)($record['sourceHolonId'] ?? 0);
+				$targetHolonId = isset($holonIdMap[$sourceHolonId]) ? (int)$holonIdMap[$sourceHolonId] : null;
+				$startAt = self::omo1ImportDate($record['openedAt'] ?? null) ?: self::omo1ImportScheduledDate($record['scheduledAt'] ?? null, $record['startTime'] ?? null);
+				$endAt = self::omo1ImportDate($record['closedAt'] ?? null) ?: self::omo1ImportScheduledDate($record['scheduledAt'] ?? null, $record['endTime'] ?? null);
+				if (!$startAt) {
+					continue;
+				}
+				if (!$endAt || $endAt < $startAt) {
+					$endAt = $startAt->modify('+1 hour');
+				}
+				$title = self::omo1ImportLimitText($record['title'] ?? '', 190);
+				if ($title === '') {
+					$meetingTypeTitles = array(
+						1 => 'Reunion de gouvernance',
+						2 => 'Reunion operationnelle',
+						3 => 'Reunion mixte',
+						4 => 'Reunion de strategie',
+						5 => 'Reunion de travail',
+						6 => 'Reunion de regulation',
+						7 => 'Reunion informelle',
+					);
+					$legacyMeetingTypeId = (int)($record['legacyMeetingTypeId'] ?? 0);
+					$legacyMeetingTypeLabel = self::omo1ImportLimitText($record['legacyMeetingTypeLabel'] ?? '', 160);
+					$title = $meetingTypeTitles[$legacyMeetingTypeId]
+						?? ($legacyMeetingTypeLabel !== '' ? 'Reunion ' . $legacyMeetingTypeLabel : 'Reunion OMO 1');
+				}
+				$event = new \dbObject\Event();
+				$event->set('IDorganization', (int)$organization->getId());
+				$event->set('IDholon', $targetHolonId);
+				$sourceUserId = (int)($record['sourceUserId'] ?? 0);
+				$event->set('IDuser', isset($userIdMap[$sourceUserId]) ? (int)$userIdMap[$sourceUserId] : (int)$actorUserId);
+				$event->set('title', $title);
+				$event->set('description', $record['scratchpad'] ?? null);
+				$event->set('status', \dbObject\Event::STATUS_CONFIRMED);
+				$event->set('timezone', 'Europe/Zurich');
+				$event->set('locationaddress', $record['location'] ?? null);
+				$event->set('start_at', $startAt);
+				$event->set('end_at', $endAt);
+				$event->set('is_all_day', false);
+				$event->set('active', !array_key_exists('active', $record) || (bool)$record['active']);
+				$createdAt = self::omo1ImportDate($record['createdAt'] ?? null);
+				if ($createdAt) {
+					$event->set('created_at', $createdAt);
+				}
+				$updatedAt = self::omo1ImportDate($record['updatedAt'] ?? null);
+				if ($updatedAt) {
+					$event->set('updated_at', $updatedAt);
+				}
+				self::omo1ImportSave($event, 'Une reunion du calendrier n a pas pu etre creee');
+				$eventIdMap[(int)$record['sourceId']] = (int)$event->getId();
+				$stats['calendar'] += 1;
+			}
+		}
+
+		protected static function omo1ImportJournalTrim($value, $maximumLength = 12000)
+		{
+			$value = (string)$value;
+			$maximumLength = max(1, (int)$maximumLength);
+			if (function_exists('mb_strlen') && function_exists('mb_substr')) {
+				return mb_strlen($value, 'UTF-8') > $maximumLength
+					? mb_substr($value, 0, $maximumLength, 'UTF-8') . '...'
+					: $value;
+			}
+
+			return strlen($value) > $maximumLength ? substr($value, 0, $maximumLength) . '...' : $value;
+		}
+
+		protected static function omo1ImportJournalWrite($event, array $details = array())
+		{
+			if (!is_array(self::$omo1ImportJournal) || empty(self::$omo1ImportJournal['path'])) {
+				return;
+			}
+
+			$startedAt = isset(self::$omo1ImportJournal['startedAt']) ? (float)self::$omo1ImportJournal['startedAt'] : microtime(true);
+			$entry = array_merge(array(
+				'time' => date('c'),
+				'reference' => (string)(self::$omo1ImportJournal['reference'] ?? ''),
+				'event' => trim((string)$event),
+				'elapsedMs' => (int)round((microtime(true) - $startedAt) * 1000),
+				'memoryMiB' => round(memory_get_usage(true) / 1024 / 1024, 1),
+			), $details);
+			$encodedDetails = json_encode($entry, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+			if (!is_string($encodedDetails)) {
+				$encodedDetails = '{"event":"journal_encoding_failed"}';
+			}
+
+			$line = '[' . date('c') . '] ' . trim((string)$event) . ' ' . $encodedDetails . PHP_EOL;
+			if (@file_put_contents((string)self::$omo1ImportJournal['path'], $line, FILE_APPEND | LOCK_EX) === false) {
+				error_log('OMO1 import journal write failed for ' . (string)(self::$omo1ImportJournal['reference'] ?? 'unknown'));
+			}
+		}
+
+		protected static function omo1ImportJournalStart(array $payload, array $selectedModules, array $templateCalibration, $actorUserId)
+		{
+			try {
+				$randomPart = bin2hex(random_bytes(8));
+			} catch (\Throwable $exception) {
+				$randomPart = str_replace('.', '', uniqid('', true));
+			}
+			$reference = 'omo1-' . date('Ymd-His') . '-' . $randomPart;
+			$directory = \commonRuntimeLogPath('omo1-import-failures');
+			if (!is_dir($directory) && !@mkdir($directory, 0770, true)) {
+				error_log('OMO1 import journal directory could not be created for ' . $reference);
+				return '';
+			}
+
+			self::$omo1ImportJournal = array(
+				'reference' => $reference,
+				'path' => $directory . DIRECTORY_SEPARATOR . $reference . '.log',
+				'startedAt' => microtime(true),
+			);
+			$moduleSummary = array();
+			$sourceModules = isset($payload['modules']) && is_array($payload['modules']) ? $payload['modules'] : array();
+			foreach ($selectedModules as $module => $selected) {
+				$moduleData = isset($sourceModules[$module]) && is_array($sourceModules[$module]) ? $sourceModules[$module] : array();
+				$moduleSummary[$module] = array(
+					'selected' => (bool)$selected,
+					'recordCount' => isset($moduleData['records']) && is_array($moduleData['records']) ? count($moduleData['records']) : 0,
+				);
+			}
+			self::omo1ImportJournalWrite('import_started', array(
+				'actorUserId' => (int)$actorUserId,
+				'sourceOrganizationId' => (int)($payload['organization']['sourceId'] ?? 0),
+				'modules' => $moduleSummary,
+				'templateRootHolonId' => (int)($templateCalibration['templateRootHolonId'] ?? 0),
+				'templateMappingCount' => isset($templateCalibration['mappings']) && is_array($templateCalibration['mappings']) ? count($templateCalibration['mappings']) : 0,
+				'excludedTemplateCount' => isset($templateCalibration['excludedTemplateIds']) && is_array($templateCalibration['excludedTemplateIds']) ? count($templateCalibration['excludedTemplateIds']) : 0,
+			));
+			register_shutdown_function(function () use ($reference) {
+				self::omo1ImportJournalHandleShutdown($reference);
+			});
+
+			return $reference;
+		}
+
+		protected static function omo1ImportJournalLastDbError()
+		{
+			$lastDbError = self::getLastDbError();
+			if (!is_array($lastDbError)) {
+				return null;
+			}
+
+			$params = isset($lastDbError['params']) && is_array($lastDbError['params']) ? $lastDbError['params'] : array();
+			return array(
+				'query' => self::omo1ImportJournalTrim($lastDbError['query'] ?? '', 5000),
+				'parameterKeys' => array_values(array_map('strval', array_keys($params))),
+				'message' => self::omo1ImportJournalTrim($lastDbError['message'] ?? '', 3000),
+				'code' => (int)($lastDbError['code'] ?? 0),
+				'time' => (string)($lastDbError['time'] ?? ''),
+			);
+		}
+
+		protected static function omo1ImportJournalHandleShutdown($reference)
+		{
+			if (!is_array(self::$omo1ImportJournal) || (string)(self::$omo1ImportJournal['reference'] ?? '') !== (string)$reference) {
+				return;
+			}
+
+			$lastError = error_get_last();
+			$fatalErrorTypes = array(E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR, E_RECOVERABLE_ERROR);
+			if (is_array($lastError) && in_array((int)($lastError['type'] ?? 0), $fatalErrorTypes, true)) {
+				self::omo1ImportJournalWrite('fatal_error', array(
+					'errorType' => (int)($lastError['type'] ?? 0),
+					'message' => self::omo1ImportJournalTrim($lastError['message'] ?? '', 5000),
+					'file' => (string)($lastError['file'] ?? ''),
+					'line' => (int)($lastError['line'] ?? 0),
+				));
+			} else {
+				self::omo1ImportJournalWrite('request_interrupted_before_completion');
+			}
+		}
+
+		protected static function omo1ImportJournalFinish($success, array $details = array())
+		{
+			if (!is_array(self::$omo1ImportJournal)) {
+				return '';
+			}
+
+			$reference = (string)(self::$omo1ImportJournal['reference'] ?? '');
+			$path = (string)(self::$omo1ImportJournal['path'] ?? '');
+			self::omo1ImportJournalWrite($success ? 'import_completed' : 'import_failed', $details);
+			if ($success) {
+				if ($path !== '' && is_file($path) && !@unlink($path)) {
+					error_log('OMO1 import journal cleanup failed for ' . $reference);
+				}
+			} else {
+				error_log('OMO1 import failed. Journal reference: ' . $reference);
+			}
+
+			self::$omo1ImportJournal = null;
+			return $reference;
+		}
+
+		public static function importOmo1ExportAsNewOrganization(array $payload, array $requestedModules, $actorUserId, $organizationName = '', array $templateCalibration = array(), array $importOptions = array())
+		{
+			$actorUserId = (int)$actorUserId;
+			if ($actorUserId <= 0) {
+				return array('status' => false, 'message' => 'Connexion requise.');
+			}
+			if (!array_key_exists('sendMemberInvitationEmails', $importOptions) || !is_bool($importOptions['sendMemberInvitationEmails'])) {
+				return array('status' => false, 'message' => 'Choisissez explicitement si les e-mails d invitation aux membres doivent etre envoyes.');
+			}
+			$sendMemberInvitationEmails = $importOptions['sendMemberInvitationEmails'];
+			if ((string)($payload['format'] ?? '') !== 'openmyorganization-structure-export' || (int)($payload['version'] ?? 0) !== 4) {
+				return array('status' => false, 'message' => 'Le fichier doit etre un export OMO compact version 4.');
+			}
+			$mediaWarnings = array();
+			$payload = self::sanitizeOmo1ImportedMediaReferences($payload, $mediaWarnings);
+
+			$availableModules = array('structure', 'rules', 'members', 'documents', 'projects', 'tasks', 'checklists', 'indicators', 'calendar', 'pv');
+			$sourceModules = isset($payload['modules']) && is_array($payload['modules']) ? $payload['modules'] : array();
+			$isOmo2Export = (string)($payload['source']['system'] ?? '') === 'omo2';
+			if ($isOmo2Export && !isset($sourceModules['rules']) && isset($payload['rules']) && is_array($payload['rules'])) {
+				$sourceModules['rules'] = array('selected' => true, 'count' => count($payload['rules']), 'records' => array());
+				$payload['modules']['rules'] = $sourceModules['rules'];
+			}
+			$selectedModules = array();
+			foreach ($availableModules as $module) {
+				$selectedModules[$module] = !empty($requestedModules[$module]) && !empty($sourceModules[$module]['selected']);
+			}
+			if ($selectedModules['tasks']) {
+				$selectedModules['projects'] = !empty($sourceModules['projects']['selected']);
+			}
+			if ($selectedModules['pv']) {
+				if (empty($sourceModules['calendar']['selected'])) {
+					return array('status' => false, 'message' => 'Les proces-verbaux OMO 1 necessitent aussi la section calendrier.');
+				}
+				$selectedModules['calendar'] = true;
+			}
+			if (!$selectedModules['structure']) {
+				return array('status' => false, 'message' => 'La structure doit etre selectionnee pour creer une organisation importee.');
+			}
+
+			$sourceOrganization = isset($payload['organization']) && is_array($payload['organization']) ? $payload['organization'] : array();
+			$name = trim((string)$organizationName);
+			if ($name === '') {
+				$name = trim((string)($sourceOrganization['name'] ?? ''));
+			}
+			if ($name === '') {
+				return array('status' => false, 'message' => 'Le nom de la nouvelle organisation est obligatoire.');
+			}
+			$hasAppliedOrganizationModel = (int)($templateCalibration['templateRootHolonId'] ?? 0) > 0
+				&& isset($templateCalibration['mappings'])
+				&& is_array($templateCalibration['mappings'])
+				&& count($templateCalibration['mappings']) > 0;
+			$authorityObjectModelApplied = false;
+			if ($hasAppliedOrganizationModel) {
+				$templateRootHolon = new \dbObject\Holon();
+				if ($templateRootHolon->load((int)$templateCalibration['templateRootHolonId'])) {
+					$authorityObjectModelApplied = (new self())->templateTreeUsesAuthorityProperties($templateRootHolon);
+				}
+			}
+			if (!$authorityObjectModelApplied) {
+				$payload = self::omo1ImportUseTextListsForAuthorityDomains($payload);
+			}
+
+			$importJournalReference = self::omo1ImportJournalStart($payload, $selectedModules, $templateCalibration, $actorUserId);
+			self::omo1ImportJournalWrite('organization_creation_started');
+			$organization = new self();
+			$organization->set('name', self::omo1ImportLimitText($name, 100));
+			$organization->set('interface_level', self::INTERFACE_LEVEL_AUTONOMOUS);
+			$organization->set('color', trim((string)($sourceOrganization['color'] ?? '')) ?: null);
+			$organization->set('logo', $sourceOrganization['logo'] ?? null);
+			$organization->set('banner', $sourceOrganization['banner'] ?? null);
+			$earliestImportDate = self::omo1ImportEarliestImportedDate($payload, $selectedModules);
+			if ($earliestImportDate) {
+				$organization->set('datecreation', $earliestImportDate);
+			}
+			$organizationSave = $organization->save();
+			if (!is_array($organizationSave) || empty($organizationSave['status']) || (int)$organization->getId() <= 0) {
+				$importJournalReference = self::omo1ImportJournalFinish(false, array(
+					'errorClass' => 'OrganizationSaveFailure',
+					'message' => 'La nouvelle organisation n a pas pu etre creee.',
+					'lastDbError' => self::omo1ImportJournalLastDbError(),
+				));
+				return array(
+					'status' => false,
+					'message' => 'La nouvelle organisation n a pas pu etre creee.',
+					'importJournalReference' => $importJournalReference,
+				);
+			}
+			self::omo1ImportJournalWrite('organization_created', array(
+				'organizationId' => (int)$organization->getId(),
+			));
+
+			try {
+				self::omo1ImportJournalWrite('organization_membership_started');
+				self::omo1ImportUserMembership($organization, $actorUserId, true);
+				self::omo1ImportJournalWrite('organization_membership_completed');
+				self::omo1ImportJournalWrite('structure_import_started');
+				$structurePayload = $payload;
+				if (!$selectedModules['rules']) {
+					$structurePayload['rules'] = array();
+				}
+				$structureResult = $organization->importStructure($structurePayload, $actorUserId, $templateCalibration);
+				if (empty($structureResult['status']) || !($structureResult['rootHolon'] ?? null) instanceof \dbObject\Holon) {
+					throw new \RuntimeException((string)($structureResult['message'] ?? 'La structure n a pas pu etre importee.'));
+				}
+				self::omo1ImportJournalWrite('structure_import_completed', array(
+					'holonCount' => isset($structureResult['holonIdMap']) && is_array($structureResult['holonIdMap']) ? count($structureResult['holonIdMap']) : 0,
+					'warningCount' => isset($structureResult['warnings']) && is_array($structureResult['warnings']) ? count($structureResult['warnings']) : 0,
+				));
+
+				self::omo1ImportJournalWrite('application_configuration_started');
+				$organization->ensureDefaultApplicationLinks();
+				$pdo = \dbObject\DbObject::getPdo();
+				if (!$pdo) {
+					throw new \RuntimeException('La connexion a la base de donnees est indisponible.');
+				}
+				$pdo->beginTransaction();
+				self::omo1ImportJournalWrite('content_transaction_started');
+				$applicationSync = $organization->synchronizeOmo1ImportedApplicationLinks($selectedModules, $sourceModules);
+				if (empty($applicationSync['status'])) {
+					throw new \RuntimeException((string)($applicationSync['message'] ?? 'Les applications de l organisation n ont pas pu etre configurees.'));
+				}
+				self::omo1ImportJournalWrite('application_configuration_completed', array(
+					'activeApplications' => isset($applicationSync['activeApplications']) && is_array($applicationSync['activeApplications']) ? $applicationSync['activeApplications'] : array(),
+				));
+				$holonIdMap = isset($structureResult['holonIdMap']) && is_array($structureResult['holonIdMap']) ? $structureResult['holonIdMap'] : array();
+				$rulesRecords = $selectedModules['rules'] && !$isOmo2Export ? self::omo1ImportModuleRecords($payload, 'rules') : array();
+				$ruleDomainRecords = $selectedModules['rules'] && !$isOmo2Export ? self::omo1ImportRuleDomains($payload, $rulesRecords) : array();
+				$userIdMap = array();
+				$documentIdMap = array();
+				$documentProjectSourceMap = array();
+				$documentParentSourceMap = array();
+				$projectIdMap = array();
+				$taskIdMap = array();
+				$eventIdMap = array();
+				$pendingUserIds = array();
+				$pendingInvitations = array();
+				$stats = array('members' => 0, 'invitations' => 0, 'roleAssignments' => 0, 'authorities' => 0, 'rules' => 0, 'documents' => 0, 'projects' => 0, 'projectFollowers' => 0, 'tasks' => 0, 'activities' => 0, 'skippedActivities' => 0, 'processes' => 0, 'processItems' => 0, 'indicators' => 0, 'indicatorValues' => 0, 'calendar' => 0, 'pv' => 0, 'pvPoints' => 0);
+				if ($isOmo2Export && $selectedModules['rules']) {
+					$importedRules = new \dbObject\ArrayRule();
+					$importedRules->loadForPolicyContexts((int)$organization->getId(), array(), false, 'global');
+					$stats['rules'] = count($importedRules);
+				}
+				$warnings = array_merge(
+					$mediaWarnings,
+					isset($structureResult['warnings']) && is_array($structureResult['warnings'])
+						? $structureResult['warnings']
+						: array()
+				);
+
+				if ($selectedModules['members']) {
+					self::omo1ImportJournalWrite('module_members_started', array(
+						'recordCount' => count(self::omo1ImportModuleRecords($payload, 'members')),
+					));
+					$memberRecords = self::omo1ImportModuleRecords($payload, 'members');
+					self::omo1ImportMembers($organization, $memberRecords, $actorUserId, $userIdMap, $pendingUserIds, $pendingInvitations, $stats, $warnings, $sendMemberInvitationEmails);
+					self::omo1ImportRoleAssignments($memberRecords, $userIdMap, $holonIdMap, $pendingUserIds, $stats);
+					self::omo1ImportJournalWrite('module_members_completed', array(
+						'members' => (int)$stats['members'],
+						'roleAssignments' => (int)$stats['roleAssignments'],
+						'pendingInvitations' => count($pendingInvitations),
+					));
+				}
+				if ($selectedModules['rules'] && !$isOmo2Export) {
+					self::omo1ImportJournalWrite('module_rules_started', array(
+						'ruleCount' => count($rulesRecords),
+						'authorityCount' => count($ruleDomainRecords),
+					));
+					$authorityImportResult = self::omo1ImportAuthorities(
+						$organization,
+						$ruleDomainRecords,
+						$holonIdMap,
+						$stats,
+						$warnings,
+						array('hasAppliedOrganizationModel' => $authorityObjectModelApplied)
+					);
+					$authorityIdMap = isset($authorityImportResult['authorityIdMap']) && is_array($authorityImportResult['authorityIdMap'])
+						? $authorityImportResult['authorityIdMap']
+						: array();
+					$authorityIdsByHolonId = isset($authorityImportResult['authorityIdsByHolonId']) && is_array($authorityImportResult['authorityIdsByHolonId'])
+						? $authorityImportResult['authorityIdsByHolonId']
+						: array();
+					$organization->omo1ImportConvertAuthorityPropertyValues(
+						$payload,
+						$ruleDomainRecords,
+						$authorityIdMap,
+						$authorityIdsByHolonId,
+						$holonIdMap,
+						isset($structureResult['propertyIdMap']) && is_array($structureResult['propertyIdMap']) ? $structureResult['propertyIdMap'] : array(),
+						isset($structureResult['templatePropertyIdMaps']) && is_array($structureResult['templatePropertyIdMaps']) ? $structureResult['templatePropertyIdMaps'] : array(),
+						isset($structureResult['templateExcludedPropertyIds']) && is_array($structureResult['templateExcludedPropertyIds']) ? $structureResult['templateExcludedPropertyIds'] : array(),
+						isset($structureResult['mappedSourceTemplateIds']) && is_array($structureResult['mappedSourceTemplateIds']) ? $structureResult['mappedSourceTemplateIds'] : array(),
+						$warnings,
+						false
+					);
+					self::omo1ImportRules($organization, $rulesRecords, $actorUserId, $userIdMap, $holonIdMap, $authorityIdMap, $authorityIdsByHolonId, $stats, $warnings, $authorityObjectModelApplied);
+					self::omo1ImportJournalWrite('module_rules_completed', array(
+						'authorities' => (int)$stats['authorities'],
+						'rules' => (int)$stats['rules'],
+					));
+				}
+				if ($selectedModules['documents']) {
+					self::omo1ImportJournalWrite('module_documents_started');
+					self::omo1ImportDocuments($organization, self::omo1ImportModuleRecords($payload, 'documents'), $actorUserId, $userIdMap, $holonIdMap, $documentIdMap, $documentProjectSourceMap, $documentParentSourceMap, $stats, $warnings);
+					self::omo1ImportDocumentParents($documentIdMap, $documentParentSourceMap);
+					self::omo1ImportJournalWrite('module_documents_completed', array('documents' => (int)$stats['documents']));
+				}
+				if ($selectedModules['projects']) {
+					self::omo1ImportJournalWrite('module_projects_started');
+					$projectRecords = self::omo1ImportModuleRecords($payload, 'projects');
+					self::omo1ImportProjects($organization, $projectRecords, $actorUserId, $userIdMap, $holonIdMap, $documentIdMap, $documentProjectSourceMap, $projectIdMap, $stats);
+					self::omo1ImportProjectUsers($projectRecords, $projectIdMap, $userIdMap);
+					self::omo1ImportProjectFollowers($projectRecords, $projectIdMap, $userIdMap, $stats, $warnings);
+					self::omo1ImportJournalWrite('module_projects_completed', array(
+						'projects' => (int)$stats['projects'],
+						'projectFollowers' => (int)$stats['projectFollowers'],
+					));
+				}
+				if ($selectedModules['tasks']) {
+					self::omo1ImportJournalWrite('module_tasks_started');
+					self::omo1ImportTasks($organization, self::omo1ImportModuleRecords($payload, 'tasks'), $actorUserId, $userIdMap, $holonIdMap, $projectIdMap, $taskIdMap, $stats, $warnings);
+					self::omo1ImportJournalWrite('module_tasks_completed', array('tasks' => (int)$stats['tasks']));
+				}
+				if ($selectedModules['documents'] && ($selectedModules['projects'] || $selectedModules['tasks'])) {
+					self::omo1ImportJournalWrite('project_document_links_started');
+					self::omo1ImportLinkDocumentsToProjects($documentIdMap, $documentProjectSourceMap, $projectIdMap, $taskIdMap);
+					self::omo1ImportJournalWrite('project_document_links_completed');
+				}
+				$organization->remapImportedProjectPropertyValues($projectIdMap, $taskIdMap);
+				if ($selectedModules['checklists']) {
+					self::omo1ImportJournalWrite('module_activities_started');
+					$checklistRecords = self::omo1ImportModuleRecords($payload, 'checklists');
+					$processRecords = array();
+					$legacyActivityRecords = array();
+					foreach ($checklistRecords as $checklistRecord) {
+						if (is_array($checklistRecord) && (($checklistRecord['recordType'] ?? '') === 'process' || isset($checklistRecord['kind'], $checklistRecord['trigger']))) {
+							$processRecords[] = $checklistRecord;
+						} else {
+							$legacyActivityRecords[] = $checklistRecord;
+						}
+					}
+					$processImportMaps = array();
+					self::omo1ImportProcesses($organization, $processRecords, $userIdMap, $holonIdMap, $stats, $processImportMaps);
+					self::omo1ImportProcessRuns($organization, $processRecords, $processImportMaps, $projectIdMap, $taskIdMap, $userIdMap, $holonIdMap);
+					self::omo1ImportActivities($organization, $legacyActivityRecords, $userIdMap, $holonIdMap, $stats);
+					self::omo1ImportJournalWrite('module_activities_completed', array(
+						'activities' => (int)$stats['activities'],
+						'skippedActivities' => (int)$stats['skippedActivities'],
+						'processes' => (int)$stats['processes'],
+						'processItems' => (int)$stats['processItems'],
+					));
+				}
+				if ($selectedModules['indicators']) {
+					self::omo1ImportJournalWrite('module_indicators_started');
+					self::omo1ImportIndicators($organization, self::omo1ImportModuleRecords($payload, 'indicators'), $actorUserId, $userIdMap, $holonIdMap, $stats);
+					self::omo1ImportJournalWrite('module_indicators_completed', array('indicators' => (int)$stats['indicators']));
+				}
+				if ($selectedModules['calendar']) {
+					self::omo1ImportJournalWrite('module_calendar_started');
+					self::omo1ImportCalendar($organization, self::omo1ImportModuleRecords($payload, 'calendar'), $actorUserId, $userIdMap, $holonIdMap, $eventIdMap, $stats);
+					self::omo1ImportJournalWrite('module_calendar_completed', array('calendar' => (int)$stats['calendar']));
+				}
+				if ($selectedModules['pv']) {
+					self::omo1ImportJournalWrite('module_pv_started');
+					self::omo1ImportPvs($organization, self::omo1ImportModuleRecords($payload, 'pv'), $actorUserId, $userIdMap, $holonIdMap, $eventIdMap, $stats, $warnings);
+					self::omo1ImportJournalWrite('module_pv_completed', array(
+						'pv' => (int)$stats['pv'],
+						'pvPoints' => (int)$stats['pvPoints'],
+					));
+				}
+				$pdo->commit();
+				self::omo1ImportJournalWrite('content_transaction_completed');
+				self::omo1ImportJournalWrite('basic_parcours_started');
+				$basicParcoursResult = $organization->instantiateBasicParcours();
+				if (is_array($basicParcoursResult) && empty($basicParcoursResult['status'])) {
+					$warnings[] = 'Les tutoriels de base n ont pas pu etre rattaches a l organisation importee.';
+					error_log('organization basic parcours init failed for OMO 1 import org ' . (int)$organization->getId());
+				}
+				self::omo1ImportJournalWrite('basic_parcours_completed', array(
+					'status' => !is_array($basicParcoursResult) || !empty($basicParcoursResult['status']),
+				));
+				if ($sendMemberInvitationEmails) {
+					self::omo1ImportJournalWrite('member_invitations_started', array('count' => count($pendingInvitations)));
+					foreach ($pendingInvitations as $pendingInvitation) {
+						try {
+							$pendingInvitation->sendEmail();
+							$stats['invitations'] += 1;
+						} catch (\Throwable $exception) {
+							$warnings[] = 'L invitation pour ' . trim((string)$pendingInvitation->get('email')) . ' n a pas pu etre envoyee.';
+						}
+					}
+					self::omo1ImportJournalWrite('member_invitations_completed', array('sent' => (int)$stats['invitations']));
+				}
+				self::omo1ImportJournalFinish(true, array(
+					'organizationId' => (int)$organization->getId(),
+					'stats' => $stats,
+					'warningCount' => count(array_unique($warnings)),
+				));
+
+				return array(
+					'status' => true,
+					'message' => 'La nouvelle organisation a ete importee.',
+					'organization' => $organization,
+					'rootHolon' => $structureResult['rootHolon'],
+					'holonIdMap' => $holonIdMap,
+					'stats' => $stats,
+					'warnings' => array_values(array_unique($warnings)),
+					'applications' => $applicationSync['activeApplications'] ?? array(),
+				);
+			} catch (\Throwable $exception) {
+				$pdo = \dbObject\DbObject::getPdo();
+				if ($pdo && $pdo->inTransaction()) {
+					$pdo->rollBack();
+				}
+				$importJournalReference = self::omo1ImportJournalFinish(false, array(
+					'organizationId' => (int)$organization->getId(),
+					'errorClass' => get_class($exception),
+					'message' => self::omo1ImportJournalTrim($exception->getMessage(), 5000),
+					'file' => $exception->getFile(),
+					'line' => (int)$exception->getLine(),
+					'trace' => self::omo1ImportJournalTrim($exception->getTraceAsString(), 12000),
+					'lastDbError' => self::omo1ImportJournalLastDbError(),
+				));
+				return array(
+					'status' => false,
+					'message' => $exception->getMessage(),
+					'organization' => $organization,
+					'importJournalReference' => $importJournalReference,
+				);
+			}
+		}
+
+		/**
+		 * Creates a private organization from a public model. The model is read on
+		 * the server only: a browser can never supply an arbitrary export payload.
+		 */
+		public static function createFromPublicModel($modelOrganizationId, $actorUserId, $organizationName = '', array $definitionOverrides = array())
+		{
+			$modelOrganizationId = (int)$modelOrganizationId;
+			$actorUserId = (int)$actorUserId;
+			$organizationName = trim((string)$organizationName);
+			$definitionOverrides = array_intersect_key($definitionOverrides, array_flip(array(
+				'name',
+				'shortname',
+				'domain',
+				'color',
+				'latlong',
+				'interface_level',
+				'logo',
+				'banner',
+			)));
+			$model = new self();
+			if ($modelOrganizationId <= 0 || !$model->load($modelOrganizationId) || !$model->isSharedAsTemplate()) {
+				return array('status' => false, 'message' => 'Le modèle public sélectionné est introuvable.');
+			}
+			if ($actorUserId <= 0) {
+				return array('status' => false, 'message' => 'Connexion requise.');
+			}
+			if ($organizationName === '') {
+				return array('status' => false, 'message' => 'Le nom de l’organisation est obligatoire.');
+			}
+
+			$selectedModules = array(
+				'structure' => true,
+				'rules' => false,
+				'members' => false,
+				'documents' => true,
+				'projects' => true,
+				'tasks' => true,
+				'checklists' => true,
+				'indicators' => true,
+				'calendar' => false,
+				'pv' => false,
+			);
+			$payload = \dbObject\OrganizationExport::build($model, $selectedModules);
+			// A model contains definitions, never its temporal observations.
+			foreach ((array)($payload['modules']['indicators']['records'] ?? array()) as $index => $indicator) {
+				$payload['modules']['indicators']['records'][$index]['values'] = array();
+			}
+
+			$result = self::importOmo1ExportAsNewOrganization(
+				$payload,
+				$selectedModules,
+				$actorUserId,
+				$organizationName,
+				array(),
+				array('sendMemberInvitationEmails' => false)
+			);
+			if (empty($result['status']) || !($result['organization'] ?? null) instanceof self) {
+				return $result;
+			}
+
+			$copyResult = self::copyPublicModelConfiguration(
+				$model,
+				$result['organization'],
+				is_array($result['holonIdMap'] ?? null) ? $result['holonIdMap'] : array()
+			);
+			if (empty($copyResult['status'])) {
+				return array('status' => false, 'message' => (string)$copyResult['message'], 'organization' => $result['organization']);
+			}
+
+			if (count($definitionOverrides) > 0) {
+				$target = $result['organization'];
+				$target->loadFromArray($definitionOverrides);
+				$target->set('isModel', false);
+				if (trim((string)$target->get('name')) === '') {
+					return array('status' => false, 'message' => 'Le nom de l’organisation est obligatoire.', 'organization' => $target);
+				}
+				$definitionSave = $target->save();
+				if (!is_array($definitionSave) || empty($definitionSave['status'])) {
+					return array(
+						'status' => false,
+						'message' => (string)($definitionSave['text'] ?? 'La définition de l’organisation n’a pas pu être enregistrée.'),
+						'organization' => $target,
+					);
+				}
+			}
+
+			$result['message'] = 'Organisation créée depuis le modèle public.';
+			return $result;
+		}
+
+		protected static function copyPublicModelConfiguration(self $source, self $target, array $holonIdMap): array
+		{
+			$sourceId = (int)$source->getId();
+			$targetId = (int)$target->getId();
+			if ($sourceId <= 0 || $targetId <= 0) {
+				return array('status' => false, 'message' => 'Configuration de modele invalide.');
+			}
+			$pdo = \dbObject\DbObject::getPdo();
+			if (!$pdo) {
+				return array('status' => false, 'message' => 'La connexion a la base de donnees est indisponible.');
+			}
+
+			try {
+				$pdo->beginTransaction();
+				// Parameters contain the lexicon and the organization-level dashboard
+				// and application-view defaults. They do not contain activity history.
+				$target->set('parameters', $source->getLexiconParameters());
+				$target->setPropertyTypeSettings($source->getPropertyTypeSettings());
+				$target->set('isModel', false);
+				$targetSave = $target->save();
+				if (!is_array($targetSave) || empty($targetSave['status'])) {
+					throw new \RuntimeException('Les reglages de l organisation du modele n ont pas pu etre copies.');
+				}
+
+				$sourceLinks = new \dbObject\ArrayOrganizationApplication();
+				$sourceLinks->load(array('where' => array(array('field' => 'IDorganization', 'value' => $sourceId))));
+				foreach ($sourceLinks as $sourceLink) {
+					$link = new \dbObject\OrganizationApplication();
+					if (!$link->load(array(
+						array('IDorganization', $targetId),
+						array('IDapplication', (int)$sourceLink->get('IDapplication')),
+					))) {
+						$link->set('IDorganization', $targetId);
+						$link->set('IDapplication', (int)$sourceLink->get('IDapplication'));
+					}
+					$link->set('position', (int)$sourceLink->get('position'));
+					$link->set('active', (bool)$sourceLink->get('active'));
+					$link->set('parameters', $sourceLink->getParametersArray());
+					$linkSave = $link->save();
+					if (!is_array($linkSave) || empty($linkSave['status'])) {
+						throw new \RuntimeException('L etat d activation dune application du modele n a pas pu etre copie.');
+					}
+				}
+
+				$sourceParcours = new \dbObject\ArrayOrganizationParcours();
+				$sourceParcours->load(array('where' => array(array('field' => 'IDorganization', 'value' => $sourceId))));
+				foreach ($sourceParcours as $sourceParcoursLink) {
+					$attached = \dbObject\OrganizationParcours::attachParcoursToOrganization($targetId, (int)$sourceParcoursLink->get('IDparcours'), array(
+						'position' => (int)$sourceParcoursLink->get('position'),
+						'everybody' => (bool)$sourceParcoursLink->get('everybody'),
+						'anonymous' => (bool)$sourceParcoursLink->get('anonymous'),
+					));
+					if (empty($attached['status'])) {
+						throw new \RuntimeException('Un parcours du modele n a pas pu etre rattache.');
+					}
+				}
+
+				if (\dbObject\FAQ::hasFaqTable()) {
+					$faqs = new \dbObject\ArrayFAQ();
+					$faqs->load(array('where' => array(array('field' => 'IDorganization', 'value' => $sourceId))));
+					foreach ($faqs as $sourceFaq) {
+						$faq = new \dbObject\FAQ();
+						$sourceHolonId = (int)$sourceFaq->get('IDholon');
+						$faq->set('IDorganization', $targetId);
+						$faq->set('IDholon', $sourceHolonId > 0 && isset($holonIdMap[$sourceHolonId]) ? (int)$holonIdMap[$sourceHolonId] : null);
+						$faq->set('IDparcours', $sourceFaq->get('IDparcours'));
+						$faq->set('IDapplication', $sourceFaq->get('IDapplication'));
+						$faq->set('question', $sourceFaq->get('question'));
+						$faq->set('answer', $sourceFaq->get('answer'));
+						$faq->set('detail', $sourceFaq->get('detail'));
+						$faq->set('image', $sourceFaq->get('image'));
+						$faq->set('video', $sourceFaq->get('video'));
+						$faq->set('displayorder', $sourceFaq->get('displayorder'));
+						$faq->set('isactive', (bool)$sourceFaq->get('isactive'));
+						$faq->save();
+					}
+				}
+				$pdo->commit();
+				return array('status' => true);
+			} catch (\Throwable $exception) {
+				if ($pdo->inTransaction()) {
+					$pdo->rollBack();
+				}
+				return array('status' => false, 'message' => $exception->getMessage());
+			}
+		}
+
+		public function importStructure(array $payload, $userId = 0, array $templateCalibration = array())
 		{
 			if ((int)$this->getId() <= 0) {
 				return array(
@@ -2319,11 +8304,11 @@
 			if (count($importedHolonRecords) === 0) {
 				return array(
 					'status' => false,
-					'message' => "Le fichier d'import ne contient pas de holons dans le format compact attendu.",
+'message' => "Le fichier d’import ne contient pas d’espaces dans le format compact attendu.",
 				);
 			}
 
-			return $this->importStructureFromCompactGraph($payload, $userId);
+			return $this->importStructureFromCompactGraph($payload, $userId, $templateCalibration);
 		}
 
 		protected function cloneStructuralChildrenRecursively(\dbObject\Holon $sourceParent, $targetParentId, $targetRootHolonId, $userId, array &$sourceHolonsById, array &$targetHolonsBySourceId, array &$holonIdMap)
@@ -2344,12 +8329,17 @@
 				$targetChild->set('mandatory', (bool)$sourceChild->get('mandatory'));
 				$targetChild->set('lockedname', (bool)$sourceChild->get('lockedname'));
 				$targetChild->set('lockedicon', (bool)$sourceChild->get('lockedicon'));
-				$targetChild->set('lockedbanner', (bool)$sourceChild->get('lockedbanner'));
 				$targetChild->set('unique', (bool)$sourceChild->get('unique'));
 				$targetChild->set('link', (bool)$sourceChild->get('link'));
+				$targetChild->set('admin_min', max(0, (int)$sourceChild->get('admin_min')));
+				$targetChild->set('admin_max', $sourceChild->get('admin_max') === null ? null : (int)$sourceChild->get('admin_max'));
+				$targetChild->set('lockedadminmin', (bool)$sourceChild->get('lockedadminmin'));
+				$targetChild->set('lockedadminmax', (bool)$sourceChild->get('lockedadminmax'));
+				$targetChild->set('adminminoverride', (bool)$sourceChild->get('adminminoverride'));
+				$targetChild->set('adminmaxoverride', (bool)$sourceChild->get('adminmaxoverride'));
 				$targetChild->set('color', $sourceChild->get('color') ?: null);
+				$targetChild->set('color_unassigned', $sourceChild->get('color_unassigned') ?: null);
 				$targetChild->set('icon', $sourceChild->get('icon') ?: null);
-				$targetChild->set('banner', $sourceChild->get('banner') ?: null);
 				$targetChild->set('accesskey', $sourceChild->get('accesskey') ?: null);
 				$targetChild->save();
 
@@ -2372,11 +8362,16 @@
 
 		protected function initializeStructureFromTemplate(\dbObject\Holon $sourceRootHolon, $userId = 0)
 		{
+			$source = new self();
+			if ($source->load((int)$sourceRootHolon->get('IDorganization'))) {
+				$this->setPropertyTypeSettings($source->getPropertyTypeSettings());
+				if (empty($this->save()['status'])) return ['status' => false, 'message' => 'Impossible de copier les types de proprietes du modele.'];
+			}
 			$targetRootHolon = $this->createStructuralRootHolon($userId, $sourceRootHolon);
 			if (!$targetRootHolon) {
 				return array(
 					'status' => false,
-					'message' => "Le holon racine n'a pas pu etre cree.",
+'message' => "L’espace racine n’a pas pu être créé.",
 				);
 			}
 
@@ -2421,6 +8416,8 @@
 				$targetHolon->save();
 			}
 
+			$authorityIdMap = $this->cloneStructuralAuthorities($sourceHolonsById, $targetHolonsBySourceId);
+
 			foreach ($sourceHolonsById as $sourceHolonId => $sourceHolon) {
 				$targetHolon = $targetHolonsBySourceId[$sourceHolonId] ?? null;
 				if (!$targetHolon) {
@@ -2433,7 +8430,8 @@
 					$sourceRootHolonId,
 					$targetRootHolonId,
 					$holonIdMap,
-					$propertyIdMap
+					$propertyIdMap,
+					$authorityIdMap
 				);
 
 				if (!$this->cloneStructuralHolonPermissions($sourceHolon, $targetHolon)) {
@@ -2441,6 +8439,13 @@
 						'status' => false,
 						'message' => "Les droits du modele n'ont pas pu etre dupliques.",
 					);
+				}
+			}
+
+			foreach ($targetHolonsBySourceId as $targetHolon) {
+				if ($targetHolon instanceof \dbObject\Holon && $targetHolon->isTemplateNode($targetRootHolonId)) {
+					$this->normalizeTemplateLocalAuthorities($targetHolon);
+					$this->syncTemplateAuthorityInstances($targetHolon);
 				}
 			}
 
@@ -2468,6 +8473,17 @@
 			}
 
 			$templateRootHolonId = (int)$templateRootHolonId;
+			if (
+				$templateRootHolonId <= 0
+				&& $this->isDiscoveryMode()
+				&& count($this->getStructuralInitializationTemplates()) > 0
+			) {
+				return array(
+					'status' => false,
+					'message' => 'Choisissez un modele predefini pour initialiser cette organisation.',
+				);
+			}
+
 			$pdo = \dbObject\DbObject::getPdo();
 			if (!$pdo) {
 				return array(
@@ -2482,7 +8498,7 @@
 				if ($templateRootHolonId <= 0) {
 					$rootHolon = $this->createStructuralRootHolon($userId);
 					if (!$rootHolon) {
-						throw new \RuntimeException("Le holon racine n'a pas pu etre cree.");
+						throw new \RuntimeException(self::formatLexiconText("Le holon racine n'a pas pu etre cree.", $this->getLexicon()));
 					}
 
 					$result = array(
@@ -2496,7 +8512,7 @@
 						!$templateRootHolon->load($templateRootHolonId)
 						|| (int)$templateRootHolon->get('IDtypeholon') !== 4
 						|| !(bool)$templateRootHolon->get('active')
-						|| trim((string)$templateRootHolon->get('templatename')) === ''
+						|| !self::isPublicModelRootHolon($templateRootHolon)
 					) {
 						throw new \RuntimeException("Le modele d'organisation demande est introuvable.");
 					}
@@ -2815,6 +8831,9 @@
 			$rootHolonId = $rootHolon ? (int)$rootHolon->getId() : 0;
 			$holonRows = array();
 			$propertyDefinitionIds = array();
+			$authorityRows = array();
+			$ruleRows = array();
+			$exportedRuleIds = array();
 
 			foreach ($items as $item) {
 				$holon = $item['holon'] ?? null;
@@ -2833,6 +8852,66 @@
 						$propertyDefinitionIds[$propertyId] = $propertyId;
 					}
 				}
+
+				$authorities = new \dbObject\ArrayAuthority();
+				$authorities->loadForHolon((int)$holon->getId());
+				foreach ($authorities as $authority) {
+					$authorityId = (int)$authority->getId();
+					if ($authorityId <= 0) {
+						continue;
+					}
+					$authorityRows[] = array(
+						'id' => $authorityId,
+						'holonId' => (int)$holon->getId(),
+						'parentAuthorityId' => (int)$authority->get('IDauthority_parent'),
+						'templateAuthorityId' => (int)$authority->get('IDauthority_template'),
+						'label' => (string)$authority->get('label'),
+						'description' => (string)$authority->get('description'),
+						'isShell' => (bool)$authority->get('is_shell'),
+						'isLocal' => (bool)$authority->get('is_local'),
+						'templateOriginLost' => (bool)$authority->get('template_origin_lost'),
+					);
+
+					$authorityRules = new \dbObject\ArrayRule();
+					$authorityRules->loadForAuthority($authorityId);
+					foreach ($authorityRules as $rule) {
+						$ruleId = (int)$rule->getId();
+						if ($ruleId <= 0 || isset($exportedRuleIds[$ruleId])) {
+							continue;
+						}
+						$exportedRuleIds[$ruleId] = true;
+						$ruleRows[] = array(
+							'id' => $ruleId,
+							'authorityId' => $authorityId,
+							'title' => (string)$rule->get('title'),
+							'intention' => (string)$rule->get('intention'),
+							'description' => (string)$rule->get('description'),
+							'scope' => (string)$rule->get('scope'),
+							'reviewDate' => $rule->get('review_date') instanceof \DateTimeInterface ? $rule->get('review_date')->format('Y-m-d') : (string)$rule->get('review_date'),
+							'expirationDate' => $rule->get('expiration_date') instanceof \DateTimeInterface ? $rule->get('expiration_date')->format('Y-m-d') : (string)$rule->get('expiration_date'),
+						);
+					}
+				}
+
+				$localRules = new \dbObject\ArrayRule();
+				$localRules->loadForHolon((int)$holon->getId());
+				foreach ($localRules as $rule) {
+					$ruleId = (int)$rule->getId();
+					if ($ruleId <= 0 || isset($exportedRuleIds[$ruleId])) {
+						continue;
+					}
+					$exportedRuleIds[$ruleId] = true;
+					$ruleRows[] = array(
+						'id' => $ruleId,
+						'holonId' => (int)$holon->getId(),
+						'title' => (string)$rule->get('title'),
+						'intention' => (string)$rule->get('intention'),
+						'description' => (string)$rule->get('description'),
+						'scope' => \dbObject\Rule::normalizeScope($rule->get('scope')),
+						'reviewDate' => $rule->get('review_date') instanceof \DateTimeInterface ? $rule->get('review_date')->format('Y-m-d') : (string)$rule->get('review_date'),
+						'expirationDate' => $rule->get('expiration_date') instanceof \DateTimeInterface ? $rule->get('expiration_date')->format('Y-m-d') : (string)$rule->get('expiration_date'),
+					);
+				}
 			}
 
 			$propertyDefinitions = array();
@@ -2849,6 +8928,7 @@
 					'formatId' => (int)$property->get('IDpropertyformat'),
 				);
 
+				$definition['type'] = Property::normalizeType($property->get('type'));
 				if (trim((string)$property->get('listitemtype')) !== '') {
 					$definition['listItemType'] = (string)$property->get('listitemtype');
 				}
@@ -2948,6 +9028,9 @@
 			return array(
 				'holons' => $holonTree,
 				'propertyDefinitions' => $propertyDefinitions,
+				'propertyTypes' => $this->getPropertyTypeSettings(),
+				'authorities' => $authorityRows,
+				'rules' => $ruleRows,
 			);
 		}
 
@@ -2963,6 +9046,123 @@
 			}, $this->getTemplateContextPathHolons($contextHolonId));
 
 			return in_array((int)$template->get('IDholon_parent'), $pathIds, true);
+		}
+
+		protected function holonUsesTemplateDefinition(\dbObject\Holon $holon, $templateId)
+		{
+			$templateId = (int)$templateId;
+			$currentTemplateId = (int)$holon->get('IDholon_template');
+			$visitedTemplateIds = array();
+			$guard = 0;
+
+			while ($currentTemplateId > 0 && !isset($visitedTemplateIds[$currentTemplateId]) && $guard < 100) {
+				if ($currentTemplateId === $templateId) {
+					return true;
+				}
+
+				$visitedTemplateIds[$currentTemplateId] = true;
+				$currentTemplate = new \dbObject\Holon();
+				if (!$currentTemplate->load($currentTemplateId)) {
+					break;
+				}
+
+				$currentTemplateId = (int)$currentTemplate->get('IDholon_template');
+				$guard += 1;
+			}
+
+			return false;
+		}
+
+		protected function getTemplateDefinitionInstanceHolons(\dbObject\Holon $template)
+		{
+			$rootHolon = $this->getStructuralRootHolon();
+			$templateId = (int)$template->getId();
+			$instances = array();
+			if (!$rootHolon || $templateId <= 0) {
+				return $instances;
+			}
+
+			$holons = new \dbObject\ArrayHolon();
+			$holons->load(array(
+				'where' => array(
+					array('field' => 'active', 'value' => 1),
+					array('field' => 'IDholon_org', 'value' => (int)$rootHolon->getId()),
+				),
+			));
+
+			foreach ($holons as $holon) {
+				if (
+					$holon->isTemplateNode((int)$rootHolon->getId())
+					|| !$this->holonUsesTemplateDefinition($holon, $templateId)
+				) {
+					continue;
+				}
+
+				$instances[] = $holon;
+			}
+
+			return $instances;
+		}
+
+		public function getTemplateDefinitionDestinationCatalog(?\dbObject\Holon $template = null)
+		{
+			$rootHolon = $this->getStructuralRootHolon();
+			if (!$rootHolon) {
+				return array();
+			}
+
+			$allowedDestinationIds = null;
+			if ($template instanceof \dbObject\Holon && (int)$template->getId() > 0) {
+				foreach ($this->getTemplateDefinitionInstanceHolons($template) as $instance) {
+					$instancePathIds = array();
+					foreach ($instance->getPathHolons(true) as $pathHolon) {
+						if (!$pathHolon->isTemplateNode((int)$rootHolon->getId())) {
+							$instancePathIds[(int)$pathHolon->getId()] = true;
+						}
+					}
+
+					if ($allowedDestinationIds === null) {
+						$allowedDestinationIds = $instancePathIds;
+					} else {
+						$allowedDestinationIds = array_intersect_key($allowedDestinationIds, $instancePathIds);
+					}
+				}
+			}
+
+			$destinations = array();
+			$collectDestinations = function (\dbObject\Holon $holon, array $pathLabels) use (&$collectDestinations, &$destinations, $allowedDestinationIds, $rootHolon) {
+				if ($holon->isTemplateNode((int)$rootHolon->getId())) {
+					return;
+				}
+
+				$holonId = (int)$holon->getId();
+				$isTemplateDestination = in_array((int)$holon->get('IDtypeholon'), array(2, 4), true);
+				$holonName = trim((string)$holon->getDisplayName());
+				if ($holonName !== '') {
+					$pathLabels[] = $holonName;
+				}
+
+				if ($isTemplateDestination && ($allowedDestinationIds === null || isset($allowedDestinationIds[$holonId])) && $holon->canEdit()) {
+					$destinations[] = array(
+						'id' => $holonId,
+						'parentId' => (int)$holon->get('IDholon_parent'),
+						'name' => $holonName,
+						'label' => $holon->getTemplateLabel(),
+						'pathLabel' => implode(' > ', $pathLabels),
+					);
+				}
+
+				foreach ($holon->getChildren() as $childHolon) {
+					$collectDestinations($childHolon, $pathLabels);
+				}
+			};
+			$collectDestinations($rootHolon, array());
+
+			usort($destinations, static function (array $left, array $right) {
+				return strcasecmp((string)$left['pathLabel'], (string)$right['pathLabel']);
+			});
+
+			return $destinations;
 		}
 
 		protected function buildEditorPropertyFormats($formats)
@@ -3004,7 +9204,44 @@
 		protected function normalizeTemplateEditorScope($scope = 'contextual')
 		{
 			$scope = strtolower(trim((string)$scope));
-			return $scope === 'global' ? 'global' : 'contextual';
+			if ($scope === 'global') {
+				$scope = 'descendants';
+			}
+			return in_array($scope, array('contextual', 'children', 'descendants'), true) ? $scope : 'contextual';
+		}
+
+		protected function filterPropertyTypesForEditor(array $data): array
+		{
+			foreach ($data as $key => $value) {
+				if (!is_array($value)) continue;
+				$data[$key] = $key === 'properties'
+					? Property::filterEnabledDefinitions($value, $this->getLexicon())
+					: $this->filterPropertyTypesForEditor($value);
+			}
+			return $data;
+		}
+
+		public function getPermissionEditorCatalog()
+		{
+			return \dbObject\Permission::getEditorCatalog(
+				$this->getLexicon(),
+				$this->getEnabledApplicationHashes(null, true)
+			);
+		}
+
+		protected function syncEditorPermissionAssignments(int $holonId, array $payload): bool
+		{
+			$editableKeys = array_column($this->getPermissionEditorCatalog(), 'key');
+			if (isset($payload['editablePermissionKeys']) && is_array($payload['editablePermissionKeys'])) {
+				// An application may have been reactivated since this editor was opened.
+				$editableKeys = array_values(array_intersect($editableKeys, array_filter($payload['editablePermissionKeys'], 'is_string')));
+			}
+			return \dbObject\HolonPermission::syncAssignmentsForHolon(
+				$holonId,
+				is_array($payload['permissions'] ?? null) ? $payload['permissions'] : array(),
+				null,
+				$editableKeys
+			);
 		}
 
 		public function getHolonTemplateEditorData($contextHolonId = 0, $scope = 'contextual')
@@ -3024,9 +9261,15 @@
 					'types' => array(),
 					'formats' => array(),
 					'listItemTypes' => \dbObject\Property::getTemplateListItemTypeOptions(),
-					'permissionCatalog' => \dbObject\Permission::getEditorCatalog(),
+					'permissionCatalog' => $this->getPermissionEditorCatalog(),
 					'permissionRanges' => \dbObject\HolonPermission::getEditorRangeCatalog(),
 					'templateCatalog' => array(),
+					'definitionHolonCatalog' => array(),
+					'projectCatalog' => array(),
+					'projectCatalogs' => array(),
+					'authorityCatalog' => array(),
+					'authorityParentCatalog' => array(),
+					'authorityCanCreateRoot' => true,
 					'templates' => array(),
 				);
 			}
@@ -3056,16 +9299,32 @@
 				'types' => array(),
 				'formats' => array(),
 				'listItemTypes' => \dbObject\Property::getTemplateListItemTypeOptions(),
-				'permissionCatalog' => \dbObject\Permission::getEditorCatalog(),
-				'permissionRanges' => \dbObject\HolonPermission::getEditorRangeCatalog(),
+				'permissionCatalog' => $this->canManagePermissionAssignments() ? $this->getPermissionEditorCatalog() : array(),
+				'permissionRanges' => $this->canManagePermissionAssignments() ? \dbObject\HolonPermission::getEditorRangeCatalog() : array(),
 				'templateCatalog' => array(),
+				'definitionHolonCatalog' => $this->getTemplateDefinitionDestinationCatalog(),
+				'projectCatalog' => $this->getProjectListEditorCatalog($contextHolon),
+				'projectCatalogs' => $this->getProjectListEditorCatalogs($contextHolon),
+				'authorityCatalog' => $this->getAuthorityListEditorCatalog(),
+				'authorityParentCatalog' => array(),
+				'authorityCanCreateRoot' => true,
 				'templates' => array(),
+				'propertyTypes' => Property::getTypeOptions($this->getLexicon(), $contextHolon),
+				'canAddTemplateProperties' => $contextHolon ? Property::canCreateAnyType($contextHolon) : false,
 			);
+			foreach ($data['definitionHolonCatalog'] as &$destination) {
+				$destinationHolon = new Holon();
+				$destination['propertyTypes'] = $destinationHolon->load((int)$destination['id'])
+					? Property::getTypeOptions($this->getLexicon(), $destinationHolon)
+					: [];
+			}
+			unset($destination);
 
 			foreach ($types as $type) {
+				$typeId = (int)$type->getId();
 				$data['types'][] = array(
-					'id' => (int)$type->getId(),
-					'name' => (string)$type->get('name'),
+					'id' => $typeId,
+					'name' => $this->getHolonTypeLabelForEditor($typeId),
 					'hasTemplate' => (bool)$type->get('hastemplate'),
 					'hasChild' => (bool)$type->get('haschild'),
 				);
@@ -3073,10 +9332,39 @@
 
 			$data['formats'] = $this->buildEditorPropertyFormats($formats);
 
-			$templateCatalogSource = $this->getAvailableTemplateDefinitionHolons($contextHolon ? (int)$contextHolon->getId() : 0);
-			$templateTreeSource = $scope === 'global'
+			$templateCatalogSource = $scope === 'descendants'
 				? $this->getAllTemplateDefinitionHolons()
-				: $this->getTemplateDefinitionHolons($contextHolon ? (int)$contextHolon->getId() : 0);
+				: $this->getAvailableTemplateDefinitionHolons($contextHolon ? (int)$contextHolon->getId() : 0);
+			$scopeContextHolonIds = $contextHolon ? array((int)$contextHolon->getId()) : array();
+			if ($scope === 'children' && $contextHolon) {
+				$scopeContextHolonIds = array((int)$contextHolon->getId());
+				foreach ($contextHolon->getChildren() as $childHolon) {
+					if (!$childHolon->isTemplateNode((int)$rootHolon->getId())) {
+						$scopeContextHolonIds[] = (int)$childHolon->getId();
+					}
+				}
+			} elseif ($scope === 'descendants' && $contextHolon) {
+				$scopeContextHolonIds = array();
+				$collectStructuralHolonIds = function ($holon) use (&$collectStructuralHolonIds, &$scopeContextHolonIds, $rootHolon) {
+					$holonId = (int)$holon->getId();
+					if ($holonId <= 0 || in_array($holonId, $scopeContextHolonIds, true)) {
+						return;
+					}
+					$scopeContextHolonIds[] = $holonId;
+					foreach ($holon->getChildren() as $childHolon) {
+						if (!$childHolon->isTemplateNode((int)$rootHolon->getId())) {
+							$collectStructuralHolonIds($childHolon);
+						}
+					}
+				};
+				$collectStructuralHolonIds($contextHolon);
+			}
+			$scopeContextHolonIdMap = count($scopeContextHolonIds) > 0
+				? array_fill_keys(array_map('intval', $scopeContextHolonIds), true)
+				: array();
+			$templateTreeSource = array_values(array_filter($this->getAllTemplateDefinitionHolons(), function ($template) use ($scopeContextHolonIdMap) {
+				return isset($scopeContextHolonIdMap[(int)$template->get('IDholon_parent')]);
+			}));
 			$definitionHolonMetaCache = array();
 
 			$resolveDefinitionHolonMeta = function ($definitionHolonId) use (&$definitionHolonMetaCache) {
@@ -3115,6 +9403,10 @@
 			$childrenByParent = array();
 			foreach ($templateCatalogSource as $template) {
 				$definitionHolonMeta = $resolveDefinitionHolonMeta((int)$template->get('IDholon_parent'));
+				$templateAdminBounds = $template->getEffectiveTemplateAdminBounds();
+				$definitionHolonIds = array_map(function (array $destination) {
+					return (int)$destination['id'];
+				}, $this->getTemplateDefinitionDestinationCatalog($template));
 
 				$data['templateCatalog'][] = array_merge(array(
 					'id' => (int)$template->getId(),
@@ -3122,21 +9414,33 @@
 					'typeId' => (int)$template->get('IDtypeholon'),
 					'typeLabel' => $template->getTypeLabel(),
 					'color' => (string)$template->get('color'),
+					'unassignedColor' => (string)$template->get('color_unassigned'),
 					'visible' => (bool)$template->get('visible'),
 					'mandatory' => (bool)$template->get('mandatory'),
 					'lockedName' => (bool)$template->get('lockedname'),
 					'unique' => (bool)$template->get('unique'),
 					'link' => (bool)$template->get('link'),
+					'adminParent' => (bool)$template->get('adminparent'),
+					'adminMin' => $templateAdminBounds['min'],
+					'adminMax' => $templateAdminBounds['max'],
+					'lockedAdminMin' => !empty($templateAdminBounds['minLocked']),
+					'lockedAdminMax' => !empty($templateAdminBounds['maxLocked']),
 					'inheritsFromId' => (int)$template->get('IDholon_template'),
 					'definedInId' => (int)$definitionHolonMeta['id'],
 					'definedInName' => (string)$definitionHolonMeta['name'],
 					'definedInLabel' => (string)$definitionHolonMeta['label'],
+					'definitionHolonIds' => $definitionHolonIds,
 					'properties' => $template->getTemplatePropertyDefinitions(),
 				), $this->getHolonIllustrationData($template));
 			}
 
 			foreach ($templateTreeSource as $template) {
 				$templateNode = $template->toTemplateEditorNodeArray((int)$rootHolon->getId());
+				$templateNode['canAddProperties'] = Property::canCreateAnyType($template);
+				$templateNode['propertyTypes'] = Property::getTypeOptions($this->getLexicon(), $template);
+				$templateNode['definitionHolonIds'] = array_map(function (array $destination) use ($template) {
+					return (int)$destination['id'];
+				}, $this->getTemplateDefinitionDestinationCatalog($template));
 				$definitionHolonMeta = $resolveDefinitionHolonMeta((int)$template->get('IDholon_parent'));
 				$templateNode['definedInId'] = (int)$definitionHolonMeta['id'];
 				$templateNode['definedInName'] = (string)$definitionHolonMeta['name'];
@@ -3182,18 +9486,244 @@
 				$data['templates'][] = $templateNode;
 			}
 
-			return $data;
+			return $this->filterPropertyTypesForEditor($data);
 		}
 
 		protected function buildHolonDefinitionEditorNode(\dbObject\Holon $holon, $rootHolonId)
 		{
 			$node = $holon->toTemplateEditorNodeArray((int)$rootHolonId);
-			$node['properties'] = $holon->getTemplatePropertyDefinitions();
+			$node['properties'] = array_map(function ($property) use ($holon) {
+				$property['canEditValue'] = empty($property['effectiveLocked'])
+					&& $holon->isAllowed(Property::permissionKey('EDIT', $property['type'] ?? null), false);
+				$property['canDelete'] = empty($property['inheritedMandatory'])
+					&& $holon->isAllowed(Property::permissionKey('DELETE', $property['type'] ?? null), false);
+				return $property;
+			}, $holon->getTemplatePropertyDefinitions());
 			$node['children'] = array();
-			$node['shareAsTemplate'] = trim((string)$holon->get('templatename')) !== '';
-			$node['publicTemplateName'] = trim((string)$holon->get('templatename'));
+			$node['canAddProperties'] = Property::canCreateAnyType($holon);
+			$node['propertyTypes'] = Property::getTypeOptions($this->getLexicon(), $holon);
 
 			return $node;
+		}
+
+		protected function normalizePropertyDefinitionForPermission(array $definition, $position)
+		{
+			$formatId = (int)($definition['formatId'] ?? 0);
+			$value = \dbObject\PropertyFormat::normalizeValueForStorage($formatId, $definition['value'] ?? '');
+			if (!\dbObject\PropertyFormat::isHtmlFormat($formatId)) {
+				$value = trim((string)$value);
+			}
+
+			$listHolonTypeIds = \dbObject\Property::parseHolonTypeIds($definition['listHolonTypeIds'] ?? array());
+			sort($listHolonTypeIds);
+
+			return array(
+				'type' => Property::normalizeType($definition['type'] ?? null),
+				'name' => trim((string)($definition['name'] ?? '')),
+				'shortname' => (string)($definition['shortname'] ?? ''),
+				'formatId' => $formatId,
+				'listItemType' => \dbObject\Property::normalizeTemplateListItemType($definition['listItemType'] ?? ''),
+				'listHolonTypeIds' => $listHolonTypeIds,
+				'mandatory' => !empty($definition['mandatory']),
+				'locked' => !empty($definition['locked']),
+				'value' => $value,
+				'position' => (int)$position,
+			);
+		}
+
+		protected function getPropertyDefinitionPermissionOperations(array $existingDefinitions, array $submittedDefinitions, array $inheritedDefinitions = [])
+		{
+			$existingIds = array_column($existingDefinitions, 'id');
+			foreach ($inheritedDefinitions as $definition) {
+				if (!in_array($definition['id'], $existingIds)) {
+					$definition['isInherited'] = true;
+					$definition['isLocal'] = false;
+					$existingDefinitions[] = $definition;
+				}
+			}
+			$lexicon = $this->getLexicon();
+			$disabledIds = [];
+			foreach ($existingDefinitions as $definition) {
+				if (!Property::isTypeEnabled($definition['type'] ?? null, $lexicon)) $disabledIds[(int)$definition['id']] = true;
+			}
+			$submittedDefinitions = array_values(array_filter($submittedDefinitions, static fn($definition) => !isset($disabledIds[(int)($definition['id'] ?? 0)])));
+			foreach ($submittedDefinitions as $definition) {
+				if (!in_array($definition['type'] ?? 'type1', Property::TYPES, true) || !Property::isTypeEnabled($definition['type'] ?? null, $lexicon)) return ['INVALID_PROPERTY_TYPE'];
+			}
+			$existingDefinitions = Property::filterEnabledDefinitions($existingDefinitions, $lexicon);
+			$submittedOrder = [];
+			foreach ($submittedDefinitions as $definition) {
+				if (!is_array($definition) || !in_array($definition['type'] ?? 'type1', Property::TYPES, true)) {
+					return ['INVALID_PROPERTY_TYPE'];
+				}
+				$id = (int)($definition['id'] ?? 0);
+				if ($id > 0) {
+					if (isset($submittedOrder[$id])) { return ['INVALID_PROPERTY_DEFINITION']; }
+					$submittedOrder[$id] = count($submittedOrder);
+				}
+			}
+			$existingById = array();
+			foreach (array_values($existingDefinitions) as $position => $definition) {
+				$propertyId = (int)($definition['id'] ?? 0);
+				if ($propertyId > 0) {
+					$existingById[$propertyId] = array(
+						'definition' => $definition,
+						'position' => count(array_intersect_key($existingById, $submittedOrder)),
+					);
+				}
+			}
+
+			$operations = array();
+			$submittedIds = array();
+			$retainedPosition = 0;
+			foreach (array_values($submittedDefinitions) as $position => $definition) {
+				if (!is_array($definition) || trim((string)($definition['name'] ?? '')) === '') {
+					continue;
+				}
+
+				$propertyId = (int)($definition['id'] ?? 0);
+				if ($propertyId <= 0 || !isset($existingById[$propertyId])) {
+					if ($propertyId > 0) { return ['INVALID_PROPERTY_DEFINITION']; }
+					$operations[Property::permissionKey('CREATE', $definition['type'] ?? null)] = true;
+					continue;
+				}
+
+				$submittedIds[$propertyId] = true;
+				$previous = $existingById[$propertyId]['definition'];
+				// Older editors omit the internal name; omission preserves it.
+				$definition['shortname'] = $definition['shortname'] ?? ($previous['shortname'] ?? '');
+				if (!empty($previous['isInherited'])) {
+					$before = $this->normalizePropertyDefinitionForPermission($previous, 0);
+					$after = $this->normalizePropertyDefinitionForPermission($definition, 0);
+					foreach (['type', 'name', 'shortname', 'formatId', 'listItemType', 'listHolonTypeIds'] as $field) {
+						if ($before[$field] !== $after[$field]) { return ['INVALID_PROPERTY_DEFINITION']; }
+					}
+				}
+				if (!empty($previous['inheritedLocked']) && (string)($previous['value'] ?? '') !== (string)($definition['value'] ?? '')) {
+					return ['INVALID_PROPERTY_DEFINITION'];
+				}
+				$before = $this->normalizePropertyDefinitionForPermission($previous, $existingById[$propertyId]['position']);
+				$after = $this->normalizePropertyDefinitionForPermission($definition, $retainedPosition);
+				// Compare content in the original format: changing format is a structure operation.
+				$submittedContent = $this->normalizePropertyDefinitionForPermission(array_replace($definition, ['formatId' => $previous['formatId'] ?? 0]), 0);
+				if ($before['value'] !== $submittedContent['value']) {
+					$operations[Property::permissionKey('EDIT', $previous['type'] ?? null)] = true;
+				}
+				unset($before['value'], $after['value']);
+				if ($before !== $after) {
+					$operations[Property::permissionKey('CREATE', $previous['type'] ?? null)] = true;
+					if (Property::normalizeType($previous['type'] ?? null) !== Property::normalizeType($definition['type'] ?? null)) {
+						$operations[Property::permissionKey('CREATE', $definition['type'] ?? null)] = true;
+					}
+				}
+				$retainedPosition++;
+			}
+
+			foreach ($existingById as $propertyId => $existing) {
+				if (!isset($submittedIds[$propertyId])) {
+					if (!empty($existing['definition']['inheritedMandatory'])) { return ['INVALID_PROPERTY_DEFINITION']; }
+					$operations[Property::permissionKey('DELETE', $existing['definition']['type'] ?? null)] = true;
+				}
+			}
+
+			return array_keys($operations);
+		}
+
+		protected function getRemovedPropertyDefinitionIds(array $payload)
+		{
+			$removedPropertyIds = array();
+			foreach (is_array($payload['removedPropertyIds'] ?? null) ? $payload['removedPropertyIds'] : array() as $propertyId) {
+				$propertyId = (int)$propertyId;
+				if ($propertyId > 0) {
+					$removedPropertyIds[$propertyId] = true;
+				}
+			}
+
+			return $removedPropertyIds;
+		}
+
+		protected function excludeRemovedPropertyDefinitions(array $definitions, array $removedPropertyIds)
+		{
+			if (count($removedPropertyIds) === 0) {
+				return array_values($definitions);
+			}
+
+			return array_values(array_filter($definitions, function ($definition) use ($removedPropertyIds) {
+				return !is_array($definition) || !isset($removedPropertyIds[(int)($definition['id'] ?? 0)]);
+			}));
+		}
+
+		protected function canUsePropertyPermission(Holon $context, string $permissionKey, int $collectiveHolonId = 0, bool $creatingHolon = false): bool
+		{
+			if (preg_match('/_TYPE([1-5])_PROPERTIES$/', $permissionKey, $matches) && !Property::isTypeEnabled('type' . $matches[1], $this->getLexicon())) return false;
+			if ($collectiveHolonId === 0 && $creatingHolon && preg_match('/^CAN_EDIT_(TYPE[1-9][0-9]*)_PROPERTIES$/', $permissionKey, $matches)) {
+				return $context->canEditPropertyValue(strtolower($matches[1]), true);
+			}
+			return $collectiveHolonId === 0
+				? $context->isAllowed($permissionKey, false)
+				: ($collectiveHolonId > 0 && HolonPermission::holonHasCollectivePermissionForHolonContext((int)$this->getId(), $collectiveHolonId, $permissionKey, (int)$context->getId(), $creatingHolon));
+		}
+
+		protected function canApplyPropertyDefinitionChanges(\dbObject\Holon $permissionHolon, array $operations, $propertyScope, int $collectiveHolonId = 0)
+		{
+			foreach ($operations as $permissionKey) {
+				if (str_starts_with($permissionKey, 'INVALID_')) {
+					return ['status' => false, 'message' => 'Type ou definition de propriete invalide.'];
+				}
+				if (!$this->canUsePropertyPermission($permissionHolon, $permissionKey, $collectiveHolonId)) {
+					return ['status' => false, 'message' => 'Droit requis : ' . $permissionKey . '.'];
+				}
+			}
+
+			return array('status' => true);
+		}
+
+		protected function canEditSubmittedTemplatePropertyValues(\dbObject\Holon $holon, \dbObject\Holon $permissionHolon, array $submittedValuesByPropertyId, array $propertyDefinitions, $permissionKey = 'CAN_EDIT_HOLON', int $collectiveHolonId = 0)
+		{
+			$existingValuesByPropertyId = array();
+			if ((int)$holon->getId() > 0) {
+				foreach ($holon->getHolonProperties() as $holonProperty) {
+					$existingValuesByPropertyId[(int)$holonProperty->get('IDproperty')] = $holonProperty->get('value');
+				}
+			}
+
+			foreach ($propertyDefinitions as $definition) {
+				$propertyId = (int)($definition['id'] ?? 0);
+				$formatId = (int)($definition['formatId'] ?? 0);
+				if ($propertyId <= 0 || !array_key_exists($propertyId, $submittedValuesByPropertyId)) {
+					continue;
+				}
+
+				$submittedValue = \dbObject\PropertyFormat::normalizeValueForStorage($formatId, $submittedValuesByPropertyId[$propertyId]);
+				$existingValue = \dbObject\PropertyFormat::normalizeValueForStorage($formatId, $existingValuesByPropertyId[$propertyId] ?? '');
+				if (!\dbObject\PropertyFormat::isHtmlFormat($formatId)) {
+					$submittedValue = trim((string)$submittedValue);
+					$existingValue = trim((string)$existingValue);
+				}
+
+				if ($submittedValue === $existingValue) {
+					continue;
+				}
+
+				if (!empty($definition['effectiveLocked'])) {
+					return array(
+						'status' => false,
+						'message' => 'Cette propriete heritee est verrouillee.',
+					);
+				}
+
+				// Les valeurs locales utilisent le type de la definition persistee.
+				if ($this->canUsePropertyPermission($permissionHolon, Property::permissionKey('EDIT', $definition['type'] ?? null), $collectiveHolonId, $permissionKey === 'CAN_ADD_HOLON')) {
+					continue;
+				}
+
+				return array(
+					'status' => false,
+'message' => "Vous n’avez pas les droits pour modifier cet espace.",
+				);
+			}
+
+			return array('status' => true);
 		}
 
 		public function getHolonDefinitionEditorData($holonId = 0)
@@ -3209,6 +9739,7 @@
 			if (
 				!$holon->load($holonId)
 				|| !$this->containsHolon($holon)
+				|| (int)$holon->getId() !== (int)$rootHolon->getId()
 				|| (int)$holon->get('IDtypeholon') !== 4
 			) {
 				return null;
@@ -3236,22 +9767,29 @@
 				'contextHolonName' => $holon->getDisplayName(),
 				'contextHolonLabel' => $holon->getTypeLabel(),
 				'editorMode' => 'holon-definition',
+				'canEditHolonFields' => $holon->isAllowed('CAN_EDIT_HOLON', false),
 				'targetHolonId' => (int)$holon->getId(),
 				'types' => array(),
 				'formats' => array(),
 				'listItemTypes' => \dbObject\Property::getTemplateListItemTypeOptions(),
-				'permissionCatalog' => \dbObject\Permission::getEditorCatalog(),
-				'permissionRanges' => \dbObject\HolonPermission::getEditorRangeCatalog(),
+				'permissionCatalog' => $this->canManagePermissionAssignments() ? $this->getPermissionEditorCatalog() : array(),
+				'permissionRanges' => $this->canManagePermissionAssignments() ? \dbObject\HolonPermission::getEditorRangeCatalog() : array(),
 				'templateCatalog' => array(),
+				'projectCatalog' => $this->getProjectListEditorCatalog($holon),
+				'projectCatalogs' => $this->getProjectListEditorCatalogs($holon),
+				'authorityCatalog' => $this->getAuthorityListEditorCatalog(),
+				'authorityParentCatalog' => array(),
+				'authorityCanCreateRoot' => true,
 				'templates' => array(
 					$this->buildHolonDefinitionEditorNode($holon, (int)$rootHolon->getId()),
 				),
 			);
 
 			foreach ($types as $type) {
+				$typeId = (int)$type->getId();
 				$data['types'][] = array(
-					'id' => (int)$type->getId(),
-					'name' => (string)$type->get('name'),
+					'id' => $typeId,
+					'name' => $this->getHolonTypeLabelForEditor($typeId),
 					'hasTemplate' => (bool)$type->get('hastemplate'),
 					'hasChild' => (bool)$type->get('haschild'),
 				);
@@ -3259,7 +9797,7 @@
 
 			$data['formats'] = $this->buildEditorPropertyFormats($formats);
 
-			return $data;
+			return $this->filterPropertyTypesForEditor($data);
 		}
 
 		// Construit liste holons
@@ -3286,8 +9824,176 @@
 			}
 		}
 
-		protected function canMoveHolonToParent(\dbObject\Holon $holon, \dbObject\Holon $targetParent, ?\dbObject\Holon $rootHolon = null)
+		protected function getProjectListEditorCatalog(?\dbObject\Holon $holon = null)
 		{
+			$rootHolon = $this->getEnabledStructuralRootHolon();
+			$includeOrganizationProjects = $holon instanceof \dbObject\Holon && $rootHolon instanceof \dbObject\Holon
+				&& (int)$holon->getId() === (int)$rootHolon->getId();
+			$projects = new \dbObject\ArrayProject();
+			$projects->loadForContext(
+				(int)$this->getId(),
+				$holon instanceof \dbObject\Holon ? (int)$holon->getId() : 0,
+				'contextual',
+				[],
+				$includeOrganizationProjects
+			);
+			return $this->formatProjectListEditorCatalog($projects);
+		}
+
+		protected function formatProjectListEditorCatalog(iterable $projects)
+		{
+			$catalog = array();
+
+			foreach ($projects as $project) {
+				$projectId = (int)$project->getId();
+				if ($projectId <= 0) {
+					continue;
+				}
+
+				$holon = $project->getHolon();
+				$catalog[] = array(
+					'id' => $projectId,
+					'title' => trim((string)$project->get('title')),
+					'holonId' => $holon ? (int)$holon->getId() : 0,
+					'holonLabel' => $holon ? $holon->getFullDisplayName() : '',
+					'calculatedImportance' => max(0.0, min(1.0, (float)$project->get('calculated_importance'))),
+					'priority' => \dbObject\Project::normalizeLevel($project->get('priority')),
+				);
+			}
+
+			usort($catalog, function ($left, $right) {
+				$leftImportance = (float)$left['calculatedImportance'];
+				$rightImportance = (float)$right['calculatedImportance'];
+				if ($leftImportance !== $rightImportance) {
+					return $rightImportance <=> $leftImportance;
+				}
+
+				$leftPriority = $left['priority'] === null ? PHP_INT_MAX : (int)$left['priority'];
+				$rightPriority = $right['priority'] === null ? PHP_INT_MAX : (int)$right['priority'];
+				if ($leftPriority !== $rightPriority) {
+					return $leftPriority <=> $rightPriority;
+				}
+
+				return strcasecmp((string)$left['title'], (string)$right['title']);
+			});
+
+			return $catalog;
+		}
+
+		protected function getProjectListEditorCatalogs(?\dbObject\Holon $holon = null)
+		{
+			$catalogs = array(
+				'local' => $this->getProjectListEditorCatalog($holon),
+				'children' => array(),
+				'descendants' => array(),
+				'global' => array(),
+			);
+
+			$projects = new \dbObject\ArrayProject();
+			$holonId = $holon instanceof \dbObject\Holon ? (int)$holon->getId() : 0;
+			$rootHolon = $this->getEnabledStructuralRootHolon();
+			$includeOrganizationProjects = $rootHolon instanceof \dbObject\Holon
+				&& $holonId === (int)$rootHolon->getId();
+			if ($holonId > 0) {
+				$directChildIds = array();
+				$visitedGroupIds = array();
+				$appendDirectScopeHolonIds = function (\dbObject\Holon $parentHolon) use (&$appendDirectScopeHolonIds, &$directChildIds, &$visitedGroupIds): void {
+					foreach ($parentHolon->getChildren() as $childHolon) {
+						if (!($childHolon instanceof \dbObject\Holon) || (int)$childHolon->getId() <= 0) {
+							continue;
+						}
+
+						$childHolonId = (int)$childHolon->getId();
+						if ((int)$childHolon->get('IDtypeholon') === 3) {
+							if (isset($visitedGroupIds[$childHolonId])) {
+								continue;
+							}
+
+							$visitedGroupIds[$childHolonId] = true;
+							$appendDirectScopeHolonIds($childHolon);
+							continue;
+						}
+
+						$directChildIds[] = $childHolonId;
+					}
+				};
+				$appendDirectScopeHolonIds($holon);
+				$directChildIds = array_values(array_unique($directChildIds));
+				$descendantIds = array();
+				$visitedDescendantIds = array();
+				$appendDescendantScopeHolonIds = function (\dbObject\Holon $parentHolon) use (&$appendDescendantScopeHolonIds, &$descendantIds, &$visitedDescendantIds): void {
+					foreach ($parentHolon->getChildren() as $childHolon) {
+						if (!($childHolon instanceof \dbObject\Holon) || (int)$childHolon->getId() <= 0) {
+							continue;
+						}
+
+						$childHolonId = (int)$childHolon->getId();
+						if (isset($visitedDescendantIds[$childHolonId])) {
+							continue;
+						}
+
+						$visitedDescendantIds[$childHolonId] = true;
+						if ((int)$childHolon->get('IDtypeholon') !== 3) {
+							$descendantIds[] = $childHolonId;
+						}
+						$appendDescendantScopeHolonIds($childHolon);
+					}
+				};
+				$appendDescendantScopeHolonIds($holon);
+
+				$projects->loadForContext((int)$this->getId(), $holonId, 'children', $directChildIds, $includeOrganizationProjects);
+				$catalogs['children'] = $this->formatProjectListEditorCatalog($projects);
+				$projects->loadForContext((int)$this->getId(), $holonId, 'descendants', $descendantIds, $includeOrganizationProjects);
+				$catalogs['descendants'] = $this->formatProjectListEditorCatalog($projects);
+			}
+
+			$projects->loadForOrganization((int)$this->getId());
+			$catalogs['global'] = $this->formatProjectListEditorCatalog($projects);
+
+			return $catalogs;
+		}
+
+		protected function getAuthorityListEditorCatalog()
+		{
+			return \dbObject\Authority::getEditorCatalogForOrganization((int)$this->getId());
+		}
+
+		protected function getAuthorityParentEditorCatalog(?\dbObject\Holon $parentHolon = null)
+		{
+			$authorityParentHolon = $parentHolon instanceof \dbObject\Holon
+				? $parentHolon->getAuthorityParentHolon(true)
+				: null;
+			if ($authorityParentHolon instanceof \dbObject\Holon) {
+				$this->ensureTemplateAuthorityInstancesForHolon($authorityParentHolon);
+			}
+			$parentHolonId = $authorityParentHolon instanceof \dbObject\Holon
+				? (int)$authorityParentHolon->getId()
+				: 0;
+			if ($parentHolonId <= 0) {
+				return array();
+			}
+
+			return array_values(array_filter($this->getAuthorityListEditorCatalog(), function ($authority) use ($parentHolonId) {
+				return (int)($authority['holonId'] ?? 0) === $parentHolonId;
+			}));
+		}
+
+		protected function hasHolonMovePermission(\dbObject\Holon $holon, int $collectiveHolonId = 0, int $userId = 0): bool
+		{
+			return $collectiveHolonId > 0
+				? HolonPermission::holonHasCollectivePermissionForHolonContext((int)$this->getId(), $collectiveHolonId, 'CAN_MOVE_HOLON', (int)$holon->getId())
+				: $holon->isAllowed('CAN_MOVE_HOLON', false, $userId);
+		}
+
+		public function canMoveHolonToParent(\dbObject\Holon $holon, \dbObject\Holon $targetParent, ?\dbObject\Holon $rootHolon = null, int $collectiveHolonId = 0, int $userId = 0)
+		{
+			$rootHolon = $rootHolon ?: $this->getStructuralRootHolon();
+			if (!$rootHolon || !$this->containsHolon($holon)
+				|| !in_array((int)$holon->get('IDtypeholon'), [1, 2, 3], true)
+				|| $holon->isTemplateNode((int)$rootHolon->getId())
+				|| !$this->hasHolonMovePermission($holon, $collectiveHolonId, $userId)) {
+				return false;
+			}
 			$targetTypeId = (int)$targetParent->get('IDtypeholon');
 			if (!in_array($targetTypeId, array(2, 3, 4), true)) {
 				return false;
@@ -3297,7 +10003,7 @@
 				return false;
 			}
 
-			if (!$targetParent->canEdit()) {
+			if (!$this->hasHolonMovePermission($targetParent, $collectiveHolonId, $userId)) {
 				return false;
 			}
 
@@ -3311,6 +10017,10 @@
 				&& (int)$targetParent->getId() !== (int)$rootHolon->getId()
 				&& $targetParent->isTemplateNode((int)$rootHolon->getId())
 			) {
+				return false;
+			}
+			if ($this->hasMandatoryCircleInPath($targetParent)
+				&& $this->hasMandatoryCircleInSubtree($holon, (int)$rootHolon->getId())) {
 				return false;
 			}
 
@@ -3334,7 +10044,7 @@
 			return $this->isTemplateAvailableForHolonCreation($template, $targetParent, (int)$holon->getId());
 		}
 
-		protected function buildMovableHolonDestinationCatalog(\dbObject\Holon $candidate, array &$catalog, $rootHolonId, \dbObject\Holon $movingHolon, array $path = array())
+		protected function buildMovableHolonDestinationCatalog(\dbObject\Holon $candidate, array &$catalog, $rootHolonId, \dbObject\Holon $movingHolon, array $path = array(), int $collectiveHolonId = 0)
 		{
 			$rootHolonId = (int)$rootHolonId;
 			if ((int)$candidate->getId() !== $rootHolonId && $candidate->isTemplateNode($rootHolonId)) {
@@ -3348,7 +10058,7 @@
 			$currentPath = $path;
 			$currentPath[] = $candidate->getDisplayName();
 
-			if ($this->canMoveHolonToParent($movingHolon, $candidate)) {
+			if ($this->canMoveHolonToParent($movingHolon, $candidate, null, $collectiveHolonId)) {
 				$catalog[] = array(
 					'id' => (int)$candidate->getId(),
 					'name' => $candidate->getDisplayName(),
@@ -3360,7 +10070,7 @@
 			}
 
 			foreach ($candidate->getChildren() as $child) {
-				$this->buildMovableHolonDestinationCatalog($child, $catalog, $rootHolonId, $movingHolon, $currentPath);
+				$this->buildMovableHolonDestinationCatalog($child, $catalog, $rootHolonId, $movingHolon, $currentPath, $collectiveHolonId);
 			}
 		}
 
@@ -3404,7 +10114,7 @@
 			}
 		}
 
-		public function getHolonMoveEditorData($holonId = 0)
+		public function getHolonMoveEditorData($holonId = 0, int $collectiveHolonId = 0)
 		{
 			$rootHolon = $this->getStructuralRootHolon();
 			$holonId = (int)$holonId;
@@ -3459,12 +10169,12 @@
 				);
 			}
 
-			$data['canMove'] = $currentParent && $holon->canEdit() && $currentParent->canEdit();
+			$data['canMove'] = $currentParent && $this->hasHolonMovePermission($holon, $collectiveHolonId);
 			if (!$data['canMove']) {
 				return $data;
 			}
 
-			$this->buildMovableHolonDestinationCatalog($rootHolon, $data['destinations'], (int)$rootHolon->getId(), $holon);
+			$this->buildMovableHolonDestinationCatalog($rootHolon, $data['destinations'], (int)$rootHolon->getId(), $holon, [], $collectiveHolonId);
 
 			return $data;
 		}
@@ -3500,6 +10210,105 @@
 					trim((string)($right['name'] ?? ''))
 				);
 			});
+		}
+
+		protected function buildDecisionMoveDestinationCatalog(\dbObject\Holon $candidate, array &$catalog, array $path = array(), int $currentUserId = 0)
+		{
+			if (!(bool)$candidate->get('active') || !(bool)$candidate->get('visible')) {
+				return;
+			}
+
+			$currentPath = $path;
+			$displayName = trim((string)$candidate->getDisplayName());
+			$isOrganizationRoot = (int)$candidate->get('IDtypeholon') === 4;
+			if ($displayName !== '' && !$isOrganizationRoot) {
+				$currentPath[] = $displayName;
+			}
+
+			if (
+				$currentUserId > 0
+				&& $displayName !== ''
+				&& $candidate->isAllowed('CAN_CREATE_DECISION', false, $currentUserId)
+			) {
+				$catalog[] = array(
+					'key' => 'holon-' . (int)$candidate->getId(),
+					'holonId' => (int)$candidate->getId(),
+					'name' => $displayName,
+					'typeId' => (int)$candidate->get('IDtypeholon'),
+					'typeLabel' => $candidate->getTypeLabel(),
+					'pathLabel' => implode(' > ', $currentPath),
+				);
+			}
+
+			foreach ($candidate->getChildren() as $child) {
+				$this->buildDecisionMoveDestinationCatalog($child, $catalog, $currentPath, $currentUserId);
+			}
+		}
+
+		public function getDecisionMoveEditorData($decisionId = 0)
+		{
+			$rootHolon = $this->getEnabledStructuralRootHolon();
+			$currentUserId = function_exists('commonGetCurrentUserId')
+				? (int)\commonGetCurrentUserId()
+				: (int)($_SESSION['currentUser'] ?? 0);
+			$decisionId = (int)$decisionId;
+			$decision = new \dbObject\DecisionProcess();
+			$organizationLabel = trim((string)$this->get('name'));
+
+			$data = array(
+				'organizationId' => (int)$this->getId(),
+				'organizationName' => $organizationLabel,
+				'decisionId' => 0,
+				'canMove' => false,
+				'decision' => null,
+				'currentDestination' => null,
+				'destinations' => array(),
+			);
+
+			if (
+				$decisionId <= 0
+				|| !$decision->load($decisionId)
+				|| (int)$decision->get('IDorganization') !== (int)$this->getId()
+			) {
+				return $data;
+			}
+
+			$currentHolonId = (int)$decision->get('IDholon');
+			$data['decisionId'] = (int)$decision->getId();
+			$data['decision'] = array(
+				'id' => (int)$decision->getId(),
+				'title' => (string)$decision->get('title'),
+				'holonId' => $currentHolonId,
+			);
+			$data['currentDestination'] = array(
+				'key' => $currentHolonId > 0 ? 'holon-' . $currentHolonId : '',
+				'holonId' => $currentHolonId,
+				'pathLabel' => $currentHolonId > 0 ? '' : $organizationLabel,
+			);
+			$data['canMove'] = $decision->canMoveInOrganizationContext((int)$this->getId(), $currentUserId);
+
+			if (!$data['canMove'] || !($rootHolon instanceof \dbObject\Holon)) {
+				return $data;
+			}
+
+			$this->buildDecisionMoveDestinationCatalog(
+				$rootHolon,
+				$data['destinations'],
+				$organizationLabel !== '' ? array($organizationLabel) : array('Organisation'),
+				$currentUserId
+			);
+
+			foreach ($data['destinations'] as $index => $destination) {
+				$data['destinations'][$index]['isCurrentDestination'] = (
+					(int)($destination['holonId'] ?? 0) === $currentHolonId
+				);
+				if (!empty($data['destinations'][$index]['isCurrentDestination'])) {
+					$data['currentDestination']['pathLabel'] = (string)($destination['pathLabel'] ?? '');
+				}
+			}
+
+			$this->sortDocumentMoveDestinations($data['destinations']);
+			return $data;
 		}
 
 		public function getDocumentMoveEditorData($documentId = 0)
@@ -3557,7 +10366,7 @@
 				'parentDocumentId' => $currentParentDocumentId,
 				'pathLabel' => $currentPathLabel,
 			);
-			$data['canMove'] = $document->canEditInOrganizationContext((int)$this->getId());
+			$data['canMove'] = $document->canMoveInOrganizationContext((int)$this->getId(), $currentUserId);
 
 			if (!$data['canMove']) {
 				return $data;
@@ -3594,7 +10403,7 @@
 			}
 
 			$folderDocuments = new \dbObject\ArrayDocument();
-			$folderDocuments->loadVisibleForOrganizationContext((int)$this->getId(), 0, 'global');
+			$folderDocuments->loadVisibleForOrganization((int)$this->getId());
 			foreach ($folderDocuments as $folderDocument) {
 				if (
 					!($folderDocument instanceof \dbObject\Document)
@@ -3637,6 +10446,7 @@
 					'key' => 'folder-' . $folderId,
 					'holonId' => (int)$folderDocument->get('IDholon'),
 					'parentDocumentId' => $folderId,
+					'folderParentDocumentId' => (int)$folderDocument->get('IDdocument_parent'),
 					'name' => $folderName !== '' ? $folderName : ('Dossier #' . $folderId),
 					'typeId' => -1,
 					'typeLabel' => 'Dossier',
@@ -3754,17 +10564,19 @@
 
 			foreach ($scopeHolon->getChildren() as $child) {
 				$childTemplateId = (int)$child->get('IDholon_template');
+				$isVisibleTemplateOriginal = (bool)$child->get('visible')
+					&& trim((string)$child->get('templatename')) !== '';
 				if (
 					(int)$child->getId() !== $excludedHolonId
-					&& $childTemplateId > 0
+					&& ($childTemplateId > 0 || $isVisibleTemplateOriginal)
 				) {
-					if ($childTemplateId === $templateId) {
+					if ($childTemplateId === $templateId || ($isVisibleTemplateOriginal && (int)$child->getId() === $templateId)) {
 						return true;
 					}
 
 					$instanceTemplate = new \dbObject\Holon();
 					if (
-						$instanceTemplate->load($childTemplateId)
+						$instanceTemplate->load($isVisibleTemplateOriginal ? (int)$child->getId() : $childTemplateId)
 						&& $this->templateMatchesUniqueFamily($selectedTemplate, $instanceTemplate)
 					) {
 						return true;
@@ -3785,12 +10597,63 @@
 		// Filtre template unique
 		protected function isTemplateAvailableForHolonCreation(\dbObject\Holon $template, \dbObject\Holon $contextHolon, $excludedHolonId = 0)
 		{
+			if ((int)$template->get('IDtypeholon') === 2
+				&& ((bool)$template->get('mandatory') || count($template->getMandatoryTemplateAncestorIds()) > 0)
+				&& $this->hasMandatoryCircleInPath($contextHolon)) {
+				$existingHolon = new \dbObject\Holon();
+				if ((int)$excludedHolonId <= 0
+					|| !$existingHolon->load((int)$excludedHolonId)
+					|| (int)$existingHolon->get('IDholon_parent') !== (int)$contextHolon->getId()
+					|| (int)$existingHolon->get('IDholon_template') !== (int)$template->getId()) {
+					return false;
+				}
+			}
+
 			if (!(bool)$template->get('unique')) {
 				return true;
 			}
 
 			$scopeHolon = $this->resolveUniqueTemplateScopeHolon($contextHolon);
 			return !$this->scopeHasTemplateInstance($scopeHolon, (int)$template->getId(), $excludedHolonId);
+		}
+
+		protected function hasMandatoryCircleInPath(\dbObject\Holon $holon)
+		{
+			$current = $holon;
+			$visited = array();
+			while ($current && (int)$current->getId() > 0) {
+				$currentId = (int)$current->getId();
+				if (isset($visited[$currentId])) {
+					break;
+				}
+				$visited[$currentId] = true;
+				if ((int)$current->get('IDtypeholon') === 2 && $current->isMandatoryTemplateInstance()) {
+					return true;
+				}
+				$current = $current->getParentHolon();
+			}
+			return false;
+		}
+
+		protected function hasMandatoryCircleInSubtree(\dbObject\Holon $holon, $rootHolonId)
+		{
+			$pending = array($holon);
+			$visited = array();
+			while (count($pending) > 0) {
+				$current = array_pop($pending);
+				$currentId = (int)$current->getId();
+				if ($currentId <= 0 || isset($visited[$currentId]) || $current->isTemplateNode((int)$rootHolonId)) {
+					continue;
+				}
+				$visited[$currentId] = true;
+				if ((int)$current->get('IDtypeholon') === 2 && $current->isMandatoryTemplateInstance()) {
+					return true;
+				}
+				foreach ($current->getChildren(true) as $child) {
+					$pending[] = $child;
+				}
+			}
+			return false;
 		}
 
 		// Prepare donnees editeur
@@ -3802,8 +10665,9 @@
 				return false;
 			}
 
-			foreach ($parentHolon->getChildren() as $child) {
-				if ((int)$child->get('IDholon_template') === $templateId) {
+			foreach ($parentHolon->getChildren(true) as $child) {
+				if (trim((string)$child->get('templatename')) === ''
+					&& (int)$child->get('IDholon_template') === $templateId) {
 					return true;
 				}
 			}
@@ -3828,12 +10692,10 @@
 			$child->set('mandatory', false);
 			$child->set('lockedname', false);
 			$child->set('lockedicon', false);
-			$child->set('lockedbanner', false);
 			$child->set('unique', false);
 			$child->set('link', false);
 			$child->set('color', null);
 			$child->set('icon', null);
-			$child->set('banner', null);
 			$child->save();
 
 			if ((int)$child->getId() <= 0) {
@@ -3848,7 +10710,12 @@
 		// Ajoute enfants obligatoires
 		protected function createMandatoryChildrenForCircle(\dbObject\Holon $circleHolon, $rootHolonId, $userId = 0, array $excludedTemplateIds = array())
 		{
+			if ((int)$circleHolon->get('IDtypeholon') !== 2) {
+				return;
+			}
+
 			$excludedTemplateIds = array_map('intval', $excludedTemplateIds);
+			$insideMandatoryCircle = $this->hasMandatoryCircleInPath($circleHolon);
 
 			foreach ($this->getAvailableTemplateDefinitionHolons((int)$circleHolon->getId()) as $template) {
 				$templateId = (int)$template->getId();
@@ -3864,6 +10731,9 @@
 				if (!in_array($typeId, array(1, 2, 3), true)) {
 					continue;
 				}
+				if ($insideMandatoryCircle && $typeId === 2) {
+					continue;
+				}
 
 				if ($this->circleHasTemplateChild($circleHolon, $templateId)) {
 					continue;
@@ -3873,7 +10743,7 @@
 			}
 		}
 
-		public function getHolonCreationEditorData($contextHolonId = 0, $holonId = 0)
+		public function getHolonCreationEditorData($contextHolonId = 0, $holonId = 0, $collectiveGovernance = false, int $collectiveHolonId = 0)
 		{
 			$rootHolon = $this->getStructuralRootHolon();
 			$holonId = (int)$holonId;
@@ -3908,20 +10778,40 @@
 				'canCreate' => false,
 				'canEdit' => false,
 				'types' => array(),
-				'permissionCatalog' => \dbObject\Permission::getEditorCatalog(),
-				'permissionRanges' => \dbObject\HolonPermission::getEditorRangeCatalog(),
+				'formats' => array(),
+				'listItemTypes' => \dbObject\Property::getTemplateListItemTypeOptions(),
+				'propertyTypes' => Property::getTypeOptions($this->getLexicon(), $editingHolon ?: $contextHolon, !$editingHolon),
+				'canAddHolonProperties' => $editingHolon
+					? Property::canCreateAnyType($editingHolon)
+					: ($contextHolon ? Property::canCreateAnyType($contextHolon) : false),
+				'permissionCatalog' => $this->canManageHolonPermissionAssignments($isTemplateEditing) ? $this->getPermissionEditorCatalog() : array(),
+				'permissionRanges' => $this->canManageHolonPermissionAssignments($isTemplateEditing) ? \dbObject\HolonPermission::getEditorRangeCatalog() : array(),
 				'templateCatalog' => array(),
 				'holonCatalog' => array(),
+				'projectCatalog' => array(),
+				'projectCatalogs' => array(),
+				'authorityCatalog' => array(),
+				'authorityParentCatalog' => array(),
+				'authorityCanCreateRoot' => $editingHolon && (int)$editingHolon->get('IDtypeholon') === 4,
 				'holon' => null,
 			);
 
 			if (!$rootHolon || !$contextHolon) {
-				return $data;
+				return $this->filterPropertyTypesForEditor($data);
 			}
 
-			$data['canCreate'] = !$isTemplateEditing && $contextHolon->canEdit() && in_array((int)$contextHolon->get('IDtypeholon'), array(2, 3, 4), true);
-			$data['canEdit'] = $editingHolon && $editingHolon->canEdit() && in_array((int)$editingHolon->get('IDtypeholon'), array(1, 2, 3), true);
+			$data['canCreate'] = !$isTemplateEditing
+				&& ($collectiveGovernance || $contextHolon->isAllowed('CAN_ADD_HOLON'))
+				&& in_array((int)$contextHolon->get('IDtypeholon'), array(2, 3, 4), true);
+			$data['canEditHolonFields'] = !$editingHolon || $collectiveGovernance || $editingHolon->isAllowed('CAN_EDIT_HOLON', false);
+			$data['canEdit'] = $editingHolon
+				&& ($data['canEditHolonFields'] || Property::canActOnAnyType($editingHolon))
+				&& (!$isTemplateEditing || !$this->isDiscoveryMode())
+				&& in_array((int)$editingHolon->get('IDtypeholon'), array(1, 2, 3), true);
 
+			$templateContextPathRank = array_flip(array_map(static function ($pathHolon) {
+				return (int)$pathHolon->getId();
+			}, $contextHolon->getPathHolons(true)));
 			$typeLabelsById = array();
 			foreach ($this->getAvailableTemplateDefinitionHolons((int)$contextHolon->getId()) as $template) {
 				$typeId = (int)$template->get('IDtypeholon');
@@ -3953,6 +10843,7 @@
 					$definitionHolonName = $definitionHolon->getDisplayName();
 					$definitionHolonLabel = $definitionHolon->getTemplateLabel();
 				}
+				$templateAdminBounds = $template->getEffectiveTemplateAdminBounds();
 
 				$data['templateCatalog'][] = array_merge(array(
 					'id' => (int)$template->getId(),
@@ -3960,21 +10851,52 @@
 					'typeId' => $typeId,
 					'typeLabel' => $template->getTypeLabel(),
 					'color' => (string)$template->get('color'),
+					'unassignedColor' => (string)$template->get('color_unassigned'),
 					'visible' => (bool)$template->get('visible'),
 					'mandatory' => (bool)$template->get('mandatory'),
 					'lockedName' => (bool)$template->get('lockedname'),
 					'unique' => (bool)$template->get('unique'),
 					'link' => (bool)$template->get('link'),
+					'adminParent' => (bool)$template->get('adminparent'),
+					'adminMin' => $templateAdminBounds['min'],
+					'adminMax' => $templateAdminBounds['max'],
+					'lockedAdminMin' => !empty($templateAdminBounds['minLocked']),
+					'lockedAdminMax' => !empty($templateAdminBounds['maxLocked']),
 					'definedInId' => (int)$template->get('IDholon_parent'),
 					'definedInName' => $definitionHolonName,
 					'definedInLabel' => $definitionHolonLabel,
 					'properties' => $isTemplateEditing
 						? $template->getTemplatePropertyDefinitions()
-						: $template->getHolonCreationPropertyDefinitions(),
+						: array_map(static function (array $definition) use ($editingHolon, $contextHolon) {
+							$definition['canEditValue'] = empty($definition['effectiveLocked'])
+								&& ($editingHolon ?: $contextHolon)->canEditPropertyValue($definition['type'] ?? null, !$editingHolon);
+							return $definition;
+						}, $template->getHolonCreationPropertyDefinitions()),
 				), $this->getHolonIllustrationData($template));
 
 				$typeLabelsById[$typeId] = $template->getTypeLabel();
 			}
+
+			usort($data['templateCatalog'], static function (array $left, array $right) use ($templateContextPathRank) {
+				$leftRank = $templateContextPathRank[(int)($left['definedInId'] ?? 0)] ?? PHP_INT_MAX;
+				$rightRank = $templateContextPathRank[(int)($right['definedInId'] ?? 0)] ?? PHP_INT_MAX;
+				if ($leftRank !== $rightRank) {
+					return $leftRank <=> $rightRank;
+				}
+
+				$leftTypeId = (int)($left['typeId'] ?? 0);
+				$rightTypeId = (int)($right['typeId'] ?? 0);
+				if ($leftTypeId !== $rightTypeId) {
+					return $leftTypeId <=> $rightTypeId;
+				}
+
+				$byName = strcasecmp((string)($left['name'] ?? ''), (string)($right['name'] ?? ''));
+				if ($byName !== 0) {
+					return $byName;
+				}
+
+				return (int)($left['id'] ?? 0) <=> (int)($right['id'] ?? 0);
+			});
 
 			ksort($typeLabelsById);
 			foreach ($typeLabelsById as $typeId => $typeLabel) {
@@ -3984,9 +10906,23 @@
 				);
 			}
 
+			$formats = new \dbObject\ArrayPropertyFormat();
+			$formats->load(array(
+				'orderBy' => array(
+					array('field' => 'id', 'dir' => 'ASC'),
+				),
+			));
+			$data['formats'] = $this->buildEditorPropertyFormats($formats);
+
 			$this->buildSelectableHolonCatalog($rootHolon, $data['holonCatalog'], (int)$rootHolon->getId());
+			$projectCatalogHolon = $editingHolon ?: $contextHolon;
+			$data['projectCatalog'] = $this->getProjectListEditorCatalog($projectCatalogHolon);
+			$data['projectCatalogs'] = $this->getProjectListEditorCatalogs($projectCatalogHolon);
+			$data['authorityCatalog'] = $this->getAuthorityListEditorCatalog();
+			$data['authorityParentCatalog'] = $this->getAuthorityParentEditorCatalog($contextHolon);
 
 			if ($editingHolon && $data['canEdit']) {
+				$editingAdminBounds = $editingHolon->getAdminMemberBounds();
 				$data['holon'] = array_merge(array(
 					'id' => (int)$editingHolon->getId(),
 					'name' => $editingHolon->getDisplayName(),
@@ -4001,15 +10937,85 @@
 					'nameLocked' => $isTemplateEditing ? (bool)$editingHolon->get('lockedname') : $editingHolon->isNameLockedByTemplate(),
 					'unique' => (bool)$editingHolon->get('unique'),
 					'link' => (bool)$editingHolon->get('link'),
-					'inheritedPermissions' => $this->buildHolonInheritedPermissionSnapshot($editingHolon),
-					'permissionAssignments' => \dbObject\HolonPermission::getAssignmentKeyMapForHolon((int)$editingHolon->getId()),
+					'adminParent' => (bool)$editingHolon->get('adminparent'),
+					'adminMin' => $editingAdminBounds['min'],
+					'adminMax' => $editingAdminBounds['max'],
+					'lockedAdminMin' => $editingAdminBounds['minLocked'],
+					'lockedAdminMax' => $editingAdminBounds['maxLocked'],
+					'adminMinOverride' => $editingAdminBounds['minOverridden'],
+					'adminMaxOverride' => $editingAdminBounds['maxOverridden'],
+					'inheritedPermissions' => $this->canManageHolonPermissionAssignments($isTemplateEditing)
+						? $this->buildHolonInheritedPermissionSnapshot($editingHolon)
+						: array(),
+					'permissionAssignments' => $this->canManageHolonPermissionAssignments($isTemplateEditing)
+						? \dbObject\HolonPermission::getAssignmentKeyMapForHolon((int)$editingHolon->getId())
+						: array(),
 					'properties' => $isTemplateEditing
 						? $editingHolon->getTemplatePropertyDefinitions()
 						: $editingHolon->getHolonEditorPropertyDefinitions(),
 				), $this->getHolonIllustrationData($editingHolon));
 			}
 
-			return $data;
+			$data = $this->filterPropertyTypesForEditor($data);
+			if ($collectiveGovernance) {
+				$permissionContext = $editingHolon ?: $contextHolon;
+				$collectiveId = $collectiveHolonId > 0 ? $collectiveHolonId : -1;
+				foreach ($data['propertyTypes'] as &$type) {
+					foreach (['Create' => 'CREATE', 'Edit' => 'EDIT', 'Delete' => 'DELETE'] as $flag => $operation) {
+						$type['can' . $flag] = $this->canUsePropertyPermission($permissionContext, Property::permissionKey($operation, $type['id']), $collectiveId, !$editingHolon);
+					}
+				}
+				unset($type);
+				$data['canAddHolonProperties'] = in_array(true, array_column($data['propertyTypes'], 'canCreate'), true);
+				$permissions = array_column($data['propertyTypes'], null, 'id');
+				$applyPermissions = static function (array $definition) use ($permissions): array {
+					$permission = $permissions[Property::normalizeType($definition['type'] ?? null)];
+					$definition['canEditValue'] = empty($definition['effectiveLocked']) && $permission['canEdit'];
+					$definition['canEditDefinition'] = !empty($definition['isDirectProperty']) && $permission['canCreate'];
+					$definition['canDelete'] = !empty($definition['isDirectProperty']) && $permission['canDelete'];
+					return $definition;
+				};
+				foreach ($data['templateCatalog'] as &$templateEntry) {
+					$templateEntry['properties'] = array_map($applyPermissions, $templateEntry['properties']);
+				}
+				unset($templateEntry);
+				if ($data['holon']) {
+					$data['holon']['properties'] = array_map($applyPermissions, $data['holon']['properties']);
+				}
+			}
+
+			return $this->filterPropertyTypesForEditor($data);
+		}
+
+		protected function getSubmittedDirectHolonPropertyDefinitions(array $submittedDefinitions, array $templateDefinitions)
+		{
+			$templatePropertyIds = array();
+			foreach ($templateDefinitions as $definition) {
+				$propertyId = (int)($definition['id'] ?? 0);
+				if ($propertyId > 0) {
+					$templatePropertyIds[$propertyId] = true;
+				}
+			}
+
+			$directDefinitions = array();
+			foreach ($submittedDefinitions as $position => $definition) {
+				if (!is_array($definition)) {
+					continue;
+				}
+				$propertyId = (int)($definition['id'] ?? 0);
+				if ($propertyId > 0 && isset($templatePropertyIds[$propertyId])) {
+					continue;
+				}
+				if (trim((string)($definition['name'] ?? '')) === '') {
+					continue;
+				}
+				$definition['position'] = (int)$position + 1;
+				$definition['isDirectProperty'] = true;
+				$definition['isTemplateProperty'] = false;
+				$directDefinitions[] = $definition;
+			}
+
+			return $directDefinitions;
 		}
 
 		// Enregistre holon edite
@@ -4029,6 +11035,93 @@
 			return array_values(array_filter(array_map('trim', $items), function ($item) {
 				return $item !== '';
 			}));
+		}
+
+		protected function parseHolonHistoryListItems($rawValue, $formatId)
+		{
+			if ((int)$formatId === \dbObject\PropertyFormat::FORMAT_HTML_LIST) {
+				$parts = \dbObject\PropertyFormat::getHtmlListParts($rawValue);
+				return array_values($parts['items']);
+			}
+
+			return $this->parseHolonHistoryListValue($rawValue);
+		}
+
+		protected function buildHolonHistoryListDisplayItem($item, $listItemType)
+		{
+			$listItemType = trim((string)$listItemType);
+			$itemId = is_array($item) ? (int)($item['id'] ?? 0) : (int)$item;
+			$label = '';
+
+			if ($itemId > 0 && $listItemType === \dbObject\Property::LIST_ITEM_HOLON) {
+				$linkedHolon = new \dbObject\Holon();
+				if ($linkedHolon->load($itemId) && $this->containsHolon($linkedHolon)) {
+					$label = trim((string)$linkedHolon->getDisplayName());
+				}
+			}
+
+			if ($itemId > 0 && $listItemType === \dbObject\Property::LIST_ITEM_PROJECT) {
+				$project = new \dbObject\Project();
+				if ($project->load($itemId) && (int)$project->get('IDorganization') === (int)$this->getId()) {
+					$label = trim((string)$project->get('title'));
+				}
+			}
+
+			if ($itemId > 0 && $listItemType === \dbObject\Property::LIST_ITEM_AUTHORITY) {
+				$authority = new \dbObject\Authority();
+				if ($authority->load($itemId) && (int)$authority->getOrganizationId() === (int)$this->getId()) {
+					$label = trim((string)$authority->get('label'));
+				}
+			}
+
+			if ($itemId > 0 && $label !== '') {
+				return array(
+					'id' => $itemId,
+					'label' => $label,
+				);
+			}
+
+			return $item;
+		}
+
+		protected function buildHolonHistoryListDisplayItems(array $items, $listItemType)
+		{
+			return array_map(function ($item) use ($listItemType) {
+				return $this->buildHolonHistoryListDisplayItem($item, $listItemType);
+			}, array_values($items));
+		}
+
+		public function getHolonEditorListDisplayItems($value, $formatId, $listItemType): array
+		{
+			if (!\dbObject\PropertyFormat::isListFormat((int)$formatId)) return array();
+			$items = $this->parseHolonHistoryListItems($value, (int)$formatId);
+			$visible = array_values(array_filter($items, static function ($item) {
+				return !is_array($item) || empty($item['delete']);
+			}));
+			return array_map(function ($item) use ($listItemType) {
+				if ((string)$listItemType === \dbObject\Property::LIST_ITEM_AUTHORITY
+					&& is_array($item) && trim((string)($item['label'] ?? '')) !== '') {
+					return ['id' => (int)($item['id'] ?? 0), 'label' => trim((string)$item['label'])];
+				}
+				if ((string)$listItemType === \dbObject\Property::LIST_ITEM_AUTHORITY
+					&& is_array($item) && (string)($item['delegationMode'] ?? '') === 'complete'
+					&& (int)($item['parentId'] ?? 0) > 0) {
+					$parent = $this->buildHolonHistoryListDisplayItem((int)$item['parentId'], $listItemType);
+					$parentLabel = is_array($parent) ? (string)($parent['label'] ?? '') : 'Autorité #' . (int)$item['parentId'];
+					return ['id' => 0, 'label' => $parentLabel];
+				}
+				$display = $this->buildHolonHistoryListDisplayItem($item, $listItemType);
+				$itemId = is_array($item) ? (int)($item['id'] ?? 0) : (int)$item;
+				if ($itemId > 0 && !is_array($display)) {
+					$typeLabel = [
+						\dbObject\Property::LIST_ITEM_HOLON => self::formatLexiconText('Holon', $this->getLexicon()),
+						\dbObject\Property::LIST_ITEM_PROJECT => 'Projet',
+						\dbObject\Property::LIST_ITEM_AUTHORITY => 'Autorité',
+					][(string)$listItemType] ?? '';
+					if ($typeLabel !== '') return ['id' => $itemId, 'label' => $typeLabel . ' #' . $itemId];
+				}
+				return $display;
+			}, $visible);
 		}
 
 		protected function mergeHolonHistoryListValues($ancestorValue, $currentValue)
@@ -4098,15 +11191,15 @@
 				$permissionId = $permission ? (int)$permission->getId() : 0;
 				$visibleItems = array();
 
-				foreach ((array)$ranges as $range) {
-					$range = trim((string)$range);
+				foreach ((array)$ranges as $assignment) {
+					$range = HolonPermission::getAssignmentRange($assignment);
 					if ($range === '') {
 						continue;
 					}
 
 					$visibleItems[] = array(
-						'id' => $range,
-						'label' => (string)($rangeLabels[$range] ?? $range),
+						'id' => $range . (HolonPermission::isExtendedAssignment($assignment) ? ':extended' : ''),
+						'label' => (string)($rangeLabels[$range] ?? $range) . (HolonPermission::isExtendedAssignment($assignment) ? ' (Autorité étendue)' : ''),
 					);
 				}
 
@@ -4136,7 +11229,11 @@
 
 		protected function buildHolonInheritedPermissionSnapshot(\dbObject\Holon $holon)
 		{
-			$collectedAssignments = array();
+			$collectedAssignments = array(
+				\dbObject\HolonPermission::MEMBER_TYPE_MEMBER => array(),
+				\dbObject\HolonPermission::MEMBER_TYPE_ADMIN => array(),
+				\dbObject\HolonPermission::MEMBER_TYPE_COLLECTIVE => array(),
+			);
 			$visitedTemplateIds = array();
 			$currentTemplateId = (int)$holon->get('IDholon_template');
 			$guard = 0;
@@ -4152,23 +11249,27 @@
 					break;
 				}
 
-				foreach (\dbObject\HolonPermission::getAssignmentKeyMapForHolon($currentTemplateId) as $permissionKey => $ranges) {
-					$permissionKey = trim((string)$permissionKey);
-					if ($permissionKey === '') {
-						continue;
-					}
-
-					if (!isset($collectedAssignments[$permissionKey])) {
-						$collectedAssignments[$permissionKey] = array();
-					}
-
-					foreach ((array)$ranges as $range) {
-						$range = trim((string)$range);
-						if ($range === '') {
+				foreach (\dbObject\HolonPermission::getAssignmentKeyMapForHolon($currentTemplateId) as $memberType => $profileAssignments) {
+					$memberType = \dbObject\HolonPermission::normalizeMemberType($memberType);
+					foreach ((array)$profileAssignments as $permissionKey => $ranges) {
+						$permissionKey = trim((string)$permissionKey);
+						if ($permissionKey === '') {
 							continue;
 						}
 
-						$collectedAssignments[$permissionKey][$range] = $range;
+						if (!isset($collectedAssignments[$memberType][$permissionKey])) {
+							$collectedAssignments[$memberType][$permissionKey] = array();
+						}
+
+						foreach ((array)$ranges as $assignment) {
+							$range = HolonPermission::getAssignmentRange($assignment);
+							if ($range === '') {
+								continue;
+							}
+
+							$assignmentKey = $range . (HolonPermission::isExtendedAssignment($assignment) ? ':extended' : '');
+							$collectedAssignments[$memberType][$permissionKey][$assignmentKey] = $assignment;
+						}
 					}
 				}
 
@@ -4176,11 +11277,15 @@
 				$guard++;
 			}
 
-			foreach ($collectedAssignments as $permissionKey => $ranges) {
-				$collectedAssignments[$permissionKey] = array_values($ranges);
+			$snapshot = array();
+			foreach ($collectedAssignments as $memberType => $profileAssignments) {
+				foreach ($profileAssignments as $permissionKey => $ranges) {
+					$collectedAssignments[$memberType][$permissionKey] = array_values($ranges);
+				}
+				$snapshot[$memberType] = $this->buildPermissionSnapshotFromAssignmentMap($collectedAssignments[$memberType]);
 			}
 
-			return $this->buildPermissionSnapshotFromAssignmentMap($collectedAssignments);
+			return $snapshot;
 		}
 
 		protected function buildHolonHistoryPermissionSnapshot(\dbObject\Holon $holon)
@@ -4191,7 +11296,19 @@
 			}
 
 			$assignments = \dbObject\HolonPermission::getAssignmentKeyMapForHolon($holonId);
-			return $this->buildPermissionSnapshotFromAssignmentMap($assignments);
+			$snapshot = array();
+			foreach ($assignments as $memberType => $profileAssignments) {
+				$profileSnapshot = $this->buildPermissionSnapshotFromAssignmentMap((array)$profileAssignments);
+				foreach ($profileSnapshot as $permissionKey => $permissionSnapshot) {
+					$historyKey = $memberType . ':' . $permissionKey;
+					$permissionSnapshot['memberType'] = $memberType;
+					$profileLabel = \dbObject\HolonPermission::getMemberTypeLabels()[$memberType] ?? 'Membre';
+					$permissionSnapshot['name'] = $profileLabel . ' - ' . (string)($permissionSnapshot['name'] ?? $permissionKey);
+					$snapshot[$historyKey] = $permissionSnapshot;
+				}
+			}
+
+			return $snapshot;
 		}
 
 		protected function buildHolonHistorySnapshot(\dbObject\Holon $holon, array $options = array())
@@ -4216,6 +11333,7 @@
 				$visibleValue = $this->buildHolonHistoryVisibleValue($definition);
 				$properties[$propertyId] = array(
 					'id' => $propertyId,
+					'type' => Property::normalizeType($definition['type'] ?? null),
 					'name' => trim((string)($definition['name'] ?? ('Propriete ' . $propertyId))),
 					'shortname' => trim((string)($definition['shortname'] ?? '')),
 					'formatId' => $formatId,
@@ -4224,9 +11342,12 @@
 					'localValue' => (string)($definition['value'] ?? ''),
 					'inheritedValue' => (string)($definition['inheritedValue'] ?? ''),
 					'visibleValue' => (string)$visibleValue,
-					'visibleItems' => $formatId === \dbObject\PropertyFormat::FORMAT_LIST
-					? $this->parseHolonHistoryListValue($visibleValue)
-					: array(),
+					'visibleItems' => \dbObject\PropertyFormat::isListFormat($formatId)
+						? $this->buildHolonHistoryListDisplayItems(
+							$this->parseHolonHistoryListItems($visibleValue, $formatId),
+							(string)($definition['listItemType'] ?? '')
+						)
+						: array(),
 				);
 			}
 
@@ -4251,14 +11372,19 @@
 					'inheritsFromName' => $parentTemplateName,
 					'color' => trim((string)$holon->get('color')),
 					'icon' => trim((string)$holon->get('icon')),
-					'banner' => trim((string)$holon->get('banner')),
 					'visible' => (bool)$holon->get('visible'),
 					'mandatory' => (bool)$holon->get('mandatory'),
 					'lockedName' => (bool)$holon->get('lockedname'),
 					'lockedIcon' => (bool)$holon->get('lockedicon'),
-					'lockedBanner' => (bool)$holon->get('lockedbanner'),
 					'unique' => (bool)$holon->get('unique'),
 					'link' => (bool)$holon->get('link'),
+					'adminParent' => (bool)$holon->get('adminparent'),
+					'adminMin' => max(0, (int)$holon->get('admin_min')),
+					'adminMax' => $holon->get('admin_max') === null ? null : (int)$holon->get('admin_max'),
+					'lockedAdminMin' => (bool)$holon->get('lockedadminmin'),
+					'lockedAdminMax' => (bool)$holon->get('lockedadminmax'),
+					'adminMinOverride' => (bool)$holon->get('adminminoverride'),
+					'adminMaxOverride' => (bool)$holon->get('adminmaxoverride'),
 				),
 				'properties' => $properties,
 				'permissions' => !empty($options['includePermissions'])
@@ -4797,11 +11923,48 @@
 				}
 			}
 
+			if ($listItemType === \dbObject\Property::LIST_ITEM_PROJECT) {
+				$projectId = is_array($item) ? (int)($item['id'] ?? 0) : (int)$item;
+				if ($projectId > 0) {
+					$project = new \dbObject\Project();
+					if (
+						$project->load($projectId)
+						&& (int)$project->get('IDorganization') === (int)$this->getId()
+					) {
+						return $this->limitHolonHistoryText((string)$project->get('title'));
+					}
+				}
+			}
+
+			if ($listItemType === \dbObject\Property::LIST_ITEM_AUTHORITY) {
+				$authorityId = is_array($item) ? (int)($item['id'] ?? 0) : (int)$item;
+				if ($authorityId > 0) {
+					$authority = new \dbObject\Authority();
+					if (
+						$authority->load($authorityId)
+						&& (int)$authority->getOrganizationId() === (int)$this->getId()
+					) {
+						return $this->limitHolonHistoryText((string)$authority->get('label'));
+					}
+				}
+			}
+
 			if (is_array($item)) {
 				return $this->limitHolonHistoryText((string)($item['label'] ?? $item['value'] ?? ''));
 			}
 
 			return $this->limitHolonHistoryText((string)$item);
+		}
+
+		protected function buildHolonHistoryHtmlTextPreview($html)
+		{
+			$html = html_entity_decode(
+				strip_tags(str_ireplace(array('<br>', '<br/>', '<br />'), ' ', (string)$html)),
+				ENT_QUOTES | ENT_HTML5,
+				'UTF-8'
+			);
+
+			return $this->limitHolonHistoryText($html);
 		}
 
 		protected function buildHolonHistoryValuePreview(array $propertySnapshot, array $beforePropertySnapshot = array())
@@ -4810,7 +11973,7 @@
 			$value = (string)($propertySnapshot['visibleValue'] ?? '');
 			$beforeValue = (string)($beforePropertySnapshot['visibleValue'] ?? '');
 
-			if ($formatId === \dbObject\PropertyFormat::FORMAT_LIST) {
+			if (\dbObject\PropertyFormat::isListFormat($formatId)) {
 				$previews = array();
 				foreach (array_slice($propertySnapshot['visibleItems'] ?? array(), 0, 3) as $item) {
 					$preview = $this->buildHolonHistoryListItemPreview($item, $propertySnapshot['listItemType'] ?? '');
@@ -4832,16 +11995,19 @@
 			}
 
 			if ($formatId === \dbObject\PropertyFormat::FORMAT_HTML) {
-				$value = html_entity_decode(
-					strip_tags(str_ireplace(array('<br>', '<br/>', '<br />'), ' ', $value)),
-					ENT_QUOTES | ENT_HTML5,
-					'UTF-8'
-				);
-				$beforeValue = html_entity_decode(
-					strip_tags(str_ireplace(array('<br>', '<br/>', '<br />'), ' ', $beforeValue)),
-					ENT_QUOTES | ENT_HTML5,
-					'UTF-8'
-				);
+				$value = $this->buildHolonHistoryHtmlTextPreview($value);
+				$beforeValue = $this->buildHolonHistoryHtmlTextPreview($beforeValue);
+			}
+
+			if ($formatId === \dbObject\PropertyFormat::FORMAT_TEXT_HTML) {
+				$parts = \dbObject\PropertyFormat::getTextHtmlParts($value);
+				$previewParts = array_filter(array(
+					trim((string)$parts['text']),
+					$this->buildHolonHistoryHtmlTextPreview($parts['detail']),
+				), function ($part) {
+					return trim((string)$part) !== '';
+				});
+				return implode(' - ', $previewParts);
 			}
 
 			if (
@@ -4872,7 +12038,7 @@
 			$holonTypeLabel = trim((string)($holonSnapshot['typeLabel'] ?? ''));
 			$holonLabel = \dbObject\History::formatHolonReferenceLabel($holonName, $holonTypeId, $holonTypeLabel);
 			if ($holonLabel === '') {
-				$holonLabel = 'Holon ' . $holonId;
+				$holonLabel = self::formatLexiconText('Holon ', $this->getLexicon()) . $holonId;
 			}
 
 			return \dbObject\History::buildReferenceToken('holon', $holonId, $holonLabel);
@@ -4921,7 +12087,6 @@
 			$mediaFields = array(
 				'color' => 'la couleur a ete modifiee',
 				'icon' => "l'icone a ete modifiee",
-				'banner' => 'la banniere a ete modifiee',
 			);
 			foreach ($mediaFields as $field => $message) {
 				if ((string)($beforeHolon[$field] ?? '') === (string)($afterHolon[$field] ?? '')) {
@@ -4942,9 +12107,13 @@
 				'mandatory' => 'obligatoire',
 				'lockedName' => 'nom verrouille',
 				'lockedIcon' => 'icone verrouillee',
-				'lockedBanner' => 'banniere verrouillee',
+				'lockedAdminMin' => 'minimum d admins verrouille',
+				'lockedAdminMax' => 'maximum d admins verrouille',
+				'adminMinOverride' => 'minimum d admins redefini',
+				'adminMaxOverride' => 'maximum d admins redefini',
 				'unique' => 'unique',
 				'link' => 'lien',
+				'adminParent' => 'admin parent',
 			);
 			foreach ($templateBooleanFields as $field => $label) {
 				if ((bool)($beforeHolon[$field] ?? false) === (bool)($afterHolon[$field] ?? false)) {
@@ -4958,6 +12127,24 @@
 					'field' => $field,
 					'before' => (bool)($beforeHolon[$field] ?? false),
 					'after' => (bool)($afterHolon[$field] ?? false),
+				);
+			}
+
+			$templateIntegerFields = array(
+				'adminMin' => 'nombre minimum d admins',
+				'adminMax' => 'nombre maximum d admins',
+			);
+			foreach ($templateIntegerFields as $field => $label) {
+				if (($beforeHolon[$field] ?? null) === ($afterHolon[$field] ?? null)) {
+					continue;
+				}
+
+				$messages[] = 'le parametre "' . $label . '" a ete modifie';
+				$changes[] = array(
+					'type' => 'field_changed',
+					'field' => $field,
+					'before' => $beforeHolon[$field] ?? null,
+					'after' => $afterHolon[$field] ?? null,
 				);
 			}
 
@@ -5016,7 +12203,35 @@
 					continue;
 				}
 
-				if ($formatId === \dbObject\PropertyFormat::FORMAT_LIST) {
+				if (($beforeProperty['type'] ?? 'type1') !== ($afterProperty['type'] ?? 'type1')) {
+					$messages[] = 'le type de la propriete ' . $propertyToken . ' a ete modifie';
+					$changes[] = [
+						'type' => 'property_type_changed',
+						'propertyId' => (int)$propertyId,
+						'before' => $beforeProperty['type'] ?? 'type1',
+						'after' => $afterProperty['type'] ?? 'type1',
+					];
+				}
+
+				if (\dbObject\PropertyFormat::isListFormat($formatId)) {
+					if ($formatId === \dbObject\PropertyFormat::FORMAT_HTML_LIST) {
+						$beforeParts = \dbObject\PropertyFormat::getHtmlListParts((string)($beforeProperty['visibleValue'] ?? ''));
+						$afterParts = \dbObject\PropertyFormat::getHtmlListParts((string)($afterProperty['visibleValue'] ?? ''));
+						$beforeHtml = $this->buildHolonHistoryHtmlTextPreview($beforeParts['before'])
+							. ' ' . $this->buildHolonHistoryHtmlTextPreview($beforeParts['after']);
+						$afterHtml = $this->buildHolonHistoryHtmlTextPreview($afterParts['before'])
+							. ' ' . $this->buildHolonHistoryHtmlTextPreview($afterParts['after']);
+						if (trim($beforeHtml) !== trim($afterHtml)) {
+							$messages[] = 'le contenu HTML de ' . $propertyToken . ' a ete modifie'
+								. (($preview = $this->buildHolonHistoryChangedTextSnippet($beforeHtml, $afterHtml)) !== '' ? ' : ' . $preview : '');
+							$changes[] = array(
+								'type' => 'property_html_changed',
+								'propertyId' => (int)$propertyId,
+								'before' => $beforeParts,
+								'after' => $afterParts,
+							);
+						}
+					}
 					$beforeItemsByKey = array();
 					foreach ($beforeProperty['visibleItems'] ?? array() as $item) {
 						$key = $this->buildHolonHistoryListItemKey($item);
@@ -5280,7 +12495,8 @@
 					'after' => $afterSnapshot,
 					'changes' => $diff['changes'],
 				),
-				(int)$holon->getContainingCircleId(false)
+				'holon',
+				(int)$holon->getId()
 			);
 		}
 
@@ -5297,12 +12513,570 @@
 					'IDholon' => (int)$holon->getId(),
 					'after' => $afterSnapshot,
 				),
-				(int)$holon->getContainingCircleId(false)
+				'holon',
+				(int)$holon->getId()
 			);
 		}
 
-		public function saveHolonEditorDefinition(array $payload, $userId = 0, $contextHolonId = 0, $holonId = 0)
+		protected function recordAuthorityHistory(\dbObject\Holon $holon, $authorUserId, $action, $content, array $parameters = array())
 		{
+			$holonId = (int)$holon->getId();
+			$holonToken = \dbObject\History::buildReferenceToken(
+				'holon',
+				$holonId,
+				$holon->getDisplayName()
+			);
+			$content = trim((string)$content);
+			if ($holonId > 0 && strpos($content, \dbObject\History::buildHolonSearchNeedle($holonId)) === false) {
+				$content .= ' Autorite confiee a ' . $holonToken . '.';
+			}
+			$parameters['IDholon'] = $holonId;
+
+			\dbObject\History::createEntry(
+				(int)$this->getId(),
+				(int)$authorUserId,
+				(string)$action,
+				(string)$content,
+				$parameters,
+				'holon',
+				$holonId
+			);
+		}
+
+		protected function getAuthorityHistoryLabel($authorityId)
+		{
+			$authorityId = (int)$authorityId;
+			if ($authorityId <= 0) {
+				return 'aucune autorite parente';
+			}
+
+			$authority = new \dbObject\Authority();
+			if (!$authority->load($authorityId)) {
+				return 'autorite #' . $authorityId;
+			}
+
+			$label = trim((string)$authority->get('label'));
+			return $label !== '' ? $label : 'autorite #' . $authorityId;
+		}
+
+		protected function syncTemplateAuthorityInstances(\dbObject\Holon $template)
+		{
+			$rootHolon = $this->getStructuralRootHolon();
+			$templateId = (int)$template->getId();
+			if (!$rootHolon || $templateId <= 0) {
+				return array();
+			}
+
+			$sourceAuthorities = new \dbObject\ArrayAuthority();
+			$sourceAuthorities->loadForHolon($templateId);
+			$sourceById = array();
+			foreach ($sourceAuthorities as $sourceAuthority) {
+				$sourceId = (int)$sourceAuthority->getId();
+				if ($sourceId > 0 && (int)$sourceAuthority->get('IDauthority_template') <= 0 && !empty($sourceAuthority->get('is_local'))) {
+					$sourceById[$sourceId] = $sourceAuthority;
+				}
+			}
+			if (count($sourceById) === 0) {
+				return array();
+			}
+
+			$instancesByHolonId = array();
+			foreach ($this->getOrganizationHolonIds() as $holonId) {
+				$holon = new \dbObject\Holon();
+				if (!$holon->load((int)$holonId) || $holon->isTemplateNode((int)$rootHolon->getId())) {
+					continue;
+				}
+				if (!in_array($templateId, $holon->getTemplateLineageIds(), true)) {
+					continue;
+				}
+
+				$instancesBySourceId = array();
+				$existingAuthorities = new \dbObject\ArrayAuthority();
+				$existingAuthorities->loadForHolon((int)$holon->getId());
+				foreach ($existingAuthorities as $existingAuthority) {
+					$sourceId = (int)$existingAuthority->get('IDauthority_template');
+					if ($sourceId > 0 && isset($sourceById[$sourceId])) {
+						$instancesBySourceId[$sourceId] = $existingAuthority;
+					}
+				}
+
+				foreach ($sourceById as $sourceId => $sourceAuthority) {
+					$instance = $instancesBySourceId[$sourceId] ?? new \dbObject\Authority();
+					$instance->set('IDholon', (int)$holon->getId());
+					$instance->set('IDauthority_template', $sourceId);
+					$instance->set('IDauthority_parent', null);
+					$instance->set('label', (string)$sourceAuthority->get('label'));
+					$instance->set('description', $sourceAuthority->get('description'));
+					$instance->set('is_local', true);
+					$instance->set('template_origin_lost', false);
+					$instance->set('is_shell', false);
+					$saveResult = $instance->save();
+					if (!is_array($saveResult) || empty($saveResult['status'])) {
+						continue;
+					}
+					$instancesByHolonId[(int)$holon->getId()][$sourceId] = (int)$instance->getId();
+				}
+			}
+
+			return $instancesByHolonId;
+		}
+
+		public function ensureTemplateAuthorityInstancesForHolon(\dbObject\Holon $holon)
+		{
+			$rootHolon = $this->getStructuralRootHolon();
+			if (!($rootHolon instanceof \dbObject\Holon) || !$this->containsHolon($holon)) {
+				return;
+			}
+
+			foreach ($holon->getTemplateLineageIds() as $templateId) {
+				$template = new \dbObject\Holon();
+				if (!$template->load((int)$templateId) || !$template->isTemplateNode((int)$rootHolon->getId())) {
+					continue;
+				}
+				$this->normalizeTemplateLocalAuthorities($template);
+				$this->syncTemplateAuthorityInstances($template);
+			}
+		}
+
+		protected function normalizeTemplateLocalAuthorities(\dbObject\Holon $template)
+		{
+			$authorities = new \dbObject\ArrayAuthority();
+			$authorities->loadForHolon((int)$template->getId());
+			foreach ($authorities as $authority) {
+				if ((int)$authority->get('IDauthority_template') > 0 || (int)$authority->get('IDauthority_parent') > 0 || !empty($authority->get('is_local'))) {
+					continue;
+				}
+				$authority->set('is_local', true);
+				$authority->save();
+			}
+		}
+
+		protected function remapTemplateAuthorityListValue($rawValue, $formatId, array $authorityIdMap)
+		{
+			return \dbObject\PropertyFormat::remapListReferenceIds($rawValue, $formatId, $authorityIdMap);
+		}
+
+		protected function remapTemplateAuthorityPropertyValues(\dbObject\Holon $holon, array &$submittedValuesByPropertyId, array &$propertyDefinitions)
+		{
+			$authorityIdMap = array();
+			$authorities = new \dbObject\ArrayAuthority();
+			$authorities->loadForHolon((int)$holon->getId());
+			foreach ($authorities as $authority) {
+				$sourceId = (int)$authority->get('IDauthority_template');
+				if ($sourceId > 0) {
+					$authorityIdMap[$sourceId] = (int)$authority->getId();
+				}
+			}
+			if (count($authorityIdMap) === 0) {
+				return;
+			}
+
+			foreach ($propertyDefinitions as &$definition) {
+				if (
+					(string)($definition['listItemType'] ?? '') !== \dbObject\Property::LIST_ITEM_AUTHORITY
+					|| !\dbObject\PropertyFormat::isListFormat((int)($definition['formatId'] ?? 0))
+				) {
+					continue;
+				}
+				$propertyId = (int)($definition['id'] ?? 0);
+				$formatId = (int)($definition['formatId'] ?? 0);
+				$definition['inheritedValue'] = $this->remapTemplateAuthorityListValue($definition['inheritedValue'] ?? '', $formatId, $authorityIdMap);
+				if ($propertyId > 0 && array_key_exists($propertyId, $submittedValuesByPropertyId)) {
+					$submittedValuesByPropertyId[$propertyId] = $this->remapTemplateAuthorityListValue($submittedValuesByPropertyId[$propertyId], $formatId, $authorityIdMap);
+				}
+			}
+			unset($definition);
+		}
+
+		protected function syncSubmittedAuthorityPropertyValues(\dbObject\Holon $holon, array &$submittedValuesByPropertyId, array $propertyDefinitions, $authorUserId = 0, array $options = array())
+		{
+			$allowLocalRoot = !empty($options['allowLocalRoot']);
+			$isTemplateSource = !empty($options['isTemplateSource']);
+			$parseItems = static function ($rawValue, $formatId) {
+				$rawValue = trim((string)$rawValue);
+				if ($rawValue === '') {
+					return array();
+				}
+
+				$decoded = json_decode($rawValue, true);
+				if (json_last_error() !== JSON_ERROR_NONE || !is_array($decoded)) {
+					return array();
+				}
+
+				if ((int)$formatId === \dbObject\PropertyFormat::FORMAT_HTML_LIST) {
+					return is_array($decoded['items'] ?? null) ? array_values($decoded['items']) : array();
+				}
+
+				return array_values($decoded);
+			};
+
+			$serializeItems = static function ($rawValue, $formatId, array $items) {
+				if ((int)$formatId === \dbObject\PropertyFormat::FORMAT_HTML_LIST) {
+					$parts = json_decode(trim((string)$rawValue), true);
+					if (!is_array($parts)) {
+						$parts = array();
+					}
+					$parts['items'] = array_values($items);
+					return json_encode($parts, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+				}
+
+				return count($items) > 0
+					? json_encode(array_values($items), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+					: '';
+			};
+
+			$removedAuthorityIds = array();
+			$existingValuesByPropertyId = array();
+			foreach ($holon->getHolonProperties() as $holonProperty) {
+				$existingValuesByPropertyId[(int)$holonProperty->get('IDproperty')] = (string)$holonProperty->get('value');
+			}
+
+			$parentAuthorityIds = array();
+			$parentHolon = $holon->getAuthorityParentHolon();
+			if ($parentHolon instanceof \dbObject\Holon) {
+				$parentAuthorities = new \dbObject\ArrayAuthority();
+				$parentAuthorities->loadForHolon((int)$parentHolon->getId());
+				foreach ($parentAuthorities as $parentAuthority) {
+					$parentAuthorityId = (int)$parentAuthority->getId();
+					if ($parentAuthorityId > 0) {
+						$parentAuthorityIds[$parentAuthorityId] = true;
+					}
+				}
+			}
+
+			foreach ($propertyDefinitions as $definition) {
+				$propertyId = (int)($definition['id'] ?? 0);
+				if (!$holon->isPropertyEnabled($propertyId)) continue;
+				$formatId = (int)($definition['formatId'] ?? 0);
+				if (
+					$propertyId <= 0
+					|| (string)($definition['listItemType'] ?? '') !== \dbObject\Property::LIST_ITEM_AUTHORITY
+					|| !\dbObject\PropertyFormat::isListFormat($formatId)
+					|| (!$isTemplateSource && !empty($definition['effectiveLocked']))
+				) {
+					continue;
+				}
+
+				$currentItems = $parseItems($existingValuesByPropertyId[$propertyId] ?? '', $formatId);
+				$allowedExistingIds = array();
+				foreach ($currentItems as $currentItem) {
+					$currentId = is_array($currentItem) ? (int)($currentItem['id'] ?? 0) : (int)$currentItem;
+					if ($currentId > 0) {
+						$allowedExistingIds[$currentId] = true;
+					}
+				}
+				if (!empty($options['allowTemplateInstances'])) {
+					$templateAuthorities = new \dbObject\ArrayAuthority();
+					$templateAuthorities->loadForHolon((int)$holon->getId());
+					foreach ($templateAuthorities as $templateAuthority) {
+						if ($templateAuthority->isTemplateInstance()) {
+							$allowedExistingIds[(int)$templateAuthority->getId()] = true;
+						}
+					}
+				}
+
+				$rawValue = (string)($submittedValuesByPropertyId[$propertyId] ?? '');
+				$submittedItems = $parseItems($rawValue, $formatId);
+				$resolvedIds = array();
+				$seenIds = array();
+
+				foreach ($submittedItems as $submittedItem) {
+					$existingId = is_array($submittedItem) ? (int)($submittedItem['id'] ?? 0) : (int)$submittedItem;
+					if ($existingId > 0) {
+						if (isset($removedAuthorityIds[$existingId])) {
+							continue;
+						}
+						if (!isset($allowedExistingIds[$existingId])) {
+							return array(
+								'status' => false,
+								'message' => 'Une autorite existante ne peut pas etre ajoutee a cette propriete.',
+							);
+						}
+
+						$authority = new \dbObject\Authority();
+						$isDeletion = is_array($submittedItem) && !empty($submittedItem['delete']);
+						if (
+							!$authority->load($existingId)
+							|| (int)$authority->get('IDholon') !== (int)$holon->getId()
+						) {
+							if ($isDeletion) {
+								// The stored list can still reference a missing or foreign authority.
+								// Remove only this reference; never delete an authority owned elsewhere.
+								continue;
+							}
+							return array(
+								'status' => false,
+'message' => 'Cette autorité ne peut pas être modifiée depuis cet espace.',
+							);
+						}
+
+						$before = array(
+							'label' => trim((string)$authority->get('label')),
+							'description' => trim((string)$authority->get('description')),
+							'parentId' => (int)$authority->get('IDauthority_parent'),
+							'parentLabel' => $this->getAuthorityHistoryLabel((int)$authority->get('IDauthority_parent')),
+						);
+						if ($isDeletion) {
+							if ($authority->isTemplateInstance()) {
+								return array(
+									'status' => false,
+									'message' => 'Cette autorite est geree par son modele et ne peut pas etre modifiee ici.',
+								);
+							}
+							$deletionPlan = is_array($submittedItem['deletionPlan'] ?? null)
+								? $submittedItem['deletionPlan']
+								: array();
+							$deletionResult = $authority->applyDeletionPlan($deletionPlan);
+							if (empty($deletionResult['status'])) {
+								return array(
+									'status' => false,
+									'message' => (string)($deletionResult['text'] ?? 'Cette autorite ne peut pas etre traitee.'),
+								);
+							}
+							foreach (array_merge($deletionResult['deletedAuthorityIds'] ?? array(), $deletionResult['movedAuthorityIds'] ?? array()) as $removedId) {
+								$removedAuthorityIds[(int)$removedId] = true;
+							}
+
+							$authorityRetained = !empty($deletionResult['authorityRetained']);
+							$reactivatedShellId = (int)($deletionResult['reactivatedShellId'] ?? 0);
+							$historyAction = $reactivatedShellId > 0
+								? 'authority_complete_delegation_reversed'
+								: ($authorityRetained ? 'authority_reassigned' : 'authority_deleted');
+							$historyContent = $reactivatedShellId > 0
+								? 'Annulation de la delegation complete de l autorite "' . $before['label'] . '" : l autorite source a ete reactivee.'
+								: ($authorityRetained
+									? 'Remontee de l autorite "' . $before['label'] . self::formatLexiconText('" au holon parent.', $this->getLexicon())
+									: 'Suppression de l autorite "' . $before['label'] . '".');
+							$propertyReferenceCount = (int)($deletionResult['movedPropertyReferenceCount'] ?? 0);
+							if ($propertyReferenceCount > 0) {
+								$historyContent .= ' ' . $propertyReferenceCount . ' rattachement' . ($propertyReferenceCount > 1 ? 's' : '') . ' de propriete remonte' . ($propertyReferenceCount > 1 ? 's' : '') . self::formatLexiconText(' au holon parent.', $this->getLexicon());
+							}
+							$removedReferenceCount = (int)($deletionResult['removedPropertyReferenceCount'] ?? 0);
+							if ($removedReferenceCount > 0) {
+								$historyContent .= ' ' . $removedReferenceCount . ' reference' . ($removedReferenceCount > 1 ? 's' : '') . ' retiree' . ($removedReferenceCount > 1 ? 's' : '') . ' des listes.';
+							}
+							$this->recordAuthorityHistory(
+								$holon,
+								$authorUserId,
+								$historyAction,
+								$historyContent,
+								array(
+									'IDauthority' => $existingId,
+									'before' => $before,
+									'deletionPlan' => $deletionResult['plan'] ?? array(),
+									'deletedAuthorityIds' => $deletionResult['deletedAuthorityIds'] ?? array(),
+									'movedAuthorityIds' => $deletionResult['movedAuthorityIds'] ?? array(),
+									'deletedRuleIds' => $deletionResult['deletedRuleIds'] ?? array(),
+									'movedRuleIds' => $deletionResult['movedRuleIds'] ?? array(),
+									'movedPropertyReferenceCount' => $propertyReferenceCount,
+									'removedPropertyReferenceCount' => $removedReferenceCount,
+									'reactivatedShellId' => $reactivatedShellId,
+								)
+							);
+							continue;
+						}
+
+						if (is_array($submittedItem) && (
+							array_key_exists('label', $submittedItem)
+							|| array_key_exists('parentId', $submittedItem)
+							|| array_key_exists('description', $submittedItem)
+						)) {
+							if ($authority->isTemplateInstance()) {
+								return array(
+									'status' => false,
+									'message' => 'Cette autorite est geree par son modele et ne peut pas etre modifiee ici.',
+								);
+							}
+							$label = trim((string)($submittedItem['label'] ?? $before['label']));
+							$parentId = array_key_exists('parentId', $submittedItem)
+								? (int)$submittedItem['parentId']
+								: $before['parentId'];
+							$description = trim((string)($submittedItem['description'] ?? $before['description']));
+							$isLocal = array_key_exists('isLocal', $submittedItem)
+								? !empty($submittedItem['isLocal'])
+								: !empty($authority->get('is_local'));
+							$canCreateRootAuthority = (int)$holon->get('IDtypeholon') === 4 || ($allowLocalRoot && $isLocal);
+							if ($label === '' || ($parentId <= 0 && !$canCreateRootAuthority)) {
+								return array(
+									'status' => false,
+									'message' => $canCreateRootAuthority
+										? 'Chaque autorite doit avoir un nom.'
+										: 'Chaque autorite doit avoir un nom et une autorite parente.',
+								);
+							}
+							if ($parentId > 0 && !isset($parentAuthorityIds[$parentId])) {
+								return array(
+									'status' => false,
+									'message' => 'L autorite parente doit etre confiee au premier cercle parent.',
+								);
+							}
+
+							$authority->set('label', $label);
+							$authority->set('IDauthority_parent', $parentId > 0 ? $parentId : null);
+							$authority->set('description', $description !== '' ? $description : null);
+							$authority->set('is_local', $isLocal);
+							$saveResult = $authority->save();
+							if (empty($saveResult['status'])) {
+								return array(
+									'status' => false,
+									'message' => 'Cette autorite n a pas pu etre modifiee.',
+								);
+							}
+
+							$changes = array();
+							if ($before['label'] !== $label) {
+								$changes[] = 'le nom est passe de "' . $before['label'] . '" a "' . $label . '"';
+							}
+							if ($before['parentId'] !== $parentId) {
+								$changes[] = 'l autorite parente est maintenant "' . $this->getAuthorityHistoryLabel($parentId) . '"';
+							}
+							if ($before['description'] !== $description) {
+								$changes[] = 'la description a ete modifiee';
+							}
+							if (count($changes) > 0) {
+								$this->recordAuthorityHistory(
+									$holon,
+									$authorUserId,
+									'authority_updated',
+									'Modification de l autorite "' . $label . '" : ' . implode('; ', $changes) . '.',
+									array('IDauthority' => $existingId, 'before' => $before, 'after' => array(
+										'label' => $label,
+										'description' => $description,
+										'parentId' => $parentId,
+										'parentLabel' => $this->getAuthorityHistoryLabel($parentId),
+									))
+								);
+							}
+						}
+
+						if (!isset($seenIds[$existingId])) {
+							$seenIds[$existingId] = true;
+							$resolvedIds[] = $existingId;
+						}
+						continue;
+					}
+
+					if (!is_array($submittedItem)) {
+						continue;
+					}
+
+					$label = trim((string)($submittedItem['label'] ?? ''));
+					$parentId = (int)($submittedItem['parentId'] ?? 0);
+					$description = trim((string)($submittedItem['description'] ?? ''));
+					$isLocal = !empty($submittedItem['isLocal']);
+					$delegationMode = (string)($submittedItem['delegationMode'] ?? 'partial');
+					$delegationMode = $delegationMode === 'complete' ? 'complete' : 'partial';
+					if ($delegationMode === 'partial' && $label === '' && $parentId <= 0 && $description === '') {
+						continue;
+					}
+					$canCreateRootAuthority = (int)$holon->get('IDtypeholon') === 4 || ($allowLocalRoot && $isLocal);
+					if (($delegationMode === 'partial' && $label === '') || ($delegationMode === 'complete' && $parentId <= 0) || ($parentId <= 0 && !$canCreateRootAuthority)) {
+						return array(
+							'status' => false,
+							'message' => $canCreateRootAuthority
+								? 'Chaque nouvelle autorite doit avoir un nom.'
+								: 'Chaque nouvelle autorite doit avoir un nom et une autorite parente.',
+						);
+					}
+					if ($parentId > 0 && !isset($parentAuthorityIds[$parentId])) {
+						return array(
+							'status' => false,
+							'message' => 'L autorite parente doit etre confiee au premier cercle parent.',
+						);
+					}
+					$parentAuthority = null;
+					if ($parentId > 0) {
+						$parentAuthority = new \dbObject\Authority();
+						if (!$parentAuthority->load($parentId)) {
+							return array('status' => false, 'message' => 'L autorite parente est introuvable.');
+						}
+					}
+
+					if ($delegationMode === 'complete') {
+						$delegationResult = $parentAuthority->delegateCompletelyToHolon($holon);
+						if (empty($delegationResult['status'])) {
+							return array('status' => false, 'message' => (string)($delegationResult['text'] ?? 'La delegation complete a echoue.'));
+						}
+						$authorityId = (int)($delegationResult['authorityId'] ?? 0);
+						$delegatedAuthorityIds = is_array($delegationResult['authorityIds'] ?? null)
+							? $delegationResult['authorityIds']
+							: array($authorityId);
+						foreach ($delegatedAuthorityIds as $delegatedAuthorityId) {
+							$delegatedAuthorityId = (int)$delegatedAuthorityId;
+							if ($delegatedAuthorityId > 0 && !isset($seenIds[$delegatedAuthorityId])) {
+								$seenIds[$delegatedAuthorityId] = true;
+								$resolvedIds[] = $delegatedAuthorityId;
+							}
+						}
+						$this->recordAuthorityHistory(
+							$holon,
+							$authorUserId,
+							'authority_complete_delegated',
+							'Delegation complete de l autorite "' . trim((string)$parentAuthority->get('label')) . '".' . (!empty($delegationResult['createdShell']) ? self::formatLexiconText(' Une coquille a ete conservee dans le holon parent.', $this->getLexicon()) : ''),
+							array(
+								'IDauthority' => $authorityId,
+								'sourceAuthorityId' => $parentId,
+								'createdShell' => !empty($delegationResult['createdShell']),
+								'movedRuleIds' => $delegationResult['movedRuleIds'] ?? array(),
+							)
+						);
+						continue;
+					}
+
+					if ($parentAuthority instanceof \dbObject\Authority && $parentAuthority->isShell()) {
+						return array('status' => false, 'message' => 'Une coquille de delegation complete ne peut pas etre la source d une delegation partielle.');
+					}
+
+					$authority = new \dbObject\Authority();
+					$authority->set('IDholon', (int)$holon->getId());
+					$authority->set('IDauthority_parent', $parentId > 0 ? $parentId : null);
+					$authority->set('label', $label);
+					$authority->set('description', $description !== '' ? $description : null);
+					$authority->set('is_local', $isLocal);
+					$saveResult = $authority->save();
+					if (empty($saveResult['status']) || (int)$authority->getId() <= 0) {
+						return array(
+							'status' => false,
+							'message' => 'La nouvelle autorite n a pas pu etre creee.',
+						);
+					}
+
+					$authorityId = (int)$authority->getId();
+					if (!isset($seenIds[$authorityId])) {
+						$seenIds[$authorityId] = true;
+						$resolvedIds[] = $authorityId;
+					}
+				}
+
+				$submittedValuesByPropertyId[$propertyId] = $serializeItems($rawValue, $formatId, $resolvedIds);
+			}
+			if (!empty($removedAuthorityIds)) {
+				foreach ($propertyDefinitions as $definition) {
+					$propertyId = (int)($definition['id'] ?? 0);
+					$formatId = (int)($definition['formatId'] ?? 0);
+					if (
+						$propertyId <= 0
+						|| (string)($definition['listItemType'] ?? '') !== \dbObject\Property::LIST_ITEM_AUTHORITY
+						|| !\dbObject\PropertyFormat::isListFormat($formatId)
+						|| !isset($submittedValuesByPropertyId[$propertyId])
+					) {
+						continue;
+					}
+					$rawValue = (string)$submittedValuesByPropertyId[$propertyId];
+					$items = array_values(array_filter($parseItems($rawValue, $formatId), static function ($item) use ($removedAuthorityIds) {
+						$itemId = is_array($item) ? (int)($item['id'] ?? 0) : (int)$item;
+						return !isset($removedAuthorityIds[$itemId]);
+					}));
+					$submittedValuesByPropertyId[$propertyId] = $serializeItems($rawValue, $formatId, $items);
+				}
+			}
+
+			return array('status' => true);
+		}
+
+		public function saveHolonEditorDefinition(array $payload, $userId = 0, $contextHolonId = 0, $holonId = 0, $collectiveGovernance = false, int $collectiveHolonId = 0)
+		{
+			$propertyCollectiveId = $collectiveGovernance ? ($collectiveHolonId > 0 ? $collectiveHolonId : -1) : 0;
 			$rootHolon = $this->getStructuralRootHolon();
 			$holonId = (int)$holonId;
 			$isEditing = $holonId > 0;
@@ -5310,6 +13084,7 @@
 			$holon = null;
 			$contextHolon = null;
 			$historyBeforeSnapshot = null;
+			$propertiesOnly = false;
 
 			if ($isEditing) {
 				$holon = new \dbObject\Holon();
@@ -5320,16 +13095,30 @@
 				) {
 					return array(
 						'status' => false,
-						'message' => 'Le holon a modifier est introuvable.',
+'message' => 'L’espace à modifier est introuvable.',
 					);
 				}
 
 				$isTemplateEditing = $holon->isTemplateNode($rootHolon ? (int)$rootHolon->getId() : 0);
-
-				if (!$holon->canEdit()) {
+				if ($isTemplateEditing && $this->isDiscoveryMode()) {
 					return array(
 						'status' => false,
-						'message' => "Vous n'avez pas les droits pour modifier ce holon.",
+'message' => 'Les modèles d’espaces ne sont pas disponibles en mode découverte.',
+					);
+				}
+
+				$propertiesOnly = !$collectiveGovernance && !$holon->isAllowed('CAN_EDIT_HOLON', false);
+				if ($propertiesOnly && !Property::canActOnAnyType($holon)) {
+					return array(
+						'status' => false,
+'message' => "Vous n’avez pas les droits pour modifier cet espace.",
+					);
+				}
+
+				if (!$collectiveGovernance && !$propertiesOnly && $isTemplateEditing && !$holon->canEdit()) {
+					return array(
+						'status' => false,
+						'message' => self::formatLexiconText("Vous n'avez pas les droits pour modifier ce holon.", $this->getLexicon()),
 					);
 				}
 
@@ -5346,7 +13135,7 @@
 			if (!$rootHolon) {
 				return array(
 					'status' => false,
-					'message' => "Aucun holon racine n'a ete trouve pour cette organisation.",
+'message' => "Aucun espace racine n’a été trouvé pour cette organisation.",
 				);
 			}
 
@@ -5354,24 +13143,46 @@
 				return array(
 					'status' => false,
 					'message' => $isEditing
-						? "Le contexte d'edition de ce holon est invalide."
-						: "Le holon courant n'autorise pas l'ajout d'enfant.",
+						? self::formatLexiconText("Le contexte d'edition de ce holon est invalide.", $this->getLexicon())
+						: self::formatLexiconText("Le holon courant n'autorise pas l'ajout d'enfant.", $this->getLexicon()),
 				);
 			}
 
-			if (!$contextHolon || !$contextHolon->canEdit()) {
+			$canSaveInContext = false;
+			if ($contextHolon) {
+				$canSaveInContext = $collectiveGovernance
+					|| ($isEditing
+						? ($propertiesOnly || !$isTemplateEditing || $contextHolon->canEdit())
+						: $contextHolon->isAllowed('CAN_ADD_HOLON'));
+			}
+			if (!$canSaveInContext) {
 				return array(
 					'status' => false,
 					'message' => $isEditing
-						? "Vous n'avez pas les droits pour modifier ce holon."
-						: "Vous n'avez pas les droits pour creer un holon ici.",
+						? self::formatLexiconText("Vous n'avez pas les droits pour modifier ce holon.", $this->getLexicon())
+						: self::formatLexiconText("Vous n'avez pas les droits pour creer un holon ici.", $this->getLexicon()),
 				);
+			}
+
+			if ($propertiesOnly) {
+				// Only properties are accepted in this mode; all holon data comes from storage.
+				$payload = [
+					'properties' => is_array($payload['properties'] ?? null) ? $payload['properties'] : [],
+					'templateId' => (int)$holon->get('IDholon_template'),
+					'name' => $holon->getDisplayName(),
+					'fullName' => (string)$holon->get('nomcomplet'),
+					'adminMin' => $holon->get('admin_min'),
+					'adminMax' => $holon->get('admin_max'),
+					'adminMinOverride' => (bool)$holon->get('adminminoverride'),
+					'adminMaxOverride' => (bool)$holon->get('adminmaxoverride'),
+					'lockedAdminMin' => (bool)$holon->get('lockedadminmin'),
+					'lockedAdminMax' => (bool)$holon->get('lockedadminmax'),
+				];
 			}
 
 			$name = trim((string)($payload['name'] ?? ''));
 			$fullName = trim((string)($payload['fullName'] ?? ''));
 			$iconValue = is_scalar($payload['icon'] ?? null) ? trim((string)$payload['icon']) : '';
-			$bannerValue = is_scalar($payload['banner'] ?? null) ? trim((string)$payload['banner']) : '';
 
 			$submittedValuesByPropertyId = array();
 			if (is_array($payload['properties'] ?? null)) {
@@ -5428,7 +13239,7 @@
 					if ((int)$template->get('IDtypeholon') !== $typeId) {
 						return array(
 							'status' => false,
-							'message' => "Le modele parent doit etre du meme type que ce holon template.",
+'message' => "Le modèle parent doit être du même type que cet espace modèle.",
 						);
 					}
 
@@ -5492,7 +13303,7 @@
 				) {
 					return array(
 						'status' => false,
-						'message' => "Ce modele unique est deja implemente dans ce cercle.",
+						'message' => "Le modele selectionne n'est pas disponible ici.",
 					);
 				}
 
@@ -5502,7 +13313,7 @@
 					$name = trim((string)$template->getDisplayName());
 				}
 
-				$templateDefinitions = $template->getHolonCreationPropertyDefinitions();
+				$templateDefinitions = Property::filterEnabledDefinitions($template->getHolonCreationPropertyDefinitions(), $this->getLexicon());
 				foreach ($templateDefinitions as $definition) {
 					$propertyId = (int)($definition['id'] ?? 0);
 					if ($propertyId <= 0) {
@@ -5520,7 +13331,7 @@
 					);
 					$effectiveValue = '';
 
-					if ($formatId === \dbObject\PropertyFormat::FORMAT_LIST) {
+					if (\dbObject\PropertyFormat::isListFormat($formatId)) {
 						$effectiveItems = !empty($definition['effectiveLocked'])
 							? $parseListValue($inheritedValue)
 							: array_values(array_unique(array_merge($parseListValue($inheritedValue), $parseListValue($localValue)), SORT_REGULAR));
@@ -5549,68 +13360,174 @@
 				}
 			}
 
+			$submittedAdminMin = max(0, (int)($payload['adminMin'] ?? 0));
+			$submittedAdminMaxValue = $payload['adminMax'] ?? null;
+			$submittedAdminMax = $submittedAdminMaxValue === null || trim((string)$submittedAdminMaxValue) === ''
+				? null
+				: max(0, (int)$submittedAdminMaxValue);
+			$lockedAdminMin = $isTemplateEditing ? !empty($payload['lockedAdminMin']) : false;
+			$lockedAdminMax = $isTemplateEditing ? !empty($payload['lockedAdminMax']) : false;
+			$adminMinOverride = false;
+			$adminMaxOverride = false;
+			$effectiveAdminMin = $submittedAdminMin;
+			$effectiveAdminMax = $submittedAdminMax;
+			if (!$isTemplateEditing && $template instanceof \dbObject\Holon) {
+				$templateAdminBounds = $template->getEffectiveTemplateAdminBounds();
+				$adminMinOverride = !empty($payload['adminMinOverride']) && empty($templateAdminBounds['minLocked']);
+				$adminMaxOverride = !empty($payload['adminMaxOverride']) && empty($templateAdminBounds['maxLocked']);
+				$effectiveAdminMin = $adminMinOverride ? $submittedAdminMin : (int)$templateAdminBounds['min'];
+				$effectiveAdminMax = $adminMaxOverride ? $submittedAdminMax : $templateAdminBounds['max'];
+			}
+
+			if ($effectiveAdminMax !== null && $effectiveAdminMax < $effectiveAdminMin) {
+				return array(
+					'status' => false,
+					'message' => 'Le nombre maximum d admins doit etre superieur ou egal au minimum.',
+				);
+			}
+
+			if ($isTemplateEditing) {
+				$result = $this->canApplyPropertyDefinitionChanges($holon, $this->getPropertyDefinitionPermissionOperations($holon->getTemplatePropertyDefinitions(), $templateDefinitions, $template ? $template->getHolonCreationPropertyDefinitions() : []), 'TEMPLATE', $propertyCollectiveId);
+				if (empty($result['status'])) { return $result; }
+			}
+			$submittedDirectDefinitions = array();
+			if (!$isTemplateEditing) {
+				$submittedDirectDefinitions = $this->getSubmittedDirectHolonPropertyDefinitions(
+					is_array($payload['properties'] ?? null) ? array_values($payload['properties']) : array(),
+					$templateDefinitions
+				);
+				$existingDirectDefinitions = $isEditing
+					? array_values(array_filter($holon->getHolonEditorPropertyDefinitions(), function ($definition) {
+						return !empty($definition['isDirectProperty']);
+					}))
+					: array();
+				$propertyPermissionHolon = $holon ?: $contextHolon;
+				$propertyPermissionResult = $this->canApplyPropertyDefinitionChanges(
+					$propertyPermissionHolon,
+					$this->getPropertyDefinitionPermissionOperations($existingDirectDefinitions, $submittedDirectDefinitions),
+					'HOLON', $propertyCollectiveId
+				);
+				if (empty($propertyPermissionResult['status'])) {
+					return $propertyPermissionResult;
+				}
+			}
+
 			if ($name === '') {
 				return array(
 					'status' => false,
-					'message' => 'Le nom du holon est obligatoire.',
+'message' => 'Le nom de l’espace est obligatoire.',
 				);
+			}
+
+			if (!$isTemplateEditing && $template instanceof \dbObject\Holon) {
+				$templatePropertyPermissionResult = $this->canEditSubmittedTemplatePropertyValues(
+					$holon ?: new \dbObject\Holon(),
+					$holon ?: $contextHolon,
+					$submittedValuesByPropertyId,
+					$templateDefinitions,
+					$isEditing ? 'CAN_EDIT_HOLON' : 'CAN_ADD_HOLON', $propertyCollectiveId
+				);
+				if (empty($templatePropertyPermissionResult['status'])) {
+					return $templatePropertyPermissionResult;
+				}
 			}
 
 			if (!$holon) {
 				$holon = new \dbObject\Holon();
 			}
 
-			$holon->set('name', $name);
-			$holon->set('nomcomplet', $fullName !== '' ? $fullName : null);
-			$holon->set('templatename', $isTemplateEditing ? $name : null);
-			$holon->set('IDtypeholon', $typeId);
-			$holon->set('IDholon_parent', (int)$contextHolon->getId());
-			$holon->set('IDholon_template', $templateId > 0 ? $templateId : null);
-			$holon->set('IDholon_org', (int)$rootHolon->getId());
-			$holon->set('IDorganization', null);
-			$holon->set('IDuser', (int)$userId > 0 ? (int)$userId : (int)($holon->get('IDuser') ?: ($template ? $template->get('IDuser') : 0)));
-			$holon->set('active', true);
-			$holon->set('visible', $isTemplateEditing ? !empty($payload['visible']) : true);
-			$holon->set('mandatory', $isTemplateEditing ? !empty($payload['mandatory']) : false);
-			$holon->set('lockedname', $isTemplateEditing ? !empty($payload['lockedName']) : false);
-			$holon->set('lockedicon', $isTemplateEditing ? !empty($payload['lockedIcon']) : false);
-			$holon->set('lockedbanner', $isTemplateEditing ? !empty($payload['lockedBanner']) : false);
-			$holon->set('unique', $isTemplateEditing ? !empty($payload['unique']) : false);
-			$holon->set('link', $isTemplateEditing ? !empty($payload['link']) : false);
-			$color = trim((string)($payload['color'] ?? ''));
-			$holon->set('color', $color !== '' ? $color : null);
-			$holon->set(
-				'icon',
-				(!$isTemplateEditing && $template && $template->getEffectiveTemplateBooleanField('lockedicon'))
-					? null
-					: ($iconValue !== '' ? $iconValue : null)
-			);
-			$holon->set(
-				'banner',
-				(!$isTemplateEditing && $template && $template->getEffectiveTemplateBooleanField('lockedbanner'))
-					? null
-					: ($bannerValue !== '' ? $bannerValue : null)
-			);
-			$holon->save();
+			if (!$propertiesOnly) {
+				$holon->set('name', $name);
+				$holon->set('nomcomplet', $fullName !== '' ? $fullName : null);
+				$holon->set('templatename', $isTemplateEditing ? $name : null);
+				$holon->set('IDtypeholon', $typeId);
+				$holon->set('IDholon_parent', (int)$contextHolon->getId());
+				$holon->set('IDholon_template', $templateId > 0 ? $templateId : null);
+				$holon->set('IDholon_org', (int)$rootHolon->getId());
+				$holon->set('IDorganization', null);
+				$holon->set('IDuser', (int)$userId > 0 ? (int)$userId : (int)($holon->get('IDuser') ?: ($template ? $template->get('IDuser') : 0)));
+				$holon->set('active', true);
+				$holon->set('visible', $isTemplateEditing ? !empty($payload['visible']) : true);
+				$holon->set('mandatory', $isTemplateEditing ? !empty($payload['mandatory']) : false);
+				$holon->set('lockedname', $isTemplateEditing ? !empty($payload['lockedName']) : false);
+				$holon->set('lockedicon', $isTemplateEditing ? !empty($payload['lockedIcon']) : false);
+				$holon->set('unique', $isTemplateEditing ? !empty($payload['unique']) : false);
+				$holon->set('link', $isTemplateEditing ? !empty($payload['link']) : false);
+				$holon->set(
+					'adminparent',
+					$isTemplateEditing
+					&& $typeId === 1
+					&& (array_key_exists('adminParent', $payload) ? !empty($payload['adminParent']) : (bool)$holon->get('adminparent'))
+				);
+				$holon->set('admin_min', $isTemplateEditing || $adminMinOverride ? $submittedAdminMin : $effectiveAdminMin);
+				$holon->set('admin_max', $isTemplateEditing || $adminMaxOverride ? $submittedAdminMax : $effectiveAdminMax);
+				$holon->set('lockedadminmin', $lockedAdminMin);
+				$holon->set('lockedadminmax', $lockedAdminMax);
+				$holon->set('adminminoverride', $adminMinOverride);
+				$holon->set('adminmaxoverride', $adminMaxOverride);
+				$color = trim((string)($payload['color'] ?? ''));
+				$holon->set('color', $color !== '' ? $color : null);
+				$holon->set(
+					'icon',
+					(!$isTemplateEditing && $template && $template->getEffectiveTemplateBooleanField('lockedicon'))
+						? null
+						: ($iconValue !== '' ? $iconValue : null)
+				);
+				$holon->save();
+
+			}
 
 			if ((int)$holon->getId() <= 0) {
 				return array(
 					'status' => false,
-					'message' => "Le holon n'a pas pu etre enregistre.",
+'message' => "L’espace n’a pas pu être enregistré.",
 				);
 			}
 
+			if (!$isTemplateEditing && $template instanceof \dbObject\Holon) {
+				$this->syncTemplateAuthorityInstances($template);
+				$this->remapTemplateAuthorityPropertyValues($holon, $submittedValuesByPropertyId, $templateDefinitions);
+			}
+
 			if ($isTemplateEditing) {
-				$holon->syncTemplateProperties($templateDefinitions, (int)$rootHolon->getId());
+				$holon->syncTemplateProperties($templateDefinitions, (int)$rootHolon->getId(), true);
 			} else {
-				$holon->syncEditorPropertyValues($submittedValuesByPropertyId, $templateDefinitions);
-				if (!\dbObject\HolonPermission::syncAssignmentsForHolon(
+				$conversionResult = \dbObject\Property::convertListDefinitions($holon, $submittedDirectDefinitions);
+				if (empty($conversionResult['status'])) { return $conversionResult; }
+				$resolvedDirectDefinitions = $holon->syncDirectEditorPropertyDefinitions(
+					$submittedDirectDefinitions,
+					(int)$rootHolon->getId(), true
+				);
+				$templateDefinitions = array_merge($templateDefinitions, $resolvedDirectDefinitions);
+				foreach ($resolvedDirectDefinitions as $definition) {
+					$propertyId = (int)($definition['id'] ?? 0);
+					if ($propertyId > 0) {
+						$submittedValuesByPropertyId[$propertyId] = $definition['value'] ?? '';
+					}
+				}
+
+				$authoritySyncResult = $this->syncSubmittedAuthorityPropertyValues(
+					$holon,
+					$submittedValuesByPropertyId,
+					$templateDefinitions,
+					$userId,
+					array('allowTemplateInstances' => true)
+				);
+				if (empty($authoritySyncResult['status'])) {
+					return array(
+						'status' => false,
+						'message' => (string)($authoritySyncResult['message'] ?? 'Les autorites n ont pas pu etre enregistrees.'),
+					);
+				}
+
+				$holon->syncEditorPropertyValues($submittedValuesByPropertyId, $templateDefinitions, true);
+				if (!$propertiesOnly && $this->canManageHolonPermissionAssignments(false) && !$this->syncEditorPermissionAssignments(
 					(int)$holon->getId(),
-					is_array($payload['permissions'] ?? null) ? $payload['permissions'] : array()
+					$payload
 				)) {
 					return array(
 						'status' => false,
-						'message' => "Les droits du holon n'ont pas pu etre enregistres.",
+'message' => "Les droits de l’espace n’ont pas pu être enregistrés.",
 					);
 				}
 
@@ -5636,7 +13553,7 @@
 
 			return array(
 				'status' => true,
-				'message' => $isEditing ? 'Holon enregistre.' : 'Holon cree.',
+'message' => $isEditing ? 'Espace enregistré.' : 'Espace créé.',
 				'holon' => array(
 					'id' => (int)$holon->getId(),
 					'name' => $holon->getDisplayName(),
@@ -5649,7 +13566,7 @@
 		}
 
 		// Supprime holon cible
-		public function deleteHolonDefinition($holonId = 0, $userId = 0)
+		public function deleteHolonDefinition($holonId = 0, $userId = 0, $collectiveGovernance = false)
 		{
 			$rootHolon = $this->getStructuralRootHolon();
 			$holonId = (int)$holonId;
@@ -5657,7 +13574,7 @@
 			if (!$rootHolon || $holonId <= 0) {
 				return array(
 					'status' => false,
-					'message' => 'Le holon a supprimer est invalide.',
+'message' => 'L’espace à supprimer est invalide.',
 				);
 			}
 
@@ -5670,14 +13587,14 @@
 			) {
 				return array(
 					'status' => false,
-					'message' => 'Le holon a supprimer est introuvable.',
+'message' => 'L’espace à supprimer est introuvable.',
 				);
 			}
 
-			if (!$holon->canEdit() || !$holon->canDelete()) {
+			if (!$collectiveGovernance && (!$holon->isAllowed('CAN_DELETE_HOLON') || !$holon->canDelete())) {
 				return array(
 					'status' => false,
-					'message' => "Vous n'avez pas les droits pour supprimer ce holon.",
+'message' => "Vous n’avez pas les droits pour supprimer cet espace.",
 				);
 			}
 
@@ -5685,7 +13602,7 @@
 			if (!$parentHolon) {
 				return array(
 					'status' => false,
-					'message' => 'Le parent de ce holon est introuvable.',
+'message' => 'Le parent de cet espace est introuvable.',
 				);
 			}
 
@@ -5696,13 +13613,13 @@
 			if (!$holon->delete()) {
 				return array(
 					'status' => false,
-					'message' => "Le holon n'a pas pu etre supprime.",
+'message' => "L’espace n’a pas pu être supprimé.",
 				);
 			}
 
 			return array(
 				'status' => true,
-				'message' => 'Holon supprime.',
+'message' => 'Espace supprimé.',
 				'holon' => array(
 					'id' => $holonId,
 					'name' => $holonName,
@@ -5716,7 +13633,7 @@
 			);
 		}
 
-		public function moveHolonDefinition($holonId = 0, $targetParentId = 0, $userId = 0)
+		public function moveHolonDefinition($holonId = 0, $targetParentId = 0, $userId = 0, int $collectiveHolonId = 0)
 		{
 			$rootHolon = $this->getStructuralRootHolon();
 			$holonId = (int)$holonId;
@@ -5738,7 +13655,7 @@
 			) {
 				return array(
 					'status' => false,
-					'message' => 'Le holon a deplacer est introuvable.',
+'message' => 'L’espace à déplacer est introuvable.',
 				);
 			}
 
@@ -5746,7 +13663,7 @@
 			if (!$currentParent) {
 				return array(
 					'status' => false,
-					'message' => 'Le parent actuel de ce holon est introuvable.',
+'message' => 'Le parent actuel de cet espace est introuvable.',
 				);
 			}
 
@@ -5764,18 +13681,18 @@
 			if ((int)$currentParent->getId() === $targetParentId) {
 				return array(
 					'status' => false,
-					'message' => 'Ce holon est deja rattache a cet emplacement.',
+'message' => 'Cet espace est déjà rattaché à cet emplacement.',
 				);
 			}
 
-			if (!$holon->canEdit() || !$currentParent->canEdit() || !$targetParent->canEdit()) {
+			if (!$this->hasHolonMovePermission($holon, $collectiveHolonId, (int)$userId) || !$this->hasHolonMovePermission($targetParent, $collectiveHolonId, (int)$userId)) {
 				return array(
 					'status' => false,
-					'message' => "Vous n'avez pas les droits pour deplacer ce holon.",
+'message' => "Vous n’avez pas les droits pour déplacer cet espace.",
 				);
 			}
 
-			if (!$this->canMoveHolonToParent($holon, $targetParent, $rootHolon)) {
+			if (!$this->canMoveHolonToParent($holon, $targetParent, $rootHolon, $collectiveHolonId, (int)$userId)) {
 				return array(
 					'status' => false,
 					'message' => "Le parent cible n'est pas compatible avec ce deplacement.",
@@ -5784,24 +13701,28 @@
 
 			$previousParentId = (int)$currentParent->getId();
 			$holon->set('IDholon_parent', $targetParentId);
-			$holon->save();
+			$saveResult = $holon->save();
 
-			if ((int)$holon->get('IDholon_parent') !== $targetParentId) {
+			if (!is_array($saveResult) || empty($saveResult['status'])) {
 				return array(
 					'status' => false,
-					'message' => "Le holon n'a pas pu etre deplace.",
+'message' => "L’espace n’a pas pu être déplacé.",
 				);
 			}
 
-			$this->createMandatoryChildrenForCircle($currentParent, (int)$rootHolon->getId(), $userId);
+			if ((int)$currentParent->get('IDtypeholon') === 2) {
+				$this->createMandatoryChildrenForCircle($currentParent, (int)$rootHolon->getId(), $userId);
+			}
 
-			if (in_array((int)$holon->get('IDtypeholon'), array(2, 3), true)) {
+			if ((int)$holon->get('IDtypeholon') === 2) {
 				$this->createMandatoryChildrenForCircle($holon, (int)$rootHolon->getId(), $userId);
 			}
 
+			\dbObject\ProjectImportanceCalculator::recalculateForHolonHierarchyChange((int)$this->getId());
+
 			return array(
 				'status' => true,
-				'message' => 'Holon deplace.',
+'message' => 'Espace déplacé.',
 				'holon' => array(
 					'id' => (int)$holon->getId(),
 					'name' => $holon->getDisplayName(),
@@ -5825,6 +13746,13 @@
 
 		public function saveHolonTemplateDefinition(array $payload, $userId = 0, $contextHolonId = 0, $scope = 'contextual')
 		{
+			if ($this->isDiscoveryMode()) {
+				return array(
+					'status' => false,
+					'message' => self::formatLexiconText('Les modeles de holons ne sont pas disponibles en mode decouverte.', $this->getLexicon()),
+				);
+			}
+
 			$rootHolon = $this->getStructuralRootHolon();
 			$contextHolon = $this->getTemplateContextHolon($contextHolonId);
 			$scope = $this->normalizeTemplateEditorScope($scope);
@@ -5832,7 +13760,7 @@
 			if (!$rootHolon) {
 				return array(
 					'status' => false,
-					'message' => "Aucun holon racine n'a ete trouve pour cette organisation.",
+					'message' => self::formatLexiconText("Aucun holon racine n'a ete trouve pour cette organisation.", $this->getLexicon()),
 				);
 			}
 
@@ -5843,16 +13771,8 @@
 				);
 			}
 
-			if (!$contextHolon->canEdit()) {
-				return array(
-					'status' => false,
-					'message' => "Vous n'avez pas les droits pour modifier les modeles de ce holon.",
-				);
-			}
-
 			$templateName = trim((string)($payload['name'] ?? ''));
 			$iconValue = is_scalar($payload['icon'] ?? null) ? trim((string)$payload['icon']) : '';
-			$bannerValue = is_scalar($payload['banner'] ?? null) ? trim((string)$payload['banner']) : '';
 			$typeId = (int)($payload['typeId'] ?? 0);
 			if ($templateName === '') {
 				return array(
@@ -5872,7 +13792,7 @@
 			if (!$type->load($typeId)) {
 				return array(
 					'status' => false,
-					'message' => 'Le type de holon demande est introuvable.',
+'message' => 'Le type d’espace demandé est introuvable.',
 				);
 			}
 
@@ -5899,12 +13819,72 @@
 				);
 			}
 
-			if ($template->getId() > 0 && (int)$template->get('IDholon_parent') !== (int)$contextHolon->getId()) {
+			if ($template->getId() > 0) {
+				$templateContextHolon = $template->getParentHolon();
+				if (!$templateContextHolon || !$this->containsHolon($templateContextHolon)) {
+					return array(
+						'status' => false,
+						'message' => "Le contexte de definition du modele est invalide.",
+					);
+				}
+
+				$definitionHolonId = (int)($payload['definitionHolonId'] ?? $templateContextHolon->getId());
+				$availableDestinationIds = array_fill_keys(array_map(function (array $destination) {
+					return (int)$destination['id'];
+				}, $this->getTemplateDefinitionDestinationCatalog($template)), true);
+				if ($definitionHolonId <= 0 || !isset($availableDestinationIds[$definitionHolonId])) {
+					return array(
+						'status' => false,
+'message' => "L’espace choisi ne peut pas accueillir ce modèle sans dépasser une instance existante.",
+					);
+				}
+
+				$definitionHolon = new \dbObject\Holon();
+				if (!$definitionHolon->load($definitionHolonId) || !$this->containsHolon($definitionHolon) || !$definitionHolon->canEdit()) {
+					return array(
+						'status' => false,
+'message' => "Vous n’avez pas les droits pour modifier les modèles de cet espace.",
+					);
+				}
+
+				$contextHolon = $definitionHolon;
+			} else {
+				$definitionHolonId = (int)($payload['definitionHolonId'] ?? (int)$rootHolon->getId());
+				$availableDestinationIds = array_fill_keys(array_map(function (array $destination) {
+					return (int)$destination['id'];
+				}, $this->getTemplateDefinitionDestinationCatalog()), true);
+				if ($definitionHolonId <= 0 || !isset($availableDestinationIds[$definitionHolonId])) {
+					return array(
+						'status' => false,
+						'message' => 'Le contexte de definition du modele est invalide.',
+					);
+				}
+
+				$definitionHolon = new \dbObject\Holon();
+				if (!$definitionHolon->load($definitionHolonId) || !$this->containsHolon($definitionHolon) || !$definitionHolon->canEdit()) {
+					return array(
+						'status' => false,
+						'message' => self::formatLexiconText("Vous n'avez pas les droits pour modifier les modeles de ce holon.", $this->getLexicon()),
+					);
+				}
+				$contextHolon = $definitionHolon;
+			}
+
+			if (!$contextHolon->canEdit()) {
 				return array(
 					'status' => false,
-					'message' => "Ce modele n'est pas defini dans le holon courant.",
+					'message' => self::formatLexiconText("Vous n'avez pas les droits pour modifier les modeles de ce holon.", $this->getLexicon()),
 				);
 			}
+
+			$submittedProperties = is_array($payload['properties'] ?? null)
+				? array_values($payload['properties'])
+				: array();
+			$submittedProperties = $this->excludeRemovedPropertyDefinitions(
+				$submittedProperties,
+				$this->getRemovedPropertyDefinitionIds($payload)
+			);
+
 
 			if ($template->getId() > 0) {
 				$historyBeforeSnapshot = $this->buildHolonHistorySnapshot($template, array(
@@ -5954,6 +13934,20 @@
 				}
 			}
 
+			$propertyPermissionHolon = $template->getId() > 0 ? $template : $contextHolon;
+			$propertyPermissionResult = $this->canApplyPropertyDefinitionChanges(
+				$propertyPermissionHolon,
+				$this->getPropertyDefinitionPermissionOperations(
+					$template->getId() > 0 ? $template->getTemplatePropertyDefinitions() : array(),
+					$submittedProperties,
+					$inheritsTemplate ? $inheritsTemplate->getHolonCreationPropertyDefinitions() : []
+				),
+				'TEMPLATE'
+			);
+			if (empty($propertyPermissionResult['status'])) {
+				return $propertyPermissionResult;
+			}
+
 			if ($inheritsTemplate && (int)$inheritsTemplate->get('IDtypeholon') > 0) {
 				$typeId = (int)$inheritsTemplate->get('IDtypeholon');
 				$type = new \dbObject\TypeHolon();
@@ -5969,6 +13963,40 @@
 				}
 			}
 
+			$adminMinValue = $payload['adminMin'] ?? null;
+			$adminMin = $adminMinValue === null || trim((string)$adminMinValue) === ''
+				? null
+				: max(0, (int)$adminMinValue);
+			$adminMaxValue = $payload['adminMax'] ?? null;
+			$adminMax = $adminMaxValue === null || trim((string)$adminMaxValue) === ''
+				? null
+				: max(0, (int)$adminMaxValue);
+			$inheritedAdminBounds = $inheritsTemplate
+				? $inheritsTemplate->getEffectiveTemplateAdminBounds()
+				: array('min' => 0, 'max' => null, 'minLocked' => false, 'maxLocked' => false);
+			$inheritedAdminMinimumLocked = !empty($inheritedAdminBounds['minLocked']);
+			$inheritedAdminMaximumLocked = !empty($inheritedAdminBounds['maxLocked']);
+			$lockedAdminMin = !$inheritedAdminMinimumLocked && !empty($payload['lockedAdminMin']);
+			$lockedAdminMax = !$inheritedAdminMaximumLocked && !empty($payload['lockedAdminMax']);
+			if ($inheritedAdminMinimumLocked) {
+				$adminMin = null;
+			}
+			if ($inheritedAdminMaximumLocked) {
+				$adminMax = null;
+			}
+			$effectiveAdminMin = $adminMin === null
+				? (int)$inheritedAdminBounds['min']
+				: $adminMin;
+			$effectiveAdminMax = $adminMax === null
+				? $inheritedAdminBounds['max']
+				: $adminMax;
+			if ($effectiveAdminMax !== null && $effectiveAdminMax < $effectiveAdminMin) {
+				return array(
+					'status' => false,
+					'message' => 'Le nombre maximum d admins doit etre superieur ou egal au minimum.',
+				);
+			}
+
 			$template->set('name', $templateName);
 			$template->set('templatename', $templateName);
 			$template->set('IDtypeholon', $typeId);
@@ -5979,15 +14007,25 @@
 			$template->set('IDuser', (int)$userId > 0 ? (int)$userId : (int)$template->get('IDuser'));
 			$template->set('active', true);
 			$template->set('color', trim((string)($payload['color'] ?? '')) !== '' ? trim((string)$payload['color']) : null);
-			$template->set('visible', !empty($payload['visible']));
+			$template->set('color_unassigned', trim((string)($payload['unassignedColor'] ?? '')) !== '' ? trim((string)$payload['unassignedColor']) : null);
+			// The editor no longer exposes visibility. New templates remain hidden by default,
+			// while the optional payload field preserves the mechanism for future use.
+			if ((int)$template->getId() <= 0 || array_key_exists('visible', $payload)) {
+				$template->set('visible', !empty($payload['visible']));
+			}
 			$template->set('mandatory', !empty($payload['mandatory']));
 			$template->set('lockedname', !empty($payload['lockedName']));
 			$template->set('lockedicon', !empty($payload['lockedIcon']));
-			$template->set('lockedbanner', !empty($payload['lockedBanner']));
 			$template->set('unique', !empty($payload['unique']));
 			$template->set('link', !empty($payload['link']));
+			$template->set('adminparent', $typeId === 1 && !empty($payload['adminParent']));
+			$template->set('admin_min', $adminMin);
+			$template->set('admin_max', $adminMax);
+			$template->set('lockedadminmin', $lockedAdminMin);
+			$template->set('lockedadminmax', $lockedAdminMax);
+			$template->set('adminminoverride', false);
+			$template->set('adminmaxoverride', false);
 			$template->set('icon', $iconValue !== '' ? $iconValue : null);
-			$template->set('banner', $bannerValue !== '' ? $bannerValue : null);
 			$template->save();
 
 			if ((int)$template->getId() <= 0) {
@@ -5997,14 +14035,61 @@
 				);
 			}
 
+			$conversionResult = \dbObject\Property::convertListDefinitions($template, $submittedProperties);
+			if (empty($conversionResult['status'])) { return $conversionResult; }
+
 			$template->syncTemplateProperties(
-				is_array($payload['properties'] ?? null) ? $payload['properties'] : array(),
-				(int)$rootHolon->getId()
+				$submittedProperties,
+				(int)$rootHolon->getId(), true
 			);
 
-			if (!\dbObject\HolonPermission::syncAssignmentsForHolon(
+			$persistedTemplateDefinitions = $template->getTemplatePropertyDefinitions();
+			$templateAuthorityValues = array();
+			$templateAuthorityDefinitions = array();
+			foreach ($persistedTemplateDefinitions as $definition) {
+				$propertyId = (int)($definition['id'] ?? 0);
+				if (
+					$propertyId > 0
+					&& !empty($definition['isLocal'])
+					&& (string)($definition['listItemType'] ?? '') === \dbObject\Property::LIST_ITEM_AUTHORITY
+					&& \dbObject\PropertyFormat::isListFormat((int)($definition['formatId'] ?? 0))
+				) {
+					$templateAuthorityValues[$propertyId] = $definition['value'] ?? '';
+					$templateAuthorityDefinitions[] = $definition;
+				}
+			}
+			if (count($templateAuthorityDefinitions) > 0) {
+				$templateAuthoritySyncResult = $this->syncSubmittedAuthorityPropertyValues(
+					$template,
+					$templateAuthorityValues,
+					$templateAuthorityDefinitions,
+					$userId,
+					array(
+						'allowLocalRoot' => true,
+						'isTemplateSource' => true,
+					)
+				);
+				if (empty($templateAuthoritySyncResult['status'])) {
+					return array(
+						'status' => false,
+						'message' => (string)($templateAuthoritySyncResult['message'] ?? 'Les autorites du modele n ont pas pu etre enregistrees.'),
+					);
+				}
+			}
+			foreach ($persistedTemplateDefinitions as &$definition) {
+				$propertyId = (int)($definition['id'] ?? 0);
+				if ($propertyId > 0 && array_key_exists($propertyId, $templateAuthorityValues)) {
+					$definition['value'] = $templateAuthorityValues[$propertyId];
+				}
+			}
+			unset($definition);
+			$template->syncTemplateProperties($persistedTemplateDefinitions, (int)$rootHolon->getId(), true);
+			$this->normalizeTemplateLocalAuthorities($template);
+			$this->syncTemplateAuthorityInstances($template);
+
+			if (!$this->syncEditorPermissionAssignments(
 				(int)$template->getId(),
-				is_array($payload['permissions'] ?? null) ? $payload['permissions'] : array()
+				$payload
 			)) {
 				return array(
 					'status' => false,
@@ -6027,7 +14112,87 @@
 				'status' => true,
 				'message' => 'Modele enregistre.',
 				'template' => $template->toTemplateEditorArray((int)$rootHolon->getId()),
-				'data' => $this->getHolonTemplateEditorData((int)$contextHolon->getId(), $scope),
+				'data' => $this->getHolonTemplateEditorData(
+					$scope === 'descendants' ? (int)$rootHolon->getId() : (int)$contextHolon->getId(),
+					$scope
+				),
+			);
+		}
+
+		public function deleteHolonTemplateDefinition($templateId = 0, $userId = 0, $contextHolonId = 0, $scope = 'contextual')
+		{
+			if ($this->isDiscoveryMode()) {
+				return array(
+					'status' => false,
+					'message' => self::formatLexiconText('Les modeles de holons ne sont pas disponibles en mode decouverte.', $this->getLexicon()),
+				);
+			}
+
+			$rootHolon = $this->getStructuralRootHolon();
+			$contextHolon = $this->getTemplateContextHolon($contextHolonId);
+			$templateId = (int)$templateId;
+			$scope = $this->normalizeTemplateEditorScope($scope);
+
+			if (!$rootHolon || !$contextHolon || $templateId <= 0) {
+				return array(
+					'status' => false,
+					'message' => 'Le modele a supprimer est invalide.',
+				);
+			}
+
+			$template = new \dbObject\Holon();
+			if (
+				!$template->load($templateId)
+				|| !$template->isTemplateNode((int)$rootHolon->getId())
+			) {
+				return array(
+					'status' => false,
+					'message' => 'Le modele a supprimer est introuvable.',
+				);
+			}
+
+			$templateContextHolon = $template->getParentHolon();
+			if (!$templateContextHolon || !$this->containsHolon($templateContextHolon)) {
+				return array(
+					'status' => false,
+					'message' => 'Le modele a supprimer est introuvable.',
+				);
+			}
+			$contextHolon = $templateContextHolon;
+
+			if (!$contextHolon->canEdit()) {
+				return array(
+					'status' => false,
+					'message' => self::formatLexiconText("Vous n'avez pas les droits pour modifier les modeles de ce holon.", $this->getLexicon()),
+				);
+			}
+
+			if (!$template->canDelete()) {
+				return array(
+					'status' => false,
+					'message' => "Vous n'avez pas les droits pour supprimer ce modele.",
+				);
+			}
+
+			$templateName = $template->getDisplayName();
+			if (!$template->delete()) {
+				return array(
+					'status' => false,
+					'message' => "Le modele n'a pas pu etre supprime.",
+				);
+			}
+
+			return array(
+				'status' => true,
+				'message' => 'Modele supprime.',
+				'template' => array(
+					'id' => $templateId,
+					'name' => $templateName,
+				),
+				'data' => $this->getHolonTemplateEditorData(
+					$scope === 'descendants' ? (int)$rootHolon->getId() : (int)$contextHolon->getId(),
+					$scope
+				),
 			);
 		}
 
@@ -6039,7 +14204,7 @@
 			if (!$rootHolon || $holonId <= 0) {
 				return array(
 					'status' => false,
-					'message' => "Le holon d'organisation a modifier est invalide.",
+'message' => "L’espace d’organisation à modifier est invalide.",
 				);
 			}
 
@@ -6047,20 +14212,27 @@
 			if (
 				!$holon->load($holonId)
 				|| !$this->containsHolon($holon)
+				|| (int)$holon->getId() !== (int)$rootHolon->getId()
 				|| (int)$holon->get('IDtypeholon') !== 4
 			) {
 				return array(
 					'status' => false,
-					'message' => "Le holon d'organisation a modifier est introuvable.",
+'message' => "L’espace d’organisation à modifier est introuvable.",
 				);
 			}
 
-			if (!$holon->canEdit()) {
+			$propertiesOnly = !$holon->isAllowed('CAN_EDIT_HOLON', false);
+			if ((!$propertiesOnly && !$holon->canEdit()) || ($propertiesOnly && !Property::canActOnAnyType($holon))) {
 				return array(
 					'status' => false,
 					'message' => "Vous n'avez pas les droits pour modifier cette organisation.",
 				);
 			}
+
+			$historyBeforeSnapshot = $this->buildHolonHistorySnapshot($holon, array(
+				'propertyMode' => 'template',
+				'includePermissions' => true,
+			));
 
 			$name = trim((string)($payload['name'] ?? ''));
 			if ($name === '') {
@@ -6074,11 +14246,7 @@
 				);
 			}
 
-			$iconValue = is_scalar($payload['icon'] ?? null) ? trim((string)$payload['icon']) : '';
-			$bannerValue = is_scalar($payload['banner'] ?? null) ? trim((string)$payload['banner']) : '';
 			$color = trim((string)($payload['color'] ?? ''));
-			$shareAsTemplate = !empty($payload['shareAsTemplate']);
-			$publicTemplateName = trim((string)($payload['publicTemplateName'] ?? ''));
 			$definitions = is_array($payload['properties'] ?? null)
 				? array_map(function ($definition) {
 					if (!is_array($definition)) {
@@ -6095,48 +14263,128 @@
 					return $definition;
 				}, array_values($payload['properties']))
 				: array();
+			$definitions = $this->excludeRemovedPropertyDefinitions(
+				$definitions,
+				$this->getRemovedPropertyDefinitionIds($payload)
+			);
 
-			if ($shareAsTemplate && $publicTemplateName === '') {
-				return array(
-					'status' => false,
-					'message' => "Le nom public du modele d'organisation est obligatoire.",
-				);
+			$propertyPermissionResult = $this->canApplyPropertyDefinitionChanges(
+				$holon,
+				$this->getPropertyDefinitionPermissionOperations($holon->getTemplatePropertyDefinitions(), $definitions),
+				'HOLON'
+			);
+			if (empty($propertyPermissionResult['status'])) {
+				return $propertyPermissionResult;
 			}
 
-			$holon->set('name', $name);
-			$holon->set('templatename', $shareAsTemplate ? $publicTemplateName : null);
-			$holon->set('color', $color !== '' ? $color : null);
-			$holon->set('icon', $shareAsTemplate && $iconValue !== '' ? $iconValue : null);
-			$holon->set('banner', $shareAsTemplate && $bannerValue !== '' ? $bannerValue : null);
-			$holon->save();
+			if (!$propertiesOnly) {
+				$holon->set('name', $name);
+				$holon->set('color', $color !== '' ? $color : null);
+				$holon->save();
 
-			if ((int)$holon->getId() <= 0) {
-				return array(
-					'status' => false,
-					'message' => "L'organisation n'a pas pu etre enregistree.",
-				);
+				if ((int)$holon->getId() <= 0) {
+					return array(
+						'status' => false,
+						'message' => "L'organisation n'a pas pu etre enregistree.",
+					);
+				}
+
+				$organizationId = (int)$holon->get('IDorganization');
+				if ($organizationId > 0) {
+					$linkedOrganization = new self();
+					if ($linkedOrganization->load($organizationId)) {
+						$linkedOrganization->set('name', $name);
+						$linkedOrganization->save();
+					}
+				}
+
 			}
 
-			$organizationId = (int)$holon->get('IDorganization');
-			if ($organizationId > 0) {
-				$linkedOrganization = new self();
-				if ($linkedOrganization->load($organizationId)) {
-					$linkedOrganization->set('name', $name);
-					$linkedOrganization->save();
+			$submittedValuesByPropertyId = array();
+			foreach ($definitions as $definition) {
+				$propertyId = (int)($definition['id'] ?? 0);
+				if ($propertyId > 0) {
+					$submittedValuesByPropertyId[$propertyId] = $definition['value'] ?? '';
 				}
 			}
 
-			$holon->syncTemplateProperties($definitions, (int)$rootHolon->getId());
+			$conversionResult = \dbObject\Property::convertListDefinitions($holon, $definitions);
+			if (empty($conversionResult['status'])) { return $conversionResult; }
+			foreach ($definitions as $definition) {
+				$submittedValuesByPropertyId[(int)($definition['id'] ?? 0)] = $definition['value'] ?? '';
+			}
 
-			if (!\dbObject\HolonPermission::syncAssignmentsForHolon(
-				(int)$holon->getId(),
-				is_array($payload['permissions'] ?? null) ? $payload['permissions'] : array()
-			)) {
+			$authoritySyncResult = $this->syncSubmittedAuthorityPropertyValues($holon, $submittedValuesByPropertyId, $definitions, $userId);
+			if (empty($authoritySyncResult['status'])) {
 				return array(
 					'status' => false,
-					'message' => "Les droits de l'organisation n'ont pas pu etre enregistres.",
+					'message' => (string)($authoritySyncResult['message'] ?? 'Les autorites n ont pas pu etre enregistrees.'),
 				);
 			}
+			foreach ($definitions as &$definition) {
+				$propertyId = (int)($definition['id'] ?? 0);
+				if ($propertyId > 0 && array_key_exists($propertyId, $submittedValuesByPropertyId)) {
+					$definition['value'] = $submittedValuesByPropertyId[$propertyId];
+				}
+			}
+			unset($definition);
+
+			$holon->syncTemplateProperties($definitions, (int)$rootHolon->getId(), true);
+
+			$requiresAuthorityPostSync = false;
+			foreach ($definitions as $definition) {
+				if (
+					(int)($definition['id'] ?? 0) <= 0
+					&& (string)($definition['listItemType'] ?? '') === \dbObject\Property::LIST_ITEM_AUTHORITY
+					&& \dbObject\PropertyFormat::isListFormat((int)($definition['formatId'] ?? 0))
+				) {
+					$requiresAuthorityPostSync = true;
+					break;
+				}
+			}
+
+			if ($requiresAuthorityPostSync) {
+				$persistedDefinitions = $holon->getTemplatePropertyDefinitions();
+				$postSyncSubmittedValues = array();
+				foreach ($definitions as $index => $definition) {
+					$propertyId = (int)($definition['id'] ?? 0);
+					if ($propertyId <= 0) {
+						$propertyId = (int)($persistedDefinitions[$index]['id'] ?? 0);
+					}
+					if ($propertyId > 0) {
+						$postSyncSubmittedValues[$propertyId] = $definition['value'] ?? '';
+					}
+				}
+
+				$authorityPostSyncResult = $this->syncSubmittedAuthorityPropertyValues($holon, $postSyncSubmittedValues, $persistedDefinitions, $userId);
+				if (empty($authorityPostSyncResult['status'])) {
+					return array(
+						'status' => false,
+						'message' => (string)($authorityPostSyncResult['message'] ?? 'Les autorites n ont pas pu etre enregistrees.'),
+					);
+				}
+
+				$holon->syncEditorPropertyValues($postSyncSubmittedValues, $persistedDefinitions, true);
+			}
+
+			if (!$propertiesOnly && $this->canManagePermissionAssignments()) {
+				if (!$this->syncEditorPermissionAssignments(
+					(int)$holon->getId(),
+					$payload
+				)) {
+					return array(
+						'status' => false,
+						'message' => "Les droits de l'organisation n'ont pas pu etre enregistres.",
+					);
+				}
+			}
+
+			$holon->load((int)$holon->getId(), true);
+			$historyAfterSnapshot = $this->buildHolonHistorySnapshot($holon, array(
+				'propertyMode' => 'template',
+				'includePermissions' => true,
+			));
+			$this->recordHolonUpdateHistory($holon, $userId, $historyBeforeSnapshot, $historyAfterSnapshot);
 
 			return array(
 				'status' => true,
@@ -6146,10 +14394,10 @@
 			);
 		}
 
-		public function getApplications($userId = null)
+		public function getApplications($userId = null, bool $ignoreLoginRequirement = false)
 		{
 			$applications = new \dbObject\ArrayApplication();
-			$applications->loadEnabledForOrganization((int)$this->getId(), $userId !== null ? (int)$userId : 0);
+			$applications->loadEnabledForOrganization((int)$this->getId(), $userId !== null ? (int)$userId : 0, $ignoreLoginRequirement);
 			return $applications;
 		}
 
@@ -6231,11 +14479,11 @@
 			return $this->getStructuralRootHolon();
 		}
 
-		public function getEnabledApplicationHashes($userId = null)
+		public function getEnabledApplicationHashes($userId = null, bool $ignoreLoginRequirement = false)
 		{
 			$hashes = array();
 
-			foreach ($this->getApplications($userId) as $application) {
+			foreach ($this->getApplications($userId, $ignoreLoginRequirement) as $application) {
 				if (!($application instanceof \dbObject\Application)) {
 					continue;
 				}
@@ -6270,158 +14518,157 @@
 
 		protected static function buildTopbarSearchTerms($query)
 		{
-			$normalizedQuery = self::normalizeTopbarSearchText($query);
-			if ($normalizedQuery === '') {
-				return array();
-			}
-
-			$terms = array($normalizedQuery);
-			$tokens = preg_split('/\s+/u', $normalizedQuery) ?: array();
-
-			foreach ($tokens as $token) {
-				$token = trim((string)$token);
-				if ($token === '') {
-					continue;
-				}
-
-				$length = function_exists('mb_strlen')
-					? (int)mb_strlen($token, 'UTF-8')
-					: (int)strlen($token);
-				if ($length < 2) {
-					continue;
-				}
-
-				$terms[] = $token;
-			}
-
-			$terms = array_values(array_unique($terms));
-			return array_slice($terms, 0, 6);
+			return \commonSearchQueryTerms((string)$query);
 		}
 
+		protected static function normalizeTopbarSearchDateRange(array $dateRange = array())
+		{
+			$result = array('startDate' => '', 'endDate' => '');
+			foreach (array('startDate', 'endDate') as $key) {
+				$value = trim((string)($dateRange[$key] ?? ''));
+				$date = \DateTimeImmutable::createFromFormat('!Y-m-d', $value);
+				$errors = \DateTimeImmutable::getLastErrors();
+				if ($date instanceof \DateTimeImmutable && ($errors === false || ((int)$errors['warning_count'] === 0 && (int)$errors['error_count'] === 0)) && $date->format('Y-m-d') === $value) {
+					$result[$key] = $value;
+				}
+			}
+			if ($result['startDate'] !== '' && $result['endDate'] !== '' && $result['startDate'] > $result['endDate']) {
+				$result['endDate'] = $result['startDate'];
+			}
+			return $result;
+		}
+
+		protected static function filterTopbarSearchResultsByDateRange(array $results, array $dateRange, $limit)
+		{
+			$startDate = (string)($dateRange['startDate'] ?? '');
+			$endDate = (string)($dateRange['endDate'] ?? '');
+			$filtered = array();
+			foreach ($results as $result) {
+				$resultDate = substr(trim((string)($result['_searchDate'] ?? '')), 0, 10);
+				if (($startDate !== '' || $endDate !== '') && ($resultDate === '' || ($startDate !== '' && $resultDate < $startDate) || ($endDate !== '' && $resultDate > $endDate))) {
+					continue;
+				}
+				unset($result['_searchDate']);
+				$filtered[] = $result;
+			}
+			return array_slice($filtered, 0, max(1, (int)$limit));
+		}
+
+		/** Candidate selection only; the common PHP ranker computes displayed scores. */
 		protected static function buildTopbarSearchScoreSql($expression, array $terms, array &$params, $prefix, array $weights = array())
 		{
-			if (count($terms) === 0) {
-				return '0';
-			}
-
-			$resolvedWeights = array_merge(array(
-				'exact' => 60,
-				'prefix' => 35,
-				'like' => 18,
-			), $weights);
-
-			$chunks = array();
-
+			$weight = (int)($weights['exact'] ?? 60);
+			$chunks = [];
+			$text = "TRIM(REGEXP_REPLACE(CAST(" . $expression . " AS CHAR), '<[^>]*>', ' '))";
 			foreach (array_values($terms) as $index => $term) {
-				$paramBase = $prefix . '_' . $index;
-				$params[$paramBase . '_exact'] = $term;
-				$params[$paramBase . '_prefix'] = $term . '%';
-				$params[$paramBase . '_like'] = '%' . $term . '%';
-
-				$chunks[] = '(CASE'
-					. ' WHEN ' . $expression . ' = :' . $paramBase . '_exact THEN ' . (int)$resolvedWeights['exact']
-					. ' WHEN ' . $expression . ' LIKE :' . $paramBase . '_prefix THEN ' . (int)$resolvedWeights['prefix']
-					. ' WHEN ' . $expression . ' LIKE :' . $paramBase . '_like THEN ' . (int)$resolvedWeights['like']
-					. ' ELSE 0 END)';
+				$base = $prefix . '_' . $index;
+				$exact = \commonBuildSearchTermPattern($term);
+				$variants = implode('|', array_map('commonBuildSearchTermPattern', \commonSearchTermVariants($term)));
+				$params[$base . '_whole'] = '^' . $exact . '$';
+				$params[$base . '_whole_plural'] = '^(?:' . $variants . ')$';
+				$params[$base . '_word'] = '(^|[^[:alnum:]])' . $exact . '($|[^[:alnum:]])';
+				$params[$base . '_plural'] = '(^|[^[:alnum:]])(?:' . $variants . ')($|[^[:alnum:]])';
+				$chunk = '(CASE WHEN ' . $text . ' REGEXP :' . $base . '_whole THEN ' . (int)round($weight * 1.5)
+					. ' WHEN ' . $text . ' REGEXP :' . $base . '_whole_plural THEN ' . (int)round($weight * 1.5 * 0.94)
+					. ' WHEN ' . $text . ' REGEXP :' . $base . '_word THEN ' . $weight
+					. ' WHEN ' . $text . ' REGEXP :' . $base . '_plural THEN ' . (int)round($weight * 0.94);
+				$stem = \commonSearchSingular($term);
+				if (!ctype_digit($stem) && mb_strlen($stem, 'UTF-8') >= 4) {
+					$params[$base . '_prefix'] = '(^|[^[:alnum:]])' . \commonBuildSearchTermPattern($stem);
+					$chunk .= ' WHEN ' . $text . ' REGEXP :' . $base . '_prefix THEN ' . (int)round($weight * 0.5);
+					if (mb_strlen($stem, 'UTF-8') >= 5) {
+						$params[$base . '_fragment'] = \commonBuildSearchTermPattern($stem);
+						$chunk .= ' WHEN ' . $text . ' REGEXP :' . $base . '_fragment THEN ' . (int)round($weight * 0.12);
+					}
+				}
+				$chunks[] = $chunk . ' ELSE 0 END)';
 			}
-
-			return implode(' + ', $chunks);
+			return $chunks ? implode(' + ', $chunks) : '0';
 		}
 
 		protected static function buildTopbarSearchTagScoreSql($expression, array $terms, array &$params, $prefix, array $weights = array())
 		{
-			if (count($terms) === 0) {
-				return '0';
-			}
-
-			$resolvedWeights = array_merge(array(
-				'exact' => 100,
-				'prefix' => 72,
-				'like' => 24,
-			), $weights);
-			$normalizedExpression = "CONCAT(',', TRIM(BOTH ',' FROM REPLACE(REPLACE(" . $expression . ", ', ', ','), ' ,', ',')), ',')";
-			$chunks = array();
-
-			foreach (array_values($terms) as $index => $term) {
-				$normalizedTerm = self::normalizeTopbarSearchText($term);
-				if ($normalizedTerm === '') {
-					continue;
-				}
-
-				$paramBase = $prefix . '_' . $index;
-				$params[$paramBase . '_exact'] = '%,' . $normalizedTerm . ',%';
-				$params[$paramBase . '_prefix'] = '%,' . $normalizedTerm . '%';
-				$params[$paramBase . '_like'] = '%' . $normalizedTerm . '%';
-
-				$chunks[] = '(CASE'
-					. ' WHEN ' . $normalizedExpression . ' LIKE :' . $paramBase . '_exact THEN ' . (int)$resolvedWeights['exact']
-					. ' WHEN ' . $normalizedExpression . ' LIKE :' . $paramBase . '_prefix THEN ' . (int)$resolvedWeights['prefix']
-					. ' WHEN ' . $normalizedExpression . ' LIKE :' . $paramBase . '_like THEN ' . (int)$resolvedWeights['like']
-					. ' ELSE 0 END)';
-			}
-
-			return count($chunks) > 0 ? implode(' + ', $chunks) : '0';
+			return self::buildTopbarSearchScoreSql($expression, $terms, $params, $prefix, $weights);
 		}
 
 		protected static function buildTopbarSearchAnyMatchSql(array $expressions, array $terms, array &$params, $prefix)
 		{
-			if (count($expressions) === 0 || count($terms) === 0) {
-				return '1 = 0';
-			}
-
-			$chunks = array();
-
+			$chunks = [];
 			foreach (array_values($expressions) as $expressionIndex => $expression) {
 				foreach (array_values($terms) as $termIndex => $term) {
-					$paramName = $prefix . '_' . $expressionIndex . '_' . $termIndex;
-					$params[$paramName] = '%' . $term . '%';
-					$chunks[] = $expression . ' LIKE :' . $paramName;
+					$name = $prefix . '_' . $expressionIndex . '_' . $termIndex;
+					// Broad retrieval, including both directions of regular plurals.
+					$params[$name] = implode('|', array_map('commonBuildSearchTermPattern', \commonSearchTermVariants($term)));
+					$chunks[] = 'CAST(' . $expression . ' AS CHAR) REGEXP :' . $name;
 				}
 			}
-
-			return count($chunks) > 0 ? '(' . implode(' OR ', $chunks) . ')' : '1 = 0';
+			return $chunks ? '(' . implode(' OR ', $chunks) . ')' : '1 = 0';
 		}
 
 		protected static function getTopbarSearchTextScore($value, array $terms, array $weights = array())
 		{
-			if (count($terms) === 0) {
-				return 0;
-			}
-
-			$text = self::normalizeTopbarSearchText(self::cleanTopbarSearchTextValue($value));
-			if ($text === '') {
-				return 0;
-			}
-
-			$resolvedWeights = array_merge(array(
-				'exact' => 60,
-				'prefix' => 35,
-				'like' => 18,
-			), $weights);
-			$score = 0;
-
+			$score = 0.0;
 			foreach ($terms as $term) {
-				$term = self::normalizeTopbarSearchText($term);
-				if ($term === '') {
+				$score += \commonSearchTextQuality((string)$value, $term) * (int)($weights['exact'] ?? 60);
+			}
+			return (int)round($score);
+		}
+
+		protected static function rankTopbarSearchResults(array $results, string $query): array
+		{
+			$ranked = [];
+			foreach ($results as $result) {
+				$fields = $result['_searchFields'] ?? [];
+				if (TopbarSearchRanker::score($fields, $query) <= 0) { continue; }
+				// A request such as "processus de validation des factures" also names a type.
+				// It corroborates an existing text match with the low context weight.
+				$rankFields = $fields;
+				$rankFields['context'] = array_merge((array)($fields['context'] ?? []), [(string)($result['moduleLabel'] ?? '')]);
+				$score = TopbarSearchRanker::score($rankFields, $query);
+				if ($score <= 0) { continue; }
+				$result['relevance'] = $score;
+				$bestSource = '';
+				$bestScore = 0;
+				foreach (['summary', 'body', 'tags', 'context'] as $field) {
+					foreach ((array)($fields[$field] ?? []) as $source) {
+						$sourceScore = TopbarSearchRanker::score(['summary' => (string)$source], $query);
+						if ($sourceScore > $bestScore) {
+							$bestScore = $sourceScore;
+							$bestSource = (string)$source;
+						}
+					}
+				}
+				if ($bestSource !== '') {
+					$result['excerpt'] = self::buildTopbarSearchSnippet($bestSource, $query, 100, 220);
+				}
+				unset($result['_searchFields']);
+				$ranked[] = $result;
+			}
+			usort($ranked, static fn($left, $right) => $right['relevance'] <=> $left['relevance']);
+			return $ranked;
+		}
+
+		protected static function chooseTopbarSearchSnippetSource(array $candidates, array $terms)
+		{
+			$bestValue = '';
+			$bestScore = 0;
+			$fallback = '';
+			foreach ($candidates as $candidate) {
+				$value = self::cleanTopbarSearchTextValue($candidate);
+				if ($value === '') {
 					continue;
 				}
-
-				if ($text === $term) {
-					$score += (int)$resolvedWeights['exact'];
-					continue;
+				if ($fallback === '') {
+					$fallback = $value;
 				}
-
-				if (strpos($text, $term) === 0) {
-					$score += (int)$resolvedWeights['prefix'];
-					continue;
-				}
-
-				if (strpos($text, $term) !== false) {
-					$score += (int)$resolvedWeights['like'];
+				$score = self::getTopbarSearchTextScore($value, $terms);
+				if ($score > $bestScore) {
+					$bestScore = $score;
+					$bestValue = $value;
 				}
 			}
 
-			return $score;
+			return $bestValue !== '' ? $bestValue : $fallback;
 		}
 
 		protected static function buildTopbarStructurePropertySearchValue(\dbObject\HolonProperty $property)
@@ -6729,7 +14976,7 @@
 			}
 
 			$canManage = $isOwner;
-			$canParticipate = ($isOwner || $hasParticipation) && $decision->isParticipationOpen();
+			$canParticipate = ($isOwner || $hasParticipation) && $decision->isParticipationInterfaceOpen();
 			$canView = $canManage
 				|| $hasParticipation
 				|| ($status !== \dbObject\DecisionProcess::STATUS_DRAFT && $visibilityAccess);
@@ -6878,6 +15125,10 @@
 				return false;
 			}
 
+			if (!$faq->isLinkedApplicationVisibleInOrganization($organizationId)) {
+				return false;
+			}
+
 			if ($faq->isGeneric()) {
 				return true;
 			}
@@ -6912,9 +15163,97 @@
 			return $faq->getResolvedOrganizationId() === $organizationId;
 		}
 
+		/** Load a search preview with current permissions, independently of cached search results. */
+		public function loadTopbarSearchPreviewObject(string $module, int $id, array $viewerContext)
+		{
+			$organizationId = (int)$this->getId();
+			$classes = [
+				'structure' => Holon::class, 'team' => User::class, 'calendar' => Event::class,
+				'documents' => Document::class, 'pv' => Document::class, 'rules' => Rule::class,
+				'decision' => DecisionProcess::class, 'projects' => Project::class,
+				'stats' => StatIndicator::class, 'processus' => Checklist::class,
+				'activities' => ControlActivity::class, 'faq' => FAQ::class, 'tutorials' => Parcours::class,
+			];
+			if ($id <= 0 || !isset($classes[$module]) || !self::topbarSearchViewerHasOrganizationAccess($viewerContext, $organizationId)) {
+				return null;
+			}
+			$appHash = ['pv' => 'documents', 'rules' => 'policy'][$module] ?? $module;
+			if (!in_array($module, ['faq', 'tutorials'], true) && !$this->isApplicationEnabled($appHash)) {
+				return null;
+			}
+			$object = new $classes[$module]();
+			if (!$object->load($id)) {
+				return null;
+			}
+			if ($module === 'faq') {
+				return self::topbarSearchViewerCanViewFaq($object, $this, $viewerContext) ? $object : null;
+			}
+			if ($module === 'tutorials') {
+				return self::topbarSearchViewerCanViewParcours($id, $viewerContext, $organizationId) ? $object : null;
+			}
+			if ($module === 'team') {
+				return $object->getOrganizationMembership($organizationId)
+					&& self::topbarSearchViewerCanViewUser($object, $viewerContext, true) ? $object : null;
+			}
+			if ($module === 'rules') {
+				$currentHolon = self::topbarSearchResolveCurrentHolon($this, $viewerContext);
+				if (!$currentHolon) {
+					return null;
+				}
+				$rules = new ArrayRule();
+				$rules->loadForPolicyContexts($organizationId, [(int)$currentHolon->getId()]);
+				foreach ($rules as $rule) {
+					$holon = $rule->getHolon();
+					if ((int)$rule->getId() === $id && $holon && self::topbarSearchViewerCanViewHolon($holon, $viewerContext)) {
+						return $rule;
+					}
+				}
+				return null;
+			}
+			if ($module === 'structure') {
+				$root = $this->getStructuralRootHolon();
+				return $root && (int)$object->get('active') === 1 && (int)$object->get('visible') === 1
+					&& $object->isDescendantOf((int)$root->getId(), true)
+					&& $object->canViewDetail() && self::topbarSearchViewerCanViewHolon($object, $viewerContext) ? $object : null;
+			}
+			if ((int)$object->get('IDorganization') !== $organizationId) {
+				return null;
+			}
+			if (in_array($module, ['documents', 'pv'], true)) {
+				$userId = (int)($viewerContext['userId'] ?? 0);
+				$invited = $object->isPvDocument() && !$object->isPvValidated()
+					&& $object->canUserAccessPvBeforeValidation($userId, $organizationId);
+				return $object->canUserPassPvMeetingVisibilityGate($userId, $organizationId)
+					&& ($invited || $object->canViewInOrganizationContext($organizationId, (int)($viewerContext['currentHolonId'] ?? 0))
+						|| $object->canViewDirectlyInOrganization($organizationId)) ? $object : null;
+			}
+			if ($module === 'decision') {
+				return self::topbarSearchResolveDecisionAccess($object, $viewerContext, $organizationId) ? $object : null;
+			}
+			if ((int)$object->get('active') !== 1) {
+				return null;
+			}
+			if ($module === 'calendar') {
+				return self::topbarSearchViewerCanViewEvent($object, $viewerContext, $organizationId) ? $object : null;
+			}
+			$holon = $object->getHolon();
+			if ($holon) {
+				$root = $this->getStructuralRootHolon();
+				if (!$root || !$holon->isDescendantOf((int)$root->getId(), true)
+					|| !$holon->canViewDetail() || !self::topbarSearchViewerCanViewHolon($holon, $viewerContext)) {
+					return null;
+				}
+			}
+			if ($module === 'stats' && !$object->canView()) {
+				return null;
+			}
+			return $object;
+		}
+
 		protected static function cleanTopbarSearchTextValue($value, $limit = 0)
 		{
 			$value = html_entity_decode(strip_tags((string)$value), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+			$value = \commonSearchNormalizeWhitespace($value);
 			$value = preg_replace('/\s+/u', ' ', $value);
 			$value = trim((string)$value);
 
@@ -6934,51 +15273,72 @@
 		protected static function buildTopbarSearchSnippet($value, $query, $radius = 90, $fallbackLimit = 220)
 		{
 			$text = self::cleanTopbarSearchTextValue($value);
-			$query = trim((string)$query);
-
 			if ($text === '') {
 				return '';
 			}
-
-			if ($query === '') {
+			$terms = self::buildTopbarSearchTerms($query);
+			if (count($terms) === 0) {
 				return self::cleanTopbarSearchTextValue($text, $fallbackLimit);
 			}
-
-			$lowerText = function_exists('mb_strtolower')
-				? mb_strtolower($text, 'UTF-8')
-				: strtolower($text);
-			$lowerQuery = self::normalizeTopbarSearchText($query);
-
-			if ($lowerQuery === '') {
-				return self::cleanTopbarSearchTextValue($text, $fallbackLimit);
-			}
-
-			$position = function_exists('mb_stripos')
-				? mb_stripos($lowerText, $lowerQuery, 0, 'UTF-8')
-				: stripos($lowerText, $lowerQuery);
-
-			if ($position === false) {
-				return self::cleanTopbarSearchTextValue($text, $fallbackLimit);
-			}
-
-			$queryLength = function_exists('mb_strlen')
-				? (int)mb_strlen($lowerQuery, 'UTF-8')
-				: (int)strlen($lowerQuery);
 			$textLength = function_exists('mb_strlen')
 				? (int)mb_strlen($text, 'UTF-8')
 				: (int)strlen($text);
+			$radius = max(0, (int)$radius);
+			$bestPosition = null;
+			$bestScore = 0;
+			$longestTermLength = 0;
+			$termPatterns = array();
+			foreach ($terms as $term) {
+				$longestTermLength = max($longestTermLength, function_exists('mb_strlen') ? (int)mb_strlen($term, 'UTF-8') : (int)strlen($term));
+				$termPatterns[] = '/' . \commonBuildSearchMatchPattern($term) . '/iu';
+			}
 
-			$start = max(0, (int)$position - (int)$radius);
-			$length = min($textLength - $start, ((int)$radius * 2) + $queryLength);
+			foreach ($termPatterns as $termPattern) {
+				$offset = 0;
+				for ($index = 0; $index < 20; $index++) {
+					if (preg_match($termPattern, $text, $match, PREG_OFFSET_CAPTURE, $offset) !== 1) {
+						break;
+					}
+					$bytePosition = (int)$match[0][1];
+					$position = function_exists('mb_strlen')
+						? (int)mb_strlen(substr($text, 0, $bytePosition), 'UTF-8')
+						: $bytePosition;
+					$start = max(0, (int)$position - $radius);
+					$length = min($textLength - $start, ($radius * 2) + $longestTermLength);
+					$window = function_exists('mb_substr')
+						? (string)mb_substr($text, $start, $length, 'UTF-8')
+						: (string)substr($text, $start, $length);
+					$score = 0;
+					foreach ($termPatterns as $termIndex => $windowPattern) {
+						if (preg_match($windowPattern, $window) === 1) {
+							$score += (int)round(100 * \commonSearchTextQuality($window, $terms[$termIndex]));
+						}
+					}
+					if ($score > $bestScore) {
+						$bestScore = $score;
+						$bestPosition = (int)$position;
+					}
+					$offset = $bytePosition + max(1, strlen((string)$match[0][0]));
+				}
+			}
+
+			if ($bestPosition === null) {
+				return self::cleanTopbarSearchTextValue($text, $fallbackLimit);
+			}
+
+			$start = max(0, $bestPosition - $radius);
+			$length = min($textLength - $start, ($radius * 2) + $longestTermLength);
 			$snippet = function_exists('mb_substr')
 				? (string)mb_substr($text, $start, $length, 'UTF-8')
 				: (string)substr($text, $start, $length);
 
 			if ($start > 0) {
+				$snippet = (string)preg_replace('/^\S+\s+/u', '', $snippet);
 				$snippet = '... ' . ltrim($snippet);
 			}
 
 			if ($start + $length < $textLength) {
+				$snippet = (string)preg_replace('/\s+\S*$/u', '', $snippet);
 				$snippet = rtrim($snippet) . ' ...';
 			}
 
@@ -6997,7 +15357,7 @@
 				case 4:
 					return 'Organisation';
 				default:
-					return 'Holon';
+					return \dbObject\Organization::formatLexiconText('Holon');
 			}
 		}
 
@@ -7109,6 +15469,7 @@
 					$snippetScore = $candidateScore;
 					$snippetSource = $candidate;
 				}
+				$createdAt = $faq->get('created');
 
 				$results[] = array(
 					'module' => 'faq',
@@ -7118,7 +15479,9 @@
 						return trim((string)$part) !== '';
 					}))),
 					'excerpt' => self::buildTopbarSearchSnippet($snippetSource, $query, 100, 220),
+					'_searchFields' => ['title' => $question, 'summary' => $answer, 'body' => $detail, 'context' => $contextCandidates],
 					'relevance' => $totalScore,
+					'_searchDate' => $createdAt instanceof \DateTimeInterface ? $createdAt->format('Y-m-d H:i:s') : '',
 					'action' => array(
 						'type' => 'faq',
 						'faqId' => (int)$faq->getId(),
@@ -7126,6 +15489,7 @@
 				);
 			}
 
+			$results = self::rankTopbarSearchResults($results, $query);
 			usort($results, function ($left, $right) {
 				$leftScore = (int)($left['relevance'] ?? 0);
 				$rightScore = (int)($right['relevance'] ?? 0);
@@ -7136,6 +15500,136 @@
 				$leftId = (int)($left['action']['faqId'] ?? 0);
 				$rightId = (int)($right['action']['faqId'] ?? 0);
 				return $rightId <=> $leftId;
+			});
+
+			return array_slice($results, 0, max(1, (int)$limit));
+		}
+
+		protected function searchTopbarRuleResults($query, array $terms, $limit = 12, array $viewerContext = array())
+		{
+			$organizationId = (int)$this->getId();
+			if (
+				$organizationId <= 0
+				|| count($terms) === 0
+				|| !self::topbarSearchViewerHasOrganizationAccess($viewerContext, $organizationId)
+			) {
+				return array();
+			}
+
+			$currentHolon = self::topbarSearchResolveCurrentHolon($this, $viewerContext);
+			if (!($currentHolon instanceof \dbObject\Holon)) {
+				return array();
+			}
+
+			$rules = new \dbObject\ArrayRule();
+			$rules->loadForPolicyContexts($organizationId, array((int)$currentHolon->getId()));
+			$results = array();
+
+			foreach ($rules as $rule) {
+				if (!($rule instanceof \dbObject\Rule) || (int)$rule->getId() <= 0) {
+					continue;
+				}
+
+				$ruleHolon = $rule->getHolon();
+				if (
+					!($ruleHolon instanceof \dbObject\Holon)
+					|| !self::topbarSearchViewerCanViewHolon($ruleHolon, $viewerContext)
+				) {
+					continue;
+				}
+
+				$title = trim((string)$rule->get('title'));
+				$description = self::cleanTopbarSearchTextValue((string)$rule->get('description'));
+				$intention = self::cleanTopbarSearchTextValue((string)$rule->get('intention'));
+				$holonLabel = trim((string)$ruleHolon->getFullDisplayName());
+				$authority = $rule->getAuthority();
+				$authorityLabel = $authority instanceof \dbObject\Authority
+					? trim((string)$authority->get('label'))
+					: '';
+
+				$titleScore = self::getTopbarSearchTextScore($title, $terms, array(
+					'exact' => 120,
+					'prefix' => 78,
+					'like' => 40,
+				));
+				$descriptionScore = self::getTopbarSearchTextScore($description, $terms, array(
+					'exact' => 42,
+					'prefix' => 26,
+					'like' => 14,
+				));
+				$intentionScore = self::getTopbarSearchTextScore($intention, $terms, array(
+					'exact' => 30,
+					'prefix' => 18,
+					'like' => 10,
+				));
+				$contextScore = self::getTopbarSearchTextScore($holonLabel, $terms, array(
+					'exact' => 20,
+					'prefix' => 12,
+					'like' => 6,
+				)) + self::getTopbarSearchTextScore($authorityLabel, $terms, array(
+					'exact' => 18,
+					'prefix' => 10,
+					'like' => 5,
+				));
+
+				$totalScore = $titleScore + $descriptionScore + $intentionScore + $contextScore;
+				if ($totalScore <= 0) {
+					continue;
+				}
+
+				$snippetCandidates = array($description, $intention, $title);
+				$snippetSource = '';
+				$snippetScore = -1;
+				foreach ($snippetCandidates as $candidate) {
+					$candidate = trim((string)$candidate);
+					if ($candidate === '') {
+						continue;
+					}
+
+					$candidateScore = self::getTopbarSearchTextScore($candidate, $terms);
+					if ($candidateScore <= $snippetScore) {
+						continue;
+					}
+
+					$snippetScore = $candidateScore;
+					$snippetSource = $candidate;
+				}
+
+				$updatedAt = $rule->get('updated_at');
+				$createdAt = $rule->get('created_at');
+				$searchDate = $updatedAt instanceof \DateTimeInterface
+					? $updatedAt->format('Y-m-d H:i:s')
+					: ($createdAt instanceof \DateTimeInterface ? $createdAt->format('Y-m-d H:i:s') : '');
+
+				$subtitleParts = array_filter(array($holonLabel, $authorityLabel), function ($part) {
+					return trim((string)$part) !== '';
+				});
+				$results[] = array(
+					'module' => 'rules',
+					'moduleLabel' => 'Regles',
+					'title' => $title !== '' ? $title : ('Regle #' . (int)$rule->getId()),
+					'subtitle' => implode(' | ', array_values($subtitleParts)),
+					'excerpt' => self::buildTopbarSearchSnippet($snippetSource, $query, 100, 220),
+					'_searchFields' => ['title' => $title, 'summary' => [$description, $intention], 'context' => [$holonLabel, $authorityLabel]],
+					'relevance' => $totalScore,
+					'_searchDate' => $searchDate,
+					'action' => array(
+						'type' => 'rule',
+						'ruleId' => (int)$rule->getId(),
+						'holonId' => (int)$ruleHolon->getId(),
+					),
+				);
+			}
+
+			$results = self::rankTopbarSearchResults($results, $query);
+			usort($results, function ($left, $right) {
+				$leftScore = (int)($left['relevance'] ?? 0);
+				$rightScore = (int)($right['relevance'] ?? 0);
+				if ($leftScore !== $rightScore) {
+					return $rightScore <=> $leftScore;
+				}
+
+				return strcmp((string)($left['title'] ?? ''), (string)($right['title'] ?? ''));
 			});
 
 			return array_slice($results, 0, max(1, (int)$limit));
@@ -7183,8 +15677,10 @@
 					'moduleLabel' => 'Tutoriels',
 					'title' => $title !== '' ? $title : ('Parcours #' . (int)$parcoursId),
 					'subtitle' => $isPack ? 'Pack' : 'Parcours',
-					'excerpt' => self::buildTopbarSearchSnippet($description !== '' ? $description : $title, $query, 100, 220),
+					'excerpt' => self::buildTopbarSearchSnippet(self::chooseTopbarSearchSnippetSource(array($description, $title), $terms), $query, 100, 220),
+					'_searchFields' => ['title' => $title, 'summary' => $description],
 					'relevance' => $totalScore,
+					'_searchDate' => (string)($parcoursRow['datecreation'] ?? ''),
 					'_sortKind' => 1,
 					'action' => array(
 						'type' => 'tutorial',
@@ -7212,6 +15708,7 @@
 						m.title,
 						m.resume,
 						m.html,
+						m.datecreation,
 						pm.IDparcours,
 						pm.branch
 					FROM mission m
@@ -7277,23 +15774,10 @@
 						$missionResume,
 						$missionHtml,
 						$parcoursTitle,
+						$missionTitle,
+						$branchLabel,
 					);
-					$snippetSource = '';
-					$snippetScore = -1;
-					foreach ($snippetCandidates as $candidate) {
-						$candidate = trim((string)$candidate);
-						if ($candidate === '') {
-							continue;
-						}
-
-						$candidateScore = self::getTopbarSearchTextScore($candidate, $terms);
-						if ($candidateScore <= $snippetScore) {
-							continue;
-						}
-
-						$snippetScore = $candidateScore;
-						$snippetSource = $candidate;
-					}
+					$snippetSource = self::chooseTopbarSearchSnippetSource($snippetCandidates, $terms);
 
 					$results[] = array(
 						'module' => 'tutorials',
@@ -7301,7 +15785,9 @@
 						'title' => $missionTitle !== '' ? $missionTitle : ('Mission #' . (int)($missionRow['id'] ?? 0)),
 						'subtitle' => implode(' | ', $subtitleParts),
 						'excerpt' => self::buildTopbarSearchSnippet($snippetSource, $query, 100, 220),
+						'_searchFields' => ['title' => $missionTitle, 'summary' => $missionResume, 'body' => $missionHtml, 'context' => [$parcoursTitle, $branchLabel]],
 						'relevance' => $missionScore,
+						'_searchDate' => (string)($missionRow['datecreation'] ?? ''),
 						'_sortKind' => 2,
 						'action' => array(
 							'type' => 'tutorial',
@@ -7312,6 +15798,7 @@
 				}
 			}
 
+			$results = self::rankTopbarSearchResults($results, $query);
 			usort($results, function ($left, $right) {
 				$leftScore = (int)($left['relevance'] ?? 0);
 				$rightScore = (int)($right['relevance'] ?? 0);
@@ -7350,6 +15837,7 @@
 					h.name,
 					h.templatename,
 					h.IDtypeholon,
+					h.datecreation,
 					h.datemodification
 				FROM holon h
 				WHERE h.IDholon_org = :root_holon_id
@@ -7387,13 +15875,18 @@
 					)
 				);
 
+				$searchFields = ['title' => $holon->getDisplayName(), 'summary' => [], 'body' => [], 'context' => [$holon->get('templatename')]];
 				$propertyScore = 0;
 				$matchedExcerpt = '';
 				$matchedExcerptScore = 0;
 
 				foreach ($holon->getPropertiesValue() as $property) {
+					if (!Property::isTypeEnabled($property->get('type'), $this->getLexicon())) continue;
 					$propertyLabel = trim((string)$property->get('name') . ' ' . (string)$property->get('shortname'));
 					$propertyValue = self::buildTopbarStructurePropertySearchValue($property);
+					$searchFields['summary'][] = (string)$property->get('value');
+					$searchFields['body'][] = (string)$property->get('value_parents');
+					$searchFields['context'][] = $propertyLabel;
 					$propertyRowScore =
 						self::getTopbarSearchTextScore($propertyLabel, $terms, array(
 							'exact' => 26,
@@ -7451,7 +15944,9 @@
 					'title' => $holon->getDisplayName(),
 					'subtitle' => $subtitle,
 					'excerpt' => $matchedExcerpt,
+					'_searchFields' => $searchFields,
 					'relevance' => $totalScore,
+					'_searchDate' => (string)($row['datecreation'] ?? ''),
 					'datemodification' => (string)($row['datemodification'] ?? ''),
 					'action' => array(
 						'type' => 'structure',
@@ -7460,6 +15955,7 @@
 				);
 			}
 
+			$results = self::rankTopbarSearchResults($results, $query);
 			usort($results, function ($left, $right) {
 				$leftScore = (int)($left['relevance'] ?? 0);
 				$rightScore = (int)($right['relevance'] ?? 0);
@@ -7499,7 +15995,7 @@
 			);
 
 			$identityExpr = "LOWER(CONCAT_WS(' ', COALESCE(u.firstname, ''), COALESCE(u.lastname, ''), COALESCE(NULLIF(uo.username, ''), u.username, ''), COALESCE(NULLIF(uo.email, ''), u.email, '')))";
-			$parameterExpr = "LOWER(CONCAT_WS(' ', COALESCE(u.parameters, ''), COALESCE(uo.parameters, '')))";
+			$parameterExpr = "LOWER(CONCAT_WS(' ', COALESCE(u.parameters, ''), COALESCE(uo.parameters, ''), COALESCE(NULLIF(TRIM(uo.presentation), ''), u.presentation, '')))";
 			$competenceNameExpr = "LOWER(COALESCE(c_skill.name, ''))";
 			$competenceDescriptionExpr = "LOWER(COALESCE(uc_skill.description, ''))";
 
@@ -7565,11 +16061,11 @@
 						)
 						SEPARATOR ' || '
 					) AS competence_excerpt_source,
-					COALESCE(SUM(" . $competenceNameScoreSql . " + " . $competenceDescriptionScoreSql . "), 0) AS competence_relevance,
+					COALESCE(MAX(" . $competenceNameScoreSql . " + " . $competenceDescriptionScoreSql . "), 0) AS competence_relevance,
 					(
 						MAX(" . $identityScoreSql . ")
 						+ MAX(" . $parameterScoreSql . ")
-						+ COALESCE(SUM(" . $competenceNameRelevanceSql . " + " . $competenceDescriptionRelevanceSql . "), 0)
+						+ COALESCE(MAX(" . $competenceNameRelevanceSql . " + " . $competenceDescriptionRelevanceSql . "), 0)
 					) AS relevance
 				FROM user_organization uo
 				INNER JOIN user u
@@ -7629,12 +16125,13 @@
 					$subtitleParts[] = $scopedEmail;
 				}
 
-				$matchedCompetenceExcerpt = trim((string)($row['competence_excerpt_source'] ?? ''));
-				$competenceRelevance = (int)($row['competence_relevance'] ?? 0);
-				$excerpt = '';
-				if ($competenceRelevance > 0 && $matchedCompetenceExcerpt !== '') {
-					$excerpt = self::buildTopbarSearchSnippet($matchedCompetenceExcerpt, $query, 90, 220);
+				$visibleCompetences = [];
+				foreach ($user->getVisibleCompetenceRows((int)$this->getId(), (int)($viewerContext['userId'] ?? 0)) as $skill) {
+					$visibleCompetences[] = trim((string)($skill['name'] ?? '') . ' ' . (string)($skill['description'] ?? ''));
 				}
+				$presentation = $user->getScopedPresentation((int)$this->getId());
+				$profileTexts = array_merge([$presentation], $visibleCompetences);
+				$excerpt = self::buildTopbarSearchSnippet(self::chooseTopbarSearchSnippetSource($profileTexts, $terms), $query, 90, 220);
 				if ($excerpt === '' && (int)($row['membership_active'] ?? 0) !== 1) {
 					$excerpt = 'Membre en attente ou inactif.';
 				}
@@ -7645,7 +16142,9 @@
 					'title' => $title,
 					'subtitle' => implode(' - ', $subtitleParts),
 					'excerpt' => $excerpt,
+					'_searchFields' => ['title' => [$fullName, $scopedUsername], 'tags' => [$scopedEmail], 'summary' => $profileTexts],
 					'relevance' => (int)($row['relevance'] ?? 0),
+					'_searchDate' => (string)($row['membership_created_at'] ?? ''),
 					'action' => array(
 						'type' => 'user',
 						'userId' => (int)($row['id'] ?? 0),
@@ -7653,10 +16152,10 @@
 				);
 			}
 
-			return $results;
+			return self::rankTopbarSearchResults($results, $query);
 		}
 
-		protected function searchTopbarDocumentResults($query, array $terms, $limit = 12, array $viewerContext = array())
+		protected function searchTopbarDocumentResults($query, array $terms, $limit = 12, array $viewerContext = array(), $documentType = null)
 		{
 			if ((int)$this->getId() <= 0 || count($terms) === 0) {
 				return array();
@@ -7665,11 +16164,15 @@
 			$params = array(
 				'organization_id' => (int)$this->getId(),
 			);
+			$isPvSearch = $documentType === \dbObject\Document::TYPE_PV;
+			$params['document_type_pv'] = \dbObject\Document::TYPE_PV;
 
 			$titleExpr = "LOWER(COALESCE(d.title, ''))";
 			$descriptionExpr = "LOWER(COALESCE(d.description, ''))";
 			$keywordsExpr = "LOWER(COALESCE(d.keywords, ''))";
 			$contentExpr = "LOWER(COALESCE(d.content, ''))";
+			$pvPointTitleExpr = $isPvSearch ? "LOWER(COALESCE(pv_search.point_titles, ''))" : "''";
+			$pvPointContentExpr = $isPvSearch ? "LOWER(COALESCE(pv_search.point_contents, ''))" : "''";
 
 			$titleScoreSql = self::buildTopbarSearchScoreSql($titleExpr, $terms, $params, 'document_title', array(
 				'exact' => 100,
@@ -7691,13 +16194,33 @@
 				'prefix' => 12,
 				'like' => 6,
 			));
+			$pvPointTitleScoreSql = self::buildTopbarSearchScoreSql($pvPointTitleExpr, $terms, $params, 'document_pv_point_title', array(
+				'exact' => 44,
+				'prefix' => 28,
+				'like' => 14,
+			));
+			$pvPointContentScoreSql = self::buildTopbarSearchScoreSql($pvPointContentExpr, $terms, $params, 'document_pv_point_content', array(
+				'exact' => 30,
+				'prefix' => 18,
+				'like' => 9,
+			));
 			$preFilterSql = self::buildTopbarSearchAnyMatchSql(
-				array($titleExpr, $descriptionExpr, $keywordsExpr, $contentExpr),
+				array($titleExpr, $descriptionExpr, $keywordsExpr, $contentExpr, $pvPointTitleExpr, $pvPointContentExpr),
 				$terms,
 				$params,
 				'document_prefilter'
 			);
 			$limitSql = max(1, (int)$limit);
+
+			$documentTypeSql = $isPvSearch
+				? 'AND d.documenttype = :document_type_pv'
+				: 'AND COALESCE(d.documenttype, \'\') <> :document_type_pv';
+			$pvJoinSql = $isPvSearch
+				? "LEFT JOIN (\n\t\t\t\t\tSELECT IDdocument, GROUP_CONCAT(COALESCE(title, '') SEPARATOR ' ') AS point_titles, GROUP_CONCAT(COALESCE(content, '') SEPARATOR ' ') AS point_contents\n\t\t\t\t\tFROM document_pv_point\n\t\t\t\t\tWHERE item_type = 'point' AND COALESCE(is_confidential, 0) = 0\n\t\t\t\t\tGROUP BY IDdocument\n\t\t\t\t) pv_search ON pv_search.IDdocument = d.id"
+				: '';
+			$pvSelectSql = $isPvSearch
+				? 'pv_search.point_titles, pv_search.point_contents'
+				: "'' AS point_titles, '' AS point_contents";
 
 			$rows = self::fetchAll(
 				"SELECT
@@ -7709,9 +16232,12 @@
 					d.IDholon,
 					d.datecreation,
 					d.datemodification,
-					(" . $titleScoreSql . " + " . $descriptionScoreSql . " + " . $keywordsScoreSql . " + " . $contentScoreSql . ") AS relevance
+					(" . $titleScoreSql . " + " . $descriptionScoreSql . " + " . $keywordsScoreSql . " + " . $contentScoreSql . " + " . $pvPointTitleScoreSql . " + " . $pvPointContentScoreSql . ") AS relevance,
+					" . $pvSelectSql . "
 				FROM document d
+				" . $pvJoinSql . "
 				WHERE d.IDorganization = :organization_id
+				  " . $documentTypeSql . "
 				  AND " . $preFilterSql . "
 				HAVING relevance > 0
 				ORDER BY relevance DESC, d.datemodification DESC, d.datecreation DESC, d.id DESC
@@ -7736,21 +16262,24 @@
 				}
 
 				$subtitle = $document->getOrganizationContextLabel();
-				$snippetSource = trim((string)($row['description'] ?? '')) !== ''
-					? (string)($row['description'] ?? '')
-					: ((trim((string)($row['keywords'] ?? '')) !== '' ? (string)($row['keywords'] ?? '') : (string)($row['content'] ?? '')));
+				$snippetSource = self::chooseTopbarSearchSnippetSource(array_merge(
+					$isPvSearch ? array((string)($row['point_titles'] ?? ''), (string)($row['point_contents'] ?? '')) : array(),
+					array((string)($row['description'] ?? ''), (string)($row['keywords'] ?? ''), (string)($row['content'] ?? ''), (string)($row['title'] ?? ''))
+				), $terms);
 				$detailUrl = '/omo/api/documents/detail.php?id=' . (int)$document->getId() . '&oid=' . (int)$this->getId();
 				if ((int)$document->get('IDholon') > 0) {
 					$detailUrl .= '&cid=' . (int)$document->get('IDholon');
 				}
 
 				$results[] = array(
-					'module' => 'documents',
-					'moduleLabel' => 'Documents',
+					'module' => $isPvSearch ? 'pv' : 'documents',
+					'moduleLabel' => $isPvSearch ? 'PV' : 'Documents',
 					'title' => trim((string)$document->get('title')) !== '' ? (string)$document->get('title') : ('Document #' . (int)$document->getId()),
 					'subtitle' => $subtitle,
 					'excerpt' => self::buildTopbarSearchSnippet($snippetSource, $query, 100, 220),
+					'_searchFields' => ['title' => $row['title'], 'tags' => explode(',', (string)$row['keywords']), 'summary' => [$row['description'], $row['point_titles']], 'body' => [$row['content'], $row['point_contents']], 'context' => $subtitle],
 					'relevance' => (int)($row['relevance'] ?? 0),
+					'_searchDate' => (string)($row['datecreation'] ?? ''),
 					'action' => array(
 						'type' => 'document',
 						'documentId' => (int)$document->getId(),
@@ -7759,7 +16288,7 @@
 				);
 			}
 
-			return $results;
+			return self::rankTopbarSearchResults($results, $query);
 		}
 
 		protected function searchTopbarDecisionResults($query, array $terms, $limit = 12, array $viewerContext = array())
@@ -8013,7 +16542,9 @@
 					'title' => $resultTitle,
 					'subtitle' => $subtitle,
 					'excerpt' => self::buildTopbarSearchSnippet($snippetSource, $query, 100, 220),
+					'_searchFields' => ['title' => $row['process_title'], 'summary' => [$row['process_description'], $row['group_titles'], $row['proposal_titles']], 'body' => [$row['group_descriptions'], $row['proposal_descriptions']], 'context' => $row['holon_name']],
 					'relevance' => (int)($row['relevance'] ?? 0),
+					'_searchDate' => (string)($row['created_at'] ?? ''),
 					'action' => array(
 						'type' => 'decision',
 						'decisionId' => (int)$decision->getId(),
@@ -8022,7 +16553,296 @@
 				);
 			}
 
-			return $results;
+			return self::rankTopbarSearchResults($results, $query);
+		}
+
+		protected function searchTopbarProjectResults($query, array $terms, $limit = 12, array $viewerContext = array())
+		{
+			if ((int)$this->getId() <= 0 || count($terms) === 0) {
+				return array();
+			}
+
+			$organizationId = (int)$this->getId();
+			$params = array(
+				'organization_id' => $organizationId,
+				'project_kind' => \dbObject\Project::KIND_STANDARD,
+			);
+			$titleExpr = "LOWER(COALESCE(p.title, ''))";
+			$descriptionExpr = "LOWER(COALESCE(p.description, ''))";
+			$titleScoreSql = self::buildTopbarSearchScoreSql($titleExpr, $terms, $params, 'project_title', array(
+				'exact' => 108,
+				'prefix' => 68,
+				'like' => 36,
+			));
+			$descriptionScoreSql = self::buildTopbarSearchScoreSql($descriptionExpr, $terms, $params, 'project_description', array(
+				'exact' => 34,
+				'prefix' => 22,
+				'like' => 12,
+			));
+			$preFilterSql = self::buildTopbarSearchAnyMatchSql(array($titleExpr, $descriptionExpr), $terms, $params, 'project_prefilter');
+			$rows = self::fetchAll(
+				"SELECT
+					p.id,
+					p.title,
+					p.description,
+					p.status,
+					p.priority,
+					p.IDholon,
+					p.created_at,
+					(" . $titleScoreSql . " + " . $descriptionScoreSql . ") AS relevance
+				FROM project p
+				WHERE p.IDorganization = :organization_id
+				  AND p.active = 1
+				  AND p.project_kind = :project_kind
+				  AND " . $preFilterSql . "
+				HAVING relevance > 0
+				ORDER BY relevance DESC, p.created_at DESC, p.id DESC
+				LIMIT " . max(1, (int)$limit),
+				$params
+			);
+			if ($rows === false) {
+				return array();
+			}
+
+			$results = array();
+			foreach ($rows as $row) {
+				$holonId = (int)($row['IDholon'] ?? 0);
+				$subtitleParts = array();
+				if ($holonId > 0) {
+					$holon = new \dbObject\Holon();
+					if (!$holon->load($holonId) || !self::topbarSearchViewerCanViewHolon($holon, $viewerContext)) {
+						continue;
+					}
+					$subtitleParts[] = trim((string)$holon->getDisplayName());
+				}
+				$status = \dbObject\Project::normalizeStatus($row['status'] ?? '');
+				$subtitleParts[] = \dbObject\Project::getOrganizationStatusLabel($organizationId, $status);
+				if ((int)($row['priority'] ?? 0) > 0) {
+					$subtitleParts[] = 'P' . (int)$row['priority'];
+				}
+
+				$title = trim((string)($row['title'] ?? ''));
+				$description = self::cleanTopbarSearchTextValue((string)($row['description'] ?? ''));
+				$excerptSource = self::chooseTopbarSearchSnippetSource(array($description, $title), $terms);
+				$results[] = array(
+					'module' => 'projects',
+					'moduleLabel' => 'Projets',
+					'title' => $title !== '' ? $title : ('Projet #' . (int)($row['id'] ?? 0)),
+					'subtitle' => implode(' | ', array_filter($subtitleParts)),
+					'excerpt' => self::buildTopbarSearchSnippet($excerptSource, $query, 100, 220),
+					'_searchFields' => ['title' => $title, 'summary' => $description],
+					'relevance' => (int)($row['relevance'] ?? 0),
+					'_searchDate' => (string)($row['created_at'] ?? ''),
+					'action' => array(
+						'type' => 'project',
+						'projectId' => (int)($row['id'] ?? 0),
+						'holonId' => $holonId,
+					),
+				);
+			}
+
+			return self::rankTopbarSearchResults($results, $query);
+		}
+
+		protected function searchTopbarProcessResults($query, array $terms, $limit = 12, array $viewerContext = array())
+		{
+			if ((int)$this->getId() <= 0 || count($terms) === 0) {
+				return array();
+			}
+
+			$params = array('organization_id' => (int)$this->getId());
+			$titleExpr = "LOWER(COALESCE(p.title, ''))";
+			$descriptionExpr = "LOWER(COALESCE(p.description, ''))";
+			$titleScoreSql = self::buildTopbarSearchScoreSql($titleExpr, $terms, $params, 'process_title', array('exact' => 108, 'prefix' => 68, 'like' => 36));
+			$descriptionScoreSql = self::buildTopbarSearchScoreSql($descriptionExpr, $terms, $params, 'process_description', array('exact' => 34, 'prefix' => 22, 'like' => 12));
+			$preFilterSql = self::buildTopbarSearchAnyMatchSql(array($titleExpr, $descriptionExpr), $terms, $params, 'process_prefilter');
+			$rows = self::fetchAll(
+				"SELECT
+					pr.id,
+					p.title,
+					p.description,
+					p.IDholon,
+					pr.created_at,
+					(" . $titleScoreSql . " + " . $descriptionScoreSql . ") AS relevance
+				FROM process pr
+				INNER JOIN project p ON p.id = pr.IDproject_template_root AND p.IDorganization = pr.IDorganization
+				WHERE pr.IDorganization = :organization_id
+				  AND pr.active = 1
+				  AND p.active = 1
+				  AND " . $preFilterSql . "
+				HAVING relevance > 0
+				ORDER BY relevance DESC, pr.created_at DESC, pr.id DESC
+				LIMIT " . max(1, (int)$limit),
+				$params
+			);
+			if ($rows === false) {
+				return array();
+			}
+
+			$results = array();
+			foreach ($rows as $row) {
+				$holonId = (int)($row['IDholon'] ?? 0);
+				$subtitle = trim((string)$this->get('name'));
+				if ($holonId > 0) {
+					$holon = new \dbObject\Holon();
+					if (!$holon->load($holonId) || !self::topbarSearchViewerCanViewHolon($holon, $viewerContext)) {
+						continue;
+					}
+					$subtitle = trim((string)$holon->getDisplayName());
+				}
+				$title = trim((string)($row['title'] ?? ''));
+				$description = self::cleanTopbarSearchTextValue((string)($row['description'] ?? ''));
+				$results[] = array(
+					'module' => 'processus',
+					'moduleLabel' => 'Processus',
+					'title' => $title !== '' ? $title : ('Processus #' . (int)$row['id']),
+					'subtitle' => $subtitle,
+					'excerpt' => self::buildTopbarSearchSnippet(self::chooseTopbarSearchSnippetSource(array($description, $title), $terms), $query, 100, 220),
+					'_searchFields' => ['title' => $title, 'summary' => $description],
+					'relevance' => (int)($row['relevance'] ?? 0),
+					'_searchDate' => (string)($row['created_at'] ?? ''),
+					'action' => array('type' => 'checklist', 'checklistId' => (int)$row['id'], 'holonId' => $holonId),
+				);
+			}
+
+			return self::rankTopbarSearchResults($results, $query);
+		}
+
+		protected function searchTopbarRecurringTaskResults($query, array $terms, $limit = 12, array $viewerContext = array())
+		{
+			if ((int)$this->getId() <= 0 || count($terms) === 0) {
+				return array();
+			}
+
+			$params = array('organization_id' => (int)$this->getId());
+			$titleExpr = "LOWER(COALESCE(rt.title, ''))";
+			$descriptionExpr = "LOWER(COALESCE(rt.description, ''))";
+			$titleScoreSql = self::buildTopbarSearchScoreSql($titleExpr, $terms, $params, 'activity_title', array('exact' => 108, 'prefix' => 68, 'like' => 36));
+			$descriptionScoreSql = self::buildTopbarSearchScoreSql($descriptionExpr, $terms, $params, 'activity_description', array('exact' => 34, 'prefix' => 22, 'like' => 12));
+			$preFilterSql = self::buildTopbarSearchAnyMatchSql(array($titleExpr, $descriptionExpr), $terms, $params, 'activity_prefilter');
+			$rows = self::fetchAll(
+				"SELECT
+					rt.id,
+					rt.title,
+					rt.description,
+					rt.IDholon,
+					rt.created_at,
+					(" . $titleScoreSql . " + " . $descriptionScoreSql . ") AS relevance
+				FROM recurring_task rt
+				WHERE rt.IDorganization = :organization_id
+				  AND rt.active = 1
+				  AND " . $preFilterSql . "
+				HAVING relevance > 0
+				ORDER BY relevance DESC, rt.created_at DESC, rt.id DESC
+				LIMIT " . max(1, (int)$limit),
+				$params
+			);
+			if ($rows === false) {
+				return array();
+			}
+
+			$results = array();
+			foreach ($rows as $row) {
+				$holonId = (int)($row['IDholon'] ?? 0);
+				$subtitle = trim((string)$this->get('name'));
+				if ($holonId > 0) {
+					$holon = new \dbObject\Holon();
+					if (!$holon->load($holonId) || !self::topbarSearchViewerCanViewHolon($holon, $viewerContext)) {
+						continue;
+					}
+					$subtitle = trim((string)$holon->getDisplayName());
+				}
+				$title = trim((string)($row['title'] ?? ''));
+				$description = self::cleanTopbarSearchTextValue((string)($row['description'] ?? ''));
+				$results[] = array(
+					'module' => 'activities',
+					'moduleLabel' => 'Taches recurrentes',
+					'title' => $title !== '' ? $title : ('Tache recurrente #' . (int)$row['id']),
+					'subtitle' => $subtitle,
+					'excerpt' => self::buildTopbarSearchSnippet(self::chooseTopbarSearchSnippetSource(array($description, $title), $terms), $query, 100, 220),
+					'_searchFields' => ['title' => $title, 'summary' => $description],
+					'relevance' => (int)($row['relevance'] ?? 0),
+					'_searchDate' => (string)($row['created_at'] ?? ''),
+					'action' => array('type' => 'activity', 'activityId' => (int)$row['id'], 'holonId' => $holonId),
+				);
+			}
+
+			return self::rankTopbarSearchResults($results, $query);
+		}
+
+		protected function searchTopbarStatIndicatorResults($query, array $terms, $limit = 12, array $viewerContext = array())
+		{
+			if ((int)$this->getId() <= 0 || count($terms) === 0) {
+				return array();
+			}
+
+			$params = array('organization_id' => (int)$this->getId());
+			$nameExpr = "LOWER(COALESCE(si.name, ''))";
+			$descriptionExpr = "LOWER(COALESCE(si.description, ''))";
+			$sourceExpr = "LOWER(COALESCE(si.source_url, ''))";
+			$nameScoreSql = self::buildTopbarSearchScoreSql($nameExpr, $terms, $params, 'stats_name', array('exact' => 108, 'prefix' => 68, 'like' => 36));
+			$descriptionScoreSql = self::buildTopbarSearchScoreSql($descriptionExpr, $terms, $params, 'stats_description', array('exact' => 34, 'prefix' => 22, 'like' => 12));
+			$sourceScoreSql = self::buildTopbarSearchScoreSql($sourceExpr, $terms, $params, 'stats_source', array('exact' => 20, 'prefix' => 12, 'like' => 6));
+			$preFilterSql = self::buildTopbarSearchAnyMatchSql(array($nameExpr, $descriptionExpr, $sourceExpr), $terms, $params, 'stats_prefilter');
+			$rows = self::fetchAll(
+				"SELECT
+					si.id,
+					si.name,
+					si.description,
+					si.source_url,
+					si.measurement_frequency,
+					si.IDholon,
+					si.created_at,
+					(" . $nameScoreSql . " + " . $descriptionScoreSql . " + " . $sourceScoreSql . ") AS relevance
+				FROM stat_indicator si
+				WHERE si.IDorganization = :organization_id
+				  AND si.active = 1
+				  AND " . $preFilterSql . "
+				HAVING relevance > 0
+				ORDER BY relevance DESC, si.created_at DESC, si.id DESC
+				LIMIT " . max(1, (int)$limit),
+				$params
+			);
+			if ($rows === false) {
+				return array();
+			}
+
+			$results = array();
+			foreach ($rows as $row) {
+				$holonId = (int)($row['IDholon'] ?? 0);
+				$subtitleParts = array();
+				if ($holonId > 0) {
+					$holon = new \dbObject\Holon();
+					if (!$holon->load($holonId) || !self::topbarSearchViewerCanViewHolon($holon, $viewerContext)) {
+						continue;
+					}
+					$subtitleParts[] = trim((string)$holon->getDisplayName());
+				}
+				$frequency = trim((string)($row['measurement_frequency'] ?? ''));
+
+				$name = trim((string)($row['name'] ?? ''));
+				$description = self::cleanTopbarSearchTextValue((string)($row['description'] ?? ''));
+				$sourceUrl = trim((string)($row['source_url'] ?? ''));
+				$excerptSource = self::chooseTopbarSearchSnippetSource(array($description, $sourceUrl, $name), $terms);
+				$results[] = array(
+					'module' => 'stats',
+					'moduleLabel' => 'Indicateurs',
+					'title' => $name !== '' ? $name : ('Indicateur #' . (int)($row['id'] ?? 0)),
+					'subtitle' => implode(' | ', array_filter($subtitleParts)),
+					'excerpt' => self::buildTopbarSearchSnippet($excerptSource, $query, 100, 220),
+					'_searchFields' => ['title' => $name, 'summary' => $description, 'context' => $sourceUrl],
+					'relevance' => (int)($row['relevance'] ?? 0),
+					'_searchDate' => (string)($row['created_at'] ?? ''),
+					'action' => array(
+						'type' => 'stat_indicator',
+						'indicatorId' => (int)($row['id'] ?? 0),
+						'holonId' => $holonId,
+						'measurementFrequency' => $frequency,
+					),
+				);
+			}
+
+			return self::rankTopbarSearchResults($results, $query);
 		}
 
 		protected function searchTopbarCalendarResults($query, array $terms, $limit = 12, array $viewerContext = array())
@@ -8136,13 +16956,12 @@
 					}
 				}
 
-				$snippetSource = trim((string)$event->get('description'));
-				if ($snippetSource === '') {
-					$snippetSource = $holonName;
-				}
-				if ($snippetSource === '') {
-					$snippetSource = trim((string)$event->get('status'));
-				}
+				$snippetSource = self::chooseTopbarSearchSnippetSource(array(
+					(string)$event->get('description'),
+					$holonName,
+					(string)$event->get('status'),
+					$eventTitle,
+				), $terms);
 
 				$results[] = array(
 					'module' => 'calendar',
@@ -8152,7 +16971,9 @@
 						return trim((string)$part) !== '';
 					}))),
 					'excerpt' => self::buildTopbarSearchSnippet($snippetSource, $query, 100, 220),
+					'_searchFields' => ['title' => $eventTitle, 'summary' => $event->get('description'), 'context' => $holonName],
 					'relevance' => (int)($row['relevance'] ?? 0),
+					'_searchDate' => (string)($row['start_at'] ?? ''),
 					'action' => array(
 						'type' => 'calendar_event',
 						'eventId' => (int)$event->getId(),
@@ -8161,7 +16982,7 @@
 				);
 			}
 
-			return $results;
+			return self::rankTopbarSearchResults($results, $query);
 		}
 
 		public function searchTopbarResults($query, array $scopes = array(), array $options = array())
@@ -8174,8 +16995,14 @@
 				'structure' => 'structure',
 				'team' => 'team',
 				'calendar' => 'calendar',
+				'rules' => 'policy',
 				'documents' => 'documents',
+				'pv' => 'documents',
 				'decision' => 'decision',
+				'projects' => 'projects',
+				'stats' => 'stats',
+				'processus' => 'processus',
+				'activities' => 'activities',
 			);
 			$enabledScopes = array();
 			foreach ($scopeAppHashes as $scopeId => $hash) {
@@ -8212,6 +17039,8 @@
 			$terms = self::buildTopbarSearchTerms($query);
 			$limit = isset($options['limit']) ? max(1, (int)$options['limit']) : 30;
 			$perScopeLimit = isset($options['perScopeLimit']) ? max(1, (int)$options['perScopeLimit']) : 12;
+			$expandedPerScopeLimit = $perScopeLimit * 8;
+			$dateRange = self::normalizeTopbarSearchDateRange(is_array($options['dateRange'] ?? null) ? $options['dateRange'] : array());
 			$canSearchPeople = array_key_exists('canSearchPeople', $options)
 				? (bool)$options['canSearchPeople']
 				: self::topbarSearchViewerCanSearchPeople($viewerContext, (int)$this->getId());
@@ -8220,10 +17049,16 @@
 				'structure' => 0,
 				'team' => 0,
 				'calendar' => 0,
+				'rules' => 0,
 				'documents' => 0,
+				'pv' => 0,
 				'decision' => 0,
 				'faq' => 0,
 				'tutorials' => 0,
+				'projects' => 0,
+				'stats' => 0,
+				'processus' => 0,
+				'activities' => 0,
 			);
 			$results = array();
 
@@ -8233,76 +17068,103 @@
 				&& self::topbarSearchViewerHasOrganizationAccess($viewerContext, (int)$this->getId())
 			) {
 				if (isset($normalizedScopes['structure'])) {
-					$scopeResults = $this->searchTopbarStructureResults($query, $terms, $perScopeLimit, $viewerContext);
+					$scopeResults = self::filterTopbarSearchResultsByDateRange($this->searchTopbarStructureResults($query, $terms, $expandedPerScopeLimit, $viewerContext), $dateRange, $perScopeLimit);
 					$counts['structure'] = count($scopeResults);
 					$results = array_merge($results, $scopeResults);
 				}
 
 				if ($canSearchPeople && isset($normalizedScopes['team'])) {
-					$scopeResults = $this->searchTopbarTeamResults($query, $terms, $perScopeLimit, $viewerContext);
+					$scopeResults = self::filterTopbarSearchResultsByDateRange($this->searchTopbarTeamResults($query, $terms, $expandedPerScopeLimit, $viewerContext), $dateRange, $perScopeLimit);
 					$counts['team'] = count($scopeResults);
 					$results = array_merge($results, $scopeResults);
 				}
 
 				if (isset($normalizedScopes['calendar'])) {
-					$scopeResults = $this->searchTopbarCalendarResults($query, $terms, $perScopeLimit, $viewerContext);
+					$scopeResults = self::filterTopbarSearchResultsByDateRange($this->searchTopbarCalendarResults($query, $terms, $expandedPerScopeLimit, $viewerContext), $dateRange, $perScopeLimit);
 					$counts['calendar'] = count($scopeResults);
 					$results = array_merge($results, $scopeResults);
 				}
 
+				if (isset($normalizedScopes['rules'])) {
+					$scopeResults = self::filterTopbarSearchResultsByDateRange($this->searchTopbarRuleResults($query, $terms, $expandedPerScopeLimit, $viewerContext), $dateRange, $perScopeLimit);
+					$counts['rules'] = count($scopeResults);
+					$results = array_merge($results, $scopeResults);
+				}
+
 				if (isset($normalizedScopes['documents'])) {
-					$scopeResults = $this->searchTopbarDocumentResults($query, $terms, $perScopeLimit, $viewerContext);
+					$scopeResults = self::filterTopbarSearchResultsByDateRange($this->searchTopbarDocumentResults($query, $terms, $expandedPerScopeLimit, $viewerContext, 'non_pv'), $dateRange, $perScopeLimit);
 					$counts['documents'] = count($scopeResults);
 					$results = array_merge($results, $scopeResults);
 				}
 
+				if (isset($normalizedScopes['pv'])) {
+					$scopeResults = self::filterTopbarSearchResultsByDateRange($this->searchTopbarDocumentResults($query, $terms, $expandedPerScopeLimit, $viewerContext, \dbObject\Document::TYPE_PV), $dateRange, $perScopeLimit);
+					$counts['pv'] = count($scopeResults);
+					$results = array_merge($results, $scopeResults);
+				}
+
 				if (isset($normalizedScopes['decision'])) {
-					$scopeResults = $this->searchTopbarDecisionResults($query, $terms, $perScopeLimit, $viewerContext);
+					$scopeResults = self::filterTopbarSearchResultsByDateRange($this->searchTopbarDecisionResults($query, $terms, $expandedPerScopeLimit, $viewerContext), $dateRange, $perScopeLimit);
 					$counts['decision'] = count($scopeResults);
 					$results = array_merge($results, $scopeResults);
 				}
 
 				if (isset($normalizedScopes['faq'])) {
-					$scopeResults = $this->searchTopbarFaqResults($query, $terms, $perScopeLimit, $viewerContext);
+					$scopeResults = self::filterTopbarSearchResultsByDateRange($this->searchTopbarFaqResults($query, $terms, $expandedPerScopeLimit, $viewerContext), $dateRange, $perScopeLimit);
 					$counts['faq'] = count($scopeResults);
 					$results = array_merge($results, $scopeResults);
 				}
 
 				if (isset($normalizedScopes['tutorials'])) {
-					$scopeResults = $this->searchTopbarTutorialResults($query, $terms, $perScopeLimit, $viewerContext);
+					$scopeResults = self::filterTopbarSearchResultsByDateRange($this->searchTopbarTutorialResults($query, $terms, $expandedPerScopeLimit, $viewerContext), $dateRange, $perScopeLimit);
 					$counts['tutorials'] = count($scopeResults);
+					$results = array_merge($results, $scopeResults);
+				}
+
+				if (isset($normalizedScopes['projects'])) {
+					$scopeResults = self::filterTopbarSearchResultsByDateRange($this->searchTopbarProjectResults($query, $terms, $expandedPerScopeLimit, $viewerContext), $dateRange, $perScopeLimit);
+					$counts['projects'] = count($scopeResults);
+					$results = array_merge($results, $scopeResults);
+				}
+
+				if (isset($normalizedScopes['stats'])) {
+					$scopeResults = self::filterTopbarSearchResultsByDateRange($this->searchTopbarStatIndicatorResults($query, $terms, $expandedPerScopeLimit, $viewerContext), $dateRange, $perScopeLimit);
+					$counts['stats'] = count($scopeResults);
+					$results = array_merge($results, $scopeResults);
+				}
+
+				if (isset($normalizedScopes['processus'])) {
+					$scopeResults = self::filterTopbarSearchResultsByDateRange($this->searchTopbarProcessResults($query, $terms, $expandedPerScopeLimit, $viewerContext), $dateRange, $perScopeLimit);
+					$counts['processus'] = count($scopeResults);
+					$results = array_merge($results, $scopeResults);
+				}
+
+				if (isset($normalizedScopes['activities'])) {
+					$scopeResults = self::filterTopbarSearchResultsByDateRange($this->searchTopbarRecurringTaskResults($query, $terms, $expandedPerScopeLimit, $viewerContext), $dateRange, $perScopeLimit);
+					$counts['activities'] = count($scopeResults);
 					$results = array_merge($results, $scopeResults);
 				}
 			}
 
-			$moduleOrder = array(
-				'structure' => 1,
-				'team' => 2,
-				'calendar' => 3,
-				'decision' => 4,
-				'documents' => 5,
-				'faq' => 6,
-				'tutorials' => 7,
-			);
 
-			usort($results, function ($left, $right) use ($moduleOrder) {
+			usort($results, function ($left, $right) {
 				$leftScore = (int)($left['relevance'] ?? 0);
 				$rightScore = (int)($right['relevance'] ?? 0);
 				if ($leftScore !== $rightScore) {
 					return $rightScore <=> $leftScore;
 				}
 
-				$leftModuleOrder = $moduleOrder[(string)($left['module'] ?? '')] ?? 99;
-				$rightModuleOrder = $moduleOrder[(string)($right['module'] ?? '')] ?? 99;
-				if ($leftModuleOrder !== $rightModuleOrder) {
-					return $leftModuleOrder <=> $rightModuleOrder;
-				}
 
 				return strcmp((string)($left['title'] ?? ''), (string)($right['title'] ?? ''));
 			});
 
-			if (count($results) > $limit) {
+			// Module filters need the complete per-scope selection, including lower-ranked modules.
+			if (empty($options['retainAllScopes']) && count($results) > $limit) {
 				$results = array_slice($results, 0, $limit);
+			}
+			$counts = array_fill_keys(array_keys($counts), 0);
+			foreach ($results as $result) {
+				$counts[$result['module']]++;
 			}
 
 			return array(

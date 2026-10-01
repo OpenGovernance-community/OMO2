@@ -8,19 +8,29 @@
 		{
 			return 'holon'; // Nom de la table correspondante
 		}	
+
+		public static function handleUserDeparture($organizationId, $userId, $ghostUserId)
+		{
+			return self::execute(
+				'UPDATE holon SET IDuser = :ghost_user_id WHERE IDorganization = :organization_id AND IDuser = :user_id',
+				array('ghost_user_id' => (int)$ghostUserId, 'organization_id' => (int)$organizationId, 'user_id' => (int)$userId)
+			);
+		}
 		
 		// Defini le contenu de la table
 		public static function rules()
 		{
 			return [
 				[['id'], 'required'],				// Champs obligatoires
-				[['id'], 'integer'],					
-				[['name','nomcomplet','templatename','accesskey'], 'string'],			// Texte libre
-				[['icon','banner'], 'sizedimage'],			// Images illustratives
+				[['id', 'admin_min', 'admin_max'], 'integer'],
+				[['name','nomcomplet','templatename','accesskey','time_budget_recurrence','money_budget_recurrence'], 'string'],			// Texte libre
+				[['time_budget_hours','money_budget'], 'float'],
+				[['icon'], 'sizedimage'],			// Images illustratives
 				[['datecreation','datemodification'], 'datetime'],	// Date avec precision des heures
 				[['IDuser','IDtypeholon','IDholon_parent','IDholon_template','IDorganization','IDholon_org'], 'fk'],				// Cle etrangeres
-				[['lockedname','lockedicon','lockedbanner','active','visible','mandatory','unique','link'], 'boolean'],				// Cle etrangeres
-				[['color'], 'color'],				// Couleur au format hexadecimal
+				[['lockedname','lockedicon','lockedadminmin','lockedadminmax','adminminoverride','adminmaxoverride','active','visible','mandatory','unique','link','adminparent'], 'boolean'],				// Cle etrangeres
+				[['color', 'color_unassigned'], 'color'],				// Couleur au format hexadecimal
+				[['parameters'], 'parameters'],
 				[['id'], 'safe'],								// Champs proteges (n'apparaissent pas dans les formulaires)
 			];
 		}
@@ -39,20 +49,29 @@
 				'active' => 'Actif ?',
 				'visible' => 'Visible ?',
 				'color' => 'Couleur',
+				'color_unassigned' => 'Couleur non attribuee',
 				'templatename' => 'Nom de template',
 				'IDorganization' => 'Organisation',
-				'IDtypeholon' => 'Type de holon',
+				'IDtypeholon' => 'Type d’espace',
 				'IDholon_parent' => 'Parent',
 				'IDholon_template' => 'Template',
 				'icon' => 'Icône',
-				'banner' => 'Bannière',
 				'accesskey' => 'Cle acces',
+				'time_budget_hours' => 'Budget temps',
+				'time_budget_recurrence' => 'Recurrence du budget temps',
+				'money_budget' => 'Budget argent',
+				'money_budget_recurrence' => 'Recurrence du budget argent',
+				'parameters' => 'Parametres',
 				'mandatory' => 'Obligatoire ?',
 				'lockedname' => 'Nom verrouille ?',
 				'lockedicon' => 'Icône verrouillée ?',
-				'lockedbanner' => 'Bannière verrouillée ?',
 				'unique' => 'Unique ?',
 				'link' => 'Lien ?',
+				'adminparent' => 'Admin parent ?',
+				'admin_min' => 'Nombre minimum d admins',
+				'admin_max' => 'Nombre maximum d admins',
+				'lockedadminmin' => 'Minimum d admins verrouille ?',
+				'lockedadminmax' => 'Maximum d admins verrouille ?',
 			];
 		}
 
@@ -61,6 +80,9 @@
 			return [
 				'name' => 'Nom court utilise dans la representation graphique, les chemins et les choix de contexte.',
 				'nomcomplet' => 'Nom complet facultatif utilise dans les vues textuelles.',
+				'time_budget_hours' => 'Temps prévu directement pour cet espace, exprimé en heures.',
+				'money_budget' => 'Montant prévu directement pour cet espace.',
+				'parameters' => 'Paramètres techniques de l’espace.',
 			];
 		}
 
@@ -68,8 +90,9 @@
 		{
 			return [
 				'nomcomplet' => 255,
-				'icon' => [[500, 500], [180, 180]],
-				'banner' => [[960, 540], [480, 270]],
+				'time_budget_recurrence' => 10,
+				'money_budget_recurrence' => 10,
+				'icon' => [[320, 320], [160, 160]],
 			];
 		}
 
@@ -77,8 +100,257 @@
 		public static function getOrder() {
 			return "name";
 		}
+
+		public static function normalizeBudgetDetails(array $details): array
+		{
+			$timeBudget = UserHolon::parseBudgetAmount($details['time_budget_hours'] ?? '');
+			if (!$timeBudget['valid']) {
+				return array('status' => false, 'reason' => 'invalid_time_budget');
+			}
+
+			$moneyBudget = UserHolon::parseBudgetAmount($details['money_budget'] ?? '');
+			if (!$moneyBudget['valid']) {
+				return array('status' => false, 'reason' => 'invalid_money_budget');
+			}
+
+			$timeRecurrence = UserHolon::normalizeBudgetRecurrence($details['time_budget_recurrence'] ?? '');
+			if ($timeBudget['value'] !== null && $timeRecurrence === '') {
+				return array('status' => false, 'reason' => 'invalid_time_recurrence');
+			}
+
+			$moneyRecurrence = UserHolon::normalizeBudgetRecurrence($details['money_budget_recurrence'] ?? '');
+			if ($moneyBudget['value'] !== null && $moneyRecurrence === '') {
+				return array('status' => false, 'reason' => 'invalid_money_recurrence');
+			}
+
+			return array(
+				'status' => true,
+				'values' => array(
+					'time_budget_hours' => $timeBudget['value'],
+					'time_budget_recurrence' => $timeBudget['value'] !== null ? $timeRecurrence : null,
+					'money_budget' => $moneyBudget['value'],
+					'money_budget_recurrence' => $moneyBudget['value'] !== null ? $moneyRecurrence : null,
+				),
+			);
+		}
+
+		public function updateBudgetDetails(array $details): array
+		{
+			$normalized = self::normalizeBudgetDetails($details);
+			if (empty($normalized['status'])) {
+				return $normalized;
+			}
+
+			foreach ($normalized['values'] as $field => $value) {
+				$this->set($field, $value);
+			}
+
+			$saveResult = $this->save();
+			if (!is_array($saveResult) || empty($saveResult['status'])) {
+				return array('status' => false, 'reason' => 'save_failed');
+			}
+
+			return array('status' => true, 'values' => $normalized['values']);
+		}
+
+		public static function getActiveTimeBudgetsForHolons(array $holonIds): array
+		{
+			$holonIds = array_values(array_unique(array_filter(array_map('intval', $holonIds), static function ($holonId) {
+				return $holonId > 0;
+			})));
+			if (count($holonIds) === 0) {
+				return array();
+			}
+
+			$params = array();
+			$placeholders = array();
+			foreach ($holonIds as $index => $holonId) {
+				$parameterName = 'budget_holon_' . $index;
+				$placeholders[] = ':' . $parameterName;
+				$params[$parameterName] = $holonId;
+			}
+
+			$rows = self::fetchAll(
+				"SELECT `id`, `time_budget_hours`, `time_budget_recurrence`
+				 FROM `holon`
+				 WHERE `active` = 1
+				   AND `time_budget_hours` IS NOT NULL
+				   AND `time_budget_hours` > 0
+				   AND `id` IN (" . implode(', ', $placeholders) . ")
+				 ORDER BY `id` ASC",
+				$params
+			);
+
+			$budgets = array();
+			foreach (is_array($rows) ? $rows : array() as $row) {
+				$recurrence = UserHolon::normalizeBudgetRecurrence($row['time_budget_recurrence'] ?? '');
+				$hours = is_numeric($row['time_budget_hours'] ?? null)
+					? max(0.0, (float)$row['time_budget_hours'])
+					: 0.0;
+				if ($recurrence === '' || $hours <= 0) {
+					continue;
+				}
+
+				$budgets[] = array(
+					'holonId' => (int)($row['id'] ?? 0),
+					'hours' => $hours,
+					'recurrence' => $recurrence,
+				);
+			}
+
+			return $budgets;
+		}
+
+		public function getParametersArray(): array
+		{
+			$parameters = json_decode((string)$this->get('parameters'), true);
+			return is_array($parameters) ? $parameters : array();
+		}
+
+		public function setParametersArray(array $parameters): void
+		{
+			$this->set('parameters', $parameters);
+		}
+
+		public function getDashboardDefaultLayout(): ?array
+		{
+			$parameters = $this->getParametersArray();
+			if (!array_key_exists(UserHolon::DASHBOARD_DEFAULT_LAYOUT_PARAMETER, $parameters)) {
+				return null;
+			}
+
+			return UserHolon::normalizeDashboardLayout($parameters[UserHolon::DASHBOARD_DEFAULT_LAYOUT_PARAMETER]);
+		}
+
+		public function setDashboardDefaultLayout(array $layout): void
+		{
+			$parameters = $this->getParametersArray();
+			$parameters[UserHolon::DASHBOARD_DEFAULT_LAYOUT_PARAMETER] = UserHolon::normalizeDashboardLayout($layout);
+			$this->setParametersArray($parameters);
+		}
+
+		public function clearDashboardDefaultLayout(): void
+		{
+			$parameters = $this->getParametersArray();
+			unset($parameters[UserHolon::DASHBOARD_DEFAULT_LAYOUT_PARAMETER]);
+			$this->setParametersArray($parameters);
+		}
+
+		public function getApplicationViewDefault($applicationKey): ?array
+		{
+			$applicationKey = UserHolon::normalizeApplicationViewKey($applicationKey);
+			if ($applicationKey === '') {
+				return null;
+			}
+
+			$parameters = $this->getParametersArray();
+			$views = UserHolon::normalizeApplicationViewDefaults(
+				$parameters[UserHolon::APPLICATION_VIEW_HOLON_DEFAULTS_PARAMETER] ?? array()
+			);
+			return $views[$applicationKey] ?? null;
+		}
+
+		public function setApplicationViewDefault($applicationKey, array $view): bool
+		{
+			$applicationKey = UserHolon::normalizeApplicationViewKey($applicationKey);
+			if ($applicationKey === '') {
+				return false;
+			}
+
+			$parameters = $this->getParametersArray();
+			$views = UserHolon::normalizeApplicationViewDefaults(
+				$parameters[UserHolon::APPLICATION_VIEW_HOLON_DEFAULTS_PARAMETER] ?? array()
+			);
+			$views[$applicationKey] = UserHolon::normalizeApplicationView($view);
+			$parameters[UserHolon::APPLICATION_VIEW_HOLON_DEFAULTS_PARAMETER] = $views;
+			$this->setParametersArray($parameters);
+			return true;
+		}
+
+		public function clearApplicationViewDefault($applicationKey): bool
+		{
+			$applicationKey = UserHolon::normalizeApplicationViewKey($applicationKey);
+			if ($applicationKey === '') {
+				return false;
+			}
+
+			$parameters = $this->getParametersArray();
+			$views = UserHolon::normalizeApplicationViewDefaults(
+				$parameters[UserHolon::APPLICATION_VIEW_HOLON_DEFAULTS_PARAMETER] ?? array()
+			);
+			unset($views[$applicationKey]);
+			if ($views === array()) {
+				unset($parameters[UserHolon::APPLICATION_VIEW_HOLON_DEFAULTS_PARAMETER]);
+			} else {
+				$parameters[UserHolon::APPLICATION_VIEW_HOLON_DEFAULTS_PARAMETER] = $views;
+			}
+			$this->setParametersArray($parameters);
+			return true;
+		}
+
+		public function getDashboardTemplateLayoutKeys(): array
+		{
+			$keys = array();
+			foreach ($this->getTemplateLineageHolons() as $template) {
+				if (!$template instanceof self) {
+					continue;
+				}
+				$key = UserHolon::makeDashboardTemplateKey(
+					(int)$template->get('IDtypeholon'),
+					(string)$template->get('templatename')
+				);
+				$keys[$key] = $key;
+			}
+
+			$typeKey = UserHolon::makeDashboardTemplateKey((int)$this->get('IDtypeholon'));
+			$keys[$typeKey] = $typeKey;
+			return array_values($keys);
+		}
+
+		public function getDashboardDirectTemplateLayoutKey(): string
+		{
+			$template = $this->getTemplateHolon();
+			if (!$template instanceof self) {
+				return '';
+			}
+
+			return UserHolon::makeDashboardTemplateKey(
+				(int)$template->get('IDtypeholon'),
+				(string)$template->get('templatename')
+			);
+		}
+
+		public function getDashboardBaseTypeLayoutKey(): string
+		{
+			return UserHolon::makeDashboardBaseTypeKey((int)$this->get('IDtypeholon'));
+		}
+
+		public function getDashboardTemplateLayoutLabel(): string
+		{
+			$template = $this->getTemplateHolon();
+			if ($template instanceof self) {
+				$templateName = trim((string)$template->get('templatename'));
+				if ($templateName !== '') {
+					return $templateName;
+				}
+			}
+
+			return $this->getTypeLabel();
+		}
 		
 		// Resout organisation liee
+		public function getPropertyTypeLexicon(): array
+		{
+			return Organization::getLexiconForOrganizationId($this->resolveOrganizationId());
+		}
+
+		public function isPropertyEnabled(int $propertyId): bool
+		{
+			if ($propertyId <= 0) return true;
+			$property = new Property();
+			return $property->load($propertyId) && Property::isTypeEnabled($property->get('type'), $this->getPropertyTypeLexicon());
+		}
+
 		protected function resolveOrganizationId()
 		{
 			$organizationId = (int)$this->get('IDorganization');
@@ -137,6 +409,10 @@
 				return false;
 			}
 
+			if (function_exists('commonUserHasAdminOverride') && \commonUserHasAdminOverride($currentUserId, $organizationId)) {
+				return true;
+			}
+
 			if (function_exists('commonUserHasOrganizationMembership')) {
 				return \commonUserHasOrganizationMembership($currentUserId, $organizationId);
 			}
@@ -191,6 +467,16 @@
 			return $this->userIsAllowed($userId, $permissionKey, $useSessionCache);
 		}
 
+		public function canEditPropertyValue($type, bool $creatingHolon = false): bool
+		{
+			$key = Property::permissionKey('EDIT', $type);
+			if (!$creatingHolon) {
+				return $this->isAllowed($key, false);
+			}
+			$userId = function_exists('commonGetCurrentUserId') ? (int)\commonGetCurrentUserId() : (int)($_SESSION['currentUser'] ?? 0);
+			return HolonPermission::userHasPermissionForHolonContext($userId, $this->resolveOrganizationId(), $key, (int)$this->getId(), true);
+		}
+
 		// Charge template lie
 		public function getTemplateHolon()
 		{
@@ -203,11 +489,60 @@
 			return $template->load($templateId) ? $template : null;
 		}
 
+		protected function getTemplateLineageHolons()
+		{
+			$lineage = array();
+			$current = $this->getTemplateHolon();
+			$guard = 0;
+
+			while ($current && (int)$current->getId() > 0 && $guard < 100) {
+				$currentId = (int)$current->getId();
+				if (isset($lineage[$currentId])) {
+					break;
+				}
+
+				$lineage[$currentId] = $current;
+				$current = $current->getTemplateHolon();
+				$guard += 1;
+			}
+
+			return array_values($lineage);
+		}
+
+		public function getTemplateLineageIds()
+		{
+			return array_values(array_map(function ($template) {
+				return (int)$template->getId();
+			}, $this->getTemplateLineageHolons()));
+		}
+
+		public function getMandatoryTemplateAncestorIds()
+		{
+			$mandatoryTemplateIds = array();
+
+			foreach ($this->getTemplateLineageHolons() as $template) {
+				$templateId = (int)$template->getId();
+				if ($templateId <= 0 || !(bool)$template->get('mandatory')) {
+					continue;
+				}
+
+				$mandatoryTemplateIds[$templateId] = $templateId;
+			}
+
+			return array_values($mandatoryTemplateIds);
+		}
+
 		// Verifie template obligatoire
 		public function isMandatoryTemplateInstance()
 		{
-			$template = $this->getTemplateHolon();
-			return $template ? (bool)$template->get('mandatory') : false;
+			return count($this->getMandatoryTemplateAncestorIds()) > 0;
+		}
+
+		public function isMandatoryVisibleTemplateOriginal()
+		{
+			return (bool)$this->get('visible')
+				&& (bool)$this->get('mandatory')
+				&& trim((string)$this->get('templatename')) !== '';
 		}
 
 		// Verifie nom verrouille
@@ -283,24 +618,9 @@
 			return $this->getEffectiveTemplateStringField('icon');
 		}
 
-		public function getInheritedBanner()
-		{
-			return $this->getInheritedTemplateStringField('banner');
-		}
-
-		public function getEffectiveBanner()
-		{
-			return $this->getEffectiveTemplateStringField('banner');
-		}
-
 		public function isIconLockedByTemplate()
 		{
 			return $this->getInheritedTemplateBooleanField('lockedicon');
-		}
-
-		public function isBannerLockedByTemplate()
-		{
-			return $this->getInheritedTemplateBooleanField('lockedbanner');
 		}
 
 		// Compte instances soeurs
@@ -312,13 +632,39 @@
 				return 0;
 			}
 
+			$mandatoryTemplateIds = $this->getMandatoryTemplateAncestorIds();
+			$mandatoryTemplateIdMap = array_fill_keys(array_map('intval', $mandatoryTemplateIds), true);
 			$count = 0;
 			foreach ($parentHolon->getChildren() as $child) {
 				if ((int)$child->getId() === (int)$this->getId()) {
 					continue;
 				}
 
-				if ((int)$child->get('IDholon_template') !== $templateId) {
+				$childTemplateId = (int)$child->get('IDholon_template');
+				$isVisibleTemplateOriginal = (bool)$child->get('visible')
+					&& trim((string)$child->get('templatename')) !== '';
+				if ($childTemplateId <= 0 && !$isVisibleTemplateOriginal) {
+					continue;
+				}
+
+				if (count($mandatoryTemplateIdMap) > 0) {
+					$childLineageIds = $child->getTemplateLineageIds();
+					if ($isVisibleTemplateOriginal) {
+						$childLineageIds[] = (int)$child->getId();
+					}
+					$matchesMandatoryConstraints = true;
+
+					foreach ($mandatoryTemplateIdMap as $mandatoryTemplateId => $unused) {
+						if (!in_array((int)$mandatoryTemplateId, $childLineageIds, true)) {
+							$matchesMandatoryConstraints = false;
+							break;
+						}
+					}
+
+					if (!$matchesMandatoryConstraints) {
+						continue;
+					}
+				} elseif ($childTemplateId !== $templateId && (int)$child->getId() !== $templateId) {
 					continue;
 				}
 
@@ -328,6 +674,11 @@
 			return $count;
 		}
 
+		public function isLastMandatoryTemplateInstance()
+		{
+			return $this->isMandatoryTemplateInstance() && $this->countSiblingTemplateInstances() === 0;
+		}
+
 		// Controle suppression noeud
 		public function canDelete()
 		{
@@ -335,7 +686,14 @@
 				return false;
 			}
 
-			if ($this->isMandatoryTemplateInstance() && $this->countSiblingTemplateInstances() === 0) {
+			if ($this->isLastMandatoryTemplateInstance()) {
+				$parentHolon = $this->getParentHolon();
+				if ($parentHolon instanceof self && (int)$parentHolon->get('IDtypeholon') === 2) {
+					return false;
+				}
+			}
+
+			if ($this->isMandatoryVisibleTemplateOriginal()) {
 				return false;
 			}
 
@@ -439,6 +797,7 @@
 			$data = array();
 
 			foreach ($this->getPropertiesValue() as $property) {
+				if (!Property::isTypeEnabled($property->get('type'), $this->getPropertyTypeLexicon())) continue;
 				$value = $this->shouldHideLocalPropertyValue($property) ? null : $property->get('value');
 				$ancestor = $property->get('value_parents');
 
@@ -449,6 +808,7 @@
  				$item = array(
 					'name' => (string)$property->get('name'),
 					'shortname' => (string)$property->get('shortname'),
+					'type' => Property::normalizeType($property->get('type')),
 					'position' => (int)($property->get('effective_position') ?: $property->get('position') ?: 0),
   					'value' => $value !== null ? (string)$value : '',
   					'formatId' => (int)$property->get('IDpropertyformat'),
@@ -522,6 +882,11 @@
 				$node['mycolor'] = $color;
 			}
 
+			$unassignedColor = $this->getEffectiveUnassignedColor();
+			if ($unassignedColor !== '') {
+				$node['unassignedColor'] = $unassignedColor;
+			}
+
 			$visibleTemplateAncestorId = $this->getVisibleTemplateAncestorId();
 			if ($visibleTemplateAncestorId > 0) {
 				$node['visibleTemplateAncestorId'] = (string)$visibleTemplateAncestorId;
@@ -577,6 +942,459 @@
 			return $node;
 		}
 
+		public function toBulkStructureRepresentationArray(array $options = array())
+		{
+			$options = array_merge(array(
+				'representation' => 'circle',
+				'includeMemberUserIds' => false,
+				'includeMemberCards' => false,
+				'organizationId' => 0,
+				'organizationRootHolonId' => 0,
+			), $options);
+
+			$navigationRootId = (int)$this->getId();
+			$organizationRootHolonId = (int)$options['organizationRootHolonId'];
+			if ($navigationRootId <= 0 || $organizationRootHolonId <= 0) {
+				return array();
+			}
+
+			$holonRows = \dbObject\ArrayHolon::fetchStructureRows($organizationRootHolonId);
+			$structureHolonIds = self::collectBulkStructureHolonIds($holonRows, $navigationRootId);
+			if (count($structureHolonIds) === 0) {
+				return array();
+			}
+
+			$propertyRowsByHolonId = \dbObject\ArrayHolonProperty::fetchAllValuesByHolonIds($structureHolonIds);
+			$organizationRoot = new self();
+			$lexicon = $organizationRoot->load($organizationRootHolonId) ? $organizationRoot->getPropertyTypeLexicon() : Organization::getDefaultLexicon();
+			foreach ($propertyRowsByHolonId as &$propertyRows) $propertyRows = Property::filterEnabledDefinitions($propertyRows, $lexicon);
+			unset($propertyRows);
+			$memberRows = array();
+			$organizationMemberUserIds = array();
+			if (!empty($options['includeMemberUserIds'])) {
+				$memberRows = \dbObject\UserHolon::fetchStructureRowsForHolonIds(
+					(int)$options['organizationId'],
+					$structureHolonIds
+				);
+				$organizationMemberUserIds = \dbObject\UserOrganization::fetchStructureUserIds((int)$options['organizationId']);
+			}
+
+			if (!empty($options['includeMemberCards'])) {
+				$terminalHolonIds = self::collectBulkStructureTerminalHolonIds($holonRows, $structureHolonIds);
+				$options['memberCardsByHolonId'] = \dbObject\UserHolon::fetchStructureMemberCardsForHolonIds(
+					(int)$options['organizationId'],
+					$terminalHolonIds
+				);
+			}
+
+			return self::buildBulkStructureRepresentationFromRows(
+				$holonRows,
+				$navigationRootId,
+				$propertyRowsByHolonId,
+				$memberRows,
+				$organizationMemberUserIds,
+				$options
+			);
+		}
+
+		protected static function collectBulkStructureHolonIds(array $holonRows, $navigationRootId)
+		{
+			$navigationRootId = (int)$navigationRootId;
+			$rowsById = array();
+			$childrenByParentId = array();
+
+			foreach ($holonRows as $row) {
+				$holonId = (int)($row['id'] ?? 0);
+				if ($holonId <= 0) {
+					continue;
+				}
+
+				$rowsById[$holonId] = $row;
+				if (!(bool)($row['active'] ?? false) || !(bool)($row['visible'] ?? false)) {
+					continue;
+				}
+
+				$parentId = (int)($row['IDholon_parent'] ?? 0);
+				if (!isset($childrenByParentId[$parentId])) {
+					$childrenByParentId[$parentId] = array();
+				}
+				$childrenByParentId[$parentId][] = $holonId;
+			}
+
+			if (!isset($rowsById[$navigationRootId])) {
+				return array();
+			}
+
+			$ids = array();
+			$append = function ($holonId) use (&$append, &$ids, $rowsById, $childrenByParentId) {
+				$holonId = (int)$holonId;
+				if ($holonId <= 0 || isset($ids[$holonId]) || !isset($rowsById[$holonId])) {
+					return;
+				}
+
+				$ids[$holonId] = true;
+				if ((int)($rowsById[$holonId]['IDtypeholon'] ?? 0) <= 1) {
+					return;
+				}
+
+				foreach ($childrenByParentId[$holonId] ?? array() as $childId) {
+					$append($childId);
+				}
+			};
+			$append($navigationRootId);
+
+			return array_values(array_map('intval', array_keys($ids)));
+		}
+
+		protected static function collectBulkStructureTerminalHolonIds(array $holonRows, array $structureHolonIds): array
+		{
+			$structureHolonIdMap = array_fill_keys(array_map('intval', $structureHolonIds), true);
+			$childrenByParentId = array();
+			$rowsById = array();
+			foreach ($holonRows as $row) {
+				$holonId = (int)($row['id'] ?? 0);
+				if ($holonId <= 0 || !isset($structureHolonIdMap[$holonId])) {
+					continue;
+				}
+
+				$rowsById[$holonId] = $row;
+				if (!(bool)($row['active'] ?? false) || !(bool)($row['visible'] ?? false)) {
+					continue;
+				}
+
+				$parentId = (int)($row['IDholon_parent'] ?? 0);
+				if ($parentId > 0 && isset($structureHolonIdMap[$parentId])) {
+					$childrenByParentId[$parentId][] = $holonId;
+				}
+			}
+
+			$terminalIds = array();
+			foreach ($rowsById as $holonId => $row) {
+				$typeId = (int)($row['IDtypeholon'] ?? 0);
+				if (!in_array($typeId, array(1, 2, 3), true)) {
+					continue;
+				}
+
+				if ($typeId === 1 || empty($childrenByParentId[$holonId])) {
+					$terminalIds[] = (int)$holonId;
+				}
+			}
+
+			return $terminalIds;
+		}
+
+		public static function buildBulkStructureRepresentationFromRows(
+			array $holonRows,
+			$navigationRootId,
+			array $propertyRowsByHolonId = array(),
+			array $memberRows = array(),
+			array $organizationMemberUserIds = array(),
+			array $options = array()
+		) {
+			$options = array_merge(array(
+				'representation' => 'circle',
+				'includeMemberUserIds' => false,
+				'includeMemberCards' => false,
+				'memberCardsByHolonId' => array(),
+				'leafSize' => 10,
+				'containerSize' => 20,
+			), $options);
+
+			$navigationRootId = (int)$navigationRootId;
+			$rowsById = array();
+			$childrenByParentId = array();
+			foreach ($holonRows as $row) {
+				$holonId = (int)($row['id'] ?? 0);
+				if ($holonId <= 0) {
+					continue;
+				}
+
+				$rowsById[$holonId] = $row;
+				if (!(bool)($row['active'] ?? false) || !(bool)($row['visible'] ?? false)) {
+					continue;
+				}
+
+				$parentId = (int)($row['IDholon_parent'] ?? 0);
+				if (!isset($childrenByParentId[$parentId])) {
+					$childrenByParentId[$parentId] = array();
+				}
+				$childrenByParentId[$parentId][] = $holonId;
+			}
+
+			if (!isset($rowsById[$navigationRootId])) {
+				return array();
+			}
+
+			$effectiveStringCache = array();
+			$resolveEffectiveString = function ($holonId, $field) use (&$resolveEffectiveString, &$effectiveStringCache, $rowsById) {
+				$cacheKey = (int)$holonId . ':' . (string)$field;
+				if (array_key_exists($cacheKey, $effectiveStringCache)) {
+					return $effectiveStringCache[$cacheKey];
+				}
+
+				$currentId = (int)$holonId;
+				$visited = array();
+				for ($depth = 0; $depth < 20 && $currentId > 0 && isset($rowsById[$currentId]); $depth += 1) {
+					if (isset($visited[$currentId])) {
+						break;
+					}
+					$visited[$currentId] = true;
+					$value = trim((string)($rowsById[$currentId][$field] ?? ''));
+					if ($value !== '') {
+						$effectiveStringCache[$cacheKey] = $value;
+						return $value;
+					}
+					$currentId = (int)($rowsById[$currentId]['IDholon_template'] ?? 0);
+				}
+
+				$effectiveStringCache[$cacheKey] = '';
+				return '';
+			};
+
+			$effectiveBooleanCache = array();
+			$resolveEffectiveBoolean = function ($holonId, $field) use (&$resolveEffectiveBoolean, &$effectiveBooleanCache, $rowsById) {
+				$cacheKey = (int)$holonId . ':' . (string)$field;
+				if (array_key_exists($cacheKey, $effectiveBooleanCache)) {
+					return $effectiveBooleanCache[$cacheKey];
+				}
+
+				$currentId = (int)$holonId;
+				$visited = array();
+				for ($depth = 0; $depth < 20 && $currentId > 0 && isset($rowsById[$currentId]); $depth += 1) {
+					if (isset($visited[$currentId])) {
+						break;
+					}
+					$visited[$currentId] = true;
+					if ((bool)($rowsById[$currentId][$field] ?? false)) {
+						$effectiveBooleanCache[$cacheKey] = true;
+						return true;
+					}
+					$currentId = (int)($rowsById[$currentId]['IDholon_template'] ?? 0);
+				}
+
+				$effectiveBooleanCache[$cacheKey] = false;
+				return false;
+			};
+
+			$visibleTemplateAncestorCache = array();
+			$resolveVisibleTemplateAncestorId = function ($holonId) use (&$resolveVisibleTemplateAncestorId, &$visibleTemplateAncestorCache, $rowsById) {
+				$holonId = (int)$holonId;
+				if (array_key_exists($holonId, $visibleTemplateAncestorCache)) {
+					return $visibleTemplateAncestorCache[$holonId];
+				}
+
+				$currentId = isset($rowsById[$holonId]) ? (int)($rowsById[$holonId]['IDholon_template'] ?? 0) : 0;
+				$visited = array();
+				for ($depth = 0; $depth < 20 && $currentId > 0 && isset($rowsById[$currentId]); $depth += 1) {
+					if (isset($visited[$currentId])) {
+						break;
+					}
+					$visited[$currentId] = true;
+					$templateRow = $rowsById[$currentId];
+					if ((bool)($templateRow['visible'] ?? false) && trim((string)($templateRow['templatename'] ?? '')) !== '') {
+						$visibleTemplateAncestorCache[$holonId] = $currentId;
+						return $currentId;
+					}
+					$currentId = (int)($templateRow['IDholon_template'] ?? 0);
+				}
+
+				$visibleTemplateAncestorCache[$holonId] = 0;
+				return 0;
+			};
+
+			$memberUserIdsByHolonId = array();
+			$memberCardsByHolonId = is_array($options['memberCardsByHolonId'])
+				? $options['memberCardsByHolonId']
+				: array();
+			if (!empty($options['includeMemberUserIds'])) {
+				foreach ($memberRows as $memberRow) {
+					$holonId = (int)($memberRow['IDholon'] ?? 0);
+					$userId = (int)($memberRow['IDuser'] ?? 0);
+					if ($holonId <= 0 || $userId <= 0) {
+						continue;
+					}
+
+					if (!isset($memberUserIdsByHolonId[$holonId])) {
+						$memberUserIdsByHolonId[$holonId] = array();
+					}
+					$memberUserIdsByHolonId[$holonId][$userId] = $userId;
+				}
+
+				$findContainingCircleId = static function ($holonId) use ($rowsById) {
+					$currentId = isset($rowsById[(int)$holonId])
+						? (int)($rowsById[(int)$holonId]['IDholon_parent'] ?? 0)
+						: 0;
+					$visited = array();
+					for ($depth = 0; $depth < 100 && $currentId > 0 && isset($rowsById[$currentId]); $depth += 1) {
+						if (isset($visited[$currentId])) {
+							break;
+						}
+						$visited[$currentId] = true;
+						if ((int)($rowsById[$currentId]['IDtypeholon'] ?? 0) === 2) {
+							return $currentId;
+						}
+						$currentId = (int)($rowsById[$currentId]['IDholon_parent'] ?? 0);
+					}
+					return 0;
+				};
+
+				foreach ($memberRows as $memberRow) {
+					$roleHolonId = (int)($memberRow['IDholon'] ?? 0);
+					$userId = (int)($memberRow['IDuser'] ?? 0);
+					if (
+						$roleHolonId <= 0
+						|| $userId <= 0
+						|| !(bool)($memberRow['active'] ?? false)
+						|| (int)($rowsById[$roleHolonId]['IDtypeholon'] ?? 0) !== 1
+						|| !$resolveEffectiveBoolean($roleHolonId, 'link')
+					) {
+						continue;
+					}
+
+					$parameters = json_decode((string)($memberRow['parameters'] ?? ''), true);
+					if (!is_array($parameters) || empty($parameters['isAdmin'])) {
+						continue;
+					}
+
+					$containingCircleId = $findContainingCircleId($roleHolonId);
+					$englobingCircleId = $findContainingCircleId($containingCircleId);
+					if ($englobingCircleId <= 0) {
+						continue;
+					}
+
+					if (!isset($memberUserIdsByHolonId[$englobingCircleId])) {
+						$memberUserIdsByHolonId[$englobingCircleId] = array();
+					}
+					$memberUserIdsByHolonId[$englobingCircleId][$userId] = $userId;
+				}
+
+				foreach ($rowsById as $holonId => $row) {
+					if ((int)($row['IDtypeholon'] ?? 0) === 4) {
+						$memberUserIdsByHolonId[$holonId] = array();
+						foreach ($organizationMemberUserIds as $userId) {
+							$userId = (int)$userId;
+							if ($userId > 0) {
+								$memberUserIdsByHolonId[$holonId][$userId] = $userId;
+							}
+						}
+					}
+				}
+			}
+
+			$buildNode = function ($holonId) use (
+				&$buildNode,
+				$rowsById,
+				$childrenByParentId,
+				$propertyRowsByHolonId,
+				$memberUserIdsByHolonId,
+				$memberCardsByHolonId,
+				$resolveEffectiveString,
+				$resolveVisibleTemplateAncestorId,
+				$options
+			) {
+				$holonId = (int)$holonId;
+				if (!isset($rowsById[$holonId])) {
+					return null;
+				}
+
+				$row = $rowsById[$holonId];
+				$typeId = (int)($row['IDtypeholon'] ?? 0);
+				$node = array(
+					'name' => (string)($row['name'] ?? ''),
+					'ID' => (string)$holonId,
+					'type' => (string)$typeId,
+					'IDdb' => (string)$holonId,
+				);
+
+				$fullName = trim((string)($row['nomcomplet'] ?? ''));
+				if ($fullName !== '') {
+					$node['fullName'] = $fullName;
+				}
+
+				$color = $resolveEffectiveString($holonId, 'color');
+				if ($color !== '') {
+					$node['mycolor'] = $color;
+				}
+
+				$unassignedColor = $resolveEffectiveString($holonId, 'color_unassigned');
+				if ($unassignedColor !== '') {
+					$node['unassignedColor'] = $unassignedColor;
+				}
+
+				$visibleTemplateAncestorId = $resolveVisibleTemplateAncestorId($holonId);
+				if ($visibleTemplateAncestorId > 0) {
+					$node['visibleTemplateAncestorId'] = (string)$visibleTemplateAncestorId;
+					$node['isVisibleTemplateInstance'] = true;
+				}
+
+				if (!empty($options['includeMemberUserIds']) && !empty($memberUserIdsByHolonId[$holonId])) {
+					$node['userIds'] = array_values(array_map('intval', $memberUserIdsByHolonId[$holonId]));
+				}
+
+				if (
+					!empty($options['includeMemberCards'])
+					&& in_array($typeId, array(1, 2, 3), true)
+					&& ($typeId === 1 || empty($childrenByParentId[$holonId]))
+					&& !empty($memberCardsByHolonId[$holonId])
+				) {
+					$node['memberCards'] = array_values($memberCardsByHolonId[$holonId]);
+				}
+
+				$data = array();
+				foreach ($propertyRowsByHolonId[$holonId] ?? array() as $propertyRow) {
+					$value = $propertyRow['value'] ?? null;
+					$ancestor = $propertyRow['value_parents'] ?? null;
+					if ($value === null && $ancestor === null) {
+						continue;
+					}
+
+					$propertyId = (int)($propertyRow['IDproperty'] ?? 0);
+					if ($propertyId <= 0) {
+						continue;
+					}
+
+					$data['d' . $propertyId] = array(
+						'name' => (string)($propertyRow['name'] ?? ''),
+						'shortname' => (string)($propertyRow['shortname'] ?? ''),
+						'position' => (int)($propertyRow['effective_position'] ?? 0),
+						'value' => $value !== null ? (string)$value : '',
+						'formatId' => (int)($propertyRow['IDpropertyformat'] ?? 0),
+						'formatName' => (string)($propertyRow['propertyformat_name'] ?? ''),
+						'listItemType' => (string)($propertyRow['listitemtype'] ?? ''),
+						'listHolonTypeIds' => \dbObject\Property::parseHolonTypeIds($propertyRow['listholontypeids'] ?? ''),
+						'mandatory' => (bool)($propertyRow['mandatory'] ?? false),
+						'locked' => (bool)($propertyRow['locked'] ?? false),
+						'ancestor' => $ancestor !== null ? (string)$ancestor : '',
+						'effectiveValue' => $value !== null && trim((string)$value) !== ''
+							? (string)$value
+							: ($ancestor !== null && trim((string)$ancestor) !== '' ? (string)$ancestor : ''),
+					);
+				}
+				if (count($data) > 0) {
+					$node['data'] = $data;
+				}
+
+				$shouldIncludeChildren = $typeId > 1;
+				if ($shouldIncludeChildren) {
+					$node['children'] = array();
+					foreach ($childrenByParentId[$holonId] ?? array() as $childId) {
+						$childNode = $buildNode($childId);
+						if (is_array($childNode)) {
+							$node['children'][] = $childNode;
+						}
+					}
+				}
+
+				$node['size'] = $shouldIncludeChildren
+					? (int)$options['containerSize']
+					: (int)$options['leafSize'];
+
+				return $node;
+			};
+
+			return $buildNode($navigationRootId) ?: array();
+		}
+
 		public function toRepresentationJson(array $options = array()) {
 			$jsonFlags = isset($options['jsonFlags'])
 				? (int)$options['jsonFlags']
@@ -621,6 +1439,23 @@
 			return $circle ? (int)$circle->getId() : 0;
 		}
 
+		public function getAuthorityParentHolon($includeSelf = false)
+		{
+			$current = $includeSelf ? $this : $this->getParentHolon();
+			$guard = 0;
+
+			while ($current !== null && $guard < 100) {
+				if (in_array((int)$current->get('IDtypeholon'), array(2, 4), true)) {
+					return $current;
+				}
+
+				$current = $current->getParentHolon();
+				$guard += 1;
+			}
+
+			return null;
+		}
+
 		public function getPathHolons($includeSelf = true) {
 			$path = array();
 			$current = $includeSelf ? $this : $this->getParentHolon();
@@ -635,19 +1470,27 @@
 			return array_reverse($path);
 		}
 
-		public function getTypeLabel() {
+		public function getTypeLexiconKey(): string
+		{
 			switch ((int)$this->get('IDtypeholon')) {
-				case 4:
-					return 'Organisation';
 				case 3:
-					return 'Groupe';
+					return 'group';
 				case 2:
-					return 'Cercle';
+					return 'circle';
 				case 1:
-					return 'Role';
+					return 'role';
 				default:
-					return 'Holon';
+					return 'space';
 			}
+		}
+
+		public function getTypeLabel() {
+			if ((int)$this->get('IDtypeholon') === 4) {
+				return 'Organisation';
+			}
+
+			$lexicon = Organization::getLexiconForOrganizationId($this->resolveOrganizationId());
+			return Organization::getLexiconLabel($lexicon, $this->getTypeLexiconKey());
 		}
 
 		public function getTemplateLabel($fallbackToType = true)
@@ -685,6 +1528,30 @@
 			}
 
 			return $template->getEffectiveColor($guard + 1);
+		}
+
+		public function getEffectiveUnassignedColor($guard = 0)
+		{
+			$color = trim((string)$this->get('color_unassigned'));
+			if ($color !== '') {
+				return $color;
+			}
+
+			if ($guard >= 20) {
+				return '';
+			}
+
+			$templateId = (int)$this->get('IDholon_template');
+			if ($templateId <= 0) {
+				return '';
+			}
+
+			$template = new self();
+			if (!$template->load($templateId)) {
+				return '';
+			}
+
+			return $template->getEffectiveUnassignedColor($guard + 1);
 		}
 
 		public function getVisibleTemplateAncestorId($guard = 0)
@@ -731,11 +1598,54 @@
 			return false;
 		}
 
+		protected function getTemplateAuthorityInstanceIdMap()
+		{
+			$map = array();
+			$authorities = new \dbObject\ArrayAuthority();
+			$authorities->loadForHolon((int)$this->getId());
+			foreach ($authorities as $authority) {
+				$sourceAuthorityId = (int)$authority->get('IDauthority_template');
+				if ($sourceAuthorityId > 0) {
+					$map[$sourceAuthorityId] = (int)$authority->getId();
+				}
+			}
+			return $map;
+		}
+
+		protected function remapTemplateAuthorityListValue($value, $formatId, array $authorityIdMap)
+		{
+			return \dbObject\PropertyFormat::remapListReferenceIds($value, $formatId, $authorityIdMap);
+		}
+
 		public function getPropertyEntries(array $options = array()) {
 			$keyPrefix = isset($options['propertyKeyPrefix']) ? (string)$options['propertyKeyPrefix'] : 'd';
 			$entries = array();
+			$templatePositionsByPropertyId = array();
+			$templateLastPosition = 0;
+			$template = $this->getTemplateHolon();
+			if ($template instanceof self) {
+				foreach ($template->getTemplatePropertyDefinitions() as $templateDefinition) {
+					$propertyId = (int)($templateDefinition['id'] ?? 0);
+					$position = (int)($templateDefinition['position'] ?? 0);
+					if ($propertyId <= 0 || $position <= 0) {
+						continue;
+					}
+					$templatePositionsByPropertyId[$propertyId] = $position;
+					$templateLastPosition = max($templateLastPosition, $position);
+				}
+			}
 
+			$templateAuthorityIdMap = $this->getTemplateAuthorityInstanceIdMap();
 			foreach ($this->getPropertiesValue() as $property) {
+				if (!Property::isTypeEnabled($property->get('type'), $this->getPropertyTypeLexicon())) continue;
+				$propertyId = (int)$property->get('IDproperty');
+				$propertyPosition = (int)($property->get('effective_position') ?: $property->get('position') ?: 0);
+				if (isset($templatePositionsByPropertyId[$propertyId])) {
+					$propertyPosition = (int)$templatePositionsByPropertyId[$propertyId];
+				} elseif ($templateLastPosition > 0) {
+					$propertyPosition = $templateLastPosition + max(1, $propertyPosition);
+				}
+
 				$value = $this->shouldHideLocalPropertyValue($property) ? null : $property->get('value');
 				$ancestor = $property->get('value_parents');
 				$effectiveValue = null;
@@ -745,13 +1655,20 @@
 				} elseif ($ancestor !== null && trim((string)$ancestor) !== '') {
 					$effectiveValue = (string)$ancestor;
 				}
+				if ((string)$property->get('listitemtype') === \dbObject\Property::LIST_ITEM_AUTHORITY && \dbObject\PropertyFormat::isListFormat((int)$property->get('IDpropertyformat'))) {
+					$formatId = (int)$property->get('IDpropertyformat');
+					$value = $this->remapTemplateAuthorityListValue($value, $formatId, $templateAuthorityIdMap);
+					$ancestor = $this->remapTemplateAuthorityListValue($ancestor, $formatId, $templateAuthorityIdMap);
+					$effectiveValue = $this->remapTemplateAuthorityListValue($effectiveValue, $formatId, $templateAuthorityIdMap);
+				}
 
 				$entries[] = array(
-					'id' => (int)$property->get('IDproperty'),
+					'id' => $propertyId,
 					'key' => $keyPrefix . $property->get('IDproperty'),
 					'shortname' => (string)$property->get('shortname'),
+					'type' => Property::normalizeType($property->get('type')),
 					'name' => (string)$property->get('name'),
-					'position' => (int)($property->get('effective_position') ?: $property->get('position') ?: 0),
+					'position' => $propertyPosition,
 					'formatId' => (int)$property->get('IDpropertyformat'),
 					'formatName' => (string)$property->get('propertyformat_name'),
 					'listItemType' => (string)$property->get('listitemtype'),
@@ -765,6 +1682,13 @@
 					'updatedByUserId' => (int)$property->get('IDusermodification'),
 				);
 			}
+
+			usort($entries, static function ($left, $right) {
+				$positionComparison = (int)($left['position'] ?? 0) <=> (int)($right['position'] ?? 0);
+				return $positionComparison !== 0
+					? $positionComparison
+					: ((int)($left['id'] ?? 0) <=> (int)($right['id'] ?? 0));
+			});
 
 			return $entries;
 		}
@@ -806,33 +1730,39 @@
 
 		public function getCompactExportPermissionRows()
 		{
-			$assignmentsByPermissionKey = \dbObject\HolonPermission::getAssignmentKeyMapForHolon((int)$this->getId());
-			if (!is_array($assignmentsByPermissionKey) || count($assignmentsByPermissionKey) === 0) {
+			$assignmentsByMemberType = \dbObject\HolonPermission::getAssignmentKeyMapForHolon((int)$this->getId());
+			if (!is_array($assignmentsByMemberType) || count($assignmentsByMemberType) === 0) {
 				return array();
 			}
 
 			$rows = array();
-			ksort($assignmentsByPermissionKey);
+			ksort($assignmentsByMemberType);
 
-			foreach ($assignmentsByPermissionKey as $permissionKey => $ranges) {
-				$permissionKey = trim((string)$permissionKey);
-				if ($permissionKey === '') {
-					continue;
-				}
-
-				$ranges = is_array($ranges) ? array_values($ranges) : array();
-				sort($ranges);
-
-				foreach ($ranges as $range) {
-					$range = trim((string)$range);
-					if ($range === '') {
+			foreach ($assignmentsByMemberType as $memberType => $assignmentsByPermissionKey) {
+				$memberType = \dbObject\HolonPermission::normalizeMemberType($memberType);
+				ksort($assignmentsByPermissionKey);
+				foreach ($assignmentsByPermissionKey as $permissionKey => $ranges) {
+					$permissionKey = trim((string)$permissionKey);
+					if ($permissionKey === '') {
 						continue;
 					}
 
-					$rows[] = array(
-						'permissionKey' => $permissionKey,
-						'range' => $range,
-					);
+					$ranges = is_array($ranges) ? array_values($ranges) : array();
+					usort($ranges, static fn ($a, $b) => strcmp(HolonPermission::getAssignmentRange($a), HolonPermission::getAssignmentRange($b)));
+
+					foreach ($ranges as $assignment) {
+						$range = HolonPermission::getAssignmentRange($assignment);
+						if ($range === '') {
+							continue;
+						}
+
+						$rows[] = array(
+							'permissionKey' => $permissionKey,
+							'range' => $range,
+							'memberType' => $memberType,
+							'is_extended' => HolonPermission::isExtendedAssignment($assignment),
+						);
+					}
 				}
 			}
 
@@ -896,10 +1826,6 @@
 				$record['lockedIcon'] = true;
 			}
 
-			if ((bool)$this->get('lockedbanner')) {
-				$record['lockedBanner'] = true;
-			}
-
 			if ((bool)$this->get('unique')) {
 				$record['unique'] = true;
 			}
@@ -908,16 +1834,44 @@
 				$record['link'] = true;
 			}
 
+			if ((bool)$this->get('adminparent')) {
+				$record['adminParent'] = true;
+			}
+
+			if ($this->get('admin_min') !== null && trim((string)$this->get('admin_min')) !== '') {
+				$record['adminMin'] = (int)$this->get('admin_min');
+			}
+
+			if ($this->get('admin_max') !== null) {
+				$record['adminMax'] = (int)$this->get('admin_max');
+			}
+
+			if ((bool)$this->get('lockedadminmin')) {
+				$record['lockedAdminMin'] = true;
+			}
+
+			if ((bool)$this->get('lockedadminmax')) {
+				$record['lockedAdminMax'] = true;
+			}
+
+			if ((bool)$this->get('adminminoverride')) {
+				$record['adminMinOverride'] = true;
+			}
+
+			if ((bool)$this->get('adminmaxoverride')) {
+				$record['adminMaxOverride'] = true;
+			}
+
 			if (trim((string)$this->get('color')) !== '') {
 				$record['color'] = (string)$this->get('color');
 			}
 
-			if (trim((string)$this->get('icon')) !== '') {
-				$record['icon'] = (string)$this->get('icon');
+			if (trim((string)$this->get('color_unassigned')) !== '') {
+				$record['unassignedColor'] = (string)$this->get('color_unassigned');
 			}
 
-			if (trim((string)$this->get('banner')) !== '') {
-				$record['banner'] = (string)$this->get('banner');
+			if (trim((string)$this->get('icon')) !== '') {
+				$record['icon'] = (string)$this->get('icon');
 			}
 
 			if (trim((string)$this->get('accesskey')) !== '') {
@@ -949,7 +1903,7 @@
 				return $templateName;
 			}
 
-			return 'Holon ' . (int)$this->getId();
+			return 'Espace ' . (int)$this->getId();
 		}
 
 		public function getFullDisplayName()
@@ -973,7 +1927,7 @@
 			return preg_replace('/[^a-z0-9]+/', ' ', $value);
 		}
 
-		protected function isOrganizationHolon()
+		public function isOrganizationHolon()
 		{
 			return (int)$this->get('IDtypeholon') === 4;
 		}
@@ -1061,7 +2015,8 @@
 			}
 
 			$memberships = new \dbObject\ArrayUserOrganization();
-			$memberships->loadVisibleForOrganization($organizationId);
+			$memberships->loadVisibleForOrganization($organizationId, true);
+			$pendingInvitationUserIds = \dbObject\Invitation::getPendingAdminUserIdsForOrganization($organizationId);
 
 			$cardsByUserId = array();
 			foreach ($memberships as $membership) {
@@ -1071,6 +2026,7 @@
 				}
 
 				$isPending = !(bool)$membership->get('active');
+				$hasPendingInvitation = isset($pendingInvitationUserIds[$userId]);
 
 				$permission = self::resolveMemberPermission($userId, false, $organizationId);
 				if (!$permission['canView']) {
@@ -1086,6 +2042,8 @@
 						'avatarSeed' => $membership->getAvatarSeedLabel(),
 						'holonIds' => array((int)$this->getId()),
 						'isPending' => $isPending,
+						'hasPendingInvitation' => $hasPendingInvitation,
+						'isAdmin' => $membership->isOrganizationAdmin(),
 						'canViewDetail' => $permission['canViewDetail'],
 					);
 					continue;
@@ -1097,6 +2055,8 @@
 					$cardsByUserId[$userId]['initials'] = $membership->getUserInitials();
 					$cardsByUserId[$userId]['avatarSeed'] = $membership->getAvatarSeedLabel();
 					$cardsByUserId[$userId]['isPending'] = false;
+					$cardsByUserId[$userId]['hasPendingInvitation'] = false;
+					$cardsByUserId[$userId]['isAdmin'] = $membership->isOrganizationAdmin();
 					$cardsByUserId[$userId]['canViewDetail'] = $permission['canViewDetail'];
 				}
 			}
@@ -1104,6 +2064,10 @@
 			$cards = array_values($cardsByUserId);
 
 			usort($cards, static function (array $left, array $right) {
+				if ((bool)($left['isAdmin'] ?? false) !== (bool)($right['isAdmin'] ?? false)) {
+					return !empty($left['isAdmin']) ? -1 : 1;
+				}
+
 				return strcmp(
 					self::buildMemberSortKey($left['displayName'] ?? ''),
 					self::buildMemberSortKey($right['displayName'] ?? '')
@@ -1144,7 +2108,7 @@
 
 			foreach ($this->getChildren() as $child) {
 				$childTypeId = (int)$child->get('IDtypeholon');
-				if ($childTypeId === 1) {
+				if ($childTypeId === 1 || $childTypeId === 3) {
 					$child->collectMemberScopeHolonIds(true, $bucket, $visited);
 					continue;
 				}
@@ -1284,6 +2248,7 @@
 			$params = array(
 				'uo_organization_id' => $organizationId,
 				'inv_pending_organization_id' => $organizationId,
+				'inv_request_origin_member' => \dbObject\Invitation::REQUEST_ORIGIN_MEMBER,
 			);
 
 			foreach ($holonIds as $index => $holonId) {
@@ -1296,16 +2261,30 @@
 				SELECT DISTINCT
 					uh.IDuser AS user_id,
 					uh.IDholon AS holon_id,
+					h.IDtypeholon AS holon_type_id,
 					uh.active AS holon_active,
 					uh.active AS holon_effective_active,
+					uh.parameters AS holon_parameters,
+					uh.datecreation AS holon_assigned_at,
+					uh.focus AS holon_focus,
+					uh.time_budget_hours AS holon_time_budget_hours,
+					uh.time_budget_recurrence AS holon_time_budget_recurrence,
+					uh.money_budget AS holon_money_budget,
+					uh.money_budget_recurrence AS holon_money_budget_recurrence,
+					uh.assignment_review_date AS holon_assignment_review_date,
 					COALESCE(uo.active, 0) AS organization_active,
 					CASE
 						WHEN inv.id IS NULL THEN 0
 						ELSE 1
 					END AS has_pending_invitation,
+					CASE
+						WHEN inv.id IS NULL OR inv.request_origin = :inv_request_origin_member THEN 0
+						ELSE 1
+					END AS has_pending_admin_invitation,
 					0 AS has_accepted_invitation
 				FROM user_holon uh
 				INNER JOIN `user` u ON u.id = uh.IDuser
+				INNER JOIN holon h ON h.id = uh.IDholon
 				LEFT JOIN user_organization uo
 					ON uo.IDuser = uh.IDuser
 					AND uo.IDorganization = :uo_organization_id
@@ -1316,9 +2295,11 @@
 					AND inv.active = 1
 					AND (inv.dateexpiration IS NULL OR inv.dateexpiration > NOW())
 				WHERE uh.IDholon IN (" . implode(', ', $placeholders) . ")
+				  AND uh.is_membership = 1
 				  AND (
 					uh.active = 1
 					OR inv.id IS NOT NULL
+					OR (uo.id IS NOT NULL AND uo.active = 0)
 				  )
 				ORDER BY
 					COALESCE(NULLIF(u.lastname, ''), NULLIF(u.firstname, ''), NULLIF(u.username, ''), u.email) ASC,
@@ -1337,15 +2318,27 @@
 					SELECT DISTINCT
 						uh.IDuser AS user_id,
 						uh.IDholon AS holon_id,
+						h.IDtypeholon AS holon_type_id,
 						uh.active AS holon_active,
 						uh.active AS holon_effective_active,
-						1 AS organization_active,
+					uh.parameters AS holon_parameters,
+					uh.datecreation AS holon_assigned_at,
+					uh.focus AS holon_focus,
+					uh.time_budget_hours AS holon_time_budget_hours,
+					uh.time_budget_recurrence AS holon_time_budget_recurrence,
+					uh.money_budget AS holon_money_budget,
+					uh.money_budget_recurrence AS holon_money_budget_recurrence,
+					uh.assignment_review_date AS holon_assignment_review_date,
+					1 AS organization_active,
 						0 AS has_pending_invitation,
+						0 AS has_pending_admin_invitation,
 						0 AS has_accepted_invitation
 					FROM user_holon uh
 					INNER JOIN `user` u ON u.id = uh.IDuser
+					INNER JOIN holon h ON h.id = uh.IDholon
 					WHERE uh.IDholon IN (" . implode(', ', $placeholders) . ")
 					  AND uh.active = 1
+					  AND uh.is_membership = 1
 					ORDER BY
 						COALESCE(NULLIF(u.lastname, ''), NULLIF(u.firstname, ''), NULLIF(u.username, ''), u.email) ASC,
 						COALESCE(NULLIF(u.firstname, ''), NULLIF(u.username, ''), u.email) ASC,
@@ -1426,7 +2419,10 @@
 						'initials' => $link->getUserInitials((int)$options['organizationId']),
 						'avatarSeed' => $link->getAvatarSeedLabel((int)$options['organizationId']),
 						'holonIds' => array(),
+						'assignmentLinks' => array(),
 						'isPending' => false,
+						'hasPendingInvitation' => false,
+						'isAdmin' => false,
 						'canViewDetail' => $permission['canViewDetail'],
 					);
 				}
@@ -1434,6 +2430,19 @@
 				$linkedHolonId = (int)($row['holon_id'] ?? 0);
 				if ($linkedHolonId > 0 && !in_array($linkedHolonId, $cardsByUserId[$userId]['holonIds'], true)) {
 					$cardsByUserId[$userId]['holonIds'][] = $linkedHolonId;
+				}
+				if ($linkedHolonId > 0) {
+					$cardsByUserId[$userId]['assignmentLinks'][$linkedHolonId] = array(
+						'holonId' => $linkedHolonId,
+						'holonTypeId' => (int)($row['holon_type_id'] ?? 0),
+						'assignedAt' => $row['holon_assigned_at'] ?? null,
+						'focus' => trim((string)($row['holon_focus'] ?? '')),
+						'timeBudgetHours' => $row['holon_time_budget_hours'] ?? null,
+						'timeBudgetRecurrence' => trim((string)($row['holon_time_budget_recurrence'] ?? '')),
+						'moneyBudget' => $row['holon_money_budget'] ?? null,
+						'moneyBudgetRecurrence' => trim((string)($row['holon_money_budget_recurrence'] ?? '')),
+						'assignmentReviewDate' => $row['holon_assignment_review_date'] ?? null,
+					);
 				}
 
 				if (
@@ -1443,10 +2452,26 @@
 				) {
 					$cardsByUserId[$userId]['isPending'] = true;
 				}
+				if ((bool)($row['has_pending_admin_invitation'] ?? false)) {
+					$cardsByUserId[$userId]['hasPendingInvitation'] = true;
+				}
+
+				$holonParameters = json_decode((string)($row['holon_parameters'] ?? ''), true);
+				if (is_array($holonParameters) && !empty($holonParameters['isAdmin'])) {
+					$cardsByUserId[$userId]['isAdmin'] = true;
+				}
 			}
 
 			$cards = array_values($cardsByUserId);
+			foreach ($cards as &$card) {
+				$card['assignmentLinks'] = array_values($card['assignmentLinks']);
+			}
+			unset($card);
 			usort($cards, static function (array $left, array $right) {
+				if ((bool)($left['isAdmin'] ?? false) !== (bool)($right['isAdmin'] ?? false)) {
+					return !empty($left['isAdmin']) ? -1 : 1;
+				}
+
 				return strcmp(
 					self::buildMemberSortKey($left['displayName'] ?? ''),
 					self::buildMemberSortKey($right['displayName'] ?? '')
@@ -1536,6 +2561,78 @@
 			return array_values($userIds);
 		}
 
+		public function getMemberRemovalSummary($userId, array $options = array())
+		{
+			$userId = (int)$userId;
+			$options = array_merge(array(
+				'organizationId' => $this->resolveOrganizationId(),
+				'includeDescendants' => ((int)$this->get('IDtypeholon') !== 1),
+			), $options);
+			$organizationId = (int)$options['organizationId'];
+
+			if ($userId <= 0 || $organizationId <= 0) {
+				return array(
+					'holonCount' => 0,
+					'roleCount' => 0,
+				);
+			}
+
+			$scopeHolonIds = array();
+			$visitedHolonIds = array();
+			$this->collectMemberScopeHolonIds((bool)$options['includeDescendants'], $scopeHolonIds, $visitedHolonIds);
+			$scopeHolonIds = array_values(array_unique(array_filter(array_map('intval', $scopeHolonIds), function ($holonId) {
+				return $holonId > 0;
+			})));
+
+			if (count($scopeHolonIds) === 0) {
+				return array(
+					'holonCount' => 0,
+					'roleCount' => 0,
+				);
+			}
+
+			$placeholders = array();
+			$params = array('user_id' => $userId);
+			foreach ($scopeHolonIds as $index => $holonId) {
+				$placeholder = 'holon_' . $index;
+				$placeholders[] = ':' . $placeholder;
+				$params[$placeholder] = $holonId;
+			}
+
+			$rows = self::fetchAll(
+				"SELECT DISTINCT uh.IDholon AS holon_id, h.IDtypeholon AS holon_type
+				 FROM user_holon uh
+     INNER JOIN holon h ON h.id = uh.IDholon
+				 WHERE uh.IDuser = :user_id
+				   AND uh.IDholon IN (" . implode(', ', $placeholders) . ")
+				   AND uh.is_membership = 1",
+				$params
+			);
+
+			if (!is_array($rows)) {
+				$rows = array();
+			}
+
+			$holonIds = array();
+			$roleIds = array();
+			foreach ($rows as $row) {
+				$holonId = (int)($row['holon_id'] ?? 0);
+				if ($holonId <= 0) {
+					continue;
+				}
+
+				$holonIds[$holonId] = $holonId;
+				if ((int)($row['holon_type'] ?? 0) === 1) {
+					$roleIds[$holonId] = $holonId;
+				}
+			}
+
+			return array(
+				'holonCount' => count($holonIds),
+				'roleCount' => count($roleIds),
+			);
+		}
+
 		public function getVisibleRoleAssignmentsForUser($userId, array $options = array())
 		{
 			$userId = (int)$userId;
@@ -1551,6 +2648,37 @@
 			$scopeHolonIds = array();
 			$visitedHolonIds = array();
 			$this->collectRoleScopeHolonIds((bool)$options['includeDescendants'], $scopeHolonIds, $visitedHolonIds);
+			if (!(bool)$options['includeDescendants'] && (int)$this->get('IDtypeholon') !== 1) {
+				foreach ($this->getChildren() as $child) {
+					if ((int)$child->get('IDtypeholon') === 1) {
+						$scopeHolonIds[(int)$child->getId()] = (int)$child->getId();
+					}
+				}
+			}
+
+			$contextCircleId = (int)($options['contextCircleId'] ?? 0);
+			if ($contextCircleId <= 0 && (int)$this->get('IDtypeholon') === 2) {
+				$contextCircleId = (int)$this->getId();
+			}
+			$linkedRoleIds = array();
+			$contextCircle = null;
+			if ($contextCircleId > 0) {
+				if ($contextCircleId === (int)$this->getId()) {
+					$contextCircle = $this;
+				} else {
+					$contextCircle = new self();
+					if (!$contextCircle->load($contextCircleId)) {
+						$contextCircle = null;
+					}
+				}
+			}
+			if ($contextCircle instanceof self && (int)$contextCircle->get('IDtypeholon') === 2) {
+				$visitedLinkHolonIds = array();
+				$contextCircle->collectLinkRoleIdsForEnglobingCircleMembership($contextCircleId, $linkedRoleIds, $visitedLinkHolonIds);
+				foreach ($linkedRoleIds as $linkedRoleId) {
+					$scopeHolonIds[] = (int)$linkedRoleId;
+				}
+			}
 			$scopeHolonIds = array_values($scopeHolonIds);
 
 			$linkRows = $this->loadVisibleMemberLinkRows($scopeHolonIds, (int)$options['organizationId']);
@@ -1577,6 +2705,7 @@
 				}
 
 				$pathLabels = array();
+				$containingCircle = null;
 				foreach ($roleHolon->getPathHolons() as $pathHolon) {
 					$pathLabel = trim((string)$pathHolon->getDisplayName());
 					if ($pathLabel === '') {
@@ -1584,13 +2713,34 @@
 					}
 
 					$pathLabels[] = $pathLabel;
+					if ((int)$pathHolon->get('IDtypeholon') === 2) {
+						$containingCircle = $pathHolon;
+					}
 				}
 
 				$parentHolon = $roleHolon->getParentHolon();
+				$isLinkedToContext = isset($linkedRoleIds[$roleHolonId]);
+				$assignmentName = trim((string)$roleHolon->getDisplayName());
+				$assignmentCircle = $containingCircle;
+				$assignmentCircleLabel = $assignmentCircle ? trim((string)$assignmentCircle->getDisplayName()) : '';
+				$displayName = $assignmentName;
+				if ($isLinkedToContext && $assignmentCircleLabel !== '') {
+					$displayName .= ' (' . $assignmentCircleLabel . ')';
+				}
 				$assignmentsByHolonId[$roleHolonId] = array(
 					'holonId' => $roleHolonId,
-					'name' => trim((string)$roleHolon->getDisplayName()),
+					'name' => $assignmentName,
+					'displayName' => $displayName,
+					'timeBudgetHours' => $row['holon_time_budget_hours'] ?? null,
+					'timeBudgetRecurrence' => trim((string)($row['holon_time_budget_recurrence'] ?? '')),
+					'moneyBudget' => $row['holon_money_budget'] ?? null,
+					'moneyBudgetRecurrence' => trim((string)($row['holon_money_budget_recurrence'] ?? '')),
+					'canEditAssignment' => $roleHolon->isAllowed('CAN_EDIT_MEMBER_ASSIGNMENT') || $roleHolon->isAllowed('CAN_EDIT_AFFECTATION_BUDGET'),
 					'parentLabel' => $parentHolon ? trim((string)$parentHolon->getDisplayName()) : '',
+					'circleId' => $assignmentCircle ? (int)$assignmentCircle->getId() : 0,
+					'circleLabel' => $assignmentCircleLabel,
+					'isLinkedToContext' => $isLinkedToContext,
+					'contextCircleId' => $isLinkedToContext ? $contextCircleId : 0,
 					'pathLabel' => implode(' > ', $pathLabels),
 					'isPending' => (
 						!(bool)($row['holon_effective_active'] ?? ($row['holon_active'] ?? false))
@@ -1602,14 +2752,19 @@
 
 			$assignments = array_values($assignmentsByHolonId);
 			usort($assignments, static function (array $left, array $right) {
+				$comparison = strnatcasecmp(
+					self::buildMemberSortKey($left['displayName'] ?? $left['name'] ?? ''),
+					self::buildMemberSortKey($right['displayName'] ?? $right['name'] ?? '')
+				);
+				if ($comparison !== 0) {
+					return $comparison;
+				}
+
 				if ($left['isPending'] !== $right['isPending']) {
 					return $left['isPending'] ? 1 : -1;
 				}
 
-				return strcmp(
-					self::buildMemberSortKey($left['pathLabel'] ?: ($left['name'] ?? '')),
-					self::buildMemberSortKey($right['pathLabel'] ?: ($right['name'] ?? ''))
-				);
+				return (int)($left['holonId'] ?? 0) <=> (int)($right['holonId'] ?? 0);
 			});
 
 			return $assignments;
@@ -1648,7 +2803,263 @@
 				$userIds[$userId] = $userId;
 			}
 
+			if ((int)$this->get('IDtypeholon') === 2) {
+				foreach ($this->getChildren() as $child) {
+					if (!$child->isParentAdminRole()) {
+						continue;
+					}
+
+					$roleLinks = new \dbObject\ArrayUserHolon();
+					$roleLinks->loadActiveForHolonIds(array((int)$child->getId()));
+					foreach ($roleLinks as $roleLink) {
+						$userId = (int)$roleLink->get('IDuser');
+						if ($userId > 0 && $roleLink->isHolonAdmin()) {
+							$userIds[$userId] = $userId;
+						}
+					}
+				}
+			}
+
 			return array_values($userIds);
+		}
+
+		public function isParentAdminRole()
+		{
+			if ((int)$this->get('IDtypeholon') !== 1) {
+				return false;
+			}
+
+			if (trim((string)$this->get('templatename')) !== '') {
+				return $this->getEffectiveTemplateBooleanField('adminparent');
+			}
+
+			$template = $this->getTemplateHolon();
+			if ($template) {
+				return $template->getEffectiveTemplateBooleanField('adminparent');
+			}
+
+			return false;
+		}
+
+		public function getEffectiveTemplateAdminBounds()
+		{
+			$parentTemplate = $this->getTemplateHolon();
+			$parentBounds = $parentTemplate
+				? $parentTemplate->getEffectiveTemplateAdminBounds()
+				: array(
+					'min' => 0,
+					'max' => null,
+					'minLocked' => false,
+					'maxLocked' => false,
+				);
+			$hasParentTemplate = $parentTemplate instanceof self;
+			$rawMinimum = $this->get('admin_min');
+			$rawMaximum = $this->get('admin_max');
+			$hasLocalMinimum = $rawMinimum !== null && trim((string)$rawMinimum) !== '';
+			$hasLocalMaximum = $rawMaximum !== null && trim((string)$rawMaximum) !== '';
+			$minimum = $hasParentTemplate && (!$hasLocalMinimum || !empty($parentBounds['minLocked']))
+				? (int)$parentBounds['min']
+				: ($hasLocalMinimum ? max(0, (int)$rawMinimum) : 0);
+			$maximum = $hasParentTemplate && (!$hasLocalMaximum || !empty($parentBounds['maxLocked']))
+				? $parentBounds['max']
+				: ($hasLocalMaximum ? max(0, (int)$rawMaximum) : null);
+			if ($maximum !== null && $maximum < $minimum) {
+				$maximum = $minimum;
+			}
+
+			return array(
+				'min' => $minimum,
+				'max' => $maximum,
+				'minLocked' => !empty($parentBounds['minLocked']) || (bool)$this->get('lockedadminmin'),
+				'maxLocked' => !empty($parentBounds['maxLocked']) || (bool)$this->get('lockedadminmax'),
+			);
+		}
+
+		public function getAdminMemberBounds()
+		{
+			$template = $this->getTemplateHolon();
+			if (!$template && $this->isTemplateNode()) {
+				$template = $this;
+			}
+
+			if (!$template) {
+				return array(
+					'min' => 0,
+					'max' => null,
+					'templateId' => 0,
+					'minLocked' => false,
+					'maxLocked' => false,
+					'minOverridden' => false,
+					'maxOverridden' => false,
+				);
+			}
+
+			$templateBounds = $template->getEffectiveTemplateAdminBounds();
+			$isTemplate = (int)$template->getId() === (int)$this->getId();
+			$minimumLocked = !empty($templateBounds['minLocked']);
+			$maximumLocked = !empty($templateBounds['maxLocked']);
+			$minimumOverridden = !$isTemplate && !$minimumLocked && (bool)$this->get('adminminoverride');
+			$maximumOverridden = !$isTemplate && !$maximumLocked && (bool)$this->get('adminmaxoverride');
+			$minimum = $minimumOverridden
+				? max(0, (int)$this->get('admin_min'))
+				: (int)$templateBounds['min'];
+			$rawMaximum = $maximumOverridden ? $this->get('admin_max') : $templateBounds['max'];
+			$maximum = $rawMaximum === null || trim((string)$rawMaximum) === ''
+				? null
+				: max(0, (int)$rawMaximum);
+			if ($maximum !== null && $maximum < $minimum) {
+				$maximum = $minimum;
+			}
+
+			return array(
+				'min' => $minimum,
+				'max' => $maximum,
+				'templateId' => (int)$template->getId(),
+				'minLocked' => $minimumLocked,
+				'maxLocked' => $maximumLocked,
+				'minOverridden' => $minimumOverridden,
+				'maxOverridden' => $maximumOverridden,
+			);
+		}
+
+		public function getDirectActiveMemberUserIds($organizationId = 0)
+		{
+			$organizationId = (int)$organizationId > 0 ? (int)$organizationId : $this->resolveOrganizationId();
+			if ($organizationId <= 0) {
+				return array();
+			}
+
+			if ($this->isOrganizationHolon()) {
+				return $this->getOrganizationMemberUserIds($organizationId);
+			}
+
+			$rows = self::fetchAll(
+				'SELECT DISTINCT `IDuser` FROM `user_holon` WHERE `IDholon` = :holon_id AND `active` = 1 AND `is_membership` = 1',
+				array('holon_id' => (int)$this->getId())
+			);
+			if ($rows === false) {
+				return array();
+			}
+
+			$userIds = array();
+			foreach ($rows as $row) {
+				$userId = (int)($row['IDuser'] ?? 0);
+				if ($userId > 0) {
+					$userIds[$userId] = $userId;
+				}
+			}
+
+			return array_values($userIds);
+		}
+
+		public function getAdminMemberConstraintState($organizationId = 0)
+		{
+			$organizationId = (int)$organizationId > 0 ? (int)$organizationId : $this->resolveOrganizationId();
+			$bounds = $this->getAdminMemberBounds();
+			$adminUserIds = $this->getDirectContextAdminUserIds($organizationId);
+			$memberUserIds = $this->getDirectActiveMemberUserIds($organizationId);
+
+			return array_merge($bounds, array(
+				'adminCount' => count($adminUserIds),
+				'memberCount' => count($memberUserIds),
+				'adminUserIds' => array_values(array_map('intval', $adminUserIds)),
+				'memberUserIds' => array_values(array_map('intval', $memberUserIds)),
+			));
+		}
+
+		public function validateMemberAdditionAdminBounds($userId, $isAdmin, array $options = array())
+		{
+			$userId = (int)$userId;
+			$isAdmin = (bool)$isAdmin;
+			$options = array_merge(array(
+				'organizationId' => $this->resolveOrganizationId(),
+				'canAssignAdmin' => true,
+				'includePendingAdmins' => true,
+			), $options);
+			$state = $this->getAdminMemberConstraintState((int)$options['organizationId']);
+			$adminUserIds = array_fill_keys(array_map('intval', $state['adminUserIds']), true);
+
+			if ($isAdmin) {
+				if (!isset($adminUserIds[$userId]) && $state['max'] !== null) {
+					$pendingAdminCount = 0;
+					if (!empty($options['includePendingAdmins'])) {
+						$pendingAdminCount = \dbObject\Invitation::countPendingRequestedHolonAdmins(
+							(int)$options['organizationId'],
+							(int)$this->getId(),
+							$userId
+						);
+					}
+
+					if ((int)$state['adminCount'] + $pendingAdminCount >= (int)$state['max']) {
+						return array(
+							'status' => false,
+							'message' => 'Ce role ne peut pas avoir plus de ' . (int)$state['max'] . ' admin(s).',
+						);
+					}
+				}
+
+				return array('status' => true);
+			}
+
+			if ((int)$state['min'] > 0 && (int)$state['adminCount'] < (int)$state['min']) {
+				return array(
+					'status' => false,
+					'message' => !empty($options['canAssignAdmin'])
+						? 'Ce role exige au moins ' . (int)$state['min'] . ' admin(s) avant de pouvoir ajouter un membre normal.'
+						: 'Ce role exige au moins ' . (int)$state['min'] . ' admin(s) avant de pouvoir ajouter un membre normal, et vous ne pouvez pas definir cet admin.',
+				);
+			}
+
+			return array('status' => true);
+		}
+
+		public function validateMemberAdminStatusChange($userId, $isAdmin, $organizationId = 0)
+		{
+			$userId = (int)$userId;
+			$isAdmin = (bool)$isAdmin;
+			$state = $this->getAdminMemberConstraintState($organizationId);
+			$adminUserIds = array_fill_keys(array_map('intval', $state['adminUserIds']), true);
+
+			if ($isAdmin) {
+				return $this->validateMemberAdditionAdminBounds($userId, true, array(
+					'organizationId' => $organizationId,
+				));
+			}
+
+			if (!isset($adminUserIds[$userId])) {
+				return array('status' => true);
+			}
+
+			if ((int)$state['adminCount'] - 1 < (int)$state['min']) {
+				return array(
+					'status' => false,
+					'message' => 'Cet admin ne peut pas devenir membre normal tant que le role ne compte pas au moins ' . (int)$state['min'] . ' admin(s).',
+				);
+			}
+
+			return array('status' => true);
+		}
+
+		public function validateDirectMemberRemovalAdminBounds($userId, $organizationId = 0)
+		{
+			$userId = (int)$userId;
+			$state = $this->getAdminMemberConstraintState($organizationId);
+			$adminUserIds = array_fill_keys(array_map('intval', $state['adminUserIds']), true);
+			$memberUserIds = array_fill_keys(array_map('intval', $state['memberUserIds']), true);
+			if (!isset($adminUserIds[$userId]) || !isset($memberUserIds[$userId])) {
+				return array('status' => true);
+			}
+
+			$remainingMemberCount = max(0, (int)$state['memberCount'] - 1);
+			$remainingAdminCount = max(0, (int)$state['adminCount'] - 1);
+			if ($remainingMemberCount > 0 && $remainingAdminCount < (int)$state['min']) {
+				return array(
+					'status' => false,
+					'message' => 'Ce retrait laisserait moins de ' . (int)$state['min'] . ' admin(s) alors que ce role compte encore des membres. Nommez ou conservez un admin avant ce retrait.',
+				);
+			}
+
+			return array('status' => true);
 		}
 
 		public function setMemberContextAdmin($userId, $isAdmin, $organizationId = 0)
@@ -1672,6 +3083,11 @@
 					'status' => false,
 					'message' => 'Le membre ou le contexte est invalide.',
 				);
+			}
+
+			$adminConstraintResult = $this->validateMemberAdminStatusChange($userId, $isAdmin, $organizationId);
+			if (empty($adminConstraintResult['status'])) {
+				return $adminConstraintResult;
 			}
 
 			if ($this->isOrganizationHolon()) {
@@ -1785,7 +3201,7 @@
 			), $options);
 			$organizationId = (int)$options['organizationId'];
 
-			if (!$this->canEdit()) {
+			if (!$this->isAllowed('CAN_DELETE_MEMBER', false)) {
 				return array(
 					'status' => false,
 					'message' => "Vous n'avez pas le droit de modifier ce contexte.",
@@ -1797,6 +3213,34 @@
 					'status' => false,
 					'message' => 'Le membre ou le contexte est invalide.',
 				);
+			}
+
+			$scopeHolonIdsForConstraintCheck = array();
+			$visitedHolonIdsForConstraintCheck = array();
+			$this->collectMemberScopeHolonIds((bool)$options['includeDescendants'], $scopeHolonIdsForConstraintCheck, $visitedHolonIdsForConstraintCheck);
+			foreach (array_values(array_unique(array_map('intval', $scopeHolonIdsForConstraintCheck))) as $scopeHolonId) {
+				if ($scopeHolonId <= 0) {
+					continue;
+				}
+
+				$scopeHolon = (int)$this->getId() === $scopeHolonId ? $this : new self();
+				if ($scopeHolon !== $this && !$scopeHolon->load($scopeHolonId)) {
+					continue;
+				}
+
+				$affectedMembership = new \dbObject\UserHolon();
+				if ($affectedMembership->load(array(
+					array('IDuser', $userId),
+					array('IDholon', $scopeHolonId),
+					array('is_membership', 1),
+				)) && !$scopeHolon->isAllowed('CAN_DELETE_MEMBER', false)) {
+					return array('status' => false, 'message' => 'Droit de retrait insuffisant dans un contexte descendant.');
+				}
+
+				$adminConstraintResult = $scopeHolon->validateDirectMemberRemovalAdminBounds($userId, $organizationId);
+				if (empty($adminConstraintResult['status'])) {
+					return $adminConstraintResult;
+				}
 			}
 
 			$pdo = \dbObject\DbObject::getPdo();
@@ -1814,6 +3258,12 @@
 				if (!$memberUser->load($userId)) {
 					$memberUser->setId($userId);
 				}
+
+				$organizationMembership = new \dbObject\UserOrganization();
+				$hasPendingOrganizationMembership = $organizationMembership->load(array(
+					array('IDuser', $userId),
+					array('IDorganization', $organizationId),
+				)) && !(bool)$organizationMembership->get('active');
 
 				$updatedLinkCount = 0;
 				$removedHolonIds = array();
@@ -1834,7 +3284,7 @@
 					}
 
 					$linkRows = \dbObject\DbObject::fetchAll(
-						"SELECT id FROM user_holon WHERE IDuser = :user_id AND IDholon IN (" . implode(', ', $placeholders) . ")",
+						"SELECT id FROM user_holon WHERE IDuser = :user_id AND is_membership = 1 AND IDholon IN (" . implode(', ', $placeholders) . ")",
 						$params
 					);
 
@@ -1847,6 +3297,19 @@
 
 							$link = new \dbObject\UserHolon();
 							if (!$link->load($linkId)) {
+								continue;
+							}
+
+							if ($hasPendingOrganizationMembership) {
+								$removedHolonId = (int)$link->get('IDholon');
+								if (!$link->delete()) {
+									throw new \RuntimeException('Le membre ne peut pas etre retire de ce contexte.');
+								}
+
+								$updatedLinkCount += 1;
+								if ($removedHolonId > 0) {
+									$removedHolonIds[$removedHolonId] = $removedHolonId;
+								}
 								continue;
 							}
 
@@ -1866,7 +3329,51 @@
 				}
 
 				$membershipUpdated = false;
-				if ($this->isOrganizationHolon()) {
+				if ($hasPendingOrganizationMembership) {
+					$remainingLinkCount = self::fetchValue(
+						"SELECT COUNT(*)
+						 FROM user_holon uh
+         INNER JOIN holon h ON h.id = uh.IDholon
+						 WHERE uh.IDuser = :user_id
+						   AND uh.is_membership = 1
+						   AND h.IDorganization = :organization_id",
+						array(
+							'user_id' => $userId,
+							'organization_id' => $organizationId,
+						)
+					);
+					if ($remainingLinkCount === false) {
+						throw new \RuntimeException('Les liens du membre ne peuvent pas etre verifies.');
+					}
+					$remainingLinkCount = (int)$remainingLinkCount;
+
+					if ($remainingLinkCount === 0) {
+						if (!$organizationMembership->delete()) {
+							throw new \RuntimeException('Le membre ne peut pas etre retire de l organisation.');
+						}
+
+						$pendingInvitation = \dbObject\Invitation::findPendingForOrganizationUser($organizationId, $userId);
+						if ($pendingInvitation instanceof \dbObject\Invitation && $pendingInvitation->isAdminInitiatedInvitation()) {
+							$pendingInvitation->set('status', 'canceled');
+							$pendingInvitation->set('dateresponse', new \DateTime());
+							$pendingInvitation->set('active', false);
+							$invitationSaveResult = $pendingInvitation->save();
+							if (!is_array($invitationSaveResult) || empty($invitationSaveResult['status'])) {
+								throw new \RuntimeException('L invitation ne peut pas etre annulee.');
+							}
+						}
+
+						$membershipUpdated = true;
+					}
+				}
+
+				if ($this->isOrganizationHolon() && $hasPendingOrganizationMembership && !$membershipUpdated) {
+					if (!$organizationMembership->delete()) {
+						throw new \RuntimeException('Le membre ne peut pas etre retire de l organisation.');
+					}
+
+					$membershipUpdated = true;
+				} elseif ($this->isOrganizationHolon()) {
 					$membership = new \dbObject\UserOrganization();
 					if ($membership->load(array(
 						array('IDuser', $userId),
@@ -1884,6 +3391,11 @@
 
 				if ($updatedLinkCount === 0 && !$membershipUpdated) {
 					throw new \RuntimeException("Aucun lien membre actif n'a été trouvé dans ce contexte.");
+				}
+
+				$scopeUpdateResult = \dbObject\Document::normalizeSelfScopedDocumentsForAuthorContext($organizationId, $userId);
+				if (!is_array($scopeUpdateResult) || empty($scopeUpdateResult['status'])) {
+					throw new \RuntimeException("Les portees des documents lies a ce membre n'ont pas pu etre mises a jour.");
 				}
 
 				$this->recordMemberRemovedHistory($memberUser, $organizationId, array_values($removedHolonIds), $membershipUpdated);
@@ -1936,10 +3448,10 @@
 			return $membership;
 		}
 
-		protected function ensureHolonMembership(\dbObject\User $user, $isActive = true)
+		protected function ensureHolonMembership(\dbObject\User $user, $isActive = true, $focus = '')
 		{
 			if ((int)$user->getId() <= 0 || (int)$this->getId() <= 0) {
-				throw new \RuntimeException('Le lien vers ce holon est invalide.');
+				throw new \RuntimeException('Le lien vers cet espace est invalide.');
 			}
 
 			$link = new \dbObject\UserHolon();
@@ -1951,10 +3463,18 @@
 				$link->set('IDholon', (int)$this->getId());
 			}
 
+			$link->set('focus', trim((string)$focus));
 			$link->set('active', (bool)$isActive);
 			$saveResult = $link->save();
 			if (!is_array($saveResult) || empty($saveResult['status'])) {
-				throw new \RuntimeException("Impossible d'attacher cette personne à ce holon.");
+				throw new \RuntimeException("Impossible d'attacher cette personne à cet espace.");
+			}
+
+			if (!$isActive) {
+				$scopeUpdateResult = \dbObject\Document::normalizeSelfScopedDocumentsForAuthorContext($this->resolveOrganizationId(), (int)$user->getId());
+				if (!is_array($scopeUpdateResult) || empty($scopeUpdateResult['status'])) {
+					throw new \RuntimeException("Impossible de mettre a jour les documents de cette personne.");
+				}
 			}
 
 			return $link;
@@ -1984,18 +3504,10 @@
 
 		protected function getHistoryTypeLabel()
 		{
-			switch ((int)$this->get('IDtypeholon')) {
-				case 4:
-					return 'organisation';
-				case 3:
-					return 'groupe';
-				case 2:
-					return 'cercle';
-				case 1:
-					return 'rôle';
-				default:
-					return 'holon';
-			}
+			$label = $this->getTypeLabel();
+			return function_exists('mb_strtolower')
+				? mb_strtolower($label, 'UTF-8')
+				: strtolower($label);
 		}
 
 		protected function getHistoryReferenceLabel()
@@ -2059,7 +3571,7 @@
 			}
 
 			$holon = new \dbObject\Holon();
-			$holonLabel = 'Holon ' . $holonId;
+			$holonLabel = 'Espace ' . $holonId;
 			if ($holon->load($holonId)) {
 				$holonLabel = $holon->getHistoryReferenceLabel();
 			}
@@ -2130,7 +3642,8 @@
 					'IDholon' => (int)$this->getId(),
 					'authorUserId' => $authorUserId,
 				),
-				(int)$this->getContainingCircleId(false)
+				'holon',
+				(int)$this->getId()
 			);
 
 			if (!is_array($saveResult) || empty($saveResult['status'])) {
@@ -2160,7 +3673,7 @@
 					. '.';
 			} else {
 				$content = \dbObject\History::buildReferenceToken('user', (int)$memberUser->getId(), $memberLabel)
-					. ' a ete retire des holons suivants par '
+					. ' a été retiré des espaces suivants par '
 					. \dbObject\History::buildReferenceToken('user', $authorUserId, $authorLabel)
 					. ' : '
 					. implode(', ', $holonTokens)
@@ -2183,7 +3696,8 @@
 					'removedHolonIds' => array_values(array_map('intval', $removedHolonIds)),
 					'membershipUpdated' => !empty($membershipUpdated),
 				),
-				(int)$this->getContainingCircleId(false)
+				'holon',
+				(int)$this->getId()
 			);
 
 			if (!is_array($saveResult) || empty($saveResult['status'])) {
@@ -2228,8 +3742,10 @@
 			return $user;
 		}
 
-		public function addMember($userId = 0, $email = '')
+		public function addMember($userId = 0, $email = '', array $options = array())
 		{
+			$isAdmin = !empty($options['isAdmin']);
+			$focus = trim((string)($options['focus'] ?? ''));
 			$currentUserId = function_exists('commonGetCurrentUserId')
 				? (int)\commonGetCurrentUserId()
 				: (int)($_SESSION['currentUser'] ?? 0);
@@ -2239,12 +3755,18 @@
 					'message' => "Vous n'avez pas le droit d'ajouter un membre dans ce contexte.",
 				);
 			}
+			if ($isAdmin && !$this->userIsAllowed($currentUserId, 'CAN_ADD_ADMIN', false)) {
+				return array(
+					'status' => false,
+					'message' => "Vous n'avez pas le droit de gerer le statut admin dans ce contexte.",
+				);
+			}
 
 			$organizationId = $this->resolveOrganizationId();
 			if ($organizationId <= 0) {
 				return array(
 					'status' => false,
-					'message' => "L'organisation liée à ce holon est introuvable.",
+					'message' => "L'organisation liée à cet espace est introuvable.",
 				);
 			}
 
@@ -2260,8 +3782,26 @@
 				$pdo->beginTransaction();
 
 				$user = $this->resolveMemberUser($userId, $email);
+				$adminConstraintResult = $this->validateMemberAdditionAdminBounds(
+					(int)$user->getId(),
+					$isAdmin,
+					array(
+						'organizationId' => $organizationId,
+						'canAssignAdmin' => $this->userIsAllowed($currentUserId, 'CAN_ADD_ADMIN', false),
+					)
+				);
+				if (empty($adminConstraintResult['status'])) {
+					throw new \RuntimeException((string)($adminConstraintResult['message'] ?? 'Les contraintes d admins ne sont pas respectees.'));
+				}
+
 				$invitationIssue = array();
 				$pendingInvitation = \dbObject\Invitation::findPendingForOrganizationUser($organizationId, (int)$user->getId());
+				if ($isAdmin && $pendingInvitation instanceof \dbObject\Invitation) {
+					$requestedAdminResult = $pendingInvitation->addRequestedHolonAdmin((int)$this->getId());
+					if (!is_array($requestedAdminResult) || empty($requestedAdminResult['status'])) {
+						throw new \RuntimeException("Le statut admin demande n'a pas pu etre memorise.");
+					}
+				}
 				$hasActiveOrganizationMembership = $this->hasActiveOrganizationMembership($user, $organizationId);
 				$requiresInvitation = !$hasActiveOrganizationMembership && !($pendingInvitation instanceof \dbObject\Invitation);
 				$canApprovePendingRequest = $pendingInvitation instanceof \dbObject\Invitation && $pendingInvitation->isMemberInitiatedRequest();
@@ -2269,6 +3809,8 @@
 					&& !$hasActiveOrganizationMembership
 					&& !$canApprovePendingRequest;
 				$isPendingAdd = $requiresInvitation || $keepsPendingInvitation;
+				$organizationMembership = null;
+				$holonMembership = null;
 
 				if ($canApprovePendingRequest) {
 					$approvalResult = $pendingInvitation->approveByAdmin([
@@ -2280,34 +3822,38 @@
 					}
 
 					$this->ensureOrganizationMembership($user, $organizationId, true);
-					if (!$this->isOrganizationHolon()) {
-						$this->ensureHolonMembership($user, true);
-					}
+					$this->ensureHolonMembership($user, true, $focus);
 				} elseif ($keepsPendingInvitation) {
 					$this->ensureOrganizationMembership($user, $organizationId, false);
-					if (!$this->isOrganizationHolon()) {
-						$this->ensureHolonMembership($user, false);
-					}
+					$this->ensureHolonMembership($user, false, $focus);
 				} elseif ($requiresInvitation) {
-					$this->ensureOrganizationMembership($user, $organizationId, false);
-					if (!$this->isOrganizationHolon()) {
-						$this->ensureHolonMembership($user, false);
-					}
+					$organizationMembership = $this->ensureOrganizationMembership($user, $organizationId, false);
+					$holonMembership = $this->ensureHolonMembership($user, false, $focus);
 
 					$invitationIssue = \dbObject\Invitation::issue(
 						$organizationId,
 						(int)$user->getId(),
 						(int)\commonGetCurrentUserId(),
-						trim((string)$user->get('email'))
+						trim((string)$user->get('email')),
+						array(
+							'holonAdminId' => $isAdmin ? (int)$this->getId() : 0,
+						)
 					);
 
 					if (!empty($invitationIssue['created']) && isset($invitationIssue['invitation'])) {
 						$invitationIssue['invitation']->sendEmail();
 					}
 				} else {
-					$this->ensureOrganizationMembership($user, $organizationId, true);
-					if (!$this->isOrganizationHolon()) {
-						$this->ensureHolonMembership($user, true);
+					$organizationMembership = $this->ensureOrganizationMembership($user, $organizationId, true);
+					$holonMembership = $this->ensureHolonMembership($user, true, $focus);
+
+					if ($isAdmin) {
+						$saveResult = $this->isOrganizationHolon()
+							? $organizationMembership->setOrganizationAdmin(true)
+							: $holonMembership->setHolonAdmin(true);
+						if (!is_array($saveResult) || empty($saveResult['status'])) {
+							throw new \RuntimeException("Le statut admin n'a pas pu etre enregistre.");
+						}
 					}
 				}
 
@@ -2387,8 +3933,10 @@
 			$definition['inheritedLocked'] = !empty($definition['inheritedLocked']);
 			$definition['effectiveMandatory'] = $definition['inheritedMandatory'] || $definition['mandatory'];
 			$definition['effectiveLocked'] = $definition['inheritedLocked'] || $definition['locked'];
-			$definition['canDelete'] = !$definition['inheritedMandatory'];
-			$definition['canEditValue'] = !$definition['inheritedLocked'];
+			$definition['canDelete'] = !$definition['inheritedMandatory']
+				&& $this->isAllowed(Property::permissionKey('DELETE', $definition['type'] ?? null), false);
+			$definition['canEditValue'] = !$definition['inheritedLocked']
+				&& $this->isAllowed(Property::permissionKey('EDIT', $definition['type'] ?? null), false);
 
 			return $definition;
 		}
@@ -2438,7 +3986,7 @@
 		{
 			$localValue = isset($definition['value']) ? (string)$definition['value'] : '';
 			$inheritedValue = isset($definition['inheritedValue']) ? (string)$definition['inheritedValue'] : '';
-			$isList = (int)($definition['formatId'] ?? 0) === \dbObject\PropertyFormat::FORMAT_LIST;
+			$isList = \dbObject\PropertyFormat::isListFormat((int)($definition['formatId'] ?? 0));
 			$isLockedByAncestor = !empty($definition['inheritedLocked']);
 
 			if ($isLockedByAncestor) {
@@ -2474,6 +4022,7 @@
 				'id' => (int)$property->getId(),
 				'name' => (string)$property->get('name'),
 				'shortname' => (string)$property->get('shortname'),
+				'type' => Property::normalizeType($property->get('type')),
 				'formatId' => (int)$property->get('IDpropertyformat'),
 				'formatName' => $formatName,
 				'listItemType' => (string)$property->get('listitemtype'),
@@ -2606,6 +4155,7 @@
 					'id' => (int)($definition['id'] ?? 0),
 					'name' => (string)($definition['name'] ?? ''),
 					'shortname' => (string)($definition['shortname'] ?? ''),
+					'type' => Property::normalizeType($definition['type'] ?? null),
 					'formatId' => (int)($definition['formatId'] ?? 0),
 					'formatName' => (string)($definition['formatName'] ?? ''),
 					'position' => (int)($definition['position'] ?? 0),
@@ -2617,7 +4167,7 @@
 					'inheritedLocked' => $effectiveLocked,
 					'effectiveMandatory' => $effectiveMandatory,
 					'effectiveLocked' => $effectiveLocked,
-					'canEditValue' => !$effectiveLocked,
+					'canEditValue' => !empty($definition['canEditValue']),
 				);
 			}
 
@@ -2628,6 +4178,8 @@
 		public function getHolonEditorPropertyDefinitions()
 		{
 			$definitionsByPropertyId = array();
+			$templatePropertyIds = array();
+			$templateAuthorityIdMap = $this->getTemplateAuthorityInstanceIdMap();
 
 			$templateId = (int)$this->get('IDholon_template');
 			if ($templateId > 0) {
@@ -2636,7 +4188,15 @@
 					foreach ($template->getHolonCreationPropertyDefinitions() as $definition) {
 						$propertyId = (int)($definition['id'] ?? 0);
 						if ($propertyId > 0) {
+							// Le type herite determine le droit de modifier la valeur locale.
+							$definition['canEditValue'] = empty($definition['effectiveLocked'])
+								&& $this->isAllowed(Property::permissionKey('EDIT', $definition['type']), false);
+							$definition['isTemplateProperty'] = true;
+							$definition['isDirectProperty'] = false;
+							$definition['canEditDefinition'] = false;
+							$definition['canDelete'] = false;
 							$definitionsByPropertyId[$propertyId] = $definition;
+							$templatePropertyIds[$propertyId] = true;
 						}
 					}
 				}
@@ -2655,6 +4215,7 @@
 					'id' => $propertyId,
 					'name' => (string)$property->get('name'),
 					'shortname' => (string)$property->get('shortname'),
+					'type' => Property::normalizeType($property->get('type')),
 					'formatId' => (int)$property->get('IDpropertyformat'),
 					'formatName' => (string)$property->get('propertyformat_name'),
 					'position' => (int)($property->get('effective_position') ?: 0),
@@ -2666,14 +4227,34 @@
 					'inheritedLocked' => false,
 					'effectiveMandatory' => false,
 					'effectiveLocked' => false,
-					'canEditValue' => true,
+					'canEditValue' => false,
+					'isTemplateProperty' => false,
+					'isDirectProperty' => true,
+					'canEditDefinition' => $this->isAllowed(Property::permissionKey('CREATE', $property->get('type')), false),
+					'canDelete' => $this->isAllowed(Property::permissionKey('DELETE', $property->get('type')), false),
 				);
 
 				$definition['value'] = $localValue !== null ? (string)$localValue : '';
 				$definition['inheritedValue'] = $inheritedValue !== null ? (string)$inheritedValue : (string)($definition['inheritedValue'] ?? '');
+				if ((string)($definition['listItemType'] ?? '') === \dbObject\Property::LIST_ITEM_AUTHORITY && \dbObject\PropertyFormat::isListFormat((int)($definition['formatId'] ?? 0))) {
+					$definition['inheritedValue'] = $this->remapTemplateAuthorityListValue(
+						$definition['inheritedValue'],
+						(int)$definition['formatId'],
+						$templateAuthorityIdMap
+					);
+				}
 				$definition['effectiveMandatory'] = (bool)$property->get('mandatory');
 				$definition['effectiveLocked'] = (bool)$property->get('locked');
-				$definition['canEditValue'] = !((bool)$property->get('locked'));
+				$isTemplateProperty = isset($templatePropertyIds[$propertyId]);
+				// Meme controle de type pour les valeurs locales et heritees.
+				$definition['canEditValue'] = !((bool)$property->get('locked'))
+					&& $this->isAllowed(Property::permissionKey('EDIT', $definition['type']), false);
+				$definition['isTemplateProperty'] = $isTemplateProperty;
+				$definition['isDirectProperty'] = !$isTemplateProperty;
+				$definition['canEditDefinition'] = !$isTemplateProperty
+					&& $this->isAllowed(Property::permissionKey('CREATE', $property->get('type')), false);
+				$definition['canDelete'] = !$isTemplateProperty
+					&& $this->isAllowed(Property::permissionKey('DELETE', $property->get('type')), false);
 				$definition['position'] = (int)($property->get('effective_position') ?: ($definition['position'] ?? 0));
 
 				$definitionsByPropertyId[$propertyId] = $definition;
@@ -2693,8 +4274,102 @@
 			return $definitions;
 		}
 
+		public function syncDirectEditorPropertyDefinitions(array $definitions, $organizationRootId, bool $preserveDisabled = false)
+		{
+			$organizationRootId = (int)$organizationRootId;
+			$templatePropertyIds = array();
+			$template = $this->getTemplateHolon();
+			if ($template instanceof self) {
+				foreach ($template->getHolonCreationPropertyDefinitions() as $templateDefinition) {
+					$templatePropertyId = (int)($templateDefinition['id'] ?? 0);
+					if ($templatePropertyId > 0) {
+						$templatePropertyIds[$templatePropertyId] = true;
+					}
+				}
+			}
+
+			$resolvedDefinitions = array();
+			foreach ($definitions as $definition) {
+				if (!is_array($definition)) {
+					continue;
+				}
+
+				$propertyId = (int)($definition['id'] ?? 0);
+				if ($preserveDisabled && (!$this->isPropertyEnabled($propertyId) || !Property::isTypeEnabled($definition['type'] ?? null, $this->getPropertyTypeLexicon()))) continue;
+				if ($propertyId > 0 && isset($templatePropertyIds[$propertyId])) {
+					continue;
+				}
+
+				$propertyName = trim((string)($definition['name'] ?? ''));
+				$formatId = (int)($definition['formatId'] ?? 0);
+				if ($propertyName === '' || $formatId <= 0) {
+					continue;
+				}
+
+				$property = new \dbObject\Property();
+				if ($propertyId > 0) {
+					$existingHolonProperty = new \dbObject\HolonProperty();
+					if (!$existingHolonProperty->load(array(
+						array('IDholon', $this->getId()),
+						array('IDproperty', $propertyId),
+					))) {
+						continue;
+					}
+					$property->load($propertyId);
+				}
+				if ($property->getId() > 0 && (int)$property->get('IDholon_organization') !== $organizationRootId) {
+					continue;
+				}
+				if ($property->getId() <= 0) {
+					$property->set('IDholon_organization', $organizationRootId);
+				}
+
+				$property->set('name', $propertyName);
+				$property->set('type', Property::normalizeType($definition['type'] ?? $property->get('type')));
+				$property->set('shortname', trim((string)($definition['shortname'] ?? '')) !== '' ? $definition['shortname'] : ($property->getId() > 0 ? $property->get('shortname') : \dbObject\Property::buildShortnameFromName($propertyName)));
+				$property->set('IDpropertyformat', $formatId);
+				$listItemType = null;
+				$listHolonTypeIds = null;
+				if (\dbObject\PropertyFormat::isListFormat($formatId)) {
+					$listItemType = \dbObject\Property::normalizeTemplateListItemType($definition['listItemType'] ?? '');
+					if ($listItemType === \dbObject\Property::LIST_ITEM_HOLON) {
+						$listHolonTypeIds = \dbObject\Property::serializeHolonTypeIds($definition['listHolonTypeIds'] ?? array());
+					}
+				}
+				$property->set('listitemtype', $listItemType);
+				$property->set('listholontypeids', $listHolonTypeIds);
+				$property->set('position', (int)($definition['position'] ?? count($resolvedDefinitions) + 1));
+				$property->set('active', true);
+				$property->save();
+
+				if ((int)$property->getId() <= 0) {
+					continue;
+				}
+
+				$holonProperty = new \dbObject\HolonProperty();
+				$holonProperty->load(array(
+					array('IDholon', $this->getId()),
+					array('IDproperty', $property->getId()),
+				));
+				$holonProperty->set('IDholon', $this->getId());
+				$holonProperty->set('IDproperty', $property->getId());
+				$holonProperty->set('position', (int)($definition['position'] ?? count($resolvedDefinitions) + 1));
+				$holonProperty->set('mandatory', false);
+				$holonProperty->set('locked', false);
+				$holonProperty->set('active', true);
+				$holonProperty->save();
+
+				$definition['id'] = (int)$property->getId();
+				$definition['isTemplateProperty'] = false;
+				$definition['isDirectProperty'] = true;
+				$resolvedDefinitions[] = $definition;
+			}
+
+			return $resolvedDefinitions;
+		}
+
 		// Synchronise valeurs locales
-		public function syncEditorPropertyValues(array $submittedValuesByPropertyId, array $propertyDefinitions)
+		public function syncEditorPropertyValues(array $submittedValuesByPropertyId, array $propertyDefinitions, bool $preserveDisabled = false)
 		{
 			$definitionsByPropertyId = array();
 			foreach ($propertyDefinitions as $definition) {
@@ -2710,6 +4385,7 @@
 			}
 
 			foreach ($definitionsByPropertyId as $propertyId => $definition) {
+				if ($preserveDisabled && !$this->isPropertyEnabled((int)$propertyId)) continue;
 				if (!empty($definition['effectiveLocked'])) {
 					continue;
 				}
@@ -2723,6 +4399,17 @@
 				$holonProperty = isset($existingByPropertyId[$propertyId]) ? $existingByPropertyId[$propertyId] : new \dbObject\HolonProperty();
 
 				if (\dbObject\PropertyFormat::isEmptyValue($formatId, $localValue)) {
+					if (!empty($definition['isDirectProperty'])) {
+						$holonProperty->set('IDholon', $this->getId());
+						$holonProperty->set('IDproperty', $propertyId);
+						$holonProperty->set('position', (int)($definition['position'] ?? 0));
+						$holonProperty->set('mandatory', false);
+						$holonProperty->set('locked', false);
+						$holonProperty->set('active', true);
+						$holonProperty->set('value', null);
+						$holonProperty->save();
+						continue;
+					}
 					if ($holonProperty->getId() > 0) {
 						$holonProperty->set('active', false);
 						$holonProperty->set('value', null);
@@ -2742,6 +4429,7 @@
 			}
 
 			foreach ($existingByPropertyId as $propertyId => $holonProperty) {
+				if ($preserveDisabled && !$this->isPropertyEnabled((int)$propertyId)) continue;
 				if (isset($definitionsByPropertyId[$propertyId])) {
 					continue;
 				}
@@ -2755,6 +4443,11 @@
 		public function toTemplateEditorArray($rootHolonId = 0)
 		{
 			$children = array();
+			$inheritedAdminTemplate = $this->getTemplateHolon();
+			$inheritedAdminBounds = $inheritedAdminTemplate
+				? $inheritedAdminTemplate->getEffectiveTemplateAdminBounds()
+				: array('min' => 0, 'max' => null, 'minLocked' => false, 'maxLocked' => false);
+			$effectiveAdminBounds = $this->getEffectiveTemplateAdminBounds();
 			foreach ($this->getTemplateChildren() as $child) {
 				$children[] = $child->toTemplateEditorArray($rootHolonId);
 			}
@@ -2765,23 +4458,33 @@
 				'typeId' => (int)$this->get('IDtypeholon'),
 				'typeLabel' => $this->getTypeLabel(),
 				'color' => (string)$this->get('color'),
+				'unassignedColor' => (string)$this->get('color_unassigned'),
 				'icon' => (string)$this->get('icon'),
 				'inheritedIcon' => $this->getInheritedIcon(),
 				'effectiveIcon' => $this->getEffectiveIcon(),
-				'banner' => (string)$this->get('banner'),
-				'inheritedBanner' => $this->getInheritedBanner(),
-				'effectiveBanner' => $this->getEffectiveBanner(),
 				'visible' => (bool)$this->get('visible'),
 				'mandatory' => (bool)$this->get('mandatory'),
 				'lockedName' => (bool)$this->get('lockedname'),
 				'lockedIcon' => (bool)$this->get('lockedicon'),
 				'inheritedLockedIcon' => $this->isIconLockedByTemplate(),
 				'effectiveLockedIcon' => (bool)$this->get('lockedicon') || $this->isIconLockedByTemplate(),
-				'lockedBanner' => (bool)$this->get('lockedbanner'),
-				'inheritedLockedBanner' => $this->isBannerLockedByTemplate(),
-				'effectiveLockedBanner' => (bool)$this->get('lockedbanner') || $this->isBannerLockedByTemplate(),
 				'unique' => (bool)$this->get('unique'),
 				'link' => (bool)$this->get('link'),
+				'adminParent' => (bool)$this->get('adminparent'),
+				'adminMin' => $this->get('admin_min') === null ? null : max(0, (int)$this->get('admin_min')),
+				'adminMax' => $this->get('admin_max') === null ? null : (int)$this->get('admin_max'),
+				'lockedAdminMin' => (bool)$this->get('lockedadminmin'),
+				'lockedAdminMax' => (bool)$this->get('lockedadminmax'),
+				'inheritedAdminMin' => $inheritedAdminBounds['min'],
+				'inheritedAdminMax' => $inheritedAdminBounds['max'],
+				'inheritedLockedAdminMin' => !empty($inheritedAdminBounds['minLocked']),
+				'inheritedLockedAdminMax' => !empty($inheritedAdminBounds['maxLocked']),
+				'effectiveAdminMin' => $effectiveAdminBounds['min'],
+				'effectiveAdminMax' => $effectiveAdminBounds['max'],
+				'effectiveLockedAdminMin' => !empty($effectiveAdminBounds['minLocked']),
+				'effectiveLockedAdminMax' => !empty($effectiveAdminBounds['maxLocked']),
+				'adminMinOverride' => (bool)$this->get('adminminoverride'),
+				'adminMaxOverride' => (bool)$this->get('adminmaxoverride'),
 				'parentId' => (int)$this->get('IDholon_parent'),
 				'inheritsFromId' => (int)$this->get('IDholon_template'),
 				'rootHolonId' => (int)$rootHolonId,
@@ -2793,29 +4496,45 @@
 
 		public function toTemplateEditorNodeArray($rootHolonId = 0)
 		{
+			$inheritedAdminTemplate = $this->getTemplateHolon();
+			$inheritedAdminBounds = $inheritedAdminTemplate
+				? $inheritedAdminTemplate->getEffectiveTemplateAdminBounds()
+				: array('min' => 0, 'max' => null, 'minLocked' => false, 'maxLocked' => false);
+			$effectiveAdminBounds = $this->getEffectiveTemplateAdminBounds();
+
 			return array(
 				'id' => (int)$this->getId(),
 				'name' => $this->getDisplayName(),
 				'typeId' => (int)$this->get('IDtypeholon'),
 				'typeLabel' => $this->getTypeLabel(),
 				'color' => (string)$this->get('color'),
+				'unassignedColor' => (string)$this->get('color_unassigned'),
 				'icon' => (string)$this->get('icon'),
 				'inheritedIcon' => $this->getInheritedIcon(),
 				'effectiveIcon' => $this->getEffectiveIcon(),
-				'banner' => (string)$this->get('banner'),
-				'inheritedBanner' => $this->getInheritedBanner(),
-				'effectiveBanner' => $this->getEffectiveBanner(),
 				'visible' => (bool)$this->get('visible'),
 				'mandatory' => (bool)$this->get('mandatory'),
 				'lockedName' => (bool)$this->get('lockedname'),
 				'lockedIcon' => (bool)$this->get('lockedicon'),
 				'inheritedLockedIcon' => $this->isIconLockedByTemplate(),
 				'effectiveLockedIcon' => (bool)$this->get('lockedicon') || $this->isIconLockedByTemplate(),
-				'lockedBanner' => (bool)$this->get('lockedbanner'),
-				'inheritedLockedBanner' => $this->isBannerLockedByTemplate(),
-				'effectiveLockedBanner' => (bool)$this->get('lockedbanner') || $this->isBannerLockedByTemplate(),
 				'unique' => (bool)$this->get('unique'),
 				'link' => (bool)$this->get('link'),
+				'adminParent' => (bool)$this->get('adminparent'),
+				'adminMin' => $this->get('admin_min') === null ? null : max(0, (int)$this->get('admin_min')),
+				'adminMax' => $this->get('admin_max') === null ? null : (int)$this->get('admin_max'),
+				'lockedAdminMin' => (bool)$this->get('lockedadminmin'),
+				'lockedAdminMax' => (bool)$this->get('lockedadminmax'),
+				'inheritedAdminMin' => $inheritedAdminBounds['min'],
+				'inheritedAdminMax' => $inheritedAdminBounds['max'],
+				'inheritedLockedAdminMin' => !empty($inheritedAdminBounds['minLocked']),
+				'inheritedLockedAdminMax' => !empty($inheritedAdminBounds['maxLocked']),
+				'effectiveAdminMin' => $effectiveAdminBounds['min'],
+				'effectiveAdminMax' => $effectiveAdminBounds['max'],
+				'effectiveLockedAdminMin' => !empty($effectiveAdminBounds['minLocked']),
+				'effectiveLockedAdminMax' => !empty($effectiveAdminBounds['maxLocked']),
+				'adminMinOverride' => (bool)$this->get('adminminoverride'),
+				'adminMaxOverride' => (bool)$this->get('adminmaxoverride'),
 				'parentId' => (int)$this->get('IDholon_parent'),
 				'inheritsFromId' => (int)$this->get('IDholon_template'),
 				'rootHolonId' => (int)$rootHolonId,
@@ -2825,7 +4544,7 @@
 			);
 		}
 
-		public function syncTemplateProperties(array $definitions, $organizationRootId)
+		public function syncTemplateProperties(array $definitions, $organizationRootId, bool $preserveDisabled = false)
 		{
 			$organizationRootId = (int)$organizationRootId;
 			$retainedHolonPropertyIds = array();
@@ -2853,16 +4572,13 @@
 				}
 
 				$propertyId = (int)($definition['id'] ?? 0);
+				if ($preserveDisabled && (!$this->isPropertyEnabled($propertyId) || !Property::isTypeEnabled($definition['type'] ?? null, $this->getPropertyTypeLexicon()))) continue;
 				$isInheritedDefinition = $propertyId > 0 && isset($inheritedDefinitionsById[$propertyId]);
 				$submittedPropertyIds[$propertyId] = true;
 
 				if ($isInheritedDefinition) {
 					$inheritedDefinition = $inheritedDefinitionsById[$propertyId];
 					$holonProperty = new \dbObject\HolonProperty();
-					$holonPropertyId = (int)($definition['holonPropertyId'] ?? 0);
-					if ($holonPropertyId > 0) {
-						$holonProperty->load($holonPropertyId);
-					}
 
 					if ($holonProperty->getId() <= 0) {
 						$holonProperty->load([
@@ -2928,11 +4644,12 @@
 				}
 
 				$property->set('name', $propertyName);
-				$property->set('shortname', trim((string)($definition['shortname'] ?? '')) !== '' ? $definition['shortname'] : \dbObject\Property::buildShortnameFromName($propertyName));
+				$property->set('type', Property::normalizeType($definition['type'] ?? $property->get('type')));
+				$property->set('shortname', trim((string)($definition['shortname'] ?? '')) !== '' ? $definition['shortname'] : ($property->getId() > 0 ? $property->get('shortname') : \dbObject\Property::buildShortnameFromName($propertyName)));
 				$property->set('IDpropertyformat', $propertyFormatId);
 				$listItemType = null;
 				$listHolonTypeIds = null;
-				if ($propertyFormatId === \dbObject\PropertyFormat::FORMAT_LIST) {
+				if (\dbObject\PropertyFormat::isListFormat($propertyFormatId)) {
 					$listItemType = \dbObject\Property::normalizeTemplateListItemType($definition['listItemType'] ?? '');
 					if ($listItemType === \dbObject\Property::LIST_ITEM_HOLON) {
 						$listHolonTypeIds = \dbObject\Property::serializeHolonTypeIds($definition['listHolonTypeIds'] ?? array());
@@ -2945,10 +4662,6 @@
 				$property->save();
 
 				$holonProperty = new \dbObject\HolonProperty();
-				$holonPropertyId = (int)($definition['holonPropertyId'] ?? 0);
-				if ($holonPropertyId > 0) {
-					$holonProperty->load($holonPropertyId);
-				}
 
 				if ($holonProperty->getId() <= 0 && $property->getId() > 0) {
 					$holonProperty->load([
@@ -2985,6 +4698,7 @@
 			}
 
 			foreach ($inheritedDefinitionsById as $propertyId => $inheritedDefinition) {
+				if ($preserveDisabled && !$this->isPropertyEnabled((int)$propertyId)) continue;
 				if (isset($submittedPropertyIds[$propertyId])) {
 					continue;
 				}
@@ -3021,6 +4735,7 @@
 				}
 
 				$propertyId = (int)$existingHolonProperty->get('IDproperty');
+				if ($preserveDisabled && !$this->isPropertyEnabled($propertyId)) continue;
 				if (isset($inheritedDefinitionsById[$propertyId]) && !isset($submittedPropertyIds[$propertyId])) {
 					continue;
 				}
@@ -3031,15 +4746,18 @@
 		}
 
 		// Retourne tous les enfants (uniquement pour les orga
-		public function getChildren() {
+		public function getChildren($includeHidden = false) {
 
 			$children=new \dbObject\ArrayHolon();
+			$where = [
+				["field" => "active", "value" => 1],
+				["field" => "IDholon_parent", "value" => $this->get("id")],
+			];
+			if (!$includeHidden) {
+				$where[] = ["field" => "visible", "value" => 1];
+			}
 			$children->load([
-				"where" => [
-					["field" => "active", "value" => 1],
-					["field" => "visible", "value" => 1],
-					["field" => "IDholon_parent", "value" => $this->get("id")],
-				],
+				"where" => $where,
 			]);
 
 			return $children;	
@@ -3095,6 +4813,14 @@
 		{
 			foreach ($this->getDeletionChildren() as $child) {
 				if (!$child->delete()) {
+					return false;
+				}
+			}
+
+			$parentHolon = $this->getParentHolon();
+			if ($parentHolon instanceof self) {
+				$authorityTransfer = Authority::reassignForHolonDeletion($this, $parentHolon);
+				if (empty($authorityTransfer['status'])) {
 					return false;
 				}
 			}

@@ -2,6 +2,7 @@
 require_once dirname(__DIR__, 3) . '/bootstrap.php';
 require_once dirname(__DIR__) . '/context.php';
 require_once dirname(__DIR__) . '/common.php';
+require_once dirname(__DIR__, 5) . '/common/notification_center.php';
 
 use dbObject\DecisionProcess;
 use dbObject\DecisionProposal;
@@ -115,7 +116,7 @@ if (empty($context['status'])) {
         omoDecisionModuleJsonResponse((int)($context['code'] ?? 403), [
             'status' => false,
             'feedbackStatus' => 'error',
-            'message' => 'Acces refuse.',
+            'message' => 'Accès refusé.',
             'redirectUrl' => '',
         ]);
     }
@@ -132,10 +133,17 @@ if (!$decision instanceof DecisionProcess || empty($availability['allowed'])) {
     omoDecisionConsultationProposalRedirect($context, 'denied');
 }
 
-$proposalTitle = trim((string)($_POST['consultation_proposal_title'] ?? ''));
-$proposalDescription = trim((string)($_POST['consultation_proposal_description'] ?? ''));
-$proposalInfoUrl = omoDecisionNormalizeProposalInfoUrl($_POST['consultation_proposal_info_url'] ?? '');
-if ($proposalTitle === '') {
+$decisionGroup = ($context['decisionGroup'] ?? null) instanceof \dbObject\DecisionGroup
+    ? $context['decisionGroup']
+    : $decision->getPrimaryGroup(false);
+$methodConfig = omoDecisionBuildMethodConfig($decisionGroup instanceof \dbObject\DecisionGroup ? $decisionGroup : $decision);
+$proposalContent = omoDecisionNormalizeProposalContent($methodConfig['proposal_content'] ?? null);
+$proposalTitle = $proposalContent['title'] ? trim((string)($_POST['consultation_proposal_title'] ?? '')) : '';
+$proposalDescription = $proposalContent['description'] ? trim((string)($_POST['consultation_proposal_description'] ?? '')) : '';
+$proposalInfoUrl = $proposalContent['url']
+    ? omoDecisionNormalizeProposalInfoUrl($_POST['consultation_proposal_info_url'] ?? '')
+    : null;
+if ($proposalTitle === '' && $proposalDescription === '' && $proposalInfoUrl === null) {
     omoDecisionConsultationProposalRedirect($context, 'empty');
 }
 
@@ -158,12 +166,13 @@ foreach ($decision->getProposals(false) as $proposal) {
 }
 
 $normalizedTitle = omoApiNormalizeLabel($proposalTitle);
-if ($normalizedTitle === '' || isset($existingTitles[$normalizedTitle])) {
+if ($normalizedTitle !== '' && isset($existingTitles[$normalizedTitle])) {
     omoDecisionConsultationProposalRedirect($context, 'duplicate');
 }
 
 $participant = $context['participant'] ?? null;
 $participantId = $participant ? (int)$participant->getId() : 0;
+$authorUserId = omoDecisionGetContextAccountUserId($context);
 $createdCount = 0;
 $decisionGroup = $decision->ensurePrimaryGroup();
 if (!$decisionGroup || (int)$decisionGroup->getId() <= 0) {
@@ -174,7 +183,8 @@ $maxPosition++;
 $proposal = new DecisionProposal();
 $proposal->set('IDdecision_process', (int)$decision->getId());
 $proposal->set('IDdecision_group', (int)$decisionGroup->getId());
-$proposal->set('title', $proposalTitle);
+$proposal->set('IDuser_author', $authorUserId > 0 ? $authorUserId : null);
+$proposal->set('title', $proposalTitle !== '' ? $proposalTitle : null);
 $proposal->set('description', $proposalDescription !== '' ? $proposalDescription : null);
 $proposal->set('info_url', $proposalInfoUrl);
 $proposal->set('position', $maxPosition);
@@ -195,5 +205,10 @@ if (empty($saveResult['status'])) {
 }
 
 $createdCount++;
+try {
+    notificationCenterDispatchDecisionProposal($proposal);
+} catch (\Throwable $exception) {
+    error_log('decision_proposal_notification_failed: ' . $exception->getMessage());
+}
 
 omoDecisionConsultationProposalRedirect($context, 'success', $createdCount);

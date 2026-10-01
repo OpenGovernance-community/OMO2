@@ -1,6 +1,8 @@
-<?
+<?php
+	require_once __DIR__ . '/common/assets.php';
 	require_once __DIR__ . '/shared/date_groups.php';
 	require_once __DIR__ . '/common/environment_subdomains.php';
+	require_once __DIR__ . '/common/runtime_log.php';
 
 	function appGetReservedEnvironmentSubdomains() {
 		return commonGetConfiguredEnvironmentSubdomains();
@@ -541,7 +543,7 @@
 	
 		//<!-- Fonctions partagées entre plusieurs pages -->
 		echo '<script src="/shared_functions.js"></script>';
-		echo '<link href="/shared_css.css" rel="stylesheet">';
+		echo commonStylesheetTags('/shared_css.css');
 		
 		//<!-- Script Paypal -->
 		if (!empty($GLOBALS["paypalClientId"])) {
@@ -555,49 +557,24 @@
 	function checkLogin() {
 		require_once __DIR__ . '/common/auth.php';
 		commonRestoreRememberedUser();
+		$hadLegacyAuthCookies = commonHasLegacyAuthCookies();
+		if ($hadLegacyAuthCookies) {
+			commonExpireLegacyAuthCookies();
+			commonAuthSecurityLog('legacy_auth_cookie', 'rejected', ['legacy' => true]);
+		}
 
 		if (isset($_SESSION["currentUser"])) {
 			$_SESSION["userRef"]=new \dbObject\User();
 			$_SESSION["userRef"]->load($_SESSION["currentUser"]);
 			return true;
 		}
-		// Pas loggé, est-ce que les cookie permettent de retrouver l'utilisateur?
-		$currentUserCookieName = appGetCurrentUserCookieName();
-		$currentCodeCookieName = appGetCurrentCodeCookieName();
-		$currentUserCookieValue = $_COOKIE[$currentUserCookieName] ?? ($_COOKIE["currentUser"] ?? null);
-		$currentCodeCookieValue = $_COOKIE[$currentCodeCookieName] ?? ($_COOKIE["currentCode"] ?? null);
-		if ($currentUserCookieValue !== null && $currentCodeCookieValue !== null) {
-			// Charge l'utilisateur corrspondant
-			$user=new \dbObject\User();
-			$user->load([["id",$currentUserCookieValue],["password",$currentCodeCookieValue]]);
-			if ($user->get("id")>0) {
-				// Redéfini les cookie pour 30 jours supplémentaires
-				appSetCookie($currentUserCookieName, (string)$user->get("id"), time()+60*60*24*30, false);
-				appSetCookie($currentCodeCookieName, (string)$user->get("password"), time()+60*60*24*30, false);
-				appExpireCookieAcrossDomains('currentUser', false);
-				appExpireCookieAcrossDomains('currentCode', false);
-				
-				// Initialise la variable de session
-				$_SESSION["currentUser"]=$user->get("id");
-				commonUpdateLastConnection((int)$user->get("id"));
-				$_SESSION["userRef"]=$user;
-				
-				// Confirme que l'utilisateur a bien été trouvé
-				return true;
-			} else {
-				// Pas trouvé de correspondance
-				appExpireCookieAcrossDomains($currentUserCookieName, false);
-				appExpireCookieAcrossDomains($currentCodeCookieName, false);
-				appExpireCookieAcrossDomains('currentUser', false);
-				appExpireCookieAcrossDomains('currentCode', false);
-				return false;
-			}
-		}
+
+		return false;
 	}
 	
 	
 	// Fonction E-mail passant par un serveur, pour minimier les effets SPAM
-	function myHTMLMail($from,$to,$subject,$body,$cc=null, $bcc=null) {
+	function myHTMLMail($from,$to,$subject,$body,$cc=null, $bcc=null, array $attachments = [], ?string $plainTextBody = null, ?array $replyTo = null) {
 
 
 		appSetLastMailError('');
@@ -641,6 +618,9 @@
 			$mail->setFrom($from[0],$from[1]);
 		else
 			$mail->setFrom($from);
+		if ($replyTo !== null) {
+			$mail->addReplyTo((string)$replyTo[0], (string)($replyTo[1] ?? ''));
+		}
 		if (is_array($to))
 			foreach ($to as $dest) {
 				$mail->addAddress($dest); // Destinataire
@@ -654,14 +634,24 @@
 		$isHtmlBody = strip_tags($body)!=$body;
 		if (appMailShouldAppendPatreonFooter($from, $to, $body)) {
 			$body = appMailAppendPatreonFooter($body, $isHtmlBody);
+			if ($plainTextBody !== null) {
+				$plainTextBody = appMailAppendPatreonFooter($plainTextBody, false);
+			}
 			$isHtmlBody = strip_tags($body)!=$body;
 		}
 		$mail->Body = $body;
-		if ($isHtmlBody)
-			$mail->IsHTML(true);  
+		if ($isHtmlBody) {
+			$mail->IsHTML(true);
+			if ($plainTextBody !== null) {
+				$mail->AltBody = $plainTextBody;
+			}
+		}
 		
 		// Envoi de l'e-mail
 		try {
+			foreach ($attachments as $attachment) {
+				$mail->addStringAttachment($attachment['content'], $attachment['name'], 'base64', $attachment['type'] ?? 'application/octet-stream');
+			}
 			$result = $mail->send();
 			if ($result) {
 				return true;

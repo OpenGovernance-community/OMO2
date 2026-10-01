@@ -1,4 +1,6 @@
-FROM php:8.2-apache
+FROM php:8.5-apache
+
+COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -8,11 +10,12 @@ RUN apt-get update \
         libicu-dev \
         libjpeg62-turbo-dev \
         libpng-dev \
+        libwebp-dev \
         libzip-dev \
         openssl \
         unzip \
         zip \
-    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
     && docker-php-ext-install \
         bcmath \
         curl \
@@ -21,7 +24,9 @@ RUN apt-get update \
         intl \
         mysqli \
         pdo_mysql \
-    && mkdir -p /etc/apache2/ssl \
+        zip \
+    && mkdir -p /etc/apache2/ssl /var/www/log \
+    && chown www-data:www-data /var/www/log \
     && openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
         -keyout /etc/apache2/ssl/dev-localhost.key \
         -out /etc/apache2/ssl/dev-localhost.crt \
@@ -30,7 +35,7 @@ RUN apt-get update \
         -addext "basicConstraints=critical,CA:FALSE" \
         -addext "keyUsage=critical,digitalSignature,keyEncipherment" \
         -addext "extendedKeyUsage=serverAuth" \
-    && a2enmod headers rewrite expires ssl socache_shmcb \
+    && a2enmod headers rewrite expires ssl socache_shmcb proxy proxy_http proxy_wstunnel \
     && rm -rf /var/lib/apt/lists/*
 
 COPY docker/apache/vhost.conf /etc/apache2/sites-available/000-default.conf

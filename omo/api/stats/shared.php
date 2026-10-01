@@ -1,0 +1,2521 @@
+<?php
+
+require_once dirname(__DIR__, 3) . '/common/pv_meeting_permissions.php';
+
+use dbObject\Holon;
+use dbObject\Organization;
+use dbObject\ArrayDocument;
+use dbObject\Document;
+use dbObject\StatIndicator;
+use dbObject\StatIndicatorGroup;
+use dbObject\StatIndicatorGroupItem;
+use dbObject\StatIndicatorImport;
+use dbObject\StatIndicatorReferencePoint;
+use dbObject\StatIndicatorValue;
+
+if (!function_exists('omoStatsSourceLang')) {
+    function omoStatsSourceLang()
+    {
+        return [
+            'stats.title' => ['text' => 'Indicateurs', 'context' => 'Main title of the contextual steering indicators application.'],
+            'stats.scope.contextual' => ['text' => 'Local', 'context' => 'Scope label for indicators defined in the current holon.'],
+            'stats.scope.children' => ['text' => 'Enfants directs', 'context' => 'Scope label for indicators defined in the current holon and its direct children.'],
+            'stats.scope.descendants' => ['text' => 'Descendants', 'context' => 'Scope label for indicators in the current holon and descendants.'],
+            'stats.view.cards' => ['text' => 'Cartes', 'context' => 'Button switching the indicator list to cards.'],
+            'stats.view.compact' => ['text' => 'Compact', 'context' => 'Button switching the indicator list to compact rows.'],
+            'stats.filters.aria' => ['text' => 'Filtres des indicateurs', 'context' => 'Accessible label for the compact indicator filters control.'],
+            'stats.filters.scope' => ['text' => 'Contexte', 'context' => 'Heading for indicator scope choices in the filters panel.'],
+            'stats.filters.assignment' => ['text' => 'Attribution', 'context' => 'Heading for indicator responsibility filter choices in the filters panel.'],
+            'stats.assignment.aria' => ['text' => 'Indicateurs affiches', 'context' => 'Accessible label for the indicator responsibility filter.'],
+            'stats.assignment.mine' => ['text' => 'Moi', 'context' => 'Indicator filter showing indicators directly assigned to the current user or unassigned indicators attached to their roles.'],
+            'stats.assignment.roles' => ['text' => 'Mes espaces', 'context' => 'Indicator filter showing indicators attached to the current user spaces, regardless of direct person assignment.'],
+            'stats.assignment.all' => ['text' => 'Tous', 'context' => 'Indicator filter showing every indicator in the selected context scope.'],
+            'stats.filters.sort' => ['text' => 'Classement', 'context' => 'Heading for indicator sorting choices in the filters panel.'],
+            'stats.filters.view' => ['text' => 'Représentation', 'context' => 'Heading for indicator representation choices in the filters panel.'],
+            'stats.filters.apply' => ['text' => 'Appliquer', 'context' => 'Button applying temporary indicator filter choices.'],
+            'stats.filters.save_view' => ['text' => 'Enregistrer la vue', 'context' => 'Button saving indicator filter choices for the current context.'],
+            'stats.filters.more_actions' => ['text' => 'Autres options de vue', 'context' => 'Accessible label for additional indicator view preference actions.'],
+            'stats.filters.apply_everywhere' => ['text' => 'Appliquer partout', 'context' => 'Action setting the current indicator view as the default and clearing specific views.'],
+            'stats.filters.set_default' => ['text' => 'Définir comme vue par défaut', 'context' => 'Action saving the current indicator view as the default view.'],
+            'stats.filters.restore_default' => ['text' => 'Restaurer la vue par défaut', 'context' => 'Action removing the current holon specific indicator view.'],
+            'stats.search.aria' => ['text' => 'Filtrer les indicateurs affichés', 'context' => 'Accessible label for the indicator quick search.'],
+            'stats.search.placeholder' => ['text' => 'Filtrer les indicateurs', 'context' => 'Placeholder for the indicator quick search.'],
+            'stats.search.empty' => ['text' => 'Aucun indicateur ne correspond à cette recherche.', 'context' => 'Empty state when the indicator quick search has no result.'],
+            'stats.controls.sort.aria' => ['text' => 'Classement des indicateurs', 'context' => 'Accessible label for the indicator sorting selector.'],
+            'stats.controls.sort.alpha' => ['text' => 'Alphabétique', 'context' => 'Alphabetical indicator sorting option.'],
+            'stats.controls.sort.temporal' => ['text' => 'Temporalité', 'context' => 'Measurement frequency indicator sorting option.'],
+            'stats.group.combined' => ['text' => 'Cumuls', 'context' => 'Section label for composite indicator groups in the temporal sorting mode.'],
+            'stats.action.new' => ['text' => 'Nouvel indicateur', 'context' => 'Primary button opening indicator creation.'],
+            'stats.action.more' => ['text' => "Plus d'actions", 'context' => 'Menu button opening additional indicator actions.'],
+            'stats.action.import' => ['text' => 'Importer un indicateur', 'context' => 'Menu action creating a contextual indicator import.'],
+            'stats.action.group' => ['text' => 'Grouper des indicateurs', 'context' => 'Menu action creating a multi-indicator chart group.'],
+            'stats.action.add' => ['text' => 'Ajouter', 'context' => 'Generic add action.'],
+            'stats.action.update' => ['text' => 'Enregistrer', 'context' => 'Button saving an edited contextual import or indicator group.'],
+            'stats.action.create_group' => ['text' => 'Créer le groupe', 'context' => 'Button creating an indicator group.'],
+            'stats.action.edit' => ['text' => 'Modifier', 'context' => 'Button opening indicator edition.'],
+            'stats.action.detail' => ['text' => 'Détail', 'context' => 'Button opening an indicator detail view.'],
+            'stats.action.close' => ['text' => 'Fermer', 'context' => 'Button closing the nested indicator drawer.'],
+            'stats.action.cancel' => ['text' => 'Annuler', 'context' => 'Button cancelling indicator edition.'],
+            'stats.action.save' => ['text' => 'Enregistrer', 'context' => 'Button saving indicator edition.'],
+            'stats.action.delete' => ['text' => 'Supprimer', 'context' => 'Button deleting one dated indicator value.'],
+            'stats.action.delete_indicator' => ['text' => "Supprimer l'indicateur", 'context' => 'Menu action archiving an indicator from the current catalogue.'],
+            'stats.action.archive_indicator' => ['text' => "Archiver l'indicateur", 'context' => 'Menu action hiding an indicator while retaining its history.'],
+            'stats.action.move_indicator' => ['text' => "Deplacer l'indicateur", 'context' => 'Menu action moving an indicator to another space.'],
+            'stats.move.title' => ['text' => "Deplacer l'indicateur", 'context' => 'Title of the indicator move dialog.'],
+            'stats.move.hint' => ['text' => "Choisissez un espace ou vous pouvez creer un indicateur.", 'context' => 'Instruction in the indicator move dialog.'],
+            'stats.move.submit' => ['text' => 'Deplacer ici', 'context' => 'Button confirming an indicator move.'],
+            'stats.move.select_required' => ['text' => 'Choisissez un autre espace autorise.', 'context' => 'Validation when no valid indicator destination is selected.'],
+            'stats.action.edit_import' => ['text' => 'Changer la source', 'context' => 'Menu action changing the source of a contextual indicator import.'],
+            'stats.action.delete_import' => ['text' => "Detacher l'indicateur", 'context' => 'Action removing only an indicator import from its context, preserving the original indicator.'],
+            'stats.action.edit_group' => ['text' => 'Modifier le groupe', 'context' => 'Menu action editing a contextual indicator group.'],
+            'stats.action.delete_group' => ['text' => 'Retirer le groupe', 'context' => 'Menu action removing a contextual indicator group.'],
+            'stats.detail.confirm_delete_indicator' => ['text' => 'Supprimer cet indicateur de la liste ? Ses valeurs seront conservées.', 'context' => 'Confirmation before hiding an indicator.'],
+            'stats.detail.confirm_archive_indicator' => ['text' => 'Archiver cet indicateur ? Il ne sera plus visible et ses valeurs seront conservees.', 'context' => 'Confirmation before archiving an indicator.'],
+            'stats.detail.confirm_delete_import' => ['text' => "Detacher cet indicateur de ce contexte ? L'indicateur original et ses valeurs seront conserves.", 'context' => 'Confirmation before removing only a contextual import.'],
+            'stats.detail.confirm_delete_group' => ['text' => 'Retirer ce groupe du contexte ?', 'context' => 'Confirmation before removing a contextual indicator group.'],
+            'stats.empty.contextual' => ['text' => "Aucun indicateur n'est encore défini dans ce contexte.", 'context' => 'Empty state for the contextual scope.'],
+            'stats.empty.children' => ['text' => "Aucun indicateur n'est encore défini dans ce contexte ou ses enfants directs.", 'context' => 'Empty state for the direct child scope.'],
+            'stats.empty.descendants' => ['text' => "Aucun indicateur n'est encore défini dans ce contexte ou ses descendants.", 'context' => 'Empty state for the descendants scope.'],
+            'stats.card.latest' => ['text' => 'Dernière valeur', 'context' => 'Label introducing the latest indicator value on a card.'],
+            'stats.empty.title' => ['text' => 'Aucun indicateur pour le moment', 'context' => 'Title for the indicators empty state.'],
+            'stats.card.no_value' => ['text' => 'Aucune valeur', 'context' => 'Card fallback when an indicator has no dated values.'],
+            'stats.card.value_count' => ['one' => '{count} valeur', 'other' => '{count} valeurs', 'context' => 'Count of dated values attached to an indicator.'],
+            'stats.card.context' => ['text' => 'Contexte', 'context' => 'Label for the holon owning an indicator.'],
+            'stats.card.imported' => ['text' => 'Importé', 'context' => 'Label on an indicator imported into the current context.'],
+            'stats.card.source_archived' => ['text' => 'Source indisponible', 'context' => 'Neutral status of an imported indicator whose source was archived or hidden.'],
+            'stats.card.source_archived_hint' => ['text' => "Cet indicateur importe n'est plus disponible. Choisissez un autre indicateur pour le remplacer.", 'context' => 'Explanation shown on an imported indicator whose source was archived.'],
+            'stats.card.group' => ['text' => 'Groupe', 'context' => 'Label on a composite indicator group card.'],
+            'stats.group.source.unknown' => ['text' => 'Indicateur #{id}', 'context' => 'Fallback name of a missing indicator in a combined chart.'],
+            'stats.group.source.archived' => ['text' => '{name} : source archivée, les données ne sont plus mises à jour.', 'context' => 'Archived source status on a combined indicator.'],
+            'stats.group.source.deleted' => ['text' => '{name} : source supprimée, les données combinées ne sont plus disponibles.', 'context' => 'Deleted source status on a combined indicator.'],
+            'stats.group.source.unavailable' => ['text' => '{name} : source inaccessible, les données combinées ne sont plus disponibles.', 'context' => 'Inaccessible source status on a combined indicator.'],
+            'stats.group.source.archived_short' => ['text' => 'Archivee', 'context' => 'Short archived source label in a combined indicator legend.'],
+            'stats.group.source.deleted_short' => ['text' => 'Supprimée', 'context' => 'Short deleted source label in a combined indicator legend.'],
+            'stats.group.chart.unavailable' => ['text' => 'Graphique indisponible : une source a été supprimée ou est inaccessible.', 'context' => 'Placeholder for a combined chart with a missing source.'],
+            'stats.card.member_count' => ['one' => '{count} indicateur', 'other' => '{count} indicateurs', 'context' => 'Number of indicators in a group.'],
+            'stats.card.overdue' => ['text' => 'Valeur dépassée', 'context' => 'Label shown when an indicator has passed its expected measurement deadline.'],
+            'stats.card.to_complete' => ['text' => 'À compléter', 'context' => 'Label shown when an indicator is due but still within its grace period.'],
+            'stats.card.overdue_days' => ['one' => 'En retard de {count} jour', 'other' => 'En retard de {count} jours', 'context' => 'Delay shown below the latest value label on an overdue indicator card.'],
+            'stats.card.open' => ['text' => "Ouvrir l'indicateur {name}", 'context' => 'Accessible label on an interactive indicator card or row.'],
+            'stats.column.indicator' => ['text' => 'Indicateur', 'context' => 'Compact list column for the indicator identity.'],
+            'stats.column.context' => ['text' => 'Contexte', 'context' => 'Compact list column for the owning context.'],
+            'stats.column.latest' => ['text' => 'Dernière valeur', 'context' => 'Compact list column for the latest value.'],
+            'stats.column.history' => ['text' => 'Historique', 'context' => 'Compact list column for the mini chart.'],
+            'stats.drawer.title' => ['text' => 'Indicateur', 'context' => 'Nested drawer title.'],
+            'stats.drawer.description' => ['text' => 'Graphique, valeurs et saisie manuelle.', 'context' => 'Nested drawer description.'],
+            'stats.loading' => ['text' => "Chargement de l'indicateur…", 'context' => 'Loading message in the nested drawer.'],
+            'stats.error.load' => ['text' => 'Impossible de charger cet indicateur.', 'context' => 'Generic nested drawer loading error.'],
+            'stats.error.organization' => ['text' => 'Organisation invalide ou inaccessible.', 'context' => 'Error shown when the organization context is invalid.'],
+            'stats.error.context' => ['text' => 'Contexte invalide ou inaccessible.', 'context' => 'Error shown when the holon context is invalid.'],
+            'stats.error.document_ethercalc' => ['text' => 'Le document Framacalc choisi est introuvable ou inaccessible.', 'context' => 'Validation error for an unavailable Framacalc document.'],
+            'stats.error.document_spreadsheet' => ['text' => 'Le document tableur choisi est introuvable ou inaccessible.', 'context' => 'Validation error for an unavailable spreadsheet document.'],
+            'stats.error.ethercalc_config' => ['text' => "Framacalc n'est pas configuré.", 'context' => 'Validation error when Framacalc is not configured.'],
+            'stats.error.ethercalc_cell' => ['text' => 'La cellule Framacalc doit être écrite sous la forme A1.', 'context' => 'Validation error for an invalid Framacalc cell reference.'],
+            'stats.error.spreadsheet_cell' => ['text' => 'La cellule du tableur doit être écrite sous la forme A1.', 'context' => 'Validation error for an invalid spreadsheet cell reference.'],
+            'stats.error.ethercalc_mode' => ['text' => 'Le mode de lecture Framacalc est invalide.', 'context' => 'Validation error for an invalid Framacalc reading mode.'],
+            'stats.error.spreadsheet_mode' => ['text' => 'Le mode de lecture du tableur est invalide.', 'context' => 'Validation error for an invalid spreadsheet reading mode.'],
+            'stats.error.columns_required' => ['text' => 'La plage, la colonne de date et au moins une colonne de valeur sont requises.', 'context' => 'Validation error for missing spreadsheet range or columns.'],
+            'stats.error.single_value_column_required' => ['text' => 'La plage, la colonne de date et une colonne de valeur sont requises.', 'context' => 'Validation error for missing single spreadsheet range or columns.'],
+            'stats.error.columns_in_range' => ['text' => 'Les colonnes de date et de valeurs doivent être incluses dans la plage.', 'context' => 'Validation error when selected spreadsheet columns are outside the range.'],
+            'stats.error.create_permission' => ['text' => 'Le droit de créer des indicateurs est requis pour ajouter des courbes.', 'context' => 'Authorization error when creating additional indicators is required.'],
+            'stats.error.ethercalc_synced' => ['text' => 'Les valeurs de cet indicateur sont synchronisées depuis Framacalc.', 'context' => 'Error shown when a Framacalc-backed indicator cannot be edited manually.'],
+            'stats.error.spreadsheet_synced' => ['text' => 'Les valeurs de cet indicateur sont synchronisées depuis un document tableur.', 'context' => 'Error shown when a spreadsheet-backed indicator cannot be edited manually.'],
+            'stats.error.not_found' => ['text' => 'Indicateur introuvable.', 'context' => 'Error shown when an indicator is unavailable.'],
+            'stats.error.forbidden' => ['text' => 'Vous ne pouvez pas modifier cet indicateur.', 'context' => 'Error shown when indicator edition is forbidden.'],
+            'stats.error.move_source' => ['text' => "Vous ne pouvez pas deplacer cet indicateur depuis son espace actuel.", 'context' => 'Error when indicator deletion permission at the source is missing.'],
+            'stats.error.move_target' => ['text' => "Destination invalide ou non autorisee pour la creation d'indicateurs.", 'context' => 'Error for an invalid or unauthorized indicator move destination.'],
+            'stats.error.method' => ['text' => 'Cette action doit être envoyée en POST.', 'context' => 'Error returned for a mutation using the wrong HTTP method.'],
+            'stats.error.action' => ['text' => 'Action inconnue.', 'context' => 'Error returned for an unsupported stats action.'],
+            'stats.error.name' => ['text' => "Le nom de l'indicateur est obligatoire.", 'context' => 'Validation error for a missing indicator name.'],
+            'stats.error.url' => ['text' => "L'URL doit commencer par http:// ou https://.", 'context' => 'Validation error for an unsafe source URL.'],
+            'stats.error.value' => ['text' => 'La valeur saisie est invalide.', 'context' => 'Validation error for a non numeric indicator value.'],
+            'stats.error.date' => ['text' => 'La date saisie est invalide.', 'context' => 'Validation error for an invalid measurement date.'],
+            'stats.error.reference_points' => ['text' => 'La courbe de référence doit contenir des points uniques entre 0 et 100 %.', 'context' => 'Validation error for malformed reference positions.'],
+            'stats.error.reference_endpoints' => ['text' => 'Les points à 0 % et 100 % sont obligatoires et doivent avoir une date.', 'context' => 'Validation error for missing dated reference endpoints.'],
+            'stats.error.reference_dates' => ['text' => 'La date de fin de la référence doit être postérieure à sa date de début.', 'context' => 'Validation error for inverted endpoint dates.'],
+            'stats.error.ceiling' => ['text' => "Tous les points d'un plafond doivent utiliser la même valeur.", 'context' => 'Validation error when a ceiling is not horizontal.'],
+            'stats.error.ceiling_value' => ['text' => 'La valeur du plafond est obligatoire.', 'context' => 'Validation error for a missing or invalid ceiling value.'],
+            'stats.error.chart_min_value' => ['text' => 'La valeur basse du graphique est invalide.', 'context' => 'Validation error for a malformed chart lower value.'],
+            'stats.error.save' => ['text' => "Impossible d'enregistrer l'indicateur.", 'context' => 'Generic indicator persistence error.'],
+            'stats.error.value_save' => ['text' => "Impossible d'enregistrer cette valeur.", 'context' => 'Generic indicator value persistence error.'],
+            'stats.error.selection' => ['text' => 'Sélectionnez au moins un indicateur visible.', 'context' => 'Validation error for an empty or invalid indicator selection.'],
+            'stats.error.group_name' => ['text' => 'Le nom du groupe est obligatoire.', 'context' => 'Validation error for a missing indicator group name.'],
+            'stats.error.schedule' => ['text' => 'Le rythme de mesure est invalide.', 'context' => 'Validation error for an invalid expected measurement frequency or moment.'],
+            'stats.detail.tab.chart' => ['text' => 'Graphique', 'context' => 'Tab showing the large chart.'],
+            'stats.detail.tab.description' => ['text' => 'Description', 'context' => 'Tab showing the indicator description.'],
+            'stats.detail.tab.values' => ['text' => 'Valeurs', 'context' => 'Tab showing dated values.'],
+            'stats.detail.source' => ['text' => 'Consulter la source', 'context' => 'External link to the indicator source.'],
+            'stats.detail.source_document' => ['text' => 'Afficher le document source', 'context' => 'Button revealing the collaborative document used by an automatic indicator.'],
+            'stats.detail.source_document_new_window' => ['text' => 'Ouvrir dans un nouvel onglet', 'context' => 'Fallback link opening an automatic indicator source document in a separate browser tab.'],
+            'stats.detail.source_document_title' => ['text' => 'Document source de l indicateur', 'context' => 'Accessible title for the embedded automatic indicator source document.'],
+            'stats.detail.reference' => ['text' => 'Référence', 'context' => 'Label for the reference type.'],
+            'stats.detail.reference_none' => ['text' => 'Sans courbe de référence', 'context' => 'Indicator reference type label for no reference.'],
+            'stats.detail.reference_ceiling' => ['text' => 'Plafond horizontal', 'context' => 'Indicator reference type label for ceiling.'],
+            'stats.detail.reference_objective' => ['text' => 'Objectif ou trajectoire', 'context' => 'Indicator reference type label for objective.'],
+            'stats.detail.latest' => ['text' => 'Valeur actuelle', 'context' => 'Label for the latest value in indicator detail.'],
+            'stats.responsibility.label' => ['text' => 'En charge', 'context' => 'Label preceding the role and directly assigned person for an indicator.'],
+            'stats.responsibility.unassigned' => ['text' => 'Non attribué', 'context' => 'Direct responsible person fallback for an indicator.'],
+            'stats.detail.frequency' => ['text' => 'Fréquence attendue', 'context' => 'Label for the expected measurement frequency in indicator detail.'],
+            'stats.detail.schedule' => ['text' => 'Moment attendu', 'context' => 'Label for the optional expected measurement moment in indicator detail.'],
+            'stats.detail.chart_min_value' => ['text' => 'Valeur basse', 'context' => 'Label for the optional lower chart value in indicator detail.'],
+            'stats.detail.cumulative' => ['text' => 'Cumul', 'context' => 'Legend label for the cumulative indicator curve.'],
+            'stats.detail.no_values' => ['text' => "Aucune valeur n'a encore été enregistrée.", 'context' => 'Empty state in the indicator value list.'],
+            'stats.detail.value_date' => ['text' => 'Date', 'context' => 'Heading for the dated value date.'],
+            'stats.detail.value' => ['text' => 'Valeur', 'context' => 'Heading for the dated value number.'],
+            'stats.detail.add_title' => ['text' => 'Ajouter la valeur du moment', 'context' => 'Heading above the quick value form.'],
+            'stats.detail.add_help' => ['text' => "La date et l'heure actuelles sont proposées automatiquement.", 'context' => 'Help below the quick value form heading.'],
+            'stats.detail.add' => ['text' => 'Ajouter la valeur', 'context' => 'Submit button for a new dated value.'],
+            'stats.detail.range.label' => ['text' => 'Période affichée', 'context' => 'Label above the interactive chart time range selector.'],
+            'stats.detail.range.start' => ['text' => 'Début de la période affichée', 'context' => 'Accessible label for the start handle of the chart time range selector.'],
+            'stats.detail.range.end' => ['text' => 'Fin de la période affichée', 'context' => 'Accessible label for the end handle of the chart time range selector.'],
+            'stats.detail.confirm_delete' => ['text' => 'Supprimer définitivement cette valeur ?', 'context' => 'Confirmation before deleting one value.'],
+            'stats.form.create_title' => ['text' => 'Nouvel indicateur', 'context' => 'Heading of the create indicator form.'],
+            'stats.form.edit_title' => ['text' => "Modifier l'indicateur", 'context' => 'Heading of the edit indicator form.'],
+            'stats.form.intro' => ['text' => 'Définissez la série et, si nécessaire, sa courbe de référence.', 'context' => 'Introductory copy in the indicator form.'],
+            'stats.form.responsible' => ['text' => 'Personne en charge', 'context' => 'Directly assigned person for an indicator.'],
+            'stats.form.responsible_none' => ['text' => 'Aucune personne', 'context' => 'Empty direct responsible person option for an indicator.'],
+            'stats.form.responsible_help' => ['text' => 'Si aucune personne n’est choisie, la responsabilité reste portée par l’espace associé.', 'context' => 'Help text for the indicator responsible user selector.'],
+            'stats.form.source_title' => ['text' => 'Source des valeurs', 'context' => 'Heading of the source choice in the indicator creation form.'],
+            'stats.form.source_help' => ['text' => 'Choisissez une saisie manuelle ou une source automatique.', 'context' => 'Help text for the source choice in the indicator creation form.'],
+            'stats.form.source_type' => ['text' => 'Type de source', 'context' => 'Label for the source type selector in the indicator creation form.'],
+            'stats.form.source_manual' => ['text' => 'Saisie manuelle', 'context' => 'Source type option for manually entered indicator values.'],
+            'stats.form.source_ethercalc_cell' => ['text' => 'Framacalc : cellule', 'context' => 'Source type option for a Framacalc cell.'],
+            'stats.form.source_ethercalc_table' => ['text' => 'Framacalc : tableau', 'context' => 'Source type option for a Framacalc table.'],
+            'stats.form.source_spreadsheet_cell' => ['text' => 'Document tableur : cellule', 'context' => 'Source type option for a spreadsheet document cell.'],
+            'stats.form.source_spreadsheet_table' => ['text' => 'Document tableur : tableau', 'context' => 'Source type option for a spreadsheet document table.'],
+            'stats.form.schedule_title' => ['text' => 'Rythme de mesure', 'context' => 'Heading of the expected measurement schedule editor.'],
+            'stats.form.schedule_help' => ['text' => "Définissez le rythme attendu. Le moment est facultatif : sans lui, le système pourra s'appuyer sur l'intervalle observé entre les mesures.", 'context' => 'Help text for optional measurement timing.'],
+            'stats.form.frequency' => ['text' => 'Fréquence', 'context' => 'Label for expected measurement frequency select.'],
+            'stats.form.schedule' => ['text' => 'Quand', 'context' => 'Label for expected measurement moment select.'],
+            'stats.frequency.none' => ['text' => 'Aucune fréquence définie', 'context' => 'Empty option for an indicator without expected measurement frequency.'],
+            'stats.frequency.daily' => ['text' => 'Chaque jour', 'context' => 'Expected measurement frequency option.'],
+            'stats.frequency.weekly' => ['text' => 'Chaque semaine', 'context' => 'Expected measurement frequency option.'],
+            'stats.frequency.monthly' => ['text' => 'Chaque mois', 'context' => 'Expected measurement frequency option.'],
+            'stats.frequency.quarterly' => ['text' => 'Chaque trimestre', 'context' => 'Expected measurement frequency option.'],
+            'stats.frequency.semiannual' => ['text' => 'Chaque semestre', 'context' => 'Expected measurement frequency option.'],
+            'stats.frequency.yearly' => ['text' => 'Chaque année', 'context' => 'Expected measurement frequency option.'],
+            'stats.schedule.none' => ['text' => 'Sans précision', 'context' => 'Empty option for the optional expected measurement moment.'],
+            'stats.schedule.month_day' => ['text' => 'Le {day}', 'context' => 'Day of month option for an expected monthly measurement.'],
+            'stats.schedule.weekday.1' => ['text' => 'Lundi', 'context' => 'Weekday option for an expected weekly measurement.'],
+            'stats.schedule.weekday.2' => ['text' => 'Mardi', 'context' => 'Weekday option for an expected weekly measurement.'],
+            'stats.schedule.weekday.3' => ['text' => 'Mercredi', 'context' => 'Weekday option for an expected weekly measurement.'],
+            'stats.schedule.weekday.4' => ['text' => 'Jeudi', 'context' => 'Weekday option for an expected weekly measurement.'],
+            'stats.schedule.weekday.5' => ['text' => 'Vendredi', 'context' => 'Weekday option for an expected weekly measurement.'],
+            'stats.schedule.weekday.6' => ['text' => 'Samedi', 'context' => 'Weekday option for an expected weekly measurement.'],
+            'stats.schedule.weekday.7' => ['text' => 'Dimanche', 'context' => 'Weekday option for an expected weekly measurement.'],
+            'stats.schedule.quarter.1' => ['text' => 'Janvier, avril, juillet, octobre', 'context' => 'Quarter cycle option for an expected quarterly measurement.'],
+            'stats.schedule.quarter.2' => ['text' => 'Février, mai, août, novembre', 'context' => 'Quarter cycle option for an expected quarterly measurement.'],
+            'stats.schedule.quarter.3' => ['text' => 'Mars, juin, septembre, décembre', 'context' => 'Quarter cycle option for an expected quarterly measurement.'],
+            'stats.schedule.semester.1' => ['text' => 'Janvier, juillet', 'context' => 'Semester cycle option for an expected semiannual measurement.'],
+            'stats.schedule.semester.2' => ['text' => 'Février, août', 'context' => 'Semester cycle option for an expected semiannual measurement.'],
+            'stats.schedule.semester.3' => ['text' => 'Mars, septembre', 'context' => 'Semester cycle option for an expected semiannual measurement.'],
+            'stats.schedule.semester.4' => ['text' => 'Avril, octobre', 'context' => 'Semester cycle option for an expected semiannual measurement.'],
+            'stats.schedule.semester.5' => ['text' => 'Mai, novembre', 'context' => 'Semester cycle option for an expected semiannual measurement.'],
+            'stats.schedule.semester.6' => ['text' => 'Juin, décembre', 'context' => 'Semester cycle option for an expected semiannual measurement.'],
+            'stats.schedule.month.1' => ['text' => 'Janvier', 'context' => 'Month option for an expected yearly measurement.'],
+            'stats.schedule.month.2' => ['text' => 'Février', 'context' => 'Month option for an expected yearly measurement.'],
+            'stats.schedule.month.3' => ['text' => 'Mars', 'context' => 'Month option for an expected yearly measurement.'],
+            'stats.schedule.month.4' => ['text' => 'Avril', 'context' => 'Month option for an expected yearly measurement.'],
+            'stats.schedule.month.5' => ['text' => 'Mai', 'context' => 'Month option for an expected yearly measurement.'],
+            'stats.schedule.month.6' => ['text' => 'Juin', 'context' => 'Month option for an expected yearly measurement.'],
+            'stats.schedule.month.7' => ['text' => 'Juillet', 'context' => 'Month option for an expected yearly measurement.'],
+            'stats.schedule.month.8' => ['text' => 'Août', 'context' => 'Month option for an expected yearly measurement.'],
+            'stats.schedule.month.9' => ['text' => 'Septembre', 'context' => 'Month option for an expected yearly measurement.'],
+            'stats.schedule.month.10' => ['text' => 'Octobre', 'context' => 'Month option for an expected yearly measurement.'],
+            'stats.schedule.month.11' => ['text' => 'Novembre', 'context' => 'Month option for an expected yearly measurement.'],
+            'stats.schedule.month.12' => ['text' => 'Décembre', 'context' => 'Month option for an expected yearly measurement.'],
+            'stats.form.reference_title' => ['text' => 'Courbe de référence', 'context' => 'Heading of the reference point editor.'],
+            'stats.form.reference_help' => ['text' => 'Les extrémités datées utilisent 0 % et 100 %. Les dates intermédiaires sont calculées selon la position du point.', 'context' => 'Help text for the reference point editor.'],
+            'stats.form.reference_none' => ['text' => 'Aucune référence', 'context' => 'Reference type select option for none.'],
+            'stats.form.reference_ceiling' => ['text' => 'Plafond horizontal', 'context' => 'Reference type select option for ceiling.'],
+            'stats.form.reference_objective' => ['text' => 'Objectif ou trajectoire', 'context' => 'Reference type select option for objective.'],
+            'stats.form.reference_scale' => ['text' => 'Échelle de la référence', 'context' => 'Label for the reference scale choice shown with cumulative indicators.'],
+            'stats.form.reference_scale_value' => ['text' => 'Valeurs', 'context' => 'Reference scale option placing the reference on the measured values axis.'],
+            'stats.form.reference_scale_cumulative' => ['text' => 'Cumul', 'context' => 'Reference scale option placing the reference on the cumulative values axis.'],
+            'stats.form.ceiling_title' => ['text' => 'Plafond', 'context' => 'Heading of the simple ceiling reference editor.'],
+            'stats.form.ceiling_help' => ['text' => 'Saisissez une valeur unique. Le repère sera affiché sur toute la période visible du graphique.', 'context' => 'Help text for the simple ceiling reference editor.'],
+            'stats.form.ceiling_value' => ['text' => 'Valeur du plafond', 'context' => 'Label for the simple ceiling value input.'],
+            'stats.form.position' => ['text' => 'Position (%)', 'context' => 'Reference point editor position label.'],
+            'stats.form.point_date' => ['text' => 'Date', 'context' => 'Reference point editor endpoint date label.'],
+            'stats.form.point_date_auto' => ['text' => 'Date calculée', 'context' => 'Reference point editor calculated intermediate date label.'],
+            'stats.form.point_value' => ['text' => 'Valeur', 'context' => 'Reference point editor value label.'],
+            'stats.form.add_point' => ['text' => 'Ajouter un point', 'context' => 'Button adding an intermediate reference point.'],
+            'stats.form.remove_point' => ['text' => 'Retirer', 'context' => 'Button removing an intermediate reference point.'],
+            'stats.form.endpoint' => ['text' => 'Extrémité datée', 'context' => 'Badge shown on reference curve endpoint rows.'],
+            'stats.form.intermediate' => ['text' => 'Point intermédiaire', 'context' => 'Badge shown on intermediate reference curve rows.'],
+            'stats.chart.empty' => ['text' => 'Pas encore de données à représenter.', 'context' => 'Empty chart message.'],
+            'stats.chart.tooltip.value' => ['text' => 'Valeur', 'context' => 'Tooltip label for a chart point value.'],
+            'stats.chart.tooltip.cumulative' => ['text' => 'Cumul', 'context' => 'Tooltip label for a cumulative chart point.'],
+            'stats.chart.tooltip.date' => ['text' => 'Date', 'context' => 'Tooltip label for a chart point date.'],
+            'stats.import.title' => ['text' => 'Importer un indicateur', 'context' => 'Title of the indicator import picker modal.'],
+            'stats.import.edit_title' => ['text' => 'Modifier la source importée', 'context' => 'Title of the indicator import edit picker modal.'],
+            'stats.import.source_indicators' => ['text' => 'Indicateurs existants', 'context' => 'Tab label for importing an existing OMO indicator.'],
+            'stats.import.source_ethercalc' => ['text' => 'Framacalc', 'context' => 'Tab label for the EtherCalc spreadsheet source prototype.'],
+            'stats.import.source_spreadsheet' => ['text' => 'Documents tableurs', 'context' => 'Tab label for uploaded spreadsheet documents used as indicator sources.'],
+            'stats.import.search' => ['text' => 'Rechercher', 'context' => 'Label for the indicator picker search field.'],
+            'stats.import.search_placeholder' => ['text' => 'Nom ou contexte', 'context' => 'Placeholder for the indicator picker search field.'],
+            'stats.import.visible' => ['text' => 'Indicateurs visibles', 'context' => 'Label for the indicator picker result list.'],
+            'stats.import.ethercalc.document' => ['text' => 'Document Framacalc', 'context' => 'Label for the EtherCalc document picker in the indicator import prototype.'],
+            'stats.import.ethercalc.no_documents' => ['text' => 'Aucun tableur collaboratif visible dans cette organisation.', 'context' => 'Empty state for the EtherCalc document picker in the indicator import prototype.'],
+            'stats.import.ethercalc.mode' => ['text' => 'Mode de lecture', 'context' => 'Label for the EtherCalc reading mode selector in the indicator import prototype.'],
+            'stats.import.ethercalc.mode_cell' => ['text' => 'Lire une cellule', 'context' => 'Option reading one EtherCalc cell in the indicator import prototype.'],
+            'stats.import.ethercalc.mode_table' => ['text' => 'Lire un tableau', 'context' => 'Option reading an EtherCalc data table in the indicator import prototype.'],
+            'stats.import.ethercalc.cell' => ['text' => 'Cellule', 'context' => 'Label for the EtherCalc cell reference in the indicator import prototype.'],
+            'stats.import.ethercalc.frequency' => ['text' => 'Fréquence', 'context' => 'Label for the EtherCalc read schedule in the indicator import prototype.'],
+            'stats.import.ethercalc.frequency_measurement' => ['text' => 'Rythme de mesure', 'context' => 'Label for the schedule of a single EtherCalc cell source.'],
+            'stats.import.ethercalc.frequency_sync' => ['text' => 'Fréquence de synchronisation', 'context' => 'Label for the EtherCalc table refresh schedule.'],
+            'stats.import.ethercalc.frequency_hourly' => ['text' => 'Toutes les heures', 'context' => 'Hourly EtherCalc read schedule option in the indicator import prototype.'],
+            'stats.import.ethercalc.frequency_daily' => ['text' => 'Chaque jour', 'context' => 'Daily EtherCalc read schedule option in the indicator import prototype.'],
+            'stats.import.ethercalc.frequency_weekly' => ['text' => 'Chaque semaine', 'context' => 'Weekly EtherCalc read schedule option in the indicator import prototype.'],
+            'stats.import.ethercalc.frequency_monthly' => ['text' => 'Chaque mois', 'context' => 'Monthly EtherCalc read schedule option in the indicator import prototype.'],
+            'stats.import.ethercalc.frequency_quarterly' => ['text' => 'Chaque trimestre', 'context' => 'Quarterly EtherCalc read schedule option in the indicator import prototype.'],
+            'stats.import.ethercalc.frequency_semiannual' => ['text' => 'Chaque semestre', 'context' => 'Semiannual EtherCalc read schedule option in the indicator import prototype.'],
+            'stats.import.ethercalc.frequency_yearly' => ['text' => 'Chaque année', 'context' => 'Yearly EtherCalc read schedule option in the indicator import prototype.'],
+            'stats.import.ethercalc.range' => ['text' => 'Plage de données', 'context' => 'Label for the EtherCalc table range in the indicator import prototype.'],
+            'stats.import.ethercalc.date_column' => ['text' => 'Colonne de date', 'context' => 'Label for the EtherCalc date column in the indicator import prototype.'],
+            'stats.import.ethercalc.value_columns' => ['text' => 'Colonnes de valeurs', 'context' => 'Label for the EtherCalc value columns in the indicator import prototype.'],
+            'stats.import.ethercalc.table_help' => ['text' => 'La plage doit inclure une colonne de dates et une ou plusieurs colonnes de valeurs.', 'context' => 'Help text for the EtherCalc table import prototype.'],
+            'stats.import.ethercalc.prototype_action' => ['text' => 'Tester la configuration', 'context' => 'Action label for the EtherCalc import prototype.'],
+            'stats.import.ethercalc.prototype_notice' => ['text' => "La configuration Framacalc permet de créer des indicateurs à partir d'une cellule ou d'un tableau.", 'context' => 'Notice shown when submitting the EtherCalc import prototype.'],
+            'stats.import.ethercalc.name' => ['text' => "Nom de l'indicateur", 'context' => 'Label for the EtherCalc indicator name or table name prefix.'],
+            'stats.import.ethercalc.create_action' => ['text' => 'Créer les indicateurs', 'context' => 'Action label creating EtherCalc-backed indicators.'],
+            'stats.import.spreadsheet.document' => ['text' => 'Document tableur', 'context' => 'Label for the uploaded spreadsheet document picker.'],
+            'stats.import.spreadsheet.no_documents' => ['text' => "Aucun document tableur compatible n'est visible dans cette organisation.", 'context' => 'Empty state for the uploaded spreadsheet document picker.'],
+            'stats.import.spreadsheet.sheet' => ['text' => 'Feuille', 'context' => 'Worksheet name for an uploaded spreadsheet source.'],
+            'stats.import.spreadsheet.mode' => ['text' => 'Mode de lecture', 'context' => 'Label for the spreadsheet reading mode selector.'],
+            'stats.import.spreadsheet.mode_cell' => ['text' => 'Lire une cellule', 'context' => 'Option reading one spreadsheet cell.'],
+            'stats.import.spreadsheet.mode_table' => ['text' => 'Lire un tableau', 'context' => 'Option importing a spreadsheet data table.'],
+            'stats.import.spreadsheet.name' => ['text' => "Nom de l'indicateur", 'context' => 'Label for the spreadsheet indicator name or table name prefix.'],
+            'stats.import.spreadsheet.cell' => ['text' => 'Cellule', 'context' => 'Label for the spreadsheet cell reference.'],
+            'stats.import.spreadsheet.frequency' => ['text' => 'Fréquence de synchronisation', 'context' => 'Label for the spreadsheet read schedule.'],
+            'stats.import.spreadsheet.frequency_measurement' => ['text' => 'Rythme de mesure', 'context' => 'Label for the schedule of a single spreadsheet cell source.'],
+            'stats.import.spreadsheet.frequency_sync' => ['text' => 'Fréquence de synchronisation', 'context' => 'Label for the spreadsheet table refresh schedule.'],
+            'stats.import.spreadsheet.frequency_hourly' => ['text' => 'Toutes les heures', 'context' => 'Hourly spreadsheet read schedule option.'],
+            'stats.import.spreadsheet.frequency_daily' => ['text' => 'Chaque jour', 'context' => 'Daily spreadsheet read schedule option.'],
+            'stats.import.spreadsheet.frequency_weekly' => ['text' => 'Chaque semaine', 'context' => 'Weekly spreadsheet read schedule option.'],
+            'stats.import.spreadsheet.frequency_monthly' => ['text' => 'Chaque mois', 'context' => 'Monthly spreadsheet read schedule option.'],
+            'stats.import.spreadsheet.frequency_quarterly' => ['text' => 'Chaque trimestre', 'context' => 'Quarterly spreadsheet read schedule option.'],
+            'stats.import.spreadsheet.frequency_semiannual' => ['text' => 'Chaque semestre', 'context' => 'Semiannual spreadsheet read schedule option.'],
+            'stats.import.spreadsheet.frequency_yearly' => ['text' => 'Chaque année', 'context' => 'Yearly spreadsheet read schedule option.'],
+            'stats.import.spreadsheet.range' => ['text' => 'Plage de données', 'context' => 'Label for the spreadsheet table range.'],
+            'stats.import.spreadsheet.date_column' => ['text' => 'Colonne de date', 'context' => 'Label for the spreadsheet date column.'],
+            'stats.import.spreadsheet.value_columns' => ['text' => 'Colonnes de valeurs', 'context' => 'Label for the spreadsheet value columns.'],
+            'stats.import.spreadsheet.table_help' => ['text' => 'La plage doit inclure une colonne de dates et une ou plusieurs colonnes de valeurs.', 'context' => 'Help text for the spreadsheet table source.'],
+            'stats.import.spreadsheet.create_action' => ['text' => 'Créer les indicateurs', 'context' => 'Action label creating spreadsheet-backed indicators.'],
+            'stats.import.spreadsheet.source_title' => ['text' => 'Source document tableur', 'context' => 'Heading for the spreadsheet source editor inside an indicator form.'],
+            'stats.import.spreadsheet.value_column' => ['text' => 'Colonne de valeur', 'context' => 'Label for one spreadsheet table value column.'],
+            'stats.import.ethercalc.source_title' => ['text' => 'Source Framacalc', 'context' => 'Heading for the EtherCalc source editor inside an indicator form.'],
+            'stats.import.ethercalc.value_column' => ['text' => 'Colonne de valeur', 'context' => 'Label for one EtherCalc table value column.'],
+            'stats.group.title' => ['text' => 'Grouper des indicateurs', 'context' => 'Title of the indicator group picker modal.'],
+            'stats.group.edit_title' => ['text' => 'Modifier le groupe', 'context' => 'Title of the indicator group edit picker modal.'],
+            'stats.group.name' => ['text' => 'Nom du groupe', 'context' => 'Label for the indicator group name.'],
+            'stats.group.name_help' => ['text' => 'Donnez un nom qui permet de comprendre rapidement ce que les indicateurs ont en commun.', 'context' => 'Help for the indicator group name.'],
+            'stats.group.indicators' => ['text' => 'Indicateurs du groupe', 'context' => 'Heading for the indicator selection in a group editor.'],
+            'stats.group.indicators_help' => ['text' => 'Recherchez puis selectionnez les indicateurs a afficher ensemble. Utilisez Ctrl ou Cmd pour modifier plusieurs choix.', 'context' => 'Help for selecting group indicators.'],
+            'stats.group.mode' => ['text' => 'Affichage', 'context' => 'Label for the group chart display mode.'],
+            'stats.group.mode_help' => ['text' => 'Superpose les courbes pour les comparer, ou additionne les valeurs pour afficher un total.', 'context' => 'Help for the group display mode.'],
+            'stats.group.hide_same_holon_sources' => ['text' => 'Masquer les indicateurs dans le même espace', 'context' => 'Checkbox hiding a group sources only when they belong to the group space.'],
+            'stats.group.hide_same_holon_sources_help' => ['text' => 'Masque les courbes individuelles lorsque le groupe et ses indicateurs appartiennent au même espace.', 'context' => 'Help for hiding same space group sources.'],
+            'stats.group.chart' => ['text' => 'Graphique', 'context' => 'Heading for the group chart settings.'],
+            'stats.group.chart_min_value_help' => ['text' => 'Laissez vide pour que la valeur basse soit calculée automatiquement.', 'context' => 'Help for the group chart lower value.'],
+            'stats.group.reference_type' => ['text' => 'Référence', 'context' => 'Label for the group reference type.'],
+            'stats.group.reference_type_help' => ['text' => 'Choisissez un plafond horizontal ou une courbe objectif a suivre dans le graphique.', 'context' => 'Help for the group reference type.'],
+            'stats.group.mode.overlay' => ['text' => 'Courbes superposées', 'context' => 'Group chart mode drawing one curve per indicator.'],
+            'stats.group.mode.sum' => ['text' => 'Somme des valeurs', 'context' => 'Group chart mode aggregating indicator values.'],
+            'stats.group.detail.sources' => ['text' => 'Indicateurs sources', 'context' => 'Heading above the source indicator legend in a group detail.'],
+            'stats.group.detail.sum' => ['text' => 'Somme calculée', 'context' => 'Legend label for the main aggregated group curve.'],
+        ];
+    }
+}
+
+if (!function_exists('omoStatsLoadTranslationBundle')) {
+    function omoStatsLoadTranslationBundle()
+    {
+        static $bundle = null;
+        if (is_array($bundle)) {
+            return $bundle;
+        }
+
+        $bundle = omoLoadTranslationBundle('omo_stats', omoStatsSourceLang());
+        return $bundle;
+    }
+}
+
+if (!function_exists('omoStatsT')) {
+    function omoStatsT($key, array $replace = [])
+    {
+        return t($key, $replace, omoStatsLoadTranslationBundle(), omoStatsSourceLang());
+    }
+}
+
+if (!function_exists('omoStatsMeasurementFrequencyLabel')) {
+    function omoStatsMeasurementFrequencyLabel($frequency)
+    {
+        if ($frequency instanceof StatIndicator) {
+            $frequency = $frequency->getEffectiveMeasurementFrequency();
+        }
+        $frequency = StatIndicator::normalizeMeasurementFrequency($frequency);
+        return $frequency === null ? omoStatsT('stats.frequency.none') : omoStatsT('stats.frequency.' . $frequency);
+    }
+}
+
+if (!function_exists('omoStatsMeasurementFrequencyRank')) {
+    function omoStatsMeasurementFrequencyRank($frequency)
+    {
+        if ($frequency instanceof StatIndicator) {
+            $frequency = $frequency->getEffectiveMeasurementFrequency();
+        }
+        $frequency = StatIndicator::normalizeMeasurementFrequency($frequency);
+        $ranks = [
+            StatIndicator::FREQUENCY_DAILY => 10,
+            StatIndicator::FREQUENCY_WEEKLY => 20,
+            StatIndicator::FREQUENCY_MONTHLY => 30,
+            StatIndicator::FREQUENCY_QUARTERLY => 40,
+            StatIndicator::FREQUENCY_SEMIANNUAL => 50,
+            StatIndicator::FREQUENCY_YEARLY => 60,
+        ];
+        return $frequency !== null && isset($ranks[$frequency]) ? $ranks[$frequency] : 70;
+    }
+}
+
+if (!function_exists('omoStatsMeasurementScheduleOptions')) {
+    function omoStatsMeasurementScheduleOptions($frequency)
+    {
+        $frequency = StatIndicator::normalizeMeasurementFrequency($frequency);
+        if ($frequency === null) {
+            return [];
+        }
+
+        $options = [['value' => '', 'label' => omoStatsT('stats.schedule.none')]];
+        if ($frequency === StatIndicator::FREQUENCY_DAILY) {
+            for ($hour = 0; $hour < 24; $hour++) {
+                $time = str_pad((string)$hour, 2, '0', STR_PAD_LEFT) . ':00';
+                $options[] = ['value' => $time, 'label' => $time];
+            }
+            return $options;
+        }
+        if ($frequency === StatIndicator::FREQUENCY_WEEKLY) {
+            for ($day = 1; $day <= 7; $day++) {
+                $options[] = ['value' => (string)$day, 'label' => omoStatsT('stats.schedule.weekday.' . $day)];
+            }
+            return $options;
+        }
+        if ($frequency === StatIndicator::FREQUENCY_MONTHLY) {
+            for ($day = 1; $day <= 31; $day++) {
+                $options[] = ['value' => (string)$day, 'label' => omoStatsT('stats.schedule.month_day', ['day' => $day])];
+            }
+            return $options;
+        }
+        if ($frequency === StatIndicator::FREQUENCY_QUARTERLY) {
+            for ($month = 1; $month <= 3; $month++) {
+                $options[] = ['value' => (string)$month, 'label' => omoStatsT('stats.schedule.quarter.' . $month)];
+            }
+            return $options;
+        }
+        if ($frequency === StatIndicator::FREQUENCY_SEMIANNUAL) {
+            for ($month = 1; $month <= 6; $month++) {
+                $options[] = ['value' => (string)$month, 'label' => omoStatsT('stats.schedule.semester.' . $month)];
+            }
+            return $options;
+        }
+        for ($month = 1; $month <= 12; $month++) {
+            $options[] = ['value' => (string)$month, 'label' => omoStatsT('stats.schedule.month.' . $month)];
+        }
+        return $options;
+    }
+}
+
+if (!function_exists('omoStatsMeasurementScheduleLabel')) {
+    function omoStatsMeasurementScheduleLabel($frequency, $schedule)
+    {
+        $schedule = StatIndicator::normalizeMeasurementSchedule($frequency, $schedule);
+        if ($schedule === null) {
+            return '';
+        }
+        foreach (omoStatsMeasurementScheduleOptions($frequency) as $option) {
+            if ((string)$option['value'] === $schedule) {
+                return (string)$option['label'];
+            }
+        }
+        return '';
+    }
+}
+
+if (!function_exists('omoStatsGetIndicatorMeasurementTimestamps')) {
+    function omoStatsGetIndicatorMeasurementTimestamps(StatIndicator $indicator)
+    {
+        $timestamps = [];
+        foreach ($indicator->getMeasurements() as $measurement) {
+            if (!($measurement instanceof StatIndicatorValue)) {
+                continue;
+            }
+            $measuredAt = $measurement->get('measured_at');
+            if ($measuredAt instanceof DateTimeInterface && is_numeric($measurement->get('value'))) {
+                $timestamps[] = $measuredAt->getTimestamp();
+            }
+        }
+        sort($timestamps, SORT_NUMERIC);
+        return $timestamps;
+    }
+}
+
+if (!function_exists('omoStatsBuildMeasurementDueDate')) {
+    function omoStatsBuildMeasurementDueDate($frequency, $schedule, DateTimeImmutable $now)
+    {
+        return \dbObject\RecurrenceSchedule::getPreviousOccurrence($frequency, $schedule, $now);
+    }
+}
+
+if (!function_exists('omoStatsGetIndicatorOverdueInfo')) {
+    function omoStatsGetIndicatorOverdueInfo(StatIndicator $indicator, ?DateTimeInterface $referenceDate = null): array
+    {
+        $emptyResult = [
+            'is_overdue' => false,
+            'severity' => 'none',
+            'overdue_days' => 0,
+            'overdue_seconds' => 0,
+            'period_seconds' => 0,
+        ];
+        $frequency = $indicator->getEffectiveMeasurementFrequency();
+        if ($frequency === null) {
+            return $emptyResult;
+        }
+
+        $now = $referenceDate instanceof DateTimeInterface
+            ? DateTimeImmutable::createFromInterface($referenceDate)
+            : new DateTimeImmutable('now');
+        $timestamps = omoStatsGetIndicatorMeasurementTimestamps($indicator);
+        $schedule = StatIndicator::normalizeMeasurementSchedule($frequency, $indicator->get('measurement_schedule'));
+        $periodModifiers = [
+            StatIndicator::FREQUENCY_DAILY => '+1 day',
+            StatIndicator::FREQUENCY_WEEKLY => '+1 week',
+            StatIndicator::FREQUENCY_MONTHLY => '+1 month',
+            StatIndicator::FREQUENCY_QUARTERLY => '+3 months',
+            StatIndicator::FREQUENCY_SEMIANNUAL => '+6 months',
+            StatIndicator::FREQUENCY_YEARLY => '+1 year',
+        ];
+        $graceModifiers = [
+            StatIndicator::FREQUENCY_DAILY => '+1 hour',
+            StatIndicator::FREQUENCY_WEEKLY => '+1 day',
+            StatIndicator::FREQUENCY_MONTHLY => '+1 week',
+            StatIndicator::FREQUENCY_QUARTERLY => '+1 month',
+            StatIndicator::FREQUENCY_SEMIANNUAL => '+1 month',
+            StatIndicator::FREQUENCY_YEARLY => '+1 month',
+        ];
+        if (!isset($periodModifiers[$frequency], $graceModifiers[$frequency])) {
+            return $emptyResult;
+        }
+
+        $dueDate = null;
+        $isOverdue = false;
+        if ($schedule !== null) {
+            $dueDate = omoStatsBuildMeasurementDueDate($frequency, $schedule, $now);
+            $isOverdue = $dueDate instanceof DateTimeInterface
+                && (count($timestamps) === 0 || end($timestamps) < $dueDate->getTimestamp());
+        } elseif (count($timestamps) > 0) {
+            $latestTimestamp = $timestamps[count($timestamps) - 1];
+            $latestDate = DateTimeImmutable::createFromFormat('U', (string)$latestTimestamp, $now->getTimezone());
+            if ($latestDate instanceof DateTimeImmutable) {
+                $dueDate = $latestDate->modify($periodModifiers[$frequency]);
+                $isOverdue = $now->getTimestamp() > $dueDate->getTimestamp();
+            }
+        }
+
+        if (!$isOverdue || !($dueDate instanceof DateTimeInterface)) {
+            return $emptyResult;
+        }
+
+        $overdueSeconds = max(0, $now->getTimestamp() - $dueDate->getTimestamp());
+        $periodEnd = $dueDate->modify($periodModifiers[$frequency]);
+        $periodSeconds = max(1, $periodEnd->getTimestamp() - $dueDate->getTimestamp());
+        $graceEnd = $dueDate->modify($graceModifiers[$frequency]);
+        $severity = $now->getTimestamp() < $graceEnd->getTimestamp() ? 'warning' : 'error';
+
+        return [
+            'is_overdue' => true,
+            'severity' => $severity,
+            'overdue_days' => $severity === 'error' ? max(1, (int)ceil($overdueSeconds / 86400)) : 0,
+            'overdue_seconds' => $overdueSeconds,
+            'period_seconds' => $periodSeconds,
+        ];
+    }
+}
+
+if (!function_exists('omoStatsIsIndicatorOverdue')) {
+    function omoStatsIsIndicatorOverdue(StatIndicator $indicator, ?DateTimeInterface $referenceDate = null)
+    {
+        return omoStatsGetIndicatorOverdueInfo($indicator, $referenceDate)['is_overdue'];
+    }
+}
+
+if (!function_exists('omoStatsGetGroupSourceAvailability')) {
+    function omoStatsGetGroupSourceAvailability(StatIndicatorGroup $group): array
+    {
+        $sources = [];
+        $issues = [];
+        $cutoffTimestamp = null;
+        $status = 'current';
+        foreach ($group->getItems() as $item) {
+            if (!($item instanceof StatIndicatorGroupItem)) {
+                continue;
+            }
+            $sourceId = (int)$item->get('IDstatindicator');
+            $indicator = $item->getIndicator();
+            if (!($indicator instanceof StatIndicator)) {
+                $issues[] = ['id' => $sourceId, 'status' => 'deleted', 'name' => omoStatsT('stats.group.source.unknown', ['id' => $sourceId])];
+                $status = 'unavailable';
+                continue;
+            }
+            if (!$indicator->canView()) {
+                $issues[] = ['id' => $sourceId, 'status' => 'unavailable', 'name' => omoStatsT('stats.group.source.unknown', ['id' => $sourceId])];
+                $status = 'unavailable';
+                continue;
+            }
+            $sources[] = $indicator;
+            if ((int)$indicator->get('active') === 1) {
+                continue;
+            }
+            $name = trim((string)$indicator->get('name'));
+            if ($name === '') {
+                $name = omoStatsT('stats.group.source.unknown', ['id' => $sourceId]);
+            }
+            $archivedAt = $indicator->get('archived_at');
+            if ($archivedAt instanceof DateTimeInterface) {
+                $issues[] = ['id' => $sourceId, 'status' => 'archived', 'name' => $name];
+                $cutoffTimestamp = $cutoffTimestamp === null
+                    ? $archivedAt->getTimestamp()
+                    : min($cutoffTimestamp, $archivedAt->getTimestamp());
+                if ($status === 'current') {
+                    $status = 'archived';
+                }
+            } else {
+                $issues[] = ['id' => $sourceId, 'status' => 'deleted', 'name' => $name];
+                $status = 'unavailable';
+            }
+        }
+        return ['status' => $status, 'sources' => $sources, 'issues' => $issues, 'cutoffTimestamp' => $cutoffTimestamp];
+    }
+}
+
+if (!function_exists('omoStatsGroupSourceMessages')) {
+    function omoStatsGroupSourceMessages(array $availability): array
+    {
+        $messages = [];
+        foreach ($availability['issues'] ?? [] as $issue) {
+            $messages[] = omoStatsT('stats.group.source.' . $issue['status'], ['name' => $issue['name']]);
+        }
+        return $messages;
+    }
+}
+
+if (!function_exists('omoStatsGetGroupOverdueInfo')) {
+    function omoStatsGetGroupOverdueInfo(StatIndicatorGroup $group, ?DateTimeInterface $referenceDate = null, ?array $availability = null): array
+    {
+        $availability = $availability ?? omoStatsGetGroupSourceAvailability($group);
+        if ($availability['status'] !== 'current') {
+            return ['is_overdue' => false, 'severity' => 'none'];
+        }
+        $severity = 'none';
+        foreach ($availability['sources'] as $indicator) {
+            $indicatorSeverity = omoStatsGetIndicatorOverdueInfo($indicator, $referenceDate)['severity'];
+            if ($indicatorSeverity === 'error') {
+                $severity = 'error';
+                break;
+            }
+            if ($indicatorSeverity === 'warning') {
+                $severity = 'warning';
+            }
+        }
+        return [
+            'is_overdue' => $severity !== 'none',
+            'severity' => $severity,
+        ];
+    }
+}
+
+if (!function_exists('omoStatsIsGroupOverdue')) {
+    function omoStatsIsGroupOverdue(StatIndicatorGroup $group, ?DateTimeInterface $referenceDate = null)
+    {
+        return omoStatsGetGroupOverdueInfo($group, $referenceDate)['is_overdue'];
+    }
+}
+
+if (!function_exists('omoStatsResolveContext')) {
+    function omoStatsResolveContext($organizationId, $currentHolonId = 0)
+    {
+        $organizationId = (int)$organizationId;
+        $currentHolonId = (int)$currentHolonId;
+        $organization = new Organization();
+
+        if ($organizationId <= 0 || !$organization->load($organizationId) || !$organization->canViewDetail()) {
+            return ['status' => false, 'message' => omoStatsT('stats.error.organization')];
+        }
+
+        $rootHolon = $organization->getEnabledStructuralRootHolon();
+        $currentHolon = $rootHolon instanceof Holon ? $rootHolon : null;
+
+        if ($currentHolonId > 0) {
+            $candidate = new Holon();
+            if (
+                !$candidate->load($currentHolonId)
+                || !($rootHolon instanceof Holon)
+                || !$candidate->isDescendantOf((int)$rootHolon->getId(), true)
+                || !$candidate->canViewDetail()
+            ) {
+                return ['status' => false, 'message' => omoStatsT('stats.error.context')];
+            }
+
+            $currentHolon = $candidate;
+        }
+
+        return [
+            'status' => true,
+            'organization' => $organization,
+            'rootHolon' => $rootHolon instanceof Holon ? $rootHolon : null,
+            'currentHolon' => $currentHolon,
+        ];
+    }
+}
+
+if (!function_exists('omoStatsCanManageContext')) {
+    function omoStatsCanManageContext(array $context)
+    {
+        $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
+        if ($currentUserId <= 0) {
+            return false;
+        }
+
+        $currentHolon = $context['currentHolon'] ?? null;
+        if ($currentHolon instanceof Holon) {
+            return omoStatsCanUsePermission($currentHolon, 'CAN_EDIT_INDICATOR', $context);
+        }
+
+        $organization = $context['organization'] ?? null;
+        return $organization instanceof Organization && (\dbObject\Permission::userCanInOrganization('CAN_EDIT_INDICATOR', (int)$organization->getId(), $currentUserId));
+    }
+}
+
+if (!function_exists('omoStatsCanUsePermission')) {
+    function omoStatsCanUsePermission(Holon $holon, string $permissionKey, array $context): bool
+    {
+        $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
+        if ($currentUserId <= 0) {
+            return false;
+        }
+
+        $useSessionCache = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST';
+        return $holon->isAllowed($permissionKey, $useSessionCache, $currentUserId)
+            || commonPvMeetingCanUseCollectivePermission($context['pvMeetingPermission'] ?? null, $holon, $permissionKey);
+    }
+}
+
+if (!function_exists('omoStatsCanEditIndicator')) {
+    function omoStatsCanEditIndicator(StatIndicator $indicator, array $context): bool
+    {
+        if ($indicator->canEdit()) {
+            return true;
+        }
+
+        $holon = $indicator->getHolon() ?: ($context['rootHolon'] ?? null);
+        return $holon instanceof Holon
+            && omoStatsCanUsePermission($holon, 'CAN_EDIT_INDICATOR', $context);
+    }
+}
+
+if (!function_exists('omoStatsCanDeleteIndicator')) {
+    function omoStatsCanDeleteIndicator(StatIndicator $indicator, array $context): bool
+    {
+        if ((int)$indicator->get('IDholon') === 0 && $indicator->canDelete()) {
+            return true;
+        }
+        $holon = $indicator->getHolon() ?: ($context['rootHolon'] ?? null);
+        return $holon instanceof Holon
+            ? omoStatsCanUsePermission($holon, 'CAN_DELETE_INDICATOR', $context)
+            : $indicator->canDelete();
+    }
+}
+
+if (!function_exists('omoStatsCanMoveIndicatorToHolon')) {
+    function omoStatsCanMoveIndicatorToHolon(StatIndicator $indicator, Holon $targetHolon, array $context): bool
+    {
+        $rootHolon = $context['rootHolon'] ?? null;
+        return omoStatsCanDeleteIndicator($indicator, $context)
+            && $rootHolon instanceof Holon
+            && (int)$targetHolon->getId() !== (int)$indicator->get('IDholon')
+            && $targetHolon->isDescendantOf((int)$rootHolon->getId(), true)
+            && (int)$targetHolon->get('active') === 1
+            && (int)$targetHolon->get('visible') === 1
+            && !$targetHolon->isTemplateNode((int)$rootHolon->getId())
+            && $targetHolon->canViewDetail()
+            && omoStatsCanUsePermission($targetHolon, 'CAN_CREATE_INDICATOR', $context);
+    }
+}
+
+if (!function_exists('omoStatsGetIndicatorMoveDestinationIds')) {
+    function omoStatsGetIndicatorMoveDestinationIds(array $context): array
+    {
+        $rootHolon = $context['rootHolon'] ?? null;
+        if (!($rootHolon instanceof Holon)) {
+            return [];
+        }
+        $destinations = [];
+        foreach (omoApiGetDescendantHolonIds($rootHolon) as $holonId) {
+            $holon = new Holon();
+            if ($holon->load((int)$holonId)
+                && (int)$holon->get('active') === 1
+                && (int)$holon->get('visible') === 1
+                && $holon->canViewDetail()
+                && omoStatsCanUsePermission($holon, 'CAN_CREATE_INDICATOR', $context)) {
+                $destinations[] = (int)$holonId;
+            }
+        }
+        return $destinations;
+    }
+}
+
+if (!function_exists('omoStatsCanUseOrganizationResourcePermission')) {
+    function omoStatsCanUseOrganizationResourcePermission(array $context, string $permissionKey): bool
+    {
+        $currentHolon = $context['currentHolon'] ?? null;
+        $rootHolon = $context['rootHolon'] ?? null;
+        if ($currentHolon instanceof Holon && (!($rootHolon instanceof Holon)
+            || (int)$currentHolon->getId() !== (int)$rootHolon->getId())) {
+            return false;
+        }
+        $organization = $context['organization'] ?? null;
+        $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
+        return $organization instanceof Organization && $currentUserId > 0
+            && (\dbObject\Permission::userCanInOrganization($permissionKey, (int)$organization->getId(), $currentUserId)
+                || ($rootHolon instanceof Holon && omoStatsCanUsePermission($rootHolon, $permissionKey, $context)));
+    }
+}
+
+if (!function_exists('omoStatsCanDeleteContextResource')) {
+    function omoStatsCanDeleteContextResource($resource, array $context): bool
+    {
+        if (!($resource instanceof StatIndicatorImport || $resource instanceof StatIndicatorGroup)) {
+            return false;
+        }
+        if ((int)$resource->get('IDholon') === 0) {
+            return omoStatsCanUseOrganizationResourcePermission($context, 'CAN_DELETE_INDICATOR');
+        }
+        $holon = $context['currentHolon'] ?? $context['rootHolon'] ?? null;
+        $contextHolonId = ($context['currentHolon'] ?? null) instanceof Holon ? (int)$context['currentHolon']->getId() : 0;
+        return ($resource instanceof StatIndicatorImport || $resource instanceof StatIndicatorGroup)
+            && (int)$resource->get('IDholon') === $contextHolonId
+            && ($holon instanceof Holon
+                ? omoStatsCanUsePermission($holon, 'CAN_DELETE_INDICATOR', $context)
+                : (($context['organization'] ?? null) instanceof Organization
+                    && \dbObject\Permission::userCanInOrganization('CAN_DELETE_INDICATOR', (int)$context['organization']->getId(), (int)commonGetCurrentUserId())));
+    }
+}
+
+if (!function_exists('omoStatsCanCreateContext')) {
+    function omoStatsCanCreateContext(array $context)
+    {
+        $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
+        if ($currentUserId <= 0) {
+            return false;
+        }
+
+        $currentHolon = $context['currentHolon'] ?? null;
+        if ($currentHolon instanceof Holon) {
+            return omoStatsCanUsePermission($currentHolon, 'CAN_CREATE_INDICATOR', $context);
+        }
+
+        $rootHolon = $context['rootHolon'] ?? null;
+        if ($rootHolon instanceof Holon) {
+            return omoStatsCanUsePermission($rootHolon, 'CAN_CREATE_INDICATOR', $context);
+        }
+
+        $organization = $context['organization'] ?? null;
+        return $organization instanceof Organization && (\dbObject\Permission::userCanInOrganization('CAN_CREATE_INDICATOR', (int)$organization->getId(), $currentUserId));
+    }
+}
+
+if (!function_exists('omoStatsLoadIndicator')) {
+    function omoStatsLoadIndicator($indicatorId, $organizationId)
+    {
+        $indicator = new StatIndicator();
+        if (
+            (int)$indicatorId <= 0
+            || !$indicator->load((int)$indicatorId)
+            || (int)$indicator->get('IDorganization') !== (int)$organizationId
+            || !(bool)$indicator->get('active')
+            || !$indicator->canView()
+        ) {
+            return null;
+        }
+
+        return $indicator;
+    }
+}
+
+if (!function_exists('omoStatsLoadVisibleEthercalcDocument')) {
+    function omoStatsLoadVisibleEthercalcDocument($documentId, $organizationId)
+    {
+        $documentId = (int)$documentId;
+        $organizationId = (int)$organizationId;
+        if ($documentId <= 0 || $organizationId <= 0) {
+            return null;
+        }
+
+        $documents = new ArrayDocument();
+        $documents->load([
+            'where' => [
+                ['field' => 'id', 'value' => $documentId],
+                ['field' => 'IDorganization', 'value' => $organizationId],
+                ['field' => 'active', 'value' => 1],
+            ],
+        ]);
+        $documents->filterVisibleForCurrentViewer($organizationId);
+        foreach ($documents as $document) {
+            if ($document instanceof Document && $document->isEthercalcDocument() && $document->getEthercalcRoomId() !== '') {
+                return $document;
+            }
+        }
+        return null;
+    }
+}
+
+if (!function_exists('omoStatsLoadVisibleSpreadsheetDocument')) {
+    function omoStatsLoadVisibleSpreadsheetDocument($documentId, $organizationId)
+    {
+        require_once dirname(__DIR__, 3) . '/common/spreadsheet.php';
+        $documentId = (int)$documentId;
+        $organizationId = (int)$organizationId;
+        if ($documentId <= 0 || $organizationId <= 0) {
+            return null;
+        }
+
+        $documents = new ArrayDocument();
+        $documents->load([
+            'where' => [
+                ['field' => 'id', 'value' => $documentId],
+                ['field' => 'IDorganization', 'value' => $organizationId],
+                ['field' => 'active', 'value' => 1],
+            ],
+        ]);
+        $documents->filterVisibleForCurrentViewer($organizationId);
+        foreach ($documents as $document) {
+            if (
+                $document instanceof Document
+                && $document->isUploadedFile()
+                && $document->hasStoredFile()
+                && omoSpreadsheetSupportsFilename($document->getStoredFileDownloadName())
+            ) {
+                return $document;
+            }
+        }
+        return null;
+    }
+}
+
+if (!function_exists('omoStatsLoadGroup')) {
+    function omoStatsLoadGroup($groupId, $organizationId)
+    {
+        $group = new StatIndicatorGroup();
+        if (
+            (int)$groupId <= 0
+            || !$group->load((int)$groupId)
+            || (int)$group->get('IDorganization') !== (int)$organizationId
+            || !(bool)$group->get('active')
+            || !$group->canView()
+        ) {
+            return null;
+        }
+        return $group;
+    }
+}
+
+if (!function_exists('omoStatsLoadImport')) {
+    function omoStatsLoadImport($importId, $organizationId)
+    {
+        $import = new StatIndicatorImport();
+        if (
+            (int)$importId <= 0
+            || !$import->load((int)$importId)
+            || (int)$import->get('IDorganization') !== (int)$organizationId
+            || !(bool)$import->get('active')
+        ) {
+            return null;
+        }
+        $indicator = $import->getIndicator();
+        return $indicator instanceof StatIndicator
+            && (int)$indicator->get('IDorganization') === (int)$organizationId
+            && $indicator->canView() ? $import : null;
+    }
+}
+
+if (!function_exists('omoStatsCanEditContextResource')) {
+    function omoStatsCanEditContextResource($resource, array $context)
+    {
+        if (!($resource instanceof StatIndicatorImport || $resource instanceof StatIndicatorGroup)) {
+            return false;
+        }
+        if ((int)$resource->get('IDholon') === 0) {
+            return omoStatsCanUseOrganizationResourcePermission($context, 'CAN_EDIT_INDICATOR');
+        }
+        if (!omoStatsCanManageContext($context)) {
+            return false;
+        }
+        $currentHolon = $context['currentHolon'] ?? null;
+        $currentHolonId = $currentHolon instanceof Holon ? (int)$currentHolon->getId() : 0;
+        return $resource instanceof StatIndicatorImport || $resource instanceof StatIndicatorGroup
+            ? (int)$resource->get('IDholon') === $currentHolonId
+            : false;
+    }
+}
+
+if (!function_exists('omoStatsReferenceTypeLabel')) {
+    function omoStatsReferenceTypeLabel($referenceType)
+    {
+        $referenceType = StatIndicator::normalizeReferenceType($referenceType);
+        if ($referenceType === StatIndicator::REFERENCE_CEILING) {
+            return omoStatsT('stats.detail.reference_ceiling');
+        }
+        if ($referenceType === StatIndicator::REFERENCE_OBJECTIVE) {
+            return omoStatsT('stats.detail.reference_objective');
+        }
+        return omoStatsT('stats.detail.reference_none');
+    }
+}
+
+if (!function_exists('omoStatsFormatNumber')) {
+    function omoStatsFormatNumber($value)
+    {
+        if (!is_numeric($value)) {
+            return '';
+        }
+
+        $rounded = round((float)$value, 6);
+        $decimals = abs($rounded - round($rounded)) < 0.000001 ? 0 : 6;
+        $formatted = number_format($rounded, $decimals, ',', ' ');
+        return $decimals > 0 ? rtrim(rtrim($formatted, '0'), ',') : $formatted;
+    }
+}
+
+if (!function_exists('omoStatsResolveChartScale')) {
+    function omoStatsResolveChartScale($minValue, $maxValue, $targetIntervals = 4)
+    {
+        $minValue = (float)$minValue;
+        $maxValue = (float)$maxValue;
+        if ($maxValue < $minValue) {
+            $swap = $minValue;
+            $minValue = $maxValue;
+            $maxValue = $swap;
+        }
+
+        $targetIntervals = max(1, (int)$targetIntervals);
+        $valueRange = $maxValue - $minValue;
+        if ($valueRange < 0.000000001) {
+            $valueRange = max(1.0, abs($maxValue) * 0.2);
+            $minValue -= $valueRange / 2;
+            $maxValue += $valueRange / 2;
+        }
+
+        $rawStep = $valueRange / $targetIntervals;
+        $power = pow(10, floor(log10($rawStep)));
+        $normalizedStep = $rawStep / $power;
+        if ($normalizedStep < 1.5) {
+            $niceStep = 1;
+        } elseif ($normalizedStep < 3) {
+            $niceStep = 2;
+        } elseif ($normalizedStep < 7) {
+            $niceStep = 5;
+        } else {
+            $niceStep = 10;
+        }
+        $step = $niceStep * $power;
+
+        $scaleMin = floor($minValue / $step) * $step;
+        $scaleMax = ceil($maxValue / $step) * $step;
+        $scaleMin = abs($scaleMin) < ($step * 0.000000001) ? 0.0 : $scaleMin;
+        $scaleMax = abs($scaleMax) < ($step * 0.000000001) ? 0.0 : $scaleMax;
+        $intervals = max(1, (int)round(($scaleMax - $scaleMin) / $step));
+
+        return [
+            'min' => $scaleMin,
+            'max' => $scaleMax,
+            'step' => $step,
+            'intervals' => $intervals,
+        ];
+    }
+}
+
+if (!function_exists('omoStatsFormatDateTime')) {
+    function omoStatsFormatDateTime($value, $withTime = true)
+    {
+        if (!($value instanceof DateTimeInterface)) {
+            return '';
+        }
+
+        return $value->format($withTime ? 'd.m.Y H:i' : 'd.m.Y');
+    }
+}
+
+if (!function_exists('omoStatsFormatChartPointTooltip')) {
+    function omoStatsFormatChartPointTooltip(array $point, $valueLabelKey = 'stats.chart.tooltip.value')
+    {
+        $timestamp = isset($point['timestamp']) ? (int)$point['timestamp'] : 0;
+        return omoStatsT((string)$valueLabelKey) . ' : ' . omoStatsFormatNumber($point['value'] ?? '')
+            . "\n" . omoStatsT('stats.chart.tooltip.date') . ' : ' . date('d.m.Y H:i', $timestamp);
+    }
+}
+
+if (!function_exists('omoStatsContextLabel')) {
+    function omoStatsContextLabel(StatIndicator $indicator)
+    {
+        $holon = $indicator->getHolon();
+        if ($holon instanceof Holon) {
+            $label = trim((string)$holon->getDisplayName());
+            if ($label !== '') {
+                return $label;
+            }
+        }
+
+        $organization = $indicator->getOrganization();
+        return $organization instanceof Organization
+            ? trim((string)$organization->get('name'))
+            : '';
+    }
+}
+
+if (!function_exists('omoStatsCollectionItems')) {
+    function omoStatsCollectionItems($collection, $className)
+    {
+        $items = [];
+        if (!is_iterable($collection)) {
+            return $items;
+        }
+
+        foreach ($collection as $item) {
+            if ($item instanceof $className) {
+                $items[] = $item;
+            }
+        }
+        return $items;
+    }
+}
+
+if (!function_exists('omoStatsResolveReferenceSeries')) {
+    function omoStatsResolveReferenceSeries(array $referencePoints, array $values = [])
+    {
+        if (count($referencePoints) === 0) {
+            return [];
+        }
+
+        usort($referencePoints, static function ($left, $right) {
+            return (float)$left->get('position_percent') <=> (float)$right->get('position_percent');
+        });
+
+        $valueTimes = [];
+        foreach ($values as $value) {
+            if (!($value instanceof StatIndicatorValue)) {
+                continue;
+            }
+            $measuredAt = $value->get('measured_at');
+            if ($measuredAt instanceof DateTimeInterface) {
+                $valueTimes[] = $measuredAt->getTimestamp();
+            }
+        }
+
+        $startTimestamp = count($valueTimes) > 0 ? min($valueTimes) : time();
+        $endTimestamp = count($valueTimes) > 0 ? max($valueTimes) : ($startTimestamp + 86400);
+
+        foreach ($referencePoints as $point) {
+            $position = (float)$point->get('position_percent');
+            $pointAt = $point->get('point_at');
+            if ($pointAt instanceof DateTimeInterface && abs($position) < 0.0001) {
+                $startTimestamp = $pointAt->getTimestamp();
+            }
+            if ($pointAt instanceof DateTimeInterface && abs($position - 100.0) < 0.0001) {
+                $endTimestamp = $pointAt->getTimestamp();
+            }
+        }
+
+        if ($endTimestamp <= $startTimestamp) {
+            $endTimestamp = $startTimestamp + 86400;
+        }
+
+        $resolved = [];
+        foreach ($referencePoints as $point) {
+            $position = max(0.0, min(100.0, (float)$point->get('position_percent')));
+            $pointAt = $point->get('point_at');
+            $timestamp = $pointAt instanceof DateTimeInterface
+                ? $pointAt->getTimestamp()
+                : (int)round($startTimestamp + (($endTimestamp - $startTimestamp) * $position / 100));
+            $resolved[] = [
+                'timestamp' => $timestamp,
+                'value' => (float)$point->get('value'),
+                'position' => $position,
+            ];
+        }
+
+        return $resolved;
+    }
+}
+
+if (!function_exists('omoStatsGetCeilingValue')) {
+    function omoStatsGetCeilingValue(array $referencePoints)
+    {
+        foreach ($referencePoints as $point) {
+            if ($point instanceof StatIndicatorReferencePoint && is_numeric($point->get('value'))) {
+                return (float)$point->get('value');
+            }
+        }
+
+        return null;
+    }
+}
+
+if (!function_exists('omoStatsGetSeriesValueRange')) {
+    function omoStatsGetSeriesValueRange(array $series)
+    {
+        $values = [];
+        foreach ($series as $point) {
+            if (is_numeric($point['value'] ?? null)) {
+                $values[] = (float)$point['value'];
+            }
+        }
+
+        if (count($values) === 0) {
+            return null;
+        }
+
+        return [
+            'min' => min($values),
+            'max' => max($values),
+        ];
+    }
+}
+
+if (!function_exists('omoStatsFilterChartSeries')) {
+    function omoStatsFilterChartSeries(array $series, int $startTimestamp, int $endTimestamp)
+    {
+        $filtered = array_values(array_filter($series, static function (array $point) use ($startTimestamp, $endTimestamp) {
+            return is_numeric($point['timestamp'] ?? null)
+                && is_numeric($point['value'] ?? null)
+                && (int)$point['timestamp'] >= $startTimestamp
+                && (int)$point['timestamp'] <= $endTimestamp;
+        }));
+        usort($filtered, static function (array $left, array $right) {
+            return (int)$left['timestamp'] <=> (int)$right['timestamp'];
+        });
+        return $filtered;
+    }
+}
+
+if (!function_exists('omoStatsBuildCumulativeSeries')) {
+    function omoStatsBuildCumulativeSeries(array $series, ?int $startTimestamp = null)
+    {
+        $sorted = array_values(array_filter($series, static function (array $point) use ($startTimestamp) {
+            return is_numeric($point['timestamp'] ?? null)
+                && is_numeric($point['value'] ?? null)
+                && ($startTimestamp === null || (int)$point['timestamp'] >= $startTimestamp);
+        }));
+        usort($sorted, static function (array $left, array $right) {
+            return (int)$left['timestamp'] <=> (int)$right['timestamp'];
+        });
+
+        $cumulative = [];
+        $sum = 0.0;
+        foreach ($sorted as $point) {
+            $sum += (float)$point['value'];
+            $cumulative[] = [
+                'timestamp' => (int)$point['timestamp'],
+                'value' => $sum,
+            ];
+        }
+        return $cumulative;
+    }
+}
+
+if (!function_exists('omoStatsResolveIndicatorCumulativeStart')) {
+    function omoStatsResolveIndicatorCumulativeStart(StatIndicator $indicator, array $measureSeries, array $referenceSeries)
+    {
+        $referenceType = StatIndicator::normalizeReferenceType($indicator->get('reference_type'));
+        if ($referenceType === StatIndicator::REFERENCE_OBJECTIVE) {
+            $referenceRange = omoStatsReferenceTimestampRange($referenceSeries);
+            if ($referenceRange !== null) {
+                return (int)$referenceRange['start'];
+            }
+        }
+
+        $timestamps = array_values(array_filter(array_map(static function (array $point) {
+            return is_numeric($point['timestamp'] ?? null) ? (int)$point['timestamp'] : null;
+        }, $measureSeries), static function ($timestamp) {
+            return $timestamp !== null;
+        }));
+        return count($timestamps) > 0 ? min($timestamps) : null;
+    }
+}
+
+if (!function_exists('omoStatsResolveChartBarWidth')) {
+    function omoStatsResolveChartBarWidth(array $coordinates, float $plotWidth, string $variant)
+    {
+        $xValues = array_values(array_unique(array_map(static function (array $point) {
+            return round((float)$point[0], 4);
+        }, $coordinates), SORT_REGULAR));
+        sort($xValues, SORT_NUMERIC);
+        $minimumGap = $plotWidth / max(2, count($xValues));
+        for ($index = 1; $index < count($xValues); $index++) {
+            $gap = $xValues[$index] - $xValues[$index - 1];
+            if ($gap > 0) {
+                $minimumGap = min($minimumGap, $gap);
+            }
+        }
+
+        $minimumWidth = $variant === 'large' ? 8.0 : ($variant === 'card' ? 5.0 : 2.0);
+        $maximumWidth = $variant === 'large' ? 44.0 : ($variant === 'card' ? 26.0 : 10.0);
+        return round(max($minimumWidth, min($maximumWidth, $minimumGap * 0.62)), 2);
+    }
+}
+
+if (!function_exists('omoStatsGetIndicatorChartSeries')) {
+    function omoStatsGetIndicatorChartSeries(StatIndicator $indicator, array $values, array $referencePoints)
+    {
+        $measureSeries = [];
+        foreach ($values as $value) {
+            if (!($value instanceof StatIndicatorValue)) {
+                continue;
+            }
+            $measuredAt = $value->get('measured_at');
+            if (!($measuredAt instanceof DateTimeInterface) || !is_numeric($value->get('value'))) {
+                continue;
+            }
+            $measureSeries[] = [
+                'timestamp' => $measuredAt->getTimestamp(),
+                'value' => (float)$value->get('value'),
+            ];
+        }
+
+        usort($measureSeries, static function (array $left, array $right) {
+            return $left['timestamp'] <=> $right['timestamp'];
+        });
+
+        $referenceType = StatIndicator::normalizeReferenceType($indicator->get('reference_type'));
+        $referenceSeries = $referenceType === StatIndicator::REFERENCE_OBJECTIVE
+            ? omoStatsResolveReferenceSeries($referencePoints, $values)
+            : [];
+        $ceilingValue = $referenceType === StatIndicator::REFERENCE_CEILING
+            ? omoStatsGetCeilingValue($referencePoints)
+            : null;
+
+        return [
+            'measure' => $measureSeries,
+            'reference' => $referenceSeries,
+            'ceiling' => $ceilingValue,
+        ];
+    }
+}
+
+if (!function_exists('omoStatsGetGroupReferencePoints')) {
+    function omoStatsGetGroupReferencePoints(StatIndicatorGroup $group)
+    {
+        return omoStatsCollectionItems($group->getReferencePoints(), StatIndicatorReferencePoint::class);
+    }
+}
+
+if (!function_exists('omoStatsGetGroupReferenceSeries')) {
+    function omoStatsGetGroupReferenceSeries(StatIndicatorGroup $group)
+    {
+        if (StatIndicator::normalizeReferenceType($group->get('reference_type')) !== StatIndicator::REFERENCE_OBJECTIVE) {
+            return [];
+        }
+
+        return omoStatsResolveReferenceSeries(omoStatsGetGroupReferencePoints($group));
+    }
+}
+
+if (!function_exists('omoStatsGetGroupCeilingValue')) {
+    function omoStatsGetGroupCeilingValue(StatIndicatorGroup $group)
+    {
+        return StatIndicator::normalizeReferenceType($group->get('reference_type')) === StatIndicator::REFERENCE_CEILING
+            ? omoStatsGetCeilingValue(omoStatsGetGroupReferencePoints($group))
+            : null;
+    }
+}
+
+if (!function_exists('omoStatsGetGroupLatestSumValue')) {
+    function omoStatsGetGroupLatestSumValue(StatIndicatorGroup $group, array $series)
+    {
+        if (StatIndicatorGroup::normalizeDisplayMode($group->get('display_mode')) !== StatIndicatorGroup::DISPLAY_SUM) {
+            return null;
+        }
+
+        $latestPoint = null;
+        foreach ($series as $seriesItem) {
+            if (empty($seriesItem['is_sum'])) {
+                continue;
+            }
+            foreach (($seriesItem['points'] ?? []) as $point) {
+                if (!is_numeric($point['timestamp'] ?? null) || !is_numeric($point['value'] ?? null)) {
+                    continue;
+                }
+                if ($latestPoint === null || (int)$point['timestamp'] > (int)$latestPoint['timestamp']) {
+                    $latestPoint = [
+                        'timestamp' => (int)$point['timestamp'],
+                        'value' => (float)$point['value'],
+                    ];
+                }
+            }
+        }
+        if ($latestPoint === null) {
+            return null;
+        }
+
+        $referenceValue = StatIndicator::normalizeReferenceType($group->get('reference_type')) === StatIndicator::REFERENCE_CEILING
+            ? omoStatsGetGroupCeilingValue($group)
+            : omoStatsGetReferenceValueAtTimestamp(
+                omoStatsGetGroupReferenceSeries($group),
+                $latestPoint['timestamp']
+            );
+        $latestPoint['referencePercentage'] = is_numeric($referenceValue) && abs((float)$referenceValue) >= 0.000000001
+            ? round(($latestPoint['value'] / (float)$referenceValue) * 100, 2)
+            : null;
+        return $latestPoint;
+    }
+}
+
+if (!function_exists('omoStatsGetReferenceValueAtTimestamp')) {
+    function omoStatsGetReferenceValueAtTimestamp(array $referenceSeries, int $timestamp)
+    {
+        if (count($referenceSeries) === 0) {
+            return null;
+        }
+
+        usort($referenceSeries, static function (array $left, array $right) {
+            return (int)$left['timestamp'] <=> (int)$right['timestamp'];
+        });
+
+        $first = $referenceSeries[0];
+        $last = $referenceSeries[count($referenceSeries) - 1];
+        if ($timestamp < (int)$first['timestamp'] || $timestamp > (int)$last['timestamp']) {
+            return null;
+        }
+
+        for ($index = 1; $index < count($referenceSeries); $index++) {
+            $left = $referenceSeries[$index - 1];
+            $right = $referenceSeries[$index];
+            $leftTimestamp = (int)$left['timestamp'];
+            $rightTimestamp = (int)$right['timestamp'];
+            if ($timestamp > $rightTimestamp) {
+                continue;
+            }
+            if ($rightTimestamp <= $leftTimestamp) {
+                return (float)$right['value'];
+            }
+
+            $ratio = ($timestamp - $leftTimestamp) / ($rightTimestamp - $leftTimestamp);
+            return (float)$left['value'] + (((float)$right['value'] - (float)$left['value']) * $ratio);
+        }
+
+        return (float)$last['value'];
+    }
+}
+
+if (!function_exists('omoStatsGetIndicatorReferencePercentage')) {
+    function omoStatsGetIndicatorReferencePercentage(StatIndicator $indicator, $value, array $referencePoints)
+    {
+        if (!($value instanceof StatIndicatorValue)
+            || StatIndicator::normalizeReferenceType($indicator->get('reference_type')) === StatIndicator::REFERENCE_NONE
+            || !is_numeric($value->get('value'))
+        ) {
+            return null;
+        }
+
+        if (StatIndicator::normalizeReferenceType($indicator->get('reference_type')) === StatIndicator::REFERENCE_CEILING) {
+            $ceilingValue = omoStatsGetCeilingValue($referencePoints);
+            return is_numeric($ceilingValue) && abs((float)$ceilingValue) >= 0.000000001
+                ? round(((float)$value->get('value') / (float)$ceilingValue) * 100, 2)
+                : null;
+        }
+
+        $measuredAt = $value->get('measured_at');
+        if (!($measuredAt instanceof DateTimeInterface)) {
+            return null;
+        }
+
+        $referenceSeries = omoStatsResolveReferenceSeries($referencePoints, [$value]);
+        $referenceValue = omoStatsGetReferenceValueAtTimestamp($referenceSeries, $measuredAt->getTimestamp());
+        if (!is_numeric($referenceValue) || abs((float)$referenceValue) < 0.000000001) {
+            return null;
+        }
+
+        return round(((float)$value->get('value') / (float)$referenceValue) * 100, 2);
+    }
+}
+
+if (!function_exists('omoStatsReferenceTimestampRange')) {
+    function omoStatsReferenceTimestampRange(array $referenceSeries)
+    {
+        $timestamps = [];
+        foreach ($referenceSeries as $point) {
+            if (is_numeric($point['timestamp'] ?? null)) {
+                $timestamps[] = (int)$point['timestamp'];
+            }
+        }
+        if (count($timestamps) < 2) {
+            return null;
+        }
+
+        return [
+            'start' => min($timestamps),
+            'end' => max($timestamps),
+        ];
+    }
+}
+
+if (!function_exists('omoStatsClipChartSeries')) {
+    function omoStatsClipChartSeries(array $series, int $startTimestamp, int $endTimestamp)
+    {
+        $sorted = array_values(array_filter($series, static function (array $point) {
+            return is_numeric($point['timestamp'] ?? null) && is_numeric($point['value'] ?? null);
+        }));
+        usort($sorted, static function (array $left, array $right) {
+            return (int)$left['timestamp'] <=> (int)$right['timestamp'];
+        });
+
+        $clipped = array_values(array_filter($sorted, static function (array $point) use ($startTimestamp, $endTimestamp) {
+            return (int)$point['timestamp'] >= $startTimestamp && (int)$point['timestamp'] <= $endTimestamp;
+        }));
+
+        $interpolate = static function (int $timestamp) use ($sorted) {
+            for ($index = 1; $index < count($sorted); $index++) {
+                $left = $sorted[$index - 1];
+                $right = $sorted[$index];
+                $leftTimestamp = (int)$left['timestamp'];
+                $rightTimestamp = (int)$right['timestamp'];
+                if ($timestamp === $leftTimestamp) {
+                    return ['timestamp' => $timestamp, 'value' => (float)$left['value']];
+                }
+                if ($timestamp === $rightTimestamp) {
+                    return ['timestamp' => $timestamp, 'value' => (float)$right['value']];
+                }
+                if ($leftTimestamp < $timestamp && $timestamp < $rightTimestamp) {
+                    $ratio = ($timestamp - $leftTimestamp) / ($rightTimestamp - $leftTimestamp);
+                    return [
+                        'timestamp' => $timestamp,
+                        'value' => (float)$left['value'] + (((float)$right['value'] - (float)$left['value']) * $ratio),
+                    ];
+                }
+            }
+            return null;
+        };
+
+        foreach ([$startTimestamp, $endTimestamp] as $boundaryTimestamp) {
+            $boundaryPoint = $interpolate($boundaryTimestamp);
+            if ($boundaryPoint === null) {
+                continue;
+            }
+            $alreadyIncluded = false;
+            foreach ($clipped as $point) {
+                if ((int)$point['timestamp'] === $boundaryTimestamp) {
+                    $alreadyIncluded = true;
+                    break;
+                }
+            }
+            if (!$alreadyIncluded) {
+                $clipped[] = $boundaryPoint;
+            }
+        }
+
+        usort($clipped, static function (array $left, array $right) {
+            return (int)$left['timestamp'] <=> (int)$right['timestamp'];
+        });
+        return $clipped;
+    }
+}
+
+if (!function_exists('omoStatsSmallIndicatorTimestampRange')) {
+    function omoStatsSmallIndicatorTimestampRange(StatIndicator $indicator, array $measureSeries)
+    {
+        if (count($measureSeries) === 0) {
+            return null;
+        }
+
+        $timestamps = array_map(static function (array $point) {
+            return (int)$point['timestamp'];
+        }, $measureSeries);
+        $latestTimestamp = max($timestamps);
+        $latestDate = (new DateTimeImmutable())->setTimestamp($latestTimestamp);
+        $frequency = $indicator->getEffectiveMeasurementFrequency();
+        $months = [
+            StatIndicator::FREQUENCY_MONTHLY => 12,
+            StatIndicator::FREQUENCY_QUARTERLY => 36,
+            StatIndicator::FREQUENCY_SEMIANNUAL => 72,
+            StatIndicator::FREQUENCY_YEARLY => 144,
+        ];
+
+        if ($frequency !== null && isset($months[$frequency])) {
+            $startDate = $latestDate->modify('-' . $months[$frequency] . ' months');
+        } elseif ($frequency === StatIndicator::FREQUENCY_WEEKLY) {
+            $startDate = $latestDate->modify('-12 weeks');
+        } elseif ($frequency === StatIndicator::FREQUENCY_DAILY) {
+            $startDate = $latestDate->modify('-12 days');
+        } else {
+            return null;
+        }
+
+        return [
+            'start' => $startDate->getTimestamp(),
+            'end' => $latestTimestamp,
+        ];
+    }
+}
+
+if (!function_exists('omoStatsSmallGroupTimestampRange')) {
+    function omoStatsSmallGroupTimestampRange(array $series)
+    {
+        $smallRange = null;
+        foreach ($series as $seriesItem) {
+            $indicator = $seriesItem['indicator'] ?? null;
+            if (!($indicator instanceof StatIndicator)) {
+                continue;
+            }
+            $sourceRange = omoStatsSmallIndicatorTimestampRange($indicator, $seriesItem['points'] ?? []);
+            if ($sourceRange === null) {
+                continue;
+            }
+            if ($smallRange === null) {
+                $smallRange = $sourceRange;
+                continue;
+            }
+            $smallRange['start'] = min($smallRange['start'], $sourceRange['start']);
+            $smallRange['end'] = max($smallRange['end'], $sourceRange['end']);
+        }
+        return $smallRange;
+    }
+}
+
+if (!function_exists('omoStatsChartSeriesTimestampRange')) {
+    function omoStatsChartSeriesTimestampRange(array $series, ?array $limits = null)
+    {
+        $timestamps = [];
+        foreach ($series as $point) {
+            if (!is_numeric($point['timestamp'] ?? null)) {
+                continue;
+            }
+            $timestamp = (int)$point['timestamp'];
+            if (
+                $limits !== null
+                && ($timestamp < (int)$limits['start'] || $timestamp > (int)$limits['end'])
+            ) {
+                continue;
+            }
+            $timestamps[] = $timestamp;
+        }
+
+        return count($timestamps) > 0
+            ? ['start' => min($timestamps), 'end' => max($timestamps)]
+            : null;
+    }
+}
+
+if (!function_exists('omoStatsGroupedChartSeriesTimestampRange')) {
+    function omoStatsGroupedChartSeriesTimestampRange(array $series, ?array $limits = null)
+    {
+        $points = [];
+        foreach ($series as $seriesItem) {
+            foreach (($seriesItem['points'] ?? []) as $point) {
+                $points[] = $point;
+            }
+        }
+
+        return omoStatsChartSeriesTimestampRange($points, $limits);
+    }
+}
+
+if (!function_exists('omoStatsBuildIndicatorChartData')) {
+    function omoStatsBuildIndicatorChartData(StatIndicator $indicator, array $values, array $referencePoints, $isOverdue = null)
+    {
+        if ($isOverdue === null) {
+            $isOverdue = omoStatsGetIndicatorOverdueInfo($indicator)['severity'];
+        }
+        $overdueSeverity = is_string($isOverdue) ? $isOverdue : ($isOverdue ? 'error' : 'none');
+        $series = omoStatsGetIndicatorChartSeries($indicator, $values, $referencePoints);
+        return [
+            'type' => 'indicator',
+            'label' => (string)$indicator->get('name'),
+            'showCumulative' => (int)$indicator->get('show_cumulative') > 0,
+            'referenceType' => StatIndicator::normalizeReferenceType($indicator->get('reference_type')),
+            'referenceScale' => StatIndicator::normalizeReferenceScale($indicator->get('reference_scale')),
+            'measure' => $series['measure'],
+            'reference' => $series['reference'],
+            'ceiling' => $series['ceiling'],
+            'minimumValue' => is_numeric($indicator->get('chart_min_value')) ? (float)$indicator->get('chart_min_value') : null,
+            'defaultRange' => omoStatsReferenceTimestampRange($series['reference'])
+                ?: omoStatsChartSeriesTimestampRange(
+                    $series['measure'],
+                    omoStatsSmallIndicatorTimestampRange($indicator, $series['measure'])
+                ),
+            'overdue' => $overdueSeverity !== 'none',
+            'overdueSeverity' => $overdueSeverity,
+            'emptyLabel' => omoStatsT('stats.chart.empty'),
+            'tooltip' => [
+                'value' => omoStatsT('stats.chart.tooltip.value'),
+                'cumulative' => omoStatsT('stats.chart.tooltip.cumulative'),
+                'date' => omoStatsT('stats.chart.tooltip.date'),
+            ],
+        ];
+    }
+}
+
+if (!function_exists('omoStatsBuildGroupChartData')) {
+    function omoStatsBuildGroupChartData(StatIndicatorGroup $group, array $series, $isOverdue = null)
+    {
+        if ($isOverdue === null) {
+            $isOverdue = omoStatsGetGroupOverdueInfo($group)['severity'];
+        }
+        $overdueSeverity = is_string($isOverdue) ? $isOverdue : ($isOverdue ? 'error' : 'none');
+        $dataSeries = [];
+        foreach ($series as $seriesIndex => $seriesItem) {
+            $points = [];
+            foreach (($seriesItem['points'] ?? []) as $point) {
+                if (!is_numeric($point['timestamp'] ?? null) || !is_numeric($point['value'] ?? null)) {
+                    continue;
+                }
+                $points[] = [
+                    'timestamp' => (int)$point['timestamp'],
+                    'value' => (float)$point['value'],
+                ];
+            }
+            if (count($points) === 0) {
+                continue;
+            }
+            $dataSeries[] = [
+                'points' => $points,
+                'background' => !empty($seriesItem['is_background']),
+                'sum' => !empty($seriesItem['is_sum']),
+                'sourceIndex' => isset($seriesItem['source_index']) ? (int)$seriesItem['source_index'] : (int)$seriesIndex,
+            ];
+        }
+        $referenceSeries = omoStatsGetGroupReferenceSeries($group);
+        $ceilingValue = omoStatsGetGroupCeilingValue($group);
+        return [
+            'type' => 'group',
+            'label' => (string)$group->get('name'),
+            'series' => $dataSeries,
+            'reference' => $referenceSeries,
+            'ceiling' => $ceilingValue,
+            'minimumValue' => is_numeric($group->get('chart_min_value')) ? (float)$group->get('chart_min_value') : null,
+            'defaultRange' => omoStatsReferenceTimestampRange($referenceSeries)
+                ?: omoStatsGroupedChartSeriesTimestampRange(
+                    $dataSeries,
+                    omoStatsSmallGroupTimestampRange($series)
+                ),
+            'overdue' => $overdueSeverity !== 'none',
+            'overdueSeverity' => $overdueSeverity,
+            'emptyLabel' => omoStatsT('stats.chart.empty'),
+            'tooltip' => [
+                'value' => omoStatsT('stats.chart.tooltip.value'),
+                'date' => omoStatsT('stats.chart.tooltip.date'),
+            ],
+        ];
+    }
+}
+
+if (!function_exists('omoStatsChartRangeDays')) {
+    function omoStatsChartRangeDays(array $chartData)
+    {
+        $timestamps = [];
+        if (($chartData['type'] ?? '') === 'group') {
+            foreach (($chartData['series'] ?? []) as $seriesItem) {
+                foreach (($seriesItem['points'] ?? []) as $point) {
+                    if (is_numeric($point['timestamp'] ?? null)) {
+                        $timestamps[] = (int)$point['timestamp'];
+                    }
+                }
+            }
+            foreach (($chartData['reference'] ?? []) as $point) {
+                if (is_numeric($point['timestamp'] ?? null)) {
+                    $timestamps[] = (int)$point['timestamp'];
+                }
+            }
+        } else {
+            foreach (['measure', 'reference'] as $seriesKey) {
+                foreach (($chartData[$seriesKey] ?? []) as $point) {
+                    if (is_numeric($point['timestamp'] ?? null)) {
+                        $timestamps[] = (int)$point['timestamp'];
+                    }
+                }
+            }
+        }
+        if (count($timestamps) === 0) {
+            return null;
+        }
+        return [
+            'start' => (int)floor(min($timestamps) / 86400),
+            'end' => (int)floor(max($timestamps) / 86400),
+        ];
+    }
+}
+
+if (!function_exists('omoStatsChartReferenceRangeDays')) {
+    function omoStatsChartReferenceRangeDays(array $chartData)
+    {
+        if (!in_array($chartData['type'] ?? '', ['indicator', 'group'], true)) {
+            return null;
+        }
+
+        $referenceRange = omoStatsReferenceTimestampRange($chartData['reference'] ?? []);
+        if ($referenceRange === null) {
+            return null;
+        }
+
+        return [
+            'start' => (int)floor($referenceRange['start'] / 86400),
+            'end' => (int)floor($referenceRange['end'] / 86400),
+        ];
+    }
+}
+
+if (!function_exists('omoStatsRenderInteractiveChartRange')) {
+    function omoStatsRenderInteractiveChartRange(array $chartData)
+    {
+        $range = omoStatsChartRangeDays($chartData);
+        if ($range === null || $range['start'] >= $range['end']) {
+            return '';
+        }
+        $json = json_encode($chartData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        if ($json === false) {
+            return '';
+        }
+        $start = (int)$range['start'];
+        $end = (int)$range['end'];
+        $defaultRange = null;
+        if (is_array($chartData['defaultRange'] ?? null)) {
+            $defaultRange = [
+                'start' => (int)floor((int)($chartData['defaultRange']['start'] ?? 0) / 86400),
+                'end' => (int)floor((int)($chartData['defaultRange']['end'] ?? 0) / 86400),
+            ];
+        }
+        $defaultRange = $defaultRange ?: (omoStatsChartReferenceRangeDays($chartData) ?: $range);
+        $defaultStart = max($start, min($end, (int)$defaultRange['start']));
+        $defaultEnd = max($defaultStart, min($end, (int)$defaultRange['end']));
+        return '<div class="omo-stats-chart-range" data-omo-stats-chart-range'
+            . ' data-omo-stats-chart-data="' . omoApiEscape($json) . '"'
+            . ' data-start-day="' . $start . '" data-end-day="' . $end . '"'
+            . ' data-initial-start-day="' . $defaultStart . '" data-initial-end-day="' . $defaultEnd . '">'
+            . '<div class="omo-stats-chart-range__header">'
+            . '<strong>' . omoApiEscape(omoStatsT('stats.detail.range.label')) . '</strong>'
+            . '<output data-omo-stats-chart-range-output></output>'
+            . '</div>'
+            . '<div class="omo-stats-chart-range__track">'
+            . '<span class="omo-stats-chart-range__selection" data-omo-stats-chart-range-selection></span>'
+            . '<input type="range" min="' . $start . '" max="' . $end . '" step="1" value="' . $start . '" aria-label="' . omoApiEscape(omoStatsT('stats.detail.range.start')) . '" data-omo-stats-chart-range-start>'
+            . '<input type="range" min="' . $start . '" max="' . $end . '" step="1" value="' . $end . '" aria-label="' . omoApiEscape(omoStatsT('stats.detail.range.end')) . '" data-omo-stats-chart-range-end>'
+            . '</div>'
+            . '<div class="omo-stats-chart-range__limits" aria-hidden="true">'
+            . '<span data-omo-stats-chart-range-min></span><span data-omo-stats-chart-range-max></span>'
+            . '</div>'
+            . '</div>';
+    }
+}
+
+if (!function_exists('omoStatsResponsibleAssignmentLabel')) {
+    function omoStatsResponsibleAssignmentLabel(StatIndicator $indicator): string
+    {
+        $holon = $indicator->getHolon();
+        $roleLabel = $holon instanceof Holon
+            ? trim((string)$holon->getDisplayName())
+            : omoStatsContextLabel($indicator);
+        $responsibleUserId = (int)$indicator->get('IDuser_responsible');
+        $personLabel = $responsibleUserId > 0
+            ? \dbObject\DocumentPvPoint::getUserDisplayNameForOrganization($responsibleUserId, (int)$indicator->get('IDorganization'))
+            : omoStatsT('stats.responsibility.unassigned');
+
+        return trim($roleLabel) . ' (' . trim($personLabel) . ')';
+    }
+}
+
+if (!function_exists('omoStatsUserIsAssociatedWithHolon')) {
+    function omoStatsUserIsAssociatedWithHolon($userId, $organizationId, Holon $holon): bool
+    {
+        static $cache = [];
+
+        $userId = (int)$userId;
+        $organizationId = (int)$organizationId;
+        $holonId = (int)$holon->getId();
+        if ($userId <= 0 || $organizationId <= 0 || $holonId <= 0) {
+            return false;
+        }
+
+        $cacheKey = $organizationId . ':' . $userId . ':' . $holonId;
+        if (!array_key_exists($cacheKey, $cache)) {
+            $cache[$cacheKey] = in_array(
+                $userId,
+                $holon->getAssociatedMemberUserIds([
+                    'organizationId' => $organizationId,
+                    'skipPermissionFilter' => true,
+                ]),
+                true
+            );
+        }
+
+        return $cache[$cacheKey];
+    }
+}
+
+if (!function_exists('omoStatsMatchesAssignment')) {
+    function omoStatsMatchesAssignment(StatIndicator $indicator, $assignment, $currentUserId, $organizationId): bool
+    {
+        $assignment = strtolower(trim((string)$assignment));
+        if ($assignment === 'all') {
+            return true;
+        }
+
+        $currentUserId = (int)$currentUserId;
+        if ($currentUserId <= 0) {
+            return false;
+        }
+
+        $responsibleUserId = (int)$indicator->get('IDuser_responsible');
+        if ($assignment === 'mine' && $responsibleUserId === $currentUserId) {
+            return true;
+        }
+        if ($assignment === 'mine' && $responsibleUserId > 0) {
+            return false;
+        }
+
+        $holon = $indicator->getHolon();
+        if ((int)$indicator->get('IDholon') === 0) {
+            return \dbObject\UserOrganization::hasActiveMembership($currentUserId, (int)$organizationId);
+        }
+        return $holon instanceof Holon
+            && omoStatsUserIsAssociatedWithHolon($currentUserId, $organizationId, $holon);
+    }
+}
+
+if (!function_exists('omoStatsAppendSimpleChartScale')) {
+    function omoStatsAppendSimpleChartScale(string &$svg, string $variant, int $width, int $height, int $paddingLeft, int $paddingRight, int $paddingTop, int $paddingBottom, $minValue, $maxValue, $rightMinValue = null, $rightMaxValue = null): void
+    {
+        if (!in_array($variant, ['compact', 'card'], true)) {
+            return;
+        }
+
+        $lineStart = $paddingLeft + ($variant === 'compact' ? 18 : 30);
+        $lineEnd = $width - $paddingRight;
+        $labelX = $variant === 'card' ? 5 : 0;
+        $topLabelY = $paddingTop + 4;
+        $bottomLabelY = $height - $paddingBottom;
+        $svg .= '<line class="omo-stats-chart__scale-line" x1="' . $lineStart . '" y1="' . $paddingTop . '" x2="' . $lineEnd . '" y2="' . $paddingTop . '"/>';
+        $svg .= '<line class="omo-stats-chart__scale-line" x1="' . $lineStart . '" y1="' . ($height - $paddingBottom) . '" x2="' . $lineEnd . '" y2="' . ($height - $paddingBottom) . '"/>';
+        $svg .= '<text class="omo-stats-chart__scale-label" x="' . $labelX . '" y="' . $topLabelY . '">' . omoApiEscape(omoStatsFormatNumber($maxValue)) . '</text>';
+        $svg .= '<text class="omo-stats-chart__scale-label" x="' . $labelX . '" y="' . $bottomLabelY . '">' . omoApiEscape(omoStatsFormatNumber($minValue)) . '</text>';
+        if (is_numeric($rightMinValue) && is_numeric($rightMaxValue)) {
+            $rightLabelX = $variant === 'card' ? $width - 5 : $width;
+            $svg .= '<text class="omo-stats-chart__scale-label omo-stats-chart__scale-label--cumulative" x="' . $rightLabelX . '" y="' . $topLabelY . '" text-anchor="end">' . omoApiEscape(omoStatsFormatNumber($rightMaxValue)) . '</text>';
+            $svg .= '<text class="omo-stats-chart__scale-label omo-stats-chart__scale-label--cumulative" x="' . $rightLabelX . '" y="' . $bottomLabelY . '" text-anchor="end">' . omoApiEscape(omoStatsFormatNumber($rightMinValue)) . '</text>';
+        }
+    }
+}
+
+if (!function_exists('omoStatsRenderChart')) {
+    function omoStatsRenderChart(StatIndicator $indicator, array $values, array $referencePoints, $variant = 'card', $isOverdue = null, $withTooltips = false)
+    {
+        $variant = in_array($variant, ['compact', 'card', 'large'], true) ? $variant : 'card';
+        if ($isOverdue === null) {
+            $isOverdue = omoStatsGetIndicatorOverdueInfo($indicator)['severity'];
+        }
+        $overdueSeverity = is_string($isOverdue) ? $isOverdue : ($isOverdue ? 'error' : 'none');
+        $chartSeries = omoStatsGetIndicatorChartSeries($indicator, $values, $referencePoints);
+        $measureSeries = $chartSeries['measure'];
+        $allMeasureSeries = $measureSeries;
+        $referenceSeries = $chartSeries['reference'];
+        $ceilingValue = is_numeric($chartSeries['ceiling'] ?? null) ? (float)$chartSeries['ceiling'] : null;
+        $minimumValue = is_numeric($indicator->get('chart_min_value')) ? (float)$indicator->get('chart_min_value') : null;
+        $showCumulative = (int)$indicator->get('show_cumulative') > 0;
+        $referenceUsesCumulativeScale = $showCumulative
+            && StatIndicator::normalizeReferenceScale($indicator->get('reference_scale')) === StatIndicator::REFERENCE_SCALE_CUMULATIVE;
+
+        if (count($measureSeries) === 0 && count($referenceSeries) === 0) {
+            return '<div class="omo-stats-chart-empty">' . omoApiEscape(omoStatsT('stats.chart.empty')) . '</div>';
+        }
+
+        $width = $variant === 'compact' ? 180 : ($variant === 'large' ? 900 : 520);
+        $height = $variant === 'compact' ? 54 : ($variant === 'large' ? 340 : 190);
+        $paddingLeft = $variant === 'large' ? 64 : ($variant === 'card' ? 18 : 2);
+        $paddingRight = $showCumulative
+            ? ($variant === 'large' ? 64 : ($variant === 'card' ? 42 : 30))
+            : ($variant === 'large' ? 24 : ($variant === 'card' ? 18 : 2));
+        $paddingTop = $variant === 'large' ? 24 : ($variant === 'card' ? 16 : 2);
+        $paddingBottom = $variant === 'large' ? 42 : ($variant === 'card' ? 18 : 2);
+        $plotWidth = max(1, $width - $paddingLeft - $paddingRight);
+        $plotHeight = max(1, $height - $paddingTop - $paddingBottom);
+        $referenceRange = omoStatsReferenceTimestampRange($referenceSeries);
+        $displayTimeRange = $referenceRange;
+        if ($referenceRange !== null) {
+            $measureSeries = $showCumulative
+                ? omoStatsFilterChartSeries($measureSeries, $referenceRange['start'], $referenceRange['end'])
+                : omoStatsClipChartSeries($measureSeries, $referenceRange['start'], $referenceRange['end']);
+        } elseif ($variant !== 'large') {
+            $smallRange = omoStatsSmallIndicatorTimestampRange($indicator, $measureSeries);
+            if ($smallRange !== null) {
+                $measureSeries = $showCumulative
+                    ? omoStatsFilterChartSeries($measureSeries, $smallRange['start'], $smallRange['end'])
+                    : omoStatsClipChartSeries($measureSeries, $smallRange['start'], $smallRange['end']);
+            }
+        }
+        $allSeries = array_merge($measureSeries, $referenceSeries);
+        $timestamps = array_column($allSeries, 'timestamp');
+        $minTimestamp = $displayTimeRange !== null ? $displayTimeRange['start'] : min($timestamps);
+        $maxTimestamp = $displayTimeRange !== null ? $displayTimeRange['end'] : max($timestamps);
+        if ($maxTimestamp <= $minTimestamp) {
+            $minTimestamp -= 43200;
+            $maxTimestamp += 43200;
+        }
+
+        $cumulativeSeries = [];
+        if ($showCumulative) {
+            $cumulativeStart = omoStatsResolveIndicatorCumulativeStart(
+                $indicator,
+                $allMeasureSeries,
+                $referenceSeries
+            );
+            $cumulativeSeries = omoStatsBuildCumulativeSeries($allMeasureSeries, $cumulativeStart);
+            $cumulativeSeries = omoStatsClipChartSeries($cumulativeSeries, $minTimestamp, $maxTimestamp);
+        }
+
+        $numbers = array_column($showCumulative ? $measureSeries : $allSeries, 'value');
+        if (!$showCumulative || !$referenceUsesCumulativeScale) {
+            if ($showCumulative) {
+                $numbers = array_merge($numbers, array_column($referenceSeries, 'value'));
+            }
+            if ($ceilingValue !== null) {
+                $numbers[] = $ceilingValue;
+            }
+        }
+        if ($minimumValue !== null) {
+            $numbers[] = $minimumValue;
+        }
+        if (count($numbers) === 0) {
+            $numbers = [0.0];
+        }
+        $chartScale = omoStatsResolveChartScale(min($numbers), max($numbers));
+        $minValue = $chartScale['min'];
+        $maxValue = $chartScale['max'];
+
+        $cumulativeScale = null;
+        if ($showCumulative) {
+            $cumulativeNumbers = array_column($cumulativeSeries, 'value');
+            if ($referenceUsesCumulativeScale) {
+                $cumulativeNumbers = array_merge($cumulativeNumbers, array_column($referenceSeries, 'value'));
+            }
+            if ($referenceUsesCumulativeScale && $ceilingValue !== null) {
+                $cumulativeNumbers[] = $ceilingValue;
+            }
+            if (count($cumulativeNumbers) === 0) {
+                $cumulativeNumbers = [0.0];
+            }
+            $cumulativeScale = omoStatsResolveChartScale(min($cumulativeNumbers), max($cumulativeNumbers));
+        }
+
+        $mapPoint = static function (array $point) use ($minTimestamp, $maxTimestamp, $minValue, $maxValue, $paddingLeft, $paddingTop, $plotWidth, $plotHeight) {
+            $x = $paddingLeft + (($point['timestamp'] - $minTimestamp) / ($maxTimestamp - $minTimestamp)) * $plotWidth;
+            $y = $paddingTop + (1 - (($point['value'] - $minValue) / ($maxValue - $minValue))) * $plotHeight;
+            return [round($x, 2), round($y, 2)];
+        };
+
+        $mapCumulativePoint = $showCumulative
+            ? static function (array $point) use ($minTimestamp, $maxTimestamp, $cumulativeScale, $paddingLeft, $paddingTop, $plotWidth, $plotHeight) {
+                $x = $paddingLeft + (($point['timestamp'] - $minTimestamp) / ($maxTimestamp - $minTimestamp)) * $plotWidth;
+                $y = $paddingTop + (1 - (($point['value'] - $cumulativeScale['min']) / ($cumulativeScale['max'] - $cumulativeScale['min']))) * $plotHeight;
+                return [round($x, 2), round($y, 2)];
+            }
+            : $mapPoint;
+
+        $measureCoordinates = array_map($mapPoint, $measureSeries);
+        $cumulativeCoordinates = array_map($mapCumulativePoint, $cumulativeSeries);
+        $mapReferencePoint = $referenceUsesCumulativeScale ? $mapCumulativePoint : $mapPoint;
+        $referenceCoordinates = array_map($mapReferencePoint, $referenceSeries);
+        $measureValueRange = omoStatsGetSeriesValueRange($measureSeries);
+        $minimumLineValue = $minimumValue !== null
+            && $measureValueRange !== null
+            && $minimumValue >= $measureValueRange['min']
+            && $minimumValue <= $measureValueRange['max']
+            ? $minimumValue
+            : null;
+        $coordinateString = static function (array $coordinates) {
+            return implode(' ', array_map(static function (array $point) {
+                return $point[0] . ',' . $point[1];
+            }, $coordinates));
+        };
+
+        $chartId = 'omo-stats-chart-' . (int)$indicator->getId() . '-' . $variant . '-' . substr(md5((string)count($measureSeries) . ':' . (string)count($referenceSeries)), 0, 8);
+        $svg = '<svg class="omo-stats-chart omo-stats-chart--' . omoApiEscape($variant) . ($showCumulative ? ' omo-stats-chart--cumulative' : '') . ($overdueSeverity === 'error' ? ' omo-stats-chart--overdue' : ($overdueSeverity === 'warning' ? ' omo-stats-chart--warning' : '')) . '" viewBox="0 0 ' . $width . ' ' . $height . '" role="img" aria-label="' . omoApiEscape((string)$indicator->get('name')) . '">';
+        $svg .= '<defs><linearGradient id="' . $chartId . '-area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="currentColor" stop-opacity="0.24"/><stop offset="1" stop-color="currentColor" stop-opacity="0.02"/></linearGradient></defs>';
+
+        if ($variant === 'large') {
+            for ($gridIndex = 0; $gridIndex <= $chartScale['intervals']; $gridIndex++) {
+                $ratio = $gridIndex / $chartScale['intervals'];
+                $gridY = round($paddingTop + ($plotHeight * $ratio), 2);
+                $gridValue = $maxValue - ($chartScale['step'] * $gridIndex);
+                $svg .= '<line class="omo-stats-chart__grid" x1="' . $paddingLeft . '" y1="' . $gridY . '" x2="' . ($width - $paddingRight) . '" y2="' . $gridY . '"/>';
+                $svg .= '<text class="omo-stats-chart__axis-label" x="' . ($paddingLeft - 10) . '" y="' . ($gridY + 4) . '" text-anchor="end">' . omoApiEscape(omoStatsFormatNumber($gridValue)) . '</text>';
+            }
+            if ($cumulativeScale !== null) {
+                for ($gridIndex = 0; $gridIndex <= $cumulativeScale['intervals']; $gridIndex++) {
+                    $ratio = $gridIndex / $cumulativeScale['intervals'];
+                    $gridY = round($paddingTop + ($plotHeight * $ratio), 2);
+                    $gridValue = $cumulativeScale['max'] - ($cumulativeScale['step'] * $gridIndex);
+                    $svg .= '<text class="omo-stats-chart__axis-label omo-stats-chart__axis-label--cumulative" x="' . ($width - $paddingRight + 10) . '" y="' . ($gridY + 4) . '">' . omoApiEscape(omoStatsFormatNumber($gridValue)) . '</text>';
+                }
+            }
+            $svg .= '<text class="omo-stats-chart__axis-label" x="' . $paddingLeft . '" y="' . ($height - 12) . '">' . omoApiEscape(date('d.m.Y', $minTimestamp)) . '</text>';
+            $svg .= '<text class="omo-stats-chart__axis-label" x="' . ($width - $paddingRight) . '" y="' . ($height - 12) . '" text-anchor="end">' . omoApiEscape(date('d.m.Y', $maxTimestamp)) . '</text>';
+        }
+
+        if ($showCumulative) {
+            if (count($measureCoordinates) > 0) {
+                $barWidth = omoStatsResolveChartBarWidth($measureCoordinates, (float)$plotWidth, $variant);
+                $barBaselineValue = max($minValue, min($maxValue, 0.0));
+                $barBaselineY = $mapPoint(['timestamp' => $minTimestamp, 'value' => $barBaselineValue])[1];
+                foreach ($measureCoordinates as $pointIndex => $point) {
+                    $barX = round(max($paddingLeft, min($width - $paddingRight - $barWidth, $point[0] - ($barWidth / 2))), 2);
+                    $barY = round(min($point[1], $barBaselineY), 2);
+                    $barHeight = round(max(1.0, abs($barBaselineY - $point[1])), 2);
+                    $pointTooltip = $withTooltips ? omoStatsFormatChartPointTooltip($measureSeries[$pointIndex]) : '';
+                    $pointTooltipAttributes = $withTooltips
+                        ? ' data-omo-stats-chart-tooltip="' . omoApiEscape($pointTooltip) . '" tabindex="0" aria-label="' . omoApiEscape($pointTooltip) . '"'
+                        : '';
+                    $svg .= '<rect class="omo-stats-chart__bar" x="' . $barX . '" y="' . $barY . '" width="' . $barWidth . '" height="' . $barHeight . '" rx="' . ($variant === 'large' ? 3 : 1.5) . '"' . $pointTooltipAttributes . '/>';
+                }
+            }
+            if (count($cumulativeCoordinates) > 1) {
+                $svg .= '<polyline class="omo-stats-chart__line omo-stats-chart__line--cumulative" points="' . $coordinateString($cumulativeCoordinates) . '"/>';
+            }
+            if (count($cumulativeCoordinates) > 0) {
+                $cumulativePointIndexes = $variant === 'compact'
+                    ? [count($cumulativeCoordinates) - 1]
+                    : array_keys($cumulativeCoordinates);
+                foreach ($cumulativePointIndexes as $pointIndex) {
+                    $point = $cumulativeCoordinates[$pointIndex];
+                    $pointTooltip = $withTooltips
+                        ? omoStatsFormatChartPointTooltip($cumulativeSeries[$pointIndex], 'stats.chart.tooltip.cumulative')
+                        : '';
+                    $pointTooltipAttributes = $withTooltips
+                        ? ' data-omo-stats-chart-tooltip="' . omoApiEscape($pointTooltip) . '" tabindex="0" aria-label="' . omoApiEscape($pointTooltip) . '"'
+                        : '';
+                    $svg .= '<circle class="omo-stats-chart__point omo-stats-chart__point--cumulative" cx="' . $point[0] . '" cy="' . $point[1] . '" r="' . ($variant === 'large' ? 4 : ($variant === 'card' ? 3 : 2.5)) . '"' . $pointTooltipAttributes . '/>';
+                }
+            }
+        } elseif (count($measureCoordinates) > 0) {
+            $areaPoints = $coordinateString($measureCoordinates)
+                . ' ' . $measureCoordinates[count($measureCoordinates) - 1][0] . ',' . ($paddingTop + $plotHeight)
+                . ' ' . $measureCoordinates[0][0] . ',' . ($paddingTop + $plotHeight);
+            $svg .= '<polygon class="omo-stats-chart__area" points="' . $areaPoints . '" fill="url(#' . $chartId . '-area)"/>';
+            if (count($measureCoordinates) > 1) {
+                $svg .= '<polyline class="omo-stats-chart__line" points="' . $coordinateString($measureCoordinates) . '"/>';
+            }
+            if ($variant !== 'compact') {
+                foreach ($measureCoordinates as $pointIndex => $point) {
+                    $pointTooltip = $withTooltips ? omoStatsFormatChartPointTooltip($measureSeries[$pointIndex]) : '';
+                    $pointTooltipAttributes = $withTooltips
+                        ? ' data-omo-stats-chart-tooltip="' . omoApiEscape($pointTooltip) . '" tabindex="0" aria-label="' . omoApiEscape($pointTooltip) . '"'
+                        : '';
+                    $svg .= '<circle class="omo-stats-chart__point" cx="' . $point[0] . '" cy="' . $point[1] . '" r="' . ($variant === 'large' ? 4 : 3) . '"' . $pointTooltipAttributes . '/>';
+                }
+            } else {
+                $lastPoint = $measureCoordinates[count($measureCoordinates) - 1];
+                $pointTooltip = $withTooltips ? omoStatsFormatChartPointTooltip($measureSeries[count($measureSeries) - 1]) : '';
+                $pointTooltipAttributes = $withTooltips
+                    ? ' data-omo-stats-chart-tooltip="' . omoApiEscape($pointTooltip) . '" tabindex="0" aria-label="' . omoApiEscape($pointTooltip) . '"'
+                    : '';
+                $svg .= '<circle class="omo-stats-chart__point" cx="' . $lastPoint[0] . '" cy="' . $lastPoint[1] . '" r="2.5"' . $pointTooltipAttributes . '/>';
+            }
+        }
+
+        if (count($referenceCoordinates) > 1) {
+            $svg .= '<polyline class="omo-stats-chart__reference" points="' . $coordinateString($referenceCoordinates) . '"/>';
+        }
+        if ($ceilingValue !== null) {
+            $ceilingY = $mapReferencePoint(['timestamp' => $minTimestamp, 'value' => $ceilingValue])[1];
+            $svg .= '<line class="omo-stats-chart__reference omo-stats-chart__reference--ceiling" x1="' . $paddingLeft . '" y1="' . $ceilingY . '" x2="' . ($width - $paddingRight) . '" y2="' . $ceilingY . '"/>';
+        }
+        if ($minimumLineValue !== null) {
+            $minimumY = $mapPoint(['timestamp' => $minTimestamp, 'value' => $minimumLineValue])[1];
+            $svg .= '<line class="omo-stats-chart__baseline" x1="' . $paddingLeft . '" y1="' . $minimumY . '" x2="' . ($width - $paddingRight) . '" y2="' . $minimumY . '"/>';
+        }
+
+        omoStatsAppendSimpleChartScale(
+            $svg,
+            $variant,
+            $width,
+            $height,
+            $paddingLeft,
+            $paddingRight,
+            $paddingTop,
+            $paddingBottom,
+            $minValue,
+            $maxValue,
+            $cumulativeScale['min'] ?? null,
+            $cumulativeScale['max'] ?? null
+        );
+
+        $svg .= '</svg>';
+        return $svg;
+    }
+}
+
+if (!function_exists('omoStatsGroupTimeBucketSeconds')) {
+    function omoStatsGroupTimeBucketSeconds(array $series)
+    {
+        $allTimestamps = [];
+        $gaps = [];
+        foreach ($series as $seriesItem) {
+            $points = $seriesItem['points'] ?? [];
+            foreach ($points as $point) {
+                $allTimestamps[] = (int)$point['timestamp'];
+            }
+            for ($index = 1; $index < count($points); $index++) {
+                $gap = (int)$points[$index]['timestamp'] - (int)$points[$index - 1]['timestamp'];
+                if ($gap > 0) {
+                    $gaps[] = $gap;
+                }
+            }
+        }
+        if (count($allTimestamps) < 2) {
+            return 3600;
+        }
+
+        $range = max($allTimestamps) - min($allTimestamps);
+        $rangeBucket = $range <= (10 * 86400) ? 3600 : ($range <= (730 * 86400) ? 86400 : 604800);
+        if (count($gaps) === 0) {
+            return $rangeBucket;
+        }
+
+        sort($gaps, SORT_NUMERIC);
+        $middle = (int)floor(count($gaps) / 2);
+        $medianGap = count($gaps) % 2 === 0
+            ? ($gaps[$middle - 1] + $gaps[$middle]) / 2
+            : $gaps[$middle];
+        $maximumBucket = min($rangeBucket, $medianGap);
+        $buckets = [1, 60, 300, 900, 3600, 21600, 86400, 604800];
+        $bucket = 1;
+        foreach ($buckets as $candidate) {
+            if ($candidate <= $maximumBucket) {
+                $bucket = $candidate;
+            }
+        }
+        return $bucket;
+    }
+}
+
+if (!function_exists('omoStatsNormalizeGroupSeriesTimestamps')) {
+    function omoStatsNormalizeGroupSeriesTimestamps(array $series, $bucketSeconds)
+    {
+        $bucketSeconds = max(1, (int)$bucketSeconds);
+        foreach ($series as &$seriesItem) {
+            $normalizedPoints = [];
+            foreach ($seriesItem['points'] as $point) {
+                $timestamp = (int)$point['timestamp'];
+                $normalizedTimestamp = (int)(floor($timestamp / $bucketSeconds) * $bucketSeconds);
+                // Keep the latest value when multiple measurements share one display period.
+                $normalizedPoints[$normalizedTimestamp] = [
+                    'timestamp' => $normalizedTimestamp,
+                    'value' => (float)$point['value'],
+                ];
+            }
+            ksort($normalizedPoints, SORT_NUMERIC);
+            $seriesItem['points'] = array_values($normalizedPoints);
+        }
+        unset($seriesItem);
+        return $series;
+    }
+}
+
+if (!function_exists('omoStatsGetGroupSeries')) {
+    function omoStatsGetGroupSeries(StatIndicatorGroup $group, ?array $availability = null)
+    {
+        $availability = $availability ?? omoStatsGetGroupSourceAvailability($group);
+        if ($availability['status'] === 'unavailable') {
+            return [];
+        }
+        $series = [];
+        $cutoffTimestamp = $availability['cutoffTimestamp'];
+        foreach ($availability['sources'] as $indicator) {
+            $points = [];
+            foreach ($indicator->getMeasurements() as $measurement) {
+                if (!($measurement instanceof StatIndicatorValue)) {
+                    continue;
+                }
+                $measuredAt = $measurement->get('measured_at');
+                if (!($measuredAt instanceof DateTimeInterface) || !is_numeric($measurement->get('value'))) {
+                    continue;
+                }
+                if ($cutoffTimestamp !== null && $measuredAt->getTimestamp() > $cutoffTimestamp) {
+                    continue;
+                }
+                $points[] = [
+                    'timestamp' => $measuredAt->getTimestamp(),
+                    'value' => (float)$measurement->get('value'),
+                ];
+            }
+            usort($points, static function (array $left, array $right) {
+                return $left['timestamp'] <=> $right['timestamp'];
+            });
+            if (count($points) > 0) {
+                $series[] = ['indicator' => $indicator, 'points' => $points];
+            }
+        }
+
+        if (StatIndicatorGroup::normalizeDisplayMode($group->get('display_mode')) !== StatIndicatorGroup::DISPLAY_SUM) {
+            return $series;
+        }
+
+        $series = omoStatsNormalizeGroupSeriesTimestamps($series, omoStatsGroupTimeBucketSeconds($series));
+
+        $firstCompleteTimestamp = null;
+        $lastCompleteTimestamp = null;
+        if ($availability['status'] === 'archived') {
+            if (count($series) !== count($availability['sources'])) {
+                return [];
+            }
+            $firstCompleteTimestamp = max(array_map(static function (array $seriesItem): int {
+                return (int)$seriesItem['points'][0]['timestamp'];
+            }, $series));
+            $lastCompleteTimestamp = min(array_map(static function (array $seriesItem): int {
+                return (int)$seriesItem['points'][count($seriesItem['points']) - 1]['timestamp'];
+            }, $series));
+            if ($lastCompleteTimestamp < $firstCompleteTimestamp) {
+                return [];
+            }
+        }
+
+        $timestamps = [];
+        foreach ($series as $seriesItem) {
+            $points = $seriesItem['points'];
+            foreach ($points as $point) {
+                if ($firstCompleteTimestamp !== null
+                    && ($point['timestamp'] < $firstCompleteTimestamp || $point['timestamp'] > $lastCompleteTimestamp)) {
+                    continue;
+                }
+                $timestamps[(int)$point['timestamp']] = true;
+            }
+        }
+        if ($firstCompleteTimestamp !== null) {
+            $timestamps[$firstCompleteTimestamp] = true;
+            $timestamps[$lastCompleteTimestamp] = true;
+        }
+
+        $interpolate = static function (array $points, $timestamp) {
+            $timestamp = (int)$timestamp;
+            $firstTimestamp = (int)$points[0]['timestamp'];
+            $lastTimestamp = (int)$points[count($points) - 1]['timestamp'];
+            if ($timestamp < $firstTimestamp || $timestamp > $lastTimestamp) {
+                return 0.0;
+            }
+            foreach ($points as $index => $point) {
+                $pointTimestamp = (int)$point['timestamp'];
+                if ($pointTimestamp === $timestamp) {
+                    return (float)$point['value'];
+                }
+                if ($pointTimestamp > $timestamp && $index > 0) {
+                    $previous = $points[$index - 1];
+                    $previousTimestamp = (int)$previous['timestamp'];
+                    $ratio = ($timestamp - $previousTimestamp) / ($pointTimestamp - $previousTimestamp);
+                    return (float)$previous['value'] + (((float)$point['value'] - (float)$previous['value']) * $ratio);
+                }
+            }
+            return 0.0;
+        };
+
+        $sumPoints = [];
+        foreach (array_keys($timestamps) as $timestamp) {
+            $timestamp = (int)$timestamp;
+            $sum = 0.0;
+            foreach ($series as $seriesItem) {
+                $value = $interpolate($seriesItem['points'], $timestamp);
+                $sum += $value;
+            }
+            $sumPoints[] = ['timestamp' => $timestamp, 'value' => $sum];
+        }
+        usort($sumPoints, static function (array $left, array $right) {
+            return $left['timestamp'] <=> $right['timestamp'];
+        });
+        if (count($sumPoints) === 0) {
+            return [];
+        }
+
+        $backgroundSeries = [];
+        foreach ($series as $sourceIndex => $seriesItem) {
+            if ($firstCompleteTimestamp !== null) {
+                $seriesItem['points'] = array_values(array_filter($seriesItem['points'], static function (array $point) use ($firstCompleteTimestamp, $lastCompleteTimestamp): bool {
+                    return $point['timestamp'] >= $firstCompleteTimestamp && $point['timestamp'] <= $lastCompleteTimestamp;
+                }));
+            }
+            $seriesItem['is_background'] = true;
+            $seriesItem['source_index'] = $sourceIndex;
+            $backgroundSeries[] = $seriesItem;
+        }
+        $backgroundSeries[] = [
+            'indicator' => null,
+            'points' => $sumPoints,
+            'is_sum' => true,
+        ];
+        return $backgroundSeries;
+    }
+}
+
+if (!function_exists('omoStatsRenderGroupChart')) {
+    function omoStatsRenderGroupChart(StatIndicatorGroup $group, array $series, $variant = 'card', $isOverdue = null, $withTooltips = false, ?array $availability = null)
+    {
+        $variant = in_array($variant, ['compact', 'card', 'large'], true) ? $variant : 'card';
+        $availability = $availability ?? omoStatsGetGroupSourceAvailability($group);
+        if ($availability['status'] === 'unavailable') {
+            return '<div class="omo-stats-chart-empty">' . omoApiEscape(omoStatsT('stats.group.chart.unavailable')) . '</div>';
+        }
+        if ($isOverdue === null) {
+            $isOverdue = omoStatsGetGroupOverdueInfo($group)['severity'];
+        }
+        $overdueSeverity = is_string($isOverdue) ? $isOverdue : ($isOverdue ? 'error' : 'none');
+        $referenceSeries = omoStatsGetGroupReferenceSeries($group);
+        $groupCeilingValue = omoStatsGetGroupCeilingValue($group);
+        $ceilingValue = is_numeric($groupCeilingValue) ? (float)$groupCeilingValue : null;
+        $minimumValue = is_numeric($group->get('chart_min_value')) ? (float)$group->get('chart_min_value') : null;
+        $referenceRange = omoStatsReferenceTimestampRange($referenceSeries);
+        $displayTimeRange = $referenceRange;
+        $renderSeries = $series;
+        if ($referenceRange !== null) {
+            $renderSeries = array_values(array_filter($series, static function (array $seriesItem) {
+                return empty($seriesItem['is_background']);
+            }));
+            foreach ($renderSeries as &$seriesItem) {
+                $seriesItem['points'] = omoStatsClipChartSeries($seriesItem['points'] ?? [], $referenceRange['start'], $referenceRange['end']);
+            }
+            unset($seriesItem);
+        } elseif ($variant !== 'large') {
+            $renderSeries = array_values(array_filter($series, static function (array $seriesItem) {
+                return empty($seriesItem['is_background']);
+            }));
+            $smallRange = omoStatsSmallGroupTimestampRange($series);
+            if ($smallRange !== null) {
+                foreach ($renderSeries as &$seriesItem) {
+                    $seriesItem['points'] = omoStatsClipChartSeries($seriesItem['points'] ?? [], $smallRange['start'], $smallRange['end']);
+                }
+                unset($seriesItem);
+                $renderSeries = array_values(array_filter($renderSeries, static function (array $seriesItem) {
+                    return count($seriesItem['points'] ?? []) > 0;
+                }));
+            }
+        }
+        if (count($referenceSeries) > 0) {
+            $renderSeries[] = [
+                'points' => $referenceSeries,
+                'is_reference' => true,
+                'source_index' => 0,
+            ];
+        }
+        if (count($renderSeries) === 0) {
+            return '<div class="omo-stats-chart-empty">' . omoApiEscape(omoStatsT('stats.chart.empty')) . '</div>';
+        }
+
+        $width = $variant === 'compact' ? 180 : ($variant === 'large' ? 900 : 520);
+        $height = $variant === 'compact' ? 54 : ($variant === 'large' ? 340 : 190);
+        $paddingLeft = $variant === 'large' ? 64 : ($variant === 'compact' ? 3 : 18);
+        $paddingRight = $variant === 'large' ? 24 : ($variant === 'compact' ? 3 : 18);
+        $paddingTop = $variant === 'large' ? 24 : ($variant === 'compact' ? 3 : 18);
+        $paddingBottom = $variant === 'large' ? 42 : ($variant === 'compact' ? 3 : 18);
+        $allPoints = [];
+        $measurePoints = [];
+        foreach ($renderSeries as $seriesItem) {
+            $allPoints = array_merge($allPoints, $seriesItem['points']);
+            if (empty($seriesItem['is_reference'])) {
+                $measurePoints = array_merge($measurePoints, $seriesItem['points']);
+            }
+        }
+        $timestamps = array_column($allPoints, 'timestamp');
+        $values = array_column($allPoints, 'value');
+        if ($ceilingValue !== null) {
+            $values[] = $ceilingValue;
+        }
+        if ($minimumValue !== null) {
+            $values[] = $minimumValue;
+        }
+        $minTimestamp = $displayTimeRange !== null ? $displayTimeRange['start'] : min($timestamps);
+        $maxTimestamp = $displayTimeRange !== null ? $displayTimeRange['end'] : max($timestamps);
+        if ($maxTimestamp <= $minTimestamp) {
+            $minTimestamp -= 43200;
+            $maxTimestamp += 43200;
+        }
+        $chartScale = omoStatsResolveChartScale(min($values), max($values));
+        $minValue = $chartScale['min'];
+        $maxValue = $chartScale['max'];
+        $measureValueRange = omoStatsGetSeriesValueRange($measurePoints);
+        $minimumLineValue = $minimumValue !== null
+            && $measureValueRange !== null
+            && $minimumValue >= $measureValueRange['min']
+            && $minimumValue <= $measureValueRange['max']
+            ? $minimumValue
+            : null;
+
+        $plotWidth = $width - $paddingLeft - $paddingRight;
+        $plotHeight = $height - $paddingTop - $paddingBottom;
+        $mapPoint = static function (array $point) use ($minTimestamp, $maxTimestamp, $minValue, $maxValue, $paddingLeft, $paddingTop, $plotWidth, $plotHeight) {
+            return [
+                round($paddingLeft + (($point['timestamp'] - $minTimestamp) / ($maxTimestamp - $minTimestamp)) * $plotWidth, 2),
+                round($paddingTop + (1 - (($point['value'] - $minValue) / ($maxValue - $minValue))) * $plotHeight, 2),
+            ];
+        };
+        $colors = $availability['status'] === 'archived'
+            ? ['#64748b', '#94a3b8', '#475569', '#a1a1aa', '#71717a', '#6b7280']
+            : ['#2563eb', '#db2777', '#059669', '#d97706', '#7c3aed', '#0891b2'];
+        $svg = '<svg class="omo-stats-chart omo-stats-chart--' . omoApiEscape($variant) . ' omo-stats-chart--group' . ($overdueSeverity === 'error' ? ' omo-stats-chart--overdue' : ($overdueSeverity === 'warning' ? ' omo-stats-chart--warning' : '')) . '" viewBox="0 0 ' . $width . ' ' . $height . '" role="img" aria-label="' . omoApiEscape((string)$group->get('name')) . '">';
+        if ($variant === 'large') {
+            for ($gridIndex = 0; $gridIndex <= $chartScale['intervals']; $gridIndex++) {
+                $ratio = $gridIndex / $chartScale['intervals'];
+                $gridY = round($paddingTop + ($plotHeight * $ratio), 2);
+                $gridValue = $maxValue - ($chartScale['step'] * $gridIndex);
+                $svg .= '<line class="omo-stats-chart__grid" x1="' . $paddingLeft . '" y1="' . $gridY . '" x2="' . ($width - $paddingRight) . '" y2="' . $gridY . '"/>';
+                $svg .= '<text class="omo-stats-chart__axis-label" x="' . ($paddingLeft - 10) . '" y="' . ($gridY + 4) . '" text-anchor="end">' . omoApiEscape(omoStatsFormatNumber($gridValue)) . '</text>';
+            }
+            $svg .= '<text class="omo-stats-chart__axis-label" x="' . $paddingLeft . '" y="' . ($height - 12) . '">' . omoApiEscape(date('d.m.Y', $minTimestamp)) . '</text>';
+            $svg .= '<text class="omo-stats-chart__axis-label" x="' . ($width - $paddingRight) . '" y="' . ($height - 12) . '" text-anchor="end">' . omoApiEscape(date('d.m.Y', $maxTimestamp)) . '</text>';
+        }
+        foreach ($renderSeries as $seriesIndex => $seriesItem) {
+            $coordinates = array_map($mapPoint, $seriesItem['points']);
+            $coordinateString = implode(' ', array_map(static function (array $point) {
+                return $point[0] . ',' . $point[1];
+            }, $coordinates));
+            $isBackground = !empty($seriesItem['is_background']);
+            $isSum = !empty($seriesItem['is_sum']);
+            $isReference = !empty($seriesItem['is_reference']);
+            $sourceIndex = isset($seriesItem['source_index']) ? (int)$seriesItem['source_index'] : $seriesIndex;
+            $color = $isReference
+                ? ($availability['status'] === 'archived' ? '#94a3b8' : '#7b9aa8')
+                : ($isSum ? $colors[0] : $colors[$sourceIndex % count($colors)]);
+            $lineClass = $isReference ? 'omo-stats-chart__reference' : 'omo-stats-chart__line'
+                . ($isBackground ? ' omo-stats-chart__line--background' : '')
+                . ($isSum ? ' omo-stats-chart__line--sum' : '');
+            if ($isReference) {
+                $lineClass = 'omo-stats-chart__reference';
+            }
+            if (count($coordinates) > 1) {
+                $svg .= '<polyline class="' . $lineClass . '" style="stroke:' . $color . '" points="' . $coordinateString . '"/>';
+            }
+            if ($variant !== 'compact' && !$isBackground && !$isReference) {
+                foreach ($coordinates as $pointIndex => $point) {
+                    $pointTooltip = $withTooltips ? omoStatsFormatChartPointTooltip($seriesItem['points'][$pointIndex]) : '';
+                    $pointTooltipAttributes = $withTooltips
+                        ? ' data-omo-stats-chart-tooltip="' . omoApiEscape($pointTooltip) . '" tabindex="0" aria-label="' . omoApiEscape($pointTooltip) . '"'
+                        : '';
+                    $svg .= '<circle class="omo-stats-chart__point" style="stroke:' . $color . '" cx="' . $point[0] . '" cy="' . $point[1] . '" r="' . ($variant === 'large' ? 4 : 3) . '"' . $pointTooltipAttributes . '/>';
+                }
+            }
+        }
+        if ($ceilingValue !== null) {
+            $ceilingY = $mapPoint(['timestamp' => $minTimestamp, 'value' => $ceilingValue])[1];
+            $svg .= '<line class="omo-stats-chart__reference omo-stats-chart__reference--ceiling" x1="' . $paddingLeft . '" y1="' . $ceilingY . '" x2="' . ($width - $paddingRight) . '" y2="' . $ceilingY . '"/>';
+        }
+        if ($minimumLineValue !== null) {
+            $minimumY = $mapPoint(['timestamp' => $minTimestamp, 'value' => $minimumLineValue])[1];
+            $svg .= '<line class="omo-stats-chart__baseline" x1="' . $paddingLeft . '" y1="' . $minimumY . '" x2="' . ($width - $paddingRight) . '" y2="' . $minimumY . '"/>';
+        }
+        omoStatsAppendSimpleChartScale($svg, $variant, $width, $height, $paddingLeft, $paddingRight, $paddingTop, $paddingBottom, $minValue, $maxValue);
+        return $svg . '</svg>';
+    }
+}
+
+?>

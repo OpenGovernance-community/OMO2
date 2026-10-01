@@ -90,7 +90,7 @@ class ArrayDecisionProcess extends ArrayDbObject
         }
 
         $canManage = $isOwner;
-        $canParticipate = ($isOwner || $hasParticipation) && $decision->isParticipationOpen();
+        $canParticipate = ($isOwner || $hasParticipation) && $decision->isParticipationInterfaceOpen();
         $canView = $canManage
             || $hasParticipation
             || ($status !== \dbObject\DecisionProcess::STATUS_DRAFT && $visibilityAccess);
@@ -135,6 +135,7 @@ class ArrayDecisionProcess extends ArrayDbObject
             'where' => array(
                 array('field' => 'IDorganization', 'value' => $organizationId),
             ),
+            'hydrate' => true,
             'orderBy' => array(
                 array('field' => 'updated_at', 'dir' => 'DESC'),
                 array('field' => 'created_at', 'dir' => 'DESC'),
@@ -149,7 +150,44 @@ class ArrayDecisionProcess extends ArrayDbObject
         $this->load($loadParams);
     }
 
-    public function buildPersonalSpaceSummary($organizationId, $userId, $holonId = 0, $previewLimit = 3)
+    public function loadVisibleForOrganization($organizationId, $userId): array
+    {
+        $organizationId = (int)$organizationId;
+        $userId = (int)$userId;
+        $this->exchangeArray([]);
+
+        if ($organizationId <= 0 || $userId <= 0) {
+            return [];
+        }
+
+        $scopedEmail = $this->resolveViewerScopedEmail($userId, $organizationId);
+        $rows = \dbObject\DecisionProcess::fetchListRowsForOrganization($organizationId, $userId, $scopedEmail);
+        $visibleDecisions = [];
+
+        foreach ($rows as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+
+            $decision = new \dbObject\DecisionProcess();
+            $decision->hydrateFromDatabaseRow($row, true);
+            if ((int)$decision->getId() <= 0) {
+                continue;
+            }
+
+            $access = $this->resolveDecisionAccess($decision, $organizationId, $userId, $scopedEmail);
+            if (!is_array($access) || empty($access['canView'])) {
+                continue;
+            }
+
+            $visibleDecisions[] = $decision;
+        }
+
+        $this->exchangeArray($visibleDecisions);
+        return $visibleDecisions;
+    }
+
+    public function buildPersonalSpaceSummary($organizationId, $userId, $holonId = 0, $previewLimit = 3, ?array $scopeHolonIds = null)
     {
         $organizationId = (int)$organizationId;
         $userId = (int)$userId;
@@ -176,11 +214,23 @@ class ArrayDecisionProcess extends ArrayDbObject
         }
 
         $this->loadForPersonalSpace($organizationId, $holonId);
+        $scopeHolonIdMap = null;
+        if (is_array($scopeHolonIds)) {
+            $scopeHolonIdMap = array_fill_keys(array_values(array_unique(array_filter(array_map('intval', $scopeHolonIds), static function ($candidateId) {
+                return $candidateId > 0;
+            }))), true);
+        }
         $scopedEmail = $this->resolveViewerScopedEmail($userId, $organizationId);
         $statusCatalog = \dbObject\DecisionProcess::getStatusCatalog();
 
         foreach ($this as $decision) {
             if (!($decision instanceof \dbObject\DecisionProcess) || (int)$decision->getId() <= 0) {
+                continue;
+            }
+            if (
+                is_array($scopeHolonIdMap)
+                && !isset($scopeHolonIdMap[(int)$decision->get('IDholon')])
+            ) {
                 continue;
             }
 

@@ -59,7 +59,7 @@
                 selector: '#panel-left',
                 popover: {
                     title: 'Contexte courant',
-                    description: 'Le panneau de gauche présente le cercle, ses attendus, ses domaines d’autorité et les éléments utiles pour comprendre où l’on se situe.',
+                    description: 'Le panneau de gauche présente l’espace, ses attendus, ses domaines d’autorité et les éléments utiles pour comprendre où l’on se situe.',
                     side: contextSide,
                     align: 'center',
                 },
@@ -68,7 +68,7 @@
                 selectors: ['#panel-left .breadcrumb', '#panel-left .circle-header'],
                 popover: {
                     title: 'Fil d’Ariane et responsables',
-                    description: 'Cette zone aide à se repérer rapidement dans la hiérarchie et à visualiser les personnes associées au cercle affiché.',
+                    description: 'Cette zone aide à se repérer rapidement dans la hiérarchie et à visualiser les personnes associées à l’espace affiché.',
                     side: contextSide,
                     align: 'center',
                 },
@@ -86,7 +86,7 @@
                 selector: '#panel-right',
                 popover: {
                     title: 'Structure visuelle',
-                    description: 'Le panneau principal met en scène l’organisation. Ici, on visualise les cercles et rôles de manière plus immersive.',
+                    description: 'Le panneau principal met en scène l’organisation. Ici, on visualise les espaces de manière plus immersive.',
                     side: structureSide,
                     align: 'center',
                 },

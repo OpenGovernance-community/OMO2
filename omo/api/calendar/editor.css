@@ -1,0 +1,186 @@
+.omo-calendar-create {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.omo-calendar-create__shell,
+.omo-calendar-create__form,
+.omo-calendar-create__tabs,
+.omo-calendar-create__tabs .generic-tabs__panels {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.omo-calendar-create__shell,
+.omo-calendar-create__form {
+    gap: 0;
+}
+
+.omo-calendar-create__tabs .generic-tabs__list {
+    flex: 0 0 auto;
+    padding-top: var(--generic-space-4);
+}
+
+.omo-calendar-create__tabs .generic-tabs__panels {
+    overflow: hidden;
+}
+
+.omo-calendar-create__tab-panel {
+    align-content: start;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    padding: var(--generic-space-4) var(--generic-container-padding-inline);
+    display: grid;
+    gap: 14px;
+}
+
+.omo-calendar-create__tab-panel--availability > [data-omo-calendar-preview-host] {
+    min-width: 0;
+}
+
+.omo-calendar-create__preview-feedback {
+    color: var(--color-text-light, #64748b);
+}
+
+.omo-calendar-create__preview-feedback.is-error {
+    color: var(--color-danger, #b42318);
+}
+
+.omo-calendar-create__preview-loading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--color-text-light, #64748b);
+}
+
+.omo-calendar-create__preview-loading::before {
+    width: 16px;
+    height: 16px;
+    border: 2px solid color-mix(in srgb, var(--color-primary, #2563eb) 22%, transparent);
+    border-top-color: var(--color-primary, #2563eb);
+    border-radius: 50%;
+    content: "";
+    animation: omo-calendar-preview-spin 0.8s linear infinite;
+}
+
+.omo-calendar-create__preview-warning {
+    margin: 0 0 10px;
+    color: #946019;
+    font-size: 0.85rem;
+}
+
+.omo-calendar-create__preview-people {
+    display: grid;
+    gap: 8px;
+    margin-bottom: 14px;
+    color: var(--color-text, #1f2937);
+    font-size: 0.86rem;
+}
+
+.omo-calendar-create__preview-people ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.omo-calendar-create__preview-people li {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 9px;
+    border: 1px solid var(--color-border, #dbe4ee);
+    border-radius: 999px;
+    background: var(--color-surface, #fff);
+}
+
+.omo-calendar-create__preview-people li span {
+    color: var(--color-text-light, #64748b);
+    font-size: 0.75rem;
+}
+
+.omo-calendar-create__preview-people label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+}
+
+.omo-calendar-create__preview-people li:has(input:not(:checked)) {
+    opacity: 0.6;
+}
+
+@keyframes omo-calendar-preview-spin {
+    to { transform: rotate(360deg); }
+}
+
+.omo-calendar-create__pill {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 0 10px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-primary, #2563eb) 10%, var(--color-surface, #ffffff));
+    color: var(--color-text, #1f2937);
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.omo-calendar-create__document-summary {
+    display: grid;
+    gap: 8px;
+}
+
+.omo-calendar-create__document-title {
+    color: var(--color-text, #1f2937);
+    font-size: 1rem;
+}
+
+.omo-calendar-create__check {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--color-text, #1f2937);
+    font-weight: 600;
+}
+
+.omo-calendar-create__notice {
+    margin: 0;
+    color: var(--color-text-light, #64748b);
+    font-size: 0.92rem;
+}
+
+.omo-calendar-create__footer {
+    display: flex;
+    flex-direction: column;
+    flex: 0 0 auto;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: stretch;
+    padding: 0;
+}
+
+.omo-calendar-create__feedback {
+    min-height: 0;
+    margin: 0;
+    color: var(--color-text-light, #64748b);
+}
+
+
+.omo-calendar-create__feedback.is-error {
+    color: var(--color-danger, #b42318);
+}
+
+@media (max-width: 720px) {
+    .omo-calendar-create__footer {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}

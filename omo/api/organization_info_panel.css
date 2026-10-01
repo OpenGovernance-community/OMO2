@@ -1,0 +1,143 @@
+.omo-org-info-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 18px;
+    color: var(--color-text, #1f2937);
+}
+
+.omo-org-info-panel__hero {
+    position: relative;
+    min-height: 180px;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    border: 1px solid var(--color-border, #d1d5db);
+    background: var(--color-surface-alt, #dbeafe);
+}
+
+.omo-org-info-panel__hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(15, 23, 42, 0.04), rgba(15, 23, 42, 0.5));
+}
+
+.omo-org-info-panel__hero-content {
+    position: absolute;
+    inset: auto 18px 18px 18px;
+    z-index: 1;
+    color: #fff;
+}
+
+.omo-org-info-panel__kicker {
+    opacity: 0.8;
+}
+
+.omo-org-info-panel__title {
+    margin: 8px 0 0;
+}
+
+.omo-org-info-panel__card {
+    background: var(--color-surface, #fff);
+    border: 1px solid var(--color-border, #d1d5db);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    box-shadow: var(--shadow-sm, 0 2px 6px rgba(15, 23, 42, 0.05));
+}
+
+.omo-org-info-list {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+}
+
+.omo-org-info-list__item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px;
+    border-radius: var(--radius-md);
+    background: var(--color-surface-alt, #f8fafc);
+}
+
+.omo-org-members {
+    display: grid;
+    gap: 8px;
+}
+
+.omo-org-members__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.omo-org-members__list {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.omo-org-members__avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    border-radius: 999px;
+    overflow: hidden;
+    border: 1px solid var(--color-border, #d1d5db);
+    background: color-mix(in srgb, var(--color-primary, #2563eb) 12%, var(--color-surface-alt, #f8fafc));
+    box-shadow: var(--shadow-sm, 0 1px 2px rgba(15, 23, 42, 0.08));
+    padding: 0;
+}
+
+.omo-org-members__avatar--button {
+    cursor: pointer;
+}
+
+.omo-org-members__avatar--button:hover,
+.omo-org-members__avatar--button:focus-visible {
+    border-color: color-mix(in srgb, var(--color-primary, #2563eb) 35%, var(--color-border, #d1d5db));
+    background: color-mix(in srgb, var(--color-primary, #2563eb) 16%, var(--color-surface-alt, #f8fafc));
+}
+
+.omo-org-members__avatar--pending {
+    opacity: 0.6;
+    border-style: dashed;
+}
+
+.omo-org-members__avatar img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+}
+
+.omo-org-members__initials {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--color-primary, #2563eb);
+}
+
+.omo-org-members__badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    min-height: 36px;
+    padding: 0 10px;
+    border-radius: 999px;
+    background: rgba(37, 99, 235, 0.08);
+    color: var(--color-primary, #2563eb);
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.omo-org-members__badge--pending {
+    background: rgba(148, 163, 184, 0.14);
+    color: var(--color-text-light, #6b7280);
+}

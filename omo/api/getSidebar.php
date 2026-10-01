@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/organization_applications_access.php';
+commonReleaseReadOnlySession();
 
 $sourceLang = [
     'sidebar.applications.manage_label' => [
@@ -22,6 +23,8 @@ $lang = omoLoadTranslationBundle('omo_get_sidebar_panel', $sourceLang);
 $currentOrganizationId = (int)($_SESSION['currentOrganization'] ?? 0);
 $currentUserId = commonGetCurrentUserId();
 $canManageApplications = omoCurrentUserCanManageOrganizationApplications($currentOrganizationId, $currentUserId);
+$isStructuralShare = function_exists('commonGetCurrentShareLink')
+    && commonGetCurrentShareLink() instanceof \dbObject\HolonShareLink;
 
 $applications = new \dbObject\ArrayApplication();
 if ($currentOrganizationId > 0) {
@@ -68,6 +71,10 @@ $renderMenuItem = static function (array $item) use ($escape) {
 <div class="menu-primary">
 <?php foreach ($applications as $application): ?>
     <?php
+    if ($isStructuralShare && $application->getRouteHash() === 'projects') {
+        continue;
+    }
+
     $renderMenuItem([
         'label' => $application->get('label'),
         'hash' => $application->getRouteHash(),
@@ -85,7 +92,7 @@ $renderMenuItem = static function (array $item) use ($escape) {
         data-omo-open-app-picker="1"
         title="<?= $escape(t('sidebar.applications.manage_title', [], $lang, $sourceLang)) ?>"
     >
-        <span class="icon"><img src="images/tools/plus.png" class="icon-img black-icon" style='width:20px;height:20px; margin:2px'></span>
+        <span class="icon"><img src="images/tools/plus.png" class="icon-img black-icon"></span>
         <span class="label"><?= $escape(t('sidebar.applications.manage_label', [], $lang, $sourceLang)) ?></span>
     </div>
 <?php endif; ?>

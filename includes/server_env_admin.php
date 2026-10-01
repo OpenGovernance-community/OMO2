@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/env.php';
+require_once dirname(__DIR__) . '/common/etherpad.php';
 
 function serverEnvAdminT($key, $fallback, array $replace = [])
 {
@@ -103,6 +104,101 @@ function serverEnvAdminGetEditableSections()
                     'type' => 'text',
                     'placeholder' => 'dev.opengov.tools',
                     'help' => serverEnvAdminT('parameters.server_env.field.COOKIE_ROOT_HOST.help', 'Optionnel. Si renseigne, force le partage des cookies a cette racine exacte, par exemple dev.opengov.tools pour partager entre dev.opengov.tools et *.dev.opengov.tools sans toucher a la prod.'),
+                ],
+            ],
+        ],
+        'etherpad' => [
+            'title' => serverEnvAdminT('parameters.server_env.section.etherpad.title', 'Etherpad'),
+            'intro' => serverEnvAdminT('parameters.server_env.section.etherpad.intro', 'Connexion globale au serveur Etherpad utilise par les documents collaboratifs.'),
+            'fields' => [
+                [
+                    'key' => 'ETHERPAD_URL',
+                    'label' => serverEnvAdminT('parameters.server_env.field.ETHERPAD_URL.label', 'Adresses Etherpad'),
+                    'type' => 'text',
+                    'placeholder' => 'https://pad.example.org,https://pad.example.net',
+                    'help' => serverEnvAdminT('parameters.server_env.field.ETHERPAD_URL.help', 'Une ou plusieurs adresses de base séparées par des virgules. OMO choisit celle qui correspond au domaine du site.'),
+                ],
+                [
+                    'key' => 'ETHERPAD_API_KEY',
+                    'label' => serverEnvAdminT('parameters.server_env.field.ETHERPAD_API_KEY.label', 'Cle API Etherpad'),
+                    'type' => 'password',
+                    'secret' => true,
+                    'help' => serverEnvAdminT('parameters.server_env.field.secret_keep.help', 'Laissez vide pour conserver la valeur actuelle.'),
+                ],
+                [
+                    'key' => 'ETHERPAD_API_VERSION',
+                    'label' => serverEnvAdminT('parameters.server_env.field.ETHERPAD_API_VERSION.label', 'Version de l API Etherpad'),
+                    'type' => 'text',
+                    'placeholder' => '1.3.1',
+                    'help' => serverEnvAdminT('parameters.server_env.field.ETHERPAD_API_VERSION.help', 'Version renvoyee par le point d entree /api du serveur Etherpad.'),
+                ],
+                [
+                    'key' => 'ETHERPAD_COOKIE_DOMAIN',
+                    'label' => serverEnvAdminT('parameters.server_env.field.ETHERPAD_COOKIE_DOMAIN.label', 'Domaine de partage des cookies'),
+                    'type' => 'text',
+                    'placeholder' => '.opengov.tools',
+                    'help' => serverEnvAdminT('parameters.server_env.field.ETHERPAD_COOKIE_DOMAIN.help', 'Optionnel. OMO déduit normalement le domaine du cookie de l’adresse Etherpad choisie.'),
+                ],
+            ],
+        ],
+        'ethercalc' => [
+            'title' => serverEnvAdminT('parameters.server_env.section.ethercalc.title', 'EtherCalc'),
+            'intro' => serverEnvAdminT('parameters.server_env.section.ethercalc.intro', 'Connexion globale au serveur EtherCalc utilise par les tableurs collaboratifs.'),
+            'fields' => [
+                [
+                    'key' => 'ETHERCALC_URL',
+                    'label' => serverEnvAdminT('parameters.server_env.field.ETHERCALC_URL.label', 'URL publique EtherCalc'),
+                    'type' => 'url',
+                    'placeholder' => 'https://calc.opengov.tools',
+                    'help' => serverEnvAdminT('parameters.server_env.field.ETHERCALC_URL.help', 'Adresse de base du serveur EtherCalc, sans le nom de la feuille.'),
+                ],
+                [
+                    'key' => 'ETHERCALC_INTERNAL_URL',
+                    'label' => serverEnvAdminT('parameters.server_env.field.ETHERCALC_INTERNAL_URL.label', 'URL interne EtherCalc'),
+                    'type' => 'url',
+                    'placeholder' => 'http://ethercalc:8000',
+                    'help' => serverEnvAdminT('parameters.server_env.field.ETHERCALC_INTERNAL_URL.help', 'Optionnel. Utilisee uniquement par le serveur OMO pour joindre EtherCalc dans le meme reseau. Laissez vide dans les autres cas.'),
+                ],
+                [
+                    'key' => 'ETHERCALC_KEY',
+                    'label' => serverEnvAdminT('parameters.server_env.field.ETHERCALC_KEY.label', 'Cle EtherCalc'),
+                    'type' => 'password',
+                    'secret' => true,
+                    'help' => serverEnvAdminT('parameters.server_env.field.secret_keep.help', 'Laissez vide pour conserver la valeur actuelle.'),
+                ],
+            ],
+        ],
+        'spacedeck' => [
+            'title' => serverEnvAdminT('parameters.server_env.section.spacedeck.title', 'SpaceDeck'),
+            'intro' => serverEnvAdminT('parameters.server_env.section.spacedeck.intro', 'Connexion globale au serveur de tableaux blancs collaboratifs.'),
+            'fields' => [
+                [
+                    'key' => 'SPACEDECK_URL',
+                    'label' => serverEnvAdminT('parameters.server_env.field.SPACEDECK_URL.label', 'URL publique SpaceDeck'),
+                    'type' => 'url',
+                    'placeholder' => 'https://board.opengov.tools',
+                    'help' => serverEnvAdminT('parameters.server_env.field.SPACEDECK_URL.help', 'Adresse HTTPS ouverte dans les iframes OMO, sans le nom du tableau.'),
+                ],
+                [
+                    'key' => 'SPACEDECK_INTERNAL_URL',
+                    'label' => serverEnvAdminT('parameters.server_env.field.SPACEDECK_INTERNAL_URL.label', 'URL interne SpaceDeck'),
+                    'type' => 'url',
+                    'placeholder' => 'https://board.opengov.tools',
+                    'help' => serverEnvAdminT('parameters.server_env.field.SPACEDECK_INTERNAL_URL.help', 'Optionnel. Utilisee par OMO pour creer et supprimer les tableaux. Laissez vide pour utiliser l URL publique.'),
+                ],
+                [
+                    'key' => 'SPACEDECK_PROVISIONING_TOKEN',
+                    'label' => serverEnvAdminT('parameters.server_env.field.SPACEDECK_PROVISIONING_TOKEN.label', 'Jeton de provisioning SpaceDeck'),
+                    'type' => 'password',
+                    'secret' => true,
+                    'help' => serverEnvAdminT('parameters.server_env.field.SPACEDECK_PROVISIONING_TOKEN.help', 'Jeton prive configure sur le VPS. Il permet a OMO de creer et supprimer les tableaux.'),
+                ],
+                [
+                    'key' => 'SPACEDOCK_EXTERNAL_ACCESS_SECRET',
+                    'label' => serverEnvAdminT('parameters.server_env.field.SPACEDOCK_EXTERNAL_ACCESS_SECRET.label', 'Cle de signature des acces'),
+                    'type' => 'password',
+                    'secret' => true,
+                    'help' => serverEnvAdminT('parameters.server_env.field.SPACEDOCK_EXTERNAL_ACCESS_SECRET.help', 'Cle privee longue et aleatoire, utilisee par OMO pour signer les acces de lecture et d edition.'),
                 ],
             ],
         ],
@@ -218,6 +314,18 @@ function serverEnvAdminGetEditableSections()
                     'type' => 'password',
                     'secret' => true,
                     'help' => serverEnvAdminT('parameters.server_env.field.secret_keep.help', 'Laissez vide pour conserver la valeur actuelle.'),
+                ],
+                [
+                    'key' => 'PATREON_CONNECT_URL',
+                    'label' => serverEnvAdminT('parameters.server_env.field.PATREON_CONNECT_URL.label', 'URL centrale de connexion Patreon'),
+                    'type' => 'text',
+                    'help' => serverEnvAdminT('parameters.server_env.field.PATREON_CONNECT_URL.help', 'URL du point de connexion central, par exemple https://omo2.org/common/patreon_connect.php.'),
+                ],
+                [
+                    'key' => 'PATREON_CONNECT_ALLOWED_ORIGINS',
+                    'label' => serverEnvAdminT('parameters.server_env.field.PATREON_CONNECT_ALLOWED_ORIGINS.label', 'Domaines de retour Patreon autorisés'),
+                    'type' => 'text',
+                    'help' => serverEnvAdminT('parameters.server_env.field.PATREON_CONNECT_ALLOWED_ORIGINS.help', 'Liste d origines HTTPS séparées par des virgules. https://*.dev.opengov.tools autorise ses sous-domaines ; ajoutez aussi https://dev.opengov.tools pour le domaine principal.'),
                 ],
                 [
                     'key' => 'PATREON_REDIRECT_URI',
@@ -430,6 +538,41 @@ function serverEnvAdminMergeSubmittedValues(array $submittedValues, array $curre
     return $mergedValues;
 }
 
+function serverEnvAdminIsHttpUrl($value)
+{
+    $parsedServerUrl = parse_url(trim((string)$value));
+    $serverScheme = is_array($parsedServerUrl) ? strtolower((string)($parsedServerUrl['scheme'] ?? '')) : '';
+    $serverHost = is_array($parsedServerUrl) ? trim((string)($parsedServerUrl['host'] ?? '')) : '';
+
+    return is_array($parsedServerUrl)
+        && in_array($serverScheme, ['http', 'https'], true)
+        && $serverHost !== ''
+        && !isset($parsedServerUrl['user'])
+        && !isset($parsedServerUrl['pass'])
+        && !isset($parsedServerUrl['query'])
+        && !isset($parsedServerUrl['fragment']);
+}
+
+function serverEnvAdminParseEtherpadUrls($value)
+{
+    $value = trim((string)$value);
+    if ($value === '') {
+        return null;
+    }
+
+    $baseUrls = [];
+    foreach (explode(',', $value) as $part) {
+        $baseUrl = omoEtherpadNormalizeBaseUrl($part);
+        if ($baseUrl === '' || !serverEnvAdminIsHttpUrl($baseUrl)) {
+            return null;
+        }
+
+        $baseUrls[$baseUrl] = $baseUrl;
+    }
+
+    return array_values($baseUrls);
+}
+
 function serverEnvAdminValidateValues(array $values)
 {
     $errors = [];
@@ -459,9 +602,63 @@ function serverEnvAdminValidateValues(array $values)
         $errors[] = 'Le port SMTP doit etre numerique.';
     }
 
+    $serverUrlFields = array(
+        'ETHERPAD_URL' => array(
+            'translationKey' => 'parameters.server_env.error.invalid_etherpad_url',
+            'fallback' => 'L URL Etherpad doit etre une adresse http ou https valide.',
+        ),
+        'ETHERCALC_URL' => array(
+            'translationKey' => 'parameters.server_env.error.invalid_ethercalc_url',
+            'fallback' => 'L URL EtherCalc doit etre une adresse http ou https valide.',
+        ),
+        'ETHERCALC_INTERNAL_URL' => array(
+            'translationKey' => 'parameters.server_env.error.invalid_ethercalc_url',
+            'fallback' => 'L URL EtherCalc doit etre une adresse http ou https valide.',
+        ),
+        'SPACEDECK_URL' => array(
+            'translationKey' => 'parameters.server_env.error.invalid_spacedeck_url',
+            'fallback' => 'L URL SpaceDeck doit etre une adresse http ou https valide.',
+        ),
+        'SPACEDECK_INTERNAL_URL' => array(
+            'translationKey' => 'parameters.server_env.error.invalid_spacedeck_url',
+            'fallback' => 'L URL SpaceDeck doit etre une adresse http ou https valide.',
+        ),
+    );
+
+    foreach ($serverUrlFields as $serverUrlKey => $serverUrlError) {
+        $serverUrl = trim((string)($values[$serverUrlKey] ?? ''));
+        if ($serverUrl === '') {
+            continue;
+        }
+
+        if (
+            $serverUrlKey === 'ETHERPAD_URL'
+                ? serverEnvAdminParseEtherpadUrls($serverUrl) === null
+                : !serverEnvAdminIsHttpUrl($serverUrl)
+        ) {
+            $errors[] = serverEnvAdminT(
+                $serverUrlError['translationKey'],
+                $serverUrlError['fallback']
+            );
+        }
+    }
+
+    $etherpadApiVersion = trim((string)($values['ETHERPAD_API_VERSION'] ?? ''));
+    if ($etherpadApiVersion !== '' && preg_match('/^[0-9]+(?:\.[0-9]+)*$/', $etherpadApiVersion) !== 1) {
+        $errors[] = serverEnvAdminT(
+            'parameters.server_env.error.invalid_etherpad_api_version',
+            'La version de l API Etherpad doit etre numerique, par exemple 1.3.1.'
+        );
+    }
+
     $patreonRedirect = trim((string)($values['PATREON_REDIRECT_URI'] ?? ''));
     if ($patreonRedirect !== '' && preg_match('#^https?://#i', $patreonRedirect) !== 1) {
         $errors[] = 'La Redirect URI Patreon doit etre une URL absolue.';
+    }
+
+    $patreonConnectUrl = trim((string)($values['PATREON_CONNECT_URL'] ?? ''));
+    if ($patreonConnectUrl !== '' && preg_match('~^https://[^/?#]+/common/patreon_connect\.php$~i', $patreonConnectUrl) !== 1) {
+        $errors[] = 'L URL centrale Patreon doit se terminer par /common/patreon_connect.php et utiliser HTTPS.';
     }
 
     $envPath = serverEnvAdminGetEnvPath();
@@ -472,6 +669,303 @@ function serverEnvAdminValidateValues(array $values)
     }
 
     return $errors;
+}
+
+function serverEnvAdminConnectionTestError($service, $reason)
+{
+    $serviceLabels = array(
+        'etherpad' => 'Etherpad',
+        'ethercalc' => 'EtherCalc',
+        'spacedeck' => 'SpaceDeck',
+    );
+    $serviceLabel = $serviceLabels[$service] ?? 'Service';
+    $reason = trim((string)$reason);
+
+    return serverEnvAdminT(
+        'parameters.server_env.error.connection_test_failed',
+        'La connexion avec {service} a échoué{reason}.',
+        [
+            'service' => $serviceLabel,
+            'reason' => $reason === '' ? '' : ' : ' . $reason,
+        ]
+    );
+}
+
+function serverEnvAdminRequest($method, $url, array $options = array())
+{
+    if (!function_exists('curl_init')) {
+        return [
+            'status' => false,
+            'text' => serverEnvAdminT(
+                'parameters.server_env.error.curl_required',
+                'cURL est requis pour tester cette connexion.'
+            ),
+        ];
+    }
+
+    $curl = curl_init((string)$url);
+    curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($curl, CURLOPT_FOLLOWLOCATION, false);
+    curl_setopt($curl, CURLOPT_CUSTOMREQUEST, strtoupper(trim((string)$method)));
+    curl_setopt($curl, CURLOPT_CONNECTTIMEOUT, 5);
+    curl_setopt($curl, CURLOPT_TIMEOUT, 15);
+    curl_setopt($curl, CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
+    $headers = array_merge(array('Accept: application/json'), (array)($options['headers'] ?? array()));
+    curl_setopt($curl, CURLOPT_HTTPHEADER, $headers);
+    if (array_key_exists('body', $options)) {
+        curl_setopt($curl, CURLOPT_POSTFIELDS, (string)$options['body']);
+    }
+
+    $host = strtolower(trim((string)parse_url((string)$url, PHP_URL_HOST)));
+    $localDevelopmentCertificate = '/etc/apache2/ssl/dev-localhost.crt';
+    if (
+        $host !== ''
+        && (hash_equals($host, 'localtest.me') || str_ends_with($host, '.localtest.me'))
+        && is_file($localDevelopmentCertificate)
+    ) {
+        curl_setopt($curl, CURLOPT_CAINFO, $localDevelopmentCertificate);
+    }
+
+    $response = curl_exec($curl);
+    $curlError = trim((string)curl_error($curl));
+    $httpCode = (int)curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
+    if ($response === false) {
+        return [
+            'status' => false,
+            'httpCode' => $httpCode,
+            'text' => $curlError !== '' ? $curlError : serverEnvAdminT(
+                'parameters.server_env.error.connection_request_failed',
+                'La requete a echoue.'
+            ),
+        ];
+    }
+
+    return [
+        'status' => $httpCode >= 200 && $httpCode < 300,
+        'httpCode' => $httpCode,
+        'body' => (string)$response,
+    ];
+}
+
+function serverEnvAdminTestEtherpadConnection(array $values)
+{
+    $baseUrls = serverEnvAdminParseEtherpadUrls($values['ETHERPAD_URL'] ?? '');
+    $apiKey = trim((string)($values['ETHERPAD_API_KEY'] ?? ''));
+    $apiVersion = trim((string)($values['ETHERPAD_API_VERSION'] ?? ''));
+
+    if ($baseUrls === null) {
+        return [
+            'status' => false,
+            'message' => serverEnvAdminT('parameters.server_env.error.invalid_etherpad_url', 'Chaque adresse Etherpad doit être une URL HTTP ou HTTPS valide.'),
+        ];
+    }
+    if ($apiKey === '' || $apiVersion === '') {
+        return [
+            'status' => false,
+            'message' => serverEnvAdminT(
+                'parameters.server_env.error.etherpad_connection_incomplete',
+                'Renseignez les adresses, la clé API et la version de l’API Etherpad avant le test.'
+            ),
+        ];
+    }
+    if (preg_match('/^[0-9]+(?:\.[0-9]+)*$/', $apiVersion) !== 1) {
+        return [
+            'status' => false,
+            'message' => serverEnvAdminT('parameters.server_env.error.invalid_etherpad_api_version', 'La version de l API Etherpad doit etre numerique, par exemple 1.3.1.'),
+        ];
+    }
+
+    foreach ($baseUrls as $baseUrl) {
+        $url = $baseUrl . '/api/' . rawurlencode($apiVersion) . '/listAllPads?'
+            . http_build_query(['apikey' => $apiKey], '', '&', PHP_QUERY_RFC3986);
+        $result = serverEnvAdminRequest('GET', $url);
+        if (!($result['status'] ?? false)) {
+            $reason = isset($result['httpCode']) && (int)$result['httpCode'] > 0
+                ? 'HTTP ' . (int)$result['httpCode']
+                : (string)($result['text'] ?? '');
+            return [
+                'status' => false,
+                'message' => serverEnvAdminConnectionTestError('etherpad', $baseUrl . ' : ' . $reason),
+            ];
+        }
+
+        $payload = json_decode((string)($result['body'] ?? ''), true);
+        if (!is_array($payload) || (int)($payload['code'] ?? -1) !== 0) {
+            $reason = is_array($payload) ? trim((string)($payload['message'] ?? '')) : '';
+            return [
+                'status' => false,
+                'message' => serverEnvAdminConnectionTestError('etherpad', $baseUrl . ' : ' . $reason),
+            ];
+        }
+    }
+
+    return [
+        'status' => true,
+        'message' => serverEnvAdminT(
+            'parameters.server_env.status.etherpad_connection_ok',
+            'Connexion Etherpad vérifiée pour toutes les adresses : version de l’API et clé valides.'
+        ),
+    ];
+}
+
+function serverEnvAdminTestEthercalcConnection(array $values)
+{
+    $publicBaseUrl = rtrim(trim((string)($values['ETHERCALC_URL'] ?? '')), '/');
+    $internalBaseUrl = rtrim(trim((string)($values['ETHERCALC_INTERNAL_URL'] ?? '')), '/');
+    $apiBaseUrl = $internalBaseUrl !== '' ? $internalBaseUrl : $publicBaseUrl;
+    $key = trim((string)($values['ETHERCALC_KEY'] ?? ''));
+
+    if (!serverEnvAdminIsHttpUrl($publicBaseUrl) || ($internalBaseUrl !== '' && !serverEnvAdminIsHttpUrl($internalBaseUrl))) {
+        return [
+            'status' => false,
+            'message' => serverEnvAdminT('parameters.server_env.error.invalid_ethercalc_url', 'L URL EtherCalc doit etre une adresse http ou https valide.'),
+        ];
+    }
+    if ($key === '') {
+        return [
+            'status' => false,
+            'message' => serverEnvAdminT(
+                'parameters.server_env.error.ethercalc_connection_incomplete',
+                'Renseignez l URL publique et la cle EtherCalc avant le test.'
+            ),
+        ];
+    }
+
+    $healthResult = serverEnvAdminRequest('GET', $publicBaseUrl . '/_health');
+    if (!($healthResult['status'] ?? false)) {
+        $reason = isset($healthResult['httpCode']) && (int)$healthResult['httpCode'] > 0
+            ? 'HTTP ' . (int)$healthResult['httpCode']
+            : (string)($healthResult['text'] ?? '');
+        return [
+            'status' => false,
+            'message' => serverEnvAdminConnectionTestError('ethercalc', $reason),
+        ];
+    }
+
+    try {
+        $testRoom = 'omo-connection-test-' . bin2hex(random_bytes(12));
+    } catch (Throwable $exception) {
+        return [
+            'status' => false,
+            'message' => serverEnvAdminConnectionTestError('ethercalc', ''),
+        ];
+    }
+
+    $token = hash_hmac('sha256', $testRoom, $key);
+    $requestUrl = $apiBaseUrl . '/_/' . rawurlencode($testRoom) . '?'
+        . http_build_query(['auth' => $token], '', '&', PHP_QUERY_RFC3986);
+    $authResult = serverEnvAdminRequest('DELETE', $requestUrl);
+    if (!($authResult['status'] ?? false)) {
+        $reason = isset($authResult['httpCode']) && (int)$authResult['httpCode'] > 0
+            ? 'HTTP ' . (int)$authResult['httpCode']
+            : (string)($authResult['text'] ?? '');
+        return [
+            'status' => false,
+            'message' => serverEnvAdminConnectionTestError('ethercalc', $reason),
+        ];
+    }
+
+    return [
+        'status' => true,
+        'message' => serverEnvAdminT(
+            'parameters.server_env.status.ethercalc_connection_ok',
+            'Connexion EtherCalc verifiee : URL publique, URL interne et cle sont valides.'
+        ),
+    ];
+}
+
+function serverEnvAdminTestSpacedeckConnection(array $values)
+{
+    $publicBaseUrl = rtrim(trim((string)($values['SPACEDECK_URL'] ?? '')), '/');
+    $internalBaseUrl = rtrim(trim((string)($values['SPACEDECK_INTERNAL_URL'] ?? '')), '/');
+    $apiBaseUrl = $internalBaseUrl !== '' ? $internalBaseUrl : $publicBaseUrl;
+    $provisioningToken = trim((string)($values['SPACEDECK_PROVISIONING_TOKEN'] ?? ''));
+
+    if (!serverEnvAdminIsHttpUrl($publicBaseUrl) || ($internalBaseUrl !== '' && !serverEnvAdminIsHttpUrl($internalBaseUrl))) {
+        return array(
+            'status' => false,
+            'message' => serverEnvAdminT('parameters.server_env.error.invalid_spacedeck_url', 'L URL SpaceDeck doit etre une adresse http ou https valide.'),
+        );
+    }
+    if ($provisioningToken === '') {
+        return array(
+            'status' => false,
+            'message' => serverEnvAdminT(
+                'parameters.server_env.error.spacedeck_connection_incomplete',
+                'Renseignez l URL publique et le jeton de provisioning SpaceDeck avant le test.'
+            ),
+        );
+    }
+
+    $testName = 'OMO connection test ' . bin2hex(random_bytes(8));
+    $headers = array(
+        'Content-Type: application/json',
+        'X-Spacedeck-Provisioning-Token: ' . $provisioningToken,
+    );
+    $createResult = serverEnvAdminRequest('POST', $apiBaseUrl . '/api/external/spaces', array(
+        'headers' => $headers,
+        'body' => json_encode(array('name' => $testName), JSON_UNESCAPED_SLASHES),
+    ));
+    if (!($createResult['status'] ?? false)) {
+        $reason = isset($createResult['httpCode']) && (int)$createResult['httpCode'] > 0
+            ? 'HTTP ' . (int)$createResult['httpCode']
+            : (string)($createResult['text'] ?? '');
+        return array(
+            'status' => false,
+            'message' => serverEnvAdminConnectionTestError('spacedeck', $reason),
+        );
+    }
+
+    $payload = json_decode((string)($createResult['body'] ?? ''), true);
+    $spaceId = is_array($payload) ? trim((string)($payload['id'] ?? '')) : '';
+    if ($spaceId === '') {
+        return array(
+            'status' => false,
+            'message' => serverEnvAdminConnectionTestError('spacedeck', 'reponse de creation invalide'),
+        );
+    }
+
+    $deleteResult = serverEnvAdminRequest('DELETE', $apiBaseUrl . '/api/external/spaces/' . rawurlencode($spaceId), array(
+        'headers' => $headers,
+    ));
+    if (!($deleteResult['status'] ?? false)) {
+        $reason = isset($deleteResult['httpCode']) && (int)$deleteResult['httpCode'] > 0
+            ? 'HTTP ' . (int)$deleteResult['httpCode']
+            : (string)($deleteResult['text'] ?? '');
+        return array(
+            'status' => false,
+            'message' => serverEnvAdminConnectionTestError('spacedeck', $reason),
+        );
+    }
+
+    return array(
+        'status' => true,
+        'message' => serverEnvAdminT(
+            'parameters.server_env.status.spacedeck_connection_ok',
+            'Connexion SpaceDeck verifiee : URL et jeton de provisioning sont valides.'
+        ),
+    );
+}
+
+function serverEnvAdminTestConnection($service, array $values)
+{
+    if ($service === 'etherpad') {
+        return serverEnvAdminTestEtherpadConnection($values);
+    }
+    if ($service === 'ethercalc') {
+        return serverEnvAdminTestEthercalcConnection($values);
+    }
+    if ($service === 'spacedeck') {
+        return serverEnvAdminTestSpacedeckConnection($values);
+    }
+
+    return [
+        'status' => false,
+        'message' => serverEnvAdminT(
+            'parameters.server_env.error.invalid_connection_service',
+            'Service de connexion invalide.'
+        ),
+    ];
 }
 
 function serverEnvAdminEncodeEnvValue($value)

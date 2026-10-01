@@ -57,7 +57,7 @@ if (!($result['status'] ?? false)) {
     echo json_encode(
         array(
             'status' => 'error',
-            'message' => (string)($result['message'] ?? "Le holon n'a pas pu etre deplace."),
+        'message' => (string)($result['message'] ?? "L’espace n’a pas pu être déplacé."),
         ),
         JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
     );
@@ -67,7 +67,7 @@ if (!($result['status'] ?? false)) {
 echo json_encode(
     array(
         'status' => 'ok',
-        'message' => (string)($result['message'] ?? 'Holon deplace.'),
+        'message' => (string)($result['message'] ?? 'Espace déplacé.'),
         'holon' => $result['holon'] ?? null,
         'parent' => $result['parent'] ?? null,
         'previousParent' => $result['previousParent'] ?? null,

@@ -93,15 +93,15 @@ foreach (array_values($collectHolonIds) as $holonId) {
     $name = trim((string)$holon->get('name'));
     $typeLabel = trim((string)$holon->getTemplateLabel(true));
     if ($typeLabel === '') {
-        $typeLabel = 'Holon';
+        $typeLabel = \dbObject\Organization::formatLexiconText('Holon');
     }
 
-    $holonLabelsById[$holonId] = $name !== '' ? $name : ('Holon #' . $holonId);
+    $holonLabelsById[$holonId] = $name !== '' ? $name : (\dbObject\Organization::formatLexiconText('Holon #') . $holonId);
     $holonTypeLabelsById[$holonId] = $typeLabel;
 }
 
 $permissionCatalog = [];
-foreach (Permission::getEditorCatalog() as $permissionEntry) {
+foreach (Permission::getEditorCatalog($organization->getLexicon()) as $permissionEntry) {
     $permissionKey = trim((string)($permissionEntry['key'] ?? ''));
     if ($permissionKey === '') {
         continue;
@@ -130,8 +130,8 @@ foreach ((array)($debug['permissionAssignments'] ?? []) as $assignmentRow) {
 
 $formatHolonLabel = static function ($holonId) use ($holonLabelsById, $holonTypeLabelsById) {
     $holonId = (int)$holonId;
-    $name = $holonLabelsById[$holonId] ?? ('Holon #' . $holonId);
-    $typeLabel = $holonTypeLabelsById[$holonId] ?? 'Holon';
+    $name = $holonLabelsById[$holonId] ?? (\dbObject\Organization::formatLexiconText('Holon #') . $holonId);
+    $typeLabel = $holonTypeLabelsById[$holonId] ?? \dbObject\Organization::formatLexiconText('Holon');
     return $name . ' [' . $typeLabel . '] #' . $holonId;
 };
 
@@ -155,131 +155,7 @@ $renderJson = static function ($value) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Debug permissions</title>
-    <style>
-        :root {
-            color-scheme: light;
-            --bg: #f5f7fb;
-            --panel: #ffffff;
-            --border: #d8e0ec;
-            --text: #1c2430;
-            --muted: #5e6b7a;
-            --accent: #0f6cbd;
-            --soft: #eef5fc;
-            --ok: #1f7a3d;
-        }
-
-        * {
-            box-sizing: border-box;
-        }
-
-        body {
-            margin: 0;
-            padding: 24px;
-            background: var(--bg);
-            color: var(--text);
-            font: 14px/1.5 Arial, sans-serif;
-        }
-
-        .debug-wrap {
-            display: grid;
-            gap: 16px;
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-
-        .debug-panel {
-            background: var(--panel);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 18px 20px;
-            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
-        }
-
-        h1, h2, h3 {
-            margin: 0 0 12px 0;
-            line-height: 1.2;
-        }
-
-        h1 {
-            font-size: 26px;
-        }
-
-        h2 {
-            font-size: 18px;
-        }
-
-        h3 {
-            font-size: 15px;
-        }
-
-        .debug-meta {
-            display: grid;
-            gap: 8px;
-            color: var(--muted);
-        }
-
-        .debug-list,
-        .debug-tree {
-            display: grid;
-            gap: 10px;
-        }
-
-        .debug-item {
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 12px 14px;
-            background: #fff;
-        }
-
-        .debug-item strong {
-            color: var(--text);
-        }
-
-        .debug-chip-row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-top: 8px;
-        }
-
-        .debug-chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            border-radius: 999px;
-            padding: 5px 10px;
-            background: var(--soft);
-            color: var(--accent);
-            font-size: 12px;
-            font-weight: 700;
-        }
-
-        .debug-chip--ok {
-            background: #edf9f0;
-            color: var(--ok);
-        }
-
-        .debug-empty {
-            color: var(--muted);
-            font-style: italic;
-        }
-
-        pre {
-            margin: 0;
-            padding: 14px;
-            border-radius: 12px;
-            background: #0f172a;
-            color: #dbe7ff;
-            overflow: auto;
-            font: 12px/1.45 Consolas, monospace;
-        }
-
-        .debug-columns {
-            display: grid;
-            gap: 16px;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-        }
-    </style>
+    <link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/debug_permissions.css') ?>">
 </head>
 <body>
     <div class="debug-wrap">
@@ -288,14 +164,14 @@ $renderJson = static function ($value) {
             <div class="debug-meta">
                 <div><strong>Organisation:</strong> <?= omoApiEscape(trim((string)$organization->get('name'))) ?> (#<?= (int)$organizationId ?>)</div>
                 <div><strong>Utilisateur:</strong> <?= omoApiEscape($currentUserLabel) ?> (#<?= (int)$currentUserId ?>)</div>
-                <div><strong>Holon racine:</strong> <?= !empty($debug['organizationRootHolonId']) ? omoApiEscape($formatHolonLabel((int)$debug['organizationRootHolonId'])) : 'aucun' ?></div>
+                <div><strong><?= htmlspecialchars(\dbObject\Organization::formatLexiconText('Holon racine:', $organization->getLexicon()), ENT_QUOTES, 'UTF-8') ?></strong> <?= !empty($debug['organizationRootHolonId']) ? omoApiEscape($formatHolonLabel((int)$debug['organizationRootHolonId'])) : 'aucun' ?></div>
             </div>
         </section>
 
         <section class="debug-panel">
-            <h2>Holons de l utilisateur connecte</h2>
+            <h2><?= htmlspecialchars(\dbObject\Organization::formatLexiconText('Holons de l utilisateur connecte', $organization->getLexicon()), ENT_QUOTES, 'UTF-8') ?></h2>
             <?php if (count((array)($debug['activeUserHolonRows'] ?? [])) === 0): ?>
-                <div class="debug-empty">Aucun holon effectif trouve pour cet utilisateur dans cette organisation.</div>
+                <div class="debug-empty"><?= htmlspecialchars(\dbObject\Organization::formatLexiconText('Aucun holon effectif trouve pour cet utilisateur dans cette organisation.', $organization->getLexicon()), ENT_QUOTES, 'UTF-8') ?></div>
             <?php else: ?>
                 <div class="debug-list">
                     <?php foreach ((array)$debug['activeUserHolonRows'] as $membershipRow): ?>
@@ -307,7 +183,7 @@ $renderJson = static function ($value) {
                             </div>
                             <?php $sourceHolonIds = (array)($debug['permissionSourceHolonIdsByAssignedHolonId'][$assignedHolonId] ?? []); ?>
                             <div style="margin-top:10px;">
-                                <strong>Holons sources pris en compte pour ses droits:</strong>
+                                <strong><?= htmlspecialchars(\dbObject\Organization::formatLexiconText('Holons sources pris en compte pour ses droits:', $organization->getLexicon()), ENT_QUOTES, 'UTF-8') ?></strong>
                                 <?php if (count($sourceHolonIds) === 0): ?>
                                     <div class="debug-empty">aucun</div>
                                 <?php else: ?>
@@ -327,7 +203,7 @@ $renderJson = static function ($value) {
         <section class="debug-panel">
             <h2>Arbre des droits</h2>
             <?php if (count((array)($debug['activeUserHolonRows'] ?? [])) === 0): ?>
-                <div class="debug-empty">Impossible de construire l arbre sans holon utilisateur effectif.</div>
+                <div class="debug-empty"><?= htmlspecialchars(\dbObject\Organization::formatLexiconText('Impossible de construire l arbre sans holon utilisateur effectif.', $organization->getLexicon()), ENT_QUOTES, 'UTF-8') ?></div>
             <?php else: ?>
                 <div class="debug-tree">
                     <?php foreach ((array)$debug['activeUserHolonRows'] as $membershipRow): ?>
@@ -345,7 +221,7 @@ $renderJson = static function ($value) {
                                         <div class="debug-item">
                                             <strong>Source:</strong> <?= omoApiEscape($formatHolonLabel($sourceHolonId)) ?>
                                             <?php if (count($assignmentRows) === 0): ?>
-                                                <div class="debug-empty">Aucun droit defini sur ce holon source.</div>
+                                                <div class="debug-empty"><?= htmlspecialchars(\dbObject\Organization::formatLexiconText('Aucun droit defini sur ce holon source.', $organization->getLexicon()), ENT_QUOTES, 'UTF-8') ?></div>
                                             <?php else: ?>
                                                 <div class="debug-chip-row">
                                                     <?php foreach ($assignmentRows as $assignmentRow): ?>

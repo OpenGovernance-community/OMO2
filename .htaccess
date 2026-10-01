@@ -1,19 +1,46 @@
 Options -MultiViews
 
+# Only content-fingerprinted assets can be cached without revalidation.
+# Unversioned legacy assets keep the server's normal cache policy.
+<IfModule mod_headers.c>
+    <FilesMatch "\.(css|js)$">
+        Header set Cache-Control "public, max-age=31536000, immutable" "expr=%{QUERY_STRING} =~ m#(^|&)v=[a-f0-9]{12}(&|$)#"
+    </FilesMatch>
+</IfModule>
+
+<Files ".user.ini">
+    Require all denied
+</Files>
+
+<FilesMatch "(?i)(^error_log(?:\.txt)?$|\.(?:log|jsonl)$)">
+    Require all denied
+</FilesMatch>
+
 ErrorDocument  404  /404.php
 
 RewriteEngine On
+
+RewriteRule ^tmp(?:/|$) - [F,L]
+RewriteRule ^log(?:/|$) - [F,L]
+RewriteRule ^telegram/data(?:/|$) - [F,L]
 
 RewriteCond %{HTTP:Authorization} .
 RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
 RewriteCond %{HTTPS} off
 RewriteCond %{HTTP_HOST} ^([A-Za-z0-9.-]+\.localtest\.me)(:80)?$ [NC]
-RewriteRule (.*) https://%1%{REQUEST_URI} [R=302,L]
+RewriteRule ^(.*)$ https://%1/$1 [R=302,L,NE]
 
 RewriteCond %{HTTPS} off
+RewriteCond %{HTTP:X-Forwarded-Proto} !https [NC]
+RewriteCond %{HTTP_HOST} !^app(:\d+)?$ [NC]
 RewriteCond %{HTTP_HOST} !(^|\.)(localhost|127\.0\.0\.1)(:\d+)?$ [NC]
-RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI}
+RewriteCond %{HTTP_HOST} ^([A-Za-z0-9.-]+)(?::\d+)?$ [NC]
+RewriteRule ^(.*)$ https://%1/$1 [R=301,L,NE]
+
+# Serve the alternate homepage at the omo2.org root without changing the URL.
+RewriteCond %{HTTP_HOST} ^(?:www\.)?omo2\.org(?::\d+)?$ [NC]
+RewriteRule ^$ /index2.php [QSA,L]
 
 RewriteRule ^memo/?$ /memo/index.php [QSA,L]
 RewriteRule ^memo/([0-9]+)/?$ /memo/index.php?open_document_id=$1 [QSA,L]
@@ -22,6 +49,12 @@ RewriteRule ^memo/([0-9]+)/([0-9a-f]+)/?$ /memo/view.php?id=$1&access_code=$2 [Q
 RewriteRule ^circle/public/([0-9A-Za-z]+)/?$ /circle/index.php?view=$1 [QSA,L]
 
 RewriteRule ^pv/([0-9]+)/?$ /pv/index.php?id=$1 [QSA,L]
+
+RewriteRule ^meeting/([0-9A-Za-z-]+)/?$ /meeting/index.php?name=$1 [QSA,L]
+RewriteRule ^event/register/([a-f0-9]{64})/?$ /event/index.php?token=$1 [QSA,L]
+RewriteRule ^event/receipt/([a-f0-9]{64})/?$ /event/index.php?receipt=$1 [QSA,L]
+
+RewriteRule ^calendar/share/([a-f0-9]{64})\.ics$ /common/calendar/feed.php?token=$1 [L]
 
 RewriteRule ^decision/access/([0-9A-Za-z_-]+)/?$ /common/decision_participation.php?token=$1 [QSA,L]
 RewriteRule ^decision/access/([0-9A-Za-z_-]+)/(view|participate)/?$ /common/decision_participation.php?token=$1&intent=$2 [QSA,L]

@@ -2,6 +2,7 @@
 	namespace dbObject;
 
 	require_once dirname(__DIR__, 2) . '/common/avatar.php';
+	require_once dirname(__DIR__, 2) . '/common/runtime_log.php';
 
 	class PdoResultCompat
 	{
@@ -53,22 +54,29 @@
 		// Ce wrapper garde l'ancienne API mysqli::query disponible le temps de la migration.
 		public function query($query)
 		{
+			DbObject::invalidateReadMemoForSql($query);
+			$profile = DbObject::beginSqlPerformanceProfile($query, array());
 			try {
 				$statement = $this->_pdo->query($query);
 				if ($statement === false) {
+					DbObject::finishSqlPerformanceProfile($profile, "pdo_query", false, 0);
 					return false;
 				}
 
 				if ($statement->columnCount() > 0) {
 					$rows = $statement->fetchAll(\PDO::FETCH_ASSOC);
 					$statement->closeCursor();
+					DbObject::finishSqlPerformanceProfile($profile, "pdo_query", true, count($rows));
 					return new PdoResultCompat($rows);
 				}
 
+				$affectedRows = (int)$statement->rowCount();
 				$statement->closeCursor();
 				$this->insert_id = (int)$this->_pdo->lastInsertId();
+				DbObject::finishSqlPerformanceProfile($profile, "pdo_query", true, $affectedRows);
 				return true;
 			} catch (\PDOException $e) {
+				DbObject::finishSqlPerformanceProfile($profile, "pdo_query", false, 0, $e);
 				DbObject::registerDbError($query, array(), $e);
 				return false;
 			}
@@ -76,6 +84,7 @@
 
 		public function prepare($query)
 		{
+			DbObject::invalidateReadMemoForSql($query);
 			return $this->_pdo->prepare($query);
 		}
 
@@ -91,12 +100,68 @@
 		protected $_fieldVisibilityCanViewCache = null;
 		protected $_id; // Id de l'enregistrement
 		protected $_loaded=false; // Id de l'enregistrement
+		protected $_partiallyLoaded=false;
+		protected $_loadedFieldNames=array();
 		protected $_fields; // Espace de chargement de tous les champs
 		protected $_parameters; // Espace de chargement des paramètres
 		
 		public static $_dbh;
 		protected static $_lastDbError = null;
+		private static int $dbErrorGeneration = 0;
 		protected static $_tableExistsCache = array();
+		private static bool $readMemoEnabled = false;
+		private static array $readMemo = [];
+
+		/** Opt-in for read-only rendering only; never persisted in the session. */
+		public static function enableReadOnlyMemoization(bool $enabled = true): void
+		{
+			self::$readMemoEnabled = $enabled;
+			self::$readMemo = [];
+		}
+
+		protected static function memoizeRead(array $key, callable $load)
+		{
+			if (!self::$readMemoEnabled) {
+				return $load();
+			}
+			$connection = self::getPdo();
+			if (!($connection instanceof \PDO)) {
+				return $load();
+			}
+			$cacheKey = serialize([static::class, spl_object_id($connection),
+				$GLOBALS['dbServer'] ?? '', $GLOBALS['dbName'] ?? '', $key]);
+			if (array_key_exists($cacheKey, self::$readMemo)) {
+				return self::$readMemo[$cacheKey];
+			}
+			$errorGeneration = self::$dbErrorGeneration;
+			$value = $load();
+			if (self::$readMemoEnabled && self::$dbErrorGeneration === $errorGeneration) {
+				self::$readMemo[$cacheKey] = $value;
+			}
+			return $value;
+		}
+
+		public static function invalidateReadMemoForSql($query): void
+		{
+			// Writes and locking reads must never use a rendering snapshot.
+			if (self::$readMemoEnabled && (!preg_match('/^\s*SELECT\b/i', (string)$query)
+				|| preg_match('/\bFOR\s+UPDATE\b|\bLOCK\s+IN\s+SHARE\s+MODE\b/i', (string)$query))) {
+				self::enableReadOnlyMemoization(false);
+			}
+		}
+		protected static $_sqlPerformanceConfig = null;
+		protected static $_sqlPerformanceProfiles = array();
+		protected static $_sqlPerformanceRequestId = null;
+		protected static $_sqlPerformanceShutdownRegistered = false;
+		protected static $_sqlPerformanceSummaryWritten = false;
+		protected static $_sqlPerformanceWriteFailureReported = false;
+		protected static $_sqlPerformanceStats = array(
+			"queryCount" => 0,
+			"loggedQueryCount" => 0,
+			"errorCount" => 0,
+			"totalDurationMs" => 0.0,
+			"maxDurationMs" => 0.0,
+		);
 		static $myvariablearray = array();	// Liste de valeurs statiques créées à la demande
 		static $preload = array();	// Liste des valeurs déjà chargées
 		
@@ -166,18 +231,16 @@
 		}
 
 		protected static function getDbErrorLogPath() {
-			$baseDir = isset($_SERVER["DOCUMENT_ROOT"]) && is_string($_SERVER["DOCUMENT_ROOT"]) && trim($_SERVER["DOCUMENT_ROOT"]) !== ""
-				? rtrim($_SERVER["DOCUMENT_ROOT"], "/\\")
-				: dirname(dirname(__DIR__));
-
-			return $baseDir . DIRECTORY_SEPARATOR . "tmp" . DIRECTORY_SEPARATOR . "dbobject-sql-errors.log";
+			return \commonRuntimeLogPath("dbobject-sql-errors.log");
 		}
 
 		protected static function writeDbErrorLog(array $payload) {
 			$logPath = self::getDbErrorLogPath();
 			$logDir = dirname($logPath);
 			if (!is_dir($logDir)) {
-				@mkdir($logDir, 0777, true);
+				if (!@mkdir($logDir, 0770, true) && !is_dir($logDir)) {
+					return;
+				}
 			}
 
 			$line = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -188,7 +251,295 @@
 			error_log($line . PHP_EOL, 3, $logPath);
 		}
 
+		protected static function readSqlPerformanceEnvironmentValue($key, $default = null) {
+			if (function_exists('envValue')) {
+				return \envValue((string)$key, $default);
+			}
+
+			$value = getenv((string)$key);
+			if ($value !== false) {
+				return $value;
+			}
+
+			if (isset($_ENV[$key])) {
+				return $_ENV[$key];
+			}
+			if (isset($_SERVER[$key])) {
+				return $_SERVER[$key];
+			}
+
+			return $default;
+		}
+
+		protected static function parseSqlPerformanceBoolean($value) {
+			if (is_bool($value)) {
+				return $value;
+			}
+
+			return in_array(strtolower(trim((string)$value)), array("1", "true", "yes", "on"), true);
+		}
+
+		protected static function isAbsoluteSqlPerformancePath($path) {
+			$path = (string)$path;
+			return $path !== "" && (
+				$path[0] === "/"
+				|| $path[0] === "\\"
+				|| preg_match('/^[A-Za-z]:[\\\\\/]/', $path) === 1
+			);
+		}
+
+		protected static function getSqlPerformanceConfig() {
+			if (is_array(self::$_sqlPerformanceConfig)) {
+				return self::$_sqlPerformanceConfig;
+			}
+
+			$enabled = self::parseSqlPerformanceBoolean(
+				self::readSqlPerformanceEnvironmentValue("DB_QUERY_LOG_ENABLED", false)
+			);
+			$minimumDurationMs = (float)self::readSqlPerformanceEnvironmentValue("DB_QUERY_LOG_MIN_MS", 50);
+			if ($minimumDurationMs < 0) {
+				$minimumDurationMs = 0.0;
+			}
+
+			$logPath = trim((string)self::readSqlPerformanceEnvironmentValue("DB_QUERY_LOG_PATH", ""));
+			if ($logPath !== "" && !self::isAbsoluteSqlPerformancePath($logPath)) {
+				$logPath = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . str_replace(array("/", "\\"), DIRECTORY_SEPARATOR, $logPath);
+			}
+
+			self::$_sqlPerformanceConfig = array(
+				"enabled" => $enabled,
+				"minimumDurationMs" => $minimumDurationMs,
+				"logPath" => $logPath,
+			);
+
+			return self::$_sqlPerformanceConfig;
+		}
+
+		protected static function getSqlPerformanceRequestId() {
+			if (is_string(self::$_sqlPerformanceRequestId) && self::$_sqlPerformanceRequestId !== "") {
+				return self::$_sqlPerformanceRequestId;
+			}
+
+			$requestId = trim((string)($_SERVER["HTTP_X_REQUEST_ID"] ?? ""));
+			if ($requestId === "") {
+				try {
+					$requestId = bin2hex(random_bytes(8));
+				} catch (\Throwable $e) {
+					$requestId = uniqid("sql-", true);
+				}
+			}
+
+			self::$_sqlPerformanceRequestId = substr($requestId, 0, 128);
+			return self::$_sqlPerformanceRequestId;
+		}
+
+		protected static function sanitizeSqlForPerformanceLog($query) {
+			$sql = preg_replace('/\/\*.*?\*\//s', ' ', (string)$query);
+			$sql = preg_replace("/'(?:''|\\\\.|[^'\\\\])*'/s", '?', (string)$sql);
+			$sql = preg_replace('/"(?:""|\\\\.|[^"\\\\])*"/s', '?', (string)$sql);
+			$sql = preg_replace('/--[^\r\n]*/', ' ', (string)$sql);
+			$sql = preg_replace('/#[^\r\n]*/', ' ', (string)$sql);
+			$sql = preg_replace('/\b0x[0-9a-f]+\b/i', '?', (string)$sql);
+			$sql = preg_replace('/(?<![A-Za-z0-9_:])[-+]?\d+(?:\.\d+)?(?![A-Za-z0-9_])/', '?', (string)$sql);
+			$sql = preg_replace('/\s+/', ' ', trim((string)$sql));
+
+			return substr((string)$sql, 0, 12000);
+		}
+
+		protected static function getSqlPerformanceFingerprint($sql) {
+			$canonicalSql = strtolower((string)$sql);
+			$canonicalSql = preg_replace('/:[A-Za-z_][A-Za-z0-9_]*/', '?', $canonicalSql);
+			return hash('sha256', (string)$canonicalSql);
+		}
+
+		protected static function getSqlPerformanceQueryType($sql) {
+			if (preg_match('/^\s*([A-Za-z]+)/', (string)$sql, $matches) !== 1) {
+				return "unknown";
+			}
+
+			return strtolower($matches[1]);
+		}
+
+		protected static function getSqlPerformanceParameterMetadata($params) {
+			$metadata = array();
+			foreach ((array)$params as $key => $value) {
+				$item = array(
+					"name" => is_int($key) ? (string)($key + 1) : ltrim((string)$key, ":"),
+					"type" => get_debug_type($value),
+				);
+
+				if (is_string($value)) {
+					$item["length"] = strlen($value);
+				} elseif (is_array($value)) {
+					$item["count"] = count($value);
+				}
+
+				$metadata[] = $item;
+			}
+
+			return $metadata;
+		}
+
+		protected static function getSqlPerformanceCaller() {
+			$trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 12);
+			$currentFile = realpath(__FILE__);
+			foreach ($trace as $frame) {
+				$file = isset($frame["file"]) ? realpath((string)$frame["file"]) : false;
+				if ($file === false || $file === $currentFile) {
+					continue;
+				}
+
+				$projectRoot = realpath(dirname(__DIR__, 2));
+				if ($projectRoot !== false && str_starts_with($file, $projectRoot . DIRECTORY_SEPARATOR)) {
+					$file = substr($file, strlen($projectRoot) + 1);
+				}
+
+				return array(
+					"file" => str_replace("\\", "/", $file),
+					"line" => (int)($frame["line"] ?? 0),
+				);
+			}
+
+			return null;
+		}
+
+		protected static function getSqlPerformanceRequestPath() {
+			$requestUri = (string)($_SERVER["REQUEST_URI"] ?? "");
+			$requestPath = parse_url($requestUri, PHP_URL_PATH);
+			return is_string($requestPath) ? $requestPath : "";
+		}
+
+		protected static function writeSqlPerformanceLog(array $payload) {
+			$config = self::getSqlPerformanceConfig();
+			$logPath = $config["logPath"];
+			if ($logPath === "") {
+				$logPath = \commonRuntimeLogPath(
+					"sql-performance/sql-performance-" . date("Y-m-d") . ".jsonl"
+				);
+			}
+			$logDir = dirname($logPath);
+			if (!is_dir($logDir) && !@mkdir($logDir, 0770, true) && !is_dir($logDir)) {
+				if (!self::$_sqlPerformanceWriteFailureReported) {
+					self::$_sqlPerformanceWriteFailureReported = true;
+					error_log("Unable to create SQL performance log directory: " . $logDir);
+				}
+				return;
+			}
+
+			$line = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+			if (!is_string($line) || $line === "") {
+				return;
+			}
+
+			if (@file_put_contents($logPath, $line . PHP_EOL, FILE_APPEND | LOCK_EX) === false && !self::$_sqlPerformanceWriteFailureReported) {
+				self::$_sqlPerformanceWriteFailureReported = true;
+				error_log("Unable to write SQL performance log: " . $logPath);
+			}
+		}
+
+		public static function beginSqlPerformanceProfile($query, $params = array()) {
+			$config = self::getSqlPerformanceConfig();
+			if (!$config["enabled"]) {
+				return null;
+			}
+
+			if (!self::$_sqlPerformanceShutdownRegistered) {
+				self::$_sqlPerformanceShutdownRegistered = true;
+				register_shutdown_function(array(self::class, "writeSqlPerformanceRequestSummary"));
+			}
+
+			$sql = self::sanitizeSqlForPerformanceLog($query);
+			return array(
+				"startedAtNs" => hrtime(true),
+				"sql" => $sql,
+				"fingerprint" => self::getSqlPerformanceFingerprint($sql),
+				"queryType" => self::getSqlPerformanceQueryType($sql),
+				"parameters" => self::getSqlPerformanceParameterMetadata($params),
+				"caller" => self::getSqlPerformanceCaller(),
+			);
+		}
+
+		public static function finishSqlPerformanceProfile($profile, $operation, $success, $rowCount = null, $exception = null) {
+			if (!is_array($profile) || !isset($profile["startedAtNs"])) {
+				return;
+			}
+
+			$durationMs = max(0.0, (hrtime(true) - (int)$profile["startedAtNs"]) / 1000000);
+			self::$_sqlPerformanceStats["queryCount"]++;
+			self::$_sqlPerformanceStats["totalDurationMs"] += $durationMs;
+			self::$_sqlPerformanceStats["maxDurationMs"] = max(self::$_sqlPerformanceStats["maxDurationMs"], $durationMs);
+			if (!$success) {
+				self::$_sqlPerformanceStats["errorCount"]++;
+			}
+
+			$config = self::getSqlPerformanceConfig();
+			if ($success && $durationMs < $config["minimumDurationMs"]) {
+				return;
+			}
+
+			self::$_sqlPerformanceStats["loggedQueryCount"]++;
+			$payload = array(
+				"event" => "query",
+				"time" => date("c"),
+				"request_id" => self::getSqlPerformanceRequestId(),
+				"duration_ms" => round($durationMs, 3),
+				"operation" => (string)$operation,
+				"query_type" => (string)$profile["queryType"],
+				"fingerprint" => (string)$profile["fingerprint"],
+				"sql" => (string)$profile["sql"],
+				"parameter_count" => count($profile["parameters"]),
+				"parameters" => $profile["parameters"],
+				"success" => (bool)$success,
+				"row_count" => is_null($rowCount) ? null : (int)$rowCount,
+				"caller" => $profile["caller"],
+				"request_path" => self::getSqlPerformanceRequestPath(),
+				"method" => (string)($_SERVER["REQUEST_METHOD"] ?? ""),
+				"script" => (string)($_SERVER["SCRIPT_NAME"] ?? ""),
+				"database" => (string)($GLOBALS["dbName"] ?? ""),
+				"current_user" => (int)($_SESSION["currentUser"] ?? 0),
+				"current_organization" => (int)($_SESSION["currentOrganization"] ?? 0),
+			);
+
+			if ($exception instanceof \Throwable) {
+				$payload["error_class"] = get_class($exception);
+				$payload["error_code"] = (string)$exception->getCode();
+			}
+
+			self::writeSqlPerformanceLog($payload);
+		}
+
+		public static function writeSqlPerformanceRequestSummary() {
+			$config = self::getSqlPerformanceConfig();
+			if (!$config["enabled"] || self::$_sqlPerformanceSummaryWritten) {
+				return;
+			}
+
+			self::$_sqlPerformanceSummaryWritten = true;
+			$requestStartedAt = isset($_SERVER["REQUEST_TIME_FLOAT"])
+				? (float)$_SERVER["REQUEST_TIME_FLOAT"]
+				: microtime(true);
+			self::writeSqlPerformanceLog(array(
+				"event" => "request_summary",
+				"time" => date("c"),
+				"request_id" => self::getSqlPerformanceRequestId(),
+				"request_duration_ms" => round(max(0.0, (microtime(true) - $requestStartedAt) * 1000), 3),
+				"query_count" => (int)self::$_sqlPerformanceStats["queryCount"],
+				"logged_query_count" => (int)self::$_sqlPerformanceStats["loggedQueryCount"],
+				"error_count" => (int)self::$_sqlPerformanceStats["errorCount"],
+				"database_duration_ms" => round((float)self::$_sqlPerformanceStats["totalDurationMs"], 3),
+				"maximum_query_duration_ms" => round((float)self::$_sqlPerformanceStats["maxDurationMs"], 3),
+				"peak_memory_bytes" => memory_get_peak_usage(true),
+				"request_path" => self::getSqlPerformanceRequestPath(),
+				"method" => (string)($_SERVER["REQUEST_METHOD"] ?? ""),
+				"script" => (string)($_SERVER["SCRIPT_NAME"] ?? ""),
+				"database" => (string)($GLOBALS["dbName"] ?? ""),
+				"current_user" => (int)($_SESSION["currentUser"] ?? 0),
+				"current_organization" => (int)($_SESSION["currentOrganization"] ?? 0),
+			));
+		}
+
 		protected static function rememberLastDbError($query, $params = array(), $exception = null) {
+			self::$dbErrorGeneration++;
 			self::$_lastDbError = array(
 				"query" => (string)$query,
 				"params" => is_array($params) ? $params : array(),
@@ -245,6 +596,7 @@
 		}
 
 		protected static function prepareAndExecute($query, $params = array()) {
+			self::invalidateReadMemoForSql($query);
 			self::clearLastDbError();
 			$pdo = self::getPdo();
 			if (!$pdo) {
@@ -253,9 +605,15 @@
 				}
 				return false;
 			}
+			$profile = self::beginSqlPerformanceProfile($query, $params);
 
 			try {
 				$statement = $pdo->prepare($query);
+				if (!($statement instanceof \PDOStatement)) {
+					self::finishSqlPerformanceProfile($profile, "prepared_statement", false, 0);
+					self::rememberLastDbError($query, $params);
+					return false;
+				}
 				foreach ($params as $key => $value) {
 					$paramName = is_int($key) ? $key + 1 : (substr($key, 0, 1) === ":" ? $key : ":".$key);
 					$normalizedValue = self::normalizeSqlValue($value);
@@ -272,12 +630,31 @@
 					$statement->bindValue($paramName, $normalizedValue, $paramType);
 				}
 
-				$statement->execute();
+				if (!$statement->execute()) {
+					self::finishSqlPerformanceProfile($profile, "prepared_statement", false, 0);
+					self::rememberLastDbError($query, $params);
+					return false;
+				}
+				if (is_array($profile)) {
+					self::$_sqlPerformanceProfiles[spl_object_id($statement)] = $profile;
+				}
 				return $statement;
 			} catch (\PDOException $e) {
+				self::finishSqlPerformanceProfile($profile, "prepared_statement", false, 0, $e);
 				self::rememberLastDbError($query, $params, $e);
 				return false;
 			}
+		}
+
+		protected static function finishSqlPerformanceStatement($statement, $operation, $success, $rowCount = null, $exception = null) {
+			if (!self::getSqlPerformanceConfig()["enabled"]) {
+				return;
+			}
+
+			$statementId = spl_object_id($statement);
+			$profile = self::$_sqlPerformanceProfiles[$statementId] ?? null;
+			unset(self::$_sqlPerformanceProfiles[$statementId]);
+			self::finishSqlPerformanceProfile($profile, $operation, $success, $rowCount, $exception);
 		}
 
 		static public function execute($query, $params = array()) {
@@ -286,9 +663,16 @@
 				return false;
 			}
 
-			$statement->closeCursor();
-			self::getDbh()->insert_id = (int)self::getPdo()->lastInsertId();
-			return true;
+			try {
+				$affectedRows = (int)$statement->rowCount();
+				$statement->closeCursor();
+				self::getDbh()->insert_id = (int)self::getPdo()->lastInsertId();
+				self::finishSqlPerformanceStatement($statement, "execute", true, $affectedRows);
+				return true;
+			} catch (\Throwable $e) {
+				self::finishSqlPerformanceStatement($statement, "execute", false, 0, $e);
+				throw $e;
+			}
 		}
 
 		static public function fetchRow($query, $params = array()) {
@@ -297,9 +681,15 @@
 				return false;
 			}
 
-			$row = $statement->fetch(\PDO::FETCH_ASSOC);
-			$statement->closeCursor();
-			return $row === false ? false : $row;
+			try {
+				$row = $statement->fetch(\PDO::FETCH_ASSOC);
+				$statement->closeCursor();
+				self::finishSqlPerformanceStatement($statement, "fetch_row", true, $row === false ? 0 : 1);
+				return $row === false ? false : $row;
+			} catch (\Throwable $e) {
+				self::finishSqlPerformanceStatement($statement, "fetch_row", false, 0, $e);
+				throw $e;
+			}
 		}
 
 		static public function fetchAll($query, $params = array()) {
@@ -308,9 +698,15 @@
 				return false;
 			}
 
-			$rows = $statement->fetchAll(\PDO::FETCH_ASSOC);
-			$statement->closeCursor();
-			return $rows;
+			try {
+				$rows = $statement->fetchAll(\PDO::FETCH_ASSOC);
+				$statement->closeCursor();
+				self::finishSqlPerformanceStatement($statement, "fetch_all", true, count($rows));
+				return $rows;
+			} catch (\Throwable $e) {
+				self::finishSqlPerformanceStatement($statement, "fetch_all", false, 0, $e);
+				throw $e;
+			}
 		}
 
 		static public function fetchValue($query, $params = array()) {
@@ -319,9 +715,15 @@
 				return false;
 			}
 
-			$value = $statement->fetchColumn();
-			$statement->closeCursor();
-			return $value;
+			try {
+				$value = $statement->fetchColumn();
+				$statement->closeCursor();
+				self::finishSqlPerformanceStatement($statement, "fetch_value", true, $value === false ? 0 : 1);
+				return $value;
+			} catch (\Throwable $e) {
+				self::finishSqlPerformanceStatement($statement, "fetch_value", false, 0, $e);
+				throw $e;
+			}
 		}
 		
 		// Fonction pour créer du contenu statique à la demande
@@ -393,8 +795,54 @@
 		// Fonctions de base pour l'accès à la base de données
 		// *****************************************
 		
+		protected function needsFullLoadForField($field) {
+			if ($this->getId()<=0) {
+				return false;
+			}
+
+			if (!$this->_loaded) {
+				return true;
+			}
+
+			return $this->_partiallyLoaded && !isset($this->_loadedFieldNames[(string)$field]);
+		}
+
+		protected function needsFullLoad() {
+			return $this->getId()>0 && (!$this->_loaded || $this->_partiallyLoaded);
+		}
+
+		public function isFieldLoaded($field) {
+			$field = (string)$field;
+			return $this->getId()>0
+				&& $this->_loaded
+				&& (!$this->_partiallyLoaded || isset($this->_loadedFieldNames[$field]));
+		}
+
+		public function hydrateFromDatabaseRow(array $row, $isComplete = false) {
+			if (!array_key_exists('id', $row) || (int)$row['id']<=0) {
+				return false;
+			}
+
+			$this->_id = null;
+			$this->_fields = array();
+			$this->_parameters = null;
+			$this->_fieldVisibilityCanViewCache = null;
+			$this->_loaded = true;
+			$this->_partiallyLoaded = false;
+			$this->_loadedFieldNames = array_fill_keys(array_map('strval', array_keys($row)), true);
+			$this->loadFromArray($row);
+			$this->_id = (int)$row['id'];
+			$this->_partiallyLoaded = !$isComplete;
+
+			if ($isComplete) {
+				self::$preload[$this->tableName()."_".$this->_id] = $this;
+			}
+
+			return true;
+		}
+
 		function get($field) {
-			if ($this->getId()>0 && !$this->_loaded) $this->load($this->getId());
+			if ($this->needsFullLoadForField($field)) $this->load($this->getId());
 
 			if (!$this->canReadField($field)) {
 				return "";
@@ -456,7 +904,76 @@
 		}
 
 		function clear($field) {
+			if ($this->needsFullLoad()) $this->load($this->getId());
 			unset($this->_fields[$field]);
+		}
+
+		protected function saveSizedImageResource($source, $sourceMime, $field, $targetDirectory, $targetWidth, $targetHeight) {
+			if (!is_resource($source) && !($source instanceof \GdImage)) {
+				return false;
+			}
+
+			$sourceWidth = imagesx($source);
+			$sourceHeight = imagesy($source);
+			$destination = $source;
+			if ((int)$targetWidth > 0 && (int)$targetHeight > 0) {
+				$destination = imagecreatetruecolor((int)$targetWidth, (int)$targetHeight);
+				if ($destination === false) {
+					return false;
+				}
+
+				if (in_array((string)$sourceMime, array('image/png', 'image/webp', 'image/avif'), true)) {
+					imagealphablending($destination, false);
+					imagesavealpha($destination, true);
+					$transparent = imagecolorallocatealpha($destination, 0, 0, 0, 127);
+					imagefilledrectangle($destination, 0, 0, (int)$targetWidth, (int)$targetHeight, $transparent);
+				}
+
+				imagecopyresampled(
+					$destination,
+					$source,
+					0,
+					0,
+					0,
+					0,
+					(int)$targetWidth,
+					(int)$targetHeight,
+					$sourceWidth,
+					$sourceHeight
+				);
+			}
+
+			$fileNameBase = time() . '_' . uniqid();
+			$fullDirectory = rtrim((string)($_SERVER['DOCUMENT_ROOT'] ?? ''), '/\\') . $targetDirectory;
+			$stored = false;
+			$imagePath = '';
+
+			if (function_exists('imagewebp')) {
+				$imagePath = $targetDirectory . '/' . $fileNameBase . '.webp';
+				$stored = imagewebp($destination, rtrim($fullDirectory, '/\\') . DIRECTORY_SEPARATOR . $fileNameBase . '.webp', 82);
+			}
+
+			if (!$stored && $sourceMime === 'image/jpeg') {
+				$imagePath = $targetDirectory . '/' . $fileNameBase . '.jpg';
+				imageinterlace($destination, true);
+				$stored = imagejpeg($destination, rtrim($fullDirectory, '/\\') . DIRECTORY_SEPARATOR . $fileNameBase . '.jpg', 82);
+			} elseif (!$stored) {
+				$imagePath = $targetDirectory . '/' . $fileNameBase . '.png';
+				$stored = imagepng($destination, rtrim($fullDirectory, '/\\') . DIRECTORY_SEPARATOR . $fileNameBase . '.png', 9, PNG_ALL_FILTERS);
+			}
+
+			if (!$stored) {
+				return false;
+			}
+
+			$oldImagePath = isset($this->_fields[$field]) ? trim((string)$this->_fields[$field]) : '';
+			$documentRoot = rtrim((string)($_SERVER['DOCUMENT_ROOT'] ?? ''), '/\\');
+			if ($oldImagePath !== '' && str_starts_with($oldImagePath, '/img/upload/') && is_file($documentRoot . $oldImagePath)) {
+				@unlink($documentRoot . $oldImagePath);
+			}
+
+			$this->_fields[$field] = $imagePath;
+			return true;
 		}
 		
 		function set($field, $value) {
@@ -464,7 +981,7 @@
 				$this->_id=$value; // Spécifique pour réinitialiser des noeuds
 				$this->_fieldVisibilityCanViewCache = null;
 			}
-			if ($this->getId()>0 && !$this->_loaded) $this->load($this->getId());
+			if ($this->needsFullLoad()) $this->load($this->getId());
 
 			if (is_null($value) || (is_string($value) && trim($value)==""))
 				$this->_fields[$field]=null;
@@ -568,6 +1085,10 @@
 					}
 					$this->_parameters = null;
 				} else
+
+				if (false !== array_search("html", array_column($param, 1))) {
+					$this->_fields[$field] = PropertyFormat::sanitizeHtml($value);
+				} else
 					
 				if (false !== array_search("sizedimage", array_column($param, 1))) {
 					$target_dir="/img/upload/".$this->tableName();
@@ -595,66 +1116,25 @@
 
 						switch ($mime) {
 							case "image/jpeg":
-								$src = imagecreatefromjpeg($tmpName);
-								$ext = "jpg";
+								$src = function_exists('imagecreatefromjpeg') ? @\imagecreatefromjpeg($tmpName) : false;
 								break;
 							case "image/png":
-								$src = imagecreatefrompng($tmpName);
-								$ext = "png";
+								$src = function_exists('imagecreatefrompng') ? @\imagecreatefrompng($tmpName) : false;
 								break;
 							case "image/webp":
-								$src = imagecreatefromwebp($tmpName);
-								$ext = "webp";
+								// GD can be installed without WebP decoding support.
+								$src = function_exists('imagecreatefromwebp') ? @\imagecreatefromwebp($tmpName) : false;
+								break;
+							case "image/avif":
+								$src = function_exists('imagecreatefromavif') ? @\imagecreatefromavif($tmpName) : false;
 								break;
 							default:
 								$src = false;
-								$ext = "";
 								break;
 						}
 
-						if ($src!==false) {
-							$srcWidth = imagesx($src);
-							$srcHeight = imagesy($src);
-
-							if ($targetWidth && $targetHeight) {
-								$dst = imagecreatetruecolor($targetWidth, $targetHeight);
-
-								if ($mime === "image/png") {
-									imagealphablending($dst, false);
-									imagesavealpha($dst, true);
-								}
-
-								imagecopyresampled(
-									$dst, $src,
-									0, 0, 0, 0,
-									$targetWidth, $targetHeight,
-									$srcWidth, $srcHeight
-								);
-							} else {
-								$dst = $src;
-							}
-
-							$fileName = time()."_".uniqid().".".$ext;
-							$imagePath = $target_dir."/".$fileName;
-							$fullPath = $_SERVER["DOCUMENT_ROOT"].$imagePath;
-
-							switch ($mime) {
-								case "image/jpeg":
-									imagejpeg($dst, $fullPath, 90);
-									break;
-								case "image/png":
-									imagepng($dst, $fullPath);
-									break;
-								case "image/webp":
-									imagewebp($dst, $fullPath, 90);
-									break;
-							}
-
-							if (!empty($this->_fields[$field]) && file_exists($_SERVER["DOCUMENT_ROOT"].$this->_fields[$field])) {
-								unlink($_SERVER["DOCUMENT_ROOT"].$this->_fields[$field]);
-							}
-
-							$this->_fields[$field] = $imagePath;
+						if ($src !== false) {
+							$this->saveSizedImageResource($src, $mime, $field, $target_dir, $targetWidth, $targetHeight);
 						}
 					} else
 					if (isset($_POST["imageDataInput_".$field]) && $_POST["imageDataInput_".$field]!="") {
@@ -663,13 +1143,15 @@
 							mkdir($_SERVER["DOCUMENT_ROOT"].$target_dir."/", 0777);
 						}
 						// Convertir les données en format binaire
-						$imageBinaryData = base64_decode(str_replace('data:image/png;base64,', '', $_POST["imageDataInput_".$field]));
-						
-						// Sauvegardez l'image dans un fichier
-						$fileName = time().".png";
-						$imagePath =$target_dir ."/". $fileName;
-						file_put_contents($_SERVER["DOCUMENT_ROOT"].$imagePath, $imageBinaryData);										
-						$this->_fields[$field]=$imagePath;
+						$imageBinaryData = base64_decode(str_replace('data:image/png;base64,', '', $_POST["imageDataInput_".$field]), true);
+						$src = is_string($imageBinaryData) ? @imagecreatefromstring($imageBinaryData) : false;
+						if ($src !== false) {
+							$sizes = $this::attributeLength();
+							$sizeConfig = $sizes[$field] ?? null;
+							$targetWidth = isset($sizeConfig[0]) && is_array($sizeConfig[0]) ? ($sizeConfig[0][0] ?? null) : ($sizeConfig[0] ?? null);
+							$targetHeight = isset($sizeConfig[0]) && is_array($sizeConfig[0]) ? ($sizeConfig[0][1] ?? null) : ($sizeConfig[1] ?? null);
+							$this->saveSizedImageResource($src, 'image/png', $field, $target_dir, $targetWidth, $targetHeight);
+						}
 						unset($_POST["imageDataInput_".$field]);
 					} else {
 						if (is_string($value) && $value!="[object File]" && $value!="newimage")
@@ -834,7 +1316,7 @@
 		}
 
 		function checkField($key, $value) {
-			if ($this->getId()>0 && !$this->_loaded) $this->load($this->getId());
+			if ($this->needsFullLoad()) $this->load($this->getId());
 
 			if (is_string($value) && trim($value)=="" && $this->isRequired($key)) return "The field [".$this->attributeLabels()[$key]."] can't be empty.";
 			
@@ -913,7 +1395,7 @@
 		// Retourne le champ sous forme de chaîne de caractère
 		// Particulièrement intéressant pour afficher la valeur texte d'un ID
 		function getString($field, $format=NULL)  {
-			if ($this->getId()>0 && !$this->_loaded) $this->load($this->getId());
+			if ($this->needsFullLoadForField($field)) $this->load($this->getId());
 			
 			$type=$this->getFieldType($field);
 			switch ($type) {
@@ -1192,7 +1674,7 @@
 		}
 
 		function backup() {
-			if ($this->getId()>0 && !$this->_loaded) $this->load($this->getId());
+			if ($this->needsFullLoad()) $this->load($this->getId());
 
 			$tableName = $this->getQuotedTableName("_historique");
 			$fields = $this->getPersistableFields();
@@ -1222,6 +1704,7 @@
 			
 		function save() {
 			if ($this->getId()>0 && !$this->_loaded) return;
+			if ($this->_partiallyLoaded) $this->load($this->getId());
 
 			$tableName = $this->getQuotedTableName();
 			$fields = $this->getPersistableFields();
@@ -1269,6 +1752,10 @@
 				$this->set("id",self::getDbh()->insert_id);
 			}
 			if ($result) {
+				// Keep subsequent loads in this request consistent with the value just saved.
+				// This is especially important when a second synchronization reads a
+				// holon property immediately after its first write.
+				self::$preload[$this->tableName()."_".$this->_id] = $this;
 				return array ("status"=>true, "text"=>"Saved!", "id"=>"0".$this->_id);
 			} else {
 				return array ("status"=>false, "text"=>"Error saving record.", "query"=>$query);
@@ -1324,7 +1811,7 @@
 		}
 		
 		function loadFromArray($array) {
-			if ($this->getId()>0 && !$this->_loaded) $this->load($this->getId());
+			if ($this->needsFullLoad()) $this->load($this->getId());
 
 			// Met à jour toutes les valeurs présentes dans le tableau
 			foreach ($array as $key => $value) {
@@ -1440,11 +1927,7 @@
 			if (count($rows)<1) return false;
 			if (count($rows)>1) return false;
 
-			$row=$rows[0];
-			$this->loadFromArray($row);
-			$this->_id=$row["id"];
-			self::$preload[$this->tableName()."_".$row["id"]] = $this;
-			return true;
+			return $this->hydrateFromDatabaseRow($rows[0], true);
 			
 			/*
 			 * Collé ici pour évolution futur: création de table automatique
