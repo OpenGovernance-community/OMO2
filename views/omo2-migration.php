@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-require_once __DIR__ . '/common/translation_bundles.php';
+require_once dirname(__DIR__) . '/common/translation_bundles.php';
 
 $sourceLang = [
     'migration.meta.title' => ['text' => 'Migration d’OMO1 vers OMO2 — OpenMyOrganization', 'context' => 'Browser title for the public OMO migration page.'],

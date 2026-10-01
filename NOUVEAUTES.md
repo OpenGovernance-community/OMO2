@@ -1,5 +1,17 @@
 # Journal Des Nouveautes
 
+- Calendrier : les erreurs d analyse ICS renvoient maintenant le type d exception et sa cause, limitee a 400 caracteres, pour faciliter le diagnostic sur le serveur.
+
+- Rangement : guides dans docs/, rapports dans docs/performance/, pages publiques OMO2 dans views/, exports EasyPV dans pv/export.php, export OMO1 dans tools/migration/ et pages transversales dans common/. Les anciennes URL restent accessibles par reecriture interne, avec conservation des parametres et des donnees POST.
+
+- Mise a jour du site : recherche de Composer 2 et de PHP CLI avant synchronisation, prise en charge de composer.phar configure dans .env et reprise des dependances et migrations apres une interruption, sans nouvelle synchronisation Git.
+
+- Mise a jour du site : lecture des chemins Git sans alteration ni melange avec les avertissements, prise en charge des dossiers non suivis avec slash final et des noms propres a Linux. Les refus indiquent desormais le chemin exact, l etape et le motif.
+
+- Mise a jour du site : les conflits dossier/fichier, notamment docker/etherpad/APIKEY.txt sur un hebergement sans Docker, sont traites en mode force apres inventaire et sauvegarde du contenu du dossier. Les liens ne sont pas suivis et une sauvegarde incomplete bloque le remplacement.
+
+- Mise a jour du site : la synchronisation forcee accepte les fichiers non suivis en conflit apres un envoi FTP. Seuls les contenus differents du commit distant sont sauvegardes hors du dossier public ; les contenus identiques ne sont pas copies et les fichiers non suivis sans conflit restent en place.
+
 - EasyPV : les boutons de fermeture des panneaux lateraux conservent une icone de 18 px, alignee avec le libelle ; les styles sont limites a la page /pv/.
 
 - EasyPV : suppression des anciens modeles et de la configuration PHPDocX ; les exports utilisent PHPWord et Dompdf, sans dependance PHPDocX restante.

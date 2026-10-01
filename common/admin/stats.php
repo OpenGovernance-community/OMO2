@@ -1,9 +1,9 @@
 <?php
 
-require_once __DIR__ . '/shared_functions.php';
-require_once __DIR__ . '/common/translation_bundles.php';
-require_once __DIR__ . '/common/topbar.php';
-require_once __DIR__ . '/omo/topbar.php';
+require_once dirname(__DIR__, 2) . '/shared_functions.php';
+require_once dirname(__DIR__) . '/translation_bundles.php';
+require_once dirname(__DIR__) . '/topbar.php';
+require_once dirname(__DIR__, 2) . '/omo/topbar.php';
 
 function siteStatsSourceLang(): array
 {
@@ -375,7 +375,7 @@ $pageTitle = siteStatsT('stats.page.title');
     <?php commonRenderTopbar(omoBuildTopbarOptions($organizationContext, [
         'variant' => 'hub',
         'isDemoGuest' => false,
-        'logoutReturnTo' => '/stats.php',
+        'logoutReturnTo' => '/common/admin/stats.php',
     ])); ?>
     <main class="site-stats-page">
         <header class="site-stats-hero generic-hero-panel">
@@ -388,7 +388,7 @@ $pageTitle = siteStatsT('stats.page.title');
                 <span class="generic-card-title generic-card-title--small"><?= siteStatsEscape(siteStatsT('stats.period.label')) ?></span>
                 <div class="site-stats-period__options" role="group" aria-label="<?= siteStatsEscape(siteStatsT('stats.period.label')) ?>">
                     <?php foreach ([30, 90, 365] as $period): ?>
-                        <a class="generic-action-button generic-action-button--secondary<?= $period === $chartRange ? ' is-active' : '' ?>" href="/stats.php?range=<?= $period ?>"><?= siteStatsEscape(siteStatsT('stats.period.days_' . $period)) ?></a>
+                        <a class="generic-action-button generic-action-button--secondary<?= $period === $chartRange ? ' is-active' : '' ?>" href="/common/admin/stats.php?range=<?= $period ?>"><?= siteStatsEscape(siteStatsT('stats.period.days_' . $period)) ?></a>
                     <?php endforeach; ?>
                 </div>
                 <span class="site-stats-period__mode"><?= siteStatsEscape(siteStatsT('stats.period.' . ($chartMode === 'weekly' ? 'weekly' : 'daily'))) ?></span>

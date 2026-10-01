@@ -1,4 +1,4 @@
-<form id='pv-download-form' method='POST' action='/genWord.php' enctype='multipart/form-data'>
+<form id='pv-download-form' method='POST' action='/pv/export.php' enctype='multipart/form-data'>
 	<input type='hidden' name='data' value='' id='downloadpostdata'>
 	<select name='fontsize'>
 		<option value='8'>8pt</option>

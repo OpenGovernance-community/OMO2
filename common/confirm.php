@@ -1,6 +1,6 @@
-<?
-	require_once("config.php");
-	require_once("shared_functions.php");
+<?php
+	require_once dirname(__DIR__) . '/config.php';
+	require_once dirname(__DIR__) . '/shared_functions.php';
 ?>
 <html>
 	<head>
@@ -22,7 +22,7 @@
 		<link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote.min.css" rel="stylesheet">
 		<script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote.min.js"></script>
 
-		<script src="shared_functions.js"></script>
+		<script src="/shared_functions.js"></script>
 		<script src="/common/assets/password_policy.js"></script>
 		<script>
 			$(function() {		
@@ -45,7 +45,7 @@
 	</head>
 	<body>
 	<div style='margin:10px auto; max-width:800px; width:100%; border:1px solid black; border-radius:10px; overflow:hidden; box-shadow: 5px 5px 10px rgba(0,0,0,0.5); '>
-<?
+<?php
 
 		function fct_motdepasse($object, $colonne, $default) {
 			$content="<input type='password' autocomplete='off' id='password' name='password' placeholder='Choisissez un mot de passe' minlength='12'><br><input type='password' autocomplete='off' id='password2' name='password2' placeholder='Confirmez votre mot de passe' minlength='12'>";
@@ -80,7 +80,7 @@
 					"fields" => array(array("code",null,true),array("email",null,true),"motdepasse"),
 					"buttons" => false,
 					"action" => "/ajax/createaccount.php",
-					"success" => "index.php"
+					"success" => "/index.php"
 				);
 			} else {
 				$title="Finalisation de la création du compte";
@@ -90,7 +90,7 @@
 					"fields" => array(array("code",null,true),"username","firstname","lastname","email","motdepasse"),
 					"buttons" => false,
 					"action" => "/ajax/createaccount.php",
-					"success" => "license.php"
+					"success" => "/license.php"
 				);			
 		}
 		
@@ -112,6 +112,6 @@
 	} 
 ?>
 </div>
-<div class='bottom' style='padding:10px' >&nbsp; <img src='img/systemeD.png' style='height:30px;'></div><div>
+<div class='bottom' style='padding:10px' >&nbsp; <img src='/img/systemeD.png' style='height:30px;'></div><div>
 	</body>
 </html>
