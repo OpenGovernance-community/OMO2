@@ -217,7 +217,14 @@ function commonExternalCalendarParseIcsFeed(string $feed, \DateTimeInterface $ra
         if (count($parsed) > 10000) { throw new \RuntimeException('Trop d occurrences ICS.'); }
         return ['status' => true, 'events' => array_values($parsed)];
     } catch (\Throwable $exception) {
-        error_log('OMO ICS parsing failed: ' . $exception->getMessage());
-        return ['status' => false, 'message' => 'Le flux ICS ne peut pas etre lu completement.'];
+        $detail = trim(preg_replace('/[\x00-\x1F\x7F]+/', ' ', $exception->getMessage()) ?? '');
+        if ($detail === '') {
+            $detail = 'Cause non precisee';
+        }
+        $detail = function_exists('mb_substr') ? mb_substr($detail, 0, 400, 'UTF-8') : substr($detail, 0, 400);
+        $message = 'Le flux ICS ne peut pas etre lu completement. Detail technique ('
+            . get_class($exception) . ') : ' . $detail;
+        error_log('OMO ICS parsing failed: ' . $message);
+        return ['status' => false, 'message' => $message];
     }
 }
