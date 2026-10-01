@@ -1,6 +1,6 @@
 <?php
-require_once __DIR__ . '/shared_functions.php';
-require_once __DIR__ . '/vendor/autoload.php';
+require_once dirname(__DIR__) . '/shared_functions.php';
+require_once dirname(__DIR__) . '/vendor/autoload.php';
 
 use Dompdf\Dompdf;
 use PhpOffice\PhpWord\IOFactory;
@@ -248,7 +248,7 @@ function pvExportSanitizeHtml(string $html, string $fontSize, string $format): s
                 . ';font-family:Arial;font-size:' . $fontSize . 'pt;font-weight:bold;'
                 . 'background-color:#' . $callout['fill'] . ';'
                 . 'margin-top:6pt;margin-bottom:6pt;padding:4pt;page-break-inside:avoid;');
-            $iconPath = __DIR__ . '/img/' . $callout['icon'];
+            $iconPath = dirname(__DIR__) . '/img/' . $callout['icon'];
             $icon = $document->createElement('img');
             // PHPWord embeds the fixed local asset; Dompdf receives embedded data.
             // No local path from the submitted document is ever accepted.
@@ -436,7 +436,7 @@ try {
         $writerType = $format === 'odt' ? 'ODText' : 'Word2007';
         IOFactory::createWriter($phpWord, $writerType)->save($outputPath);
         if ($format === 'odt') {
-            require_once __DIR__ . '/common/document/odt.php';
+            require_once dirname(__DIR__) . '/common/document/odt.php';
             commonCompletePhpWordOdt($outputPath, (float)$fontSize);
         }
     }

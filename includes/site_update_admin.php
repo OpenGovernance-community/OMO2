@@ -53,52 +53,67 @@ function siteUpdateAdminGetGitBinary()
     return 'git';
 }
 
-function siteUpdateAdminGetComposerBinary()
+function siteUpdateAdminGetComposerCommand($phpBinary)
 {
-    if (function_exists('envValue')) {
-        $configuredBinary = trim((string)envValue('SITE_UPDATE_COMPOSER_BINARY', ''));
-        if ($configuredBinary !== '') {
-            return $configuredBinary;
+    $configured = function_exists('envValue') ? trim((string)envValue('SITE_UPDATE_COMPOSER_BINARY', '')) : '';
+    $candidates = $configured !== '' ? array($configured) : array(
+        'composer', '/usr/local/bin/composer', '/usr/bin/composer',
+        '/usr/local/bin/composer.phar', '/usr/bin/composer.phar',
+        siteUpdateAdminGetRepoRoot() . '/composer.phar',
+    );
+    foreach ($candidates as $candidate) {
+        if (strpos($candidate, '/') === false && strpos($candidate, '\\') === false) {
+            foreach (explode(PATH_SEPARATOR, (string)getenv('PATH')) as $directory) {
+                $path = rtrim($directory, '/\\') . DIRECTORY_SEPARATOR . $candidate;
+                if ($directory !== '' && is_file($path)) {
+                    $candidate = $path;
+                    break;
+                }
+            }
+        }
+        $isPhp = strtolower(pathinfo($candidate, PATHINFO_EXTENSION)) === 'phar';
+        if (is_file($candidate) && is_readable($candidate)) {
+            $prefix = file_get_contents($candidate, false, null, 0, 512);
+            $isPhp = $isPhp || ($prefix !== false && strpos($prefix, '<?php') !== false);
+        }
+        $command = $isPhp ? array($phpBinary, $candidate) : array($candidate);
+        $output = siteUpdateAdminRunCommand(array_merge($command, array('--version', '--no-ansi')), null, $exitCode);
+        if ($exitCode === 0 && preg_match('/Composer(?: version)?\s+([2-9]|[1-9][0-9]+)\./i', $output)) {
+            return $command;
         }
     }
-
-    return 'composer';
+    throw new RuntimeException('Composer 2 est introuvable ou inutilisable depuis PHP. Configurez SITE_UPDATE_COMPOSER_BINARY dans .env avec le chemin absolu de Composer ou de composer.phar (sans arguments). Les alias SSH ne sont pas disponibles depuis le site.');
 }
 
 function siteUpdateAdminGetPhpBinary()
 {
+    $candidates = array();
+    $configuredBinary = '';
     if (function_exists('envValue')) {
         $configuredBinary = trim((string)envValue('SITE_UPDATE_PHP_BINARY', ''));
-        if ($configuredBinary !== '') {
-            return $configuredBinary;
-        }
     }
-
     if (PHP_SAPI === 'cli' && defined('PHP_BINARY') && is_string(PHP_BINARY) && PHP_BINARY !== '') {
-        return PHP_BINARY;
+        $candidates[] = PHP_BINARY;
     }
-
+    $candidates[] = '/opt/php' . PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION . '/bin/php';
     if (defined('PHP_BINDIR') && is_string(PHP_BINDIR) && PHP_BINDIR !== '') {
-        $candidates = array(
-            rtrim(PHP_BINDIR, '/\\') . DIRECTORY_SEPARATOR . 'php',
-            rtrim(PHP_BINDIR, '/\\') . DIRECTORY_SEPARATOR . 'php.exe',
-        );
-
-        foreach ($candidates as $candidate) {
-            if (is_file($candidate)) {
-                return $candidate;
-            }
+        $candidates[] = rtrim(PHP_BINDIR, '/\\') . DIRECTORY_SEPARATOR . 'php';
+        $candidates[] = rtrim(PHP_BINDIR, '/\\') . DIRECTORY_SEPARATOR . 'php.exe';
+    }
+    $candidates[] = 'php';
+    foreach (array_unique($configuredBinary !== '' ? array($configuredBinary) : $candidates) as $candidate) {
+        if (preg_match('/fpm|cgi/i', basename($candidate))) {
+            continue;
+        }
+        if ((strpos($candidate, '/') !== false || strpos($candidate, '\\') !== false) && !is_file($candidate)) {
+            continue;
+        }
+        $output = siteUpdateAdminRunCommand(array($candidate, '-r', 'echo PHP_SAPI . ":" . PHP_MAJOR_VERSION . "." . PHP_MINOR_VERSION;'), null, $exitCode);
+        if ($exitCode === 0 && trim($output) === 'cli:' . PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION) {
+            return $candidate;
         }
     }
-
-    if (defined('PHP_BINARY') && is_string(PHP_BINARY) && PHP_BINARY !== '') {
-        $binaryName = strtolower(basename(PHP_BINARY));
-        if (strpos($binaryName, 'fpm') === false && strpos($binaryName, 'cgi') === false) {
-            return PHP_BINARY;
-        }
-    }
-
-    return 'php';
+    throw new RuntimeException('PHP CLI compatible introuvable. Configurez SITE_UPDATE_PHP_BINARY dans .env avec le chemin absolu du PHP CLI de meme version que le site (pas php-fpm ni php-cgi).');
 }
 
 function siteUpdateAdminHasGitRepository()
@@ -106,17 +121,17 @@ function siteUpdateAdminHasGitRepository()
     return file_exists(siteUpdateAdminGetRepoRoot() . DIRECTORY_SEPARATOR . '.git');
 }
 
-function siteUpdateAdminBuildCommand(array $parts)
+function siteUpdateAdminBuildCommand(array $parts, $mergeErrorOutput = true)
 {
     $escapedParts = array();
     foreach ($parts as $part) {
         $escapedParts[] = escapeshellarg((string)$part);
     }
 
-    return implode(' ', $escapedParts) . ' 2>&1';
+    return implode(' ', $escapedParts) . ($mergeErrorOutput ? ' 2>&1' : '');
 }
 
-function siteUpdateAdminRunCommand(array $parts, $cwd = null, &$exitCode = null)
+function siteUpdateAdminRunCommand(array $parts, $cwd = null, &$exitCode = null, $preservePathOutput = false)
 {
     if (!siteUpdateAdminIsExecAvailable()) {
         throw new RuntimeException('Les commandes systeme sont indisponibles sur ce serveur.');
@@ -129,14 +144,49 @@ function siteUpdateAdminRunCommand(array $parts, $cwd = null, &$exitCode = null)
         throw new RuntimeException('Impossible d acceder au dossier du depot Git.');
     }
 
+    $stdoutFile = null;
+    $stderrFile = null;
     try {
+        if ($preservePathOutput) {
+            // exec() trims line endings; Git -z output must remain byte-for-byte.
+            // Keep Git warnings out of the list of filenames as well.
+            $stdoutFile = tmpfile();
+            $stderrFile = tmpfile();
+            if ($stdoutFile === false || $stderrFile === false) {
+                throw new RuntimeException('Impossible de lire les chemins Git sans alteration.');
+            }
+            $stdoutPath = stream_get_meta_data($stdoutFile)['uri'];
+            $stderrPath = stream_get_meta_data($stderrFile)['uri'];
+            $command = siteUpdateAdminBuildCommand($parts, false)
+                . ' > ' . escapeshellarg($stdoutPath) . ' 2> ' . escapeshellarg($stderrPath);
+            $ignoredOutput = array();
+            exec($command, $ignoredOutput, $resolvedExitCode);
+            $exitCode = (int)$resolvedExitCode;
+            rewind($stdoutFile);
+            rewind($stderrFile);
+            $output = stream_get_contents($stdoutFile);
+            $errors = stream_get_contents($stderrFile);
+            if ($output === false || $errors === false) {
+                throw new RuntimeException('Lecture incomplete des chemins Git.');
+            }
+            if ($errors !== '') {
+                error_log('Site update Git: ' . trim($errors));
+            }
+            return $exitCode === 0 ? $output : $errors;
+        }
         $outputLines = array();
         $command = siteUpdateAdminBuildCommand($parts);
         exec($command, $outputLines, $resolvedExitCode);
         $exitCode = (int)$resolvedExitCode;
 
-        return trim(implode("\n", $outputLines));
+        return rtrim(implode("\n", $outputLines), "\r\n");
     } finally {
+        if (is_resource($stdoutFile)) {
+            fclose($stdoutFile);
+        }
+        if (is_resource($stderrFile)) {
+            fclose($stderrFile);
+        }
         if ($originalDirectory !== false) {
             @chdir($originalDirectory);
         }
@@ -413,6 +463,10 @@ function siteUpdateAdminCollectChangedPaths(array &$changesByPath, $output, $sta
     $paths = preg_split('/\0/', (string)$output);
     foreach ($paths as $path) {
         $path = (string)$path;
+        if ($state === 'untracked') {
+            // Git can report an untracked directory with a terminal slash.
+            $path = rtrim($path, '/');
+        }
         if ($path === '') {
             continue;
         }
@@ -442,10 +496,11 @@ function siteUpdateAdminGetLocalChanges(array $context)
 
     foreach ($commands as $state => $parts) {
         $exitCode = 0;
-        $output = siteUpdateAdminRunCommand($parts, $repoRoot, $exitCode);
-        if ($exitCode === 0) {
-            siteUpdateAdminCollectChangedPaths($changesByPath, $output, $state);
+        $output = siteUpdateAdminRunCommand($parts, $repoRoot, $exitCode, true);
+        if ($exitCode !== 0) {
+            throw new RuntimeException('Impossible de verifier les fichiers locaux avant la mise a jour.');
         }
+        siteUpdateAdminCollectChangedPaths($changesByPath, $output, $state);
     }
 
     $changes = array_values($changesByPath);
@@ -466,7 +521,8 @@ function siteUpdateAdminGetRemoteChangedPaths(array $context, $localCommit, $rem
     $output = siteUpdateAdminRunCommand(
         array(siteUpdateAdminGetGitBinary(), 'diff', '--no-ext-diff', '--name-only', '-z', $localCommit . '..' . $remoteCommit),
         $context['repoRoot'],
-        $exitCode
+        $exitCode,
+        true
     );
 
     if ($exitCode !== 0) {
@@ -478,10 +534,118 @@ function siteUpdateAdminGetRemoteChangedPaths(array $context, $localCommit, $rem
     }));
 }
 
-function siteUpdateAdminBuildLocalChangesPayload(array $context, $localCommit = '', $remoteCommit = '')
+function siteUpdateAdminValidateRelativePath(string $path, string $context = 'sauvegarde locale'): void
+{
+    $segments = explode('/', $path);
+    $reason = '';
+    if ($path === '') {
+        $reason = 'chemin vide';
+    } elseif (preg_match('/[\x00-\x1f\x7f]/', $path)) {
+        $reason = 'caractere de controle dans le nom';
+    } elseif (array_intersect($segments, array('', '.', '..'))) {
+        $reason = 'chemin absolu ou segment de chemin non autorise';
+    } elseif (in_array('.git', array_map('strtolower', $segments), true)) {
+        $reason = 'metadonnees Git a proteger ; le dossier en conflit contient peut-etre un depot imbrique';
+    } elseif (DIRECTORY_SEPARATOR === '\\' && preg_match('/[\\\\:*?"<>|]/', $path)) {
+        $reason = 'nom de fichier incompatible avec Windows';
+    }
+    if ($reason !== '') {
+        $displayPath = json_encode($path, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+        throw new RuntimeException('Chemin refuse (' . $context . ') : ' . $displayPath . '. Motif : ' . $reason . '. Aucune synchronisation lancee.');
+    }
+}
+
+function siteUpdateAdminGetRemoteFiles(array $context, string $commit): array
+{
+    $exitCode = 0;
+    $output = siteUpdateAdminRunCommand(
+        array(siteUpdateAdminGetGitBinary(), 'ls-tree', '-r', '-z', '--full-tree', $commit),
+        $context['repoRoot'], $exitCode, true
+    );
+    if ($exitCode !== 0) {
+        throw new RuntimeException('Impossible de lire la liste des fichiers distants.');
+    }
+    $files = array();
+    foreach (explode("\0", $output) as $entry) {
+        if ($entry === '') {
+            continue;
+        }
+        if (!preg_match('/^(\d+) (blob|commit) ([a-f0-9]{40}|[a-f0-9]{64})\t(.+)$/D', $entry, $parts)) {
+            throw new RuntimeException('Entree Git distante non prise en charge : ' . json_encode($entry, JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE));
+        }
+        siteUpdateAdminValidateRelativePath($parts[4], 'arbre distant');
+        $files[$parts[4]] = array('mode' => $parts[1], 'hash' => $parts[3]);
+    }
+    return $files;
+}
+
+function siteUpdateAdminFileMatchesRemote(string $path, ?array $remote): bool
+{
+    if ($remote !== null && $remote['mode'] === '120000' && is_link($path)) {
+        $target = readlink($path);
+        return is_string($target) && hash_equals($remote['hash'], hash(
+            strlen($remote['hash']) === 64 ? 'sha256' : 'sha1',
+            'blob ' . strlen($target) . "\0" . $target
+        ));
+    }
+    if ($remote === null || !in_array($remote['mode'], array('100644', '100755'), true)
+        || is_link($path) || !is_file($path)) {
+        return false;
+    }
+    $handle = fopen($path, 'rb');
+    if ($handle === false) {
+        throw new RuntimeException('Impossible de comparer un fichier local.');
+    }
+    try {
+        $stat = fstat($handle);
+        if ($stat === false) {
+            throw new RuntimeException('Impossible de lire la taille du fichier local.');
+        }
+        $hash = hash_init(strlen($remote['hash']) === 64 ? 'sha256' : 'sha1');
+        hash_update($hash, 'blob ' . $stat['size'] . "\0");
+        if (hash_update_stream($hash, $handle) !== $stat['size']) {
+            throw new RuntimeException('Lecture incomplete pendant la comparaison locale.');
+        }
+        return hash_equals($remote['hash'], hash_final($hash));
+    } finally {
+        fclose($handle);
+    }
+}
+
+function siteUpdateAdminBuildLocalChangesPayload(array $context, $localCommit = '', $remoteCommit = '', ?array $remoteFiles = null)
 {
     $localChanges = siteUpdateAdminGetLocalChanges($context);
+    $remoteFiles = $remoteFiles ?? siteUpdateAdminGetRemoteFiles($context, $remoteCommit);
     $remotePaths = array_flip(siteUpdateAdminGetRemoteChangedPaths($context, $localCommit, $remoteCommit));
+    $exitCode = 0;
+    $trackedOutput = siteUpdateAdminRunCommand(array(siteUpdateAdminGetGitBinary(), 'ls-files', '-z'), $context['repoRoot'], $exitCode, true);
+    if ($exitCode !== 0) {
+        throw new RuntimeException('Impossible de lire les fichiers suivis par Git.');
+    }
+    $trackedPaths = array_flip(explode("\0", $trackedOutput));
+    $changesByPath = array_column($localChanges, null, 'path');
+    // Also detect ignored files and file/directory obstructions that reset may replace.
+    foreach ($remoteFiles as $path => $remoteFile) {
+        $prefix = '';
+        foreach (explode('/', $path) as $segment) {
+            $prefix = $prefix === '' ? $segment : $prefix . '/' . $segment;
+            $absolute = $context['repoRoot'] . '/' . $prefix;
+            if (!file_exists($absolute) && !is_link($absolute)) {
+                break;
+            }
+            if ($prefix === $path || is_link($absolute) || !is_dir($absolute)) {
+                if (!isset($trackedPaths[$prefix]) || is_link($absolute) || ($prefix === $path && is_dir($absolute) && $remoteFile['mode'] !== '160000')) {
+                    if (!isset($changesByPath[$prefix])) {
+                        $changesByPath[$prefix] = array('path' => $prefix, 'states' => array(isset($trackedPaths[$prefix]) ? 'modified' : 'untracked'));
+                    }
+                    $remotePaths[$prefix] = true;
+                }
+                break;
+            }
+        }
+    }
+    $localChanges = array_values($changesByPath);
+    usort($localChanges, static fn($a, $b) => strnatcasecmp($a['path'], $b['path']));
     $overlappingPaths = array();
     $untrackedOverlappingPaths = array();
     $trackedCount = 0;
@@ -516,6 +680,145 @@ function siteUpdateAdminBuildLocalChangesPayload(array $context, $localCommit = 
 function siteUpdateAdminHasTrackedLocalChanges(array $localChangesPayload)
 {
     return !empty($localChangesPayload['hasTrackedChanges']);
+}
+
+function siteUpdateAdminBackupLocalChanges(array $context, array $payload, array $remoteFiles): array
+{
+    $backup = array('backupPath' => '', 'backedUpFileCount' => 0, 'identicalFileCount' => 0);
+    $entries = array();
+    $root = realpath($context['repoRoot']);
+    if ($root === false) {
+        throw new RuntimeException('Le dossier du site est introuvable.');
+    }
+    $root = rtrim(str_replace('\\', '/', $root), '/');
+    $changes = $payload['localChanges'];
+    $visited = array();
+    for ($changeIndex = 0; $changeIndex < count($changes); $changeIndex++) {
+        $change = $changes[$changeIndex];
+        if (!$change['overlapsRemoteUpdate'] && !array_intersect($change['states'], array('modified', 'indexed'))) {
+            continue;
+        }
+        $relative = $change['path'];
+        if (isset($visited[$relative])) {
+            continue;
+        }
+        $visited[$relative] = true;
+        siteUpdateAdminValidateRelativePath($relative);
+        $path = $root . '/' . $relative;
+        $parent = dirname($path);
+        while ($parent !== $root) {
+            if (is_link($parent)) {
+                throw new RuntimeException('Un lien de dossier doit etre traite manuellement avant la mise a jour : ' . $relative);
+            }
+            $parent = dirname($parent);
+        }
+        if (!file_exists($path) && !is_link($path)) {
+            if (isset($remoteFiles[$relative])) {
+                $entries[$relative] = array('type' => 'missing');
+            }
+            continue;
+        }
+        if (is_dir($path) && !is_link($path)) {
+            if (($remoteFiles[$relative]['mode'] ?? '') === '160000') {
+                throw new RuntimeException('Un sous-module Git doit etre synchronise manuellement : ' . $relative);
+            }
+            $children = scandir($path);
+            if ($children === false) {
+                throw new RuntimeException('Impossible de lire le dossier en conflit : ' . $relative);
+            }
+            $children = array_values(array_diff($children, array('.', '..')));
+            // Keep a directory inventory, even when empty, and never follow links.
+            $entries[$relative] = array('type' => 'directory', 'mode' => fileperms($path) & 0777, 'children' => $children);
+            foreach ($children as $child) {
+                $changes[] = array(
+                    'path' => $relative . '/' . $child,
+                    'states' => array('untracked'),
+                    'overlapsRemoteUpdate' => true,
+                );
+            }
+            continue;
+        }
+        if (siteUpdateAdminFileMatchesRemote($path, $remoteFiles[$relative] ?? null)) {
+            $backup['identicalFileCount']++;
+            continue;
+        }
+        if (is_link($path)) {
+            $target = readlink($path);
+            if ($target === false) {
+                throw new RuntimeException('Impossible de sauvegarder le lien : ' . $relative);
+            }
+            $entries[$relative] = array('type' => 'symlink', 'target' => $target);
+        } elseif (is_file($path)) {
+            $entries[$relative] = array('type' => 'file', 'mode' => fileperms($path) & 0777);
+        } else {
+            throw new RuntimeException('Type de fichier a traiter manuellement : ' . $relative);
+        }
+    }
+    if ($entries === array()) {
+        return $backup;
+    }
+
+    require_once __DIR__ . '/../common/runtime_log.php';
+    $directory = commonRuntimeLogPath('site-update-backups');
+    if (!is_dir($directory) && !mkdir($directory, 0700, true) && !is_dir($directory)) {
+        throw new RuntimeException('Impossible de creer le dossier de sauvegarde. La mise a jour est annulee.');
+    }
+    $directory = realpath($directory);
+    $publicRoots = array($root, realpath($_SERVER['DOCUMENT_ROOT'] ?? '') ?: $root);
+    foreach ($publicRoots as $publicRoot) {
+        $prefix = rtrim(str_replace('\\', '/', $publicRoot), '/') . '/';
+        $resolved = rtrim(str_replace('\\', '/', (string)$directory), '/') . '/';
+        if ($directory === false || strncasecmp($resolved, $prefix, strlen($prefix)) === 0) {
+            throw new RuntimeException('Configurez RUNTIME_LOG_DIR hors de la racine web pour les sauvegardes de mise a jour.');
+        }
+    }
+    $backup['backupPath'] = $directory . '/' . gmdate('Ymd-His') . '-' . bin2hex(random_bytes(6));
+    if (!mkdir($backup['backupPath'], 0700)) {
+        throw new RuntimeException('Impossible de preparer la sauvegarde. La mise a jour est annulee.');
+    }
+    foreach ($entries as $relative => $entry) {
+        if ($entry['type'] !== 'file') {
+            continue;
+        }
+        $source = $root . '/' . $relative;
+        $destination = $backup['backupPath'] . '/files/' . $relative;
+        if (!is_dir(dirname($destination)) && !mkdir(dirname($destination), 0700, true)) {
+            throw new RuntimeException('Impossible de preparer la copie de sauvegarde : ' . $relative);
+        }
+        if (!copy($source, $destination) || !chmod($destination, 0600)) {
+            throw new RuntimeException('Impossible de sauvegarder : ' . $relative . '. Aucune synchronisation lancee.');
+        }
+        $sourceHash = hash_file('sha256', $source);
+        if ($sourceHash === false || $sourceHash !== hash_file('sha256', $destination)) {
+            throw new RuntimeException('La sauvegarde differe du fichier local : ' . $relative . '. Aucune synchronisation lancee.');
+        }
+        $entries[$relative]['sha256'] = $sourceHash;
+        $backup['backedUpFileCount']++;
+    }
+    // Refuse replacement if an upload changed a conflicting directory meanwhile.
+    foreach ($entries as $relative => $entry) {
+        if ($entry['type'] !== 'directory') {
+            continue;
+        }
+        $children = scandir($root . '/' . $relative);
+        if ($children === false || array_values(array_diff($children, array('.', '..'))) !== $entry['children']) {
+            throw new RuntimeException('Le dossier a change pendant la sauvegarde : ' . $relative . '. Aucune synchronisation lancee.');
+        }
+    }
+    $manifest = array(
+        'createdAt' => gmdate('c'),
+        'repoRoot' => $root,
+        'localCommit' => $context['localCommit'],
+        'remoteCommit' => $payload['remoteCommit'],
+        'files' => $entries,
+    );
+    $manifestPath = $backup['backupPath'] . '/manifest.json';
+    if (file_put_contents($manifestPath, json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR), LOCK_EX) === false
+        || !chmod($manifestPath, 0600)) {
+        throw new RuntimeException('Impossible de finaliser la sauvegarde. Aucune synchronisation lancee.');
+    }
+    error_log('Site update backup: ' . $backup['backupPath']);
+    return $backup;
 }
 
 function siteUpdateAdminFormatCommandOutput($output, $maxLines = 12)
@@ -569,6 +872,7 @@ function siteUpdateAdminCheckVersionStatus()
         );
     }
 
+    $state = siteUpdateAdminReadState();
     $localSummary = siteUpdateAdminGetCommitSummary($context, $context['localCommit']);
     $remoteSummary = siteUpdateAdminGetCommitSummary($context, $remoteCommit);
     $behindCount = siteUpdateAdminGetBehindCount($context, $context['localCommit'], $remoteCommit);
@@ -579,6 +883,7 @@ function siteUpdateAdminCheckVersionStatus()
         'supported' => true,
         'updating' => false,
         'available' => $remoteCommit !== $context['localCommit'],
+        'requiresCompletion' => !empty($state['requiresCompletion']),
         'branch' => (string)$context['branch'],
         'tracking' => (string)$context['tracking'],
         'behindCount' => $behindCount,
@@ -594,9 +899,12 @@ function siteUpdateAdminCheckVersionStatus()
     ), $localChangesPayload);
 }
 
-function siteUpdateAdminRunUpdate($actorUserId, $force = false)
+function siteUpdateAdminRunUpdate($actorUserId, $force = false, $completeOnly = false)
 {
     $actorUserId = (int)$actorUserId;
+    $requiresCompletion = false;
+    $completed = false;
+    $backup = array('backupPath' => '', 'backedUpFileCount' => 0, 'identicalFileCount' => 0);
     $lockHandle = siteUpdateAdminTryAcquireLock();
     if ($lockHandle === false) {
         throw new RuntimeException('Une mise a jour est deja en cours.');
@@ -608,18 +916,27 @@ function siteUpdateAdminRunUpdate($actorUserId, $force = false)
             throw new RuntimeException('La mise a jour automatique n est pas disponible sur ce serveur.');
         }
 
-        $remoteCommit = siteUpdateAdminFetchRemoteCommit($context);
         $localCommit = (string)$context['localCommit'];
+        $previousState = siteUpdateAdminReadState();
+        if (!empty($previousState['requiresCompletion'])) {
+            $completeOnly = true;
+        }
+        // Finalization uses the installed code, even if a newer remote version exists.
+        $remoteCommit = $completeOnly ? $localCommit : siteUpdateAdminFetchRemoteCommit($context);
+        if ($completeOnly) {
+            $backup = array_merge($backup, (array)($previousState['backup'] ?? array()));
+        }
         $localSummary = siteUpdateAdminGetCommitSummary($context, $localCommit);
         $remoteSummary = siteUpdateAdminGetCommitSummary($context, $remoteCommit);
         $behindCount = siteUpdateAdminGetBehindCount($context, $localCommit, $remoteCommit);
-        $localChangesPayload = siteUpdateAdminBuildLocalChangesPayload($context, $localCommit, $remoteCommit);
+        $remoteFiles = $completeOnly ? array() : siteUpdateAdminGetRemoteFiles($context, $remoteCommit);
+        $localChangesPayload = $completeOnly ? array() : siteUpdateAdminBuildLocalChangesPayload($context, $localCommit, $remoteCommit, $remoteFiles);
 
-        if (!empty($localChangesPayload['untrackedOverlappingLocalChangeCount'])) {
+        if (!empty($localChangesPayload['untrackedOverlappingLocalChangeCount']) && !$force && !$completeOnly) {
             return array_merge(array(
                 'status' => false,
-                'requiresManualLocalCleanup' => true,
-                'message' => 'La mise a jour est bloquee car des fichiers non suivis seraient remplaces par le patch distant. Deplacez ou supprimez-les manuellement avant de reessayer.',
+                'requiresForce' => true,
+                'message' => 'Des fichiers non suivis seraient remplaces. Vous pouvez forcer la mise a jour : seuls les contenus differents de la version distante seront sauvegardes avant remplacement.',
                 'behindCount' => $behindCount,
                 'localCommit' => $localCommit,
                 'remoteCommit' => $remoteCommit,
@@ -631,7 +948,7 @@ function siteUpdateAdminRunUpdate($actorUserId, $force = false)
             ), $localChangesPayload);
         }
 
-        if (siteUpdateAdminHasTrackedLocalChanges($localChangesPayload) && !$force) {
+        if (siteUpdateAdminHasTrackedLocalChanges($localChangesPayload) && !$force && !$completeOnly) {
             return array_merge(array(
                 'status' => false,
                 'requiresForce' => true,
@@ -647,9 +964,15 @@ function siteUpdateAdminRunUpdate($actorUserId, $force = false)
             ), $localChangesPayload);
         }
 
+        // Resolve and check both commands before changing files or Git HEAD.
+        $phpBinary = siteUpdateAdminGetPhpBinary();
+        $composerCommand = siteUpdateAdminGetComposerCommand($phpBinary);
+
         siteUpdateAdminWriteState(array(
             'status' => 'running',
             'message' => 'Mise a jour en cours.',
+            'requiresCompletion' => (bool)$completeOnly,
+            'backup' => $backup,
             'startedAt' => gmdate('c'),
             'userId' => $actorUserId,
             'forced' => (bool)$force,
@@ -663,7 +986,8 @@ function siteUpdateAdminRunUpdate($actorUserId, $force = false)
             'remoteDate' => (string)($remoteSummary['date'] ?? ''),
         ));
 
-        if ($remoteCommit === $localCommit) {
+        if ($remoteCommit === $localCommit && !$force && !$completeOnly) {
+            $completed = true;
             return array(
                 'status' => true,
                 'updated' => false,
@@ -681,19 +1005,25 @@ function siteUpdateAdminRunUpdate($actorUserId, $force = false)
         }
 
         $repoRoot = $context['repoRoot'];
+        if ($force && !$completeOnly) {
+            $backup = siteUpdateAdminBackupLocalChanges($context, array_merge($localChangesPayload, array('remoteCommit' => $remoteCommit)), $remoteFiles);
+        }
         $exitCode = 0;
-        $resetOutput = siteUpdateAdminRunCommand(
-            array(siteUpdateAdminGetGitBinary(), 'reset', '--hard', 'FETCH_HEAD'),
+        $resetOutput = $completeOnly ? '' : siteUpdateAdminRunCommand(
+            array(siteUpdateAdminGetGitBinary(), 'reset', '--hard', $remoteCommit),
             $repoRoot,
             $exitCode
         );
         if ($exitCode !== 0) {
             throw new RuntimeException(siteUpdateAdminFormatCommandOutput($resetOutput) ?: 'Impossible de synchroniser le code avec le depot distant.');
         }
+        $requiresCompletion = true;
 
         siteUpdateAdminWriteState(array(
             'status' => 'running',
             'message' => 'Synchronisation du code terminee. Installation des dependances en cours.',
+            'requiresCompletion' => true,
+            'backup' => $backup,
             'startedAt' => gmdate('c'),
             'userId' => $actorUserId,
             'forced' => (bool)$force,
@@ -708,7 +1038,7 @@ function siteUpdateAdminRunUpdate($actorUserId, $force = false)
         ));
 
         $composerOutput = siteUpdateAdminRunCommand(
-            array(siteUpdateAdminGetComposerBinary(), 'install', '--no-dev', '--prefer-dist', '--no-interaction', '--optimize-autoloader'),
+            array_merge($composerCommand, array('install', '--no-dev', '--prefer-dist', '--no-interaction', '--optimize-autoloader')),
             $repoRoot,
             $exitCode
         );
@@ -719,6 +1049,8 @@ function siteUpdateAdminRunUpdate($actorUserId, $force = false)
         siteUpdateAdminWriteState(array(
             'status' => 'running',
             'message' => 'Installation des dependances terminee. Application des migrations en cours.',
+            'requiresCompletion' => true,
+            'backup' => $backup,
             'startedAt' => gmdate('c'),
             'userId' => $actorUserId,
             'forced' => (bool)$force,
@@ -733,7 +1065,7 @@ function siteUpdateAdminRunUpdate($actorUserId, $force = false)
         ));
 
         $migrationOutput = siteUpdateAdminRunCommand(
-            array(siteUpdateAdminGetPhpBinary(), $repoRoot . '/scripts/run-migrations.php'),
+            array($phpBinary, $repoRoot . '/scripts/run-migrations.php'),
             $repoRoot,
             $exitCode
         );
@@ -751,11 +1083,17 @@ function siteUpdateAdminRunUpdate($actorUserId, $force = false)
         }
 
         $updatedSummary = siteUpdateAdminGetCommitSummary($context, trim((string)$updatedLocalCommit));
+        $completed = true;
 
         return array(
             'status' => true,
             'updated' => true,
-            'message' => 'La mise a jour du site est terminee.',
+            'message' => 'La mise a jour du site est terminee.'
+                . ($backup['backupPath'] !== '' ? ' Sauvegarde locale : ' . $backup['backupPath'] . '.' : '')
+                . ($backup['identicalFileCount'] > 0 ? ' ' . $backup['identicalFileCount'] . ' fichiers identiques non sauvegardes.' : ''),
+            'backupPath' => $backup['backupPath'],
+            'backedUpFileCount' => $backup['backedUpFileCount'],
+            'identicalFileCount' => $backup['identicalFileCount'],
             'behindCount' => 0,
             'localCommit' => trim((string)$updatedLocalCommit),
             'remoteCommit' => $remoteCommit,
@@ -769,8 +1107,23 @@ function siteUpdateAdminRunUpdate($actorUserId, $force = false)
             'composerOutput' => siteUpdateAdminFormatCommandOutput($composerOutput),
             'resetOutput' => siteUpdateAdminFormatCommandOutput($resetOutput),
         );
+    } catch (Throwable $exception) {
+        if ($requiresCompletion) {
+            siteUpdateAdminWriteState(array_merge(siteUpdateAdminReadState(), array(
+                'status' => 'failed',
+                'requiresCompletion' => true,
+                'message' => $exception->getMessage(),
+                'backup' => $backup,
+            )));
+        }
+        if ($backup['backupPath'] !== '') {
+            throw new RuntimeException($exception->getMessage() . ' Sauvegarde locale disponible : ' . $backup['backupPath'], 0, $exception);
+        }
+        throw $exception;
     } finally {
-        siteUpdateAdminClearState();
+        if ($completed) {
+            siteUpdateAdminClearState();
+        }
         siteUpdateAdminReleaseLock($lockHandle);
     }
 }

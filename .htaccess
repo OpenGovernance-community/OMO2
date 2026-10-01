@@ -40,7 +40,20 @@ RewriteRule ^(.*)$ https://%1/$1 [R=301,L,NE]
 
 # Serve the alternate homepage at the omo2.org root without changing the URL.
 RewriteCond %{HTTP_HOST} ^(?:www\.)?omo2\.org(?::\d+)?$ [NC]
-RewriteRule ^$ /index2.php [QSA,L]
+RewriteRule ^$ /views/omo2-home.php [QSA,L]
+
+# Keep published URLs and POST bodies after moving root-level pages.
+RewriteRule ^index2\.php$ /views/omo2-home.php [QSA,L]
+RewriteRule ^migration-omo\.php$ /views/omo2-migration.php [QSA,L]
+RewriteRule ^genWord\.php$ /pv/export.php [QSA,L]
+RewriteRule ^omo1_export\.php$ /tools/migration/omo1-export.php [QSA,L]
+RewriteRule ^stats\.php$ /common/admin/stats.php [QSA,L]
+RewriteRule ^confirm\.php$ /common/confirm.php [QSA,L]
+RewriteRule ^qr\.php$ /common/qr/index.php [QSA,L]
+
+# Preserve direct links to the relocated guides and reports.
+RewriteRule ^(DEPLOY|DOCKER)\.md$ /docs/$1.md [L]
+RewriteRule ^(PERFORMANCE-[A-Z0-9-]+\.md)$ /docs/performance/$1 [L]
 
 RewriteRule ^memo/?$ /memo/index.php [QSA,L]
 RewriteRule ^memo/([0-9]+)/?$ /memo/index.php?open_document_id=$1 [QSA,L]
@@ -63,11 +76,11 @@ RewriteRule ^decision/public/([0-9]+)/([0-9]+)/(view|participate)/?$ /common/dec
 RewriteRule ^decision/public/([0-9]+)/([0-9]+)/c/([0-9]+)/?$ /common/decision_participation.php?public=1&oid=$1&id=$2&cid=$3 [QSA,L]
 RewriteRule ^decision/public/([0-9]+)/([0-9]+)/c/([0-9]+)/(view|participate)/?$ /common/decision_participation.php?public=1&oid=$1&id=$2&cid=$3&intent=$4 [QSA,L]
 
-RewriteRule ^qr$ /qr.php [L]
-RewriteRule ^qr/([0-9A-Za-z]+)/?$ /qr.php?id=$1 [QSA,L]
-RewriteRule ^qr/([0-9]+)/([0-9A-Za-z_\-]+)/?$ /qr.php?uid=$1&id=$2 [QSA,L]
-RewriteRule ^qr/image/([0-9A-Za-z]+)/?$ /qr.php?output=image&id=$1 [QSA,L]
-RewriteRule ^qr/image/([0-9]+)/([0-9A-Za-z_\-]+)/?$ /qr.php?output=image&uid=$1&id=$2 [QSA,L]
+RewriteRule ^qr$ /common/qr/index.php [L]
+RewriteRule ^qr/([0-9A-Za-z]+)/?$ /common/qr/index.php?id=$1 [QSA,L]
+RewriteRule ^qr/([0-9]+)/([0-9A-Za-z_\-]+)/?$ /common/qr/index.php?uid=$1&id=$2 [QSA,L]
+RewriteRule ^qr/image/([0-9A-Za-z]+)/?$ /common/qr/index.php?output=image&id=$1 [QSA,L]
+RewriteRule ^qr/image/([0-9]+)/([0-9A-Za-z_\-]+)/?$ /common/qr/index.php?output=image&uid=$1&id=$2 [QSA,L]
 
 
 # 👉 ignorer fichiers statiques
