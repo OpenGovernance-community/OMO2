@@ -4,6 +4,8 @@
 
 - Propositions de holons : les choix sont affichés par ordre alphabétique, avec les cercles séparés des rôles par une ligne horizontale.
 
+- Points de PV : les auteurs peuvent proposer des modifications depuis leurs propres points sans avoir le droit de gérer la structure du PV.
+
 - Partage de structure : la popup de gestion charge correctement les liens existants.
 
 - Connexion : le logo de l organisation s affiche dans un cadre carre aux coins arrondis, avec un halo sombre ; l image complete reste visible.

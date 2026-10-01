@@ -16,7 +16,7 @@ $operation = trim((string)($_POST['operation'] ?? ''));
 $holonId = (int)($_POST['holon_id'] ?? 0);
 $userId = (int)commonGetCurrentUserId();
 $point = new DocumentPvPoint(); $document = new Document();
-if ($organizationId <= 0 || $pointId <= 0 || !$point->load($pointId) || !$document->load((int)$point->get('IDdocument')) || (int)$document->get('IDorganization') !== $organizationId || !$document->canUserManagePvDocument($userId) || $point->isHandled() || $document->getPvStage() === Document::PV_STAGE_REVIEW) $respond(403, ['status' => false, 'message' => 'Accès refusé.']);
+if ($organizationId <= 0 || $pointId <= 0 || !$point->load($pointId) || !$document->load((int)$point->get('IDdocument')) || (int)$document->get('IDorganization') !== $organizationId || !$document->canUserProposePvPointChange($point, $userId) || $point->isHandled() || $document->getPvStage() === Document::PV_STAGE_REVIEW) $respond(403, ['status' => false, 'message' => 'Accès refusé.']);
 if (!in_array($operation, [DeferredProposal::OPERATION_CREATE, DeferredProposal::OPERATION_UPDATE, DeferredProposal::OPERATION_DELETE, DeferredProposal::OPERATION_MOVE], true)) $respond(422, ['status' => false, 'message' => 'Action invalide.']);
 $collectiveHolonId = (int)$document->getPvContextHolonId();
 $targetHolon = DeferredProposal::loadAllowedHolonTargetHolon($organizationId, $holonId, $operation, $collectiveHolonId);
