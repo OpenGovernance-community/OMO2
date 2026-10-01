@@ -1242,15 +1242,10 @@
             query.push('cid=' + encodeURIComponent(String(routeCid)));
         }
         query.push('project_scope=' + encodeURIComponent(nextScope));
-        if (nextView !== 'kanban') {
-            query.push('project_view=' + encodeURIComponent(nextView));
-        }
-        if (nextListSort !== 'importance') {
-            query.push('project_sort=' + encodeURIComponent(nextListSort));
-        }
-        if (nextAssignment !== 'all') {
-            query.push('project_assignment=' + encodeURIComponent(nextAssignment));
-        }
+        // Missing fields restore server preferences, including when selecting defaults.
+        query.push('project_view=' + encodeURIComponent(nextView));
+        query.push('project_sort=' + encodeURIComponent(nextListSort));
+        query.push('project_assignment=' + encodeURIComponent(nextAssignment));
         if (nextQuickSearch !== '') {
             query.push('project_query=' + encodeURIComponent(nextQuickSearch));
         }
@@ -1442,7 +1437,7 @@
         if (!scopeButton && (preferredScope === 'children' || preferredScope === 'descendants')) {
             nextScope = 'contextual';
         }
-        var nextView = preferences.view === 'list' || preferences.view === 'gantt' ? preferences.view : currentView;
+        var nextView = preferences.view === 'kanban' || preferences.view === 'list' || preferences.view === 'gantt' ? preferences.view : currentView;
         var rawPreferredAssignment = String(preferences.assignment || '');
         var nextAssignment = rawPreferredAssignment === 'mine' || rawPreferredAssignment === 'spaces' || rawPreferredAssignment === 'followed' || rawPreferredAssignment === 'all'
             ? rawPreferredAssignment
