@@ -746,15 +746,9 @@ if ($currentHolonId > 0) {
     $currentUrl .= '&cid=' . rawurlencode((string)$currentHolonId);
 }
 $currentUrl .= '&project_scope=' . rawurlencode($projectScope);
-if ($projectView !== 'kanban') {
-    $currentUrl .= '&project_view=' . rawurlencode($projectView);
-}
-if ($projectListSort !== 'importance') {
-    $currentUrl .= '&project_sort=' . rawurlencode($projectListSort);
-}
-if ($projectAssignment !== 'all') {
-    $currentUrl .= '&project_assignment=' . rawurlencode($projectAssignment);
-}
+$currentUrl .= '&project_view=' . rawurlencode($projectView);
+$currentUrl .= '&project_sort=' . rawurlencode($projectListSort);
+$currentUrl .= '&project_assignment=' . rawurlencode($projectAssignment);
 if ($projectQuickSearch !== '') {
     $currentUrl .= '&project_query=' . rawurlencode($projectQuickSearch);
 }

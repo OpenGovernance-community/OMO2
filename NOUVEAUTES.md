@@ -1,5 +1,7 @@
 # Journal Des Nouveautes
 
+- Projets : correction du chargement en boucle et de la page blanche en choisissant Tout le monde face a une vue enregistree differente. Les choix Kanban et Importance sont aussi conserves lors des rafraichissements et de la restauration de la vue temporaire.
+
 - Propositions de holons : les sélecteurs de décisions et de points de PV explorent aussi les enfants placés dans des groupes.
 
 - Propositions de holons : les choix sont affichés par ordre alphabétique, avec les cercles séparés des rôles par une ligne horizontale.
