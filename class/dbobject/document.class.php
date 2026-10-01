@@ -2978,6 +2978,12 @@
 			return $this->isExternalLink() && (bool)$this->get('openinnewwindow');
 		}
 
+		public function isFramapadExternalLink(): bool
+		{
+			$host = strtolower((string)parse_url($this->getExternalUrl(), PHP_URL_HOST));
+			return $this->isExternalLink() && ($host === 'framapad.org' || str_ends_with($host, '.framapad.org'));
+		}
+
 		public function hasStoredFile(): bool
 		{
 			return $this->isUploadedFile()
@@ -3182,6 +3188,14 @@
 		public function getCreatedByDisplayName(): string
 		{
 			return self::resolveUserDisplayNameById($this->getCreatedByUserId());
+		}
+
+		public function getExternalParticipantDisplayName(string $email): string
+		{
+			$email = trim(mb_strtolower($email, 'UTF-8'));
+			$eventId = (int)$this->get('IDevent');
+			$registration = $eventId > 0 && $email !== '' ? EventPublicRegistration::forEmail($eventId, $email) : null;
+			return $registration && $registration->get('confirmed_at') ? $registration->getParticipantDisplayName() : $email;
 		}
 
 		public function getUpdatedByDisplayName(): string

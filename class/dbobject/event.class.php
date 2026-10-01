@@ -624,14 +624,23 @@ class Event extends DbObject
                     $intervals[] = ['start' => $busy[0], 'end' => $busy[1], 'source' => 'omo',
                         'organization' => $organizationLabels[$eventOrganizationId], 'holon' => $holonLabels[$holonId]];
                 }
-                if ($refreshUserCalendars !== null) { $refreshUserCalendars((int)$userId); }
+                $refreshFailed = false;
+                if ($refreshUserCalendars !== null) {
+                    try {
+                        $refreshUserCalendars((int)$userId);
+                    } catch (\Throwable $exception) {
+                        // Even an unexpected refresh error must not skip the cache.
+                        error_log('Calendar availability refresh failed: ' . get_class($exception));
+                        $refreshFailed = true;
+                    }
+                }
                 $external = ArrayExternalCalendarEvent::busyIntervalsForUser($userId, $start, $end);
                 foreach ($external['intervals'] as [$busyStart, $busyEnd]) {
                     $intervals[] = ['start' => $busyStart, 'end' => $busyEnd, 'source' => 'external',
                         'organization' => '', 'holon' => ''];
                 }
                 $report['externalCache'] = $report['externalCache'] || $external['hasCalendars'];
-                if ($external['incomplete']) {
+                if ($external['incomplete'] || $refreshFailed) {
                     $report['unverified'][] = ['name' => $name, 'reason' => 'cache'];
                 }
             } catch (\Throwable $exception) {

@@ -164,6 +164,21 @@ try {
     \dbObject\MeetingProfile::unlock((int)$guest->getId());
     $calendar->load((int)$calendar->getId(), true);
     $calendar->set('last_sync_at', new DateTimeImmutable('-3 hours')); $calendar->save();
+    $timeoutReport = $proposed->checkInvitationAvailability([$invite], static function (int $userId): void {
+        commonExternalCalendarRefreshForAvailability($userId, microtime(true) + 2,
+            static function (): array { throw new RuntimeException('Connection timed out after 10001 milliseconds'); });
+    });
+    availabilityExpect(count($timeoutReport['conflicts']) === 1 && $timeoutReport['unverified'][0]['reason'] === 'cache', 'Timeouts still show cached conflicts and a nonblocking stale warning.');
+    $unexpectedReport = $proposed->checkInvitationAvailability([$invite], static function (): void {
+        throw new RuntimeException('Unexpected refresh failure');
+    });
+    availabilityExpect(count($unexpectedReport['conflicts']) === 1, 'A throwing refresh callback must never bypass existing external data.');
+    $retriesAfterTimeout = 0;
+    commonExternalCalendarRefreshForAvailability((int)$guest->getId(), microtime(true) + 2,
+        static function () use (&$retriesAfterTimeout): void { $retriesAfterTimeout++; });
+    availabilityExpect($retriesAfterTimeout === 0, 'A timeout must receive the failure retry cooldown.');
+    $calendar->load((int)$calendar->getId(), true);
+    $calendar->set('last_sync_at', new DateTimeImmutable('-3 hours')); $calendar->save();
     $freeAfterRefresh = $proposed->checkInvitationAvailability([$invite], static function (int $userId) use ($external): void {
         commonExternalCalendarRefreshForAvailability($userId, microtime(true) + 2,
             static function (ExternalCalendar $calendar) use ($external): array {
