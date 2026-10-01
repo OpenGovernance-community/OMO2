@@ -4746,15 +4746,18 @@
 		}
 
 		// Retourne tous les enfants (uniquement pour les orga
-		public function getChildren() {
+		public function getChildren($includeHidden = false) {
 
 			$children=new \dbObject\ArrayHolon();
+			$where = [
+				["field" => "active", "value" => 1],
+				["field" => "IDholon_parent", "value" => $this->get("id")],
+			];
+			if (!$includeHidden) {
+				$where[] = ["field" => "visible", "value" => 1];
+			}
 			$children->load([
-				"where" => [
-					["field" => "active", "value" => 1],
-					["field" => "visible", "value" => 1],
-					["field" => "IDholon_parent", "value" => $this->get("id")],
-				],
+				"where" => $where,
 			]);
 
 			return $children;	

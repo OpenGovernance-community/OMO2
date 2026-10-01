@@ -155,15 +155,10 @@ if (!function_exists('omoRenderOrganizationInfoPanel')) {
                 'photoUrl' => trim((string)$membership->getProfilePhotoUrl()),
                 'initials' => $initials,
                 'isPending' => !(bool)$membership->get('active'),
-                'isOrganizationAdmin' => $membership->isOrganizationAdmin(),
             ];
         }
 
         usort($memberCards, static function (array $left, array $right): int {
-            if (($left['isOrganizationAdmin'] ?? false) !== ($right['isOrganizationAdmin'] ?? false)) {
-                return !empty($left['isOrganizationAdmin']) ? -1 : 1;
-            }
-
             if (($left['isPending'] ?? false) !== ($right['isPending'] ?? false)) {
                 return empty($left['isPending']) ? -1 : 1;
             }
@@ -239,9 +234,6 @@ if (!function_exists('omoRenderOrganizationInfoPanel')) {
                         }
                         if (!empty($member['isPending'])) {
                             $memberTooltipParts[] = 'invitation en attente';
-                        }
-                        if (!empty($member['isOrganizationAdmin'])) {
-                            $memberTooltipParts[] = 'admin';
                         }
                         $memberTooltip = implode(' - ', array_filter($memberTooltipParts));
                         ?>

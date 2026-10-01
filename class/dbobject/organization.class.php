@@ -10019,6 +10019,10 @@
 			) {
 				return false;
 			}
+			if ($this->hasMandatoryCircleInPath($targetParent)
+				&& $this->hasMandatoryCircleInSubtree($holon, (int)$rootHolon->getId())) {
+				return false;
+			}
 
 			$templateId = (int)$holon->get('IDholon_template');
 			if ($templateId <= 0) {
@@ -10593,12 +10597,63 @@
 		// Filtre template unique
 		protected function isTemplateAvailableForHolonCreation(\dbObject\Holon $template, \dbObject\Holon $contextHolon, $excludedHolonId = 0)
 		{
+			if ((int)$template->get('IDtypeholon') === 2
+				&& ((bool)$template->get('mandatory') || count($template->getMandatoryTemplateAncestorIds()) > 0)
+				&& $this->hasMandatoryCircleInPath($contextHolon)) {
+				$existingHolon = new \dbObject\Holon();
+				if ((int)$excludedHolonId <= 0
+					|| !$existingHolon->load((int)$excludedHolonId)
+					|| (int)$existingHolon->get('IDholon_parent') !== (int)$contextHolon->getId()
+					|| (int)$existingHolon->get('IDholon_template') !== (int)$template->getId()) {
+					return false;
+				}
+			}
+
 			if (!(bool)$template->get('unique')) {
 				return true;
 			}
 
 			$scopeHolon = $this->resolveUniqueTemplateScopeHolon($contextHolon);
 			return !$this->scopeHasTemplateInstance($scopeHolon, (int)$template->getId(), $excludedHolonId);
+		}
+
+		protected function hasMandatoryCircleInPath(\dbObject\Holon $holon)
+		{
+			$current = $holon;
+			$visited = array();
+			while ($current && (int)$current->getId() > 0) {
+				$currentId = (int)$current->getId();
+				if (isset($visited[$currentId])) {
+					break;
+				}
+				$visited[$currentId] = true;
+				if ((int)$current->get('IDtypeholon') === 2 && $current->isMandatoryTemplateInstance()) {
+					return true;
+				}
+				$current = $current->getParentHolon();
+			}
+			return false;
+		}
+
+		protected function hasMandatoryCircleInSubtree(\dbObject\Holon $holon, $rootHolonId)
+		{
+			$pending = array($holon);
+			$visited = array();
+			while (count($pending) > 0) {
+				$current = array_pop($pending);
+				$currentId = (int)$current->getId();
+				if ($currentId <= 0 || isset($visited[$currentId]) || $current->isTemplateNode((int)$rootHolonId)) {
+					continue;
+				}
+				$visited[$currentId] = true;
+				if ((int)$current->get('IDtypeholon') === 2 && $current->isMandatoryTemplateInstance()) {
+					return true;
+				}
+				foreach ($current->getChildren(true) as $child) {
+					$pending[] = $child;
+				}
+			}
+			return false;
 		}
 
 		// Prepare donnees editeur
@@ -10610,8 +10665,9 @@
 				return false;
 			}
 
-			foreach ($parentHolon->getChildren() as $child) {
-				if ((int)$child->get('IDholon_template') === $templateId) {
+			foreach ($parentHolon->getChildren(true) as $child) {
+				if (trim((string)$child->get('templatename')) === ''
+					&& (int)$child->get('IDholon_template') === $templateId) {
 					return true;
 				}
 			}
@@ -10659,6 +10715,7 @@
 			}
 
 			$excludedTemplateIds = array_map('intval', $excludedTemplateIds);
+			$insideMandatoryCircle = $this->hasMandatoryCircleInPath($circleHolon);
 
 			foreach ($this->getAvailableTemplateDefinitionHolons((int)$circleHolon->getId()) as $template) {
 				$templateId = (int)$template->getId();
@@ -10672,6 +10729,9 @@
 
 				$typeId = (int)$template->get('IDtypeholon');
 				if (!in_array($typeId, array(1, 2, 3), true)) {
+					continue;
+				}
+				if ($insideMandatoryCircle && $typeId === 2) {
 					continue;
 				}
 
@@ -13243,7 +13303,7 @@
 				) {
 					return array(
 						'status' => false,
-						'message' => "Ce modele unique est deja implemente dans ce cercle.",
+						'message' => "Le modele selectionne n'est pas disponible ici.",
 					);
 				}
 
