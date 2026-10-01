@@ -1,7 +1,7 @@
 {
   "name": "ep_omo_theme",
-  "version": "1.0.0",
-  "description": "Synchronize Etherpad colors with the OMO theme preference.",
+  "version": "1.1.0",
+  "description": "Synchronize OMO themes and preserve authenticated participant names.",
   "keywords": [
     "etherpad",
     "omo",

@@ -63,9 +63,10 @@ if ($mode === 'csrf') { $_POST['csrf_token'] = 'wrong'; }
 if ($mode === 'invalid') { $_POST['ics_url'] = 'http://127.0.0.1/private'; }
 if ($mode === 'replacement') { $_POST['ics_url'] = 'https://127.0.0.1:1/replaced'; }
 if ($mode === 'credentials') { $_POST['username'] = 'new-user'; $_POST['password'] = 'new-password'; $_POST['calendar_url'] = 'https://127.0.0.1:1/replaced'; }
-if ($mode === 'owner') {
+if (in_array($mode, ['owner', 'sync-owner'], true)) {
     $other = editFixture(\dbObject\User::class, ['email' => 'other-edit-' . $nonce . '@example.invalid']);
     $calendar->set('IDuser', $other->getId()); $calendar->save();
+    if ($mode === 'sync-owner') { $_POST['action'] = 'sync'; }
 }
 if ($mode === 'duplicate') {
     $replacement = 'https://127.0.0.1:1/duplicate';

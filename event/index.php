@@ -41,6 +41,10 @@ $sourceLang = [
     'registered_count' => ['text' => 'Personnes inscrites', 'context' => 'Number of confirmed public registrants.'],
     'present_count' => ['text' => 'Personnes présentes', 'context' => 'Number marked present at the event.'],
     'document' => ['text' => 'Document associé', 'context' => 'Linked event document heading.'],
+    'open_pad' => ['text' => 'Ouvrir le pad', 'context' => 'Open an editable collaborative pad in the side drawer.'],
+    'open_pv' => ['text' => 'Participer à la réunion', 'context' => 'Open the registrant’s personal public meeting participation page.'],
+    'open_window' => ['text' => 'Ouvrir dans un nouvel onglet', 'context' => 'Alternative to the embedded collaborative pad.'],
+    'close_document' => ['text' => 'Fermer', 'context' => 'Close the collaborative document drawer.'],
     'invalid' => ['text' => 'Ce lien est invalide ou a expiré.', 'context' => 'Invalid confirmation or receipt link.'],
     'input_error' => ['text' => 'Saisissez un nom et une adresse e-mail valides.', 'context' => 'Invalid registration input.'],
     'error' => ['text' => 'Une erreur est survenue. Réessayez plus tard.', 'context' => 'Generic registration error.'],
@@ -189,7 +193,7 @@ if ($start) {
     }
 }
 $location = $event ? $event->getLocationDisplayData() : [];
-$documents = $state === 'receipt' && $event ? $event->getAssociatedDocuments() : [];
+$documents = $state === 'receipt' && $event && $registration ? $registration->getAccessibleDocuments() : [];
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -200,6 +204,7 @@ $documents = $state === 'receipt' && $event ? $event->getAssociatedDocuments() :
     <link rel="stylesheet" href="<?= eventEscape(commonAssetUrl('/common/assets/components.css')) ?>">
     <link rel="stylesheet" href="<?= eventEscape(commonAssetUrl('/common/meeting/public.css')) ?>">
     <link rel="stylesheet" href="<?= eventEscape(commonAssetUrl('/event/event.css')) ?>">
+    <?php if ($documents): ?><link rel="stylesheet" href="<?= eventEscape(commonAssetUrl('/common/meeting/document-drawer.css')) ?>"><?php endif; ?>
 </head>
 <body class="meeting-page event-registration-page">
 <main class="generic-page-shell meeting-shell event-registration-shell">
@@ -257,12 +262,40 @@ $documents = $state === 'receipt' && $event ? $event->getAssociatedDocuments() :
     </div>
     <?php if ($state === 'receipt' && $documents): ?>
         <?php foreach ($documents as $document): ?>
-            <?php if ($document->isFolder()) { continue; } $payload = $document->buildLiveSharePayload(false); ?>
-            <section class="generic-soft-panel generic-soft-panel--elevated generic-stack"><h2 class="generic-card-title generic-card-title--large"><?= eventEscape(eventT('document')) ?> : <?= eventEscape($payload['title'] ?? '') ?></h2><div class="event-registration-document prose"><?= (string)($payload['content'] ?? '') ?></div></section>
+            <?php
+                $isPad = $document->isEtherpadDocument() || $document->isFramapadExternalLink();
+                $isParticipation = $document->isPvDocument() && !$document->isPvValidated();
+                $documentTitle = trim((string)$document->get('title'));
+                $documentUrl = '/event/document.php?' . http_build_query(['receipt' => $receiptToken, 'id' => (int)$document->getId()]);
+            ?>
+            <section class="generic-soft-panel generic-soft-panel--elevated generic-stack">
+                <h2 class="generic-card-title generic-card-title--large"><?= eventEscape(eventT('document')) ?> : <?= eventEscape($documentTitle) ?></h2>
+                <?php if ($isPad || $isParticipation): ?>
+                    <div class="generic-action-row">
+                        <a class="generic-action-button generic-action-button--main" href="<?= eventEscape($documentUrl) ?>" target="_blank" rel="noopener noreferrer"<?= $isPad ? ' data-meeting-document-open data-meeting-document-title="' . eventEscape($documentTitle) . '"' : '' ?>><?= eventEscape(eventT($isPad ? 'open_pad' : 'open_pv')) ?></a>
+                    </div>
+                <?php else: ?>
+                    <?php $payload = $document->buildLiveSharePayload(false); ?>
+                    <div class="event-registration-document prose"><?= (string)($payload['content'] ?? '') ?></div>
+                <?php endif; ?>
+            </section>
         <?php endforeach; ?>
     <?php endif; ?>
     <?php endif; ?>
     <footer class="meeting-footer"><?= eventEscape(eventT('powered_by')) ?> <a href="/">OMO2</a> &middot; <a href="/">OpenMyOrganization</a></footer>
 </main>
+<?php if ($documents): ?>
+<dialog class="meeting-document-drawer" data-meeting-document-drawer aria-labelledby="eventDocumentTitle">
+    <div class="generic-drawer-header">
+        <div class="generic-drawer-header__copy"><h2 class="generic-card-title generic-card-title--medium" id="eventDocumentTitle" data-meeting-document-title><?= eventEscape(eventT('document')) ?></h2></div>
+        <div class="generic-drawer-header__actions">
+            <a class="generic-action-button generic-action-button--secondary" data-meeting-document-external target="_blank" rel="noopener noreferrer"><?= eventEscape(eventT('open_window')) ?></a>
+            <button type="button" class="generic-action-button generic-action-button--secondary" data-meeting-document-close autofocus><?= eventEscape(eventT('close_document')) ?></button>
+        </div>
+    </div>
+    <iframe class="meeting-document-drawer__frame" title="<?= eventEscape(eventT('document')) ?>" referrerpolicy="no-referrer" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-downloads"></iframe>
+</dialog>
+<script src="<?= eventEscape(commonAssetUrl('/common/meeting/document-drawer.js')) ?>" defer></script>
+<?php endif; ?>
 </body>
 </html>

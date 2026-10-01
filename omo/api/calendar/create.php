@@ -1052,20 +1052,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $invitation->set('status', \dbObject\EventInvitation::STATUS_INVITED);
         $proposedInvitations[] = $invitation;
     }
-    $refreshDeadline = microtime(true) + 18;
-    // An explicit override rechecks conflicts but does not retry an unreachable server.
-    $refreshCalendars = empty($_POST['availability_ack'])
-        ? static fn(int $userId) => commonExternalCalendarRefreshForAvailability($userId, $refreshDeadline)
-        : null;
-    $availability = $event->checkInvitationAvailability($proposedInvitations, $refreshCalendars);
-    if ($availability['conflicts'] || $availability['unverified']) {
-        // Bind acknowledgement to this session, schedule, participants and current conflicts.
-        $_SESSION['calendar_availability_secret'] ??= bin2hex(random_bytes(32));
-        $acknowledgement = hash_hmac('sha256', json_encode([
-            $organizationId, $event->getId(), $event->get('IDuser'), $selectedHolonId,
-            $startAt->format('c'), $endAt->format('c'), $isAllDay, $selection['invitations'], $availability,
-        ]), $_SESSION['calendar_availability_secret']);
-        if (!hash_equals($acknowledgement, (string)($_POST['availability_ack'] ?? ''))) {
+    // Bind confirmation to the proposed schedule and participants, never to mutable
+    // calendar data. A confirmed warning proceeds directly to saving below.
+    $_SESSION['calendar_availability_secret'] ??= bin2hex(random_bytes(32));
+    $availabilityParticipants = array_map(static fn(array $invitation): array => [
+        $invitation['invitation_type'], (int)($invitation['IDholon'] ?? 0),
+        (int)($invitation['IDuser'] ?? 0), (string)($invitation['email'] ?? ''),
+    ], $selection['invitations']);
+    $acknowledgement = hash_hmac('sha256', json_encode([
+        $organizationId, $event->getId(), $event->get('IDuser'), $selectedHolonId,
+        $startAt->format('c'), $endAt->format('c'), $isAllDay, $availabilityParticipants,
+    ]), $_SESSION['calendar_availability_secret']);
+    if (!hash_equals($acknowledgement, (string)($_POST['availability_ack'] ?? ''))) {
+        $refreshDeadline = microtime(true) + 18;
+        $availability = $event->checkInvitationAvailability($proposedInvitations,
+            static fn(int $userId) => commonExternalCalendarRefreshForAvailability($userId, $refreshDeadline));
+        if ($availability['conflicts'] || $availability['unverified']) {
             $messages = [];
             $items = [];
             foreach ($availability['conflicts'] as $conflict) {
