@@ -1,5 +1,7 @@
 # Journal Des Nouveautes
 
+- Calendrier : les erreurs d analyse ICS renvoient maintenant le type d exception et sa cause, limitee a 400 caracteres, pour faciliter le diagnostic sur le serveur.
+
 - Rangement : guides dans docs/, rapports dans docs/performance/, pages publiques OMO2 dans views/, exports EasyPV dans pv/export.php, export OMO1 dans tools/migration/ et pages transversales dans common/. Les anciennes URL restent accessibles par reecriture interne, avec conservation des parametres et des donnees POST.
 
 - Mise a jour du site : recherche de Composer 2 et de PHP CLI avant synchronisation, prise en charge de composer.phar configure dans .env et reprise des dependances et migrations apres une interruption, sans nouvelle synchronisation Git.
