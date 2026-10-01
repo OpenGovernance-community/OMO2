@@ -1,5 +1,7 @@
 # Docker local
 
+Executer les commandes de ce guide depuis la racine du depot, ou se trouve `compose.yaml`.
+
 Cette configuration sert a lancer une version locale reproductible du projet avec :
 
 - PHP 8.5 + Apache

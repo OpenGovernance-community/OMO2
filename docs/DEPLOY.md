@@ -2,6 +2,10 @@
 
 Ce guide sert a installer OMO2 sur un hebergement reel, sans Docker.
 
+Les chemins et commandes de ce guide sont relatifs a la racine du depot, pas au dossier `docs/`.
+
+Lors du deploiement du rangement des fichiers, publier ensemble les nouveaux fichiers et le `.htaccess` racine : celui-ci conserve les anciennes URL de l accueil OMO2, de la page de migration, des exports EasyPV et OMO1, des statistiques, de la confirmation de compte et des QR codes. Les reecritures sont internes pour conserver les donnees POST. Avec FTP, transferer les nouvelles destinations avant `.htaccess`, puis retirer les anciennes copies a la racine. Avec Git, publier l ensemble dans le meme commit. Un serveur sans prise en charge de `.htaccess` doit reproduire ces routes dans sa configuration.
+
 ## 1. Cloner le depot dans le dossier du site
 
 Se placer dans le dossier racine du site web, puis cloner le depot :
@@ -150,6 +154,51 @@ php scripts/run-migrations.php
 Le plus souvent, la branche a utiliser est celle que suit deja le clone du serveur, par exemple `Dev`.
 
 Si vous avez fait des modifications locales non versionnees sur le serveur, evitez `reset --hard` et utilisez une procedure adaptee.
+
+### Reprendre la synchronisation apres des envois FTP
+
+Le bouton **Forcer la mise a jour** accepte aussi les fichiers non suivis qui entrent en conflit avec la version distante. Il compare le contenu local aux fichiers du commit distant avant la synchronisation :
+
+- les fichiers identiques octet par octet ne sont pas sauvegardes ;
+- les fichiers suivis modifies et les fichiers non suivis en conflit dont le contenu differe sont copies avant remplacement ;
+- les fichiers non suivis sans conflit restent en place, y compris les fichiers ignores par Git qui ne bloquent pas la mise a jour ;
+- un dossier qui serait remplace par un fichier est inventorie et son contenu est sauvegarde avant remplacement, sans suivre les liens symboliques ; un dossier vide ne demande aucune copie de fichier ;
+- une sauvegarde impossible, un contenu de dossier qui change pendant la copie ou un depot Git imbrique bloque la synchronisation.
+
+Les copies se trouvent par defaut dans `../log/site-update-backups/<date-identifiant>/files/`, avec les chemins relatifs d origine. Le fichier `manifest.json` indique le commit local, le commit distant, les fichiers absents, les liens symboliques, l inventaire des dossiers en conflit (y compris les dossiers vides) et les permissions. Ce sont des copies des fichiers sur disque, pas une sauvegarde de la base de donnees ou de l index Git. Le dossier est prive et doit rester hors de la racine web. Si `RUNTIME_LOG_DIR` est configure, il doit lui aussi pointer hors de la racine web. Le chemin de la sauvegarde est affiche a la fin et ecrit dans le journal PHP. La restauration est manuelle : recuperer les fichiers necessaires dans `files/`, puis comparer avant de les remettre en place. Ne pas poursuivre les envois FTP pendant une synchronisation.
+
+Le chemin `docker/etherpad/APIKEY.txt` est un fichier monte dans Etherpad par la configuration Docker. Sur un hebergement sans Docker, il n est pas utilise par ce montage. S il a ete cree comme dossier sur le serveur, la synchronisation forcee peut le remplacer apres inventaire et sauvegarde de son contenu. Sur un serveur qui utilise Docker, verifier le montage et la configuration Etherpad avant de remplacer ce chemin.
+
+Si l ancien synchroniseur bloque deja la production, publier d abord ce correctif dans la branche suivie par le serveur, puis transferer par FTP les fichiers de cette meme version :
+
+1. `includes/site_update_admin.php`
+2. `omo/assets/js/site-update.js`
+3. `common/runtime_log.php` (helper utilise pour le dossier de sauvegarde, s il n est pas deja present)
+
+Recharger ensuite `/omo/` et choisir **Forcer la mise a jour**. Si PHP utilise un OPcache sans verification des dates, reinitialiser le cache PHP depuis le panneau de l hebergeur. La synchronisation execute ensuite Composer et les migrations habituelles.
+
+### Composer introuvable et finalisation interrompue
+
+Le synchroniseur recherche Composer 2 dans le PATH, dans les emplacements usuels et dans `composer.phar` a la racine du projet. Il verifie Composer et PHP CLI avant de synchroniser le code. Un fichier PHP ou PHAR est lance avec le PHP CLI selectionne, de meme version majeure et mineure que le site.
+
+Sur Infomaniak, Composer est normalement disponible en SSH : voir la [documentation officielle](https://www.infomaniak.com/fr/support/faq/2118/utiliser-composer-2-en-ssh-sur-votre-hebergement). Le PATH et les alias de la session SSH peuvent differer de ceux du processus PHP du site. En SSH, utiliser `composer --version` et `type -a composer` pour identifier son emplacement. Si necessaire, renseigner dans le `.env` du serveur les chemins absolus reels, sans arguments ni alias :
+
+```env
+SITE_UPDATE_COMPOSER_BINARY=/chemin/absolu/composer.phar
+SITE_UPDATE_PHP_BINARY=/chemin/absolu/php
+```
+
+Ne pas utiliser php-fpm ou php-cgi. Aucun telechargement de Composer n est lance automatiquement par le synchroniseur.
+
+Si Git a deja ete synchronise mais que Composer ou les migrations ont echoue, le bandeau propose **Finaliser**. La reprise installe les dependances depuis le verrou Composer et execute les migrations du code present, sans reset Git. L etat de reprise est conserve dans le dossier temporaire du serveur ; la sauvegarde des fichiers reste a son emplacement habituel.
+
+Pour reprendre un echec survenu avec l ancien synchroniseur, ou si le serveur a purge son dossier temporaire :
+
+1. Transferer par FTP `includes/site_update_admin.php`, `omo/api/parameters/site_update_run.php`, `omo/assets/js/site-update.js` et `scripts/run-migrations.php` depuis cette version.
+2. Configurer les chemins ci-dessus si la detection automatique ne suffit pas.
+3. Ouvrir `/omo/?site-update-complete=1` avec le mode admin du site active, puis cliquer sur **Finaliser**. Le parametre ne lance aucune operation sans confirmation et est retire apres succes.
+
+Une finalisation peut aussi etre effectuee en SSH depuis la racine du site, avec les vrais chemins des executables : `php /chemin/composer.phar install --no-dev --prefer-dist --no-interaction --optimize-autoloader`, puis, uniquement en cas de succes, `php scripts/run-migrations.php`. Utiliser le PHP CLI correspondant a la version du site.
 
 ## 6. Points utiles
 

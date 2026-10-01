@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-require_once __DIR__ . '/config.php';
+require_once dirname(__DIR__, 2) . '/config.php';
 
 const OMO2_EXPORT_FORMAT = 'openmyorganization-structure-export';
 const OMO2_EXPORT_VERSION = 4;

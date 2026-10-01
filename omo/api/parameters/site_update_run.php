@@ -34,7 +34,8 @@ if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
 
 try {
     $force = isset($_POST['force']) && (string)$_POST['force'] === '1';
-    echo json_encode(siteUpdateAdminRunUpdate((int)commonGetCurrentUserId(), $force), JSON_UNESCAPED_SLASHES);
+    $completeOnly = isset($_POST['complete']) && (string)$_POST['complete'] === '1';
+    echo json_encode(siteUpdateAdminRunUpdate((int)commonGetCurrentUserId(), $force, $completeOnly), JSON_UNESCAPED_SLASHES);
     exit;
 } catch (RuntimeException $exception) {
     $message = $exception->getMessage();

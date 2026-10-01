@@ -1,4 +1,4 @@
-<?
+<?php
 
 	error_reporting(E_ERROR | E_PARSE);
 	require_once($_SERVER['DOCUMENT_ROOT']."/config.php");
@@ -150,10 +150,10 @@
 			<option value='ES' <?=(isset($_COOKIE["lang"]) && $_COOKIE["lang"]=="ES"?" selected":"");?>>Español</option>
 			
 			</select> 
-<? 
+<?php 
 	if ($connected) {
 		echo "<button id='profilbtn'>".T_("Profil")."</button>";
-		echo "<form name='logoutform' id='logoutform' action='ajax/login.php' class='ajax' style='margin:0px;display:inline-block'><button id='logoutbtn' name='logoutbtn' value='1' type='button'>".T_("Se déconnecter")."</button></form>";		
+		echo "<form name='logoutform' id='logoutform' action='/ajax/login.php' class='ajax' style='margin:0px;display:inline-block'><button id='logoutbtn' name='logoutbtn' value='1' type='button'>".T_("Se déconnecter")."</button></form>";		
 	} else {
 			echo "<button id='login'>".T_("Se connecter")."</button>";
 		}
@@ -185,7 +185,7 @@
 			</td></tr><tr><td style='height:100%; position: relative;vertical-align:top'><div class='screenOJ'>
 
 			<!-- contenu -->
-<?
+<?php
 	// Affiche tous les QR code de l'utilisateur
 	if (isset($_SESSION["currentUser"]) && $_SESSION["currentUser"]>0) {
 		// Charge et affiche les différents memo
@@ -212,15 +212,15 @@
 	$(function() {
 		
 		$(".qr_item").click(function() {
-			showPopup("popup/qr.php?id="+$(this).attr("data-src"), "<?=T_("QR code",true)?>");
+			showPopup("/popup/qr.php?id="+$(this).attr("data-src"), "<?=T_("QR code",true)?>");
 		});
 		$("#add_qr").click(function() {
-			showPopup("popup/qr.php", "<?=T_("QR code",true)?>");
+			showPopup("/popup/qr.php", "<?=T_("QR code",true)?>");
 		});
 	});
 
 </script>
-<?
+<?php
 		
 	} else {
 		// Pas connecté, création de QR avec accès direct
@@ -246,7 +246,7 @@
 
 </script>
 
-<?		
+<?php		
 		
 		
 	}
@@ -262,22 +262,22 @@
 			</td></tr></table>		
 		
 		</div></td><td rowspan="2" id='tools' style='width:50px; vertical-align:top;'>
-<?	
+<?php	
 		//<!-- bouton pour le zoom -->
-		echo "<img src='img/expand.png' class='imgbutton' id='btn_zoom' data-toggle='tooltip' data-placement='left' title='".T_('Plein écran',true)."'>";
+		echo "<img src='/img/expand.png' class='imgbutton' id='btn_zoom' data-toggle='tooltip' data-placement='left' title='".T_('Plein écran',true)."'>";
 
 		//<!-- bouton pour un nouveau fichier -->
-		echo "<img src='img/newfile.png' class='imgbutton' id='btn_new' data-toggle='tooltip' data-placement='left' title='".T_('Nouveau document',true)."'>";
+		echo "<img src='/img/newfile.png' class='imgbutton' id='btn_new' data-toggle='tooltip' data-placement='left' title='".T_('Nouveau document',true)."'>";
 
 		//<!-- bouton pour l'aide -->
-		echo "<img src='img/question.png' class='imgbutton' id='btn_help' data-toggle='tooltip' data-placement='left' title='".T_('Afficher l\'aide',true)."'>";
+		echo "<img src='/img/question.png' class='imgbutton' id='btn_help' data-toggle='tooltip' data-placement='left' title='".T_('Afficher l\'aide',true)."'>";
 
 		//<!-- bouton pour les parameẗres -->
 		if ($connected)
-		echo "<img src='img/settings.png' class='imgbutton' id='btn_parameters' data-toggle='tooltip' data-placement='left' title='".T_('Paramètres',true)."'>";
+		echo "<img src='/img/settings.png' class='imgbutton' id='btn_parameters' data-toggle='tooltip' data-placement='left' title='".T_('Paramètres',true)."'>";
 ?>		
 		</td></tr>
-		<tr><td class='interface-bottom' colspan=3><span style='float:right;'><img src='img/support.png' style='height:40px;' id='btn_support'></span></td></tr>
+		<tr><td class='interface-bottom' colspan=3><span style='float:right;'><img src='/img/support.png' style='height:40px;' id='btn_support'></span></td></tr>
 		</table>
 		<div id='popupbackground'></div>
 		<div id='popup'><div id='popup_content'></div><div id='popup_close'><button><img src='/img/icon_close.png'><?=T_("Fermer");?></button></div></div>
@@ -292,7 +292,7 @@ _iub.csConfiguration = {"askConsentAtCookiePolicyUpdate":true,"enableFadp":true,
 	</body>
 </html>
 				
-<?
+<?php
 		}
 	
 	

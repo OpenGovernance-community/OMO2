@@ -2,7 +2,7 @@
 
 ## Changements
 
-1. La maintenance ne fait plus partie de la reponse PHP de `/omo/`. Le navigateur lance le secours deux secondes apres `load`, sans retenir la session PHP. Un verrou non bloquant par base protege les appels CLI, HTTP, navigateur et import. Le navigateur respecte un delai de 60 secondes apres une execution terminee. Le CLI existant reste le chemin recommande pour une planification reguliere ; aucun cron systeme n a ete installe. Voir `DEPLOY.md`, section 8, pour les droits du fichier de verrou et la limite multi-serveur.
+1. La maintenance ne fait plus partie de la reponse PHP de `/omo/`. Le navigateur lance le secours deux secondes apres `load`, sans retenir la session PHP. Un verrou non bloquant par base protege les appels CLI, HTTP, navigateur et import. Le navigateur respecte un delai de 60 secondes apres une execution terminee. Le CLI existant reste le chemin recommande pour une planification reguliere ; aucun cron systeme n a ete installe. Voir [DEPLOY.md](../DEPLOY.md), section 8, pour les droits du fichier de verrou et la limite multi-serveur.
 2. Team charge les utilisateurs et affiliations manquants par lots dans `UserOrganization::loadTeamMemberContext()`, reutilise les objets deja charges et conserve les controles de visibilite. La collection des affiliations visibles hydrate directement ses objets. Les autres chargements propres aux droits et aux affectations ne sont pas tous regroupes par cette modification.
 3. Fermeture explicite des sessions apres les ecritures indispensables sur Team, Calendrier, Documents, Projets, tableau de pilotage, panneau organisation, menu, notifications et maintenance. Les jetons CSRF et le cache de permissions sont enregistres avant fermeture. Le bootstrap commun et les endpoints d edition ne ferment pas globalement la session.
 
@@ -10,7 +10,7 @@ Aucun changement de schema SQL. Aucun changement CSS ou regroupement d ecrans da
 
 ## Conditions de comparaison
 
-- Meme Docker, PHP 8.5.10, compte, organisation et holon racine que `PERFORMANCE-BASELINE-2026-09-22.md`.
+- Meme Docker, PHP 8.5.10, compte, organisation et holon racine que [PERFORMANCE-BASELINE-2026-09-22.md](PERFORMANCE-BASELINE-2026-09-22.md).
 - Meme seuil de journalisation SQL : 50 ms. Tous les appels SQL contribuent aux bilans, meme sous ce seuil.
 - Base de revision : `3a6d3452dd778f5f343135a883780123b67d0dff`, avec les modifications locales de cette intervention, non commitees.
 - Plage mesuree : 18:53:07 a 18:57:23, Europe/Zurich. Les essais de mise au point de 18:51 a 18:52 sont exclus.
