@@ -748,7 +748,7 @@ function omoDocumentsPvEditorBuildContextualPointPayload(
     $pointData['canAddDeferredProposal'] = !$pointData['isReview']
         && !$pointData['isHandled']
         && !empty($pointData['canEditNow'])
-        && $document->canUserManagePvStructure($organizationId, $currentUserId)
+        && $document->canUserProposePvPointChange($point, $currentUserId)
         && $hasStructureApplication;
     $pointData['canManageDeferredProposals'] = $pointData['canAddDeferredProposal'];
     $pointData['authorOptions'] = $authorOptions;

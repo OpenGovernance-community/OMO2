@@ -1977,6 +1977,13 @@
 			return $this->canUserManagePvDocument($userId) || $point->isEditableByUser($userId);
 		}
 
+		public function canUserProposePvPointChange(\dbObject\DocumentPvPoint $point, int $userId): bool
+		{
+			return $this->getPvStage() !== self::PV_STAGE_REVIEW
+				&& !$point->isHandled()
+				&& $this->canUserEditPvPoint($point, $userId);
+		}
+
 		public function canUserReorderPvPoints(int $userId): bool
 		{
 			return $this->isPvDocument() && !$this->isPvValidated() && $this->getPvStage() !== self::PV_STAGE_REVIEW && (
