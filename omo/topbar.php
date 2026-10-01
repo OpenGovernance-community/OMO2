@@ -54,6 +54,10 @@ function omoGetTopbarSourceLang(): array
             'text' => 'Aide',
             'context' => 'Fallback label for a help item when no label is available in the OMO topbar.',
         ],
+        'topbar.help.admins.label' => [
+            'text' => 'Admins :',
+            'context' => 'Label before the names of the organization administrators in the OMO topbar help menu.',
+        ],
         'topbar.help.faq.description' => [
             'text' => 'Accès aux questions les plus courantes, avec un moteur de recherche pour trouver facilement la réponse à vos questions.',
             'context' => 'Description of the FAQ help entry in the OMO topbar.',
@@ -73,6 +77,10 @@ function omoGetTopbarSourceLang(): array
         'topbar.help.privacy.label' => [
             'text' => 'Politique de confidentialité',
             'context' => 'Label of the privacy policy text link shown in the OMO topbar help menu.',
+        ],
+        'topbar.help.source.label' => [
+            'text' => 'Code source (AGPL-3.0-only)',
+            'context' => 'Link to the source code corresponding to the running OMO instance, as required by the AGPL network use terms.',
         ],
         'topbar.help.webmaster.label' => [
             'text' => 'Webmaster : {email}',
@@ -352,9 +360,24 @@ function omoGetTopbarHelpItems(string $variant = 'app', int $organizationId = 0)
     ];
 }
 
-function omoGetTopbarHelpLinks(): array
+function omoGetTopbarHelpLinks(int $organizationId = 0): array
 {
+    $sourceCodeUrl = trim((string)($GLOBALS['omoSourceCodeUrl'] ?? ''));
+    if ($sourceCodeUrl === '' && function_exists('envValue')) {
+        $sourceCodeUrl = trim((string)envValue('OMO_SOURCE_CODE_URL', 'https://github.com/OpenGovernance-community/OMO2'));
+    }
+    if ($sourceCodeUrl === '') {
+        $sourceCodeUrl = 'https://github.com/OpenGovernance-community/OMO2';
+    }
+
     $helpLinks = [
+        [
+            'label' => omoTopbarTranslate('topbar.help.source.label'),
+            'href' => $sourceCodeUrl,
+            'title' => omoTopbarTranslate('topbar.help.source.label'),
+            'target' => '_blank',
+            'rel' => 'noopener noreferrer',
+        ],
         [
             'label' => omoTopbarTranslate('topbar.help.terms.label'),
             'href' => commonBuildUrl('/common/conditions-generales.php'),
@@ -370,6 +393,47 @@ function omoGetTopbarHelpLinks(): array
             'title' => omoTopbarTranslate('topbar.help.privacy.label'),
         ],
     ];
+
+    if ($organizationId > 0) {
+        $memberships = new \dbObject\ArrayUserOrganization();
+        $memberships->loadVisibleForOrganization($organizationId);
+        $adminLinks = [];
+
+        foreach ($memberships as $membership) {
+            if (
+                !($membership instanceof \dbObject\UserOrganization)
+                || !(bool)$membership->get('active')
+                || !$membership->isOrganizationAdmin()
+            ) {
+                continue;
+            }
+
+            $adminEmail = trim((string)$membership->getScopedEmail());
+            if ($adminEmail === '' || !filter_var($adminEmail, FILTER_VALIDATE_EMAIL)) {
+                continue;
+            }
+
+            $adminName = trim((string)$membership->getUserDisplayName());
+            if ($adminName === '') {
+                continue;
+            }
+
+            $adminLinks[] = [
+                'label' => $adminName,
+                'href' => 'mailto:' . $adminEmail,
+            ];
+            if (count($adminLinks) >= 2) {
+                break;
+            }
+        }
+
+        if ($adminLinks !== []) {
+            $helpLinks[] = [
+                'label' => omoTopbarTranslate('topbar.help.admins.label'),
+                'links' => $adminLinks,
+            ];
+        }
+    }
 
     $adminEmail = trim((string)($GLOBALS['siteAdminEmail'] ?? ''));
     if ($adminEmail === '' && function_exists('envValue')) {
@@ -441,7 +505,11 @@ function omoBuildTopbarOptions(array $organizationContext, array $options = []):
         'logoutReturnTo' => (string)($options['logoutReturnTo'] ?? '/omo/'),
         'helpLabel' => omoTopbarTranslate('topbar.help.button'),
         'helpItems' => omoGetTopbarHelpItems($variant, $helpOrganizationId),
-        'helpLinks' => omoGetTopbarHelpLinks(),
+        'helpLinks' => omoGetTopbarHelpLinks(
+            $variant === 'app' && $hasOrganizationContext
+                ? (int)$organizationContext['id']
+                : 0
+        ),
         'profile' => [
             'enabled' => !$isDemoGuest,
             'buttonLabel' => omoTopbarTranslate('topbar.profile.button'),
