@@ -70,12 +70,12 @@ if ($targetType === DeferredProposal::TARGET_RULE) {
     if ($operation === DeferredProposal::OPERATION_CREATE) {
         if (empty($catalog[$contextHolonId]['permissions'][$operation])) $respond(403, ['status' => false, 'message' => 'Le collectif ne peut pas créer d’élément ici.']);
     } else {
-        foreach ($contextHolon->getChildren() as $child) {
-            if (!$child instanceof Holon || empty($catalog[(int)$child->getId()]['permissions'][$operation])) continue;
+        foreach (DeferredProposal::getHolonTargetsForContext($contextHolon, $operation, $catalog) as $child) {
             $objects[] = [
                 'id' => (int)$child->getId(),
                 'label' => trim((string)$child->getDisplayName()),
                 'typeLabel' => trim((string)$child->getTemplateLabel()),
+                'holonType' => (int)$child->get('IDtypeholon'),
                 'state' => omoDecisionGovernanceBuildRoleClientData($child, $context['organization'] ?? null, $contextHolonId)['state'],
             ];
         }

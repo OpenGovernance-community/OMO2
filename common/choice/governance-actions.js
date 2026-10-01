@@ -96,7 +96,7 @@
             function modal(title, content) { if (typeof window.commonTopbarOpenModal === 'function') window.commonTopbarOpenModal(title, content, 'html'); }
             function modalBody() { return document.getElementById('commonTopbarModalBody'); }
             function closeModal() { if (typeof window.commonTopbarCloseModal === 'function') window.commonTopbarCloseModal(); }
-            function optionHtml(items, selected) { return (items || []).map(function (item) { return '<option value="' + Number(item.id || 0) + '"' + (Number(item.id) === Number(selected) ? ' selected' : '') + '>' + escapeHtml(item.label || '') + (item.typeLabel ? ' — ' + escapeHtml(item.typeLabel) : '') + '</option>'; }).join(''); }
+            function optionHtml(items, selected) { var separatorAdded = false; return (items || []).map(function (item) { var separator = ''; if (Number(item.holonType) === 1 && !separatorAdded) { separator = '<option disabled>────────────</option>'; separatorAdded = true; } return separator + '<option value="' + Number(item.id || 0) + '"' + (Number(item.id) === Number(selected) ? ' selected' : '') + '>' + escapeHtml(item.label || '') + (item.typeLabel ? ' — ' + escapeHtml(item.typeLabel) : '') + '</option>'; }).join(''); }
 
             function render() {
                 list.innerHTML = '';
