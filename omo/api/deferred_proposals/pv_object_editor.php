@@ -24,7 +24,7 @@ if (!in_array($targetType, $allowedTypes, true)
     || !$point->load($pointId)
     || !$document->load((int)$point->get('IDdocument'))
     || (int)$document->get('IDorganization') !== $organizationId
-    || !$document->canUserManagePvDocument($userId)
+    || !$document->canUserProposePvPointChange($point, $userId)
     || $point->isHandled()
     || $document->getPvStage() === Document::PV_STAGE_REVIEW) {
     http_response_code(403); echo '<div class="omo-empty-state">Accès refusé.</div>'; exit;
