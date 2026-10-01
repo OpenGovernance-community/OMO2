@@ -18,6 +18,18 @@
   .interface-top:has(> input#id:valid):has(> input#saved:valid) {background-image:url(/img/diskette_warning.png);}
   input#id, input#saved {display:none}
 
+  #popup_close button {
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+  }
+  #popup_close button > img {
+    width:18px;
+    height:18px;
+    flex:0 0 18px;
+    object-fit:contain;
+  }
+
 </style>		
 		<!-- Script spécifique à la page -->
 		<?= commonPageScriptTags('/pv/editor.js', [
@@ -397,7 +409,7 @@
 		<tr><td class='interface-bottom' colspan=3><span style='float:right;'><img src='/img/support.png' style='height:40px;' id='btn_support'></span></td></tr>
 		</table>
 		<div id='popupbackground'></div>
-		<div id='popup'><div id='popup_content'></div><div id='popup_close'><button><img src='/img/icon_close.png'><?=T_("Fermer");?></button></div></div>
+		<div id='popup'><div id='popup_content'></div><div id='popup_close'><button type='button'><img src='/img/icon_close.png' width='18' height='18' alt=''><?=T_("Fermer");?></button></div></div>
 
 <style>
 .support-bar {

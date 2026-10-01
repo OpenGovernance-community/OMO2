@@ -1,5 +1,7 @@
 # Journal Des Nouveautes
 
+- EasyPV : les boutons de fermeture des panneaux lateraux conservent une icone de 18 px, alignee avec le libelle ; les styles sont limites a la page /pv/.
+
 - EasyPV : suppression des anciens modeles et de la configuration PHPDocX ; les exports utilisent PHPWord et Dompdf, sans dependance PHPDocX restante.
 
 - Structure : un modele de cercle obligatoire ne peut plus creer un cercle obligatoire sous un cercle deja issu d un modele obligatoire, meme avec des espaces intermediaires. La creation et le deplacement manuels respectent aussi cette limite.
