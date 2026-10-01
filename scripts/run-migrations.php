@@ -15,29 +15,16 @@ function ensureMigrationComposerDependencies(): void
         throw new RuntimeException('Les dependances PHP sont absentes et Composer ne peut pas etre lance sur ce serveur.');
     }
 
-    $composerBinary = trim((string)envValue('SITE_UPDATE_COMPOSER_BINARY', 'composer'));
-    if ($composerBinary === '') {
-        $composerBinary = 'composer';
-    }
-
-    $command = escapeshellarg($composerBinary)
-        . ' install --no-dev --prefer-dist --no-interaction --optimize-autoloader 2>&1';
-    $originalDirectory = getcwd();
-    if (!@chdir($projectRoot)) {
-        throw new RuntimeException('Impossible d acceder au dossier du projet pour installer les dependances PHP.');
-    }
-
-    try {
-        echo "Dependances PHP absentes. Installation avec Composer.\n";
-        $outputLines = array();
-        exec($command, $outputLines, $exitCode);
-        if ($outputLines !== array()) {
-            echo implode("\n", $outputLines) . "\n";
-        }
-    } finally {
-        if ($originalDirectory !== false) {
-            @chdir($originalDirectory);
-        }
+    require_once $projectRoot . '/includes/site_update_admin.php';
+    $command = siteUpdateAdminGetComposerCommand(siteUpdateAdminGetPhpBinary());
+    echo "Dependances PHP absentes. Installation avec Composer.\n";
+    $output = siteUpdateAdminRunCommand(
+        array_merge($command, array('install', '--no-dev', '--prefer-dist', '--no-interaction', '--optimize-autoloader')),
+        $projectRoot,
+        $exitCode
+    );
+    if ($output !== '') {
+        echo $output . "\n";
     }
 
     if ((int)$exitCode !== 0 || !is_file($autoloadPath)) {

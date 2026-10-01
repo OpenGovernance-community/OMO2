@@ -25,6 +25,10 @@ const applyTheme = (preference) => {
 };
 
 exports.postAceInit = () => {
+  if (window.clientVars && window.clientVars.omoIdentityLocked) {
+    const nameField = document.getElementById('myusernameedit');
+    if (nameField) nameField.readOnly = true;
+  }
   window.addEventListener('message', (event) => {
     const data = event && event.data && typeof event.data === 'object' ? event.data : null;
     if (!data || data.type !== 'omo-theme-sync') return;

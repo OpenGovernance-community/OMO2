@@ -69,69 +69,25 @@ if (!$canEdit) {
     exit;
 }
 
-$cookieDomain = omoEtherpadResolveCookieDomain($organization);
-if ($cookieDomain === null) {
-    http_response_code(503);
-    echo 'Le domaine de cookie Etherpad ne permet pas de transmettre la session OMO.';
-    exit;
-}
-
 $user = new User();
 if (!$user->load($userId)) {
     http_response_code(503);
     echo 'Identité OMO introuvable.';
     exit;
 }
-
 $userName = trim((string)$user->getScopedDisplayName($organizationId));
-$authorResult = omoEtherpadApiRequest($organization, 'createAuthorIfNotExistsFor', array(
-    'authorMapper' => 'omo-organization-' . $organizationId . '-user-' . $userId,
-    'name' => $userName !== '' ? $userName : ('Utilisateur ' . $userId),
-));
-$authorId = trim((string)($authorResult['data']['authorID'] ?? ''));
-if (!($authorResult['status'] ?? false) || $authorId === '') {
-    http_response_code(503);
-    echo 'Impossible de créer l’identité Etherpad.';
-    exit;
-}
-
-$groupId = trim((string)strtok($padId, '$'));
-$sessionResult = omoEtherpadGetOrCreateSession($organization, $groupId, $authorId);
-if (!($sessionResult['status'] ?? false)) {
-    http_response_code(503);
-    echo 'Impossible de créer la session Etherpad.';
-    exit;
-}
-
-$existingCookieValue = is_string($_COOKIE['sessionID'] ?? null) ? (string)$_COOKIE['sessionID'] : '';
-$sessionCookieValue = omoEtherpadBuildSessionCookieValue(
-    (string)$sessionResult['sessionId'],
-    $existingCookieValue
+$access = omoEtherpadPrepareEditingAccess(
+    $organization,
+    $padId,
+    'omo-organization-' . $organizationId . '-user-' . $userId,
+    $userName !== '' ? $userName : ('Utilisateur ' . $userId)
 );
-$cookieOptions = array(
-    'expires' => (int)($sessionResult['validUntil'] ?? (time() + 3600)),
-    'path' => '/',
-    'secure' => strtolower((string)parse_url(omoEtherpadGetConfig($organization)['baseUrl'], PHP_URL_SCHEME)) === 'https',
-    // Etherpad reads sessionID from document.cookie before it opens its socket.
-    // This cookie is an Etherpad session credential, not an OMO login cookie.
-    'httponly' => false,
-    'samesite' => 'None',
-);
-if ($cookieDomain !== '') {
-    $cookieOptions['domain'] = $cookieDomain;
-}
-if ($sessionCookieValue === '' || !setcookie('sessionID', $sessionCookieValue, $cookieOptions)) {
+if (empty($access['status'])) {
     http_response_code(503);
-    echo 'Impossible de transmettre la session Etherpad.';
+    echo htmlspecialchars((string)$access['text'], ENT_QUOTES, 'UTF-8');
     exit;
 }
-
-$padUrl = omoEtherpadBuildPadUrl($organization, $padId);
-if ($padUrl === '') {
-    http_response_code(503);
-    echo 'URL Etherpad invalide.';
-    exit;
-}
+$padUrl = $access['url'];
 
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Location: ' . $padUrl, true, 302);

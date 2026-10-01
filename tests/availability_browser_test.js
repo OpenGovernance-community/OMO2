@@ -159,6 +159,28 @@ async function testEditor() {
     assert.equal(app.document.querySelector('[name="start_at"]').value, date + 'T09:00', 'A failed choice does not alter event fields.');
     assert.equal(requests, 1);
 }
+function testConfirmation() {
+    const app = setup('<form data-omo-calendar-create-form><input name="availability_ack" value=""><input name="title">' +
+        '<div data-calendar-availability-loading hidden></div><div data-calendar-availability data-acknowledgement="reviewed">' +
+        '<button type="button" data-calendar-availability-confirm>Confirm</button></div></form>',
+    'https://localtest.me/omo/', async () => { throw new Error('Confirmation must not fetch availability'); });
+    const form = app.document.querySelector('form');
+    form.elements = {availability_ack: form.querySelector('[name="availability_ack"]')};
+    let submitted = '';
+    form.requestSubmit = () => { submitted = form.elements.availability_ack.value; };
+    app.run('common/calendar/availability.js');
+    app.window.omoCalendarSetAvailabilityPending(form, true);
+    assert.equal(form.querySelector('[data-calendar-availability-loading]').hidden, false);
+    app.window.omoCalendarSetAvailabilityPending(form, false);
+    form.querySelector('[data-calendar-availability]').dataset.acknowledgement = 'reviewed';
+    app.click(form.querySelector('[data-calendar-availability-confirm]'));
+    assert.equal(submitted, 'reviewed', 'Confirmation submits the already reviewed warning.');
+    app.window.omoCalendarSetAvailabilityPending(form, true);
+    assert.equal(form.querySelector('[data-calendar-availability-loading]').hidden, true, 'Confirmation does not announce another synchronization.');
+    assert.equal(form.elements.availability_ack.value, 'reviewed');
+    form.querySelector('[name="title"]').dispatchEvent(new app.document.defaultView.Event('input', {bubbles: true}));
+    assert.equal(form.elements.availability_ack.value, '', 'Editing invalidates the previous confirmation.');
+}
 function testStandaloneNotifications() {
     const app = setup('', 'https://localtest.me/meeting/fixture', async () => { throw new Error('Unexpected request'); });
     const timers = [];
@@ -174,4 +196,4 @@ function testStandaloneNotifications() {
     timers[1].callback();
     assert.equal(app.document.querySelector('.common-notification'), null, 'Transient error disappears after its timeout and animation.');
 }
-(async () => { await testProfile(); await testMeeting(); await testEditor(); testStandaloneNotifications(); console.log('availability_browser_test: OK'); })().catch(error => { console.error(error); process.exitCode = 1; });
+(async () => { await testProfile(); await testMeeting(); await testEditor(); testConfirmation(); testStandaloneNotifications(); console.log('availability_browser_test: OK'); })().catch(error => { console.error(error); process.exitCode = 1; });
