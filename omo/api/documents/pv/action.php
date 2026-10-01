@@ -487,7 +487,7 @@ if ($action === 'remove_deferred_proposal') {
         || (int)$proposal->get('IDdocument_pv_point') !== $pointId
         || (int)$proposal->get('IDorganization') !== $organizationId
         || (string)$proposal->get('status') !== \dbObject\DeferredProposal::STATUS_PENDING
-        || !$document->canUserManagePvStructure($organizationId, $currentUserId)
+        || !$document->canUserProposePvPointChange($point, $currentUserId)
         || !omoDocumentsPvEditorHasValidSessionToken($organizationId, $documentId, $currentUserId, $editorToken)
     ) {
         omoDocumentsPvEditorJsonResponse([

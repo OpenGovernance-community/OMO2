@@ -1,5 +1,17 @@
 # Journal Des Nouveautes
 
+- Projets : correction du chargement en boucle et de la page blanche en choisissant Tout le monde face a une vue enregistree differente. Les choix Kanban et Importance sont aussi conserves lors des rafraichissements et de la restauration de la vue temporaire.
+
+- Propositions de holons : les sélecteurs de décisions et de points de PV explorent aussi les enfants placés dans des groupes.
+
+- Propositions de holons : les choix sont affichés par ordre alphabétique, avec les cercles séparés des rôles par une ligne horizontale.
+
+- Points de PV : les auteurs peuvent proposer des modifications depuis leurs propres points sans avoir le droit de gérer la structure du PV.
+
+- Partage de structure : la popup de gestion charge correctement les liens existants.
+
+- Connexion : le logo de l organisation s affiche dans un cadre carre aux coins arrondis, avec un halo sombre ; l image complete reste visible.
+
 - Pads : chaque ouverture selectionne la session de l identite courante pour le document et retire du cookie les sessions concurrentes du meme pad. Un acces public ne prend plus le pas sur le compte utilise ensuite dans OMO.
 
 - Participants externes : les pads et les auteurs de points de PV affichent le nom suivi de l e-mail confirme ; les membres de l organisation gardent leur nom seul. Le plugin Etherpad OMO empeche les sessions authentifiees de renommer leur auteur depuis le navigateur ; les Framapad externes recoivent ce nom en valeur initiale.
