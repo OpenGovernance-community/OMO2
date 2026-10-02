@@ -1,5 +1,7 @@
 # Journal Des Nouveautes
 
+- MCP : premier serveur de consultation en lecture seule, avec login OMO, consentement pour une organisation, OAuth avec PKCE S256, renouvellement et revocation des acces. Cinq outils permettent de verifier la connexion, parcourir la structure, rechercher dans les modules et lire les fiches accessibles avec les droits du compte, y compris proprietes, documents, points de PV visibles et mesures des indicateurs. Textes longs pages et selection de recherche explicitement non exhaustive. Migration, seed Docker, tests PHP 8.5 et guide de connexion disponibles dans docs/MCP.md.
+
 - Notifications : harmonisation des confirmations et erreurs dans les paramètres, les profils et compétences, les calendriers, les projets et budgets, les indicateurs, les PV, la FAQ, les formations, les partages, les affectations et le minuteur. Les messages utilisent les notifications fixes et temporaires de la topbar ; les états de progression, validations de champs et résultats détaillés restent dans leur écran. Le questionnaire utilise également cette API pour les invitations. Cette convention est documentée dans AGENTS.md pour les futurs développements.
 
 - Sécurité : les confirmations et les erreurs de sauvegarde utilisent les notifications fixes de la topbar, avec disparition automatique après 5 secondes pour les confirmations et 7 secondes pour les erreurs.

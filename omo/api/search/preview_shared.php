@@ -1,6 +1,24 @@
 <?php
 require_once dirname(__DIR__, 3) . '/common/search_text.php';
 
+/** One allowlist shared by the UI endpoint and MCP. No path comes from the caller. */
+function omoSearchPreviewModules(): array
+{
+    return ['documents' => 'documents', 'pv' => 'documents', 'faq' => 'faq', 'stats' => 'stats',
+        'rules' => 'policy', 'projects' => 'projects', 'processus' => 'processes',
+        'activities' => 'recurring_tasks', 'calendar' => 'calendar', 'decision' => 'decision',
+        'structure' => 'structure', 'team' => 'team', 'tutorials' => 'lms'];
+}
+
+function omoSearchPreviewLoad(string $module, $object, \dbObject\Organization $organization,
+    int $currentHolonId, string $query = '', int $missionId = 0, bool $includeChart = true): array
+{
+    $modules = omoSearchPreviewModules();
+    if (!isset($modules[$module])) throw new InvalidArgumentException('Unknown preview module.');
+    $renderer = require dirname(__DIR__) . '/' . $modules[$module] . '/search_preview.php';
+    return $renderer($object, $organization, $currentHolonId, $query, $missionId, $includeChart);
+}
+
 function omoSearchPreviewT(string $key): string
 {
     static $bundle;

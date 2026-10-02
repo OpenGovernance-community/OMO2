@@ -1,6 +1,6 @@
 <?php
-return static function (\dbObject\Parcours $parcours): array {
-    $missionId = (int)($_GET['mission_id'] ?? 0);
+return static function (\dbObject\Parcours $parcours, $organization = null, int $currentHolonId = 0,
+    string $query = '', int $missionId = 0): array {
     $object = $parcours;
     if ($missionId > 0) {
         $link = new \dbObject\ParcoursMission();

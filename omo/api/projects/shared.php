@@ -420,7 +420,7 @@ if (!function_exists('omoProjectsCanRevealProjectTitle')) {
 }
 
 if (!function_exists('omoProjectsResolveContext')) {
-    function omoProjectsResolveContext($organizationId, $currentHolonId = 0)
+    function omoProjectsResolveContext($organizationId, $currentHolonId = 0, bool $initializeImportance = true)
     {
         $organizationId = (int)$organizationId;
         $currentHolonId = (int)$currentHolonId;
@@ -435,7 +435,9 @@ if (!function_exists('omoProjectsResolveContext')) {
             return ['status' => false, 'message' => omoProjectsT('projects.error.organization')];
         }
 
-        \dbObject\ProjectImportanceCalculator::ensureOrganizationInitialized($organizationId);
+        if ($initializeImportance) {
+            \dbObject\ProjectImportanceCalculator::ensureOrganizationInitialized($organizationId);
+        }
 
         $rootHolon = $organization->getEnabledStructuralRootHolon();
         $currentHolon = $rootHolon instanceof Holon ? $rootHolon : null;

@@ -1,4 +1,4 @@
-/*M!999999\- enable the sandbox mode */ 
+/*M!999999\- enable the sandbox mode */
 -- MariaDB dump 10.19-11.4.12-MariaDB, for debian-linux-gnu (x86_64)
 --
 -- Host: localhost    Database: omodev
@@ -4814,3 +4814,75 @@ CREATE TABLE IF NOT EXISTS `organization_backup` (
 /*M!100616 SET NOTE_VERBOSITY=@OLD_NOTE_VERBOSITY */;
 
 -- Dump completed on 2026-09-28 19:23:49
+
+-- Empty MCP OAuth schema exported from a fresh seed database after its migrations.
+/*M!999999\- enable the sandbox mode */
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*M!100616 SET @OLD_NOTE_VERBOSITY=@@NOTE_VERBOSITY, NOTE_VERBOSITY=0 */;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `mcp_oauth_client` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `client_id` varchar(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `name` varchar(150) NOT NULL,
+  `redirect_uris` text NOT NULL,
+  `created_at` bigint(20) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `mcp_client_identifier` (`client_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `mcp_oauth_grant` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDclient` int(11) NOT NULL,
+  `IDuser` int(11) NOT NULL,
+  `IDorganization` int(11) NOT NULL,
+  `resource` varchar(512) NOT NULL,
+  `scope` varchar(100) NOT NULL,
+  `redirect_uri` varchar(2048) NOT NULL,
+  `code_hash` char(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `code_challenge` varchar(43) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `code_expires_at` bigint(20) NOT NULL,
+  `code_used_at` bigint(20) DEFAULT NULL,
+  `access_hash` char(64) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL,
+  `access_expires_at` bigint(20) DEFAULT NULL,
+  `refresh_hash` char(64) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL,
+  `refresh_expires_at` bigint(20) DEFAULT NULL,
+  `revoked_at` bigint(20) DEFAULT NULL,
+  `created_at` bigint(20) NOT NULL,
+  `used_refresh_hashes` mediumtext DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `mcp_grant_code` (`code_hash`),
+  UNIQUE KEY `mcp_grant_access` (`access_hash`),
+  UNIQUE KEY `mcp_grant_refresh` (`refresh_hash`),
+  KEY `mcp_grant_owner` (`IDuser`,`created_at`),
+  KEY `mcp_grant_client_fk` (`IDclient`),
+  KEY `mcp_grant_organization_fk` (`IDorganization`),
+  CONSTRAINT `mcp_grant_client_fk` FOREIGN KEY (`IDclient`) REFERENCES `mcp_oauth_client` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `mcp_grant_organization_fk` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `mcp_grant_user_fk` FOREIGN KEY (`IDuser`) REFERENCES `user` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
+
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*M!100616 SET NOTE_VERBOSITY=@OLD_NOTE_VERBOSITY */;
+
+INSERT INTO `sql_migration` (`filename`, `checksum`, `executed_at`) VALUES
+('2026-10-02-04-mcp-structure-oauth.sql', 'a5586cfa5440235dda71c9be8692fd9b43916c8a19fd44f3481d7a875eb189f3', '2026-10-02 00:00:00'),
+('2026-10-02-05-mcp-refresh-replay.sql', '359181229c14562ce7533c1d06d379f34df567ff13c1ed2a5eaf5417ffb16438', '2026-10-02 00:00:00');
