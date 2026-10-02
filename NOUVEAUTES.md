@@ -1,6 +1,6 @@
 # Journal Des Nouveautes
 
-- Editeur de PV : menu d ajout pour importer plusieurs points non traites de reunions precedentes, avec perimetre local ou global et chargement au scroll. Les points sont copies avec leurs liens et propositions en attente ; le vieux PV conserve une mention de deplacement et un lien vers la reunion destination. Le transfert du lot est atomique et reste trace en base meme si le point cible est supprime, sans permettre une nouvelle importation.
+- Editeur de PV : import des points non traites avec cartes arrondies qui s illuminent a la selection, commutateur local/global et actions toujours visibles sous la liste defilante. Depuis un PV en preparation ou en reunion, le point est deplace directement avec ses liens et discussions ; a partir de la relecture, une copie est creee et le vieux PV conserve la trace du deplacement. Le transfert du lot reste atomique.
 
 - Tableau de pilotage : ajout du module Decisions avec la liste des decisions actives, les compteurs en elaboration et a me prononcer, et un perimetre configurable (local, enfants directs, descendants). Le filtre En elaboration correspond a la phase de consultation avant le vote.
 

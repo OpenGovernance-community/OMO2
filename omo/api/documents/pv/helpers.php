@@ -43,7 +43,7 @@ function omoDocumentsPvEditorSourceLang(): array
         'documents.pv_editor.import.scope' => ['text' => 'Perimetre', 'context' => 'Scope filter for previous meeting agenda points.'],
         'documents.pv_editor.import.local' => ['text' => 'Local : meme espace', 'context' => 'Only previous PVs in the current meeting context.'],
         'documents.pv_editor.import.global' => ['text' => 'Global : organisation', 'context' => 'All accessible previous PVs of the organization.'],
-        'documents.pv_editor.import.help' => ['text' => 'Choisissez les points a reprendre. Leur contenu sera remplace dans le PV d\'origine par un lien vers cette reunion.', 'context' => 'Explains the effect of agenda transfer.'],
+        'documents.pv_editor.import.help' => ['text' => 'Choisissez les points a reprendre. Ils seront deplaces depuis les PV en preparation ou en reunion. A partir de la relecture, le PV d\'origine conservera un lien vers cette reunion.', 'context' => 'Explains when an agenda transfer leaves a notice in the source minutes.'],
         'documents.pv_editor.import.empty' => ['text' => 'Aucun point non traite disponible dans ce perimetre.', 'context' => 'Empty agenda import list.'],
         'documents.pv_editor.import.loading' => ['text' => 'Chargement des points...', 'context' => 'Progressive agenda import loading.'],
         'documents.pv_editor.import.add' => ['text' => 'Ajouter ({count})', 'context' => 'Import confirmation with selected point count.'],

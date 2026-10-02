@@ -1357,17 +1357,32 @@
     place-items: center;
 }
 
+.omo-pv-import__picker {
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
+    height: min(680px, calc(100dvh - 150px));
+    min-height: 0;
+}
+
+.omo-pv-import__body {
+    grid-template-rows: auto auto minmax(0, 1fr);
+    min-height: 0;
+    overflow: auto;
+}
+
+.omo-pv-import__help,
+.omo-pv-import__status {
+    margin: 0;
+}
+
 .omo-pv-import__list {
-    height: min(55vh, 480px);
+    min-height: 0;
     overflow-y: auto;
     overscroll-behavior: contain;
 }
 
 .omo-pv-import__row {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    cursor: pointer;
+    width: 100%;
 }
 
 .omo-pv-import__row > span {

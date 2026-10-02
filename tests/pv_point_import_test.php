@@ -122,6 +122,8 @@ try {
     $notice = 'Ce point n a pas ete traite ici. Deplace vers {meeting}.';
     $stalePoint = new DocumentPvPoint();
     $stalePoint->load($oldPoint->getId(), true);
+    $staleRecentPoint = new DocumentPvPoint();
+    $staleRecentPoint->load($recentPoint->getId(), true);
     $beforeCount = count($destination->getPvPoints());
     $result = DocumentPvPoint::importIntoDocument($destination, [(int)$oldPoint->getId(), (int)$recentPoint->getId()], $userId, 'local', $notice);
     importExpect(!$result['status'] && count($destination->getPvPoints()) === $beforeCount, 'A locked point cancels the entire batch.');
@@ -133,6 +135,15 @@ try {
     importSave($recentPoint);
     $result = DocumentPvPoint::importIntoDocument($destination, [(int)$oldPoint->getId(), (int)$recentPoint->getId()], $userId, 'local', $notice);
     importExpect(!empty($result['status']) && count($result['pointIds']) === 2, 'Multiple points must transfer successfully: ' . json_encode($result));
+    importExpect($result['pointIds'][1] === (int)$recentPoint->getId(), 'An open meeting point is moved with the same identity.');
+    $recentPoint->load($recentPoint->getId(), true);
+    importExpect((int)$recentPoint->get('IDdocument') === (int)$destination->getId()
+        && !$recentPoint->isMoved() && $recentPoint->get('content') === '<p>Original content</p>'
+        && $recentPoint->getDurationMinutesValue('actual_duration_minutes') === 4, 'Moving from meeting mode preserves content and metadata without a source notice.');
+    importExpect(!in_array((int)$recentPoint->getId(), array_map(static fn($point) => (int)$point->getId(), $recent->getPvPoints()->getArrayCopy()), true), 'The moved point disappears from the open source meeting.');
+    importExpect(empty($staleRecentPoint->save()['status']), 'A stale source cannot move the point back while saving.');
+    $staleRecentPoint->delete();
+    importExpect($recentPoint->load($recentPoint->getId(), true), 'A stale source delete cannot remove the destination point.');
     $copy = new DocumentPvPoint();
     $copy->load($result['pointIds'][0], true);
     importExpect($copy->get('content') === '<p>Original content</p>' && (int)$copy->get('priority') === 1
@@ -154,6 +165,25 @@ try {
     $oldPoint->load($oldPoint->getId(), true);
     importExpect($oldPoint->isMoved() && !$oldPoint->get('IDpoint_moved_to')
         && DocumentPvPoint::getImportablePage($destination, $userId)['items'] === [], 'Deleting the target must preserve the source transfer notice and prevent reimport.');
+    $otherContext->set('pvstage', 'preparation');
+    importSave($otherContext);
+    $group = $makePoint($otherContext, ['item_type' => 'group']);
+    $otherPoint->set('IDparent', (int)$group->getId());
+    importSave($otherPoint);
+    $result = DocumentPvPoint::importIntoDocument($destination, [(int)$otherPoint->getId()], $userId, 'global', $notice);
+    importExpect(!empty($result['status']) && $result['pointIds'] === [(int)$otherPoint->getId()], 'Preparation mode also moves the same point directly.');
+    $otherPoint->load($otherPoint->getId(), true);
+    importExpect(!$otherPoint->isMoved() && !$otherPoint->get('IDparent')
+        && (int)$otherPoint->get('IDdocument') === (int)$destination->getId(), 'A moved point is appended outside its old group without a transfer marker.');
+    $reviewSource = $makeDocument('2026-09-22 12:00:00');
+    $reviewPoint = $makePoint($reviewSource);
+    $reviewSource->set('pvstage', 'review');
+    importSave($reviewSource);
+    $result = DocumentPvPoint::importIntoDocument($destination, [(int)$reviewPoint->getId()], $userId, 'local', $notice);
+    importExpect(!empty($result['status']) && $result['pointIds'][0] !== (int)$reviewPoint->getId(), 'Review mode already requires a copy and a source trace.');
+    $reviewPoint->load($reviewPoint->getId(), true);
+    importExpect($reviewPoint->isMoved() && (int)$reviewPoint->get('IDdocument') === (int)$reviewSource->getId()
+        && str_contains((string)$reviewPoint->get('content'), '#documents-d' . $destination->getId()), 'The review source retains the destination link.');
     $destination->set('pvstage', 'review');
     importSave($destination);
     importExpect(!DocumentPvPoint::canImportIntoDocument($destination, $userId), 'Review destination must reject import.');

@@ -5482,26 +5482,30 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
             node.textContent = String(text || '');
             return node.innerHTML;
         };
-        const html = '<div class="generic-drawer-content generic-stack" data-omo-pv-import-picker>'
-            + '<p>' + escape(ui.help) + '</p>'
-            + '<label>' + escape(ui.scope) + '<select class="generic-form-control" data-import-scope><option value="local">' + escape(ui.local) + '</option><option value="global">' + escape(ui.global) + '</option></select></label>'
+        const html = '<div class="omo-pv-import__picker" data-omo-pv-import-picker><div class="generic-drawer-content omo-pv-import__body">'
+            + '<p class="omo-pv-import__help">' + escape(ui.help) + '</p>'
+            + '<div class="omo-scope-toggle" role="group" aria-label="' + escape(ui.scope) + '" data-omo-scope-switch="local" data-import-scope>'
+            + '<button type="button" class="omo-scope-toggle__button is-active" aria-pressed="true" data-import-scope-choice="local">' + escape(ui.local) + '</button>'
+            + '<button type="button" class="omo-scope-toggle__button" aria-pressed="false" data-import-scope-choice="global">' + escape(ui.global) + '</button></div>'
             + '<div class="omo-pv-import__list generic-stack generic-stack--compact" data-import-list></div>'
-            + '<p role="status" aria-live="polite" data-import-status></p>'
+            + '</div><div class="generic-drawer-footer generic-drawer-footer--sticky">'
+            + '<div class="generic-action-row generic-action-row--start"><p class="omo-pv-import__status" role="status" aria-live="polite" data-import-status></p>'
             + '<button type="button" class="generic-action-button generic-action-button--secondary" data-import-retry hidden>' + escape(ui.retry) + '</button>'
-            + '<div class="omo-document-embed-picker__actions"><button type="button" class="generic-action-button generic-action-button--secondary" data-import-cancel>' + escape(ui.cancel) + '</button>'
-            + '<button type="button" class="generic-action-button generic-action-button--main" data-import-add disabled></button></div></div>';
+            + '</div><div class="generic-action-row"><button type="button" class="generic-action-button generic-action-button--secondary" data-import-cancel>' + escape(ui.cancel) + '</button>'
+            + '<button type="button" class="generic-action-button generic-action-button--main" data-import-add disabled></button></div></div></div>';
         window.commonTopbarOpenModal(ui.title, html, 'html');
         const picker = document.querySelector('#commonTopbarModalBody [data-omo-pv-import-picker]');
         if (!picker) return;
         const list = picker.querySelector('[data-import-list]');
         const scope = picker.querySelector('[data-import-scope]');
+        const scopeButtons = Array.from(picker.querySelectorAll('[data-import-scope-choice]'));
         const status = picker.querySelector('[data-import-status]');
         const submit = picker.querySelector('[data-import-add]');
         const retry = picker.querySelector('[data-import-retry]');
         const cancel = picker.querySelector('[data-import-cancel]');
         const selected = new Set();
         const rendered = new Set();
-        let cursor = null, hasMore = true, loading = false, saving = false, generation = 0, closed = false, loadFailed = false;
+        let currentScope = 'local', cursor = null, hasMore = true, loading = false, saving = false, generation = 0, closed = false, loadFailed = false;
         const updateSubmit = function () {
             submit.disabled = saving || selected.size === 0;
             submit.textContent = saving ? ui.saving : ui.add.replace('{count}', String(selected.size));
@@ -5515,7 +5519,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
             status.textContent = ui.loading;
             // Request enough rows to fill the available list, then load only near its bottom.
             const limit = Math.max(8, Math.min(50, Math.ceil(list.clientHeight / 85) + 2));
-            postPointAction('list_importable_points', 0, {scope: scope.value, cursor: JSON.stringify(cursor), limit: limit})
+            postPointAction('list_importable_points', 0, {scope: currentScope, cursor: JSON.stringify(cursor), limit: limit})
                 .then(function (payload) {
                     if (closed || saving || requestGeneration !== generation) return;
                     cursor = payload.cursor;
@@ -5523,13 +5527,11 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
                     (payload.items || []).forEach(function (point) {
                         if (rendered.has(point.id)) return;
                         rendered.add(point.id);
-                        const row = document.createElement('label');
-                        row.className = 'generic-soft-panel omo-pv-import__row';
-                        const checkbox = document.createElement('input');
-                        checkbox.type = 'checkbox';
-                        checkbox.value = String(point.id);
-                        checkbox.disabled = point.isLocked === true;
-                        checkbox.checked = selected.has(point.id);
+                        const row = document.createElement('button');
+                        row.type = 'button';
+                        row.className = 'generic-choice-card generic-choice-card--text omo-pv-import__row';
+                        row.disabled = point.isLocked === true;
+                        row.setAttribute('aria-pressed', selected.has(point.id) ? 'true' : 'false');
                         const copy = document.createElement('span');
                         const title = document.createElement('strong');
                         title.textContent = point.title;
@@ -5539,10 +5541,12 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
                         const typeLabel = ui.types[point.pointType] || point.pointType;
                         metadata.textContent = ['P' + point.priority, typeLabel, point.duration === null ? '' : point.duration + ' min', point.author, point.isLocked ? ui.locked : ''].filter(Boolean).join(' | ');
                         copy.append(title, meeting, metadata);
-                        row.append(checkbox, copy);
-                        checkbox.addEventListener('change', function () {
-                            if (checkbox.checked) selected.add(point.id);
-                            else selected.delete(point.id);
+                        row.append(copy);
+                        row.addEventListener('click', function () {
+                            if (saving || row.disabled) return;
+                            if (selected.has(point.id)) selected.delete(point.id);
+                            else selected.add(point.id);
+                            row.setAttribute('aria-pressed', selected.has(point.id) ? 'true' : 'false');
                             updateSubmit();
                         });
                         list.append(row);
@@ -5565,7 +5569,17 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
             if (!loadFailed && list.scrollHeight - list.scrollTop - list.clientHeight < 100) load();
         });
         retry.addEventListener('click', load);
-        scope.addEventListener('change', function () {
+        scopeButtons.forEach(function (button, index) { button.addEventListener('click', function () {
+            const nextScope = button.getAttribute('data-import-scope-choice');
+            if (saving || currentScope === nextScope) return;
+            currentScope = nextScope;
+            scope.setAttribute('data-omo-scope-switch', currentScope);
+            scope.style.setProperty('--omo-scope-active-index', String(index));
+            scopeButtons.forEach(function (option) {
+                const active = option === button;
+                option.classList.toggle('is-active', active);
+                option.setAttribute('aria-pressed', active ? 'true' : 'false');
+            });
             generation++;
             loading = false;
             cursor = null;
@@ -5576,17 +5590,17 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
             list.scrollTop = 0;
             updateSubmit();
             load();
-        });
+        }); });
         window.addEventListener('common-topbar-modal-close', function () { closed = true; generation++; }, {once: true});
         cancel.addEventListener('click', function () { window.commonTopbarCloseModal(); });
         submit.addEventListener('click', function () {
             if (saving || !selected.size) return;
             saving = true;
-            scope.disabled = true;
+            scopeButtons.forEach(function (button) { button.disabled = true; });
             cancel.disabled = true;
-            list.querySelectorAll('input').forEach(function (input) { input.disabled = true; });
+            list.querySelectorAll('button').forEach(function (button) { button.disabled = true; });
             updateSubmit();
-            postPointAction('import_points', 0, {scope: scope.value, point_ids: Array.from(selected).join(',')})
+            postPointAction('import_points', 0, {scope: currentScope, point_ids: Array.from(selected).join(',')})
                 .then(function (payload) {
                     (payload.points || []).forEach(function (point) { replacePointHtml(point); });
                     if (!closed) window.commonTopbarCloseModal();
@@ -5607,13 +5621,13 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
                 })
                 .finally(function () {
                     saving = false;
-                    scope.disabled = false;
+                    scopeButtons.forEach(function (button) { button.disabled = false; });
                     cancel.disabled = false;
                     updateSubmit();
                 });
         });
         updateSubmit();
-        scope.focus();
+        scopeButtons[0].focus();
         load();
     }
 
