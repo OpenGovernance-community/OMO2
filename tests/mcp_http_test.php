@@ -74,6 +74,9 @@ try {
     mcpCheck($consent['status'] === 200 && str_contains($consent['body'], 'HTTP MCP test')
         && str_contains($consent['body'], 'name="organization_id"'), 'Organization consent rendered');
     mcpCheck(str_contains($consent['body'], '/common/assets/components.css'), 'Shared consent styles loaded');
+    mcpCheck(($consent['headers']['content-security-policy'] ?? '') ===
+        "frame-ancestors 'none'; form-action 'self' https://client.example.invalid; base-uri 'none'",
+        'Consent CSP permits only this registered callback origin in addition to self');
     preg_match('/name="csrf" value="([a-f0-9]+)"/', $consent['body'], $match);
     mcpCheck(isset($match[1]), 'Consent CSRF token');
     $wrongCsrf = mcpHttp($consentPath, ['csrf' => 'wrong', 'decision' => 'allow', 'organization_id' => $items['org']->getId()]);
@@ -117,6 +120,8 @@ try {
     $notice = mcpHttp('/mcp', ['jsonrpc' => '2.0', 'method' => 'notifications/initialized'], true, $tokens['access_token']);
     mcpCheck($notice['status'] === 202 && $notice['body'] === '', 'MCP notification response');
     $connections = mcpHttp('/mcp/connections.php');
+    mcpCheck(($connections['headers']['content-security-policy'] ?? '') ===
+        "frame-ancestors 'none'; form-action 'self'; base-uri 'none'", 'Connection management CSP remains same-origin');
     preg_match('/name="csrf" value="([a-f0-9]+)"/', $connections['body'], $csrf);
     preg_match('/name="grant_id" value="([0-9]+)"/', $connections['body'], $grantId);
     mcpCheck(isset($csrf[1], $grantId[1]), 'Connection management rendered');
