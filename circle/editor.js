@@ -550,15 +550,15 @@ if (window.circleEditorConfig.view) {
 							root=response.json;
 						
 							refreshCircle(false);refreshCircle(false);
-							alert('Sauvegarde effectuée !');
+                            (typeof window.commonNotify === 'function' ? window.commonNotify : window.alert).call(window, 'Sauvegarde effectuée !', 'success');
 							
 						} else {
-							alert('Erreur: ' + response.message);
+							(typeof window.commonNotify === 'function' ? window.commonNotify : window.alert).call(window, 'Erreur: ' + response.message, 'error');
 						}
 					},
 					error: function(xhr, status, error) {
 						console.log('Erreur de requête : ', error);
-						alert('Une erreur est survenue. Veuillez réessayer.');
+						(typeof window.commonNotify === 'function' ? window.commonNotify : window.alert).call(window, 'Une erreur est survenue. Veuillez réessayer.', 'error');
 					}
 				});			
 			}	
@@ -646,7 +646,6 @@ if (window.circleEditorConfig.view) {
 				});
 
 				$("body").delegate("#btn_add","click", function () {
-					alert ("Add");
 						// Ajoute un élément au noeud courant
 					console.log("btn_add - CurrentNode");
 					console.log(currentnode);

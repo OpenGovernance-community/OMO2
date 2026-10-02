@@ -581,11 +581,7 @@ window.commonPageScripts["/omo/api/decision/edit_shared.js"] = function (pageCon
                     );
                 })
                 .catch(function (error) {
-                    if (feedback) {
-                        feedback.textContent = error && error.message
-                            ? error.message
-                            : pageConfig.decisionsEditImportError;
-                    }
+                    notifyQuestionSwitch(error && error.message ? error.message : pageConfig.decisionsEditImportError, 'error');
                 })
                 .finally(function () {
                     if (submitButton) {

@@ -254,10 +254,18 @@
     }
 
     function setFeedback(form, message, isError) {
+        if (message && typeof window.commonNotify === 'function') {
+            var notice = form.querySelector('[data-omo-calendar-create-feedback]');
+            if (notice) { notice.textContent = ''; notice.hidden = true; }
+            window.commonNotify(String(message), isError ? 'error' : 'success');
+            return;
+        }
+
         var feedback = form.querySelector('[data-omo-calendar-create-feedback]');
         if (!feedback) {
             return;
         }
+        feedback.hidden = !message;
         feedback.textContent = String(message || '');
         feedback.className = 'omo-calendar-create__feedback generic-feedback' + (isError ? ' is-error' : '');
     }
@@ -328,9 +336,6 @@
             }).then(function (payload) {
                 if (!payload) { return; }
                 setFeedback(form, payload.message || 'Événement enregistré.', false);
-                if (typeof window.omoNotify === 'function') {
-                    window.omoNotify(payload.message || 'Événement enregistré.', 'success');
-                }
                 if (options && typeof options.onSave === 'function') {
                     options.onSave(payload, form);
                 }

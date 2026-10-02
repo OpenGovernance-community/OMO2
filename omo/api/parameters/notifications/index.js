@@ -10,12 +10,18 @@ window.commonPageScripts["/omo/api/parameters/notifications/index.js"] = functio
     var toggle = root.querySelector('[data-omo-notification-toggle]');
     var feedback = root.querySelector('[data-omo-notification-feedback]');
 
-    function showFeedback(message, kind) {
-        if (!feedback) {
+    function showFeedback(message, kind, node, inline) {
+        var target = node || feedback;
+        if (message && !inline && kind && typeof window.commonNotify === 'function') {
+            if (target) { target.textContent = ''; }
+            window.commonNotify(String(message), kind);
             return;
         }
-        feedback.textContent = String(message || '');
-        feedback.className = 'generic-feedback' + (kind ? ' is-' + kind : '');
+        if (!target) {
+            return;
+        }
+        target.textContent = String(message || '');
+        target.className = 'generic-feedback' + (kind ? ' is-' + kind : '');
     }
 
     function base64UrlToUint8Array(value) {
@@ -133,7 +139,7 @@ window.commonPageScripts["/omo/api/parameters/notifications/index.js"] = functio
             }
             toggle.checked = subscription !== null;
             toggle.disabled = false;
-            showFeedback(subscription ? configuration.texts.enabled : configuration.texts.disabled, subscription ? 'success' : '');
+            showFeedback(subscription ? configuration.texts.enabled : configuration.texts.disabled, '', feedback, true);
         } catch (error) {
             toggle.disabled = false;
             showFeedback(await getSubscriptionErrorMessage(error), 'error');
@@ -170,7 +176,7 @@ window.commonPageScripts["/omo/api/parameters/notifications/index.js"] = functio
                     await requestServer('DELETE', subscription);
                     await subscription.unsubscribe();
                 }
-                showFeedback(configuration.texts.disabled, '');
+                showFeedback(configuration.texts.disabled, 'success');
             } catch (error) {
                 toggle.checked = !toggle.checked;
                 showFeedback(await getSubscriptionErrorMessage(error), 'error');
@@ -186,6 +192,7 @@ window.commonPageScripts["/omo/api/parameters/notifications/index.js"] = functio
             event.preventDefault();
             var submit = preferencesForm.querySelector('button[type="submit"]');
             var preferencesFeedback = preferencesForm.querySelector('[data-omo-notification-preferences-feedback]');
+            showFeedback('', '', preferencesFeedback);
             if (submit) {
                 submit.disabled = true;
             }
@@ -202,15 +209,9 @@ window.commonPageScripts["/omo/api/parameters/notifications/index.js"] = functio
                     return payload;
                 });
             }).then(function () {
-                if (preferencesFeedback) {
-                    preferencesFeedback.textContent = pageConfig.notificationsPreferencesSaved;
-                    preferencesFeedback.className = 'generic-feedback is-success';
-                }
+                showFeedback(pageConfig.notificationsPreferencesSaved, 'success', preferencesFeedback);
             }).catch(function (error) {
-                if (preferencesFeedback) {
-                    preferencesFeedback.textContent = error && error.message ? error.message : pageConfig.message;
-                    preferencesFeedback.className = 'generic-feedback is-error';
-                }
+                showFeedback(error && error.message ? error.message : pageConfig.message, 'error', preferencesFeedback);
             }).finally(function () {
                 if (submit) {
                     submit.disabled = false;

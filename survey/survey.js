@@ -973,7 +973,7 @@
         var organizations = Array.isArray(invite.organizations) ? invite.organizations : [];
         if (organizations.length === 0) {
             if (invite.authenticated === true) {
-                window.alert(labels.inviteEmpty);
+                (typeof window.commonNotify === 'function' ? window.commonNotify : window.alert).call(window, labels.inviteEmpty, 'warning');
                 return;
             }
             window.location.assign(String(invite.loginUrl || '/survey/invite.php'));
@@ -1113,9 +1113,7 @@
                         linkBox.hidden = false;
                         feedback.hidden = true;
                     }).catch(function () {
-                        feedback.textContent = labels.inviteError;
-                        feedback.classList.add('survey-invite-dialog__feedback--error');
-                        feedback.hidden = false;
+                        window.commonNotify(labels.inviteError, 'error');
                     }).finally(function () {
                         generate.disabled = false;
                         generate.textContent = labels.invitePublicGenerate;
@@ -1160,13 +1158,9 @@
                 body: JSON.stringify({ organizationId: Number(organization.id), holonIds: values('[data-invite-holons]'), userIds: values('[data-invite-members]'), emails: emails })
             }).then(function (response) { return response.json().catch(function () { return { status: false }; }); }).then(function (result) {
                 if (!result || result.status !== true) { throw new Error('invite_failed'); }
-                feedback.textContent = interpolate(labels.inviteSent, { count: Array.isArray(result.emails) ? result.emails.length : 0 });
-                feedback.classList.remove('survey-invite-dialog__feedback--error');
-                feedback.hidden = false;
+                window.commonNotify(interpolate(labels.inviteSent, { count: Array.isArray(result.emails) ? result.emails.length : 0 }), 'success');
             }).catch(function (error) {
-                feedback.textContent = (error && error.message === 'invite_failed') ? labels.inviteError : labels.inviteError;
-                feedback.classList.add('survey-invite-dialog__feedback--error');
-                feedback.hidden = false;
+                window.commonNotify(labels.inviteError, 'error');
             }).finally(function () {
                 submit.disabled = false;
                 submit.textContent = labels.inviteSend;

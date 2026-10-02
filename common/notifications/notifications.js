@@ -1,4 +1,7 @@
 (function () {
+    if (typeof window.commonNotify === 'function' && typeof window.commonDismissNotification === 'function') {
+        return;
+    }
     var notificationCounter = 0;
     var defaultDuration = 5000;
     var removeAnimationDuration = 240;

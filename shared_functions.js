@@ -258,11 +258,11 @@ function closePopup() {
 }
 	
 function showError(msg) {
-	alert (msg);
+	(typeof window.commonNotify === 'function' ? window.commonNotify : window.alert).call(window, msg, 'error');
 }
 	
 function showInfo(msg) {
-	alert (msg);
+	(typeof window.commonNotify === 'function' ? window.commonNotify : window.alert).call(window, msg, 'error');
 }
 	
 function enterFullscreen(element) {
@@ -460,8 +460,8 @@ function sendForm(formulaire, successfunction=null, failfunction=null) {
 	// Désactive le formualaire
 	formulaire.addClass("disabled");
 	
-	if (successfunction===null) sucessfunction = function() {alert("success");}
-	if (failfunction===null) failfunction = function() {alert ("Echec lors de l'envoi de données.\n\nVeuillez réessayer après avoir vérifié votre connexion Internet.");
+	if (successfunction===null) successfunction = success;
+	if (failfunction===null) failfunction = function() {(typeof window.commonNotify === 'function' ? window.commonNotify : window.alert).call(window, "Echec lors de l'envoi de données.\n\nVeuillez réessayer après avoir vérifié votre connexion Internet.", 'error');
 }
 	// Sérialize le formulaire pour l'envoyer en ajax
 	$.ajax({
@@ -490,10 +490,10 @@ function success(data) {
 	data=jQuery.parseJSON(data);
 	if (data.status===false) {
 		if (data.script) eval(data.script);
-		alert (data.message);
+		(typeof window.commonNotify === 'function' ? window.commonNotify : window.alert).call(window, data.message, data.status === false ? 'error' : 'success');
 	} else {
 		if (data.script) eval(data.script);
-		if (data.message) alert (data.message);
+		if (data.message) (typeof window.commonNotify === 'function' ? window.commonNotify : window.alert).call(window, data.message, data.status === false ? 'error' : 'success');
 	}
 }
 

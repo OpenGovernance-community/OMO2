@@ -21,6 +21,13 @@ window.commonPageScripts["/omo/api/decision/params/index.js"] = function (pageCo
         if (anonymousFields) anonymousFields.hidden = !liveVotesEnabled;
     }
     function showFeedback(message, error) {
+        if (message && typeof window.commonNotify === 'function') {
+            var notice = feedback;
+            if (notice) { notice.textContent = ''; notice.hidden = true; }
+            window.commonNotify(String(message), error ? 'error' : 'success');
+            return;
+        }
+
         if (!feedback) return;
         feedback.hidden = false;
         feedback.textContent = String(message || '');
@@ -36,12 +43,7 @@ window.commonPageScripts["/omo/api/decision/params/index.js"] = function (pageCo
             .then(function (response) { return response.json().then(function (payload) { return {ok: response.ok, payload: payload}; }); })
             .then(function (response) {
                 if (!response.ok || !response.payload || response.payload.status !== true) throw new Error(response.payload && response.payload.message ? response.payload.message : 'Erreur');
-                if (feedback) feedback.hidden = true;
-                if (typeof window.commonNotify === 'function') {
-                    window.commonNotify(String(response.payload.message || successLabel), 'success');
-                } else {
-                    showFeedback(response.payload.message || successLabel, false);
-                }
+                showFeedback(response.payload.message || successLabel, false);
             })
             .catch(function (error) { showFeedback(error && error.message ? error.message : 'Erreur', true); })
             .finally(function () { if (submit) { submit.disabled = false; submit.textContent = saveLabel; } });

@@ -32,7 +32,7 @@ Les calendriers externes peuvent definir des plages de disponibilite
 Un redemarrage avec le volume `db_data` existant conserve sa base : les fichiers
 de ce repertoire ne sont lus que lors de la premiere initialisation du volume.
 Le schema inclut aussi la configuration et le suivi des sauvegardes automatiques
-(`organization_backup`, migration `2026-10-02-02-organization-backup.sql`).
+(`organization_backup`, migrations `2026-10-02-02-organization-backup.sql` et `2026-10-02-03-organization-backup-optional-email.sql` ; adresse e-mail complémentaire facultative).
 Les sauvegardes restent desactivees sur une nouvelle installation.
 
 Pour une base existante, verifier l'historique `sql_migration` et appliquer les

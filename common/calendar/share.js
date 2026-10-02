@@ -18,7 +18,12 @@
                 var text = JSON.parse(panel.dataset.text);
                 var feedback = panel.querySelector('[data-calendar-share-feedback]');
                 var pending = false;
-                function show(value, success) {
+                function show(value, success, inline) {
+                    if (value && !inline && typeof window.commonNotify === 'function') {
+                        feedback.textContent = '';
+                        window.commonNotify(String(value), success ? 'success' : 'error');
+                        return;
+                    }
                     feedback.textContent = value;
                     feedback.classList.toggle('is-success', !!success);
                 }
@@ -28,7 +33,7 @@
                     pending = true;
                     panel.setAttribute('aria-busy', 'true');
                     panel.querySelectorAll('button').forEach(function (button) { button.disabled = true; });
-                    show(text.saving, false);
+                    show(text.saving, false, true);
                     fetch(url, {method: 'POST', credentials: 'same-origin', body: data}).then(function (response) {
                         return response.json();
                     }).then(function (result) {
@@ -47,7 +52,7 @@
                     var copy = event.target.closest('[data-calendar-share-copy]');
                     if (copy) {
                         var input = copy.closest('[data-calendar-share-row]').querySelector('[data-calendar-share-link]');
-                        function manual() { input.focus(); input.select(); show(text.copy_manual, false); }
+                        function manual() { input.focus(); input.select(); show(text.copy_manual, false, true); }
                         if (!navigator.clipboard) { manual(); return; }
                         navigator.clipboard.writeText(input.value).then(function () { show(text.copied, true); }).catch(manual);
                     }

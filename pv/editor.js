@@ -512,7 +512,7 @@ function drawPieChart(data) {
 				//saveArray=readCookie("savedata");
 				saveArray=localStorage.getItem("savedata");
 				if (saveArray=="")
-					alert (("" + window.pvEditorPageConfig.text17 + ""));
+					(typeof window.commonNotify === 'function' ? window.commonNotify : window.alert).call(window, ("" + window.pvEditorPageConfig.text17 + ""), 'error');
 				else {
 					console.log(saveArray);
 					// Efface les informations existantes
@@ -605,15 +605,15 @@ function drawPieChart(data) {
 							$('#id').val(response.id);
 							$("#saved").val("");
 							save();
-							alert('Sauvegarde effectuée !');
+                            (typeof window.commonNotify === 'function' ? window.commonNotify : window.alert).call(window, 'Sauvegarde effectuée !', 'success');
 							
 						} else {
-							alert('Erreur: ' + response.message);
+							(typeof window.commonNotify === 'function' ? window.commonNotify : window.alert).call(window, 'Erreur: ' + response.message, 'error');
 						}
 					},
 					error: function(xhr, status, error) {
 						console.log('Erreur de requête : ', error);
-						alert('Une erreur est survenue. Veuillez réessayer.');
+						(typeof window.commonNotify === 'function' ? window.commonNotify : window.alert).call(window, 'Une erreur est survenue. Veuillez réessayer.', 'error');
 					}
 				});			
 			}	

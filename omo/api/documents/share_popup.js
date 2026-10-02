@@ -30,6 +30,11 @@ window.commonPageScripts["/omo/api/documents/share_popup.js"] = function (pageCo
         const submitButton = document.getElementById('omoDocumentSharePopupSubmit');
 
         const setFeedback = function (message, isSuccess) {
+            if (message && typeof window.commonNotify === 'function') {
+                if (feedback) { feedback.textContent = ''; }
+                window.commonNotify(String(message), isSuccess ? 'success' : 'error');
+                return;
+            }
             if (!feedback) {
                 return;
             }
