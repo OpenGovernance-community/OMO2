@@ -1146,6 +1146,44 @@ class DecisionProcess extends DbObject
         return $items;
     }
 
+    public function getPendingEvaluationGroupIdForParticipant(DecisionParticipant $participant): ?int
+    {
+        if (
+            (int)$participant->get('IDdecision_process') !== (int)$this->getId()
+            || (int)$participant->get('active') !== 1
+            || in_array(DecisionParticipant::normalizeStatus($participant->get('status')), [
+                DecisionParticipant::STATUS_DECLINED,
+                DecisionParticipant::STATUS_REVOKED,
+            ], true)
+            || self::normalizeStatus($this->get('status')) !== self::STATUS_EVALUATION
+            || !$this->isParticipationOpen()
+        ) {
+            return null;
+        }
+
+        foreach ($this->getDecisionGroups(true) as $group) {
+            if (!$group instanceof DecisionGroup || $group->get('evaluation_method') === self::METHOD_CONSULTATION_ONLY) {
+                continue;
+            }
+            $hasSubmittedResponse = false;
+            foreach ($group->getResponses() as $response) {
+                if (
+                    $response instanceof DecisionResponse
+                    && (int)$response->get('IDdecision_participant') === (int)$participant->getId()
+                    && DecisionResponse::normalizeStatus($response->get('status')) === DecisionResponse::STATUS_SUBMITTED
+                ) {
+                    $hasSubmittedResponse = true;
+                    break;
+                }
+            }
+            if (!$hasSubmittedResponse) {
+                return (int)$group->getId();
+            }
+        }
+
+        return null;
+    }
+
     public function getResult()
     {
         $primaryGroup = $this->getPrimaryGroup(false);
