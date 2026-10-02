@@ -65,12 +65,21 @@ try {
     $backup = OrganizationBackup::forOrganization($oid);
     backupCheck(!$backup->get('enabled') && $backup->get('frequency') === '1m', 'Backups must start disabled');
     $backup->set('enabled', 1);
+    backupCheck(!empty($backup->save()['status']), 'New backup settings must save without a supplementary email');
+    $backup->load($backup->getId(), true);
+    backupCheck((string)$backup->get('email') === '' && $backup->getRecipients() === [$membership->get('email')],
+        'An empty supplementary email must persist and send only to active administrators');
     $backup->set('email', 'extra-' . $nonce . '@example.invalid');
     backupCheck(!empty($backup->save()['status']), 'Save backup settings');
     $recipients = $backup->getRecipients();
     backupCheck(count($recipients) === 2 && in_array($membership->get('email'), $recipients, true), 'Active scoped administrator and extra email must receive backup');
     $backup->set('email', strtoupper((string)$membership->get('email')));
     backupCheck(count($backup->getRecipients()) === 1, 'Backup recipient addresses must be deduplicated');
+    $backup->set('email', '   ');
+    backupCheck(!empty($backup->save()['status']), 'An existing supplementary email must be removable');
+    $backup->load($backup->getId(), true);
+    backupCheck((string)$backup->get('email') === '' && $backup->getRecipients() === [$membership->get('email')],
+        'Clearing the supplementary email must retain administrator recipients');
     $backup->set('email', 'extra-' . $nonce . '@example.invalid');
     $backup->save();
     $ids = array_map(static fn ($entry) => (int)$entry->get('IDorganization'), OrganizationBackup::loadEnabledForCron($uid, false));
@@ -138,6 +147,8 @@ try {
         && str_contains($screen, "name='email'") && str_contains($screen, "name='frequency'"), 'Security form must render dbObject fields');
     backupCheck(!str_contains($screen, '/common/assets/admin-edit-form.js'), 'Custom backup form must not bind the generic submit handler too');
     backupCheck(str_contains($screen, 'data-omo-security-backup-now'), 'Immediate backup action must be available');
+    backupCheck(preg_match('/<input\b[^>]*\bname=[\'\"]email[\'\"][^>]*>/i', $screen, $emailInput) === 1
+        && !preg_match('/\brequired\b/i', $emailInput[0]), 'The supplementary email input must remain optional');
 
     // Mail delivery is opt-in and confined to the local Mailpit service.
     if (in_array('--mailpit', $argv, true)) {

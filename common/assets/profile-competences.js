@@ -31,7 +31,7 @@ window.commonPageScripts["/common/assets/profile-competences.js"] = function (pa
                 ['paste', 'copy', 'cut', 'drop'].forEach(function (eventName) {
                     field.addEventListener(eventName, function (event) {
                         event.preventDefault();
-                        alert(passwordFieldActionBlockedMessage);
+                        (typeof window.commonNotify === 'function' ? window.commonNotify : window.alert).call(window, passwordFieldActionBlockedMessage, 'error');
                     });
                 });
             });
@@ -85,7 +85,7 @@ window.commonPageScripts["/common/assets/profile-competences.js"] = function (pa
                     return;
                 }
 
-                alert(jqueryRequiredMessage);
+                (typeof window.commonNotify === 'function' ? window.commonNotify : window.alert).call(window, jqueryRequiredMessage, 'error');
             });
         });
     })();

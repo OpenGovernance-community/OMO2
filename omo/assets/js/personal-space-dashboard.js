@@ -485,7 +485,7 @@
                 }
             });
         }).catch(function (error) {
-            window.alert(error.message || texts.saveError || 'Save failed');
+            window.omoNotify(error.message || texts.saveError || 'Save failed', 'error');
         }).finally(function () {
             saveButtons.forEach(function (button) { button.disabled = false; });
         });

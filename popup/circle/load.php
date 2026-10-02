@@ -65,7 +65,7 @@
 					refreshCircle();
 				}
 				$.ajax({method: "POST",url: "/ajax/delete.php",data: { type:"Holon", id:$(this).attr("data-src")}
-				}).done(function( msg ) {if (msg!="") alert(msg); }).fail(function() {
+				}).done(function( msg ) {if (msg!="") (typeof window.commonNotify === 'function' ? window.commonNotify : window.alert).call(window, msg, 'error'); }).fail(function() {
 					button.prop("disabled", false);
 				});						
 
@@ -87,7 +87,7 @@
 				.then(data => {
 					// S'assure qu'il était authorisé de lire ce PV
 					if (data.error) {
-						alert (data.errorMsg);
+						(typeof window.commonNotify === 'function' ? window.commonNotify : window.alert).call(window, data.errorMsg, 'error');
 					
 					} else
 					

@@ -294,6 +294,7 @@ $surveyConfig = [
     <meta name="theme-color" content="#073a59">
     <title><?= $escape($pageTitle) ?></title>
     <link rel="stylesheet" href="/common/assets/components.css?v=20260830-layout7">
+    <link rel="stylesheet" href="<?= $escape(commonAssetUrl('/common/notifications/notifications.css')) ?>">
     <link rel="stylesheet" href="/survey/survey.css?v=20260915-drafts">
 </head>
 <body>
@@ -513,6 +514,7 @@ $surveyConfig = [
     <script>
         window.SURVEY_PROTOTYPE = <?= json_encode($surveyConfig, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP) ?>;
     </script>
-    <script src="/survey/survey.js?v=20260915-drafts"></script>
+    <script src="<?= $escape(commonAssetUrl('/common/notifications/notifications.js')) ?>"></script>
+    <script src="<?= $escape(commonAssetUrl('/survey/survey.js')) ?>"></script>
 </body>
 </html>
