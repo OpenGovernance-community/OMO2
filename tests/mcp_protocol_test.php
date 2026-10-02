@@ -35,7 +35,19 @@ $reply = omoMcpDispatch($request, []);
 mcpProtocolCheck($reply['result']['protocolVersion'] === OMO_MCP_VERSIONS[0], 'Version negotiation');
 mcpProtocolCheck(omoMcpDispatch(['jsonrpc' => '2.0', 'method' => 'notifications/initialized'], []) === null, 'Notification has no response');
 mcpProtocolCheck(omoMcpDispatch(['jsonrpc' => '2.0', 'id' => 2, 'method' => 'delete_everything'], [])['error']['code'] === -32601, 'Unknown method');
-mcpProtocolCheck(count(omoMcpTools()) === 5, 'Five read-only tools');
+mcpProtocolCheck(count(omoMcpTools()) === 8, 'Eight read-only tools');
+foreach ([['omo_list_records', (object)[]],
+    ['omo_list_records', (object)['module' => 'projects', 'date_from' => '2026-02-30']],
+    ['omo_list_records', (object)['module' => 'projects', 'date_from' => '2026-10-02', 'date_to' => '2026-10-01']],
+    ['omo_list_records', (object)['module' => 'projects', 'user_relation' => 'responsible']],
+    ['omo_list_records', (object)['module' => 'projects', 'status' => 'x OR 1=1']],
+    ['omo_list_records', (object)['module' => 'team', 'user_id' => '1']],
+    ['omo_list_assignments', (object)['organization_id' => 1]]] as [$tool, $arguments]) {
+    $rejected = false;
+    try { omoMcpToolArguments($tool, $arguments); } catch (InvalidArgumentException $error) { $rejected = true; }
+    mcpProtocolCheck($rejected, 'Invalid browse arguments accepted');
+}
+mcpProtocolCheck(omoMcpToolArguments('omo_list_records', (object)['module' => 'projects', 'parent_id' => 0])['parent_id'] === 0, 'Root parent filter');
 foreach ([['omo_search', (object)['query' => ' ']], ['omo_search', (object)['query' => 'test', 'modules' => ['unknown']]],
     ['omo_search', (object)['query' => 'test', 'modules' => ['pv', 'pv']]],
     ['omo_search', (object)['query' => 'test', 'offset' => 651]],

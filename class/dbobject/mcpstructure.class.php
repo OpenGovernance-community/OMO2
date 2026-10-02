@@ -25,7 +25,7 @@ final class McpStructure
                 'root_holon_id' => $root ? (int)$root->getId() : null,
                 'url' => \omoMcpIssuer() . '/omo/o/' . (int)$organization->getId()],
             'modules' => McpContent::enabledModules($organization, (int)$grant['IDuser']),
-            'coverage' => 'Read-only structure listing, cross-module search and record text using your current OMO permissions. Search is a bounded selection, not an exhaustive export. External files are not downloaded.'];
+            'coverage' => 'Read-only complete paginated lists, user and relationship filters, role assignments, cross-module search and record text using your current OMO permissions. Call omo_catalog for module-specific filters. Search is bounded; use omo_list_records for full enumeration. External files are not downloaded.'];
     }
     public static function root(Organization $organization, int $userId): Holon
     {

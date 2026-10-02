@@ -45,11 +45,17 @@ try {
             'clientInfo' => ['name' => 'omo-deployment-check', 'version' => '1']]], $token);
     mcpCheck($initialized['status'] === 200 && isset($initialized['json']['result']['capabilities']['tools']), 'Deployed initialization failed');
     $listed = mcpDeployedRequest($path, ['jsonrpc' => '2.0', 'id' => 3, 'method' => 'tools/list', 'params' => new stdClass()], $token);
-    mcpCheck($listed['status'] === 200 && count($listed['json']['result']['tools'] ?? []) === 5, 'Deployed tool discovery failed');
+    mcpCheck($listed['status'] === 200 && count($listed['json']['result']['tools'] ?? []) === 8, 'Deployed tool discovery failed');
     $info = mcpDeployedRequest($path, ['jsonrpc' => '2.0', 'id' => 4, 'method' => 'tools/call',
         'params' => ['name' => 'omo_connection_info', 'arguments' => new stdClass()]], $token);
     mcpCheck($info['status'] === 200 && ($info['json']['result']['structuredContent']['connected'] ?? false), 'Deployed tool call failed');
-    echo "[MCP smoke] OK: OAuth, authenticated routing, initialization, five tools and connection info\n";
+    foreach (['omo_catalog' => new stdClass(), 'omo_list_records' => (object)['module' => 'structure'],
+        'omo_list_assignments' => new stdClass()] as $name => $arguments) {
+        $reply = mcpDeployedRequest($path, ['jsonrpc' => '2.0', 'id' => 5, 'method' => 'tools/call',
+            'params' => ['name' => $name, 'arguments' => $arguments]], $token);
+        mcpCheck($reply['status'] === 200 && ($reply['json']['result']['isError'] ?? true) === false, 'Deployed browsing tool failed');
+    }
+    echo "[MCP smoke] OK: OAuth, authenticated routing, initialization, eight tools and browsing calls\n";
 } finally {
     mcpCleanup($items);
     echo "[MCP smoke] Temporary fixtures removed\n";

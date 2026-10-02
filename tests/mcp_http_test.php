@@ -96,8 +96,10 @@ try {
         'clientInfo' => (object)['name' => 'test', 'version' => '1']], $tokens['access_token']);
     mcpCheck(mcpHttpJson($initialized)['result']['serverInfo']['name'] === 'omo', 'MCP initialization');
     $tools = mcpHttpRpc('tools/list', [], $tokens['access_token']);
-    mcpCheck(count(mcpHttpJson($tools)['result']['tools']) === 5, 'Authenticated tool discovery');
-    foreach (['omo_connection_info' => new stdClass(), 'omo_list_structure' => (object)['limit' => 1],
+    mcpCheck(count(mcpHttpJson($tools)['result']['tools']) === 8, 'Authenticated tool discovery');
+    foreach (['omo_connection_info' => new stdClass(), 'omo_catalog' => new stdClass(),
+        'omo_list_records' => (object)['module' => 'structure', 'limit' => 1], 'omo_list_assignments' => new stdClass(),
+        'omo_list_structure' => (object)['limit' => 1],
         'omo_get_holon' => (object)['holon_id' => (int)$items['role']->getId()],
         'omo_search' => (object)['query' => 'MCP', 'modules' => ['structure']],
         'omo_read_record' => (object)['module' => 'structure', 'record_id' => (int)$items['role']->getId()]] as $tool => $arguments) {
@@ -144,4 +146,4 @@ try {
     mcpCleanup($items);
     if (is_file($jar)) unlink($jar);
 }
-echo "mcp_http_test: OK (discovery, login, consent, five tools, isolation, revocation)\n";
+echo "mcp_http_test: OK (discovery, login, consent, eight tools, isolation, revocation)\n";

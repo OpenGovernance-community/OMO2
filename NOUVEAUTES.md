@@ -1,5 +1,7 @@
 # Journal Des Nouveautes
 
+- MCP : huit outils de lecture, avec catalogue des modules et filtres, listes completes paginees par module, filtres par personne et relation (auteur, responsable, affectation...), statut, dates, contexte et parent, ainsi que parcours des affectations aux roles. Les lectures renvoient aussi des identifiants de navigation. Les listes conservent les droits du compte connecte et continuent au-dela des pages sans resultat visible ; la recherche plein texte reste une selection bornee.
+
 - MCP : URL canonique Dev avec slash final (`https://dev.opengov.tools/mcp/`) pour eviter la redirection 301 de l hebergement pendant la decouverte des actions. L URL de ressource OAuth conserve exactement ce slash ; recreer les connexions configurees avec l ancienne URL.
 
 - Publication Dev : controle MCP authentifie apres deploiement, avec fixtures temporaires supprimees, pour verifier l echange OAuth, le routage HTTP, la decouverte des cinq outils et un appel reel sur l hebergement.

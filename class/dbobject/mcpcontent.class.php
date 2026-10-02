@@ -16,7 +16,7 @@ final class McpContent
             return in_array($module, ['faq', 'tutorials'], true) || $organization->isApplicationEnabled($app, $userId);
         }));
     }
-    private static function context(array $grant, Organization $organization, ?int $holonId): array
+    public static function context(array $grant, Organization $organization, ?int $holonId): array
     {
         $root = $organization->getStructuralRootHolon();
         if ($holonId !== null) {
@@ -31,14 +31,14 @@ final class McpContent
         require_once dirname(__DIR__, 2) . '/omo/translations.php';
         require_once dirname(__DIR__, 2) . '/omo/api/search/preview_shared.php';
     }
-    private static function sourceUrl(int $organizationId, string $module, int $id, int $holonId, int $missionId = 0): string
+    public static function sourceUrl(int $organizationId, string $module, int $id, int $holonId, int $missionId = 0): string
     {
         // Existing authenticated preview endpoint: no share keys or external URLs are disclosed.
         return \omoMcpIssuer() . '/omo/api/search/preview.php?' . http_build_query([
             'oid' => $organizationId, 'module' => $module, 'id' => $id, 'cid' => $holonId,
             'mission_id' => $missionId], '', '&', PHP_QUERY_RFC3986);
     }
-    private static function accessibleObject(Organization $organization, array $context, string $module, int $id): ?DbObject
+    public static function accessibleObject(Organization $organization, array $context, string $module, int $id): ?DbObject
     {
         $object = $organization->loadTopbarSearchPreviewObject($module, $id, $context);
         if (!$object || ($module === 'team' && !$object->canViewDetail())) return null;
@@ -119,6 +119,7 @@ final class McpContent
         return ['organization_id' => (int)$organization->getId(), 'module' => $module, 'record_id' => $id,
             'context_holon_id' => $context['currentHolonId'] ?: null, 'mission_id' => $missionId ?: null,
             'title' => \omoSearchPreviewText($preview['title'] ?? ''),
+            'record' => McpBrowse::summary($organization, $context, $module, $object),
             'url' => self::sourceUrl((int)$organization->getId(), $module, $id, $context['currentHolonId'], $missionId),
             'text' => $chunk, 'offset' => $offset, 'next_offset' => $offset + mb_strlen($chunk, 'UTF-8') < mb_strlen($text, 'UTF-8')
                 ? $offset + mb_strlen($chunk, 'UTF-8') : null,
