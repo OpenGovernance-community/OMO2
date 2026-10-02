@@ -37,19 +37,16 @@ try {
     $tokens = mcpDeployedRequest('/mcp/token.php', mcpExchangeRequest($items['client'], $code), null, true);
     mcpCheck($tokens['status'] === 200 && isset($tokens['json']['access_token']), 'Deployed OAuth token exchange failed');
     $token = $tokens['json']['access_token'];
-    $pathsOk = true;
-    foreach (['/mcp', '/mcp/', '/mcp/index.php'] as $path) {
-        $ping = mcpDeployedRequest($path, ['jsonrpc' => '2.0', 'id' => 1, 'method' => 'ping'], $token);
-        $pathsOk = $pathsOk && $ping['status'] === 200 && isset($ping['json']['result']);
-    }
-    mcpCheck($pathsOk, 'Deployed authenticated MCP routing failed');
-    $initialized = mcpDeployedRequest('/mcp', ['jsonrpc' => '2.0', 'id' => 2, 'method' => 'initialize',
+    $path = parse_url($endpoint, PHP_URL_PATH);
+    $ping = mcpDeployedRequest($path, ['jsonrpc' => '2.0', 'id' => 1, 'method' => 'ping'], $token);
+    mcpCheck($ping['status'] === 200 && isset($ping['json']['result']), 'Canonical MCP URL must accept authenticated POST without redirect');
+    $initialized = mcpDeployedRequest($path, ['jsonrpc' => '2.0', 'id' => 2, 'method' => 'initialize',
         'params' => ['protocolVersion' => '2025-03-26', 'capabilities' => new stdClass(),
             'clientInfo' => ['name' => 'omo-deployment-check', 'version' => '1']]], $token);
     mcpCheck($initialized['status'] === 200 && isset($initialized['json']['result']['capabilities']['tools']), 'Deployed initialization failed');
-    $listed = mcpDeployedRequest('/mcp', ['jsonrpc' => '2.0', 'id' => 3, 'method' => 'tools/list', 'params' => new stdClass()], $token);
+    $listed = mcpDeployedRequest($path, ['jsonrpc' => '2.0', 'id' => 3, 'method' => 'tools/list', 'params' => new stdClass()], $token);
     mcpCheck($listed['status'] === 200 && count($listed['json']['result']['tools'] ?? []) === 5, 'Deployed tool discovery failed');
-    $info = mcpDeployedRequest('/mcp', ['jsonrpc' => '2.0', 'id' => 4, 'method' => 'tools/call',
+    $info = mcpDeployedRequest($path, ['jsonrpc' => '2.0', 'id' => 4, 'method' => 'tools/call',
         'params' => ['name' => 'omo_connection_info', 'arguments' => new stdClass()]], $token);
     mcpCheck($info['status'] === 200 && ($info['json']['result']['structuredContent']['connected'] ?? false), 'Deployed tool call failed');
     echo "[MCP smoke] OK: OAuth, authenticated routing, initialization, five tools and connection info\n";

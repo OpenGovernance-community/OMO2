@@ -12,6 +12,16 @@ $_ENV['MCP_PUBLIC_URL'] = 'https://mcp.example.invalid/mcp';
 $_ENV['MCP_ALLOW_LOCAL_HTTP'] = '0';
 mcpProtocolCheck(omoMcpPublicUrl() === 'https://mcp.example.invalid/mcp', 'Canonical resource URL');
 mcpProtocolCheck(omoMcpAuthorizationMetadata()['issuer'] === 'https://mcp.example.invalid', 'OAuth issuer');
+$_ENV['MCP_PUBLIC_URL'] = 'https://mcp.example.invalid/mcp/';
+mcpProtocolCheck(omoMcpPublicUrl() === 'https://mcp.example.invalid/mcp/', 'Canonical trailing slash is preserved');
+mcpProtocolCheck(omoMcpIssuer() === 'https://mcp.example.invalid', 'Issuer excludes endpoint and trailing slash');
+mcpProtocolCheck(omoMcpResourceMetadata()['resource'] === 'https://mcp.example.invalid/mcp/', 'Resource matches exact MCP URL');
+mcpProtocolCheck(omoMcpResourceMetadataUrl() === 'https://mcp.example.invalid/.well-known/oauth-protected-resource/mcp/', 'Discovery preserves the canonical resource path');
+$_ENV['MCP_PUBLIC_URL'] = 'https://mcp.example.invalid/mcp//';
+$rejected = false;
+try { omoMcpPublicUrl(); } catch (RuntimeException $error) { $rejected = true; }
+mcpProtocolCheck($rejected, 'Ambiguous endpoint rejected');
+$_ENV['MCP_PUBLIC_URL'] = 'https://mcp.example.invalid/mcp';
 foreach (['https://evil.invalid/#fragment', 'https://user:pass@evil.invalid/cb', 'javascript:alert(1)',
     'http://evil.invalid/cb', "https://evil.invalid/\r\nLocation:x", 'http://127.0.0.1.evil.invalid/cb'] as $uri) {
     mcpProtocolCheck(!omoMcpValidRedirect($uri, true), 'Unsafe callback accepted');

@@ -7,21 +7,24 @@ const OMO_MCP_VERSIONS = ['2025-11-25', '2025-06-18', '2025-03-26'];
 
 function omoMcpPublicUrl(): string
 {
-    $url = rtrim(trim((string)commonReadRuntimeEnvValue('MCP_PUBLIC_URL', '')), '/');
+    $url = trim((string)commonReadRuntimeEnvValue('MCP_PUBLIC_URL', ''));
     $parts = parse_url($url);
     $local = is_array($parts) && in_array(strtolower($parts['host'] ?? ''), ['localhost', '127.0.0.1', '[::1]'], true);
     if (!$parts || strlen($url) > 512 || isset($parts['user']) || isset($parts['pass'])
-        || isset($parts['query']) || isset($parts['fragment']) || ($parts['path'] ?? '') !== '/mcp'
+        || isset($parts['query']) || isset($parts['fragment']) || !in_array($parts['path'] ?? '', ['/mcp', '/mcp/'], true)
         || !filter_var($url, FILTER_VALIDATE_URL)
         || (($parts['scheme'] ?? '') !== 'https' && !($local && ($parts['scheme'] ?? '') === 'http'
             && commonReadRuntimeEnvBool('MCP_ALLOW_LOCAL_HTTP', false)))) {
-        throw new RuntimeException('Configure MCP_PUBLIC_URL with the canonical HTTPS URL ending in /mcp.');
+        throw new RuntimeException('Configure MCP_PUBLIC_URL with the canonical HTTPS URL ending in /mcp or /mcp/.');
     }
     return $url;
 }
 
-function omoMcpIssuer(): string { return substr(omoMcpPublicUrl(), 0, -4); }
-function omoMcpResourceMetadataUrl(): string { return omoMcpIssuer() . '/.well-known/oauth-protected-resource/mcp'; }
+function omoMcpIssuer(): string { return substr(rtrim(omoMcpPublicUrl(), '/'), 0, -4); }
+function omoMcpResourceMetadataUrl(): string
+{
+    return omoMcpIssuer() . '/.well-known/oauth-protected-resource' . parse_url(omoMcpPublicUrl(), PHP_URL_PATH);
+}
 function omoMcpChallenge(string $error = ''): string
 {
     return 'Bearer resource_metadata="' . omoMcpResourceMetadataUrl() . '", scope="' . OMO_MCP_SCOPE . '"'
