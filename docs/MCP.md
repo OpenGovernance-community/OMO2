@@ -166,9 +166,14 @@ docker compose exec -T app php tests/mcp_oauth_structure_test.php
 docker compose exec -T app php tests/mcp_http_test.php
 docker compose exec -T app php tests/mcp_content_test.php
 docker compose exec -T app php tests/mcp_modules_test.php
+docker compose exec -T app php tests/mcp_deployed_discovery_test.php
 ```
 
 Les tests de donnees creent leurs propres fixtures et les suppriment ensuite.
+Le deploiement Dev execute aussi `mcp_deployed_discovery_test.php` sur le serveur :
+echange OAuth et appels HTTPS authentifies avec des fixtures temporaires, sans
+donnees utilisateur ni jetons dans les logs. Ce test accepte uniquement les
+hosts `localtest.me` et `dev.opengov.tools` ; TLS est verifie sur Dev.
 Le test navigateur du consentement utilise Docker sur `https://localtest.me`,
 `MCP_ALLOW_LOCAL_HTTP=1`, Chrome et une installation de Playwright de test :
 

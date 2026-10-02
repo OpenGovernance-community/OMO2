@@ -1,5 +1,7 @@
 # Journal Des Nouveautes
 
+- Publication Dev : controle MCP authentifie apres deploiement, avec fixtures temporaires supprimees, pour verifier l echange OAuth, le routage HTTP, la decouverte des cinq outils et un appel reel sur l hebergement.
+
 - MCP : correction du retour vers l assistant apres acceptation ou refus du consentement. La politique CSP autorise l origine du callback OAuth valide pour cette demande ; test navigateur des redirections et du blocage des autres destinations.
 
 - Publication Dev : configuration automatique de l URL publique MCP sur dev.opengov.tools et arret du deploiement si une etape echoue.
