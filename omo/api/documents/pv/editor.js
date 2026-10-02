@@ -2847,6 +2847,10 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
 
         const previousMeetingContextKey = pvApplicationMeetingContextKey(currentDocumentPayload);
         currentDocumentPayload = Object.assign({}, currentDocumentPayload, documentPayload);
+        const unhandledPoints = root.querySelector('[data-omo-pv-unhandled-points]');
+        if (unhandledPoints instanceof Element && typeof documentPayload.unhandledPointsHtml === 'string') {
+            unhandledPoints.innerHTML = documentPayload.unhandledPointsHtml;
+        }
         if (pvApplicationMeetingContextKey(currentDocumentPayload) !== previousMeetingContextKey
             && applicationWorkspace instanceof Element) {
             applicationWorkspace.querySelectorAll('[data-omo-pv-application-panel]').forEach(function (panel) {
@@ -3937,6 +3941,19 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         }
 
         const pointId = Number(pointPayload.id || 0);
+        if (pointPayload.isReportOmitted === true) {
+            const oldCard = root.querySelector('[data-omo-pv-point-card="' + pointId + '"]');
+            if (oldCard) oldCard.remove();
+            locallyEngagedPointIds.delete(pointId);
+            preMountEditorDrafts.delete(pointId);
+            preMountEditorFocusPointIds.delete(pointId);
+            mergeKnownPointSignature(pointPayload);
+            mergeCurrentPointPayload(pointPayload);
+            renderNavTreeFromPayloads();
+            syncEmptyNavState();
+            renderTimingSummary();
+            return null;
+        }
         if (pointPayload.isGroup === true) {
             mergeKnownPointSignature(pointPayload);
             mergeCurrentPointPayload(pointPayload);
@@ -4716,16 +4733,42 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         }
     }
 
+    function replacePointProposalsHtml(pointPayload) {
+        const pointId = Number(pointPayload && pointPayload.id || 0);
+        if (!Number.isInteger(pointId) || pointId <= 0) return;
+        const card = root.querySelector('[data-omo-pv-point-card="' + pointId + '"]');
+        if (!(card instanceof Element)) return;
+
+        // Keep Summernote, unsaved point fields and their dirty state in place.
+        const temp = document.createElement('div');
+        temp.innerHTML = String(pointPayload.cardHtml || '').trim();
+        const nextCard = temp.querySelector('[data-omo-pv-point-card="' + pointId + '"]');
+        if (!(nextCard instanceof Element)) return;
+        const nextProposals = nextCard.querySelector('[data-omo-pv-point-proposals]');
+        const currentProposals = card.querySelector('[data-omo-pv-point-proposals]');
+        if (currentProposals) {
+            if (nextProposals) currentProposals.replaceWith(nextProposals);
+            else currentProposals.remove();
+        } else if (nextProposals) {
+            card.insertBefore(nextProposals, card.querySelector('.omo-pv-editor__point-footer'));
+        }
+        if (nextProposals) hydrateDeferredProposalDetails(nextProposals);
+    }
+
     window.addEventListener('omo-deferred-proposal-saved', function (event) {
         const pointId = Number(event && event.detail ? event.detail.pointId : 0);
-        if (!Number.isInteger(pointId) || pointId <= 0) {
+        if (!Number.isInteger(pointId) || pointId <= 0
+            || !root.querySelector('[data-omo-pv-point-card="' + pointId + '"]')) {
             return;
         }
         postPointAction('refresh_point', pointId)
             .then(function (payload) {
                 if (payload && payload.point) {
-                    replacePointHtml(payload.point);
+                    replacePointProposalsHtml(payload.point);
                 }
+            })
+            .catch(function (payload) {
+                window.alert(String(payload && payload.message || editorClientUi.genericError || ''));
             });
     });
 
@@ -4757,6 +4800,10 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
 
             nextPointIds.push(pointId);
             const currentCard = pointsContainer.querySelector('[data-omo-pv-point-card="' + pointId + '"]');
+            if (pointPayload.isReportOmitted === true) {
+                replacePointHtml(pointPayload);
+                return;
+            }
             if (!currentCard) {
                 replacePointHtml(pointPayload);
                 return;
@@ -5484,9 +5531,15 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         };
         const html = '<div class="omo-pv-import__picker" data-omo-pv-import-picker><div class="generic-drawer-content omo-pv-import__body">'
             + '<p class="omo-pv-import__help">' + escape(ui.help) + '</p>'
-            + '<div class="omo-scope-toggle" role="group" aria-label="' + escape(ui.scope) + '" data-omo-scope-switch="local" data-import-scope>'
+            + '<div class="generic-action-row generic-action-row--start"><div class="omo-scope-toggle" role="group" aria-label="' + escape(ui.scope) + '" data-omo-scope-switch="local" data-import-scope>'
             + '<button type="button" class="omo-scope-toggle__button is-active" aria-pressed="true" data-import-scope-choice="local">' + escape(ui.local) + '</button>'
             + '<button type="button" class="omo-scope-toggle__button" aria-pressed="false" data-import-scope-choice="global">' + escape(ui.global) + '</button></div>'
+            + '<div class="omo-scope-toggle" role="group" aria-label="' + escape(ui.members) + '" data-omo-scope-switch="mine" data-import-members>'
+            + '<button type="button" class="omo-scope-toggle__button is-active" aria-pressed="true" data-import-members-choice="mine">' + escape(ui.mine) + '</button>'
+            + '<button type="button" class="omo-scope-toggle__button" aria-pressed="false" data-import-members-choice="all"' + (ui.canImportAllMembers ? '' : ' disabled') + '>' + escape(ui.all) + '</button></div>'
+            + '<div class="omo-scope-toggle" role="group" aria-label="' + escape(ui.period) + '" data-omo-scope-switch="before" data-import-period>'
+            + '<button type="button" class="omo-scope-toggle__button is-active" aria-pressed="true" data-import-period-choice="before">' + escape(ui.before) + '</button>'
+            + '<button type="button" class="omo-scope-toggle__button" aria-pressed="false" data-import-period-choice="after">' + escape(ui.after) + '</button></div></div>'
             + '<div class="omo-pv-import__list generic-stack generic-stack--compact" data-import-list></div>'
             + '</div><div class="generic-drawer-footer generic-drawer-footer--sticky">'
             + '<div class="generic-action-row generic-action-row--start"><p class="omo-pv-import__status" role="status" aria-live="polite" data-import-status></p>'
@@ -5499,13 +5552,17 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         const list = picker.querySelector('[data-import-list]');
         const scope = picker.querySelector('[data-import-scope]');
         const scopeButtons = Array.from(picker.querySelectorAll('[data-import-scope-choice]'));
+        const members = picker.querySelector('[data-import-members]');
+        const memberButtons = Array.from(picker.querySelectorAll('[data-import-members-choice]'));
+        const period = picker.querySelector('[data-import-period]');
+        const periodButtons = Array.from(picker.querySelectorAll('[data-import-period-choice]'));
         const status = picker.querySelector('[data-import-status]');
         const submit = picker.querySelector('[data-import-add]');
         const retry = picker.querySelector('[data-import-retry]');
         const cancel = picker.querySelector('[data-import-cancel]');
         const selected = new Set();
         const rendered = new Set();
-        let currentScope = 'local', cursor = null, hasMore = true, loading = false, saving = false, generation = 0, closed = false, loadFailed = false;
+        let currentScope = 'local', currentMembers = 'mine', currentPeriod = 'before', cursor = null, hasMore = true, loading = false, saving = false, generation = 0, closed = false, loadFailed = false;
         const updateSubmit = function () {
             submit.disabled = saving || selected.size === 0;
             submit.textContent = saving ? ui.saving : ui.add.replace('{count}', String(selected.size));
@@ -5519,7 +5576,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
             status.textContent = ui.loading;
             // Request enough rows to fill the available list, then load only near its bottom.
             const limit = Math.max(8, Math.min(50, Math.ceil(list.clientHeight / 85) + 2));
-            postPointAction('list_importable_points', 0, {scope: currentScope, cursor: JSON.stringify(cursor), limit: limit})
+            postPointAction('list_importable_points', 0, {scope: currentScope, members: currentMembers, period: currentPeriod, cursor: JSON.stringify(cursor), limit: limit})
                 .then(function (payload) {
                     if (closed || saving || requestGeneration !== generation) return;
                     cursor = payload.cursor;
@@ -5529,18 +5586,36 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
                         rendered.add(point.id);
                         const row = document.createElement('button');
                         row.type = 'button';
-                        row.className = 'generic-choice-card generic-choice-card--text omo-pv-import__row';
+                        const priority = Math.max(1, Math.min(5, Number(point.priority) || 3));
+                        row.className = 'generic-choice-card generic-choice-card--text omo-pv-import__row omo-pv-editor__nav-row--priority-p' + priority;
                         row.disabled = point.isLocked === true;
                         row.setAttribute('aria-pressed', selected.has(point.id) ? 'true' : 'false');
                         const copy = document.createElement('span');
+                        copy.className = 'omo-pv-import__copy';
+                        const titleLine = document.createElement('span');
+                        titleLine.className = 'omo-pv-editor__nav-titleline';
+                        const typeLabel = ui.types[point.pointType] || point.pointType;
+                        const icon = document.createElement('img');
+                        icon.className = 'omo-pv-editor__nav-point-type-icon';
+                        icon.src = ui.icons[point.pointType] || ui.icons.information;
+                        icon.alt = typeLabel;
                         const title = document.createElement('strong');
+                        title.className = 'omo-pv-editor__nav-title';
                         title.textContent = point.title;
+                        titleLine.append(icon, title);
                         const meeting = document.createElement('span');
+                        meeting.className = 'omo-pv-editor__nav-meta';
                         meeting.textContent = point.meetingDate + ' - ' + point.meetingTitle;
                         const metadata = document.createElement('span');
-                        const typeLabel = ui.types[point.pointType] || point.pointType;
-                        metadata.textContent = ['P' + point.priority, typeLabel, point.duration === null ? '' : point.duration + ' min', point.author, point.isLocked ? ui.locked : ''].filter(Boolean).join(' | ');
-                        copy.append(title, meeting, metadata);
+                        metadata.className = 'omo-pv-editor__nav-meta';
+                        metadata.textContent = ['P' + priority, point.duration === null ? '' : point.duration + ' min', point.author, point.isLocked ? ui.locked : ''].filter(Boolean).join(' | ');
+                        copy.append(titleLine, meeting, metadata);
+                        if (point.contentPreview) {
+                            const preview = document.createElement('span');
+                            preview.className = 'omo-pv-import__preview';
+                            preview.textContent = point.contentPreview;
+                            copy.append(preview);
+                        }
                         row.append(copy);
                         row.addEventListener('click', function () {
                             if (saving || row.disabled) return;
@@ -5569,38 +5644,47 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
             if (!loadFailed && list.scrollHeight - list.scrollTop - list.clientHeight < 100) load();
         });
         retry.addEventListener('click', load);
-        scopeButtons.forEach(function (button, index) { button.addEventListener('click', function () {
-            const nextScope = button.getAttribute('data-import-scope-choice');
-            if (saving || currentScope === nextScope) return;
-            currentScope = nextScope;
-            scope.setAttribute('data-omo-scope-switch', currentScope);
-            scope.style.setProperty('--omo-scope-active-index', String(index));
-            scopeButtons.forEach(function (option) {
-                const active = option === button;
-                option.classList.toggle('is-active', active);
-                option.setAttribute('aria-pressed', active ? 'true' : 'false');
+        const bindFilter = function (toggle, buttons, attribute, setValue) {
+            buttons.forEach(function (button, index) {
+                button.addEventListener('click', function () {
+                    if (saving || button.disabled || button.getAttribute('aria-pressed') === 'true') return;
+                    const value = button.getAttribute(attribute);
+                    setValue(value);
+                    toggle.setAttribute('data-omo-scope-switch', value);
+                    toggle.style.setProperty('--omo-scope-active-index', String(index));
+                    buttons.forEach(function (option) {
+                        const active = option === button;
+                        option.classList.toggle('is-active', active);
+                        option.setAttribute('aria-pressed', active ? 'true' : 'false');
+                    });
+                    generation++;
+                    loading = false;
+                    cursor = null;
+                    hasMore = true;
+                    selected.clear();
+                    rendered.clear();
+                    list.replaceChildren();
+                    list.scrollTop = 0;
+                    updateSubmit();
+                    load();
+                });
             });
-            generation++;
-            loading = false;
-            cursor = null;
-            hasMore = true;
-            selected.clear();
-            rendered.clear();
-            list.replaceChildren();
-            list.scrollTop = 0;
-            updateSubmit();
-            load();
-        }); });
+        };
+        bindFilter(scope, scopeButtons, 'data-import-scope-choice', function (value) { currentScope = value; });
+        bindFilter(members, memberButtons, 'data-import-members-choice', function (value) { currentMembers = value; });
+        bindFilter(period, periodButtons, 'data-import-period-choice', function (value) { currentPeriod = value; });
         window.addEventListener('common-topbar-modal-close', function () { closed = true; generation++; }, {once: true});
         cancel.addEventListener('click', function () { window.commonTopbarCloseModal(); });
         submit.addEventListener('click', function () {
             if (saving || !selected.size) return;
             saving = true;
             scopeButtons.forEach(function (button) { button.disabled = true; });
+            memberButtons.forEach(function (button) { button.disabled = true; });
+            periodButtons.forEach(function (button) { button.disabled = true; });
             cancel.disabled = true;
             list.querySelectorAll('button').forEach(function (button) { button.disabled = true; });
             updateSubmit();
-            postPointAction('import_points', 0, {scope: currentScope, point_ids: Array.from(selected).join(',')})
+            postPointAction('import_points', 0, {scope: currentScope, members: currentMembers, period: currentPeriod, point_ids: Array.from(selected).join(',')})
                 .then(function (payload) {
                     (payload.points || []).forEach(function (point) { replacePointHtml(point); });
                     if (!closed) window.commonTopbarCloseModal();
@@ -5622,6 +5706,8 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
                 .finally(function () {
                     saving = false;
                     scopeButtons.forEach(function (button) { button.disabled = false; });
+                    memberButtons.forEach(function (button) { button.disabled = button.getAttribute('data-import-members-choice') === 'all' && !ui.canImportAllMembers; });
+                    periodButtons.forEach(function (button) { button.disabled = false; });
                     cancel.disabled = false;
                     updateSubmit();
                 });
@@ -6036,7 +6122,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
             closeDeferredProposalMenus(null);
             postPointAction('remove_deferred_proposal', pointId, { proposal_id: proposalId })
                 .then(function (payload) {
-                    if (payload && payload.point) replacePointHtml(payload.point);
+                    if (payload && payload.point) replacePointProposalsHtml(payload.point);
                 })
                 .catch(function (payload) {
                     window.alert(String(payload && payload.message || 'Impossible de supprimer la modification.'));

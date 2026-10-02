@@ -2654,6 +2654,11 @@ body {
     color: var(--color-text);
 }
 
+.omo-scope-toggle__button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 .omo-scope-toggle__text {
     display: inline;
 }

@@ -9,6 +9,9 @@ function omoParametersIndexSourceLang()
     }
 
     $sourceLang = [
+        'parameters.index.card.security.title' => ['text' => 'Sécurité', 'context' => 'Organization security settings card title.'],
+        'parameters.index.card.security.description' => ['text' => 'Configurer l’envoi automatique des sauvegardes de l’organisation par e-mail.', 'context' => 'Organization backup settings card description.'],
+        'parameters.index.card.security.cta' => ['text' => 'configurer', 'context' => 'Open organization security settings.'],
         'parameters.index.title' => ['text' => 'Paramètres', 'context' => 'Main title of the OMO settings hub.'],
         'parameters.index.description' => ['text' => "Retrouvez ici vos réglages personnels ainsi que les écrans de configuration disponibles pour l'organisation.", 'context' => 'Intro text shown at the top of the OMO settings hub.'],
         'parameters.index.empty.login' => ['text' => 'Connectez-vous pour accéder à vos paramètres utilisateur.', 'context' => 'Empty state shown in the settings hub when no user is connected.'],

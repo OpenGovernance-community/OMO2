@@ -889,6 +889,9 @@ class DeferredProposal extends DbObject
             $formatId = (int)($property['formatId'] ?? 0);
             $localValue = $property['value'] ?? '';
             $inheritedValue = $property['inheritedValue'] ?? '';
+            if (in_array($formatId, [PropertyFormat::FORMAT_TEXT, PropertyFormat::FORMAT_HTML, PropertyFormat::FORMAT_TEXT_HTML], true)) {
+                $property['localValue'] = !empty($property['effectiveLocked']) ? '' : $localValue;
+            }
             if (!empty($property['effectiveLocked'])) {
                 $effectiveValue = $inheritedValue;
             } elseif (PropertyFormat::isListFormat($formatId)) {

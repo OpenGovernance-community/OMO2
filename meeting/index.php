@@ -97,7 +97,7 @@ try {
             || ($selectedDay && ($selectedDay < $now->setTime(0, 0) || $selectedDay > $lastDate))) { throw new RuntimeException('date_invalid'); }
         $busy = meetingBusy($profile, $month, $month->modify('+1 month'));
         for ($day = $month; $day < $month->modify('+1 month'); $day = $day->modify('+1 day')) {
-            $dayResults[$day->format('Y-m-d')] = $day > $lastDate ? ['state' => 'closed', 'slots' => []] : meetingDay($day, $profile->hours(), $busy, $now, $durationMinutes);
+            $dayResults[$day->format('Y-m-d')] = $day > $lastDate ? ['state' => 'closed', 'slots' => []] : meetingDay($day, $profile->availabilityHours(), $busy, $now, $durationMinutes);
         }
         $selectedTime = $selectedTime ?? (string)($_GET['time'] ?? '');
         if ($selectedDay && $selectedTime !== '') {

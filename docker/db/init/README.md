@@ -26,9 +26,15 @@ Le schema de `meeting_profile` inclut aussi `max_duration_minutes` (migration
 `2026-09-30-01-meeting-max-duration.sql`, valeur initiale 60 minutes).
 Les moyens de rencontre et leur copie dans les reservations sont inclus
 (`2026-09-30-02-meeting-methods.sql`).
+Les calendriers externes peuvent definir des plages de disponibilite
+(`external_calendar.availability_only`, migration `2026-10-02-01-external-calendar-availability.sql`).
 
 Un redemarrage avec le volume `db_data` existant conserve sa base : les fichiers
 de ce repertoire ne sont lus que lors de la premiere initialisation du volume.
+Le schema inclut aussi la configuration et le suivi des sauvegardes automatiques
+(`organization_backup`, migration `2026-10-02-02-organization-backup.sql`).
+Les sauvegardes restent desactivees sur une nouvelle installation.
+
 Pour une base existante, verifier l'historique `sql_migration` et appliquer les
 migrations manquantes avec `php scripts/run-migrations.php`. Un dump peut contenir
 des changements deja integres sans entree correspondante dans cet historique ;

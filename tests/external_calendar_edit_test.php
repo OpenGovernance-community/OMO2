@@ -63,6 +63,13 @@ if ($mode === 'csrf') { $_POST['csrf_token'] = 'wrong'; }
 if ($mode === 'invalid') { $_POST['ics_url'] = 'http://127.0.0.1/private'; }
 if ($mode === 'replacement') { $_POST['ics_url'] = 'https://127.0.0.1:1/replaced'; }
 if ($mode === 'credentials') { $_POST['username'] = 'new-user'; $_POST['password'] = 'new-password'; $_POST['calendar_url'] = 'https://127.0.0.1:1/replaced'; }
+if ($mode === 'availability' || $mode === 'availability-destination') { $_POST['availability_only'] = '1'; }
+if ($mode === 'availability-destination') {
+    $profile = \dbObject\MeetingProfile::forUser((int)$user->getId());
+    $profile->set('slug', 'edit-' . $nonce);
+    $profile->set('IDexternalcalendar', $calendar->getId());
+    editExpect(!empty($profile->save()['status']), 'Profile fixture save failed.');
+}
 if (in_array($mode, ['owner', 'sync-owner'], true)) {
     $other = editFixture(\dbObject\User::class, ['email' => 'other-edit-' . $nonce . '@example.invalid']);
     $calendar->set('IDuser', $other->getId()); $calendar->save();
@@ -79,11 +86,12 @@ register_shutdown_function(static function () use ($pdo, $mode, $calendar, $secr
     $body = ob_get_clean();
     try {
         $result = json_decode($body, true);
-        $accepted = in_array($mode, ['ics', 'caldav', 'replacement', 'credentials'], true);
+        $accepted = in_array($mode, ['ics', 'caldav', 'replacement', 'credentials', 'availability'], true);
         editExpect(is_array($result) && ($result['status'] ?? null) === $accepted, 'Unexpected response: ' . $body);
         $calendar->load((int)$calendar->getId(), true);
         editExpect($calendar->get('title') === ($accepted ? 'Changed' : 'Original'), 'Unexpected title mutation.');
         editExpect($calendar->get('color') === ($accepted ? '#abcdef' : '#112233'), 'Color update must be normalized and owner scoped.');
+        editExpect((bool)$calendar->get('availability_only') === ($mode === 'availability'), 'Availability changes are saved without converting the booking destination.');
         if (in_array($mode, ['replacement', 'credentials'], true)) {
             editExpect(($result['synced'] ?? null) === false, 'Failed resync must be reported while keeping settings.');
             $expected = $isIcs ? 'https://127.0.0.1:1/replaced' : 'new-password';

@@ -603,14 +603,62 @@ class DocumentPvPoint extends DbObject
             : ($document->get('datecreation') instanceof \DateTimeInterface ? $document->get('datecreation') : new \DateTimeImmutable());
     }
 
-    private function canMoveToDocument(Document $source, Document $destination, int $userId, string $scope): bool
+    private static function movementDestinationLink(Document $destination): string
+    {
+        $url = '/omo/?oid=' . (int)$destination->get('IDorganization') . '#documents-d' . (int)$destination->getId();
+        $label = trim((string)$destination->get('title')) . ' (' . self::meetingDate($destination)->format('d.m.Y H:i') . ')';
+        return '<a href="' . htmlspecialchars($url, ENT_QUOTES, 'UTF-8') . '">' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '</a>';
+    }
+
+    /** Follow the immediate target's location, stopping at each retained source notice. */
+    private function resolveMovementNotice(string $content, int $organizationId): string
+    {
+        $targetId = (int)$this->get('IDpoint_moved_to');
+        if ($targetId <= 0 || $targetId === (int)$this->getId()) return $content;
+        $source = new Document();
+        if (!$source->load((int)$this->get('IDdocument'))) return $content;
+        $sourceOrganizationId = (int)$source->get('IDorganization');
+        if ($sourceOrganizationId <= 0 || ($organizationId > 0 && $organizationId !== $sourceOrganizationId)) return $content;
+        $target = new self();
+        $destination = new Document();
+        if (!$target->load($targetId, true) || empty($target->get('active'))
+            || !$destination->load((int)$target->get('IDdocument'), true)
+            || empty($destination->get('active')) || !$destination->isPvDocument()
+            || (int)$destination->get('IDorganization') !== $sourceOrganizationId) return $content;
+        $link = self::movementDestinationLink($destination);
+        // Existing notices contain this canonical link, so they also work without a migration.
+        $pattern = '~<a\b[^>]*\bhref=(["\'])/omo/\?oid=' . $sourceOrganizationId . '#documents-d[0-9]+\1[^>]*>.*?</a>~is';
+        return preg_replace_callback($pattern, static fn(): string => $link, $content, 1) ?? $content;
+    }
+
+    public function getMovementDestinationUrl(int $organizationId): string
+    {
+        return $this->getMovementDestinationData($organizationId)['url'] ?? '';
+    }
+
+    public function getMovementDestinationData(int $organizationId): array
+    {
+        if (!$this->isMoved() || $organizationId <= 0) return [];
+        $notice = $this->resolveMovementNotice((string)$this->get('content'), $organizationId);
+        $pattern = '~<a\b[^>]*\bhref=(["\'])(/omo/\?oid=' . $organizationId . '#documents-d[0-9]+)\1[^>]*>(.*?)</a>~is';
+        if (!preg_match($pattern, $notice, $match)) return [];
+        return [
+            'url' => $match[2],
+            'label' => trim(html_entity_decode(strip_tags($match[3]), ENT_QUOTES | ENT_HTML5, 'UTF-8')),
+        ];
+    }
+
+    private function canMoveToDocument(Document $source, Document $destination, int $userId, string $scope, string $members, string $period): bool
     {
         $organizationId = (int)$destination->get('IDorganization');
-        if ($this->isGroup() || $this->isHandled() || $this->isMoved() || empty($this->get('active'))
+        if (($members === 'all' ? !$destination->isPvEditor($userId) : !$this->isEditableByUser($userId))
+            || $this->isGroup() || $this->isHandled() || $this->isMoved() || empty($this->get('active'))
             || empty($source->get('active')) || $source->isPvTemplate()
             || (int)$source->getId() === (int)$destination->getId()
             || (int)$source->get('IDorganization') !== $organizationId
-            || self::meetingDate($source) >= self::meetingDate($destination)
+            || ($period === 'after'
+                ? self::meetingDate($source) <= self::meetingDate($destination)
+                : self::meetingDate($source) >= self::meetingDate($destination))
             || ($scope !== 'global' && $source->getPvContextHolonId() !== $destination->getPvContextHolonId())
             || !($source->canUserOpenPvEditor($userId, $organizationId) || $source->canUserViewPvReadOnly($userId, $organizationId))
             || !$source->canUserViewPvPoint($this, $userId)) {
@@ -622,20 +670,25 @@ class DocumentPvPoint extends DbObject
     }
 
     /** Keyset pagination also advances over candidates filtered out by access checks. */
-    public static function getImportablePage(Document $destination, int $userId, string $scope = 'local', array $cursor = [], int $limit = 20): array
+    public static function getImportablePage(Document $destination, int $userId, string $scope = 'local', array $cursor = [], int $limit = 20, string $members = 'mine', string $period = 'before'): array
     {
-        if (!self::canImportIntoDocument($destination, $userId)) {
+        if (!self::canImportIntoDocument($destination, $userId) || ($members === 'all' && !$destination->isPvEditor($userId))) {
             return ['items' => [], 'cursor' => null, 'hasMore' => false];
         }
         $limit = max(1, min(50, $limit));
         $dateSql = 'COALESCE(e.start_at, d.datecreation)';
+        $dateComparison = $period === 'after' ? '>' : '<';
         $where = "d.IDorganization = :organization_id AND d.id <> :destination_id
             AND d.documenttype = 'pv' AND d.active = 1 AND COALESCE(d.is_template, 0) = 0
             AND p.active = 1 AND COALESCE(p.item_type, 'point') = 'point'
             AND p.is_handled = 0 AND p.IDpoint_moved_to IS NULL AND p.date_moved IS NULL
-            AND $dateSql < :destination_date";
+            AND $dateSql $dateComparison :destination_date";
         $params = ['organization_id' => (int)$destination->get('IDorganization'),
             'destination_id' => (int)$destination->getId(), 'destination_date' => self::meetingDate($destination)->format('Y-m-d H:i:s')];
+        if ($members !== 'all') {
+            $where .= ' AND p.IDuser_author = :author_user_id';
+            $params['author_user_id'] = $userId;
+        }
         if ($scope !== 'global') {
             $where .= ' AND COALESCE(NULLIF(d.IDholon, 0), e.IDholon, 0) = :holon_id';
             $params['holon_id'] = $destination->getPvContextHolonId();
@@ -654,14 +707,14 @@ class DocumentPvPoint extends DbObject
                 $cursorWhere = " AND ($dateSql < :cursor_date OR ($dateSql = :cursor_tie_date AND p.id < :cursor_id))";
                 $queryParams += ['cursor_date' => (string)$cursor['date'], 'cursor_tie_date' => (string)$cursor['date'], 'cursor_id' => (int)$cursor['id']];
             }
-            $rows = self::fetchAll("SELECT p.id, p.IDdocument, p.title, p.item_type, p.active, p.is_handled,
+            $rows = self::fetchAll("SELECT p.id, p.IDdocument, p.title, LEFT(p.content, 4096) AS content_preview, p.item_type, p.active, p.is_handled,
                 p.IDpoint_moved_to, p.date_moved, p.IDuser_author, p.author_email, p.is_confidential, p.priority,
                 p.pointtype, p.desired_duration_minutes, p.IDuser_editing, p.edit_lock_token, p.dateedition,
                 $dateSql AS meeting_date FROM document_pv_point p
                 INNER JOIN document d ON d.id = p.IDdocument LEFT JOIN event e ON e.id = d.IDevent
                 WHERE $where $cursorWhere ORDER BY $dateSql DESC, p.id DESC LIMIT 50", $queryParams);
             if (!is_array($rows)) {
-                throw new \RuntimeException('Impossible de charger les points precedents.');
+                throw new \RuntimeException('Impossible de charger les points.');
             }
             if (!$rows) {
                 return ['items' => $items, 'cursor' => null, 'hasMore' => false];
@@ -677,8 +730,9 @@ class DocumentPvPoint extends DbObject
                 $source = $documents[$sourceId];
                 $point = new self();
                 $point->hydrateFromDatabaseRow($row, false);
-                if ($point->canMoveToDocument($source, $destination, $userId, $scope)) {
+                if ($point->canMoveToDocument($source, $destination, $userId, $scope, $members, $period)) {
                     $items[] = ['id' => (int)$point->getId(), 'title' => (string)$point->get('title'),
+                        'contentPreview' => self::firstContentLine((string)($row['content_preview'] ?? '')),
                         'meetingTitle' => (string)$source->get('title'), 'meetingDate' => self::meetingDate($source)->format('d.m.Y H:i'),
                         'priority' => self::normalizePriority($point->get('priority')), 'pointType' => self::normalizePointType($point->get('pointtype')),
                         'duration' => $point->getDurationMinutesValue('desired_duration_minutes'),
@@ -696,13 +750,32 @@ class DocumentPvPoint extends DbObject
         return ['items' => $items, 'cursor' => $cursor, 'hasMore' => true];
     }
 
+    /** Plain first visible line, with bounded work and no rich content in the picker. */
+    private static function firstContentLine(string $content): string
+    {
+        $content = preg_replace('~<(script|style)\b[^>]*>.*?(?:</\1\s*>|$)~is', '', $content);
+        if (str_contains($content, '<')) {
+            $content = preg_replace('/[\r\n]+/', ' ', $content);
+            $content = preg_replace('~<br\b[^>]*>|</(?:p|div|li|h[1-6]|blockquote|pre|tr)\s*>~i', "\n", $content);
+        }
+        $text = html_entity_decode(strip_tags($content), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        foreach (preg_split('/\R/u', $text) as $line) {
+            $line = trim(preg_replace('/[\s\x{00A0}]+/u', ' ', $line));
+            if ($line !== '') {
+                return mb_strlen($line, 'UTF-8') > 500 ? mb_substr($line, 0, 500, 'UTF-8') . '...' : $line;
+            }
+        }
+        return '';
+    }
+
     /** Move open agenda points, or copy and annotate closed minutes, in one transaction. */
-    public static function importIntoDocument(Document $destination, array $pointIds, int $userId, string $scope, string $notice): array
+    public static function importIntoDocument(Document $destination, array $pointIds, int $userId, string $scope, string $notice, string $members = 'mine', string $period = 'before'): array
     {
         $pointIds = array_values(array_unique(array_filter(array_map('intval', $pointIds), static fn(int $id): bool => $id > 0)));
         if (count($pointIds) > 200) return ['status' => false, 'text' => 'Selectionnez au maximum 200 points par importation.'];
         $pdo = self::getPdo();
-        if (!$pdo || !$pointIds || !self::canImportIntoDocument($destination, $userId)) {
+        if (!$pdo || !$pointIds || !self::canImportIntoDocument($destination, $userId)
+            || ($members === 'all' && !$destination->isPvEditor($userId))) {
             return ['status' => false, 'text' => 'Importation refusee.'];
         }
         $ownsTransaction = !$pdo->inTransaction();
@@ -712,7 +785,8 @@ class DocumentPvPoint extends DbObject
             $destinationRow = self::fetchRow('SELECT * FROM document WHERE id = :id FOR UPDATE', ['id' => (int)$destination->getId()]);
             if (!$destinationRow) throw new \RuntimeException('Reunion destination indisponible.');
             $destination->hydrateFromDatabaseRow($destinationRow, true);
-            if (!self::canImportIntoDocument($destination, $userId)) throw new \RuntimeException('Importation refusee.');
+            if (!self::canImportIntoDocument($destination, $userId)
+                || ($members === 'all' && !$destination->isPvEditor($userId))) throw new \RuntimeException('Importation refusee.');
             $placeholders = [];
             $params = [];
             foreach ($pointIds as $index => $id) {
@@ -729,7 +803,7 @@ class DocumentPvPoint extends DbObject
                 $source = new Document();
                 $sourceRow = self::fetchRow('SELECT * FROM document WHERE id = :id FOR UPDATE', ['id' => (int)$point->get('IDdocument')]);
                 if (!$sourceRow || !$source->hydrateFromDatabaseRow($sourceRow, true)
-                    || !$point->canMoveToDocument($source, $destination, $userId, $scope)) {
+                    || !$point->canMoveToDocument($source, $destination, $userId, $scope, $members, $period)) {
                     throw new \RuntimeException('Un point selectionne a change ou ne peut plus etre importe.');
                 }
                 if ($point->isEditLockActive()) throw new \RuntimeException('Un point selectionne est en cours d edition.');
@@ -777,9 +851,7 @@ class DocumentPvPoint extends DbObject
                     $proposal->set('IDdocument_pv_point', (int)$copy->getId());
                     if (empty($proposal->save()['status'])) throw new \RuntimeException('Impossible de transferer les propositions du point.');
                 }
-                $url = '/omo/?oid=' . (int)$destination->get('IDorganization') . '#documents-d' . (int)$destination->getId();
-                $label = trim((string)$destination->get('title')) . ' (' . self::meetingDate($destination)->format('d.m.Y H:i') . ')';
-                $link = '<a href="' . htmlspecialchars($url, ENT_QUOTES, 'UTF-8') . '">' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '</a>';
+                $link = self::movementDestinationLink($destination);
                 $sourcePoint->set('content', '<p>' . str_replace('{meeting}', $link, htmlspecialchars($notice, ENT_QUOTES, 'UTF-8')) . '</p>');
                 $sourcePoint->set('IDpoint_moved_to', (int)$copy->getId());
                 $sourcePoint->set('date_moved', new \DateTimeImmutable());
@@ -1652,6 +1724,7 @@ class DocumentPvPoint extends DbObject
         if ($content === '') {
             return '';
         }
+        $content = $this->resolveMovementNotice($content, $organizationId);
 
         $renderer = new \dbObject\Document();
         return $renderer->renderResolvedHtmlForViewer($content, max(0, $organizationId), array(
@@ -1673,6 +1746,7 @@ class DocumentPvPoint extends DbObject
             && $currentUserId > 0
             && $this->getEditingUserId() === $currentUserId;
         $takeoverData = $this->buildEditTakeoverData($currentUserId, $currentLockToken);
+        $contentHtml = $this->getRenderedContentForViewer($organizationId);
         $syncVersion = hash('sha256', (string)json_encode([
             'item_type' => self::normalizeItemType($this->get('item_type')),
             'parent_id' => (int)$this->get('IDparent'),
@@ -1689,6 +1763,7 @@ class DocumentPvPoint extends DbObject
             'is_handled' => $this->isHandled(),
             'moved_to_point_id' => (int)$this->get('IDpoint_moved_to'),
             'is_moved' => $this->isMoved(),
+            'movement_notice' => $this->isMoved() ? $contentHtml : '',
             'is_confidential' => $this->isConfidential(),
             'active' => !empty($this->get('active')),
             'modification_user_id' => $this->getModificationUserId(),
@@ -1734,7 +1809,7 @@ class DocumentPvPoint extends DbObject
                 'timestamp' => $editingDate instanceof \DateTimeInterface ? (int)$editingDate->getTimestamp() : 0,
             ],
             'takeover' => $takeoverData,
-            'contentHtml' => $this->getRenderedContentForViewer($organizationId),
+            'contentHtml' => $contentHtml,
         ];
     }
 
