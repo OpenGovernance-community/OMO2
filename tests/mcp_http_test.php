@@ -45,10 +45,10 @@ function mcpHttpJson(array $response): array
 }
 function mcpHttpRpc(string $method, array $params, ?string $token): array
 {
-    return mcpHttp('/mcp', ['jsonrpc' => '2.0', 'id' => 1, 'method' => $method, 'params' => (object)$params], true, $token);
+    return mcpHttp(parse_url(omoMcpPublicUrl(), PHP_URL_PATH), ['jsonrpc' => '2.0', 'id' => 1, 'method' => $method, 'params' => (object)$params], true, $token);
 }
 try {
-    $metadata = mcpHttp('/.well-known/oauth-protected-resource/mcp');
+    $metadata = mcpHttp(parse_url(omoMcpResourceMetadataUrl(), PHP_URL_PATH));
     mcpCheck($metadata['status'] === 200 && mcpHttpJson($metadata)['resource'] === $endpoint, 'Resource discovery route');
     $authMetadata = mcpHttp('/.well-known/oauth-authorization-server');
     mcpCheck(mcpHttpJson($authMetadata)['code_challenge_methods_supported'] === ['S256'], 'PKCE discovery');
@@ -117,7 +117,7 @@ try {
     mcpCheck(mcpHttpRpc('tools/list', [], $tokens['access_token'])['status'] === 401, 'Disabled account refused');
     $items['user']->set('active', 1);
     $items['user']->save();
-    $notice = mcpHttp('/mcp', ['jsonrpc' => '2.0', 'method' => 'notifications/initialized'], true, $tokens['access_token']);
+    $notice = mcpHttp(parse_url($endpoint, PHP_URL_PATH), ['jsonrpc' => '2.0', 'method' => 'notifications/initialized'], true, $tokens['access_token']);
     mcpCheck($notice['status'] === 202 && $notice['body'] === '', 'MCP notification response');
     $connections = mcpHttp('/mcp/connections.php');
     mcpCheck(($connections['headers']['content-security-policy'] ?? '') ===

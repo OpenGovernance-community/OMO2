@@ -13,36 +13,44 @@ Il ne necessite aucun service Node en production ni aucune cle API OpenAI.
    php scripts/run-migrations.php
    ```
 
-2. Ajouter a `.env` l URL canonique du endpoint, sans slash final :
+2. Ajouter a `.env` l URL canonique du endpoint, avec le slash final sur Dev :
 
    ```dotenv
-   MCP_PUBLIC_URL=https://test.exemple.ch/mcp
+   MCP_PUBLIC_URL=https://test.exemple.ch/mcp/
    ```
 
    Le serveur reste indisponible (503 explicite) tant que cette variable est absente.
    Ne pas utiliser le sous-domaine de demonstration : il ne permet pas un login utilisateur.
    Apache doit appliquer le `.htaccess` racine et transmettre `Authorization`.
-   Un proxy doit reproduire les routes `/mcp` et `/.well-known/oauth-*`.
+   Un proxy doit reproduire les routes `/mcp/` et `/.well-known/oauth-*`.
 
    La publication GitHub Actions de la branche Dev applique les migrations et
-   configure cette valeur automatiquement pour `https://dev.opengov.tools/mcp`.
+   configure cette valeur automatiquement pour `https://dev.opengov.tools/mcp/`.
+   Le slash final evite la redirection 301 appliquee par l hebergement a `/mcp`,
+   qui interrompt les POST de decouverte des outils apres le login. Le serveur
+   conserve exactement l URL configuree, avec ou sans slash : la connexion MCP,
+   les metadonnees OAuth et le parametre `resource` doivent utiliser la meme URL.
 
 3. Pour Docker, placer cette variable dans `docker/app/.env`. Utiliser le meme domaine
-   pour la connexion MCP et le login. `https://localtest.me/mcp` convient a Inspector
+   pour la connexion MCP et le login. `https://localtest.me/mcp/` convient a Inspector
    sur cette machine mais n est pas joignable depuis ChatGPT sur le web.
    Pour ChatGPT, publier sur le serveur de test ou utiliser un tunnel HTTPS dont
    l adresse est renseignee dans `MCP_PUBLIC_URL`. Un changement d URL demande
    une nouvelle connexion et une nouvelle autorisation.
 
-4. Verification sans login : `GET /.well-known/oauth-protected-resource/mcp`
+4. Verification sans login : `GET /.well-known/oauth-protected-resource/mcp/`
    et `GET /.well-known/oauth-authorization-server` doivent renvoyer du JSON.
-   `POST /mcp` sans Bearer doit renvoyer 401 avec `WWW-Authenticate`.
-   Un simple GET /mcp dans le navigateur ne constitue pas un test MCP.
+   `POST /mcp/` sans Bearer doit renvoyer directement 401 avec `WWW-Authenticate`,
+   sans suivre de redirection. Un simple GET dans le navigateur ne constitue
+   pas un test MCP.
 
 ## ChatGPT
 
 Dans ChatGPT web, activer Developer mode dans Settings > Security and login,
 ouvrir Plugins, choisir + et indiquer l URL `MCP_PUBLIC_URL`.
+Sur Dev, saisir exactement `https://dev.opengov.tools/mcp/`. Si le connecteur a
+ete cree avec `/mcp` sans slash, le recreer avec cette URL puis refaire le login
+et le consentement ; les anciens jetons ciblent une autre URL de ressource.
 Choisir OAuth et l enregistrement dynamique (DCR) si le formulaire propose
 une methode d enregistrement. Le serveur ne fournit pas de client secret :
 il utilise des clients publics, PKCE S256 et un `client_id` cree par DCR.

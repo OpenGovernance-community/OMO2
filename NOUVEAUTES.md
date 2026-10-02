@@ -1,5 +1,7 @@
 # Journal Des Nouveautes
 
+- MCP : URL canonique Dev avec slash final (`https://dev.opengov.tools/mcp/`) pour eviter la redirection 301 de l hebergement pendant la decouverte des actions. L URL de ressource OAuth conserve exactement ce slash ; recreer les connexions configurees avec l ancienne URL.
+
 - Publication Dev : controle MCP authentifie apres deploiement, avec fixtures temporaires supprimees, pour verifier l echange OAuth, le routage HTTP, la decouverte des cinq outils et un appel reel sur l hebergement.
 
 - MCP : correction du retour vers l assistant apres acceptation ou refus du consentement. La politique CSP autorise l origine du callback OAuth valide pour cette demande ; test navigateur des redirections et du blocage des autres destinations.
