@@ -696,7 +696,7 @@ class DocumentPvPoint extends DbObject
         return ['items' => $items, 'cursor' => $cursor, 'hasMore' => true];
     }
 
-    /** Copy and replace all sources in one transaction; row locks prevent duplicate imports. */
+    /** Move open agenda points, or copy and annotate closed minutes, in one transaction. */
     public static function importIntoDocument(Document $destination, array $pointIds, int $userId, string $scope, string $notice): array
     {
         $pointIds = array_values(array_unique(array_filter(array_map('intval', $pointIds), static fn(int $id): bool => $id > 0)));
@@ -722,20 +722,34 @@ class DocumentPvPoint extends DbObject
             $rows = self::fetchAll('SELECT * FROM document_pv_point WHERE id IN (' . implode(',', $placeholders) . ') ORDER BY id FOR UPDATE', $params);
             if (!is_array($rows) || count($rows) !== count($pointIds)) throw new \RuntimeException('Un point selectionne est indisponible.');
             $sources = [];
+            $sourceStages = [];
             foreach ($rows as $row) {
                 $point = new self();
                 $point->hydrateFromDatabaseRow($row, true);
                 $source = new Document();
-                if (!$source->load((int)$point->get('IDdocument'), true)
+                $sourceRow = self::fetchRow('SELECT * FROM document WHERE id = :id FOR UPDATE', ['id' => (int)$point->get('IDdocument')]);
+                if (!$sourceRow || !$source->hydrateFromDatabaseRow($sourceRow, true)
                     || !$point->canMoveToDocument($source, $destination, $userId, $scope)) {
                     throw new \RuntimeException('Un point selectionne a change ou ne peut plus etre importe.');
                 }
                 if ($point->isEditLockActive()) throw new \RuntimeException('Un point selectionne est en cours d edition.');
                 $sources[(int)$point->getId()] = $point;
+                $sourceStages[(int)$point->getId()] = $source->getPvStage();
             }
-            $copiedIds = [];
+            $importedIds = [];
             foreach ($pointIds as $id) {
                 $sourcePoint = $sources[$id];
+                if (in_array($sourceStages[$id], [Document::PV_STAGE_PREPARATION, Document::PV_STAGE_MEETING], true)) {
+                    $sourcePoint->set('IDdocument', (int)$destination->getId());
+                    $sourcePoint->set('IDparent', null);
+                    $sourcePoint->set('position', 0);
+                    $sourcePoint->set('IDuser_modification', $userId);
+                    foreach (['IDuser_editing', 'edit_lock_token', 'dateedition', 'IDuser_edit_takeover_request', 'edit_takeover_request_token', 'edit_takeover_target_token', 'date_edit_takeover_request'] as $field) $sourcePoint->set($field, null);
+                    // Both the source row and meeting stage are locked above.
+                    if (empty($sourcePoint->savePointValues()['status'])) throw new \RuntimeException('Impossible de deplacer le point.');
+                    $importedIds[] = $id;
+                    continue;
+                }
                 $copy = new self();
                 foreach (['title', 'content', 'priority', 'pointtype', 'desired_duration_minutes', 'IDuser_author', 'author_email', 'IDholon_concerned', 'is_confidential'] as $field) {
                     $copy->set($field, $sourcePoint->get($field));
@@ -772,11 +786,11 @@ class DocumentPvPoint extends DbObject
                 $sourcePoint->set('IDuser_modification', $userId);
                 foreach (['IDuser_editing', 'edit_lock_token', 'dateedition', 'IDuser_edit_takeover_request', 'edit_takeover_request_token', 'edit_takeover_target_token', 'date_edit_takeover_request'] as $field) $sourcePoint->set($field, null);
                 if (empty($sourcePoint->save()['status'])) throw new \RuntimeException('Impossible de signaler le deplacement du point.');
-                $copiedIds[] = (int)$copy->getId();
+                $importedIds[] = (int)$copy->getId();
             }
             if ($ownsTransaction) $pdo->commit();
             else $pdo->exec('RELEASE SAVEPOINT pv_point_import');
-            return ['status' => true, 'pointIds' => $copiedIds];
+            return ['status' => true, 'pointIds' => $importedIds];
         } catch (\Throwable $exception) {
             if ($pdo->inTransaction()) {
                 if ($ownsTransaction) $pdo->rollBack();
@@ -1745,6 +1759,14 @@ class DocumentPvPoint extends DbObject
         return $data;
     }
 
+    public function delete()
+    {
+        // A stale source editor must not delete a point now owned by another meeting.
+        return self::execute('DELETE FROM document_pv_point WHERE id = :id AND IDdocument = :document_id
+            AND IDpoint_moved_to IS NULL AND date_moved IS NULL',
+            ['id' => (int)$this->getId(), 'document_id' => (int)$this->get('IDdocument')]);
+    }
+
     public function save()
     {
         if ((int)$this->getId() <= 0) return $this->savePointValues();
@@ -1754,8 +1776,8 @@ class DocumentPvPoint extends DbObject
         try {
             if ($ownsTransaction) $pdo->beginTransaction();
             // Fence every write, including status changes, against a concurrent transfer.
-            $row = self::fetchRow('SELECT IDpoint_moved_to, date_moved FROM document_pv_point WHERE id = :id FOR UPDATE', ['id' => (int)$this->getId()]);
-            if (!$row || !empty($row['IDpoint_moved_to']) || !empty($row['date_moved'])) {
+            $row = self::fetchRow('SELECT IDdocument, IDpoint_moved_to, date_moved FROM document_pv_point WHERE id = :id FOR UPDATE', ['id' => (int)$this->getId()]);
+            if (!$row || (int)$row['IDdocument'] !== (int)$this->get('IDdocument') || !empty($row['IDpoint_moved_to']) || !empty($row['date_moved'])) {
                 if ($ownsTransaction) $pdo->rollBack();
                 return ['status' => false, 'text' => 'Ce point est indisponible ou a ete deplace vers une autre reunion.'];
             }

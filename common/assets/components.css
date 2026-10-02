@@ -276,7 +276,18 @@ html[data-theme="dark"] .note-modal .note-modal-footer .note-btn-primary {
         transform 150ms ease;
 }
 
-.generic-choice-card:hover {
+.generic-choice-card--text {
+    grid-template-columns: minmax(0, 1fr);
+    text-align: left;
+    font: inherit;
+}
+
+.generic-choice-card:disabled {
+    cursor: default;
+    opacity: 0.6;
+}
+
+.generic-choice-card:not(:disabled):hover {
     border-color: var(--param-choice-card-border-hover);
     background: var(--param-choice-card-background-hover);
     box-shadow: var(--param-choice-card-shadow-hover);
