@@ -169,6 +169,19 @@ docker compose exec -T app php tests/mcp_modules_test.php
 ```
 
 Les tests de donnees creent leurs propres fixtures et les suppriment ensuite.
+Le test navigateur du consentement utilise Docker sur `https://localtest.me`,
+`MCP_ALLOW_LOCAL_HTTP=1`, Chrome et une installation de Playwright de test :
+
+```sh
+node tests/mcp_consent_browser_test.cjs /chemin/vers/node_modules/playwright
+```
+
+Il verifie le retour OAuth apres acceptation et refus, et le blocage CSP d une
+destination non autorisee. Le formulaire de consentement autorise uniquement
+son origine et celle du callback valide de la demande ; les autres pages MCP
+gardent `form-action 'self'`. Les tests HTTP seuls ne detectent pas les blocages
+CSP appliques par le navigateur aux redirections apres soumission.
+
 Verifier aussi manuellement une connexion neuve dans ChatGPT : decouverte,
 login, consentement, cinq outils, refus puis revocation. Les tests locaux ne
 peuvent pas prouver l accessibilite du domaine depuis les serveurs du fournisseur.

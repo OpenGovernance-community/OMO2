@@ -34,9 +34,20 @@ function omoMcpUiT(string $key, array $variables = []): string
     return t($key, $variables, $lang, $sourceLang);
 }
 function omoMcpEscape(string $text): string { return htmlspecialchars($text, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); }
-function omoMcpPageStart(string $title): void
+function omoMcpPageStart(string $title, ?string $redirectUri = null): void
 {
-    header("Content-Security-Policy: frame-ancestors 'none'; form-action 'self'; base-uri 'none'");
+    $formAction = "'self'";
+    if ($redirectUri !== null) {
+        // Only pass the callback from the validated, session-stored OAuth request.
+        // Chromium also checks form-action on the POST's redirect to the client.
+        if (!omoMcpValidRedirect($redirectUri, commonReadRuntimeEnvBool('MCP_ALLOW_LOCAL_HTTP', false))) {
+            throw new InvalidArgumentException('Invalid consent callback.');
+        }
+        $parts = parse_url($redirectUri);
+        $formAction .= ' ' . $parts['scheme'] . '://' . $parts['host']
+            . (isset($parts['port']) ? ':' . $parts['port'] : '');
+    }
+    header("Content-Security-Policy: frame-ancestors 'none'; form-action " . $formAction . "; base-uri 'none'");
     header('X-Frame-Options: DENY');
     ?>
     <!doctype html><html lang="<?= omoMcpEscape(commonAuthGetTranslationLocale()) ?>"><head>

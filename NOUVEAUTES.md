@@ -1,5 +1,7 @@
 # Journal Des Nouveautes
 
+- MCP : correction du retour vers l assistant apres acceptation ou refus du consentement. La politique CSP autorise l origine du callback OAuth valide pour cette demande ; test navigateur des redirections et du blocage des autres destinations.
+
 - Publication Dev : configuration automatique de l URL publique MCP sur dev.opengov.tools et arret du deploiement si une etape echoue.
 
 - MCP : premier serveur de consultation en lecture seule, avec login OMO, consentement pour une organisation, OAuth avec PKCE S256, renouvellement et revocation des acces. Cinq outils permettent de verifier la connexion, parcourir la structure, rechercher dans les modules et lire les fiches accessibles avec les droits du compte, y compris proprietes, documents, points de PV visibles et mesures des indicateurs. Textes longs pages et selection de recherche explicitement non exhaustive. Migration, seed Docker, tests PHP 8.5 et guide de connexion disponibles dans docs/MCP.md.

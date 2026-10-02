@@ -54,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     unset($_SESSION['mcpPending'][$requestId]);
     omoMcpRedirect($request, ['code' => $code]);
 }
-omoMcpPageStart(omoMcpUiT('title'));
+omoMcpPageStart(omoMcpUiT('title'), $request['redirect_uri']);
 ?>
 <section class="generic-soft-panel generic-stack">
     <p><?= omoMcpEscape(omoMcpUiT('request', ['client' => (string)$client->get('name')])) ?></p>
