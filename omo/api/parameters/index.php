@@ -123,6 +123,22 @@ $holonTemplateCardIconUrl = '/img/omo-parameters/holon-template.png';
             </button>
 
             <?php if ($isOrganizationAdmin): ?>
+            <button type="button" class="omo-settings__card omo-card omo-card--interactive omo-settings__card--admin-mode-required"
+                data-omo-settings-drawer-title="<?= htmlspecialchars(omoParametersIndexT('parameters.index.card.security.title'), ENT_QUOTES, 'UTF-8') ?>"
+                data-omo-settings-drawer-url="/omo/api/parameters/security/index.php"
+                data-omo-settings-drawer-mode="fetch"
+                <?= $isOrganizationAdminModeEnabled ? '' : 'disabled aria-disabled="true"' ?>>
+                <span class="omo-settings__card-head">
+                    <span class="omo-settings__card-icon-shell"><img class="omo-settings__card-icon black-icon" src="/img/parameters.png" alt="" loading="lazy"></span>
+                    <span class="omo-settings__card-title-wrap">
+                        <span class="generic-card-title generic-card-title--eyebrow"><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.organization.eyebrow'), ENT_QUOTES, 'UTF-8') ?></span>
+                        <strong class="generic-card-title generic-card-title--big"><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.security.title'), ENT_QUOTES, 'UTF-8') ?></strong>
+                    </span>
+                </span>
+                <span class="omo-settings__card-description generic-description"><?= htmlspecialchars(omoParametersIndexT($isOrganizationAdminModeEnabled ? 'parameters.index.card.security.description' : 'parameters.index.card.organization.admin_mode_required', ['adminLabel' => $organizationAdminLabel]), ENT_QUOTES, 'UTF-8') ?></span>
+                <span class="omo-settings__card-footer" aria-hidden="true"><span class="omo-settings__card-cta generic-action-button generic-action-button--compact <?= $isOrganizationAdminModeEnabled ? 'generic-action-button--main' : 'generic-action-button--secondary' ?>"><?= htmlspecialchars(omoParametersIndexT($isOrganizationAdminModeEnabled ? 'parameters.index.card.security.cta' : 'parameters.index.card.organization.admin_mode_cta', ['adminLabel' => $organizationAdminLabel]), ENT_QUOTES, 'UTF-8') ?></span></span>
+            </button>
+
             <button
                 type="button"
                 class="omo-settings__card omo-card omo-card--interactive omo-settings__card--admin-mode-required"

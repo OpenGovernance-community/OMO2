@@ -1,6 +1,36 @@
 # Journal Des Nouveautes
 
+- Propositions de creation de holons : les differences affichent les textes herites du modele au-dessus des valeurs locales, dans le meme bloc de propriete. Les formats texte, HTML et texte avec detail sont pris en charge ; les proprietes verrouillees affichent uniquement la valeur heritee. Le script partage utilise une version basee sur son contenu pour eviter le maintien de l ancien rendu dans le cache du navigateur.
+
+- Editeur de structure : une propriete non editable sans valeur locale affiche un message expliquant l absence de droits sous Valeur locale.
+
+- Structure et propositions de PV : les droits sur les proprietes d un nouvel element sont evalues dans son futur emplacement, et non sur son parent. Les portees enfants et descendants sont respectees avant sauvegarde, sans transmettre les droits reserves au parent ; le formulaire et le controle serveur suivent la meme regle.
+
+- Editeur de PV : l ajout, l edition et la suppression d une proposition actualisent uniquement la zone des propositions. Le contenu Summernote et les champs non sauvegardes du point sont conserves ; l actualisation est aussi permise aux auteurs autorises a proposer une modification.
+
+- Sécurité : la carte affiche « Mode Admin requis » avec le même style que les cartes voisines lorsque le mode Admin est désactivé.
+
+- Sécurité : textes de l’écran, des messages de confirmation et de l’e-mail de sauvegarde révisés en français, avec les accents et la ponctuation appropriés.
+
+- Securite : drawer avec marges interieures, formulaire compact et champs e-mail / frequence sur deux colonnes comme l editeur d indicateur. Les dates d envoi sont regroupees dans un panneau discret, le contenu du backup dans un accordeon, et les actions dans un pied de drawer fixe. adminEdit permet aussi ces dispositions avec ses champs dbObject habituels.
+
+- Securite : ajout du bouton Sauvegarder immediatement. Il enregistre les parametres affiches et envoie le JSON par e-mail, meme lorsque la sauvegarde automatique est desactivee. L envoi partage le verrou du cron et actualise la date de derniere sauvegarde uniquement en cas de succes.
+
+- Securite : nouvel ecran administrateur pour activer les sauvegardes JSON automatiques par organisation, choisir une frequence et une adresse e-mail complementaire. Le cron envoie la structure et tous les modules exportables aux administrateurs actifs, conserve les references aux fichiers externes sans leur contenu ni les configurations des serveurs, et suit les envois reussis. L import restaure aussi ces references ; les serveurs doivent etre reconfigures.
+
+- Calendriers externes : une case transforme leurs événements en plages de disponibilité. Les plages s’additionnent et les événements occupés restent prioritaires, dans le profil, la recherche de date des invités et la réservation. Les horaires hebdomadaires et la pause s’appliquent lorsque la prise de rendez-vous est activée. Le contrôle des invités signale les horaires hors des plages ; le partage ICS exporte ces plages comme libres. Un calendrier de disponibilité ne peut pas recevoir les réservations.
+
 - Editeur de PV : import des points non traites avec cartes arrondies qui s illuminent a la selection, commutateur local/global et actions toujours visibles sous la liste defilante. Depuis un PV en preparation ou en reunion, le point est deplace directement avec ses liens et discussions ; a partir de la relecture, une copie est creee et le vieux PV conserve la trace du deplacement. Le transfert du lot reste atomique.
+
+- Editeur de PV : les points a importer reprennent les icones et les couleurs de priorite de l ordre du jour, avec un apercu de la premiere ligne du contenu coupe si necessaire. La popup adapte sa hauteur aux listes courtes et conserve ses actions visibles pour les longues listes.
+
+- Editeur de PV : ajout du filtre Moi / Tous les membres dans la popup d import, avec Moi par defaut. L option Tous les membres est reservee a l editeur du PV ; le serveur verifie aussi cette restriction lors du chargement et du transfert.
+
+- Editeur de PV : ajout du filtre Avant / Apres pour reprendre aussi des points de reunions futures. Les filtres de portee et d auteur se combinent ; les reunions en preparation ou en cours permettent un deplacement direct, tandis que les PV en relecture ou valides gardent la trace du transfert.
+
+- Editeur de PV : les liens de deplacement suivent la reunion actuelle du point cible lorsqu il est deplace sans trace. Chaque PV cloture conserve toutefois son etape : A pointe vers B si B garde une trace vers C ; si le point quitte B avant sa cloture, A pointe directement vers C. Les traces existantes profitent aussi de cet affichage dynamique.
+
+- Comptes rendus de PV : des la relecture, seuls les points traites affichent leur contenu. Les points non traites non confidentiels sont regroupes en fin de PV dans des cartes compactes avec titre, auteur, duree prevue si definie, icone du type et priorite coloree, dans l editeur, le compte rendu et le PDF. Leur contenu est exclu du resume automatique. Les points deplaces affichent le nom et la date du PV destination dans une ligne cliquable, actualisee lors des deplacements sans trace ou du renommage de la reunion. Le PDF resserre cette liste avec des titres a 8.5 pt, des details a 7.5 pt et des espacements reduits. Les points et leurs contenus restent en base pour une reprise ulterieure.
 
 - Tableau de pilotage : ajout du module Decisions avec la liste des decisions actives, les compteurs en elaboration et a me prononcer, et un perimetre configurable (local, enfants directs, descendants). Le filtre En elaboration correspond a la phase de consultation avant le vote.
 

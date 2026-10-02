@@ -83,12 +83,20 @@ function calendarShareBuildFeed(CalendarShare $share, ?DateTimeImmutable $now = 
         $eventGroups = [$omo, $external];
     }
     $details = (bool)$share->get('details');
+    $availabilityCalendars = [];
+    if (!is_array($scope)) {
+        $calendars = new \dbObject\ArrayExternalCalendar();
+        $calendars->loadForUser($userId, true);
+        foreach ($calendars as $calendar) {
+            if ($calendar->get('availability_only')) { $availabilityCalendars[(int)$calendar->getId()] = true; }
+        }
+    }
     $lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//OpenMyOrganization//Calendar Share//EN',
         'CALSCALE:GREGORIAN', 'X-WR-CALNAME:Agenda partage', 'REFRESH-INTERVAL;VALUE=DURATION:PT1H', 'X-PUBLISHED-TTL:PT1H'];
     foreach ($eventGroups as $events) {
         foreach ($events as $event) {
             $isOmo = $event instanceof Event;
-            $busy = $isOmo || (bool)$event->get('is_busy');
+            $busy = $isOmo || (!isset($availabilityCalendars[(int)$event->get('IDexternalcalendar')]) && (bool)$event->get('is_busy'));
             if (!$details && !$busy) { continue; }
             $allDay = (bool)$event->get('is_all_day');
             if ($isOmo) {

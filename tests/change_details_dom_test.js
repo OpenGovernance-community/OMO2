@@ -85,6 +85,36 @@ const markup = data => '<details data-omo-change-details-payload="' + encode(dat
     assert(holonChanges.some(change => change.label === 'Projets' && (String(change.before).includes('Ancien projet') || String(change.after).includes('Nouveau projet'))));
     assert(!holonChanges.some(change => JSON.stringify(change).includes('31') || JSON.stringify(change).includes('32')));
 
+    const creationProperties = [
+        {name:'Mission',formatId:1,inheritedValue:'Inherited mission',localValue:'Added mission',value:'Added mission'},
+        {name:'HTML',formatId:5,inheritedValue:'<p>Inherited HTML</p>',localValue:'<p>Added HTML</p>',value:'<p>Added HTML</p>'},
+        {name:'Inherited only',formatId:1,inheritedValue:'Template text',localValue:'',value:'Template text'},
+        {name:'Locked',formatId:1,inheritedValue:'Locked template text',localValue:'Forbidden draft',value:'Locked template text',effectiveLocked:true},
+        {name:'Composite',formatId:6,inheritedValue:'{"text":"Inherited title","detail":"<p>Inherited detail</p>"}',localValue:'{"text":"Added title","detail":"<p>Added detail</p>"}',value:'{"text":"Added title","detail":"<p>Added detail</p>"}'},
+        {name:'List',formatId:2,value:'["Inherited item","Added item"]',displayItems:['Inherited item','Added item']}
+    ];
+    const creationChanges = window.omoChoiceChangeDetails.governanceChanges({
+        type:'holon.create',before:{},after:{editor_payload:{properties:creationProperties}}
+    });
+    const missionChange = creationChanges.find(change => change.label === 'Mission');
+    assert.deepEqual(Array.from(missionChange.snapshotValues), ['Inherited mission','Added mission']);
+    assert.equal(missionChange.after, 'Inherited mission\n\nAdded mission', 'Summary data retains both text values');
+    assert(creationChanges.find(change => change.label === 'HTML').rich, 'HTML keeps rich rendering');
+    assert.equal(creationChanges.find(change => change.label === 'Composite - titre').snapshotValues.length, 2);
+    assert.equal(creationChanges.find(change => change.label === 'Composite - détail').snapshotValues.length, 2);
+    const creationView = window.omoChoiceChangeDetails.createList(creationChanges, {operation:'create'});
+    const cardFor = label => Array.from(creationView.querySelectorAll('.omo-change-details__card')).find(card => card.querySelector('strong').textContent === label);
+    assert.deepEqual(Array.from(cardFor('Mission').querySelectorAll('.omo-change-details__value-content'), node => node.textContent), ['Inherited mission','Added mission'], 'Inherited text precedes local text within the same card');
+    assert.equal(cardFor('Inherited only').querySelectorAll('.omo-change-details__value-content').length, 1, 'An empty local value does not duplicate inheritance');
+    assert.equal(cardFor('Locked').querySelectorAll('.omo-change-details__value-content').length, 1);
+    assert(!creationView.textContent.includes('Forbidden draft'));
+    assert.equal(cardFor('List').querySelectorAll('li').length, 2, 'Merged list rendering stays intact');
+    assert.equal(creationView.querySelectorAll('.omo-change-details__value-label, .is-before, .is-removed').length, 0, 'Stacked creation values add no labels or before comparison');
+    const updatedText = window.omoChoiceChangeDetails.governanceChanges({type:'holon.update',before:{editor_payload:{properties:[{name:'Mission',formatId:1,value:'Old local'}]}},after:{editor_payload:{properties:[creationProperties[0]]}}});
+    assert.equal(updatedText[0].before, 'Old local');
+    assert.equal(updatedText[0].after, 'Added mission');
+    assert.equal(updatedText[0].snapshotValues, undefined, 'Updates keep the existing before/after comparison');
+
     const root = document.createElement('section');
     root.dataset.governanceEditor = '';
     root.innerHTML = '<form data-governance-form><input name="oid" value="1"><input name="cid" value="2"><input data-governance-blueprint>'

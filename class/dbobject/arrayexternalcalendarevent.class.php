@@ -6,12 +6,13 @@ class ArrayExternalCalendarEvent extends ArrayDbObject
     /** Read the local cache; an optional refresh is orchestrated by the caller before this read. */
     public static function busyIntervalsForUser(int $userId, \DateTimeInterface $start, \DateTimeInterface $end): array
     {
-        $result = ['intervals' => [], 'hasCalendars' => false, 'incomplete' => false];
+        $result = ['intervals' => [], 'unavailable' => [], 'hasAvailabilityCalendars' => false, 'hasCalendars' => false, 'incomplete' => false];
         if (!ExternalCalendar::isStorageAvailable()) { return $result; }
-        $calendars = ExternalCalendar::fetchAll('SELECT last_sync_at, last_sync_error FROM external_calendar WHERE IDuser = :uid AND active = 1', ['uid' => $userId]);
+        $calendars = ExternalCalendar::fetchAll('SELECT availability_only, last_sync_at, last_sync_error FROM external_calendar WHERE IDuser = :uid AND active = 1', ['uid' => $userId]);
         if (!is_array($calendars)) { throw new \RuntimeException('storage'); }
         $result['hasCalendars'] = count($calendars) > 0;
         foreach ($calendars as $calendar) {
+            $result['hasAvailabilityCalendars'] = $result['hasAvailabilityCalendars'] || (bool)$calendar['availability_only'];
             $lastSync = !empty($calendar['last_sync_at']) ? new \DateTimeImmutable($calendar['last_sync_at']) : null;
             [$coveredStart, $coveredEnd] = ExternalCalendar::synchronizationRange($lastSync);
             if ($lastSync === null || $lastSync < new \DateTimeImmutable('-1 hour') || !empty($calendar['last_sync_error'])
@@ -19,18 +20,39 @@ class ArrayExternalCalendarEvent extends ArrayDbObject
                 $result['incomplete'] = true;
             }
         }
-        $rows = ExternalCalendarEvent::fetchAll('SELECT e.start_at, e.end_at, e.is_all_day FROM external_calendar_event e
+        $rows = ExternalCalendarEvent::fetchAll('SELECT e.start_at, e.end_at, e.is_all_day, c.availability_only FROM external_calendar_event e
             JOIN external_calendar c ON c.id = e.IDexternalcalendar
-            WHERE c.IDuser = :uid AND c.active = 1 AND e.active = 1 AND e.is_busy = 1
+            WHERE c.IDuser = :uid AND c.active = 1 AND e.active = 1 AND (e.is_busy = 1 OR c.availability_only = 1)
             AND e.start_at < :end AND e.end_at >= :start', ['uid' => $userId, 'start' => $start, 'end' => $end]);
         if (!is_array($rows)) { throw new \RuntimeException('storage'); }
+        $available = [];
         foreach ($rows as $row) {
             $busyStart = new \DateTimeImmutable($row['start_at']);
             $busyEnd = new \DateTimeImmutable($row['end_at']);
             if ($row['is_all_day']) { $busyEnd = $busyEnd->modify('+1 second'); }
-            if ($busyStart < $end && $busyEnd > $start) { $result['intervals'][] = [$busyStart, $busyEnd]; }
+            if ($busyStart < $end && $busyEnd > $start) {
+                if ($row['availability_only']) { $available[] = [$busyStart, $busyEnd]; }
+                else { $result['intervals'][] = [$busyStart, $busyEnd]; }
+            }
         }
+        if ($result['hasAvailabilityCalendars']) { $result['unavailable'] = self::outsideAvailability($available, $start, $end); }
         return $result;
+    }
+
+    /** Complement of the union of opening windows; touching windows are continuous. */
+    public static function outsideAvailability(array $available, \DateTimeInterface $start, \DateTimeInterface $end): array
+    {
+        usort($available, static fn($a, $b) => $a[0] <=> $b[0]);
+        $cursor = \DateTimeImmutable::createFromInterface($start);
+        $limit = \DateTimeImmutable::createFromInterface($end);
+        $closed = [];
+        foreach ($available as [$from, $to]) {
+            if ($to <= $cursor || $from >= $limit || $to <= $from) { continue; }
+            if ($from > $cursor) { $closed[] = [$cursor, \DateTimeImmutable::createFromInterface($from)]; }
+            $cursor = \DateTimeImmutable::createFromInterface($to < $limit ? $to : $limit);
+        }
+        if ($cursor < $limit) { $closed[] = [$cursor, $limit]; }
+        return $closed;
     }
 
     public static function objectName()

@@ -19,6 +19,22 @@ function displayChange(changes,label,before,after,rich){
     if(oldValue===newValue)return;
     changes.push({label:label,before:oldValue,after:newValue,status:oldValue===''?'added':(newValue===''?'removed':'changed'),rich:!!rich});
 }
+function holonTextChanges(changes,label,beforeValue,afterValue,formatId,creating){
+    function append(fieldLabel,before,after,rich){
+        if(!creating){displayChange(changes,fieldLabel,before,after,rich);return;}
+        var values=[before,after].map(function(value){return String(value==null?'':value);}).filter(function(value){return value.trim()!=='';});
+        if(values.length)changes.push({label:fieldLabel,before:'',after:values.join('\n\n'),status:'added',rich:!!rich,snapshotValues:values});
+    }
+    if(formatId===6){
+        var oldText={},newText={};
+        try{oldText=JSON.parse(String(beforeValue||''))||{};}catch(error){}
+        try{newText=JSON.parse(String(afterValue||''))||{};}catch(error){}
+        append(label+' - '+detailTexts.title,oldText.text,newText.text);
+        append(label+' - '+detailTexts.detail,oldText.detail,newText.detail,true);
+    }else{
+        append(label,beforeValue,afterValue,formatId===5);
+    }
+}
 function holonPropertyMap(properties){
     var result={};
     (Array.isArray(properties)?properties:[]).forEach(function(property,index){
@@ -65,6 +81,11 @@ function detailedHolonChanges(action){
     Object.keys(oldProperties).concat(Object.keys(newProperties)).filter(function(key,index,all){return all.indexOf(key)===index;}).forEach(function(key){
         var oldProperty=oldProperties[key]||null,newProperty=newProperties[key]||null,property=newProperty||oldProperty||{};
         var label=String(property.name||property.shortname||detailTexts.property),formatId=Number(property.formatId||0);
+        if(action.type==='holon.create'&&newProperty&&[1,5,6].indexOf(formatId)>=0&&String(newProperty.inheritedValue||'').trim()!==''){
+            var localValue=Object.prototype.hasOwnProperty.call(newProperty,'localValue')?newProperty.localValue:newProperty.value;
+            holonTextChanges(changes,label,newProperty.inheritedValue,newProperty.effectiveLocked?'':localValue,formatId,true);
+            return;
+        }
         if(formatId===2||formatId===7){
             Array.prototype.push.apply(changes,diffList(label,holonPropertyItems(oldProperty),holonPropertyItems(newProperty)));
             if(formatId===7){
@@ -76,15 +97,7 @@ function detailedHolonChanges(action){
             }
             return;
         }
-        if(formatId===6){
-            var oldText={},newText={};
-            try{oldText=JSON.parse(String(oldProperty&&oldProperty.value||''))||{};}catch(error){}
-            try{newText=JSON.parse(String(newProperty&&newProperty.value||''))||{};}catch(error){}
-            displayChange(changes,label+' - '+detailTexts.title,oldText.text,newText.text);
-            displayChange(changes,label+' - '+detailTexts.detail,oldText.detail,newText.detail,true);
-            return;
-        }
-        displayChange(changes,label,oldProperty&&(oldProperty.displayValue!=null?oldProperty.displayValue:oldProperty.value),newProperty&&(newProperty.displayValue!=null?newProperty.displayValue:newProperty.value),formatId===5);
+        holonTextChanges(changes,label,oldProperty&&(oldProperty.displayValue!=null?oldProperty.displayValue:oldProperty.value),newProperty&&(newProperty.displayValue!=null?newProperty.displayValue:newProperty.value),formatId);
     });
     return changes;
 }
@@ -138,12 +151,16 @@ function createLifecycleList(changes,operation) {
         card.className='omo-change-details__card omo-change-details__card--snapshot';
         title.className='omo-change-details__title';title.textContent=String(change.label||'');
         card.appendChild(title);
-        var value=valueBlock('',raw,operation==='create'?'after':'before',null,change.rich?richRoot(raw):null,!!change.list);
-        value.className='omo-change-details__value';
-        value.querySelector('.omo-change-details__value-label').remove();
-        var content=value.querySelector('.omo-change-details__value-content');
-        content.classList.remove('is-added','is-removed','is-before','is-after');
-        card.appendChild(value);values.appendChild(card);
+        var snapshotValues=operation==='create'&&Array.isArray(change.snapshotValues)?change.snapshotValues:[raw];
+        snapshotValues.forEach(function(snapshotValue){
+            var value=valueBlock('',snapshotValue,operation==='create'?'after':'before',null,change.rich?richRoot(snapshotValue):null,!!change.list);
+            value.className='omo-change-details__value';
+            value.querySelector('.omo-change-details__value-label').remove();
+            var content=value.querySelector('.omo-change-details__value-content');
+            content.classList.remove('is-added','is-removed','is-before','is-after');
+            card.appendChild(value);
+        });
+        values.appendChild(card);
     });
     if(operation==='create'){comparison.appendChild(notice);comparison.appendChild(values);}
     else{comparison.appendChild(values);comparison.appendChild(notice);}

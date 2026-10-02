@@ -138,7 +138,16 @@ try {
     $explicit->set('IDholon', $circle->getId());
     $explicit->set('range', HolonPermission::RANGE_DIRECT_CHILDREN);
     fallbackSave($explicit);
-    fallbackCheck($child->isAllowed($key, false) && !$circle->canEditPropertyValue('type1', true), 'Explicit scopes take priority over both fallback contexts');
+    fallbackCheck($child->isAllowed($key, false) && $circle->canEditPropertyValue('type1', true), 'Explicit child scopes must cover both existing and prospective children');
+    $childEditor = $organization->getHolonCreationEditorData((int)$circle->getId());
+    $childTemplate = array_values(array_filter($childEditor['templateCatalog'], static fn ($entry) => $entry['id'] === (int)$template->getId()))[0];
+    fallbackCheck($childTemplate['properties'][0]['canEditValue'], 'Prospective inherited property values must be editable');
+    fallbackCheck(!empty($organization->saveHolonEditorDefinition($payload, (int)$user->getId(), (int)$circle->getId())['status']), 'The server must allow explicitly granted child property values');
+    $explicit->set('range', HolonPermission::RANGE_SELF);
+    fallbackSave($explicit);
+    fallbackCheck($circle->isAllowed($key, false) && !$circle->canEditPropertyValue('type1', true), 'Parent-only property grants must not leak into child creation');
+    fallbackCheck(empty($organization->saveHolonEditorDefinition($payload, (int)$user->getId(), (int)$circle->getId())['status']), 'The server must reject values reserved to the parent');
+    $explicit->set('range', HolonPermission::RANGE_DIRECT_CHILDREN);
     $explicit->set('member_type', HolonPermission::MEMBER_TYPE_ADMIN);
     fallbackSave($explicit);
     fallbackCheck(!$child->isAllowed($key, false), 'Admin-only property grants must not fall back to a member holon grant');
@@ -156,6 +165,72 @@ try {
     fallbackCheck(!HolonPermission::holonHasCollectivePermissionForHolonContext($organization->getId(), $circle->getId(), $key, $child->getId()), 'Even a personal assignment elsewhere suppresses collective fallback');
     fallbackCheck(!HolonPermission::userHasCollectivePermissionForHolonContext($user->getId(), $organization->getId(), $key, $child->getId()), 'Collective action availability must respect explicit assignments');
     $explicit->delete();
+    // Explicit collective grants use the same prospective child as personal grants.
+    $collectiveProperty = $grant($circle, $key, HolonPermission::RANGE_DIRECT_CHILDREN, HolonPermission::MEMBER_TYPE_COLLECTIVE);
+    $collectiveEditor = $organization->getHolonCreationEditorData((int)$circle->getId(), 0, true, (int)$circle->getId());
+    $collectiveTemplate = array_values(array_filter($collectiveEditor['templateCatalog'], static fn ($entry) => $entry['id'] === (int)$template->getId()))[0];
+    fallbackCheck($collectiveTemplate['properties'][0]['canEditValue'], 'PV collective grants must enable the future child property');
+    fallbackCheck(!empty($organization->saveHolonEditorDefinition($payload, (int)$user->getId(), (int)$circle->getId(), 0, true, (int)$circle->getId())['status']), 'Collective creation must pass the same server checks');
+    $collectiveProperty->set('range', HolonPermission::RANGE_SELF);
+    fallbackSave($collectiveProperty);
+    fallbackCheck(!HolonPermission::holonHasCollectivePermissionForHolonContext($organization->getId(), $circle->getId(), $key, $circle->getId(), true), 'Collective rights on the parent alone must not cover its future child');
+    fallbackCheck(empty($organization->saveHolonEditorDefinition($payload, (int)$user->getId(), (int)$circle->getId(), 0, true, (int)$circle->getId())['status']), 'Collective server checks must reject parent-only values');
+    $collectiveProperty->delete();
+
+    // Definition creation and deletion must also use the future element context.
+    $createKey = Property::permissionKey('CREATE', 'type1');
+    $deleteKey = Property::permissionKey('DELETE', 'type1');
+    $createGrant = $grant($circle, $createKey, HolonPermission::RANGE_DIRECT_CHILDREN);
+    $deleteGrant = $grant($circle, $deleteKey, HolonPermission::RANGE_DIRECT_CHILDREN);
+    $definitionPayload = $payload;
+    $definitionPayload['properties'][] = ['id' => 0, 'name' => 'Local definition', 'type' => 'type1', 'formatId' => 1, 'value' => 'Local value'];
+    $definitionEditor = $organization->getHolonCreationEditorData((int)$circle->getId());
+    $definitionType = array_values(array_filter($definitionEditor['propertyTypes'], static fn ($entry) => $entry['id'] === 'type1'))[0];
+    fallbackCheck($definitionEditor['canAddHolonProperties'] && $definitionType['canCreate'] && $definitionType['canDelete'], 'Definition controls must respect child scopes before saving');
+    fallbackCheck(!empty($organization->saveHolonEditorDefinition($definitionPayload, (int)$user->getId(), (int)$circle->getId())['status']), 'The server must allow a definition granted on future children');
+    $createGrant->set('range', HolonPermission::RANGE_SELF);
+    $deleteGrant->set('range', HolonPermission::RANGE_SELF);
+    fallbackSave($createGrant);
+    fallbackSave($deleteGrant);
+    $definitionEditor = $organization->getHolonCreationEditorData((int)$circle->getId());
+    $definitionType = array_values(array_filter($definitionEditor['propertyTypes'], static fn ($entry) => $entry['id'] === 'type1'))[0];
+    fallbackCheck(!$definitionEditor['canAddHolonProperties'] && !$definitionType['canCreate'] && !$definitionType['canDelete'], 'Parent-only definition rights must stay unavailable on future children');
+    fallbackCheck(empty($organization->saveHolonEditorDefinition($definitionPayload, (int)$user->getId(), (int)$circle->getId())['status']), 'The server must reject parent-only definition creation');
+    $createGrant->delete();
+    $deleteGrant->delete();
+
+    // Every scope must agree before and after saving, including transparent groups.
+    $group = $makeHolon('Group', 3);
+    $group->set('IDholon_parent', $circle->getId());
+    fallbackSave($group);
+    $nestedCircle = $makeHolon('Nested circle', 2);
+    $nestedCircle->set('IDholon_parent', $group->getId());
+    fallbackSave($nestedCircle);
+    $ranges = [HolonPermission::RANGE_SELF, HolonPermission::RANGE_DIRECT_CHILDREN,
+        HolonPermission::RANGE_DESCENDANTS, HolonPermission::RANGE_PARENT_CIRCLE,
+        HolonPermission::RANGE_PARENT_CIRCLE_ELEMENTS, HolonPermission::RANGE_PARENT_CIRCLE_DESCENDANTS,
+        HolonPermission::RANGE_ORGANIZATION_ROOT, HolonPermission::RANGE_ORGANIZATION];
+    foreach ([HolonPermission::MEMBER_TYPE_MEMBER, HolonPermission::MEMBER_TYPE_COLLECTIVE] as $profile) {
+        $scopeGrant = $grant($circle, $key, HolonPermission::RANGE_SELF, $profile);
+        foreach ($ranges as $range) {
+            $scopeGrant->set('range', $range);
+            fallbackSave($scopeGrant);
+            foreach ([$root, $circle, $group, $nestedCircle, $elsewhere] as $parent) {
+                $collective = $profile === HolonPermission::MEMBER_TYPE_COLLECTIVE;
+                $before = $collective
+                    ? HolonPermission::holonHasCollectivePermissionForHolonContext($organization->getId(), $circle->getId(), $key, $parent->getId(), true)
+                    : $parent->canEditPropertyValue('type1', true);
+                $prospective = $makeHolon('Scope comparison child', 1);
+                $prospective->set('IDholon_parent', $parent->getId());
+                fallbackSave($prospective);
+                $after = $collective
+                    ? HolonPermission::holonHasCollectivePermissionForHolonContext($organization->getId(), $circle->getId(), $key, $prospective->getId())
+                    : $prospective->canEditPropertyValue('type1');
+                fallbackCheck($before === $after, $profile . ' ' . $range . ': future child rights must match saved rights under ' . $parent->getId());
+            }
+        }
+        $scopeGrant->delete();
+    }
     $locked = $template->getTemplatePropertyDefinitions();
     $locked[0]['locked'] = true;
     $template->syncTemplateProperties($locked, (int)$root->getId());
@@ -163,7 +238,7 @@ try {
     $lockedTemplate = array_values(array_filter($lockedEditor['templateCatalog'], static fn ($entry) => $entry['id'] === (int)$template->getId()))[0];
     fallbackCheck(!$lockedTemplate['properties'][0]['canEditValue'], 'Inherited locks must still apply');
     fallbackCheck(empty($organization->saveHolonEditorDefinition($payload, (int)$user->getId(), (int)$circle->getId())['status']), 'Server must also enforce inherited locks');
-    echo "property_value_fallback_integration_test: OK (all types, mandatory creation, edit, explicit scopes, cache, collective, locks)\n";
+    echo "property_value_fallback_integration_test: OK (all types, mandatory creation, edit, prospective scopes, definitions, cache, collective, groups, locks)\n";
 } finally {
     if ($pdo->inTransaction()) $pdo->rollBack();
     DbObject::$preload = [];

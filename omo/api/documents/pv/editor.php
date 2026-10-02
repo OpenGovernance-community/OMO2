@@ -150,6 +150,7 @@ $documentVisibilityType = (string)($documentVisibility['type'] ?? \dbObject\Obje
 $documentVisibilityOptions = \dbObject\ObjectVisibility::getVisibilityTypeOptions();
 $documentModifiedAt = $document->get('datemodification');
 $documentModifiedAtValue = $documentModifiedAt instanceof DateTimeInterface ? $documentModifiedAt->format('Y-m-d H:i:s.u') : '';
+$unhandledPointsHtml = $document->renderPvUnhandledPointsForViewer();
 $documentSyncVersion = hash('sha256', implode('|', [
     $documentModifiedAtValue,
     $document->getPvStage(),
@@ -159,6 +160,7 @@ $documentSyncVersion = hash('sha256', implode('|', [
     $documentDescription,
     $documentVisibilityType,
     $isPvTemplate ? '1' : '0',
+    $unhandledPointsHtml,
 ]));
 $pollingRevision = $document->getPvEditorPollingRevision($organizationId);
 $eventTitle = $hasAssociatedEvent
@@ -541,6 +543,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     data-omo-pv-application-tabs-cid="<?= (int)$pvApplicationContextHolonId ?>"
 >
     <link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/documents/pv/editor.css') ?>">
+    <link rel="stylesheet" href="<?= commonAssetUrl('/common/document/pv-report.css') ?>">
 
     <?php if ($showPvApplicationTabs): ?>
     <nav class="generic-tabs generic-tabs__list omo-pv-editor__application-tabs" data-omo-pv-application-tabs role="tablist" aria-label="<?= $escape((string)$uiText['applicationPickerTitle']) ?>">
@@ -853,6 +856,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         <div class="omo-pv-editor__points generic-stack" data-omo-pv-editor-points>
             <?= count($pointCards) > 0 ? implode('', $pointCards) : '' ?>
         </div>
+        <div data-omo-pv-unhandled-points><?= $unhandledPointsHtml ?></div>
     </section>
     <?php if ($showPvApplicationTabs): ?>
         <section class="omo-pv-editor__application-workspace" data-omo-pv-application-workspace hidden></section>
@@ -860,7 +864,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
 </div>
 
 <script src="/common/choice/word-diff.js?v=20260922-deferred-proposals"></script>
-<script src="/common/choice/change-details.js?v=20260924-readable-diffs"></script>
+<script src="<?= commonAssetUrl('/common/choice/change-details.js') ?>"></script>
 <?php if ($isPvReviewDiscussion): ?>
 <script src="/common/chat/thread.js?v=20260821-pv-review-access-2"></script>
 <?php endif; ?>
@@ -879,6 +883,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     'initialPointPayloads' => $pointPayloads,
     'initialDocumentPayload' => [
         'pvStage' => $pvStage,
+        'unhandledPointsHtml' => $unhandledPointsHtml,
         'pvStageLabel' => (string)($pvStageOptions[$pvStage] ?? ''),
         'title' => $documentTitle,
         'description' => $documentDescription,
@@ -1102,10 +1107,11 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     ],
     'editorClientUi' => [
         'pointImport' => array_combine(
-            ['title', 'scope', 'local', 'global', 'help', 'empty', 'loading', 'add', 'saving', 'retry'],
-            array_map(static fn($key) => omoDocumentsPvEditorT('documents.pv_editor.import.' . $key), ['title', 'scope', 'local', 'global', 'help', 'empty', 'loading', 'add', 'saving', 'retry'])
+            ['title', 'scope', 'local', 'global', 'members', 'mine', 'all', 'period', 'before', 'after', 'help', 'empty', 'loading', 'add', 'saving', 'retry'],
+            array_map(static fn($key) => omoDocumentsPvEditorT('documents.pv_editor.import.' . $key), ['title', 'scope', 'local', 'global', 'members', 'mine', 'all', 'period', 'before', 'after', 'help', 'empty', 'loading', 'add', 'saving', 'retry'])
         ) + ['cancel' => omoDocumentsPvEditorT('documents.pv_editor.action.cancel'), 'locked' => omoDocumentsPvEditorT('documents.pv_editor.state.locked'),
-            'types' => ['information' => $uiText['information'], 'consultation' => $uiText['consultation'], 'decision' => $uiText['decision']]],
+            'types' => ['information' => $uiText['information'], 'consultation' => $uiText['consultation'], 'decision' => $uiText['decision']],
+            'icons' => omoDocumentsPvEditorPointTypeIcons(), 'canImportAllMembers' => $document->isPvEditor($currentUserId)],
         'genericError' => omoDocumentsPvEditorT('documents.pv_editor.error.generic'),
         'documentSaveError' => omoDocumentsPvEditorT('documents.pv_editor.error.document_save'),
         'autoSummaryError' => omoDocumentsPvEditorT('documents.pv_editor.error.auto_summary'),

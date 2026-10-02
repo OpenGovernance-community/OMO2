@@ -120,7 +120,7 @@ if (is_array($attendanceEntries) && $attendanceEntries !== []) {
 
 $pointLines = [];
 foreach ($document->getVisiblePvPointsForUser($currentUserId, true) as $point) {
-    if (!($point instanceof \dbObject\DocumentPvPoint)) {
+    if (!($point instanceof \dbObject\DocumentPvPoint) || $point->isGroup() || !$point->isHandled()) {
         continue;
     }
 

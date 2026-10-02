@@ -16,6 +16,7 @@ function meetingT(string $key, array $replace = []): string
             'calendar_hint' => 'Seuls les agendas connectés dont le droit de création est confirmé peuvent être sélectionnés.',
             'readonly' => 'Lecture seule ou droits non vérifiables', 'calendar_invalid' => 'Choisissez un agenda actif vous appartenant et autorisant la création d’événements.',
             'hours' => 'Horaires hebdomadaires', 'open' => 'Ouvert', 'start' => 'Début', 'end' => 'Fin',
+            'availability_calendar' => 'Calendrier de disponibilité',
             'pause' => 'Pause de midi', 'pause_start' => 'Début de pause', 'pause_end' => 'Fin de pause',
             'hours_invalid' => 'Vérifiez les horaires : le début doit précéder la fin, la pause doit rester à l’intérieur, par pas de 30 minutes.',
             'monday' => 'Lundi', 'tuesday' => 'Mardi', 'wednesday' => 'Mercredi', 'thursday' => 'Jeudi',

@@ -6381,7 +6381,8 @@
 					: (isset($holonIdMap[$sourceHolonId]) ? (int)$holonIdMap[$sourceHolonId] : null);
 				$content = (string)($record['content'] ?? '');
 				$legacyFilePath = trim((string)($record['legacyFilePath'] ?? ''));
-				$isLegacyUploadedFile = !empty($record['fileTransferRequired']) || $legacyFilePath !== '';
+				$fileReference = is_array($record['fileReference'] ?? null) ? $record['fileReference'] : null;
+				$isLegacyUploadedFile = $fileReference === null && (!empty($record['fileTransferRequired']) || $legacyFilePath !== '');
 				$description = trim((string)($record['description'] ?? ''));
 				$legacyFilename = self::omo1ImportLimitText($record['filename'] ?? '', 255);
 				if ($legacyFilename === '' && $legacyFilePath !== '') {
@@ -6400,6 +6401,15 @@
 					\dbObject\Document::TYPE_EXTERNAL_LINK,
 					\dbObject\Document::TYPE_FOLDER,
 				);
+				if ($fileReference !== null) {
+					$allowedDocumentTypes = array_merge($allowedDocumentTypes, [
+						\dbObject\Document::TYPE_UPLOADED_FILE, \dbObject\Document::TYPE_NEXTCLOUD_FOLDER,
+						\dbObject\Document::TYPE_ETHERPAD, \dbObject\Document::TYPE_ETHERCALC,
+						\dbObject\Document::TYPE_COLLABORA_DOCUMENT, \dbObject\Document::TYPE_COLLABORA_SPREADSHEET,
+						\dbObject\Document::TYPE_COLLABORA_PRESENTATION, \dbObject\Document::TYPE_COLLABORA_DRAWING,
+						\dbObject\Document::TYPE_WHITEBOARD,
+					]);
+				}
 				if (!in_array($documentType, $allowedDocumentTypes, true)) {
 					$documentType = $isLegacyUploadedFile
 						? \dbObject\Document::TYPE_UPLOADED_FILE
@@ -6410,6 +6420,13 @@
 				$document->set('description', $description !== '' ? $description : null);
 				$document->set('content', $content !== '' ? $content : null);
 				$document->set('documenttype', $documentType);
+				if ($fileReference !== null) {
+					foreach (['storedfilepath', 'storedfilename', 'storedfilemime', 'storedfilesize', 'nextcloudfolderpath', 'nextcloudfolderfileid', 'etherpadpadid', 'ethercalcroomid', 'spacedeckspaceid'] as $field) {
+						$value = $fileReference[$field] ?? null;
+						$document->set($field, $field === 'storedfilesize' ? max(0, (int)$value) : (self::omo1ImportLimitText($value ?? '', \dbObject\Document::attributeLength()[$field]) ?: null));
+					}
+					$warnings[] = 'Les références aux fichiers ont été restaurées sans leur contenu. Reconfigurez les serveurs de documents.';
+				}
 				$document->set('externalurl', $record['externalUrl'] ?? null);
 				$document->set('keywords', self::omo1ImportLimitText($record['keywords'] ?? '', 250) ?: null);
 				$document->set('is_template', !empty($record['isTemplate']) ? 1 : 0);
@@ -8652,7 +8669,7 @@
 			}));
 		}
 
-		protected function collectExportScopeHolonIds(\dbObject\Holon $holon, array &$ids)
+		protected function collectExportScopeHolonIds(\dbObject\Holon $holon, array &$ids, bool $includeHidden = false)
 		{
 			$holonId = (int)$holon->getId();
 			if ($holonId <= 0 || isset($ids[$holonId])) {
@@ -8660,8 +8677,8 @@
 			}
 
 			$ids[$holonId] = $holonId;
-			foreach ($holon->getChildren() as $child) {
-				$this->collectExportScopeHolonIds($child, $ids);
+			foreach ($holon->getChildren($includeHidden) as $child) {
+				$this->collectExportScopeHolonIds($child, $ids, $includeHidden);
 			}
 		}
 
@@ -8709,7 +8726,7 @@
 			}
 		}
 
-		protected function getStructureCompactExportHolons(\dbObject\Holon $exportRoot)
+		protected function getStructureCompactExportHolons(\dbObject\Holon $exportRoot, bool $includeHidden = false)
 		{
 			$rootHolon = $this->getStructuralRootHolon();
 			if (!$rootHolon || (int)$exportRoot->getId() <= 0) {
@@ -8717,7 +8734,7 @@
 			}
 
 			$visibleScopeIds = array();
-			$this->collectExportScopeHolonIds($exportRoot, $visibleScopeIds);
+			$this->collectExportScopeHolonIds($exportRoot, $visibleScopeIds, $includeHidden);
 
 			$pathIds = array_map(function ($holon) {
 				return (int)$holon->getId();
@@ -8824,9 +8841,9 @@
 			return $items;
 		}
 
-		public function getStructureCompactExportData(\dbObject\Holon $exportRoot)
+		public function getStructureCompactExportData(\dbObject\Holon $exportRoot, bool $includeHidden = false)
 		{
-			$items = $this->getStructureCompactExportHolons($exportRoot);
+			$items = $this->getStructureCompactExportHolons($exportRoot, $includeHidden);
 			$rootHolon = $this->getStructuralRootHolon();
 			$rootHolonId = $rootHolon ? (int)$rootHolon->getId() : 0;
 			$holonRows = array();
@@ -9656,21 +9673,21 @@
 		protected function canUsePropertyPermission(Holon $context, string $permissionKey, int $collectiveHolonId = 0, bool $creatingHolon = false): bool
 		{
 			if (preg_match('/_TYPE([1-5])_PROPERTIES$/', $permissionKey, $matches) && !Property::isTypeEnabled('type' . $matches[1], $this->getLexicon())) return false;
-			if ($collectiveHolonId === 0 && $creatingHolon && preg_match('/^CAN_EDIT_(TYPE[1-9][0-9]*)_PROPERTIES$/', $permissionKey, $matches)) {
-				return $context->canEditPropertyValue(strtolower($matches[1]), true);
+			if ($collectiveHolonId === 0 && $creatingHolon && preg_match('/^CAN_(CREATE|EDIT|DELETE)_(TYPE[1-9][0-9]*)_PROPERTIES$/', $permissionKey, $matches)) {
+				return $context->canUsePropertyPermission($matches[1], strtolower($matches[2]), true);
 			}
 			return $collectiveHolonId === 0
 				? $context->isAllowed($permissionKey, false)
 				: ($collectiveHolonId > 0 && HolonPermission::holonHasCollectivePermissionForHolonContext((int)$this->getId(), $collectiveHolonId, $permissionKey, (int)$context->getId(), $creatingHolon));
 		}
 
-		protected function canApplyPropertyDefinitionChanges(\dbObject\Holon $permissionHolon, array $operations, $propertyScope, int $collectiveHolonId = 0)
+		protected function canApplyPropertyDefinitionChanges(\dbObject\Holon $permissionHolon, array $operations, $propertyScope, int $collectiveHolonId = 0, bool $creatingHolon = false)
 		{
 			foreach ($operations as $permissionKey) {
 				if (str_starts_with($permissionKey, 'INVALID_')) {
 					return ['status' => false, 'message' => 'Type ou definition de propriete invalide.'];
 				}
-				if (!$this->canUsePropertyPermission($permissionHolon, $permissionKey, $collectiveHolonId)) {
+				if (!$this->canUsePropertyPermission($permissionHolon, $permissionKey, $collectiveHolonId, $creatingHolon)) {
 					return ['status' => false, 'message' => 'Droit requis : ' . $permissionKey . '.'];
 				}
 			}
@@ -10957,6 +10974,7 @@
 			}
 
 			$data = $this->filterPropertyTypesForEditor($data);
+			$data['canAddHolonProperties'] = in_array(true, array_column($data['propertyTypes'], 'canCreate'), true);
 			if ($collectiveGovernance) {
 				$permissionContext = $editingHolon ?: $contextHolon;
 				$collectiveId = $collectiveHolonId > 0 ? $collectiveHolonId : -1;
@@ -13405,7 +13423,7 @@
 				$propertyPermissionResult = $this->canApplyPropertyDefinitionChanges(
 					$propertyPermissionHolon,
 					$this->getPropertyDefinitionPermissionOperations($existingDirectDefinitions, $submittedDirectDefinitions),
-					'HOLON', $propertyCollectiveId
+					'HOLON', $propertyCollectiveId, !$isEditing
 				);
 				if (empty($propertyPermissionResult['status'])) {
 					return $propertyPermissionResult;
