@@ -15,6 +15,9 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
     const pointsContainer = root.querySelector('[data-omo-pv-editor-points]');
     const mainPanel = root.querySelector('.omo-pv-editor__main');
     const addButton = root.querySelector('[data-omo-pv-editor-add-point]');
+    const addMenu = root.querySelector('[data-omo-pv-add-menu]');
+    const addMenuToggle = root.querySelector('[data-omo-pv-add-toggle]');
+    const addMenuPanel = root.querySelector('[data-omo-pv-add-panel]');
     const addGroupButton = root.querySelector('[data-omo-pv-editor-add-group]');
     const sidebar = root.querySelector('.omo-pv-editor__sidebar');
     const timingPanel = root.querySelector('[data-omo-pv-timing-panel]');
@@ -2714,6 +2717,11 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         const isWaitingForReplacement = isCurrentEditor && documentPayload.pvEditorHandoverOpen === true;
         const canManageStructure = documentPayload.canManagePvStructure === true;
         const isReview = String(documentPayload.pvStage || '') === 'review';
+        if (addMenu) addMenu.hidden = isCurrentEditor && !canManageStructure;
+        if (addMenuToggle) {
+            addMenuToggle.disabled = isReview || documentPayload.isPvValidated === true || documentPayload.isPvTemplate === true || (isCurrentEditor && !canManageStructure);
+            if (addMenuToggle.disabled) closeAddMenu();
+        }
         canManageApplicationTabs = canManageStructure;
         const applicationTabAddButton = applicationTabsNav instanceof Element
             ? applicationTabsNav.querySelector('[data-omo-pv-application-tab-add]')
@@ -3048,7 +3056,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
     function collectTimingPointState() {
         return Object.keys(currentPointPayloads).filter(function (pointId) {
             const payload = currentPointPayloads[pointId] || {};
-            return payload.isGroup !== true;
+            return payload.isGroup !== true && payload.isMoved !== true;
         }).map(function (pointId) {
             const payload = currentPointPayloads[pointId] || {};
             const numericPointId = Number(pointId || 0);
@@ -5460,7 +5468,170 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         document.addEventListener('scroll', positionAgendaSortMenu, true);
     }
 
+    function closeAddMenu() {
+        if (addMenuToggle) addMenuToggle.setAttribute('aria-expanded', 'false');
+        if (addMenuPanel) addMenuPanel.hidden = true;
+    }
+
+    function openPointImport() {
+        closeAddMenu();
+        if (typeof window.commonTopbarOpenModal !== 'function') return;
+        const ui = pageConfig.editorClientUi.pointImport;
+        const escape = function (text) {
+            const node = document.createElement('span');
+            node.textContent = String(text || '');
+            return node.innerHTML;
+        };
+        const html = '<div class="generic-drawer-content generic-stack" data-omo-pv-import-picker>'
+            + '<p>' + escape(ui.help) + '</p>'
+            + '<label>' + escape(ui.scope) + '<select class="generic-form-control" data-import-scope><option value="local">' + escape(ui.local) + '</option><option value="global">' + escape(ui.global) + '</option></select></label>'
+            + '<div class="omo-pv-import__list generic-stack generic-stack--compact" data-import-list></div>'
+            + '<p role="status" aria-live="polite" data-import-status></p>'
+            + '<button type="button" class="generic-action-button generic-action-button--secondary" data-import-retry hidden>' + escape(ui.retry) + '</button>'
+            + '<div class="omo-document-embed-picker__actions"><button type="button" class="generic-action-button generic-action-button--secondary" data-import-cancel>' + escape(ui.cancel) + '</button>'
+            + '<button type="button" class="generic-action-button generic-action-button--main" data-import-add disabled></button></div></div>';
+        window.commonTopbarOpenModal(ui.title, html, 'html');
+        const picker = document.querySelector('#commonTopbarModalBody [data-omo-pv-import-picker]');
+        if (!picker) return;
+        const list = picker.querySelector('[data-import-list]');
+        const scope = picker.querySelector('[data-import-scope]');
+        const status = picker.querySelector('[data-import-status]');
+        const submit = picker.querySelector('[data-import-add]');
+        const retry = picker.querySelector('[data-import-retry]');
+        const cancel = picker.querySelector('[data-import-cancel]');
+        const selected = new Set();
+        const rendered = new Set();
+        let cursor = null, hasMore = true, loading = false, saving = false, generation = 0, closed = false, loadFailed = false;
+        const updateSubmit = function () {
+            submit.disabled = saving || selected.size === 0;
+            submit.textContent = saving ? ui.saving : ui.add.replace('{count}', String(selected.size));
+        };
+        const load = function () {
+            if (closed || loading || saving || !hasMore) return;
+            const requestGeneration = generation;
+            loading = true;
+            loadFailed = false;
+            retry.hidden = true;
+            status.textContent = ui.loading;
+            // Request enough rows to fill the available list, then load only near its bottom.
+            const limit = Math.max(8, Math.min(50, Math.ceil(list.clientHeight / 85) + 2));
+            postPointAction('list_importable_points', 0, {scope: scope.value, cursor: JSON.stringify(cursor), limit: limit})
+                .then(function (payload) {
+                    if (closed || saving || requestGeneration !== generation) return;
+                    cursor = payload.cursor;
+                    hasMore = payload.hasMore === true;
+                    (payload.items || []).forEach(function (point) {
+                        if (rendered.has(point.id)) return;
+                        rendered.add(point.id);
+                        const row = document.createElement('label');
+                        row.className = 'generic-soft-panel omo-pv-import__row';
+                        const checkbox = document.createElement('input');
+                        checkbox.type = 'checkbox';
+                        checkbox.value = String(point.id);
+                        checkbox.disabled = point.isLocked === true;
+                        checkbox.checked = selected.has(point.id);
+                        const copy = document.createElement('span');
+                        const title = document.createElement('strong');
+                        title.textContent = point.title;
+                        const meeting = document.createElement('span');
+                        meeting.textContent = point.meetingDate + ' - ' + point.meetingTitle;
+                        const metadata = document.createElement('span');
+                        const typeLabel = ui.types[point.pointType] || point.pointType;
+                        metadata.textContent = ['P' + point.priority, typeLabel, point.duration === null ? '' : point.duration + ' min', point.author, point.isLocked ? ui.locked : ''].filter(Boolean).join(' | ');
+                        copy.append(title, meeting, metadata);
+                        row.append(checkbox, copy);
+                        checkbox.addEventListener('change', function () {
+                            if (checkbox.checked) selected.add(point.id);
+                            else selected.delete(point.id);
+                            updateSubmit();
+                        });
+                        list.append(row);
+                    });
+                    status.textContent = rendered.size === 0 && !hasMore ? ui.empty : '';
+                })
+                .catch(function (error) {
+                    if (closed || requestGeneration !== generation) return;
+                    loadFailed = true;
+                    status.textContent = error.message || pageConfig.editorClientUi.genericError;
+                    retry.hidden = false;
+                })
+                .finally(function () {
+                    if (closed || requestGeneration !== generation) return;
+                    loading = false;
+                    if (!loadFailed && hasMore && list.scrollHeight <= list.clientHeight) load();
+                });
+        };
+        list.addEventListener('scroll', function () {
+            if (!loadFailed && list.scrollHeight - list.scrollTop - list.clientHeight < 100) load();
+        });
+        retry.addEventListener('click', load);
+        scope.addEventListener('change', function () {
+            generation++;
+            loading = false;
+            cursor = null;
+            hasMore = true;
+            selected.clear();
+            rendered.clear();
+            list.replaceChildren();
+            list.scrollTop = 0;
+            updateSubmit();
+            load();
+        });
+        window.addEventListener('common-topbar-modal-close', function () { closed = true; generation++; }, {once: true});
+        cancel.addEventListener('click', function () { window.commonTopbarCloseModal(); });
+        submit.addEventListener('click', function () {
+            if (saving || !selected.size) return;
+            saving = true;
+            scope.disabled = true;
+            cancel.disabled = true;
+            list.querySelectorAll('input').forEach(function (input) { input.disabled = true; });
+            updateSubmit();
+            postPointAction('import_points', 0, {scope: scope.value, point_ids: Array.from(selected).join(',')})
+                .then(function (payload) {
+                    (payload.points || []).forEach(function (point) { replacePointHtml(point); });
+                    if (!closed) window.commonTopbarCloseModal();
+                    syncEditorFromServer();
+                })
+                .catch(function (error) {
+                    if (closed) return;
+                    status.textContent = error.message || pageConfig.editorClientUi.genericError;
+                    // Refresh stale eligibility without retrying a transfer automatically.
+                    generation++;
+                    loading = false;
+                    cursor = null;
+                    hasMore = true;
+                    selected.clear();
+                    rendered.clear();
+                    list.replaceChildren();
+                    retry.hidden = false;
+                })
+                .finally(function () {
+                    saving = false;
+                    scope.disabled = false;
+                    cancel.disabled = false;
+                    updateSubmit();
+                });
+        });
+        updateSubmit();
+        scope.focus();
+        load();
+    }
+
+    if (addMenuToggle && addMenuPanel) {
+        addMenuToggle.addEventListener('click', function () {
+            const open = addMenuPanel.hidden;
+            addMenuPanel.hidden = !open;
+            addMenuToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        });
+        document.addEventListener('click', function (event) { if (addMenu && !addMenu.contains(event.target)) closeAddMenu(); });
+        addMenu.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') { closeAddMenu(); addMenuToggle.focus(); }
+        });
+        root.querySelector('[data-omo-pv-import-points]').addEventListener('click', openPointImport);
+    }
+
     function addPoint() {
+        closeAddMenu();
         if (!addButton) {
             return;
         }

@@ -1458,6 +1458,8 @@
 						COALESCE(actual_duration_minutes, 0),
 						COALESCE(pointtype, ''),
 						COALESCE(is_handled, 0),
+						COALESCE(IDpoint_moved_to, 0),
+						COALESCE(date_moved, ''),
 						COALESCE(is_confidential, 0),
 						COALESCE(active, 1),
 						COALESCE(IDuser_modification, 0)
@@ -1963,6 +1965,7 @@
 
 		public function canUserEditPvPoint(\dbObject\DocumentPvPoint $point, int $userId): bool
 		{
+			if ($point->isMoved()) return false;
 			if (!$this->isPvDocument() || $this->isPvValidated() || (int)$point->get('IDdocument') !== (int)$this->getId()) {
 				return false;
 			}
@@ -1994,6 +1997,7 @@
 
 		public function canUserReorderPvItem(\dbObject\DocumentPvPoint $item, int $userId): bool
 		{
+			if ($item->isMoved()) return false;
 			if (!$this->canUserReorderPvPoints($userId) || (int)$item->get('IDdocument') !== (int)$this->getId()) {
 				return false;
 			}

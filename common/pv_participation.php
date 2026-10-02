@@ -93,6 +93,7 @@ function commonPvParticipationRecipientCanUseStructure($shareLink, int $organiza
 
 function commonPvParticipationCanEditPoint(\dbObject\Document $document, \dbObject\DocumentPvPoint $point, $shareLink): bool
 {
+    if ($point->isMoved()) return false;
     if (
         !($shareLink instanceof \dbObject\DocumentShareLink)
         || !$shareLink->allowsPvContribution()

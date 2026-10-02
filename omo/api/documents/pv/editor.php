@@ -588,7 +588,15 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                 <?php endif; ?>
                 <button type="button" class="omo-pv-editor__delete-dropzone" data-omo-pv-delete-dropzone title="<?= $escape((string)$uiText['deleteItem']) ?>" aria-label="<?= $escape((string)$uiText['deleteItem']) ?>"<?= $isPvReview || ($isPvEditor && !$canManagePvStructure) ? ' hidden' : '' ?>><img src="/omo/assets/images/documents/poubelle.png" alt="" aria-hidden="true"></button>
                 <button type="button" class="generic-action-button generic-action-button--secondary omo-pv-editor__add-button" data-omo-pv-editor-add-group title="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.action.add_group')) ?>" aria-label="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.action.add_group')) ?>"<?= $canCreatePvGroups ? '' : ' hidden' ?>><img src="/omo/assets/images/documents/add-folder.png" class="omo-pv-editor__toolbar-icon black-icon" alt="" aria-hidden="true"></button>
-                <button type="button" class="generic-action-button generic-action-button--main omo-pv-editor__add-button" data-omo-pv-editor-add-point<?= $isPvValidated || $isPvReview ? ' disabled' : '' ?><?= $isPvEditor && !$canManagePvStructure ? ' hidden' : '' ?> title="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.action.add_point')) ?>" aria-label="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.action.add_point')) ?>"><img src="/omo/assets/images/documents/add.png" class="omo-pv-editor__toolbar-icon omo-pv-editor__toolbar-icon--on-main" alt="" aria-hidden="true"></button>
+                <div class="generic-menu generic-menu--split" data-omo-pv-add-menu<?= $isPvEditor && !$canManagePvStructure ? ' hidden' : '' ?>>
+                    <button type="button" class="generic-action-button generic-action-button--main omo-pv-editor__add-button" data-omo-pv-editor-add-point<?= $isPvValidated || $isPvReview ? ' disabled' : '' ?> title="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.action.add_point')) ?>" aria-label="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.action.add_point')) ?>"><img src="/omo/assets/images/documents/add.png" class="omo-pv-editor__toolbar-icon omo-pv-editor__toolbar-icon--on-main" alt="" aria-hidden="true"></button>
+                    <?php if (!$isPublicParticipation): ?>
+                    <button type="button" class="generic-menu-toggle" data-omo-pv-add-toggle aria-expanded="false" aria-controls="omoPvAddMenuPanel" aria-label="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.import.options')) ?>"<?= \dbObject\DocumentPvPoint::canImportIntoDocument($document, $currentUserId) ? '' : ' disabled' ?>>&#9662;</button>
+                    <div class="generic-menu-panel" id="omoPvAddMenuPanel" data-omo-pv-add-panel hidden>
+                        <button type="button" class="generic-menu-item" data-omo-pv-import-points><?= $escape(omoDocumentsPvEditorT('documents.pv_editor.import.title')) ?></button>
+                    </div>
+                    <?php endif; ?>
+                </div>
             </div>
             <div class="omo-pv-editor__nav generic-stack generic-stack--compact" data-omo-pv-editor-nav>
                 <?php if (count($pointNavItems) === 0): ?>
@@ -1093,6 +1101,11 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         'toolbarLabel' => omoDocumentsPvEditorT('documents.pv_editor.toolbar.indicator'),
     ],
     'editorClientUi' => [
+        'pointImport' => array_combine(
+            ['title', 'scope', 'local', 'global', 'help', 'empty', 'loading', 'add', 'saving', 'retry'],
+            array_map(static fn($key) => omoDocumentsPvEditorT('documents.pv_editor.import.' . $key), ['title', 'scope', 'local', 'global', 'help', 'empty', 'loading', 'add', 'saving', 'retry'])
+        ) + ['cancel' => omoDocumentsPvEditorT('documents.pv_editor.action.cancel'), 'locked' => omoDocumentsPvEditorT('documents.pv_editor.state.locked'),
+            'types' => ['information' => $uiText['information'], 'consultation' => $uiText['consultation'], 'decision' => $uiText['decision']]],
         'genericError' => omoDocumentsPvEditorT('documents.pv_editor.error.generic'),
         'documentSaveError' => omoDocumentsPvEditorT('documents.pv_editor.error.document_save'),
         'autoSummaryError' => omoDocumentsPvEditorT('documents.pv_editor.error.auto_summary'),
