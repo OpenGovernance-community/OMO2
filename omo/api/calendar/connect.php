@@ -9,6 +9,8 @@ use dbObject\ExternalCalendar;
 use dbObject\User;
 
 $sourceLang = [
+    'calendar.connect.external.availability' => ['text' => 'Ce calendrier définit mes plages de disponibilité', 'context' => 'Invert an external calendar into opening windows.'],
+    'calendar.connect.external.availability_hint' => ['text' => 'Disponible uniquement pendant ces plages, sous réserve de vos autres rendez-vous. Les horaires hebdomadaires et la pause s’appliquent si la prise de rendez-vous est activée. Plusieurs calendriers de disponibilité additionnent leurs plages.', 'context' => 'Explanation of availability calendars.'],
     'calendar.connect.popup.title' => ['text' => 'Connecter le calendrier', 'context' => 'Title of the calendar connection popup.'],
     'calendar.connect.tab.omo' => ['text' => 'Connecter OMO', 'context' => 'Tab with OMO CalDAV details.'],
     'calendar.connect.tab.external' => ['text' => 'Ajouter un agenda externe', 'context' => 'Tab used to connect a personal external CalDAV calendar.'],
@@ -104,6 +106,9 @@ $calendarIdentityFields = static function (bool $discovered = false): void {
             <input class="generic-form-control generic-form-control--compact" type="text" <?= $discovered ? 'data-calendar-title' : 'name="title" required' ?> maxlength="190" aria-label="<?= omoApiEscape(omoCalendarConnectT('calendar.connect.external.name')) ?>">
         </div>
     </div>
+    <input type="hidden" <?= $discovered ? '' : 'name="availability_only"' ?> value="0">
+    <label class="generic-checkbox"><input type="checkbox" <?= $discovered ? 'data-calendar-availability' : 'name="availability_only"' ?> value="1"><?= omoApiEscape(omoCalendarConnectT('calendar.connect.external.availability')) ?></label>
+    <p class="generic-help-text"><?= omoApiEscape(omoCalendarConnectT('calendar.connect.external.availability_hint')) ?></p>
     <?php
 };
 
@@ -216,6 +221,7 @@ foreach (['searching', 'connected', 'choose', 'pending', 'finished', 'failed', '
                                     $editValues = [
                                         'id' => (int)$externalCalendar->getId(),
                                         'provider' => (string)$externalCalendar->get('provider'),
+                                        'availability_only' => (bool)$externalCalendar->get('availability_only'),
                                         'title' => (string)$externalCalendar->get('title'),
                                         'color' => ExternalCalendar::normalizeColor($externalCalendar->get('color')),
                                         'calendar_url' => (string)$externalCalendar->get('provider') === 'ics' ? '' : (string)$externalCalendar->get('calendar_url'),

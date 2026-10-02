@@ -19,7 +19,7 @@ class OrganizationExport
         'pv',
     ];
 
-    public static function build(Organization $organization, array $selectedModules): array
+    public static function build(Organization $organization, array $selectedModules, bool $includeFileReferences = false): array
     {
         $organizationId = (int)$organization->getId();
         $rootHolon = $organization->getStructuralRootHolon();
@@ -39,7 +39,7 @@ class OrganizationExport
             $selected['calendar'] = true;
         }
 
-        $compact = $organization->getStructureCompactExportData($rootHolon);
+        $compact = $organization->getStructureCompactExportData($rootHolon, $includeFileReferences);
         $holonCount = self::countTreeNodes((array)($compact['holons'] ?? []));
         $payload = [
             'format' => self::FORMAT,
@@ -87,7 +87,7 @@ class OrganizationExport
         foreach ($builders as $module => $builder) {
             $documentExport = null;
             if ($selected[$module] && $module === 'documents') {
-                $documentExport = self::buildDocumentExportData($organization);
+                $documentExport = self::buildDocumentExportData($organization, $includeFileReferences);
                 $records = $documentExport['records'];
             } else {
                 $records = $selected[$module]
@@ -116,6 +116,15 @@ class OrganizationExport
             'records' => [],
         ];
 
+        return $payload;
+    }
+
+    public static function buildBackup(Organization $organization): array
+    {
+        $payload = self::build($organization, array_fill_keys(self::MODULES, true), true);
+        $payload['source']['backup'] = true;
+        $payload['source']['fileContentsIncluded'] = false;
+        $payload['source']['serverConfigurationIncluded'] = false;
         return $payload;
     }
 
@@ -252,7 +261,7 @@ class OrganizationExport
         ];
     }
 
-    private static function buildDocumentExportData(Organization $organization): array
+    private static function buildDocumentExportData(Organization $organization, bool $includeFileReferences = false): array
     {
         $documents = self::loadCollection('\\dbObject\\ArrayDocument', [
             ['field' => 'IDorganization', 'value' => (int)$organization->getId()],
@@ -266,7 +275,7 @@ class OrganizationExport
         $exportableTypes = array_flip(self::getExportableDocumentTypes());
         foreach ($documents as $document) {
             $documentType = (string)$document->get('documenttype');
-            if (!isset($exportableTypes[$documentType])) {
+            if (!$includeFileReferences && !isset($exportableTypes[$documentType])) {
                 $omittedByType[$documentType !== '' ? $documentType : 'unknown'] = (int)($omittedByType[$documentType !== '' ? $documentType : 'unknown'] ?? 0) + 1;
                 continue;
             }
@@ -285,7 +294,7 @@ class OrganizationExport
                 'sourceId' => (int)$document->getId(),
                 'title' => (string)$document->get('title'),
                 'description' => (string)$document->get('description'),
-                'content' => (string)$document->get('content'),
+                'content' => !$includeFileReferences || $documentType === Document::TYPE_HTML ? (string)$document->get('content') : '',
                 'externalUrl' => (string)$document->get('externalurl'),
                 'documentType' => $documentType,
                 'filename' => (string)$document->get('storedfilename'),
@@ -304,6 +313,20 @@ class OrganizationExport
                 'updatedAt' => self::normalizeValue($document->get('datemodification')),
                 'active' => (bool)$document->get('active'),
             ];
+            if ($includeFileReferences) {
+                // Explicit allowlist: document references only, never server credentials or remote contents.
+                $records[array_key_last($records)]['fileReference'] = [
+                    'storedfilepath' => (string)$document->get('storedfilepath'),
+                    'storedfilename' => (string)$document->get('storedfilename'),
+                    'storedfilemime' => (string)$document->get('storedfilemime'),
+                    'storedfilesize' => (int)$document->get('storedfilesize'),
+                    'nextcloudfolderpath' => (string)$document->get('nextcloudfolderpath'),
+                    'nextcloudfolderfileid' => (string)$document->get('nextcloudfolderfileid'),
+                    'etherpadpadid' => (string)$document->get('etherpadpadid'),
+                    'ethercalcroomid' => (string)$document->get('ethercalcroomid'),
+                    'spacedeckspaceid' => (string)$document->get('spacedeckspaceid'),
+                ];
+            }
         }
         ksort($omittedByType, SORT_STRING);
         return [

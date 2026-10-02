@@ -2251,6 +2251,7 @@ window.omoInitCalendar = function (root) {
                 }
                 var values = JSON.parse(button.getAttribute('data-omo-external-calendar-edit'));
                 editForm.elements.calendar_id.value = values.id;
+                editForm.querySelector('input[type="checkbox"][name="availability_only"]').checked = !!values.availability_only;
                 ['title', 'color', 'calendar_url', 'username'].forEach(function (name) {
                     editForm.elements[name].value = values[name] || '';
                 });
@@ -2334,6 +2335,7 @@ window.omoInitCalendar = function (root) {
                         row.querySelector('[data-calendar-name]').textContent = calendar.title;
                         row.querySelector('[data-calendar-title]').value = calendar.title;
                         row.querySelector('[data-calendar-color]').value = calendar.color;
+                        row.querySelector('[data-calendar-availability]').checked = !!calendar.availability_only;
                         row.querySelector('[data-calendar-selected]').checked = payload.calendars.length === 1 && !calendar.connected;
                         row.querySelector('[data-calendar-connected]').hidden = !calendar.connected;
                         results.appendChild(row);
@@ -2365,6 +2367,7 @@ window.omoInitCalendar = function (root) {
                     body.set('calendar_index', row.dataset.calendarIndex);
                     body.set('title', row.querySelector('[data-calendar-title]').value);
                     body.set('color', row.querySelector('[data-calendar-color]').value);
+                    body.set('availability_only', row.querySelector('[data-calendar-availability]').checked ? '1' : '0');
                     try {
                         var payload = await requestExternal(body);
                         saved = true;

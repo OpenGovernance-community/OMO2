@@ -8,6 +8,7 @@ if (!function_exists('omoDashboardGetModuleDefinitions')) {
         return array(
             'video' => array('id' => 'video', 'object' => 'video', 'variant' => 'embedded', 'standalone' => true, 'loader' => $dataPath . '/video.php', 'template' => $basePath . '/video.php'),
             'rules' => array('id' => 'rules', 'object' => 'rule', 'variant' => 'attention', 'app' => 'policy', 'route' => 'policy', 'loader' => $dataPath . '/rules.php', 'template' => $basePath . '/rules.php'),
+            'decisions' => array('id' => 'decisions', 'object' => 'decision', 'variant' => 'active', 'app' => 'decision', 'route' => 'decision', 'loader' => $dataPath . '/decisions.php', 'template' => $basePath . '/decisions.php'),
             'projects' => array('id' => 'projects', 'object' => 'project', 'variant' => 'priority', 'app' => 'projects', 'route' => 'projects', 'loader' => $dataPath . '/projects.php', 'template' => $basePath . '/projects.php'),
             'team' => array('id' => 'team', 'object' => 'user', 'variant' => 'celebrations', 'app' => 'team', 'route' => 'team', 'loader' => $dataPath . '/team.php', 'template' => $basePath . '/team.php'),
             'documents' => array('id' => 'documents', 'object' => 'document', 'variant' => 'recent', 'app' => 'documents', 'route' => 'documents', 'loader' => $dataPath . '/documents.php', 'template' => $basePath . '/documents.php'),

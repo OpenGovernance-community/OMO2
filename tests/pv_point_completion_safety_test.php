@@ -9,6 +9,7 @@ function assertPvPointCompletionSafety(bool $condition, string $message): void
 }
 
 $editorSource = (string)file_get_contents(dirname(__DIR__) . '/omo/api/documents/pv/editor.php');
+$editorSource .= (string)file_get_contents(dirname(__DIR__) . '/omo/api/documents/pv/editor.js');
 $actionSource = (string)file_get_contents(dirname(__DIR__) . '/omo/api/documents/pv/action.php');
 $helpersSource = (string)file_get_contents(dirname(__DIR__) . '/omo/api/documents/pv/helpers.php');
 $pointSource = (string)file_get_contents(dirname(__DIR__) . '/class/dbobject/documentpvpoint.class.php');

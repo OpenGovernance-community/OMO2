@@ -1022,11 +1022,11 @@
     opacity: 0.8;
 }
 
-.omo-pv-editor__nav-row--priority-p1 { border-left: 5px solid var(--project-priority-p1); }
-.omo-pv-editor__nav-row--priority-p2 { border-left: 5px solid var(--project-priority-p2); }
-.omo-pv-editor__nav-row--priority-p3 { border-left: 5px solid var(--project-priority-p3); }
-.omo-pv-editor__nav-row--priority-p4 { border-left: 5px solid var(--project-priority-p4); }
-.omo-pv-editor__nav-row--priority-p5 { border-left: 5px solid var(--project-priority-p5); }
+.omo-pv-editor__nav-row--priority-p1 { --omo-pv-priority-color: var(--project-priority-p1); border-left: 5px solid var(--omo-pv-priority-color); }
+.omo-pv-editor__nav-row--priority-p2 { --omo-pv-priority-color: var(--project-priority-p2); border-left: 5px solid var(--omo-pv-priority-color); }
+.omo-pv-editor__nav-row--priority-p3 { --omo-pv-priority-color: var(--project-priority-p3); border-left: 5px solid var(--omo-pv-priority-color); }
+.omo-pv-editor__nav-row--priority-p4 { --omo-pv-priority-color: var(--project-priority-p4); border-left: 5px solid var(--omo-pv-priority-color); }
+.omo-pv-editor__nav-row--priority-p5 { --omo-pv-priority-color: var(--project-priority-p5); border-left: 5px solid var(--omo-pv-priority-color); }
 
 .omo-pv-editor__nav-row--priority-wide { border-left-width: 9px; }
 
@@ -1355,6 +1355,58 @@
     padding: 9px;
     display: inline-grid;
     place-items: center;
+}
+
+.omo-pv-import__picker {
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
+    max-height: min(680px, calc(100dvh - 150px));
+    min-height: 0;
+}
+
+.omo-pv-import__body {
+    grid-template-rows: auto auto minmax(0, 1fr);
+    min-height: 0;
+    overflow: auto;
+}
+
+.omo-pv-import__help,
+.omo-pv-import__status {
+    margin: 0;
+}
+
+.omo-pv-import__list {
+    min-height: 0;
+    align-content: start;
+    padding: 3px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.omo-pv-import__row {
+    /* Match the compact agenda cards while keeping the selection glow. */
+    --param-choice-card-padding-block: 9px;
+    --param-choice-card-padding-inline: 12px;
+    --param-choice-card-radius: var(--radius-md);
+    --param-choice-card-accent-width: 5px;
+    --param-choice-card-accent-color: var(--omo-pv-priority-color);
+    --param-choice-card-shadow-selected: 0 0 0 2px color-mix(in srgb, var(--color-primary, #2563eb) 20%, transparent);
+    width: 100%;
+}
+
+.omo-pv-import__copy {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.omo-pv-import__preview {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.85rem;
+    color: var(--color-text-light, #64748b);
 }
 
 .omo-pv-editor__toolbar-icon {

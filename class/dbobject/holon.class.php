@@ -351,7 +351,7 @@
 			return $property->load($propertyId) && Property::isTypeEnabled($property->get('type'), $this->getPropertyTypeLexicon());
 		}
 
-		protected function resolveOrganizationId()
+		public function resolveOrganizationId()
 		{
 			$organizationId = (int)$this->get('IDorganization');
 			if ($organizationId > 0) {
@@ -469,7 +469,12 @@
 
 		public function canEditPropertyValue($type, bool $creatingHolon = false): bool
 		{
-			$key = Property::permissionKey('EDIT', $type);
+			return $this->canUsePropertyPermission('EDIT', $type, $creatingHolon);
+		}
+
+		public function canUsePropertyPermission(string $operation, $type, bool $creatingHolon = false): bool
+		{
+			$key = Property::permissionKey($operation, $type);
 			if (!$creatingHolon) {
 				return $this->isAllowed($key, false);
 			}

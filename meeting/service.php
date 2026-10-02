@@ -162,7 +162,7 @@ function meetingDestination(MeetingProfile $profile): ExternalCalendar
 {
     $calendar = new ExternalCalendar();
     if (!$calendar->load((int)$profile->get('IDexternalcalendar'), true)
-        || (int)$calendar->get('IDuser') !== (int)$profile->get('IDuser') || !(int)$calendar->get('active')) {
+        || (int)$calendar->get('IDuser') !== (int)$profile->get('IDuser') || !(int)$calendar->get('active') || $calendar->get('availability_only')) {
         throw new RuntimeException('calendar_invalid');
     }
     return $calendar;
@@ -198,7 +198,10 @@ function meetingBusy(MeetingProfile $profile, DateTimeImmutable $start, DateTime
     if (!$destinationPresent) { throw new RuntimeException('unavailable'); }
     $request ??= 'commonExternalCalendarHttpRequest';
     $icsCalendarIds = [];
+    $availabilityCalendarIds = [];
+    $available = [];
     foreach ($calendars as $calendar) {
+        if ($calendar->get('availability_only')) { $availabilityCalendarIds[(int)$calendar->getId()] = true; }
         $isIcs = (string)$calendar->get('provider') === 'ics';
         if ($isIcs) { $icsCalendarIds[(int)$calendar->getId()] = true; }
         if ($live && !$isIcs) {
@@ -209,7 +212,12 @@ function meetingBusy(MeetingProfile $profile, DateTimeImmutable $start, DateTime
             if (empty($result['status'])) { throw new RuntimeException('unavailable'); }
             $parsed = commonExternalCalendarParseReport($result['body'], true);
             if (empty($parsed['status'])) { throw new RuntimeException('unavailable'); }
-            foreach ($parsed['events'] as $event) { if ($event['is_busy']) { $busy[] = [$event['start_at'], $event['end_at']]; } }
+            foreach ($parsed['events'] as $event) {
+                // Strict REPORT parsing already returns exclusive all-day ends.
+                $eventEnd = $event['end_at'];
+                if ($calendar->get('availability_only')) { $available[] = [$event['start_at'], $eventEnd]; }
+                elseif ($event['is_busy']) { $busy[] = [$event['start_at'], $eventEnd]; }
+            }
         } elseif ($live && $isIcs) {
             $last = $calendar->get('last_sync_at');
             if (!$last instanceof DateTimeInterface || $last->getTimestamp() < time() - 3600 || $calendar->get('last_sync_error')) {
@@ -230,13 +238,16 @@ function meetingBusy(MeetingProfile $profile, DateTimeImmutable $start, DateTime
         $external->loadActiveForUserDateRange($uid, $storageStart, $storageEnd);
         foreach ($external as $event) {
             if ($live && !isset($icsCalendarIds[(int)$event->get('IDexternalcalendar')])) { continue; }
-            if ($event->get('is_busy')) {
+            $isAvailability = isset($availabilityCalendarIds[(int)$event->get('IDexternalcalendar')]);
+            if ($isAvailability || $event->get('is_busy')) {
                 $endAt = DateTimeImmutable::createFromInterface($event->get('end_at'));
-                $busy[] = [$event->get('start_at'), $event->get('is_all_day') ? $endAt->modify('+1 second') : $endAt];
+                $interval = [$event->get('start_at'), $event->get('is_all_day') ? $endAt->modify('+1 second') : $endAt];
+                if ($isAvailability) { $available[] = $interval; }
+                else { $busy[] = $interval; }
             }
         }
     }
-    return $busy;
+    return array_merge($busy, $availabilityCalendarIds ? ArrayExternalCalendarEvent::outsideAvailability($available, $start, $end) : []);
 }
 
 function meetingIcs(string $token, DateTimeImmutable $start, DateTimeImmutable $end, string $title, string $description, string $location = ''): string
@@ -332,7 +343,7 @@ function meetingBook(int $userId, array $draft, ?callable $request = null, ?call
                 if ($day < $now->setTime(0, 0) || $day > $now->modify('+365 days')) { throw new RuntimeException('date_invalid'); }
                 $busy = meetingBusy($profile, $day, $day->modify('+1 day'), true, $draft['token'], $request);
                 $slot = null;
-                foreach (meetingDay($day, $profile->hours(), $busy, $now, $durationMinutes)['slots'] as $candidate) {
+                foreach (meetingDay($day, $profile->availabilityHours(), $busy, $now, $durationMinutes)['slots'] as $candidate) {
                     if ($candidate['time'] === $draft['time'] && $candidate['bookable']) { $slot = $candidate; }
                 }
                 if (!$slot) { throw new RuntimeException('slot_taken'); }

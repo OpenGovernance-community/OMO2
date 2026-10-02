@@ -1038,7 +1038,7 @@ class FAQ extends DbObject
 			return 0;
 		}
 
-		self::$_organizationIdByHolonId[$holonId] = (int)$holon->get('IDorganization');
+		self::$_organizationIdByHolonId[$holonId] = $holon->resolveOrganizationId();
 		return (int)self::$_organizationIdByHolonId[$holonId];
 	}
 

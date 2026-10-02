@@ -34,6 +34,9 @@ if (!function_exists('memoRenderDocumentDetail')) {
             return $value->format('d.m.Y H:i');
         };
         ?>
+<?php if ($document->isPvDocument()): ?>
+<link rel="stylesheet" href="<?= commonAssetUrl('/common/document/pv-report.css') ?>">
+<?php endif; ?>
 <div class="memo-document-detail">
     <article class="memo-document-detail__article">
         <header class="memo-document-detail__intro">
