@@ -90,6 +90,8 @@
 }
 
 .circle-members {
+    /* Keep avatar stacking below the holon action menu. */
+    isolation: isolate;
     display: grid;
     gap: 8px;
     margin-top: 14px;

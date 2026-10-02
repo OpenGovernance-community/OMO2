@@ -1380,6 +1380,49 @@
         }
     }
 
+    function syncDateInput(component) {
+        var text = component.querySelector('[data-generic-date-text]');
+        var picker = component.querySelector('[data-generic-date-picker]');
+        picker.disabled = text.disabled;
+        // Let the native date input validate calendar days, including leap years.
+        picker.value = text.value;
+        text.setCustomValidity(text.required && text.value && (!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(text.value) || picker.value !== text.value)
+            ? component.getAttribute('data-date-invalid') : '');
+    }
+
+    document.addEventListener('input', function (event) {
+        if (event.target.matches('[data-generic-date-text]')) {
+            syncDateInput(event.target.closest('[data-generic-date-input]'));
+        }
+    });
+    document.addEventListener('focusin', function (event) {
+        if (event.target.matches('[data-generic-date-text]')) {
+            syncDateInput(event.target.closest('[data-generic-date-input]'));
+        }
+    });
+    // Sync again before the picker opens, including programmatically loaded dates.
+    document.addEventListener('pointerdown', function (event) {
+        var picker = event.target.closest('[data-generic-date-picker]');
+        if (picker) syncDateInput(picker.closest('[data-generic-date-input]'));
+    });
+    document.addEventListener('change', function (event) {
+        if (!event.target.matches('[data-generic-date-picker]')) return;
+        var component = event.target.closest('[data-generic-date-input]');
+        var text = component.querySelector('[data-generic-date-text]');
+        text.value = event.target.value;
+        text.dispatchEvent(new Event('input', { bubbles: true }));
+        text.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    document.addEventListener('submit', function (event) {
+        var dates = event.target.querySelectorAll('[data-generic-date-input]');
+        if (!dates.length) return;
+        dates.forEach(syncDateInput);
+        if (!event.target.reportValidity()) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+        }
+    }, true);
+
     document.addEventListener('click', handleEditableSelectClick);
     document.addEventListener('input', handleEditableSelectInput);
     document.addEventListener('keydown', handleEditableSelectKeydown);

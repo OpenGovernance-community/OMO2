@@ -2,6 +2,7 @@
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/shared.php';
 require_once dirname(__DIR__, 3) . '/common/choice/rule-scope-fields.php';
+require_once dirname(__DIR__, 3) . '/common/choice/rule-date-fields.php';
 
 $organizationId = (int)($_SESSION['currentOrganization'] ?? ($_GET['oid'] ?? 0));
 $ruleId = isset($_GET['rule_id']) && is_numeric($_GET['rule_id']) ? (int)$_GET['rule_id'] : 0;
@@ -67,11 +68,11 @@ $selectedAuthorityId = $isEditing ? (int)$editingRule->get('IDauthority') : 0;
             <div class="generic-form-grid">
                 <label class="generic-form-field">
                     <span class="generic-form-label"><?= omoApiEscape(omoPolicyT('policy.field.review_date')) ?></span>
-                    <input class="generic-form-control" type="date" name="review_date" value="<?= omoApiEscape($reviewDate) ?>" required>
+                    <?php omoRuleDateRenderInput('review_date', $reviewDate); ?>
                 </label>
                 <label class="generic-form-field">
                     <span class="generic-form-label"><?= omoApiEscape(omoPolicyT('policy.field.expiration_date')) ?></span>
-                    <input class="generic-form-control" type="date" name="expiration_date" value="<?= omoApiEscape($expirationDate) ?>" required>
+                    <?php omoRuleDateRenderInput('expiration_date', $expirationDate); ?>
                 </label>
             </div>
         </section>

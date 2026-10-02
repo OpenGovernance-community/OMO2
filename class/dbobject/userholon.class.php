@@ -152,6 +152,7 @@
 			return array(
 				'video' => array('standalone' => true, 'settings' => array('video' => true)),
 				'rules' => array('app' => 'policy', 'settings' => array('scope' => true)),
+				'decisions' => array('app' => 'decision', 'settings' => array('scope' => true)),
 				'projects' => array('app' => 'projects', 'settings' => array('scope' => true, 'audience' => true)),
 				'team' => array('app' => 'team', 'settings' => array('scope' => true)),
 				'documents' => array('app' => 'documents', 'settings' => array('scope' => true)),
