@@ -1,6 +1,6 @@
-# Premier serveur MCP OMO
+# Serveur MCP OMO
 
-Serveur en lecture seule pour tester le login OAuth, la structure et la consultation
+Serveur en lecture seule pour le login OAuth, la structure et la consultation
 des informations accessibles a la personne connectee dans les modules OMO.
 Il ne necessite aucun service Node en production ni aucune cle API OpenAI.
 
@@ -68,6 +68,10 @@ Prompts de verification :
 - "Lis le detail du premier role de cette liste."
 - "Recherche les documents et projets qui parlent de budget, puis lis les fiches trouvees."
 - "Lis les proprietes du premier role avec omo_read_record, module structure."
+- "Liste tous les membres, puis tous les roles occupes par Marie."
+- "Liste tous les projets et sous-projets assignes a Marie, avec leur statut."
+- "Liste tous les documents dont Marie est proprietaire, en parcourant toutes les pages."
+- "Quels evenements commencent ce mois-ci ? Quels indicateurs Marie suit-elle ?"
 
 Documentation officielle verifiee pendant le developpement :
 https://developers.openai.com/plugins/deploy/connect-chatgpt
@@ -105,6 +109,9 @@ peuvent utiliser le meme serveur s ils supportent HTTP, OAuth DCR et PKCE S256.
 | Outil | Arguments | Resultat |
 | --- | --- | --- |
 | `omo_connection_info` | aucun | Identite, organisation consentie, ID racine, couverture |
+| `omo_catalog` | aucun | Modules accessibles, filtres, relations utilisateur, statuts et sens des dates |
+| `omo_list_records` | `module`, filtres facultatifs : `user_id`, `user_relation`, `query`, `context_holon_id`, `parent_id`, `status`, `date_from`, `date_to` ; `after_id` (0), `limit` (20, maximum 50) | Liste complete paginee des fiches accessibles ; `next_after_id`, `complete` |
+| `omo_list_assignments` | `user_id`, `holon_id` facultatifs ; `after_id` (0), `limit` (20, maximum 50) | Affectations directes actives : personne, role/cercle, focus et URL |
 | `omo_list_structure` | `parent_id` facultatif, `after_id` (0), `limit` (20, maximum 50) | Noms, types, parents, URL ; `next_after_id` pour la suite |
 | `omo_get_holon` | `holon_id` | Informations de base d un element |
 | `omo_search` | `query`, `modules` facultatif, `context_holon_id` facultatif, `offset` (0), `limit` (20, maximum 50) | Selection de resultats accessibles avec module, ID, extrait et URL ; `next_offset` pour la suite |
@@ -118,6 +125,56 @@ activites recurrentes, FAQ et tutoriels. `omo_connection_info` indique les
 modules actives ; la disponibilite d un module ne garantit pas l acces a toutes
 ses fiches. Une organisation sans module Structure peut aussi etre autorisee.
 La liste de structure reste limitee aux elements actifs et visibles.
+
+### Explorer sans plafond de recherche
+
+Appeler `omo_catalog` pour connaitre les filtres propres aux modules actives.
+Resoudre une personne avec `omo_list_records`, `module: "team"`, `query: "Marie"`.
+Le `record_id` du membre est le `user_id` a utiliser dans les autres listes.
+Un filtre utilisateur ne change jamais les droits de la personne connectee.
+Si plusieurs membres correspondent, identifier la bonne personne avant de filtrer.
+
+`omo_list_records` enumere les fiches par ID croissant, sans le plafond de
+50 resultats de la recherche. Conserver exactement les memes filtres, puis
+passer `next_after_id` comme `after_id` jusqu a recevoir `null` et `complete: true`.
+Une page vide avec un curseur non nul demande de continuer : elle peut avoir
+parcouru uniquement des fiches privees. Les listes sont vivantes, pas un instantane.
+Les titres servent a choisir les fiches ; lire leur contenu avec `omo_read_record`
+en reprenant leur `context_holon_id`. Les reponses de lecture incluent aussi un
+objet `record` avec parent, holon, statut et dates selon le module.
+
+| Module | Sens de `user_relation` |
+| --- | --- |
+| `structure`, `team` | `member` : affectation directe active / personne elle-meme |
+| `calendar` | `author` : createur de l evenement, pas ses invites |
+| `documents` | `owner` : proprietaire ; `author` : createur |
+| `pv` | `owner`, `author`, `editor` : proprietaire, createur, redacteur courant ou officiel |
+| `rules` | `author` : createur |
+| `decision` | `owner` : proprietaire ; les votants ne sont pas exposes |
+| `projects` | `responsible` : responsable ; `assignee` : personne explicitement affectee |
+| `stats` | `author` : createur ; `responsible` : responsable |
+| `processus`, `activities` | `responsible` : responsable |
+| `faq` | `requester` : demandeur initial |
+| `tutorials` | Filtre utilisateur indisponible ; parcours accessibles a la personne connectee |
+
+Sans `user_relation`, le filtre `user_id` combine les relations disponibles avec
+OU. Les filtres non pris en charge renvoient une erreur explicite. `query` cherche
+une sous-chaine litterale dans le titre ou le nom ; utiliser `omo_search` pour le
+contenu des fiches. Les dates `YYYY-MM-DD` sont inclusives ; `omo_catalog` precise
+le champ concerne (debut pour le calendrier, creation pour la plupart des modules).
+
+Sans `parent_id`, les projets incluent tous les niveaux, y compris les taches et
+sous-projets. `parent_id: 0` selectionne les racines ; un ID positif selectionne
+les enfants directs. Le filtre parent existe aussi pour structure, documents et PV.
+`context_holon_id` selectionne le holon exact, ou ses membres directs pour `team`.
+Pour les regles et FAQ, il applique le contexte de consultation existant, avec ses
+regles heritees et ses FAQ generiques. Sans contexte, la liste explore aussi les
+regles et FAQ rattachees aux autres holons accessibles.
+
+La couverture complete concerne les fiches consultables du perimetre decrit dans
+le catalogue : principalement les elements actifs, les evenements non annules,
+les decisions y compris archivees et les regles y compris expirees. Les affectations
+n incluent ni les simples preferences de suivi ni les appartenances heritees.
 
 La recherche reutilise la recherche transversale OMO. Elle retourne au maximum
 50 resultats selectionnes par module ; la pagination parcourt cette selection,
@@ -174,6 +231,7 @@ docker compose exec -T app php tests/mcp_oauth_structure_test.php
 docker compose exec -T app php tests/mcp_http_test.php
 docker compose exec -T app php tests/mcp_content_test.php
 docker compose exec -T app php tests/mcp_modules_test.php
+docker compose exec -T app php tests/mcp_browse_test.php
 docker compose exec -T app php tests/mcp_deployed_discovery_test.php
 ```
 
@@ -196,5 +254,5 @@ gardent `form-action 'self'`. Les tests HTTP seuls ne detectent pas les blocages
 CSP appliques par le navigateur aux redirections apres soumission.
 
 Verifier aussi manuellement une connexion neuve dans ChatGPT : decouverte,
-login, consentement, cinq outils, refus puis revocation. Les tests locaux ne
+login, consentement, huit outils, refus puis revocation. Les tests locaux ne
 peuvent pas prouver l accessibilite du domaine depuis les serveurs du fournisseur.

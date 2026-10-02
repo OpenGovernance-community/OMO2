@@ -59,6 +59,22 @@ try {
         'title' => 'MCP-modules decision', 'description' => 'Decision body', 'decision_type' => 'decision',
         'status' => 'draft', 'evaluation_method' => 'simple_vote', 'visibility_type' => 'organization']);
     $grant = ['IDuser' => $uid, 'IDorganization' => $oid, 'scope' => OMO_MCP_SCOPE];
+    $roleId = (int)$items['role']->getId();
+    $items['local_rule'] = mcpFixture(Rule::class, ['IDorganization' => $oid, 'IDholon' => $roleId,
+        'title' => 'MCP-local-context rule', 'description' => 'Local rule body', 'scope' => 'local',
+        'review_date' => new DateTimeImmutable('2027-01-01'), 'expiration_date' => new DateTimeImmutable('2028-01-01')]);
+    $items['local_faq'] = mcpFixture(FAQ::class, ['IDorganization' => $oid, 'IDholon' => $roleId,
+        'question' => 'MCP-local-context FAQ', 'answer' => 'Local FAQ body', 'isactive' => 1]);
+    foreach (['rules' => 'local_rule', 'faq' => 'local_faq'] as $module => $fixture) {
+        $listed = \dbObject\McpBrowse::records($grant, ['module' => $module, 'query' => 'MCP-local-context']);
+        mcpCheck(count($listed['items']) === 1, 'Contextual record enumerated: ' . $module);
+        $item = $listed['items'][0];
+        mcpCheck($item['context_holon_id'] === $roleId && $item['holon_id'] === $roleId, 'Context returned: ' . $module);
+        $read = McpContent::read($grant, $module, $item['record_id'], $item['context_holon_id'], 0, 0, 12000);
+        mcpCheck($read['record_id'] === (int)$items[$fixture]->getId(), 'Contextual read back: ' . $module);
+        $rootList = \dbObject\McpBrowse::records($grant, ['module' => $module, 'query' => 'MCP-local-context', 'context_holon_id' => $hid]);
+        mcpCheck($rootList['items'] === [], 'Explicit root excludes local child context: ' . $module);
+    }
     $items['app_projects']->load((int)$items['app_projects']->getId(), true);
     $items['app_projects']->setParametersArray(['importanceCalculationVersion' => 0]);
     $items['app_projects']->save();
@@ -66,6 +82,16 @@ try {
         $record = McpContent::read($grant, $module, (int)$items[$module]->getId(), null, 0, 0, 12000);
         mcpCheck(str_contains($record['title'], 'MCP-modules'), 'Module read: ' . $module);
         if ($module === 'stats') mcpCheck(str_contains($record['text'], '42.5'), 'Numeric measurements available');
+        $listed = \dbObject\McpBrowse::records($grant, ['module' => $module, 'query' => 'MCP-modules', 'limit' => 50]);
+        mcpCheck(in_array((int)$items[$module]->getId(), array_column($listed['items'], 'record_id'), true), 'Module enumeration: ' . $module);
+        mcpCheck(!str_contains(json_encode($listed), 'private proposal'), 'Private project is not listed');
+    }
+    foreach (\dbObject\McpBrowse::catalog($grant)['modules'] as $dataset) {
+        foreach ($dataset['user_relations'] as $relation) {
+            $filtered = \dbObject\McpBrowse::records($grant, ['module' => $dataset['module'],
+                'user_id' => $uid, 'user_relation' => $relation, 'query' => 'MCP-modules']);
+            mcpCheck(isset($filtered['items']), 'Declared user relation works: ' . $dataset['module'] . '/' . $relation);
+        }
     }
     mcpCheck(McpContent::read($grant, 'team', $uid, null, 0, 0, 12000)['record_id'] === $uid, 'Own member profile available');
     $mission = McpContent::read($grant, 'tutorials', (int)$items['tutorials']->getId(), null, (int)$items['mission']->getId(), 0, 12000);
