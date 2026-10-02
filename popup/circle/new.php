@@ -52,7 +52,7 @@
 				.then(data => {
 					// S'assure qu'il était authorisé de lire ce PV
 					if (data.error) {
-						alert (data.errorMsg);
+                        (typeof window.commonNotify === 'function' ? window.commonNotify : window.alert).call(window, data.errorMsg, 'error');
 					
 					} else
 					

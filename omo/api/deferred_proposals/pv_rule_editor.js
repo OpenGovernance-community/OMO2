@@ -15,7 +15,14 @@ window.commonPageScripts["/omo/api/deferred_proposals/pv_rule_editor.js"] = func
 
     function allowedIds() { return Array.isArray(permissions[operation.value]) ? permissions[operation.value].map(Number) : []; }
     function isAllowed(id) { return allowedIds().indexOf(Number(id)) !== -1; }
-    function showFeedback(message) { feedback.hidden = !message; feedback.textContent = message || ''; }
+    function showFeedback(message) {
+        if (message && typeof window.commonNotify === 'function') {
+            var notice = feedback;
+            if (notice) { notice.textContent = ''; notice.hidden = true; }
+            window.commonNotify(String(message), 'error');
+            return;
+        }
+ feedback.hidden = !message; feedback.textContent = message || ''; }
     function populateFromSelectedRule() { const state = ruleStates[String(ruleId.value || '')]; if (!state) return; ['title','intention','description','review_date','expiration_date','scope','IDauthority'].forEach(function (name) { if (!Object.prototype.hasOwnProperty.call(state, name)) return; const value = String(state[name] == null ? '' : state[name]), field = form.elements.namedItem(name), editor = fields.querySelector('[data-omo-deferred-html="' + name + '"]'); if (editor && window.omoProposalHtml) window.omoProposalHtml.setValue(editor, value); else if (field) field.value = value; }); window.omoInitRuleScopeFields(form, null, state); }
     function updateSubmitState() { const allowed = isAllowed(holonInput.value); permissionMessage.hidden = allowed; submit.disabled = !allowed || (operation.value !== 'create' && !Number(ruleId.value)); fields.querySelectorAll('[data-generic-date-text]').forEach(function (field) { field.dispatchEvent(new Event('input', {bubbles:true})); }); }
     function sync(populateRule) {

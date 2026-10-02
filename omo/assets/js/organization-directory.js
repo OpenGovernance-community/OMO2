@@ -307,7 +307,7 @@ window.commonPageScripts["/omo/assets/js/organization-directory.js"] = function 
                         .catch(function (error) {
                             actionButton.disabled = false;
                             closeMenus();
-                            window.alert(error && error.message ? error.message : window.omoDirectoryTranslations.actionError);
+                            window.omoNotify(error && error.message ? error.message : window.omoDirectoryTranslations.actionError, 'error');
                         });
 
                     return;

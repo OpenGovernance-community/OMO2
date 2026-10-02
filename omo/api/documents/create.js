@@ -1595,6 +1595,13 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
     syncDictationToolbarButtons();
 
     function setStatus(message) {
+        if (message && typeof window.commonNotify === 'function') {
+            var notice = statusNode;
+            if (notice) { notice.textContent = ''; notice.hidden = true; }
+            window.commonNotify(String(message), 'error');
+            return;
+        }
+
         if (!statusNode) {
             return;
         }

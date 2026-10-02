@@ -680,7 +680,7 @@ $friendtoconfirmStr="";
 		$.get("/popup/pop_friend.php?vid="+$(this).attr("data-src"), function( retvalue ) {
 			if (retvalue=="1") refresh("#friendlist");
 			else
-			alert ("Validation error. Try again.");
+			(typeof window.commonNotify === 'function' ? window.commonNotify : window.alert).call(window, "Validation error. Try again.", 'error');
 		}, 'html'); 
 	});
 	$("#friendlist").delegate(".decline_friendship","click", function() {
@@ -692,7 +692,7 @@ $friendtoconfirmStr="";
 			$.get("/popup/pop_friend.php?did="+$(this).attr("data-src"), function( retvalue ) {
 				if (retvalue=="1") refresh("#friendlist");
 				else
-				alert ("Decline error. Try again.");
+				(typeof window.commonNotify === 'function' ? window.commonNotify : window.alert).call(window, "Decline error. Try again.", 'error');
 			}, 'html'); 
 		}
 	});	  
@@ -710,7 +710,7 @@ $friendtoconfirmStr="";
 				refresh("#caregiver_button_zone_"+$(this).attr("data-src"));
 				
 			} else
-				alert ("Diaper Check error. Try again.");
+				(typeof window.commonNotify === 'function' ? window.commonNotify : window.alert).call(window, "Diaper Check error. Try again.", 'error');
 		}, 'html'); 
 
 		

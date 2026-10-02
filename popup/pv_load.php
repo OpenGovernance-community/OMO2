@@ -59,7 +59,7 @@
 				if ($(this).attr("data-src")==$("#id").val())
 					$("#id").val("");
 				$.ajax({method: "POST",url: "/ajax/delete.php",data: { type:"PV", id:$(this).attr("data-src")}
-				}).done(function( msg ) {if (msg!="") alert(msg); }).fail(function() {
+				}).done(function( msg ) {if (msg!="") (typeof window.commonNotify === 'function' ? window.commonNotify : window.alert).call(window, msg, 'error'); }).fail(function() {
 					button.prop("disabled", false);
 				});
 
@@ -76,7 +76,7 @@
 				})
 				.then(data => {
 					if (data.error) {
-						alert (data.errorMsg);
+						(typeof window.commonNotify === 'function' ? window.commonNotify : window.alert).call(window, data.errorMsg, 'error');
 					} else if (confirm("<?=T_("Etes-vous sur de vouloir ecraser le contenu de l'editeur avec le compte-rendu charge ?")?>")) {
 						data.id=$(this).attr("data-src");
 						localStorage.setItem("savedata", JSON.stringify(data));

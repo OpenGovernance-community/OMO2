@@ -401,7 +401,7 @@ function initParcoursEditorDrawer() {
 
         const titleField = form.querySelector('[name="title"]');
         if (titleField && String(titleField.value || '').trim() === '') {
-            window.alert(lmsIndexText.requiredTitle);
+            window.omoNotify(lmsIndexText.requiredTitle, 'warning');
             titleField.focus();
             return;
         }
@@ -460,7 +460,7 @@ function initParcoursEditorDrawer() {
             closeDrawer();
             window.location.reload();
         } catch (error) {
-            window.alert(error && error.message ? error.message : 'Impossible d enregistrer ce parcours.');
+            window.omoNotify(error && error.message ? error.message : 'Impossible d enregistrer ce parcours.', 'error');
         } finally {
             isSubmitting = false;
             setSubmitState();
@@ -549,7 +549,7 @@ function initParcoursImportDrawer() {
                 closeDrawer();
                 window.location.reload();
             } catch (error) {
-                window.alert(error && error.message ? error.message : 'Impossible d importer ce parcours.');
+                window.omoNotify(error && error.message ? error.message : 'Impossible d importer ce parcours.', 'error');
                 button.disabled = false;
             }
         });
@@ -586,13 +586,13 @@ function initMissionEditorDrawer() {
         const resumeField = form.querySelector('[name="resume"]');
 
         if (titleField && String(titleField.value || '').trim() === '') {
-            window.alert(lmsIndexText.requiredTitle);
+            window.omoNotify(lmsIndexText.requiredTitle, 'warning');
             titleField.focus();
             return;
         }
 
         if (resumeField && String(resumeField.value || '').trim() === '') {
-            window.alert(lmsIndexText.requiredResume);
+            window.omoNotify(lmsIndexText.requiredResume, 'warning');
             resumeField.focus();
             return;
         }
@@ -619,10 +619,10 @@ function initMissionEditorDrawer() {
                     initLmsDrawerContent();
                 })
                 .catch(() => {
-                    window.alert(lmsIndexText.saveMissionRefreshError);
+                    window.omoNotify(lmsIndexText.saveMissionRefreshError, 'error');
                 });
         } catch (error) {
-            window.alert(error && error.message ? error.message : lmsIndexText.saveMissionError);
+            window.omoNotify(error && error.message ? error.message : lmsIndexText.saveMissionError, 'error');
         } finally {
             isSubmitting = false;
             submitButton.disabled = false;
@@ -791,7 +791,7 @@ function initParcoursMissionManager() {
 
                 await refreshParcoursMissionManager(parcoursId);
             } catch (error) {
-                window.alert(error && error.message ? error.message : 'Impossible de retirer cette mission du parcours.');
+                window.omoNotify(error && error.message ? error.message : 'Impossible de retirer cette mission du parcours.', 'error');
             } finally {
                 button.disabled = false;
             }
@@ -860,7 +860,7 @@ function initParcoursMissionManager() {
 
                 await refreshParcoursMissionManager(parcoursId);
             } catch (error) {
-                window.alert(error && error.message ? error.message : 'Impossible d ajouter cette mission.');
+                window.omoNotify(error && error.message ? error.message : 'Impossible d ajouter cette mission.', 'error');
             } finally {
                 button.disabled = false;
             }
@@ -882,13 +882,13 @@ function initParcoursMissionManager() {
             const resumeField = creatorForm.querySelector('[name="resume"]');
 
             if (titleField && String(titleField.value || '').trim() === '') {
-                window.alert(lmsIndexText.requiredTitle);
+                window.omoNotify(lmsIndexText.requiredTitle, 'warning');
                 titleField.focus();
                 return;
             }
 
             if (resumeField && String(resumeField.value || '').trim() === '') {
-                window.alert(lmsIndexText.requiredResume);
+                window.omoNotify(lmsIndexText.requiredResume, 'warning');
                 resumeField.focus();
                 return;
             }
@@ -913,7 +913,7 @@ function initParcoursMissionManager() {
 
                 await refreshParcoursMissionManager(parcoursId);
             } catch (error) {
-                window.alert(error && error.message ? error.message : lmsIndexText.createMissionError);
+                window.omoNotify(error && error.message ? error.message : lmsIndexText.createMissionError, 'error');
             } finally {
                 isCreatingMission = false;
                 creatorSubmit.disabled = false;
@@ -953,7 +953,7 @@ function initParcoursMissionManager() {
 
                     await refreshParcoursMissionManager(parcoursId);
                 } catch (error) {
-                    window.alert(error && error.message ? error.message : 'Impossible de reordonner les missions.');
+                    window.omoNotify(error && error.message ? error.message : 'Impossible de reordonner les missions.', 'error');
                     await refreshParcoursMissionManager(parcoursId);
                 }
             }
@@ -1119,7 +1119,7 @@ function initMissionDependencyManager() {
 
                 await refreshMissionEditor(parcoursId, missionId);
             } catch (error) {
-                window.alert(error && error.message ? error.message : lmsIndexText.removePrerequisiteError);
+                window.omoNotify(error && error.message ? error.message : lmsIndexText.removePrerequisiteError, 'error');
             } finally {
                 button.disabled = false;
             }
@@ -1177,7 +1177,7 @@ function initMissionDependencyManager() {
 
                 await refreshMissionEditor(parcoursId, missionId);
             } catch (error) {
-                window.alert(error && error.message ? error.message : lmsIndexText.addPrerequisiteError);
+                window.omoNotify(error && error.message ? error.message : lmsIndexText.addPrerequisiteError, 'error');
             } finally {
                 button.disabled = false;
             }
@@ -1282,7 +1282,7 @@ function initParcoursPrerequisiteManager() {
 
                 await refreshParcoursMissionManager(parcoursId);
             } catch (error) {
-                window.alert(error && error.message ? error.message : lmsIndexText.removePrerequisiteError);
+                window.omoNotify(error && error.message ? error.message : lmsIndexText.removePrerequisiteError, 'error');
             } finally {
                 button.disabled = false;
             }
@@ -1339,7 +1339,7 @@ function initParcoursPrerequisiteManager() {
 
                 await refreshParcoursMissionManager(parcoursId);
             } catch (error) {
-                window.alert(error && error.message ? error.message : lmsIndexText.addPrerequisiteError);
+                window.omoNotify(error && error.message ? error.message : lmsIndexText.addPrerequisiteError, 'error');
             } finally {
                 button.disabled = false;
             }
@@ -1450,7 +1450,7 @@ function initParcoursPackManager() {
 
                 await refreshParcoursMissionManager(parcoursId);
             } catch (error) {
-                window.alert(error && error.message ? error.message : 'Impossible de retirer ce parcours du pack.');
+                window.omoNotify(error && error.message ? error.message : 'Impossible de retirer ce parcours du pack.', 'error');
             } finally {
                 button.disabled = false;
             }
@@ -1507,7 +1507,7 @@ function initParcoursPackManager() {
 
                 await refreshParcoursMissionManager(parcoursId);
             } catch (error) {
-                window.alert(error && error.message ? error.message : 'Impossible d ajouter ce parcours au pack.');
+                window.omoNotify(error && error.message ? error.message : 'Impossible d ajouter ce parcours au pack.', 'error');
             } finally {
                 button.disabled = false;
             }
@@ -1546,7 +1546,7 @@ function initParcoursPackManager() {
 
                     await refreshParcoursMissionManager(parcoursId);
                 } catch (error) {
-                    window.alert(error && error.message ? error.message : 'Impossible de reordonner les parcours du pack.');
+                    window.omoNotify(error && error.message ? error.message : 'Impossible de reordonner les parcours du pack.', 'error');
                     await refreshParcoursMissionManager(parcoursId);
                 }
             }
@@ -1761,7 +1761,7 @@ function bindMissionQuestionChoiceRemoval(scopeElement) {
 
             const rows = list.querySelectorAll('[data-lms-question-choice-row]');
             if (rows.length <= 2) {
-                window.alert(lmsIndexText.keepTwoChoices);
+                window.omoNotify(lmsIndexText.keepTwoChoices, 'warning');
                 return;
             }
 
@@ -1820,7 +1820,7 @@ function bindMissionRelatedSortableList(options) {
 
                 await reloadMissionEditorDrawer(options.parcoursId, options.missionId);
             } catch (error) {
-                window.alert(error && error.message ? error.message : options.errorMessage);
+                window.omoNotify(error && error.message ? error.message : options.errorMessage, 'error');
                 await reloadMissionEditorDrawer(options.parcoursId, options.missionId);
             }
         }
@@ -1922,7 +1922,7 @@ function initMissionRelatedManagers() {
 
             const titleField = homeworkForm.querySelector('[name="title"]');
             if (titleField && String(titleField.value || '').trim() === '') {
-                window.alert(lmsIndexText.requiredTitle);
+                window.omoNotify(lmsIndexText.requiredTitle, 'warning');
                 titleField.focus();
                 return;
             }
@@ -1951,7 +1951,7 @@ function initMissionRelatedManagers() {
 
                 await reloadMissionEditorDrawer(parcoursId, missionId);
             } catch (error) {
-                window.alert(error && error.message ? error.message : lmsIndexText.createHomeworkError);
+                window.omoNotify(error && error.message ? error.message : lmsIndexText.createHomeworkError, 'error');
             } finally {
                 isSubmittingHomework = false;
                 if (submitButton) {
@@ -2003,24 +2003,24 @@ function initMissionRelatedManagers() {
             }).length;
 
             if (questionField && String(questionField.value || '').trim() === '') {
-                window.alert(lmsIndexText.questionRequired);
+                window.omoNotify(lmsIndexText.questionRequired, 'warning');
                 questionField.focus();
                 return;
             }
 
             if (answerField && String(answerField.value || '').trim() === '') {
-                window.alert(lmsIndexText.answerRequired);
+                window.omoNotify(lmsIndexText.answerRequired, 'warning');
                 answerField.focus();
                 return;
             }
 
             if (filledChoiceRows.length < 2) {
-                window.alert(lmsIndexText.minimumChoices);
+                window.omoNotify(lmsIndexText.minimumChoices, 'warning');
                 return;
             }
 
             if (correctChoiceCount <= 0) {
-                window.alert(lmsIndexText.needCorrectChoice);
+                window.omoNotify(lmsIndexText.needCorrectChoice, 'warning');
                 return;
             }
 
@@ -2047,7 +2047,7 @@ function initMissionRelatedManagers() {
 
                 await reloadMissionEditorDrawer(parcoursId, missionId);
             } catch (error) {
-                window.alert(error && error.message ? error.message : lmsIndexText.createQuestionError);
+                window.omoNotify(error && error.message ? error.message : lmsIndexText.createQuestionError, 'error');
             } finally {
                 isSubmittingQuestion = false;
                 if (submitButton) {
@@ -2074,7 +2074,7 @@ function openCreateParcoursDrawer(event) {
             initLmsDrawerContent();
         })
         .catch(() => {
-            window.alert(lmsIndexText.loadFormError);
+            window.omoNotify(lmsIndexText.loadFormError, 'error');
         });
 }
 
@@ -2094,7 +2094,7 @@ function openImportParcoursDrawer(event) {
             initLmsDrawerContent();
         })
         .catch(() => {
-            window.alert(lmsIndexText.loadCatalogError);
+            window.omoNotify(lmsIndexText.loadCatalogError, 'error');
         });
 }
 
@@ -2117,7 +2117,7 @@ function openParcoursEditorDrawer(parcoursId, options) {
             initLmsDrawerContent();
         })
         .catch(() => {
-            window.alert(lmsIndexText.loadParcoursError);
+            window.omoNotify(lmsIndexText.loadParcoursError, 'error');
         });
 }
 
@@ -2189,10 +2189,10 @@ async function deleteParcoursFromCard(event, parcoursId) {
             throw new Error(payload && payload.message ? payload.message : lmsIndexText.deleteFailed);
         }
 
-        window.alert(payload.message || lmsIndexText.deleteSuccess);
+        window.omoNotify(payload.message || lmsIndexText.deleteSuccess, 'success');
         window.location.reload();
     } catch (error) {
-        window.alert(error && error.message ? error.message : lmsIndexText.deleteFailed);
+        window.omoNotify(error && error.message ? error.message : lmsIndexText.deleteFailed, 'error');
     }
 }
 
@@ -2213,7 +2213,7 @@ function openMissionEditorDrawer(event, parcoursId, missionId) {
             initLmsDrawerContent();
         })
         .catch(() => {
-            window.alert(lmsIndexText.loadMissionError);
+            window.omoNotify(lmsIndexText.loadMissionError, 'error');
         });
 }
 

@@ -106,7 +106,12 @@ form.addEventListener('submit', function (event) {
           if (typeof window.commonTopbarCloseModal === 'function') window.commonTopbarCloseModal();
           if (typeof window.omoRefreshDocumentsPanel === 'function') window.omoRefreshDocumentsPanel();
       }).catch(function (error) {
-          feedback.hidden = false; feedback.className = 'generic-feedback is-error'; feedback.textContent = error.message; submit.disabled = false;
+          if (typeof window.commonNotify === 'function') {
+            feedback.hidden = true; feedback.textContent = ''; window.commonNotify(error.message, 'error');
+          } else {
+            feedback.hidden = false; feedback.className = 'generic-feedback is-error'; feedback.textContent = error.message;
+          }
+          submit.disabled = false;
       });
 });
 form.querySelector('[data-omo-document-merge-cancel]').addEventListener('click', function () { if (typeof window.commonTopbarCloseModal === 'function') window.commonTopbarCloseModal(); });

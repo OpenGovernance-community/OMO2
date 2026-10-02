@@ -789,20 +789,23 @@
         }).then(function (response) {
             return response.json();
         }).then(function (result) {
-            if (feedback) {
+            if (feedback && typeof window.commonNotify !== 'function') {
                 feedback.textContent = result.message || '';
                 feedback.classList.toggle('is-error', !result.status);
+            } else if (feedback) {
+                feedback.textContent = '';
             }
             if (!result.status) {
                 notify(result.message || texts.actionError, 'error');
                 return;
             }
+            notify(result.message, 'success');
             if (result.status && result.detailUrl) {
                 rootNeedsRefresh = true;
                 openDrawer(result.detailUrl);
             }
         }).catch(function () {
-            if (feedback) {
+            if (feedback && typeof window.commonNotify !== 'function') {
                 feedback.textContent = texts.actionError;
                 feedback.classList.add('is-error');
             }
