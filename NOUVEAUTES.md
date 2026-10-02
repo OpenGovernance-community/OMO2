@@ -1,5 +1,11 @@
 # Journal Des Nouveautes
 
+- Notifications : harmonisation des confirmations et erreurs dans les paramètres, les profils et compétences, les calendriers, les projets et budgets, les indicateurs, les PV, la FAQ, les formations, les partages, les affectations et le minuteur. Les messages utilisent les notifications fixes et temporaires de la topbar ; les états de progression, validations de champs et résultats détaillés restent dans leur écran. Le questionnaire utilise également cette API pour les invitations. Cette convention est documentée dans AGENTS.md pour les futurs développements.
+
+- Sécurité : les confirmations et les erreurs de sauvegarde utilisent les notifications fixes de la topbar, avec disparition automatique après 5 secondes pour les confirmations et 7 secondes pour les erreurs.
+
+- Sécurité : correction de l’enregistrement des sauvegardes sans adresse e-mail complémentaire. Le champ est explicitement facultatif ; la migration SQL accepte sa valeur vide et les administrateurs restent destinataires.
+
 - Propositions de creation de holons : les differences affichent les textes herites du modele au-dessus des valeurs locales, dans le meme bloc de propriete. Les formats texte, HTML et texte avec detail sont pris en charge ; les proprietes verrouillees affichent uniquement la valeur heritee. Le script partage utilise une version basee sur son contenu pour eviter le maintien de l ancien rendu dans le cache du navigateur.
 
 - Editeur de structure : une propriete non editable sans valeur locale affiche un message expliquant l absence de droits sous Valeur locale.

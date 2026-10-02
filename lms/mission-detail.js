@@ -241,7 +241,7 @@ window.commonPageScripts["/lms/mission-detail.js"] = function (pageConfig, pageS
 			updateMissionValidationState();
 		})
 		.catch(() => {
-			alert("Impossible d'enregistrer ce homework pour le moment.");
+			(typeof window.commonNotify === 'function' ? window.commonNotify : window.alert).call(window, "Impossible d'enregistrer ce homework pour le moment.", 'error');
 		});
 	}
 
@@ -266,7 +266,7 @@ window.commonPageScripts["/lms/mission-detail.js"] = function (pageConfig, pageS
 			.catch(() => {
 				quizMode = false;
 				updateMissionValidationState();
-				alert("Impossible de charger le quiz.");
+				(typeof window.commonNotify === 'function' ? window.commonNotify : window.alert).call(window, "Impossible de charger le quiz.", 'error');
 			});
 	}
 
@@ -319,7 +319,7 @@ window.commonPageScripts["/lms/mission-detail.js"] = function (pageConfig, pageS
 		let selected = Array.from(inputs).map(i => i.value);
 
 		if (selected.length === 0) {
-			alert('Veuillez sélectionner une réponse.');
+			(typeof window.commonNotify === 'function' ? window.commonNotify : window.alert).call(window, 'Veuillez sélectionner une réponse.', 'error');
 			return;
 		}
 
@@ -339,7 +339,7 @@ window.commonPageScripts["/lms/mission-detail.js"] = function (pageConfig, pageS
 					showQuestion();
 				}
 			} else {
-				alert('Mauvaise réponse.');
+				(typeof window.commonNotify === 'function' ? window.commonNotify : window.alert).call(window, 'Mauvaise réponse.', 'error');
 			}
 		});
 	}
@@ -348,7 +348,7 @@ window.commonPageScripts["/lms/mission-detail.js"] = function (pageConfig, pageS
 		const missionId = currentMission || lmsMissionId || currentMissionId;
 
 		if (!missionId) {
-			alert("Mission introuvable");
+			(typeof window.commonNotify === 'function' ? window.commonNotify : window.alert).call(window, "Mission introuvable", 'error');
 			return;
 		}
 
@@ -375,7 +375,7 @@ window.commonPageScripts["/lms/mission-detail.js"] = function (pageConfig, pageS
 		.catch(() => {
 			quizMode = false;
 			updateMissionValidationState();
-			alert("Impossible de valider cette mission pour le moment.");
+			(typeof window.commonNotify === 'function' ? window.commonNotify : window.alert).call(window, "Impossible de valider cette mission pour le moment.", 'error');
 		});
 	}
 

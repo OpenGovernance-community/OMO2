@@ -349,7 +349,15 @@ window.omoInitCalendar = function (root) {
                         if (remove) { remove.closest('[data-meeting-method-row]').remove(); syncMethodRows(); }
                     });
                     syncMethodRows();
-                    function show(node, value, success) { node.textContent = value; node.classList.toggle('is-success', success); }
+                    function show(node, value, success, inline) {
+                        if (value && node !== slugStatus && !inline && typeof window.commonNotify === 'function') {
+                            node.textContent = '';
+                            window.commonNotify(String(value), success ? 'success' : 'error');
+                            return;
+                        }
+                        node.textContent = value;
+                        node.classList.toggle('is-success', success);
+                    }
                     function syncMeetingEnabledContent() {
                         if (enabledContent && enabledField) { enabledContent.hidden = !enabledField.checked; }
                     }
@@ -389,7 +397,7 @@ window.omoInitCalendar = function (root) {
                         if (button.disabled) { return; }
                         var data = new FormData(form);
                         var submittedRows = Array.from(methodList.querySelectorAll('[data-meeting-method-row]'));
-                        button.disabled = true; show(message, text.saving, true);
+                        button.disabled = true; show(message, text.saving, true, true);
                         post(data).then(function (result) {
                             show(message, result.message, result.status);
                             if (result.status) {
@@ -2203,7 +2211,12 @@ window.omoInitCalendar = function (root) {
             var selectionForm = container.querySelector('[data-omo-external-calendar-selection]');
             var discoveryToken = '';
             var busy = false;
-            function feedback(node, message, failed) {
+            function feedback(node, message, failed, inline) {
+                if (message && !inline && typeof window.commonNotify === 'function') {
+                    if (node) { node.textContent = ''; }
+                    window.commonNotify(String(message), failed ? 'error' : 'success');
+                    return;
+                }
                 node.textContent = message;
                 node.classList.toggle('is-error', !!failed);
             }
@@ -2269,7 +2282,7 @@ window.omoInitCalendar = function (root) {
                     var body = new FormData(editForm);
                     var message = editForm.querySelector('[data-omo-external-calendar-feedback]');
                     setBusy(true);
-                    feedback(message, text.pending, false);
+                    feedback(message, text.pending, false, true);
                     requestExternal(body).then(function (payload) {
                         editForm.elements.password.value = '';
                         editForm.elements.ics_url.value = '';
@@ -2287,7 +2300,7 @@ window.omoInitCalendar = function (root) {
                     var message = icsForm.querySelector('[data-omo-external-calendar-feedback]');
                     var body = new FormData(icsForm);
                     setBusy(true);
-                    feedback(message, text.pending, false);
+                    feedback(message, text.pending, false, true);
                     requestExternal(body).then(function (payload) {
                         feedback(message, payload.message, payload.synced === false);
                         icsForm.reset();
@@ -2323,7 +2336,7 @@ window.omoInitCalendar = function (root) {
                 discoveryToken = '';
                 selectionForm.hidden = true;
                 setBusy(true);
-                feedback(message, text.searching, false);
+                feedback(message, text.searching, false, true);
                 requestExternal(body).then(function (payload) {
                     discoveryToken = payload.discoveryToken;
                     discoveryForm.elements.password.value = '';
@@ -2356,11 +2369,11 @@ window.omoInitCalendar = function (root) {
                 var message = selectionForm.querySelector('[data-omo-external-calendar-feedback]');
                 if (!rows.length) { feedback(message, text.choose, true); return; }
                 setBusy(true);
-                feedback(message, text.pending, false);
+                feedback(message, text.pending, false, true);
                 var saved = false;
                 for (var row of rows) {
                     var status = row.querySelector('[data-calendar-status]');
-                    feedback(status, text.pending, false);
+                    feedback(status, text.pending, false, true);
                     var body = new URLSearchParams();
                     body.set('action', 'save');
                     body.set('discovery_token', discoveryToken);
@@ -2372,9 +2385,9 @@ window.omoInitCalendar = function (root) {
                         var payload = await requestExternal(body);
                         saved = true;
                         row.querySelectorAll('input').forEach(function (input) { input.dataset.calendarSaved = '1'; });
-                        feedback(status, payload.message, payload.synced === false);
+                        feedback(status, payload.message, payload.synced === false, true);
                     } catch (error) {
-                        feedback(status, error.message || text.failed, true);
+                        feedback(status, error.message || text.failed, true, true);
                     }
                 }
                 feedback(message, text.finished, false);
@@ -2781,13 +2794,14 @@ window.omoInitCalendar = function (root) {
 
                     closeDrawer();
                 }).catch(function (error) {
-                    if (!feedback) {
-                        return;
-                    }
-
                     var message = error && typeof error.message === 'string' && error.message !== ''
                         ? error.message
                         : "Impossible d'enregistrer cet événement.";
+                    if (typeof window.commonNotify === 'function') {
+                        window.commonNotify(message, 'error');
+                        return;
+                    }
+                    if (!feedback) { return; }
                     feedback.textContent = message;
                     feedback.className = 'omo-calendar-create__feedback is-error';
                 }).finally(function () {

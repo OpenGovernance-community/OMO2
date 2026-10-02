@@ -53,7 +53,7 @@ window.commonPageScripts["/common/assets/profile.js"] = function (pageConfig, pa
         }
 
         if (payload && payload.message) {
-            alert(payload.message);
+            (typeof window.commonNotify === 'function' ? window.commonNotify : window.alert).call(window, payload.message, payload.status === false ? 'error' : 'success');
         }
     }
 

@@ -118,6 +118,13 @@ window.commonPageScripts["/omo/api/bug_report_popup.js"] = function (pageConfig,
 
     function setFeedback(message, type, links) {
         feedback.classList.remove('is-error', 'is-success');
+        if (message && (type === 'error' || type === 'success') && typeof window.commonNotify === 'function') {
+            window.commonNotify(String(message), type);
+            feedback.textContent = '';
+            if (type === 'error' || !links || !links.issue_url) { return; }
+            feedback.innerHTML = '<a href="' + escapeHtml(links.issue_url) + '" target="_blank" rel="noopener">' + escapeHtml(texts.viewIssue) + '</a>';
+            return;
+        }
 
         if (!message) {
             feedback.textContent = '';

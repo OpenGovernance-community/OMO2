@@ -253,7 +253,7 @@ window.commonPageScripts["/omo/api/lms/getMissionDetail.js"] = function (pageCon
 			updateMissionValidationState();
 		})
 		.catch(() => {
-			alert(String(lmsMissionText.alertSaveHomework || ''));
+			window.omoNotify(String(lmsMissionText.alertSaveHomework || ''), 'error');
 		});
 	}
 
@@ -284,7 +284,7 @@ window.commonPageScripts["/omo/api/lms/getMissionDetail.js"] = function (pageCon
 			.catch(() => {
 				quizMode = false;
 				updateMissionValidationState();
-				alert(String(lmsMissionText.alertLoadQuiz || ''));
+				window.omoNotify(String(lmsMissionText.alertLoadQuiz || ''), 'error');
 			});
 	}
 
@@ -337,7 +337,7 @@ window.commonPageScripts["/omo/api/lms/getMissionDetail.js"] = function (pageCon
 		let selected = Array.from(inputs).map(i => i.value);
 
 		if (selected.length === 0) {
-			alert(String(lmsMissionText.quizSelectAnswer || ''));
+			window.omoNotify(String(lmsMissionText.quizSelectAnswer || ''), 'warning');
 			return;
 		}
 
@@ -357,7 +357,7 @@ window.commonPageScripts["/omo/api/lms/getMissionDetail.js"] = function (pageCon
 					showQuestion();
 				}
 			} else {
-				alert(String(lmsMissionText.quizWrongAnswer || ''));
+				window.omoNotify(String(lmsMissionText.quizWrongAnswer || ''), 'warning');
 			}
 		});
 	}
@@ -366,7 +366,7 @@ window.commonPageScripts["/omo/api/lms/getMissionDetail.js"] = function (pageCon
 		const missionId = currentMission || lmsMissionId || currentMissionId;
 
 		if (!missionId) {
-			alert(String(lmsMissionText.notFound || ''));
+			window.omoNotify(String(lmsMissionText.notFound || ''), 'error');
 			return;
 		}
 
@@ -393,7 +393,7 @@ window.commonPageScripts["/omo/api/lms/getMissionDetail.js"] = function (pageCon
 		.catch(() => {
 			quizMode = false;
 			updateMissionValidationState();
-			alert(String(lmsMissionText.alertValidateMission || ''));
+			window.omoNotify(String(lmsMissionText.alertValidateMission || ''), 'error');
 		});
 	}
 
