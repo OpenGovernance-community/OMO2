@@ -221,6 +221,10 @@ $sourceLang = [
     'personal_space.editor.save_error' => ['text' => 'Impossible d’enregistrer le tableau de pilotage.', 'context' => 'Dashboard layout save error.'],
     'personal_space.module.rules' => ['text' => 'Règles', 'context' => 'Dashboard rules module title.'],
     'personal_space.module.projects' => ['text' => 'Projets', 'context' => 'Dashboard projects module title.'],
+    'personal_space.module.decisions' => ['text' => 'Decisions', 'context' => 'Dashboard decisions module title.'],
+    'personal_space.metric.decisions_active' => ['text' => 'Actives', 'context' => 'Visible decisions still in preparation, scheduled, in consultation or in evaluation.'],
+    'personal_space.metric.decisions_elaboration' => ['text' => 'En elaboration', 'context' => 'Decisions currently in the elaboration (consultation) phase.'],
+    'personal_space.metric.decisions_pending' => ['text' => 'A me prononcer', 'context' => 'Decisions in evaluation with at least one response still required from the current user.'],
     'personal_space.module.team' => ['text' => 'Team', 'context' => 'Dashboard team module title.'],
     'personal_space.module.documents' => ['text' => 'Documents', 'context' => 'Dashboard documents module title.'],
     'personal_space.module.event' => ['text' => 'Événements', 'context' => 'Dashboard events module title.'],
@@ -511,6 +515,11 @@ $dashboardRouteTokens = array_map(static function (array $definition): string {
     return (string)($definition['route'] ?? '');
 }, $dashboardModuleDefinitions);
 $dashboardMetricLabels = array(
+    'decisions' => array(
+        'active' => t('personal_space.metric.decisions_active', [], $lang, $sourceLang),
+        'elaboration' => t('personal_space.metric.decisions_elaboration', [], $lang, $sourceLang),
+        'pending' => t('personal_space.metric.decisions_pending', [], $lang, $sourceLang),
+    ),
     'rules' => array(
         'modified' => t('personal_space.metric.modified', [], $lang, $sourceLang),
         'review' => t('personal_space.metric.review', [], $lang, $sourceLang),

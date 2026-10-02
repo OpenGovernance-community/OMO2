@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/rule-scope-fields.php';
+require_once __DIR__ . '/rule-date-fields.php';
 
 // Shared form fields for deferred proposals in meeting minutes and ballots.
 function omoDeferredEditorT(string $key): string
@@ -66,7 +67,7 @@ function omoDeferredEditorRenderFields(string $targetType, array $state): void
             <?php $htmlField('description', 'rule'); ?>
             <div class="generic-form-grid">
                 <?php foreach (['review_date', 'expiration_date'] as $field): ?>
-                    <label class="generic-form-field"><span class="generic-form-label"><?= $label($field) ?></span><input class="generic-form-control" type="date" name="<?= $field ?>" value="<?= $value($field) ?>" required></label>
+                    <label class="generic-form-field"><span class="generic-form-label"><?= $label($field) ?></span><?php omoRuleDateRenderInput($field, $state[$field] ?? ''); ?></label>
                 <?php endforeach; ?>
             </div>
         <?php elseif ($targetType === 'project'): ?>

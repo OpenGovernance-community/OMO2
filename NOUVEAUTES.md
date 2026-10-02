@@ -1,5 +1,13 @@
 # Journal Des Nouveautes
 
+- Tableau de pilotage : ajout du module Decisions avec la liste des decisions actives, les compteurs en elaboration et a me prononcer, et un perimetre configurable (local, enfants directs, descendants). Le filtre En elaboration correspond a la phase de consultation avant le vote.
+
+- FAQ : correction du refus de creation ou de modification dans un espace qui herite de l organisation de sa racine ; le controle accepte ce rattachement et refuse toujours les espaces d une autre organisation.
+
+- Regles : saisie au clavier des dates de requestionnement et d echeance au format AAAA-MM-JJ, avec validation et calendrier conserve, y compris dans les propositions de modification.
+
+- Structure : le menu Historique, Ajouter et les autres actions reste au-dessus des capsules des membres, y compris en affichage compact.
+
 - Projets : correction du chargement en boucle et de la page blanche en choisissant Tout le monde face a une vue enregistree differente. Les choix Kanban et Importance sont aussi conserves lors des rafraichissements et de la restauration de la vue temporaire.
 
 - Propositions de holons : les sélecteurs de décisions et de points de PV explorent aussi les enfants placés dans des groupes.
@@ -7,6 +15,8 @@
 - Propositions de holons : les choix sont affichés par ordre alphabétique, avec les cercles séparés des rôles par une ligne horizontale.
 
 - Points de PV : les auteurs peuvent proposer des modifications depuis leurs propres points sans avoir le droit de gérer la structure du PV.
+
+- Propositions de holons : les détails des créations et suppressions affichent les valeurs effectives héritées de leur modèle.
 
 - Partage de structure : la popup de gestion charge correctement les liens existants.
 

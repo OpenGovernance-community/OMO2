@@ -17,8 +17,20 @@ window.commonPageScripts["/omo/api/deferred_proposals/pv_rule_editor.js"] = func
     function isAllowed(id) { return allowedIds().indexOf(Number(id)) !== -1; }
     function showFeedback(message) { feedback.hidden = !message; feedback.textContent = message || ''; }
     function populateFromSelectedRule() { const state = ruleStates[String(ruleId.value || '')]; if (!state) return; ['title','intention','description','review_date','expiration_date','scope','IDauthority'].forEach(function (name) { if (!Object.prototype.hasOwnProperty.call(state, name)) return; const value = String(state[name] == null ? '' : state[name]), field = form.elements.namedItem(name), editor = fields.querySelector('[data-omo-deferred-html="' + name + '"]'); if (editor && window.omoProposalHtml) window.omoProposalHtml.setValue(editor, value); else if (field) field.value = value; }); window.omoInitRuleScopeFields(form, null, state); }
-    function updateSubmitState() { const allowed = isAllowed(holonInput.value); permissionMessage.hidden = allowed; submit.disabled = !allowed || (operation.value !== 'create' && !Number(ruleId.value)); }
-    function sync(populateRule) { const deletion = operation.value === 'delete'; window.omoInitRuleScopeFields(form); fields.querySelectorAll('select').forEach(function (field) { field.disabled = deletion; }); existing.hidden = workflow || operation.value === 'create'; fields.hidden = deletion; fields.querySelectorAll('input,textarea').forEach(function (field) { field.required = !deletion && ['title','review_date','expiration_date'].indexOf(field.name) !== -1; }); if (populateRule && operation.value === 'update') populateFromSelectedRule(); updateSubmitState(); }
+    function updateSubmitState() { const allowed = isAllowed(holonInput.value); permissionMessage.hidden = allowed; submit.disabled = !allowed || (operation.value !== 'create' && !Number(ruleId.value)); fields.querySelectorAll('[data-generic-date-text]').forEach(function (field) { field.dispatchEvent(new Event('input', {bubbles:true})); }); }
+    function sync(populateRule) {
+        const deletion = operation.value === 'delete';
+        window.omoInitRuleScopeFields(form);
+        fields.querySelectorAll('select').forEach(function (field) { field.disabled = deletion; });
+        existing.hidden = workflow || operation.value === 'create';
+        fields.hidden = deletion;
+        fields.querySelectorAll('input,textarea').forEach(function (field) {
+            field.required = !deletion && ['title','review_date','expiration_date'].indexOf(field.name) !== -1;
+            if (field.hasAttribute('data-generic-date-text')) field.disabled = deletion;
+        });
+        if (populateRule && operation.value === 'update') populateFromSelectedRule();
+        updateSubmitState();
+    }
     function replaceRules(items, selectedId, populateRule) {
         ruleStates = {}; ruleId.innerHTML = '';
         (Array.isArray(items) ? items : []).forEach(function (item) { const option = document.createElement('option'); option.value = String(item.id || ''); option.textContent = String(item.title || ''); if (Number(item.id) === Number(selectedId)) option.selected = true; ruleId.appendChild(option); ruleStates[String(item.id)] = item.state || {}; });

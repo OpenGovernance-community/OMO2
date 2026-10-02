@@ -351,7 +351,7 @@
 			return $property->load($propertyId) && Property::isTypeEnabled($property->get('type'), $this->getPropertyTypeLexicon());
 		}
 
-		protected function resolveOrganizationId()
+		public function resolveOrganizationId()
 		{
 			$organizationId = (int)$this->get('IDorganization');
 			if ($organizationId > 0) {
