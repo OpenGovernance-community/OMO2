@@ -7,6 +7,7 @@ $holonCreateSourceLang = [
     'holon.edit_denied' => ['text' => "Vous n'avez pas les droits de modification du holon.", 'context' => 'Tooltip on locked holon name and full name fields'],
     'property.type' => ['text' => 'Type de propriete', 'context' => 'Property permission type selector in the holon editor'],
     'property.edit_denied' => ['text' => "Vous n'avez pas les droits de modification.", 'context' => 'Tooltip and accessible description of the lock beside a read-only holon property name'],
+    'property.define_denied' => ['text' => "Vous n'avez pas les droits pour définir cette propriété", 'context' => 'Message below Local value when a read-only holon property has no local value to display'],
     'project_picker.add' => ['text' => 'Ajouter', 'context' => 'Button opening the project selector for a holon property'],
     'project_picker.title' => ['text' => 'Ajouter des projets', 'context' => 'Project selector title in the holon editor'],
     'project_picker.search' => ['text' => 'Rechercher un projet…', 'context' => 'Project selector search placeholder in the holon editor'],
@@ -313,6 +314,7 @@ $drawerTitle = (($editorData['mode'] ?? 'create') === 'edit') ? 'Modifier l’é
     'governanceCapture' => ($governanceCapture),
     'propertyTypeLabel' => $holonCreateT('property.type'),
     'propertyEditDenied' => $holonCreateT('property.edit_denied'),
+    'propertyDefineDenied' => $holonCreateT('property.define_denied'),
     'projectPickerTexts' => [
     'add' => $holonCreateT('project_picker.add'),
     'title' => $holonCreateT('project_picker.title'),

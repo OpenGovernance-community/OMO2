@@ -26,6 +26,8 @@ $sourceLang = [
     'updated' => ['text' => 'Calendrier mis a jour.', 'context' => 'Calendar settings saved.'],
     'title_required' => ['text' => 'Indiquez un nom pour ce calendrier.', 'context' => 'Missing calendar display name.'],
     'duplicate' => ['text' => 'Cette adresse est deja utilisee par un autre calendrier connecte.', 'context' => 'Duplicate calendar URL during editing.'],
+    'availability_destination' => ['text' => 'Ce calendrier reçoit vos réservations. Choisissez d’abord un autre calendrier de destination dans les paramètres de prise de rendez-vous.', 'context' => 'A booking destination cannot become an availability calendar.'],
+    'busy' => ['text' => 'Une réservation ou une modification est en cours. Réessayez dans un instant.', 'context' => 'Calendar settings owner lock unavailable.'],
 ];
 $lang = omoLoadTranslationBundle('omo_calendar_external_actions', $sourceLang);
 function omoExternalCalendarT($key, array $replace = [])
@@ -44,6 +46,18 @@ function omoExternalCalendarReply($status, $message, array $extra = [])
 }
 
 $userId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
+function omoExternalCalendarSetAvailability(ExternalCalendar $calendar, int $userId): void
+{
+    if (!array_key_exists('availability_only', $_POST)) { return; }
+    $availability = !empty($_POST['availability_only']);
+    if ($availability && $calendar->getId() && \dbObject\MeetingProfile::isStorageAvailable()) {
+        $profile = \dbObject\MeetingProfile::forUser($userId);
+        if ((int)$profile->get('IDexternalcalendar') === (int)$calendar->getId()) {
+            omoExternalCalendarReply(false, omoExternalCalendarT('availability_destination'));
+        }
+    }
+    $calendar->set('availability_only', $availability ? 1 : 0);
+}
 if ($userId <= 0 || !ExternalCalendar::isStorageAvailable()) {
     omoExternalCalendarReply(false, omoExternalCalendarT('unavailable'));
 }
@@ -85,11 +99,16 @@ if ($action === 'discover') {
         $existing = new ExternalCalendar();
         $connected = $existing->load([['IDuser', $userId], ['calendar_url', $item['url']]]);
         $items[] = ['index' => $index, 'title' => $connected ? $existing->get('title') : $item['title'],
-            'color' => $connected ? $existing->get('color') : $item['color'], 'connected' => $connected];
+            'color' => $connected ? $existing->get('color') : $item['color'], 'connected' => $connected,
+            'availability_only' => $connected && (bool)$existing->get('availability_only')];
     }
     omoExternalCalendarReply(true, omoExternalCalendarT('found'), ['discoveryToken' => $token, 'calendars' => $items]);
 }
 $calendarId = (int)($_POST['calendar_id'] ?? 0);
+if (in_array($action, ['update', 'save', 'save_ics'], true)) {
+    if (!\dbObject\MeetingProfile::lock($userId)) { omoExternalCalendarReply(false, omoExternalCalendarT('busy')); }
+    register_shutdown_function(static fn() => \dbObject\MeetingProfile::unlock($userId));
+}
 $calendar = null;
 if ($calendarId > 0) {
     $candidate = new ExternalCalendar();
@@ -164,6 +183,7 @@ if ($action === 'update') {
     $calendar->set('username', $username);
     $calendar->set('password_encrypted', $encrypted);
     $calendar->set('updated_at', new DateTimeImmutable('now'));
+    omoExternalCalendarSetAvailability($calendar, $userId);
     if ($connectionChanged) {
         $calendar->set('source_ctag', null);
         $calendar->set('last_sync_at', null);
@@ -192,6 +212,7 @@ if ($action === 'save_ics') {
         $calendar->set('created_at', new DateTimeImmutable('now'));
     }
     $calendar->set('provider', 'ics');
+    omoExternalCalendarSetAvailability($calendar, $userId);
     $calendar->set('title', mb_substr($title, 0, 190, 'UTF-8'));
     $calendar->set('calendar_url', $calendarKey);
     $calendar->set('username', 'ics');
@@ -232,6 +253,7 @@ if (!$calendar->load([['IDuser', $userId], ['calendar_url', $calendarUrl]])) {
     $calendar->set('created_at', new DateTimeImmutable('now'));
 }
 $calendar->set('title', mb_substr($title, 0, 190, 'UTF-8'));
+omoExternalCalendarSetAvailability($calendar, $userId);
 $calendar->set('calendar_url', $calendarUrl);
 $calendar->set('username', mb_substr($username, 0, 250, 'UTF-8'));
 $calendar->set('color', $color);

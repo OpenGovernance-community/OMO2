@@ -81,7 +81,7 @@ function omoDocumentsPvEditorHasValidSessionToken(int $organizationId, int $docu
     return $storedToken !== '' && hash_equals($storedToken, $token);
 }
 
-function omoDocumentsPvEditorParsePointIds($rawValue): array
+function omoDocumentsPvEditorParsePointIds($rawValue, int $maxCount = 200): array
 {
     $parts = is_array($rawValue)
         ? $rawValue
@@ -90,7 +90,7 @@ function omoDocumentsPvEditorParsePointIds($rawValue): array
         return $pointId > 0;
     })));
 
-    return array_slice($pointIds, 0, 200);
+    return array_slice($pointIds, 0, $maxCount);
 }
 
 function omoDocumentsPvEditorBuildLockPayload(array $lockResult, string $lockToken): array
@@ -229,6 +229,7 @@ function omoDocumentsPvEditorBuildDocumentPayload(\dbObject\Document $document, 
     $visibility = $document->getVisibilityDisplayData($organizationId);
     $modifiedAt = $document->get('datemodification');
     $modifiedAtValue = $modifiedAt instanceof \DateTimeInterface ? $modifiedAt->format('Y-m-d H:i:s.u') : '';
+    $unhandledPointsHtml = $document->renderPvUnhandledPointsForViewer();
     $syncVersion = implode('|', [
         $modifiedAtValue,
         (string)$document->getPvStage(),
@@ -238,6 +239,7 @@ function omoDocumentsPvEditorBuildDocumentPayload(\dbObject\Document $document, 
         trim((string)$document->get('description')),
         (string)($visibility['type'] ?? \dbObject\ObjectVisibility::TYPE_ORGANIZATION),
         $document->isPvTemplate() ? '1' : '0',
+        $unhandledPointsHtml,
     ]);
     return [
         'id' => (int)$document->getId(),
@@ -246,6 +248,7 @@ function omoDocumentsPvEditorBuildDocumentPayload(\dbObject\Document $document, 
         'description' => trim((string)$document->get('description')),
         'visibilityType' => (string)($visibility['type'] ?? \dbObject\ObjectVisibility::TYPE_ORGANIZATION),
         'pvStage' => $document->getPvStage(),
+        'unhandledPointsHtml' => $unhandledPointsHtml,
         'pvStageLabel' => $document->getPvStageLabel(),
         'canManagePvStage' => $document->canManagePvStage($organizationId, $stageUserId),
         'pvEditorUserId' => $pvEditorUserId,
@@ -458,7 +461,8 @@ if ($action === 'refresh_point') {
         $pointId <= 0
         || !$point->load($pointId)
         || (int)$point->get('IDdocument') !== (int)$document->getId()
-        || !$document->canUserManagePvDocument($currentUserId)
+        || (!$document->canUserManagePvDocument($currentUserId)
+            && !$document->canUserProposePvPointChange($point, $currentUserId))
         || !omoDocumentsPvEditorHasValidSessionToken($organizationId, $documentId, $currentUserId, $editorToken)
     ) {
         omoDocumentsPvEditorJsonResponse([
@@ -885,6 +889,43 @@ if ($action === 'add_indicator_value') {
     ]);
 }
 
+if ($action === 'list_importable_points' || $action === 'import_points') {
+    if ($isPublicParticipation
+        || !\dbObject\DocumentPvPoint::canImportIntoDocument($document, $currentUserId)
+        || !omoDocumentsPvEditorHasValidSessionToken($organizationId, $documentId, $currentUserId, $editorToken)) {
+        omoDocumentsPvEditorJsonResponse(['status' => false, 'message' => omoDocumentsPvEditorActionT('documents.pv_editor.error.forbidden')], 403);
+    }
+    $scope = ($_POST['scope'] ?? 'local') === 'global' ? 'global' : 'local';
+    $members = ($_POST['members'] ?? 'mine') === 'all' ? 'all' : 'mine';
+    $period = ($_POST['period'] ?? 'before') === 'after' ? 'after' : 'before';
+    if ($members === 'all' && !$document->isPvEditor($currentUserId)) {
+        omoDocumentsPvEditorJsonResponse(['status' => false, 'message' => omoDocumentsPvEditorActionT('documents.pv_editor.error.forbidden')], 403);
+    }
+    if ($action === 'list_importable_points') {
+        $cursor = json_decode((string)($_POST['cursor'] ?? ''), true);
+        try {
+            $page = \dbObject\DocumentPvPoint::getImportablePage($document, $currentUserId, $scope, is_array($cursor) ? $cursor : [], (int)($_POST['limit'] ?? 20), $members, $period);
+            omoDocumentsPvEditorJsonResponse(['status' => true] + $page);
+        } catch (\Throwable $exception) {
+            omoDocumentsPvEditorJsonResponse(['status' => false, 'message' => omoDocumentsPvEditorActionT('documents.pv_editor.error.operation_failed')], 500);
+        }
+    }
+    $result = \dbObject\DocumentPvPoint::importIntoDocument($document,
+        omoDocumentsPvEditorParsePointIds($_POST['point_ids'] ?? '', 201), $currentUserId, $scope,
+        omoDocumentsPvEditorActionT('documents.pv_editor.import.moved_notice'), $members, $period);
+    if (empty($result['status'])) {
+        omoDocumentsPvEditorJsonResponse(['status' => false, 'message' => $result['text'] ?? omoDocumentsPvEditorActionT('documents.pv_editor.error.operation_failed')], 409);
+    }
+    $importedPoints = [];
+    foreach ($result['pointIds'] as $importedId) {
+        $point = new \dbObject\DocumentPvPoint();
+        if ($point->load($importedId) && $document->canUserViewPvPoint($point, $currentUserId)) {
+            $importedPoints[] = omoDocumentsPvEditorBuildPointResponsePayload($point, $organizationId, $currentUserId);
+        }
+    }
+    omoDocumentsPvEditorJsonResponse(['status' => true, 'points' => $importedPoints]);
+}
+
 if ($action === 'add_point') {
     if ($document->isPvValidated()
         || (!$isPublicParticipation && $document->isPvEditor($currentUserId) && !$document->canUserManagePvStructure($organizationId, $currentUserId))
@@ -1267,6 +1308,7 @@ if ($action === 'toggle_handled') {
     if (
         $pointId <= 0
         || !$point->load($pointId)
+        || $point->isMoved()
         || (int)$point->get('IDdocument') !== (int)$document->getId()
         || !$document->canUserManagePvDocument($currentUserId)
     ) {

@@ -38,6 +38,25 @@ function omoDocumentsPvEditorSourceLang(): array
         'documents.pv_editor.error.forbidden' => ['text' => 'Vous ne pouvez pas ouvrir cet éditeur de PV.', 'context' => 'Error shown when the current viewer cannot use the PV editor.'],
         'documents.pv_editor.error.invalid_request' => ['text' => 'Demande invalide.', 'context' => 'Error shown when the PV editor action endpoint receives an unsupported request method.'],
         'documents.pv_editor.action.add_point' => ['text' => 'Ajouter un point', 'context' => 'Button used to add a new agenda point in the PV editor.'],
+        'documents.pv_editor.import.title' => ['text' => 'Importer des points non traites', 'context' => 'Agenda transfer menu option and popup title.'],
+        'documents.pv_editor.import.options' => ['text' => 'Options d\'ajout', 'context' => 'Accessible label of the agenda split button.'],
+        'documents.pv_editor.import.scope' => ['text' => 'Perimetre', 'context' => 'Scope filter for previous meeting agenda points.'],
+        'documents.pv_editor.import.local' => ['text' => 'Local : meme espace', 'context' => 'Only previous PVs in the current meeting context.'],
+        'documents.pv_editor.import.global' => ['text' => 'Global : organisation', 'context' => 'All accessible previous PVs of the organization.'],
+        'documents.pv_editor.import.members' => ['text' => 'Auteurs des points', 'context' => 'Author filter for previous meeting agenda points.'],
+        'documents.pv_editor.import.mine' => ['text' => 'Moi', 'context' => 'Only agenda points authored by the current user.'],
+        'documents.pv_editor.import.all' => ['text' => 'Tous les membres', 'context' => 'Agenda points of all authors, available only to the destination PV editor.'],
+        'documents.pv_editor.import.period' => ['text' => 'Date des reunions', 'context' => 'Meeting date filter relative to the destination meeting.'],
+        'documents.pv_editor.import.before' => ['text' => 'Avant', 'context' => 'Agenda points from meetings before the destination meeting.'],
+        'documents.pv_editor.import.after' => ['text' => 'Apres', 'context' => 'Agenda points from meetings after the destination meeting.'],
+        'documents.pv_editor.import.help' => ['text' => 'Choisissez les points a reprendre. Ils seront deplaces depuis les PV en preparation ou en reunion. A partir de la relecture, le PV d\'origine conservera un lien vers cette reunion.', 'context' => 'Explains when an agenda transfer leaves a notice in the source minutes.'],
+        'documents.pv_editor.import.empty' => ['text' => 'Aucun point non traite disponible dans ce perimetre.', 'context' => 'Empty agenda import list.'],
+        'documents.pv_editor.import.loading' => ['text' => 'Chargement des points...', 'context' => 'Progressive agenda import loading.'],
+        'documents.pv_editor.import.add' => ['text' => 'Ajouter ({count})', 'context' => 'Import confirmation with selected point count.'],
+        'documents.pv_editor.import.saving' => ['text' => 'Transfert en cours...', 'context' => 'Agenda import in progress.'],
+        'documents.pv_editor.import.retry' => ['text' => 'Reessayer', 'context' => 'Retry loading previous agenda points.'],
+        'documents.pv_editor.import.moved_notice' => ['text' => 'Ce point n\'a pas ete traite ici. Il a ete deplace vers la reunion {meeting}.', 'context' => 'Source PV transfer notice; the meeting link follows direct moves of its immediate target, stopping at each retained source notice.'],
+        'documents.pv_editor.import.readonly' => ['text' => 'Ce point a ete deplace vers une autre reunion.', 'context' => 'Read only notice of a transferred agenda point.'],
         'documents.pv_editor.action.add_proposal' => ['text' => 'Ajouter une modification', 'context' => 'Button used to attach a deferred proposal to a PV point.'],
         'documents.pv_editor.proposals.title' => ['text' => 'Modifications', 'context' => 'Heading above the deferred proposals attached to a PV point.'],
         'documents.pv_editor.proposals.operation.create' => ['text' => 'Création', 'context' => 'Operation label for a deferred object creation.'],
@@ -389,6 +408,7 @@ function omoDocumentsPvEditorBuildUiText(?callable $translate = null, array $pri
     };
 
     $uiText = [
+        'movedReadonly' => $resolve('documents.pv_editor.import.readonly', 'Ce point a ete deplace vers une autre reunion.'),
         'reviewReadonly' => $resolve('documents.pv_editor.notice.review_readonly', 'Ce point est verrouillé pendant la relecture. Utilisez la discussion pour signaler une correction.'),
         'save' => $resolve('documents.pv_editor.action.save', 'Enregistrer'),
         'addProposal' => $resolve('documents.pv_editor.action.add_proposal', 'Ajouter une modification'),
@@ -550,6 +570,9 @@ function omoDocumentsPvEditorEscape($value): string
 
 function omoDocumentsPvEditorReadonlyNotice(array $pointData, array $uiText): string
 {
+    if (!empty($pointData['isMoved'])) {
+        return (string)$uiText['movedReadonly'];
+    }
     if (!empty($pointData['isReview'])) {
         return (string)($uiText['reviewReadonly'] ?? 'Ce point est verrouillé pendant la relecture.');
     }
@@ -720,6 +743,8 @@ function omoDocumentsPvEditorBuildContextualPointPayload(
         || $document->canUserManagePvStructure($organizationId, $currentUserId);
     $pointData['canEditGroup'] = $point->isGroup() && $document->canUserCreatePvGroups($currentUserId);
     $pointData['isReview'] = $document->getPvStage() === \dbObject\Document::PV_STAGE_REVIEW;
+    $pointData['isReportOmitted'] = !$point->isGroup() && !$point->isHandled()
+        && in_array($document->getPvStage(), [\dbObject\Document::PV_STAGE_REVIEW, \dbObject\Document::PV_STAGE_VALIDATED], true);
     $pointData['discussionMessageCount'] = max(0, (int)($discussionSummary['total_messages'] ?? 0));
     $pointData['canDelete'] = !$pointData['isReview']
         && !$pointData['isHandled']
@@ -731,10 +756,10 @@ function omoDocumentsPvEditorBuildContextualPointPayload(
     $pointData['canTakeOverLock'] = $pointData['isPvEditor']
         && $document->canUserManagePvDocument($currentUserId)
         && !empty($pointData['lock']['isLockedByOther']);
-    $pointData['canToggleHandled'] = !$pointData['isReview']
+    $pointData['canToggleHandled'] = !$point->isMoved() && !$pointData['isReview']
         && $document->canUserManagePvDocument($currentUserId)
         && empty($pointData['lock']['isLockedByOther']);
-    $pointData['canAssignAuthor'] = !$pointData['isHandled']
+    $pointData['canAssignAuthor'] = !$point->isMoved() && !$pointData['isHandled']
         && $document->canUserManagePvStructure($organizationId, $currentUserId);
     $pointData['hasStructureApplication'] = $hasStructureApplication;
     $pointData['deferredProposals'] = [];
@@ -970,6 +995,7 @@ function omoDocumentsPvEditorPointTypeIcons(): array
 
 function omoDocumentsPvEditorRenderNavItem(array $pointData, array $uiText): string
 {
+    if (!empty($pointData['isReportOmitted'])) return '';
     $pointId = (int)($pointData['id'] ?? 0);
     $title = trim((string)($pointData['title'] ?? ''));
     if ($title === '') {
@@ -1231,6 +1257,7 @@ function omoDocumentsPvEditorRenderDeferredProposals(array $pointData, array $ui
 
 function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): string
 {
+    if (!empty($pointData['isReportOmitted'])) return '';
     if (!empty($pointData['isGroup'])) {
         return '';
     }
@@ -1476,6 +1503,7 @@ function omoDocumentsPvEditorBuildPointPayload(array $pointData, array $uiText):
         'canReorder' => !empty($pointData['canReorder']),
         'canEditGroup' => !empty($pointData['canEditGroup']),
         'isReview' => !empty($pointData['isReview']),
+        'isReportOmitted' => !empty($pointData['isReportOmitted']),
         'canTakeOverLock' => !empty($pointData['canTakeOverLock']),
         'title' => (string)($pointData['title'] ?? ''),
         'authorValue' => (string)($pointData['authorValue'] ?? ''),
@@ -1486,6 +1514,7 @@ function omoDocumentsPvEditorBuildPointPayload(array $pointData, array $uiText):
         'isConfidential' => !empty($pointData['isConfidential']),
         'syncVersion' => hash('sha256', implode('|', [
             (string)($pointData['syncVersion'] ?? ''),
+            !empty($pointData['isReportOmitted']) ? '1' : '0',
             implode('|', $authorOptionValues),
             !empty($pointData['isEditable']) ? '1' : '0',
             !empty($pointData['canEditNow']) ? '1' : '0',

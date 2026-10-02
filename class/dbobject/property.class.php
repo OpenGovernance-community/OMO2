@@ -39,9 +39,9 @@
 				$options[] = [
 					'id' => $type,
 					'name' => Organization::getLexiconLabel($lexicon, $type),
-					'canCreate' => $context && $context->isAllowed(self::permissionKey('CREATE', $type), false),
+					'canCreate' => $context && $context->canUsePropertyPermission('CREATE', $type, $creatingHolon),
 					'canEdit' => $context && $context->canEditPropertyValue($type, $creatingHolon),
-					'canDelete' => $context && $context->isAllowed(self::permissionKey('DELETE', $type), false),
+					'canDelete' => $context && $context->canUsePropertyPermission('DELETE', $type, $creatingHolon),
 				];
 			}
 			return $options;
