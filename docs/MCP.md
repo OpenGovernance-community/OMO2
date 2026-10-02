@@ -24,6 +24,9 @@ Il ne necessite aucun service Node en production ni aucune cle API OpenAI.
    Apache doit appliquer le `.htaccess` racine et transmettre `Authorization`.
    Un proxy doit reproduire les routes `/mcp` et `/.well-known/oauth-*`.
 
+   La publication GitHub Actions de la branche Dev applique les migrations et
+   configure cette valeur automatiquement pour `https://dev.opengov.tools/mcp`.
+
 3. Pour Docker, placer cette variable dans `docker/app/.env`. Utiliser le meme domaine
    pour la connexion MCP et le login. `https://localtest.me/mcp` convient a Inspector
    sur cette machine mais n est pas joignable depuis ChatGPT sur le web.
