@@ -1212,18 +1212,32 @@ class HolonPermission extends DbObject
         });
     }
 
-    public static function buildUserPermissionSetForOrganization($userId, $organizationId, array $permissionKeys = [])
+    protected static function addProspectiveChild(array &$holonsById, int $parentHolonId): void
+    {
+        // This row exists only in the local scope resolver, never in persistence.
+        if (isset($holonsById[$parentHolonId])) {
+            $holonsById[PHP_INT_MAX] = [
+                'id' => PHP_INT_MAX,
+                'IDholon_parent' => $parentHolonId,
+                'IDtypeholon' => 1,
+                'IDholon_template' => 0,
+                'active' => true,
+            ];
+        }
+    }
+
+    public static function buildUserPermissionSetForOrganization($userId, $organizationId, array $permissionKeys = [], int $creationParentHolonId = 0)
     {
         // Keep keys, user and organization isolated; bypass the cross-request session cache.
         $permissionKeys = array_values(array_unique(array_map('strval', $permissionKeys)));
         sort($permissionKeys);
         $adminOverride = function_exists('commonUserHasAdminOverride')
             && \commonUserHasAdminOverride((int)$userId, (int)$organizationId);
-        return self::memoizeRead([__FUNCTION__, (int)$userId, (int)$organizationId, $permissionKeys, $adminOverride, self::extendedAuthoritiesActive((int)$userId, (int)$organizationId)],
-            static fn () => self::loadUserPermissionSetForOrganization($userId, $organizationId, $permissionKeys));
+        return self::memoizeRead([__FUNCTION__, (int)$userId, (int)$organizationId, $permissionKeys, $adminOverride, self::extendedAuthoritiesActive((int)$userId, (int)$organizationId), $creationParentHolonId],
+            static fn () => self::loadUserPermissionSetForOrganization($userId, $organizationId, $permissionKeys, $creationParentHolonId));
     }
 
-    protected static function loadUserPermissionSetForOrganization($userId, $organizationId, array $permissionKeys = [])
+    protected static function loadUserPermissionSetForOrganization($userId, $organizationId, array $permissionKeys = [], int $creationParentHolonId = 0)
     {
         $userId = (int)$userId;
         $organizationId = (int)$organizationId;
@@ -1307,6 +1321,7 @@ class HolonPermission extends DbObject
         $permissionSet['definedPermissionKeys'] = $definedPermissionKeys;
 
         $activeUserHolonRows = self::loadActiveUserHolonRowsForOrganization($userId, $organizationHolonIds, $organizationId, $organizationRootHolonId, $holonsById);
+        self::addProspectiveChild($holonsById, $creationParentHolonId);
         foreach ($activeUserHolonRows as $membershipRow) {
             $assignedHolonId = (int)($membershipRow['IDholon'] ?? 0);
             if ($assignedHolonId <= 0 || !isset($holonsById[$assignedHolonId])) {
@@ -1369,7 +1384,7 @@ class HolonPermission extends DbObject
      * Builds the permissions held by a collective itself. This is distinct
      * from the permissions a person receives through their memberships.
      */
-    public static function buildHolonCollectivePermissionSetForOrganization($organizationId, $collectiveHolonId, array $permissionKeys = [])
+    public static function buildHolonCollectivePermissionSetForOrganization($organizationId, $collectiveHolonId, array $permissionKeys = [], int $creationParentHolonId = 0)
     {
         $organizationId = (int)$organizationId;
         $collectiveHolonId = (int)$collectiveHolonId;
@@ -1410,6 +1425,7 @@ class HolonPermission extends DbObject
             self::collectPermissionSourceHolonIds($collectiveHolonId, $holonsById),
             true
         );
+        self::addProspectiveChild($holonsById, $creationParentHolonId);
 
         foreach ($permissionAssignments as $assignmentRow) {
             $permissionSourceHolonId = (int)($assignmentRow['IDholon'] ?? 0);
@@ -1473,13 +1489,15 @@ class HolonPermission extends DbObject
         $permissionSet = self::buildHolonCollectivePermissionSetForOrganization(
             $organizationId,
             $collectiveHolonId,
-            [$permissionKey]
+            [$permissionKey],
+            $creatingHolon ? $contextHolonId : 0
         );
         $scope = $permissionSet['permissions'][$permissionKey] ?? null;
         if (!is_array($scope)) {
             return false;
         }
-        if (!empty($scope['organization']) || !empty($scope['exact'][$contextHolonId])) {
+        $targetHolonId = $creatingHolon ? PHP_INT_MAX : $contextHolonId;
+        if (!empty($scope['organization']) || !empty($scope['exact'][$targetHolonId]) || !empty($scope['subtree'][$targetHolonId])) {
             return true;
         }
         if (empty($scope['subtree'])) {
@@ -1674,7 +1692,7 @@ class HolonPermission extends DbObject
             return false;
         }
 
-        $permissionSet = self::buildUserPermissionSetForOrganization($userId, $organizationId, [$permissionKey]);
+        $permissionSet = self::buildUserPermissionSetForOrganization($userId, $organizationId, [$permissionKey], $creatingHolon ? $contextHolonId : 0);
         if (empty($permissionSet['definedPermissionKeys'][$permissionKey])) {
             $fallback = Permission::getUnconfiguredFallbackPermissionKey($permissionKey, $creatingHolon);
             if ($fallback !== null) {
@@ -1700,7 +1718,8 @@ class HolonPermission extends DbObject
             return false;
         }
 
-        if (!empty($scope['exact'][$contextHolonId])) {
+        $targetHolonId = $creatingHolon ? PHP_INT_MAX : $contextHolonId;
+        if (!empty($scope['exact'][$targetHolonId]) || !empty($scope['subtree'][$targetHolonId])) {
             return true;
         }
 

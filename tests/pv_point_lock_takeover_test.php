@@ -13,6 +13,7 @@ $pointSource = (string)file_get_contents($root . '/class/dbobject/documentpvpoin
 $documentSource = (string)file_get_contents($root . '/class/dbobject/document.class.php');
 $actionSource = (string)file_get_contents($root . '/omo/api/documents/pv/action.php');
 $editorSource = (string)file_get_contents($root . '/omo/api/documents/pv/editor.php');
+$editorSource .= (string)file_get_contents($root . '/omo/api/documents/pv/editor.js');
 $helpersSource = (string)file_get_contents($root . '/omo/api/documents/pv/helpers.php');
 $migrationSource = (string)file_get_contents($root . '/sql/2026-09-17-06-pv-point-lock-takeover.sql');
 

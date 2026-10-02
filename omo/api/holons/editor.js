@@ -1409,7 +1409,8 @@ function renderPropertyInput(property) {
         : '';
 
     if (!property.canEditValue) {
-        return renderReadonlyPropertyValue(property, localValue);
+        return renderReadonlyPropertyValue(property, localValue)
+            || '<p class="generic-meta">' + escapeHtml(pageConfig.propertyDefineDenied) + '</p>';
     }
 
     if (formatId === 2) {

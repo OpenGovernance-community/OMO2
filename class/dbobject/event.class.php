@@ -640,6 +640,10 @@ class Event extends DbObject
                         'organization' => '', 'holon' => ''];
                 }
                 $report['externalCache'] = $report['externalCache'] || $external['hasCalendars'];
+                foreach ($external['unavailable'] as [$busyStart, $busyEnd]) {
+                    $intervals[] = ['start' => $busyStart, 'end' => $busyEnd, 'source' => 'availability',
+                        'organization' => '', 'holon' => ''];
+                }
                 if ($external['incomplete'] || $refreshFailed) {
                     $report['unverified'][] = ['name' => $name, 'reason' => 'cache'];
                 }

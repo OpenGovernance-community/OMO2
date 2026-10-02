@@ -265,6 +265,9 @@ html[data-theme="dark"] .note-modal .note-modal-footer .note-btn-primary {
         var(--param-choice-card-padding-block)
         var(--param-choice-card-padding-inline);
     border: 1px solid var(--param-choice-card-border);
+    /* Optional leading accent, for choices carrying a category or priority color. */
+    border-inline-start-width: var(--param-choice-card-accent-width, 1px);
+    border-inline-start-color: var(--param-choice-card-accent-color, var(--param-choice-card-border));
     border-radius: var(--param-choice-card-radius);
     background: var(--param-choice-card-background);
     color: var(--color-text, #1f2937);
@@ -276,8 +279,20 @@ html[data-theme="dark"] .note-modal .note-modal-footer .note-btn-primary {
         transform 150ms ease;
 }
 
-.generic-choice-card:hover {
+.generic-choice-card--text {
+    grid-template-columns: minmax(0, 1fr);
+    text-align: left;
+    font: inherit;
+}
+
+.generic-choice-card:disabled {
+    cursor: default;
+    opacity: 0.6;
+}
+
+.generic-choice-card:where(:not(:disabled)):hover {
     border-color: var(--param-choice-card-border-hover);
+    border-inline-start-color: var(--param-choice-card-accent-color, var(--param-choice-card-border-hover));
     background: var(--param-choice-card-background-hover);
     box-shadow: var(--param-choice-card-shadow-hover);
     transform: translateY(-1px);
@@ -289,6 +304,7 @@ input:checked + .generic-choice-card,
 .generic-choice-card[aria-selected="true"],
 .generic-choice-card[aria-pressed="true"] {
     border-color: var(--param-choice-card-border-selected);
+    border-inline-start-color: var(--param-choice-card-accent-color, var(--param-choice-card-border-selected));
     background: var(--param-choice-card-background-selected);
     box-shadow: var(--param-choice-card-shadow-selected);
 }
@@ -324,6 +340,14 @@ input:focus-visible + .generic-choice-card,
 .generic-soft-panel--stack {
     display: grid;
     gap: var(--generic-soft-panel-gap, var(--generic-space-2));
+}
+
+/* Leading accent for non-interactive summaries carrying a category or priority. */
+.generic-soft-panel--accent {
+    --param-soft-panel-accent-color: var(--color-primary, #2563eb);
+    --param-soft-panel-accent-width: 4px;
+    border-inline-start-width: var(--param-soft-panel-accent-width);
+    border-inline-start-color: var(--param-soft-panel-accent-color);
 }
 
 /* Accordion rows provide their own inner spacing. */

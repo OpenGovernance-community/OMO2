@@ -46,7 +46,7 @@ function commonUserAvailabilityLoadBusyIntervals(int $userId, DateTimeInterface 
 
     $external = \dbObject\ArrayExternalCalendarEvent::busyIntervalsForUser($userId, $storageStart, $storageEnd);
     $incomplete = !empty($external['incomplete']);
-    foreach ($external['intervals'] as $interval) {
+    foreach (array_merge($external['intervals'], $external['unavailable']) as $interval) {
         $intervals[] = $interval;
     }
 

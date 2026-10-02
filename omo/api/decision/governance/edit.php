@@ -344,6 +344,6 @@ $payload = [
 <script src="/common/choice/word-diff.js?v=20260815"></script>
 <script src="<?= commonAssetUrl('/common/choice/rule-scope-fields.js') ?>"></script>
 <script src="<?= commonAssetUrl('/common/choice/proposal-html.js') ?>"></script>
-<script src="/common/choice/change-details.js?v=20260924-readable-diffs"></script>
+<script src="<?= commonAssetUrl('/common/choice/change-details.js') ?>"></script>
 <script src="<?= commonAssetUrl('/common/choice/governance-actions.js') ?>"></script>
 <script>if(window.omoGovernanceEditorInit){window.omoGovernanceEditorInit(document);}</script>

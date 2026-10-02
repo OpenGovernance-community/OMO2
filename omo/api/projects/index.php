@@ -1305,6 +1305,6 @@ $projectTexts = [
 <script src="/common/calendar/event-editor.js?v=20260922-document-templates"></script>
 <script src="/omo/assets/js/application-view-preferences.js?v=20260917-filter-hierarchy"></script>
 <script src="/common/choice/word-diff.js?v=20260816"></script>
-<script src="/common/choice/change-details.js?v=20260924-readable-diffs"></script>
+<script src="<?= commonAssetUrl('/common/choice/change-details.js') ?>"></script>
 <script src="/common/chat/thread.js?v=20260910-project-chat"></script>
 <script src="<?= commonAssetUrl('/omo/api/projects/projects.js') ?>"></script>

@@ -48,6 +48,13 @@ class MeetingProfile extends DbObject
         return $days;
     }
     public function hours(): array { return json_decode((string)$this->get('weekly_hours'), true) ?: self::defaultHours(); }
+    public function availabilityHours(): array
+    {
+        if ($this->get('enabled')) { return $this->hours(); }
+        $days = self::defaultHours();
+        foreach ($days as &$day) { $day['open'] = true; $day['start'] = '00:00'; $day['end'] = '24:00'; $day['pause'] = false; }
+        return $days;
+    }
     public function methods(): array { return json_decode((string)$this->get('meeting_methods'), true) ?: []; }
     public function maxDurationMinutes(): int
     {

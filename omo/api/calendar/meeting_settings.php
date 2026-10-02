@@ -87,8 +87,8 @@ $renderMethodRow = static function ($index, array $method = []): void {
                 <label class="generic-form-field"><span class="generic-form-label"><?= meetingEscape(meetingT('calendar')) ?></span>
                     <select class="generic-form-control" name="calendar">
                         <option value=""><?= meetingEscape(meetingT('calendar_choose')) ?></option>
-                        <?php foreach ($calendars as $calendar): $writable = commonExternalCalendarCanCreate($calendar); ?>
-                            <option value="<?= (int)$calendar->getId() ?>" <?= (int)$profile->get('IDexternalcalendar') === (int)$calendar->getId() ? 'selected' : '' ?> <?= $writable ? '' : 'disabled' ?>><?= meetingEscape($calendar->get('title') . ($writable ? '' : ' - ' . meetingT('readonly'))) ?></option>
+                        <?php foreach ($calendars as $calendar): $writable = !$calendar->get('availability_only') && commonExternalCalendarCanCreate($calendar); ?>
+                            <option value="<?= (int)$calendar->getId() ?>" <?= (int)$profile->get('IDexternalcalendar') === (int)$calendar->getId() ? 'selected' : '' ?> <?= $writable ? '' : 'disabled' ?>><?= meetingEscape($calendar->get('title') . ($calendar->get('availability_only') ? ' - ' . meetingT('availability_calendar') : ($writable ? '' : ' - ' . meetingT('readonly')))) ?></option>
                         <?php endforeach; ?>
                     </select>
                     <span class="generic-help-text"><?= meetingEscape(meetingT('calendar_hint')) ?></span>
