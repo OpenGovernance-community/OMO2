@@ -242,10 +242,11 @@ function getFieldType($object, $key) {
     }
 }
 
-function displayField($object, $key, $default = null, $filter = null, ?array $translationBundle = null, ?array $translationSourceLang = null) {
+function displayField($object, $key, $default = null, $filter = null, ?array $translationBundle = null, ?array $translationSourceLang = null, bool $compact = false) {
 
     $type = $object->getFieldType($key);
     $class = adminEditMergeClass(($object->isRequired($key) ? "required" : ""), "admin-edit__control generic-form-control");
+    if ($compact) $class = adminEditMergeClass($class, 'generic-form-control--compact');
     switch ($type) {
         case "fk" :
             // Return this field's text value
@@ -614,7 +615,7 @@ $adminEditToolbarTitle = $this->getId() != ""
     ? adminEditTranslate('admin_edit.toolbar.edit', [], $this, $adminEditTranslationBundle, $adminEditTranslationSourceLang)
     : adminEditTranslate('admin_edit.toolbar.create', [], $this, $adminEditTranslationBundle, $adminEditTranslationSourceLang);
 echo "<div class='admin-edit'>";
-echo "<form id='formulaire-edit' class='generic-form-stack' method='POST' enctype='multipart/form-data'";
+echo "<form id='formulaire-edit' class='generic-form-stack" . (!empty($params['compact']) ? ' generic-form-stack--compact' : '') . "' method='POST' enctype='multipart/form-data'";
 if (isset($params["action"]) && $params["action"]) {
     echo " action='" . $params["action"] . "'";
 }
@@ -643,17 +644,18 @@ if (!empty($params['sections']) && is_array($params['sections'])) {
         if (!$sectionFields) continue;
         $collapsible = !empty($section['collapsible']);
         $title = htmlspecialchars((string)($section['title'] ?? ''), ENT_QUOTES, 'UTF-8');
+        $sectionBodyClass = ($section['layout'] ?? '') === 'pair' ? 'generic-form-grid generic-form-grid--pair' : 'generic-fieldset__body';
         echo $collapsible
             ? "<details class='generic-accordion'><summary>" . $title . "</summary><div class='generic-accordion__content generic-form-stack'>"
-            : "<fieldset class='generic-fieldset'><legend class='generic-card-title generic-card-title--small'>" . $title . "</legend><div class='generic-fieldset__body'>";
+            : "<fieldset class='generic-fieldset'><legend class='generic-card-title generic-card-title--small'>" . $title . "</legend><div class='" . $sectionBodyClass . "'>";
         if (!empty($section['description'])) {
-            echo "<p class='generic-help-text'>" . htmlspecialchars((string)$section['description'], ENT_QUOTES, 'UTF-8') . "</p>";
+            echo "<p class='generic-help-text generic-form-field--full'>" . htmlspecialchars((string)$section['description'], ENT_QUOTES, 'UTF-8') . "</p>";
         }
         foreach ($sectionFields as $field) {
             if ($field === 'id') $id = true;
             $fieldId = htmlspecialchars($field, ENT_QUOTES, 'UTF-8');
             $heading = adminEditFieldHeading($this, $field, $adminEditTranslationBundle, $adminEditTranslationSourceLang);
-            $widget = displayField($this, $field, null, $params['filter'][$field] ?? null, $adminEditTranslationBundle, $adminEditTranslationSourceLang);
+            $widget = displayField($this, $field, null, $params['filter'][$field] ?? null, $adminEditTranslationBundle, $adminEditTranslationSourceLang, !empty($params['compact']));
             echo "<div class='generic-form-field' id='row_" . $fieldId . "'>";
             if ($this->getFieldType($field) === 'boolean') {
                 echo "<label class='generic-checkbox'>" . $widget . "<span class='generic-form-label'>" . $heading . "</span></label>";
@@ -812,7 +814,9 @@ echo "</div>";
 <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
 <script src="https://code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
 <script src="<?= commonAssetUrl('/common/assets/admin-edit.js') ?>"></script>
+<?php if (($params['bindFormScripts'] ?? true) !== false): ?>
 <?= commonPageScriptTags('/common/assets/admin-edit-form.js', [
     'this' => $this->tableName(),
     'success' => (string)($params["success"] ?? ""),
 ]) ?>
+<?php endif; ?>

@@ -16,7 +16,7 @@ class ExternalCalendar extends DbObject
             [['IDuser'], 'fk'],
             [['provider', 'title', 'calendar_url', 'username', 'password_encrypted', 'color', 'timezone', 'source_ctag'], 'string'],
             [['last_sync_error'], 'text'],
-            [['active'], 'boolean'],
+            [['active', 'availability_only'], 'boolean'],
             [['last_sync_at', 'created_at', 'updated_at'], 'datetime'],
             [['id'], 'safe'],
         ];
@@ -35,6 +35,7 @@ class ExternalCalendar extends DbObject
             'timezone' => 'Fuseau horaire',
             'source_ctag' => 'Version source',
             'active' => 'Actif',
+            'availability_only' => 'Définit mes plages de disponibilité',
             'last_sync_at' => 'Derniere synchronisation',
             'last_sync_error' => 'Erreur de synchronisation',
         ];

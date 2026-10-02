@@ -1000,7 +1000,7 @@ if (!function_exists('faqPopupResolveSubmittedScope')) {
 				);
 			}
 
-			if ($holon && (int)$holon->get('IDorganization') !== $organizationId) {
+			if ($holon && $holon->resolveOrganizationId() !== $organizationId) {
 				return array(
 					'status' => false,
 					'message' => \dbObject\Organization::formatLexiconText('Le holon selectionne n appartient pas a l organisation selectionnee.'),
@@ -1043,7 +1043,7 @@ if (!function_exists('faqPopupResolveSubmittedScope')) {
 				);
 			}
 
-			if ($holon && (int)$holon->get('IDorganization') !== $contextOrganizationId) {
+			if ($holon && $holon->resolveOrganizationId() !== $contextOrganizationId) {
 				return array(
 					'status' => false,
 					'message' => \dbObject\Organization::formatLexiconText('Le holon selectionne n appartient pas a l organisation courante.'),

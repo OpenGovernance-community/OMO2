@@ -15,6 +15,7 @@ use dbObject\Holon;
 use dbObject\Organization;
 
 $sourceLang = [
+    'calendar.external.availability' => ['text' => 'Disponibilités', 'context' => 'Calendar source suffix identifying external opening windows.'],
     'calendar.action.meeting_hint' => ['text' => 'Choisir vos horaires et votre agenda de reservation.', 'context' => 'Help below the calendar meeting menu action.'],
     'calendar.action.share_hint' => ['text' => 'Creer et gerer vos liens d abonnement.', 'context' => 'Help below the calendar share menu action.'],
     'calendar.action.connect_hint' => ['text' => 'Synchroniser OMO ou ajouter un agenda externe.', 'context' => 'Help below the calendar connect menu action.'],
@@ -852,7 +853,7 @@ if (ExternalCalendar::isStorageAvailable()) {
         $virtualEvent->set('status', Event::STATUS_CONFIRMED);
         $virtualEvent->set('active', 1);
         $externalEventMetaByVirtualId[$virtualEventId] = [
-            'title' => trim((string)$externalCalendar->get('title')),
+            'title' => trim((string)$externalCalendar->get('title')) . ($externalCalendar->get('availability_only') ? ' · ' . omoCalendarT('calendar.external.availability') : ''),
             'color' => ExternalCalendar::normalizeColor($externalCalendar->get('color')),
             'location' => trim((string)$externalEvent->get('location')),
         ];

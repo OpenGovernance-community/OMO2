@@ -1458,6 +1458,15 @@
 						COALESCE(actual_duration_minutes, 0),
 						COALESCE(pointtype, ''),
 						COALESCE(is_handled, 0),
+						COALESCE(IDpoint_moved_to, 0),
+						COALESCE(date_moved, ''),
+						COALESCE((SELECT CONCAT_WS(CHAR(30), target.IDdocument, destination.title, COALESCE(meeting.start_at, destination.datecreation))
+							FROM document_pv_point target
+							INNER JOIN document destination ON destination.id = target.IDdocument
+							LEFT JOIN event meeting ON meeting.id = destination.IDevent
+							WHERE target.id = document_pv_point.IDpoint_moved_to AND target.active = 1
+								AND destination.active = 1 AND destination.documenttype = 'pv'
+								AND destination.IDorganization = :movement_organization_id), ''),
 						COALESCE(is_confidential, 0),
 						COALESCE(active, 1),
 						COALESCE(IDuser_modification, 0)
@@ -1472,7 +1481,7 @@
 				FROM document_pv_point
 				WHERE IDdocument = :document_id
 				ORDER BY id ASC",
-				['document_id' => $documentId]
+				['document_id' => $documentId, 'movement_organization_id' => $organizationId]
 			);
 
 			$lockCutoff = time() - \dbObject\DocumentPvPoint::getEditLockTimeoutSeconds();
@@ -1963,6 +1972,7 @@
 
 		public function canUserEditPvPoint(\dbObject\DocumentPvPoint $point, int $userId): bool
 		{
+			if ($point->isMoved()) return false;
 			if (!$this->isPvDocument() || $this->isPvValidated() || (int)$point->get('IDdocument') !== (int)$this->getId()) {
 				return false;
 			}
@@ -1994,6 +2004,7 @@
 
 		public function canUserReorderPvItem(\dbObject\DocumentPvPoint $item, int $userId): bool
 		{
+			if ($item->isMoved()) return false;
 			if (!$this->canUserReorderPvPoints($userId) || (int)$item->get('IDdocument') !== (int)$this->getId()) {
 				return false;
 			}
@@ -4632,6 +4643,42 @@
 			return max(0, (int)$minutes) . ' min ' . trim($suffix);
 		}
 
+		public function getPvReportUnhandledItems(): array
+		{
+			if (!in_array($this->getPvStage(), [self::PV_STAGE_REVIEW, self::PV_STAGE_VALIDATED], true)) return [];
+			$userId = function_exists('commonGetCurrentUserId') ? (int)\commonGetCurrentUserId() : (int)($_SESSION['currentUser'] ?? 0);
+			$points = $this->getVisiblePvPointsForUser($userId, true);
+			$byId = [];
+			foreach ($points as $point) {
+				if ($point instanceof \dbObject\DocumentPvPoint) $byId[(int)$point->getId()] = $point;
+			}
+			$items = [];
+			foreach (\dbObject\DocumentPvPoint::buildHierarchyPositionLabels($points) as $pointId => $label) {
+				$point = $byId[$pointId];
+				if ($point->isGroup() || $point->isHandled() || $point->isConfidential()) continue;
+				$organizationId = (int)$this->get('IDorganization');
+				$movementDestination = $point->getMovementDestinationData($organizationId);
+				$items[] = [
+					'title' => (string)$point->get('title'),
+					'url' => $movementDestination['url'] ?? '',
+					'movementDestinationLabel' => $movementDestination['label'] ?? '',
+					'authorLabel' => $point->getAuthorDisplayName($organizationId),
+					'desiredDurationMinutes' => $point->getDurationMinutesValue('desired_duration_minutes'),
+					'priority' => \dbObject\DocumentPvPoint::normalizePriority($point->get('priority')),
+					'pointType' => \dbObject\DocumentPvPoint::normalizePointType($point->get('pointtype')),
+				];
+			}
+			return $items;
+		}
+
+		public function renderPvUnhandledPointsForViewer(): string
+		{
+			$items = $this->getPvReportUnhandledItems();
+			if (!$items) return '';
+			require_once dirname(__DIR__, 2) . '/common/document/pv-report.php';
+			return \commonPvReportRenderUnhandledPoints($items);
+		}
+
 		protected function renderPvForViewer(array $renderOptions = array()): string
 		{
 			if (!\dbObject\DocumentPvPoint::hasPointTable()) {
@@ -4645,6 +4692,8 @@
 				? (int)\commonGetCurrentUserId()
 				: (int)($_SESSION['currentUser'] ?? 0);
 			$points = $this->getVisiblePvPointsForUser($currentUserId, true);
+			$isReport = in_array($this->getPvStage(), [self::PV_STAGE_REVIEW, self::PV_STAGE_VALIDATED], true);
+			$unhandledHtml = $isReport ? $this->renderPvUnhandledPointsForViewer() : '';
 			$includeDiscussionLinks = !empty($renderOptions['includePvDiscussionLinks']);
 			$discussionLabels = is_array($renderOptions['pvDiscussionLabels'] ?? null)
 				? $renderOptions['pvDiscussionLabels']
@@ -4653,7 +4702,8 @@
 			if ($includeDiscussionLinks && in_array($this->getPvStage(), [self::PV_STAGE_REVIEW, self::PV_STAGE_VALIDATED], true)) {
 				$discussionPointIds = array();
 				foreach ($points as $discussionPoint) {
-					if ($discussionPoint instanceof \dbObject\DocumentPvPoint && !$discussionPoint->isGroup()) {
+					if ($discussionPoint instanceof \dbObject\DocumentPvPoint && !$discussionPoint->isGroup()
+						&& (!$isReport || $discussionPoint->isHandled())) {
 						$discussionPointIds[] = (int)$discussionPoint->getId();
 					}
 				}
@@ -4697,6 +4747,17 @@
 				}
 			};
 			$appendItems(0, 0);
+			if ($isReport) {
+				$bodyIds = [];
+				foreach (array_reverse($orderedItems) as $orderedItem) {
+					$item = $orderedItem['item'];
+					if ($item->isGroup() ? isset($bodyIds[(int)$item->getId()]) : $item->isHandled()) {
+						$bodyIds[(int)$item->getId()] = true;
+						$bodyIds[(int)$item->get('IDparent')] = true;
+					}
+				}
+				$orderedItems = array_filter($orderedItems, static fn($entry): bool => isset($bodyIds[(int)$entry['item']->getId()]));
+			}
 			$pointCount = 0;
 			$totalDesiredMinutes = 0;
 			$totalActualMinutes = 0;
@@ -4707,7 +4768,7 @@
 				if (!($point instanceof \dbObject\DocumentPvPoint)) {
 					continue;
 				}
-				if ($point->isGroup()) {
+				if ($point->isGroup() || ($isReport && !$point->isHandled())) {
 					continue;
 				}
 				$pointCount += 1;
@@ -4742,7 +4803,14 @@
 			$html .= '</section>';
 
 			if ($pointCount === 0) {
-				$html .= '<p class="omo-document-pv__empty">Aucun point a l ordre du jour pour ce PV.</p>';
+				if ($unhandledHtml !== '') {
+					$html .= $unhandledHtml;
+				} elseif ($isReport) {
+					require_once dirname(__DIR__, 2) . '/common/document/pv-report.php';
+					$html .= '<p class="omo-document-pv__empty">' . self::escapeViewerText(\commonPvReportT('pv.report.empty')) . '</p>';
+				} else {
+					$html .= '<p class="omo-document-pv__empty">Aucun point a l ordre du jour pour ce PV.</p>';
+				}
 				$html .= '</div>';
 				return $html;
 			}
@@ -4851,6 +4919,7 @@
 			}
 
 			$html .= '</div>';
+			$html .= $unhandledHtml;
 			$html .= '</div>';
 
 			return $html;

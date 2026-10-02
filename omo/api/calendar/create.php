@@ -25,6 +25,7 @@ $sourceLang = array_merge([
     'calendar.availability.adjust' => ['text' => 'Modifier les horaires', 'context' => 'Return to the event schedule after reviewing availability.'],
     'calendar.availability.conflict' => ['text' => '{name} - {context} : du {start} au {end}', 'context' => 'Conflicting appointment with its organization and circle or role, and full time range; no event title.'],
     'calendar.availability.external' => ['text' => 'Agenda externe', 'context' => 'Generic source label for a conflicting external appointment.'],
+    'calendar.availability.outside' => ['text' => 'Hors des plages de disponibilité', 'context' => 'Invitee is outside external availability windows, not in a conflicting appointment.'],
     'calendar.availability.omo' => ['text' => 'Agenda OMO', 'context' => 'Fallback source label when an appointment organization has no name.'],
     'calendar.availability.email' => ['text' => '{name} : agenda non accessible pour cette invitation par e-mail.', 'context' => 'Availability cannot be checked for an email-only invitee.'],
     'calendar.availability.cache' => ['text' => '{name} : l’agenda n’a pas pu être actualisé ou ne couvre pas cette période.', 'context' => 'Partial external calendar availability check after a refresh attempt.'],
@@ -656,7 +657,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['availability_preview
             }
             commonExternalCalendarRefreshForAvailability((int)$userId, $refreshDeadline);
             $hours = \dbObject\MeetingProfile::isStorageAvailable()
-                ? \dbObject\MeetingProfile::forUser((int)$userId)->hours()
+                ? \dbObject\MeetingProfile::forUser((int)$userId)->availabilityHours()
                 : \dbObject\MeetingProfile::defaultHours();
             $calendarIncomplete = false;
             $busy = commonUserAvailabilityLoadBusyIntervals((int)$userId, $rangeStart, $rangeEnd, $calendarIncomplete, $isEditMode ? $eventId : 0);
@@ -1071,10 +1072,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $messages = [];
             $items = [];
             foreach ($availability['conflicts'] as $conflict) {
-                $conflict['context'] = $conflict['source'] === 'external'
-                    ? omoCalendarCreateT('calendar.availability.external')
-                    : (implode(' - ', array_filter([$conflict['organization'], $conflict['holon']], static fn($label) => trim($label) !== ''))
-                        ?: omoCalendarCreateT('calendar.availability.omo'));
+                $conflict['context'] = match ($conflict['source']) {
+                    'external' => omoCalendarCreateT('calendar.availability.external'),
+                    'availability' => omoCalendarCreateT('calendar.availability.outside'),
+                    default => implode(' - ', array_filter([$conflict['organization'], $conflict['holon']], static fn($label) => trim($label) !== ''))
+                        ?: omoCalendarCreateT('calendar.availability.omo'),
+                };
                 $items[] = $conflict + ['kind' => 'conflict', 'label' => omoCalendarCreateT('calendar.availability.conflict_label')];
                 $conflict['start'] = (new \DateTimeImmutable($conflict['start']))->format('d.m.Y H:i');
                 $conflict['end'] = (new \DateTimeImmutable($conflict['end']))->format('d.m.Y H:i');

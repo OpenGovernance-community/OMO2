@@ -887,12 +887,101 @@ class DeferredProposal extends DbObject
         foreach ($state['editor_payload']['properties'] as &$property) {
             if (!is_array($property)) continue;
             $formatId = (int)($property['formatId'] ?? 0);
-            if (!PropertyFormat::isListFormat($formatId)) continue;
-            $property['displayItems'] = $organization->getHolonEditorListDisplayItems(
-                $property['value'] ?? '', $formatId, $property['listItemType'] ?? ''
-            );
+            $localValue = $property['value'] ?? '';
+            $inheritedValue = $property['inheritedValue'] ?? '';
+            if (in_array($formatId, [PropertyFormat::FORMAT_TEXT, PropertyFormat::FORMAT_HTML, PropertyFormat::FORMAT_TEXT_HTML], true)) {
+                $property['localValue'] = !empty($property['effectiveLocked']) ? '' : $localValue;
+            }
+            if (!empty($property['effectiveLocked'])) {
+                $effectiveValue = $inheritedValue;
+            } elseif (PropertyFormat::isListFormat($formatId)) {
+                $parseList = static function ($value): array {
+                    if (is_array($value)) return array_values($value);
+                    $raw = trim((string)$value);
+                    if ($raw === '') return [];
+                    $decoded = json_decode($raw, true);
+                    if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                        return array_values(array_filter($decoded, static fn ($item): bool => !(is_array($item) && !empty($item['delete']))));
+                    }
+                    return array_values(array_filter(array_map('trim', preg_split('/\r\n|\r|\n|\|/', $raw) ?: []), static fn (string $item): bool => $item !== ''));
+                };
+                $items = [];
+                $seen = [];
+                foreach (array_merge($parseList($inheritedValue), $parseList($localValue)) as $item) {
+                    $key = is_array($item) ? json_encode($item, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : trim((string)$item);
+                    if ($key === '' || isset($seen[$key])) continue;
+                    $seen[$key] = true;
+                    $items[] = $item;
+                }
+                $effectiveValue = $items ? json_encode($items, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : '';
+            } else {
+                $effectiveValue = !PropertyFormat::isEmptyValue($formatId, $localValue) ? $localValue : $inheritedValue;
+            }
+            $property['value'] = $effectiveValue;
+            if (PropertyFormat::isListFormat($formatId)) {
+                $property['displayItems'] = $organization->getHolonEditorListDisplayItems(
+                    $effectiveValue, $formatId, $property['listItemType'] ?? ''
+                );
+            }
         }
         unset($property);
+        return $state;
+    }
+
+    public static function decorateHolonTemplateDisplayState(array $state, Organization $organization): array
+    {
+        $payload = is_array($state['editor_payload'] ?? null) ? $state['editor_payload'] : [];
+        $templateId = (int)($payload['templateId'] ?? $state['template_id'] ?? 0);
+        if ($templateId <= 0) return $state;
+        $templateHolon = new Holon();
+        if (!$templateHolon->load($templateId)) return $state;
+        $templateProperties = Property::filterEnabledDefinitions(
+            $templateHolon->getHolonCreationPropertyDefinitions(),
+            $organization->getLexicon()
+        );
+
+        $submittedProperties = [];
+        foreach ((array)($payload['properties'] ?? []) as $property) {
+            if (!is_array($property)) continue;
+            $propertyId = (int)($property['id'] ?? 0);
+            if ($propertyId > 0) $submittedProperties[$propertyId] = $property;
+        }
+        $properties = [];
+        $templatePropertyIds = [];
+        foreach ($templateProperties as $definition) {
+            if (!is_array($definition)) continue;
+            $propertyId = (int)($definition['id'] ?? 0);
+            if ($propertyId <= 0) continue;
+            $templatePropertyIds[$propertyId] = true;
+            $submitted = $submittedProperties[$propertyId] ?? [];
+            $properties[] = array_merge($definition, $submitted, [
+                'id' => $propertyId,
+                'inheritedValue' => $definition['inheritedValue'] ?? '',
+                'effectiveLocked' => !empty($definition['effectiveLocked']),
+                'value' => $submitted['value'] ?? ($definition['value'] ?? ''),
+            ]);
+        }
+        foreach ((array)($payload['properties'] ?? []) as $property) {
+            if (!is_array($property) || (int)($property['id'] ?? 0) > 0 && isset($templatePropertyIds[(int)$property['id']])) continue;
+            $properties[] = $property;
+        }
+        $payload['properties'] = $properties;
+
+        if (trim((string)($state['name'] ?? '')) === '' && ((bool)$templateHolon->get('lockedname') || (bool)$templateHolon->get('unique'))) {
+            $state['name'] = (string)$templateHolon->getDisplayName();
+        }
+        if (trim((string)($state['color'] ?? '')) === '') {
+            $state['color'] = (string)$templateHolon->getEffectiveColor();
+            $payload['color'] = $state['color'];
+        }
+        if (trim((string)($payload['icon'] ?? '')) === '') {
+            $payload['icon'] = (string)$templateHolon->getEffectiveIcon();
+        }
+        $bounds = $templateHolon->getEffectiveTemplateAdminBounds();
+        if (empty($payload['adminMinOverride'])) $payload['adminMin'] = $bounds['min'] ?? 0;
+        if (empty($payload['adminMaxOverride'])) $payload['adminMax'] = $bounds['max'] ?? null;
+        $payload['name'] = (string)($state['name'] ?? $payload['name'] ?? '');
+        $state['editor_payload'] = $payload;
         return $state;
     }
 
@@ -911,10 +1000,13 @@ class DeferredProposal extends DbObject
         if ($targetType === self::TARGET_HOLON) {
             $organization = new Organization();
             if ($organization->load((int)$this->get('IDorganization'))) {
+                $beforeState = self::decorateHolonTemplateDisplayState($beforeState, $organization);
+                $afterState = self::decorateHolonTemplateDisplayState($afterState, $organization);
                 $beforeState = self::decorateHolonListDisplayState($beforeState, $organization);
                 $afterState = self::decorateHolonListDisplayState($afterState, $organization);
             }
         }
+        $displayState = $operation === self::OPERATION_DELETE ? $beforeState : $afterState;
         $targetLabel = trim((string)($catalog[$targetType]['label'] ?? $targetType));
         $objectTypeLabel = '';
         if ($targetType === self::TARGET_HOLON) {

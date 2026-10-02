@@ -265,6 +265,9 @@ html[data-theme="dark"] .note-modal .note-modal-footer .note-btn-primary {
         var(--param-choice-card-padding-block)
         var(--param-choice-card-padding-inline);
     border: 1px solid var(--param-choice-card-border);
+    /* Optional leading accent, for choices carrying a category or priority color. */
+    border-inline-start-width: var(--param-choice-card-accent-width, 1px);
+    border-inline-start-color: var(--param-choice-card-accent-color, var(--param-choice-card-border));
     border-radius: var(--param-choice-card-radius);
     background: var(--param-choice-card-background);
     color: var(--color-text, #1f2937);
@@ -276,8 +279,20 @@ html[data-theme="dark"] .note-modal .note-modal-footer .note-btn-primary {
         transform 150ms ease;
 }
 
-.generic-choice-card:hover {
+.generic-choice-card--text {
+    grid-template-columns: minmax(0, 1fr);
+    text-align: left;
+    font: inherit;
+}
+
+.generic-choice-card:disabled {
+    cursor: default;
+    opacity: 0.6;
+}
+
+.generic-choice-card:where(:not(:disabled)):hover {
     border-color: var(--param-choice-card-border-hover);
+    border-inline-start-color: var(--param-choice-card-accent-color, var(--param-choice-card-border-hover));
     background: var(--param-choice-card-background-hover);
     box-shadow: var(--param-choice-card-shadow-hover);
     transform: translateY(-1px);
@@ -289,6 +304,7 @@ input:checked + .generic-choice-card,
 .generic-choice-card[aria-selected="true"],
 .generic-choice-card[aria-pressed="true"] {
     border-color: var(--param-choice-card-border-selected);
+    border-inline-start-color: var(--param-choice-card-accent-color, var(--param-choice-card-border-selected));
     background: var(--param-choice-card-background-selected);
     box-shadow: var(--param-choice-card-shadow-selected);
 }
@@ -324,6 +340,14 @@ input:focus-visible + .generic-choice-card,
 .generic-soft-panel--stack {
     display: grid;
     gap: var(--generic-soft-panel-gap, var(--generic-space-2));
+}
+
+/* Leading accent for non-interactive summaries carrying a category or priority. */
+.generic-soft-panel--accent {
+    --param-soft-panel-accent-color: var(--color-primary, #2563eb);
+    --param-soft-panel-accent-width: 4px;
+    border-inline-start-width: var(--param-soft-panel-accent-width);
+    border-inline-start-color: var(--param-soft-panel-accent-color);
 }
 
 /* Accordion rows provide their own inner spacing. */
@@ -2813,6 +2837,50 @@ html[data-theme="dark"] .generic-tabs__tab:focus-visible .generic-monochrome-ico
     .generic-loading-indicator__spinner {
         animation-duration: 1.8s;
     }
+}
+
+/* Keyboard date entry with a separate native calendar target. */
+.generic-date-input {
+    display: flex;
+    align-items: stretch;
+    gap: var(--generic-space-2);
+}
+.generic-date-input > .generic-form-control {
+    flex: 1;
+    min-width: 0;
+}
+.generic-date-input__picker {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    flex: 0 0 44px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    color: var(--color-text);
+}
+.generic-date-input__picker:focus-within {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}
+.generic-date-input__picker > input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+}
+.generic-date-input__picker > input::-webkit-calendar-picker-indicator {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    cursor: pointer;
 }
 
 /* Fields with a nearby copy/action button, shared by settings dialogs. */
