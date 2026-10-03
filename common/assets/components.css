@@ -2998,6 +2998,5 @@ html[data-theme="dark"] .generic-tabs__tab:focus-visible .generic-monochrome-ico
 
 .generic-member.generic-member--inactive {
     filter: grayscale(1);
-    opacity: 0.7;
     border-style: dashed;
 }

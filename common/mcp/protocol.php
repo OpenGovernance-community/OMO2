@@ -38,6 +38,14 @@ function omoMcpPublicUrl(): string
 }
 
 function omoMcpIssuer(): string { return substr(rtrim(omoMcpPublicUrl(), '/'), 0, -4); }
+function omoMcpServerInfo(): array
+{
+    return ['name' => 'OpenMyOrganization', 'title' => 'OpenMyOrganization', 'version' => '0.7.0',
+        'description' => 'Toutes les infos sur votre organisation dans OMO',
+        'websiteUrl' => 'https://omo2.org',
+        'icons' => [['src' => omoMcpIssuer() . '/mcp/assets/omo-icon-256.jpg',
+            'mimeType' => 'image/jpeg', 'sizes' => ['256x256']]]];
+}
 function omoMcpResourceMetadataUrl(): string
 {
     return omoMcpIssuer() . '/.well-known/oauth-protected-resource' . parse_url(omoMcpPublicUrl(), PHP_URL_PATH);
@@ -50,7 +58,8 @@ function omoMcpChallenge(string $error = ''): string
 function omoMcpResourceMetadata(): array
 {
     return ['resource' => omoMcpPublicUrl(), 'authorization_servers' => [omoMcpIssuer()],
-        'scopes_supported' => [OMO_MCP_SCOPE, OMO_MCP_CREATE_SCOPE, OMO_MCP_MAIL_SCOPE], 'bearer_methods_supported' => ['header'], 'resource_name' => 'OMO'];
+        'scopes_supported' => [OMO_MCP_SCOPE, OMO_MCP_CREATE_SCOPE, OMO_MCP_MAIL_SCOPE], 'bearer_methods_supported' => ['header'],
+        'resource_name' => omoMcpServerInfo()['title']];
 }
 function omoMcpAuthorizationMetadata(): array
 {

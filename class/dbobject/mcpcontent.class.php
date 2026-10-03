@@ -76,6 +76,9 @@ final class McpContent
                 'subtitle' => \omoSearchPreviewText($result['subtitle'] ?? ''),
                 'excerpt' => \omoSearchPreviewText($result['excerpt'] ?? ''),
                 'url' => self::sourceUrl((int)$organization->getId(), $module, $id, $context['currentHolonId'], $missionId)];
+            if ($module === 'calendar') {
+                $items[array_key_last($items)]['effective_invitees'] = McpBrowse::eventInvitees((int)$organization->getId(), $id);
+            }
         }
         return ['organization_id' => (int)$organization->getId(), 'query' => $query, 'modules' => $scopes,
             'items' => $items, 'next_offset' => $offset + count($items) < count($selection) ? $offset + count($items) : null,

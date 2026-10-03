@@ -4,6 +4,12 @@ Serveur pour le login OAuth, la consultation des informations accessibles,
 la creation de documents et l envoi d e-mails aux audiences des objets OMO.
 Il ne necessite aucun service Node en production ni aucune cle API OpenAI.
 
+L identite annoncee dans `initialize.serverInfo` est OpenMyOrganization, avec la
+description "Toutes les infos sur votre organisation dans OMO", le site
+`https://omo2.org` et le logo public `/mcp/assets/omo-icon-256.jpg` (256 x 256,
+environ 8,5 Ko). L URL du logo utilise l origine de `MCP_PUBLIC_URL`.
+Le nom OAuth est identique. L affichage de ces metadonnees depend du client MCP.
+
 Pour envoyer un message aux membres d un holon ou aux invites d une reunion,
 voir [Membres, invitations et e-mails](#membres-invitations-et-e-mails) :
 decouverte des destinataires, envoi avec `omo_send_object_email`, puis suivi.
@@ -171,6 +177,24 @@ et les brouillons prives. Il tient compte des holons invites et des membres du
 holon de reunion en l absence d invitations explicites. Les invitations par
 e-mail ne sont rapprochees du membre que si les identites des invites sont
 consultables par le compte connecte.
+
+Les resultats Calendrier de `omo_list_records` et `omo_search`, ainsi que
+`record` dans `omo_read_record`, contiennent `effective_invitees` en plus des
+invitations de la fiche : personnes invitees directement ou membres des holons
+invites, dedupliquees par `member_id`. Chaque personne expose `user_id`, `name`,
+`status` et `mail_eligible`. Une invitation ne signifie ni presence confirmee ni
+eligibilite e-mail ; les refus restent identifies par leur statut. Les membres
+du holon de la reunion sont utilises en l absence d invitations explicites.
+Ces appartenances sont courantes, pas un historique des presences.
+
+La premiere page contient au maximum 50 personnes visibles. `total`, `complete`
+et `next_offset` indiquent la couverture ; executer `next_page.tool` avec ses
+`arguments` pour obtenir la suite via `omo_list_object_members`. Les adresses
+invitees externes restent reservees aux gestionnaires. Pour trouver les reunions
+communes a deux personnes, resoudre leurs identifiants, parcourir completement
+`calendar` avec `user_relation: "invited"` pour chacune et croiser les `record_id`.
+Ne jamais conclure a une absence sur la seule base du nom des holons invites
+ou d une page incomplete.
 
 `omo_list_records` enumere les fiches par ID croissant, sans le plafond de
 50 resultats de la recherche. Conserver exactement les memes filtres, puis

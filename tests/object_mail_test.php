@@ -61,6 +61,8 @@ try {
     }
     $preview = ObjectAudience::resolve($oid, 'event', $eid);
     mcpCheck(count($preview['members']) === 3 && $preview['can_send'], 'Explicit invitations replace default holon scope');
+    mcpCheck(in_array('Guest', array_column(\dbObject\McpBrowse::eventInvitees($oid, $eid)['items'], 'name'), true),
+        'Expanded event identities include external guests for managers');
     $items['invitation_member']->set('accepted', false); $items['invitation_member']->save();
     $items['attendance_member'] = mcpFixture(EventAttendance::class, ['IDevent' => $eid, 'IDuser' => $memberId, 'is_present' => 0, 'active' => 1]);
     $absentAudience = ObjectAudience::page($oid, ['object_type' => 'event', 'object_id' => $eid]);
@@ -76,6 +78,10 @@ try {
     mcpCheck(count($decision['members']) === 1 && !str_contains(json_encode($decision['members']), 'access_token'), 'Decision members projected without tokens or votes');
     $_SESSION['currentUser'] = (int)$items['outsider']->getId();
     objectMailDenied(fn () => ObjectAudience::resolve($oid, 'decision', (int)$items['decision']->getId()), 'Decision audience requires real management permission');
+    $viewerEvent = \dbObject\McpContent::read(['IDuser' => (int)$items['outsider']->getId(), 'IDorganization' => $oid], 'calendar', $eid, null, 0, 0, 12000);
+    $viewerInvitees = $viewerEvent['record']['effective_invitees'];
+    mcpCheck($viewerInvitees['total'] === 2 && !in_array(null, array_column($viewerInvitees['items'], 'user_id'), true)
+        && !str_contains(json_encode($viewerInvitees), 'guest@example.invalid'), 'Expanded record hides external guest identities and counts from non-managers');
     $_SESSION = [];
     objectMailDenied(fn () => ObjectAudience::resolve($oid, 'event', $eid), 'Anonymous connection denied');
     $_SESSION = ['currentUser' => $uid, 'currentOrganization' => $oid];
@@ -124,6 +130,12 @@ try {
     $items['group_event'] = mcpFixture(Event::class, ['IDorganization' => $oid, 'IDholon' => $hid, 'IDuser' => $uid, 'title' => 'Group meeting', 'status' => 'confirmed', 'timezone' => 'Europe/Zurich', 'start_at' => new DateTimeImmutable('+1 day'), 'end_at' => new DateTimeImmutable('+1 day +1 hour'), 'active' => 1]);
     $groupId = (int)$items['group_event']->getId();
     $groupPreview = ObjectAudience::resolve($oid, 'event', $groupId);
+    $expanded = \dbObject\McpBrowse::eventInvitees($oid, $groupId);
+    mcpCheck(count($expanded['items']) === 50 && $expanded['total'] === 54 && !$expanded['complete'], 'MCP event expansion includes ineligible contacts and marks large lists incomplete');
+    $nextInvitees = ObjectAudience::page($oid, $expanded['next_page']['arguments']);
+    mcpCheck($expanded['next_page']['tool'] === 'omo_list_object_members' && $nextInvitees['complete']
+        && count(array_unique(array_column([...$expanded['items'], ...$nextInvitees['items']], 'member_id'))) === 54,
+        'MCP event expansion provides executable pagination without missing or duplicate people');
     $groupArgs = array_replace($args, ['object_id' => $groupId, 'request_key' => 'large-group-mail', 'audience_token' => $groupPreview['audience_token']]);
     $large = ObjectMail::send($oid, $groupArgs, $grant);
     $items['large_mail'] = new ObjectMail(); $items['large_mail']->load($large['mail_id']);
