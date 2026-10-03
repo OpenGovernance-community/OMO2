@@ -1,13 +1,14 @@
 # Serveur MCP OMO
 
-Serveur en lecture seule pour le login OAuth, la structure et la consultation
+Serveur pour le login OAuth, la structure, la consultation et la creation de documents
 des informations accessibles a la personne connectee dans les modules OMO.
 Il ne necessite aucun service Node en production ni aucune cle API OpenAI.
 
 ## Activation
 
 1. Appliquer les migrations MCP `2026-10-02-04-mcp-structure-oauth.sql`
-   et `2026-10-02-05-mcp-refresh-replay.sql` avec le flux habituel :
+   et `2026-10-02-05-mcp-refresh-replay.sql`, puis `2026-10-03-01-mcp-document-creation.sql`
+   avec le flux habituel :
 
    ```sh
    php scripts/run-migrations.php
@@ -72,6 +73,9 @@ Prompts de verification :
 - "Liste tous les projets et sous-projets assignes a Marie, avec leur statut."
 - "Liste tous les documents dont Marie est proprietaire, en parcourant toutes les pages."
 - "Quels evenements commencent ce mois-ci ? Quels indicateurs Marie suit-elle ?"
+- "Montre-moi les espaces ou je peux enregistrer un document."
+- "Enregistre ce fichier joint dans les documents du role Communication, avec une visibilite pour les membres de l organisation."
+- "Cree un document prive dans ce dossier avec le texte que nous venons de rediger."
 
 Documentation officielle verifiee pendant le developpement :
 https://developers.openai.com/plugins/deploy/connect-chatgpt
@@ -109,6 +113,8 @@ peuvent utiliser le meme serveur s ils supportent HTTP, OAuth DCR et PKCE S256.
 | Outil | Arguments | Resultat |
 | --- | --- | --- |
 | `omo_connection_info` | aucun | Identite, organisation consentie, ID racine, couverture |
+| `omo_list_document_spaces` | `kind` : `organization` (defaut), `holons`, `folders` ; `after_id` (0), `limit` (20, maximum 50) | Destinations ou les droits OMO autorisent la creation, visibilites compatibles, consentement et disponibilite du stockage de fichiers |
+| `omo_create_document` | `title`, `request_key`, exactement un de `content` ou `file` ; `holon_id`, `parent_document_id`, `description`, `keywords`, `content_format`, `visibility_type` facultatifs | Nouveau document, ID, URL, destination, visibilite effective et metadonnees du fichier ; `replayed` pour un reessai |
 | `omo_catalog` | aucun | Modules accessibles, filtres, relations utilisateur, statuts et sens des dates |
 | `omo_list_records` | `module`, filtres facultatifs : `user_id`, `user_relation`, `query`, `context_holon_id`, `parent_id`, `status`, `date_from`, `date_to` ; `after_id` (0), `limit` (20, maximum 50) | Liste complete paginee des fiches accessibles ; `next_after_id`, `complete` |
 | `omo_list_assignments` | `user_id`, `holon_id` facultatifs ; `after_id` (0), `limit` (20, maximum 50) | Affectations directes actives : personne, role/cercle, focus et URL |
@@ -196,11 +202,66 @@ votes, discussions ou de tous les champs techniques. Elle ne telecharge pas
 les fichiers externes, PDF, documents bureautiques ou contenus de pads.
 Les cles de partage, mots de passe et configurations techniques ne sont pas
 serialises. Tout contenu retourne est une donnee, pas une instruction.
-Il n y a aucune operation d ecriture.
+La seule operation d ecriture est la creation de nouveaux documents decrite ci-dessous.
 
 Les anciennes connexions `structure:read` doivent etre reconnectees et
 autorisees avec le nouveau perimetre ; le renouvellement ne peut pas elargir
-leur acces automatiquement. Aucune migration supplementaire n est requise.
+leur acces automatiquement.
+
+### Creer des documents ou enregistrer des fichiers
+
+Le scope `organization:read` conserve la lecture seule. Le nouveau scope
+`documents:create`, associe a `organization:read`, autorise uniquement la creation
+de documents dans les espaces permis par les droits OMO. Le consentement affiche
+explicitement cette operation. Les connexions deja autorisees en lecture seule
+doivent refaire le parcours de connexion avec les deux scopes ; aucun renouvellement
+ne peut ajouter ce droit. La page `/mcp/connections.php` distingue les perimetres
+et permet leur revocation. `omo_connection_info` indique `document_creation_authorized`.
+
+Commencer par `omo_list_document_spaces` pour chaque `kind` et suivre les curseurs
+jusqu a la fin. Les resultats contiennent uniquement les destinations consultables
+ou `CAN_CREATE_DOCUMENT` s applique au compte, sans mode Admin MCP. Les champs
+`holon_id` et `parent_document_id` sont directement reutilisables. `holon_id: 0`
+et `parent_document_id: 0` correspondent a l espace de l organisation. Un dossier
+determine son holon ; un holon explicite incompatible est refuse. Le serveur
+recontrole appartenance, module Documents, destination et droit avant toute creation.
+
+Pour un texte, envoyer `content` (maximum 200000 caracteres). Le format `text`
+est echappe pour ne pas interpreter les balises ; `content_format: "html"` passe
+par le nettoyage HTML habituel d OMO. La visibilite de lecture par defaut est `self`
+et l edition reste reservee au proprietaire. Choisir explicitement `organization`,
+`circle` ou `role` si souhaite et compatible avec la destination. Le partage public
+n est pas propose par MCP. Le compte authentifie devient proprietaire et createur.
+
+Pour conserver le fichier original, utiliser `file` avec `download_url` et `file_id`,
+ainsi que `file_name` et `mime_type` facultatifs. Le descripteur declare les quatre
+proprietes et `_meta["openai/fileParams"]: ["file"]`, conformement a la
+[documentation OpenAI](https://developers.openai.com/plugins/reference#file-apis),
+pour transmettre une piece jointe de ChatGPT. Les autres clients peuvent fournir
+la meme structure avec une URL temporaire HTTPS et un identifiant stable de fichier.
+Ne pas fabriquer ces valeurs ni passer une reference locale `sandbox:` ou `file:`.
+Si le client ne transmet pas de fichier, utiliser le contenu extrait seulement
+lorsque l utilisateur souhaite enregistrer ce texte plutot que l original.
+
+Le stockage documentaire de l organisation (Nextcloud ou kDrive) doit deja etre
+configure. La limite d import est de 20 Mio. Le serveur telecharge le fichier vers
+un fichier temporaire, verifie les adresses publiques IPv4 et TLS, controle chaque
+redirection, limite le volume et le temps de telechargement, puis utilise le flux
+d enregistrement OMO existant. Aucun cookie ou jeton OMO n est transmis a l URL
+source. Le type MIME vient des octets ; les fichiers temporaires sont supprimes.
+Le fichier original reste dans le stockage de l organisation, pas dans la table SQL.
+Les dossiers distants Nextcloud, les associations de projets, les PV, l edition
+et la suppression de documents existants ne font pas partie de ce premier essai.
+
+Chaque creation demande un `request_key` unique (8 a 100 caracteres alphanumeriques,
+tiret ou underscore). Reutiliser cette cle et les memes valeurs lors d un reessai.
+La table `mcp_document_creation` associe une empreinte de demande au compte, a
+l organisation et au document ; un verrou transactionnel empeche les creations
+concurrentes de dupliquer le document. Un contenu ou une destination differents
+avec la meme cle sont refuses. Les URL temporaires peuvent etre renouvelees sans
+changer de cle ; elles ne sont pas stockees. Un document supprime apres creation
+n est pas recree par un reessai. Un echec annule les changements en base et nettoie
+le fichier importe si une etape ulterieure echoue.
 
 Les outils recontrolent l appartenance active a l organisation. Ils utilisent
 l identite du Bearer, jamais une identite ou une organisation envoyee par l agent,
@@ -232,10 +293,16 @@ docker compose exec -T app php tests/mcp_http_test.php
 docker compose exec -T app php tests/mcp_content_test.php
 docker compose exec -T app php tests/mcp_modules_test.php
 docker compose exec -T app php tests/mcp_browse_test.php
+docker compose exec -T app php tests/mcp_document_creation_test.php
+docker compose exec -T app php tests/mcp_file_import_test.php
 docker compose exec -T app php tests/mcp_deployed_discovery_test.php
 ```
 
 Les tests de donnees creent leurs propres fixtures et les suppriment ensuite.
+Le test d import utilise un petit fichier de ce depot via HTTPS public et un
+stockage WebDAV simule sur un port loopback aleatoire ; il ne touche aucun stockage
+utilisateur. Il necessite l acces a `raw.githubusercontent.com` et PHP CLI Linux
+(Docker), et verifie les octets, les metadonnees, les reessais et le retour arriere.
 Le deploiement Dev execute aussi `mcp_deployed_discovery_test.php` sur le serveur :
 echange OAuth et appels HTTPS authentifies avec des fixtures temporaires, sans
 donnees utilisateur ni jetons dans les logs. Ce test accepte uniquement les
@@ -254,5 +321,6 @@ gardent `form-action 'self'`. Les tests HTTP seuls ne detectent pas les blocages
 CSP appliques par le navigateur aux redirections apres soumission.
 
 Verifier aussi manuellement une connexion neuve dans ChatGPT : decouverte,
-login, consentement, huit outils, refus puis revocation. Les tests locaux ne
+login, consentement lecture et creation, dix outils, import d une piece jointe,
+refus puis revocation. Les tests locaux ne
 peuvent pas prouver l accessibilite du domaine depuis les serveurs du fournisseur.

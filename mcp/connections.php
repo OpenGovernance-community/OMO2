@@ -23,6 +23,7 @@ omoMcpPageStart(omoMcpUiT('connections'));
     <section class="generic-soft-panel generic-stack">
         <h2 class="generic-card-title"><?= omoMcpEscape($item['client_name']) ?></h2>
         <p><?= omoMcpEscape($item['organization_name']) ?></p>
+        <p><?= omoMcpEscape(omoMcpUiT(omoMcpCanCreateDocuments($item) ? 'allow_create' : 'scope_read_only')) ?></p>
         <p><?= omoMcpEscape(omoMcpUiT('expires', ['date' => date('Y-m-d H:i', (int)$item['refresh_expires_at'])])) ?></p>
         <form method="post" action="/mcp/connections.php">
             <input type="hidden" name="csrf" value="<?= omoMcpEscape($_SESSION['mcpConnectionsCsrf']) ?>">

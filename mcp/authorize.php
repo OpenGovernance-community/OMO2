@@ -33,6 +33,7 @@ omoMcpLoginIfNeeded('/mcp/authorize.php?request=' . $requestId);
 $userId = commonGetCurrentUserId();
 $organizations = omoMcpEligibleOrganizations($userId);
 $request = $pending['request'];
+$allowCreate = omoMcpCanCreateDocuments($request);
 $client = \dbObject\McpOauthClient::findByClientId($request['client_id']);
 if (!$client) omoMcpOauthError('invalid_client', 'Unknown OAuth client.');
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -57,10 +58,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 omoMcpPageStart(omoMcpUiT('title'), $request['redirect_uri']);
 ?>
 <section class="generic-soft-panel generic-stack">
-    <p><?= omoMcpEscape(omoMcpUiT('request', ['client' => (string)$client->get('name')])) ?></p>
+    <p><?= omoMcpEscape(omoMcpUiT($allowCreate ? 'request_create' : 'request', ['client' => (string)$client->get('name')])) ?></p>
     <p><?= omoMcpEscape(omoMcpUiT('identity', ['name' => commonGetCurrentUserDisplayName()])) ?></p>
     <p><?= omoMcpEscape(omoMcpUiT('destination', ['origin' => $request['redirect_uri']])) ?></p>
     <p><?= omoMcpEscape(omoMcpUiT('scope')) ?></p>
+    <p><?= omoMcpEscape(omoMcpUiT($allowCreate ? 'scope_create' : 'scope_read_only')) ?></p>
     <form method="post" action="/mcp/authorize.php?request=<?= omoMcpEscape($requestId) ?>" class="generic-stack">
         <input type="hidden" name="csrf" value="<?= omoMcpEscape($pending['csrf']) ?>">
         <?php if ($organizations): ?>
@@ -70,7 +72,7 @@ omoMcpPageStart(omoMcpUiT('title'), $request['redirect_uri']);
                     <option value="<?= (int)$organization->getId() ?>"><?= omoMcpEscape((string)$organization->get('name')) ?></option>
                 <?php endforeach; ?>
             </select>
-            <button class="generic-action-button" name="decision" value="allow"><?= omoMcpEscape(omoMcpUiT('allow')) ?></button>
+            <button class="generic-action-button" name="decision" value="allow"><?= omoMcpEscape(omoMcpUiT($allowCreate ? 'allow_create' : 'allow')) ?></button>
         <?php else: ?><p><?= omoMcpEscape(omoMcpUiT('empty')) ?></p><?php endif; ?>
         <button class="generic-action-button generic-action-button--secondary" name="decision" value="deny"><?= omoMcpEscape(omoMcpUiT('deny')) ?></button>
     </form>

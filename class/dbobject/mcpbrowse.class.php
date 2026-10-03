@@ -92,6 +92,9 @@ final class McpBrowse
                 'date_field' => substr($definition['date'], strpos($definition['date'], '.') + 1)];
         }
         return ['organization_id' => (int)$organization->getId(), 'modules' => $modules,
+            'document_creation' => ['authorized' => \omoMcpCanCreateDocuments($grant), 'scope' => \OMO_MCP_CREATE_SCOPE,
+                'discover_tool' => 'omo_list_document_spaces', 'create_tool' => 'omo_create_document',
+                'default_visibility' => 'self', 'requires_omo_permission' => 'CAN_CREATE_DOCUMENT'],
             'instructions' => 'Use omo_list_records with module team to resolve a name to user_id. Use user_id and optional user_relation on lists; filtering never changes viewer permissions. query is a literal title/name substring, not full-text search. Dates are inclusive calendar days in stored field values. List projects without parent_id for every level, or parent_id=0 for roots. Follow next_after_id even after an empty page until null. Keep filters identical between pages. Lists are live, not a frozen snapshot; only claim completeness when complete=true. Use omo_list_assignments for roles held by a person. Read details with omo_read_record using the returned context_holon_id.'];
     }
 

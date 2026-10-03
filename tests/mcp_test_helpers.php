@@ -57,6 +57,21 @@ function mcpCleanup(array $items): void
         if ($item instanceof DbObject) $item->delete();
     }
 }
+function mcpEnableDocumentCreation(array &$items): void
+{
+    $apps = new ArrayApplication();
+    $apps->load(['where' => [['field' => 'hash', 'value' => 'documents']], 'limit' => 1]);
+    mcpCheck(count($apps) === 1, 'Documents app must exist');
+    $items['documents_app'] = mcpFixture(OrganizationApplication::class,
+        ['IDorganization' => $items['org']->getId(), 'IDapplication' => $apps[0]->getId(), 'active' => 1]);
+    $permissions = new \dbObject\ArrayPermission();
+    $permissions->load(['where' => [['field' => 'permission_key', 'value' => 'CAN_CREATE_DOCUMENT']], 'limit' => 1]);
+    mcpCheck(count($permissions) === 1, 'Document permission must exist');
+    $items['document_permission'] = mcpFixture(\dbObject\HolonPermission::class,
+        ['IDholon' => $items['role']->getId(), 'IDpermission' => $permissions[0]->getId(), 'range' => 'self', 'member_type' => 'member']);
+    $items['document_assignment'] = mcpFixture(\dbObject\UserHolon::class,
+        ['IDuser' => $items['user']->getId(), 'IDholon' => $items['role']->getId(), 'active' => 1, 'is_membership' => 1]);
+}
 function mcpAuthorizationRequest(McpOauthClient $client): array
 {
     return ['client_id' => $client->get('client_id'), 'redirect_uri' => 'https://client.example.invalid/callback',

@@ -19,13 +19,14 @@ final class McpStructure
         $user = new User();
         if (!$user->load((int)$grant['IDuser'])) throw new \DomainException('User unavailable.');
         $root = $organization->getEnabledStructuralRootHolon((int)$grant['IDuser']);
-        return ['connected' => true, 'read_only' => true, 'scope' => $grant['scope'],
+        return ['connected' => true, 'read_only' => !\omoMcpCanCreateDocuments($grant), 'scope' => $grant['scope'],
+            'document_creation_authorized' => \omoMcpCanCreateDocuments($grant),
             'user' => ['id' => (int)$user->getId(), 'name' => \commonGetCurrentUserDisplayName()],
             'organization' => ['id' => (int)$organization->getId(), 'name' => (string)$organization->get('name'),
                 'root_holon_id' => $root ? (int)$root->getId() : null,
                 'url' => \omoMcpIssuer() . '/omo/o/' . (int)$organization->getId()],
             'modules' => McpContent::enabledModules($organization, (int)$grant['IDuser']),
-            'coverage' => 'Read-only complete paginated lists, user and relationship filters, role assignments, cross-module search and record text using your current OMO permissions. Call omo_catalog for module-specific filters. Search is bounded; use omo_list_records for full enumeration. External files are not downloaded.'];
+            'coverage' => 'Complete paginated lists, user filters, role assignments, search and record text using your current OMO permissions. Optional documents:create consent permits new text documents and original file imports through omo_create_document, only in spaces allowed by OMO. Discover destinations with omo_list_document_spaces. Search is bounded; use lists for full enumeration.'];
     }
     public static function root(Organization $organization, int $userId): Holon
     {

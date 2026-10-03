@@ -66,7 +66,7 @@ class McpOauthGrant extends DbObject
             }
             $row = self::fetchRow('SELECT * FROM mcp_oauth_grant WHERE (' . $lookup . ') FOR UPDATE', $bindings);
             if (!$row || (int)$row['IDclient'] !== (int)$client->getId()
-                || $row['revoked_at'] !== null || $row['scope'] !== 'organization:read' || !hash_equals($row['resource'], $request['resource'])
+                || $row['revoked_at'] !== null || \omoMcpNormalizeScope($row['scope']) === null || !hash_equals($row['resource'], $request['resource'])
                 || !UserOrganization::hasActiveMembership((int)$row['IDuser'], (int)$row['IDorganization'])) {
                 $pdo->rollBack(); return null;
             }
@@ -120,7 +120,7 @@ class McpOauthGrant extends DbObject
             FROM mcp_oauth_grant g JOIN user u ON u.id = g.IDuser AND u.active = 1
             WHERE g.access_hash = :hash AND g.revoked_at IS NULL AND g.access_expires_at > :now',
             ['hash' => self::hash($token), 'now' => time()]);
-        if (!$row || !hash_equals($resource, $row['resource']) || $row['scope'] !== 'organization:read'
+        if (!$row || !hash_equals($resource, $row['resource']) || \omoMcpNormalizeScope($row['scope']) === null
             || !UserOrganization::hasActiveMembership((int)$row['IDuser'], (int)$row['IDorganization'])) return null;
         return $row;
     }
@@ -131,6 +131,14 @@ class McpOauthGrant extends DbObject
             AND (access_hash = :access OR refresh_hash = :refresh)',
             ['now' => time(), 'client' => $clientId, 'access' => self::hash($token), 'refresh' => self::hash($token)]);
     }
+    public static function hasActiveCreationAuthorization(array $grant): bool
+    {
+        return (bool)self::fetchRow('SELECT id FROM mcp_oauth_grant WHERE id = :id AND IDuser = :user
+            AND IDorganization = :organization AND resource = :resource AND scope = :scope
+            AND revoked_at IS NULL AND access_expires_at > :now',
+            ['id' => (int)($grant['id'] ?? 0), 'user' => (int)$grant['IDuser'], 'organization' => (int)$grant['IDorganization'],
+                'resource' => \omoMcpPublicUrl(), 'scope' => \OMO_MCP_SCOPE . ' ' . \OMO_MCP_CREATE_SCOPE, 'now' => time()]);
+    }
     public static function revokeOwned(int $id, int $userId): bool
     {
         if (!self::fetchRow('SELECT id FROM mcp_oauth_grant WHERE id = :id AND IDuser = :user', ['id' => $id, 'user' => $userId])) return false;
@@ -139,7 +147,7 @@ class McpOauthGrant extends DbObject
     }
     public static function listOwned(int $userId): array
     {
-        return self::fetchAll('SELECT g.id, c.name AS client_name, o.name AS organization_name, g.created_at,
+        return self::fetchAll('SELECT g.id, g.scope, c.name AS client_name, o.name AS organization_name, g.created_at,
             g.access_expires_at, g.refresh_expires_at FROM mcp_oauth_grant g
             JOIN mcp_oauth_client c ON c.id = g.IDclient JOIN organization o ON o.id = g.IDorganization
             WHERE g.IDuser = :user AND g.revoked_at IS NULL AND g.refresh_expires_at > :now
