@@ -133,11 +133,17 @@ class McpOauthGrant extends DbObject
     }
     public static function hasActiveCreationAuthorization(array $grant): bool
     {
+        return self::hasActiveScopeAuthorization($grant, \OMO_MCP_CREATE_SCOPE);
+    }
+    public static function hasActiveScopeAuthorization(array $grant, string $scope): bool
+    {
+        if (!in_array($scope, explode(' ', $grant['scope'] ?? ''), true)
+            || \omoMcpNormalizeScope($grant['scope'] ?? '') === null) return false;
         return (bool)self::fetchRow('SELECT id FROM mcp_oauth_grant WHERE id = :id AND IDuser = :user
             AND IDorganization = :organization AND resource = :resource AND scope = :scope
             AND revoked_at IS NULL AND access_expires_at > :now',
             ['id' => (int)($grant['id'] ?? 0), 'user' => (int)$grant['IDuser'], 'organization' => (int)$grant['IDorganization'],
-                'resource' => \omoMcpPublicUrl(), 'scope' => \OMO_MCP_SCOPE . ' ' . \OMO_MCP_CREATE_SCOPE, 'now' => time()]);
+                'resource' => \omoMcpPublicUrl(), 'scope' => $grant['scope'], 'now' => time()]);
     }
     public static function revokeOwned(int $id, int $userId): bool
     {

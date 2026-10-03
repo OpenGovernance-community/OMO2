@@ -47,7 +47,7 @@ try {
             'clientInfo' => ['name' => 'omo-deployment-check', 'version' => '1']]], $token);
     mcpCheck($initialized['status'] === 200 && isset($initialized['json']['result']['capabilities']['tools']), 'Deployed initialization failed');
     $listed = mcpDeployedRequest($path, ['jsonrpc' => '2.0', 'id' => 3, 'method' => 'tools/list', 'params' => new stdClass()], $token);
-    mcpCheck($listed['status'] === 200 && count($listed['json']['result']['tools'] ?? []) === 10, 'Deployed tool discovery failed');
+    mcpCheck($listed['status'] === 200 && count($listed['json']['result']['tools'] ?? []) === 14, 'Deployed tool discovery failed');
     $info = mcpDeployedRequest($path, ['jsonrpc' => '2.0', 'id' => 4, 'method' => 'tools/call',
         'params' => ['name' => 'omo_connection_info', 'arguments' => new stdClass()]], $token);
     mcpCheck($info['status'] === 200 && ($info['json']['result']['structuredContent']['connected'] ?? false), 'Deployed tool call failed');

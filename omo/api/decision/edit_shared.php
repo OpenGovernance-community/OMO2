@@ -687,6 +687,7 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
 <div class="omo-decision-edit omo-panel-view">
     <div class="omo-panel-view__body">
         <div class="omo-panel-view__body_content omo-decision-edit__stack generic-drawer-content generic-form-stack generic-form-stack--compact">
+            <?php if ($isEditing && !$isDuplicate && ($context['accessMode'] ?? '') !== 'public'): require_once dirname(__DIR__, 3) . '/common/object_mail/ui.php'; omoObjectMailButton((int)$context['organizationId'], 'decision', (int)$decision->getId()); endif; ?>
             
 
             <?php if (false && $isEditing && $intent === 'manage'): ?>

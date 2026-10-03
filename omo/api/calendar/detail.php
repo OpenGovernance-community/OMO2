@@ -341,6 +341,7 @@ $invitationContext = [
         data-omo-calendar-drawer-title="<?= omoApiEscape(omoCalendarDetailT('calendar.detail.badge')) ?>"
         data-omo-calendar-drawer-description=""
     >
+        <?php require_once dirname(__DIR__, 3) . '/common/object_mail/ui.php'; omoObjectMailButton($organizationId, 'event', (int)$event->getId(), 'data-omo-calendar-drawer-action'); ?>
         <?php if ($canEdit || $canDelete): ?>
             <?php if ($canEdit): ?>
                 <button

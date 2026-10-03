@@ -26,7 +26,7 @@ $pending = $_SESSION['mcpPending'][$requestId] ?? null;
 if (!$pending) {
     http_response_code(400);
     omoMcpPageStart(omoMcpUiT('title'));
-    echo '<p>' . omoMcpEscape(omoMcpUiT('invalid')) . '</p>';
+    echo '<p class="generic-soft-panel generic-soft-panel--elevated">' . omoMcpEscape(omoMcpUiT('invalid')) . '</p>';
     omoMcpPageEnd(); exit;
 }
 omoMcpLoginIfNeeded('/mcp/authorize.php?request=' . $requestId);
@@ -34,6 +34,7 @@ $userId = commonGetCurrentUserId();
 $organizations = omoMcpEligibleOrganizations($userId);
 $request = $pending['request'];
 $allowCreate = omoMcpCanCreateDocuments($request);
+$allowMail = omoMcpCanSendMail($request);
 $client = \dbObject\McpOauthClient::findByClientId($request['client_id']);
 if (!$client) omoMcpOauthError('invalid_client', 'Unknown OAuth client.');
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -57,25 +58,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 omoMcpPageStart(omoMcpUiT('title'), $request['redirect_uri']);
 ?>
-<section class="generic-soft-panel generic-stack">
-    <p><?= omoMcpEscape(omoMcpUiT($allowCreate ? 'request_create' : 'request', ['client' => (string)$client->get('name')])) ?></p>
-    <p><?= omoMcpEscape(omoMcpUiT('identity', ['name' => commonGetCurrentUserDisplayName()])) ?></p>
-    <p><?= omoMcpEscape(omoMcpUiT('destination', ['origin' => $request['redirect_uri']])) ?></p>
-    <p><?= omoMcpEscape(omoMcpUiT('scope')) ?></p>
-    <p><?= omoMcpEscape(omoMcpUiT($allowCreate ? 'scope_create' : 'scope_read_only')) ?></p>
-    <form method="post" action="/mcp/authorize.php?request=<?= omoMcpEscape($requestId) ?>" class="generic-stack">
+<section class="generic-soft-panel generic-soft-panel--elevated mcp-request">
+    <p><?= omoMcpEscape(omoMcpUiT($allowMail ? 'request_write' : ($allowCreate ? 'request_create' : 'request'), ['client' => (string)$client->get('name')])) ?></p>
+    <p class="mcp-muted"><?= omoMcpEscape(omoMcpUiT('identity', ['name' => commonGetCurrentUserDisplayName()])) ?></p>
+</section>
+<div class="mcp-layout">
+    <section class="generic-soft-panel generic-soft-panel--elevated generic-soft-panel--stack" aria-labelledby="mcp-permissions-title">
+        <h2 class="generic-card-title generic-card-title--section" id="mcp-permissions-title"><?= omoMcpEscape(omoMcpUiT('permissions')) ?></h2>
+        <div class="mcp-permission">
+            <h3 class="generic-card-title"><?= omoMcpEscape(omoMcpUiT('read_heading')) ?></h3>
+            <p><?= omoMcpEscape(omoMcpUiT('scope')) ?></p>
+        </div>
+        <?php if ($allowCreate): ?>
+        <div class="generic-soft-panel generic-soft-panel--tinted mcp-permission">
+            <h3 class="generic-card-title"><?= omoMcpEscape(omoMcpUiT('create_heading')) ?></h3>
+            <p><?= omoMcpEscape(omoMcpUiT('scope_create')) ?></p>
+        </div>
+        <?php endif; ?>
+        <?php if ($allowMail): ?>
+        <div class="generic-soft-panel generic-soft-panel--tinted mcp-permission">
+            <h3 class="generic-card-title"><?= omoMcpEscape(omoMcpUiT('mail_heading')) ?></h3>
+            <p><?= omoMcpEscape(omoMcpUiT('scope_mail')) ?></p>
+        </div>
+        <?php endif; ?>
+        <?php if (!$allowCreate && !$allowMail): ?>
+        <p class="generic-soft-panel generic-soft-panel--tinted"><?= omoMcpEscape(omoMcpUiT('scope_read_only')) ?></p>
+        <?php endif; ?>
+        <p class="mcp-muted"><?= omoMcpEscape(omoMcpUiT('destination', ['origin' => $request['redirect_uri']])) ?></p>
+    </section>
+    <form method="post" action="/mcp/authorize.php?request=<?= omoMcpEscape($requestId) ?>" class="generic-soft-panel generic-soft-panel--elevated generic-soft-panel--stack" aria-labelledby="mcp-organization-title">
+        <h2 class="generic-card-title generic-card-title--section" id="mcp-organization-title"><?= omoMcpEscape(omoMcpUiT('choose_heading')) ?></h2>
+        <p><?= omoMcpEscape(omoMcpUiT('choose_hint')) ?></p>
         <input type="hidden" name="csrf" value="<?= omoMcpEscape($pending['csrf']) ?>">
         <?php if ($organizations): ?>
+        <div class="generic-form-field">
             <label class="generic-form-label" for="organization_id"><?= omoMcpEscape(omoMcpUiT('organization')) ?></label>
             <select class="generic-form-control" name="organization_id" id="organization_id" required>
                 <?php foreach ($organizations as $organization): ?>
                     <option value="<?= (int)$organization->getId() ?>"><?= omoMcpEscape((string)$organization->get('name')) ?></option>
                 <?php endforeach; ?>
             </select>
-            <button class="generic-action-button" name="decision" value="allow"><?= omoMcpEscape(omoMcpUiT($allowCreate ? 'allow_create' : 'allow')) ?></button>
-        <?php else: ?><p><?= omoMcpEscape(omoMcpUiT('empty')) ?></p><?php endif; ?>
-        <button class="generic-action-button generic-action-button--secondary" name="decision" value="deny"><?= omoMcpEscape(omoMcpUiT('deny')) ?></button>
+        </div>
+        <?php else: ?><p class="generic-soft-panel generic-soft-panel--tinted"><?= omoMcpEscape(omoMcpUiT('empty')) ?></p><?php endif; ?>
+        <div class="generic-stack">
+            <?php if ($organizations): ?>
+            <button type="submit" class="generic-action-button generic-action-button--main generic-action-button--wide" name="decision" value="allow"><?= omoMcpEscape(omoMcpUiT($allowMail ? 'allow_scopes' : ($allowCreate ? 'allow_create' : 'allow'))) ?></button>
+            <?php endif; ?>
+            <button type="submit" class="generic-action-button generic-action-button--secondary generic-action-button--wide" name="decision" value="deny" formnovalidate><?= omoMcpEscape(omoMcpUiT('deny')) ?></button>
+        </div>
+        <p class="mcp-muted"><?= omoMcpEscape(omoMcpUiT('revoke_hint')) ?></p>
     </form>
-</section>
-<a href="/mcp/connections.php"><?= omoMcpEscape(omoMcpUiT('connections')) ?></a>
+</div>
+<footer class="mcp-footer"><a href="/mcp/connections.php"><?= omoMcpEscape(omoMcpUiT('connections')) ?></a></footer>
 <?php omoMcpPageEnd(); ?>

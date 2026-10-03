@@ -26,7 +26,7 @@ class McpDocumentCreation extends DbObject
         $org = McpStructure::organization($grant);
         $user = new User();
         if (!$user->load((int)$grant['IDuser']) || !$user->get('active')) throw new \DomainException('User unavailable.');
-        if (!in_array('documents', McpContent::enabledModules($org, (int)$grant['IDuser']), true)) {
+        if (!$org->isApplicationEnabled('documents', (int)$grant['IDuser'])) {
             throw new \DomainException('Documents module unavailable.');
         }
         return $org;
@@ -97,15 +97,19 @@ class McpDocumentCreation extends DbObject
         return ['organization_id' => $oid, 'kind' => $kind, 'items' => $items, 'next_after_id' => $complete ? null : $cursor,
             'complete' => $complete, 'write_authorized' => \omoMcpCanCreateDocuments($grant),
             'file_storage_available' => $org->hasDocumentStorage(), 'max_file_bytes' => 20971520, 'default_visibility' => 'self',
+            'content_formats' => ['text', 'html', 'markdown', 'md'], 'external_links_available' => true,
             'instructions' => 'These spaces permit document creation with your OMO permissions; documents:create OAuth consent is also required. Enumerate organization, holons and folders separately, following each cursor until null, even after an empty page. Copy holon_id and parent_document_id from the chosen destination. Native folders only; remote folders and project associations are not supported. Default visibility is owner only. File uploads require organization document storage.'];
     }
 
     private static function response(Organization $org, array $grant, int $documentId, bool $replayed): array
     {
-        $document = McpContent::accessibleObject($org, McpContent::context($grant, $org, null), 'documents', $documentId);
+        $context = McpContent::context($grant, $org, null);
+        $document = McpContent::accessibleObject($org, $context, 'documents', $documentId);
         if (!$document) throw new \DomainException('The previously created document is no longer available. Do not retry with a new key.');
         return ['created' => true, 'replayed' => $replayed,
-            'record' => McpBrowse::summary($org, McpContent::context($grant, $org, null), 'documents', $document),
+            'record' => McpBrowse::summary($org, $context, 'documents', $document),
+            'document_type' => $document->getDocumentType(), 'document_type_label' => $document->getDocumentTypeLabel(),
+            'external_url' => $document->isExternalLink() ? $document->getExternalUrl() : null,
             'visibility_type' => $document->getPrimaryVisibilityRuleRow()['visibility_type'] ?? null,
             'file_name' => $document->get('storedfilename'), 'file_size' => (int)$document->get('storedfilesize')];
     }
@@ -124,6 +128,8 @@ class McpDocumentCreation extends DbObject
             'content' => $args['content'] ?? null, 'content_format' => $args['content_format'] ?? 'text',
             'file_id' => $args['file']['file_id'] ?? null, 'file_name' => $args['file']['file_name'] ?? null,
             'destination' => $destination, 'visibility_type' => $visibility];
+        // Keep fingerprints of previously supported payloads unchanged for existing retry keys.
+        if (isset($args['external_url'])) $fingerprint['external_url'] = $args['external_url'];
         $bindings = ['uid' => $uid, 'oid' => $oid, 'key_hash' => hash('sha256', $args['request_key'])];
         $payloadHash = hash('sha256', json_encode($fingerprint, JSON_THROW_ON_ERROR));
         $lookup = 'SELECT * FROM mcp_document_creation WHERE IDuser = :uid AND IDorganization = :oid AND key_hash = :key_hash';
@@ -132,6 +138,11 @@ class McpDocumentCreation extends DbObject
             if (!hash_equals($existing['payload_hash'], $payloadHash)) throw new \DomainException('request_key already used for different content or destination.');
             return self::response($org, $grant, (int)$existing['IDdocument'], true);
         }
+        // Parse before taking the idempotency lock; successful retries skip this work entirely.
+        $content = isset($args['content']) ? PropertyFormat::formattedTextToHtml($args['content'], $args['content_format'] ?? 'text') : '';
+        if (isset($args['content']) && $content === '') {
+            throw new \DomainException('No Memo content remains after cleaning. Supply text or supported formatting and retry with the same request_key.');
+        }
         $uploadedFile = null; $document = new Document(); $pdo = self::getPdo();
         try {
             if (isset($args['file'])) {
@@ -139,7 +150,7 @@ class McpDocumentCreation extends DbObject
                 require_once dirname(__DIR__, 2) . '/common/mcp/files.php';
                 $uploadedFile = \omoMcpDownloadFile($args['file'], $args['title']);
             }
-            // Recheck rights after a potentially slow download, before opening the transaction.
+            // Recheck rights after conversion or download, before opening the transaction.
             $org = self::organization($grant);
             if (!McpOauthGrant::hasActiveCreationAuthorization($grant)) throw new \DomainException('Creation authorization expired or revoked. Reconnect your account.');
             self::destination($org, $grant, $destination['holon_id'], $destination['parent_document_id']);
@@ -152,13 +163,11 @@ class McpDocumentCreation extends DbObject
             if ($row['completed']) {
                 $result = self::response($org, $grant, (int)$row['IDdocument'], true); $pdo->commit(); return $result;
             }
-            $content = $args['content'] ?? '';
-            if (($args['content_format'] ?? 'text') === 'text') {
-                $content = '<p>' . nl2br(htmlspecialchars($content, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'), false) . '</p>';
-            }
             $saved = $document->createInOrganizationContext($oid, $destination['holon_id'] ?: null, $uid, [
                 'title' => $args['title'], 'description' => $args['description'] ?? '', 'keywords' => $args['keywords'] ?? '',
-                'content' => $content, 'document_type' => $uploadedFile ? Document::TYPE_UPLOADED_FILE : Document::TYPE_HTML,
+                'content' => $content, 'document_type' => $uploadedFile ? Document::TYPE_UPLOADED_FILE
+                    : (isset($args['external_url']) ? Document::TYPE_EXTERNAL_LINK : Document::TYPE_HTML),
+                'external_url' => $args['external_url'] ?? '', 'open_in_new_window' => isset($args['external_url']),
                 'uploaded_file' => $uploadedFile, 'parent_document_id' => $destination['parent_document_id'],
                 'visibility_type' => $visibility, 'edit_visibility_type' => 'self']);
             if (empty($saved['status'])) throw new \DomainException((string)($saved['text'] ?? 'Document creation failed.'));

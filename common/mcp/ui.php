@@ -8,6 +8,17 @@ function omoMcpUiBundle(): array
     $sourceLang = [
         'title' => ['text' => 'Connexion OMO pour un assistant', 'context' => 'MCP OAuth consent page title.'],
         'intro' => ['text' => 'Connectez-vous avec votre compte OMO pour choisir une organisation.', 'context' => 'Login introduction for MCP authorization.'],
+        'brand' => ['text' => 'Connexion aux assistants', 'context' => 'Public MCP page brand subtitle.'],
+        'permissions' => ['text' => 'Acces demandes', 'context' => 'OAuth permissions section heading.'],
+        'read_heading' => ['text' => 'Consulter vos informations', 'context' => 'Read permission heading.'],
+        'create_heading' => ['text' => 'Creer des documents', 'context' => 'Document creation permission heading.'],
+        'mail_heading' => ['text' => 'Envoyer des e-mails', 'context' => 'Object mail permission heading.'],
+        'scope_mail' => ['text' => 'L assistant pourra envoyer les messages que vous lui demandez aux membres ou invites references dans un holon, une reunion, un projet ou une decision. Il doit disposer de vos droits de participation ou de gestion. Les decisions exigent un droit de gestion. Aucune adresse libre ne peut etre fournie. Les destinataires et droits sont verifies avant chaque envoi, avec des limites de frequence.', 'context' => 'Additional mail:send OAuth consent.'],
+        'request_write' => ['text' => '{client} demande les acces presentes ci-dessous a votre compte OMO.', 'context' => 'Consent with optional writing scopes.'],
+        'allow_scopes' => ['text' => 'Autoriser ces acces', 'context' => 'Approve the displayed OAuth scopes.'],
+        'choose_heading' => ['text' => 'Choisir une organisation', 'context' => 'OAuth organization selection heading.'],
+        'choose_hint' => ['text' => 'L acces de cet assistant sera limite a cette organisation et aux droits de votre compte.', 'context' => 'Organization scope explanation before consent.'],
+        'revoke_hint' => ['text' => 'Vous pourrez retirer cet acces a tout moment depuis vos connexions aux assistants.', 'context' => 'Revocation reassurance before consent.'],
         'request' => ['text' => '{client} demande un acces en lecture a vos informations OMO.', 'context' => 'Consent request; client is an untrusted application name.'],
         'scope' => ['text' => 'Cette connexion permet de rechercher et lire les informations auxquelles votre compte a acces dans l organisation choisie : structure et proprietes, membres, documents et PV, projets, calendrier et autres modules disponibles. Vos droits OMO sont appliques a chaque lecture.', 'context' => 'Data scope of MCP reading.'],
         'scope_read_only' => ['text' => 'Cette autorisation est limitee a la lecture.', 'context' => 'Read-only scope on consent and connections pages.'],
@@ -59,10 +70,15 @@ function omoMcpPageStart(string $title, ?string $redirectUri = null): void
     <title><?= omoMcpEscape($title) ?></title>
     <?= commonStylesheetTags('/common/assets/theme.css') ?>
     <?= commonStylesheetTags('/common/assets/components.css') ?>
+    <?= commonStylesheetTags('/common/mcp/ui.css') ?>
     <?= commonStylesheetTags('/common/notifications/notifications.css') ?>
     <script src="<?= commonAssetUrl('/common/notifications/notifications.js') ?>" defer></script>
-    </head><body><main class="generic-section generic-stack">
-    <h1 class="generic-card-title"><?= omoMcpEscape($title) ?></h1>
+    </head><body class="generic-public-page"><main class="generic-page-shell mcp-shell">
+    <header class="generic-public-brand">
+        <img class="generic-public-brand__logo" src="<?= omoMcpEscape(commonAssetUrl('/img/omo2/logo-omo-dark.png')) ?>" alt="OMO" width="1076" height="332">
+        <span class="generic-public-brand__label"><?= omoMcpEscape(omoMcpUiT('brand')) ?></span>
+    </header>
+    <h1 class="generic-card-title generic-card-title--display"><?= omoMcpEscape($title) ?></h1>
     <?php
 }
 function omoMcpPageEnd(): void { echo '</main></body></html>'; }
@@ -70,7 +86,7 @@ function omoMcpLoginIfNeeded(string $returnTo): void
 {
     if (commonGetCurrentUserId() > 0) return;
     commonRenderMagicLoginPage(['title' => omoMcpUiT('title'), 'intro' => omoMcpUiT('intro'),
-        'appName' => 'OMO', 'returnTo' => $returnTo]);
+        'appName' => omoMcpUiT('brand'), 'returnTo' => $returnTo, 'layout' => 'public']);
     exit;
 }
 function omoMcpEligibleOrganizations(int $userId): array

@@ -15042,6 +15042,7 @@
 			}
 
 			return (int)$event->get('active') === 1
+				&& $event->isDraftVisibleToViewer((int)($viewerContext['userId'] ?? 0))
 				&& \dbObject\Event::normalizeStatus($event->get('status')) !== \dbObject\Event::STATUS_CANCELLED;
 		}
 

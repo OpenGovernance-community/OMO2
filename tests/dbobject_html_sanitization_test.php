@@ -6,6 +6,7 @@ use dbObject\PropertyFormat;
 
 require_once dirname(__DIR__) . '/class/dbobject/dbobject.class.php';
 require_once dirname(__DIR__) . '/class/dbobject/propertyformat.class.php';
+require_once dirname(__DIR__) . '/vendor/autoload.php';
 
 final class HtmlSanitizationProbe extends DbObject
 {
@@ -80,5 +81,25 @@ assertHtmlSanitizationTest(
 $loadedHtml = (string)$loadedProbe->get('content');
 assertHtmlSanitizationTest(str_contains($loadedHtml, '<p>Ancien <b>contenu</b></p>'), 'Existing basic formatting must survive database hydration.');
 assertHtmlSanitizationTest(!str_contains($loadedHtml, 'alert(9)'), 'Existing malicious HTML must be removed during database hydration.');
+
+assertHtmlSanitizationTest(PropertyFormat::formattedTextToHtml($unsafeHtml, 'html') === PropertyFormat::sanitizeHtml($unsafeHtml), 'Supplied HTML must follow the existing editor allowlist exactly.');
+$markdown = "# Heading\n\nParagraph with **bold**, *italic* and [a link](https://example.org/page).\n\n"
+    . "- First\n- Second\n\n> Quoted text\n\n| Name | Value |\n| --- | --- |\n| First | **42** |\n\n"
+    . '<p style="color:red;position:fixed;background-color:#aabbcc" onclick="evil()">Raw HTML <u>underline</u></p>'
+    . '<script>evil()</script><iframe src="https://example.org/"></iframe><img src=x onerror="evil()">'
+    . "\n\n[unsafe](javascript:evil) [hidden](java&#x09;script:evil)";
+$safeMarkdown = PropertyFormat::formattedTextToHtml($markdown, 'markdown');
+foreach (['<h1>Heading</h1>', '<strong>bold</strong>', '<em>italic</em>', '<ul>', '<li>First</li>', '<blockquote>', '<table>', '<strong>42</strong>', '<u>underline</u>', 'background-color: #aabbcc'] as $expected) {
+    assertHtmlSanitizationTest(str_contains($safeMarkdown, $expected), 'Markdown lost supported formatting: ' . $expected);
+}
+assertHtmlSanitizationTest(!preg_match('/<\s*(?:script|iframe|img)\b|\son[a-z]+\s*=|javascript:|position:|color:red/i', $safeMarkdown), 'Markdown and its raw HTML must not bypass editor security.');
+assertHtmlSanitizationTest(!str_contains($safeMarkdown, 'evil()'), 'Raw script payload removed from converted Markdown.');
+assertHtmlSanitizationTest(PropertyFormat::formattedTextToHtml($markdown, 'md') === $safeMarkdown, 'MD alias matches Markdown.');
+assertHtmlSanitizationTest(PropertyFormat::sanitizeHtml($safeMarkdown) === $safeMarkdown, 'Converted Markdown is stable under subsequent document sanitization.');
+assertHtmlSanitizationTest(PropertyFormat::formattedTextToHtml("<script>literal</script>\nLine", 'text') === "<p>&lt;script&gt;literal&lt;/script&gt;<br>\nLine</p>", 'Plain text remains literal.');
+assertHtmlSanitizationTest(PropertyFormat::formattedTextToHtml('<script>evil()</script>', 'html') === '', 'A script-only input must not retain executable or visible payload.');
+$formatRejected = false;
+try { PropertyFormat::formattedTextToHtml('Body', 'rtf'); } catch (InvalidArgumentException $error) { $formatRejected = true; }
+assertHtmlSanitizationTest($formatRejected, 'Unknown format cannot silently become raw HTML.');
 
 echo "dbobject_html_sanitization_test: OK\n";
