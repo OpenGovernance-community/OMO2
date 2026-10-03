@@ -239,7 +239,7 @@ if (!function_exists('omoRenderOrganizationInfoPanel')) {
                         ?>
                         <button
                             type="button"
-                            class="omo-org-members__avatar omo-org-members__avatar--button<?= !empty($member['isPending']) ? ' omo-org-members__avatar--pending' : '' ?>"
+                            class="omo-org-members__avatar omo-org-members__avatar--button<?= !empty($member['isPending']) ? ' generic-member generic-member--inactive' : '' ?>"
                             data-omo-org-open-user-popup="1"
                             data-oid="<?= (int)$organizationId ?>"
                             data-user-id="<?= (int)$member['userId'] ?>"
