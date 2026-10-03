@@ -68,7 +68,7 @@ if ($requestMethod === 'GET') {
     }
     omoDecisionModuleJsonResponse(200, [
         'status' => true,
-        'proposal' => [
+        'proposal' => $proposal->getCalendarData() + ['calendarHtml' => omoDecisionRenderProposalCalendar($proposal, $context, 'omoApiEscape'), 'calendarStatusLabel' => omoDecisionProposalT('decisions.proposals.dates.' . ($proposal->getCalendarData()['calendarStatus'] ?: 'option'))] + [
             'id' => (int)$proposal->getId(),
             'title' => trim((string)$proposal->get('title')),
             'description' => trim((string)$proposal->get('description')),
@@ -83,7 +83,8 @@ $result = $proposal->updateContentByAuthor(
     $proposalContent['title'] ? ($_POST['title'] ?? '') : '',
     $proposalContent['description'] ? ($_POST['description'] ?? '') : '',
     $proposalContent['url'] ? ($_POST['info_url'] ?? '') : '',
-    $participantId
+    $participantId,
+    $proposalContent['date'] ? ['start_at' => $_POST['start_at'] ?? null, 'end_at' => $_POST['end_at'] ?? null, 'timezone' => $_POST['timezone'] ?? null] : ['start_at' => null, 'end_at' => null, 'timezone' => null]
 );
 if (empty($result['status'])) {
     $statusCode = ($result['reason'] ?? '') === 'forbidden' ? 403 : 422;
@@ -100,7 +101,7 @@ omoDecisionModuleJsonResponse(200, [
     'status' => true,
     'changed' => !empty($result['changed']),
     'message' => (string)($result['message'] ?? 'Proposition modifiée.'),
-    'proposal' => [
+    'proposal' => $proposal->getCalendarData() + ['calendarHtml' => omoDecisionRenderProposalCalendar($proposal, $context, 'omoApiEscape'), 'calendarStatusLabel' => omoDecisionProposalT('decisions.proposals.dates.' . ($proposal->getCalendarData()['calendarStatus'] ?: 'option'))] + [
         'id' => (int)$proposal->getId(),
         'title' => trim((string)$proposal->get('title')),
         'description' => trim((string)$proposal->get('description')),

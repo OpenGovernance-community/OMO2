@@ -42,8 +42,32 @@ mcpProtocolCheck($serverInfo['icons'][0]['src'] === 'https://mcp.example.invalid
 mcpProtocolCheck(omoMcpResourceMetadata()['resource_name'] === $serverInfo['title'], 'OAuth and MCP names agree');
 mcpProtocolCheck(omoMcpDispatch(['jsonrpc' => '2.0', 'method' => 'notifications/initialized'], []) === null, 'Notification has no response');
 mcpProtocolCheck(omoMcpDispatch(['jsonrpc' => '2.0', 'id' => 2, 'method' => 'delete_everything'], [])['error']['code'] === -32601, 'Unknown method');
-mcpProtocolCheck(count(omoMcpTools()) === 14, 'Fourteen tools, including member exploration');
+mcpProtocolCheck(count(omoMcpTools()) === 17, 'Seventeen tools, including availability and event creation');
 $byName = array_column(omoMcpTools(), null, 'name');
+mcpProtocolCheck($byName['omo_get_availability']['annotations']['readOnlyHint'] && $byName['omo_list_event_spaces']['annotations']['readOnlyHint'], 'Availability and destination discovery are read-only');
+mcpProtocolCheck(!$byName['omo_create_event']['annotations']['readOnlyHint'] && $byName['omo_create_event']['securitySchemes'][0]['scopes'] === [OMO_MCP_SCOPE, OMO_MCP_EVENT_SCOPE], 'Event creation has distinct consent');
+mcpProtocolCheck(omoMcpNormalizeScope('events:create organization:read mail:send documents:create') === 'organization:read documents:create mail:send events:create', 'New scope preserves existing scopes');
+$availabilityArgs = ['user_ids' => [2, 1], 'date_from' => '2026-10-01', 'date_to' => '2026-10-31', 'duration_minutes' => 60];
+mcpProtocolCheck(omoMcpToolArguments('omo_get_availability', (object)$availabilityArgs)['user_ids'] === [1, 2], 'Thirty-one inclusive days and member list accepted');
+foreach ([['user_ids' => []], ['user_ids' => ['1']], ['user_ids' => range(1, 21)], ['date_from' => '2026-02-30'],
+    ['date_to' => '2026-11-01'], ['date_to' => '2026-09-30'], ['duration_minutes' => 45], ['organization_id' => 7]] as $change) {
+    $rejected = false;
+    try { omoMcpToolArguments('omo_get_availability', (object)array_replace($availabilityArgs, $change)); } catch (InvalidArgumentException $error) { $rejected = true; }
+    mcpProtocolCheck($rejected, 'Invalid availability query rejected');
+}
+$eventArgs = ['title' => 'Meeting', 'holon_id' => 1, 'start_at' => '2026-10-05T09:00:00+02:00', 'end_at' => '2026-10-05T10:00:00+02:00', 'request_key' => 'event-request-1'];
+mcpProtocolCheck(omoMcpToolArguments('omo_create_event', (object)$eventArgs) === $eventArgs, 'Event with default invitations accepted');
+foreach ([['title' => ' '], ['holon_id' => 0], ['start_at' => '2026-10-05 09:00'], ['start_at' => '2026-10-05T25:00:00+02:00'],
+    ['start_at' => '2026-10-05T09:00:00+99:00'], ['end_at' => $eventArgs['start_at']], ['timezone' => 'invalid'],
+    ['status' => 'cancelled'], ['invitation_user_ids' => []], ['invitation_user_ids' => ['1']], ['invitation_emails' => ['bad']],
+    ['allow_conflicts' => 1], ['request_key' => 'short'], ['IDorganization' => 8], ['videomeetingurl' => 'javascript:alert(1)']] as $change) {
+    $rejected = false;
+    try { omoMcpToolArguments('omo_create_event', (object)array_replace($eventArgs, $change)); } catch (InvalidArgumentException $error) { $rejected = true; }
+    mcpProtocolCheck($rejected, 'Invalid event or invitation arguments rejected');
+}
+$eventDenied = omoMcpDispatch(['jsonrpc' => '2.0', 'id' => 8, 'method' => 'tools/call',
+    'params' => (object)['name' => 'omo_create_event', 'arguments' => (object)$eventArgs]], ['scope' => OMO_MCP_SCOPE]);
+mcpProtocolCheck($eventDenied['result']['isError'] && str_contains($eventDenied['result']['_meta']['mcp/www_authenticate'][0], 'events:create'), 'Read grant triggers event consent');
 mcpProtocolCheck($byName['omo_get_member']['annotations']['readOnlyHint'] && $byName['omo_get_member']['securitySchemes'][0]['scopes'] === [OMO_MCP_SCOPE], 'Member exploration uses read consent only');
 mcpProtocolCheck(omoMcpToolArguments('omo_get_member', (object)['user_id' => 42]) === ['user_id' => 42], 'Member lookup accepts a user ID');
 foreach ([(object)[], (object)['user_id' => 0], (object)['user_id' => '42'], (object)['user_id' => 42, 'organization_id' => 9]] as $input) {

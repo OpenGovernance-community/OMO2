@@ -99,6 +99,16 @@ class DecisionGroup extends DbObject
         return $decision->load((int)$this->get('IDdecision_process')) ? $decision : null;
     }
 
+    public function areProposalDatesEnabled(): bool
+    {
+        $parameters = $this->get('parameters');
+        if (!is_array($parameters)) $parameters = json_decode((string)$parameters, true) ?: [];
+        $config = $parameters[$this->get('evaluation_method')] ?? $parameters;
+        $content = $config['proposal_content'] ?? [];
+        if (is_string($content)) $content = json_decode($content, true) ?: [];
+        return !is_array($content) || !array_key_exists('date', $content) || !empty($content['date']);
+    }
+
     public function getMethodDefinition()
     {
         $catalog = DecisionProcess::getEvaluationMethodCatalog();

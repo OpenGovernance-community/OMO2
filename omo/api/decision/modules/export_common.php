@@ -259,6 +259,9 @@ if (!function_exists('omoDecisionExportBuildBlockBlueprintData')) {
                 'title' => trim((string)$proposal->get('title')),
                 'description' => trim((string)$proposal->get('description')),
                 'info_url' => trim((string)$proposal->get('info_url')),
+                'start_at' => $proposal->getCalendarData()['startAt'],
+                'end_at' => $proposal->getCalendarData()['endAt'],
+                'timezone' => $proposal->get('timezone'),
                 'active' => (int)$proposal->get('active') === 1,
                 'parameters' => omoDecisionExportNormalizeValue(omoDecisionModuleDecodeParameters($proposal->get('parameters'))),
             ];

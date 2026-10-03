@@ -143,10 +143,13 @@ $proposalDescription = $proposalContent['description'] ? trim((string)($_POST['c
 $proposalInfoUrl = $proposalContent['url']
     ? omoDecisionNormalizeProposalInfoUrl($_POST['consultation_proposal_info_url'] ?? '')
     : null;
-if ($proposalTitle === '' && $proposalDescription === '' && $proposalInfoUrl === null) {
+$range = DecisionProposal::normalizeCalendarRange($proposalContent['date'] ? ($_POST['consultation_proposal_start_at'] ?? null) : null, $proposalContent['date'] ? ($_POST['consultation_proposal_end_at'] ?? null) : null, $proposalContent['date'] ? ($_POST['consultation_proposal_timezone'] ?? null) : null);
+if (empty($range['status'])) omoDecisionModuleJsonResponse(422, $range);
+if ($proposalTitle === '' && $proposalDescription === '' && $proposalInfoUrl === null && empty($range['values']['start_at'])) {
     omoDecisionConsultationProposalRedirect($context, 'empty');
 }
 
+$rangeKey = static fn($start, $end) => ($start instanceof DateTimeInterface ? $start->format('Y-m-d H:i:s') : '') . '/' . ($end instanceof DateTimeInterface ? $end->format('Y-m-d H:i:s') : '');
 $existingTitles = [];
 $maxPosition = 0;
 foreach ($decision->getProposals(false) as $proposal) {
@@ -161,12 +164,12 @@ foreach ($decision->getProposals(false) as $proposal) {
 
     $normalizedTitle = omoApiNormalizeLabel(trim((string)$proposal->get('title')));
     if ($normalizedTitle !== '') {
-        $existingTitles[$normalizedTitle] = true;
+        $existingTitles[$normalizedTitle . '/' . $rangeKey($proposal->get('start_at'), $proposal->get('end_at'))] = true;
     }
 }
 
 $normalizedTitle = omoApiNormalizeLabel($proposalTitle);
-if ($normalizedTitle !== '' && isset($existingTitles[$normalizedTitle])) {
+if ($normalizedTitle !== '' && isset($existingTitles[$normalizedTitle . '/' . $rangeKey($range['values']['start_at'], $range['values']['end_at'])])) {
     omoDecisionConsultationProposalRedirect($context, 'duplicate');
 }
 
@@ -187,6 +190,7 @@ $proposal->set('IDuser_author', $authorUserId > 0 ? $authorUserId : null);
 $proposal->set('title', $proposalTitle !== '' ? $proposalTitle : null);
 $proposal->set('description', $proposalDescription !== '' ? $proposalDescription : null);
 $proposal->set('info_url', $proposalInfoUrl);
+foreach ($range['values'] as $field => $value) $proposal->set($field, $value);
 $proposal->set('position', $maxPosition);
 $proposal->set('parameters', [
     'source' => 'consultation_public',
