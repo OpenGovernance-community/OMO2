@@ -35,7 +35,26 @@ $reply = omoMcpDispatch($request, []);
 mcpProtocolCheck($reply['result']['protocolVersion'] === OMO_MCP_VERSIONS[0], 'Version negotiation');
 mcpProtocolCheck(omoMcpDispatch(['jsonrpc' => '2.0', 'method' => 'notifications/initialized'], []) === null, 'Notification has no response');
 mcpProtocolCheck(omoMcpDispatch(['jsonrpc' => '2.0', 'id' => 2, 'method' => 'delete_everything'], [])['error']['code'] === -32601, 'Unknown method');
-mcpProtocolCheck(count(omoMcpTools()) === 8, 'Eight read-only tools');
+mcpProtocolCheck(count(omoMcpTools()) === 10, 'Ten tools, with document discovery and creation');
+$byName = array_column(omoMcpTools(), null, 'name');
+mcpProtocolCheck(!$byName['omo_create_document']['annotations']['readOnlyHint']
+    && !$byName['omo_create_document']['annotations']['destructiveHint'], 'Creation is declared as a non-destructive write');
+mcpProtocolCheck($byName['omo_create_document']['_meta']['openai/fileParams'] === ['file'], 'ChatGPT file input metadata');
+mcpProtocolCheck($byName['omo_create_document']['inputSchema']['properties']['file']['required'] === ['download_url', 'file_id'], 'File input follows official schema');
+mcpProtocolCheck(omoMcpNormalizeScope('documents:create organization:read') === 'organization:read documents:create', 'Scope order normalized');
+mcpProtocolCheck(omoMcpNormalizeScope('documents:create') === null && omoMcpNormalizeScope('organization:read admin') === null, 'Unsupported scopes rejected');
+foreach ([(object)['title' => 'Test', 'request_key' => 'creation-test'],
+    (object)['title' => 'Test', 'request_key' => 'creation-test', 'content' => 'Body', 'file' => (object)[]],
+    (object)['title' => 'Test', 'request_key' => 'creation-test', 'content' => 'Body', 'organization_id' => 9],
+    (object)['title' => 'Test', 'request_key' => 'creation-test', 'file' => (object)['file_id' => 'id']],
+    (object)['title' => 'Test', 'request_key' => 'creation-test', 'file' => (object)['file_id' => 'id', 'download_url' => 'file:///etc/passwd']],
+    (object)['title' => 'Test', 'request_key' => 'short', 'content' => 'Body'],
+    (object)['title' => 'Test', 'request_key' => 'creation-test', 'content' => 'Body', 'visibility_type' => 'everyone']] as $args) {
+    $rejected = false;
+    try { omoMcpToolArguments('omo_create_document', $args); } catch (InvalidArgumentException $error) { $rejected = true; }
+    mcpProtocolCheck($rejected, 'Unsafe/incomplete creation arguments rejected');
+}
+mcpProtocolCheck(omoMcpToolArguments('omo_create_document', (object)['title' => 'Test', 'request_key' => 'creation-test', 'content' => 'Body', 'holon_id' => 0])['holon_id'] === 0, 'Organization destination accepted');
 foreach ([['omo_list_records', (object)[]],
     ['omo_list_records', (object)['module' => 'projects', 'date_from' => '2026-02-30']],
     ['omo_list_records', (object)['module' => 'projects', 'date_from' => '2026-10-02', 'date_to' => '2026-10-01']],

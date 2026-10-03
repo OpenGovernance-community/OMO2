@@ -32,7 +32,9 @@ function mcpDeployedRequest(string $path, array $body, ?string $token = null, bo
 
 $items = mcpFixtures();
 try {
+    mcpEnableDocumentCreation($items);
     $request = mcpAuthorizationRequest($items['client']);
+    $request['scope'] = OMO_MCP_SCOPE . ' ' . OMO_MCP_CREATE_SCOPE;
     $code = \dbObject\McpOauthGrant::issueCode($items['client'], (int)$items['user']->getId(), (int)$items['org']->getId(), $request);
     $tokens = mcpDeployedRequest('/mcp/token.php', mcpExchangeRequest($items['client'], $code), null, true);
     mcpCheck($tokens['status'] === 200 && isset($tokens['json']['access_token']), 'Deployed OAuth token exchange failed');
@@ -45,17 +47,23 @@ try {
             'clientInfo' => ['name' => 'omo-deployment-check', 'version' => '1']]], $token);
     mcpCheck($initialized['status'] === 200 && isset($initialized['json']['result']['capabilities']['tools']), 'Deployed initialization failed');
     $listed = mcpDeployedRequest($path, ['jsonrpc' => '2.0', 'id' => 3, 'method' => 'tools/list', 'params' => new stdClass()], $token);
-    mcpCheck($listed['status'] === 200 && count($listed['json']['result']['tools'] ?? []) === 8, 'Deployed tool discovery failed');
+    mcpCheck($listed['status'] === 200 && count($listed['json']['result']['tools'] ?? []) === 10, 'Deployed tool discovery failed');
     $info = mcpDeployedRequest($path, ['jsonrpc' => '2.0', 'id' => 4, 'method' => 'tools/call',
         'params' => ['name' => 'omo_connection_info', 'arguments' => new stdClass()]], $token);
     mcpCheck($info['status'] === 200 && ($info['json']['result']['structuredContent']['connected'] ?? false), 'Deployed tool call failed');
     foreach (['omo_catalog' => new stdClass(), 'omo_list_records' => (object)['module' => 'structure'],
-        'omo_list_assignments' => new stdClass()] as $name => $arguments) {
+        'omo_list_assignments' => new stdClass(), 'omo_list_document_spaces' => (object)['kind' => 'holons']] as $name => $arguments) {
         $reply = mcpDeployedRequest($path, ['jsonrpc' => '2.0', 'id' => 5, 'method' => 'tools/call',
             'params' => ['name' => $name, 'arguments' => $arguments]], $token);
         mcpCheck($reply['status'] === 200 && ($reply['json']['result']['isError'] ?? true) === false, 'Deployed browsing tool failed');
     }
-    echo "[MCP smoke] OK: OAuth, authenticated routing, initialization, eight tools and browsing calls\n";
+    $created = mcpDeployedRequest($path, ['jsonrpc' => '2.0', 'id' => 6, 'method' => 'tools/call',
+        'params' => ['name' => 'omo_create_document', 'arguments' => (object)['title' => 'MCP deployment fixture',
+            'request_key' => 'deployment-document', 'holon_id' => (int)$items['role']->getId(), 'content' => 'Temporary deployment test only.']]], $token);
+    mcpCheck($created['status'] === 200 && ($created['json']['result']['isError'] ?? true) === false, 'Deployed document creation failed');
+    $items['created_document'] = new \dbObject\Document();
+    $items['created_document']->load($created['json']['result']['structuredContent']['record']['record_id']);
+    echo "[MCP smoke] OK: OAuth creation consent, authenticated routing, ten tools and document creation\n";
 } finally {
     mcpCleanup($items);
     echo "[MCP smoke] Temporary fixtures removed\n";

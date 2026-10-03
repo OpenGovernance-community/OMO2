@@ -1,6 +1,18 @@
 <?php
 // Shared protocol helpers; all persistence and data access live in dbObject classes.
 const OMO_MCP_SCOPE = 'organization:read';
+const OMO_MCP_CREATE_SCOPE = 'documents:create';
+
+function omoMcpNormalizeScope(string $scope): ?string
+{
+    $scopes = preg_split('/ +/', trim($scope), -1, PREG_SPLIT_NO_EMPTY);
+    if (!in_array(OMO_MCP_SCOPE, $scopes, true) || array_diff($scopes, [OMO_MCP_SCOPE, OMO_MCP_CREATE_SCOPE])) return null;
+    return OMO_MCP_SCOPE . (in_array(OMO_MCP_CREATE_SCOPE, $scopes, true) ? ' ' . OMO_MCP_CREATE_SCOPE : '');
+}
+function omoMcpCanCreateDocuments(array $grant): bool
+{
+    return in_array(OMO_MCP_CREATE_SCOPE, explode(' ', $grant['scope'] ?? ''), true);
+}
 const OMO_MCP_MODULES = ['structure', 'team', 'calendar', 'rules', 'documents', 'pv',
     'decision', 'projects', 'stats', 'processus', 'activities', 'faq', 'tutorials'];
 const OMO_MCP_VERSIONS = ['2025-11-25', '2025-06-18', '2025-03-26'];
@@ -33,7 +45,7 @@ function omoMcpChallenge(string $error = ''): string
 function omoMcpResourceMetadata(): array
 {
     return ['resource' => omoMcpPublicUrl(), 'authorization_servers' => [omoMcpIssuer()],
-        'scopes_supported' => [OMO_MCP_SCOPE], 'bearer_methods_supported' => ['header'], 'resource_name' => 'OMO'];
+        'scopes_supported' => [OMO_MCP_SCOPE, OMO_MCP_CREATE_SCOPE], 'bearer_methods_supported' => ['header'], 'resource_name' => 'OMO'];
 }
 function omoMcpAuthorizationMetadata(): array
 {
@@ -43,7 +55,7 @@ function omoMcpAuthorizationMetadata(): array
         'revocation_endpoint' => $issuer . '/mcp/revoke.php', 'response_types_supported' => ['code'],
         'grant_types_supported' => ['authorization_code', 'refresh_token'],
         'token_endpoint_auth_methods_supported' => ['none'], 'revocation_endpoint_auth_methods_supported' => ['none'],
-        'code_challenge_methods_supported' => ['S256'], 'scopes_supported' => [OMO_MCP_SCOPE],
+        'code_challenge_methods_supported' => ['S256'], 'scopes_supported' => [OMO_MCP_SCOPE, OMO_MCP_CREATE_SCOPE],
         'authorization_response_iss_parameter_supported' => true];
 }
 function omoMcpJson(array $body, int $status = 200): never
@@ -62,8 +74,8 @@ function omoMcpOauthError(string $error, string $description, int $status = 400)
 }
 function omoMcpInput(): array
 {
-    $raw = file_get_contents('php://input', false, null, 0, 65537);
-    if ($raw === false || strlen($raw) > 65536) throw new InvalidArgumentException('Request too large.');
+    $raw = file_get_contents('php://input', false, null, 0, 1048577);
+    if ($raw === false || strlen($raw) > 1048576) throw new InvalidArgumentException('Request too large.');
     $value = json_decode($raw, false, 32, JSON_THROW_ON_ERROR);
     if (!$value instanceof stdClass) throw new InvalidArgumentException('Expected a JSON object.');
     return get_object_vars($value);
@@ -103,11 +115,11 @@ function omoMcpValidateAuthorization(array $input, \dbObject\McpOauthClient $cli
     }
     if (($input['response_type'] ?? '') !== 'code' || ($input['code_challenge_method'] ?? '') !== 'S256'
         || !preg_match('/^[A-Za-z0-9_-]{43}$/D', $input['code_challenge'] ?? '')
-        || ($input['resource'] ?? '') !== omoMcpPublicUrl() || ($input['scope'] ?? OMO_MCP_SCOPE) !== OMO_MCP_SCOPE
-        || strlen($input['state'] ?? '') > 2048) throw new InvalidArgumentException('Expected code + PKCE S256, the MCP resource and organization:read scope.');
+        || ($input['resource'] ?? '') !== omoMcpPublicUrl() || omoMcpNormalizeScope($input['scope'] ?? OMO_MCP_SCOPE) === null
+        || strlen($input['state'] ?? '') > 2048) throw new InvalidArgumentException('Expected code + PKCE S256, the MCP resource and supported scopes including organization:read.');
     return ['client_id' => $input['client_id'], 'redirect_uri' => $input['redirect_uri'],
         'code_challenge' => $input['code_challenge'], 'resource' => $input['resource'],
-        'scope' => OMO_MCP_SCOPE, 'state' => $input['state'] ?? ''];
+        'scope' => omoMcpNormalizeScope($input['scope'] ?? OMO_MCP_SCOPE), 'state' => $input['state'] ?? ''];
 }
 function omoMcpRedirect(array $request, array $result): never
 {

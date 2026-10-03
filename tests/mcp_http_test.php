@@ -96,7 +96,7 @@ try {
         'clientInfo' => (object)['name' => 'test', 'version' => '1']], $tokens['access_token']);
     mcpCheck(mcpHttpJson($initialized)['result']['serverInfo']['name'] === 'omo', 'MCP initialization');
     $tools = mcpHttpRpc('tools/list', [], $tokens['access_token']);
-    mcpCheck(count(mcpHttpJson($tools)['result']['tools']) === 8, 'Authenticated tool discovery');
+    mcpCheck(count(mcpHttpJson($tools)['result']['tools']) === 10, 'Authenticated tool discovery');
     foreach (['omo_connection_info' => new stdClass(), 'omo_catalog' => new stdClass(),
         'omo_list_records' => (object)['module' => 'structure', 'limit' => 1], 'omo_list_assignments' => new stdClass(),
         'omo_list_structure' => (object)['limit' => 1],
@@ -106,6 +106,53 @@ try {
         $reply = mcpHttpRpc('tools/call', ['name' => $tool, 'arguments' => $arguments], $tokens['access_token']);
         mcpCheck(!mcpHttpJson($reply)['result']['isError'], 'Tool succeeds: ' . $tool);
     }
+    $createArgs = ['title' => 'HTTP created document', 'request_key' => 'http-creation-test',
+        'holon_id' => (int)$items['role']->getId(), 'content' => 'Text saved through authenticated HTTP'];
+    $writeDenied = mcpHttpJson(mcpHttpRpc('tools/call', ['name' => 'omo_create_document', 'arguments' => (object)$createArgs], $tokens['access_token']));
+    mcpCheck($writeDenied['result']['isError'] && isset($writeDenied['result']['_meta']['mcp/www_authenticate']), 'Read-only grant challenges for creation consent');
+    $upgrade = mcpHttp('/mcp/token.php', ['client_id' => $registered->get('client_id'), 'grant_type' => 'refresh_token',
+        'refresh_token' => $tokens['refresh_token'], 'resource' => $endpoint, 'scope' => OMO_MCP_SCOPE . ' ' . OMO_MCP_CREATE_SCOPE]);
+    mcpCheck($upgrade['status'] === 400, 'Refresh cannot add creation scope');
+    mcpEnableDocumentCreation($items);
+    $writeRequest = array_replace($request, ['scope' => OMO_MCP_SCOPE . ' ' . OMO_MCP_CREATE_SCOPE]);
+    $writeStart = mcpHttp('/mcp/authorize.php?' . http_build_query($writeRequest));
+    $writePath = $writeStart['headers']['location']; $writePage = mcpHttp($writePath);
+    mcpCheck(str_contains($writePage['body'], 'Autoriser la lecture et la creation de documents'), 'Write consent is explicitly displayed');
+    preg_match('/name="csrf" value="([a-f0-9]+)"/', $writePage['body'], $writeCsrf);
+    $writeConsent = mcpHttp($writePath, ['csrf' => $writeCsrf[1], 'decision' => 'allow', 'organization_id' => $items['org']->getId()]);
+    parse_str(parse_url($writeConsent['headers']['location'], PHP_URL_QUERY), $writeCallback);
+    $writeTokens = mcpHttpJson(mcpHttp('/mcp/token.php', mcpExchangeRequest($registered, $writeCallback['code'])));
+    mcpCheck($writeTokens['scope'] === $writeRequest['scope'], 'Creation scope preserved in token response');
+    $spaces = mcpHttpJson(mcpHttpRpc('tools/call', ['name' => 'omo_list_document_spaces', 'arguments' => (object)['kind' => 'holons']], $writeTokens['access_token']));
+    mcpCheck($spaces['result']['structuredContent']['items'][0]['holon_id'] === (int)$items['role']->getId(), 'Creation destination discovered over HTTP');
+    $created = mcpHttpJson(mcpHttpRpc('tools/call', ['name' => 'omo_create_document', 'arguments' => (object)$createArgs], $writeTokens['access_token']));
+    mcpCheck(!$created['result']['isError'] && $created['result']['structuredContent']['created'], 'Document created over HTTP');
+    $items['http_document'] = new \dbObject\Document(); $items['http_document']->load($created['result']['structuredContent']['record']['record_id']);
+    $retry = mcpHttpJson(mcpHttpRpc('tools/call', ['name' => 'omo_create_document', 'arguments' => (object)$createArgs], $writeTokens['access_token']));
+    mcpCheck($retry['result']['structuredContent']['replayed'], 'HTTP retry does not duplicate');
+    // Two simultaneous retries must converge on a single committed document.
+    $parallel = curl_multi_init(); $handles = []; $parallelArgs = array_replace($createArgs, ['request_key' => 'http-parallel-creation']);
+    for ($index = 0; $index < 2; $index++) {
+        $handle = curl_init($endpoint);
+        curl_setopt_array($handle, [CURLOPT_POST => true, CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 20,
+            CURLOPT_SSL_VERIFYPEER => false, CURLOPT_SSL_VERIFYHOST => 0, CURLOPT_RESOLVE => [$host . ':443:127.0.0.1'],
+            CURLOPT_HTTPHEADER => ['Content-Type: application/json', 'Accept: application/json', 'Authorization: Bearer ' . $writeTokens['access_token']],
+            CURLOPT_POSTFIELDS => json_encode(['jsonrpc' => '2.0', 'id' => $index, 'method' => 'tools/call',
+                'params' => ['name' => 'omo_create_document', 'arguments' => (object)$parallelArgs]], JSON_THROW_ON_ERROR)]);
+        $handles[] = $handle; curl_multi_add_handle($parallel, $handle);
+    }
+    do { curl_multi_exec($parallel, $running); if ($running) curl_multi_select($parallel, 0.2); } while ($running);
+    $parallelIds = []; $replayCount = 0;
+    foreach ($handles as $handle) {
+        $reply = json_decode(curl_multi_getcontent($handle), true, 32, JSON_THROW_ON_ERROR);
+        mcpCheck(curl_getinfo($handle, CURLINFO_RESPONSE_CODE) === 200 && !$reply['result']['isError'], 'Concurrent creation succeeds');
+        $parallelIds[] = $reply['result']['structuredContent']['record']['record_id'];
+        $replayCount += (int)$reply['result']['structuredContent']['replayed'];
+        curl_multi_remove_handle($parallel, $handle);
+    }
+    unset($parallel, $handles, $handle);
+    $items['parallel_document'] = new \dbObject\Document(); $items['parallel_document']->load($parallelIds[0]);
+    mcpCheck($parallelIds[0] === $parallelIds[1] && $replayCount === 1, 'Simultaneous requests create exactly one document');
     $forbidden = mcpHttpRpc('tools/call', ['name' => 'omo_get_holon', 'arguments' => (object)['holon_id' => (int)$items['other_root']->getId()]], $tokens['access_token']);
     mcpCheck(mcpHttpJson($forbidden)['result']['isError'], 'Foreign holon rejected over HTTP');
     $items['app']->set('active', 0);
@@ -127,9 +174,13 @@ try {
     preg_match('/name="csrf" value="([a-f0-9]+)"/', $connections['body'], $csrf);
     preg_match('/name="grant_id" value="([0-9]+)"/', $connections['body'], $grantId);
     mcpCheck(isset($csrf[1], $grantId[1]), 'Connection management rendered');
-    $revoked = mcpHttp('/mcp/connections.php', ['csrf' => $csrf[1], 'grant_id' => $grantId[1]]);
+    $readGrantId = \dbObject\McpOauthGrant::authenticate($tokens['access_token'], $endpoint)['id'];
+    $writeGrantId = \dbObject\McpOauthGrant::authenticate($writeTokens['access_token'], $endpoint)['id'];
+    $revoked = mcpHttp('/mcp/connections.php', ['csrf' => $csrf[1], 'grant_id' => $readGrantId]);
     mcpCheck($revoked['status'] === 303, 'Personal grant revoked');
     mcpCheck(mcpHttpRpc('tools/list', [], $tokens['access_token'])['status'] === 401, 'Revoked token refused');
+    mcpHttp('/mcp/connections.php', ['csrf' => $csrf[1], 'grant_id' => $writeGrantId]);
+    mcpCheck(mcpHttpRpc('tools/call', ['name' => 'omo_create_document', 'arguments' => (object)$createArgs], $writeTokens['access_token'])['status'] === 401, 'Revoked write consent refuses creation');
     $renew = mcpHttp('/mcp/token.php', ['client_id' => $registered->get('client_id'), 'grant_type' => 'refresh_token',
         'refresh_token' => $tokens['refresh_token'], 'resource' => $endpoint]);
     mcpCheck($renew['status'] === 400 && mcpHttpJson($renew)['error'] === 'invalid_grant', 'Revoked refresh refused');
@@ -146,4 +197,4 @@ try {
     mcpCleanup($items);
     if (is_file($jar)) unlink($jar);
 }
-echo "mcp_http_test: OK (discovery, login, consent, eight tools, isolation, revocation)\n";
+echo "mcp_http_test: OK (discovery, read/write consent, ten tools, document creation, isolation, revocation)\n";
