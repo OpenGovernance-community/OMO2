@@ -717,9 +717,9 @@ function omoTeamEnsureMapReady() {
                 color: inactiveClass ? '#6b7280' : (member.isContextAdmin ? '#b45309' : '#0f766e'),
                 weight: 2,
                 dashArray: inactiveClass ? '3 3' : null,
-                opacity: inactiveClass ? 0.7 : 1,
+                opacity: 1,
                 fillColor: inactiveClass ? '#9ca3af' : (member.isContextAdmin ? '#f59e0b' : (isOrganizationAdminMarker ? '#5eead4' : '#14b8a6')),
-                fillOpacity: inactiveClass ? 0.55 : 0.88
+                fillOpacity: 0.88
             });
 
             marker.bindPopup(popupBits.join(''));

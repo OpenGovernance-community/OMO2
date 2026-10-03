@@ -99,7 +99,7 @@ try {
     mcpCheck($cookieOnly['status'] === 401, 'Logged-in browser cookie cannot authorize MCP');
     $initialized = mcpHttpRpc('initialize', ['protocolVersion' => '2025-11-25', 'capabilities' => new stdClass(),
         'clientInfo' => (object)['name' => 'test', 'version' => '1']], $tokens['access_token']);
-    mcpCheck(mcpHttpJson($initialized)['result']['serverInfo']['name'] === 'omo', 'MCP initialization');
+    mcpCheck(mcpHttpJson($initialized)['result']['serverInfo']['name'] === 'OpenMyOrganization', 'MCP initialization');
     $tools = mcpHttpRpc('tools/list', [], $tokens['access_token']);
     mcpCheck(count(mcpHttpJson($tools)['result']['tools']) === 14, 'Authenticated tool discovery');
     foreach (['omo_connection_info' => new stdClass(), 'omo_catalog' => new stdClass(),

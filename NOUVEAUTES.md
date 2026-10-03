@@ -1,6 +1,10 @@
 # Journal Des Nouveautes
 
-- Adhesions en attente : vignettes en noir et blanc, contour pointille et transparence legere dans getOrg, les listes Team et la carte. La presentation suit l adhesion et les affectations dans l organisation affichee, independamment du compte global et des autres organisations. Le statut "a inviter" est egalement signale dans la barre de structure. Les filtres d envoi d e-mails sont conserves.
+- Identite MCP : nom OpenMyOrganization, description, site omo2.org et logo fournis aux clients lors de la connexion. Logo optimise en 256 x 256 pixels ; nom harmonise dans les metadonnees OAuth.
+
+- Invites MCP : les listes, recherches et fiches de reunions incluent effective_invitees, les personnes invitees directement ou via un holon, sans doublons. Statuts et eligibilite e-mail restent distincts ; les grandes listes fournissent une suite paginee. Les droits de consultation sont conserves.
+
+- Adhesions en attente : vignettes en noir et blanc et contour pointille dans getOrg, les listes Team et la carte. La transparence supplementaire a ete retiree pour garder une bonne lisibilite. La presentation suit l adhesion et les affectations dans l organisation affichee, independamment du compte global et des autres organisations. Le statut "a inviter" est egalement signale dans la barre de structure. Les filtres d envoi d e-mails sont conserves.
 
 - Memos MCP : installation des dependances Composer lors du deploiement Dev, erreur explicite si le convertisseur Markdown manque et verification de la creation/relecture des Memos texte, HTML et Markdown. L agent doit confirmer le contenu sauvegarde et fournir le lien du document.
 

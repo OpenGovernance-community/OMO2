@@ -307,7 +307,24 @@ final class McpBrowse
             $value = $object->get($field);
             $result[$field] = $value instanceof \DateTimeInterface ? $value->format('Y-m-d H:i:s') : $value;
         }
+        if ($module === 'calendar') {
+            $result['effective_invitees'] = self::eventInvitees((int)$organization->getId(), (int)$object->getId());
+        }
         return $result;
+    }
+
+    /** Expand invited holons through the same permission-checked audience as the member list. */
+    public static function eventInvitees(int $organizationId, int $eventId): array
+    {
+        $page = ObjectAudience::page($organizationId, ['object_type' => 'event', 'object_id' => $eventId, 'limit' => 50]);
+        return [
+            'items' => array_map(static fn (array $member) => array_intersect_key($member,
+                array_flip(['member_id', 'user_id', 'name', 'status', 'mail_eligible'])), $page['items']),
+            'total' => $page['total'], 'complete' => $page['complete'], 'next_offset' => $page['next_offset'],
+            'next_page' => $page['complete'] ? null : ['tool' => 'omo_list_object_members',
+                'arguments' => ['object_type' => 'event', 'object_id' => $eventId, 'offset' => $page['next_offset'], 'limit' => 50]],
+            'semantics' => 'People invited directly or through invited holons, deduplicated by member_id; default event holon members when no explicit invitations exist. Current membership, not historical attendance or confirmed presence. Declined invitations remain listed with their status. mail_eligible is delivery eligibility, not invitation membership. Only identities visible to the viewer are included. Follow next_page before concluding someone is absent.',
+        ];
     }
     private static function text($value): string
     {

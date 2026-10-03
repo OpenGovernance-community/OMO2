@@ -33,6 +33,13 @@ $request = ['jsonrpc' => '2.0', 'id' => 1, 'method' => 'initialize',
     'params' => (object)['protocolVersion' => 'future-version', 'capabilities' => new stdClass(), 'clientInfo' => (object)['name' => 'test', 'version' => '1']]];
 $reply = omoMcpDispatch($request, []);
 mcpProtocolCheck($reply['result']['protocolVersion'] === OMO_MCP_VERSIONS[0], 'Version negotiation');
+$serverInfo = $reply['result']['serverInfo'];
+mcpProtocolCheck($serverInfo['name'] === 'OpenMyOrganization' && $serverInfo['title'] === $serverInfo['name']
+    && $serverInfo['description'] === 'Toutes les infos sur votre organisation dans OMO'
+    && $serverInfo['websiteUrl'] === 'https://omo2.org', 'Server announces its public identity');
+mcpProtocolCheck($serverInfo['icons'][0]['src'] === 'https://mcp.example.invalid/mcp/assets/omo-icon-256.jpg'
+    && $serverInfo['icons'][0]['mimeType'] === 'image/jpeg' && $serverInfo['icons'][0]['sizes'] === ['256x256'], 'Icon uses the canonical server origin');
+mcpProtocolCheck(omoMcpResourceMetadata()['resource_name'] === $serverInfo['title'], 'OAuth and MCP names agree');
 mcpProtocolCheck(omoMcpDispatch(['jsonrpc' => '2.0', 'method' => 'notifications/initialized'], []) === null, 'Notification has no response');
 mcpProtocolCheck(omoMcpDispatch(['jsonrpc' => '2.0', 'id' => 2, 'method' => 'delete_everything'], [])['error']['code'] === -32601, 'Unknown method');
 mcpProtocolCheck(count(omoMcpTools()) === 14, 'Fourteen tools, including member exploration');
