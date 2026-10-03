@@ -269,6 +269,7 @@ if ((int)($_GET['cid'] ?? 0) > 0) {
         data-omo-subdrawer-title="<?= omoApiEscape((string)$project->get('title')) ?>"
         data-omo-subdrawer-description="<?= omoApiEscape($contextLabel) ?>"
     >
+        <?php require_once dirname(__DIR__, 3) . '/common/object_mail/ui.php'; omoObjectMailButton($organizationId, 'project', (int)$project->getId(), 'data-omo-subdrawer-action'); ?>
         <div class="omo-project-discussion-action" data-omo-subdrawer-action data-omo-chat-action-container>
             <div class="omo-chat-popup-actions">
                 <span class="omo-chat-popup-count" data-omo-chat-message-count-display title="<?= omoApiEscape($projectDiscussionMessageCountLabel) ?>" aria-label="<?= omoApiEscape($projectDiscussionMessageCountLabel) ?>">

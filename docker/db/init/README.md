@@ -43,3 +43,8 @@ il faut reconciler ces entrees avant de relancer les migrations concernees.
 Lorsqu une migration est ajoutee a `sql/`, le seed doit etre regenere depuis
 une base locale vide sur laquelle cette migration a ete appliquee. Ainsi, une
 nouvelle instance Docker ne depend d aucun rejeu de migrations.
+
+Le seed inclut les tables vides `mcp_oauth_client` et `mcp_oauth_grant`
+des migrations `2026-10-02-04-mcp-structure-oauth.sql` et
+`2026-10-02-05-mcp-refresh-replay.sql`. Aucun jeton ni acces
+personnel n est fourni dans la demo. Activation et tests : `docs/MCP.md`.

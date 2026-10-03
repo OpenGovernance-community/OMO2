@@ -21,6 +21,28 @@
     flex-direction: column;
 }
 
+/* Optional standalone layout; the authentication fields and behavior stay shared. */
+.auth-page--public {
+    --auth-primary: var(--color-primary);
+    --auth-page-text: var(--color-text);
+    --auth-page-muted: var(--color-text-light);
+    --auth-border: var(--color-border);
+    --auth-input-bg: var(--color-surface);
+    --auth-input-muted-bg: var(--color-surface-alt);
+    --auth-panel-bg: var(--color-surface-alt);
+    --auth-panel-text: var(--color-text);
+}
+.auth-public-shell {
+    /* Keep the standalone login at a comfortable reading and input width. */
+    --param-page-shell-width: 640px;
+    display: grid;
+    gap: 24px;
+}
+.auth-public-card { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.auth-public-card .auth-language-picker { flex-wrap: wrap; }
+.auth-public-card .auth-language-picker select { max-width: 100%; }
+.auth-public-card .auth-email-row:focus-within { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+
 .auth-shell {
     min-height: 100vh;
     display: grid;

@@ -655,7 +655,9 @@ function omoTeamEnsureMapReady() {
                 return;
             }
 
-            const popupBits = ['<div class="omo-team__map-popup">'];
+            const inactiveClass = member.isPending || member.hasPendingInvitation
+                ? ' generic-member generic-member--inactive' : '';
+            const popupBits = ['<div class="omo-team__map-popup' + inactiveClass + '">'];
 
             popupBits.push('<div class="omo-team__map-popup-head">');
             if (member.photoUrl) {
@@ -675,7 +677,7 @@ function omoTeamEnsureMapReady() {
             popupBits.push('</div>');
 
             popupBits.push('<div class="omo-team__map-popup-badges">');
-            if (member.isPending) {
+            if (member.isPending || member.hasPendingInvitation) {
                 popupBits.push('<span class="omo-team__map-popup-badge omo-team__map-popup-badge--pending">' + omoTeamEscapeHtml(omoTeamText.pending) + '</span>');
             }
             if (member.isContextAdmin) {
@@ -712,9 +714,11 @@ function omoTeamEnsureMapReady() {
             const isOrganizationAdminMarker = member.isOrganizationAdmin && !member.isContextAdmin;
             const marker = L.circleMarker([lat, lng], {
                 radius: member.isContextAdmin ? 9 : (isOrganizationAdminMarker ? 8 : 7),
-                color: member.isContextAdmin ? '#b45309' : '#0f766e',
+                color: inactiveClass ? '#6b7280' : (member.isContextAdmin ? '#b45309' : '#0f766e'),
                 weight: 2,
-                fillColor: member.isContextAdmin ? '#f59e0b' : (isOrganizationAdminMarker ? '#5eead4' : '#14b8a6'),
+                dashArray: inactiveClass ? '3 3' : null,
+                opacity: 1,
+                fillColor: inactiveClass ? '#9ca3af' : (member.isContextAdmin ? '#f59e0b' : (isOrganizationAdminMarker ? '#5eead4' : '#14b8a6')),
                 fillOpacity: 0.88
             });
 

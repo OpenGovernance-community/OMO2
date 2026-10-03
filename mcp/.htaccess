@@ -1,0 +1,3 @@
+# Keep POST /mcp intact: mod_dir must not redirect it to /mcp/.
+DirectorySlash Off
+DirectoryIndex index.php

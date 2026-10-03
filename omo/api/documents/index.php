@@ -329,9 +329,9 @@ $sourceLang = [
         'text' => 'Déplacer la sélection',
         'context' => 'Bulk action moving the selected documents.',
     ],
-    'documents.selection.merge' => [
-        'text' => 'Fusionner les documents HTML sélectionnés',
-        'context' => 'Bulk action merging selected HTML documents into a new document.',
+    'documents.selection.merge_memos' => [
+        'text' => 'Fusionner les Memos sélectionnés',
+        'context' => 'Bulk action merging selected Memos into a new document.',
     ],
     'documents.selection.confirm_archive' => [
         'text' => 'Archiver les {count} documents sélectionnés ? Ils ne seront plus visibles dans la liste.',
@@ -1059,7 +1059,7 @@ if (!is_string($documentsPayload)) {
             <div class="omo-panel-view__aside omo-documents__header-main-actions" data-omo-header-actions>
                 <div class="omo-documents__bulk-actions" data-omo-documents-bulk-actions hidden>
                     <span class="omo-documents__bulk-count" data-omo-documents-bulk-count></span>
-                    <button type="button" class="generic-action-button generic-action-button--secondary omo-documents__bulk-action-button" data-omo-documents-bulk-action="merge" title="<?= $escape(omoDocumentsScopeT('documents.selection.merge')) ?>" aria-label="<?= $escape(omoDocumentsScopeT('documents.selection.merge')) ?>" hidden>
+                    <button type="button" class="generic-action-button generic-action-button--secondary omo-documents__bulk-action-button" data-omo-documents-bulk-action="merge" title="<?= $escape(omoDocumentsScopeT('documents.selection.merge_memos')) ?>" aria-label="<?= $escape(omoDocumentsScopeT('documents.selection.merge_memos')) ?>" hidden>
                         <span class="omo-documents__bulk-action-icon omo-documents__bulk-action-icon--merge" aria-hidden="true"></span>
                     </button>
                     <button type="button" class="generic-action-button generic-action-button--secondary omo-documents__bulk-action-button" data-omo-documents-bulk-action="move" title="<?= $escape(omoDocumentsScopeT('documents.selection.move')) ?>" aria-label="<?= $escape(omoDocumentsScopeT('documents.selection.move')) ?>">
@@ -1377,7 +1377,7 @@ if (!is_string($documentsPayload)) {
     'documentsDrawerEditorDescription' => omoDocumentsScopeT('documents.drawer.editor_description'),
     'documentsActionLoading' => $escape(omoDocumentsScopeT('documents.action.loading')),
     'documentsErrorLoadEditor' => $escape(omoDocumentsScopeT('documents.error.load_editor')),
-    'documentsSelectionMerge' => omoDocumentsScopeT('documents.selection.merge'),
+    'documentsSelectionMerge' => omoDocumentsScopeT('documents.selection.merge_memos'),
     'documentsSelectionMove' => omoDocumentsScopeT('documents.selection.move'),
     'documentsDrawerDetailDescription' => omoDocumentsScopeT('documents.drawer.detail_description'),
     'documentsErrorLoadDocument' => $escape(omoDocumentsScopeT('documents.error.load_document')),

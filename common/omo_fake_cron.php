@@ -123,6 +123,11 @@ if (!function_exists('omo_run_fake_cron_maintenance')) {
                 return \dbObject\Project::reactivateDueBlockedBatch(200);
             }
         );
+        $result['objectMailRecipientsProcessed'] = $runTask(
+            'object_mail',
+            'OMO object mail maintenance failed: ',
+            static fn () => \dbObject\ObjectMail::processBatch(20)
+        );
         omoCronFinishMaintenanceLog($logContext, $failedTasks);
 
         return $result;

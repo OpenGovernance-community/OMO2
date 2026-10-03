@@ -675,6 +675,7 @@ if ($leafletMapsEnabled) {
                     ><?= omoApiEscape(omoTeamT('team.action.add_member', [], $lang, $sourceLang)) ?></button>
                 </div>
             <?php endif; ?>
+            <?php if ($hasStructureContext): require_once dirname(__DIR__, 3) . '/common/object_mail/ui.php'; omoObjectMailButton($organizationId, 'holon', (int)$currentHolon->getId()); endif; ?>
         </div>
         <div class="omo-panel-view__header-secondary omo-team__header-secondary">
             <div class="omo-team__filter-toolbar omo-view-filter" data-team-filter-control role="group" aria-label="<?= omoApiEscape(omoTeamT('team.filters.aria', [], $lang, $sourceLang)) ?>">
@@ -732,7 +733,7 @@ if ($leafletMapsEnabled) {
             <div class="omo-team__grid omo-card-grid omo-card-grid--fixed" data-team-items-container="cards">
                 <?php foreach ($memberCards as $card): ?>
                     <article
-                        class="omo-team-card omo-card<?= $card['canViewDetail'] ? ' omo-card--interactive' : '' ?><?= $card['isPending'] ? ' omo-team-card--pending' : '' ?><?= $card['isAssignmentReviewOverdue'] ? ' omo-team-card--assignment-overdue' : '' ?>"
+                        class="omo-team-card omo-card<?= $card['canViewDetail'] ? ' omo-card--interactive' : '' ?><?= $card['isPending'] || $card['hasPendingInvitation'] ? ' generic-member generic-member--inactive' : '' ?><?= $card['isAssignmentReviewOverdue'] ? ' omo-team-card--assignment-overdue' : '' ?>"
                         <?php if ($card['canViewDetail']): ?>
                         data-open-user-context="1"
                         <?php endif; ?>
@@ -1012,7 +1013,7 @@ if ($leafletMapsEnabled) {
                         ?>
                         <article class="omo-team__compact-item-shell generic-file-list__item-shell" data-team-member-item data-team-member-search="<?= omoApiEscape((string)$card['searchText']) ?>">
                             <div
-                                class="omo-team__compact-row generic-file-list__row<?= $card['canViewDetail'] ? ' omo-team__compact-row--interactive' : '' ?><?= $card['isPending'] ? ' omo-team__compact-row--pending' : '' ?><?= $card['isAssignmentReviewOverdue'] ? ' omo-team__compact-row--assignment-overdue' : '' ?>"
+                                class="omo-team__compact-row generic-file-list__row<?= $card['canViewDetail'] ? ' omo-team__compact-row--interactive' : '' ?><?= $card['isPending'] || $card['hasPendingInvitation'] ? ' generic-member generic-member--inactive' : '' ?><?= $card['isAssignmentReviewOverdue'] ? ' omo-team__compact-row--assignment-overdue' : '' ?>"
                                 <?php if ($card['canViewDetail']): ?>
                                 data-open-user-context="1"
                                 tabindex="0"

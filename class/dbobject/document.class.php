@@ -111,7 +111,7 @@
 				'dateconsultation' => 'Derniere fois que le document a ete affiche dans son detail',
 				'dateedition' => 'Date du dernier signal de presence pendant l edition',
 				'datecontentedition' => 'Date de mise a jour du brouillon temporaire',
-				'documenttype' => 'Permet de distinguer les documents HTML, les liens externes, les telechargements, les documents collaboratifs, les tableurs collaboratifs, les PV et les dossiers',
+				'documenttype' => 'Permet de distinguer les Memos, les liens externes, les telechargements, les documents collaboratifs, les tableurs collaboratifs, les PV et les dossiers',
 				'pvstage' => 'Etape actuelle du flux d un document PV: preparation, reunion, relecture ou valide',
 				'is_template' => 'Permet d utiliser le contenu de ce document lors d une nouvelle creation',
 				'IDuser_pv_editor' => 'Personne qui tient le PV pendant la reunion et peut modifier tous les points.',
@@ -1151,7 +1151,7 @@
 			foreach ($documentIds as $documentId) {
 				$document = new self();
 				if (!$document->load($documentId) || $document->getDocumentType() !== self::TYPE_HTML) {
-					return array('status' => false, 'text' => 'Seuls les documents HTML peuvent etre fusionnes.');
+					return array('status' => false, 'text' => 'Seuls les Memos peuvent etre fusionnes.');
 				}
 
 				$documentOrganizationId = (int)$document->get('IDorganization');
@@ -2579,7 +2579,7 @@
 		public static function getDocumentTypeCatalog(): array
 		{
 			return array(
-				self::TYPE_HTML => 'HTML',
+				self::TYPE_HTML => 'Memo',
 				self::TYPE_EXTERNAL_LINK => 'Lien externe',
 				self::TYPE_UPLOADED_FILE => 'Telechargement',
 				self::TYPE_FOLDER => 'Dossier',

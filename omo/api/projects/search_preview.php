@@ -2,7 +2,7 @@
 require_once __DIR__ . '/shared.php';
 return static function (\dbObject\Project $project, \dbObject\Organization $organization, int $currentHolonId): array {
     $organizationId = (int)$organization->getId();
-    $context = omoProjectsResolveContext($organizationId, $currentHolonId);
+    $context = omoProjectsResolveContext($organizationId, $currentHolonId, false);
     if (!omoProjectsCanViewProject($project, $context)) {
         throw new RuntimeException('Preview unavailable');
     }

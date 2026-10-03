@@ -23,7 +23,7 @@ $sourceLang = [
     'documents.create.context.organization' => ['text' => 'Organisation', 'context' => 'Fallback context label used for embeddable documents without a holon.'],
     'documents.create.field.type' => ['text' => 'Type', 'context' => 'Label of the document type field.'],
     'documents.create.field.type_help' => ['text' => 'Choisissez le format du document. Les champs nécessaires apparaissent ensuite.', 'context' => 'Help for the document type field.'],
-    'documents.create.type.html' => ['text' => 'Document HTML', 'context' => 'Option label for HTML documents.'],
+    'documents.create.type.memo' => ['text' => 'Memo', 'context' => 'Option label for Memos, documents containing rich text.'],
     'documents.create.type.external' => ['text' => 'Lien externe', 'context' => 'Option label for external links.'],
     'documents.create.type.uploaded' => ['text' => 'Fichier téléversé', 'context' => 'Option label for uploaded files.'],
     'documents.create.type.pv' => ['text' => 'PV', 'context' => 'Option label for PV documents.'],
@@ -463,7 +463,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                             <?php if ($nextcloudDocumentsAvailable || $documentType === Document::TYPE_UPLOADED_FILE): ?>
                                 <option value="<?= $escape(Document::TYPE_UPLOADED_FILE) ?>" <?= $documentType === Document::TYPE_UPLOADED_FILE ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.uploaded')) ?></option>
                             <?php endif; ?>
-                            <option value="<?= $escape(Document::TYPE_HTML) ?>" <?= $documentType === Document::TYPE_HTML ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.html')) ?></option>
+                            <option value="<?= $escape(Document::TYPE_HTML) ?>" <?= $documentType === Document::TYPE_HTML ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.memo')) ?></option>
                             <?php if ($pvDocumentsEnabled): ?>
                                 <option value="<?= $escape(Document::TYPE_PV) ?>" <?= $documentType === Document::TYPE_PV ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.pv')) ?></option>
                             <?php endif; ?>
