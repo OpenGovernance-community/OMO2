@@ -90,6 +90,20 @@ foreach ([['emails' => ['victim@example.invalid']], ['cc' => 'victim@example.inv
     mcpProtocolCheck($rejected, 'Free recipients and header injection rejected');
 }
 $mailReply = omoMcpDispatch(['jsonrpc' => '2.0', 'id' => 4, 'method' => 'tools/call', 'params' => (object)['name' => 'omo_send_object_email', 'arguments' => (object)$mailArgs]], ['scope' => OMO_MCP_SCOPE]);
+$organizationMail = array_replace($mailArgs, ['object_type' => 'organization', 'user_ids' => [12, 34]]);
+mcpProtocolCheck(omoMcpToolArguments('omo_send_object_email', (object)$organizationMail) === $organizationMail, 'Organization member selection is supported');
+mcpProtocolCheck(omoMcpToolArguments('omo_list_object_members', (object)['object_type' => 'organization', 'object_id' => 1, 'user_ids' => [12]])['user_ids'] === [12], 'Same selection is accepted for preview');
+foreach ([[], [12, 12], ['12'], [0], [-1], null, (object)['id' => 12], range(1, 501)] as $ids) {
+    foreach (['omo_list_object_members', 'omo_send_object_email'] as $tool) {
+        $input = $tool === 'omo_list_object_members' ? ['object_type' => 'organization', 'object_id' => 1] : $organizationMail;
+        $rejected = false;
+        try { omoMcpToolArguments($tool, (object)array_replace($input, ['user_ids' => $ids])); } catch (InvalidArgumentException $error) { $rejected = true; }
+        mcpProtocolCheck($rejected, 'Invalid member selections cannot fall back to everyone');
+    }
+}
+$rejected = false;
+try { omoMcpToolArguments('omo_send_object_email', (object)($mailArgs + ['user_ids' => [12]])); } catch (InvalidArgumentException $error) { $rejected = true; }
+mcpProtocolCheck($rejected, 'Selection is organization-only');
 mcpProtocolCheck($mailReply['result']['isError'] && str_contains($mailReply['result']['_meta']['mcp/www_authenticate'][0], 'mail:send'), 'Read grant gets a mail authorization challenge');
 mcpProtocolCheck(!$byName['omo_create_document']['annotations']['readOnlyHint']
     && !$byName['omo_create_document']['annotations']['destructiveHint'], 'Creation is declared as a non-destructive write');

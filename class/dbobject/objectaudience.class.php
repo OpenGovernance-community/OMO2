@@ -1,14 +1,19 @@
 <?php
 namespace dbObject;
 require_once dirname(__DIR__, 2) . '/common/mcp/protocol.php';
+require_once dirname(__DIR__, 2) . '/common/object_mail/validation.php';
 
 /** One permission-checked audience shared by the OMO composer and MCP. */
 final class ObjectAudience
 {
-    public const TYPES = ['holon', 'event', 'project', 'decision'];
+    public const TYPES = ['organization', 'holon', 'event', 'project', 'decision'];
 
-    public static function resolve(int $organizationId, string $type, int $id): array
+    public static function resolve(int $organizationId, string $type, int $id, ?array $userIds = null): array
     {
+        if ($userIds !== null) {
+            \omoObjectMailValidateSelection(['object_type' => $type, 'user_ids' => $userIds]);
+            sort($userIds, SORT_NUMERIC);
+        }
         $uid = (int)\commonGetCurrentUserId();
         $user = new User(); $org = new Organization();
         if ($uid <= 0 || !$user->load($uid, true) || !$user->get('active')
@@ -18,12 +23,13 @@ final class ObjectAudience
             throw new \DomainException('Connexion avec un compte membre actif requise.');
         }
         $module = ['holon' => 'structure', 'event' => 'calendar', 'project' => 'projects', 'decision' => 'decision'][$type] ?? null;
-        if (!$module || $id <= 0 || !in_array($module, McpContent::enabledModules($org, $uid), true)) {
+        if ($type === 'organization' ? $id !== $organizationId
+            : (!$module || $id <= 0 || !in_array($module, McpContent::enabledModules($org, $uid), true))) {
             throw new \DomainException('Objet indisponible.');
         }
         $context = McpContent::context(['IDuser' => $uid], $org, null);
-        $object = McpContent::accessibleObject($org, $context, $module, $id);
-        if (!$object || (!$object instanceof DecisionProcess && !$object->get('active'))) throw new \DomainException('Objet indisponible.');
+        $object = $type === 'organization' ? $org : McpContent::accessibleObject($org, $context, $module, $id);
+        if (!$object || (!$object instanceof Organization && !$object instanceof DecisionProcess && !$object->get('active'))) throw new \DomainException('Objet indisponible.');
         $members = []; $canManage = false; $semantics = '';
         $addUser = static function (int $userId, string $relation, string $status = 'active', bool $requireActive = true) use ($organizationId, &$members): void {
             $member = new User();
@@ -50,7 +56,19 @@ final class ObjectAudience
             $members[$key] = ['member_id' => $key, 'user_id' => null, 'name' => trim($name) ?: $email,
                 'email' => $email, 'phone' => null, 'relations' => [$relation], 'status' => $status];
         };
-        if ($object instanceof Holon) {
+        if ($object instanceof Organization) {
+            $where = [['field' => 'IDorganization', 'value' => $organizationId], ['field' => 'active', 'value' => 1]];
+            if ($userIds !== null) $where[] = ['field' => 'IDuser', 'op' => 'IN', 'value' => $userIds];
+            $memberships = new ArrayUserOrganization();
+            $memberships->load(['where' => $where]);
+            foreach ($memberships as $membership) $addUser((int)$membership->get('IDuser'), 'organization_member');
+            // A selected, unavailable member must never turn into an organization-wide send.
+            if ($userIds !== null) foreach ($userIds as $memberId) {
+                if (!isset($members['user:' . $memberId])) throw new \DomainException('Un membre selectionne est indisponible ou inactif dans cette organisation.');
+            }
+            $canManage = true; // Any authenticated active member may contact fellow members.
+            $semantics = 'Membres actifs de l organisation autorisee, ou selection explicite par user_ids. Coordonnees propres a cette organisation. Aucun destinataire externe.';
+        } elseif ($object instanceof Holon) {
             if (!$org->containsHolon($object) || !$object->get('visible') || !$object->canViewDetail()) throw new \DomainException('Holon indisponible.');
             foreach ($object->getAssociatedMemberUserIds(['organizationId' => $organizationId, 'activeOnly' => true, 'skipPermissionFilter' => true]) as $memberId) $addUser((int)$memberId, 'member');
             $canManage = $object->isAllowed('CAN_ADD_MEMBER', false, $uid);
@@ -122,22 +140,27 @@ final class ObjectAudience
         $senderName = (string)$user->getScopedDisplayName($organizationId);
         $senderEmail = trim((string)$user->getScopedEmail($organizationId));
         $canSend = $canSend && (bool)filter_var($senderEmail, FILTER_VALIDATE_EMAIL);
-        $title = $object instanceof Holon ? (string)$object->getDisplayName() : (string)$object->get('title');
+        $title = $object instanceof Organization ? (string)$org->get('name')
+            : ($object instanceof Holon ? (string)$object->getDisplayName() : (string)$object->get('title'));
+        $tokenParts = [$organizationId, $type, $id, array_keys($recipients)];
+        if ($userIds !== null) $tokenParts[] = $userIds;
         return ['organization_id' => $organizationId, 'object_type' => $type, 'object_id' => $id, 'title' => $title,
-            'holon_id' => $object instanceof Holon ? $id : (int)$object->get('IDholon'),
+            'holon_id' => $object instanceof Organization ? 0 : ($object instanceof Holon ? $id : (int)$object->get('IDholon')),
             'members' => array_values($members), 'recipients' => array_values($recipients), 'can_send' => $canSend,
-            'audience_token' => hash('sha256', json_encode([$organizationId, $type, $id, array_keys($recipients)], JSON_THROW_ON_ERROR)),
+            'audience_token' => hash('sha256', json_encode($tokenParts, JSON_THROW_ON_ERROR)),
             'semantics' => $semantics, 'sender' => ['user_id' => $uid, 'name' => $senderName, 'email' => $senderEmail],
             'organization_name' => (string)$org->get('name')];
     }
 
     public static function page(int $organizationId, array $args): array
     {
-        $audience = self::resolve($organizationId, $args['object_type'], $args['object_id']);
+        \omoObjectMailValidateSelection($args);
+        $audience = self::resolve($organizationId, $args['object_type'], $args['object_id'], $args['user_ids'] ?? null);
         $offset = $args['offset'] ?? 0; $limit = $args['limit'] ?? 50;
         $items = array_slice($audience['members'], $offset, $limit); $next = $offset + count($items);
         return ['organization_id' => $organizationId, 'object_type' => $audience['object_type'], 'object_id' => $audience['object_id'],
-            'url' => McpContent::sourceUrl($organizationId, ['holon' => 'structure', 'event' => 'calendar', 'project' => 'projects', 'decision' => 'decision'][$audience['object_type']], $audience['object_id'], $audience['holon_id']),
+            'url' => $audience['object_type'] === 'organization' ? \omoMcpIssuer() . '/omo/o/' . $organizationId
+                : McpContent::sourceUrl($organizationId, ['holon' => 'structure', 'event' => 'calendar', 'project' => 'projects', 'decision' => 'decision'][$audience['object_type']], $audience['object_id'], $audience['holon_id']),
             'title' => $audience['title'], 'items' => $items, 'total' => count($audience['members']),
             'recipient_count' => count($audience['recipients']), 'can_send' => $audience['can_send'], 'audience_token' => $audience['audience_token'],
             'complete' => $next >= count($audience['members']), 'next_offset' => $next < count($audience['members']) ? $next : null,
