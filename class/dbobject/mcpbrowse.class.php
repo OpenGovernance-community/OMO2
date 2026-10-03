@@ -101,7 +101,7 @@ final class McpBrowse
             'member_exploration' => ['lookup_tool' => 'omo_list_records', 'lookup_module' => 'team', 'details_tool' => 'omo_get_member',
                 'description' => 'Resolve names first, disambiguate if necessary, then read the member for roles and navigation to related records. For upcoming meetings use calendar/invited and date_from; author means creator only. Effective memberships use structure/effective_member.'],
             'object_members' => ['tool' => 'omo_list_object_members', 'object_types' => ObjectAudience::TYPES,
-                'pagination' => 'next_offset', 'description' => 'Holon effective members, meeting/event invitations, project assignees and responsible person, decision participants (management permission). Names and organization-scoped contact details only; no votes or personal access tokens.'],
+                'pagination' => 'next_offset', 'description' => 'Organization active members (object_id is the connected organization ID; optional user_ids selects people), holon effective members, meeting/event invitations, project assignees and responsible person, decision participants (management permission). Names and organization-scoped contact details only; no votes or personal access tokens.'],
             'object_mail' => ['authorized' => \omoMcpCanSendMail($grant), 'scope' => \OMO_MCP_MAIL_SCOPE,
                 'send_tool' => 'omo_send_object_email', 'status_tool' => 'omo_object_email_status', 'requires_audience_preview' => true,
                 'max_recipients' => ObjectMail::MAX_RECIPIENTS, 'direct_recipient_limit' => ObjectMail::DIRECT_RECIPIENT_LIMIT, 'arbitrary_addresses' => false],

@@ -35,10 +35,12 @@ final class ObjectMail extends DbObject
         $uid = (int)\commonGetCurrentUserId();
         if ($grant !== null && ((int)$grant['IDuser'] !== $uid || (int)$grant['IDorganization'] !== $oid
             || !McpOauthGrant::hasActiveScopeAuthorization($grant, \OMO_MCP_MAIL_SCOPE))) throw new \DomainException('Autorisation mail:send absente, expiree ou revoquee.');
-        $audience = ObjectAudience::resolve($oid, $args['object_type'], $args['object_id']);
+        $audience = ObjectAudience::resolve($oid, $args['object_type'], $args['object_id'], $args['user_ids'] ?? null);
         if (!$audience['can_send']) throw new \DomainException('Vous devez participer a cet objet ou avoir le droit de le gerer pour envoyer un message.');
         $bindings = ['uid' => $uid, 'oid' => $oid, 'request' => hash('sha256', $args['request_key'])];
-        $hash = hash('sha256', json_encode([$args['object_type'], $args['object_id'], $args['subject'], $args['message'], $args['audience_token']], JSON_THROW_ON_ERROR));
+        $payload = [$args['object_type'], $args['object_id'], $args['subject'], $args['message'], $args['audience_token']];
+        if (isset($args['user_ids'])) { $selected = $args['user_ids']; sort($selected, SORT_NUMERIC); $payload[] = $selected; }
+        $hash = hash('sha256', json_encode($payload, JSON_THROW_ON_ERROR));
         $pdo = self::getPdo(); $pdo->beginTransaction();
         try {
             // Serialize quotas and idempotency across native and MCP requests, including separate clients.
@@ -133,7 +135,8 @@ final class ObjectMail extends DbObject
                         if (!$grant || (int)$grant['IDuser'] !== (int)$row['IDuser'] || (int)$grant['IDorganization'] !== (int)$row['IDorganization']
                             || !McpOauthGrant::hasActiveScopeAuthorization($grant, \OMO_MCP_MAIL_SCOPE)) throw new \DomainException('Authorization withdrawn.');
                     }
-                    $audience = ObjectAudience::resolve((int)$row['IDorganization'], $row['object_type'], (int)$row['object_id']);
+                    $selected = $row['object_type'] === 'organization' ? [(int)substr($row['member_id'], 5)] : null;
+                    $audience = ObjectAudience::resolve((int)$row['IDorganization'], $row['object_type'], (int)$row['object_id'], $selected);
                     $eligible = array_filter($audience['recipients'], static fn ($member) => $member['email'] === $row['email']);
                     if ($audience['can_send'] && $eligible) {
                         $status = 'unknown'; // SMTP exceptions may occur after accepting DATA.

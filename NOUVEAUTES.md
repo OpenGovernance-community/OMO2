@@ -1,5 +1,7 @@
 # Journal Des Nouveautes
 
+- E-mails MCP : envoi direct a un ou plusieurs membres choisis de l organisation, ou a tous ses membres actifs, sans reunion ni holon requis. Selection par user_ids dans la previsualisation et l envoi, adresses propres a l organisation, deduplication et verification de l adhesion avant livraison. Consentement mail:send et suivi existants reutilises.
+
 - Propositions : option "Date et horaire" dans les parametres du vote, du consentement et du jugement majoritaire, au meme niveau que titre, description et URL. Desactiver les dates annule leurs reservations. Saisie compacte du creneau et cartes de dates avec jour, horaires, fuseau, statut et actions de confirmation/annulation.
 
 - Sondages de dates : plages horaires facultatives par proposition, evenements en option avec les invites de la decision et synchronisation ICS/CalDAV. Les bulletins soumis liberent les dates refusees. Une decision confirme la date gagnante et annule les autres ; les egalites restent en option. Apres une consultation, le gestionnaire peut confirmer ou annuler chaque date depuis les propositions.
