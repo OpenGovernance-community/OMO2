@@ -25,10 +25,11 @@ final class ObjectAudience
         $object = McpContent::accessibleObject($org, $context, $module, $id);
         if (!$object || (!$object instanceof DecisionProcess && !$object->get('active'))) throw new \DomainException('Objet indisponible.');
         $members = []; $canManage = false; $semantics = '';
-        $addUser = static function (int $userId, string $relation, string $status = 'active') use ($organizationId, &$members): void {
+        $addUser = static function (int $userId, string $relation, string $status = 'active', bool $requireActive = true) use ($organizationId, &$members): void {
             $member = new User();
-            if (!$member->load($userId, true) || !$member->get('active')
-                || !UserOrganization::hasActiveMembership($userId, $organizationId) || !$member->canViewDetail()) return;
+            if (!$member->load($userId, true) || !$member->canViewDetail()) return;
+            $mailEligible = (bool)$member->get('active') && UserOrganization::hasActiveMembership($userId, $organizationId);
+            if (($requireActive && !$mailEligible) || (!$requireActive && !$member->getOrganizationMembership($organizationId))) return;
             $key = 'user:' . $userId;
             $email = strtolower(trim((string)$member->getScopedEmail($organizationId)));
             if (isset($members[$key])) {
@@ -39,7 +40,8 @@ final class ObjectAudience
             $members[$key] = ['member_id' => $key, 'user_id' => $userId, 'name' => $name,
                 'firstname' => (string)$member->get('firstname'), 'lastname' => (string)$member->get('lastname'),
                 'email' => filter_var($email, FILTER_VALIDATE_EMAIL) ? $email : null,
-                'phone' => (string)$member->getScopedPhone($organizationId), 'relations' => [$relation], 'status' => $status];
+                'phone' => (string)$member->getScopedPhone($organizationId), 'relations' => [$relation], 'status' => $status,
+                'mail_eligible' => $mailEligible];
         };
         $addExternal = static function (string $email, string $name, string $relation, string $status = 'invited') use (&$members): void {
             $email = strtolower(trim($email));
@@ -56,8 +58,15 @@ final class ObjectAudience
         } elseif ($object instanceof Event) {
             require_once dirname(__DIR__, 2) . '/omo/api/calendar/permissions_shared.php';
             $canManage = \omoCalendarCanEditEvent($object, $organizationId, $uid, $org->getStructuralRootHolon(), false);
+            // Enumerate the native invitation scope, independently of delivery eligibility or attendance.
             $targets = $object->getEffectiveInvitationTargets($organizationId, null, true);
-            foreach ($targets['userIds'] as $memberId) $addUser((int)$memberId, 'invited');
+            $deliveryTargets = $object->getEffectiveInvitationTargets($organizationId, null, true, true);
+            $deliveryUserIds = array_fill_keys($deliveryTargets['userIds'], true);
+            foreach ($targets['userIds'] as $memberId) {
+                $addUser((int)$memberId, 'invited', 'invited', false);
+                $key = 'user:' . (int)$memberId;
+                if (isset($members[$key]) && !isset($deliveryUserIds[(int)$memberId])) $members[$key]['mail_eligible'] = false;
+            }
             // External invitation details follow the native invitation editor's access rule.
             if ($canManage) foreach ($targets['emails'] as $email) $addExternal($email, (string)($targets['registeredEmails'][$email] ?? ''), 'invited');
             $groupStatuses = []; $individualStatuses = [];
@@ -79,7 +88,7 @@ final class ObjectAudience
                 }
             }
             foreach (array_replace($groupStatuses, $individualStatuses) as $key => $status) if (isset($members[$key])) $members[$key]['status'] = $status;
-            $semantics = 'Invitations explicites individuelles et holons invites, ou membres du holon de la reunion en leur absence. Les inscriptions publiques et adresses invitees sont visibles aux gestionnaires. Une invitation refusee ne recoit pas de message.';
+            $semantics = 'Liste native des invitations individuelles et des holons invites, ou membres du holon de la reunion en leur absence, independante de la presence. Les inscriptions publiques et adresses invitees sont visibles aux gestionnaires. Un contact reference peut etre liste sans etre eligible a l envoi. Une invitation refusee ne recoit pas de message.';
         } elseif ($object instanceof Project) {
             $projectContext = \omoProjectsResolveContext($organizationId, $context['currentHolonId'], false);
             $canManage = \omoProjectsCanManageProject($object, $projectContext);
@@ -104,7 +113,9 @@ final class ObjectAudience
         ksort($members, SORT_STRING);
         $recipients = [];
         foreach ($members as $member) {
-            if ($member['email'] && !in_array($member['status'], ['declined', 'revoked'], true)) $recipients[$member['email']] = $member;
+            $members[$member['member_id']]['mail_eligible'] = ($member['mail_eligible'] ?? true)
+                && (bool)$member['email'] && !in_array($member['status'], ['declined', 'revoked'], true);
+            if ($members[$member['member_id']]['mail_eligible']) $recipients[$member['email']] = $members[$member['member_id']];
         }
         ksort($recipients, SORT_STRING);
         $canSend = $canManage || (isset($members['user:' . $uid]) && !in_array($members['user:' . $uid]['status'], ['declined', 'revoked'], true));

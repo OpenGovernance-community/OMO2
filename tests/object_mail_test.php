@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__ . '/mcp_test_helpers.php';
-use dbObject\{ObjectAudience, ObjectMail, ObjectMailRecipient, User, UserOrganization, UserHolon, Event, EventInvitation,
+use dbObject\{ObjectAudience, ObjectMail, ObjectMailRecipient, User, UserOrganization, UserHolon, Event, EventInvitation, EventAttendance,
     ResourceInvitation, Project, ProjectUser, DecisionProcess, DecisionParticipant, McpOauthGrant, ArrayApplication, OrganizationApplication};
 function objectMailDenied(callable $action, string $message): void
 {
@@ -48,12 +48,25 @@ try {
     foreach (['hidden', 'other_root', 'inactive'] as $key) objectMailDenied(fn () => ObjectAudience::resolve($oid, 'holon', (int)$items[$key]->getId()), 'Unavailable holons denied');
     $items['event'] = mcpFixture(Event::class, ['IDorganization' => $oid, 'IDholon' => $hid, 'IDuser' => $uid, 'title' => 'Meeting test', 'status' => 'confirmed', 'timezone' => 'Europe/Zurich', 'start_at' => new DateTimeImmutable('+1 day'), 'end_at' => new DateTimeImmutable('+1 day +1 hour'), 'active' => 1]);
     $eid = (int)$items['event']->getId();
-    mcpCheck(count(ObjectAudience::resolve($oid, 'event', $eid)['members']) === 53, 'Meeting defaults to effective holon members');
+    $defaultAudience = ObjectAudience::resolve($oid, 'event', $eid);
+    mcpCheck(count($defaultAudience['members']) === 54 && count($defaultAudience['recipients']) === 53, 'Native invited contacts are listed separately from active delivery recipients');
+    $nativeIds = $items['event']->getEffectiveInvitationTargets($oid)['userIds'];
+    $freshIds = $items['event']->getEffectiveInvitationTargets($oid, null, true)['userIds'];
+    sort($nativeIds); sort($freshIds);
+    mcpCheck($nativeIds === $freshIds && count($nativeIds) === count($defaultAudience['members']), 'Refreshing native invitations must not silently change their membership scope');
+    $listedInactive = array_column($defaultAudience['members'], null, 'user_id')[(int)$items['inactive_user']->getId()];
+    mcpCheck(!$listedInactive['mail_eligible'], 'Inactive referenced contact remains listed, but cannot receive mail');
     foreach (['sender' => ['invitation_type' => 'user', 'IDuser' => $uid], 'member' => ['invitation_type' => 'user', 'IDuser' => $memberId], 'guest' => ['invitation_type' => 'email', 'email' => 'guest@example.invalid', 'display_name' => 'Guest']] as $key => $fields) {
         $items['invitation_' . $key] = mcpFixture(EventInvitation::class, ['IDevent' => $eid, 'status' => 'accepted', 'active' => 1] + $fields);
     }
     $preview = ObjectAudience::resolve($oid, 'event', $eid);
     mcpCheck(count($preview['members']) === 3 && $preview['can_send'], 'Explicit invitations replace default holon scope');
+    $items['invitation_member']->set('accepted', false); $items['invitation_member']->save();
+    $items['attendance_member'] = mcpFixture(EventAttendance::class, ['IDevent' => $eid, 'IDuser' => $memberId, 'is_present' => 0, 'active' => 1]);
+    $absentAudience = ObjectAudience::page($oid, ['object_type' => 'event', 'object_id' => $eid]);
+    mcpCheck(in_array($memberId, array_column($absentAudience['items'], 'user_id'), true) && $absentAudience['recipient_count'] === 3, 'An invited member remains in the complete MCP list when unchecked in attendance and invitation acceptance');
+    $items['attendance_member']->set('is_present', true); $items['attendance_member']->save();
+    mcpCheck(ObjectAudience::resolve($oid, 'event', $eid)['audience_token'] === $preview['audience_token'], 'Attendance never changes the email audience');
     $items['project'] = mcpFixture(Project::class, ['IDorganization' => $oid, 'IDholon' => $hid, 'IDuser' => $uid, 'title' => 'Project test', 'status' => 'ready', 'project_kind' => 'standard', 'proposal_status' => 'normal', 'active' => 1]);
     $items['project_member'] = mcpFixture(ProjectUser::class, ['IDproject' => $items['project']->getId(), 'IDuser' => $memberId, 'active' => 1]);
     mcpCheck(count(ObjectAudience::resolve($oid, 'project', (int)$items['project']->getId())['members']) === 2, 'Project audience is responsible plus active assignees');
@@ -116,7 +129,8 @@ try {
     $items['large_mail'] = new ObjectMail(); $items['large_mail']->load($large['mail_id']);
     mcpCheck($large['delivery_mode'] === 'queued' && $large['delivery']['queued'] === 53 && !$large['complete'], 'Large audiences are deferred, without SMTP on the request');
     $items['member_role']->set('active', false); $items['member_role']->save();
-    mcpCheck(count(ObjectAudience::resolve($oid, 'event', $groupId)['members']) === 52, 'Default meeting audience refreshes cached role membership');
+    $changedGroup = ObjectAudience::resolve($oid, 'event', $groupId);
+    mcpCheck(count($changedGroup['members']) === 53 && count($changedGroup['recipients']) === 52, 'Fresh native scope drops removed role members and keeps inactive referenced contacts separate from delivery');
     $items['group_invitation'] = mcpFixture(EventInvitation::class, ['IDevent' => $groupId, 'invitation_type' => 'holon', 'IDholon' => $hid, 'status' => 'declined', 'active' => 1]);
     mcpCheck(ObjectAudience::resolve($oid, 'event', $groupId)['recipients'] === [], 'Declined holon invitation cannot produce recipients');
     $args['request_key'] = 'uncertain-smtp-mail';

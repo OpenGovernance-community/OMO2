@@ -83,6 +83,25 @@ assertHtmlSanitizationTest(str_contains($loadedHtml, '<p>Ancien <b>contenu</b></
 assertHtmlSanitizationTest(!str_contains($loadedHtml, 'alert(9)'), 'Existing malicious HTML must be removed during database hydration.');
 
 assertHtmlSanitizationTest(PropertyFormat::formattedTextToHtml($unsafeHtml, 'html') === PropertyFormat::sanitizeHtml($unsafeHtml), 'Supplied HTML must follow the existing editor allowlist exactly.');
+// Simulate a server whose vendor directory predates the Markdown dependency, without changing vendor files.
+$installedPackages = \Composer\InstalledVersions::getRawData();
+$composerLoaders = \Composer\Autoload\ClassLoader::getRegisteredLoaders();
+$withoutMarkdown = $installedPackages;
+unset($withoutMarkdown['versions']['league/commonmark']);
+foreach ($composerLoaders as $loader) $loader->unregister();
+\Composer\InstalledVersions::reload($withoutMarkdown);
+try {
+    $missingDependencyRejected = false;
+    try { PropertyFormat::formattedTextToHtml('**Body**', 'markdown'); }
+    catch (DomainException $error) { $missingDependencyRejected = str_contains($error->getMessage(), 'Markdown conversion is unavailable'); }
+    assertHtmlSanitizationTest($missingDependencyRejected, 'A missing Markdown package must produce an actionable error.');
+    assertHtmlSanitizationTest(PropertyFormat::formattedTextToHtml('Body', 'text') === '<p>Body</p>'
+        && PropertyFormat::formattedTextToHtml('<p><strong>Body</strong></p>', 'html') === '<p><strong>Body</strong></p>',
+        'Plain text and HTML remain available without the Markdown dependency.');
+} finally {
+    \Composer\InstalledVersions::reload($installedPackages);
+    foreach ($composerLoaders as $loader) $loader->register();
+}
 $markdown = "# Heading\n\nParagraph with **bold**, *italic* and [a link](https://example.org/page).\n\n"
     . "- First\n- Second\n\n> Quoted text\n\n| Name | Value |\n| --- | --- |\n| First | **42** |\n\n"
     . '<p style="color:red;position:fixed;background-color:#aabbcc" onclick="evil()">Raw HTML <u>underline</u></p>'

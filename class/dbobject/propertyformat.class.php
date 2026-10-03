@@ -236,6 +236,9 @@
 			if ($format === 'text') {
 				$content = '<p>' . nl2br(htmlspecialchars($content, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'), false) . '</p>';
 			} elseif (in_array($format, ['markdown', 'md'], true)) {
+				if (!\Composer\InstalledVersions::isInstalled('league/commonmark')) {
+					throw new \DomainException('Markdown conversion is unavailable on this server. Install the Composer dependencies, or submit the content as HTML or plain text.');
+				}
 				$environment = new \League\CommonMark\Environment\Environment([
 					// Raw HTML is never rendered directly: sanitizeHtml below applies the editor allowlist.
 					'html_input' => 'allow', 'allow_unsafe_links' => false,

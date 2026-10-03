@@ -6,7 +6,7 @@ function omoMcpTools(): array
 {
     $tools = [
         ['name' => 'omo_list_object_members', 'title' => 'List members and invited people',
-            'description' => 'Get complete paginated member/contact lists for a holon, event (including meetings), project or decision. Holons include effective circle memberships and descendant roles; events use explicit invitations or default holon membership. Projects include the responsible person and active assignees. Decision participants and external event guest addresses require management permission, preserving native privacy. Returns names, scoped email/phone, relationship and invitation status, can_send and recipient_count. Follow next_offset until null. Before sending user-requested mail, show the destination/title and recipient_count, and copy audience_token unchanged into omo_send_object_email. Declined/revoked people are excluded from sending, active members only, one delivery per unique email. A changed audience requires a new preview.',
+            'description' => 'Get complete paginated member/contact lists for a holon, event (including meetings), project or decision. Holons include effective circle memberships and descendant roles; events enumerate the native OMO invitation list, including individually invited people and invited holons, or default holon membership. Attendance and the accepted/present checkbox never filter this list. Referenced event contacts may be listed even when not eligible for email. Projects include the responsible person and active assignees. Decision participants and external event guest addresses require management permission, preserving native privacy. Returns names, scoped email/phone, relationship and invitation status, mail_eligible, can_send and recipient_count. Follow next_offset until null. Before sending user-requested mail, show the destination/title and recipient_count, and copy audience_token unchanged into omo_send_object_email. Declined/revoked people are excluded from sending, active members only, one delivery per unique email. A changed audience requires a new preview.',
             'inputSchema' => ['type' => 'object', 'properties' => [
                 'object_type' => ['type' => 'string', 'enum' => ['holon', 'event', 'project', 'decision']],
                 'object_id' => ['type' => 'integer', 'minimum' => 1],
@@ -114,6 +114,7 @@ function omoMcpTools(): array
     foreach ($tools as &$tool) {
         $create = $tool['name'] === 'omo_create_document';
         $mail = $tool['name'] === 'omo_send_object_email';
+        if ($create) $tool['description'] .= ' Confirm creation only after a successful result with created=true and a returned record.record_id. Read that ID with omo_read_record, using the returned context_holon_id, to verify the saved Memo content, and provide its returned URL. An error or timeout is not proof of creation; retry the exact same request_key and payload to recover the result safely.';
         $tool['annotations'] = ['readOnlyHint' => !$create && !$mail, 'destructiveHint' => false, 'idempotentHint' => true, 'openWorldHint' => $create || $mail];
         $tool['outputSchema'] = ['type' => 'object'];
         $tool['securitySchemes'] = [['type' => 'oauth2', 'scopes' => $mail ? [OMO_MCP_SCOPE, OMO_MCP_MAIL_SCOPE] : ($create ? [OMO_MCP_SCOPE, OMO_MCP_CREATE_SCOPE] : [OMO_MCP_SCOPE])]];
