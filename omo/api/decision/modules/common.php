@@ -10,6 +10,8 @@ use dbObject\ChatThread;
 use dbObject\Holon;
 use dbObject\User;
 
+require_once dirname(__DIR__, 4) . '/common/choice/proposal-dates.php';
+
 if (!class_exists('OmoDecisionModuleCapturedResponse', false)) {
     class OmoDecisionModuleCapturedResponse extends RuntimeException
     {
@@ -617,6 +619,7 @@ if (!function_exists('omoDecisionGetDefaultProposalContent')) {
             'title' => true,
             'description' => true,
             'url' => true,
+            'date' => true,
         ];
     }
 }
@@ -636,6 +639,7 @@ if (!function_exists('omoDecisionNormalizeProposalContent')) {
         $hasKnownKey = array_key_exists('title', $value)
             || array_key_exists('description', $value)
             || array_key_exists('url', $value)
+            || array_key_exists('date', $value)
             || array_key_exists('info_url', $value);
         if (!$hasKnownKey) {
             return $default;
@@ -647,8 +651,9 @@ if (!function_exists('omoDecisionNormalizeProposalContent')) {
             'url' => array_key_exists('url', $value)
                 ? !empty($value['url'])
                 : !empty($value['info_url']),
+            'date' => !array_key_exists('date', $value) || !empty($value['date']),
         ];
-        if (!$content['title'] && !$content['description'] && !$content['url']) {
+        if (!$content['title'] && !$content['description'] && !$content['url'] && !$content['date']) {
             $content['description'] = true;
         }
 
@@ -714,7 +719,8 @@ if (!function_exists('omoDecisionRenderProposalContentSettings')) {
         if ($mode === 'hidden') {
             return '<input type="hidden" name="proposal_content_title" value="' . ($content['title'] ? '1' : '') . '" data-omo-decision-proposal-content-hidden-title>'
                 . '<input type="hidden" name="proposal_content_description" value="' . ($content['description'] ? '1' : '') . '" data-omo-decision-proposal-content-hidden-description>'
-                . '<input type="hidden" name="proposal_content_url" value="' . ($content['url'] ? '1' : '') . '" data-omo-decision-proposal-content-hidden-url>';
+                . '<input type="hidden" name="proposal_content_url" value="' . ($content['url'] ? '1' : '') . '" data-omo-decision-proposal-content-hidden-url>'
+                . '<input type="hidden" name="proposal_content_date" value="' . ($content['date'] ? '1' : '') . '" data-omo-decision-proposal-content-hidden-date>';
         }
         $disabled = $canEdit ? '' : ' disabled';
         $titleAttributes = ' data-omo-decision-proposal-content-popup-title';
@@ -737,6 +743,10 @@ if (!function_exists('omoDecisionRenderProposalContentSettings')) {
                 <input type="checkbox" value="1"<?= $content['url'] ? ' checked' : '' ?><?= $disabled . $urlAttributes ?>>
                 <span><?= $escape(t('decisions.edit.proposal_content.url_field', [], $lang, $sourceLang)) ?></span>
             </label>
+            <label class="omo-decision-proposal-content-settings__check">
+                <input type="checkbox" value="1"<?= $content['date'] ? ' checked' : '' ?><?= $disabled ?> data-omo-decision-proposal-content-popup-date>
+                <span><?= $escape(t('decisions.edit.proposal_content.date_field', [], $lang, $sourceLang)) ?></span>
+            </label>
         </div>
         <?php
         return ob_get_clean();
@@ -757,12 +767,15 @@ if (!function_exists('omoDecisionBuildProposalContentSummary')) {
         if ($content['url']) {
             $labels[] = t('decisions.edit.proposal_content.url_field', [], $lang, $sourceLang);
         }
+        if ($content['date']) {
+            $labels[] = t('decisions.edit.proposal_content.date_field', [], $lang, $sourceLang);
+        }
         return implode(', ', $labels);
     }
 }
 
 if (!function_exists('omoDecisionBuildProposalItemsFromInput')) {
-    function omoDecisionBuildProposalItemsFromInput($titles, $descriptions = [], $infoUrls = [], $proposalIds = [], $proposalContent = null)
+    function omoDecisionBuildProposalItemsFromInput($titles, $descriptions = [], $infoUrls = [], $proposalIds = [], $proposalContent = null, $starts = [], $ends = [], $timezones = [])
     {
         $titles = is_array($titles) ? array_values($titles) : [];
         $descriptions = is_array($descriptions) ? array_values($descriptions) : [];
@@ -770,7 +783,10 @@ if (!function_exists('omoDecisionBuildProposalItemsFromInput')) {
         $proposalIds = is_array($proposalIds) ? array_values($proposalIds) : [];
         $proposalContent = omoDecisionNormalizeProposalContent($proposalContent);
 
-        $rowCount = max(count($titles), count($descriptions), count($infoUrls), count($proposalIds));
+        $starts = is_array($starts) ? array_values($starts) : [];
+        $ends = is_array($ends) ? array_values($ends) : [];
+        $timezones = is_array($timezones) ? array_values($timezones) : [];
+        $rowCount = max(count($titles), count($descriptions), count($infoUrls), count($proposalIds), count($starts), count($ends));
         $items = [];
 
         for ($index = 0; $index < $rowCount; $index++) {
@@ -784,8 +800,13 @@ if (!function_exists('omoDecisionBuildProposalItemsFromInput')) {
             if (!$proposalContent['url']) {
                 $infoUrl = null;
             }
+            if (!$proposalContent['date']) {
+                $starts[$index] = null;
+                $ends[$index] = null;
+                $timezones[$index] = null;
+            }
 
-            if ($title === '' && $description === '' && $infoUrl === null) {
+            if ($title === '' && $description === '' && $infoUrl === null && empty($starts[$index]) && empty($ends[$index])) {
                 continue;
             }
 
@@ -794,6 +815,9 @@ if (!function_exists('omoDecisionBuildProposalItemsFromInput')) {
                 'title' => $title,
                 'description' => $description !== '' ? $description : null,
                 'info_url' => $infoUrl,
+                'start_at' => $starts[$index] ?? null,
+                'end_at' => $ends[$index] ?? null,
+                'timezone' => $timezones[$index] ?? null,
             ];
         }
 
@@ -816,6 +840,9 @@ if (!function_exists('omoDecisionBuildProposalItemsFromDecision')) {
                     'title' => trim((string)$proposal->get('title')),
                     'description' => trim((string)$proposal->get('description')) ?: null,
                     'info_url' => omoDecisionNormalizeProposalInfoUrl($proposal->get('info_url')),
+                    'start_at' => $proposal->get('start_at'),
+                    'end_at' => $proposal->get('end_at'),
+                    'timezone' => $proposal->get('timezone'),
                 ];
             }
         }
@@ -1396,7 +1423,11 @@ if (!function_exists('omoDecisionRenderProposalDiscussionAssets')) {
         }
 
         $alreadyRendered = true;
-        return '<link rel="stylesheet" href="/common/chat/thread.css?v=20260821-unified-chat-errors">'
+        $escape = static fn($value) => htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
+        return '<template data-omo-proposal-dates-template>' . omoDecisionRenderProposalDates([], $escape) . '</template>'
+            . '<link rel="stylesheet" href="' . commonAssetUrl('/common/choice/proposal-dates.css') . '">'
+            . '<script src="' . commonAssetUrl('/common/choice/proposal-dates.js') . '" defer></script>'
+            . '<link rel="stylesheet" href="/common/chat/thread.css?v=20260821-unified-chat-errors">'
             . '<link rel="stylesheet" href="/common/choice/proposal-discussion.css?v=20260923-compact-editor">'
             . '<link rel="stylesheet" href="/common/choice/change-details.css?v=20260923-lifecycle-details">'
             . '<script src="/common/choice/word-diff.js?v=20260815" defer></script>'
@@ -1405,8 +1436,8 @@ if (!function_exists('omoDecisionRenderProposalDiscussionAssets')) {
             . '<script src="/omo/assets/js/simple-html-field.js?v=20260904-highlight-clear" defer></script>'
             . '<script src="/common/choice/decision-anonymity.js?v=20260825-named-vote" defer></script>'
             . '<script src="/common/choice/decision-notifications.js?v=20260825-topbar-errors" defer></script>'
-            . '<script src="/common/choice/proposal-html.js?v=20260824-proposal-content-refresh" defer></script>'
-            . '<script src="/common/choice/proposal-discussion.js?v=20260923-compact-editor" defer></script>';
+            . '<script src="' . commonAssetUrl('/common/choice/proposal-html.js') . '" defer></script>'
+            . '<script src="' . commonAssetUrl('/common/choice/proposal-discussion.js') . '" defer></script>';
     }
 }
 
@@ -1472,12 +1503,13 @@ if (!function_exists('omoDecisionRenderProposalDiscussionActions')) {
             $html .= '</div>';
         }
 
+        $calendarHtml = omoDecisionRenderProposalCalendar($proposal, $context, $escape);
         $metadata = omoDecisionRenderProposalMetadata($proposal, $context, $escape);
         if ($html === '') {
-            return $metadata;
+            return $calendarHtml . $metadata;
         }
 
-        return '<div class="omo-proposal-actions-and-meta">'
+        return $calendarHtml . '<div class="omo-proposal-actions-and-meta">'
             . $metadata
             . $html
         . '</div>';
@@ -1580,6 +1612,17 @@ if (!function_exists('omoDecisionProposalGetSourceLang')) {
     function omoDecisionProposalGetSourceLang()
     {
         return [
+            'decisions.proposals.dates.range' => ['text' => 'Date et horaire', 'context' => 'Optional proposal date range fields.'],
+            'decisions.proposals.dates.start' => ['text' => 'Debut', 'context' => 'Optional proposal date range start.'],
+            'decisions.proposals.dates.clear' => ['text' => 'Retirer la date', 'context' => 'Clear the optional date range.'],
+            'decisions.proposals.dates.end' => ['text' => 'Fin', 'context' => 'Proposal date range end.'],
+            'decisions.proposals.dates.timezone' => ['text' => 'Fuseau horaire', 'context' => 'IANA timezone of a proposed date.'],
+            'decisions.proposals.dates.hint' => ['text' => 'Une plage horaire reserve une option dans les agendas des invites de la decision.', 'context' => 'Explanation of proposal calendar reservations.'],
+            'decisions.proposals.dates.option' => ['text' => 'En option', 'context' => 'Tentative proposal event status.'],
+            'decisions.proposals.dates.confirmed' => ['text' => 'Confirmee', 'context' => 'Confirmed proposal event status.'],
+            'decisions.proposals.dates.cancelled' => ['text' => 'Annulee', 'context' => 'Cancelled proposal event status.'],
+            'decisions.proposals.dates.confirm' => ['text' => 'Confirmer', 'context' => 'Confirm a proposal date after the ballot.'],
+            'decisions.proposals.dates.cancel' => ['text' => 'Annuler', 'context' => 'Cancel a proposal date after the ballot.'],
             'decisions.proposals.add_title' => [
                 'text' => 'Ajouter une proposition',
                 'context' => 'Title of the public consultation proposal form.',
@@ -1991,6 +2034,8 @@ if (!function_exists('omoDecisionRenderConsultationProposalPublicPanel')) {
         } else {
             $proposalFields .= '<input type="hidden" name="consultation_proposal_info_url" value="">';
         }
+
+        if ($proposalContent['date']) $proposalFields .= omoDecisionRenderProposalDates([], $escape, true, 'consultation_proposal_', false);
 
         $extraClass = trim((string)$extraClass);
         if ($extraClass !== '') {

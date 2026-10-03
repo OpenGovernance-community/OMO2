@@ -175,6 +175,7 @@
             + titleField
             + descriptionField
             + urlField
+            + (proposalContent.date !== false ? window.omoProposalDates('', false) : '')
             + '  <div class="generic-form-actions"><button type="button" class="generic-action-button generic-action-button--secondary" data-omo-proposal-editor-cancel>Annuler</button><button type="submit" class="generic-action-button generic-action-button--main">Enregistrer</button></div>'
             + '</form>';
     }
@@ -700,6 +701,10 @@
             knownLink.href = String(proposal.infoUrl || '#');
             knownLink.hidden = !proposal.infoUrl;
         }
+        var calendarPanel = card.querySelector('[data-omo-proposal-calendar]');
+        if (calendarPanel) {
+            window.omoProposalDates.replaceCalendar(calendarPanel, proposal.calendarHtml || '');
+        }
         var dateNode = card.querySelector('[data-omo-proposal-date]');
         if (dateNode && proposal.updatedLabel) {
             dateNode.textContent = 'Modifiée le ' + String(proposal.updatedLabel);
@@ -856,6 +861,12 @@
                     form.elements.description.value = String(proposal.description || '');
                 }
                 form.elements.info_url.value = String(proposal.infoUrl || '');
+                if (form.elements.start_at) {
+                    form.elements.start_at.value = String(proposal.startAt || '');
+                    form.elements.end_at.value = String(proposal.endAt || '');
+                    form.elements.timezone.value = String(proposal.timezone || form.elements.timezone.value);
+                    window.omoProposalDates.refresh(form.querySelector('[data-omo-proposal-dates]'));
+                }
                 Array.prototype.forEach.call(form.elements, function (field) {
                     field.disabled = false;
                 });

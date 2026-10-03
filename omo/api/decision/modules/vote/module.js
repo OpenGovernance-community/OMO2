@@ -35,6 +35,7 @@ window.commonPageScripts["/omo/api/decision/modules/vote/module.js"] = function 
                         const hiddenProposalContentTitleInput = form.querySelector('[data-omo-decision-proposal-content-hidden-title]');
                         const hiddenProposalContentDescriptionInput = form.querySelector('[data-omo-decision-proposal-content-hidden-description]');
                         const hiddenProposalContentUrlInput = form.querySelector('[data-omo-decision-proposal-content-hidden-url]');
+                        const hiddenProposalContentDateInput = form.querySelector('[data-omo-decision-proposal-content-hidden-date]');
                         const hiddenVoteWeightEnabledInput = form.querySelector('[data-omo-decision-vote-hidden-vote-weight-enabled]');
                         const hiddenVoteWeightQuestionInput = form.querySelector('[data-omo-decision-vote-hidden-vote-weight-question]');
                         const hiddenVoteWeightOptionsInput = form.querySelector('[data-omo-decision-vote-hidden-vote-weight-options]');
@@ -314,6 +315,9 @@ window.commonPageScripts["/omo/api/decision/modules/vote/module.js"] = function 
                                 if (hiddenProposalContentUrlInput && hiddenProposalContentUrlInput.value) {
                                     labels.push(String(proposalContentSummary.getAttribute('data-url-label') || 'URL'));
                                 }
+                                if (hiddenProposalContentDateInput && hiddenProposalContentDateInput.value) {
+                                    labels.push(String(proposalContentSummary.getAttribute('data-date-label') || 'Date'));
+                                }
                                 proposalContentSummary.textContent = labels.join(', ');
                             }
                             if (voteWeightSummary) {
@@ -352,6 +356,7 @@ window.commonPageScripts["/omo/api/decision/modules/vote/module.js"] = function 
                             const popupProposalContentTitle = modalBody.querySelector('[data-omo-decision-proposal-content-popup-title]');
                             const popupProposalContentDescription = modalBody.querySelector('[data-omo-decision-proposal-content-popup-description]');
                             const popupProposalContentUrl = modalBody.querySelector('[data-omo-decision-proposal-content-popup-url]');
+                            const popupProposalContentDate = modalBody.querySelector('[data-omo-decision-proposal-content-popup-date]');
                             const popupVoteWeightRoot = modalBody.querySelector('[data-omo-decision-vote-weight-editor]');
                             const popupCancel = modalBody.querySelector('[data-omo-decision-vote-popup-cancel]');
                             const popupApply = modalBody.querySelector('[data-omo-decision-vote-popup-apply]');
@@ -359,7 +364,7 @@ window.commonPageScripts["/omo/api/decision/modules/vote/module.js"] = function 
                                 ? window.omoDecisionInitVoteWeightEditor(popupVoteWeightRoot)
                                 : null;
 
-                            if (!popupConsultationProposals || !popupProposalDiscussions || !popupProposalContentTitle || !popupProposalContentDescription || !popupProposalContentUrl || !popupApply) {
+                            if (!popupConsultationProposals || !popupProposalDiscussions || !popupProposalContentTitle || !popupProposalContentDescription || !popupProposalContentUrl || !popupProposalContentDate || !popupApply) {
                                 return;
                             }
                             if (!popupAnonymous || (!isConsultationOnly && (!popupChoiceMode || !popupMaxChoices || !popupAllowAnonymousVotes || !popupAllowAnonymousVotesOption || !popupOwnerIntermediateResults || !popupParticipantIntermediateResults || !popupParticipantResponsesEditable || !popupRandomOrder || !popupOneProposalAtATime || !popupVoteWeightEditor))) {
@@ -387,6 +392,7 @@ window.commonPageScripts["/omo/api/decision/modules/vote/module.js"] = function 
                             popupProposalContentTitle.checked = !!(hiddenProposalContentTitleInput && hiddenProposalContentTitleInput.value);
                             popupProposalContentDescription.checked = !!(hiddenProposalContentDescriptionInput && hiddenProposalContentDescriptionInput.value);
                             popupProposalContentUrl.checked = !!(hiddenProposalContentUrlInput && hiddenProposalContentUrlInput.value);
+                            popupProposalContentDate.checked = !!(hiddenProposalContentDateInput && hiddenProposalContentDateInput.value);
 
                             const syncPopup = function () {
                                 if (isConsultationOnly || !popupChoiceMode) {
@@ -469,10 +475,12 @@ window.commonPageScripts["/omo/api/decision/modules/vote/module.js"] = function 
                                 if (hiddenProposalContentUrlInput) {
                                     hiddenProposalContentUrlInput.value = popupProposalContentUrl.checked ? '1' : '';
                                 }
+                                if (hiddenProposalContentDateInput) hiddenProposalContentDateInput.value = popupProposalContentDate.checked ? '1' : '';
                                 payload.proposalContent = {
                                     title: popupProposalContentTitle.checked,
                                     description: popupProposalContentDescription.checked,
                                     url: popupProposalContentUrl.checked,
+                                    date: popupProposalContentDate.checked,
                                 };
                                 if (window.omoProposalHtml && typeof window.omoProposalHtml.refreshDecisionProposalCards === 'function') {
                                     window.omoProposalHtml.refreshDecisionProposalCards(proposalList, payload.proposalContent, {
@@ -693,6 +701,7 @@ window.commonPageScripts["/omo/api/decision/modules/vote/module.js"] = function 
                                 + '    ' + proposalTitleField
                                 + '    ' + proposalDescriptionField
                                 + '    <input type="hidden" name="proposal_info_urls[]" value="" data-omo-decision-vote-proposal-info-url>'
+                                + window.omoProposalDates(undefined, true, !payload.proposalContent || payload.proposalContent.date !== false)
                                 + '    <input type="hidden" name="proposal_ids[]" value="0">'
                                 + '</div>'
                                 + '<div class="omo-decision-vote__proposal-menu" data-omo-decision-vote-proposal-menu>'

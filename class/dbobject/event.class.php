@@ -21,7 +21,7 @@ class Event extends DbObject
         return [
             [['IDuser', 'title', 'status', 'start_at', 'end_at'], 'required'],
             [['id'], 'integer'],
-            [['IDorganization', 'IDholon', 'IDproject', 'IDuser'], 'fk'],
+            [['IDorganization', 'IDholon', 'IDproject', 'IDuser', 'IDdecision_proposal'], 'fk'],
             [['title', 'status', 'timezone', 'locationmode', 'locationaddress', 'videomeetingurl'], 'string'],
             [['description'], 'text'],
             [['parameters'], 'parameters'],
@@ -38,6 +38,7 @@ class Event extends DbObject
             'IDorganization' => 'Organisation',
             'IDholon' => 'Espace associé',
             'IDproject' => 'Projet',
+            'IDdecision_proposal' => 'Proposition de date',
             'IDuser' => 'Créateur',
             'title' => 'Titre',
             'description' => 'Description',
@@ -87,6 +88,15 @@ class Event extends DbObject
     public static function getOrder()
     {
         return 'start_at ASC, id ASC';
+    }
+
+    public static function findByDecisionProposal(int $proposalId): ?self
+    {
+        $row = self::fetchRow('SELECT * FROM event WHERE IDdecision_proposal = :id', ['id' => $proposalId]);
+        if (!$row) return null;
+        $event = new self();
+        $event->hydrateFromDatabaseRow($row, true);
+        return $event;
     }
 
     public static function handleUserDeparture($organizationId, $userId, $ghostUserId)
@@ -464,7 +474,7 @@ class Event extends DbObject
         }
 
         $targets = [
-            'hasExplicitInvitations' => false,
+            'hasExplicitInvitations' => (int)$this->get('IDdecision_proposal') > 0,
             'userIds' => [],
             'emails' => [],
             'registeredEmails' => [],
@@ -1014,6 +1024,7 @@ class Event extends DbObject
 
     public function isPersonallyRelevantToViewer($userId, $organizationId = 0): bool
     {
+        if ((int)$this->get('IDdecision_proposal') > 0) return $this->isVisibleToInvitationViewer($userId, $organizationId);
         static $memberMatchCache = [];
 
         $userId = (int)$userId;

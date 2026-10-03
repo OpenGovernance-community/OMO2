@@ -3,12 +3,14 @@
 const OMO_MCP_SCOPE = 'organization:read';
 const OMO_MCP_CREATE_SCOPE = 'documents:create';
 const OMO_MCP_MAIL_SCOPE = 'mail:send';
+const OMO_MCP_EVENT_SCOPE = 'events:create';
 
 function omoMcpNormalizeScope(string $scope): ?string
 {
     $scopes = preg_split('/ +/', trim($scope), -1, PREG_SPLIT_NO_EMPTY);
-    if (!in_array(OMO_MCP_SCOPE, $scopes, true) || array_diff($scopes, [OMO_MCP_SCOPE, OMO_MCP_CREATE_SCOPE, OMO_MCP_MAIL_SCOPE])) return null;
-    return implode(' ', array_values(array_intersect([OMO_MCP_SCOPE, OMO_MCP_CREATE_SCOPE, OMO_MCP_MAIL_SCOPE], $scopes)));
+    $supported = [OMO_MCP_SCOPE, OMO_MCP_CREATE_SCOPE, OMO_MCP_MAIL_SCOPE, OMO_MCP_EVENT_SCOPE];
+    if (!in_array(OMO_MCP_SCOPE, $scopes, true) || array_diff($scopes, $supported)) return null;
+    return implode(' ', array_values(array_intersect($supported, $scopes)));
 }
 function omoMcpCanCreateDocuments(array $grant): bool
 {
@@ -17,6 +19,10 @@ function omoMcpCanCreateDocuments(array $grant): bool
 function omoMcpCanSendMail(array $grant): bool
 {
     return in_array(OMO_MCP_MAIL_SCOPE, explode(' ', $grant['scope'] ?? ''), true);
+}
+function omoMcpCanCreateEvents(array $grant): bool
+{
+    return in_array(OMO_MCP_EVENT_SCOPE, explode(' ', $grant['scope'] ?? ''), true);
 }
 const OMO_MCP_MODULES = ['structure', 'team', 'calendar', 'rules', 'documents', 'pv',
     'decision', 'projects', 'stats', 'processus', 'activities', 'faq', 'tutorials'];
@@ -40,7 +46,7 @@ function omoMcpPublicUrl(): string
 function omoMcpIssuer(): string { return substr(rtrim(omoMcpPublicUrl(), '/'), 0, -4); }
 function omoMcpServerInfo(): array
 {
-    return ['name' => 'OpenMyOrganization', 'title' => 'OpenMyOrganization', 'version' => '0.7.0',
+    return ['name' => 'OpenMyOrganization', 'title' => 'OpenMyOrganization', 'version' => '0.8.0',
         'description' => 'Toutes les infos sur votre organisation dans OMO',
         'websiteUrl' => 'https://omo2.org',
         'icons' => [['src' => omoMcpIssuer() . '/mcp/assets/omo-icon-256.jpg',
@@ -58,7 +64,7 @@ function omoMcpChallenge(string $error = ''): string
 function omoMcpResourceMetadata(): array
 {
     return ['resource' => omoMcpPublicUrl(), 'authorization_servers' => [omoMcpIssuer()],
-        'scopes_supported' => [OMO_MCP_SCOPE, OMO_MCP_CREATE_SCOPE, OMO_MCP_MAIL_SCOPE], 'bearer_methods_supported' => ['header'],
+        'scopes_supported' => [OMO_MCP_SCOPE, OMO_MCP_CREATE_SCOPE, OMO_MCP_MAIL_SCOPE, OMO_MCP_EVENT_SCOPE], 'bearer_methods_supported' => ['header'],
         'resource_name' => omoMcpServerInfo()['title']];
 }
 function omoMcpAuthorizationMetadata(): array
@@ -69,7 +75,7 @@ function omoMcpAuthorizationMetadata(): array
         'revocation_endpoint' => $issuer . '/mcp/revoke.php', 'response_types_supported' => ['code'],
         'grant_types_supported' => ['authorization_code', 'refresh_token'],
         'token_endpoint_auth_methods_supported' => ['none'], 'revocation_endpoint_auth_methods_supported' => ['none'],
-        'code_challenge_methods_supported' => ['S256'], 'scopes_supported' => [OMO_MCP_SCOPE, OMO_MCP_CREATE_SCOPE, OMO_MCP_MAIL_SCOPE],
+        'code_challenge_methods_supported' => ['S256'], 'scopes_supported' => [OMO_MCP_SCOPE, OMO_MCP_CREATE_SCOPE, OMO_MCP_MAIL_SCOPE, OMO_MCP_EVENT_SCOPE],
         'authorization_response_iss_parameter_supported' => true];
 }
 function omoMcpJson(array $body, int $status = 200): never
