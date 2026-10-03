@@ -1,0 +1,47 @@
+/* Standalone iframe shell; fields, panels and actions use shared primitives. */
+.object-mail-page {
+    margin: 0;
+    background: var(--color-surface, #fff);
+    color: var(--color-text, #1f2937);
+    font: 0.92rem/1.5 system-ui, sans-serif;
+}
+
+.object-mail-composer,
+.object-mail-form {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.object-mail-composer {
+    min-height: 100vh;
+}
+
+.object-mail-form {
+    flex: 1;
+}
+
+.object-mail-form > footer,
+.object-mail-composer > footer {
+    margin-top: auto;
+}
+
+.object-mail-message {
+    resize: vertical;
+    min-height: 160px;
+}
+
+.object-mail-recipients {
+    list-style: none;
+    margin: 0;
+    max-height: 180px;
+    overflow-y: auto;
+}
+
+.object-mail-delivery {
+    margin: 0;
+}
+
+.object-mail-page [hidden] {
+    display: none !important;
+}

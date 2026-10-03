@@ -2519,6 +2519,8 @@
 			$userIds = array();
 			foreach ($linkRows as $row) {
 				$userId = (int)($row['user_id'] ?? 0);
+				if (!empty($options['activeOnly']) && (!(bool)($row['holon_effective_active'] ?? $row['holon_active'] ?? false)
+					|| !(bool)($row['organization_active'] ?? false))) continue;
 				if ($userId <= 0 || isset($userIds[$userId])) {
 					continue;
 				}
