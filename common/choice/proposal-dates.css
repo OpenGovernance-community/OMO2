@@ -1,0 +1,110 @@
+.choice-proposal-dates__header,
+.choice-proposal-dates__heading,
+.choice-proposal-dates__tools,
+.choice-proposal-calendar__time,
+.choice-proposal-calendar__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--generic-space-2);
+}
+
+.choice-proposal-dates__header {
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+}
+
+.choice-proposal-dates__timezone summary {
+    cursor: pointer;
+    text-align: end;
+}
+
+.choice-proposal-dates__timezone[open] label {
+    margin-top: var(--generic-space-2);
+}
+
+.choice-proposal-dates input[type="datetime-local"] {
+    min-width: 0;
+    width: 100%;
+    font-variant-numeric: tabular-nums;
+}
+
+.choice-proposal-calendar {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--generic-space-3);
+    margin-block: var(--generic-space-3);
+}
+
+.choice-proposal-calendar__stamp {
+    display: grid;
+    align-content: center;
+    justify-items: center;
+    width: 58px;
+    min-height: 62px;
+    border: 1px solid var(--color-border, #e5e7eb);
+    border-radius: var(--radius-md);
+    background: var(--color-surface, #fff);
+    color: var(--color-primary, #2563eb);
+}
+
+.choice-proposal-calendar__stamp span {
+    font-size: .68rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+}
+
+.choice-proposal-calendar__stamp strong {
+    font-size: 1.6rem;
+    line-height: 1.15;
+}
+
+.choice-proposal-calendar__copy {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+}
+
+.choice-proposal-calendar__date {
+    font-size: .93rem;
+    line-height: 1.4;
+}
+
+.choice-proposal-calendar__date::first-letter {
+    text-transform: uppercase;
+}
+
+.choice-proposal-calendar__time {
+    flex-wrap: wrap;
+    font-size: .87rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.choice-proposal-calendar__time .generic-meta {
+    font-size: .73rem;
+}
+
+.choice-proposal-calendar__aside {
+    display: grid;
+    justify-items: end;
+    gap: var(--generic-space-2);
+}
+
+.choice-proposal-calendar[data-calendar-status="cancelled"] .choice-proposal-calendar__stamp {
+    color: var(--color-text-muted, #64748b);
+}
+
+@media (max-width: 480px) {
+    .choice-proposal-calendar {
+        grid-template-columns: auto minmax(0, 1fr);
+    }
+
+    .choice-proposal-calendar__aside {
+        grid-column: 2;
+        display: flex;
+        justify-content: space-between;
+        flex-wrap: wrap;
+    }
+}

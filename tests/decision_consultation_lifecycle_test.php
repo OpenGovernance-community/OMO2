@@ -70,7 +70,7 @@ foreach ([
         is_string($moduleSource)
             && str_contains($moduleSource, '$isConsultationPhase')
             && str_contains($moduleSource, '<?php if (!$isConsultationPhase): ?>')
-            && str_contains($moduleSource, '<div class="' . $consultationContainer . ' generic-form-stack">'),
+            && preg_match('/<div class="' . preg_quote($consultationContainer, '/') . ' generic-form-stack(?: generic-form-stack--compact)?">/', $moduleSource) === 1,
         'The vote UI must be hidden while the decision is in consultation: ' . $modulePath
     );
 }

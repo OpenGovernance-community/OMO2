@@ -20,7 +20,7 @@ Cette fonction demande le consentement OAuth `mail:send` en plus de la lecture.
 1. Appliquer les migrations MCP `2026-10-02-04-mcp-structure-oauth.sql`
    et `2026-10-02-05-mcp-refresh-replay.sql`, puis `2026-10-03-01-mcp-document-creation.sql`
    et `2026-10-03-02-object-mail.sql`, puis `2026-10-03-03-object-mail-grant-reference.sql`
-   avec le flux habituel :
+   et `2026-10-03-04-mcp-event-creation.sql`, avec le flux habituel :
 
    ```sh
    php scripts/run-migrations.php
@@ -91,6 +91,9 @@ Prompts de verification :
 - "Envoie aux invites de la reunion Coordination de demain un e-mail avec pour objet Rappel et pour message Merci de preparer vos points."
 - "Envoie aux membres du cercle Communication un e-mail avec pour objet Documents et pour message Les documents sont disponibles dans OMO."
 - "Liste tous les projets et sous-projets assignes a Marie, avec leur statut."
+- "Trouve un creneau commun d une heure pour Marie et Paul la semaine prochaine, en tenant compte de leurs calendriers importes."
+- "Cree une reunion dans le cercle Communication mardi de 10 h a 11 h avec les invites habituels."
+- "Cree cette reunion en invitant uniquement Marie et Paul, sans ajouter les autres membres du cercle."
 - "Liste tous les documents dont Marie est proprietaire, en parcourant toutes les pages."
 - "Quels evenements commencent ce mois-ci ? Quels indicateurs Marie suit-elle ?"
 - "Montre-moi les espaces ou je peux enregistrer un document."
@@ -132,6 +135,9 @@ peuvent utiliser le meme serveur s ils supportent HTTP, OAuth DCR et PKCE S256.
 
 | Outil | Arguments | Resultat |
 | --- | --- | --- |
+| `omo_get_availability` | `user_ids` (1 a 20 membres), `date_from`, `date_to` inclusives (31 jours maximum), `duration_minutes` facultatif (30 a 1440, multiple de 30) | Plages libres/occupees individuelles et `common_free_intervals`, resolution 30 minutes, fuseau Europe/Zurich ; `incomplete` signale les calendriers externes non verifies |
+| `omo_list_event_spaces` | `after_id`, `limit` facultatifs | Roles et cercles autorises pour `CAN_CREATE_EVENT`, `holon_id`, pagination, consentement `events:create` |
+| `omo_create_event` | `holon_id`, `title`, `start_at`, `end_at`, `request_key` ; description, fuseau, statut, journee entiere, lieu et listes d invites facultatifs | Nouvel evenement, ID et URL ; invites par defaut ou selection explicite, avertissements de disponibilite avant sauvegarde, reessais dedupliques |
 | `omo_list_object_members` | `object_type` (holon, event, project, decision), `object_id` ; `offset`, `limit` (maximum 50) | Membres/invites, nom, e-mail et telephone de l organisation, relations/statut, pagination `next_offset`, `can_send`, `recipient_count`, `audience_token` |
 | `omo_send_object_email` | `object_type`, `object_id`, `subject`, `message`, `audience_token`, `request_key` | Envoi direct jusqu a 5 destinataires, sinon traitement automatique en file ; `mail_id`, compteurs de livraison et `replayed` |
 | `omo_object_email_status` | `mail_id` | Suivi des messages du compte connecte : queued, sending, sent, failed, skipped, unknown |
@@ -382,6 +388,66 @@ Le transport est stateless : reponses JSON aux POST, notifications acceptees
 en 202, pas de session MCP ni de flux SSE GET. Versions negociees :
 2025-11-25, 2025-06-18 et 2025-03-26.
 
+## Disponibilites et creation d evenements
+
+Les trois outils `omo_get_availability`, `omo_list_event_spaces` et
+`omo_create_event` reprennent les calculs et droits du calendrier natif.
+
+Pour les disponibilites, resoudre les noms avec `omo_list_records`, module
+`team`, puis fournir les `user_ids`. Seuls les membres actifs et consultables
+de l organisation autorisee sont acceptes. Les dates sont inclusives, sur
+31 jours maximum, avec 20 personnes maximum et une resolution de 30 minutes.
+La duree demandee filtre les plages communes assez longues ; une plage peut
+etre plus longue que la reunion souhaitee. Les horaires sont ceux du profil,
+en Europe/Zurich, y compris les pauses lorsque la prise de rendez-vous est active.
+
+Les evenements OMO de toutes les organisations du membre, les calendriers
+importes occupes et les calendriers definissant des plages d ouverture
+participent au calcul, comme dans l onglet Disponibilites du profil. Le cache
+externe est rafraichi lorsque necessaire avec un budget commun de 12 secondes.
+Un cache ancien, en erreur ou hors de sa couverture produit `incomplete=true` :
+les plages renvoyees restent indicatives. Aucun titre, nom de calendrier,
+identifiant d evenement prive, identifiant de fournisseur ou secret ne sort.
+Les horaires personnels hors ouverture ne figurent pas dans les plages libres.
+
+Pour creer un evenement, parcourir `omo_list_event_spaces` et conserver le
+`holon_id` choisi. Le module calendrier doit etre actif et le compte doit
+disposer actuellement de `CAN_CREATE_EVENT` dans ce role ou cercle. La creation
+exige en plus le consentement OAuth `events:create`, presente explicitement
+sur la page de connexion et dans Mes connexions aux assistants. Apres
+publication, reconnecter le plugin pour accepter ce nouveau droit ; renouveler
+un ancien jeton n ajoute jamais de consentement.
+
+Fournir un titre, `start_at`, `end_at` et une `request_key` unique. Les dates
+comportent l heure, les secondes et un decalage explicite, par exemple
+`2026-10-05T10:00:00+02:00`. Le fuseau par defaut est Europe/Zurich. La description
+est du texte brut ; le statut par defaut est `confirmed`, avec `draft` et
+`option` disponibles. Le lieu peut etre en presentiel, en visio ou mixte,
+avec les champs natifs `locationmode`, `locationaddress` et `videomeetingurl`.
+Une journee entiere suit les bornes natives : minuit a 23:59:59 inclus.
+
+Sans listes d invites, les membres effectifs du holon sont invites par defaut.
+Des listes `invitation_user_ids`, `invitation_holon_ids` ou `invitation_emails`
+remplacent ce defaut : seuls les invites fournis sont retenus. Ne pas ajouter
+automatiquement le holon de contexte a une liste explicite. Une selection
+explicite vide est refusee, pour eviter le retour involontaire au defaut natif.
+Les membres et holons doivent appartenir a l organisation autorisee ; les
+adresses externes sont validees mais leur disponibilite reste inconnue.
+
+Avant sauvegarde, les conflits et donnees non verifiables sont controles.
+`created=false` et `requires_confirmation=true` indiquent que rien n a ete
+enregistre. Presenter les avertissements, demander si l utilisateur souhaite
+continuer, puis refaire exactement la demande avec `allow_conflicts=true`.
+Les libelles des autres organisations et holons prives sont retires du rapport.
+La disponibilite est indicative, sans reservation automatique des calendriers.
+
+Un resultat `created=true` fournit `event_id` et `url`. L evenement et les invitations
+sont sauvegardes dans la meme transaction. Les reessais avec une meme cle et
+un meme contenu retrouvent le meme evenement ; une cle reutilisee pour un autre
+contenu est refusee. Le consentement et les droits sont recontroles, y compris
+sur les reessais. La creation enregistre les invitations sans envoyer d e-mail
+et ne cree pas de document associe. Un envoi d e-mail reste une demande distincte.
+
 ## Membres, invitations et e-mails
 
 Le MCP peut envoyer des e-mails aux membres ou invites d un holon, d une reunion,
@@ -500,6 +566,7 @@ Executer sur PHP 8.5, apres migration :
 
 ```sh
 docker compose exec -T app php tests/mcp_protocol_test.php
+docker compose exec -T app php tests/mcp_calendar_test.php
 docker compose exec -T app php tests/mcp_oauth_structure_test.php
 docker compose exec -T app php tests/mcp_http_test.php
 docker compose exec -T app php tests/mcp_content_test.php
@@ -547,6 +614,6 @@ gardent `form-action 'self'`. Les tests HTTP seuls ne detectent pas les blocages
 CSP appliques par le navigateur aux redirections apres soumission.
 
 Verifier aussi manuellement une connexion neuve dans ChatGPT : decouverte,
-login, consentement lecture et creation, quatorze outils, import d une piece jointe,
+login, consentement lecture et creation, dix-sept outils, import d une piece jointe,
 refus puis revocation. Les tests locaux ne
 peuvent pas prouver l accessibilite du domaine depuis les serveurs du fournisseur.

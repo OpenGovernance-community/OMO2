@@ -93,6 +93,11 @@ final class McpBrowse
                 'date_field' => substr($definition['date'], strpos($definition['date'], '.') + 1)];
         }
         return ['organization_id' => (int)$organization->getId(), 'modules' => $modules,
+            'availability' => ['tool' => 'omo_get_availability', 'member_lookup_module' => 'team', 'max_members' => 20, 'max_days' => 31,
+                'includes_imported_calendars' => true, 'timezone' => 'Europe/Zurich', 'private_event_details' => false],
+            'event_creation' => ['authorized' => \omoMcpCanCreateEvents($grant), 'scope' => \OMO_MCP_EVENT_SCOPE,
+                'discover_tool' => 'omo_list_event_spaces', 'create_tool' => 'omo_create_event', 'requires_omo_permission' => 'CAN_CREATE_EVENT',
+                'invitation_modes' => ['default', 'explicit']],
             'member_exploration' => ['lookup_tool' => 'omo_list_records', 'lookup_module' => 'team', 'details_tool' => 'omo_get_member',
                 'description' => 'Resolve names first, disambiguate if necessary, then read the member for roles and navigation to related records. For upcoming meetings use calendar/invited and date_from; author means creator only. Effective memberships use structure/effective_member.'],
             'object_members' => ['tool' => 'omo_list_object_members', 'object_types' => ObjectAudience::TYPES,
@@ -106,7 +111,7 @@ final class McpBrowse
             'instructions' => 'Use omo_list_records with module team to resolve a name to user_id. Use user_id and optional user_relation on lists; filtering never changes viewer permissions. query is a literal title substring; team matches all name/username words in any order. It is not full-text search. Dates are inclusive calendar days in stored field values. List projects without parent_id for every level, or parent_id=0 for roots. Follow next_after_id even after an empty page until null. Keep filters identical between pages. Lists are live, not a frozen snapshot; only claim completeness when complete=true. Use omo_get_member for the member profile, roles and navigation; continue role pages with omo_list_assignments. Read details with omo_read_record using the returned context_holon_id.'];
     }
 
-    private static function requireUser(Organization $organization, array $context, int $userId): User
+    public static function requireUser(Organization $organization, array $context, int $userId): User
     {
         $user = new User();
         if (!$user->load($userId) || !$user->get('active') || !UserOrganization::hasActiveMembership($userId, (int)$organization->getId())

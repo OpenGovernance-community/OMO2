@@ -436,6 +436,10 @@ $baseSourceLang = [
         'text' => 'URL',
         'context' => 'Option to enable the proposal URL field.',
     ],
+    'decisions.edit.proposal_content.date_field' => [
+        'text' => 'Date et horaire',
+        'context' => 'Option to enable a proposal time slot and its calendar reservation.',
+    ],
     'decisions.edit.block_settings.vote_weighting_summary_yes' => [
         'text' => 'Oui',
         'context' => 'Shared yes label for vote weighting summaries.',

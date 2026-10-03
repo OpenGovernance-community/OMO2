@@ -619,6 +619,9 @@ CREATE TABLE `decision_proposal` (
   `title` varchar(190) DEFAULT NULL,
   `description` mediumtext DEFAULT NULL,
   `info_url` varchar(500) DEFAULT NULL,
+  `start_at` datetime DEFAULT NULL,
+  `end_at` datetime DEFAULT NULL,
+  `timezone` varchar(64) DEFAULT NULL,
   `position` int(11) NOT NULL DEFAULT 0,
   `parameters` mediumtext DEFAULT NULL,
   `active` tinyint(1) NOT NULL DEFAULT 1,
@@ -1079,6 +1082,7 @@ DROP TABLE IF EXISTS `event`;
 /*!40101 SET character_set_client = utf8mb4 */;
 CREATE TABLE `event` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDdecision_proposal` int(11) DEFAULT NULL,
   `IDorganization` int(11) NOT NULL,
   `IDholon` int(11) DEFAULT NULL,
   `IDproject` int(11) DEFAULT NULL,
@@ -1107,6 +1111,8 @@ CREATE TABLE `event` (
   KEY `idx_event_org_start` (`IDorganization`,`start_at`),
   KEY `idx_event_location_mode` (`locationmode`),
   KEY `idx_event_project` (`IDproject`),
+  UNIQUE KEY `uq_event_decision_proposal` (`IDdecision_proposal`),
+  CONSTRAINT `fk_event_decision_proposal` FOREIGN KEY (`IDdecision_proposal`) REFERENCES `decision_proposal` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_event_holon` FOREIGN KEY (`IDholon`) REFERENCES `holon` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_event_org` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_event_project` FOREIGN KEY (`IDproject`) REFERENCES `project` (`id`) ON DELETE SET NULL
@@ -4873,6 +4879,24 @@ CREATE TABLE `mcp_oauth_grant` (
   CONSTRAINT `mcp_grant_user_fk` FOREIGN KEY (`IDuser`) REFERENCES `user` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+-- @migration
+-- Atomic creation and replay of MCP calendar requests; no private agenda data stored.
+CREATE TABLE IF NOT EXISTS `mcp_event_creation` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `IDuser` int NOT NULL,
+  `IDorganization` int NOT NULL,
+  `IDevent` int DEFAULT NULL,
+  `key_hash` char(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `payload_hash` char(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `completed` tinyint NOT NULL DEFAULT 0,
+  `created_at` bigint NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `mcp_event_request` (`IDuser`, `IDorganization`, `key_hash`),
+  CONSTRAINT `mcp_event_user_fk` FOREIGN KEY (`IDuser`) REFERENCES `user` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `mcp_event_org_fk` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `mcp_event_result_fk` FOREIGN KEY (`IDevent`) REFERENCES `event` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
@@ -4886,3 +4910,9 @@ CREATE TABLE `mcp_oauth_grant` (
 INSERT INTO `sql_migration` (`filename`, `checksum`, `executed_at`) VALUES
 ('2026-10-02-04-mcp-structure-oauth.sql', 'a5586cfa5440235dda71c9be8692fd9b43916c8a19fd44f3481d7a875eb189f3', '2026-10-02 00:00:00'),
 ('2026-10-02-05-mcp-refresh-replay.sql', '359181229c14562ce7533c1d06d379f34df567ff13c1ed2a5eaf5417ffb16438', '2026-10-02 00:00:00');
+
+INSERT INTO `sql_migration` (`filename`, `checksum`, `executed_at`) VALUES
+('2026-10-03-04-mcp-event-creation.sql', '79e97cfcad2abcb3dcc9d9eaf71d2c68142001f3417847c0152ace9ca539c467', '2026-10-03 00:00:00');
+
+INSERT INTO `sql_migration` (`filename`, `checksum`, `executed_at`) VALUES
+('2026-10-03-05-decision-proposal-dates.sql', 'a24a2680d09ce624448bd71ccd2e7c9897c18e289d9a85a3fe3f942cf51b5a63', '2026-10-03 00:00:00');

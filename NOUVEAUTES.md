@@ -1,5 +1,11 @@
 # Journal Des Nouveautes
 
+- Propositions : option "Date et horaire" dans les parametres du vote, du consentement et du jugement majoritaire, au meme niveau que titre, description et URL. Desactiver les dates annule leurs reservations. Saisie compacte du creneau et cartes de dates avec jour, horaires, fuseau, statut et actions de confirmation/annulation.
+
+- Sondages de dates : plages horaires facultatives par proposition, evenements en option avec les invites de la decision et synchronisation ICS/CalDAV. Les bulletins soumis liberent les dates refusees. Une decision confirme la date gagnante et annule les autres ; les egalites restent en option. Apres une consultation, le gestionnaire peut confirmer ou annuler chaque date depuis les propositions.
+
+- Calendrier MCP : disponibilites des membres et creneaux communs calcules comme dans le profil, avec evenements OMO, calendriers importes, plages d ouverture et horaires personnels. Aucun titre prive n est expose ; les donnees externes incompletes sont signalees. Creation d evenements dans les holons autorises, consentement events:create, invites par defaut ou explicites, avertissement avant creation en cas de conflit, reessais sans doublons et migration SQL/Docker.
+
 - Identite MCP : nom OpenMyOrganization, description, site omo2.org et logo fournis aux clients lors de la connexion. Logo optimise en 256 x 256 pixels ; nom harmonise dans les metadonnees OAuth.
 
 - Invites MCP : les listes, recherches et fiches de reunions incluent effective_invitees, les personnes invitees directement ou via un holon, sans doublons. Statuts et eligibilite e-mail restent distincts ; les grandes listes fournissent une suite paginee. Les droits de consultation sont conserves.
