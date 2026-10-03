@@ -733,7 +733,7 @@ if ($leafletMapsEnabled) {
             <div class="omo-team__grid omo-card-grid omo-card-grid--fixed" data-team-items-container="cards">
                 <?php foreach ($memberCards as $card): ?>
                     <article
-                        class="omo-team-card omo-card<?= $card['canViewDetail'] ? ' omo-card--interactive' : '' ?><?= $card['isPending'] ? ' omo-team-card--pending' : '' ?><?= $card['isAssignmentReviewOverdue'] ? ' omo-team-card--assignment-overdue' : '' ?>"
+                        class="omo-team-card omo-card<?= $card['canViewDetail'] ? ' omo-card--interactive' : '' ?><?= $card['isPending'] || $card['hasPendingInvitation'] ? ' generic-member generic-member--inactive' : '' ?><?= $card['isAssignmentReviewOverdue'] ? ' omo-team-card--assignment-overdue' : '' ?>"
                         <?php if ($card['canViewDetail']): ?>
                         data-open-user-context="1"
                         <?php endif; ?>
@@ -1013,7 +1013,7 @@ if ($leafletMapsEnabled) {
                         ?>
                         <article class="omo-team__compact-item-shell generic-file-list__item-shell" data-team-member-item data-team-member-search="<?= omoApiEscape((string)$card['searchText']) ?>">
                             <div
-                                class="omo-team__compact-row generic-file-list__row<?= $card['canViewDetail'] ? ' omo-team__compact-row--interactive' : '' ?><?= $card['isPending'] ? ' omo-team__compact-row--pending' : '' ?><?= $card['isAssignmentReviewOverdue'] ? ' omo-team__compact-row--assignment-overdue' : '' ?>"
+                                class="omo-team__compact-row generic-file-list__row<?= $card['canViewDetail'] ? ' omo-team__compact-row--interactive' : '' ?><?= $card['isPending'] || $card['hasPendingInvitation'] ? ' generic-member generic-member--inactive' : '' ?><?= $card['isAssignmentReviewOverdue'] ? ' omo-team__compact-row--assignment-overdue' : '' ?>"
                                 <?php if ($card['canViewDetail']): ?>
                                 data-open-user-context="1"
                                 tabindex="0"

@@ -145,6 +145,10 @@ function omoGetOrgPanelSourceLang(): array
             'text' => '{memberName} - invitation en attente',
             'context' => 'Tooltip shown for a pending invited member avatar in the left panel.',
         ],
+        'leftbar.members.to_invite_tooltip' => [
+            'text' => '{memberName} - a inviter',
+            'context' => 'Tooltip for a pending member without a sent invitation.',
+        ],
 		'leftbar.members.role_focus_line' => [
 			'text' => 'Focus : {focus}',
 			'context' => 'Additional tooltip line showing a role assignment focus for a member avatar.',
@@ -1290,11 +1294,15 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
                     <?php foreach ($memberCards as $member): ?>
 						<?php
 						$hasPendingInvitation = !empty($member['hasPendingInvitation']);
-						$memberTooltip = $hasPendingInvitation
-							? t('leftbar.members.pending_tooltip', ['memberName' => $member['displayName']])
-							: (!empty($member['isAdmin'])
-								? t('leftbar.members.admin_tooltip', ['memberName' => $member['displayName'], 'adminLabel' => $adminLabel])
-								: (string)$member['displayName']); ?>
+						$isVisuallyPending = $hasPendingInvitation || !empty($member['isPending']);
+						$memberTooltip = (string)$member['displayName'];
+						if ($hasPendingInvitation) {
+							$memberTooltip = t('leftbar.members.pending_tooltip', ['memberName' => $member['displayName']]);
+						} elseif (!empty($member['isPending'])) {
+							$memberTooltip = t('leftbar.members.to_invite_tooltip', ['memberName' => $member['displayName']]);
+						} elseif (!empty($member['isAdmin'])) {
+							$memberTooltip = t('leftbar.members.admin_tooltip', ['memberName' => $member['displayName'], 'adminLabel' => $adminLabel]);
+						} ?>
 						<?php
 						$memberFocus = '';
 						if ($isRoleHolon && is_array($member['assignmentLinks'] ?? null)) {
@@ -1329,7 +1337,7 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
                         $memberAvatarStyle = '--circle-member-avatar-bg: ' . $memberAvatarPalette['background'] . '; --circle-member-avatar-text: ' . $memberAvatarPalette['foreground'] . ';';
                         ?>
                         <span
-                            class="circle-member<?= !empty($member['isAdmin']) ? ' circle-member--admin' : ' circle-member--regular' ?><?= $hasPendingInvitation ? ' circle-member--pending' : '' ?>"
+                            class="circle-member<?= !empty($member['isAdmin']) ? ' circle-member--admin' : ' circle-member--regular' ?><?= $isVisuallyPending ? ' generic-member generic-member--inactive' : '' ?>"
                             data-circle-member-item="1"
                             data-tooltip="<?= omoApiEscape($memberTooltip) ?>"
                             data-member-user-id="<?= (int)($member['userId'] ?? 0) ?>"

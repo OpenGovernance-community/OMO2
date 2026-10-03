@@ -1,5 +1,7 @@
 # Journal Des Nouveautes
 
+- Adhesions en attente : vignettes en noir et blanc, contour pointille et transparence legere dans getOrg, les listes Team et la carte. La presentation suit l adhesion et les affectations dans l organisation affichee, independamment du compte global et des autres organisations. Le statut "a inviter" est egalement signale dans la barre de structure. Les filtres d envoi d e-mails sont conserves.
+
 - Memos MCP : installation des dependances Composer lors du deploiement Dev, erreur explicite si le convertisseur Markdown manque et verification de la creation/relecture des Memos texte, HTML et Markdown. L agent doit confirmer le contenu sauvegarde et fournir le lien du document.
 
 - Invites MCP : l enumeration des reunions reprend le perimetre natif OMO, independamment des cases de presence. Rafraichir les appartenances ne change plus ce perimetre ; les contacts references et les destinataires autorises sont distingues par mail_eligible.
