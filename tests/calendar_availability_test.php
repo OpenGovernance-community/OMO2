@@ -40,12 +40,21 @@ try {
     $outsider = availabilityFixture(User::class, ['email' => 'outsider-' . $nonce . '@example.invalid', 'firstname' => 'Outsider']);
     $org = availabilityFixture(Organization::class, ['name' => 'Current ' . $nonce, 'shortname' => 'current-' . $nonce]);
     $other = availabilityFixture(Organization::class, ['name' => 'Other ' . $nonce, 'shortname' => 'other-' . $nonce]);
+    $structureApps = new \dbObject\ArrayApplication();
+    $structureApps->load(['where' => [['field' => 'hash', 'value' => 'structure']], 'limit' => 1]);
+    availabilityExpect(count($structureApps) === 1, 'Structure app exists for holon invitation fixtures');
+    foreach ([$org, $other] as $fixtureOrg) {
+        availabilityFixture(\dbObject\OrganizationApplication::class, ['IDorganization' => $fixtureOrg->getId(),
+            'IDapplication' => $structureApps[0]->getId(), 'active' => 1]);
+    }
+    $root = availabilityFixture(\dbObject\Holon::class, ['name' => 'Fixture root', 'IDorganization' => $org->getId(),
+        'IDtypeholon' => 2, 'active' => 1, 'visible' => 1]);
     foreach ([$organizer, $guest] as $member) {
         availabilityFixture(UserOrganization::class, ['IDorganization' => $org->getId(), 'IDuser' => $member->getId(), 'active' => 1]);
     }
     $day = new DateTimeImmutable('tomorrow 00:00');
     $otherHolon = availabilityFixture(\dbObject\Holon::class, ['id' => 0, 'name' => 'Cercle Ancrage',
-        'IDorganization' => $other->getId(), 'IDuser' => $guest->getId(), 'active' => 1, 'visible' => 1]);
+        'IDorganization' => $other->getId(), 'IDtypeholon' => 2, 'IDuser' => $guest->getId(), 'active' => 1, 'visible' => 1]);
     $busy = availabilityFixture(Event::class, ['IDuser' => $guest->getId(), 'IDorganization' => $other->getId(),
         'IDholon' => $otherHolon->getId(),
         'title' => 'SECRET title', 'description' => 'SECRET details', 'start_at' => $day->setTime(10, 0),
@@ -78,6 +87,7 @@ try {
     availabilityExpect($separateReport['conflicts'][0]['holon'] === '', 'Appointment without circle keeps organization context only');
     $longBusy->set('active', 0); $longBusy->save();
     $holon = availabilityFixture(\dbObject\Holon::class, ['id' => 0, 'name' => 'Fixture team', 'IDorganization' => $org->getId(),
+        'IDholon_org' => $root->getId(), 'IDholon_parent' => $root->getId(), 'IDtypeholon' => 1,
         'IDuser' => $organizer->getId(), 'active' => 1, 'visible' => 1]);
     availabilityFixture(\dbObject\UserHolon::class, ['IDholon' => $holon->getId(), 'IDuser' => $guest->getId(), 'active' => 1, 'is_membership' => 1]);
     $holonInvite = new EventInvitation();

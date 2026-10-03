@@ -95,13 +95,25 @@ try {
     $tokens = mcpHttp('/mcp/token.php', mcpExchangeRequest($registered, $callback['code']));
     mcpCheck($tokens['status'] === 200, 'OAuth HTTP token exchange');
     $tokens = mcpHttpJson($tokens);
+    $eventRequest = array_replace($request, ['scope' => OMO_MCP_SCOPE . ' ' . OMO_MCP_EVENT_SCOPE]);
+    $eventStart = mcpHttp('/mcp/authorize.php?' . http_build_query($eventRequest));
+    $eventConsent = mcpHttp($eventStart['headers']['location']);
+    mcpCheck($eventConsent['status'] === 200 && str_contains($eventConsent['body'], 'Creer des evenements')
+        && !str_contains($eventConsent['body'], 'Cette autorisation est limitee a la lecture.'), 'Event creation consent is explicitly displayed');
+    preg_match('/name="csrf" value="([a-f0-9]+)"/', $eventConsent['body'], $eventCsrf);
+    $eventAuthorized = mcpHttp($eventStart['headers']['location'], ['csrf' => $eventCsrf[1], 'decision' => 'allow', 'organization_id' => $items['org']->getId()]);
+    parse_str(parse_url($eventAuthorized['headers']['location'], PHP_URL_QUERY), $eventCallback);
+    $eventTokens = mcpHttpJson(mcpHttp('/mcp/token.php', mcpExchangeRequest($registered, $eventCallback['code'])));
+    mcpCheck($eventTokens['scope'] === $eventRequest['scope'], 'Event creation scope survives consent and token exchange');
+    $connections = mcpHttp('/mcp/connections.php');
+    mcpCheck(str_contains($connections['body'], 'Creer des evenements'), 'Event consent is visible in personal connections');
     $cookieOnly = mcpHttpRpc('tools/list', [], null);
     mcpCheck($cookieOnly['status'] === 401, 'Logged-in browser cookie cannot authorize MCP');
     $initialized = mcpHttpRpc('initialize', ['protocolVersion' => '2025-11-25', 'capabilities' => new stdClass(),
         'clientInfo' => (object)['name' => 'test', 'version' => '1']], $tokens['access_token']);
     mcpCheck(mcpHttpJson($initialized)['result']['serverInfo']['name'] === 'OpenMyOrganization', 'MCP initialization');
     $tools = mcpHttpRpc('tools/list', [], $tokens['access_token']);
-    mcpCheck(count(mcpHttpJson($tools)['result']['tools']) === 14, 'Authenticated tool discovery');
+    mcpCheck(count(mcpHttpJson($tools)['result']['tools']) === 17, 'Authenticated tool discovery');
     foreach (['omo_connection_info' => new stdClass(), 'omo_catalog' => new stdClass(),
         'omo_list_records' => (object)['module' => 'structure', 'limit' => 1], 'omo_list_assignments' => new stdClass(),
         'omo_list_structure' => (object)['limit' => 1],
@@ -268,4 +280,4 @@ try {
     mcpCleanup($items);
     if (is_file($jar)) unlink($jar);
 }
-    echo "mcp_http_test: OK (14 tools, member lists, native composer/CSRF, read/mail/document consent, document creation, isolation, revocation)\n";
+    echo "mcp_http_test: OK (17 tools, member lists, native composer/CSRF, read/mail/document consent, document creation, isolation, revocation)\n";

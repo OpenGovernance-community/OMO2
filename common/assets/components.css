@@ -585,11 +585,23 @@ input:focus-visible + .generic-choice-card,
     min-height: 28px;
     padding: 0 10px;
     border-radius: 999px;
-    background: color-mix(in srgb, var(--color-primary, #2563eb) 12%, var(--color-surface, #ffffff));
-    border: 1px solid color-mix(in srgb, var(--color-primary, #2563eb) 24%, var(--color-border, #e5e7eb));
-    color: var(--color-primary, #2563eb);
+    background: color-mix(in srgb, var(--param-badge-color, var(--color-primary, #2563eb)) 12%, var(--color-surface, #ffffff));
+    border: 1px solid color-mix(in srgb, var(--param-badge-color, var(--color-primary, #2563eb)) 24%, var(--color-border, #e5e7eb));
+    color: var(--param-badge-color, var(--color-primary, #2563eb));
     font-size: var(--generic-type-size-compact);
     font-weight: 700;
+}
+
+.generic-badge--success {
+    --param-badge-color: var(--color-success, #15803d);
+}
+
+.generic-badge--warning {
+    --param-badge-color: var(--color-warning-text, #a16207);
+}
+
+.generic-badge--muted {
+    --param-badge-color: var(--color-text-muted, #64748b);
 }
 
 .generic-visually-hidden {

@@ -491,6 +491,9 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                     'title' => trim((string)$proposal->get('title')),
                     'description' => trim((string)$proposal->get('description')) ?: null,
                     'info_url' => omoDecisionNormalizeProposalInfoUrl($proposal->get('info_url')),
+                    'start_at' => $proposal->get('start_at'),
+                    'end_at' => $proposal->get('end_at'),
+                    'timezone' => $proposal->get('timezone'),
                 ];
             }
         }
@@ -1005,7 +1008,7 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                                     <section class="omo-decision-settings-overview__group">
                                         <span class="omo-decision-settings-overview__title"><?= $escape(t('decisions.edit.settings.behavior', [], $lang, $sourceLang)) ?></span>
                                         <div class="omo-decision-settings-overview__items">
-                                    <span class="omo-decision-vote__readonly-stat"><strong><?= $escape(t('decisions.edit.proposal_content.summary_label', [], $lang, $sourceLang)) ?></strong><span data-omo-decision-vote-proposal-content-summary data-title-label="<?= $escape(t('decisions.edit.proposal_content.title_field', [], $lang, $sourceLang)) ?>" data-description-label="<?= $escape(t('decisions.edit.proposal_content.description_field', [], $lang, $sourceLang)) ?>" data-url-label="<?= $escape(t('decisions.edit.proposal_content.url_field', [], $lang, $sourceLang)) ?>"><?= $escape($proposalContentSummary) ?></span></span>
+                                    <span class="omo-decision-vote__readonly-stat"><strong><?= $escape(t('decisions.edit.proposal_content.summary_label', [], $lang, $sourceLang)) ?></strong><span data-omo-decision-vote-proposal-content-summary data-title-label="<?= $escape(t('decisions.edit.proposal_content.title_field', [], $lang, $sourceLang)) ?>" data-description-label="<?= $escape(t('decisions.edit.proposal_content.description_field', [], $lang, $sourceLang)) ?>" data-url-label="<?= $escape(t('decisions.edit.proposal_content.url_field', [], $lang, $sourceLang)) ?>" data-date-label="<?= $escape(t('decisions.edit.proposal_content.date_field', [], $lang, $sourceLang)) ?>"><?= $escape($proposalContentSummary) ?></span></span>
                                     <?php if (!$consultationOnly): ?>
                                     <span class="omo-decision-vote__readonly-stat">
                                         <strong><?= $escape(t('decisions.vote.field.choice_mode', [], $lang, $sourceLang)) ?></strong>
@@ -1221,6 +1224,8 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                                     <textarea hidden aria-hidden="true" name="proposal_descriptions[]" data-omo-decision-vote-proposal-description><?= $escape((string)($proposalItem['description'] ?? '')) ?></textarea>
                                     <?php endif; ?>
                                     <input type="hidden" name="proposal_info_urls[]" value="<?= $escape((string)($proposalItem['info_url'] ?? '')) ?>" data-omo-decision-vote-proposal-info-url>
+                                    <?php if ($canEditProposals): ?><?= omoDecisionRenderProposalDates($proposalItem, $escape, $canEditProposals, 'proposal_', true, $proposalContent['date']) ?><?php endif; ?>
+                                    <?php if (!$canEditProposals): ?><?= omoDecisionRenderProposalCalendarForItem($proposalItem, $context, $escape) ?><?php endif; ?>
                                     <input type="hidden" name="proposal_ids[]" value="<?= $escape((int)($proposalItem['id'] ?? 0)) ?>">
                                     <?php if ($showOwnerIntermediateResults): ?>
                                     <?php $ownerProposalId = (int)($proposalItem['id'] ?? 0); ?>
