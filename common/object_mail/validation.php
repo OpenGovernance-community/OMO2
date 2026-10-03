@@ -1,8 +1,21 @@
 <?php
+function omoObjectMailValidateSelection(array $args): void
+{
+    if (!array_key_exists('user_ids', $args)) return;
+    $ids = $args['user_ids'];
+    if (($args['object_type'] ?? null) !== 'organization' || !is_array($ids) || !array_is_list($ids)
+        || count($ids) < 1 || count($ids) > 500) throw new InvalidArgumentException('Selection de membres invalide.');
+    foreach ($ids as $id) {
+        if (!is_int($id) || $id <= 0) throw new InvalidArgumentException('Identifiant de membre invalide.');
+    }
+    if (count(array_unique($ids)) !== count($ids)) throw new InvalidArgumentException('Membres en double.');
+}
+
 function omoObjectMailValidate(array $args): void
 {
-    if (array_diff(array_keys($args), ['object_type', 'object_id', 'subject', 'message', 'request_key', 'audience_token'])
-        || !in_array($args['object_type'] ?? null, ['holon', 'event', 'project', 'decision'], true)
+    omoObjectMailValidateSelection($args);
+    if (array_diff(array_keys($args), ['object_type', 'object_id', 'user_ids', 'subject', 'message', 'request_key', 'audience_token'])
+        || !in_array($args['object_type'] ?? null, ['organization', 'holon', 'event', 'project', 'decision'], true)
         || !is_int($args['object_id'] ?? null) || $args['object_id'] <= 0) throw new InvalidArgumentException('Objet invalide.');
     foreach (['subject' => 250, 'message' => 20000, 'request_key' => 100, 'audience_token' => 64] as $field => $maximum) {
         $value = $args[$field] ?? null;

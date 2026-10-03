@@ -138,8 +138,8 @@ peuvent utiliser le meme serveur s ils supportent HTTP, OAuth DCR et PKCE S256.
 | `omo_get_availability` | `user_ids` (1 a 20 membres), `date_from`, `date_to` inclusives (31 jours maximum), `duration_minutes` facultatif (30 a 1440, multiple de 30) | Plages libres/occupees individuelles et `common_free_intervals`, resolution 30 minutes, fuseau Europe/Zurich ; `incomplete` signale les calendriers externes non verifies |
 | `omo_list_event_spaces` | `after_id`, `limit` facultatifs | Roles et cercles autorises pour `CAN_CREATE_EVENT`, `holon_id`, pagination, consentement `events:create` |
 | `omo_create_event` | `holon_id`, `title`, `start_at`, `end_at`, `request_key` ; description, fuseau, statut, journee entiere, lieu et listes d invites facultatifs | Nouvel evenement, ID et URL ; invites par defaut ou selection explicite, avertissements de disponibilite avant sauvegarde, reessais dedupliques |
-| `omo_list_object_members` | `object_type` (holon, event, project, decision), `object_id` ; `offset`, `limit` (maximum 50) | Membres/invites, nom, e-mail et telephone de l organisation, relations/statut, pagination `next_offset`, `can_send`, `recipient_count`, `audience_token` |
-| `omo_send_object_email` | `object_type`, `object_id`, `subject`, `message`, `audience_token`, `request_key` | Envoi direct jusqu a 5 destinataires, sinon traitement automatique en file ; `mail_id`, compteurs de livraison et `replayed` |
+| `omo_list_object_members` | `object_type` (organization, holon, event, project, decision), `object_id` ; `user_ids` pour une selection dans l organisation ; `offset`, `limit` (maximum 50) | Membres/invites, nom, e-mail et telephone de l organisation, relations/statut, pagination `next_offset`, `can_send`, `recipient_count`, `audience_token` |
+| `omo_send_object_email` | `object_type`, `object_id`, `user_ids` facultatif pour organization, `subject`, `message`, `audience_token`, `request_key` | Envoi direct jusqu a 5 destinataires, sinon traitement automatique en file ; `mail_id`, compteurs de livraison et `replayed` |
 | `omo_object_email_status` | `mail_id` | Suivi des messages du compte connecte : queued, sending, sent, failed, skipped, unknown |
 | `omo_connection_info` | aucun | Identite, organisation consentie, ID racine, couverture |
 | `omo_list_document_spaces` | `kind` : `organization` (defaut), `holons`, `folders` ; `after_id` (0), `limit` (20, maximum 50) | Destinations ou les droits OMO autorisent la creation, visibilites compatibles, consentement et disponibilite du stockage de fichiers |
@@ -450,7 +450,7 @@ et ne cree pas de document associe. Un envoi d e-mail reste une demande distinct
 
 ## Membres, invitations et e-mails
 
-Le MCP peut envoyer des e-mails aux membres ou invites d un holon, d une reunion,
+Le MCP peut envoyer des e-mails aux membres de l organisation ou aux membres ou invites d un holon, d une reunion,
 d un projet ou d une decision. Trois outils couvrent le parcours :
 
 1. `omo_list_object_members` : consulter les destinataires et verifier `can_send`
@@ -459,8 +459,10 @@ d un projet ou d une decision. Trois outils couvrent le parcours :
    de cet objet avec le `audience_token` retourne par la consultation.
 3. `omo_object_email_status` : suivre les livraisons avec le `mail_id` retourne.
 
-L envoi concerne tous les destinataires eligibles de l objet choisi. Il ne permet
-pas de choisir une personne isolee par `user_id` ni de fournir une adresse libre.
+L envoi concerne les destinataires eligibles de l objet choisi. Avec
+`object_type: "organization"`, `user_ids` permet de choisir un ou plusieurs
+membres ; sans ce champ, tous les membres actifs sont vises. Les adresses libres
+ne sont pas acceptees.
 `omo_connection_info` indique si la connexion dispose de `mail_sending_authorized`.
 Si ce champ est faux, refaire le consentement OAuth avec `mail:send` ; si les
 outils sont absents du client, verifier que cette version du serveur est deployee
@@ -470,6 +472,13 @@ et actualiser la decouverte des outils de la connexion.
 recherche. Suivre `next_offset` jusqu a `null` ; les listes refletent les droits
 du compte connecte et les changements faits dans OMO.
 
+- Organisation : `object_type: "organization"`, `object_id` egal a
+  `omo_connection_info.organization.id`. Tous les membres actifs peuvent contacter
+  leurs collegues, sans role de gestion ni module Team ou Structure requis.
+  Pour une selection, resoudre les noms dans Team et transmettre les memes
+  `user_ids` dans la consultation et l envoi. Une selection vide, invalide ou
+  contenant un membre indisponible est refusee. Les adhesions sont recontrolees
+  avant chaque livraison ; les coordonnees sont celles de cette organisation.
 - Holon : membres actifs effectifs, appartenances calculees et roles descendants
   pour les cercles ; un holon de type organisation represente ses membres actifs.
 - Reunion : utiliser `object_type: "event"` et l identifiant de l evenement.
@@ -497,9 +506,25 @@ individuel, sans partager les coordonnees des autres destinataires.
 L assistant doit obtenir un nouveau consentement `organization:read mail:send`
 (avec `documents:create` egalement si souhaite). Le renouvellement d un ancien
 jeton ne peut pas ajouter ce droit. L utilisateur doit participer a l objet ou
-disposer de son droit de gestion ; les decisions exigent toujours la gestion.
+disposer de son droit de gestion ; une adhesion active suffit pour l audience
+organisation et les decisions exigent toujours la gestion.
 Dans OMO, le bouton **Envoyer un e-mail** ouvre la popup partagee des membres,
 evenements, projets et decisions, avec protection CSRF.
+
+### Exemple : ecrire a des membres choisis
+
+Apres avoir identifie l organisation (ici 16) et les personnes (ici 42 et 73),
+previsualiser exactement la selection demandee :
+
+```json
+{"name":"omo_list_object_members","arguments":{"object_type":"organization","object_id":16,"user_ids":[42,73]}}
+```
+
+Reprendre ces arguments avec le sujet, le message, le `audience_token` retourne
+et une `request_key` unique dans `omo_send_object_email`. Ne retirer `user_ids`
+que si l utilisateur demande un message a toute l organisation, puis refaire
+la previsualisation. Le consentement `mail:send`, les limites et le suivi sont
+identiques aux autres envois.
 
 ### Exemple : envoyer un rappel aux invites d une reunion
 
@@ -576,6 +601,7 @@ docker compose exec -T app php tests/mcp_member_test.php
 docker compose exec -T app php tests/mcp_document_creation_test.php
 docker compose exec -T app php tests/mcp_file_import_test.php
 docker compose exec -T app php tests/object_mail_test.php
+docker compose exec -T app php tests/organization_mail_test.php
 docker compose exec -T app php tests/mcp_deployed_discovery_test.php
 ```
 
