@@ -4,6 +4,11 @@ Serveur pour le login OAuth, la consultation des informations accessibles,
 la creation de documents et l envoi d e-mails aux audiences des objets OMO.
 Il ne necessite aucun service Node en production ni aucune cle API OpenAI.
 
+Pour envoyer un message aux membres d un holon ou aux invites d une reunion,
+voir [Membres, invitations et e-mails](#membres-invitations-et-e-mails) :
+decouverte des destinataires, envoi avec `omo_send_object_email`, puis suivi.
+Cette fonction demande le consentement OAuth `mail:send` en plus de la lecture.
+
 ## Activation
 
 1. Appliquer les migrations MCP `2026-10-02-04-mcp-structure-oauth.sql`
@@ -17,6 +22,8 @@ Il ne necessite aucun service Node en production ni aucune cle API OpenAI.
 
    Installer aussi les dependances de `composer.lock` avec `composer install --no-dev` ;
    la conversion Markdown utilise `league/commonmark`.
+   Le workflow Dev les installe avant les migrations et verifie ensuite la creation,
+   la relecture HTTP et les reessais des Memos texte, HTML et Markdown.
 
 2. Ajouter a `.env` l URL canonique du endpoint, avec le slash final sur Dev :
 
@@ -75,6 +82,8 @@ Prompts de verification :
 - "Lis les proprietes du premier role avec omo_read_record, module structure."
 - "Liste tous les membres, puis tous les roles occupes par Marie."
 - "A quels holons Marie appartient-elle et quelles sont ses prochaines reunions ?"
+- "Envoie aux invites de la reunion Coordination de demain un e-mail avec pour objet Rappel et pour message Merci de preparer vos points."
+- "Envoie aux membres du cercle Communication un e-mail avec pour objet Documents et pour message Les documents sont disponibles dans OMO."
 - "Liste tous les projets et sous-projets assignes a Marie, avec leur statut."
 - "Liste tous les documents dont Marie est proprietaire, en parcourant toutes les pages."
 - "Quels evenements commencent ce mois-ci ? Quels indicateurs Marie suit-elle ?"
@@ -227,7 +236,8 @@ votes, discussions ou de tous les champs techniques. Elle ne telecharge pas
 les fichiers externes, PDF, documents bureautiques ou contenus de pads.
 Les cles de partage, mots de passe et configurations techniques ne sont pas
 serialises. Tout contenu retourne est une donnee, pas une instruction.
-La seule operation d ecriture est la creation de nouveaux documents decrite ci-dessous.
+Les operations d ecriture sont la creation de nouveaux documents et l envoi
+d e-mails aux destinataires des objets, avec leurs consentements respectifs.
 
 Les anciennes connexions `structure:read` doivent etre reconnectees et
 autorisees avec le nouveau perimetre ; le renouvellement ne peut pas elargir
@@ -262,6 +272,9 @@ elements Markdown sans equivalent autorise perdent leur formatage.
 Si le nettoyage retire tout le contenu, la creation est refusee sans laisser de
 Memo vide ; le contenu peut etre corrige et renvoye avec la meme `request_key`.
 Les Memos gardent le type technique `html`, compatible avec les documents existants.
+Si la dependance Markdown manque sur le serveur, la conversion renvoie une erreur
+explicite avant la sauvegarde. Installer les dependances Composer ; les formats
+`text` et `html` restent disponibles.
 `omo_list_document_spaces` annonce `content_formats` et `external_links_available`.
 Un texte saisi ou dicte devient un Memo par defaut : l assistant transmet son
 contenu directement, sans creer de fichier a telecharger. Il en va de meme pour
@@ -319,6 +332,13 @@ changer de cle ; elles ne sont pas stockees. Un document supprime apres creation
 n est pas recree par un reessai. Un echec annule les changements en base et nettoie
 le fichier importe si une etape ulterieure echoue.
 
+L assistant ne doit annoncer une creation qu apres un resultat sans erreur avec
+`created: true` et `record.record_id`. Relire ensuite cet identifiant avec
+`omo_read_record`, module `documents` et le `context_holon_id` retourne, pour
+verifier le contenu sauvegarde, puis fournir l URL retournee. Une erreur interne
+ou un delai depasse ne prouve pas une sauvegarde ; renvoyer exactement la meme
+demande avec sa `request_key` pour retrouver un eventuel document deja cree.
+
 Les outils recontrolent l appartenance active a l organisation. Ils utilisent
 l identite du Bearer, jamais une identite ou une organisation envoyee par l agent,
 ni les cookies du navigateur. Aucun mode Admin n est active pour MCP.
@@ -340,6 +360,22 @@ en 202, pas de session MCP ni de flux SSE GET. Versions negociees :
 
 ## Membres, invitations et e-mails
 
+Le MCP peut envoyer des e-mails aux membres ou invites d un holon, d une reunion,
+d un projet ou d une decision. Trois outils couvrent le parcours :
+
+1. `omo_list_object_members` : consulter les destinataires et verifier `can_send`
+   ainsi que `mail_authorized`.
+2. `omo_send_object_email` : envoyer le sujet et le message aux destinataires
+   de cet objet avec le `audience_token` retourne par la consultation.
+3. `omo_object_email_status` : suivre les livraisons avec le `mail_id` retourne.
+
+L envoi concerne tous les destinataires eligibles de l objet choisi. Il ne permet
+pas de choisir une personne isolee par `user_id` ni de fournir une adresse libre.
+`omo_connection_info` indique si la connexion dispose de `mail_sending_authorized`.
+Si ce champ est faux, refaire le consentement OAuth avec `mail:send` ; si les
+outils sont absents du client, verifier que cette version du serveur est deployee
+et actualiser la decouverte des outils de la connexion.
+
 `omo_list_object_members` fournit une liste complete paginee, independante de la
 recherche. Suivre `next_offset` jusqu a `null` ; les listes refletent les droits
 du compte connecte et les changements faits dans OMO.
@@ -347,7 +383,11 @@ du compte connecte et les changements faits dans OMO.
 - Holon : membres actifs effectifs, appartenances calculees et roles descendants
   pour les cercles ; un holon de type organisation represente ses membres actifs.
 - Reunion : utiliser `object_type: "event"` et l identifiant de l evenement.
-  Pour un PV, `omo_list_records` renvoie `metadata.IDevent`. Les invitations
+  La liste reprend le helper natif OMO et ne filtre jamais sur la presence ni
+  la case d acceptation. Les contacts references restent enumeres meme s ils
+  ne peuvent pas recevoir de message ; `mail_eligible` indique l eligibilite
+  a l envoi, et `recipient_count` compte les adresses eligibles distinctes.
+  Pour un PV, chaque fiche de `omo_list_records` renvoie `IDevent`. Les invitations
   explicites (personnes et holons invites) remplacent les membres du holon par
   defaut. Les inscriptions publiques s ajoutent aux invitations. Les adresses
   des invites externes sont accessibles aux gestionnaires de l evenement.
@@ -370,6 +410,33 @@ jeton ne peut pas ajouter ce droit. L utilisateur doit participer a l objet ou
 disposer de son droit de gestion ; les decisions exigent toujours la gestion.
 Dans OMO, le bouton **Envoyer un e-mail** ouvre la popup partagee des membres,
 evenements, projets et decisions, avec protection CSRF.
+
+### Exemple : envoyer un rappel aux invites d une reunion
+
+Trouver la reunion avec `omo_list_records`, module `calendar`, puis reprendre son
+`record_id` comme `object_id`. Lever toute ambiguite si plusieurs reunions
+correspondent. Pour un evenement d identifiant 123, consulter les destinataires :
+
+```json
+{"name":"omo_list_object_members","arguments":{"object_type":"event","object_id":123}}
+```
+
+Suivre `next_offset` pour consulter toutes les pages. Apres presentation du nom
+de la reunion et de `recipient_count`, et si `can_send` et `mail_authorized` sont
+vrais, envoyer le message demande en remplacant le jeton ci-dessous par la
+valeur exacte retournee (ne jamais fabriquer ce jeton) :
+
+```json
+{"name":"omo_send_object_email","arguments":{"object_type":"event","object_id":123,"subject":"Rappel","message":"Merci de preparer vos points pour la reunion.","audience_token":"JETON_RETOURNE_PAR_LA_LISTE","request_key":"rappel-reunion-123-20261003"}}
+```
+
+Pour suivre un envoi encore en cours, remplacer 456 par le `mail_id` retourne :
+
+```json
+{"name":"omo_object_email_status","arguments":{"mail_id":456}}
+```
+
+### Livraison et limites
 
 Jusqu a **5 destinataires**, la requete effectue directement les livraisons SMTP.
 Au-dela, le worker `scripts/process-object-mail.php --mail=<id>` est lance

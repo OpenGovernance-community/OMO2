@@ -57,13 +57,35 @@ try {
             'params' => ['name' => $name, 'arguments' => $arguments]], $token);
         mcpCheck($reply['status'] === 200 && ($reply['json']['result']['isError'] ?? true) === false, 'Deployed browsing tool failed');
     }
-    $created = mcpDeployedRequest($path, ['jsonrpc' => '2.0', 'id' => 6, 'method' => 'tools/call',
-        'params' => ['name' => 'omo_create_document', 'arguments' => (object)['title' => 'MCP deployment fixture',
-            'request_key' => 'deployment-document', 'holon_id' => (int)$items['role']->getId(), 'content' => 'Temporary deployment test only.']]], $token);
-    mcpCheck($created['status'] === 200 && ($created['json']['result']['isError'] ?? true) === false, 'Deployed document creation failed');
-    $items['created_document'] = new \dbObject\Document();
-    $items['created_document']->load($created['json']['result']['structuredContent']['record']['record_id']);
-    echo "[MCP smoke] OK: OAuth creation consent, authenticated routing, ten tools and document creation\n";
+    foreach (['text' => 'Temporary deployment test only.',
+        'html' => '<p><strong>Temporary deployment test only.</strong></p>',
+        'markdown' => '**Temporary deployment test only.**'] as $format => $content) {
+        $arguments = (object)['title' => 'MCP deployment fixture ' . $format, 'request_key' => 'deployment-document-' . $format,
+            'holon_id' => (int)$items['role']->getId(), 'content_format' => $format, 'content' => $content];
+        $created = mcpDeployedRequest($path, ['jsonrpc' => '2.0', 'id' => 6, 'method' => 'tools/call',
+            'params' => ['name' => 'omo_create_document', 'arguments' => $arguments]], $token);
+        $data = $created['json']['result']['structuredContent'] ?? [];
+        mcpCheck($created['status'] === 200 && ($created['json']['result']['isError'] ?? true) === false
+            && ($data['created'] ?? false), 'Deployed ' . $format . ' Memo creation failed');
+        $items['created_document_' . $format] = new \dbObject\Document();
+        $document = $items['created_document_' . $format];
+        mcpCheck($document->load((int)($data['record']['record_id'] ?? 0), true)
+            && $document->getDocumentType() === \dbObject\Document::TYPE_HTML, 'Deployed Memo was not persisted');
+        $expectedContent = $format === 'text' ? 'Temporary deployment test only.' : '<strong>Temporary deployment test only.</strong>';
+        mcpCheck(str_contains((string)$document->get('content'), $expectedContent), 'Deployed Memo lost content or formatting');
+        $read = mcpDeployedRequest($path, ['jsonrpc' => '2.0', 'id' => 7, 'method' => 'tools/call',
+            'params' => ['name' => 'omo_read_record', 'arguments' => (object)['module' => 'documents',
+                'record_id' => (int)$document->getId(), 'context_holon_id' => $data['record']['context_holon_id']]]], $token);
+        mcpCheck($read['status'] === 200 && ($read['json']['result']['isError'] ?? true) === false
+            && str_contains($read['json']['result']['structuredContent']['text'] ?? '', 'Temporary deployment test only.'),
+            'Deployed Memo cannot be read in a new HTTP request');
+        $retry = mcpDeployedRequest($path, ['jsonrpc' => '2.0', 'id' => 8, 'method' => 'tools/call',
+            'params' => ['name' => 'omo_create_document', 'arguments' => $arguments]], $token);
+        mcpCheck($retry['status'] === 200 && ($retry['json']['result']['structuredContent']['replayed'] ?? false)
+            && ($retry['json']['result']['structuredContent']['record']['record_id'] ?? 0) === (int)$document->getId(),
+            'Deployed Memo retry must return the saved document');
+    }
+    echo "[MCP smoke] OK: OAuth creation consent, authenticated routing, fourteen tools and persisted text/HTML/Markdown Memos\n";
 } finally {
     mcpCleanup($items);
     echo "[MCP smoke] Temporary fixtures removed\n";

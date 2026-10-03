@@ -1,5 +1,11 @@
 # Journal Des Nouveautes
 
+- Memos MCP : installation des dependances Composer lors du deploiement Dev, erreur explicite si le convertisseur Markdown manque et verification de la creation/relecture des Memos texte, HTML et Markdown. L agent doit confirmer le contenu sauvegarde et fournir le lien du document.
+
+- Invites MCP : l enumeration des reunions reprend le perimetre natif OMO, independamment des cases de presence. Rafraichir les appartenances ne change plus ce perimetre ; les contacts references et les destinataires autorises sont distingues par mail_eligible.
+
+- Documentation MCP : acces direct a la fonction e-mail, exemples de demandes et parcours complet pour envoyer un rappel aux invites d une reunion, avec consentement requis, suivi et limites de selection des destinataires.
+
 - Popup e-mail OMO : formulaire compact aligne sur les nouveaux indicateurs, destinataires reels dans une liste repliable, champs pleine largeur et actions en bas. Suppression du titre en double et des explications techniques ; suivi limite aux compteurs utiles.
 
 - MCP : nouvelle fiche membre avec roles, types de holons et navigation vers ses projets, documents, reunions et autres objets accessibles. Recherche des noms dans les deux ordres, appartenances effectives aux holons et filtres par invitation/participation. Les prochaines reunions incluent les invitations de groupe et excluent les refus. Correction du controle des brouillons prives dans les apercus et listes de reunions.

@@ -318,7 +318,7 @@ class Event extends DbObject
         return filter_var($email, FILTER_VALIDATE_EMAIL) ? $email : '';
     }
 
-    protected function getInvitationMembershipUserIds($holonId, $organizationId, bool $fresh = false): array
+    protected function getInvitationMembershipUserIds($holonId, $organizationId, bool $fresh = false, bool $activeOnly = false): array
     {
         static $membershipCache = [];
 
@@ -328,7 +328,7 @@ class Event extends DbObject
             return [];
         }
 
-        $cacheKey = $organizationId . ':' . $holonId;
+        $cacheKey = $organizationId . ':' . $holonId . ':' . (int)$activeOnly;
         if (!$fresh && isset($membershipCache[$cacheKey])) {
             return $membershipCache[$cacheKey];
         }
@@ -349,7 +349,7 @@ class Event extends DbObject
         $userIds = $holon->getAssociatedMemberUserIds([
             'organizationId' => $organizationId,
             'skipPermissionFilter' => true,
-            'activeOnly' => $fresh,
+            'activeOnly' => $activeOnly,
         ]);
 
         if ($fresh) return array_values(array_unique(array_map('intval', is_array($userIds) ? $userIds : [])));
@@ -455,8 +455,8 @@ class Event extends DbObject
         return $displayNameCache[$cacheKey];
     }
 
-    /** Callers supplying invitations must validate them in the current organization first. */
-    public function getEffectiveInvitationTargets($organizationId, ?array $proposedInvitations = null, bool $fresh = false): array
+    /** Validate supplied invitations in the current organization. Fresh bypasses caches; activeOnly limits holon members. */
+    public function getEffectiveInvitationTargets($organizationId, ?array $proposedInvitations = null, bool $fresh = false, bool $activeOnly = false): array
     {
         $organizationId = (int)$organizationId;
         if ($organizationId <= 0) {
@@ -499,7 +499,7 @@ class Event extends DbObject
             }
 
             if ($type === \dbObject\EventInvitation::TYPE_HOLON) {
-                foreach ($this->getInvitationMembershipUserIds((int)$invitation->get('IDholon'), $organizationId, $fresh) as $userId) {
+                foreach ($this->getInvitationMembershipUserIds((int)$invitation->get('IDholon'), $organizationId, $fresh, $activeOnly) as $userId) {
                     if ($userId > 0) {
                         $targets['userIds'][$userId] = (int)$userId;
                     }
@@ -511,7 +511,7 @@ class Event extends DbObject
         if (!$targets['hasExplicitInvitations']) {
             $eventHolonId = (int)$this->get('IDholon');
             if ($eventHolonId > 0) {
-                foreach ($this->getInvitationMembershipUserIds($eventHolonId, $organizationId, $fresh) as $userId) {
+                foreach ($this->getInvitationMembershipUserIds($eventHolonId, $organizationId, $fresh, $activeOnly) as $userId) {
                     if ($userId > 0) {
                         $targets['userIds'][$userId] = (int)$userId;
                     }
