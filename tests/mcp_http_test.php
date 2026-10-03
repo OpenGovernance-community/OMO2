@@ -48,6 +48,11 @@ function mcpHttpRpc(string $method, array $params, ?string $token): array
     return mcpHttp(parse_url(omoMcpPublicUrl(), PHP_URL_PATH), ['jsonrpc' => '2.0', 'id' => 1, 'method' => $method, 'params' => (object)$params], true, $token);
 }
 try {
+    $teamApps = new \dbObject\ArrayApplication();
+    $teamApps->load(['where' => [['field' => 'hash', 'value' => 'team']], 'limit' => 1]);
+    mcpCheck(count($teamApps) === 1, 'Team app must exist');
+    $items['team_app'] = mcpFixture(\dbObject\OrganizationApplication::class,
+        ['IDorganization' => $items['org']->getId(), 'IDapplication' => $teamApps[0]->getId(), 'active' => 1]);
     $metadata = mcpHttp(parse_url(omoMcpResourceMetadataUrl(), PHP_URL_PATH));
     mcpCheck($metadata['status'] === 200 && mcpHttpJson($metadata)['resource'] === $endpoint, 'Resource discovery route');
     $authMetadata = mcpHttp('/.well-known/oauth-authorization-server');
@@ -96,16 +101,32 @@ try {
         'clientInfo' => (object)['name' => 'test', 'version' => '1']], $tokens['access_token']);
     mcpCheck(mcpHttpJson($initialized)['result']['serverInfo']['name'] === 'omo', 'MCP initialization');
     $tools = mcpHttpRpc('tools/list', [], $tokens['access_token']);
-    mcpCheck(count(mcpHttpJson($tools)['result']['tools']) === 10, 'Authenticated tool discovery');
+    mcpCheck(count(mcpHttpJson($tools)['result']['tools']) === 14, 'Authenticated tool discovery');
     foreach (['omo_connection_info' => new stdClass(), 'omo_catalog' => new stdClass(),
         'omo_list_records' => (object)['module' => 'structure', 'limit' => 1], 'omo_list_assignments' => new stdClass(),
         'omo_list_structure' => (object)['limit' => 1],
+        'omo_get_member' => (object)['user_id' => (int)$items['user']->getId()],
+        'omo_list_object_members' => (object)['object_type' => 'holon', 'object_id' => (int)$items['root']->getId()],
         'omo_get_holon' => (object)['holon_id' => (int)$items['role']->getId()],
         'omo_search' => (object)['query' => 'MCP', 'modules' => ['structure']],
         'omo_read_record' => (object)['module' => 'structure', 'record_id' => (int)$items['role']->getId()]] as $tool => $arguments) {
         $reply = mcpHttpRpc('tools/call', ['name' => $tool, 'arguments' => $arguments], $tokens['access_token']);
         mcpCheck(!mcpHttpJson($reply)['result']['isError'], 'Tool succeeds: ' . $tool);
     }
+    mcpEnableDocumentCreation($items);
+    $memberPreview = mcpHttpJson(mcpHttpRpc('tools/call', ['name' => 'omo_list_object_members', 'arguments' => (object)['object_type' => 'holon', 'object_id' => (int)$items['root']->getId()]], $tokens['access_token']))['result']['structuredContent'];
+    mcpCheck($memberPreview['total'] === 1 && !$memberPreview['mail_authorized'], 'Member list exposes consent separately from OMO rights');
+    $emailArgs = ['object_type' => 'holon', 'object_id' => (int)$items['root']->getId(), 'subject' => 'Test', 'message' => 'Test', 'audience_token' => $memberPreview['audience_token'], 'request_key' => 'http-mail-read-denied'];
+    $emailDenied = mcpHttpJson(mcpHttpRpc('tools/call', ['name' => 'omo_send_object_email', 'arguments' => (object)$emailArgs], $tokens['access_token']));
+    mcpCheck($emailDenied['result']['isError'] && str_contains($emailDenied['result']['_meta']['mcp/www_authenticate'][0], 'mail:send'), 'HTTP mail write requires explicit consent');
+    $nativePath = '/omo/api/object_mail/index.php?' . http_build_query(['oid' => $items['org']->getId(), 'object_type' => 'holon', 'object_id' => $items['root']->getId()]);
+    $nativePage = mcpHttp($nativePath);
+    mcpCheck($nativePage['status'] === 200 && str_contains($nativePage['body'], 'name="audience_token"'), 'Native authenticated composer exposes fixed audience');
+    preg_match('/name="csrf" value="([a-f0-9]+)"/', $nativePage['body'], $nativeCsrf);
+    $nativeDenied = mcpHttp($nativePath, ['csrf' => 'invalid'] + $emailArgs);
+    mcpCheck($nativeDenied['status'] === 400 && str_contains($nativeDenied['body'], 'Formulaire invalide'), 'Native CSRF blocks writes');
+    $nativeValidation = mcpHttp($nativePath, ['csrf' => $nativeCsrf[1], 'request_key' => 'http-native-invalid', 'audience_token' => $memberPreview['audience_token']]);
+    mcpCheck($nativeValidation['status'] === 400 && str_contains($nativeValidation['body'], 'Champ invalide'), 'Native CSRF persists; incomplete mail cannot enqueue');
     $createArgs = ['title' => 'HTTP created document', 'request_key' => 'http-creation-test',
         'holon_id' => (int)$items['role']->getId(), 'content' => 'Text saved through authenticated HTTP'];
     $writeDenied = mcpHttpJson(mcpHttpRpc('tools/call', ['name' => 'omo_create_document', 'arguments' => (object)$createArgs], $tokens['access_token']));
@@ -113,16 +134,47 @@ try {
     $upgrade = mcpHttp('/mcp/token.php', ['client_id' => $registered->get('client_id'), 'grant_type' => 'refresh_token',
         'refresh_token' => $tokens['refresh_token'], 'resource' => $endpoint, 'scope' => OMO_MCP_SCOPE . ' ' . OMO_MCP_CREATE_SCOPE]);
     mcpCheck($upgrade['status'] === 400, 'Refresh cannot add creation scope');
-    mcpEnableDocumentCreation($items);
-    $writeRequest = array_replace($request, ['scope' => OMO_MCP_SCOPE . ' ' . OMO_MCP_CREATE_SCOPE]);
+    $writeRequest = array_replace($request, ['scope' => OMO_MCP_SCOPE . ' ' . OMO_MCP_CREATE_SCOPE . ' ' . OMO_MCP_MAIL_SCOPE]);
     $writeStart = mcpHttp('/mcp/authorize.php?' . http_build_query($writeRequest));
     $writePath = $writeStart['headers']['location']; $writePage = mcpHttp($writePath);
-    mcpCheck(str_contains($writePage['body'], 'Autoriser la lecture et la creation de documents'), 'Write consent is explicitly displayed');
+    mcpCheck(str_contains($writePage['body'], 'Envoyer des e-mails') && str_contains($writePage['body'], 'Creer des documents'), 'Mail and document scopes are both displayed explicitly');
     preg_match('/name="csrf" value="([a-f0-9]+)"/', $writePage['body'], $writeCsrf);
     $writeConsent = mcpHttp($writePath, ['csrf' => $writeCsrf[1], 'decision' => 'allow', 'organization_id' => $items['org']->getId()]);
     parse_str(parse_url($writeConsent['headers']['location'], PHP_URL_QUERY), $writeCallback);
     $writeTokens = mcpHttpJson(mcpHttp('/mcp/token.php', mcpExchangeRequest($registered, $writeCallback['code'])));
     mcpCheck($writeTokens['scope'] === $writeRequest['scope'], 'Creation scope preserved in token response');
+    if (in_array('--mailpit', $argv, true)) {
+        mcpCheck(($GLOBALS['mailHost'] ?? '') === 'mailpit' && (int)($GLOBALS['mailPort'] ?? 0) === 1025 && empty($GLOBALS['mailAuth']), 'SMTP integration is restricted to local Mailpit');
+        $sendArgs = array_replace($emailArgs, ['request_key' => 'http-direct-mail', 'subject' => 'Synthetic OMO direct test']);
+        $direct = mcpHttpJson(mcpHttpRpc('tools/call', ['name' => 'omo_send_object_email', 'arguments' => (object)$sendArgs], $writeTokens['access_token']));
+        mcpCheck(!$direct['result']['isError'] && $direct['result']['structuredContent']['delivery']['sent'] === 1 && $direct['result']['structuredContent']['complete'], 'Small MCP email delivered directly through local SMTP');
+        $items['http_direct_mail'] = new \dbObject\ObjectMail(); $items['http_direct_mail']->load($direct['result']['structuredContent']['mail_id']);
+        $nativeSent = mcpHttp($nativePath, ['csrf' => $nativeCsrf[1], 'subject' => 'Synthetic OMO native test', 'message' => 'Synthetic Mailpit-only delivery', 'request_key' => 'http-native-mail', 'audience_token' => $memberPreview['audience_token']]);
+        mcpCheck($nativeSent['status'] === 303, 'Native form delivers and redirects to tracking');
+        parse_str(parse_url($nativeSent['headers']['location'], PHP_URL_QUERY), $nativeTracking);
+        $items['http_native_mail'] = new \dbObject\ObjectMail(); $items['http_native_mail']->load((int)$nativeTracking['mail_id']);
+        $uid = (int)$items['user']->getId(); $oid = (int)$items['org']->getId();
+        $_SESSION = ['currentUser' => $uid, 'currentOrganization' => $oid];
+        mcpCheck(\dbObject\ObjectMail::status($oid, (int)$nativeTracking['mail_id'])['delivery']['sent'] === 1, 'Native small audience is delivered before redirect');
+        for ($index = 0; $index < 5; $index++) {
+            $items['mail_user_' . $index] = mcpFixture(\dbObject\User::class, ['firstname' => 'SMTP fixture', 'email' => 'smtp-' . bin2hex(random_bytes(6)) . '@example.invalid', 'active' => 1]);
+            $items['mail_membership_' . $index] = mcpFixture(\dbObject\UserOrganization::class, ['IDuser' => $items['mail_user_' . $index]->getId(), 'IDorganization' => $oid, 'active' => 1]);
+            $items['mail_assignment_' . $index] = mcpFixture(\dbObject\UserHolon::class, ['IDuser' => $items['mail_user_' . $index]->getId(), 'IDholon' => $items['role']->getId(), 'is_membership' => 1, 'active' => 1]);
+        }
+        $group = mcpHttpJson(mcpHttpRpc('tools/call', ['name' => 'omo_list_object_members', 'arguments' => (object)['object_type' => 'holon', 'object_id' => (int)$items['root']->getId()]], $writeTokens['access_token']))['result']['structuredContent'];
+        mcpCheck($group['recipient_count'] === 6, 'Async fixture has six synthetic recipients');
+        $queuedArgs = array_replace($sendArgs, ['request_key' => 'http-async-mail', 'subject' => 'Synthetic OMO automatic worker test', 'audience_token' => $group['audience_token']]);
+        $queued = mcpHttpJson(mcpHttpRpc('tools/call', ['name' => 'omo_send_object_email', 'arguments' => (object)$queuedArgs], $writeTokens['access_token']))['result'];
+        mcpCheck(!$queued['isError'] && $queued['structuredContent']['delivery_mode'] === 'queued', 'Large HTTP audience launches deferred sending');
+        $items['http_async_mail'] = new \dbObject\ObjectMail(); $items['http_async_mail']->load($queued['structuredContent']['mail_id']);
+        $deadline = microtime(true) + 10;
+        do {
+            usleep(100000);
+            $asyncStatus = mcpHttpJson(mcpHttpRpc('tools/call', ['name' => 'omo_object_email_status', 'arguments' => (object)['mail_id' => $queued['structuredContent']['mail_id']]], $writeTokens['access_token']))['result']['structuredContent'];
+        } while (!$asyncStatus['complete'] && microtime(true) < $deadline);
+        mcpCheck($asyncStatus['complete'] && $asyncStatus['delivery']['sent'] === 6, 'Automatic CLI worker delivers every queued fixture without browser maintenance');
+        echo "mcp_http_test: local Mailpit direct/native/automatic worker OK\n";
+    }
     $spaces = mcpHttpJson(mcpHttpRpc('tools/call', ['name' => 'omo_list_document_spaces', 'arguments' => (object)['kind' => 'holons']], $writeTokens['access_token']));
     mcpCheck($spaces['result']['structuredContent']['items'][0]['holon_id'] === (int)$items['role']->getId(), 'Creation destination discovered over HTTP');
     $created = mcpHttpJson(mcpHttpRpc('tools/call', ['name' => 'omo_create_document', 'arguments' => (object)$createArgs], $writeTokens['access_token']));
@@ -130,6 +182,25 @@ try {
     $items['http_document'] = new \dbObject\Document(); $items['http_document']->load($created['result']['structuredContent']['record']['record_id']);
     $retry = mcpHttpJson(mcpHttpRpc('tools/call', ['name' => 'omo_create_document', 'arguments' => (object)$createArgs], $writeTokens['access_token']));
     mcpCheck($retry['result']['structuredContent']['replayed'], 'HTTP retry does not duplicate');
+    foreach ([
+        'html' => ['content' => '<h2>HTTP Memo</h2><p onclick="bad()"><strong>Formatted</strong></p><script>bad()</script>', 'content_format' => 'html'],
+        'markdown' => ['content' => "## HTTP Memo\n\n**Formatted**\n\n<script>bad()</script>", 'content_format' => 'markdown'],
+        'url' => ['external_url' => 'https://example.invalid/http-project#section'],
+    ] as $kind => $payload) {
+        $formattedArgs = ['title' => 'HTTP ' . $kind, 'request_key' => 'http-formatted-' . $kind, 'holon_id' => (int)$items['role']->getId()] + $payload;
+        $formatted = mcpHttpJson(mcpHttpRpc('tools/call', ['name' => 'omo_create_document', 'arguments' => (object)$formattedArgs], $writeTokens['access_token']));
+        mcpCheck(!$formatted['result']['isError'], 'Formatted content or link created over HTTP');
+        $data = $formatted['result']['structuredContent'];
+        $items['http_' . $kind] = new \dbObject\Document();
+        mcpCheck($items['http_' . $kind]->load($data['record']['record_id']), 'HTTP document persisted');
+        if ($kind === 'url') {
+            mcpCheck($data['document_type'] === \dbObject\Document::TYPE_EXTERNAL_LINK && $data['external_url'] === $payload['external_url'], 'HTTP URL is a native link');
+        } else {
+            $savedContent = (string)$items['http_' . $kind]->get('content');
+            mcpCheck($data['document_type_label'] === 'Memo' && str_contains($savedContent, '<h2>HTTP Memo</h2>')
+                && str_contains($savedContent, '<strong>Formatted</strong>') && !str_contains($savedContent, 'bad()'), 'HTTP Memo preserves formatting through the security filter');
+        }
+    }
     // Two simultaneous retries must converge on a single committed document.
     $parallel = curl_multi_init(); $handles = []; $parallelArgs = array_replace($createArgs, ['request_key' => 'http-parallel-creation']);
     for ($index = 0; $index < 2; $index++) {
@@ -197,4 +268,4 @@ try {
     mcpCleanup($items);
     if (is_file($jar)) unlink($jar);
 }
-echo "mcp_http_test: OK (discovery, read/write consent, ten tools, document creation, isolation, revocation)\n";
+    echo "mcp_http_test: OK (14 tools, member lists, native composer/CSRF, read/mail/document consent, document creation, isolation, revocation)\n";

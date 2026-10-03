@@ -41,7 +41,7 @@ try {
     $assigned = McpBrowse::assignments($grant, ['user_id' => $otherUid]);
     mcpCheck(array_column($assigned['items'], 'assignment_id') === [(int)$items['assignment']->getId()], 'Hidden and foreign assignments excluded');
     mcpCheck($assigned['items'][0]['focus'] === 'Focus test', 'Safe assignment detail');
-    $roles = mcpBrowseAll($grant, ['module' => 'structure', 'user_id' => $otherUid]);
+    $roles = mcpBrowseAll($grant, ['module' => 'structure', 'user_id' => $otherUid, 'user_relation' => 'member']);
     mcpCheck(array_column($roles, 'record_id') === [(int)$items['role']->getId()], 'Person-specific structure');
     mcpCheck(mcpBrowseAll($grant, ['module' => 'team', 'context_holon_id' => $hid]) === [], 'Preference-only rows are not memberships');
     $common = ['IDorganization' => $oid, 'IDholon' => $hid, 'active' => 1, 'project_kind' => 'standard', 'proposal_status' => 'normal'];

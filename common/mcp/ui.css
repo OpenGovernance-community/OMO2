@@ -1,0 +1,18 @@
+/* Layout only: public palette, cards, fields and buttons use shared primitives. */
+.mcp-shell {
+    /* The consent summary and organization choice fit side by side on desktop. */
+    --param-page-shell-width: 1040px;
+    display: grid;
+    gap: 24px;
+    overflow-wrap: anywhere;
+}
+.mcp-layout { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+.mcp-layout > * { min-width: 0; }
+.mcp-request { display: grid; gap: 10px; }
+.mcp-request > p:first-child { font-size: 18px; font-weight: 600; }
+.mcp-muted { color: var(--color-text-light); font-size: 13px; }
+.mcp-permission { display: grid; gap: 8px; }
+.mcp-footer { text-align: center; font-size: 13px; }
+@media (max-width: 760px) {
+    .mcp-layout { grid-template-columns: minmax(0, 1fr); }
+}

@@ -675,6 +675,7 @@ if ($leafletMapsEnabled) {
                     ><?= omoApiEscape(omoTeamT('team.action.add_member', [], $lang, $sourceLang)) ?></button>
                 </div>
             <?php endif; ?>
+            <?php if ($hasStructureContext): require_once dirname(__DIR__, 3) . '/common/object_mail/ui.php'; omoObjectMailButton($organizationId, 'holon', (int)$currentHolon->getId()); endif; ?>
         </div>
         <div class="omo-panel-view__header-secondary omo-team__header-secondary">
             <div class="omo-team__filter-toolbar omo-view-filter" data-team-filter-control role="group" aria-label="<?= omoApiEscape(omoTeamT('team.filters.aria', [], $lang, $sourceLang)) ?>">

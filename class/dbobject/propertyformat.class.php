@@ -230,6 +230,28 @@
 			return trim(preg_replace('/\s+/', ' ', (string)$textContent)) === '';
 		}
 
+		/** Convert supplied text to the same HTML subset used by the Summernote editor. */
+		public static function formattedTextToHtml(string $content, string $format = 'text'): string
+		{
+			if ($format === 'text') {
+				$content = '<p>' . nl2br(htmlspecialchars($content, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'), false) . '</p>';
+			} elseif (in_array($format, ['markdown', 'md'], true)) {
+				$environment = new \League\CommonMark\Environment\Environment([
+					// Raw HTML is never rendered directly: sanitizeHtml below applies the editor allowlist.
+					'html_input' => 'allow', 'allow_unsafe_links' => false,
+					'max_nesting_level' => 50, 'max_delimiters_per_line' => 1000,
+					'table' => ['max_autocompleted_cells' => 1000],
+				]);
+				$environment->addExtension(new \League\CommonMark\Extension\CommonMark\CommonMarkCoreExtension());
+				$environment->addExtension(new \League\CommonMark\Extension\Table\TableExtension());
+				$content = (string)(new \League\CommonMark\MarkdownConverter($environment))->convert($content);
+			} elseif ($format !== 'html') {
+				throw new \InvalidArgumentException('Unsupported content format.');
+			}
+
+			return self::sanitizeHtml($content);
+		}
+
 		public static function sanitizeHtml($html)
 		{
 			$html = is_scalar($html) ? (string)$html : '';

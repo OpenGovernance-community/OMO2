@@ -20,10 +20,11 @@ omoMcpPageStart(omoMcpUiT('connections'));
 <p><?= omoMcpEscape(omoMcpUiT('connections_intro')) ?></p>
 <?php if (!$items): ?><p><?= omoMcpEscape(omoMcpUiT('no_connections')) ?></p><?php endif; ?>
 <?php foreach ($items as $item): ?>
-    <section class="generic-soft-panel generic-stack">
+    <section class="generic-soft-panel generic-soft-panel--elevated generic-soft-panel--stack">
         <h2 class="generic-card-title"><?= omoMcpEscape($item['client_name']) ?></h2>
         <p><?= omoMcpEscape($item['organization_name']) ?></p>
-        <p><?= omoMcpEscape(omoMcpUiT(omoMcpCanCreateDocuments($item) ? 'allow_create' : 'scope_read_only')) ?></p>
+        <p><?= omoMcpEscape(omoMcpUiT(omoMcpCanCreateDocuments($item) ? 'allow_create' : (omoMcpCanSendMail($item) ? 'read_heading' : 'scope_read_only'))) ?></p>
+        <?php if (omoMcpCanSendMail($item)): ?><p><?= omoMcpEscape(omoMcpUiT('mail_heading')) ?></p><?php endif; ?>
         <p><?= omoMcpEscape(omoMcpUiT('expires', ['date' => date('Y-m-d H:i', (int)$item['refresh_expires_at'])])) ?></p>
         <form method="post" action="/mcp/connections.php">
             <input type="hidden" name="csrf" value="<?= omoMcpEscape($_SESSION['mcpConnectionsCsrf']) ?>">

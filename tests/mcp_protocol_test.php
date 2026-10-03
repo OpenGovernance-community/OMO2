@@ -35,12 +35,37 @@ $reply = omoMcpDispatch($request, []);
 mcpProtocolCheck($reply['result']['protocolVersion'] === OMO_MCP_VERSIONS[0], 'Version negotiation');
 mcpProtocolCheck(omoMcpDispatch(['jsonrpc' => '2.0', 'method' => 'notifications/initialized'], []) === null, 'Notification has no response');
 mcpProtocolCheck(omoMcpDispatch(['jsonrpc' => '2.0', 'id' => 2, 'method' => 'delete_everything'], [])['error']['code'] === -32601, 'Unknown method');
-mcpProtocolCheck(count(omoMcpTools()) === 10, 'Ten tools, with document discovery and creation');
+mcpProtocolCheck(count(omoMcpTools()) === 14, 'Fourteen tools, including member exploration');
 $byName = array_column(omoMcpTools(), null, 'name');
+mcpProtocolCheck($byName['omo_get_member']['annotations']['readOnlyHint'] && $byName['omo_get_member']['securitySchemes'][0]['scopes'] === [OMO_MCP_SCOPE], 'Member exploration uses read consent only');
+mcpProtocolCheck(omoMcpToolArguments('omo_get_member', (object)['user_id' => 42]) === ['user_id' => 42], 'Member lookup accepts a user ID');
+foreach ([(object)[], (object)['user_id' => 0], (object)['user_id' => '42'], (object)['user_id' => 42, 'organization_id' => 9]] as $input) {
+    $rejected = false;
+    try { omoMcpToolArguments('omo_get_member', $input); } catch (InvalidArgumentException $error) { $rejected = true; }
+    mcpProtocolCheck($rejected, 'Invalid member lookup rejected');
+}
+foreach (['effective_member', 'invited', 'participant'] as $relation) {
+    mcpProtocolCheck(omoMcpToolArguments('omo_list_records', (object)['module' => 'calendar', 'user_id' => 42, 'user_relation' => $relation])['user_relation'] === $relation, 'Computed relationship accepted by protocol');
+}
+mcpProtocolCheck(!$byName['omo_send_object_email']['annotations']['readOnlyHint']
+    && $byName['omo_send_object_email']['annotations']['openWorldHint']
+    && $byName['omo_send_object_email']['securitySchemes'][0]['scopes'] === [OMO_MCP_SCOPE, OMO_MCP_MAIL_SCOPE], 'Mail has explicit write metadata and consent');
+mcpProtocolCheck(omoMcpNormalizeScope('mail:send documents:create organization:read') === 'organization:read documents:create mail:send', 'Mail scope preserves document scope');
+$mailArgs = ['object_type' => 'holon', 'object_id' => 1, 'subject' => 'Test', 'message' => 'Body', 'request_key' => 'mail-request-test', 'audience_token' => str_repeat('a', 64)];
+mcpProtocolCheck(omoMcpToolArguments('omo_send_object_email', (object)$mailArgs) === $mailArgs, 'Mail arguments accepted');
+foreach ([['emails' => ['victim@example.invalid']], ['cc' => 'victim@example.invalid'], ['subject' => "Subject\r\nBcc: victim@example.invalid"], ['object_type' => 'user'], ['audience_token' => ''], ['request_key' => 'short']] as $change) {
+    $rejected = false;
+    try { omoMcpToolArguments('omo_send_object_email', (object)array_replace($mailArgs, $change)); } catch (InvalidArgumentException $error) { $rejected = true; }
+    mcpProtocolCheck($rejected, 'Free recipients and header injection rejected');
+}
+$mailReply = omoMcpDispatch(['jsonrpc' => '2.0', 'id' => 4, 'method' => 'tools/call', 'params' => (object)['name' => 'omo_send_object_email', 'arguments' => (object)$mailArgs]], ['scope' => OMO_MCP_SCOPE]);
+mcpProtocolCheck($mailReply['result']['isError'] && str_contains($mailReply['result']['_meta']['mcp/www_authenticate'][0], 'mail:send'), 'Read grant gets a mail authorization challenge');
 mcpProtocolCheck(!$byName['omo_create_document']['annotations']['readOnlyHint']
     && !$byName['omo_create_document']['annotations']['destructiveHint'], 'Creation is declared as a non-destructive write');
 mcpProtocolCheck($byName['omo_create_document']['_meta']['openai/fileParams'] === ['file'], 'ChatGPT file input metadata');
 mcpProtocolCheck($byName['omo_create_document']['inputSchema']['properties']['file']['required'] === ['download_url', 'file_id'], 'File input follows official schema');
+mcpProtocolCheck($byName['omo_create_document']['inputSchema']['properties']['content_format']['enum'] === ['text', 'html', 'markdown', 'md'], 'Memo formats exposed to clients');
+mcpProtocolCheck(isset($byName['omo_create_document']['inputSchema']['properties']['external_url']), 'External links exposed to clients');
 mcpProtocolCheck(omoMcpNormalizeScope('documents:create organization:read') === 'organization:read documents:create', 'Scope order normalized');
 mcpProtocolCheck(omoMcpNormalizeScope('documents:create') === null && omoMcpNormalizeScope('organization:read admin') === null, 'Unsupported scopes rejected');
 foreach ([(object)['title' => 'Test', 'request_key' => 'creation-test'],
@@ -55,6 +80,28 @@ foreach ([(object)['title' => 'Test', 'request_key' => 'creation-test'],
     mcpProtocolCheck($rejected, 'Unsafe/incomplete creation arguments rejected');
 }
 mcpProtocolCheck(omoMcpToolArguments('omo_create_document', (object)['title' => 'Test', 'request_key' => 'creation-test', 'content' => 'Body', 'holon_id' => 0])['holon_id'] === 0, 'Organization destination accepted');
+$memoArgs = ['title' => 'Test', 'request_key' => 'creation-test'];
+foreach (['html', 'markdown', 'md'] as $format) {
+    mcpProtocolCheck(omoMcpToolArguments('omo_create_document', (object)($memoArgs + ['content' => '# Body', 'content_format' => $format]))['content_format'] === $format, 'Formatted Memo accepted');
+}
+foreach (['https://example.org/path?q=hello#section', 'http://example.org/'] as $url) {
+    mcpProtocolCheck(omoMcpToolArguments('omo_create_document', (object)($memoArgs + ['external_url' => $url]))['external_url'] === $url, 'HTTP/HTTPS link accepted with query and fragment');
+}
+foreach (['javascript:alert(1)', 'data:text/html,test', 'file:///etc/passwd', '//example.org/', 'https://user:pass@example.org/',
+    'https://user@example.org/', "https://example.org/\r\nHeader:value", 'https://example.org/a b', '', str_repeat('a', 8193), null, 7] as $url) {
+    $rejected = false;
+    try { omoMcpToolArguments('omo_create_document', (object)($memoArgs + ['external_url' => $url])); } catch (InvalidArgumentException $error) { $rejected = true; }
+    mcpProtocolCheck($rejected, 'Invalid external link rejected');
+}
+foreach ([['content' => 'Body', 'external_url' => 'https://example.org/'],
+    ['external_url' => 'https://example.org/', 'content_format' => 'html'],
+    ['external_url' => 'https://example.org/', 'file' => (object)['file_id' => 'file-id', 'download_url' => 'https://example.org/file.pdf']],
+    ['file' => (object)['file_id' => 'file-id', 'download_url' => 'https://example.org/file.pdf'], 'content_format' => 'markdown'],
+    ['content' => 'Body', 'content_format' => 'rtf']] as $payload) {
+    $rejected = false;
+    try { omoMcpToolArguments('omo_create_document', (object)($memoArgs + $payload)); } catch (InvalidArgumentException $error) { $rejected = true; }
+    mcpProtocolCheck($rejected, 'Ambiguous document input and misplaced format rejected');
+}
 foreach ([['omo_list_records', (object)[]],
     ['omo_list_records', (object)['module' => 'projects', 'date_from' => '2026-02-30']],
     ['omo_list_records', (object)['module' => 'projects', 'date_from' => '2026-10-02', 'date_to' => '2026-10-01']],
