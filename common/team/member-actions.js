@@ -27,6 +27,14 @@ window.commonPageScripts["/common/team/member-actions.js"] = function (pageConfi
     }
 
     function setFeedback(message, isError) {
+        if (message && typeof window.commonNotify === 'function') {
+            var notice = feedback;
+            if (notice) { notice.textContent = ''; notice.hidden = true; }
+            window.commonNotify(String(message), isError ? 'error' : 'success');
+            return;
+        }
+
+        feedback.hidden = false;
         feedback.textContent = message || '';
         feedback.classList.toggle('is-error', !!isError);
         feedback.classList.toggle('is-success', !isError && !!message);

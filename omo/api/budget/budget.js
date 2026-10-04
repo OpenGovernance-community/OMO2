@@ -62,12 +62,16 @@
                         recurrence.value = String(budgets[names[1]] || '');
                     }
                 });
-                if (feedback) {
+                if (typeof window.commonNotify === 'function') {
+                    window.commonNotify(String(payload.message || ''), 'success');
+                } else if (feedback) {
                     feedback.textContent = String(payload.message || '');
                     feedback.classList.add('is-success');
                 }
             }).catch(function (error) {
-                if (feedback) {
+                if (typeof window.commonNotify === 'function') {
+                    window.commonNotify(String(error && error.message ? error.message : fallbackError), 'error');
+                } else if (feedback) {
                     feedback.textContent = String(error && error.message ? error.message : fallbackError);
                     feedback.classList.add('is-error');
                 }

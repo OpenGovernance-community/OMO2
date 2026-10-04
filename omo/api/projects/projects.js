@@ -781,7 +781,7 @@
                 var error = host.querySelector('[data-resource-error]');
                 var items = Array.isArray(data.items) ? data.items : [];
                 var scopePicker = null;
-                function showError(message) { error.textContent = String(message || labels.error); error.hidden = false; }
+                function showError(message) { error.textContent = ''; error.hidden = true; window.omoNotify(String(message || labels.error), 'error'); }
                 function render() {
                     var query = String(search.value || '').trim().toLowerCase();
                     var selected = select.value;
@@ -2290,10 +2290,7 @@
                     refreshRoot(currentUrl);
                 }).catch(function (actionError) {
                     submit.disabled = false;
-                    if (error) {
-                        error.textContent = actionError.message || texts.actionError;
-                        error.hidden = false;
-                    }
+                    window.omoNotify(actionError.message || texts.actionError, 'error');
                 });
             });
         }, 0);
@@ -2427,10 +2424,7 @@
                     return currentDrawerUrl ? openDrawerWithUrl(currentDrawerUrl) : null;
                 }).catch(function (actionError) {
                     submit.disabled = false;
-                    if (error) {
-                        error.textContent = actionError.message || texts.actionError;
-                        error.hidden = false;
-                    }
+                    window.omoNotify(actionError.message || texts.actionError, 'error');
                 });
             });
             render();

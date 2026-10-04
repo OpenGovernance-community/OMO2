@@ -189,13 +189,12 @@ window.commonPageScripts["/omo/api/decision/invitations_popup.js"] = function (p
             })
             .then(function (result) {
                 if (!result.ok || !result.data || !result.data.status) {
-                    feedback.textContent = result.data && result.data.message ? result.data.message : pageConfig.message;
+                    window.omoNotify(result.data && result.data.message ? result.data.message : pageConfig.message, 'error');
                     submitButton.disabled = false;
                     return;
                 }
 
-                feedback.textContent = result.data.message || pageConfig.decisionsInvitationsPopupUpdated;
-                feedback.classList.add('is-success');
+                window.omoNotify(result.data.message || pageConfig.decisionsInvitationsPopupUpdated, 'success');
 
                 if (typeof window.commonTopbarCloseModal === 'function') {
                     window.commonTopbarCloseModal();
@@ -211,7 +210,7 @@ window.commonPageScripts["/omo/api/decision/invitations_popup.js"] = function (p
                 }
             })
             .catch(function () {
-                feedback.textContent = pageConfig.decisionsInvitationsPopupJsRequestError;
+                window.omoNotify(pageConfig.decisionsInvitationsPopupJsRequestError, 'error');
                 submitButton.disabled = false;
             });
     });

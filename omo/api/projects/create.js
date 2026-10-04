@@ -27,6 +27,13 @@ window.commonPageScripts["/omo/api/projects/create.js"] = function (pageConfig, 
     }
 
     function setFeedback(message) {
+        if (message && typeof window.commonNotify === 'function') {
+            var notice = feedback;
+            if (notice) { notice.textContent = ''; notice.hidden = true; }
+            window.commonNotify(String(message), 'error');
+            return;
+        }
+
         if (!feedback) return;
         feedback.textContent = String(message || '');
         feedback.hidden = feedback.textContent === '';

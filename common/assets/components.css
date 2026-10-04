@@ -78,6 +78,39 @@
     display: none !important;
 }
 
+/* Shared light backdrop for standalone public flows, including meeting pages. */
+body.generic-public-page,
+body.meeting-page {
+    --color-primary: #005b7a;
+    --color-text: #17364a;
+    --color-text-light: #587387;
+    --color-text-inverse: #ffffff;
+    --color-bg: #edf5fb;
+    --color-surface: #ffffff;
+    --color-surface-alt: #f4f9fd;
+    --color-border: #d4e4ef;
+    --radius-md: 10px;
+    --shadow-md: 0 6px 16px rgb(0 91 122 / 12%);
+    margin: 0;
+    min-height: 100vh;
+    color: var(--color-text);
+    background: linear-gradient(140deg, transparent 72%, #dfedf8 72%), linear-gradient(35deg, #d7eaf6 16%, transparent 16%), #edf5fb;
+    background-attachment: fixed;
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 15px;
+    line-height: 1.55;
+}
+:is(.generic-public-page, .meeting-page) *,
+:is(.generic-public-page, .meeting-page) *::before,
+:is(.generic-public-page, .meeting-page) *::after { box-sizing: border-box; }
+:is(.generic-public-page, .meeting-page) p { margin: 0; }
+:is(.generic-public-page, .meeting-page) a:not(.generic-action-button) { color: var(--color-primary); text-underline-offset: 4px; }
+:is(.generic-public-page, .meeting-page) :is(a, button):focus-visible { outline: 3px solid var(--color-primary); outline-offset: 4px; }
+
+.generic-public-brand { display: grid; gap: 8px; justify-items: start; }
+.generic-public-brand__logo { display: block; width: 150px; max-width: 100%; height: auto; }
+.generic-public-brand__label { color: var(--color-text-light); font-size: 12px; }
+
 .generic-page-shell {
     --param-page-shell-width: 1120px;
     --param-page-shell-gutter: clamp(10px, 2.5vw, 24px);
@@ -552,11 +585,23 @@ input:focus-visible + .generic-choice-card,
     min-height: 28px;
     padding: 0 10px;
     border-radius: 999px;
-    background: color-mix(in srgb, var(--color-primary, #2563eb) 12%, var(--color-surface, #ffffff));
-    border: 1px solid color-mix(in srgb, var(--color-primary, #2563eb) 24%, var(--color-border, #e5e7eb));
-    color: var(--color-primary, #2563eb);
+    background: color-mix(in srgb, var(--param-badge-color, var(--color-primary, #2563eb)) 12%, var(--color-surface, #ffffff));
+    border: 1px solid color-mix(in srgb, var(--param-badge-color, var(--color-primary, #2563eb)) 24%, var(--color-border, #e5e7eb));
+    color: var(--param-badge-color, var(--color-primary, #2563eb));
     font-size: var(--generic-type-size-compact);
     font-weight: 700;
+}
+
+.generic-badge--success {
+    --param-badge-color: var(--color-success, #15803d);
+}
+
+.generic-badge--warning {
+    --param-badge-color: var(--color-warning-text, #a16207);
+}
+
+.generic-badge--muted {
+    --param-badge-color: var(--color-text-muted, #64748b);
 }
 
 .generic-visually-hidden {
@@ -2961,4 +3006,9 @@ html[data-theme="dark"] .generic-tabs__tab:focus-visible .generic-monochrome-ico
         font-size: inherit;
         line-height: 1.2;
     }
+}
+
+.generic-member.generic-member--inactive {
+    filter: grayscale(1);
+    border-style: dashed;
 }

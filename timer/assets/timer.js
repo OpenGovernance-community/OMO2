@@ -176,6 +176,13 @@
         }
 
         function showFeedback(message, isSuccess) {
+            if (message && typeof window.commonNotify === 'function') {
+                var notice = feedback;
+                if (notice) { notice.textContent = ''; notice.hidden = true; }
+                window.commonNotify(String(message), isSuccess ? 'success' : 'error');
+                return;
+            }
+
             if (!feedback) {
                 return;
             }

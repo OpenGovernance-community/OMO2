@@ -404,128 +404,132 @@ class HolonPermission extends DbObject
 
     protected static function resolveOrganizationRootHolonId($organizationId)
     {
-        return (int)self::fetchValue(
-            'SELECT `id`
-             FROM `holon`
-             WHERE `IDorganization` = :organization_id
-               AND `active` = 1
-               AND `visible` = 1
-               AND (`IDholon_parent` IS NULL OR `IDholon_parent` = 0)
-             ORDER BY `id` ASC
-             LIMIT 1',
-            [
-                'organization_id' => (int)$organizationId,
-            ]
-        );
+        return self::memoizeRead([__FUNCTION__, (int)$organizationId], static function () use ($organizationId) {
+            return (int)self::fetchValue(
+                'SELECT `id`
+                 FROM `holon`
+                 WHERE `IDorganization` = :organization_id
+                   AND `active` = 1
+                   AND `visible` = 1
+                   AND (`IDholon_parent` IS NULL OR `IDholon_parent` = 0)
+                 ORDER BY `id` ASC
+                 LIMIT 1',
+                [
+                    'organization_id' => (int)$organizationId,
+                ]
+            );
+        });
     }
 
     protected static function loadOrganizationHolonRows($organizationRootHolonId)
     {
-        $organizationRootHolonId = (int)$organizationRootHolonId;
-        if ($organizationRootHolonId <= 0) {
-            return [];
-        }
+        return self::memoizeRead([__FUNCTION__, (int)$organizationRootHolonId], static function () use ($organizationRootHolonId) {
+            $organizationRootHolonId = (int)$organizationRootHolonId;
+            if ($organizationRootHolonId <= 0) {
+                return [];
+            }
 
-        $rootRow = self::fetchRow(
-            'SELECT `id`, `name`, `templatename`, `adminparent`, `IDtypeholon`, `IDholon_parent`, `IDholon_template`, `IDorganization`, `IDholon_org`, `active`
-             FROM `holon`
-             WHERE `id` = :root_holon_id
-               AND `active` = 1
-             LIMIT 1',
-            [
-                'root_holon_id' => $organizationRootHolonId,
-            ]
-        );
+            $rootRow = self::fetchRow(
+                'SELECT `id`, `name`, `templatename`, `adminparent`, `IDtypeholon`, `IDholon_parent`, `IDholon_template`, `IDorganization`, `IDholon_org`, `active`
+                 FROM `holon`
+                 WHERE `id` = :root_holon_id
+                   AND `active` = 1
+                 LIMIT 1',
+                [
+                    'root_holon_id' => $organizationRootHolonId,
+                ]
+            );
 
-        if (!is_array($rootRow) || (int)($rootRow['id'] ?? 0) <= 0) {
-            return [];
-        }
+            if (!is_array($rootRow) || (int)($rootRow['id'] ?? 0) <= 0) {
+                return [];
+            }
 
-        $indexedRows = [];
-        $rows = [$rootRow];
+            $indexedRows = [];
+            $rows = [$rootRow];
 
-        while (count($rows) > 0) {
-            $nextFrontierHolonIds = [];
+            while (count($rows) > 0) {
+                $nextFrontierHolonIds = [];
 
-            foreach ($rows as $row) {
-                $holonId = (int)($row['id'] ?? 0);
-                if ($holonId <= 0 || isset($indexedRows[$holonId])) {
-                    continue;
+                foreach ($rows as $row) {
+                    $holonId = (int)($row['id'] ?? 0);
+                    if ($holonId <= 0 || isset($indexedRows[$holonId])) {
+                        continue;
+                    }
+
+                    $indexedRows[$holonId] = [
+                        'id' => $holonId,
+                        'name' => (string)($row['name'] ?? ''),
+                        'templatename' => (string)($row['templatename'] ?? ''),
+                        'adminparent' => !empty($row['adminparent']),
+                        'IDtypeholon' => (int)($row['IDtypeholon'] ?? 0),
+                        'IDholon_parent' => (int)($row['IDholon_parent'] ?? 0),
+                        'IDholon_template' => (int)($row['IDholon_template'] ?? 0),
+                        'IDorganization' => (int)($row['IDorganization'] ?? 0),
+                        'IDholon_org' => (int)($row['IDholon_org'] ?? 0),
+                        'active' => !empty($row['active']),
+                    ];
+
+                    $nextFrontierHolonIds[] = $holonId;
                 }
 
-                $indexedRows[$holonId] = [
-                    'id' => $holonId,
-                    'name' => (string)($row['name'] ?? ''),
-                    'templatename' => (string)($row['templatename'] ?? ''),
-                    'adminparent' => !empty($row['adminparent']),
-                    'IDtypeholon' => (int)($row['IDtypeholon'] ?? 0),
-                    'IDholon_parent' => (int)($row['IDholon_parent'] ?? 0),
-                    'IDholon_template' => (int)($row['IDholon_template'] ?? 0),
-                    'IDorganization' => (int)($row['IDorganization'] ?? 0),
-                    'IDholon_org' => (int)($row['IDholon_org'] ?? 0),
-                    'active' => !empty($row['active']),
-                ];
+                if (count($nextFrontierHolonIds) === 0) {
+                    break;
+                }
 
-                $nextFrontierHolonIds[] = $holonId;
+                $params = [];
+                $parentPlaceholders = self::buildIntegerInClauseSql($nextFrontierHolonIds, 'parent_holon_id', $params);
+                if ($parentPlaceholders === '') {
+                    break;
+                }
+
+                $rows = self::fetchAll(
+                    'SELECT `id`, `name`, `templatename`, `adminparent`, `IDtypeholon`, `IDholon_parent`, `IDholon_template`, `IDorganization`, `IDholon_org`, `active`
+                     FROM `holon`
+                     WHERE `active` = 1
+                       AND `IDholon_parent` IN (' . $parentPlaceholders . ')',
+                    $params
+                );
+
+                if (!is_array($rows)) {
+                    break;
+                }
             }
 
-            if (count($nextFrontierHolonIds) === 0) {
-                break;
-            }
-
-            $params = [];
-            $parentPlaceholders = self::buildIntegerInClauseSql($nextFrontierHolonIds, 'parent_holon_id', $params);
-            if ($parentPlaceholders === '') {
-                break;
-            }
-
-            $rows = self::fetchAll(
+            $organizationRows = self::fetchAll(
                 'SELECT `id`, `name`, `templatename`, `adminparent`, `IDtypeholon`, `IDholon_parent`, `IDholon_template`, `IDorganization`, `IDholon_org`, `active`
                  FROM `holon`
                  WHERE `active` = 1
-                   AND `IDholon_parent` IN (' . $parentPlaceholders . ')',
-                $params
+                   AND (`id` = :root_holon_id_self OR `IDholon_org` = :root_holon_id_org)',
+                [
+                    'root_holon_id_self' => $organizationRootHolonId,
+                    'root_holon_id_org' => $organizationRootHolonId,
+                ]
             );
 
-            if (!is_array($rows)) {
-                break;
-            }
-        }
+            if (is_array($organizationRows)) {
+                foreach ($organizationRows as $row) {
+                    $holonId = (int)($row['id'] ?? 0);
+                    if ($holonId <= 0 || isset($indexedRows[$holonId])) {
+                        continue;
+                    }
 
-        $organizationRows = self::fetchAll(
-            'SELECT `id`, `name`, `templatename`, `adminparent`, `IDtypeholon`, `IDholon_parent`, `IDholon_template`, `IDorganization`, `IDholon_org`, `active`
-             FROM `holon`
-             WHERE `active` = 1
-               AND (`id` = :root_holon_id_self OR `IDholon_org` = :root_holon_id_org)',
-            [
-                'root_holon_id_self' => $organizationRootHolonId,
-                'root_holon_id_org' => $organizationRootHolonId,
-            ]
-        );
-
-        if (is_array($organizationRows)) {
-            foreach ($organizationRows as $row) {
-                $holonId = (int)($row['id'] ?? 0);
-                if ($holonId <= 0 || isset($indexedRows[$holonId])) {
-                    continue;
+                    $indexedRows[$holonId] = [
+                        'id' => $holonId,
+                        'name' => (string)($row['name'] ?? ''),
+                        'templatename' => (string)($row['templatename'] ?? ''),
+                        'adminparent' => !empty($row['adminparent']),
+                        'IDtypeholon' => (int)($row['IDtypeholon'] ?? 0),
+                        'IDholon_parent' => (int)($row['IDholon_parent'] ?? 0),
+                        'IDholon_template' => (int)($row['IDholon_template'] ?? 0),
+                        'IDorganization' => (int)($row['IDorganization'] ?? 0),
+                        'IDholon_org' => (int)($row['IDholon_org'] ?? 0),
+                        'active' => !empty($row['active']),
+                    ];
                 }
-
-                $indexedRows[$holonId] = [
-                    'id' => $holonId,
-                    'name' => (string)($row['name'] ?? ''),
-                    'templatename' => (string)($row['templatename'] ?? ''),
-                    'adminparent' => !empty($row['adminparent']),
-                    'IDtypeholon' => (int)($row['IDtypeholon'] ?? 0),
-                    'IDholon_parent' => (int)($row['IDholon_parent'] ?? 0),
-                    'IDholon_template' => (int)($row['IDholon_template'] ?? 0),
-                    'IDorganization' => (int)($row['IDorganization'] ?? 0),
-                    'IDholon_org' => (int)($row['IDholon_org'] ?? 0),
-                    'active' => !empty($row['active']),
-                ];
             }
-        }
 
-        return $indexedRows;
+            return $indexedRows;
+        });
     }
 
     protected static function buildIntegerInClauseSql(array $values, $paramPrefix, array &$params)
@@ -1386,82 +1390,84 @@ class HolonPermission extends DbObject
      */
     public static function buildHolonCollectivePermissionSetForOrganization($organizationId, $collectiveHolonId, array $permissionKeys = [], int $creationParentHolonId = 0)
     {
-        $organizationId = (int)$organizationId;
-        $collectiveHolonId = (int)$collectiveHolonId;
-        $permissionSet = [
-            'cacheVersion' => self::PERMISSION_CACHE_VERSION,
-            'organizationId' => $organizationId,
-            'collectiveHolonId' => $collectiveHolonId,
-            'definedPermissionKeys' => [],
-            'permissions' => [],
-        ];
+        return self::memoizeRead([__FUNCTION__, (int)$organizationId, (int)$collectiveHolonId, $permissionKeys, $creationParentHolonId], static function () use ($organizationId, $collectiveHolonId, $permissionKeys, $creationParentHolonId) {
+            $organizationId = (int)$organizationId;
+            $collectiveHolonId = (int)$collectiveHolonId;
+            $permissionSet = [
+                'cacheVersion' => self::PERMISSION_CACHE_VERSION,
+                'organizationId' => $organizationId,
+                'collectiveHolonId' => $collectiveHolonId,
+                'definedPermissionKeys' => [],
+                'permissions' => [],
+            ];
 
-        if ($organizationId <= 0 || $collectiveHolonId <= 0) {
-            return $permissionSet;
-        }
-
-        $organizationRootHolonId = self::resolveOrganizationRootHolonId($organizationId);
-        if ($organizationRootHolonId <= 0) {
-            return $permissionSet;
-        }
-
-        $holonsById = self::loadOrganizationHolonRows($organizationRootHolonId);
-        if (!isset($holonsById[$collectiveHolonId])) {
-            return $permissionSet;
-        }
-
-        $permissionAssignments = self::loadPermissionAssignmentsForOrganization(
-            array_keys($holonsById),
-            $permissionKeys
-        );
-        if (!is_array($permissionAssignments) || count($permissionAssignments) === 0) {
-            return $permissionSet;
-        }
-
-        $permissionContextualMap = \dbObject\Permission::getContextualMap(array_values(array_unique(array_filter(array_map(static function ($assignmentRow) {
-            return trim((string)($assignmentRow['permission_key'] ?? ''));
-        }, $permissionAssignments)))));
-        $sourceHolonIds = array_fill_keys(
-            self::collectPermissionSourceHolonIds($collectiveHolonId, $holonsById),
-            true
-        );
-        self::addProspectiveChild($holonsById, $creationParentHolonId);
-
-        foreach ($permissionAssignments as $assignmentRow) {
-            $permissionSourceHolonId = (int)($assignmentRow['IDholon'] ?? 0);
-            $permissionKey = trim((string)($assignmentRow['permission_key'] ?? ''));
-            if ($permissionKey === ''
-                || !isset($sourceHolonIds[$permissionSourceHolonId])
-                || self::normalizeMemberType($assignmentRow['member_type'] ?? '') !== self::MEMBER_TYPE_COLLECTIVE) {
-                continue;
+            if ($organizationId <= 0 || $collectiveHolonId <= 0) {
+                return $permissionSet;
             }
 
-            $permissionSet['definedPermissionKeys'][$permissionKey] = true;
-            if (empty($permissionContextualMap[$permissionKey])) {
-                if (!isset($permissionSet['permissions'][$permissionKey])) {
-                    $permissionSet['permissions'][$permissionKey] = [
-                        'exact' => [],
-                        'subtree' => [],
-                        'organization' => false,
-                    ];
-                }
-                $permissionSet['permissions'][$permissionKey]['organization'] = true;
-                continue;
+            $organizationRootHolonId = self::resolveOrganizationRootHolonId($organizationId);
+            if ($organizationRootHolonId <= 0) {
+                return $permissionSet;
             }
 
-            self::applyResolvedScopeToPermissionSet(
-                $permissionSet,
-                $permissionKey,
-                self::resolveRangeScopeForAssignedHolon(
-                    $collectiveHolonId,
-                    $assignmentRow['range'] ?? self::RANGE_SELF,
-                    $holonsById,
-                    $organizationRootHolonId
-                )
+            $holonsById = self::loadOrganizationHolonRows($organizationRootHolonId);
+            if (!isset($holonsById[$collectiveHolonId])) {
+                return $permissionSet;
+            }
+
+            $permissionAssignments = self::loadPermissionAssignmentsForOrganization(
+                array_keys($holonsById),
+                $permissionKeys
             );
-        }
+            if (!is_array($permissionAssignments) || count($permissionAssignments) === 0) {
+                return $permissionSet;
+            }
 
-        return $permissionSet;
+            $permissionContextualMap = \dbObject\Permission::getContextualMap(array_values(array_unique(array_filter(array_map(static function ($assignmentRow) {
+                return trim((string)($assignmentRow['permission_key'] ?? ''));
+            }, $permissionAssignments)))));
+            $sourceHolonIds = array_fill_keys(
+                self::collectPermissionSourceHolonIds($collectiveHolonId, $holonsById),
+                true
+            );
+            self::addProspectiveChild($holonsById, $creationParentHolonId);
+
+            foreach ($permissionAssignments as $assignmentRow) {
+                $permissionSourceHolonId = (int)($assignmentRow['IDholon'] ?? 0);
+                $permissionKey = trim((string)($assignmentRow['permission_key'] ?? ''));
+                if ($permissionKey === ''
+                    || !isset($sourceHolonIds[$permissionSourceHolonId])
+                    || self::normalizeMemberType($assignmentRow['member_type'] ?? '') !== self::MEMBER_TYPE_COLLECTIVE) {
+                    continue;
+                }
+
+                $permissionSet['definedPermissionKeys'][$permissionKey] = true;
+                if (empty($permissionContextualMap[$permissionKey])) {
+                    if (!isset($permissionSet['permissions'][$permissionKey])) {
+                        $permissionSet['permissions'][$permissionKey] = [
+                            'exact' => [],
+                            'subtree' => [],
+                            'organization' => false,
+                        ];
+                    }
+                    $permissionSet['permissions'][$permissionKey]['organization'] = true;
+                    continue;
+                }
+
+                self::applyResolvedScopeToPermissionSet(
+                    $permissionSet,
+                    $permissionKey,
+                    self::resolveRangeScopeForAssignedHolon(
+                        $collectiveHolonId,
+                        $assignmentRow['range'] ?? self::RANGE_SELF,
+                        $holonsById,
+                        $organizationRootHolonId
+                    )
+                );
+            }
+
+            return $permissionSet;
+        });
     }
 
     public static function isPermissionConfiguredForOrganization(int $organizationId, string $permissionKey): bool

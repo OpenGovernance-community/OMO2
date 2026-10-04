@@ -183,6 +183,8 @@
         var cards = root.querySelectorAll('.omo-decision-proposal-card');
 
         Array.prototype.forEach.call(cards, function (card) {
+            var dates = card.querySelector('[data-omo-proposal-dates]');
+            if (dates && window.omoProposalDates) window.omoProposalDates.setEnabled(dates, content.date !== false);
             var titleInput = card.querySelector('input[name="proposals[]"]');
             var descriptionInput = card.querySelector(descriptionSelector);
             var detailsButton = detailsSelector !== '' ? card.querySelector(detailsSelector) : null;

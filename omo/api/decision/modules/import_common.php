@@ -216,6 +216,9 @@ if (!function_exists('omoDecisionImportNormalizeProposalBlueprint')) {
             'title' => trim((string)($proposal['title'] ?? $proposal['question'] ?? '')),
             'description' => trim((string)($proposal['description'] ?? $proposal['detail_question'] ?? '')),
             'info_url' => trim((string)($proposal['info_url'] ?? $proposal['info_question'] ?? '')),
+            'start_at' => $proposal['start_at'] ?? null,
+            'end_at' => $proposal['end_at'] ?? null,
+            'timezone' => $proposal['timezone'] ?? null,
             'parameters' => omoDecisionImportNormalizeTypedStructure(omoDecisionModuleDecodeParameters($proposal['parameters'] ?? [])),
         ];
     }
@@ -514,6 +517,9 @@ if (!function_exists('omoDecisionImportSyncGroupProposals')) {
             $proposal->set('title', (string)$proposalItem['title']);
             $proposal->set('description', trim((string)($proposalItem['description'] ?? '')) !== '' ? (string)$proposalItem['description'] : null);
             $proposal->set('info_url', trim((string)($proposalItem['info_url'] ?? '')) !== '' ? (string)$proposalItem['info_url'] : null);
+            $range = DecisionProposal::normalizeCalendarRange($proposalItem['start_at'] ?? null, $proposalItem['end_at'] ?? null, $proposalItem['timezone'] ?? null);
+            if (empty($range['status'])) return $range;
+            foreach ($range['values'] as $field => $value) $proposal->set($field, $value);
             $proposal->set('position', $index + 1);
             $proposal->set('parameters', [
                 $methodKey => [

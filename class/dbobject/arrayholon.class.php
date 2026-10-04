@@ -7,6 +7,51 @@
 			return "\dbObject\Holon";
 		}
 
+		/**
+		 * Fully loaded snapshot of a subtree. One collection read per level,
+		 * instead of one child query and one object load per node.
+		 * Hidden/inactive branches are excluded just like getChildren().
+		 */
+		public function loadSubtreeHydrated(int $rootId, bool $includeHidden = false): void
+		{
+			$this->exchangeArray([]);
+			$root = new Holon();
+			if ($rootId <= 0 || !$root->load($rootId)) return;
+			$this[] = $root;
+			$visited = [$rootId => true];
+			$frontier = [$rootId];
+			while ($frontier !== []) {
+				$next = [];
+				foreach (array_chunk($frontier, 500) as $parentIds) {
+					$children = new self();
+					$where = [
+						['field' => 'IDholon_parent', 'op' => 'in', 'value' => $parentIds],
+						['field' => 'active', 'value' => 1],
+					];
+					if (!$includeHidden) $where[] = ['field' => 'visible', 'value' => 1];
+					$children->loadHydrated(['where' => $where]);
+					foreach ($children as $child) {
+						$id = (int)$child->getId();
+						if (isset($visited[$id])) continue;
+						$visited[$id] = true;
+						$this[] = $child;
+						$next[] = $id;
+					}
+				}
+				$frontier = $next;
+			}
+		}
+
+		/** Build an adjacency map without further database reads. */
+		public function getChildrenByParentId(): array
+		{
+			$children = [];
+			foreach ($this as $holon) {
+				$children[(int)$holon->get('IDholon_parent')][] = $holon;
+			}
+			return $children;
+		}
+
 		public static function fetchStructureRows($organizationRootHolonId)
 		{
 			$organizationRootHolonId = (int)$organizationRootHolonId;

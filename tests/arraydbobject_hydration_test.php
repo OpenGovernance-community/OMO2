@@ -147,7 +147,9 @@ assertArrayDbObjectHydration(
     'Document lists must compute folder activity and child existence from one metadata collection.'
 );
 
-$documentsIndexSource = (string)file_get_contents(dirname(__DIR__) . '/omo/api/documents/index.php');
+$documentsIndexSource = (string)file_get_contents(dirname(__DIR__) . '/omo/api/documents/index.php')
+    . (string)file_get_contents(dirname(__DIR__) . '/omo/api/documents/list.js')
+    . (string)file_get_contents(dirname(__DIR__) . '/omo/api/documents/scope.js');
 assertArrayDbObjectHydration(
     strpos($documentsIndexSource, 'ArrayDocument::loadListMetadataForOrganization') !== false
         && strpos($documentsIndexSource, "\$documentListMetadata['documentsWithChildren']") !== false
@@ -170,9 +172,8 @@ assertArrayDbObjectHydration(
 );
 foreach (array('calendar', 'decision', 'policy', 'stats', 'team') as $applicationName) {
     $applicationSource = (string)file_get_contents(dirname(__DIR__) . '/omo/api/' . $applicationName . '/index.php');
-    if ($applicationName === 'calendar') {
-        $applicationSource .= (string)file_get_contents(dirname(__DIR__) . '/omo/api/calendar/calendar.js');
-    }
+    $scriptName = ['calendar' => 'calendar.js', 'decision' => 'index.js', 'policy' => 'index.js', 'stats' => 'stats.js', 'team' => 'index.js'][$applicationName];
+    $applicationSource .= (string)file_get_contents(dirname(__DIR__) . '/omo/api/' . $applicationName . '/' . $scriptName);
     assertArrayDbObjectHydration(
         strpos($applicationSource, 'omoSetPanelResultsLoadingSkeleton') !== false,
         ucfirst($applicationName) . ' filters must use the shared loading skeleton while reloading.'

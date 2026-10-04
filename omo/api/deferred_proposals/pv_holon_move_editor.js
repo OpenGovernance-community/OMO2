@@ -31,8 +31,12 @@ window.commonPageScripts['/omo/api/deferred_proposals/pv_holon_move_editor.js'] 
             window.dispatchEvent(new CustomEvent('omo-deferred-proposal-saved', {detail: {pointId: Number(result.pointId), proposalId: Number(result.id)}}));
             if (window.commonTopbarCloseModal) window.commonTopbarCloseModal();
         } catch (error) {
-            feedback.textContent = error.message || config.saveError;
-            feedback.hidden = false;
+            if (typeof window.commonNotify === 'function') {
+                window.commonNotify(error.message || config.saveError, 'error');
+            } else {
+                feedback.textContent = error.message || config.saveError;
+                feedback.hidden = false;
+            }
             submit.disabled = false;
         }
     });

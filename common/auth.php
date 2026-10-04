@@ -3575,6 +3575,7 @@ function commonRenderMagicLoginPage(array $options = [])
     $headHtml = (string)($options['headHtml'] ?? '');
     $bodyEndHtml = (string)($options['bodyEndHtml'] ?? '');
     $topbar = !empty($options['topbar']) && is_array($options['topbar']) ? $options['topbar'] : null;
+    $publicLayout = ($options['layout'] ?? '') === 'public';
 
     $config = [
         'loginSendPath' => $loginSendPath,
@@ -3608,7 +3609,7 @@ function commonRenderMagicLoginPage(array $options = [])
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($title) ?></title>
     <?= commonStylesheetTags('/shared_css.css') ?>
-    <link rel="stylesheet" href="/common/assets/auth.css">
+    <link rel="stylesheet" href="<?= htmlspecialchars(commonAssetUrl('/common/assets/auth.css')) ?>">
     <?php if ($organizationColor !== ''): ?>
     <style>
         :root {
@@ -3627,11 +3628,21 @@ function commonRenderMagicLoginPage(array $options = [])
     }
     </script>
 </head>
-<body class="auth-page<?= $topbar !== null ? ' auth-page--with-topbar' : '' ?>">
+<body class="auth-page<?= $topbar !== null ? ' auth-page--with-topbar' : '' ?><?= $publicLayout ? ' generic-public-page auth-page--public' : '' ?>">
     <?php if ($topbar !== null && function_exists('commonRenderTopbar')): ?>
     <?php commonRenderTopbar($topbar); ?>
     <?php endif; ?>
-    <div class="auth-shell">
+    <main class="<?= $publicLayout ? 'generic-page-shell auth-public-shell' : 'auth-shell' ?>">
+        <?php if ($publicLayout): ?>
+        <header class="generic-public-brand">
+            <img class="generic-public-brand__logo" src="<?= htmlspecialchars(commonAssetUrl('/img/omo2/logo-omo-dark.png')) ?>" alt="OMO" width="1076" height="332">
+            <span class="generic-public-brand__label"><?= htmlspecialchars($appName) ?></span>
+        </header>
+        <section class="generic-soft-panel generic-soft-panel--elevated generic-soft-panel--stack">
+            <h1 class="generic-card-title generic-card-title--display"><?= htmlspecialchars($title) ?></h1>
+            <p><?= htmlspecialchars($intro) ?></p>
+        </section>
+        <?php else: ?>
         <div class="auth-hero" style="background-color: var(--auth-primary, var(--color-primary, #004663));">
             <div class="auth-hero-bg" style="background-image:url('<?= htmlspecialchars($organizationBanner) ?>')"></div>
             <div class="auth-hero-content">
@@ -3644,9 +3655,10 @@ function commonRenderMagicLoginPage(array $options = [])
                 <div class="auth-kicker"><?= htmlspecialchars($appName) ?></div>
             </div>
         </div>
+        <?php endif; ?>
 
-        <div class="auth-card">
-            <h2><?= htmlspecialchars(commonAuthT('auth.page.login.title_default', [], $lang, $sourceLang)) ?></h2>
+        <div class="<?= $publicLayout ? 'generic-soft-panel generic-soft-panel--elevated auth-public-card' : 'auth-card' ?>">
+            <h2<?= $publicLayout ? ' class="generic-card-title"' : '' ?>><?= htmlspecialchars(commonAuthT('auth.page.login.title_default', [], $lang, $sourceLang)) ?></h2>
             <p class="auth-copy"><?= htmlspecialchars(commonAuthT('auth.copy.login_code', [], $lang, $sourceLang)) ?></p>
             <label class="auth-language-picker" for="authLanguageSelect">
                 <span><?= htmlspecialchars(commonAuthT('auth.page.language_label', [], $lang, $sourceLang)) ?></span>
@@ -3710,7 +3722,7 @@ function commonRenderMagicLoginPage(array $options = [])
             </div>
             <div id="authStatus" class="auth-status" aria-live="polite"></div>
         </div>
-    </div>
+    </main>
 
     <script>
         window.commonLoginConfig = <?= json_encode($config, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;

@@ -217,7 +217,7 @@ $canReturnToUserPopup = is_array($returnPopupParts)
             })
             .then(function (result) {
                 if (!result.ok || !result.data || !result.data.status) {
-                    if (feedback) { feedback.textContent = result.data && result.data.message ? result.data.message : ''; feedback.classList.add('is-error'); }
+                    window.omoNotify(result.data && result.data.message ? result.data.message : <?= json_encode(omoTeamT('team.assignment_popup.save_failed', [], $lang, $sourceLang)) ?>, 'error');
                     return;
                 }
                 if (typeof window.omoNotify === 'function') window.omoNotify(result.data.message, 'success');
@@ -228,7 +228,7 @@ $canReturnToUserPopup = is_array($returnPopupParts)
                 if (typeof refreshDrawer === 'function') refreshDrawer('drawer_team', refreshUrl);
                 if (typeof window.commonTopbarCloseModal === 'function') window.commonTopbarCloseModal();
             })
-            .catch(function () { if (feedback) feedback.classList.add('is-error'); })
+            .catch(function () { window.omoNotify(<?= json_encode(omoTeamT('team.assignment_popup.save_failed', [], $lang, $sourceLang)) ?>, 'error'); })
             .finally(function () { if (submitButton) submitButton.disabled = false; });
     });
 }());

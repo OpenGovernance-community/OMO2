@@ -59,7 +59,7 @@ $html = omoSearchPreviewRender([
         ['title' => 'Validation', 'text' => 'Les factures sont examinees.'],
     ]]],
 ], $query);
-previewAssert(strpos($html, '>Contenu</h4>') < strpos($html, '>Resume</h4>'), 'Matching content must precede unrelated summary.');
+previewAssert(strpos($html, '>' . omoSearchPreviewT('content') . '</h4>') < strpos($html, '>' . omoSearchPreviewT('summary') . '</h4>'), 'Matching content must precede unrelated summary.');
 previewAssert(!str_contains($html, 'Point sans rapport'), 'When PV points match, show the relevant points.');
 previewAssert(str_contains($html, omoSearchPreviewT('matching_points')), 'Identify the matching PV points.');
 $skills = [];

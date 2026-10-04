@@ -192,7 +192,21 @@ class DecisionResponse extends DbObject
             $this->set('submitted_at', new \DateTime());
         }
 
-        return parent::save();
+        $pdo = self::getPdo();
+        $ownsTransaction = !$pdo->inTransaction();
+        try {
+            if ($ownsTransaction) $pdo->beginTransaction();
+            $result = parent::save();
+            if (empty($result['status'])) throw new \RuntimeException('response_save_failed');
+            $decision = $this->getDecisionProcess();
+            if ($decision && empty($decision->syncProposalCalendarEvents()['status'])) throw new \RuntimeException('calendar_sync_failed');
+            if ($ownsTransaction) $pdo->commit();
+            return $result;
+        } catch (\Throwable $exception) {
+            if ($ownsTransaction && $pdo->inTransaction()) $pdo->rollBack();
+            error_log('decision_response_calendar_failed: ' . $exception->getMessage());
+            return ['status' => false, 'text' => 'Impossible de sauvegarder le bulletin et son agenda.'];
+        }
     }
 
     public function getDecisionProcess()

@@ -247,7 +247,7 @@
             applyPendingView(root, application);
         }
         save(root, scope, view, operation).catch(function (error) {
-            window.alert(error && error.message ? error.message : 'Impossible d enregistrer cette vue par defaut.');
+            window.omoNotify(error && error.message ? error.message : 'Impossible d enregistrer cette vue par defaut.', 'error');
         }).finally(function () {
             saveButton.disabled = false;
             closeMenus();

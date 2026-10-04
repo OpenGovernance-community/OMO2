@@ -57,7 +57,7 @@
 				});
 		  },
 		  onApprove: function(data, actions) {
-			alert(data.subscriptionID); // You can add optional success message for the subscriber here
+			(typeof window.commonNotify === 'function' ? window.commonNotify : window.alert).call(window, data.subscriptionID, 'success'); // You can add optional success message for the subscriber here
 		  }
 	  }).render('#paypal-button-container-P-2RA96585G5695464VMXHXTMA'); // Renders the PayPal button
 	});

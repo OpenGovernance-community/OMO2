@@ -101,7 +101,7 @@ function openDrawer(content, options) {
     return lmsExecuteDrawerScripts(container).then(() => {
         applyScrollPosition();
     }).catch(() => {
-        window.alert('Impossible de charger les scripts du drawer.');
+        window.omoNotify('Impossible de charger les scripts du drawer.', 'error');
     });
 }
 

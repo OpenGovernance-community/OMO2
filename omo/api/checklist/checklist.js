@@ -605,9 +605,15 @@
 
     function setFormFeedback(form, message, type) {
         var feedback = form.querySelector('[data-checklist-editor-feedback]');
+        if (message && typeof window.commonNotify === 'function') {
+            if (feedback) { feedback.textContent = ''; feedback.hidden = true; }
+            window.commonNotify(String(message), type);
+            return;
+        }
         if (!feedback) {
             return;
         }
+        feedback.hidden = !message;
         feedback.textContent = String(message || '');
         feedback.classList.toggle('is-error', type === 'error');
         feedback.classList.toggle('is-success', type === 'success');
@@ -1028,8 +1034,7 @@
                     openDrawerWithUrl(payload.detailUrl || buildDetailUrl(Number(payload.id || 0)));
                 }).catch(function (actionError) {
                     submit.disabled = false;
-                    error.textContent = actionError && actionError.message ? actionError.message : texts.loadingError;
-                    error.hidden = false;
+                    window.omoNotify(actionError && actionError.message ? actionError.message : texts.loadingError, 'error');
                 });
             });
             render();

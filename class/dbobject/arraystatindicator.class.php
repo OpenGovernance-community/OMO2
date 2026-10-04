@@ -3,6 +3,34 @@ namespace dbObject;
 
 class ArrayStatIndicator extends ArrayDbObject
 {
+    /** Only the indicators already present in visible points need value controls at startup. */
+    public static function editableIdsReferencedByPvPoints(int $organizationId, iterable $points, bool $isPvEditor): array
+    {
+        if ($organizationId <= 0) return [];
+        $ids = [];
+        foreach ($points as $point) {
+            if (!$point instanceof DocumentPvPoint) continue;
+            preg_match_all('/data-omo-indicator-id\s*=\s*["\']([0-9]+)["\']/i', (string)$point->get('content'), $matches);
+            foreach ($matches[1] as $id) if ((int)$id > 0) $ids[(int)$id] = (int)$id;
+        }
+        if ($ids === []) return [];
+        $allowed = [];
+        foreach (array_chunk(array_values($ids), 500) as $chunk) {
+            $indicators = new self();
+            $indicators->loadHydrated(['where' => [
+                ['field' => 'id', 'op' => 'in', 'value' => $chunk],
+                ['field' => 'IDorganization', 'value' => $organizationId],
+                ['field' => 'active', 'value' => 1],
+            ]]);
+            foreach ($indicators as $indicator) {
+                if (!$indicator->isHiddenFromCatalog() && $indicator->canView() && ($isPvEditor || $indicator->canEdit())) {
+                    $allowed[] = (int)$indicator->getId();
+                }
+            }
+        }
+        return $allowed;
+    }
+
     public static function objectName()
     {
         return '\\dbObject\\StatIndicator';

@@ -22,10 +22,18 @@ window.commonPageScripts["/omo/api/parameters/lexicon/index.js"] = function (pag
     });
 
     function setFeedback(message, kind) {
+        if (message && typeof window.commonNotify === 'function') {
+            var notice = feedback;
+            if (notice) { notice.textContent = ''; notice.hidden = true; }
+            window.commonNotify(String(message), kind);
+            return;
+        }
+
         if (!feedback) {
             return;
         }
 
+        feedback.hidden = !message;
         feedback.textContent = String(message || '');
         feedback.className = 'omo-lexicon-editor__feedback generic-feedback' + (kind ? ' is-' + kind : '');
     }

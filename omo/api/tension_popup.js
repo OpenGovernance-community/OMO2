@@ -16,10 +16,18 @@
     const cancelButton = root.querySelector('[data-omo-tension-cancel]');
 
     function setFeedback(message, type) {
+        if (message && typeof window.commonNotify === 'function') {
+            var notice = feedback;
+            if (notice) { notice.textContent = ''; notice.hidden = true; }
+            window.commonNotify(String(message), type);
+            return;
+        }
+
         if (!feedback) {
             return;
         }
 
+        feedback.hidden = false;
         feedback.textContent = message || '';
         feedback.classList.remove('is-error', 'is-success');
         if (type === 'error') {

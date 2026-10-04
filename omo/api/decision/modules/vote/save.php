@@ -84,6 +84,7 @@ $proposalContentInput = omoDecisionNormalizeProposalContent([
     'title' => !empty($_POST['proposal_content_title']),
     'description' => !empty($_POST['proposal_content_description']),
     'url' => !empty($_POST['proposal_content_url']),
+    'date' => !empty($_POST['proposal_content_date']),
 ]);
 $voteWeightConfig = omoDecisionBlockSettingsBuildVoteWeightConfig([
     'enabled' => !empty($_POST['vote_weight_enabled']),
@@ -95,8 +96,18 @@ $proposalItems = omoDecisionBuildProposalItemsFromInput(
     $_POST['proposal_descriptions'] ?? [],
     $_POST['proposal_info_urls'] ?? [],
     $_POST['proposal_ids'] ?? [],
-    $proposalContentInput
+    $proposalContentInput,
+    $_POST['proposal_start_at'] ?? [],
+    $_POST['proposal_end_at'] ?? [],
+    $_POST['proposal_timezone'] ?? []
 );
+
+foreach ($proposalItems as &$proposalItem) {
+    $range = DecisionProposal::normalizeCalendarRange($proposalItem['start_at'], $proposalItem['end_at'], $proposalItem['timezone']);
+    if (empty($range['status'])) omoDecisionModuleJsonResponse(422, $range);
+    $proposalItem = array_replace($proposalItem, $range['values']);
+}
+unset($proposalItem);
 
 if (!$coreLocked && $processTitle === '') {
     omoDecisionModuleJsonResponse(400, [
@@ -398,6 +409,7 @@ try {
             $proposal->set('title', (string)$proposalItem['title']);
             $proposal->set('description', $proposalItem['description'] ?? null);
             $proposal->set('info_url', $proposalItem['info_url'] ?? null);
+            foreach (['start_at', 'end_at', 'timezone'] as $field) $proposal->set($field, $proposalItem[$field] ?? null);
             $proposal->set('position', $index + 1);
             $proposalParameters = omoDecisionModuleDecodeParameters($proposal->get('parameters'));
             $proposalParameters[$methodKey] = ['ballot_position' => $index + 1];

@@ -103,35 +103,35 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
     const resourcePickerOrganizationId = pageConfig.resourcePickerOrganizationId;
     const resourcePickerInitialHolonId = pageConfig.resourcePickerInitialHolonId;
     const resourcePickerScopeUi = pageConfig.resourcePickerScopeUi;
-    const embeddableDocuments = pageConfig.embeddableDocuments;
+    const embeddableDocuments = pageConfig.embeddableDocuments || [];
     const documentEmbedUi = pageConfig.documentEmbedUi;
     const canEmbedDecisions = pageConfig.canEmbedDecisions;
-    const embeddableDecisions = pageConfig.embeddableDecisions;
+    const embeddableDecisions = pageConfig.embeddableDecisions || [];
     const decisionEmbedUi = pageConfig.decisionEmbedUi;
-    const canEmbedProjects = true;
-    const embeddableProjects = pageConfig.embeddableProjects;
+    const canEmbedProjects = pageConfig.canEmbedProjects !== false;
+    const embeddableProjects = pageConfig.embeddableProjects || [];
     const projectEmbedUi = pageConfig.projectEmbedUi;
     const projectEmbedCreateContext = pageConfig.projectEmbedCreateContext;
     const pvPriorityLabels = pageConfig.pvPriorityLabels;
     const pvPriorityFieldLabel = pageConfig.pvPriorityFieldLabel;
     const canEmbedChecklists = pageConfig.canEmbedChecklists;
     const canCompleteChecklistProjects = pageConfig.canCompleteChecklistProjects;
-    const embeddableChecklists = pageConfig.embeddableChecklists;
+    const embeddableChecklists = pageConfig.embeddableChecklists || [];
     const checklistEmbedUi = pageConfig.checklistEmbedUi;
     const checklistRunReviewCache = new Map();
     const canEmbedEvents = pageConfig.canEmbedEvents;
-    const embeddableEvents = pageConfig.embeddableEvents;
+    const embeddableEvents = pageConfig.embeddableEvents || [];
     const eventEmbedUi = pageConfig.eventEmbedUi;
     const eventEmbedCreateContext = pageConfig.eventEmbedCreateContext;
     const canEmbedIndicators = pageConfig.canEmbedIndicators;
-    const embeddableIndicators = pageConfig.embeddableIndicators;
+    const embeddableIndicators = pageConfig.embeddableIndicators || [];
     const indicatorEmbedUi = pageConfig.indicatorEmbedUi;
     const editorClientUi = pageConfig.editorClientUi;
     const indicatorValueUi = {
         enabled: true,
-        allowedIndicatorIds: embeddableIndicators
+        allowedIndicatorIds: (pageConfig.editableIndicatorIds || []).concat(embeddableIndicators
             .filter(function (item) { return String(item && item.kind || 'indicator') !== 'group' && item && item.canAddValue; })
-            .map(function (item) { return Number(item.id); }),
+            .map(function (item) { return Number(item.id); })),
         placeholder: pageConfig.placeholder,
         inputLabel: pageConfig.placeholder,
         addLabel: pageConfig.addLabel
@@ -477,7 +477,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
                         });
                     });
                     updateSubmitState();
-                    window.alert(firstError && firstError.message ? firstError.message : applicationTabsUi.error || '');
+                    window.omoNotify(firstError && firstError.message ? firstError.message : applicationTabsUi.error || '', 'error');
                     return;
                 }
 
@@ -739,6 +739,52 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         return html + '</span>';
     }
 
+    // Share only in-flight reads. Reopening a picker rechecks current data and rights.
+    const resourceCatalogRequests = new Map();
+    function loadPvResourceCatalog(type, items, picker, render) {
+        if (!picker || !pageConfig.resourceCatalogUrl) { render(); return Promise.resolve(); }
+        items.length = 0;
+        render();
+        const progress = document.createElement('p');
+        progress.setAttribute('role', 'status');
+        progress.textContent = String(pageConfig.resourceCatalogUi.loading || '');
+        const content = picker.querySelector('.omo-resource-picker__content') || picker;
+        content.prepend(progress);
+        picker.setAttribute('aria-busy', 'true');
+        if (!resourceCatalogRequests.has(type)) {
+            const url = pageConfig.resourceCatalogUrl + '&type=' + encodeURIComponent(type);
+            const request = fetch(url, {credentials: 'same-origin', cache: 'no-store'})
+                .then(function (response) {
+                    if (!response.ok) throw new Error('resource_catalog');
+                    return response.json();
+                })
+                .then(function (payload) {
+                    if (!payload || payload.status !== true || !Array.isArray(payload.items)) throw new Error('resource_catalog');
+                    return payload.items;
+                })
+                .finally(function () { resourceCatalogRequests.delete(type); });
+            resourceCatalogRequests.set(type, request);
+        }
+        return resourceCatalogRequests.get(type).then(function (loaded) {
+            if (!root.isConnected || !picker.isConnected) return;
+            items.length = 0;
+            loaded.forEach(function (item) { items.push(item); });
+            if (type === 'indicators') {
+                const allowedIds = indicatorValueUi.allowedIndicatorIds;
+                loaded.forEach(function (item) {
+                    if (String(item.kind || 'indicator') !== 'group' && item.canAddValue && !allowedIds.includes(Number(item.id))) allowedIds.push(Number(item.id));
+                });
+            }
+            render();
+        }).catch(function () {
+            if (!root.isConnected || !picker.isConnected) return;
+            window.omoNotify(String(pageConfig.resourceCatalogUi.error || ''), 'error');
+        }).finally(function () {
+            progress.remove();
+            picker.removeAttribute('aria-busy');
+        });
+    }
+
     function openPvDocumentEmbedPicker(field, targetNode) {
         if (
             !canEmbedDocuments
@@ -852,7 +898,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
             }
             if (typeof window.commonTopbarCloseModal === 'function') window.commonTopbarCloseModal();
         });
-        render();
+        loadPvResourceCatalog('documents', embeddableDocuments, modalBody.querySelector('.omo-document-embed-picker'), render);
     }
 
     function buildPvDecisionEmbedHtml(decisionItem) {
@@ -939,7 +985,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         if (cancelButton) cancelButton.addEventListener('click', function () { cleanup(); window.commonTopbarCloseModal(); });
         if (removeButton) removeButton.addEventListener('click', function () { if (targetNode && typeof field.removeNode === 'function') resolved = field.removeNode(targetNode); window.commonTopbarCloseModal(); });
         if (insertButton) insertButton.addEventListener('click', function () { const embedHtml = buildPvDecisionEmbedHtml(selectedItem); resolved = insertPvEmbedIntoField(field, targetNode, marker, embedHtml); if (resolved) marker = null; window.commonTopbarCloseModal(); });
-        render();
+        loadPvResourceCatalog('decisions', embeddableDecisions, modalBody.querySelector('.omo-document-embed-picker'), render);
     }
 
     function buildPvChecklistEmbedHtml(item) {
@@ -968,7 +1014,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         body.querySelectorAll('[data-omo-pv-checklist-cancel]').forEach(function (button) { button.addEventListener('click', function () { cleanup(); window.commonTopbarCloseModal(); }); });
         const remove = body.querySelector('[data-omo-pv-checklist-remove]'); if (remove) remove.addEventListener('click', function () { if (targetNode) resolved = field.removeNode(targetNode); window.commonTopbarCloseModal(); });
         if (search) search.addEventListener('input', render); if (select) select.addEventListener('change', update); if (insert) insert.addEventListener('click', function () { const embed = buildPvChecklistEmbedHtml(selected); if (!embed) return; resolved = insertPvEmbedIntoField(field, targetNode, marker, embed); if (resolved) marker = null; if (resolved) window.setTimeout(function () { refreshPvChecklistEmbedReviews(field); }, 0); window.commonTopbarCloseModal(); });
-        window.addEventListener('common-topbar-modal-close', function () { if (!resolved) cleanup(); }, {once: true}); render();
+        window.addEventListener('common-topbar-modal-close', function () { if (!resolved) cleanup(); }, {once: true}); loadPvResourceCatalog('checklists', embeddableChecklists, body.querySelector('.omo-document-embed-picker'), render);
     }
 
     function buildPvProjectEmbedHtml(projectItem) {
@@ -1039,7 +1085,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
     }
 
     function openPvProjectEmbedPicker(field, targetNode, creationContext = {}) {
-        if (!field || typeof field.createTemporaryCursorMarker !== 'function' || typeof window.commonTopbarOpenModal !== 'function') return;
+        if (!canEmbedProjects || !field || typeof field.createTemporaryCursorMarker !== 'function' || typeof window.commonTopbarOpenModal !== 'function') return;
         const currentProjectId = targetNode instanceof Element ? Number.parseInt(String(targetNode.getAttribute('data-omo-project-id') || ''), 10) : 0;
         const creationTitle = targetNode ? '' : String(creationContext.title || '').trim();
         const startsInCreationMode = creationTitle !== '';
@@ -1182,8 +1228,8 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
             });
         }
         window.addEventListener('common-topbar-modal-close', function () { if (!resolved) cleanup(); if (projectPickerController && typeof projectPickerController.destroy === 'function') projectPickerController.destroy(); projectPickerController = null; }, {once: true}); cancelButtons.forEach(function (button) { button.addEventListener('click', function () { cleanup(); window.commonTopbarCloseModal(); }); }); if (remove) remove.addEventListener('click', function () { if (targetNode && typeof field.removeNode === 'function') resolved = field.removeNode(targetNode); window.commonTopbarCloseModal(); }); if (insert) insert.addEventListener('click', function () { if (selected) insertProject(selected); });
-        if (createForm instanceof HTMLFormElement) createForm.addEventListener('submit', function (event) { event.preventDefault(); const titleInput = createForm.elements.namedItem('title'), title = titleInput ? String(titleInput.value || '').trim() : ''; if (title === '') { if (titleInput && typeof titleInput.focus === 'function') titleInput.focus(); return; } if (createSubmit) createSubmit.disabled = true; const formData = new FormData(createForm); formData.set('project_action', 'save_project'); formData.set('oid', String(projectCreateContext.organizationId || 0)); formData.set('cid', String(projectCreateContext.holonId || 0)); formData.set('IDuser', String(projectCreateContext.responsibleId || 0)); fetch('/omo/api/projects/action.php', {method: 'POST', body: formData, credentials: 'same-origin'}).then(function (response) { return response.json(); }).then(function (payload) { const projectId = Number(payload && payload.id || 0); if (!payload || !payload.success || projectId <= 0) throw new Error(payload && payload.message ? payload.message : projectEmbedUi.createError || ''); const statusSelect = createForm.elements.namedItem('status'), sizeSelect = createForm.elements.namedItem('project_size'), prioritySelect = createForm.elements.namedItem('priority'), startInput = createForm.elements.namedItem('planned_start_date'), endInput = createForm.elements.namedItem('planned_end_date'), statusValue = statusSelect ? String(statusSelect.value || '') : '', statusOption = statusOptions.find(function (option) { return String(option.value) === statusValue; }) || {}, toDateLabel = function (input) { const value = input ? String(input.value || '') : ''; return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value.slice(8, 10) + '.' + value.slice(5, 7) + '.' + value.slice(0, 4) : ''; }, project = {id: projectId, title: title, summary: String(formData.get('description') || ''), contextHolonId: Number(projectCreateContext.holonId || 0), contextLabel: String(projectCreateContext.holonLabel || ''), isMine: true, isFollowed: false, responsibleLabel: String(projectCreateContext.responsibleLabel || ''), status: statusValue, statusLabel: String(statusOption.label || statusValue), priorityLabel: prioritySelect && prioritySelect.value ? 'P' + String(prioritySelect.value) : '', sizeLabel: sizeSelect ? String(sizeSelect.value || 'M') : 'M', plannedStartLabel: toDateLabel(startInput), plannedEndLabel: toDateLabel(endInput)}; embeddableProjects.push(project); if (typeof window.omoRefreshProjectsDrawerAfterMutation === 'function') window.omoRefreshProjectsDrawerAfterMutation(); insertProject(project); }).catch(function (error) { window.alert(String(error && error.message || projectEmbedUi.createError || '')); }).finally(function () { if (createSubmit) createSubmit.disabled = false; }); });
-        render();
+        if (createForm instanceof HTMLFormElement) createForm.addEventListener('submit', function (event) { event.preventDefault(); const titleInput = createForm.elements.namedItem('title'), title = titleInput ? String(titleInput.value || '').trim() : ''; if (title === '') { if (titleInput && typeof titleInput.focus === 'function') titleInput.focus(); return; } if (createSubmit) createSubmit.disabled = true; const formData = new FormData(createForm); formData.set('project_action', 'save_project'); formData.set('oid', String(projectCreateContext.organizationId || 0)); formData.set('cid', String(projectCreateContext.holonId || 0)); formData.set('IDuser', String(projectCreateContext.responsibleId || 0)); fetch('/omo/api/projects/action.php', {method: 'POST', body: formData, credentials: 'same-origin'}).then(function (response) { return response.json(); }).then(function (payload) { const projectId = Number(payload && payload.id || 0); if (!payload || !payload.success || projectId <= 0) throw new Error(payload && payload.message ? payload.message : projectEmbedUi.createError || ''); const statusSelect = createForm.elements.namedItem('status'), sizeSelect = createForm.elements.namedItem('project_size'), prioritySelect = createForm.elements.namedItem('priority'), startInput = createForm.elements.namedItem('planned_start_date'), endInput = createForm.elements.namedItem('planned_end_date'), statusValue = statusSelect ? String(statusSelect.value || '') : '', statusOption = statusOptions.find(function (option) { return String(option.value) === statusValue; }) || {}, toDateLabel = function (input) { const value = input ? String(input.value || '') : ''; return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value.slice(8, 10) + '.' + value.slice(5, 7) + '.' + value.slice(0, 4) : ''; }, project = {id: projectId, title: title, summary: String(formData.get('description') || ''), contextHolonId: Number(projectCreateContext.holonId || 0), contextLabel: String(projectCreateContext.holonLabel || ''), isMine: true, isFollowed: false, responsibleLabel: String(projectCreateContext.responsibleLabel || ''), status: statusValue, statusLabel: String(statusOption.label || statusValue), priorityLabel: prioritySelect && prioritySelect.value ? 'P' + String(prioritySelect.value) : '', sizeLabel: sizeSelect ? String(sizeSelect.value || 'M') : 'M', plannedStartLabel: toDateLabel(startInput), plannedEndLabel: toDateLabel(endInput)}; embeddableProjects.push(project); if (typeof window.omoRefreshProjectsDrawerAfterMutation === 'function') window.omoRefreshProjectsDrawerAfterMutation(); insertProject(project); }).catch(function (error) { window.omoNotify(String(error && error.message || projectEmbedUi.createError || ''), 'error'); }).finally(function () { if (createSubmit) createSubmit.disabled = false; }); });
+        loadPvResourceCatalog('projects', embeddableProjects, body.querySelector('.omo-document-embed-picker'), function () { if (projectPickerController) projectPickerController.setProjects(embeddableProjects, currentProjectId > 0 ? [currentProjectId] : []); render(); });
     }
 
     function buildPvEventEmbedHtml(eventItem) {
@@ -1422,10 +1468,10 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
                     embeddableEvents.sort(function (left, right) { return String(left.startAt || '').localeCompare(String(right.startAt || '')); });
                     insertEvent(newEvent);
                 })
-                .catch(function (error) { window.alert(String(error && error.message || eventEmbedUi.createError || '')); })
+                .catch(function (error) { window.omoNotify(String(error && error.message || eventEmbedUi.createError || ''), 'error'); })
                 .finally(function () { if (createSubmit) createSubmit.disabled = false; });
         });
-        render();
+        loadPvResourceCatalog('events', embeddableEvents, modalBody.querySelector('.omo-document-embed-picker'), render);
     }
 
     function buildPvIndicatorEmbedHtml(indicatorItem) {
@@ -1534,7 +1580,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
                 context.button.disabled = false;
                 context.button.textContent = previousLabel;
                 if (window.alert) {
-                    window.alert(String(payload && payload.message || pageConfig.documentsPvEditorIndicatorValueError));
+                    window.omoNotify(String(payload && payload.message || pageConfig.documentsPvEditorIndicatorValueError), 'error');
                 }
             });
     }
@@ -1963,7 +2009,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
             }
         }).catch(function (payload) {
             if (window.alert) {
-                window.alert(String(payload && payload.message || checklistEmbedUi.completeArchiveError || ''));
+                window.omoNotify(String(payload && payload.message || checklistEmbedUi.completeArchiveError || ''), 'error');
             }
         }).finally(function () {
             if (button.isConnected) {
@@ -2041,7 +2087,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         if (cancelButton) cancelButton.addEventListener('click', function () { cleanup(); window.commonTopbarCloseModal(); });
         if (removeButton) removeButton.addEventListener('click', function () { if (targetNode && typeof field.removeNode === 'function') resolved = field.removeNode(targetNode); window.commonTopbarCloseModal(); });
         if (insertButton) insertButton.addEventListener('click', function () { const embedHtml = buildPvIndicatorEmbedHtml(selectedItem); resolved = insertPvEmbedIntoField(field, targetNode, marker, embedHtml); if (resolved) marker = null; window.commonTopbarCloseModal(); });
-        render();
+        loadPvResourceCatalog('indicators', embeddableIndicators, modalBody.querySelector('.omo-document-embed-picker'), render);
     }
 
     function getDocumentVisibilityValue() {
@@ -4335,7 +4381,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         copyTakeoverDraftToClipboard(draft)
             .then(function (copied) {
                 if (copied) {
-                    window.alert(takeoverDraftCopiedMessage);
+                    window.omoNotify(takeoverDraftCopiedMessage, 'success');
                     return;
                 }
                 window.prompt(takeoverDraftCopyFailedMessage, draft.plainText);
@@ -4768,7 +4814,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
                 }
             })
             .catch(function (payload) {
-                window.alert(String(payload && payload.message || editorClientUi.genericError || ''));
+                window.omoNotify(String(payload && payload.message || editorClientUi.genericError || ''), 'error');
             });
     });
 
@@ -5115,7 +5161,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
                     replacePointHtml(error.point);
                 }
                 const message = String(error && (error.message || error.text) || editorClientUi.genericError || '');
-                window.alert(message);
+                window.omoNotify(message, 'error');
             })
             .finally(function () {
                 pendingTakeoverPointIds.delete(pointId);
@@ -5431,7 +5477,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
                 }
             })
             .catch(function (error) {
-                window.alert(String(error && (error.message || error.text) || editorClientUi.genericError || ''));
+                window.omoNotify(String(error && (error.message || error.text) || editorClientUi.genericError || ''), 'error');
             })
             .finally(function () {
                 sortSubmitButton.disabled = false;
@@ -5842,7 +5888,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
             })
             .catch(function (payload) {
                 if (documentMetaStatus instanceof Element) {
-                    documentMetaStatus.textContent = String(payload && payload.message ? payload.message : editorClientUi.documentSaveError || '');
+                    window.omoNotify(String(payload && payload.message ? payload.message : editorClientUi.documentSaveError || ''), 'error');
                 }
             })
             .finally(function () {
@@ -5898,7 +5944,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
             })
             .catch(function (error) {
                 if (documentMetaStatus instanceof Element) {
-                    documentMetaStatus.textContent = error && error.message ? error.message : String(editorClientUi.autoSummaryError || '');
+                    window.omoNotify(error && error.message ? error.message : String(editorClientUi.autoSummaryError || ''), 'error');
                 }
             })
             .finally(function () {
@@ -6125,7 +6171,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
                     if (payload && payload.point) replacePointProposalsHtml(payload.point);
                 })
                 .catch(function (payload) {
-                    window.alert(String(payload && payload.message || 'Impossible de supprimer la modification.'));
+                    window.omoNotify(String(payload && payload.message || 'Impossible de supprimer la modification.'), 'error');
                     if (proposalDeleteButton.isConnected) proposalDeleteButton.disabled = false;
                 });
             return;
@@ -6192,7 +6238,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         if (claimSecretaryButton && root.contains(claimSecretaryButton)) {
             const secretaryAction = String(claimSecretaryButton.dataset.omoPvSecretaryAction || 'claim_pv_editor');
             if (secretaryAction === 'pass_pv_editor' && hasUnsavedPointChanges()) {
-                window.alert(unsavedHandoverMessage);
+                window.omoNotify(unsavedHandoverMessage, 'warning');
                 return;
             }
             claimSecretaryButton.disabled = true;
@@ -6789,7 +6835,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
                     })
                     .catch(function (error) {
                         if (window.alert) {
-                            window.alert(String(error && error.message || editorClientUi.genericError || ''));
+                            window.omoNotify(String(error && error.message || editorClientUi.genericError || ''), 'error');
                         }
                     })
                     .finally(function () {

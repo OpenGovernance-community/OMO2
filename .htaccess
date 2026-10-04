@@ -38,6 +38,13 @@ RewriteCond %{HTTP_HOST} !(^|\.)(localhost|127\.0\.0\.1)(:\d+)?$ [NC]
 RewriteCond %{HTTP_HOST} ^([A-Za-z0-9.-]+)(?::\d+)?$ [NC]
 RewriteRule ^(.*)$ https://%1/$1 [R=301,L,NE]
 
+# MCP uses a stateless Streamable HTTP endpoint and public OAuth discovery.
+RewriteRule ^api/v1(?:/.*)?$ /api/v1/index.php [QSA,END]
+RewriteRule ^developer/?$ /developer/index.php [QSA,END]
+RewriteRule ^mcp/?$ /mcp/index.php [QSA,L]
+RewriteRule ^\.well-known/oauth-protected-resource(?:/mcp)?/?$ /mcp/metadata.php [L]
+RewriteRule ^\.well-known/oauth-authorization-server/?$ /mcp/metadata.php [L]
+
 # Serve the alternate homepage at the omo2.org root without changing the URL.
 RewriteCond %{HTTP_HOST} ^(?:www\.)?omo2\.org(?::\d+)?$ [NC]
 RewriteRule ^$ /views/omo2-home.php [QSA,L]

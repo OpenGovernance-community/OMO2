@@ -98,13 +98,12 @@ window.commonPageScripts["/omo/api/decision/send_invitations_popup.js"] = functi
             })
             .then(function (result) {
                 if (!result.ok || !result.data || !result.data.status) {
-                    feedback.textContent = result.data && result.data.message ? result.data.message : 'Une erreur est survenue.';
+                    window.omoNotify(result.data && result.data.message ? result.data.message : 'Une erreur est survenue.', 'error');
                     applyAvailabilityState(false);
                     return;
                 }
 
-                feedback.textContent = result.data.message || 'Invitations envoyees.';
-                feedback.classList.add('is-success');
+                window.omoNotify(result.data.message || 'Invitations envoyees.', 'success');
 
                 if (typeof window.commonTopbarCloseModal === 'function') {
                     window.commonTopbarCloseModal();
@@ -120,7 +119,7 @@ window.commonPageScripts["/omo/api/decision/send_invitations_popup.js"] = functi
                 }
             })
             .catch(function () {
-                feedback.textContent = 'Impossible d envoyer ces invitations pour le moment.';
+                window.omoNotify('Impossible d envoyer ces invitations pour le moment.', 'error');
                 applyAvailabilityState(false);
             });
     });
