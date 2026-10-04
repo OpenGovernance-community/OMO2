@@ -69,6 +69,33 @@ ReadMemoProbe::read(['user', 1, 7], $load);
 ReadMemoProbe::read(['user', 1, 7], $load);
 assertReadMemo($calls === 7, 'Writes clear and disable memoization.');
 
+foreach ([
+    'WITH nodes AS (SELECT id FROM probe) SELECT id FROM nodes' => true,
+    'WITH RECURSIVE nodes AS (SELECT id FROM probe) SELECT id FROM nodes' => true,
+    'WITH nodes AS (SELECT id FROM probe) UPDATE probe SET active = 0' => false,
+    'WITH nodes AS (DELETE FROM probe RETURNING id) SELECT id FROM nodes' => false,
+    'WITH nodes AS (SELECT id FROM probe) SELECT id FROM nodes FOR UPDATE' => false,
+    'WITH nodes AS (SELECT id FROM probe) SELECT id FROM nodes LOCK IN SHARE MODE' => false,
+    'WITH nodes AS (SELECT id FROM probe) SELECT id FROM nodes; DELETE FROM probe' => false,
+    'WITH nodes AS (SELECT id FROM probe) SELECT id FROM nodes /*! FOR UPDATE */' => false,
+    'SET SESSION foreign_key_checks = 0' => false,
+] as $sql => $retainsMemo) {
+    ReadMemoProbe::enableReadOnlyMemoization();
+    $calls = 0;
+    ReadMemoProbe::read(['cte'], $load);
+    ReadMemoProbe::invalidateReadMemoForSql($sql);
+    ReadMemoProbe::read(['cte'], $load);
+    ReadMemoProbe::read(['cte'], $load);
+    assertReadMemo($calls === ($retainsMemo ? 1 : 3), 'CTE/configuration invalidation: ' . $sql);
+}
+ReadMemoProbe::enableReadOnlyMemoization();
+$calls = 0;
+ReadMemoProbe::read(['aggregate'], $load);
+ReadMemoProbe::invalidateReadMemoForSql('SET SESSION group_concat_max_len = 16777215');
+ReadMemoProbe::read(['aggregate'], $load);
+ReadMemoProbe::read(['aggregate'], $load);
+assertReadMemo($calls === 2, 'Aggregate capacity changes clear results but retain read-only mode.');
+
 ReadMemoProbe::enableReadOnlyMemoization();
 $pdo->queries = 0;
 \dbObject\ObjectVisibility::loadActiveRuleRows('document', [1, 2], 7);

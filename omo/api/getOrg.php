@@ -3,13 +3,12 @@ require_once __DIR__ . '/bootstrap.php';
 require_once dirname(__DIR__, 2) . '/common/avatar.php';
 require_once __DIR__ . '/projects/shared.php';
 commonReleaseReadOnlySession();
+\dbObject\DbObject::enableReadOnlyMemoization();
 use dbObject\ArrayOrganization;
 use dbObject\ArrayProject;
 use dbObject\Authority;
 use dbObject\Holon;
-use dbObject\HolonPermission;
 use dbObject\Organization;
-use dbObject\Permission;
 use dbObject\PropertyFormat;
 use dbObject\Project;
 
@@ -1146,24 +1145,6 @@ $parentHolonForDelete = $canDeleteHolon ? $currentHolon->getParentHolon() : null
 $deleteParentId = $parentHolonForDelete ? (int)$parentHolonForDelete->getId() : 0;
 $deleteParentIsRoot = $parentHolonForDelete ? ((int)$parentHolonForDelete->get('IDtypeholon') === 4) : false;
 $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canMoveHolon || $canDeleteHolon || $canViewHolonHistory || $canManageOrganizationModel;
-$debugPermissionCatalog = Permission::getEditorCatalog($organization->getLexicon());
-$debugPermissionEntries = array();
-foreach ($debugPermissionCatalog as $permissionEntry) {
-    $permissionKey = trim((string)($permissionEntry['key'] ?? ''));
-    if ($permissionKey === '') {
-        continue;
-    }
-
-    $debugPermissionEntries[] = array(
-        'key' => $permissionKey,
-        'isAllowed' => $currentHolon->isAllowed($permissionKey),
-    );
-}
-$debugPermissionSessionCache = $_SESSION['permissionCacheByOrganization'][(int)$organizationId] ?? null;
-$debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
-    (int)commonGetCurrentUserId(),
-    (int)$organizationId
-);
 ?>
 
 <style>
@@ -1461,24 +1442,6 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
         </div>
     <?php endif; ?>
 
-    <?php if (count($debugPermissionEntries) > 0 && 1==0): ?>
-        <div class="circle-section generic-section generic-accordion generic-accordion--row">
-            <div class="circle-section__title generic-card-title generic-card-title--small">Permissions</div>
-            <p class="section-text"><?= htmlspecialchars(\dbObject\Organization::formatLexiconText('Codes disponibles sur ce holon. Ceux que vous avez sont en gras.', $organization->getLexicon()), ENT_QUOTES, 'UTF-8') ?></p>
-            <div class="section-text">
-                <?php foreach ($debugPermissionEntries as $index => $permissionEntry): ?>
-                    <?php if ($index > 0): ?>, <?php endif; ?>
-                    <?php if (!empty($permissionEntry['isAllowed'])): ?>
-                        <strong><?= omoApiEscape($permissionEntry['key']) ?></strong>
-                    <?php else: ?>
-                        <span><?= omoApiEscape($permissionEntry['key']) ?></span>
-                    <?php endif; ?>
-                <?php endforeach; ?>
-            </div>
-            <pre class="section-text" style="white-space: pre-wrap; font-size: 12px; margin-top: 12px;"><?= omoApiEscape(json_encode($debugPermissionSessionCache, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?></pre>
-            <pre class="section-text" style="white-space: pre-wrap; font-size: 12px; margin-top: 12px;"><?= omoApiEscape(json_encode($debugPermissionRebuild, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?></pre>
-        </div>
-    <?php endif; ?>
 
 </div>
 

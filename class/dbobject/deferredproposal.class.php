@@ -167,48 +167,76 @@ class DeferredProposal extends DbObject
         return $targetHolon;
     }
 
+    /**
+     * Build requested pickers from one hydrated tree and one collective permission
+     * set. This snapshot is local to this call, including on write endpoints.
+     */
+    public static function getTargetHolonCatalogs(int $organizationId, int $collectiveHolonId, array $targetTypes = []): array
+    {
+        $keysByType = [
+            self::TARGET_RULE => [self::OPERATION_CREATE => 'CAN_CREATE_RULE', self::OPERATION_UPDATE => 'CAN_EDIT_RULE', self::OPERATION_DELETE => 'CAN_DELETE_RULE'],
+            self::TARGET_HOLON => [self::OPERATION_CREATE => self::getHolonOperationPermissionKey(self::OPERATION_CREATE), self::OPERATION_UPDATE => self::getHolonOperationPermissionKey(self::OPERATION_UPDATE), self::OPERATION_DELETE => self::getHolonOperationPermissionKey(self::OPERATION_DELETE), self::OPERATION_MOVE => self::getHolonOperationPermissionKey(self::OPERATION_MOVE)],
+            self::TARGET_PROJECT => [self::OPERATION_CREATE => self::getProjectOperationPermissionKey(self::OPERATION_CREATE), self::OPERATION_UPDATE => self::getProjectOperationPermissionKey(self::OPERATION_UPDATE), self::OPERATION_DELETE => self::getProjectOperationPermissionKey(self::OPERATION_DELETE), 'propose' => 'CAN_PROPOSE_PROJECT'],
+            self::TARGET_RECURRING_TASK => [self::OPERATION_CREATE => self::getRecurringTaskOperationPermissionKey(self::OPERATION_CREATE), self::OPERATION_UPDATE => self::getRecurringTaskOperationPermissionKey(self::OPERATION_UPDATE), self::OPERATION_DELETE => self::getRecurringTaskOperationPermissionKey(self::OPERATION_DELETE)],
+            self::TARGET_INDICATOR => [self::OPERATION_CREATE => self::getIndicatorOperationPermissionKey(self::OPERATION_CREATE), self::OPERATION_UPDATE => self::getIndicatorOperationPermissionKey(self::OPERATION_UPDATE), self::OPERATION_DELETE => self::getIndicatorOperationPermissionKey(self::OPERATION_DELETE)],
+        ];
+        if ($targetTypes !== []) $keysByType = array_intersect_key($keysByType, array_fill_keys($targetTypes, true));
+        $catalogs = array_fill_keys(array_keys($keysByType), []);
+        if ($organizationId <= 0 || $collectiveHolonId <= 0 || $keysByType === []) return $catalogs;
+        $organization = new Organization();
+        if (!$organization->load($organizationId)) return $catalogs;
+        $root = $organization->getEnabledStructuralRootHolon();
+        if (!$root instanceof Holon) return $catalogs;
+        $permissionKeys = array_values(array_unique(array_merge(...array_map('array_values', array_values($keysByType)))));
+        $permissionSet = HolonPermission::buildHolonCollectivePermissionSetForOrganization($organizationId, $collectiveHolonId, $permissionKeys);
+        $tree = new ArrayHolon();
+        $tree->loadSubtreeHydrated((int)$root->getId());
+        $childrenByParent = $tree->getChildrenByParentId();
+        $visited = [];
+        $collect = static function (Holon $holon, array $ancestorIds = []) use (&$collect, &$catalogs, &$visited, $childrenByParent, $keysByType, $permissionSet, $root): void {
+            $id = (int)$holon->getId();
+            if ($id <= 0 || isset($visited[$id])) return;
+            $visited[$id] = true;
+            $lineage = array_merge($ancestorIds, [$id]);
+            $label = (string)$holon->getFullDisplayName();
+            foreach ($keysByType as $targetType => $permissionKeys) {
+                $permissions = [];
+                foreach ($permissionKeys as $operation => $permissionKey) {
+                    $scope = $permissionSet['permissions'][$permissionKey] ?? [];
+                    $allowed = !empty($scope['organization']) || !empty($scope['exact'][$id]);
+                    if (!$allowed) {
+                        foreach ($lineage as $ancestorId) {
+                            if (!empty($scope['subtree'][$ancestorId])) { $allowed = true; break; }
+                        }
+                    }
+                    if ($targetType === self::TARGET_HOLON) {
+                        $typeId = (int)$holon->get('IDtypeholon');
+                        $allowed = $allowed && ($operation === self::OPERATION_CREATE
+                            ? in_array($typeId, [2, 3, 4], true)
+                            : (!$holon->isTemplateNode((int)$root->getId()) && in_array($typeId, [1, 2, 3], true)));
+                    }
+                    $permissions[$operation] = $allowed;
+                }
+                $entry = ['id' => $id, 'label' => $label, 'permissions' => $permissions];
+                if ($targetType === self::TARGET_PROJECT) {
+                    $create = !empty($permissions[self::OPERATION_CREATE]);
+                    $propose = !empty($permissions['propose']);
+                    $entry['permissions'][self::OPERATION_CREATE] = $create || $propose;
+                    unset($entry['permissions']['propose']);
+                    $entry['project_creation_mode'] = $create ? 'create' : ($propose ? 'propose' : '');
+                }
+                $catalogs[$targetType][$id] = $entry;
+            }
+            foreach ($childrenByParent[$id] ?? [] as $child) $collect($child, $lineage);
+        };
+        $collect($root);
+        return $catalogs;
+    }
+
     public static function getObjectTargetHolonCatalog(int $organizationId, int $collectiveHolonId, string $targetType): array
     {
-        if ($organizationId <= 0 || $collectiveHolonId <= 0) return [];
-        $permissionKeys = [];
-        foreach ([self::OPERATION_CREATE, self::OPERATION_UPDATE, self::OPERATION_DELETE] as $operation) {
-            $permissionKeys[$operation] = $targetType === self::TARGET_RECURRING_TASK
-                ? self::getRecurringTaskOperationPermissionKey($operation)
-                : ($targetType === self::TARGET_INDICATOR ? self::getIndicatorOperationPermissionKey($operation) : '');
-        }
-        if (in_array('', $permissionKeys, true)) return [];
-        $organization = new Organization();
-        if (!$organization->load($organizationId)) return [];
-        $rootHolon = $organization->getEnabledStructuralRootHolon();
-        if (!$rootHolon instanceof Holon) return [];
-        $permissionSet = HolonPermission::buildHolonCollectivePermissionSetForOrganization(
-            $organizationId,
-            $collectiveHolonId,
-            array_values($permissionKeys)
-        );
-        $catalog = [];
-        $visited = [];
-        $collect = static function (Holon $holon, array $ancestorIds = []) use (&$collect, &$catalog, &$visited, $permissionKeys, $permissionSet): void {
-            $holonId = (int)$holon->getId();
-            if ($holonId <= 0 || isset($visited[$holonId])) return;
-            $visited[$holonId] = true;
-            $lineageIds = array_merge($ancestorIds, [$holonId]);
-            $permissions = [];
-            foreach ($permissionKeys as $operation => $permissionKey) {
-                $scope = $permissionSet['permissions'][$permissionKey] ?? [];
-                $allowedBySubtree = false;
-                foreach ($lineageIds as $lineageId) {
-                    if (!empty($scope['subtree'][$lineageId])) { $allowedBySubtree = true; break; }
-                }
-                $permissions[$operation] = !empty($scope['organization'])
-                    || !empty($scope['exact'][$holonId])
-                    || $allowedBySubtree;
-            }
-            $catalog[$holonId] = ['id' => $holonId, 'label' => (string)$holon->getFullDisplayName(), 'permissions' => $permissions];
-            foreach ($holon->getChildren() as $child) if ($child instanceof Holon) $collect($child, $lineageIds);
-        };
-        $collect($rootHolon);
-        return $catalog;
+        if (!in_array($targetType, [self::TARGET_RECURRING_TASK, self::TARGET_INDICATOR], true)) return [];
+        return self::getTargetHolonCatalogs($organizationId, $collectiveHolonId, [$targetType])[$targetType] ?? [];
     }
 
     public static function loadAllowedProjectTargetHolon(
@@ -303,71 +331,7 @@ class DeferredProposal extends DbObject
      */
     public static function getHolonTargetHolonCatalog(int $organizationId, int $collectiveHolonId): array
     {
-        if ($organizationId <= 0 || $collectiveHolonId <= 0) return [];
-        $organization = new Organization();
-        if (!$organization->load($organizationId)) return [];
-        $rootHolon = $organization->getEnabledStructuralRootHolon();
-        if (!$rootHolon instanceof Holon) return [];
-
-        $permissionKeys = [
-            self::OPERATION_CREATE => self::getHolonOperationPermissionKey(self::OPERATION_CREATE),
-            self::OPERATION_UPDATE => self::getHolonOperationPermissionKey(self::OPERATION_UPDATE),
-            self::OPERATION_DELETE => self::getHolonOperationPermissionKey(self::OPERATION_DELETE),
-            self::OPERATION_MOVE => self::getHolonOperationPermissionKey(self::OPERATION_MOVE),
-        ];
-        $permissionSet = HolonPermission::buildHolonCollectivePermissionSetForOrganization(
-            $organizationId,
-            $collectiveHolonId,
-            array_values($permissionKeys)
-        );
-        $catalog = [];
-        $visited = [];
-        $collect = static function (Holon $holon, array $ancestorIds = []) use (
-            &$collect,
-            &$catalog,
-            &$visited,
-            $permissionKeys,
-            $permissionSet,
-            $rootHolon
-        ): void {
-            $holonId = (int)$holon->getId();
-            if ($holonId <= 0 || isset($visited[$holonId])) return;
-            $visited[$holonId] = true;
-            $lineageIds = array_merge($ancestorIds, [$holonId]);
-            $permissions = [];
-            foreach ($permissionKeys as $operation => $permissionKey) {
-                $scope = $permissionSet['permissions'][$permissionKey] ?? [];
-                $allowedBySubtree = false;
-                foreach ($lineageIds as $lineageId) {
-                    if (!empty($scope['subtree'][$lineageId])) {
-                        $allowedBySubtree = true;
-                        break;
-                    }
-                }
-                $allowed = !empty($scope['organization'])
-                    || !empty($scope['exact'][$holonId])
-                    || $allowedBySubtree;
-                $typeId = (int)$holon->get('IDtypeholon');
-                if ($operation === self::OPERATION_CREATE) {
-                    $allowed = $allowed && in_array($typeId, [2, 3, 4], true);
-                } else {
-                    $allowed = $allowed
-                        && !$holon->isTemplateNode((int)$rootHolon->getId())
-                        && in_array($typeId, [1, 2, 3], true);
-                }
-                $permissions[$operation] = $allowed;
-            }
-            $catalog[$holonId] = [
-                'id' => $holonId,
-                'label' => (string)$holon->getFullDisplayName(),
-                'permissions' => $permissions,
-            ];
-            foreach ($holon->getChildren() as $child) {
-                if ($child instanceof Holon) $collect($child, $lineageIds);
-            }
-        };
-        $collect($rootHolon);
-        return $catalog;
+        return self::getTargetHolonCatalogs($organizationId, $collectiveHolonId, [self::TARGET_HOLON])[self::TARGET_HOLON] ?? [];
     }
 
     /**
@@ -448,119 +412,12 @@ class DeferredProposal extends DbObject
      */
     public static function getRuleTargetHolonCatalog(int $organizationId, int $collectiveHolonId): array
     {
-        if ($organizationId <= 0 || $collectiveHolonId <= 0) return [];
-        $organization = new Organization();
-        if (!$organization->load($organizationId)) return [];
-        $rootHolon = $organization->getEnabledStructuralRootHolon();
-        if (!$rootHolon instanceof Holon) return [];
-
-        $permissionKeys = [
-            self::OPERATION_CREATE => 'CAN_CREATE_RULE',
-            self::OPERATION_UPDATE => 'CAN_EDIT_RULE',
-            self::OPERATION_DELETE => 'CAN_DELETE_RULE',
-        ];
-        $permissionSet = HolonPermission::buildHolonCollectivePermissionSetForOrganization(
-            $organizationId,
-            $collectiveHolonId,
-            array_values($permissionKeys)
-        );
-        $catalog = [];
-        $visited = [];
-        $collect = static function (Holon $holon, array $ancestorIds = []) use (
-            &$collect,
-            &$catalog,
-            &$visited,
-            $permissionKeys,
-            $permissionSet
-        ): void {
-            $holonId = (int)$holon->getId();
-            if ($holonId <= 0 || isset($visited[$holonId])) return;
-            $visited[$holonId] = true;
-            $lineageIds = array_merge($ancestorIds, [$holonId]);
-            $permissions = [];
-            foreach ($permissionKeys as $operation => $permissionKey) {
-                $scope = $permissionSet['permissions'][$permissionKey] ?? [];
-                $allowedBySubtree = false;
-                foreach ($lineageIds as $lineageId) {
-                    if (!empty($scope['subtree'][$lineageId])) {
-                        $allowedBySubtree = true;
-                        break;
-                    }
-                }
-                $permissions[$operation] = !empty($scope['organization'])
-                    || !empty($scope['exact'][$holonId])
-                    || $allowedBySubtree;
-            }
-            $catalog[$holonId] = [
-                'id' => $holonId,
-                'label' => (string)$holon->getFullDisplayName(),
-                'permissions' => $permissions,
-            ];
-            foreach ($holon->getChildren() as $child) {
-                if ($child instanceof Holon) $collect($child, $lineageIds);
-            }
-        };
-        $collect($rootHolon);
-
-        return $catalog;
+        return self::getTargetHolonCatalogs($organizationId, $collectiveHolonId, [self::TARGET_RULE])[self::TARGET_RULE] ?? [];
     }
 
     public static function getProjectTargetHolonCatalog(int $organizationId, int $collectiveHolonId): array
     {
-        if ($organizationId <= 0 || $collectiveHolonId <= 0) return [];
-        $organization = new Organization();
-        if (!$organization->load($organizationId)) return [];
-        $rootHolon = $organization->getEnabledStructuralRootHolon();
-        if (!$rootHolon instanceof Holon) return [];
-
-        $permissionKeys = [
-            self::OPERATION_CREATE => self::getProjectOperationPermissionKey(self::OPERATION_CREATE),
-            self::OPERATION_UPDATE => self::getProjectOperationPermissionKey(self::OPERATION_UPDATE),
-            self::OPERATION_DELETE => self::getProjectOperationPermissionKey(self::OPERATION_DELETE),
-            'propose' => 'CAN_PROPOSE_PROJECT',
-        ];
-        $permissionSet = HolonPermission::buildHolonCollectivePermissionSetForOrganization(
-            $organizationId,
-            $collectiveHolonId,
-            array_values($permissionKeys)
-        );
-        $catalog = [];
-        $visited = [];
-        $collect = static function (Holon $holon, array $ancestorIds = []) use (&$collect, &$catalog, &$visited, $permissionKeys, $permissionSet): void {
-            $holonId = (int)$holon->getId();
-            if ($holonId <= 0 || isset($visited[$holonId])) return;
-            $visited[$holonId] = true;
-            $lineageIds = array_merge($ancestorIds, [$holonId]);
-            $permissions = [];
-            foreach ($permissionKeys as $operation => $permissionKey) {
-                $scope = $permissionSet['permissions'][$permissionKey] ?? [];
-                $allowedBySubtree = false;
-                foreach ($lineageIds as $lineageId) {
-                    if (!empty($scope['subtree'][$lineageId])) {
-                        $allowedBySubtree = true;
-                        break;
-                    }
-                }
-                $permissions[$operation] = !empty($scope['organization'])
-                    || !empty($scope['exact'][$holonId])
-                    || $allowedBySubtree;
-            }
-            $createAllowed = !empty($permissions[self::OPERATION_CREATE]);
-            $canPropose = !empty($permissions['propose']);
-            $permissions[self::OPERATION_CREATE] = $createAllowed || $canPropose;
-            unset($permissions['propose']);
-            $catalog[$holonId] = [
-                'id' => $holonId,
-                'label' => (string)$holon->getFullDisplayName(),
-                'permissions' => $permissions,
-                'project_creation_mode' => $createAllowed ? 'create' : ($canPropose ? 'propose' : ''),
-            ];
-            foreach ($holon->getChildren() as $child) {
-                if ($child instanceof Holon) $collect($child, $lineageIds);
-            }
-        };
-        $collect($rootHolon);
-        return $catalog;
+        return self::getTargetHolonCatalogs($organizationId, $collectiveHolonId, [self::TARGET_PROJECT])[self::TARGET_PROJECT] ?? [];
     }
 
     public static function captureHolonMoveState(Holon $holon): array
