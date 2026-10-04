@@ -6,6 +6,7 @@
     "require": {
         "php": "^8.2",
         "dompdf/dompdf": "^3.1",
+        "league/commonmark": "^2.10",
         "orhanerday/open-ai": "^4.9",
         "phpmailer/phpmailer": "^6.12",
         "phpoffice/phpspreadsheet": "^5.1",

@@ -1,28 +1,5 @@
 /* Shared public meeting and event registration layout; UI primitives live in components.css. */
-body.meeting-page {
-    --color-primary: #005b7a;
-    --color-text: #17364a;
-    --color-text-light: #587387;
-    --color-text-inverse: #ffffff;
-    --color-bg: #edf5fb;
-    --color-surface: #ffffff;
-    --color-surface-alt: #f4f9fd;
-    --color-border: #d4e4ef;
-    --radius-md: 10px;
-    --shadow-md: 0 6px 16px rgb(0 91 122 / 12%);
-    margin: 0;
-    min-height: 100vh;
-    color: var(--color-text);
-    background: linear-gradient(140deg, transparent 72%, #dfedf8 72%), linear-gradient(35deg, #d7eaf6 16%, transparent 16%), #edf5fb;
-    background-attachment: fixed;
-    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    font-size: 15px;
-    line-height: 1.55;
-}
-.meeting-page *, .meeting-page *::before, .meeting-page *::after { box-sizing: border-box; }
-.meeting-page p { margin: 0; }
-.meeting-page a:not(.generic-action-button) { color: var(--color-primary); text-underline-offset: 4px; }
-.meeting-page a:focus-visible, .meeting-page button:focus-visible { outline: 3px solid var(--color-primary); outline-offset: 4px; }
+/* The public page palette and backdrop are shared in components.css. */
 .meeting-shell {
     /* Wider public layout accommodates the month and a two-column slot list. */
     --param-page-shell-width: 1240px;

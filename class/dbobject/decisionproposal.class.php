@@ -21,7 +21,8 @@ class DecisionProposal extends DbObject
             [['info_url'], 'string'],
             [['parameters'], 'parameters'],
             [['active'], 'boolean'],
-            [['created_at', 'updated_at'], 'datetime'],
+            [['start_at', 'end_at', 'created_at', 'updated_at'], 'datetime'],
+            [['timezone'], 'string'],
             [['id'], 'safe'],
         ];
     }
@@ -36,6 +37,9 @@ class DecisionProposal extends DbObject
             'title' => 'Titre',
             'description' => 'Description',
             'info_url' => 'Lien d’information',
+            'start_at' => 'Debut',
+            'end_at' => 'Fin',
+            'timezone' => 'Fuseau horaire',
             'position' => 'Ordre',
             'parameters' => 'Paramètres',
             'active' => 'Activée',
@@ -56,6 +60,7 @@ class DecisionProposal extends DbObject
         return [
             'title' => 190,
             'info_url' => 500,
+            'timezone' => 64,
         ];
     }
 
@@ -76,6 +81,90 @@ class DecisionProposal extends DbObject
     }
 
     public function save()
+    {
+        $range = self::normalizeCalendarRange($this->get('start_at'), $this->get('end_at'), $this->get('timezone'));
+        if (empty($range['status'])) return $range;
+        foreach ($range['values'] as $field => $value) $this->set($field, $value);
+        $pdo = self::getPdo();
+        $ownsTransaction = !$pdo->inTransaction();
+        try {
+            if ($ownsTransaction) $pdo->beginTransaction();
+            $result = $this->saveProposalContent();
+            if (empty($result['status'])) throw new \RuntimeException((string)($result['text'] ?? 'proposal_save_failed'));
+            $decision = $this->getDecisionProcess();
+            if ($decision && empty($decision->syncParticipantsFromInvitations()['status'])) throw new \RuntimeException('calendar_sync_failed');
+            if ($ownsTransaction) $pdo->commit();
+            return $result;
+        } catch (\Throwable $exception) {
+            if ($ownsTransaction && $pdo->inTransaction()) $pdo->rollBack();
+            error_log('decision_proposal_save_failed: ' . $exception->getMessage());
+            return ['status' => false, 'text' => 'Impossible de sauvegarder la proposition et son agenda.'];
+        }
+    }
+
+    public static function normalizeCalendarRange($start, $end, $timezone = null): array
+    {
+        $emptyStart = !$start;
+        $emptyEnd = !$end;
+        if ($emptyStart && $emptyEnd) return ['status' => true, 'values' => ['start_at' => null, 'end_at' => null, 'timezone' => null]];
+        try {
+            if ($emptyStart || $emptyEnd) throw new \InvalidArgumentException();
+            $zone = new \DateTimeZone(trim((string)$timezone) ?: date_default_timezone_get());
+            $parse = static function ($value) use ($zone) {
+                if ($value instanceof \DateTimeInterface) return \DateTimeImmutable::createFromInterface($value);
+                $value = str_replace('T', ' ', trim((string)$value));
+                if (strlen($value) === 16) $value .= ':00';
+                $date = \DateTimeImmutable::createFromFormat('!Y-m-d H:i:s', $value, $zone);
+                if (!$date || $date->format('Y-m-d H:i:s') !== $value) throw new \InvalidArgumentException();
+                return $date;
+            };
+            $start = $parse($start);
+            $end = $parse($end);
+            if ($end <= $start) throw new \InvalidArgumentException();
+            $storageZone = new \DateTimeZone(date_default_timezone_get());
+            return ['status' => true, 'values' => ['start_at' => $start->setTimezone($storageZone), 'end_at' => $end->setTimezone($storageZone), 'timezone' => $zone->getName()]];
+        } catch (\Throwable $exception) {
+            return ['status' => false, 'reason' => 'invalid_dates', 'text' => 'Indiquez un debut et une fin valides, avec une fin apres le debut.', 'message' => 'Indiquez un debut et une fin valides, avec une fin apres le debut.'];
+        }
+    }
+
+    public function getCalendarData(): array
+    {
+        $zone = new \DateTimeZone((string)$this->get('timezone') ?: date_default_timezone_get());
+        $local = static fn($value) => $value instanceof \DateTimeInterface ? \DateTimeImmutable::createFromInterface($value)->setTimezone($zone) : null;
+        $format = static fn($value) => $local($value)?->format('Y-m-d\TH:i') ?? '';
+        $event = Event::findByDecisionProposal((int)$this->getId());
+        return [
+            'startAt' => $format($this->get('start_at')),
+            'endAt' => $format($this->get('end_at')),
+            'timezone' => (string)$this->get('timezone'),
+            'calendarStatus' => $event ? $event->get('status') : '',
+            'dateLabel' => $this->get('start_at') ? $local($this->get('start_at'))->format('d.m.Y H:i') . ' - ' . $local($this->get('end_at'))->format('d.m.Y H:i') . ' (' . $this->get('timezone') . ')' : '',
+        ];
+    }
+
+    public function delete()
+    {
+        $pdo = self::getPdo();
+        $ownsTransaction = !$pdo->inTransaction();
+        try {
+            if ($ownsTransaction) $pdo->beginTransaction();
+            $event = Event::findByDecisionProposal((int)$this->getId());
+            if ($event) {
+                $event->set('status', Event::STATUS_CANCELLED);
+                if (empty($event->save()['status'])) throw new \RuntimeException('calendar_cancellation_failed');
+            }
+            if (!parent::delete()) throw new \RuntimeException('proposal_delete_failed');
+            if ($ownsTransaction) $pdo->commit();
+            return true;
+        } catch (\Throwable $exception) {
+            if ($ownsTransaction && $pdo->inTransaction()) $pdo->rollBack();
+            error_log('decision_proposal_delete_failed: ' . $exception->getMessage());
+            return false;
+        }
+    }
+
+    protected function saveProposalContent()
     {
         $this->set('description', \dbObject\PropertyFormat::sanitizeHtml((string)$this->get('description')));
         $decisionGroupId = (int)$this->get('IDdecision_group');
@@ -324,7 +413,7 @@ class DecisionProposal extends DbObject
         ];
     }
 
-    public function updateContentByAuthor($userId, $title, $description, $infoUrl, $participantId = 0)
+    public function updateContentByAuthor($userId, $title, $description, $infoUrl, $participantId = 0, ?array $calendarRange = null)
     {
         $userId = (int)$userId;
         $participantId = (int)$participantId;
@@ -366,7 +455,7 @@ class DecisionProposal extends DbObject
                 'message' => 'Le lien d’information n’est pas valide.',
             ];
         }
-        if ($title === '' && $description === '' && $infoUrl === '') {
+        if ($title === '' && $description === '' && $infoUrl === '' && empty($calendarRange['start_at'])) {
             return [
                 'status' => false,
                 'reason' => 'invalid_content',
@@ -384,6 +473,15 @@ class DecisionProposal extends DbObject
             'description' => $description,
             'info_url' => $infoUrl,
         ];
+        if ($calendarRange !== null) {
+            $range = self::normalizeCalendarRange($calendarRange['start_at'] ?? null, $calendarRange['end_at'] ?? null, $calendarRange['timezone'] ?? null);
+            if (empty($range['status'])) return $range;
+            foreach ($range['values'] as $field => $value) {
+                $old = $this->get($field);
+                $oldValues[$field] = $old instanceof \DateTimeInterface ? $old->format('Y-m-d H:i:s') : $old;
+                $newValues[$field] = $value instanceof \DateTimeInterface ? $value->format('Y-m-d H:i:s') : $value;
+            }
+        }
         if ($oldValues === $newValues) {
             return [
                 'status' => true,
@@ -433,6 +531,9 @@ class DecisionProposal extends DbObject
             $this->set('title', $title);
             $this->set('description', $description !== '' ? $description : null);
             $this->set('info_url', $infoUrl !== '' ? $infoUrl : null);
+            if ($calendarRange !== null) {
+                foreach ($range['values'] as $field => $value) $this->set($field, $value);
+            }
             if ($userId > 0) {
                 $this->set('IDuser_author', $userId);
             }

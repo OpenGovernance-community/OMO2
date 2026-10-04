@@ -66,7 +66,12 @@ if (
     const submitButton = form ? form.querySelector('button[type="submit"]') : null;
     const organizationId = Number(root.getAttribute('data-organization-id') || 0);
 
-    function setFeedback(message, isError) {
+    function setFeedback(message, isError, inline) {
+        if (message && !inline && typeof window.commonNotify === 'function') {
+            if (feedback) { feedback.textContent = ''; feedback.hidden = true; }
+            window.commonNotify(String(message), isError ? 'error' : 'success');
+            return;
+        }
         if (!feedback) {
             return;
         }
@@ -100,7 +105,7 @@ if (
         }
 
         submitButton.disabled = true;
-        setFeedback('Import en cours...', false);
+        setFeedback('Import en cours...', false, true);
 
         const formData = new FormData(form);
 

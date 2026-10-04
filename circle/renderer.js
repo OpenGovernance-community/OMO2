@@ -76,7 +76,7 @@ if (window.circleRendererConfig.circleSharedOrganizationId > 0) {
 		});	
 
 
-} else { alert('Error!'); }
+} else { (typeof window.commonNotify === 'function' ? window.commonNotify : window.alert).call(window, 'Error!', 'error'); }
 } else {
 	
 	// Efface tous les canvas

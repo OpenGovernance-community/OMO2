@@ -1,5 +1,67 @@
 # Journal Des Nouveautes
 
+- Performances Structure, PV et gouvernance : suppression du diagnostic de permissions inutilise, catalogues de ressources charges a l ouverture de leur selecteur, lecture des arbres par lots avec objets hydrates et mutualisation des calculs de droits pendant le rendu. Les instantanes de holons evitent les catalogues inutiles. Les lectures de proprietes heritees conservent le cache de lecture ; les ecritures et lectures verrouillantes l invalident. Tests de parite des donnees, droits et chargement asynchrone inclus.
+
+- API REST : formats de retour documentés pour les 17 opérations, avec champs imbriqués, types, valeurs nulles, variantes et exemples JSON fictifs. Contrats communs à OpenAPI et /developer/ ; la page présente les données retournées et les cas métier particuliers plutôt qu’une liste de codes HTTP standards. Vérification des contrats sur les réponses réelles des tests.
+
+- Documentation développeurs : un clic dans l’index conserve la fonction choisie sélectionnée pendant le défilement vers sa section. La synchronisation reprend à la fin du défilement, avec une détection de secours pour les navigateurs sans événement scrollend.
+
+- Documentation développeurs publique sous /developer/ : référence des routes REST générée depuis OpenAPI, connexion OAuth, schémas, index filtrable et navigation par fonction, adaptés au mobile. L’index de gauche défile indépendamment et garde automatiquement la fonction sélectionnée visible, avec un défilement fluide qui respecte la préférence de réduction des animations. Accents, apostrophes et ponctuation française corrigés. Aucun registre de fonctions dupliqué.
+
+- API REST v1 : les 17 operations MCP sont accessibles sous /api/v1 avec les memes jetons OAuth, permissions et cles de reessai. Registre, validation et execution mutualises ; specification OpenAPI generee et tests HTTP de parite, creation et isolation.
+
+- E-mails MCP : envoi direct a un ou plusieurs membres choisis de l organisation, ou a tous ses membres actifs, sans reunion ni holon requis. Selection par user_ids dans la previsualisation et l envoi, adresses propres a l organisation, deduplication et verification de l adhesion avant livraison. Consentement mail:send et suivi existants reutilises.
+
+- Propositions : option "Date et horaire" dans les parametres du vote, du consentement et du jugement majoritaire, au meme niveau que titre, description et URL. Desactiver les dates annule leurs reservations. Saisie compacte du creneau et cartes de dates avec jour, horaires, fuseau, statut et actions de confirmation/annulation.
+
+- Sondages de dates : plages horaires facultatives par proposition, evenements en option avec les invites de la decision et synchronisation ICS/CalDAV. Les bulletins soumis liberent les dates refusees. Une decision confirme la date gagnante et annule les autres ; les egalites restent en option. Apres une consultation, le gestionnaire peut confirmer ou annuler chaque date depuis les propositions.
+
+- Calendrier MCP : disponibilites des membres et creneaux communs calcules comme dans le profil, avec evenements OMO, calendriers importes, plages d ouverture et horaires personnels. Aucun titre prive n est expose ; les donnees externes incompletes sont signalees. Creation d evenements dans les holons autorises, consentement events:create, invites par defaut ou explicites, avertissement avant creation en cas de conflit, reessais sans doublons et migration SQL/Docker.
+
+- Identite MCP : nom OpenMyOrganization, description, site omo2.org et logo fournis aux clients lors de la connexion. Logo optimise en 256 x 256 pixels ; nom harmonise dans les metadonnees OAuth.
+
+- Invites MCP : les listes, recherches et fiches de reunions incluent effective_invitees, les personnes invitees directement ou via un holon, sans doublons. Statuts et eligibilite e-mail restent distincts ; les grandes listes fournissent une suite paginee. Les droits de consultation sont conserves.
+
+- Adhesions en attente : vignettes en noir et blanc et contour pointille dans getOrg, les listes Team et la carte. La transparence supplementaire a ete retiree pour garder une bonne lisibilite. La presentation suit l adhesion et les affectations dans l organisation affichee, independamment du compte global et des autres organisations. Le statut "a inviter" est egalement signale dans la barre de structure. Les filtres d envoi d e-mails sont conserves.
+
+- Memos MCP : installation des dependances Composer lors du deploiement Dev, erreur explicite si le convertisseur Markdown manque et verification de la creation/relecture des Memos texte, HTML et Markdown. L agent doit confirmer le contenu sauvegarde et fournir le lien du document.
+
+- Invites MCP : l enumeration des reunions reprend le perimetre natif OMO, independamment des cases de presence. Rafraichir les appartenances ne change plus ce perimetre ; les contacts references et les destinataires autorises sont distingues par mail_eligible.
+
+- Documentation MCP : acces direct a la fonction e-mail, exemples de demandes et parcours complet pour envoyer un rappel aux invites d une reunion, avec consentement requis, suivi et limites de selection des destinataires.
+
+- Popup e-mail OMO : formulaire compact aligne sur les nouveaux indicateurs, destinataires reels dans une liste repliable, champs pleine largeur et actions en bas. Suppression du titre en double et des explications techniques ; suivi limite aux compteurs utiles.
+
+- MCP : nouvelle fiche membre avec roles, types de holons et navigation vers ses projets, documents, reunions et autres objets accessibles. Recherche des noms dans les deux ordres, appartenances effectives aux holons et filtres par invitation/participation. Les prochaines reunions incluent les invitations de groupe et excluent les refus. Correction du controle des brouillons prives dans les apercus et listes de reunions.
+
+- Memos MCP : un contenu devenu vide apres nettoyage est refuse sans creer de document ni consommer la cle de reessai. La conversion precede le verrou SQL, les controles ne chargent plus les autres modules et le contexte de reponse est reutilise.
+
+- OMO et MCP : listes completes des membres effectifs d un holon et des invites d une reunion, d un projet ou d une decision, avec coordonnees propres a l organisation. Formulaire d e-mail dans la popup OMO et trois nouveaux outils MCP : consultation des destinataires, envoi et suivi. Destinataires deduits de l objet, compte membre actif obligatoire, consentement mail:send pour l assistant, quotas et protection contre les doublons. Jusqu a cinq destinataires, envoi direct ; au-dela, traitement automatique en arriere-plan et maintenance en secours. Expediteur et adresse de reponse resolus depuis la configuration OMO et le profil, sans exiger une adresse MAIL_USER. Droits et invitations recontroles avant chaque livraison ; aucun reessai automatique apres un resultat incertain. Migration object_mail et tests SMTP locaux inclus.
+
+- Documents et MCP : le type Document HTML devient Memo dans les formulaires, listes, fusion et export. Un texte saisi ou dicte, du HTML ou du Markdown devient un Memo par defaut ; l assistant doit demander si le choix avec un fichier original est ambigu. Le Markdown (markdown ou md) utilise le meme nettoyage que Summernote, et les URL HTTP/HTTPS deviennent des liens externes. Les fichiers originaux restent importables ; droits, visibilite privee et deduplication sont conserves.
+
+- MCP : connexion et consentement OAuth harmonises avec les pages Meeting (fond bleu clair, logo OMO, cartes arrondies et mise en page mobile). Le compte, les droits demandes et le choix de l organisation sont mieux distingues ; les connexions aux assistants reprennent la meme presentation.
+
+- MCP : creation de textes et import de fichiers originaux dans les espaces autorises (organisation, roles, cercles et dossiers natifs), avec decouverte des destinations, consentement OAuth documents:create distinct de la lecture, visibilite privee par defaut et droits OMO recontroles. Les reessais sont dedupliques, les telechargements HTTPS limites a 20 Mio et les echecs annules ; dix outils disponibles.
+
+- MCP : huit outils de lecture, avec catalogue des modules et filtres, listes completes paginees par module, filtres par personne et relation (auteur, responsable, affectation...), statut, dates, contexte et parent, ainsi que parcours des affectations aux roles. Les lectures renvoient aussi des identifiants de navigation. Les listes conservent les droits du compte connecte et continuent au-dela des pages sans resultat visible ; la recherche plein texte reste une selection bornee.
+
+- MCP : URL canonique Dev avec slash final (`https://dev.opengov.tools/mcp/`) pour eviter la redirection 301 de l hebergement pendant la decouverte des actions. L URL de ressource OAuth conserve exactement ce slash ; recreer les connexions configurees avec l ancienne URL.
+
+- Publication Dev : controle MCP authentifie apres deploiement, avec fixtures temporaires supprimees, pour verifier l echange OAuth, le routage HTTP, la decouverte des cinq outils et un appel reel sur l hebergement.
+
+- MCP : correction du retour vers l assistant apres acceptation ou refus du consentement. La politique CSP autorise l origine du callback OAuth valide pour cette demande ; test navigateur des redirections et du blocage des autres destinations.
+
+- Publication Dev : configuration automatique de l URL publique MCP sur dev.opengov.tools et arret du deploiement si une etape echoue.
+
+- MCP : premier serveur de consultation en lecture seule, avec login OMO, consentement pour une organisation, OAuth avec PKCE S256, renouvellement et revocation des acces. Cinq outils permettent de verifier la connexion, parcourir la structure, rechercher dans les modules et lire les fiches accessibles avec les droits du compte, y compris proprietes, documents, points de PV visibles et mesures des indicateurs. Textes longs pages et selection de recherche explicitement non exhaustive. Migration, seed Docker, tests PHP 8.5 et guide de connexion disponibles dans docs/MCP.md.
+
+- Notifications : harmonisation des confirmations et erreurs dans les paramètres, les profils et compétences, les calendriers, les projets et budgets, les indicateurs, les PV, la FAQ, les formations, les partages, les affectations et le minuteur. Les messages utilisent les notifications fixes et temporaires de la topbar ; les états de progression, validations de champs et résultats détaillés restent dans leur écran. Le questionnaire utilise également cette API pour les invitations. Cette convention est documentée dans AGENTS.md pour les futurs développements.
+
+- Sécurité : les confirmations et les erreurs de sauvegarde utilisent les notifications fixes de la topbar, avec disparition automatique après 5 secondes pour les confirmations et 7 secondes pour les erreurs.
+
+- Sécurité : correction de l’enregistrement des sauvegardes sans adresse e-mail complémentaire. Le champ est explicitement facultatif ; la migration SQL accepte sa valeur vide et les administrateurs restent destinataires.
+
 - Propositions de creation de holons : les differences affichent les textes herites du modele au-dessus des valeurs locales, dans le meme bloc de propriete. Les formats texte, HTML et texte avec detail sont pris en charge ; les proprietes verrouillees affichent uniquement la valeur heritee. Le script partage utilise une version basee sur son contenu pour eviter le maintien de l ancien rendu dans le cache du navigateur.
 
 - Editeur de structure : une propriete non editable sans valeur locale affiche un message expliquant l absence de droits sous Valeur locale.
@@ -322,7 +384,7 @@
 
 - Recherche : les filtres de modules conservent tous les resultats annonces par leurs compteurs. Suppression de la coupe globale a 36 resultats dans le worker, qui pouvait faire disparaitre entierement certains modules ; les compteurs refletent aussi la liste disponible lors de la restauration d une ancienne recherche.
 
-- Recherche : apercus centres sur les passages correspondants, titres et textes surlignes, contenu des documents HTML et FAQ, points pertinents des PV avec contexte de reunion, sous-projets et compteurs de documents et dates accessibles. Les competences pertinentes remontent dans la fiche Team, la bio devient recherchable et seules les competences visibles contribuent au classement final. Les autres apercus beneficient aussi des extraits et du surlignage ; le graphique des indicateurs est conserve.
+- Recherche : apercus centres sur les passages correspondants, titres et textes surlignes, contenu des Memos et FAQ, points pertinents des PV avec contexte de reunion, sous-projets et compteurs de documents et dates accessibles. Les competences pertinentes remontent dans la fiche Team, la bio devient recherchable et seules les competences visibles contribuent au classement final. Les autres apercus beneficient aussi des extraits et du surlignage ; le graphique des indicateurs est conserve.
 
 - Regles : les filtres Local, Contextuelles et Global remplacent Local, Enfants directs et Descendants. Local liste les regles definies dans le holon, Contextuelles rassemble ses regles applicables (cercle proche, ascendants et globales), Global affiche tout le reglement de l organisation. Les anciens filtres enregistres reviennent sur Contextuelles.
 
@@ -470,7 +532,7 @@
 
 - Decisions : pendant la phase d elaboration, les interfaces de vote simple et de consentement n affichent plus de choix ni de bouton de vote. Seules les contributions autorisees restent visibles jusqu au debut effectif du vote.
 
-- Documents : un document HTML, un lien externe, un PV, un fichier (dont ODT), un Etherpad/EtherCalc ou un dossier peut maintenant etre ajoute ou retire de la liste des modeles. Une etoile identifie les modeles, la fleche a cote de Nouveau cree un duplicata visible dans le contexte courant, et les reunions ainsi que les projets proposent les modeles compatibles avec le type et la portee du contexte choisi. Les modeles sont regroupes par espace et affichent leur icone de type pour les retrouver plus facilement. Les fichiers et les outils collaboratifs recopient leur contenu dans une ressource independante ; un dossier reprend aussi toute son arborescence.
+- Documents : un Memo, un lien externe, un PV, un fichier (dont ODT), un Etherpad/EtherCalc ou un dossier peut maintenant etre ajoute ou retire de la liste des modeles. Une etoile identifie les modeles, la fleche a cote de Nouveau cree un duplicata visible dans le contexte courant, et les reunions ainsi que les projets proposent les modeles compatibles avec le type et la portee du contexte choisi. Les modeles sont regroupes par espace et affichent leur icone de type pour les retrouver plus facilement. Les fichiers et les outils collaboratifs recopient leur contenu dans une ressource independante ; un dossier reprend aussi toute son arborescence.
 
 - Propositions différées : les projets peuvent maintenant être créés, modifiés ou supprimés depuis un point de PV. Ils suivent le même choix d’objet, d’action et de contexte que les règles et les éléments de structure, en vérifiant les droits collectifs du PV avant leur application. Le droit collectif de proposition de projet ouvre aussi la création, explicitement libellée « Proposer un projet ».
 - Décisions hors réorg : chaque option du scrutin peut maintenant regrouper plusieurs propositions différées de règle, de structure ou de projet. Le parcours, la navigation par holon, les droits collectifs, la liste compacte en accordéon et les éditeurs sont alignés sur ceux des points de PV ; seules les propositions de l’option retenue sont appliquées à la clôture.
@@ -719,7 +781,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 - Agenda : le connecteur CalDAV recherche maintenant les agendas Nextcloud et Infomaniak depuis l adresse du serveur. Selection multiple, noms et couleurs personnalisables, detection des agendas deja connectes et resultats de synchronisation individuels.
 
-- Documents : une selection de documents HTML peut etre fusionnee dans un nouveau document. Le titre, les tags et l ordre des contenus sont preparables avant la creation, sans modifier les documents source.
+- Documents : une selection de Memos peut etre fusionnee dans un nouveau document. Le titre, les tags et l ordre des contenus sont preparables avant la creation, sans modifier les documents source.
 - Documents : le document fusionne reprend la visibilite la plus restrictive de ses sources. L ecran de preparation affiche cette portee, utilise l icone de fusion dediee et allege les tags ainsi que les controles de tri.
 - Documents : avant une fusion, les portees de lecture et de modification peuvent etre ajustees avec le meme selecteur que dans l editeur. Une case permet aussi de conserver les sources ou de les supprimer apres une fusion reussie.
 - Documents : les selecteurs Lecture et Modification de la fusion sont affiches cote a cote sur grand ecran, sans aide redondante sur le holon.
@@ -2111,7 +2173,7 @@ La recherche globale propose maintenant une rubrique PV distincte lorsque l appl
 
 Les resultats PV de cette rubrique utilisent maintenant le meme bouton Ouvrir que les documents et conduisent vers le document trouve.
 
-Les blocs de reference inseres dans les PV peuvent maintenant cibler les documents HTML, les liens URL et les fichiers televerses. Les dossiers et les PV restent exclus de ce selecteur.
+Les blocs de reference inseres dans les PV peuvent maintenant cibler les Memos, les liens URL et les fichiers televerses. Les dossiers et les PV restent exclus de ce selecteur.
 
 ## 2026-07-13
 
@@ -2305,7 +2367,7 @@ La popup de resultats de recherche OMO aligne maintenant aussi ses cartes d etat
 
 Le chargement des proprietes de holon heritees releve maintenant explicitement la limite de `GROUP_CONCAT` avant de reconstruire les valeurs ancetres. Les longues listes JSON, comme certaines `Missions attendues`, ne sont ainsi plus coupees au milieu dans `getOrg` ou dans l editeur compact. Une migration SQL explicite aligne aussi `holonproperty.value` en `mediumtext` pour rattraper les environnements restes sur un schema plus ancien.
 
-Dans la vue compacte des `Documents` OMO, la colonne `Type` disparait maintenant au profit d une colonne `Nom` plus confortable, la colonne de date est resserree pour mieux coller a son contenu, le bouton `...` de fin de ligne reserve moins de largeur, et les actions du menu flottant (`Editer`, `Deplacer`, `Partager`) passent maintenant par un dispatch de clic unifie. L edition de document routee par hash s aligne aussi davantage sur le schema deja utilise dans `Decisions` et `Calendrier`, avec une ouverture partagee par identifiant et un fallback direct vers l URL d edition du contexte courant. Les helpers JS reutilises par les clics de detail et d edition ont aussi ete recadres dans le bon scope pour eviter les `ReferenceError` lors de la navigation, les liens documentaires ouverts directement dans une fenetre externe ne changent plus le hash OMO, les actions `Editer` ou `Deplacer` ne restent visibles que si la personne a bien `CAN_CREATE_DOCUMENT` sur l emplacement reel du document, y compris dans les vues globales ou descendantes, tandis que `Partager` reste disponible pour les documents HTML deja visibles.
+Dans la vue compacte des `Documents` OMO, la colonne `Type` disparait maintenant au profit d une colonne `Nom` plus confortable, la colonne de date est resserree pour mieux coller a son contenu, le bouton `...` de fin de ligne reserve moins de largeur, et les actions du menu flottant (`Editer`, `Deplacer`, `Partager`) passent maintenant par un dispatch de clic unifie. L edition de document routee par hash s aligne aussi davantage sur le schema deja utilise dans `Decisions` et `Calendrier`, avec une ouverture partagee par identifiant et un fallback direct vers l URL d edition du contexte courant. Les helpers JS reutilises par les clics de detail et d edition ont aussi ete recadres dans le bon scope pour eviter les `ReferenceError` lors de la navigation, les liens documentaires ouverts directement dans une fenetre externe ne changent plus le hash OMO, les actions `Editer` ou `Deplacer` ne restent visibles que si la personne a bien `CAN_CREATE_DOCUMENT` sur l emplacement reel du document, y compris dans les vues globales ou descendantes, tandis que `Partager` reste disponible pour les Memos deja visibles.
 
 Dans l editeur de document OMO, les champs `Type` et `Visibilite` partagent maintenant une meme ligne en deux colonnes sur ecran large, tout en revenant en pile sur mobile.
 
@@ -2970,7 +3032,7 @@ Une partie importante du travail a aussi porte sur la fiabilite: meilleurs compo
 
 - La popup utilisateur affiche maintenant les budgets temps et argent de chaque affectation de role sur la ligne du titre, uniquement lorsque l application Budget est activee.
 
-- Les documents HTML classes depuis Telegram initialisent maintenant leur portee d edition dans le role ou le cercle cible, ce qui rend leur contenu editable dans OMO pour les membres autorises. Une migration repare aussi les documents deja classes sans regle d edition.
+- Les Memos classes depuis Telegram initialisent maintenant leur portee d edition dans le role ou le cercle cible, ce qui rend leur contenu editable dans OMO pour les membres autorises. Une migration repare aussi les documents deja classes sans regle d edition.
 
 - L ouverture dun evenement depuis le tableau de pilotage conserve maintenant la vue calendrier et le scope enregistres au lieu de forcer la vue locale du jour.
 - La reouverture du meme evenement apres un retour sur l ancrage resynchronise maintenant le drawer Calendrier et son sous-drawer Evenement, sans laisser le tableau de pilotage visible derriere le detail.

@@ -220,7 +220,7 @@
 			})
 			.catch(function () {
 				setLoadingState(false);
-				window.alert('Impossible de recharger la FAQ pour le moment.');
+				window.omoNotify('Impossible de recharger la FAQ pour le moment.', 'error');
 			});
 	}
 
@@ -452,7 +452,8 @@
 				return payload;
 			});
 		}).then(function (payload) {
-			if (message) message.textContent = payload.message || 'Votre question a bien été envoyée.';
+            if (message) message.textContent = '';
+            window.omoNotify(payload.message || 'Votre question a bien été envoyée.', 'success');
 			if (draftPanel && draftText && typeof payload.ai_draft === 'string' && payload.ai_draft.trim()) {
 				payload.ai_draft.trim().split(/\r?\n\s*\r?\n/).forEach(function (block) {
 					const paragraph = document.createElement('p');
@@ -467,7 +468,8 @@
 			}
 			form.reset();
 		}).catch(function (error) {
-			if (message) message.textContent = error.message || 'Impossible d envoyer votre question.';
+            if (message) message.textContent = '';
+            window.omoNotify(error.message || 'Impossible d envoyer votre question.', 'error');
 		}).finally(function () {
 			delete form.dataset.submitting;
 			if (submitButton) submitButton.disabled = false;
@@ -746,7 +748,7 @@
 		}
 
 		if (!payload || payload.status === false) {
-			window.alert(payload && payload.message ? payload.message : "Impossible d'enregistrer cette FAQ.");
+			window.omoNotify(payload && payload.message ? payload.message : "Impossible d'enregistrer cette FAQ.", 'error');
 			return;
 		}
 
@@ -765,7 +767,7 @@
 		}
 
 		if (payload.message) {
-			window.alert(payload.message);
+			window.omoNotify(payload.message, 'success');
 		}
 	}
 
@@ -821,7 +823,7 @@
 				handleSaveResponse(data);
 			})
 			.catch(function () {
-				window.alert("Impossible d'enregistrer cette FAQ.");
+				window.omoNotify("Impossible d'enregistrer cette FAQ.", 'error');
 			})
 			.finally(function () {
 				form.classList.remove('disabled');
@@ -849,11 +851,11 @@
 				});
 			})
 			.then(function (payload) {
-				window.alert(payload.message || 'Question relayée aux administrateurs de l’organisation.');
+                window.omoNotify(payload.message || 'Question relayée aux administrateurs de l’organisation.', 'success');
 				showDetail(faqId, { updateHash: false });
 			})
 			.catch(function (error) {
-				window.alert(error.message || 'Impossible de relayer cette question.');
+				window.omoNotify(error.message || 'Impossible de relayer cette question.', 'error');
 			})
 			.finally(function () {
 				relayButton.disabled = false;
@@ -891,7 +893,7 @@
 
 				if (!payload || payload.status === false) {
 					deleteButton.disabled = false;
-					window.alert(payload && payload.message ? payload.message : 'Impossible de supprimer cette FAQ.');
+					window.omoNotify(payload && payload.message ? payload.message : 'Impossible de supprimer cette FAQ.', 'error');
 					return;
 				}
 
@@ -899,7 +901,7 @@
 			})
 			.catch(function () {
 				deleteButton.disabled = false;
-				window.alert('Impossible de supprimer cette FAQ.');
+				window.omoNotify('Impossible de supprimer cette FAQ.', 'error');
 			});
 	}
 
@@ -1075,11 +1077,11 @@
 				}
 
 				setVoteButtonsDisabled(normalizedFaqId, false);
-				window.alert(result.payload && result.payload.message ? result.payload.message : 'Impossible d enregistrer ce vote.');
+				window.omoNotify(result.payload && result.payload.message ? result.payload.message : 'Impossible d enregistrer ce vote.', 'error');
 			})
 			.catch(function () {
 				setVoteButtonsDisabled(normalizedFaqId, false);
-				window.alert('Impossible d enregistrer ce vote pour le moment.');
+				window.omoNotify('Impossible d enregistrer ce vote pour le moment.', 'error');
 			});
 	}
 

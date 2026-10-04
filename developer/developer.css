@@ -1,0 +1,56 @@
+html { scroll-behavior: smooth; }
+.developer-layout { --param-page-shell-width: 1440px; display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 32px; align-items: start; }
+.developer-sidebar { position: sticky; top: 24px; display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 24px; height: calc(100vh - 48px); height: calc(100dvh - 48px); }
+.developer-sidebar > .generic-public-brand { text-decoration: none; }
+.developer-index { min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior-y: contain; scrollbar-gutter: stable; padding-right: 8px; scrollbar-width: thin; }
+.developer-index > nav { display: grid; gap: 4px; padding-top: 12px; }
+.developer-index-tools { display: grid; gap: 6px; padding: 0 8px 12px; font-size: 12px; color: var(--color-text-light); }
+.developer-nav-link { display: grid; gap: 4px; padding: 10px 8px; border-radius: var(--radius-md); text-decoration: none; font-size: 13px; }
+.developer-nav-link:hover, .developer-nav-link[aria-current="location"] { background: var(--color-surface); }
+.developer-nav-link[aria-current="location"] { box-shadow: inset 3px 0 var(--color-primary); }
+.developer-nav-title { color: var(--color-text-light); font-size: 11px; line-height: 1.4; }
+.developer-function-links { margin-top: 12px; }
+.developer-content { display: grid; gap: 24px; min-width: 0; }
+/* Reference sections need extra separation between tables, examples and prose. */
+.developer-section { --param-section-gap: 16px; min-width: 0; scroll-margin-top: 24px; }
+.developer-section > .generic-action-button { justify-self: start; }
+.developer-section :is(code, pre) { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 12px; }
+.developer-section code { overflow-wrap: anywhere; }
+.developer-section pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.6; }
+.developer-base { display: grid; gap: 4px; }
+.developer-base > span, .developer-hint { color: var(--color-text-light); font-size: 12px; }
+.developer-steps { display: grid; gap: 16px; padding-left: 24px; margin: 0; }
+.developer-steps li > p { margin-top: 6px; }
+.developer-scopes { display: grid; gap: 10px; margin: 0; }
+.developer-scopes > div { display: grid; grid-template-columns: minmax(170px, .4fr) 1fr; gap: 12px; }
+.developer-scopes dd { margin: 0; font-size: 13px; }
+.developer-route { display: flex; align-items: baseline; gap: 8px; min-width: 0; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 11px; }
+.developer-route > :last-child { overflow-wrap: anywhere; min-width: 0; }
+.developer-method { display: inline-block; flex-shrink: 0; color: #12613c; background: #e1f4e9; border-radius: 4px; padding: 3px 6px; font-weight: 750; font-size: 10px; }
+.developer-method--post { color: #925210; background: #fff0da; }
+.developer-route--heading { align-items: center; }
+.developer-route--heading > code { font-size: 15px; }
+.developer-operation-meta { display: flex; flex-wrap: wrap; gap: 8px 24px; color: var(--color-text-light); font-size: 12px; }
+.developer-operation > p[lang="en"] { font-size: 14px; line-height: 1.75; }
+.developer-table-wrap { min-width: 0; overflow-x: auto; }
+.developer-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; }
+.developer-table :is(th, td) { padding: 12px 10px; border-bottom: 1px solid var(--color-border); vertical-align: top; }
+.developer-table thead th { color: var(--color-text-light); font-size: 11px; font-weight: 650; }
+.developer-table tbody th { font-weight: 500; min-width: 130px; }
+.developer-table td:nth-child(2) { min-width: 160px; }
+.developer-table small { display: block; margin-top: 6px; color: var(--color-text-light); font-size: 11px; font-weight: 400; }
+.developer-table td > pre { margin-top: 8px; font-size: 10px; }
+.developer-code { padding: 18px; background: #17364a; color: #e4f3fa; border-radius: var(--radius-md); }
+.developer-skip { position: fixed; top: -80px; left: 16px; z-index: 10; background: var(--color-surface); padding: 12px; }
+.developer-skip:focus { top: 12px; }
+@media (max-width: 900px) {
+    .developer-layout { grid-template-columns: 230px minmax(0, 1fr); gap: 20px; }
+}
+@media (max-width: 700px) {
+    .developer-layout { grid-template-columns: minmax(0, 1fr); }
+    .developer-sidebar { position: static; height: auto; grid-template-rows: auto auto; }
+    .developer-index { max-height: 300px; }
+    .developer-scopes > div { grid-template-columns: 1fr; gap: 2px; }
+    .developer-table { min-width: 560px; }
+}
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }

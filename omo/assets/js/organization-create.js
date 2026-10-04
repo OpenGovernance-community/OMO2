@@ -178,8 +178,8 @@ window.commonPageScripts["/omo/assets/js/organization-create.js"] = function (pa
             hint.innerHTML = (uiLabels.shortnamePreviewExample || '') + '<br><code>' + shortnamePreviewScheme + '://nomcourt.' + shortnamePreviewHost + shortnamePreviewPath + '</code>';
         }
 
-        function setFeedback(message, isError) {
-            if (message && typeof window.commonNotify === 'function') {
+        function setFeedback(message, isError, inline) {
+            if (message && !inline && typeof window.commonNotify === 'function') {
                 window.commonNotify(message, isError ? 'error' : 'success');
                 feedback.textContent = '';
                 feedback.className = 'organization-create-feedback';
@@ -682,7 +682,7 @@ window.commonPageScripts["/omo/assets/js/organization-create.js"] = function (pa
             shouldRefreshApplication = !isEditMode || getApplicationSnapshot() !== initialApplicationSnapshot;
 
             submitButton.disabled = true;
-            setFeedback(pageConfig.pendingLabel, false);
+            setFeedback(pageConfig.pendingLabel, false, true);
 
             var formData = new FormData(form);
             if (isEditMode && organizationId > 0) {

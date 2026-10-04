@@ -8,6 +8,16 @@ window.commonPageScripts['/omo/api/parameters/security/index.js'] = function (pa
     var backupButton = root.querySelector('[data-omo-security-backup-now]');
     var feedback = root.querySelector('[data-omo-security-feedback]');
     var enabled = form.querySelector('input[type="checkbox"][name="enabled"]');
+    function showMessage(message, type) {
+        feedback.textContent = '';
+        feedback.className = 'generic-feedback generic-feedback--collapse-empty';
+        if (typeof window.commonNotify === 'function') {
+            window.commonNotify(message, type, { duration: type === 'error' ? 7000 : 5000 });
+            return;
+        }
+        feedback.className += type === 'error' ? ' is-error' : ' is-success';
+        feedback.textContent = message;
+    }
     function syncFields() {
         form.elements.email.disabled = false;
         form.elements.frequency.disabled = !enabled.checked;
@@ -29,6 +39,7 @@ window.commonPageScripts['/omo/api/parameters/security/index.js'] = function (pa
         data.set('csrf', root.dataset.csrf);
         button.disabled = true;
         backupButton.disabled = true;
+        feedback.className = 'generic-feedback generic-feedback--collapse-empty';
         feedback.textContent = sendNow ? pageConfig.sending : '';
         fetch('/omo/api/parameters/security/save.php', {
             method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json' }, body: data
@@ -38,8 +49,7 @@ window.commonPageScripts['/omo/api/parameters/security/index.js'] = function (pa
                 return payload;
             });
         }).then(function (payload) {
-            feedback.className = 'generic-feedback is-success';
-            feedback.textContent = payload.message;
+            showMessage(payload.message, 'success');
             if (payload.lastSentLabel) {
                 root.querySelector('[data-omo-security-last]').textContent = payload.lastSentLabel;
             }
@@ -49,8 +59,7 @@ window.commonPageScripts['/omo/api/parameters/security/index.js'] = function (pa
                 next.hidden = !payload.nextDueLabel;
             }
         }).catch(function (error) {
-            feedback.className = 'generic-feedback is-error';
-            feedback.textContent = error.message || pageConfig.error;
+            showMessage(error.message || pageConfig.error, 'error');
         }).finally(function () { button.disabled = false; backupButton.disabled = false; });
     });
 };

@@ -21,7 +21,7 @@ class OrganizationBackup extends DbObject
 
     public static function attributeLabels()
     {
-        return ['enabled' => 'Activer la sauvegarde automatique', 'email' => 'Adresse e-mail complémentaire', 'frequency' => 'Fréquence'];
+        return ['enabled' => 'Activer la sauvegarde automatique', 'email' => 'Adresse e-mail complémentaire (facultative)', 'frequency' => 'Fréquence'];
     }
 
     public static function attributeLength() { return ['email' => 254, 'frequency' => 3]; }

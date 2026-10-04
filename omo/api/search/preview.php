@@ -8,12 +8,7 @@ $currentHolonId = (int)($_GET['cid'] ?? 0);
 $module = (string)($_GET['module'] ?? '');
 $id = (int)($_GET['id'] ?? 0);
 $query = mb_substr(trim((string)($_GET['q'] ?? '')), 0, 1000, 'UTF-8');
-$renderers = [
-    'documents' => 'documents', 'pv' => 'documents', 'faq' => 'faq', 'stats' => 'stats',
-    'rules' => 'policy', 'projects' => 'projects', 'processus' => 'processes',
-    'activities' => 'recurring_tasks', 'calendar' => 'calendar', 'decision' => 'decision',
-    'structure' => 'structure', 'team' => 'team', 'tutorials' => 'lms',
-];
+$renderers = omoSearchPreviewModules();
 $organization = new \dbObject\Organization();
 try {
     if (!isset($renderers[$module]) || !$organization->load($organizationId) || !$organization->canViewDetail()) {
@@ -25,8 +20,8 @@ try {
         throw new RuntimeException('Preview unavailable');
     }
     // Each module owns its condensed view. Only this allowlist selects a file.
-    $renderPreview = require dirname(__DIR__) . '/' . $renderers[$module] . '/search_preview.php';
-    $preview = $renderPreview($object, $organization, $currentHolonId, $query);
+    $preview = omoSearchPreviewLoad($module, $object, $organization, $currentHolonId, $query,
+        $module === 'tutorials' ? (int)($_GET['mission_id'] ?? 0) : 0);
     echo json_encode([
         'title' => omoSearchPreviewText($preview['title'] ?? ''),
         'titleHtml' => omoSearchPreviewHighlight(omoSearchPreviewText($preview['title'] ?? ''), $query),

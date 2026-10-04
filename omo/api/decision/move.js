@@ -55,6 +55,13 @@ function filteredDestinations() {
 }
 
 function showStatus(message) {
+    if (message && typeof window.commonNotify === 'function') {
+        var notice = elements.status;
+        if (notice) { notice.textContent = ''; notice.hidden = true; }
+        window.commonNotify(String(message), 'error');
+        return;
+    }
+
     elements.status.hidden = !message;
     elements.status.textContent = String(message || '');
     elements.status.className = 'generic-feedback is-error';

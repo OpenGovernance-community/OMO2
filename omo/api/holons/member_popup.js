@@ -57,13 +57,12 @@ window.commonPageScripts["/omo/api/holons/member_popup.js"] = function (pageConf
                 })
                 .then(function (result) {
                     if (!result.ok || !result.data || !result.data.status) {
-                        feedback.textContent = result.data && result.data.message ? result.data.message : 'Une erreur est survenue.';
+                        window.omoNotify(result.data && result.data.message ? result.data.message : 'Une erreur est survenue.', 'error');
                         submitButton.disabled = false;
                         return;
                     }
 
-                    feedback.textContent = result.data.message || 'Membre ajouté.';
-                    feedback.classList.add('is-success');
+                    window.omoNotify(result.data.message || 'Membre ajouté.', 'success');
 
                     if (typeof refreshDrawer === 'function') {
                         var drawerUrl = '/omo/api/team/index.php?oid=' + organizationId;
@@ -100,7 +99,7 @@ window.commonPageScripts["/omo/api/holons/member_popup.js"] = function (pageConf
                     }, 250);
                 })
                 .catch(function () {
-                    feedback.textContent = "Impossible d'ajouter ce membre pour le moment.";
+                    window.omoNotify("Impossible d'ajouter ce membre pour le moment.", 'error');
                     submitButton.disabled = false;
                 });
         });

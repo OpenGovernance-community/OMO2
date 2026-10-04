@@ -731,6 +731,12 @@ if (!function_exists('commonCalDavBuildEventCalendarData')) {
         }
 
         $organizationName = trim((string)$organization->get('name'));
+        if ((int)$event->get('IDdecision_proposal') > 0) {
+            foreach ($event->getInvitationEmailRecipients((int)$organization->getId()) as $recipient) {
+                $email = (string)($recipient['email'] ?? '');
+                if (filter_var($email, FILTER_VALIDATE_EMAIL)) $lines[] = 'ATTENDEE;ROLE=REQ-PARTICIPANT:mailto:' . $email;
+            }
+        }
         if ($organizationName !== '') {
             $lines[] = 'CATEGORIES:' . commonCalDavEscapeText($organizationName);
         }

@@ -3,6 +3,219 @@ namespace dbObject;
 
 class DecisionProcess extends DbObject
 {
+    /** Synchronize through native events so ICS and CalDAV keep stable event identities. */
+    public function syncProposalCalendarEvents(bool $cancelAll = false): array
+    {
+        $proposals = [];
+        foreach ($this->getDecisionGroups(false) as $group) {
+            foreach ($group->getProposals(false) as $proposal) {
+                if ($proposal->get('start_at') || Event::findByDecisionProposal((int)$proposal->getId())) {
+                    $proposals[] = [$group, $proposal];
+                }
+            }
+        }
+        if (!$proposals) return ['status' => true];
+
+        $pdo = self::getPdo();
+        $ownsTransaction = !$pdo->inTransaction();
+        try {
+            if ($ownsTransaction) $pdo->beginTransaction();
+            self::fetchRow('SELECT id FROM decision_process WHERE id = :id FOR UPDATE', ['id' => (int)$this->getId()]);
+            $participants = $this->getParticipants(true)->getArrayCopy();
+            $groupData = [];
+            foreach ($proposals as [$group, $proposal]) {
+                // A concurrent ballot or manual choice may have changed the group while waiting for the lock.
+                $group->load((int)$group->getId(), true);
+                $proposal->load((int)$proposal->getId(), true);
+                $groupId = (int)$group->getId();
+                if (!isset($groupData[$groupId])) {
+                    $responses = [];
+                    foreach ($group->getResponses(DecisionResponse::STATUS_SUBMITTED) as $response) {
+                        foreach ($participants as $participant) {
+                            if ((int)$participant->getId() === (int)$response->get('IDdecision_participant')
+                                && !in_array($participant->get('status'), [DecisionParticipant::STATUS_DECLINED, DecisionParticipant::STATUS_REVOKED], true)) {
+                                $responses[(int)$participant->getId()] = $response;
+                                break;
+                            }
+                        }
+                    }
+                    $winner = null;
+                    if ($group->get('decision_type') === DecisionProcess::TYPE_DECISION
+                        && in_array($this->get('status'), [DecisionProcess::STATUS_RESULTS, DecisionProcess::STATUS_ARCHIVED], true)) {
+                        $winner = $this->getCalendarWinningProposalId($group, array_values($responses));
+                    }
+                    $groupData[$groupId] = [$responses, $winner];
+                }
+                [$responses, $winner] = $groupData[$groupId];
+                $cancel = $cancelAll || !$group->areProposalDatesEnabled() || !(int)$group->get('active') || !(int)$proposal->get('active') || !$proposal->get('start_at');
+                $status = $cancel || ($winner !== null && $winner !== (int)$proposal->getId())
+                    ? Event::STATUS_CANCELLED : ($winner !== null ? Event::STATUS_CONFIRMED : Event::STATUS_OPTION);
+                $groupParameters = DecisionGovernanceAction::normalizeState($group->get('parameters'));
+                $manualStatus = $groupParameters['calendar_statuses'][(int)$proposal->getId()] ?? null;
+                if (!$cancel && in_array($this->get('status'), [DecisionProcess::STATUS_RESULTS, DecisionProcess::STATUS_ARCHIVED], true)
+                    && in_array($manualStatus, [Event::STATUS_CONFIRMED, Event::STATUS_CANCELLED], true)) $status = $manualStatus;
+                $event = Event::findByDecisionProposal((int)$proposal->getId());
+                if (!$event && $cancel) continue;
+                $event = $event ?: new Event();
+                $values = [
+                    'IDdecision_proposal' => (int)$proposal->getId(),
+                    'IDorganization' => (int)$this->get('IDorganization'),
+                    'IDholon' => $this->get('IDholon') ?: null,
+                    'IDuser' => (int)$this->get('IDuser'),
+                    'title' => trim((string)$proposal->get('title')) ?: (string)$this->get('title'),
+                    'description' => trim(strip_tags((string)$proposal->get('description')) . "\n" . (string)$proposal->get('info_url')),
+                    'status' => $status,
+                    'active' => 1,
+                ];
+                if ($proposal->get('start_at')) {
+                    $values['start_at'] = $proposal->get('start_at');
+                    $values['end_at'] = $proposal->get('end_at');
+                    $values['timezone'] = $proposal->get('timezone');
+                }
+                $changed = !(int)$event->getId();
+                foreach ($values as $field => $value) {
+                    $old = $event->get($field);
+                    if ($old instanceof \DateTimeInterface) $old = $old->format('Y-m-d H:i:s');
+                    $compare = $value instanceof \DateTimeInterface ? $value->format('Y-m-d H:i:s') : $value;
+                    if ((string)$old !== (string)$compare) $changed = true;
+                    $event->set($field, $value);
+                }
+                if ($changed) {
+                    $eventResult = $event->save();
+                    if (empty($eventResult['status'])) throw new \RuntimeException('Unable to save the proposal event: ' . ($eventResult['text'] ?? '') . ' ' . (self::getLastDbError()['message'] ?? ''));
+                }
+
+                $desired = [];
+                foreach ($participants as $participant) {
+                    if (in_array($participant->get('status'), [DecisionParticipant::STATUS_DECLINED, DecisionParticipant::STATUS_REVOKED], true)) continue;
+                    $response = $responses[(int)$participant->getId()] ?? null;
+                    if ($response && !$this->isCalendarProposalAvailable($group, $proposal, $response)) continue;
+                    $userId = (int)$participant->get('IDuser');
+                    $email = trim((string)$participant->get('email'));
+                    if ($userId <= 0 && $email === '') continue;
+                    $key = $userId > 0 ? 'user:' . $userId : 'email:' . mb_strtolower($email, 'UTF-8');
+                    $desired[$key] = [
+                        'invitation_type' => $userId > 0 ? EventInvitation::TYPE_USER : EventInvitation::TYPE_EMAIL,
+                        'IDuser' => $userId > 0 ? $userId : null,
+                        'email' => $userId > 0 ? null : $email,
+                        'display_name' => $participant->get('display_name'),
+                    ];
+                }
+                $existing = [];
+                foreach ($event->getInvitations(false) as $invitation) $existing[$invitation->getIdentityKey()] = $invitation;
+                foreach ($desired as $key => $fields) {
+                    $invitation = $existing[$key] ?? new EventInvitation();
+                    $invitationChanged = !(int)$invitation->getId() || !(int)$invitation->get('active') || $invitation->get('status') === EventInvitation::STATUS_REVOKED;
+                    $invitation->set('IDevent', (int)$event->getId());
+                    foreach ($fields as $field => $value) {
+                        if ((string)$invitation->get($field) !== (string)$value) $invitationChanged = true;
+                        $invitation->set($field, $value);
+                    }
+                    if ($invitationChanged) {
+                        $invitation->set('active', 1);
+                        $invitation->set('status', EventInvitation::STATUS_INVITED);
+                        $invitation->set('accepted', null);
+                        if (empty($invitation->save()['status'])) throw new \RuntimeException('Unable to save a proposal event invitation.');
+                    }
+                }
+                foreach ($existing as $key => $invitation) {
+                    if (!isset($desired[$key]) && ((int)$invitation->get('active') || $invitation->get('status') !== EventInvitation::STATUS_REVOKED)) {
+                        $invitation->set('active', 0);
+                        $invitation->set('status', EventInvitation::STATUS_REVOKED);
+                        if (empty($invitation->save()['status'])) throw new \RuntimeException('Unable to revoke a proposal event invitation.');
+                    }
+                }
+            }
+            if ($ownsTransaction) $pdo->commit();
+            return ['status' => true];
+        } catch (\Throwable $exception) {
+            if ($ownsTransaction && $pdo->inTransaction()) $pdo->rollBack();
+            error_log('decision_calendar_sync_failed: ' . $exception->getMessage());
+            return ['status' => false, 'text' => 'Impossible de synchroniser les dates dans l agenda.'];
+        }
+    }
+
+    protected function isCalendarProposalAvailable(DecisionGroup $group, DecisionProposal $proposal, DecisionResponse $response): bool
+    {
+        $method = $group->get('evaluation_method');
+        $parameters = DecisionGovernanceAction::normalizeState($response->get('parameters'));
+        $values = $parameters[$method] ?? $parameters;
+        $id = (int)$proposal->getId();
+        if ($method === DecisionProcess::METHOD_SIMPLE_VOTE) {
+            return in_array($id, array_map('intval', $values['selected_proposal_ids'] ?? [$values['selected_proposal_id'] ?? 0]), true);
+        }
+        if ($method === DecisionProcess::METHOD_CONSENT) return ($values['choices'][$id] ?? '') !== 'objection';
+        if ($method === DecisionProcess::METHOD_MAJORITY_JUDGMENT) {
+            require_once dirname(__DIR__, 2) . '/omo/api/decision/modules/majority_judgment/shared.php';
+            $config = \omoDecisionMajorityJudgmentBuildConfig($group);
+            $counted = $config['counted_scores'];
+            return !$counted || !isset($values['scores'][$id]) || (int)$values['scores'][$id] !== min($counted);
+        }
+        return true;
+    }
+
+    /** null means no unique winner: keep every date tentative. */
+    public function getCalendarWinningProposalId(DecisionGroup $group, array $responses): ?int
+    {
+        if (!$responses) return null;
+        $proposals = array_values(array_filter($group->getProposals(true)->getArrayCopy(), static fn($proposal) => (bool)$proposal->get('start_at')));
+        if (!$proposals) return null;
+        $method = $group->get('evaluation_method');
+        $scores = [];
+        if ($method === DecisionProcess::METHOD_SIMPLE_VOTE) {
+            require_once dirname(__DIR__, 2) . '/omo/api/decision/modules/vote/shared.php';
+            $tallies = \omoDecisionVoteBuildTallies($responses, $group);
+            foreach ($proposals as $proposal) $scores[(int)$proposal->getId()] = [(int)($tallies['proposal_unweighted_counts'][(int)$proposal->getId()] ?? 0)];
+            if (max(array_column($scores, 0)) === 0) return null;
+        } elseif ($method === DecisionProcess::METHOD_CONSENT) {
+            require_once dirname(__DIR__, 2) . '/omo/api/decision/modules/consent/shared.php';
+            foreach (\omoDecisionConsentBuildStats($proposals, $responses) as $id => $stat) {
+                if ($stat['count'] > 0) $scores[$id] = [-$stat['distribution']['objection'], $stat['distribution']['favor']];
+            }
+        } elseif ($method === DecisionProcess::METHOD_MAJORITY_JUDGMENT) {
+            require_once dirname(__DIR__, 2) . '/omo/api/decision/modules/majority_judgment/shared.php';
+            foreach (\omoDecisionMajorityJudgmentBuildStats($proposals, $responses, $group) as $id => $stat) {
+                if ($stat['majority_score'] !== null) $scores[$id] = [$stat['majority_score']];
+            }
+        }
+        if (!$scores) return null;
+        $best = max($scores);
+        $winners = array_keys(array_filter($scores, static fn($score) => $score === $best));
+        return count($winners) === 1 ? (int)$winners[0] : null;
+    }
+
+    public function setCalendarProposalStatus(DecisionProposal $proposal, string $status): array
+    {
+        if ((int)$proposal->get('IDdecision_process') !== (int)$this->getId() || !(int)$proposal->get('active') || !$proposal->get('start_at')
+            || !in_array($this->get('status'), [DecisionProcess::STATUS_RESULTS, DecisionProcess::STATUS_ARCHIVED], true)
+            || !in_array($status, [Event::STATUS_CONFIRMED, Event::STATUS_CANCELLED], true)) {
+            return ['status' => false, 'message' => 'Cette date ne peut pas etre confirmee ou annulee.'];
+        }
+        $pdo = self::getPdo();
+        $ownsTransaction = !$pdo->inTransaction();
+        try {
+            if ($ownsTransaction) $pdo->beginTransaction();
+            self::fetchRow('SELECT id FROM decision_process WHERE id = :id FOR UPDATE', ['id' => (int)$this->getId()]);
+            $group = $proposal->getDecisionGroup();
+            if (!$group || !$group->areProposalDatesEnabled()) throw new \RuntimeException('proposal_dates_disabled');
+            $parameters = DecisionGovernanceAction::normalizeState($group->get('parameters'));
+            if ($group->get('decision_type') === DecisionProcess::TYPE_DECISION && $status === Event::STATUS_CONFIRMED) {
+                foreach ($group->getProposals(true) as $other) {
+                    if ($other->get('start_at')) $parameters['calendar_statuses'][(int)$other->getId()] = Event::STATUS_CANCELLED;
+                }
+            }
+            $parameters['calendar_statuses'][(int)$proposal->getId()] = $status;
+            $group->set('parameters', $parameters);
+            if (empty($group->save()['status']) || empty($this->syncProposalCalendarEvents()['status'])) throw new \RuntimeException('calendar_status_save_failed');
+            if ($ownsTransaction) $pdo->commit();
+            return ['status' => true, 'message' => $status === Event::STATUS_CONFIRMED ? 'Date confirmee dans les agendas.' : 'Date annulee dans les agendas.'];
+        } catch (\Throwable $exception) {
+            if ($ownsTransaction && $pdo->inTransaction()) $pdo->rollBack();
+            error_log('decision_calendar_status_failed: ' . $exception->getMessage());
+            return ['status' => false, 'message' => 'Impossible de mettre a jour les agendas.'];
+        }
+    }
+
     public function canUseManagementPermission(string $permissionKey, int $userId): bool
     {
         if ($userId <= 0 || !in_array($permissionKey, ['CAN_EDIT_DECISION', 'CAN_DELETE_DECISION'], true)) {
@@ -342,6 +555,26 @@ class DecisionProcess extends DbObject
 
     public function save()
     {
+        $pdo = self::getPdo();
+        $ownsTransaction = !$pdo->inTransaction();
+        try {
+            if ($ownsTransaction) $pdo->beginTransaction();
+            $result = $this->saveProcessContent();
+            if (empty($result['status'])) {
+                if ($ownsTransaction) $pdo->rollBack();
+                return $result;
+            }
+            if ($ownsTransaction) $pdo->commit();
+            return $result;
+        } catch (\Throwable $exception) {
+            if ($ownsTransaction && $pdo->inTransaction()) $pdo->rollBack();
+            error_log('decision_process_save_failed: ' . $exception->getMessage());
+            return ['status' => false, 'text' => 'Impossible de sauvegarder la decision et son agenda.'];
+        }
+    }
+
+    protected function saveProcessContent()
+    {
         $this->set('decision_type', self::normalizeDecisionType($this->get('decision_type')));
         $this->set('status', self::normalizeStatus($this->get('status')));
         $this->set('evaluation_method', self::normalizeEvaluationMethod($this->get('evaluation_method')));
@@ -357,7 +590,8 @@ class DecisionProcess extends DbObject
             $this->syncPrimaryGroupFromProcess();
         }
 
-        return $saveResult;
+        $calendarResult = $this->syncProposalCalendarEvents();
+        return empty($calendarResult['status']) ? $calendarResult : $saveResult;
     }
 
     public function canMoveInOrganizationContext(int $organizationId, int $userId): bool
@@ -560,6 +794,7 @@ class DecisionProcess extends DbObject
         if ($nextStatus === $currentStatus) {
             if ($currentStatus === self::STATUS_RESULTS) {
                 $this->applyAcceptedGovernanceActions();
+                $this->syncProposalCalendarEvents();
             }
             return false;
         }
@@ -948,7 +1183,10 @@ class DecisionProcess extends DbObject
             $group->set('description', $this->get('description'));
         }
 
-        $group->set('parameters', $this->get('parameters'));
+        $groupParameters = DecisionGovernanceAction::normalizeState($group->get('parameters'));
+        $processParameters = DecisionGovernanceAction::normalizeState($this->get('parameters'));
+        if (isset($groupParameters['calendar_statuses'])) $processParameters['calendar_statuses'] = $groupParameters['calendar_statuses'];
+        $group->set('parameters', $processParameters);
         $group->set('position', max(1, (int)$group->get('position')));
         $group->set('active', 1);
     }
@@ -1614,6 +1852,9 @@ class DecisionProcess extends DbObject
                 $pdo->beginTransaction();
             }
 
+            if (empty($this->syncProposalCalendarEvents(true)['status'])) {
+                throw new \RuntimeException('decision_calendar_cancellation_failed');
+            }
             $deleteQueries = [
                 'DELETE FROM `decision_result` WHERE `IDdecision_process` = :decision_process_id',
                 'DELETE FROM `decision_response` WHERE `IDdecision_process` = :decision_process_id',
@@ -2764,7 +3005,8 @@ class DecisionProcess extends DbObject
             }
         }
 
-        return [
+        $calendarResult = $this->syncProposalCalendarEvents();
+        return empty($calendarResult['status']) ? $calendarResult : [
             'status' => true,
             'count' => count($desiredParticipants),
         ];

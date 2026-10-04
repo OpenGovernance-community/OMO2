@@ -436,6 +436,10 @@ $baseSourceLang = [
         'text' => 'URL',
         'context' => 'Option to enable the proposal URL field.',
     ],
+    'decisions.edit.proposal_content.date_field' => [
+        'text' => 'Date et horaire',
+        'context' => 'Option to enable a proposal time slot and its calendar reservation.',
+    ],
     'decisions.edit.block_settings.vote_weighting_summary_yes' => [
         'text' => 'Oui',
         'context' => 'Shared yes label for vote weighting summaries.',
@@ -687,6 +691,7 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
 <div class="omo-decision-edit omo-panel-view">
     <div class="omo-panel-view__body">
         <div class="omo-panel-view__body_content omo-decision-edit__stack generic-drawer-content generic-form-stack generic-form-stack--compact">
+            <?php if ($isEditing && !$isDuplicate && ($context['accessMode'] ?? '') !== 'public'): require_once dirname(__DIR__, 3) . '/common/object_mail/ui.php'; omoObjectMailButton((int)$context['organizationId'], 'decision', (int)$decision->getId()); endif; ?>
             
 
             <?php if (false && $isEditing && $intent === 'manage'): ?>

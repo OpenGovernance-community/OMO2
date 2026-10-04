@@ -241,6 +241,12 @@
                 scopePicker = null;
             },
             refresh: render,
+            setProjects: function (items, initialSelectedIds) {
+                if (destroyed) return;
+                projects = Array.isArray(items) ? items.slice() : [];
+                if (Array.isArray(initialSelectedIds)) selectedIds = new Set(initialSelectedIds.map(normalizeId).filter(function (id) { return id > 0; }));
+                render();
+            },
             getSelectedIds: function () { return Array.from(selectedIds); },
             getSelectedProjects: selectedProjects,
             getSelectedHolonId: function () {

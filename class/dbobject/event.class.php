@@ -21,7 +21,7 @@ class Event extends DbObject
         return [
             [['IDuser', 'title', 'status', 'start_at', 'end_at'], 'required'],
             [['id'], 'integer'],
-            [['IDorganization', 'IDholon', 'IDproject', 'IDuser'], 'fk'],
+            [['IDorganization', 'IDholon', 'IDproject', 'IDuser', 'IDdecision_proposal'], 'fk'],
             [['title', 'status', 'timezone', 'locationmode', 'locationaddress', 'videomeetingurl'], 'string'],
             [['description'], 'text'],
             [['parameters'], 'parameters'],
@@ -38,6 +38,7 @@ class Event extends DbObject
             'IDorganization' => 'Organisation',
             'IDholon' => 'Espace associé',
             'IDproject' => 'Projet',
+            'IDdecision_proposal' => 'Proposition de date',
             'IDuser' => 'Créateur',
             'title' => 'Titre',
             'description' => 'Description',
@@ -87,6 +88,15 @@ class Event extends DbObject
     public static function getOrder()
     {
         return 'start_at ASC, id ASC';
+    }
+
+    public static function findByDecisionProposal(int $proposalId): ?self
+    {
+        $row = self::fetchRow('SELECT * FROM event WHERE IDdecision_proposal = :id', ['id' => $proposalId]);
+        if (!$row) return null;
+        $event = new self();
+        $event->hydrateFromDatabaseRow($row, true);
+        return $event;
     }
 
     public static function handleUserDeparture($organizationId, $userId, $ghostUserId)
@@ -318,7 +328,7 @@ class Event extends DbObject
         return filter_var($email, FILTER_VALIDATE_EMAIL) ? $email : '';
     }
 
-    protected function getInvitationMembershipUserIds($holonId, $organizationId): array
+    protected function getInvitationMembershipUserIds($holonId, $organizationId, bool $fresh = false, bool $activeOnly = false): array
     {
         static $membershipCache = [];
 
@@ -328,14 +338,17 @@ class Event extends DbObject
             return [];
         }
 
-        $cacheKey = $organizationId . ':' . $holonId;
-        if (isset($membershipCache[$cacheKey])) {
+        $cacheKey = $organizationId . ':' . $holonId . ':' . (int)$activeOnly;
+        if (!$fresh && isset($membershipCache[$cacheKey])) {
             return $membershipCache[$cacheKey];
         }
 
         $holon = new \dbObject\Holon();
+        $organization = new \dbObject\Organization();
         if (
-            !$holon->load($holonId)
+            !$holon->load($holonId, $fresh)
+            || !$organization->load($organizationId)
+            || !$organization->containsHolon($holon)
             || !(bool)$holon->get('active')
             || !(bool)$holon->get('visible')
         ) {
@@ -346,8 +359,10 @@ class Event extends DbObject
         $userIds = $holon->getAssociatedMemberUserIds([
             'organizationId' => $organizationId,
             'skipPermissionFilter' => true,
+            'activeOnly' => $activeOnly,
         ]);
 
+        if ($fresh) return array_values(array_unique(array_map('intval', is_array($userIds) ? $userIds : [])));
         $membershipCache[$cacheKey] = array_values(array_unique(array_map('intval', is_array($userIds) ? $userIds : [])));
         return $membershipCache[$cacheKey];
     }
@@ -450,8 +465,8 @@ class Event extends DbObject
         return $displayNameCache[$cacheKey];
     }
 
-    /** Callers supplying invitations must validate them in the current organization first. */
-    public function getEffectiveInvitationTargets($organizationId, ?array $proposedInvitations = null): array
+    /** Validate supplied invitations in the current organization. Fresh bypasses caches; activeOnly limits holon members. */
+    public function getEffectiveInvitationTargets($organizationId, ?array $proposedInvitations = null, bool $fresh = false, bool $activeOnly = false): array
     {
         $organizationId = (int)$organizationId;
         if ($organizationId <= 0) {
@@ -459,7 +474,7 @@ class Event extends DbObject
         }
 
         $targets = [
-            'hasExplicitInvitations' => false,
+            'hasExplicitInvitations' => (int)$this->get('IDdecision_proposal') > 0,
             'userIds' => [],
             'emails' => [],
             'registeredEmails' => [],
@@ -494,7 +509,7 @@ class Event extends DbObject
             }
 
             if ($type === \dbObject\EventInvitation::TYPE_HOLON) {
-                foreach ($this->getInvitationMembershipUserIds((int)$invitation->get('IDholon'), $organizationId) as $userId) {
+                foreach ($this->getInvitationMembershipUserIds((int)$invitation->get('IDholon'), $organizationId, $fresh, $activeOnly) as $userId) {
                     if ($userId > 0) {
                         $targets['userIds'][$userId] = (int)$userId;
                     }
@@ -506,7 +521,7 @@ class Event extends DbObject
         if (!$targets['hasExplicitInvitations']) {
             $eventHolonId = (int)$this->get('IDholon');
             if ($eventHolonId > 0) {
-                foreach ($this->getInvitationMembershipUserIds($eventHolonId, $organizationId) as $userId) {
+                foreach ($this->getInvitationMembershipUserIds($eventHolonId, $organizationId, $fresh, $activeOnly) as $userId) {
                     if ($userId > 0) {
                         $targets['userIds'][$userId] = (int)$userId;
                     }
@@ -1009,6 +1024,7 @@ class Event extends DbObject
 
     public function isPersonallyRelevantToViewer($userId, $organizationId = 0): bool
     {
+        if ((int)$this->get('IDdecision_proposal') > 0) return $this->isVisibleToInvitationViewer($userId, $organizationId);
         static $memberMatchCache = [];
 
         $userId = (int)$userId;

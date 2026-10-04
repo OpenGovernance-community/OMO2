@@ -57,11 +57,12 @@ window.commonPageScripts["/omo/api/holons/delete_popup.js"] = function (pageConf
                 })
                 .then(function (result) {
                     if (!result.ok || !result.data || !result.data.status) {
-                        feedback.textContent = result.data && result.data.message ? result.data.message : 'Une erreur est survenue.';
+                        window.omoNotify(result.data && result.data.message ? result.data.message : 'Une erreur est survenue.', 'error');
                         submitButton.disabled = false;
                         return;
                     }
 
+                    if (result.data.message) { window.omoNotify(result.data.message, 'success'); }
                     closePopup();
 
                     var targetCid = parentId > 0 && !parentIsRoot ? parentId : null;
@@ -92,7 +93,7 @@ window.commonPageScripts["/omo/api/holons/delete_popup.js"] = function (pageConf
                     }
                 })
                 .catch(function () {
-feedback.textContent = 'Impossible de supprimer cet espace pour le moment.';
+                    window.omoNotify('Impossible de supprimer cet espace pour le moment.', 'error');
                     submitButton.disabled = false;
                 });
         });

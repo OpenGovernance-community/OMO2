@@ -27,7 +27,7 @@ class PublicParticipantsFixture extends Event
         $items->exchangeArray($this->invitations);
         return $items;
     }
-    protected function getInvitationMembershipUserIds($holonId, $organizationId): array { return [101, 102]; }
+    protected function getInvitationMembershipUserIds($holonId, $organizationId, bool $fresh = false, bool $activeOnly = false): array { return [101, 102]; }
     protected function getOrganizationMemberUserIds($organizationId): array { return [101, 102]; }
     protected function organizationHasStructureApplication($organizationId): bool { return $this->hasStructure; }
     protected function getViewerScopedEmail($userId, $organizationId): string { return 'member' . $userId . '@example.test'; }

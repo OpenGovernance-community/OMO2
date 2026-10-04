@@ -44,6 +44,13 @@
         var saveLabel = submit.textContent;
         var errorMessage = form.getAttribute('data-omo-projects-params-error') || '';
         function showFeedback(message, isError) {
+            if (message && typeof window.commonNotify === 'function') {
+                var notice = feedback;
+                if (notice) { notice.textContent = ''; notice.hidden = true; }
+                window.commonNotify(String(message), isError ? 'error' : 'success');
+                return;
+            }
+
             feedback.hidden = false;
             feedback.textContent = message;
             feedback.classList.toggle('is-error', isError);

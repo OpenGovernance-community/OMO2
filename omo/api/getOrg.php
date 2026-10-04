@@ -3,13 +3,12 @@ require_once __DIR__ . '/bootstrap.php';
 require_once dirname(__DIR__, 2) . '/common/avatar.php';
 require_once __DIR__ . '/projects/shared.php';
 commonReleaseReadOnlySession();
+\dbObject\DbObject::enableReadOnlyMemoization();
 use dbObject\ArrayOrganization;
 use dbObject\ArrayProject;
 use dbObject\Authority;
 use dbObject\Holon;
-use dbObject\HolonPermission;
 use dbObject\Organization;
-use dbObject\Permission;
 use dbObject\PropertyFormat;
 use dbObject\Project;
 
@@ -144,6 +143,10 @@ function omoGetOrgPanelSourceLang(): array
         'leftbar.members.pending_tooltip' => [
             'text' => '{memberName} - invitation en attente',
             'context' => 'Tooltip shown for a pending invited member avatar in the left panel.',
+        ],
+        'leftbar.members.to_invite_tooltip' => [
+            'text' => '{memberName} - a inviter',
+            'context' => 'Tooltip for a pending member without a sent invitation.',
         ],
 		'leftbar.members.role_focus_line' => [
 			'text' => 'Focus : {focus}',
@@ -1142,24 +1145,6 @@ $parentHolonForDelete = $canDeleteHolon ? $currentHolon->getParentHolon() : null
 $deleteParentId = $parentHolonForDelete ? (int)$parentHolonForDelete->getId() : 0;
 $deleteParentIsRoot = $parentHolonForDelete ? ((int)$parentHolonForDelete->get('IDtypeholon') === 4) : false;
 $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canMoveHolon || $canDeleteHolon || $canViewHolonHistory || $canManageOrganizationModel;
-$debugPermissionCatalog = Permission::getEditorCatalog($organization->getLexicon());
-$debugPermissionEntries = array();
-foreach ($debugPermissionCatalog as $permissionEntry) {
-    $permissionKey = trim((string)($permissionEntry['key'] ?? ''));
-    if ($permissionKey === '') {
-        continue;
-    }
-
-    $debugPermissionEntries[] = array(
-        'key' => $permissionKey,
-        'isAllowed' => $currentHolon->isAllowed($permissionKey),
-    );
-}
-$debugPermissionSessionCache = $_SESSION['permissionCacheByOrganization'][(int)$organizationId] ?? null;
-$debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
-    (int)commonGetCurrentUserId(),
-    (int)$organizationId
-);
 ?>
 
 <style>
@@ -1290,11 +1275,15 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
                     <?php foreach ($memberCards as $member): ?>
 						<?php
 						$hasPendingInvitation = !empty($member['hasPendingInvitation']);
-						$memberTooltip = $hasPendingInvitation
-							? t('leftbar.members.pending_tooltip', ['memberName' => $member['displayName']])
-							: (!empty($member['isAdmin'])
-								? t('leftbar.members.admin_tooltip', ['memberName' => $member['displayName'], 'adminLabel' => $adminLabel])
-								: (string)$member['displayName']); ?>
+						$isVisuallyPending = $hasPendingInvitation || !empty($member['isPending']);
+						$memberTooltip = (string)$member['displayName'];
+						if ($hasPendingInvitation) {
+							$memberTooltip = t('leftbar.members.pending_tooltip', ['memberName' => $member['displayName']]);
+						} elseif (!empty($member['isPending'])) {
+							$memberTooltip = t('leftbar.members.to_invite_tooltip', ['memberName' => $member['displayName']]);
+						} elseif (!empty($member['isAdmin'])) {
+							$memberTooltip = t('leftbar.members.admin_tooltip', ['memberName' => $member['displayName'], 'adminLabel' => $adminLabel]);
+						} ?>
 						<?php
 						$memberFocus = '';
 						if ($isRoleHolon && is_array($member['assignmentLinks'] ?? null)) {
@@ -1329,7 +1318,7 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
                         $memberAvatarStyle = '--circle-member-avatar-bg: ' . $memberAvatarPalette['background'] . '; --circle-member-avatar-text: ' . $memberAvatarPalette['foreground'] . ';';
                         ?>
                         <span
-                            class="circle-member<?= !empty($member['isAdmin']) ? ' circle-member--admin' : ' circle-member--regular' ?><?= $hasPendingInvitation ? ' circle-member--pending' : '' ?>"
+                            class="circle-member<?= !empty($member['isAdmin']) ? ' circle-member--admin' : ' circle-member--regular' ?><?= $isVisuallyPending ? ' generic-member generic-member--inactive' : '' ?>"
                             data-circle-member-item="1"
                             data-tooltip="<?= omoApiEscape($memberTooltip) ?>"
                             data-member-user-id="<?= (int)($member['userId'] ?? 0) ?>"
@@ -1453,24 +1442,6 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
         </div>
     <?php endif; ?>
 
-    <?php if (count($debugPermissionEntries) > 0 && 1==0): ?>
-        <div class="circle-section generic-section generic-accordion generic-accordion--row">
-            <div class="circle-section__title generic-card-title generic-card-title--small">Permissions</div>
-            <p class="section-text"><?= htmlspecialchars(\dbObject\Organization::formatLexiconText('Codes disponibles sur ce holon. Ceux que vous avez sont en gras.', $organization->getLexicon()), ENT_QUOTES, 'UTF-8') ?></p>
-            <div class="section-text">
-                <?php foreach ($debugPermissionEntries as $index => $permissionEntry): ?>
-                    <?php if ($index > 0): ?>, <?php endif; ?>
-                    <?php if (!empty($permissionEntry['isAllowed'])): ?>
-                        <strong><?= omoApiEscape($permissionEntry['key']) ?></strong>
-                    <?php else: ?>
-                        <span><?= omoApiEscape($permissionEntry['key']) ?></span>
-                    <?php endif; ?>
-                <?php endforeach; ?>
-            </div>
-            <pre class="section-text" style="white-space: pre-wrap; font-size: 12px; margin-top: 12px;"><?= omoApiEscape(json_encode($debugPermissionSessionCache, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?></pre>
-            <pre class="section-text" style="white-space: pre-wrap; font-size: 12px; margin-top: 12px;"><?= omoApiEscape(json_encode($debugPermissionRebuild, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?></pre>
-        </div>
-    <?php endif; ?>
 
 </div>
 

@@ -8,7 +8,7 @@ $sourceLang = [
     'organization_export.module.members' => ['text' => 'Membres et roles', 'context' => 'Members module label in the organization export popup.'],
     'organization_export.module.rules' => ['text' => 'Règles', 'context' => 'Rules module label in the organization export popup.'],
     'organization_export.module.documents' => ['text' => 'Documents', 'context' => 'Documents module label in the organization export popup.'],
-    'organization_export.documents_notice' => ['text' => 'Seuls les documents HTML, liens externes et dossiers sont exportés. Les fichiers téléversés et les documents reliés à Etherpad, EtherCalc, Nextcloud, Collabora ou SpaceDeck ne le sont pas.', 'context' => 'Notice explaining which documents are intentionally omitted from an organization export.'],
+    'organization_export.documents_memos_notice' => ['text' => 'Seuls les Memos, liens externes et dossiers sont exportés. Les fichiers téléversés et les documents reliés à Etherpad, EtherCalc, Nextcloud, Collabora ou SpaceDeck ne le sont pas.', 'context' => 'Notice explaining which documents are intentionally omitted from an organization export.'],
     'organization_export.module.projects' => ['text' => 'Projets', 'context' => 'Projects module label in the organization export popup.'],
     'organization_export.module.tasks' => ['text' => 'Taches et sous-projets', 'context' => 'Tasks module label in the organization export popup.'],
     'organization_export.module.checklists' => ['text' => 'Processus', 'context' => 'Process module label in the organization export popup.'],
@@ -62,7 +62,7 @@ $modules = [
             </label>
             <?php endforeach; ?>
         </fieldset>
-        <p class="generic-soft-panel"><?= htmlspecialchars(t('organization_export.documents_notice', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></p>
+        <p class="generic-soft-panel"><?= htmlspecialchars(t('organization_export.documents_memos_notice', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></p>
         <div class="omo-organization-export__actions">
             <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-organization-export-cancel="1"><?= htmlspecialchars(t('organization_export.action.cancel', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></button>
             <button type="submit" class="generic-action-button generic-action-button--main"><?= htmlspecialchars(t('organization_export.action.download', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></button>

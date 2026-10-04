@@ -358,7 +358,7 @@ $(document)
       })
       .catch(function (error) {
         button.prop('disabled', false);
-        window.alert(error && error.message ? error.message : 'Action impossible.');
+        window.omoNotify(error && error.message ? error.message : 'Action impossible.', 'error');
       });
   });
 

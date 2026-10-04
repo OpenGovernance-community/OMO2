@@ -143,9 +143,24 @@
 
 		public static function invalidateReadMemoForSql($query): void
 		{
+			if (!self::$readMemoEnabled) {
+				return;
+			}
+			$query = trim((string)$query);
+			// This session setting changes aggregate results, not stored data.
+			// Clear the snapshot but retain read-only mode for subsequent reads.
+			if (preg_match('/^SET\s+SESSION\s+group_concat_max_len\s*=\s*[0-9]+\s*;?$/i', $query)) {
+				self::$readMemo = [];
+				return;
+			}
+			// Conservatively recognize SELECT CTEs. Ambiguous statements, comments,
+			// multiple statements and any write/locking token still disable caching.
+			$isSelectCte = preg_match('/^WITH\s+(?:RECURSIVE\s+)?\w+\s+AS\s*\(/i', $query)
+				&& preg_match('/\)\s*SELECT\b/i', $query)
+				&& !preg_match('/;|\/\*|--|#|\b(?:INSERT|UPDATE|DELETE|REPLACE|CREATE|ALTER|DROP|TRUNCATE|CALL|SET|INTO|LOCK|GRANT|REVOKE|LOAD|DO)\b/i', $query);
 			// Writes and locking reads must never use a rendering snapshot.
-			if (self::$readMemoEnabled && (!preg_match('/^\s*SELECT\b/i', (string)$query)
-				|| preg_match('/\bFOR\s+UPDATE\b|\bLOCK\s+IN\s+SHARE\s+MODE\b/i', (string)$query))) {
+			if ((!preg_match('/^SELECT\b/i', $query) && !$isSelectCte)
+				|| preg_match('/\bFOR\s+UPDATE\b|\bLOCK\s+IN\s+SHARE\s+MODE\b/i', $query)) {
 				self::enableReadOnlyMemoization(false);
 			}
 		}

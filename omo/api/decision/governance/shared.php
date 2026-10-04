@@ -179,8 +179,7 @@ if (!function_exists('omoDecisionGovernanceBuildRoleClientData')) {
             $guard++;
         }
         if ($organization instanceof \dbObject\Organization) {
-            $editorData = $organization->getHolonCreationEditorData((int)$contextHolonId, (int)$role->getId(), true);
-            $holon = is_array($editorData['holon'] ?? null) ? $editorData['holon'] : [];
+            $holon = $organization->getHolonEditorState((int)$contextHolonId, (int)$role->getId(), true);
             if (count($holon) > 0) {
                 $properties = omoDecisionGovernanceDecorateRoleProperties(
                     is_array($holon['properties'] ?? null) ? array_values($holon['properties']) : []

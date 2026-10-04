@@ -32,8 +32,12 @@ Les calendriers externes peuvent definir des plages de disponibilite
 Un redemarrage avec le volume `db_data` existant conserve sa base : les fichiers
 de ce repertoire ne sont lus que lors de la premiere initialisation du volume.
 Le schema inclut aussi la configuration et le suivi des sauvegardes automatiques
-(`organization_backup`, migration `2026-10-02-02-organization-backup.sql`).
+(`organization_backup`, migrations `2026-10-02-02-organization-backup.sql` et `2026-10-02-03-organization-backup-optional-email.sql` ; adresse e-mail complémentaire facultative).
 Les sauvegardes restent desactivees sur une nouvelle installation.
+
+Les propositions de decision acceptent des plages horaires et chaque evenement
+issu d une proposition conserve un lien unique vers celle-ci
+(`2026-10-03-05-decision-proposal-dates.sql`).
 
 Pour une base existante, verifier l'historique `sql_migration` et appliquer les
 migrations manquantes avec `php scripts/run-migrations.php`. Un dump peut contenir
@@ -43,3 +47,12 @@ il faut reconciler ces entrees avant de relancer les migrations concernees.
 Lorsqu une migration est ajoutee a `sql/`, le seed doit etre regenere depuis
 une base locale vide sur laquelle cette migration a ete appliquee. Ainsi, une
 nouvelle instance Docker ne depend d aucun rejeu de migrations.
+
+Le seed inclut les tables vides `mcp_oauth_client` et `mcp_oauth_grant`
+des migrations `2026-10-02-04-mcp-structure-oauth.sql` et
+`2026-10-02-05-mcp-refresh-replay.sql`. Aucun jeton ni acces
+personnel n est fourni dans la demo. Activation et tests : `docs/MCP.md`.
+
+Le seed inclut aussi la table vide `mcp_event_creation` et l historique de la
+migration `2026-10-03-04-mcp-event-creation.sql`, pour les reessais sans doublons
+des creations d evenements MCP. Aucune demande personnelle n est fournie.

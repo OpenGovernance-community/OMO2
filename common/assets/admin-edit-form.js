@@ -62,7 +62,7 @@ window.commonPageScripts["/common/assets/admin-edit-form.js"] = function (pageCo
 
             let serform = $("#formulaire-edit").serialize()
             if (serform.length > 20000000) {
-                alert("Image too big (max 20M)\nResize it or zoom it more");
+                (typeof window.commonNotify === 'function' ? window.commonNotify : window.alert).call(window, "Image too big (max 20M)\nResize it or zoom it more", 'error');
                 return;
             }
 
@@ -73,7 +73,7 @@ window.commonPageScripts["/common/assets/admin-edit-form.js"] = function (pageCo
             $.post(("/ajax/check.php?type=" + pageConfig.this + ""), serform, function (data) {
                 if (data != "") {
                     // If not ok, show the error message
-                    alert(data);
+                    (typeof window.commonNotify === 'function' ? window.commonNotify : window.alert).call(window, data, 'error');
                     $("#btn_submit").prop("disabled", false);
                 } else {
                     // Transfer the validation lock to the form-wide save lock.
@@ -83,7 +83,7 @@ window.commonPageScripts["/common/assets/admin-edit-form.js"] = function (pageCo
 
             })
                 .fail(function () {
-                    alert("Sorry, we encounter an error while creating the object.");
+                    (typeof window.commonNotify === 'function' ? window.commonNotify : window.alert).call(window, "Sorry, we encounter an error while creating the object.", 'error');
                     $("#btn_submit").prop("disabled", false);
                 });
 
@@ -148,7 +148,7 @@ window.commonPageScripts["/common/assets/admin-edit-form.js"] = function (pageCo
                         response = JSON.parse(data);
                     } catch (e) {
                         console.error("Réponse non JSON :", data);
-                        alert("Erreur serveur");
+                        (typeof window.commonNotify === 'function' ? window.commonNotify : window.alert).call(window, "Erreur serveur", 'error');
                         endAdminEditPending(form);
                         return;
                     }
@@ -174,19 +174,19 @@ window.commonPageScripts["/common/assets/admin-edit-form.js"] = function (pageCo
 
                         } else {
 
-                        alert("Données enregistrées");
+                        (typeof window.commonNotify === 'function' ? window.commonNotify : window.alert).call(window, "Données enregistrées", 'success');
                         endAdminEditPending(form);
 
                         }
 
                     } else {
-                        alert(response.message);
+                        (typeof window.commonNotify === 'function' ? window.commonNotify : window.alert).call(window, response.message, 'error');
                         endAdminEditPending(form);
                     }
                 },
 
                 error: function () {
-                    alert("Une erreur s'est produite. Veuillez réessayer plus tard.");
+                    (typeof window.commonNotify === 'function' ? window.commonNotify : window.alert).call(window, "Une erreur s'est produite. Veuillez réessayer plus tard.", 'error');
                     endAdminEditPending(form);
                 }
             });

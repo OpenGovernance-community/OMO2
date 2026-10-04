@@ -542,6 +542,8 @@
 		echo '<script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote.min.js"></script>';
 	
 		//<!-- Fonctions partagées entre plusieurs pages -->
+		echo commonStylesheetTags('/common/notifications/notifications.css');
+		echo '<script src="'.commonAssetUrl('/common/notifications/notifications.js').'"></script>';
 		echo '<script src="/shared_functions.js"></script>';
 		echo commonStylesheetTags('/shared_css.css');
 		

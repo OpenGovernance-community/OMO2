@@ -108,14 +108,16 @@ window.commonPageScripts["/omo/api/stats/edit.js"] = function (pageConfig, pageS
             editorForm.elements.namedItem('id').value = String(result.id);
             if (typeof window.omoStatsAfterIndicatorSave === 'function') {
                 window.omoStatsAfterIndicatorSave();
+            } else if (typeof window.commonNotify === 'function') {
+                window.commonNotify(pageConfig.editorSaved, 'success');
             } else {
                 feedback.classList.add('is-success');
                 feedback.textContent = pageConfig.editorSaved;
             }
         } catch (error) {
             var message = error.message || saveError;
-            if (typeof window.omoNotify === 'function') {
-                window.omoNotify(message, 'error');
+            if (typeof window.commonNotify === 'function') {
+                window.commonNotify(message, 'error');
             } else {
                 feedback.textContent = message;
                 feedback.scrollIntoView({block: 'nearest', behavior: 'smooth'});
