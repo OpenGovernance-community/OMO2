@@ -170,5 +170,5 @@ function omoMcpCheckOrigin(): void
     header('Vary: Origin');
     header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
     header('Access-Control-Allow-Headers: Authorization, Content-Type, MCP-Protocol-Version, Accept');
-    header('Access-Control-Expose-Headers: WWW-Authenticate');
+    header('Access-Control-Expose-Headers: WWW-Authenticate, Location');
 }

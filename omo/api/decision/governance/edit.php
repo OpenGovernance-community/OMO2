@@ -12,6 +12,8 @@ require_once dirname(__DIR__, 4) . '/common/patreon.php';
 require_once dirname(__DIR__, 4) . '/common/openai_text.php';
 require_once dirname(__DIR__) . '/params/shared.php';
 
+\dbObject\DbObject::enableReadOnlyMemoization();
+
 $decision = ($context['decision'] ?? null) instanceof DecisionProcess ? $context['decision'] : null;
 $currentUserId = (int)($context['currentUserId'] ?? 0);
 $targetHolonId = (int)($context['targetHolonId'] ?? 0);
@@ -114,11 +116,12 @@ foreach ($organizationMembers as $membership) {
         $responsibleLabels[$memberUserId] = \dbObject\DocumentPvPoint::getUserDisplayNameForOrganization($memberUserId, (int)$context['organizationId']);
     }
 }
-$ruleCatalog = DeferredProposal::getRuleTargetHolonCatalog((int)$context['organizationId'], $targetHolonId);
-$holonCatalog = DeferredProposal::getHolonTargetHolonCatalog((int)$context['organizationId'], $targetHolonId);
-$projectCatalog = DeferredProposal::getProjectTargetHolonCatalog((int)$context['organizationId'], $targetHolonId);
-$recurringTaskCatalog = DeferredProposal::getObjectTargetHolonCatalog((int)$context['organizationId'], $targetHolonId, DeferredProposal::TARGET_RECURRING_TASK);
-$indicatorCatalog = DeferredProposal::getObjectTargetHolonCatalog((int)$context['organizationId'], $targetHolonId, DeferredProposal::TARGET_INDICATOR);
+$targetCatalogs = DeferredProposal::getTargetHolonCatalogs((int)$context['organizationId'], $targetHolonId);
+$ruleCatalog = $targetCatalogs[DeferredProposal::TARGET_RULE];
+$holonCatalog = $targetCatalogs[DeferredProposal::TARGET_HOLON];
+$projectCatalog = $targetCatalogs[DeferredProposal::TARGET_PROJECT];
+$recurringTaskCatalog = $targetCatalogs[DeferredProposal::TARGET_RECURRING_TASK];
+$indicatorCatalog = $targetCatalogs[DeferredProposal::TARGET_INDICATOR];
 $contextLabels = [];
 $contextPermissions = [
     DeferredProposal::TARGET_RULE => ['create' => [], 'update' => [], 'delete' => []],

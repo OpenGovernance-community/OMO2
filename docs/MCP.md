@@ -4,6 +4,10 @@ Serveur pour le login OAuth, la consultation des informations accessibles,
 la creation de documents et l envoi d e-mails aux audiences des objets OMO.
 Il ne necessite aucun service Node en production ni aucune cle API OpenAI.
 
+Les memes operations sont aussi disponibles en [REST sous /api/v1](REST.md),
+avec les memes jetons OAuth, scopes, permissions et protections contre les doublons.
+La specification OpenAPI est generee depuis le registre commun.
+
 L identite annoncee dans `initialize.serverInfo` est OpenMyOrganization, avec la
 description "Toutes les infos sur votre organisation dans OMO", le site
 `https://omo2.org` et le logo public `/mcp/assets/omo-icon-256.jpg` (256 x 256,

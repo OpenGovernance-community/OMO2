@@ -4754,21 +4754,20 @@
 
 		// Retourne tous les enfants (uniquement pour les orga
 		public function getChildren($includeHidden = false) {
-
-			$children=new \dbObject\ArrayHolon();
-			$where = [
-				["field" => "active", "value" => 1],
-				["field" => "IDholon_parent", "value" => $this->get("id")],
-			];
-			if (!$includeHidden) {
-				$where[] = ["field" => "visible", "value" => 1];
-			}
-			$children->load([
-				"where" => $where,
-			]);
-
-			return $children;	
-	
+			$parentId = (int)$this->getId();
+			$includeHidden = (bool)$includeHidden;
+			// A separate collection protects the cached membership from callers
+			// adding/removing entries. Objects follow the existing preload lifecycle.
+			return clone self::memoizeRead([__FUNCTION__, $parentId, $includeHidden], static function () use ($parentId, $includeHidden) {
+				$children = new \dbObject\ArrayHolon();
+				$where = [
+					['field' => 'active', 'value' => 1],
+					['field' => 'IDholon_parent', 'value' => $parentId],
+				];
+				if (!$includeHidden) $where[] = ['field' => 'visible', 'value' => 1];
+				$children->load(['where' => $where]);
+				return $children;
+			});
 		}
 
 		// Charge enfants suppression

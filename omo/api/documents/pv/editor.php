@@ -47,10 +47,6 @@ $accessGranted = $documentId > 0
 $escape = 'omoApiEscape';
 $uiText = omoDocumentsPvEditorBuildUiText('omoDocumentsPvEditorT');
 
-$formatProjectDate = static function ($value): string {
-    return $value instanceof DateTimeInterface ? $value->format('d.m.Y') : '';
-};
-
 if (!$accessGranted) {
     http_response_code(403);
     ?>
@@ -119,6 +115,7 @@ if (!$isPublicParticipation) {
     }
     $pvApplicationTabsCsrf = (string)$_SESSION['omo_pv_application_tabs_csrf'];
 }
+\dbObject\DbObject::enableReadOnlyMemoization();
 $isPvReview = $document->getPvStage() === \dbObject\Document::PV_STAGE_REVIEW;
 $canEditPvDocumentHeader = $canManagePvStructure && !$isPvReview;
 $canExtendAssociatedEvent = !$isPublicParticipation
@@ -274,214 +271,6 @@ if (!$isPublicParticipation && $hasOrganization) {
 $pvApplicationCatalog = array_values($pvApplicationCatalog);
 $showPvApplicationTabs = !$isPublicParticipation
     && ($canManagePvStructure || $isPvEditor || $canClaimPvEditor || $canReplacePvEditor || count($pvApplicationTabsPayload) > 0);
-
-if ($hasDocumentsApplication) {
-    $embeddableDocuments = new \dbObject\ArrayDocument();
-    $embeddableDocuments->loadVisibleForOrganization($organizationId);
-
-    foreach ($embeddableDocuments as $embeddableDocument) {
-        if (
-            !($embeddableDocument instanceof \dbObject\Document)
-            || !$embeddableDocument->canBeEmbedded()
-            || (int)$embeddableDocument->getId() <= 0
-            || (int)$embeddableDocument->getId() === (int)$document->getId()
-        ) {
-            continue;
-        }
-
-        $embeddableDocumentsPayload[] = [
-            'id' => (int)$embeddableDocument->getId(),
-            'contextHolonId' => (int)$embeddableDocument->get('IDholon'),
-            'title' => trim((string)$embeddableDocument->get('title')),
-            'description' => trim((string)$embeddableDocument->get('description')),
-            'contextLabel' => trim((string)$embeddableDocument->getOrganizationContextLabel()),
-        ];
-    }
-
-    usort($embeddableDocumentsPayload, static function (array $left, array $right): int {
-        return strnatcasecmp((string)($left['title'] ?? ''), (string)($right['title'] ?? ''));
-    });
-}
-
-if ($hasDecisionApplication) {
-    $embeddableDecisions = new \dbObject\ArrayDecisionProcess();
-    $decisionTypeLabels = [
-        \dbObject\DecisionProcess::TYPE_DECISION => omoDocumentsPvEditorT('documents.pv_editor.decision.type.decision'),
-        \dbObject\DecisionProcess::TYPE_CONSULTATION => omoDocumentsPvEditorT('documents.pv_editor.decision.type.consultation'),
-    ];
-
-    foreach ($embeddableDecisions->loadVisibleForOrganization($organizationId, $currentUserId) as $embeddableDecision) {
-        if (!($embeddableDecision instanceof \dbObject\DecisionProcess) || (int)$embeddableDecision->getId() <= 0) {
-            continue;
-        }
-
-        $decisionType = \dbObject\DecisionProcess::normalizeDecisionType($embeddableDecision->get('decision_type'));
-        $embeddableDecisionsPayload[] = [
-            'id' => (int)$embeddableDecision->getId(),
-            'contextHolonId' => (int)$embeddableDecision->get('IDholon'),
-            'title' => trim((string)$embeddableDecision->get('title')),
-            'typeLabel' => (string)($decisionTypeLabels[$decisionType] ?? $decisionType),
-            'summary' => $embeddableDecision->getCompactEmbedSummary(),
-        ];
-    }
-
-    usort($embeddableDecisionsPayload, static function (array $left, array $right): int {
-        return strnatcasecmp((string)($left['title'] ?? ''), (string)($right['title'] ?? ''));
-    });
-}
-
-$embeddableProjects = new \dbObject\ArrayProject();
-$embeddableProjects->loadForOrganization($organizationId, true, \dbObject\Project::KIND_STANDARD, true);
-$projectProposalContext = omoProjectsResolveContext($organizationId);
-$embeddableProjectIds = [];
-foreach ($embeddableProjects as $embeddableProject) {
-    if ($embeddableProject instanceof \dbObject\Project && (int)$embeddableProject->getId() > 0) {
-        $embeddableProjectIds[] = (int)$embeddableProject->getId();
-    }
-}
-$followedEmbeddableProjectIds = \dbObject\ProjectFollower::getActiveProjectIds($embeddableProjectIds);
-foreach ($embeddableProjects as $embeddableProject) {
-    if (!($embeddableProject instanceof \dbObject\Project) || (int)$embeddableProject->getId() <= 0 || empty($projectProposalContext['status']) || !omoProjectsCanViewProject($embeddableProject, $projectProposalContext)) {
-        continue;
-    }
-    $projectHolon = $embeddableProject->getHolon();
-    $projectSummary = trim(preg_replace('/\s+/', ' ', strip_tags((string)$embeddableProject->get('description'))));
-    $projectResponsibleId = (int)$embeddableProject->get('IDuser');
-    $projectStatus = \dbObject\Project::normalizeStatus($embeddableProject->get('status'));
-    $embeddableProjectsPayload[] = [
-        'id' => (int)$embeddableProject->getId(),
-        'contextHolonId' => (int)$embeddableProject->get('IDholon'),
-        'contextLabel' => $projectHolon instanceof \dbObject\Holon ? trim((string)$projectHolon->getDisplayName()) : '',
-        'title' => trim((string)$embeddableProject->get('title')),
-        'summary' => $projectSummary,
-        'isMine' => $projectResponsibleId > 0 && $projectResponsibleId === $currentUserId,
-        'isFollowed' => isset($followedEmbeddableProjectIds[(int)$embeddableProject->getId()]),
-        'responsibleLabel' => $projectResponsibleId > 0
-            ? trim((string)\dbObject\DocumentPvPoint::getUserDisplayNameForOrganization($projectResponsibleId, $organizationId))
-            : '',
-        'status' => $projectStatus,
-        'statusLabel' => \dbObject\Project::getOrganizationStatusLabel($organizationId, $projectStatus),
-        'priorityLabel' => \dbObject\Project::normalizeLevel($embeddableProject->get('priority')) !== null
-            ? 'P' . (string)\dbObject\Project::normalizeLevel($embeddableProject->get('priority'))
-            : '',
-        'sizeLabel' => \dbObject\Project::normalizeSize($embeddableProject->get('project_size')),
-        'plannedStartLabel' => $formatProjectDate($embeddableProject->get('planned_start_date')),
-        'plannedEndLabel' => $formatProjectDate($embeddableProject->get('planned_end_date')),
-    ];
-}
-usort($embeddableProjectsPayload, static function (array $left, array $right): int {
-    return strnatcasecmp((string)($left['title'] ?? ''), (string)($right['title'] ?? ''));
-});
-
-if ($hasOrganization && ($organization->isApplicationEnabled('processus', $currentUserId) || $organization->isApplicationEnabled('checklist', $currentUserId))) {
-    $embeddableChecklists = new \dbObject\ArrayChecklist();
-    $embeddableChecklists->loadForOrganization($organizationId, true, true);
-    foreach ($embeddableChecklists as $embeddableChecklist) {
-        if (!($embeddableChecklist instanceof \dbObject\Checklist) || \dbObject\Checklist::normalizeStatus($embeddableChecklist->get('status')) === \dbObject\Checklist::STATUS_RETIRED) { continue; }
-        $checklistRoot = $embeddableChecklist->getTemplateRoot();
-        if (!($checklistRoot instanceof \dbObject\Project)) { continue; }
-        $checklistHolon = $checklistRoot->getHolon();
-        $review = $embeddableChecklist->getPvReviewSummary();
-        $embeddableChecklistsPayload[] = [
-            'id' => (int)$embeddableChecklist->getId(),
-            'contextHolonId' => (int)$checklistRoot->get('IDholon'),
-            'contextLabel' => $checklistHolon instanceof \dbObject\Holon ? trim((string)$checklistHolon->getDisplayName()) : '',
-            'title' => trim((string)$review['title']),
-            'summary' => !empty($review['isContainer']) ? omoDocumentsPvEditorT('documents.pv_editor.checklist.review_container') : omoDocumentsPvEditorT('documents.pv_editor.checklist.review_runs'),
-        ];
-    }
-    usort($embeddableChecklistsPayload, static fn (array $left, array $right): int => strnatcasecmp((string)($left['title'] ?? ''), (string)($right['title'] ?? '')));
-}
-
-if ($hasCalendarApplication) {
-    $embeddableEvents = new \dbObject\ArrayEvent();
-    $embeddableEvents->loadVisibleForOrganization($organizationId, $currentUserId);
-
-    foreach ($embeddableEvents as $embeddableEvent) {
-        if (!($embeddableEvent instanceof \dbObject\Event) || (int)$embeddableEvent->getId() <= 0) {
-            continue;
-        }
-
-        $startAt = $embeddableEvent->get('start_at');
-        $endAt = $embeddableEvent->get('end_at');
-        $scheduleLabel = trim(
-            ($startAt instanceof DateTimeInterface ? omoDocumentsPvEditorFormatDateTime($startAt) : '')
-            . ($endAt instanceof DateTimeInterface ? ' - ' . omoDocumentsPvEditorFormatDateTime($endAt) : '')
-        );
-        $locationData = $embeddableEvent->getLocationDisplayData();
-        $locationLabel = trim(implode(' | ', array_filter([
-            trim((string)($locationData['address'] ?? '')),
-            trim((string)($locationData['videoUrl'] ?? '')),
-        ])));
-        $embeddableEventsPayload[] = [
-            'id' => (int)$embeddableEvent->getId(),
-            'contextHolonId' => (int)$embeddableEvent->get('IDholon'),
-            'title' => trim((string)$embeddableEvent->get('title')),
-            'scheduleLabel' => $scheduleLabel,
-            'locationLabel' => $locationLabel,
-            'startAt' => $startAt instanceof DateTimeInterface ? $startAt->format(DATE_ATOM) : '',
-        ];
-    }
-
-    usort($embeddableEventsPayload, static function (array $left, array $right): int {
-        return strcmp((string)($left['startAt'] ?? ''), (string)($right['startAt'] ?? ''));
-    });
-}
-
-if ($hasStatsApplication) {
-    $embeddableIndicators = new \dbObject\ArrayStatIndicator();
-    $embeddableIndicators->loadForOrganization($organizationId);
-
-    foreach ($embeddableIndicators as $embeddableIndicator) {
-        if (!($embeddableIndicator instanceof \dbObject\StatIndicator) || (int)$embeddableIndicator->getId() <= 0) {
-            continue;
-        }
-
-        $embeddableIndicatorsPayload[] = omoDocumentsPvEditorBuildIndicatorEmbedPayload(
-            $embeddableIndicator,
-            $isPvEditor,
-            'omoDocumentsPvEditorT'
-        );
-    }
-
-    $embeddableIndicatorGroups = new \dbObject\ArrayStatIndicatorGroup();
-    $embeddableIndicatorGroups->loadForOrganization($organizationId);
-    foreach ($embeddableIndicatorGroups as $embeddableIndicatorGroup) {
-        if (!($embeddableIndicatorGroup instanceof \dbObject\StatIndicatorGroup) || !$embeddableIndicatorGroup->canView() || (int)$embeddableIndicatorGroup->getId() <= 0) {
-            continue;
-        }
-
-        $groupAvailability = omoStatsGetGroupSourceAvailability($embeddableIndicatorGroup);
-        $groupSeries = omoStatsGetGroupSeries($embeddableIndicatorGroup, $groupAvailability);
-        $groupMode = \dbObject\StatIndicatorGroup::normalizeDisplayMode($embeddableIndicatorGroup->get('display_mode'));
-        $groupMemberCount = count(omoStatsCollectionItems($embeddableIndicatorGroup->getItems(), \dbObject\StatIndicatorGroupItem::class));
-        $groupIsOverdue = omoStatsGetGroupOverdueInfo($embeddableIndicatorGroup, null, $groupAvailability)['is_overdue'];
-        $embeddableIndicatorsPayload[] = [
-            'id' => (int)$embeddableIndicatorGroup->getId(),
-            'kind' => 'group',
-            'contextHolonId' => (int)$embeddableIndicatorGroup->get('IDholon'),
-            'title' => trim((string)$embeddableIndicatorGroup->get('name')),
-            'contextLabel' => $groupMode === \dbObject\StatIndicatorGroup::DISPLAY_SUM
-                ? omoDocumentsPvEditorT('documents.pv_editor.indicator.group_sum')
-                : omoDocumentsPvEditorT('documents.pv_editor.indicator.group_overlay'),
-            'valueLabel' => omoDocumentsPvEditorT('documents.pv_editor.indicator.group_members', ['count' => $groupMemberCount]),
-            'dateLabel' => '',
-            'statusLabel' => $groupAvailability['status'] === 'current'
-                ? ($groupIsOverdue
-                    ? omoDocumentsPvEditorT('documents.pv_editor.indicator.overdue')
-                    : omoDocumentsPvEditorT('documents.pv_editor.indicator.current'))
-                : implode(' ', omoStatsGroupSourceMessages($groupAvailability)),
-            'sourceStatus' => $groupAvailability['status'],
-            'isOverdue' => $groupIsOverdue,
-            'overdueSeverity' => $groupIsOverdue ? 'error' : 'none',
-            'chartHtml' => omoStatsRenderGroupChart($embeddableIndicatorGroup, $groupSeries, 'compact', $groupIsOverdue, false, $groupAvailability),
-        ];
-    }
-
-    usort($embeddableIndicatorsPayload, static function (array $left, array $right): int {
-        return strnatcasecmp((string)($left['title'] ?? ''), (string)($right['title'] ?? ''));
-    });
-}
 
 $authorHolonOptions = omoDocumentsPvEditorBuildAuthorHolonOptions(
     $document,
@@ -939,6 +728,13 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         'children' => omoDocumentsPvEditorT('documents.pv_editor.embed.scope_children'),
         'descendants' => omoDocumentsPvEditorT('documents.pv_editor.embed.scope_descendants'),
     ],
+    'resourceCatalogUrl' => '/omo/api/documents/pv/resources.php?oid=' . $organizationId . '&id=' . $documentId,
+    'resourceCatalogUi' => [
+        'loading' => omoDocumentsPvEditorT('documents.pv_editor.catalog.loading'),
+        'error' => omoDocumentsPvEditorT('documents.pv_editor.catalog.error'),
+    ],
+    'canEmbedProjects' => !$isPublicParticipation,
+    'editableIndicatorIds' => $hasStatsApplication ? \dbObject\ArrayStatIndicator::editableIdsReferencedByPvPoints($organizationId, $points, $isPvEditor) : [],
     'embeddableDocuments' => $embeddableDocumentsPayload,
     'documentEmbedUi' => [
         'buttonTitle' => omoDocumentsPvEditorT('documents.pv_editor.embed.button_title'),
@@ -1030,7 +826,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     ],
     'pvPriorityLabels' => $uiText['priorityLabels'] ?? [],
     'pvPriorityFieldLabel' => $uiText['priority'] ?? 'Priorité',
-    'canEmbedChecklists' => (count($embeddableChecklistsPayload) > 0),
+    'canEmbedChecklists' => !$isPublicParticipation && $hasOrganization && ($organization->isApplicationEnabled('processus', $currentUserId) || $organization->isApplicationEnabled('checklist', $currentUserId)),
     'canCompleteChecklistProjects' => ($canEditPvDocumentHeader),
     'embeddableChecklists' => $embeddableChecklistsPayload,
     'checklistEmbedUi' => [
