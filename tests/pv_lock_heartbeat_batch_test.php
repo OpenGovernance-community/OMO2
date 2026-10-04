@@ -24,7 +24,7 @@ assertPvLockHeartbeatBatch(
     'An empty heartbeat must not execute a database update.'
 );
 
-$editorSource = (string)file_get_contents(dirname(__DIR__) . '/omo/api/documents/pv/editor.php');
+$editorSource = (string)file_get_contents(dirname(__DIR__) . '/omo/api/documents/pv/editor.js');
 $heartbeatStart = strpos($editorSource, 'function startLockHeartbeat()');
 $heartbeatEnd = strpos($editorSource, "window.addEventListener('beforeunload'", $heartbeatStart);
 assertPvLockHeartbeatBatch($heartbeatStart !== false && $heartbeatEnd !== false, 'The heartbeat implementation must be present.');

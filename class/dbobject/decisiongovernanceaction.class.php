@@ -279,12 +279,11 @@ class DecisionGovernanceAction extends DbObject
         if (!$parentHolon instanceof Holon) {
             return $state;
         }
-        $editorData = $organization->getHolonCreationEditorData(
+        $editorHolon = $organization->getHolonEditorState(
             (int)$parentHolon->getId(),
             (int)$holon->getId(),
             true
         );
-        $editorHolon = is_array($editorData['holon'] ?? null) ? $editorData['holon'] : [];
         if (count($editorHolon) === 0) {
             return $state;
         }

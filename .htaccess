@@ -39,6 +39,8 @@ RewriteCond %{HTTP_HOST} ^([A-Za-z0-9.-]+)(?::\d+)?$ [NC]
 RewriteRule ^(.*)$ https://%1/$1 [R=301,L,NE]
 
 # MCP uses a stateless Streamable HTTP endpoint and public OAuth discovery.
+RewriteRule ^api/v1(?:/.*)?$ /api/v1/index.php [QSA,END]
+RewriteRule ^developer/?$ /developer/index.php [QSA,END]
 RewriteRule ^mcp/?$ /mcp/index.php [QSA,L]
 RewriteRule ^\.well-known/oauth-protected-resource(?:/mcp)?/?$ /mcp/metadata.php [L]
 RewriteRule ^\.well-known/oauth-authorization-server/?$ /mcp/metadata.php [L]

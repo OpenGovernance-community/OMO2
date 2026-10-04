@@ -1,5 +1,15 @@
 # Journal Des Nouveautes
 
+- Performances Structure, PV et gouvernance : suppression du diagnostic de permissions inutilise, catalogues de ressources charges a l ouverture de leur selecteur, lecture des arbres par lots avec objets hydrates et mutualisation des calculs de droits pendant le rendu. Les instantanes de holons evitent les catalogues inutiles. Les lectures de proprietes heritees conservent le cache de lecture ; les ecritures et lectures verrouillantes l invalident. Tests de parite des donnees, droits et chargement asynchrone inclus.
+
+- API REST : formats de retour documentés pour les 17 opérations, avec champs imbriqués, types, valeurs nulles, variantes et exemples JSON fictifs. Contrats communs à OpenAPI et /developer/ ; la page présente les données retournées et les cas métier particuliers plutôt qu’une liste de codes HTTP standards. Vérification des contrats sur les réponses réelles des tests.
+
+- Documentation développeurs : un clic dans l’index conserve la fonction choisie sélectionnée pendant le défilement vers sa section. La synchronisation reprend à la fin du défilement, avec une détection de secours pour les navigateurs sans événement scrollend.
+
+- Documentation développeurs publique sous /developer/ : référence des routes REST générée depuis OpenAPI, connexion OAuth, schémas, index filtrable et navigation par fonction, adaptés au mobile. L’index de gauche défile indépendamment et garde automatiquement la fonction sélectionnée visible, avec un défilement fluide qui respecte la préférence de réduction des animations. Accents, apostrophes et ponctuation française corrigés. Aucun registre de fonctions dupliqué.
+
+- API REST v1 : les 17 operations MCP sont accessibles sous /api/v1 avec les memes jetons OAuth, permissions et cles de reessai. Registre, validation et execution mutualises ; specification OpenAPI generee et tests HTTP de parite, creation et isolation.
+
 - E-mails MCP : envoi direct a un ou plusieurs membres choisis de l organisation, ou a tous ses membres actifs, sans reunion ni holon requis. Selection par user_ids dans la previsualisation et l envoi, adresses propres a l organisation, deduplication et verification de l adhesion avant livraison. Consentement mail:send et suivi existants reutilises.
 
 - Propositions : option "Date et horaire" dans les parametres du vote, du consentement et du jugement majoritaire, au meme niveau que titre, description et URL. Desactiver les dates annule leurs reservations. Saisie compacte du creneau et cartes de dates avec jour, horaires, fuseau, statut et actions de confirmation/annulation.
