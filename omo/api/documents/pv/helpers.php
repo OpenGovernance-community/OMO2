@@ -13,6 +13,8 @@ function omoDocumentsPvEditorSourceLang(): array
         'documents.pv_editor.decision.fallback' => ['text' => 'Décision n°{id}', 'context' => 'Fallback title for an embedded decision without a title.'],
         'documents.pv_editor.project.fallback' => ['text' => 'Projet n°{id}', 'context' => 'Fallback title for an embedded project without a title.'],
         'documents.pv_editor.event.fallback' => ['text' => 'Événement n°{id}', 'context' => 'Fallback title for an embedded event without a title.'],
+        'documents.pv_editor.catalog.loading' => ['text' => 'Chargement des ressources...', 'context' => 'PV resource picker loading progress'],
+        'documents.pv_editor.catalog.error' => ['text' => 'Impossible de charger les ressources.', 'context' => 'PV resource picker loading error'],
         'documents.pv_editor.indicator.fallback' => ['text' => 'Indicateur n°{id}', 'context' => 'Fallback title for an embedded indicator without a title.'],
         'documents.pv_editor.project.review_load_error' => ['text' => 'Impossible de charger la relecture du projet.', 'context' => 'Error shown when an embedded project review cannot be loaded.'],
         'documents.pv_editor.checklist.run_invalid' => ['text' => 'Instance de processus invalide.', 'context' => 'Error shown for an invalid embedded process run.'],

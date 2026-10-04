@@ -10760,7 +10760,14 @@
 			}
 		}
 
-		public function getHolonCreationEditorData($contextHolonId = 0, $holonId = 0, $collectiveGovernance = false, int $collectiveHolonId = 0)
+		/** Read the editable state without building unrelated picker catalogs. */
+		public function getHolonEditorState(int $contextHolonId, int $holonId, bool $collectiveGovernance = false, int $collectiveHolonId = 0): array
+		{
+			$data = $this->getHolonCreationEditorData($contextHolonId, $holonId, $collectiveGovernance, $collectiveHolonId, false);
+			return is_array($data['holon'] ?? null) ? $data['holon'] : [];
+		}
+
+		public function getHolonCreationEditorData($contextHolonId = 0, $holonId = 0, $collectiveGovernance = false, int $collectiveHolonId = 0, bool $includeCatalogs = true)
 		{
 			$rootHolon = $this->getStructuralRootHolon();
 			$holonId = (int)$holonId;
@@ -10826,117 +10833,119 @@
 				&& (!$isTemplateEditing || !$this->isDiscoveryMode())
 				&& in_array((int)$editingHolon->get('IDtypeholon'), array(1, 2, 3), true);
 
-			$templateContextPathRank = array_flip(array_map(static function ($pathHolon) {
-				return (int)$pathHolon->getId();
-			}, $contextHolon->getPathHolons(true)));
-			$typeLabelsById = array();
-			foreach ($this->getAvailableTemplateDefinitionHolons((int)$contextHolon->getId()) as $template) {
-				$typeId = (int)$template->get('IDtypeholon');
-				if ($typeId <= 0 || $typeId === 4) {
-					continue;
-				}
-
-				if ($isTemplateEditing) {
-					if ((int)$template->getId() === (int)$editingHolon->getId()) {
+			if ($includeCatalogs) {
+				$templateContextPathRank = array_flip(array_map(static function ($pathHolon) {
+					return (int)$pathHolon->getId();
+				}, $contextHolon->getPathHolons(true)));
+				$typeLabelsById = array();
+				foreach ($this->getAvailableTemplateDefinitionHolons((int)$contextHolon->getId()) as $template) {
+					$typeId = (int)$template->get('IDtypeholon');
+					if ($typeId <= 0 || $typeId === 4) {
 						continue;
 					}
 
-					if ((int)$editingHolon->get('IDtypeholon') !== $typeId) {
+					if ($isTemplateEditing) {
+						if ((int)$template->getId() === (int)$editingHolon->getId()) {
+							continue;
+						}
+
+						if ((int)$editingHolon->get('IDtypeholon') !== $typeId) {
+							continue;
+						}
+					}
+
+					if (
+						!$isTemplateEditing
+						&& !$this->isTemplateAvailableForHolonCreation($template, $contextHolon, $editingHolon ? (int)$editingHolon->getId() : 0)
+					) {
 						continue;
 					}
+
+					$definitionHolon = new \dbObject\Holon();
+					$definitionHolonName = '';
+					$definitionHolonLabel = '';
+					if ($definitionHolon->load((int)$template->get('IDholon_parent'))) {
+						$definitionHolonName = $definitionHolon->getDisplayName();
+						$definitionHolonLabel = $definitionHolon->getTemplateLabel();
+					}
+					$templateAdminBounds = $template->getEffectiveTemplateAdminBounds();
+
+					$data['templateCatalog'][] = array_merge(array(
+						'id' => (int)$template->getId(),
+						'name' => $template->getDisplayName(),
+						'typeId' => $typeId,
+						'typeLabel' => $template->getTypeLabel(),
+						'color' => (string)$template->get('color'),
+						'unassignedColor' => (string)$template->get('color_unassigned'),
+						'visible' => (bool)$template->get('visible'),
+						'mandatory' => (bool)$template->get('mandatory'),
+						'lockedName' => (bool)$template->get('lockedname'),
+						'unique' => (bool)$template->get('unique'),
+						'link' => (bool)$template->get('link'),
+						'adminParent' => (bool)$template->get('adminparent'),
+						'adminMin' => $templateAdminBounds['min'],
+						'adminMax' => $templateAdminBounds['max'],
+						'lockedAdminMin' => !empty($templateAdminBounds['minLocked']),
+						'lockedAdminMax' => !empty($templateAdminBounds['maxLocked']),
+						'definedInId' => (int)$template->get('IDholon_parent'),
+						'definedInName' => $definitionHolonName,
+						'definedInLabel' => $definitionHolonLabel,
+						'properties' => $isTemplateEditing
+							? $template->getTemplatePropertyDefinitions()
+							: array_map(static function (array $definition) use ($editingHolon, $contextHolon) {
+								$definition['canEditValue'] = empty($definition['effectiveLocked'])
+									&& ($editingHolon ?: $contextHolon)->canEditPropertyValue($definition['type'] ?? null, !$editingHolon);
+								return $definition;
+							}, $template->getHolonCreationPropertyDefinitions()),
+					), $this->getHolonIllustrationData($template));
+
+					$typeLabelsById[$typeId] = $template->getTypeLabel();
 				}
 
-				if (
-					!$isTemplateEditing
-					&& !$this->isTemplateAvailableForHolonCreation($template, $contextHolon, $editingHolon ? (int)$editingHolon->getId() : 0)
-				) {
-					continue;
+				usort($data['templateCatalog'], static function (array $left, array $right) use ($templateContextPathRank) {
+					$leftRank = $templateContextPathRank[(int)($left['definedInId'] ?? 0)] ?? PHP_INT_MAX;
+					$rightRank = $templateContextPathRank[(int)($right['definedInId'] ?? 0)] ?? PHP_INT_MAX;
+					if ($leftRank !== $rightRank) {
+						return $leftRank <=> $rightRank;
+					}
+
+					$leftTypeId = (int)($left['typeId'] ?? 0);
+					$rightTypeId = (int)($right['typeId'] ?? 0);
+					if ($leftTypeId !== $rightTypeId) {
+						return $leftTypeId <=> $rightTypeId;
+					}
+
+					$byName = strcasecmp((string)($left['name'] ?? ''), (string)($right['name'] ?? ''));
+					if ($byName !== 0) {
+						return $byName;
+					}
+
+					return (int)($left['id'] ?? 0) <=> (int)($right['id'] ?? 0);
+				});
+
+				ksort($typeLabelsById);
+				foreach ($typeLabelsById as $typeId => $typeLabel) {
+					$data['types'][] = array(
+						'id' => (int)$typeId,
+						'name' => (string)$typeLabel,
+					);
 				}
 
-				$definitionHolon = new \dbObject\Holon();
-				$definitionHolonName = '';
-				$definitionHolonLabel = '';
-				if ($definitionHolon->load((int)$template->get('IDholon_parent'))) {
-					$definitionHolonName = $definitionHolon->getDisplayName();
-					$definitionHolonLabel = $definitionHolon->getTemplateLabel();
-				}
-				$templateAdminBounds = $template->getEffectiveTemplateAdminBounds();
+				$formats = new \dbObject\ArrayPropertyFormat();
+				$formats->load(array(
+					'orderBy' => array(
+						array('field' => 'id', 'dir' => 'ASC'),
+					),
+				));
+				$data['formats'] = $this->buildEditorPropertyFormats($formats);
 
-				$data['templateCatalog'][] = array_merge(array(
-					'id' => (int)$template->getId(),
-					'name' => $template->getDisplayName(),
-					'typeId' => $typeId,
-					'typeLabel' => $template->getTypeLabel(),
-					'color' => (string)$template->get('color'),
-					'unassignedColor' => (string)$template->get('color_unassigned'),
-					'visible' => (bool)$template->get('visible'),
-					'mandatory' => (bool)$template->get('mandatory'),
-					'lockedName' => (bool)$template->get('lockedname'),
-					'unique' => (bool)$template->get('unique'),
-					'link' => (bool)$template->get('link'),
-					'adminParent' => (bool)$template->get('adminparent'),
-					'adminMin' => $templateAdminBounds['min'],
-					'adminMax' => $templateAdminBounds['max'],
-					'lockedAdminMin' => !empty($templateAdminBounds['minLocked']),
-					'lockedAdminMax' => !empty($templateAdminBounds['maxLocked']),
-					'definedInId' => (int)$template->get('IDholon_parent'),
-					'definedInName' => $definitionHolonName,
-					'definedInLabel' => $definitionHolonLabel,
-					'properties' => $isTemplateEditing
-						? $template->getTemplatePropertyDefinitions()
-						: array_map(static function (array $definition) use ($editingHolon, $contextHolon) {
-							$definition['canEditValue'] = empty($definition['effectiveLocked'])
-								&& ($editingHolon ?: $contextHolon)->canEditPropertyValue($definition['type'] ?? null, !$editingHolon);
-							return $definition;
-						}, $template->getHolonCreationPropertyDefinitions()),
-				), $this->getHolonIllustrationData($template));
-
-				$typeLabelsById[$typeId] = $template->getTypeLabel();
+				$this->buildSelectableHolonCatalog($rootHolon, $data['holonCatalog'], (int)$rootHolon->getId());
+				$projectCatalogHolon = $editingHolon ?: $contextHolon;
+				$data['projectCatalog'] = $this->getProjectListEditorCatalog($projectCatalogHolon);
+				$data['projectCatalogs'] = $this->getProjectListEditorCatalogs($projectCatalogHolon);
+				$data['authorityCatalog'] = $this->getAuthorityListEditorCatalog();
+				$data['authorityParentCatalog'] = $this->getAuthorityParentEditorCatalog($contextHolon);
 			}
-
-			usort($data['templateCatalog'], static function (array $left, array $right) use ($templateContextPathRank) {
-				$leftRank = $templateContextPathRank[(int)($left['definedInId'] ?? 0)] ?? PHP_INT_MAX;
-				$rightRank = $templateContextPathRank[(int)($right['definedInId'] ?? 0)] ?? PHP_INT_MAX;
-				if ($leftRank !== $rightRank) {
-					return $leftRank <=> $rightRank;
-				}
-
-				$leftTypeId = (int)($left['typeId'] ?? 0);
-				$rightTypeId = (int)($right['typeId'] ?? 0);
-				if ($leftTypeId !== $rightTypeId) {
-					return $leftTypeId <=> $rightTypeId;
-				}
-
-				$byName = strcasecmp((string)($left['name'] ?? ''), (string)($right['name'] ?? ''));
-				if ($byName !== 0) {
-					return $byName;
-				}
-
-				return (int)($left['id'] ?? 0) <=> (int)($right['id'] ?? 0);
-			});
-
-			ksort($typeLabelsById);
-			foreach ($typeLabelsById as $typeId => $typeLabel) {
-				$data['types'][] = array(
-					'id' => (int)$typeId,
-					'name' => (string)$typeLabel,
-				);
-			}
-
-			$formats = new \dbObject\ArrayPropertyFormat();
-			$formats->load(array(
-				'orderBy' => array(
-					array('field' => 'id', 'dir' => 'ASC'),
-				),
-			));
-			$data['formats'] = $this->buildEditorPropertyFormats($formats);
-
-			$this->buildSelectableHolonCatalog($rootHolon, $data['holonCatalog'], (int)$rootHolon->getId());
-			$projectCatalogHolon = $editingHolon ?: $contextHolon;
-			$data['projectCatalog'] = $this->getProjectListEditorCatalog($projectCatalogHolon);
-			$data['projectCatalogs'] = $this->getProjectListEditorCatalogs($projectCatalogHolon);
-			$data['authorityCatalog'] = $this->getAuthorityListEditorCatalog();
-			$data['authorityParentCatalog'] = $this->getAuthorityParentEditorCatalog($contextHolon);
 
 			if ($editingHolon && $data['canEdit']) {
 				$editingAdminBounds = $editingHolon->getAdminMemberBounds();
