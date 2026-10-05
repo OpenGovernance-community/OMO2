@@ -116,16 +116,28 @@ try {
     parse_str(parse_url($decisionAuthorized['headers']['location'], PHP_URL_QUERY), $decisionCallback);
     $decisionTokens = mcpHttpJson(mcpHttp('/mcp/token.php', mcpExchangeRequest($registered, $decisionCallback['code'])));
     mcpCheck($decisionTokens['scope'] === $decisionRequest['scope'], 'Decision scope survives native OAuth consent and exchange');
+    $projectRequest = array_replace($request, ['scope' => OMO_MCP_SCOPE . ' ' . OMO_MCP_PROJECT_SCOPE]);
+    $projectStart = mcpHttp('/mcp/authorize.php?' . http_build_query($projectRequest));
+    $projectConsent = mcpHttp($projectStart['headers']['location']);
+    mcpCheck($projectConsent['status'] === 200 && str_contains($projectConsent['body'], 'Creer et modifier des projets')
+        && str_contains($projectConsent['body'], 'date de reexamen')
+        && !str_contains($projectConsent['body'], 'Cette autorisation est limitee a la lecture.'), 'Project writes explicitly disclosed at OAuth consent');
+    preg_match('/name="csrf" value="([a-f0-9]+)"/', $projectConsent['body'], $projectCsrf);
+    $projectAuthorized = mcpHttp($projectStart['headers']['location'], ['csrf' => $projectCsrf[1], 'decision' => 'allow', 'organization_id' => $items['org']->getId()]);
+    parse_str(parse_url($projectAuthorized['headers']['location'], PHP_URL_QUERY), $projectCallback);
+    $projectTokens = mcpHttpJson(mcpHttp('/mcp/token.php', mcpExchangeRequest($registered, $projectCallback['code'])));
+    mcpCheck($projectTokens['scope'] === $projectRequest['scope'], 'Project scope survives OAuth consent and exchange');
     $connections = mcpHttp('/mcp/connections.php');
     mcpCheck(str_contains($connections['body'], 'Creer des evenements'), 'Event consent is visible in personal connections');
     mcpCheck(str_contains($connections['body'], 'Creer des scrutins'), 'Decision consent is visible in personal connections');
+    mcpCheck(str_contains($connections['body'], 'Creer et modifier des projets'), 'Project consent is visible in personal connections');
     $cookieOnly = mcpHttpRpc('tools/list', [], null);
     mcpCheck($cookieOnly['status'] === 401, 'Logged-in browser cookie cannot authorize MCP');
     $initialized = mcpHttpRpc('initialize', ['protocolVersion' => '2025-11-25', 'capabilities' => new stdClass(),
         'clientInfo' => (object)['name' => 'test', 'version' => '1']], $tokens['access_token']);
     mcpCheck(mcpHttpJson($initialized)['result']['serverInfo']['name'] === 'OpenMyOrganization', 'MCP initialization');
     $tools = mcpHttpRpc('tools/list', [], $tokens['access_token']);
-    mcpCheck(count(mcpHttpJson($tools)['result']['tools']) === 19, 'Authenticated tool discovery');
+    mcpCheck(count(mcpHttpJson($tools)['result']['tools']) === 23, 'Authenticated tool discovery');
     foreach (['omo_connection_info' => new stdClass(), 'omo_catalog' => new stdClass(),
         'omo_list_records' => (object)['module' => 'structure', 'limit' => 1], 'omo_list_assignments' => new stdClass(),
         'omo_list_structure' => (object)['limit' => 1],
@@ -292,4 +304,4 @@ try {
     mcpCleanup($items);
     if (is_file($jar)) unlink($jar);
 }
-    echo "mcp_http_test: OK (19 tools, member lists, native composer/CSRF, read/mail/document/event/decision consent, document creation, isolation, revocation)\n";
+    echo "mcp_http_test: OK (23 tools, member lists, native composer/CSRF, read/mail/document/event/decision consent, document creation, isolation, revocation)\n";
