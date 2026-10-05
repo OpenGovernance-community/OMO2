@@ -187,7 +187,7 @@ $canManageDocument = !$document->isPvDocument()
 $canEditDocumentContent = !$document->isPvDocument()
     && $document->canEditInOrganizationContext($organizationId, $currentUserId, false);
 $canEditDocument = !$document->isPvDocument()
-    && ($canManageDocument || (!$document->isEtherpadDocument() && !$document->isEthercalcDocument() && !$document->isWhiteboardDocument() && $canEditDocumentContent));
+    && ($canManageDocument || $canEditDocumentContent);
 $canDeleteDocument = $document->canDeleteInOrganizationContext($organizationId, $currentUserId)
     && $document->canDeleteDocument(true);
 $editUrl = $canEditDocument

@@ -108,8 +108,10 @@ try {
     $document->set('IDorganization', $orgId);
     $document->set('IDholon', $circle->getId());
     $can = static fn (string $key, Holon $target) => HolonPermission::userHasPermissionForHolonContext($userId, $orgId, $key, $target->getId());
-    groupPermissionCheck($document->canEditInOrganizationContext($orgId, $userId, false), 'Role in nested groups must edit a document open to organization members through its circle grant');
-    groupPermissionCheck($document->canEditInOrganizationContext($orgId, $userId, true), 'Session permission cache must include circle membership');
+    groupPermissionCheck($document->canEditInOrganizationContext($orgId, $userId, false), 'Role in nested groups must edit content open to organization members');
+    groupPermissionCheck($document->canEditInOrganizationContext($orgId, $userId, true), 'Content editing must also work with session caching enabled');
+    groupPermissionCheck($document->canManageInOrganizationContext($orgId, $userId, false), 'Role in nested groups must manage document metadata through its circle grant');
+    groupPermissionCheck($document->canManageInOrganizationContext($orgId, $userId, true), 'Session permission cache must include metadata permissions through circle membership');
     $oldCache = $_SESSION['permissionCacheByOrganization'][$orgId];
     $oldCache['cacheVersion'] = 27;
     groupPermissionCheck(!commonIsCurrentUserPermissionCacheEntryFresh($oldCache, $orgId, $userId), 'Sessions created before the fix must rebuild their permission cache');

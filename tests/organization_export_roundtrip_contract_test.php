@@ -41,7 +41,7 @@ assertOrganizationExportRoundtripContract(
 assertOrganizationExportRoundtripContract(
     str_contains($exportSource, "'documentType' => \$documentType")
         && str_contains($exportSource, "'sourceParentDocumentId' =>")
-        && str_contains($popupSource, 'organization_export.documents_notice'),
+        && str_contains($popupSource, 'organization_export.documents_memos_notice'),
     'Document eligibility and the intentional omission notice must remain explicit.'
 );
 

@@ -855,7 +855,7 @@ foreach ($documents as $document) {
             ? ($canOpenInCurrentView && $canOpenPvEditor)
             : (
                 $canManageDocument
-                 || (!$document->isEtherpadDocument() && !$document->isEthercalcDocument() && !$document->isWhiteboardDocument() && $document->canEditInOrganizationContextWithVisibilityRules($documentOrganizationId, $currentUserId, $visibilityRule, $editVisibilityRule, $documentViewerContext))
+                || $document->canEditInOrganizationContextWithVisibilityRules($documentOrganizationId, $currentUserId, $visibilityRule, $editVisibilityRule, $documentViewerContext)
             ),
         'editUrl' => $document->isPvDocument()
             ? ($canOpenInCurrentView ? $pvPreparationUrl : '')
@@ -949,10 +949,7 @@ if ($initialOpenDocumentId > 0) {
                     $requestedCanView
                     && (
                         $requestedOpenDocument->canManageInOrganizationContext($currentOrganizationId)
-                         || (!$requestedOpenDocument->isEtherpadDocument()
-                            && !$requestedOpenDocument->isEthercalcDocument()
-                            && !$requestedOpenDocument->isWhiteboardDocument()
-                            && $requestedOpenDocument->canEditInOrganizationContext($currentOrganizationId))
+                        || $requestedOpenDocument->canEditInOrganizationContext($currentOrganizationId)
                     )
                 ),
             'editUrl' => $requestedOpenDocument->isPvDocument()

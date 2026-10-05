@@ -195,7 +195,7 @@ if (!function_exists('omoDocumentsBuildListEntries')) {
                     ? ($canOpenInCurrentView && $canOpenPvEditor)
                     : (
                         $canManageDocument
-                        || (!$document->isEtherpadDocument() && !$document->isEthercalcDocument() && !$document->isWhiteboardDocument() && $document->canEditInOrganizationContextWithVisibilityRules($documentOrganizationId, $currentUserId, $visibilityRule, $editVisibilityRule, $documentViewerContext))
+                        || $document->canEditInOrganizationContextWithVisibilityRules($documentOrganizationId, $currentUserId, $visibilityRule, $editVisibilityRule, $documentViewerContext)
                     ),
                 'editUrl' => $document->isPvDocument()
                     ? ($canOpenInCurrentView ? $pvPreparationUrl : '')
