@@ -3,6 +3,7 @@
 require_once dirname(__DIR__) . '/mcp/protocol.php';
 require_once dirname(__DIR__) . '/object_mail/validation.php';
 require_once dirname(__DIR__) . '/mcp/calendar.php';
+require_once __DIR__ . '/decisions.php';
 
 final class OmoApiScopeException extends DomainException
 {
@@ -17,6 +18,7 @@ function omoApiOperationScope(string $name): string
         'omo_create_document' => OMO_MCP_CREATE_SCOPE,
         'omo_send_object_email' => OMO_MCP_MAIL_SCOPE,
         'omo_create_event' => OMO_MCP_EVENT_SCOPE,
+        'omo_create_decision' => OMO_MCP_DECISION_SCOPE,
         default => OMO_MCP_SCOPE,
     };
 }
@@ -78,17 +80,17 @@ function omoMcpTools(): array
                 'required' => ['title', 'request_key'], 'additionalProperties' => false],
             '_meta' => ['openai/fileParams' => ['file']]],
         ['name' => 'omo_connection_info', 'title' => 'OMO connection',
-            'description' => 'Verify the signed-in OMO user, the one authorized organization and granted coverage, including document_creation_authorized. Call first to discover the root holon ID.',
+            'description' => 'Verify the signed-in OMO user, the one authorized organization and granted coverage, including document_creation_authorized. Call first to discover the root holon ID and user.meeting_booking_url, the signed-in user public appointment booking link or null. Copy this exact link into user-requested mail to organization members; sharing a link does not reserve an appointment.',
             'inputSchema' => ['type' => 'object', 'properties' => new stdClass(), 'additionalProperties' => false]],
         ['name' => 'omo_catalog', 'title' => 'Explore OMO data and filters',
             'description' => 'Discover enabled datasets, supported user relationships, statuses, date meanings and list filters. Call before exploring an unfamiliar organization. Explains how to resolve member names and enumerate complete readable lists.',
             'inputSchema' => ['type' => 'object', 'properties' => new stdClass(), 'additionalProperties' => false]],
         ['name' => 'omo_get_member', 'title' => 'Explore a member: roles and related objects',
-            'description' => 'Read an organization member with the signed-in viewer permissions. First find the person with omo_list_records, module team, query containing their name; record_id/user_id is the member ID. Disambiguate multiple matches. Returns scoped contact details, a first page of direct role/circle/group assignments and executable links to their projects, tasks, events, meeting minutes, decisions, indicators and other supported modules. Follow assignments.next_after_id with omo_list_assignments using the same user_id; follow each related list with omo_list_records until next_after_id is null. For all effective holons use structure and user_relation effective_member; for upcoming meetings use calendar, user_relation invited and date_from. related_records is navigation, not a count or a list of the actual objects. Private objects and restricted participant identities remain hidden. Read-only, no extra OAuth scope.',
+            'description' => 'Read an organization member with the signed-in viewer permissions. First find the person with omo_list_records, module team, query containing their name; record_id/user_id is the member ID. Disambiguate multiple matches. Returns scoped contact details and member.meeting_booking_url (the public personal appointment booking link, or null if not configured/enabled with a valid destination), a first page of direct role/circle/group assignments and executable links to their projects, tasks, events, meeting minutes, decisions, indicators and other supported modules. Follow assignments.next_after_id with omo_list_assignments using the same user_id; follow each related list with omo_list_records until next_after_id is null. For all effective holons use structure and user_relation effective_member; for upcoming meetings use calendar, user_relation invited and date_from. related_records is navigation, not a count or a list of the actual objects. Private objects and restricted participant identities remain hidden. To invite people to book with this member, copy meeting_booking_url unchanged; never infer or invent a slug when null. Preview the requested organization/member audience with omo_list_object_members and send via omo_send_object_email only when requested, with mail:send consent. Sharing the link creates no booking. Read-only, no extra OAuth scope.',
             'inputSchema' => ['type' => 'object', 'properties' => ['user_id' => ['type' => 'integer', 'minimum' => 1]],
                 'required' => ['user_id'], 'additionalProperties' => false]],
         ['name' => 'omo_list_records', 'title' => 'List OMO records with filters',
-            'description' => 'Enumerate all readable records of one module, without the search result cap. For a person, first resolve user_id with module team and query, then use omo_get_member for roles and navigation, or filter records by user_id and optionally user_relation. For upcoming meetings use calendar/invited with date_from; for effective holons use structure/effective_member. Calendar results include effective_invitees (people expanded from holons, IDs, names, statuses and pagination). For meetings shared by two people, resolve both user IDs, enumerate calendar/invited for each and intersect record_id values; never infer absence from holon labels or an incomplete invitee page. Omit user_relation for any documented relationship. Call omo_catalog for supported filters and statuses. query matches a literal title substring; for team, all name/username words may appear in any order. Dates are inclusive YYYY-MM-DD; calendar dates filter event start, other modules use creation. parent_id=0 lists roots, positive parent_id lists direct children. context_holon_id restricts the exact holon (rules: applicable rules; FAQ: contextual and generic; team: direct assignments). Omit context to cover the organization. Follow next_after_id, even after an empty page, until null, keeping all filters unchanged. Data is live; only report a complete list after complete=true.',
+            'description' => 'Enumerate all readable records of one module, without the search result cap. For a person, first resolve user_id with module team and query, then use omo_get_member for roles and navigation, or filter records by user_id and optionally user_relation. For upcoming meetings use calendar/invited with date_from; for effective holons use structure/effective_member. Calendar results include effective_invitees (people expanded from holons, IDs, names, statuses and pagination). For meetings shared by two people, resolve both user IDs, enumerate calendar/invited for each and intersect record_id values; never infer absence from holon labels or an incomplete invitee page. Omit user_relation for any documented relationship. Call omo_catalog for supported filters and statuses. query matches a literal title substring; for team, all name/username words may appear in any order. Dates are inclusive YYYY-MM-DD; calendar dates filter event start, other modules use creation. parent_id=0 lists roots, positive parent_id lists direct children. context_holon_id restricts the exact holon (rules: applicable rules; FAQ: contextual and generic; team: direct assignments). Omit context to cover the organization. Follow next_after_id, even after an empty page, until null, keeping all filters unchanged. Team records also return meeting_booking_url, a shareable public appointment booking link or null. Use it unchanged in requested mail; sharing does not reserve a time. Data is live; only report a complete list after complete=true.',
             'inputSchema' => ['type' => 'object', 'properties' => [
                 'module' => ['type' => 'string', 'enum' => OMO_MCP_MODULES],
                 'user_id' => ['type' => 'integer', 'minimum' => 1],
@@ -138,13 +140,15 @@ function omoMcpTools(): array
                 'required' => ['module', 'record_id'], 'additionalProperties' => false]],
     ];
     array_push($tools, ...omoMcpCalendarTools());
+    array_push($tools, ...omoApiDecisionTools());
     foreach ($tools as &$tool) {
         $create = $tool['name'] === 'omo_create_document';
         $mail = $tool['name'] === 'omo_send_object_email';
         $event = $tool['name'] === 'omo_create_event';
+        $decision = $tool['name'] === 'omo_create_decision';
         if ($create) $tool['description'] .= ' Confirm creation only after a successful result with created=true and a returned record.record_id. Read that ID with omo_read_record, using the returned context_holon_id, to verify the saved Memo content, and provide its returned URL. An error or timeout is not proof of creation; retry the exact same request_key and payload to recover the result safely.';
-        $tool['annotations'] = ['readOnlyHint' => !$create && !$mail && !$event, 'destructiveHint' => false, 'idempotentHint' => true,
-            'openWorldHint' => $create || $mail || $event || $tool['name'] === 'omo_get_availability'];
+        $tool['annotations'] = ['readOnlyHint' => !$create && !$mail && !$event && !$decision, 'destructiveHint' => false, 'idempotentHint' => true,
+            'openWorldHint' => $create || $mail || $event || $decision || $tool['name'] === 'omo_get_availability'];
         $tool['outputSchema'] = ['type' => 'object'];
         $tool['securitySchemes'] = [['type' => 'oauth2', 'scopes' => array_values(array_unique([OMO_MCP_SCOPE, omoApiOperationScope($tool['name'])]))]];
         $tool['_meta']['securitySchemes'] = $tool['securitySchemes'];
@@ -155,6 +159,7 @@ function omoMcpToolArguments(string $name, mixed $input): array
 {
     if (!$input instanceof stdClass) throw new InvalidArgumentException('Arguments must be an object.');
     $args = get_object_vars($input);
+    if (in_array($name, ['omo_list_decision_spaces', 'omo_create_decision'], true)) return omoApiDecisionValidate($name, $args);
     if (in_array($name, ['omo_get_availability', 'omo_list_event_spaces', 'omo_create_event'], true)) return omoMcpCalendarValidate($name, $args);
     if ($name === 'omo_send_object_email') { omoObjectMailValidate($args); return $args; }
     $allowed = match ($name) {
@@ -282,6 +287,8 @@ function omoApiExecuteOperation(string $name, array $args, array $grant): array
     $scope = omoApiOperationScope($name);
     if (!in_array($scope, explode(' ', $grant['scope'] ?? ''), true)) throw new OmoApiScopeException($scope);
     return match ($name) {
+        'omo_list_decision_spaces' => \dbObject\McpDecisionCreation::spaces($grant, $args),
+        'omo_create_decision' => \dbObject\McpDecisionCreation::create($grant, $args),
         'omo_get_availability' => \dbObject\McpCalendar::availability($grant, $args),
         'omo_list_event_spaces' => \dbObject\McpCalendar::spaces($grant, $args),
         'omo_create_event' => \dbObject\McpCalendar::create($grant, $args),

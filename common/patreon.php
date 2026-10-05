@@ -109,13 +109,21 @@ function patreonUserCanUseAi($userId)
 		return false;
 	}
 
-	if (!patreonSupportUiIsEnabled()) {
+	// A broken OAuth UI or unavailable storage must never disable the paywall.
+	$configured = false;
+	foreach (['patreonClientId', 'patreonClientSecret', 'patreonCreatorCampaignId', 'patreonConnectUrl', 'patreonRedirectUri', 'patreonConnectAllowedOrigins'] as $key) {
+		if (trim((string)($GLOBALS[$key] ?? '')) !== '') {
+			$configured = true;
+			break;
+		}
+	}
+	if (!$configured) {
 		return true;
 	}
 
-	$user = new \dbObject\User();
-	if ($user->load($userId) && $user->isSiteAdmin()) {
-		return true;
+	if (trim((string)($GLOBALS['patreonClientId'] ?? '')) === ''
+		|| trim((string)($GLOBALS['patreonClientSecret'] ?? '')) === '') {
+		return false;
 	}
 
 	if (!class_exists('\\dbObject\\UserPatreon') || !\dbObject\UserPatreon::isStorageAvailable()) {

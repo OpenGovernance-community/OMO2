@@ -561,7 +561,6 @@
             api = window.omoSimpleHtmlField.mount(editorHost, {
                 value: valueField.value || '',
                 placeholder: editorHost.getAttribute('data-checklist-html-editor-placeholder') || '',
-                minHeight: 180,
                 onChange: function (value) {
                     valueField.value = String(value || '');
                 },

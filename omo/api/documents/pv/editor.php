@@ -87,8 +87,7 @@ $hasDocumentsApplication = !$isPublicParticipation && $hasOrganization && $organ
 $hasDecisionApplication = !$isPublicParticipation && $hasOrganization && $organization->isApplicationEnabled('decision', $currentUserId);
 $hasCalendarApplication = !$isPublicParticipation && $hasOrganization && $organization->isApplicationEnabled('calendar', $currentUserId);
 $hasStatsApplication = !$isPublicParticipation && $hasOrganization && $organization->isApplicationEnabled('stats', $currentUserId);
-$openAiAvailable = commonOpenAiGetApiKey() !== '';
-$canUseAiTools = $openAiAvailable && patreonUserCanUseAi($currentUserId);
+$canUseAiTools = commonAiUserCanUse($currentUserId, commonOpenAiGetRewriteModel());
 $hasUpcomingAssociatedEvent = $hasAssociatedEvent && $event->isUpcoming();
 $publicParticipationUserId = $isPublicParticipation
     ? commonPvParticipationRecipientOrganizationUserId($publicParticipationLink, $organizationId)
@@ -654,6 +653,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
 
 <script src="/common/choice/word-diff.js?v=20260922-deferred-proposals"></script>
 <script src="<?= commonAssetUrl('/common/choice/change-details.js') ?>"></script>
+<script src="<?= commonAssetUrl('/common/document/embed-picker.js') ?>"></script>
 <?php if ($isPvReviewDiscussion): ?>
 <script src="/common/chat/thread.js?v=20260821-pv-review-access-2"></script>
 <?php endif; ?>

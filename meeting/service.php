@@ -160,9 +160,8 @@ function meetingSave($object): void
 
 function meetingDestination(MeetingProfile $profile): ExternalCalendar
 {
-    $calendar = new ExternalCalendar();
-    if (!$calendar->load((int)$profile->get('IDexternalcalendar'), true)
-        || (int)$calendar->get('IDuser') !== (int)$profile->get('IDuser') || !(int)$calendar->get('active') || $calendar->get('availability_only')) {
+    $calendar = $profile->getDestinationCalendar();
+    if (!$calendar) {
         throw new RuntimeException('calendar_invalid');
     }
     return $calendar;

@@ -98,6 +98,9 @@ final class McpBrowse
             'event_creation' => ['authorized' => \omoMcpCanCreateEvents($grant), 'scope' => \OMO_MCP_EVENT_SCOPE,
                 'discover_tool' => 'omo_list_event_spaces', 'create_tool' => 'omo_create_event', 'requires_omo_permission' => 'CAN_CREATE_EVENT',
                 'invitation_modes' => ['default', 'explicit']],
+            'decision_creation' => ['authorized' => \omoMcpCanCreateDecisions($grant), 'scope' => \OMO_MCP_DECISION_SCOPE,
+                'discover_tool' => 'omo_list_decision_spaces', 'create_tool' => 'omo_create_decision', 'requires_omo_permission' => 'CAN_CREATE_DECISION',
+                'methods' => ['simple_vote', 'majority_judgment', 'consent'], 'dated_proposals_reserve_calendar' => true],
             'member_exploration' => ['lookup_tool' => 'omo_list_records', 'lookup_module' => 'team', 'details_tool' => 'omo_get_member',
                 'description' => 'Resolve names first, disambiguate if necessary, then read the member for roles and navigation to related records. For upcoming meetings use calendar/invited and date_from; author means creator only. Effective memberships use structure/effective_member.'],
             'object_members' => ['tool' => 'omo_list_object_members', 'object_types' => ObjectAudience::TYPES,
@@ -122,6 +125,13 @@ final class McpBrowse
         return $user;
     }
 
+    /** The member access gate belongs to the caller. Only the public booking URL is projected. */
+    public static function meetingBookingUrl(int $userId): ?string
+    {
+        $path = MeetingProfile::publicBookingPathForUser($userId);
+        return $path === null ? null : \omoMcpIssuer() . $path;
+    }
+
     public static function member(array $grant, int $userId): array
     {
         $organization = McpStructure::organization($grant);
@@ -144,7 +154,7 @@ final class McpBrowse
             'profile' => ['tool' => 'omo_read_record', 'arguments' => ['module' => 'team', 'record_id' => $userId]],
             'assignments' => in_array('structure', $enabled, true) ? self::assignments($grant, ['user_id' => $userId]) : null,
             'related_records' => $links,
-            'instructions' => 'assignments contains the first page of direct roles/circles/groups. Follow its next_after_id with omo_list_assignments and the same user_id until null. related_records contains executable navigation arguments, not object lists or counts: call each relevant list and follow next_after_id until null, even after an empty page. For effective holons use structure/effective_member. For upcoming meetings use calendar/invited with date_from set to the requested start date. All results use the signed-in viewer permissions; unavailable objects and private participation are omitted.'];
+            'instructions' => 'member.meeting_booking_url is the public personal appointment booking link, or null when unavailable. Share the exact link only in requested messages; do not guess a slug or claim a booking was made. To mail organization members, preview the organization audience (optional user_ids) with omo_list_object_members, then send with omo_send_object_email and its audience_token, requiring mail:send consent. assignments contains the first page of direct roles/circles/groups. Follow its next_after_id with omo_list_assignments and the same user_id until null. related_records contains executable navigation arguments, not object lists or counts: call each relevant list and follow next_after_id until null, even after an empty page. For effective holons use structure/effective_member. For upcoming meetings use calendar/invited with date_from set to the requested start date. All results use the signed-in viewer permissions; unavailable objects and private participation are omitted.'];
     }
 
     /** Apply native computed memberships only after the candidate object passed its normal access gate. */
@@ -282,6 +292,7 @@ final class McpBrowse
             'url' => McpContent::sourceUrl((int)$organization->getId(), $module, (int)$object->getId(), $context['currentHolonId'])];
         if ($module === 'team') {
             $result['user_id'] = (int)$object->getId();
+            $result['meeting_booking_url'] = self::meetingBookingUrl((int)$object->getId());
             $result['member_details'] = ['tool' => 'omo_get_member', 'arguments' => ['user_id' => (int)$object->getId()]];
         }
         $definition = self::definitions()[$module];

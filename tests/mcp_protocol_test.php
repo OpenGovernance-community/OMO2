@@ -42,7 +42,8 @@ mcpProtocolCheck($serverInfo['icons'][0]['src'] === 'https://mcp.example.invalid
 mcpProtocolCheck(omoMcpResourceMetadata()['resource_name'] === $serverInfo['title'], 'OAuth and MCP names agree');
 mcpProtocolCheck(omoMcpDispatch(['jsonrpc' => '2.0', 'method' => 'notifications/initialized'], []) === null, 'Notification has no response');
 mcpProtocolCheck(omoMcpDispatch(['jsonrpc' => '2.0', 'id' => 2, 'method' => 'delete_everything'], [])['error']['code'] === -32601, 'Unknown method');
-mcpProtocolCheck(count(omoMcpTools()) === 17, 'Seventeen tools, including availability and event creation');
+mcpProtocolCheck(count(omoMcpTools()) === 19, 'Nineteen tools, including decision creation');
+mcpProtocolCheck(omoMcpNormalizeScope('decisions:create organization:read') === 'organization:read decisions:create', 'Decision scope is supported');
 $byName = array_column(omoMcpTools(), null, 'name');
 mcpProtocolCheck($byName['omo_get_availability']['annotations']['readOnlyHint'] && $byName['omo_list_event_spaces']['annotations']['readOnlyHint'], 'Availability and destination discovery are read-only');
 mcpProtocolCheck(!$byName['omo_create_event']['annotations']['readOnlyHint'] && $byName['omo_create_event']['securitySchemes'][0]['scopes'] === [OMO_MCP_SCOPE, OMO_MCP_EVENT_SCOPE], 'Event creation has distinct consent');

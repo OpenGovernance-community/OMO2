@@ -354,116 +354,12 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
         return html;
     }
 
-    function findEmbeddableDocumentById(documentId) {
-        const numericId = Number.parseInt(String(documentId || ''), 10);
-        if (!Number.isInteger(numericId) || numericId <= 0) {
-            return null;
-        }
-
-        return embeddableDocuments.find(function (documentItem) {
-            return Number.parseInt(String(documentItem.id || ''), 10) === numericId;
-        }) || null;
-    }
-
     function getEmbedNodeDocumentId(targetNode) {
         if (!targetNode || !targetNode.getAttribute) {
             return 0;
         }
 
         return Number.parseInt(String(targetNode.getAttribute('data-omo-document-id') || ''), 10) || 0;
-    }
-
-    function updateDocumentEmbedPickerPreview(modalBody, selectedItem) {
-        if (!modalBody) {
-            return;
-        }
-
-        const titleNode = modalBody.querySelector('[data-omo-document-embed-preview-title]');
-        const contextNode = modalBody.querySelector('[data-omo-document-embed-preview-context]');
-        const descriptionNode = modalBody.querySelector('[data-omo-document-embed-preview-description]');
-        const applyButton = modalBody.querySelector('[data-omo-document-embed-apply]');
-
-        if (!selectedItem) {
-            if (titleNode) {
-                titleNode.textContent = uiText.embedNone || '';
-            }
-            if (contextNode) {
-                contextNode.textContent = '';
-                contextNode.hidden = true;
-            }
-            if (descriptionNode) {
-                descriptionNode.textContent = '';
-                descriptionNode.hidden = true;
-            }
-            if (applyButton) {
-                applyButton.disabled = true;
-            }
-            return;
-        }
-
-        if (titleNode) {
-            const title = String(selectedItem.title || '').trim();
-            titleNode.textContent = title !== '' ? title : 'Document #' + String(selectedItem.id || '');
-        }
-
-        if (contextNode) {
-            const contextLabel = String(selectedItem.contextLabel || '').trim();
-            contextNode.textContent = contextLabel;
-            contextNode.hidden = contextLabel === '';
-        }
-
-        if (descriptionNode) {
-            const description = String(selectedItem.description || '').trim();
-            descriptionNode.textContent = description;
-            descriptionNode.hidden = description === '';
-        }
-
-        if (applyButton) {
-            applyButton.disabled = false;
-        }
-    }
-
-    function renderDocumentEmbedPickerOptions(selectNode, searchValue, selectedDocumentId) {
-        if (!selectNode) {
-            return null;
-        }
-
-        const normalizedSearch = String(searchValue || '').trim().toLowerCase();
-        const matchingItems = embeddableDocuments.filter(function (documentItem) {
-            if (normalizedSearch === '') {
-                return true;
-            }
-
-            const haystack = [
-                String(documentItem.title || ''),
-                String(documentItem.description || ''),
-                String(documentItem.contextLabel || '')
-            ].join(' ').toLowerCase();
-
-            return haystack.indexOf(normalizedSearch) >= 0;
-        });
-
-        selectNode.innerHTML = '';
-        matchingItems.forEach(function (documentItem) {
-            const option = document.createElement('option');
-            const title = String(documentItem.title || '').trim();
-            option.value = String(documentItem.id || '');
-            option.textContent = title !== '' ? title : 'Document #' + String(documentItem.id || '');
-            selectNode.appendChild(option);
-        });
-
-        let selectedItem = null;
-        if (matchingItems.length > 0) {
-            const preferredId = Number.parseInt(String(selectedDocumentId || ''), 10) || 0;
-            selectedItem = matchingItems.find(function (documentItem) {
-                return Number.parseInt(String(documentItem.id || ''), 10) === preferredId;
-            }) || matchingItems[0];
-
-            selectNode.value = String(selectedItem.id || '');
-        }
-
-        selectNode.disabled = matchingItems.length === 0;
-        return selectedItem;
     }
 
     function applyDocumentEmbedSelection(documentItem, targetNode, insertionMarker) {
@@ -492,165 +388,38 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
     }
 
     function openDocumentEmbedPicker(options) {
-        if (!htmlField || typeof window.commonTopbarOpenModal !== 'function') {
-            return;
-        }
-
+        if (!htmlField || !window.omoDocumentEmbedPicker) return;
         const settings = options && typeof options === 'object' ? options : {};
         const targetNode = settings.targetNode || null;
-        let selectedDocumentId = Number.parseInt(String(settings.selectedDocumentId || ''), 10) || 0;
-        let insertionMarker = null;
-        let pickerResolved = false;
-
-        if (!targetNode && typeof htmlField.createTemporaryCursorMarker === 'function') {
-            insertionMarker = htmlField.createTemporaryCursorMarker();
-        }
-
-        const modalHtml = ''
-            + '<div class="omo-document-embed-picker">'
-            + '  <label class="omo-document-embed-picker__field">'
-            + '    <span class="omo-document-embed-picker__label generic-form-label">Recherche</span>'
-            + '    <input type="search" class="generic-form-control" data-omo-document-embed-search placeholder="' + escapeHtml(uiText.embedSearchPlaceholder || '') + '">'
-            + '  </label>'
-            + '  <label class="omo-document-embed-picker__field">'
-            + '    <span class="omo-document-embed-picker__label generic-form-label">Documents visibles</span>'
-            + '    <select class="generic-form-control omo-document-embed-picker__select" data-omo-document-embed-select size="10"></select>'
-            + '  </label>'
-            + '  <div class="omo-document-embed-picker__preview">'
-            + '    <div class="omo-document-embed-picker__preview-title" data-omo-document-embed-preview-title>' + escapeHtml(uiText.embedNone || '') + '</div>'
-            + '    <div class="omo-document-embed-picker__preview-context" data-omo-document-embed-preview-context hidden></div>'
-            + '    <div class="omo-document-embed-picker__preview-description" data-omo-document-embed-preview-description hidden></div>'
-            + '  </div>'
-            + '  <div class="omo-document-embed-picker__actions">'
-            + (targetNode
-                ? '    <button type="button" class="generic-action-button generic-action-button--danger" data-omo-document-embed-delete>Supprimer</button>'
-                : '')
-            + '    <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-document-embed-cancel>' + escapeHtml(uiText.actionCancel || '') + '</button>'
-            + '    <button type="button" class="generic-action-button generic-action-button--main" data-omo-document-embed-apply disabled>' + escapeHtml(targetNode ? (uiText.embedUpdate || '') : (uiText.embedInsert || '')) + '</button>'
-            + '  </div>'
-            + '</div>';
-
-        window.commonTopbarOpenModal(uiText.embedModalTitle || '', modalHtml, 'html');
-
-        const modalBody = document.getElementById('commonTopbarModalBody');
-        if (!modalBody) {
-            if (
-                insertionMarker
-                && htmlField
-                && typeof htmlField.removeTemporaryMarker === 'function'
-            ) {
-                htmlField.removeTemporaryMarker(insertionMarker);
-            }
-            return;
-        }
-
-        const searchNode = modalBody.querySelector('[data-omo-document-embed-search]');
-        const selectNode = modalBody.querySelector('[data-omo-document-embed-select]');
-        const deleteButton = modalBody.querySelector('[data-omo-document-embed-delete]');
-        const cancelButton = modalBody.querySelector('[data-omo-document-embed-cancel]');
-        const applyButton = modalBody.querySelector('[data-omo-document-embed-apply]');
-
-        function cleanupInsertionMarker() {
-            if (
-                insertionMarker
-                && htmlField
-                && typeof htmlField.removeTemporaryMarker === 'function'
-            ) {
-                htmlField.removeTemporaryMarker(insertionMarker);
-            }
-
+        let insertionMarker = targetNode ? null : htmlField.createTemporaryCursorMarker();
+        let resolved = false;
+        const cleanup = function () {
+            if (insertionMarker) htmlField.removeTemporaryMarker(insertionMarker);
             insertionMarker = null;
-        }
-
-        window.addEventListener('common-topbar-modal-close', function () {
-            if (!pickerResolved) {
-                cleanupInsertionMarker();
-            }
-        }, { once: true });
-
-        function syncSelection(nextSelectedDocumentId) {
-            selectedDocumentId = Number.parseInt(String(nextSelectedDocumentId || ''), 10) || 0;
-            const selectedItem = findEmbeddableDocumentById(selectedDocumentId);
-            updateDocumentEmbedPickerPreview(modalBody, selectedItem);
-            return selectedItem;
-        }
-
-        function rerenderOptions() {
-            const selectedItem = renderDocumentEmbedPickerOptions(
-                selectNode,
-                searchNode ? searchNode.value : '',
-                selectedDocumentId > 0 ? selectedDocumentId : (targetNode ? getEmbedNodeDocumentId(targetNode) : 0)
-            );
-
-            selectedDocumentId = selectedItem ? Number.parseInt(String(selectedItem.id || ''), 10) : 0;
-            updateDocumentEmbedPickerPreview(modalBody, selectedItem);
-        }
-
-        rerenderOptions();
-
-        if (searchNode) {
-            searchNode.focus();
-            searchNode.addEventListener('input', rerenderOptions);
-        }
-
-        if (selectNode) {
-            selectNode.addEventListener('change', function () {
-                syncSelection(selectNode.value);
-            });
-
-            selectNode.addEventListener('dblclick', function () {
-                const selectedItem = syncSelection(selectNode.value);
-                if (!selectedItem) {
-                    return;
-                }
-
-                pickerResolved = true;
-                applyDocumentEmbedSelection(selectedItem, targetNode, insertionMarker);
+        };
+        const picker = window.omoDocumentEmbedPicker.open({
+            items: embeddableDocuments,
+            organizationId: pageConfig.organizationId,
+            initialHolonId: pageConfig.contextHolonId,
+            scopeLabels: uiText.embedScope,
+            selectedId: settings.selectedDocumentId || (targetNode ? getEmbedNodeDocumentId(targetNode) : 0),
+            filter: function (item) { return item.documentType === 'html' && Number(item.id) !== Number(editingDocumentId); },
+            labels: {
+                modalTitle: uiText.embedModalTitle, search: uiText.embedSearch,
+                quickSearchPlaceholder: uiText.embedSearchPlaceholder, visibleDocuments: uiText.embedVisible,
+                none: uiText.embedNone, fallbackTitle: uiText.embedFallbackTitle,
+                cancel: uiText.actionCancel, remove: uiText.embedRemove,
+                insert: targetNode ? uiText.embedUpdate : uiText.embedInsert
+            },
+            onSelect: function (item) {
+                applyDocumentEmbedSelection(item, targetNode, insertionMarker);
+                resolved = true;
                 insertionMarker = null;
-                if (typeof window.commonTopbarCloseModal === 'function') {
-                    window.commonTopbarCloseModal();
-                }
-            });
-        }
-
-        if (cancelButton) {
-            cancelButton.addEventListener('click', function () {
-                pickerResolved = false;
-                if (typeof window.commonTopbarCloseModal === 'function') {
-                    window.commonTopbarCloseModal();
-                }
-            });
-        }
-
-        if (deleteButton) {
-            deleteButton.addEventListener('click', function () {
-                pickerResolved = true;
-                cleanupInsertionMarker();
-                if (targetNode && htmlField && typeof htmlField.removeNode === 'function') {
-                    htmlField.removeNode(targetNode);
-                }
-
-                if (typeof window.commonTopbarCloseModal === 'function') {
-                    window.commonTopbarCloseModal();
-                }
-            });
-        }
-
-        if (applyButton) {
-            applyButton.addEventListener('click', function () {
-                const selectedItem = syncSelection(selectNode ? selectNode.value : 0);
-                if (!selectedItem) {
-                    return;
-                }
-
-                pickerResolved = true;
-                applyDocumentEmbedSelection(selectedItem, targetNode, insertionMarker);
-                insertionMarker = null;
-                if (typeof window.commonTopbarCloseModal === 'function') {
-                    window.commonTopbarCloseModal();
-                }
-            });
-        }
+            },
+            onRemove: targetNode ? function () { resolved = htmlField.removeNode(targetNode); } : null,
+            onClose: function () { if (!resolved) cleanup(); }
+        });
+        if (!picker) cleanup();
     }
 
     function getCurrentDraftContent() {
@@ -1210,8 +979,8 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
         htmlField = window.omoSimpleHtmlField.mount(htmlHost, {
             value: htmlValueCache,
             placeholder: 'Rédigez le contenu du document…',
-            height: 240,
             customButtons: customButtons,
+            resourceGapHelperLabel: String(uiText.embedAddLine || ''),
             onChange: function (value) {
                 htmlValueCache = String(value || '');
                 scheduleDraftSync(draftSyncDebounceMs);
@@ -1263,7 +1032,7 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
             return;
         }
 
-        const htmlFieldVersion = '20260912-toolbar-always-visible';
+        const htmlFieldVersion = '20261005-html-editor-gaps';
         if (
             window.omoSimpleHtmlField
             && typeof window.omoSimpleHtmlField.mount === 'function'

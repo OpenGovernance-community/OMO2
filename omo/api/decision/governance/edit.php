@@ -22,7 +22,7 @@ $isEditing = $decision instanceof DecisionProcess;
 $isOwner = !$isEditing || (int)$decision->get('IDuser') === $currentUserId;
 $isLocked = $isEditing && $decision->hasConsultationEnded();
 $canEdit = $isOwner && !$isLocked;
-$canUseAi = $canEdit && commonOpenAiGetApiKey() !== '' && patreonUserCanUseAi($currentUserId);
+$canUseAi = $canEdit && commonAiUserCanUse($currentUserId, commonOpenAiGetRewriteModel());
 $processDescription = $isEditing ? (string)$decision->get('description') : '';
 $decisionSettings = omoDecisionParamsGetConfig($context['organization'] ?? null);
 $governanceSettings = $decisionSettings['governance'];

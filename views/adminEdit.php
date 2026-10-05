@@ -17,7 +17,7 @@ require_once dirname(__DIR__) . '/common/assets.php';
 <?php if (!isset($params['includeComponentAssets']) || $params['includeComponentAssets'] !== false) { ?>
 <link rel="stylesheet" href="<?= commonAssetUrl('/common/assets/components.css') ?>">
 <?php } ?>
-<script src="/common/choice/highlight-palette.js?v=20260904-highlight-clear"></script>
+<script src="<?= commonAssetUrl('/common/choice/highlight-palette.js') ?>"></script>
 <link rel="stylesheet" href="<?= commonAssetUrl('/common/assets/admin-edit.css') ?>">
 <script>
 
