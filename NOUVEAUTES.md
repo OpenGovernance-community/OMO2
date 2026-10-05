@@ -1,5 +1,9 @@
 # Journal Des Nouveautes
 
+- API REST et MCP : creation et modification partielle de projets, decouverte des espaces autorises, lecture structuree et consentement projects:write. Les agents demandent les choix manquants (parent, responsable, statut, importance, priorite, dates) ; un blocage exige motif et date de reexamen. Regles natives de planification, historique et notifications conserves, protection contre doublons et modifications concurrentes. Formats et parcours dans OpenAPI et /developer/.
+
+- Consignes e-mail REST/MCP : presenter les destinataires, leur nombre, le sujet et le message integral pour validation explicite avant tout envoi ou mise en file. Adapter le texte au public ; faire revalider une version modifiee. La validation deja obtenue reste valable pour un envoi inchange et ses reessais. Consigne partagee entre les instructions MCP, les descriptions des outils et OpenAPI.
+
 - Consignes API/MCP aux agents : demander la destination d une creation et la methode du scrutin lorsqu elles ne sont pas specifiees, ainsi que les autres informations necessaires ou ambigues. Aucun choix implicite base sur la page ouverte ou le premier espace autorise. Consigne commune aux instructions MCP et aux descriptions des outils REST/MCP.
 
 - Memos : selecteur de documents partage avec les PV, navigation par cercles de holons, portees Local / Enfants directs / Descendants et recherche textuelle combinee. Seuls les Memos visibles sont proposes, en excluant le document en cours ; insertion et modification des references conservent le curseur.
