@@ -1382,7 +1382,13 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
 
     function setSavingState(isSaving) {
         form.querySelectorAll('input, textarea, select, button').forEach(function (field) {
-            field.disabled = !!isSaving;
+            if (isSaving) {
+                field.dataset.omoDisabledBeforeSave = field.disabled ? '1' : '0';
+                field.disabled = true;
+            } else if (field.dataset.omoDisabledBeforeSave !== undefined) {
+                field.disabled = field.dataset.omoDisabledBeforeSave === '1';
+                delete field.dataset.omoDisabledBeforeSave;
+            }
         });
         document.querySelectorAll('[form="' + form.id + '"]').forEach(function (field) {
             field.disabled = !!isSaving;

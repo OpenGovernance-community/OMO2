@@ -1018,8 +1018,7 @@
 				return false;
 			}
 
-			return $this->hasObjectPermission('CAN_EDIT_DOCUMENT', $userId, $useSessionCache)
-				&& $this->currentViewerCanAccessEditVisibility($documentOrganizationId, null, $userId);
+			return $this->currentViewerCanAccessEditVisibility($documentOrganizationId, null, $userId);
 		}
 
 		public function canManageInOrganizationContext(int $organizationId, ?int $userId = null, bool $useSessionCache = true): bool
@@ -1094,8 +1093,7 @@
 				return false;
 			}
 
-			return $this->hasObjectPermission('CAN_EDIT_DOCUMENT', $userId)
-				&& \dbObject\ObjectVisibility::viewerCanAccessRule(
+			return \dbObject\ObjectVisibility::viewerCanAccessRule(
 				$editVisibilityRule,
 				$viewerContext,
 				array(
