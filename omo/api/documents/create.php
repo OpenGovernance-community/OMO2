@@ -164,10 +164,6 @@ if ($documentId > 0) {
         $formErrorMessage = omoDocumentsCreateT('documents.create.error.pv_unsupported');
     }
 
-    if ($canUseForm && ($document->isEtherpadDocument() || $document->isEthercalcDocument()) && !$canManageDocument) {
-        $canUseForm = false;
-    }
-
     if ($canUseForm && $canEditDocumentContent && $document->supportsHtmlContent()) {
         $lockResult = $document->touchEditLock($organizationId, $currentUserId);
         if (!is_array($lockResult) || ($lockResult['status'] ?? false) !== true) {
@@ -678,6 +674,12 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                     </span>
                 </div>
 
+                <?php if ($isEditing && ($document->isEtherpadDocument() || $document->isEthercalcDocument() || $document->isWhiteboardDocument() || $document->canOpenWithCollabora())): ?>
+                    <div class="omo-document-detail__content generic-section generic-section--stack">
+                        <?= $document->getRenderedContentForCurrentViewer() ?>
+                    </div>
+                <?php endif; ?>
+
                 <div class="omo-document-editor__external-section" data-omo-document-external-section<?= $documentType !== Document::TYPE_EXTERNAL_LINK ? ' hidden' : '' ?>>
                     <div class="omo-document-editor__field generic-form-field">
                         <div class="generic-inline-help">
@@ -762,6 +764,9 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
 </div>
 
 <link rel="stylesheet" href="/omo/api/documents/editor.css?v=20260917-style-review-final">
+<?php if ($isEditing): ?>
+<link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/documents/detail.css') ?>">
+<?php endif; ?>
 
 <script src="<?= commonAssetUrl('/common/document/embed-picker.js') ?>"></script>
 <?= commonPageScriptTags('/omo/api/documents/create.js', [

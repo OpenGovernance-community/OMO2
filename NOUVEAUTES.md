@@ -1,5 +1,9 @@
 # Journal Des Nouveautes
 
+- Documents : la portee d edition du document autorise son contenu independamment du droit de modifier ses informations. Le bouton Editer reste disponible avec titre, description, tags et portees grises sans droit de gestion. Meme separation pour Memo, PAD, tableur, tableau blanc et Collabora ; les informations sont preservees cote serveur, meme dans une requete modifiee.
+
+- Export-import d organisation : conservation des visibilites de lecture et d edition des documents et PV, avec remappage de leurs cibles et du proprietaire des PV. Une portee absente utilise le role du document (ou son cercle) ; une cible invalide reste privee avec avertissement. Compatibilite conservee avec les anciennes visibilites numeriques OMO 1.
+
 - Calendrier : les evenements importes marques libres et les plages des calendriers de disponibilite se distinguent par de larges hachures diagonales semi-transparentes dans les vues mois, semaine, jour et liste. Une infobulle indique qu ils ne bloquent pas les disponibilites.
 
 - Scrutins : passer en elaboration ou en evaluation sans date planifiee demarre la phase immediatement, sans demande de confirmation. La confirmation reste reservee aux dates de debut futures.

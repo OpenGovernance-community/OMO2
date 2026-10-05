@@ -179,6 +179,14 @@ class OrganizationExport
         return (int)($object->get('IDuser') ?: $object->get('IDusercreation'));
     }
 
+    private static function buildDocumentVisibilityRecord(array $rule): array
+    {
+        return [
+            'type' => (string)$rule['visibility_type'],
+            'sourceHolonId' => (int)($rule['IDholon'] ?? 0),
+        ];
+    }
+
     private static function flattenHolons(array $nodes, array &$map): void
     {
         foreach ($nodes as $node) {
@@ -301,6 +309,8 @@ class OrganizationExport
                 'legacyFilePath' => (string)$document->get('storedfilepath'),
                 'fileTransferRequired' => $document->get('documenttype') === Document::TYPE_UPLOADED_FILE,
                 'sourceUserId' => self::sourceUserId($document),
+                'visibility' => self::buildDocumentVisibilityRecord($document->getPrimaryVisibilityRuleRow()),
+                'editVisibility' => self::buildDocumentVisibilityRecord($document->getPrimaryEditVisibilityRuleRow()),
                 'sourceHolonId' => (int)$document->get('IDholon'),
                 'sourceProjectId' => (int)($projectIds[0] ?? 0),
                 'sourceProjectIds' => $projectIds,
@@ -729,6 +739,9 @@ class OrganizationExport
             $records[] = [
                 'sourceId' => (int)$document->getId(),
                 'sourceMeetingId' => (int)$event->getId(),
+                'sourceUserId' => self::sourceUserId($document),
+                'visibility' => self::buildDocumentVisibilityRecord($document->getPrimaryVisibilityRuleRow()),
+                'editVisibility' => self::buildDocumentVisibilityRecord($document->getPrimaryEditVisibilityRuleRow()),
                 'sourceHolonId' => (int)$document->get('IDholon'),
                 'sourceSecretaryUserId' => (int)$document->get('IDuser_pv_editor'),
                 'meetingTitle' => (string)$event->get('title'),
