@@ -21,15 +21,15 @@ if (in_array($path, ['', '/', '/openapi.json'], true)) {
         'oauth_resource' => omoMcpPublicUrl(), 'oauth_metadata_url' => omoMcpIssuer() . '/.well-known/oauth-authorization-server']);
 }
 $grant = omoApiAuthenticate();
-$route = omoRestMatchRoute($path);
+$route = omoRestMatchRoute($path, $method);
 if ($route === null) omoMcpJson(['error' => 'not_found', 'error_description' => 'Unknown REST route.'], 404);
 if ($method !== $route['method']) {
-    header('Allow: ' . $route['method'] . ', OPTIONS');
+    header('Allow: ' . implode(', ', $route['allowed_methods']) . ', OPTIONS');
     omoMcpJson(['error' => 'method_not_allowed', 'error_description' => 'Use ' . $route['method'] . '.'], 405);
 }
 try {
     $body = null;
-    if ($method === 'POST') {
+    if (in_array($method, ['POST', 'PATCH'], true)) {
         if (strtolower(trim(explode(';', $_SERVER['CONTENT_TYPE'] ?? '')[0])) !== 'application/json') {
             omoMcpJson(['error' => 'unsupported_media_type', 'error_description' => 'Use application/json.'], 415);
         }
@@ -51,6 +51,10 @@ try {
         $status = empty($data['complete']) ? 202 : 200;
         header('Location: ' . omoMcpIssuer() . '/api/v1/emails/' . $data['mail_id']);
     }
+    if ($route['operation'] === 'omo_create_project') {
+        $status = empty($data['replayed']) ? 201 : 200;
+        header('Location: ' . omoMcpIssuer() . '/api/v1/projects/' . $data['project']['project_id']);
+    }
     error_log(sprintf('OMO REST operation=%s grant=%d user=%d organization=%d status=%d', $route['operation'],
         $grant['id'], $grant['IDuser'], $grant['IDorganization'], $status));
     omoMcpJson($data, $status);
@@ -61,6 +65,8 @@ try {
 } catch (OmoApiScopeException $error) {
     header('WWW-Authenticate: ' . omoApiScopeChallenge($grant, $error->requiredScope));
     omoMcpJson(['error' => 'insufficient_scope', 'error_description' => $error->getMessage(), 'required_scope' => $error->requiredScope], 403);
+} catch (OmoApiProjectConflictException $error) {
+    omoMcpJson(['error' => 'project_changed', 'error_description' => $error->getMessage(), 'current_version' => $error->currentVersion], 409);
 } catch (DomainException $error) {
     omoMcpJson(['error' => 'operation_rejected', 'error_description' => $error->getMessage()], 422);
 }
