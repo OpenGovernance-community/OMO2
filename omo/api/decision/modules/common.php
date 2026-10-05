@@ -11,6 +11,7 @@ use dbObject\Holon;
 use dbObject\User;
 
 require_once dirname(__DIR__, 4) . '/common/choice/proposal-dates.php';
+require_once dirname(__DIR__, 4) . '/common/choice/process-schedule.php';
 
 if (!class_exists('OmoDecisionModuleCapturedResponse', false)) {
     class OmoDecisionModuleCapturedResponse extends RuntimeException

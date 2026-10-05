@@ -1,5 +1,13 @@
 # Journal Des Nouveautes
 
+- Calendrier : les evenements importes marques libres et les plages des calendriers de disponibilite se distinguent par de larges hachures diagonales semi-transparentes dans les vues mois, semaine, jour et liste. Une infobulle indique qu ils ne bloquent pas les disponibilites.
+
+- Scrutins : passer en elaboration ou en evaluation sans date planifiee demarre la phase immediatement, sans demande de confirmation. La confirmation reste reservee aux dates de debut futures.
+
+- Droits : les membres de roles places dans des groupes, meme imbriques, recoivent les permissions de membre du cercle contenant et de ses modeles. Les roles admin du parent traversent aussi les groupes transparents ; les profils admin, collectif et pouvoirs etendus restent distincts. Le cache des droits est renouvele pour les sessions existantes.
+
+- Scrutins : visibilite et statut restent visibles ; deux cases permettent d ouvrir les dates des phases d elaboration et d evaluation, avec une aide explicative. Les dates s affichent a cote sur ordinateur et en dessous sur telephone. Correction de l initialisation des composants dans les panneaux charges dynamiquement ; les dates saisies sont conservees quand on replie une phase. Le helper de planification est charge aussi avant le choix de la methode pour eviter une erreur fatale a la creation.
+
 - API REST et MCP : creation et modification partielle de projets, decouverte des espaces autorises, lecture structuree et consentement projects:write. Les agents demandent les choix manquants (parent, responsable, statut, importance, priorite, dates) ; un blocage exige motif et date de reexamen. Regles natives de planification, historique et notifications conserves, protection contre doublons et modifications concurrentes. Formats et parcours dans OpenAPI et /developer/.
 
 - Consignes e-mail REST/MCP : presenter les destinataires, leur nombre, le sujet et le message integral pour validation explicite avant tout envoi ou mise en file. Adapter le texte au public ; faire revalider une version modifiee. La validation deja obtenue reste valable pour un envoi inchange et ses reessais. Consigne partagee entre les instructions MCP, les descriptions des outils et OpenAPI.

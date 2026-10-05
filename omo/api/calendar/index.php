@@ -15,6 +15,7 @@ use dbObject\Holon;
 use dbObject\Organization;
 
 $sourceLang = [
+    'calendar.external.free_hint' => ['text' => 'Libre : ne bloque pas les disponibilites.', 'context' => 'Tooltip explaining the diagonal stripes on imported calendar events that do not block availability.'],
     'calendar.external.availability' => ['text' => 'Disponibilités', 'context' => 'Calendar source suffix identifying external opening windows.'],
     'calendar.action.meeting_hint' => ['text' => 'Choisir vos horaires et votre agenda de reservation.', 'context' => 'Help below the calendar meeting menu action.'],
     'calendar.action.share_hint' => ['text' => 'Creer et gerer vos liens d abonnement.', 'context' => 'Help below the calendar share menu action.'],
@@ -855,6 +856,7 @@ if (ExternalCalendar::isStorageAvailable()) {
         $externalEventMetaByVirtualId[$virtualEventId] = [
             'title' => trim((string)$externalCalendar->get('title')) . ($externalCalendar->get('availability_only') ? ' · ' . omoCalendarT('calendar.external.availability') : ''),
             'color' => ExternalCalendar::normalizeColor($externalCalendar->get('color')),
+            'isFree' => !$externalEvent->get('is_busy') || (bool)$externalCalendar->get('availability_only'),
             'location' => trim((string)$externalEvent->get('location')),
         ];
         $events[] = $virtualEvent;
@@ -1422,8 +1424,9 @@ foreach ($calendarScopes as $scopeKey) {
 $calendarClientViews = [];
 $calendarClientItems = [];
 $calendarClientItemIds = [];
-$packCalendarItems = static function (array $items) use (&$calendarClientItems, &$calendarClientItemIds): array {
-    return array_map(static function (array $item) use (&$calendarClientItems, &$calendarClientItemIds): int {
+$packCalendarItems = static function (array $items) use (&$calendarClientItems, &$calendarClientItemIds, $externalEventMetaByVirtualId): array {
+    return array_map(static function (array $item) use (&$calendarClientItems, &$calendarClientItemIds, $externalEventMetaByVirtualId): int {
+        $item['isFree'] = !empty($item['isExternal']) && !empty($externalEventMetaByVirtualId[$item['id']]['isFree']);
         $key = json_encode($item, JSON_INVALID_UTF8_SUBSTITUTE);
         if (!isset($calendarClientItemIds[$key])) {
             $calendarClientItemIds[$key] = count($calendarClientItems);
@@ -1475,6 +1478,7 @@ $calendarClientLabels = [];
 foreach ([
     'calendar.navigation.previous', 'calendar.navigation.next', 'calendar.action.open_document',
     'calendar.axis.all_day', 'calendar.axis.now', 'calendar.empty.list', 'calendar.context.organization',
+    'calendar.external.free_hint',
     'calendar.list.column.date', 'calendar.list.column.event', 'calendar.list.column.schedule', 'calendar.list.column.context',
     'calendar.action.more', 'calendar.action.edit', 'calendar.action.delete', 'calendar.confirm.delete', 'calendar.error.delete',
     'calendar.delete.documents.title', 'calendar.delete.documents.question', 'calendar.delete.documents.yes', 'calendar.delete.documents.no',
@@ -1498,7 +1502,7 @@ $calendarClientData = [
 $headerCount = (int)($viewCountsByScope[$calendarScope][$viewMode] ?? 0);
 $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? '');
 ?>
-<link rel="stylesheet" href="/omo/api/calendar/calendar.css?v=20260917-calendar-new-event">
+<link rel="stylesheet" href="<?= omoApiEscape('/omo/api/calendar/calendar.css?v=' . substr(hash_file('sha256', __DIR__ . '/calendar.css'), 0, 16)) ?>">
 <link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260902-save-menu">
 <div
     class="omo-calendar omo-panel-view"

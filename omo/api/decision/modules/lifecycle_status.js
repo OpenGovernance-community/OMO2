@@ -72,8 +72,19 @@
         }
 
         const now = new Date();
-        const startDate = startInput.value ? new Date(startInput.value) : null;
-        if (startDate && !Number.isNaN(startDate.getTime()) && startDate <= now) {
+        // An unscheduled phase starts immediately when its status is selected.
+        // Record that start silently so the existing save validation stays consistent.
+        if (!startInput.value) {
+            if (isConsultation) {
+                adjustConsultationStart(scope, now);
+            } else {
+                adjustDates(scope, now);
+            }
+            select.dataset.omoDecisionLifecyclePreviousStatus = select.value;
+            return true;
+        }
+        const startDate = new Date(startInput.value);
+        if (!Number.isNaN(startDate.getTime()) && startDate <= now) {
             select.dataset.omoDecisionLifecyclePreviousStatus = select.value;
             return true;
         }
