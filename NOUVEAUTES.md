@@ -1,5 +1,7 @@
 # Journal Des Nouveautes
 
+- Consignes API/MCP aux agents : demander la destination d une creation et la methode du scrutin lorsqu elles ne sont pas specifiees, ainsi que les autres informations necessaires ou ambigues. Aucun choix implicite base sur la page ouverte ou le premier espace autorise. Consigne commune aux instructions MCP et aux descriptions des outils REST/MCP.
+
 - Memos : selecteur de documents partage avec les PV, navigation par cercles de holons, portees Local / Enfants directs / Descendants et recherche textuelle combinee. Seuls les Memos visibles sont proposes, en excluant le document en cours ; insertion et modification des references conservent le curseur.
 
 - Memos : les blocs documents integres affichent le meme bouton + au survol que les PV pour creer une ligne editable avant, apres ou entre deux blocs colles. Le curseur rejoint la nouvelle ligne pour continuer la saisie, y compris au debut et a la fin du document.
