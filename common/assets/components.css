@@ -2798,6 +2798,29 @@ html[data-theme="dark"] .generic-tabs__tab:focus-visible .generic-monochrome-ico
     display: none;
 }
 
+/* Optional form sections keep their trigger beside the revealed fields. */
+.generic-accordion--inline {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 2fr);
+    align-items: end;
+    gap: var(--generic-space-3);
+}
+
+.generic-accordion--inline > .generic-accordion__header {
+    min-height: 40px;
+}
+
+.generic-accordion--inline > .generic-accordion__content {
+    margin-top: 0;
+    min-width: 0;
+}
+
+@media (max-width: 700px) {
+    .generic-accordion--inline {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
 .generic-accordion--collapsible.is-collapsed .generic-accordion__toggle {
     transform: rotate(-90deg);
 }
