@@ -3,6 +3,8 @@
 use dbObject\DecisionProcess;
 use dbObject\DecisionGroup;
 
+require_once dirname(__DIR__, 3) . '/common/choice/process-schedule.php';
+
 $viewInput = isset($omoDecisionInput) && is_array($omoDecisionInput) ? $omoDecisionInput : $_GET;
 
 $baseSourceLang = [
@@ -511,6 +513,7 @@ if (function_exists('omoDecisionInvitationGetSourceLang')) {
     $baseSourceLang = array_merge($baseSourceLang, omoDecisionInvitationGetSourceLang());
 }
 
+$baseSourceLang += omoDecisionScheduleGetSourceLang();
 $lang = omoLoadTranslationBundle('omo_decision_edit', $baseSourceLang);
 $escape = 'omoApiEscape';
 
@@ -786,10 +789,6 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
                 $multiCanEditStructure = !$multiResultsMode && !$multiCoreLocked;
                 $multiCanEditStartDates = !$multiResultsMode && !$multiStartDatesLocked;
                 $multiVisibilityState = omoDecisionResolveVisibilityEditorState($multiDecision, $context);
-                $multiDateValue = static function ($value): string {
-                    $date = DecisionProcess::normalizeDateTimeValue($value);
-                    return $date instanceof DateTimeInterface ? $date->format('Y-m-d\TH:i') : '';
-                };
                 $multiStatusOptions = [
                     DecisionProcess::STATUS_DRAFT => 'decisions.edit.multi.status.draft',
                     DecisionProcess::STATUS_SCHEDULED => 'decisions.edit.multi.status.scheduled',
@@ -832,7 +831,7 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
                     data-omo-decision-lifecycle-confirm-template="<?= $escape(t('decisions.edit.lifecycle.evaluation_start_confirmation', [], $lang, $baseSourceLang)) ?>"
                     data-omo-decision-lifecycle-consultation-confirm-template="<?= $escape(t('decisions.edit.lifecycle.consultation_start_confirmation', [], $lang, $baseSourceLang)) ?>"
                 >
-                    <script src="/omo/api/decision/modules/lifecycle_status.js"></script>
+                    <script src="<?= commonAssetUrl('/omo/api/decision/modules/lifecycle_status.js') ?>"></script>
                     <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided generic-form-section--compact omo-decision-edit__process-settings">
                         <h3 class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.edit.multi.process_title', [], $lang, $baseSourceLang)) ?></h3>
                         <form class="generic-form-stack generic-form-stack--compact" data-omo-decision-process-form>
@@ -870,14 +869,7 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
                                 </label>
                             </div>
 
-                            <div class="generic-form-grid">
-                                <label class="generic-form-field"><span class="generic-form-label"><?= $escape(t('decisions.edit.multi.consultation_start', [], $lang, $baseSourceLang)) ?></span><input type="datetime-local" class="generic-form-control generic-form-control--compact" name="consultation_start_at" value="<?= $escape($isDuplicate ? '' : $multiDateValue($multiDecision->get('consultation_start_at'))) ?>" <?= $multiCanEditStartDates ? '' : 'readonly' ?>></label>
-                                <label class="generic-form-field"><span class="generic-form-label"><?= $escape(t('decisions.edit.multi.consultation_end', [], $lang, $baseSourceLang)) ?></span><input type="datetime-local" class="generic-form-control generic-form-control--compact" name="consultation_end_at" value="<?= $escape($isDuplicate ? '' : $multiDateValue($multiDecision->get('consultation_end_at'))) ?>"></label>
-                                <?php if (!$multiConsultationOnly): ?>
-                                <label class="generic-form-field"><span class="generic-form-label"><?= $escape(t('decisions.edit.multi.evaluation_start', [], $lang, $baseSourceLang)) ?></span><input type="datetime-local" class="generic-form-control generic-form-control--compact" name="evaluation_start_at" value="<?= $escape($isDuplicate ? '' : $multiDateValue($multiDecision->get('evaluation_start_at'))) ?>" <?= $multiCanEditStartDates ? '' : 'readonly' ?>></label>
-                                <label class="generic-form-field"><span class="generic-form-label"><?= $escape(t('decisions.edit.multi.evaluation_end', [], $lang, $baseSourceLang)) ?></span><input type="datetime-local" class="generic-form-control generic-form-control--compact" name="evaluation_end_at" value="<?= $escape($isDuplicate ? '' : $multiDateValue($multiDecision->get('evaluation_end_at'))) ?>"></label>
-                                <?php endif; ?>
-                            </div>
+                            <?= omoDecisionRenderProcessSchedule($isDuplicate ? null : $multiDecision, $multiCanEditStartDates, true, $lang, $baseSourceLang, $escape, $multiConsultationOnly, true) ?>
 
                             <?php if ($multiHasVotingGroup): ?>
                             <input type="hidden" name="owner_intermediate_results_access" value="<?= $multiOwnerIntermediateResultsAccess ? '1' : '0' ?>" data-omo-decision-general-hidden-owner-intermediate-results>

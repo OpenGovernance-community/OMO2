@@ -24,7 +24,10 @@ class Element extends EventTarget {
     removeAttribute(name) { this.attrs.delete(name); }
     get attributes() { return [...this.attrs].map(([name, value]) => ({ name, value })); }
     get src() { return this.getAttribute('src'); }
-    querySelectorAll(selector) { return selector === 'script' ? this.scripts : this.links; }
+    querySelectorAll(selector) {
+        if (selector === 'script') return this.scripts;
+        return selector === 'link[rel~="stylesheet"]' ? this.links : [];
+    }
     replaceChild(replacement, original) {
         this.replacement = replacement;
         if (original.onRun) original.onRun();
