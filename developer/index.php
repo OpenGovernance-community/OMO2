@@ -33,7 +33,7 @@ $sourceLang = [
     'resource' => ['text' => 'La ressource OAuth reste celle du MCP, barre oblique finale comprise. Utilisez exactement cette valeur pour resource pendant l’autorisation et l’échange de jeton :', 'context' => 'Canonical OAuth resource requirement.'],
     'refresh' => ['text' => 'Les jetons d’accès expirent après une heure. Renouvelez-les sur la même URL de jeton avec grant_type=refresh_token, client_id, refresh_token et resource. Conservez le nouveau refresh_token à chaque renouvellement. Pour ajouter des scopes, demandez un nouveau consentement.', 'context' => 'OAuth refresh and additional consent instructions.'],
     'conventions' => ['text' => 'Appels et pagination', 'context' => 'Shared request conventions section.'],
-    'queries' => ['text' => 'GET : filtres dans l’URL. Les tableaux sont séparés par des virgules (user_ids=1,16), sans syntaxe []. POST : objet JSON uniquement, Content-Type: application/json, sans paramètres dans l’URL.', 'context' => 'REST query and body encoding conventions.'],
+    'queries' => ['text' => 'GET : filtres dans l’URL. Les tableaux sont séparés par des virgules (user_ids=1,16), sans syntaxe []. POST et PATCH : objet JSON uniquement, Content-Type: application/json, sans paramètres dans l’URL.', 'context' => 'REST query and body encoding conventions.'],
     'pages' => ['text' => 'Conservez les filtres et suivez next_after_id jusqu’à null, même après une page vide. Les audiences et le texte utilisent next_offset ; les invités peuvent utiliser next_page. La recherche est limitée : utilisez les listes pour une exploration exhaustive.', 'context' => 'Complete pagination guidance.'],
     'retry' => ['text' => 'Pour une création ou un envoi, réutilisez la même request_key et le même contenu après un échec réseau. Cette protection contre les doublons est commune à REST et MCP.', 'context' => 'Idempotent retry guidance.'],
     'cors' => ['text' => 'Pour un client navigateur sur une autre origine, faites autoriser son origine dans MCP_ALLOWED_ORIGINS. Les clients serveur et CLI ne demandent pas de configuration CORS.', 'context' => 'Browser integration origin configuration.'],
@@ -47,7 +47,7 @@ $sourceLang = [
     'body' => ['text' => 'Corps JSON', 'context' => 'JSON body parameter location.'],
     'default' => ['text' => 'Valeur par défaut', 'context' => 'Schema default value label.'],
     'request' => ['text' => 'Exemple d’appel', 'context' => 'Curl request template heading.'],
-    'example_hint' => ['text' => 'Remplacez ACCESS_TOKEN et les valeurs entre accolades, en encodant les paramètres d’URL. Ajoutez les filtres facultatifs selon vos besoins. Pour un POST, préparez request.json selon les paramètres ci-dessus. Aucun appel n’est exécuté par cette page.', 'context' => 'Non-interactive curl example instructions.'],
+    'example_hint' => ['text' => 'Remplacez ACCESS_TOKEN et les valeurs entre accolades, en encodant les paramètres d’URL. Ajoutez les filtres facultatifs selon vos besoins. Pour un POST ou PATCH, préparez request.json selon les paramètres ci-dessus. Aucun appel n’est exécuté par cette page.', 'context' => 'Non-interactive curl example instructions.'],
     'responses' => ['text' => 'Format du retour', 'context' => 'Operation response format heading.'],
     'schema' => ['text' => 'Schéma JSON de la requête', 'context' => 'Expandable raw input schema title.'],
     'scope' => ['text' => 'Scope OAuth', 'context' => 'Operation authorization scope label.'],
@@ -60,6 +60,7 @@ $sourceLang = [
     'response_example' => ['text' => 'Exemple de réponse JSON', 'context' => 'Synthetic response example title.'],
     'response_hint' => ['text' => 'Les exemples sont fictifs. Les champs facultatifs dépendent du module, des permissions ou du réessai. « Requis » s’applique à l’objet parent lorsqu’il est présent ; [] représente les éléments d’un tableau. null est une valeur possible, distincte d’un champ absent.', 'context' => 'Response examples, optional fields and nested requiredness explanation.'],
     'response_headers' => ['text' => 'En-têtes de réponse', 'context' => 'HTTP response header documentation title.'],
+    'project_conflict' => ['text' => 'Projet modifie depuis sa lecture', 'context' => 'Concurrent project update response heading.'],
     'event_conflict' => ['text' => 'Conflit d’événement : aucun événement créé', 'context' => 'Business response variant requiring explicit confirmation.'],
     'error_format' => ['text' => 'Format des erreurs', 'context' => 'Shared error envelope documentation title.'],
     'error_hint' => ['text' => 'Une erreur renvoie error et, lorsqu’elle est disponible, error_description. required_scope indique un consentement OAuth manquant. Les conflits d’événement ont un retour spécifique décrit dans la fonction de création.', 'context' => 'Shared error fields and exceptional business response explanation.'],
@@ -193,7 +194,8 @@ function developerResponseFields(array $schema, array $schemas, string $prefix =
             }
             $curl = 'curl --fail-with-body -i ' . "'" . $baseUrl . $operation['path']
                 . ($query ? '?' . implode('&', $query) : '') . "'" . " \\\n  -H 'Authorization: Bearer ACCESS_TOKEN'";
-            if ($operation['method'] === 'POST') $curl .= " \\\n  -H 'Content-Type: application/json' \\\n  --data-binary @request.json";
+            if ($operation['method'] === 'PATCH') $curl .= ' -X PATCH';
+            if (in_array($operation['method'], ['POST', 'PATCH'], true)) $curl .= " \\\n  -H 'Content-Type: application/json' \\\n  --data-binary @request.json";
         ?>
         <section id="<?= $escape($operation['operationId']) ?>" class="generic-section generic-section--stack developer-section developer-operation" tabindex="-1" aria-labelledby="<?= $escape($operation['operationId']) ?>-title">
             <div class="developer-route developer-route--heading"><span class="developer-method developer-method--<?= strtolower($operation['method']) ?>"><?= $escape($operation['method']) ?></span><code>/api/v1<?= $escape($operation['path']) ?></code></div>
@@ -232,7 +234,7 @@ function developerResponseFields(array $schema, array $schemas, string $prefix =
                 $responseSchema = $spec['components']['schemas'][basename($responseMedia['schema']['$ref'])];
                 $responseFields = developerResponseFields($responseSchema, $spec['components']['schemas']);
             ?>
-            <?php if ($status === 409): ?><details class="generic-accordion generic-accordion--inset"><summary><?= $escape($tr('event_conflict')) ?></summary><?php endif; ?>
+            <?php if ($status === 409): ?><details class="generic-accordion generic-accordion--inset"><summary><?= $escape($tr($operation['operationId'] === 'omo_update_project' ? 'project_conflict' : 'event_conflict')) ?></summary><?php endif; ?>
                 <div class="generic-section generic-section--plain generic-section--stack generic-section--roomy">
                     <?php if (!empty($response['headers'])): ?>
                         <h4 class="generic-card-title generic-card-title--small"><?= $escape($tr('response_headers')) ?></h4>

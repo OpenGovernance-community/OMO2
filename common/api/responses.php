@@ -72,7 +72,7 @@ function omoApiResponseSchemas(): array
     $schemas['RecordSummary'] = $object($record, ['module', 'record_id', 'title', 'context_holon_id', 'url', 'date_field', 'date']);
     $schemas['Connection'] = $object([
         'connected' => $b + ['const' => true], 'read_only' => $b + ['examples' => [true]], 'scope' => $s + ['examples' => ['organization:read']],
-        'decision_creation_authorized' => $b, 'event_creation_authorized' => $b, 'document_creation_authorized' => $b, 'mail_sending_authorized' => $b,
+        'project_writing_authorized' => $b, 'decision_creation_authorized' => $b, 'event_creation_authorized' => $b, 'document_creation_authorized' => $b, 'mail_sending_authorized' => $b,
         'user' => $object(['id' => $i, 'name' => $s, 'meeting_booking_url' => $meetingUrl]),
         'organization' => $object(['id' => $i, 'name' => $s, 'root_holon_id' => $idNull, 'url' => $url]),
         'modules' => $list($moduleSchema), 'coverage' => $s,
@@ -83,6 +83,8 @@ function omoApiResponseSchemas(): array
             'user_relations' => $strings, 'statuses' => $list(['type' => ['string', 'integer']]), 'date_field' => $s])),
         'availability' => $object(['tool' => $s, 'member_lookup_module' => $s, 'max_members' => $i, 'max_days' => $i,
             'includes_imported_calendars' => $b, 'timezone' => $s, 'private_event_details' => $b]),
+        'project_writing' => $object(['authorized' => $b, 'scope' => $s, 'discover_tool' => $s, 'read_tool' => $s,
+            'create_tool' => $s, 'update_tool' => $s, 'requires_current_permissions' => $b]),
         'decision_creation' => $object(['authorized' => $b, 'scope' => $s, 'discover_tool' => $s, 'create_tool' => $s,
             'requires_omo_permission' => $s, 'methods' => $strings, 'dated_proposals_reserve_calendar' => $b]),
         'event_creation' => $object(['authorized' => $b, 'scope' => $s, 'discover_tool' => $s, 'create_tool' => $s,
@@ -192,6 +194,25 @@ function omoApiResponseSchemas(): array
             'members' => $i, 'individualMembers' => $i, 'invitedEmails' => $i, 'confirmedRegistrations' => $i]),
         'emails_sent' => $b + ['const' => false, 'description' => 'Saving invitations does not send email.'], 'url' => $url,
     ]);
+    $schemas['ProjectSpaces'] = $object([
+        'organization_id' => $i, 'items' => $list($object(['holon_id' => $i, 'name' => $s])),
+        'next_after_id' => $nextId, 'complete' => $complete, 'write_authorized' => $b, 'required_scope' => $s,
+        'statuses' => $list($object(['value' => $s, 'label' => $s, 'displayed' => $b + ['description' => 'Whether this status is displayed in native project views.']]))]);
+    $dateNull = ['type' => ['string', 'null'], 'format' => 'date'];
+    $schemas['Project'] = $object([
+        'project_id' => $i, 'organization_id' => $i, 'holon_id' => $i, 'parent_id' => $i + ['description' => '0 when no parent.'],
+        'responsible_user_id' => $idNull, 'title' => $s, 'description' => $s + ['description' => 'Safe native HTML.'],
+        'status' => $s + ['enum' => ['someday', 'ready', 'in_progress', 'blocked', 'review', 'done']], 'status_label' => $s,
+        'priority' => $idNull, 'importance' => $idNull, 'calculated_importance' => ['type' => 'number', 'description' => 'Native calculated score, read-only.'],
+        'planned_start_date' => $dateNull, 'planned_end_date' => $dateNull, 'project_size' => $s,
+        'blocked_reason' => $textNull, 'blocked_until' => $dateNull, 'blocked_auto_reactivate' => $b, 'blocked_reactivate_status' => $s,
+        'version' => $s + ['description' => 'Opaque revision to copy into expected_version. Replay returns current fields and version, not a historical snapshot.'],
+        'can_edit' => $b + ['description' => 'Native permission only; projects:write OAuth consent is also required to write.'], 'url' => $url]);
+    $schemas['ProjectRead'] = $object(['project' => $ref('Project')]);
+    $schemas['ProjectCreated'] = $object(['created' => $b + ['const' => true], 'replayed' => $b, 'project' => $ref('Project')]);
+    $schemas['ProjectUpdated'] = $object(['updated' => $b + ['const' => true], 'replayed' => $b, 'project' => $ref('Project')]);
+    $schemas['ProjectConflict'] = $object(['error' => $s + ['const' => 'project_changed'], 'error_description' => $s,
+        'current_version' => $s + ['description' => 'Reload the project to inspect current data before any retry.']]);
     $schemas['DecisionSpaces'] = $object([
         'organization_id' => $i, 'items' => $list($object(['holon_id' => $i, 'name' => $s, 'visibility_types' => $strings])),
         'next_after_id' => $nextId, 'complete' => $complete, 'write_authorized' => $b, 'required_scope' => $s,
@@ -225,6 +246,7 @@ function omoApiResponseSchemas(): array
 function omoApiResponseName(string $operation, int $status = 200): string
 {
     if ($operation === 'omo_create_event' && $status === 409) return 'EventConflict';
+    if ($operation === 'omo_update_project' && $status === 409) return 'ProjectConflict';
     if ($status >= 400) return 'Error';
     return match ($operation) {
         'omo_connection_info' => 'Connection', 'omo_catalog' => 'Catalog',
@@ -235,6 +257,8 @@ function omoApiResponseName(string $operation, int $status = 200): string
         'omo_send_object_email' => 'MailSent', 'omo_object_email_status' => 'MailStatus',
         'omo_get_availability' => 'Availability', 'omo_list_event_spaces' => 'EventSpaces', 'omo_create_event' => 'EventCreated',
         'omo_list_decision_spaces' => 'DecisionSpaces', 'omo_create_decision' => 'DecisionCreated',
+        'omo_list_project_spaces' => 'ProjectSpaces', 'omo_get_project' => 'ProjectRead',
+        'omo_create_project' => 'ProjectCreated', 'omo_update_project' => 'ProjectUpdated',
     };
 }
 

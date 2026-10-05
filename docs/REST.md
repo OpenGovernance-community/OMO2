@@ -1,9 +1,10 @@
 # API REST OMO v1
 
-L interface REST expose les 19 operations du MCP sous `/api/v1`.
+L interface REST expose les 23 operations du MCP sous `/api/v1`.
 Elle utilise le meme registre, la meme validation et les memes services dbObject.
 Les droits, la pagination, les consentements OAuth et les protections contre les
-doublons sont identiques. Aucune nouvelle table ni cle API permanente n est ajoutee.
+doublons sont identiques. Les tables de suivi des ecritures sont partagees avec MCP ;
+aucune cle API permanente n est ajoutee.
 
 ## Demarrage
 
@@ -18,7 +19,7 @@ doublons sont identiques. Aucune nouvelle table ni cle API permanente n est ajou
   (`created: false`, `requires_confirmation: true`) ; les erreurs communes sont
   documentees une seule fois. Les codes HTTP restent complets dans OpenAPI.
 - Toutes les operations metier demandent `Authorization: Bearer ACCESS_TOKEN`.
-- Les GET prennent leurs filtres dans la query string ; les POST prennent un objet
+- Les GET prennent leurs filtres dans la query string ; les POST et PATCH prennent un objet
   JSON avec `Content-Type: application/json`, sans parametres de query string.
 - Les resultats sont directement des objets JSON, sans enveloppe JSON-RPC.
 
@@ -65,6 +66,7 @@ Scopes :
 | `documents:create` | Creation de Memos, liens et fichiers |
 | `events:create` | Creation d evenements |
 | `decisions:create` | Creation de scrutins et reservations provisoires des propositions datees |
+| `projects:write` | Creation et modification de projets selon les droits OMO |
 | `mail:send` | Envoi aux destinataires references dans OMO |
 
 Les scopes d ecriture s ajoutent a `organization:read`. Ils n accordent jamais
@@ -105,6 +107,10 @@ Les schemas complets et limites viennent du registre partage dans OpenAPI.
 | POST | `/events` | `omo_create_event` |
 | GET | `/decision-spaces` | `omo_list_decision_spaces` |
 | POST | `/decisions` | `omo_create_decision` |
+| GET | `/project-spaces` | `omo_list_project_spaces` |
+| GET | `/projects/{project_id}` | `omo_get_project` |
+| POST | `/projects` | `omo_create_project` |
+| PATCH | `/projects/{project_id}` | `omo_update_project` |
 | POST | `/emails` | `omo_send_object_email` |
 | GET | `/emails/{mail_id}` | `omo_object_email_status` |
 
@@ -163,11 +169,19 @@ Le champ `file` prend l objet `download_url`, `file_id` et les metadonnees
 facultatives ; ce premier transport ne propose pas de formulaire multipart.
 
 Pour les e-mails : lire `/objects/event/1162/members`, verifier `can_send`,
-`mail_authorized` et `recipient_count`, puis POSTer vers `/emails` le sujet,
-le message, `object_type`, `object_id`, le `audience_token` retourne et une
+`mail_authorized` et `recipient_count`. L agent presente ensuite les destinataires,
+leur nombre, le sujet et le message integral (liens inclus), adapte au public,
+et attend la validation explicite de l utilisateur. Apres validation, POSTer vers
+`/emails` le sujet et le texte approuves, `object_type`, `object_id`, le `audience_token` retourne et une
 `request_key`. Si `user_ids` est utilise pour une audience d organisation,
 garder la meme selection dans l apercu et l envoi. Les protections et limites
 d envoi du MCP restent actives ; aucune liste libre d adresses n est acceptee.
+
+Ne pas envoyer ni mettre en file un brouillon en attente de validation. Si le
+contenu ou les destinataires changent, presenter la version revisee pour validation.
+OAuth et `audience_token` ne valident pas le texte. Une validation deja obtenue
+pour le contenu exact et les destinataires reste valable pour l envoi et ses
+reessais identiques, avec la meme `request_key`.
 
 ## Resultats et erreurs
 
@@ -238,7 +252,8 @@ Parcours commun REST/MCP :
    propositions datees deviennent des evenements `option` (ICS TENTATIVE).
    Ne pas creer trois autres evenements avec `omo_create_event`.
 5. Previsualiser les destinataires avec `omo_list_object_members`, type
-   `decision`, ID du scrutin. Envoyer ensuite le message demande avec
+   `decision`, ID du scrutin. Faire valider le sujet et le texte integral,
+   puis envoyer le message approuve avec
    `omo_send_object_email`, le jeton `audience_token` et le lien du scrutin.
    `mail:send` reste une autorisation distincte. Creation et invitations seules
    n envoient aucun e-mail.
@@ -339,9 +354,99 @@ Pour envoyer **ton propre lien** aux membres choisis de l organisation :
 2. Previsualiser `omo_list_object_members` avec `object_type=organization`,
    `object_id=organization.id` et les `user_ids` demandes. Omettre `user_ids`
    uniquement si l utilisateur demande explicitement tous les membres.
-3. Si `can_send=true`, appeler `omo_send_object_email` avec la meme selection,
+3. Faire valider le sujet, le texte integral (lien inclus) et les destinataires.
+   Si `can_send=true`, appeler ensuite `omo_send_object_email` avec la meme selection,
    l `audience_token`, le sujet, le message contenant l URL et une `request_key`.
    L envoi exige toujours `mail:send` et une demande explicite d envoi.
 
 La documentation `/developer/` presente ce champ et sa signification depuis le
 meme schema OpenAPI que le reste de l API.
+
+## Creer et modifier un projet
+
+Autoriser `organization:read projects:write` en reconnectant le client. Un refresh
+ne peut pas ajouter ce consentement. Les outils de decouverte et de lecture
+restent accessibles avec la seule lecture.
+
+1. Choisir le contexte avec `GET /project-spaces?kind=holons` (ou
+   `omo_list_project_spaces`). Suivre `next_after_id` jusqu a null. `kind=organization`
+   retourne le holon racine structurel lorsqu il existe, sinon le contexte 0.
+   Les statuts renvoyes comprennent leurs libelles personnalises et l indication
+   `displayed` pour les vues natives ; les six statuts natifs restent utilisables.
+2. Demander les informations manquantes : parent ou aucun, responsable ou aucun,
+   statut initial, importance strategique, priorite, debut et delai ou absence
+   explicite de dates. Chercher un parent avec `/records/projects` et une personne
+   avec `/records/team` ; ne pas deviner les identifiants ni le role de destination.
+3. Creer par `POST /projects` ou `omo_create_project`, avec une `request_key` unique.
+   Une valeur null signifie un choix explicite de laisser le champ non defini.
+   `parent_id=0` signifie aucun parent. Exemple de corps JSON :
+
+```json
+{
+  "holon_id": 429,
+  "title": "Preparer la formation",
+  "description": "Preparer le programme et les supports.",
+  "parent_id": 0,
+  "responsible_user_id": null,
+  "status": "ready",
+  "priority": 2,
+  "importance": 4,
+  "planned_start_date": null,
+  "planned_end_date": "2030-01-31",
+  "request_key": "formation-project-001"
+}
+```
+
+Le resultat contient `created`, `replayed` et `project`, avec tous les champs
+sauves, le lien OMO, `can_edit` et `version`. Le `Location` pointe vers
+`GET /projects/{project_id}`. Une nouvelle creation retourne 201, un reessai 200.
+La description d entree est du texte simple et le retour contient le HTML natif
+assaini. Les niveaux priorite/importance vont de 1 a 5 ou valent null ; le score
+`calculated_importance` est calcule par OMO et ne peut pas etre fourni.
+
+Pour modifier, lire `GET /projects/{project_id}` ou `omo_get_project`, puis envoyer
+uniquement les champs demandes dans `PATCH /projects/{project_id}`. Pour MCP,
+appeler `omo_update_project` avec aussi `project_id`. Copier `version` dans
+`expected_version` et fournir une nouvelle `request_key` pour chaque intention
+de modification. Le corps REST ne doit pas repeter `project_id` du chemin.
+
+```json
+{
+  "expected_version": "COPIER_LA_VERSION_LUE",
+  "status": "blocked",
+  "blocked_reason": "Attente de la validation du budget",
+  "blocked_until": "2030-01-15",
+  "request_key": "formation-project-block-001"
+}
+```
+
+Le passage a `blocked` exige explicitement raison et date de reexamen ; l agent
+les demande si elles manquent. La date de reexamen n est pas le delai du projet.
+`blocked_auto_reactivate` reste false sauf demande explicite ; si active, le
+mecanisme natif de relance utilise `blocked_reactivate_status` (`ready` ou
+`in_progress`). Quitter le statut bloque efface les details du blocage. Les autres
+champs omis d un PATCH sont conserves ; null efface les valeurs nullables.
+
+Les six statuts sont `someday`, `ready`, `in_progress`, `blocked`, `review`, `done`.
+Les regles natives restent actives : `someday` efface la planification,
+`in_progress` remplit un debut absent avec aujourd hui, `done` remplit une fin
+absente avec aujourd hui, un parent date peut imposer sa date de fin. Lire le
+resultat pour connaitre les dates effectivement enregistrees. Cycles, parents
+inaccessibles et dates incompatibles sont refuses sans sauvegarde partielle.
+
+Une version obsolete retourne 409 avec `error=project_changed`, une explication
+et `current_version`. Relire les champs et clarifier la modification avant une
+nouvelle tentative ; ne pas simplement reutiliser la nouvelle version pour
+forcer un ecrasement. Un timeout se traite en reutilisant exactement la meme
+cle et le meme contenu. Le reessai retourne **l etat actuel** du projet et
+`replayed=true`, sans recreer le projet ni reappliquer un ancien changement.
+
+Les droits natifs de creation/gestion sont reverifies, y compris le droit du
+responsable de modifier son projet. Un reessai exige encore les droits courants.
+Historique, calcul d importance et notifications natives de changement de statut
+sont conserves. Les nouveaux projets sont standards et actifs ; suppression,
+archivage, modeles de processus, validation de propositions et changement de
+holon ne sont pas exposes par ces outils.
+
+La migration `sql/2026-10-05-02-api-project-writes.sql` cree uniquement le suivi
+commun de reessais REST/MCP. Les donnees du projet restent dans `project`.

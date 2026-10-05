@@ -2,7 +2,7 @@
 declare(strict_types=1);
 require_once __DIR__ . '/mcp_test_helpers.php';
 require_once dirname(__DIR__) . '/common/api/rest.php';
-use dbObject\{McpOauthGrant, Document, Event, ObjectMail, ArrayApplication, OrganizationApplication, ArrayPermission, HolonPermission,
+use dbObject\{McpOauthGrant, Document, Event, Project, ObjectMail, ArrayApplication, OrganizationApplication, ArrayPermission, HolonPermission,
     MeetingProfile, ExternalCalendar, User, UserOrganization};
 
 $host = parse_url(omoMcpPublicUrl(), PHP_URL_HOST);
@@ -73,7 +73,7 @@ $items = mcpFixtures();
 try {
     mcpEnableDocumentCreation($items);
     $oid = (int)$items['org']->getId(); $uid = (int)$items['user']->getId(); $hid = (int)$items['role']->getId();
-    $apps = new ArrayApplication(); $apps->load(['where' => [['field' => 'hash', 'op' => 'IN', 'value' => ['team', 'calendar', 'decision']]]]);
+    $apps = new ArrayApplication(); $apps->load(['where' => [['field' => 'hash', 'op' => 'IN', 'value' => ['team', 'calendar', 'decision', 'projects']]]]);
     foreach ($apps as $app) $items['app_' . $app->get('hash')] = mcpFixture(OrganizationApplication::class,
         ['IDorganization' => $oid, 'IDapplication' => $app->getId(), 'active' => 1]);
     $permissions = new ArrayPermission(); $permissions->load(['where' => [['field' => 'permission_key', 'value' => 'CAN_CREATE_EVENT']], 'limit' => 1]);
@@ -82,8 +82,11 @@ try {
     $permissions = new ArrayPermission(); $permissions->load(['where' => [['field' => 'permission_key', 'value' => 'CAN_CREATE_DECISION']], 'limit' => 1]);
     $items['decision_permission'] = mcpFixture(HolonPermission::class,
         ['IDholon' => $hid, 'IDpermission' => $permissions[0]->getId(), 'range' => 'self', 'member_type' => 'member']);
+    $permissions = new ArrayPermission(); $permissions->load(['where' => [['field' => 'permission_key', 'op' => 'IN', 'value' => ['CAN_CREATE_PROJECT', 'CAN_EDIT_PROJECT']]]]);
+    foreach ($permissions as $permission) $items[$permission->get('permission_key')] = mcpFixture(HolonPermission::class,
+        ['IDholon' => $hid, 'IDpermission' => $permission->getId(), 'range' => 'self', 'member_type' => 'member']);
     $tokens = [];
-    foreach (['read' => OMO_MCP_SCOPE, 'write' => OMO_MCP_SCOPE . ' ' . OMO_MCP_CREATE_SCOPE . ' ' . OMO_MCP_MAIL_SCOPE . ' ' . OMO_MCP_EVENT_SCOPE . ' ' . OMO_MCP_DECISION_SCOPE] as $key => $scope) {
+    foreach (['read' => OMO_MCP_SCOPE, 'write' => OMO_MCP_SCOPE . ' ' . OMO_MCP_CREATE_SCOPE . ' ' . OMO_MCP_MAIL_SCOPE . ' ' . OMO_MCP_EVENT_SCOPE . ' ' . OMO_MCP_DECISION_SCOPE . ' ' . OMO_MCP_PROJECT_SCOPE] as $key => $scope) {
         $authorization = mcpAuthorizationRequest($items['client']); $authorization['scope'] = $scope;
         $code = McpOauthGrant::issueCode($items['client'], $uid, $oid, $authorization);
         $tokens[$key] = McpOauthGrant::exchange($items['client'], mcpExchangeRequest($items['client'], $code));
@@ -137,6 +140,7 @@ try {
         ['/document-spaces?kind=holons', 'omo_list_document_spaces', ['kind' => 'holons']],
         ['/event-spaces', 'omo_list_event_spaces', []],
         ['/decision-spaces?kind=holons', 'omo_list_decision_spaces', ['kind' => 'holons']],
+        ['/project-spaces?kind=holons', 'omo_list_project_spaces', ['kind' => 'holons']],
         ['/availability?user_ids=' . $uid . '&date_from=' . $day . '&date_to=' . $day, 'omo_get_availability', ['user_ids' => [$uid], 'date_from' => $day, 'date_to' => $day]],
     ] as [$path, $name, $args]) {
         $rest = restHttp('GET', '/api/v1' . $path, $read); $mcp = restRpc($read, $name, $args);
@@ -254,6 +258,28 @@ try {
     restCheckSchema('omo_read_record', restHttp('GET', parse_url($createdDecision['headers']['location'], PHP_URL_PATH), $write));
     $decisionReplay = restRpc($write, 'omo_create_decision', $decisionArgs);
     mcpCheck($decisionReplay['data']['result']['structuredContent']['replayed'], 'Decision retries shared with MCP');
+    $projectArgs = ['holon_id' => $hid, 'title' => 'REST project', 'parent_id' => 0, 'responsible_user_id' => $uid,
+        'status' => 'ready', 'priority' => null, 'importance' => 3, 'planned_start_date' => null, 'planned_end_date' => null,
+        'request_key' => 'rest-project-create'];
+    mcpCheck(restHttp('POST', '/api/v1/projects', $read, $projectArgs)['status'] === 403, 'Project write consent enforced');
+    $createdProject = restHttp('POST', '/api/v1/projects', $write, $projectArgs);
+    mcpCheck($createdProject['status'] === 201, 'REST project saved');
+    $items['rest_project'] = new Project(); $items['rest_project']->load($createdProject['data']['project']['project_id']);
+    restCheckSchema('omo_create_project', $createdProject);
+    $projectPath = parse_url($createdProject['headers']['location'], PHP_URL_PATH);
+    $projectRead = restHttp('GET', $projectPath, $read);
+    restCheckSchema('omo_get_project', $projectRead);
+    $projectMcpRead = restRpc($read, 'omo_get_project', ['project_id' => $items['rest_project']->getId()]);
+    mcpCheck($projectRead['data'] === $projectMcpRead['data']['result']['structuredContent'], 'Structured project read parity');
+    $patch = ['expected_version' => $projectRead['data']['project']['version'], 'status' => 'blocked',
+        'blocked_reason' => 'Waiting for approval', 'blocked_until' => '2030-01-04', 'request_key' => 'rest-project-update'];
+    $updatedProject = restHttp('PATCH', $projectPath, $write, $patch);
+    mcpCheck($updatedProject['status'] === 200, 'REST project updated'); restCheckSchema('omo_update_project', $updatedProject);
+    $projectReplay = restRpc($write, 'omo_update_project', $patch + ['project_id' => (int)$items['rest_project']->getId()]);
+    mcpCheck($projectReplay['data']['result']['structuredContent']['replayed'], 'Project writes share MCP retries');
+    $conflict = restHttp('PATCH', $projectPath, $write, array_replace($patch, ['request_key' => 'rest-project-conflict', 'status' => 'ready']));
+    mcpCheck($conflict['status'] === 409, 'Concurrent project update rejected'); restCheckSchema('omo_update_project', $conflict);
+    mcpCheck(restHttp('PUT', $projectPath, $write)['headers']['allow'] === 'GET, PATCH, OPTIONS', 'All supported methods disclosed');
     // Never deliver email: scope denial and an inaccessible object both fail before queue/SMTP.
     $mailArgs = ['object_type' => 'holon', 'object_id' => PHP_INT_MAX, 'subject' => 'Test', 'message' => 'Test',
         'audience_token' => str_repeat('0', 64), 'request_key' => 'rest-mail-denied'];
@@ -277,7 +303,7 @@ try {
     $items['membership']->set('active', true); $items['membership']->save();
     $grant = McpOauthGrant::authenticate($write, omoMcpPublicUrl()); McpOauthGrant::revokeOwned((int)$grant['id'], $uid);
     mcpCheck(restHttp('GET', '/api/v1/connection', $write)['status'] === 401, 'OAuth revocation shared with REST');
-    echo "rest_http_test: OK (public return formats, response schemas/examples, all 19 routes, MCP parity, scopes, isolation, persisted documents/events/decisions, shared retries, revocation)\n";
+    echo "rest_http_test: OK (public return formats, response schemas/examples, all 23 routes, MCP parity, scopes, isolation, persisted documents/events/decisions/projects, shared retries, revocation)\n";
 } finally {
     mcpCleanup($items);
     if (is_file($jar)) unlink($jar);

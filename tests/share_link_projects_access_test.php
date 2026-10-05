@@ -34,7 +34,8 @@ shareLinkProjectsAccessAssert(
 );
 shareLinkProjectsAccessAssert(
     is_string($structureData)
-        && str_contains($structureData, 'const OMO_STRUCTURE_CACHE_VERSION = 4;')
+        && preg_match('/const OMO_STRUCTURE_CACHE_VERSION = ([0-9]+);/', $structureData, $cacheVersion) === 1
+        && (int)$cacheVersion[1] >= 4
         && str_contains($structureData, '$shareLink instanceof \\dbObject\\HolonShareLink')
         && str_contains($structureData, '? ArrayProject::fetchTitlesForProjectIds($organizationId, array_keys($projectIds))'),
     'A structural share must receive titles only for its displayed project lists.'
