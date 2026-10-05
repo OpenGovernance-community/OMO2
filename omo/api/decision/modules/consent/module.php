@@ -9,7 +9,7 @@ require_once __DIR__ . '/shared.php';
 if (!function_exists('omoDecisionConsentModuleGetSourceLang')) {
     function omoDecisionConsentModuleGetSourceLang()
     {
-        return [
+        return omoDecisionScheduleGetSourceLang() + [
             'decisions.consent.title' => ['text' => 'Configurer un scrutin par consentement', 'context' => 'Title of the consent management screen.'],
             'decisions.consent.description' => ['text' => 'Créez un scrutin où chaque participant indique s’il est pour, sans objection ou en objection sur chaque proposition.', 'context' => 'Description of the consent management screen.'],
             'decisions.consent.view_title' => ['text' => 'Voir le scrutin', 'context' => 'Title of the read-only consent screen.'],
@@ -385,7 +385,7 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                 data-omo-decision-editor-header-submit-label="<?= $isEditable ? $escape($decision instanceof DecisionProcess ? t('decisions.consent.action.save', [], $lang, $sourceLang) : t('decisions.consent.action.create', [], $lang, $sourceLang)) : '' ?>"
                 <?php endif; ?>
             >
-                <script src="/omo/api/decision/modules/lifecycle_status.js"></script>
+                <script src="<?= commonAssetUrl('/omo/api/decision/modules/lifecycle_status.js') ?>"></script>
                 <input type="hidden" name="oid" value="<?= $escape((int)$context['organizationId']) ?>">
                 <input type="hidden" name="cid" value="<?= $escape((int)$context['targetHolonId']) ?>">
                 <input type="hidden" name="id" value="<?= $escape($decision instanceof DecisionProcess ? (int)$decision->getId() : 0) ?>">
@@ -441,27 +441,7 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                     </label>
                 </div>
 
-                <div class="generic-form-grid">
-                    <label class="generic-form-field omo-decision-consent__field">
-                        <span class="generic-form-label"><?= $escape(t('decisions.consent.field.consultation_start', [], $lang, $sourceLang)) ?></span>
-                        <input type="datetime-local" class="generic-form-control generic-form-control--compact" name="consultation_start_at" value="<?= $escape($decision instanceof DecisionProcess ? omoDecisionConsentFormatDateTimeLocal(DecisionProcess::normalizeDateTimeValue($decision->get('consultation_start_at'))) : '') ?>" <?= $canEditStartDates ? '' : 'readonly' ?>>
-                    </label>
-
-                    <label class="generic-form-field omo-decision-consent__field">
-                        <span class="generic-form-label"><?= $escape(t('decisions.consent.field.consultation_end', [], $lang, $sourceLang)) ?></span>
-                        <input type="datetime-local" class="generic-form-control generic-form-control--compact" name="consultation_end_at" value="<?= $escape($decision instanceof DecisionProcess ? omoDecisionConsentFormatDateTimeLocal(DecisionProcess::normalizeDateTimeValue($decision->get('consultation_end_at'))) : '') ?>">
-                    </label>
-
-                    <label class="generic-form-field omo-decision-consent__field">
-                        <span class="generic-form-label"><?= $escape(t('decisions.consent.field.evaluation_start', [], $lang, $sourceLang)) ?></span>
-                        <input type="datetime-local" class="generic-form-control generic-form-control--compact" name="evaluation_start_at" value="<?= $escape($decision instanceof DecisionProcess ? omoDecisionConsentFormatDateTimeLocal(DecisionProcess::normalizeDateTimeValue($decision->get('evaluation_start_at'))) : '') ?>" <?= $canEditStartDates ? '' : 'readonly' ?>>
-                    </label>
-
-                    <label class="generic-form-field omo-decision-consent__field">
-                        <span class="generic-form-label"><?= $escape(t('decisions.consent.field.evaluation_end', [], $lang, $sourceLang)) ?></span>
-                        <input type="datetime-local" class="generic-form-control generic-form-control--compact" name="evaluation_end_at" value="<?= $escape($decision instanceof DecisionProcess ? omoDecisionConsentFormatDateTimeLocal(DecisionProcess::normalizeDateTimeValue($decision->get('evaluation_end_at'))) : '') ?>">
-                    </label>
-                </div>
+                <?= omoDecisionRenderProcessSchedule($decision instanceof DecisionProcess ? $decision : null, $canEditStartDates, true, $lang, $sourceLang, $escape, false, true) ?>
 
                 <?= omoDecisionRenderInvitationSection($decision, array_merge($context, ['method' => DecisionProcess::METHOD_CONSENT]), $lang, $sourceLang, $escape, 'omo-decision-consent__invitation-summary') ?>
 
