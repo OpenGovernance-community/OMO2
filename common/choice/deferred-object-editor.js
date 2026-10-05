@@ -42,7 +42,7 @@
         var valueField = form.querySelector('[data-activity-html-value]');
         if (host && valueField && window.omoSimpleHtmlField && typeof window.omoSimpleHtmlField.mount === 'function') {
             window.omoSimpleHtmlField.mount(host, {
-                value: valueField.value || '', placeholder: '', minHeight: 120, simpleOnly: true,
+                value: valueField.value || '', placeholder: '', simpleOnly: true,
                 onChange: function (value) { valueField.value = String(value || ''); },
                 onReady: function (api) { if (api && api.getValue) valueField.value = String(api.getValue() || ''); }
             });

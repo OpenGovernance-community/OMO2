@@ -141,6 +141,8 @@ peuvent utiliser le meme serveur s ils supportent HTTP, OAuth DCR et PKCE S256.
 | --- | --- | --- |
 | `omo_get_availability` | `user_ids` (1 a 20 membres), `date_from`, `date_to` inclusives (31 jours maximum), `duration_minutes` facultatif (30 a 1440, multiple de 30) | Plages libres/occupees individuelles et `common_free_intervals`, resolution 30 minutes, fuseau Europe/Zurich ; `incomplete` signale les calendriers externes non verifies |
 | `omo_list_event_spaces` | `after_id`, `limit` facultatifs | Roles et cercles autorises pour `CAN_CREATE_EVENT`, `holon_id`, pagination, consentement `events:create` |
+| `omo_list_decision_spaces` | `kind` : organization ou holons, `after_id`, `limit` | Espaces autorises pour `CAN_CREATE_DECISION`, `holon_id`, visibilites compatibles, consentement `decisions:create` |
+| `omo_create_decision` | `title`, `question`, `method`, `proposals`, `request_key` ; contexte, invitations et dates des phases facultatifs | Scrutin natif, propositions, participants, reservations provisoires, liens interne et public, reessai sans doublon |
 | `omo_create_event` | `holon_id`, `title`, `start_at`, `end_at`, `request_key` ; description, fuseau, statut, journee entiere, lieu et listes d invites facultatifs | Nouvel evenement, ID et URL ; invites par defaut ou selection explicite, avertissements de disponibilite avant sauvegarde, reessais dedupliques |
 | `omo_list_object_members` | `object_type` (organization, holon, event, project, decision), `object_id` ; `user_ids` pour une selection dans l organisation ; `offset`, `limit` (maximum 50) | Membres/invites, nom, e-mail et telephone de l organisation, relations/statut, pagination `next_offset`, `can_send`, `recipient_count`, `audience_token` |
 | `omo_send_object_email` | `object_type`, `object_id`, `user_ids` facultatif pour organization, `subject`, `message`, `audience_token`, `request_key` | Envoi direct jusqu a 5 destinataires, sinon traitement automatique en file ; `mail_id`, compteurs de livraison et `replayed` |
@@ -644,6 +646,28 @@ gardent `form-action 'self'`. Les tests HTTP seuls ne detectent pas les blocages
 CSP appliques par le navigateur aux redirections apres soumission.
 
 Verifier aussi manuellement une connexion neuve dans ChatGPT : decouverte,
-login, consentement lecture et creation, dix-sept outils, import d une piece jointe,
+login, consentement lecture et creation, dix-neuf outils, import d une piece jointe,
 refus puis revocation. Les tests locaux ne
 peuvent pas prouver l accessibilite du domaine depuis les serveurs du fournisseur.
+
+## Creation de scrutins et rendez-vous
+
+Le parcours disponibilites, scrutin avec propositions datees, reservations agenda
+et e-mail aux participants est decrit dans [REST.md](REST.md#organiser-une-reunion-par-scrutin).
+Les deux interfaces partagent les memes champs, permissions et cles de reessai.
+La creation exige le nouveau consentement OAuth `decisions:create` ; reconnecter
+le client pour l ajouter. Le renouvellement du jeton conserve ses scopes actuels.
+
+## Partager un lien personnel de prise de rendez-vous
+
+`omo_connection_info` fournit `user.meeting_booking_url` pour la personne connectee.
+`omo_get_member` fournit `member.meeting_booking_url` pour un membre accessible ;
+les listes et lectures du module `team` contiennent aussi ce champ. Il reutilise
+le profil `/meeting/nom-unique` configure dans OMO et vaut `null` lorsque celui-ci
+n est pas utilisable. La lecture exige seulement `organization:read`.
+
+L assistant reprend le lien exact pour inviter les destinataires a choisir un
+creneau. Il ne doit pas inventer l URL ni affirmer qu un rendez-vous est reserve.
+L envoi demande utilise les fonctions de previsualisation et d e-mail existantes
+avec `mail:send`. Les configurations privees du calendrier ne sont pas exposees.
+Voir le [parcours complet REST/MCP](REST.md#lien-personnel-de-rendez-vous).

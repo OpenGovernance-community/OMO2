@@ -9,18 +9,31 @@ function omoDecisionRenderProposalDates(array $item, callable $escape, bool $edi
 {
     $timezone = $item['timezone'] ?? date_default_timezone_get();
     $disabled = $editable ? '' : ' disabled';
+    $values = [];
+    foreach (['start_at', 'end_at'] as $field) {
+        $value = $item[$field] ?? null;
+        $values[$field] = $value instanceof DateTimeInterface ? DateTimeImmutable::createFromInterface($value)->setTimezone(new DateTimeZone($timezone))->format('Y-m-d\TH:i') : str_replace(' ', 'T', substr((string)$value, 0, 16));
+    }
+    $multiDay = $values['start_at'] !== '' && $values['end_at'] !== '' && substr($values['start_at'], 0, 10) !== substr($values['end_at'], 0, 10);
+    $fieldHtml = static function (string $key, string $type, string $value) use ($escape, $disabled): string {
+        return '<label class="generic-form-field"><span class="generic-form-label">' . $escape(omoDecisionProposalT('decisions.proposals.dates.' . $key)) . '</span><input class="generic-form-control generic-form-control--compact" type="' . $type . '" data-omo-proposal-date-' . $key . ' value="' . $escape($value) . '"' . $disabled . '></label>';
+    };
     $html = '<div class="generic-soft-panel generic-form-stack generic-form-stack--compact choice-proposal-dates" data-omo-proposal-dates' . ($enabled ? '' : ' hidden') . '>'
         . '<div class="choice-proposal-dates__header"><span class="choice-proposal-dates__heading generic-form-label">' . omoDecisionProposalCalendarIcon() . $escape(omoDecisionProposalT('decisions.proposals.dates.range')) . '</span>'
         . '<div class="choice-proposal-dates__tools"><details class="choice-proposal-dates__timezone"><summary class="generic-meta" data-omo-proposal-timezone-label>' . $escape($timezone) . '</summary>'
         . '<label class="generic-form-field"><span class="generic-form-label">' . $escape(omoDecisionProposalT('decisions.proposals.dates.timezone')) . '</span><input class="generic-form-control generic-form-control--compact" type="text" data-omo-proposal-timezone name="' . $escape($prefix . 'timezone' . ($array ? '[]' : '')) . '" value="' . $escape($timezone) . '"' . $disabled . '></label></details>'
         . '<button type="button" class="generic-action-button generic-action-button--quiet-icon" data-omo-proposal-date-clear title="' . $escape(omoDecisionProposalT('decisions.proposals.dates.clear')) . '" aria-label="' . $escape(omoDecisionProposalT('decisions.proposals.dates.clear')) . '"' . (empty($item['start_at']) && empty($item['end_at']) ? ' hidden' : '') . $disabled . '><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div></div>'
-        . '<div class="generic-form-grid generic-form-grid--pair generic-form-grid--compact">';
+        . '<div class="generic-form-grid generic-form-grid--inline generic-form-grid--compact choice-proposal-dates__row">'
+        . '<div class="generic-form-grid generic-form-grid--compact choice-proposal-dates__single" data-omo-proposal-date-single' . ($multiDay ? ' hidden' : '') . '>'
+        . $fieldHtml('day', 'date', substr($values['start_at'], 0, 10))
+        . $fieldHtml('start_time', 'time', substr($values['start_at'], 11, 5))
+        . $fieldHtml('end_time', 'time', substr($values['end_at'], 11, 5)) . '</div>'
+        . '<div class="generic-form-grid generic-form-grid--compact choice-proposal-dates__range" data-omo-proposal-date-range' . ($multiDay ? '' : ' hidden') . '>';
     foreach (['start_at' => 'start', 'end_at' => 'end'] as $field => $key) {
-        $value = $item[$field] ?? null;
-        $value = $value instanceof DateTimeInterface ? DateTimeImmutable::createFromInterface($value)->setTimezone(new DateTimeZone($timezone))->format('Y-m-d\TH:i') : str_replace(' ', 'T', substr((string)$value, 0, 16));
-        $html .= '<label class="generic-form-field"><span class="generic-form-label">' . $escape(omoDecisionProposalT('decisions.proposals.dates.' . $key)) . '</span><input class="generic-form-control generic-form-control--compact" type="datetime-local" data-omo-proposal-date-' . $key . ' name="' . $escape($prefix . $field . ($array ? '[]' : '')) . '" value="' . $escape($value) . '"' . $disabled . '></label>';
+        $html .= $fieldHtml($key, 'datetime-local', $values[$field])
+            . '<input type="hidden" data-omo-proposal-date-value-' . $key . ' name="' . $escape($prefix . $field . ($array ? '[]' : '')) . '" value="' . $escape($values[$field]) . '"' . $disabled . '>';
     }
-    return $html . '</div></div>';
+    return $html . '</div><label class="generic-checkbox generic-checkbox--control"><input type="checkbox" data-omo-proposal-date-multiple' . ($multiDay ? ' checked' : '') . $disabled . '><span>' . $escape(omoDecisionProposalT('decisions.proposals.dates.multiple')) . '</span></label></div></div>';
 }
 
 function omoDecisionRenderProposalCalendarForItem(array $item, array $context, callable $escape): string
@@ -51,10 +64,11 @@ function omoDecisionRenderProposalCalendar(\dbObject\DecisionProposal $proposal,
         return $date->format($fallback);
     };
     $sameDay = $start->format('Y-m-d') === $end->format('Y-m-d');
-    $dateLabel = $sameDay ? $format($start, 'EEEE d MMMM yyyy', 'd.m.Y') : $format($start, 'd MMM yyyy', 'd.m.Y') . ' - ' . $format($end, 'd MMM yyyy', 'd.m.Y');
+    $dateLabel = $sameDay ? $format($start, 'EEEE d MMMM yyyy', 'd.m.Y') : omoDecisionProposalT('decisions.proposals.dates.from', ['date' => $format($start, 'd MMM yyyy', 'd.m.Y'), 'time' => $start->format('H:i')]);
+    $timeLabel = $sameDay ? $start->format('H:i') . ' - ' . $end->format('H:i') : omoDecisionProposalT('decisions.proposals.dates.until', ['date' => $format($end, 'd MMM yyyy', 'd.m.Y'), 'time' => $end->format('H:i')]);
     $badge = ['confirmed' => 'success', 'cancelled' => 'muted', 'option' => 'warning'][$status] ?? 'warning';
     $html .= '<div class="choice-proposal-calendar__stamp" aria-hidden="true"><span>' . $escape($format($start, 'MMM', 'm')) . '</span><strong>' . $start->format('d') . '</strong></div>'
-        . '<div class="choice-proposal-calendar__copy"><strong class="choice-proposal-calendar__date" data-omo-proposal-calendar-date>' . $escape($dateLabel) . '</strong><div class="choice-proposal-calendar__time"><span>' . $start->format('H:i') . ' &ndash; ' . $end->format('H:i') . '</span><span class="generic-meta">' . $escape($calendar['timezone']) . '</span></div></div>'
+        . '<div class="choice-proposal-calendar__copy"><strong class="choice-proposal-calendar__date" data-omo-proposal-calendar-date>' . $escape($dateLabel) . '</strong><div class="choice-proposal-calendar__time"><span>' . $escape($timeLabel) . '</span><span class="generic-meta">' . $escape($calendar['timezone']) . '</span></div></div>'
         . '<div class="choice-proposal-calendar__aside"><span class="generic-badge generic-badge--' . $badge . '" data-omo-proposal-calendar-status>' . $escape(omoDecisionProposalT('decisions.proposals.dates.' . $status)) . '</span>';
     $decision = $context['decision'] ?? null;
     if (!empty($context['canManage']) && $decision && in_array($decision->get('status'), ['results', 'archived'], true)) {

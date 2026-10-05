@@ -6,27 +6,58 @@
         if (!template) return '';
         var wrapper = document.createElement('div');
         wrapper.appendChild(template.content.cloneNode(true));
-        wrapper.querySelectorAll('input').forEach(function (input) {
+        wrapper.querySelectorAll('input[name]').forEach(function (input) {
             input.name = (prefix === undefined ? 'proposal_' : prefix) + input.name.replace(/^proposal_/, '').replace(/\[\]$/, '') + (array === false ? '' : '[]');
         });
-        window.omoProposalDates.setEnabled(wrapper.querySelector('[data-omo-proposal-dates]'), enabled !== false);
+        window.omoProposalDates.setEnabled(wrapper.querySelector('[data-omo-proposal-dates]'), enabled === true);
         return wrapper.innerHTML;
     };
+    function field(root, key) {
+        return root.querySelector('[data-omo-proposal-date-' + key + ']');
+    }
+    function updateState(root) {
+        var multiple = field(root, 'multiple').checked;
+        field(root, 'single').hidden = multiple;
+        field(root, 'range').hidden = !multiple;
+        var active = multiple ? ['start', 'end'] : ['day', 'start_time', 'end_time'];
+        var hasDate = active.some(function (key) { return Boolean(field(root, key).value); });
+        ['day', 'start_time', 'end_time', 'start', 'end'].forEach(function (key) {
+            var input = field(root, key);
+            input.disabled = root.hidden || field(root, 'multiple').disabled || active.indexOf(key) < 0;
+            input.required = hasDate && !input.disabled;
+        });
+        field(root, 'end').min = field(root, 'start').value;
+        field(root, 'end_time').min = field(root, 'start_time').value;
+        field(root, 'clear').hidden = !hasDate;
+        root.querySelector('[data-omo-proposal-timezone-label]').textContent = root.querySelector('[data-omo-proposal-timezone]').value;
+    }
+    // Only the two hidden datetime values and the timezone are submitted, in both modes.
+    function syncValues(root) {
+        var multiple = field(root, 'multiple').checked;
+        ['start', 'end'].forEach(function (key) {
+            var day = field(root, 'day').value;
+            var time = field(root, key + '_time').value;
+            field(root, 'value-' + key).value = multiple ? field(root, key).value : (day && time ? day + 'T' + time : '');
+        });
+        updateState(root);
+    }
     window.omoProposalDates.refresh = function (root) {
         if (!root) return;
         var start = root.querySelector('[data-omo-proposal-date-start]');
         var end = root.querySelector('[data-omo-proposal-date-end]');
         if (!start || !end) return;
-        var hasDate = Boolean(start.value || end.value);
-        start.required = end.required = hasDate && !root.hidden && !start.disabled;
-        end.min = start.value;
-        root.querySelector('[data-omo-proposal-date-clear]').hidden = !hasDate;
-        root.querySelector('[data-omo-proposal-timezone-label]').textContent = root.querySelector('[data-omo-proposal-timezone]').value;
+        start.value = field(root, 'value-start').value;
+        end.value = field(root, 'value-end').value;
+        field(root, 'day').value = start.value.slice(0, 10);
+        field(root, 'start_time').value = start.value.slice(11, 16);
+        field(root, 'end_time').value = end.value.slice(11, 16);
+        field(root, 'multiple').checked = Boolean(start.value && end.value && start.value.slice(0, 10) !== end.value.slice(0, 10));
+        updateState(root);
     };
     window.omoProposalDates.setEnabled = function (root, enabled) {
         if (!root) return;
         root.hidden = !enabled;
-        window.omoProposalDates.refresh(root);
+        updateState(root);
     };
     window.omoProposalDates.replaceCalendar = function (panel, html) {
         var template = document.createElement('template');
@@ -36,19 +67,32 @@
         else panel.hidden = true;
     };
     document.querySelectorAll('[data-omo-proposal-dates]').forEach(window.omoProposalDates.refresh);
-    document.addEventListener('input', function (event) {
+    function onInput(event) {
         var root = event.target.closest('[data-omo-proposal-dates]');
-        if (root) window.omoProposalDates.refresh(root);
-    });
+        if (!root) return;
+        if (event.target === field(root, 'multiple')) {
+            if (event.type !== 'change') return;
+            if (event.target.checked) {
+                field(root, 'start').value = field(root, 'value-start').value;
+                field(root, 'end').value = field(root, 'value-end').value;
+            } else {
+                field(root, 'day').value = field(root, 'start').value.slice(0, 10);
+                field(root, 'start_time').value = field(root, 'start').value.slice(11, 16);
+                field(root, 'end_time').value = field(root, 'end').value.slice(11, 16);
+            }
+        }
+        syncValues(root);
+    }
+    document.addEventListener('input', onInput);
+    document.addEventListener('change', onInput);
     document.addEventListener('click', function (event) {
         var clear = event.target.closest('[data-omo-proposal-date-clear]');
         if (clear && !clear.disabled) {
             var root = clear.closest('[data-omo-proposal-dates]');
-            root.querySelectorAll('input[type="datetime-local"]').forEach(function (input) {
-                input.value = '';
-                input.dispatchEvent(new Event('input', {bubbles: true}));
-                input.dispatchEvent(new Event('change', {bubbles: true}));
-            });
+            ['day', 'start_time', 'end_time', 'start', 'end', 'value-start', 'value-end'].forEach(function (key) { field(root, key).value = ''; });
+            field(root, 'multiple').checked = false;
+            updateState(root);
+            root.dispatchEvent(new Event('change', {bubbles: true}));
             return;
         }
         var button = event.target.closest('[data-omo-proposal-calendar-action]');

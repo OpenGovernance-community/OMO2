@@ -23,6 +23,8 @@ function omoRestRoutes(): array
         ['GET', '/availability', 'omo_get_availability'],
         ['GET', '/event-spaces', 'omo_list_event_spaces'],
         ['POST', '/events', 'omo_create_event'],
+        ['GET', '/decision-spaces', 'omo_list_decision_spaces'],
+        ['POST', '/decisions', 'omo_create_decision'],
     ];
 }
 
@@ -95,7 +97,7 @@ function omoRestOpenApi(): array
             503 => 'Server unavailable'] as $code => $description) {
             $responses[$code] = ['description' => $description];
         }
-        if (in_array($name, ['omo_create_document', 'omo_create_event'], true)) $responses[201] = ['description' => 'New object saved; Location identifies its REST record'];
+        if (in_array($name, ['omo_create_document', 'omo_create_event', 'omo_create_decision'], true)) $responses[201] = ['description' => 'New object saved; Location identifies its REST record'];
         if ($name === 'omo_create_event') $responses[409] = ['description' => 'Conflicts require confirmation; created=false, nothing saved'];
         if ($name === 'omo_send_object_email') $responses[202] = ['description' => 'Message accepted with pending deliveries; follow Location for status'];
         if ($method === 'POST') $responses[415] = ['description' => 'Use application/json'];
@@ -107,7 +109,7 @@ function omoRestOpenApi(): array
             ]];
             $example = $response['content']['application/json']['example'];
             if ($name === 'omo_create_document' && $code < 400) $example->record->module = 'documents';
-            if ($code === 200 && in_array($name, ['omo_create_document', 'omo_create_event'], true)) $example->replayed = true;
+            if ($code === 200 && in_array($name, ['omo_create_document', 'omo_create_event', 'omo_create_decision'], true)) $example->replayed = true;
             if ($code < 400 && in_array($name, ['omo_send_object_email', 'omo_object_email_status'], true)) {
                 $example->complete = $code === 200;
                 foreach ($example->delivery as $deliveryStatus => $_) $example->delivery->$deliveryStatus = 0;
@@ -117,7 +119,7 @@ function omoRestOpenApi(): array
                 400 => 'invalid_request', 401 => 'unauthorized', 403 => 'insufficient_scope', 405 => 'method_not_allowed',
                 415 => 'unsupported_media_type', 422 => 'operation_rejected', default => 'server_error',
             };
-            if ($code < 400 && in_array($name, ['omo_create_document', 'omo_create_event', 'omo_send_object_email'], true)) {
+            if ($code < 400 && in_array($name, ['omo_create_document', 'omo_create_event', 'omo_create_decision', 'omo_send_object_email'], true)) {
                 $response['headers']['Location'] = ['description' => 'REST URL of the saved record or email status.', 'schema' => ['type' => 'string', 'format' => 'uri']];
             }
             if (in_array($code, [401, 403], true)) $response['headers']['WWW-Authenticate'] = [
@@ -154,5 +156,5 @@ function omoRestOpenApi(): array
                 'authorizationUrl' => omoMcpIssuer() . '/mcp/authorize.php', 'tokenUrl' => omoMcpIssuer() . '/mcp/token.php',
                 'refreshUrl' => omoMcpIssuer() . '/mcp/token.php', 'scopes' => [
                     OMO_MCP_SCOPE => 'Read accessible organization data', OMO_MCP_CREATE_SCOPE => 'Create documents',
-                    OMO_MCP_MAIL_SCOPE => 'Send email to existing object audiences', OMO_MCP_EVENT_SCOPE => 'Create events']]]]]]];
+                    OMO_MCP_MAIL_SCOPE => 'Send email to existing object audiences', OMO_MCP_EVENT_SCOPE => 'Create events', OMO_MCP_DECISION_SCOPE => 'Create ballots and tentative proposal events']]]]]]];
 }

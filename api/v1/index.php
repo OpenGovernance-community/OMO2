@@ -41,10 +41,10 @@ try {
     $data = omoApiExecuteOperation($route['operation'], $args, $grant);
     $status = 200;
     if ($route['operation'] === 'omo_create_event' && !empty($data['requires_confirmation'])) $status = 409;
-    if (in_array($route['operation'], ['omo_create_document', 'omo_create_event'], true) && !empty($data['created'])) {
+    if (in_array($route['operation'], ['omo_create_document', 'omo_create_event', 'omo_create_decision'], true) && !empty($data['created'])) {
         $status = empty($data['replayed']) ? 201 : 200;
-        $module = $route['operation'] === 'omo_create_document' ? 'documents' : 'calendar';
-        $recordId = $data['record']['record_id'] ?? $data['event_id'];
+        $module = match ($route['operation']) { 'omo_create_document' => 'documents', 'omo_create_event' => 'calendar', default => 'decision' };
+        $recordId = $data['record']['record_id'] ?? $data['event_id'] ?? $data['decision_id'];
         header('Location: ' . omoMcpIssuer() . '/api/v1/records/' . $module . '/' . $recordId);
     }
     if ($route['operation'] === 'omo_send_object_email') {

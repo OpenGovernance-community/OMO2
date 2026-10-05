@@ -2,7 +2,8 @@
 declare(strict_types=1);
 require_once __DIR__ . '/mcp_test_helpers.php';
 require_once dirname(__DIR__) . '/common/api/rest.php';
-use dbObject\{McpOauthGrant, Document, Event, ObjectMail, ArrayApplication, OrganizationApplication, ArrayPermission, HolonPermission};
+use dbObject\{McpOauthGrant, Document, Event, ObjectMail, ArrayApplication, OrganizationApplication, ArrayPermission, HolonPermission,
+    MeetingProfile, ExternalCalendar, User, UserOrganization};
 
 $host = parse_url(omoMcpPublicUrl(), PHP_URL_HOST);
 mcpCheck($host === 'localtest.me', 'REST integration tests only run against local Docker');
@@ -72,14 +73,17 @@ $items = mcpFixtures();
 try {
     mcpEnableDocumentCreation($items);
     $oid = (int)$items['org']->getId(); $uid = (int)$items['user']->getId(); $hid = (int)$items['role']->getId();
-    $apps = new ArrayApplication(); $apps->load(['where' => [['field' => 'hash', 'op' => 'IN', 'value' => ['team', 'calendar']]]]);
+    $apps = new ArrayApplication(); $apps->load(['where' => [['field' => 'hash', 'op' => 'IN', 'value' => ['team', 'calendar', 'decision']]]]);
     foreach ($apps as $app) $items['app_' . $app->get('hash')] = mcpFixture(OrganizationApplication::class,
         ['IDorganization' => $oid, 'IDapplication' => $app->getId(), 'active' => 1]);
     $permissions = new ArrayPermission(); $permissions->load(['where' => [['field' => 'permission_key', 'value' => 'CAN_CREATE_EVENT']], 'limit' => 1]);
     $items['event_permission'] = mcpFixture(HolonPermission::class,
         ['IDholon' => $hid, 'IDpermission' => $permissions[0]->getId(), 'range' => 'self', 'member_type' => 'member']);
+    $permissions = new ArrayPermission(); $permissions->load(['where' => [['field' => 'permission_key', 'value' => 'CAN_CREATE_DECISION']], 'limit' => 1]);
+    $items['decision_permission'] = mcpFixture(HolonPermission::class,
+        ['IDholon' => $hid, 'IDpermission' => $permissions[0]->getId(), 'range' => 'self', 'member_type' => 'member']);
     $tokens = [];
-    foreach (['read' => OMO_MCP_SCOPE, 'write' => OMO_MCP_SCOPE . ' ' . OMO_MCP_CREATE_SCOPE . ' ' . OMO_MCP_MAIL_SCOPE . ' ' . OMO_MCP_EVENT_SCOPE] as $key => $scope) {
+    foreach (['read' => OMO_MCP_SCOPE, 'write' => OMO_MCP_SCOPE . ' ' . OMO_MCP_CREATE_SCOPE . ' ' . OMO_MCP_MAIL_SCOPE . ' ' . OMO_MCP_EVENT_SCOPE . ' ' . OMO_MCP_DECISION_SCOPE] as $key => $scope) {
         $authorization = mcpAuthorizationRequest($items['client']); $authorization['scope'] = $scope;
         $code = McpOauthGrant::issueCode($items['client'], $uid, $oid, $authorization);
         $tokens[$key] = McpOauthGrant::exchange($items['client'], mcpExchangeRequest($items['client'], $code));
@@ -132,12 +136,63 @@ try {
         ['/objects/organization/' . $oid . '/members?user_ids=' . $uid, 'omo_list_object_members', ['object_type' => 'organization', 'object_id' => $oid, 'user_ids' => [$uid]]],
         ['/document-spaces?kind=holons', 'omo_list_document_spaces', ['kind' => 'holons']],
         ['/event-spaces', 'omo_list_event_spaces', []],
+        ['/decision-spaces?kind=holons', 'omo_list_decision_spaces', ['kind' => 'holons']],
         ['/availability?user_ids=' . $uid . '&date_from=' . $day . '&date_to=' . $day, 'omo_get_availability', ['user_ids' => [$uid], 'date_from' => $day, 'date_to' => $day]],
     ] as [$path, $name, $args]) {
         $rest = restHttp('GET', '/api/v1' . $path, $read); $mcp = restRpc($read, $name, $args);
         mcpCheck($rest['status'] === 200 && !$mcp['data']['result']['isError']
             && $rest['data'] === $mcp['data']['result']['structuredContent'], 'REST and MCP must agree: ' . $name);
         restCheckSchema($name, $rest);
+    }
+    mcpCheck(restHttp('GET', '/api/v1/connection', $read)['data']['user']['meeting_booking_url'] === null,
+        'No profile returns an explicit null booking link');
+    foreach (['owner' => $uid, 'colleague' => null] as $key => $personId) {
+        if ($personId === null) {
+            $items['booking_colleague'] = mcpFixture(User::class, ['firstname' => 'Booking colleague', 'active' => 1]);
+            $personId = (int)$items['booking_colleague']->getId();
+            $items['booking_colleague_membership'] = mcpFixture(UserOrganization::class, ['IDuser' => $personId, 'IDorganization' => $oid, 'active' => 1]);
+        }
+        $items['booking_calendar_' . $key] = mcpFixture(ExternalCalendar::class, ['IDuser' => $personId, 'provider' => 'caldav',
+            'title' => 'PRIVATE-BOOKING-CALENDAR', 'calendar_url' => 'https://calendar.example.invalid/' . $personId,
+            'username' => 'PRIVATE-BOOKING-LOGIN', 'password_encrypted' => 'PRIVATE-BOOKING-PASSWORD',
+            'active' => 1, 'last_sync_at' => new DateTimeImmutable()]);
+        $items['booking_profile_' . $key] = mcpFixture(MeetingProfile::class, ['IDuser' => $personId, 'enabled' => 1,
+            'slug' => 'rest-booking-' . $personId, 'weekly_hours' => json_encode(MeetingProfile::defaultHours()),
+            'IDexternalcalendar' => $items['booking_calendar_' . $key]->getId(), 'timezone' => 'Europe/Zurich']);
+        $url = omoMcpIssuer() . '/meeting/rest-booking-' . $personId;
+        foreach ([['/members/' . $personId, 'omo_get_member', ['user_id' => $personId]],
+            ['/records/team?user_id=' . $personId, 'omo_list_records', ['module' => 'team', 'user_id' => $personId]],
+            ['/records/team/' . $personId, 'omo_read_record', ['module' => 'team', 'record_id' => $personId]]] as [$path, $operation, $arguments]) {
+            $member = restHttp('GET', '/api/v1' . $path, $read);
+            $rpc = restRpc($read, $operation, $arguments);
+            mcpCheck($member['status'] === 200 && $member['data'] === $rpc['data']['result']['structuredContent'], 'Booking link REST/MCP parity in ' . $operation);
+            $record = $member['data']['member'] ?? $member['data']['record'] ?? $member['data']['items'][0];
+            mcpCheck($record['meeting_booking_url'] === $url && !str_contains(json_encode($member['data']), 'PRIVATE-BOOKING'), 'Public link only; calendar credentials and settings stay private');
+            restCheckSchema($operation, $member);
+        }
+        if ($key === 'owner') {
+            $connection = restHttp('GET', '/api/v1/connection', $read);
+            mcpCheck($connection['data']['user']['meeting_booking_url'] === $url, 'Connection returns the authenticated owner booking URL without extra scope');
+            restCheckSchema('omo_connection_info', $connection);
+            foreach (['disabled', 'inactive_calendar', 'availability_calendar', 'no_calendar'] as $case) {
+                $profile = $items['booking_profile_owner']; $calendar = $items['booking_calendar_owner'];
+                $profile->set('enabled', $case !== 'disabled');
+                $profile->set('IDexternalcalendar', $case === 'no_calendar' ? null : $calendar->getId()); $profile->save();
+                $calendar->set('active', $case !== 'inactive_calendar'); $calendar->set('availability_only', $case === 'availability_calendar'); $calendar->save();
+                mcpCheck(restHttp('GET', '/api/v1/members/' . $uid, $read)['data']['member']['meeting_booking_url'] === null,
+                    'Unusable booking configuration returns null: ' . $case);
+            }
+        } else {
+            $items['booking_profile_colleague']->set('IDexternalcalendar', $items['booking_calendar_owner']->getId()); $items['booking_profile_colleague']->save();
+            mcpCheck(restHttp('GET', '/api/v1/members/' . $personId, $read)['data']['member']['meeting_booking_url'] === null,
+                'A different owner destination calendar cannot publish a booking link');
+            $items['booking_profile_colleague']->set('IDexternalcalendar', $items['booking_calendar_colleague']->getId()); $items['booking_profile_colleague']->save();
+            $items['booking_colleague_membership']->set('active', 0); $items['booking_colleague_membership']->save();
+            $inaccessible = restHttp('GET', '/api/v1/members/' . $personId, $read);
+            mcpCheck($inaccessible['status'] === 422 && !str_contains(json_encode($inaccessible['data']), 'rest-booking-'), 'Member access gates apply before disclosure, even to an enabled public profile');
+        }
+        // Keep availability/event tests independent of these synthetic remote calendar records.
+        $items['booking_calendar_' . $key]->set('active', 0); $items['booking_calendar_' . $key]->save();
     }
     foreach (['/structure?limit=1&limit=2', '/structure?limit=1.5', '/structure?limit=999999999999999999999',
         '/structure?limit[]=1', '/connection?organization_id=999', '/records/team?module=calendar',
@@ -185,6 +240,20 @@ try {
     $conflict = restHttp('POST', '/api/v1/events', $write, array_replace($eventArgs, ['request_key' => 'rest-event-conflict', 'allow_conflicts' => false]));
     mcpCheck($conflict['status'] === 409 && !$conflict['data']['created'] && $conflict['data']['requires_confirmation'], 'Conflicts never report creation');
     restCheckSchema('omo_create_event', $conflict);
+    $decisionArgs = ['title' => 'REST poll', 'question' => 'Choose a proposal', 'method' => 'simple_vote',
+        'holon_id' => $hid, 'request_key' => 'rest-decision-once', 'proposals' => [['title' => 'A'], ['title' => 'B']]];
+    $deniedDecision = restHttp('POST', '/api/v1/decisions', $read, $decisionArgs);
+    mcpCheck($deniedDecision['status'] === 403 && $deniedDecision['data']['required_scope'] === OMO_MCP_DECISION_SCOPE, 'Decision OAuth scope enforced');
+    $createdDecision = restHttp('POST', '/api/v1/decisions', $write, $decisionArgs);
+    mcpCheck($createdDecision['status'] === 201 && $createdDecision['data']['created'], 'REST decision saved');
+    $items['rest_decision'] = new class extends \dbObject\DecisionProcess {
+        public function delete() { return !empty($this->deleteWithRelations()['status']); }
+    };
+    $items['rest_decision']->load($createdDecision['data']['decision_id']);
+    restCheckSchema('omo_create_decision', $createdDecision);
+    restCheckSchema('omo_read_record', restHttp('GET', parse_url($createdDecision['headers']['location'], PHP_URL_PATH), $write));
+    $decisionReplay = restRpc($write, 'omo_create_decision', $decisionArgs);
+    mcpCheck($decisionReplay['data']['result']['structuredContent']['replayed'], 'Decision retries shared with MCP');
     // Never deliver email: scope denial and an inaccessible object both fail before queue/SMTP.
     $mailArgs = ['object_type' => 'holon', 'object_id' => PHP_INT_MAX, 'subject' => 'Test', 'message' => 'Test',
         'audience_token' => str_repeat('0', 64), 'request_key' => 'rest-mail-denied'];
@@ -208,7 +277,7 @@ try {
     $items['membership']->set('active', true); $items['membership']->save();
     $grant = McpOauthGrant::authenticate($write, omoMcpPublicUrl()); McpOauthGrant::revokeOwned((int)$grant['id'], $uid);
     mcpCheck(restHttp('GET', '/api/v1/connection', $write)['status'] === 401, 'OAuth revocation shared with REST');
-    echo "rest_http_test: OK (public return formats, response schemas/examples, all 17 routes, MCP parity, scopes, isolation, persisted documents/events, shared retries, revocation)\n";
+    echo "rest_http_test: OK (public return formats, response schemas/examples, all 19 routes, MCP parity, scopes, isolation, persisted documents/events/decisions, shared retries, revocation)\n";
 } finally {
     mcpCleanup($items);
     if (is_file($jar)) unlink($jar);

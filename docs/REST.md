@@ -1,6 +1,6 @@
 # API REST OMO v1
 
-L interface REST expose les 17 operations du MCP sous `/api/v1`.
+L interface REST expose les 19 operations du MCP sous `/api/v1`.
 Elle utilise le meme registre, la meme validation et les memes services dbObject.
 Les droits, la pagination, les consentements OAuth et les protections contre les
 doublons sont identiques. Aucune nouvelle table ni cle API permanente n est ajoutee.
@@ -64,6 +64,7 @@ Scopes :
 | `organization:read` | Requis pour toutes les operations de lecture |
 | `documents:create` | Creation de Memos, liens et fichiers |
 | `events:create` | Creation d evenements |
+| `decisions:create` | Creation de scrutins et reservations provisoires des propositions datees |
 | `mail:send` | Envoi aux destinataires references dans OMO |
 
 Les scopes d ecriture s ajoutent a `organization:read`. Ils n accordent jamais
@@ -102,6 +103,8 @@ Les schemas complets et limites viennent du registre partage dans OpenAPI.
 | GET | `/event-spaces` | `omo_list_event_spaces` |
 | GET | `/availability` | `omo_get_availability` |
 | POST | `/events` | `omo_create_event` |
+| GET | `/decision-spaces` | `omo_list_decision_spaces` |
+| POST | `/decisions` | `omo_create_decision` |
 | POST | `/emails` | `omo_send_object_email` |
 | GET | `/emails/{mail_id}` | `omo_object_email_status` |
 
@@ -213,6 +216,132 @@ docker compose exec -T app php tests/mcp_http_test.php --mailpit
 ```
 
 Le test REST utilise uniquement Docker, des fixtures supprimees en fin de test,
-et verifie les 17 routes, la parite MCP, la sauvegarde/relecture, les reessais
+et verifie les 19 routes, la parite MCP, la sauvegarde/relecture, les reessais
 entre interfaces, les scopes, les permissions, les cookies et la revocation.
 Il n envoie aucun e-mail.
+
+## Organiser une reunion par scrutin
+
+Pour partager une page personnelle de prise de rendez-vous plutot qu organiser un
+scrutin, voir la section [Lien personnel de rendez-vous](#lien-personnel-de-rendez-vous).
+
+Parcours commun REST/MCP :
+
+1. Resoudre les membres avec `omo_list_records` (module `team`), ou lister les
+   membres du groupe avec `omo_list_object_members` (type `holon`).
+2. Appeler `omo_get_availability` avec ces IDs (maximum 20 membres, 31 jours).
+   Choisir trois intervalles communs, decoupes a la duree de la reunion.
+   `incomplete=true` signifie que certaines disponibilites ne sont pas verifiees.
+3. Decouvrir une destination avec `omo_list_decision_spaces`. Le contexte
+   organisation utilise `holon_id=0`, les autres espaces utilisent leur ID.
+4. Creer le scrutin et ses propositions avec `omo_create_decision`. Les trois
+   propositions datees deviennent des evenements `option` (ICS TENTATIVE).
+   Ne pas creer trois autres evenements avec `omo_create_event`.
+5. Previsualiser les destinataires avec `omo_list_object_members`, type
+   `decision`, ID du scrutin. Envoyer ensuite le message demande avec
+   `omo_send_object_email`, le jeton `audience_token` et le lien du scrutin.
+   `mail:send` reste une autorisation distincte. Creation et invitations seules
+   n envoient aucun e-mail.
+
+Exemple REST : `POST /api/v1/decisions` (meme JSON en arguments MCP).
+Les dates sont des exemples a adapter au rendez-vous reel.
+
+```json
+{
+  "holon_id": 429,
+  "title": "Planifier la prochaine reunion",
+  "question": "Quel creneau vous convient ?",
+  "method": "majority_judgment",
+  "consultation_start_at": "2026-11-02T09:00:00+01:00",
+  "consultation_end_at": "2026-11-03T09:00:00+01:00",
+  "evaluation_start_at": "2026-11-03T09:00:00+01:00",
+  "evaluation_end_at": "2026-11-06T18:00:00+01:00",
+  "timezone": "Europe/Zurich",
+  "proposals": [
+    {"start_at": "2026-11-09T10:00:00+01:00", "end_at": "2026-11-09T11:00:00+01:00"},
+    {"start_at": "2026-11-10T14:00:00+01:00", "end_at": "2026-11-10T15:00:00+01:00"},
+    {"start_at": "2026-11-12T09:00:00+01:00", "end_at": "2026-11-12T10:00:00+01:00"}
+  ],
+  "request_key": "planning-novembre-2026-01"
+}
+```
+
+Le resultat contient `created`, `replayed`, `decision_id`, `group_id`, les dates
+reellement sauvees, la question, `participant_count`, les propositions et leurs
+`event_id`/`calendar_status`, `url` et `public_url`.
+La page `/developer/` et OpenAPI decrivent tous les champs et valeurs nulles.
+
+- Methodes : `simple_vote` (choix unique natif), `majority_judgment`, `consent`.
+- Chaque proposition peut contenir `title`, `description` (texte brut), des
+  dates ou un melange. Deux a vingt propositions, chacune avec du contenu.
+- Les periodes d elaboration (`consultation_*`) et d evaluation (`evaluation_*`)
+  sont facultatives, mais une periode fournie exige debut et fin. L evaluation
+  suit l elaboration ; les creneaux proposes commencent apres la fin du vote.
+  Sans periode, le scrutin reste brouillon. Les dates programmees utilisent
+  le cycle de vie natif et sa maintenance habituelle.
+- Sans tableaux d invitations : membres natifs du holon ou de l organisation,
+  plus le proprietaire. `invitation_user_ids` et `invitation_holon_ids` remplacent
+  cette selection ; le proprietaire participe toujours. IDs de l organisation
+  autorisee uniquement, aucune adresse libre.
+- `visibility_type` vaut `organization` par defaut. `everyone` publie explicitement
+  le contenu. `public_url` est une entree de participation publique generique :
+  l identification et les controles d invitation natifs restent applicables.
+  Aucun jeton personnel ni droit de vote anonyme n est expose.
+- Au resultat, les regles natives confirment le gagnant et annulent les autres
+  options. Une egalite exige une resolution par un gestionnaire. Un consentement
+  peut egalement exiger un arbitrage si plusieurs propositions sont acceptees.
+- L API cree un nouveau scrutin complet ; elle ne modifie pas les scrutins existants.
+- Garder `request_key` et le contenu identiques apres une erreur ou un delai depasse.
+  Les reessais REST et MCP partagent la meme protection contre les doublons.
+
+Publication : appliquer `sql/2026-10-05-01-api-decision-creation.sql` via le flux
+habituel de migration. Reconnecter les clients pour consentir a `decisions:create` ;
+un renouvellement de jeton ne peut pas ajouter cette autorisation.
+
+Verification locale sans envoi d e-mails :
+
+```sh
+docker compose exec -T app php tests/api_decision_test.php
+docker compose exec -T app php tests/rest_http_test.php
+docker compose exec -T app php tests/decision_calendar_test.php
+```
+
+## Lien personnel de rendez-vous
+
+Le lien `/meeting/nom-unique` deja configure dans OMO est disponible en lecture,
+avec le consentement `organization:read`, sans nouvelle operation ni migration :
+
+| REST | MCP | Champ |
+| --- | --- | --- |
+| `GET /api/v1/connection` | `omo_connection_info` | `user.meeting_booking_url` pour l utilisateur connecte |
+| `GET /api/v1/members/{user_id}` | `omo_get_member` | `member.meeting_booking_url` |
+| `GET /api/v1/records/team` | `omo_list_records`, module `team` | `items[].meeting_booking_url` |
+| `GET /api/v1/records/team/{record_id}` | `omo_read_record`, module `team` | `record.meeting_booking_url` |
+
+```json
+{"meeting_booking_url": "https://example.org/meeting/alice"}
+```
+
+Ce champ vaut `null` si le profil est absent ou desactive, sans nom public ou
+sans calendrier de destination valide (appartenant a la personne, actif et
+distinct d un calendrier de plages d ouverture). Les droits habituels de lecture
+du membre et l appartenance a l organisation sont verifies avant sa divulgation.
+Seul le lien public est fourni : aucun calendrier prive, identifiant, mot de
+passe, moyen de rencontre ou configuration horaire n est expose par ce champ.
+
+L agent doit reprendre l URL exacte, sans inventer un nom lorsque le champ est
+`null`. Le destinataire choisira son creneau sur cette page. Partager le lien ne
+reserve aucun rendez-vous et ne garantit aucune disponibilite.
+
+Pour envoyer **ton propre lien** aux membres choisis de l organisation :
+
+1. Lire `user.meeting_booking_url` avec `omo_connection_info`.
+2. Previsualiser `omo_list_object_members` avec `object_type=organization`,
+   `object_id=organization.id` et les `user_ids` demandes. Omettre `user_ids`
+   uniquement si l utilisateur demande explicitement tous les membres.
+3. Si `can_send=true`, appeler `omo_send_object_email` avec la meme selection,
+   l `audience_token`, le sujet, le message contenant l URL et une `request_key`.
+   L envoi exige toujours `mail:send` et une demande explicite d envoi.
+
+La documentation `/developer/` presente ce champ et sa signification depuis le
+meme schema OpenAPI que le reste de l API.

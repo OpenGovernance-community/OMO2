@@ -293,6 +293,10 @@ function lmsSetHtmlFieldValue(field, value) {
     }
 
     const nextValue = String(value || '');
+    if (typeof window.adminEditSetHtmlFieldValue === 'function') {
+        window.adminEditSetHtmlFieldValue(field, nextValue);
+        return;
+    }
     if (window.jQuery) {
         const $field = window.jQuery(field);
         if ($field.data('adminEditSummernoteBound') === true && typeof $field.summernote === 'function') {

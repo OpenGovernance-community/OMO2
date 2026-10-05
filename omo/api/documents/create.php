@@ -99,6 +99,14 @@ $sourceLang = [
     'documents.create.embed.modal_title' => ['text' => 'Insérer un document', 'context' => 'Title of the document embed picker modal.'],
     'documents.create.embed.update' => ['text' => 'Mettre à jour', 'context' => 'Button used to update an embedded document reference.'],
     'documents.create.embed.insert' => ['text' => 'Insérer le document', 'context' => 'Button used to insert a new embedded document reference.'],
+    'documents.create.embed.add_line' => ['text' => 'Ajouter une ligne', 'context' => 'Accessible label for adding an editable line before, after or between embedded documents in a Memo.'],
+    'documents.create.embed.search' => ['text' => 'Recherche', 'context' => 'Accessible label for searching Memos to embed.'],
+    'documents.create.embed.visible' => ['text' => 'Memos visibles', 'context' => 'Accessible label for the Memo selection list.'],
+    'documents.create.embed.remove' => ['text' => 'Supprimer', 'context' => 'Remove a document reference from a Memo.'],
+    'documents.create.embed.fallback' => ['text' => 'Memo #{id}', 'context' => 'Fallback title for an untitled Memo in the document picker.'],
+    'documents.create.embed.scope_local' => ['text' => 'Local', 'context' => 'Filter Memos attached to the selected holon.'],
+    'documents.create.embed.scope_children' => ['text' => 'Enfants directs', 'context' => 'Filter Memos in the selected holon and its direct children.'],
+    'documents.create.embed.scope_descendants' => ['text' => 'Descendants', 'context' => 'Filter Memos in the selected holon and its descendants.'],
 ];
 
 $lang = omoLoadTranslationBundle('omo_documents_create', $sourceLang);
@@ -136,8 +144,7 @@ $canEditDocumentContent = false;
 $isProjectDocument = false;
 $projectVisibleInHolon = false;
 $formErrorMessage = '';
-$openAiAvailable = commonOpenAiGetApiKey() !== '';
-$canUseAiTools = $openAiAvailable && patreonUserCanUseAi($currentUserId);
+$canUseAiTools = commonAiUserCanUse($currentUserId, commonOpenAiGetRewriteModel());
 
 if ($documentId > 0) {
     $isEditing = $document->load($documentId);
@@ -362,6 +369,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
         if (
             !($visibleDocument instanceof \dbObject\Document)
             || !$visibleDocument->canBeEmbedded()
+            || $visibleDocument->getDocumentType() !== Document::TYPE_HTML
             || (int)$visibleDocument->getId() <= 0
             || ($documentId > 0 && (int)$visibleDocument->getId() === $documentId)
         ) {
@@ -385,6 +393,8 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
 
         $embeddableDocumentsPayload[] = array(
             'id' => (int)$visibleDocument->getId(),
+            'contextHolonId' => $itemHolonId,
+            'documentType' => $visibleDocument->getDocumentType(),
             'title' => trim((string)$visibleDocument->get('title')),
             'description' => trim((string)$visibleDocument->get('description')),
             'contextLabel' => $contextLabel,
@@ -753,6 +763,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
 
 <link rel="stylesheet" href="/omo/api/documents/editor.css?v=20260917-style-review-final">
 
+<script src="<?= commonAssetUrl('/common/document/embed-picker.js') ?>"></script>
 <?= commonPageScriptTags('/omo/api/documents/create.js', [
     'documentFormId' => $documentFormId,
     'uploadHasExistingFile' => ($documentType === Document::TYPE_UPLOADED_FILE && $documentHasStoredFile),
@@ -766,6 +777,16 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
         'actionCancel' => omoDocumentsCreateT('documents.create.action.cancel'),
         'embedUpdate' => omoDocumentsCreateT('documents.create.embed.update'),
         'embedInsert' => omoDocumentsCreateT('documents.create.embed.insert'),
+        'embedAddLine' => omoDocumentsCreateT('documents.create.embed.add_line'),
+        'embedSearch' => omoDocumentsCreateT('documents.create.embed.search'),
+        'embedVisible' => omoDocumentsCreateT('documents.create.embed.visible'),
+        'embedRemove' => omoDocumentsCreateT('documents.create.embed.remove'),
+        'embedFallbackTitle' => omoDocumentsCreateT('documents.create.embed.fallback', ['id' => '{id}']),
+        'embedScope' => [
+            'local' => omoDocumentsCreateT('documents.create.embed.scope_local'),
+            'children' => omoDocumentsCreateT('documents.create.embed.scope_children'),
+            'descendants' => omoDocumentsCreateT('documents.create.embed.scope_descendants'),
+        ],
         'tagRemove' => omoDocumentsCreateT('documents.create.field.tags_remove'),
         'uploadReplaceConfirm' => omoDocumentsCreateT('documents.create.upload.replace_confirm'),
     ],

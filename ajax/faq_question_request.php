@@ -111,7 +111,7 @@ foreach ($adminEmails as $adminEmail) {
 
 $aiDraft = '';
 if (\dbObject\FAQ::hasAiDraftColumn()) {
-	$generatedDraft = faqAiGenerateDraft($question, $description);
+	$generatedDraft = faqAiGenerateDraft($question, $description, null, $currentUserId);
 	if ($generatedDraft !== '') {
 		try {
 			if ($faq->saveAiDraft($generatedDraft)) {

@@ -619,7 +619,7 @@ if (!function_exists('omoDecisionGetDefaultProposalContent')) {
             'title' => true,
             'description' => true,
             'url' => true,
-            'date' => true,
+            'date' => false,
         ];
     }
 }
@@ -651,7 +651,7 @@ if (!function_exists('omoDecisionNormalizeProposalContent')) {
             'url' => array_key_exists('url', $value)
                 ? !empty($value['url'])
                 : !empty($value['info_url']),
-            'date' => !array_key_exists('date', $value) || !empty($value['date']),
+            'date' => !empty($value['date']),
         ];
         if (!$content['title'] && !$content['description'] && !$content['url'] && !$content['date']) {
             $content['description'] = true;
@@ -1432,8 +1432,8 @@ if (!function_exists('omoDecisionRenderProposalDiscussionAssets')) {
             . '<link rel="stylesheet" href="/common/choice/change-details.css?v=20260923-lifecycle-details">'
             . '<script src="/common/choice/word-diff.js?v=20260815" defer></script>'
             . '<script src="' . commonAssetUrl('/common/choice/change-details.js') . '" defer></script>'
-            . '<script src="/common/choice/highlight-palette.js?v=20260904-highlight-clear" defer></script>'
-            . '<script src="/omo/assets/js/simple-html-field.js?v=20260904-highlight-clear" defer></script>'
+            . '<script src="' . commonAssetUrl('/common/choice/highlight-palette.js') . '" defer></script>'
+            . '<script src="' . commonAssetUrl('/omo/assets/js/simple-html-field.js') . '" defer></script>'
             . '<script src="/common/choice/decision-anonymity.js?v=20260825-named-vote" defer></script>'
             . '<script src="/common/choice/decision-notifications.js?v=20260825-topbar-errors" defer></script>'
             . '<script src="' . commonAssetUrl('/common/choice/proposal-html.js') . '" defer></script>'
@@ -1613,6 +1613,12 @@ if (!function_exists('omoDecisionProposalGetSourceLang')) {
     {
         return [
             'decisions.proposals.dates.range' => ['text' => 'Date et horaire', 'context' => 'Optional proposal date range fields.'],
+            'decisions.proposals.dates.day' => ['text' => 'Date', 'context' => 'Day of a proposal taking place on a single day.'],
+            'decisions.proposals.dates.start_time' => ['text' => 'Heure de debut', 'context' => 'Start time on the selected proposal day.'],
+            'decisions.proposals.dates.end_time' => ['text' => 'Heure de fin', 'context' => 'End time on the selected proposal day.'],
+            'decisions.proposals.dates.multiple' => ['text' => 'Sur plusieurs jours', 'context' => 'Switch to separate start and end dates and times.'],
+            'decisions.proposals.dates.from' => ['text' => 'Du {date} a {time}', 'context' => 'Start of a proposal spanning several days.'],
+            'decisions.proposals.dates.until' => ['text' => 'Au {date} a {time}', 'context' => 'End of a proposal spanning several days.'],
             'decisions.proposals.dates.start' => ['text' => 'Debut', 'context' => 'Optional proposal date range start.'],
             'decisions.proposals.dates.clear' => ['text' => 'Retirer la date', 'context' => 'Clear the optional date range.'],
             'decisions.proposals.dates.end' => ['text' => 'Fin', 'context' => 'Proposal date range end.'],
