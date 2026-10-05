@@ -5,6 +5,12 @@ require_once dirname(__DIR__) . '/object_mail/validation.php';
 require_once dirname(__DIR__) . '/mcp/calendar.php';
 require_once __DIR__ . '/decisions.php';
 
+/** Shared agent guidance for MCP initialization and REST/MCP creation descriptors. */
+function omoApiAgentCreationInstructions(): string
+{
+    return 'Before creating anything, establish the destination requested by the user: organization space, circle, role or document folder. If the destination is missing or ambiguous, ask the user before calling a creation tool. Reuse context only when the user explicitly established it for the current task. Never choose a destination from the first discovery result, current browser page, available permissions or an unrelated earlier task. For a ballot, also ask which method the user wants when unspecified: simple vote (simple_vote), majority judgment (majority_judgment) or consent (consent). The words poll, survey, sondage or a generic request to vote do not specify a method. Clarify other missing or ambiguous information that affects the intended result, such as dates, participants, content or public visibility. Group the necessary questions and wait for the answers before creating; do not invent missing choices.';
+}
+
 final class OmoApiScopeException extends DomainException
 {
     public function __construct(public readonly string $requiredScope)
@@ -146,6 +152,7 @@ function omoMcpTools(): array
         $mail = $tool['name'] === 'omo_send_object_email';
         $event = $tool['name'] === 'omo_create_event';
         $decision = $tool['name'] === 'omo_create_decision';
+        if ($create || $event || $decision) $tool['description'] = omoApiAgentCreationInstructions() . ' ' . $tool['description'];
         if ($create) $tool['description'] .= ' Confirm creation only after a successful result with created=true and a returned record.record_id. Read that ID with omo_read_record, using the returned context_holon_id, to verify the saved Memo content, and provide its returned URL. An error or timeout is not proof of creation; retry the exact same request_key and payload to recover the result safely.';
         $tool['annotations'] = ['readOnlyHint' => !$create && !$mail && !$event && !$decision, 'destructiveHint' => false, 'idempotentHint' => true,
             'openWorldHint' => $create || $mail || $event || $decision || $tool['name'] === 'omo_get_availability'];

@@ -652,6 +652,17 @@ peuvent pas prouver l accessibilite du domaine depuis les serveurs du fournisseu
 
 ## Creation de scrutins et rendez-vous
 
+Consignes aux agents : avant une creation, demander la destination (organisation,
+cercle, role ou dossier) si elle n a pas ete explicitement precisee pour la tache
+en cours. La page ouverte, les droits disponibles et l ordre des resultats ne
+designent pas la destination. Pour un scrutin, demander egalement la methode
+lorsqu elle manque : vote simple, jugement majoritaire ou consentement. Le mot
+"sondage" seul ne permet pas de choisir. Regrouper les questions sur les autres
+informations necessaires ou ambigues et attendre les reponses avant de creer.
+
+Ces consignes sont partagees entre l initialisation MCP et les descriptions des
+outils de creation, egalement presentes dans OpenAPI et `/developer/`.
+
 Le parcours disponibilites, scrutin avec propositions datees, reservations agenda
 et e-mail aux participants est decrit dans [REST.md](REST.md#organiser-une-reunion-par-scrutin).
 Les deux interfaces partagent les memes champs, permissions et cles de reessai.
