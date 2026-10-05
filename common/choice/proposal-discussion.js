@@ -175,7 +175,7 @@
             + titleField
             + descriptionField
             + urlField
-            + (proposalContent.date !== false ? window.omoProposalDates('', false) : '')
+            + (proposalContent.date === true ? window.omoProposalDates('', false, true) : '')
             + '  <div class="generic-form-actions"><button type="button" class="generic-action-button generic-action-button--secondary" data-omo-proposal-editor-cancel>Annuler</button><button type="submit" class="generic-action-button generic-action-button--main">Enregistrer</button></div>'
             + '</form>';
     }

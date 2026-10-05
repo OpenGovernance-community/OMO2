@@ -1419,7 +1419,7 @@ window.omoConfig = <?=
 <?php if ($isSiteAdmin) { ?>
 <script src="/omo/assets/js/site-update.js"></script>
 <?php } ?>
-<script src="assets/js/simple-html-field.js?v=20260930-group-source-state"></script>
+<script src="assets/js/simple-html-field.js?v=20261005-html-editor-gaps"></script>
 <script src="assets/js/application-view-preferences.js?v=20260923-first-view"></script>
 <script src="<?= commonAssetUrl('/omo/assets/js/app.js') ?>"></script>
 <script src="<?= commonAssetUrl('/common/object_mail/ui.js') ?>"></script>

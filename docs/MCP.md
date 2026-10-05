@@ -24,7 +24,8 @@ Cette fonction demande le consentement OAuth `mail:send` en plus de la lecture.
 1. Appliquer les migrations MCP `2026-10-02-04-mcp-structure-oauth.sql`
    et `2026-10-02-05-mcp-refresh-replay.sql`, puis `2026-10-03-01-mcp-document-creation.sql`
    et `2026-10-03-02-object-mail.sql`, puis `2026-10-03-03-object-mail-grant-reference.sql`
-   et `2026-10-03-04-mcp-event-creation.sql`, avec le flux habituel :
+   et `2026-10-03-04-mcp-event-creation.sql`, puis `2026-10-05-01-api-decision-creation.sql`
+   et `2026-10-05-02-api-project-writes.sql`, avec le flux habituel :
 
    ```sh
    php scripts/run-migrations.php
@@ -141,6 +142,8 @@ peuvent utiliser le meme serveur s ils supportent HTTP, OAuth DCR et PKCE S256.
 | --- | --- | --- |
 | `omo_get_availability` | `user_ids` (1 a 20 membres), `date_from`, `date_to` inclusives (31 jours maximum), `duration_minutes` facultatif (30 a 1440, multiple de 30) | Plages libres/occupees individuelles et `common_free_intervals`, resolution 30 minutes, fuseau Europe/Zurich ; `incomplete` signale les calendriers externes non verifies |
 | `omo_list_event_spaces` | `after_id`, `limit` facultatifs | Roles et cercles autorises pour `CAN_CREATE_EVENT`, `holon_id`, pagination, consentement `events:create` |
+| `omo_list_decision_spaces` | `kind` : organization ou holons, `after_id`, `limit` | Espaces autorises pour `CAN_CREATE_DECISION`, `holon_id`, visibilites compatibles, consentement `decisions:create` |
+| `omo_create_decision` | `title`, `question`, `method`, `proposals`, `request_key` ; contexte, invitations et dates des phases facultatifs | Scrutin natif, propositions, participants, reservations provisoires, liens interne et public, reessai sans doublon |
 | `omo_create_event` | `holon_id`, `title`, `start_at`, `end_at`, `request_key` ; description, fuseau, statut, journee entiere, lieu et listes d invites facultatifs | Nouvel evenement, ID et URL ; invites par defaut ou selection explicite, avertissements de disponibilite avant sauvegarde, reessais dedupliques |
 | `omo_list_object_members` | `object_type` (organization, holon, event, project, decision), `object_id` ; `user_ids` pour une selection dans l organisation ; `offset`, `limit` (maximum 50) | Membres/invites, nom, e-mail et telephone de l organisation, relations/statut, pagination `next_offset`, `can_send`, `recipient_count`, `audience_token` |
 | `omo_send_object_email` | `object_type`, `object_id`, `user_ids` facultatif pour organization, `subject`, `message`, `audience_token`, `request_key` | Envoi direct jusqu a 5 destinataires, sinon traitement automatique en file ; `mail_id`, compteurs de livraison et `replayed` |
@@ -459,9 +462,21 @@ d un projet ou d une decision. Trois outils couvrent le parcours :
 
 1. `omo_list_object_members` : consulter les destinataires et verifier `can_send`
    ainsi que `mail_authorized`.
-2. `omo_send_object_email` : envoyer le sujet et le message aux destinataires
+2. Presenter les destinataires, leur nombre, le sujet et le texte integral du
+   message, liens inclus, et demander la validation explicite de l utilisateur.
+   Adapter le ton et la formulation aux destinataires. Attendre la reponse ;
+   aucune mise en file ni aucun envoi ne doit servir de previsualisation.
+3. `omo_send_object_email` : envoyer le sujet et le message valides aux destinataires
    de cet objet avec le `audience_token` retourne par la consultation.
-3. `omo_object_email_status` : suivre les livraisons avec le `mail_id` retourne.
+4. `omo_object_email_status` : suivre les livraisons avec le `mail_id` retourne.
+
+Si le texte ou les destinataires changent apres validation, presenter la version
+revisee pour une nouvelle validation. Un simple "envoie un e-mail", le consentement
+OAuth et l `audience_token` ne valident pas le texte redige par l assistant. Une
+validation deja obtenue pour le texte exact et les destinataires de la tache en
+cours reste valable ; les reessais identiques ne demandent pas une nouvelle
+validation. Cette consigne est commune aux instructions MCP et a la description
+REST/MCP de l outil d envoi, egalement presentee dans OpenAPI et `/developer/`.
 
 L envoi concerne les destinataires eligibles de l objet choisi. Avec
 `object_type: "organization"`, `user_ids` permet de choisir un ou plusieurs
@@ -644,6 +659,63 @@ gardent `form-action 'self'`. Les tests HTTP seuls ne detectent pas les blocages
 CSP appliques par le navigateur aux redirections apres soumission.
 
 Verifier aussi manuellement une connexion neuve dans ChatGPT : decouverte,
-login, consentement lecture et creation, dix-sept outils, import d une piece jointe,
+login, consentement lecture et creation, vingt-trois outils, import d une piece jointe,
 refus puis revocation. Les tests locaux ne
 peuvent pas prouver l accessibilite du domaine depuis les serveurs du fournisseur.
+
+## Creation de scrutins et rendez-vous
+
+Consignes aux agents : avant une creation, demander la destination (organisation,
+cercle, role ou dossier) si elle n a pas ete explicitement precisee pour la tache
+en cours. La page ouverte, les droits disponibles et l ordre des resultats ne
+designent pas la destination. Pour un scrutin, demander egalement la methode
+lorsqu elle manque : vote simple, jugement majoritaire ou consentement. Le mot
+"sondage" seul ne permet pas de choisir. Regrouper les questions sur les autres
+informations necessaires ou ambigues et attendre les reponses avant de creer.
+
+Ces consignes sont partagees entre l initialisation MCP et les descriptions des
+outils de creation, egalement presentes dans OpenAPI et `/developer/`.
+
+Le parcours disponibilites, scrutin avec propositions datees, reservations agenda
+et e-mail aux participants est decrit dans [REST.md](REST.md#organiser-une-reunion-par-scrutin).
+Les deux interfaces partagent les memes champs, permissions et cles de reessai.
+La creation exige le nouveau consentement OAuth `decisions:create` ; reconnecter
+le client pour l ajouter. Le renouvellement du jeton conserve ses scopes actuels.
+
+## Partager un lien personnel de prise de rendez-vous
+
+`omo_connection_info` fournit `user.meeting_booking_url` pour la personne connectee.
+`omo_get_member` fournit `member.meeting_booking_url` pour un membre accessible ;
+les listes et lectures du module `team` contiennent aussi ce champ. Il reutilise
+le profil `/meeting/nom-unique` configure dans OMO et vaut `null` lorsque celui-ci
+n est pas utilisable. La lecture exige seulement `organization:read`.
+
+L assistant reprend le lien exact pour inviter les destinataires a choisir un
+creneau. Il ne doit pas inventer l URL ni affirmer qu un rendez-vous est reserve.
+L envoi demande utilise les fonctions de previsualisation et d e-mail existantes
+avec `mail:send`. Les configurations privees du calendrier ne sont pas exposees.
+Voir le [parcours complet REST/MCP](REST.md#lien-personnel-de-rendez-vous).
+
+## Creation et modification de projets
+
+Quatre outils sont disponibles : `omo_list_project_spaces`, `omo_get_project`,
+`omo_create_project` et `omo_update_project`. Le consentement `projects:write`
+permet de creer/modifier, avec verification des permissions OMO actuelles ; la
+lecture structuree et la decouverte restent disponibles avec `organization:read`.
+Reconnecter le client pour obtenir ce nouveau consentement et actualiser ses outils.
+
+L agent doit demander les choix manquants avant creation : contexte explicite,
+parent ou aucun, responsable ou aucun, statut, importance, priorite et dates.
+Il lit le projet avant modification et ne change que les champs demandes.
+Un blocage exige le motif et la date de reexamen ; si ces informations ne sont
+pas clairement fournies, il pose la question avant l appel.
+
+Les modifications utilisent `expected_version` fourni par la lecture et une
+`request_key` unique. Une version obsolete est refusee ; un reessai avec la meme
+cle et le meme contenu ne reapplique pas un ancien statut. Le resultat contient
+le projet actuel, son lien, ses dates effectives et sa nouvelle version.
+
+Voir [le parcours et les formats REST/MCP](REST.md#creer-et-modifier-un-projet).
+Appliquer `2026-10-05-02-api-project-writes.sql` par le flux de migrations habituel.
+Les tests locaux sont `php tests/api_project_test.php`, `php tests/rest_http_test.php`
+et `php tests/mcp_http_test.php --mailpit` (fixtures et courriels sur Docker local).

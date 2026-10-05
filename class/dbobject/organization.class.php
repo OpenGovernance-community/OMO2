@@ -6449,12 +6449,7 @@
 				}
 				$document->set('active', !array_key_exists('active', $record) || (bool)$record['active']);
 				self::omo1ImportSave($document, 'Un document n a pas pu etre cree');
-				self::omo1ImportSaveDocumentVisibility(
-					$document,
-					$record['legacyVisibility'] ?? null,
-					$warnings
-				);
-				self::omo1ImportSaveDocumentEditVisibility($document, $organization, $targetHolonId, $warnings);
+				self::omo1ImportSaveDocumentVisibilityRules($document, $record, $holonIdMap, $warnings);
 				$documentIdMap[$sourceId] = (int)$document->getId();
 				$documentProjectSourceMap[$sourceId] = $sourceProjectIds !== array() ? $sourceProjectIds : array($sourceProjectId);
 				$documentParentSourceMap[$sourceId] = (int)($record['sourceParentDocumentId'] ?? 0);
@@ -7375,32 +7370,52 @@
 				. ($message !== '' ? ': ' . $message : '.'));
 		}
 
-		protected static function omo1ImportSaveDocumentEditVisibility(\dbObject\Document $document, \dbObject\Organization $organization, ?int $targetHolonId, array &$warnings): void
+		protected static function omo1ImportSaveDocumentVisibilityRules(\dbObject\Document $document, array $record, array $holonIdMap, array &$warnings): void
 		{
-			$editVisibilityType = \dbObject\Document::resolveCompatibleScopeTypeForHolonId(
-				\dbObject\Document::getDefaultEditVisibilityTypeForOrganization((int)$organization->getId()),
-				(int)$organization->getId(),
-				$targetHolonId,
-				\dbObject\ObjectVisibility::TYPE_SELF
-			);
-			$editVisibilitySaveResult = $document->saveEditVisibilityRule($editVisibilityType, $targetHolonId);
-			if (is_array($editVisibilitySaveResult) && !empty($editVisibilitySaveResult['status'])) {
-				return;
-			}
+			foreach (['visibility', 'editVisibility'] as $field) {
+				$scope = $record[$field] ?? null;
+				$missing = $scope === null || (is_array($scope) && !isset($scope['type']))
+					|| (is_array($scope) && ($scope['type'] ?? null) === '');
+				if ($missing && $field === 'visibility' && isset($record['legacyVisibility'])) {
+					self::omo1ImportSaveDocumentVisibility($document, $record['legacyVisibility'], $warnings);
+					continue;
+				}
 
-			if ($editVisibilityType !== \dbObject\ObjectVisibility::TYPE_SELF) {
-				$fallbackSaveResult = $document->saveEditVisibilityRule(\dbObject\ObjectVisibility::TYPE_SELF);
-				if (is_array($fallbackSaveResult) && !empty($fallbackSaveResult['status'])) {
-					$warnings['document_edit_visibility_fallback'] = self::formatLexiconText('Certains droits d edition de documents OMO 1 n ont pas pu etre rattaches a leur holon : l edition est restreinte a leur proprietaire.', $organization->getLexicon());
-					return;
+				$targetHolonId = null;
+				$fallback = false;
+				if ($missing) {
+					// Old exports have no scope: prefer the attached role, or its circle.
+					$type = \dbObject\Document::resolveCompatibleScopeTypeForHolonId(
+						\dbObject\ObjectVisibility::TYPE_ROLE,
+						(int)$document->get('IDorganization'),
+						(int)$document->get('IDholon'),
+						\dbObject\ObjectVisibility::TYPE_SELF
+					);
+					$fallback = $type === \dbObject\ObjectVisibility::TYPE_SELF;
+				} else {
+					$type = is_array($scope) && is_string($scope['type'] ?? null) ? $scope['type'] : '';
+					if (!array_key_exists($type, \dbObject\ObjectVisibility::getVisibilityTypeOptions())) {
+						$fallback = true;
+					} elseif (\dbObject\ObjectVisibility::requiresHolonTarget($type)) {
+						// The scope target can differ from the document's own location.
+						$targetHolonId = (int)($holonIdMap[(int)($scope['sourceHolonId'] ?? 0)] ?? 0);
+						$fallback = $targetHolonId <= 0;
+					}
+				}
+				$saveMethod = $field === 'visibility' ? 'saveVisibilityRule' : 'saveEditVisibilityRule';
+				$result = $document->$saveMethod($fallback ? \dbObject\ObjectVisibility::TYPE_SELF : $type, $fallback ? null : $targetHolonId);
+				if (empty($result['status']) && !$fallback) {
+					$fallback = true;
+					$result = $document->$saveMethod(\dbObject\ObjectVisibility::TYPE_SELF);
+				}
+				if (empty($result['status'])) {
+					throw new \RuntimeException('La portee du document importe n a pas pu etre creee : ' . (string)($result['text'] ?? $field));
+				}
+				if ($fallback) {
+					$warnings[] = 'La portee ' . ($field === 'visibility' ? 'de lecture' : 'd edition')
+						. ' du document "' . (string)$document->get('title') . '" est invalide ou sans cible importee : acces restreint au proprietaire.';
 				}
 			}
-
-			$message = is_array($editVisibilitySaveResult)
-				? trim((string)($editVisibilitySaveResult['text'] ?? ''))
-				: '';
-			throw new \RuntimeException('Le droit d edition du document n a pas pu etre cree'
-				. ($message !== '' ? ': ' . $message : '.'));
 		}
 
 		protected static function omo1ImportPvs(\dbObject\Organization $organization, array $records, $actorUserId, array $userIdMap, array $holonIdMap, array $eventIdMap, array &$stats, array &$warnings)
@@ -7416,7 +7431,7 @@
 				}
 				$sourceHolonId = (int)($record['sourceHolonId'] ?? 0);
 				$targetHolonId = isset($holonIdMap[$sourceHolonId]) ? (int)$holonIdMap[$sourceHolonId] : null;
-				$sourceUserId = (int)($record['sourceSecretaryUserId'] ?? 0);
+				$sourceUserId = (int)($record['sourceUserId'] ?? ($record['sourceSecretaryUserId'] ?? 0));
 				$targetUserId = isset($userIdMap[$sourceUserId]) ? (int)$userIdMap[$sourceUserId] : (int)$actorUserId;
 				$event = new \dbObject\Event();
 				$eventTitle = $event->load($eventId) ? $event->get('title') : ($record['meetingTitle'] ?? '');
@@ -7441,7 +7456,7 @@
 				}
 				$document->set('active', true);
 				self::omo1ImportSave($document, 'Un proces-verbal n a pas pu etre cree');
-				self::omo1ImportSaveDocumentEditVisibility($document, $organization, $targetHolonId, $warnings);
+				self::omo1ImportSaveDocumentVisibilityRules($document, $record, $holonIdMap, $warnings);
 				$stats['pv'] += 1;
 
 				$historyRecords = isset($record['history']) && is_array($record['history']) ? $record['history'] : array();

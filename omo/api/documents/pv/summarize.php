@@ -30,6 +30,10 @@ if (
     $jsonResponse(['status' => false, 'message' => 'Accès refusé.'], 403);
 }
 
+if (!commonAiIsConfigured(commonOpenAiGetRewriteModel())) {
+    $jsonResponse(['status' => false, 'message' => 'Configuration IA indisponible.'], 503);
+}
+
 if (!patreonUserCanUseAi($currentUserId)) {
     $jsonResponse(['status' => false, 'message' => 'Les fonctions IA sont réservées aux contributeurs Patreon actifs.'], 403);
 }
@@ -153,6 +157,7 @@ if ($fullText === '') {
 }
 
 $result = commonOpenAiSummarizeSelectedDocumentText($fullText, $fullText, [
+    'user_id' => $currentUserId,
     'title' => $title,
     'pv_summary' => true,
 ]);

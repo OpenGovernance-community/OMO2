@@ -1130,6 +1130,20 @@
     border-inline-start: 4px solid var(--param-external-calendar-color, #0f766e);
 }
 
+/* Free imported events keep their calendar color, with broad translucent stripes. */
+.omo-calendar__event-chip.is-external-calendar.is-free,
+.omo-calendar__time-all-day-chip.is-external-calendar.is-free,
+.omo-calendar__time-event.is-external-calendar.is-free,
+.omo-calendar__item-shell.is-external-calendar.is-free .omo-calendar__list-item {
+    background-image: repeating-linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--param-external-calendar-color, #0f766e) 24%, transparent) 0,
+        color-mix(in srgb, var(--param-external-calendar-color, #0f766e) 24%, transparent) 12px,
+        transparent 12px,
+        transparent 24px
+    );
+}
+
 .omo-calendar__external-event-detail {
     flex: 1 1 100%;
     width: 100%;

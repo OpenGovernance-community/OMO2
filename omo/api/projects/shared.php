@@ -486,7 +486,7 @@ if (!function_exists('omoProjectsCanUsePermission')) {
             return false;
         }
 
-        $useSessionCache = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST';
+        $useSessionCache = empty($context['freshPermissions']) && !in_array(strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')), ['POST', 'PATCH'], true);
         return $holon->isAllowed($permissionKey, $useSessionCache, $currentUserId)
             || commonPvMeetingCanUseCollectivePermission($context['pvMeetingPermission'] ?? null, $holon, $permissionKey);
     }
@@ -536,7 +536,7 @@ if (!function_exists('omoProjectsCanProposeContext')) {
             return false;
         }
 
-        $useSessionCache = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST';
+        $useSessionCache = empty($context['freshPermissions']) && !in_array(strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')), ['POST', 'PATCH'], true);
         $currentHolon = $context['currentHolon'] ?? null;
         if ($currentHolon instanceof Holon) {
             return $currentHolon->isAllowed('CAN_PROPOSE_PROJECT', $useSessionCache, $currentUserId);
@@ -1257,5 +1257,19 @@ if (!function_exists('omoProjectsRenderStatusBar')) {
 
         return '<' . $elementTag . ' class="omo-project-status-summary"><span class="omo-project-status-summary__count" aria-hidden="true">'
             . (int)$summary['total'] . '</span>' . $html . '</' . $elementTag . '>';
+    }
+}
+
+function omoProjectsDispatchStatusChangeNotification(Project $project, $previousStatus, $actorUserId): void
+{
+    if (Project::normalizeStatus($previousStatus) === Project::normalizeStatus($project->get('status'))) {
+        return;
+    }
+
+    try {
+        require_once dirname(__DIR__, 3) . '/common/notification_center.php';
+        notificationCenterDispatchProjectStatusChange($project, $previousStatus, (int)$actorUserId);
+    } catch (\Throwable $exception) {
+        error_log('project_status_notification_failed: ' . $exception->getMessage());
     }
 }

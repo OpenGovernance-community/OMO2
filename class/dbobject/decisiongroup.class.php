@@ -106,7 +106,7 @@ class DecisionGroup extends DbObject
         $config = $parameters[$this->get('evaluation_method')] ?? $parameters;
         $content = $config['proposal_content'] ?? [];
         if (is_string($content)) $content = json_decode($content, true) ?: [];
-        return !is_array($content) || !array_key_exists('date', $content) || !empty($content['date']);
+        return is_array($content) && !empty($content['date']);
     }
 
     public function getMethodDefinition()

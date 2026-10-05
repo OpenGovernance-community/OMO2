@@ -3,7 +3,7 @@ namespace dbObject;
 
 class HolonPermission extends DbObject
 {
-    const PERMISSION_CACHE_VERSION = 27;
+    const PERMISSION_CACHE_VERSION = 28;
     const MEMBER_TYPE_MEMBER = 'member';
     const MEMBER_TYPE_ADMIN = 'admin';
     const MEMBER_TYPE_COLLECTIVE = 'collective';
@@ -641,7 +641,7 @@ class HolonPermission extends DbObject
             }
         }
 
-        return self::appendParentAdminMembershipRows($rows, $holonsById);
+        return self::appendCircleMembershipRows($rows, $holonsById);
     }
 
     protected static function roleGrantsParentAdminFromRows($roleHolonId, array $holonsById)
@@ -671,7 +671,7 @@ class HolonPermission extends DbObject
         return false;
     }
 
-    protected static function appendParentAdminMembershipRows(array $rows, array $holonsById)
+    protected static function appendCircleMembershipRows(array $rows, array $holonsById)
     {
         if (count($holonsById) === 0) {
             return $rows;
@@ -686,18 +686,27 @@ class HolonPermission extends DbObject
         }
 
         foreach ($rows as $row) {
-            $roleHolonId = (int)($row['IDholon'] ?? 0);
-            if (empty($row['is_admin']) || !self::roleGrantsParentAdminFromRows($roleHolonId, $holonsById)) {
-                continue;
+            $assignedHolonId = (int)($row['IDholon'] ?? 0);
+            $currentHolonId = $assignedHolonId;
+            $visited = [];
+            // Roles and groups contribute members to their containing circle.
+            // A circle membership never bubbles into its englobing circle.
+            while (isset($holonsById[$currentHolonId]) && !isset($visited[$currentHolonId])
+                && in_array((int)$holonsById[$currentHolonId]['IDtypeholon'], [1, 3], true)) {
+                $visited[$currentHolonId] = true;
+                $currentHolonId = (int)($holonsById[$currentHolonId]['IDholon_parent'] ?? 0);
             }
-
-            $parentHolonId = (int)($holonsById[$roleHolonId]['IDholon_parent'] ?? 0);
+            $parentHolonId = $currentHolonId;
             if ($parentHolonId <= 0 || (int)($holonsById[$parentHolonId]['IDtypeholon'] ?? 0) !== 2) {
                 continue;
             }
 
+            $isParentAdmin = !empty($row['is_admin'])
+                && self::roleGrantsParentAdminFromRows($assignedHolonId, $holonsById)
+                && self::resolveScopeParentIdFromRows($assignedHolonId, $holonsById) === $parentHolonId;
             if (isset($rowIndexByHolonId[$parentHolonId])) {
-                $rows[$rowIndexByHolonId[$parentHolonId]]['is_admin'] = true;
+                $parentIndex = $rowIndexByHolonId[$parentHolonId];
+                $rows[$parentIndex]['is_admin'] = !empty($rows[$parentIndex]['is_admin']) || $isParentAdmin;
                 continue;
             }
 
@@ -706,7 +715,7 @@ class HolonPermission extends DbObject
                 'IDholon' => $parentHolonId,
                 'holon_active' => 1,
                 'holon_effective_active' => 1,
-                'is_admin' => true,
+                'is_admin' => $isParentAdmin,
             ];
         }
 

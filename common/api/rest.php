@@ -23,19 +23,28 @@ function omoRestRoutes(): array
         ['GET', '/availability', 'omo_get_availability'],
         ['GET', '/event-spaces', 'omo_list_event_spaces'],
         ['POST', '/events', 'omo_create_event'],
+        ['GET', '/decision-spaces', 'omo_list_decision_spaces'],
+        ['POST', '/decisions', 'omo_create_decision'],
+        ['GET', '/project-spaces', 'omo_list_project_spaces'],
+        ['GET', '/projects/{project_id}', 'omo_get_project'],
+        ['POST', '/projects', 'omo_create_project'],
+        ['PATCH', '/projects/{project_id}', 'omo_update_project'],
     ];
 }
 
-function omoRestMatchRoute(string $path): ?array
+function omoRestMatchRoute(string $path, ?string $requestedMethod = null): ?array
 {
+    $fallback = null; $allowed = [];
     foreach (omoRestRoutes() as [$method, $template, $operation]) {
         $pattern = preg_replace('/\\\{([a-z_]+)\\\}/', '(?P<$1>[^/]+)', preg_quote($template, '#'));
         if (preg_match('#^' . $pattern . '/?$#D', $path, $matches)) {
-            return ['method' => $method, 'operation' => $operation,
+            $route = ['method' => $method, 'operation' => $operation,
                 'parameters' => array_filter($matches, 'is_string', ARRAY_FILTER_USE_KEY)];
+            $allowed[] = $method;
+            if ($fallback === null || $method === $requestedMethod) $fallback = $route;
         }
     }
-    return null;
+    return $fallback === null ? null : $fallback + ['allowed_methods' => $allowed];
 }
 
 function omoRestQueryValue(string $value, array $schema): mixed
@@ -60,10 +69,11 @@ function omoRestArguments(array $route, string $query, ?stdClass $body = null): 
     $schema = array_column(omoMcpTools(), 'inputSchema', 'name')[$name];
     $properties = (array)$schema['properties'];
     $args = [];
-    if ($route['method'] === 'POST') {
-        if ($query !== '') throw new InvalidArgumentException('POST arguments belong exclusively in the JSON body.');
+    if (in_array($route['method'], ['POST', 'PATCH'], true)) {
+        if ($query !== '') throw new InvalidArgumentException('Write arguments belong exclusively in the JSON body.');
         if ($body === null) throw new InvalidArgumentException('Expected a JSON object.');
         $args = get_object_vars($body);
+        if (array_intersect_key($args, $route['parameters'])) throw new InvalidArgumentException('Path parameters must not be repeated in the body.');
     } else {
         if (strlen($query) > 32768) throw new InvalidArgumentException('Query too large.');
         foreach ($query === '' ? [] : explode('&', $query) as $pair) {
@@ -95,10 +105,11 @@ function omoRestOpenApi(): array
             503 => 'Server unavailable'] as $code => $description) {
             $responses[$code] = ['description' => $description];
         }
-        if (in_array($name, ['omo_create_document', 'omo_create_event'], true)) $responses[201] = ['description' => 'New object saved; Location identifies its REST record'];
+        if (in_array($name, ['omo_create_document', 'omo_create_event', 'omo_create_decision', 'omo_create_project'], true)) $responses[201] = ['description' => 'New object saved; Location identifies its REST record'];
         if ($name === 'omo_create_event') $responses[409] = ['description' => 'Conflicts require confirmation; created=false, nothing saved'];
+        if ($name === 'omo_update_project') $responses[409] = ['description' => 'Project changed since reading: reload the project and clarify the edit. Nothing saved.'];
         if ($name === 'omo_send_object_email') $responses[202] = ['description' => 'Message accepted with pending deliveries; follow Location for status'];
-        if ($method === 'POST') $responses[415] = ['description' => 'Use application/json'];
+        if (in_array($method, ['POST', 'PATCH'], true)) $responses[415] = ['description' => 'Use application/json'];
         foreach ($responses as $code => &$response) {
             $responseName = omoApiResponseName($name, $code);
             $response['content'] = ['application/json' => [
@@ -107,7 +118,7 @@ function omoRestOpenApi(): array
             ]];
             $example = $response['content']['application/json']['example'];
             if ($name === 'omo_create_document' && $code < 400) $example->record->module = 'documents';
-            if ($code === 200 && in_array($name, ['omo_create_document', 'omo_create_event'], true)) $example->replayed = true;
+            if ($code === 200 && in_array($name, ['omo_create_document', 'omo_create_event', 'omo_create_decision', 'omo_create_project'], true)) $example->replayed = true;
             if ($code < 400 && in_array($name, ['omo_send_object_email', 'omo_object_email_status'], true)) {
                 $example->complete = $code === 200;
                 foreach ($example->delivery as $deliveryStatus => $_) $example->delivery->$deliveryStatus = 0;
@@ -117,7 +128,7 @@ function omoRestOpenApi(): array
                 400 => 'invalid_request', 401 => 'unauthorized', 403 => 'insufficient_scope', 405 => 'method_not_allowed',
                 415 => 'unsupported_media_type', 422 => 'operation_rejected', default => 'server_error',
             };
-            if ($code < 400 && in_array($name, ['omo_create_document', 'omo_create_event', 'omo_send_object_email'], true)) {
+            if ($code < 400 && in_array($name, ['omo_create_document', 'omo_create_event', 'omo_create_decision', 'omo_create_project', 'omo_send_object_email'], true)) {
                 $response['headers']['Location'] = ['description' => 'REST URL of the saved record or email status.', 'schema' => ['type' => 'string', 'format' => 'uri']];
             }
             if (in_array($code, [401, 403], true)) $response['headers']['WWW-Authenticate'] = [
@@ -127,7 +138,12 @@ function omoRestOpenApi(): array
         unset($response);
         $entry = ['operationId' => $name, 'summary' => $tool['title'], 'description' => $tool['description'],
             'security' => [['oauth2' => $tool['securitySchemes'][0]['scopes']]], 'responses' => $responses];
-        if ($method === 'POST') {
+        if (in_array($method, ['POST', 'PATCH'], true)) {
+            foreach (array_keys((array)$schema['properties']) as $key) if (str_contains($path, '{' . $key . '}')) {
+                $entry['parameters'][] = ['name' => $key, 'in' => 'path', 'required' => true, 'schema' => $schema['properties'][$key]];
+                unset($schema['properties'][$key]);
+                $schema['required'] = array_values(array_diff($schema['required'] ?? [], [$key]));
+            }
             $entry['requestBody'] = ['required' => true, 'content' => ['application/json' => ['schema' => $schema]]];
         } else {
             $entry['parameters'] = [];
@@ -154,5 +170,6 @@ function omoRestOpenApi(): array
                 'authorizationUrl' => omoMcpIssuer() . '/mcp/authorize.php', 'tokenUrl' => omoMcpIssuer() . '/mcp/token.php',
                 'refreshUrl' => omoMcpIssuer() . '/mcp/token.php', 'scopes' => [
                     OMO_MCP_SCOPE => 'Read accessible organization data', OMO_MCP_CREATE_SCOPE => 'Create documents',
-                    OMO_MCP_MAIL_SCOPE => 'Send email to existing object audiences', OMO_MCP_EVENT_SCOPE => 'Create events']]]]]]];
+                    OMO_MCP_MAIL_SCOPE => 'Send email to existing object audiences', OMO_MCP_EVENT_SCOPE => 'Create events', OMO_MCP_DECISION_SCOPE => 'Create ballots and tentative proposal events',
+                    OMO_MCP_PROJECT_SCOPE => 'Create and modify projects under current OMO permissions']]]]]]];
 }
