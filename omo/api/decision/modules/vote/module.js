@@ -701,7 +701,7 @@ window.commonPageScripts["/omo/api/decision/modules/vote/module.js"] = function 
                                 + '    ' + proposalTitleField
                                 + '    ' + proposalDescriptionField
                                 + '    <input type="hidden" name="proposal_info_urls[]" value="" data-omo-decision-vote-proposal-info-url>'
-                                + window.omoProposalDates(undefined, true, !payload.proposalContent || payload.proposalContent.date !== false)
+                                + window.omoProposalDates(undefined, true, !!payload.proposalContent && payload.proposalContent.date === true)
                                 + '    <input type="hidden" name="proposal_ids[]" value="0">'
                                 + '</div>'
                                 + '<div class="omo-decision-vote__proposal-menu" data-omo-decision-vote-proposal-menu>'

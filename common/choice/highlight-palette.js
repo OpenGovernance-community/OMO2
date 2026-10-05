@@ -1,8 +1,11 @@
 (function (window, document) {
     'use strict';
 
-    if (window.omoHighlightPalette) {
+    if (window.omoHighlightPalette && typeof window.omoHighlightPalette.containsFocus === 'function') {
         return;
+    }
+    if (window.omoHighlightPalette && typeof window.omoHighlightPalette.close === 'function') {
+        window.omoHighlightPalette.close();
     }
 
     var defaultColors = [
@@ -112,6 +115,7 @@
 
         var state = {
             node: palette,
+            anchor: anchor,
             reposition: null,
             onDocumentMouseDown: null,
             onKeyDown: null
@@ -158,6 +162,10 @@
     window.omoHighlightPalette = {
         colors: defaultColors,
         open: open,
-        close: close
+        close: close,
+        containsFocus: function (container) {
+            return !!(activePalette && activePalette.anchor && container.contains(activePalette.anchor)
+                && activePalette.node.contains(document.activeElement));
+        }
     };
 })(window, document);

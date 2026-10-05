@@ -1,7 +1,7 @@
 (function (window, document) {
     'use strict';
 
-    const OMO_SIMPLE_HTML_FIELD_VERSION = '20260912-toolbar-always-visible';
+    const OMO_SIMPLE_HTML_FIELD_VERSION = '20261005-html-editor-gaps';
 
     if (
         window.omoSimpleHtmlField
@@ -33,6 +33,13 @@
             return;
         }
 
+        if (!document.querySelector('link[href*="/common/assets/components.css"]')) {
+            const components = document.createElement('link');
+            components.rel = 'stylesheet';
+            components.href = '/common/assets/components.css?v=20261005-html-editor-gaps';
+            document.head.appendChild(components);
+        }
+
         const style = document.createElement('style');
         style.textContent = ''
             + '.omo-simple-html-field{position:relative;display:grid;gap:10px;}'
@@ -46,7 +53,7 @@
             + '.omo-simple-html-field .note-toolbar .note-btn:focus-visible{box-shadow:0 0 0 2px color-mix(in srgb,var(--color-primary,#2563eb) 32%,transparent)!important;}'
             + '.omo-simple-html-field .omo-simple-html-highlight-icon{display:block;width:18px;height:18px;object-fit:contain;}'
             + '.omo-simple-html-field .note-editing-area{overflow:visible;}'
-            + '.omo-simple-html-field .note-editing-area .note-editable{min-height:140px;height:auto!important;overflow-y:hidden!important;padding:14px;background:var(--color-surface,#fff);line-height:1.55;color:var(--color-text,#1f2937);}'
+            + '.omo-simple-html-field .note-editing-area .note-editable{background:var(--color-surface,#fff);color:var(--color-text,#1f2937);}'
             + '.omo-simple-html-field .note-placeholder{color:var(--color-text-light,#6b7280);}'
             + '.omo-simple-html-field .note-statusbar{display:none;}'
             + '.omo-simple-html-field .note-editable h1,.omo-simple-html-render h1{margin:0 0 .6em;font-size:1.8rem;line-height:1.15;font-weight:850;color:var(--color-text,#1f2937);}'
@@ -1041,8 +1048,9 @@
             value: '',
             placeholder: 'Saisissez du contenu HTML simple.',
             disabled: false,
-            height: 180,
-            minHeight: null,
+            lazy: true,
+            editorProfile: '',
+            surfaceId: '',
             simpleOnly: false,
             customButtons: [],
             indicatorValueUi: null,
@@ -1058,10 +1066,16 @@
             return sanitizeHtml(value, sanitizerOptions);
         };
         const safeInitialValue = sanitizeEditorHtml(state.value);
+        let lastNotifiedValue = safeInitialValue;
         const editorId = 'omo-html-field-' + Math.random().toString(36).slice(2);
         const textareaId = editorId + '-textarea';
         let destroyed = false;
         let initialized = false;
+        let initializing = false;
+        let preview = null;
+        let blurTimer = null;
+        let insertionFocusTimer = null;
+        let toolbarObserver = null;
         let $editor = null;
         let nativeSavedRange = null;
         let resourceGapHelper = null;
@@ -1085,7 +1099,7 @@
 
         container.setAttribute('data-omo-html-field', '1');
         container.innerHTML = ''
-            + '<div class="omo-simple-html-field">'
+            + '<div class="omo-simple-html-field generic-html-editor">'
             + '  <textarea id="' + escapeHtml(textareaId) + '"></textarea>'
             + '</div>';
 
@@ -1106,11 +1120,27 @@
                 return sanitizeEditorHtml($editor.summernote('code'));
             }
 
-            return sanitizeEditorHtml(state.value);
+            return sanitizeEditorHtml(preview ? preview.innerHTML : state.value);
         }
 
         function getEditableElement() {
-            return container.querySelector('.note-editable');
+            return preview || container.querySelector('.note-editable');
+        }
+
+        function preserveAncestorScroll() {
+            const positions = [];
+            for (let element = container.parentElement; element; element = element.parentElement) {
+                if (element.scrollHeight > element.clientHeight || element.scrollWidth > element.clientWidth) {
+                    positions.push({element: element, top: element.scrollTop, left: element.scrollLeft});
+                }
+            }
+            return function () {
+                // Flush the final layout before undoing scroll anchoring during the swap.
+                container.getBoundingClientRect();
+                positions.forEach(function (position) {
+                    position.element.scrollTo({top: position.top, left: position.left, behavior: 'instant'});
+                });
+            };
         }
 
         function resizeEditableToContent() {
@@ -1119,11 +1149,13 @@
                 return;
             }
 
-            const minimumHeight = Math.max(80, Number(state.minHeight || state.height || 180));
-            editable.style.minHeight = minimumHeight + 'px';
-            editable.style.height = 'auto';
-            editable.style.overflowY = 'hidden';
-            editable.style.height = Math.max(minimumHeight, editable.scrollHeight) + 'px';
+            const toolbar = container.querySelector('.note-toolbar');
+            const wrapper = container.querySelector('.generic-html-editor');
+            wrapper.style.setProperty('--html-editor-toolbar-height', toolbar ? (toolbar.offsetHeight + 2) + 'px' : '0px');
+            editable.setAttribute('data-html-editor-surface', '');
+            editable.style.removeProperty('min-height');
+            editable.style.removeProperty('height');
+            editable.style.removeProperty('overflow-y');
         }
 
         function scheduleResizeEditableToContent() {
@@ -1224,6 +1256,9 @@
 
         function setValue(nextValue) {
             setRawValue(nextValue);
+            if (preview) {
+                preview.innerHTML = state.value;
+            }
 
             if (initialized && $editor) {
                 $editor.summernote('code', state.value);
@@ -1233,12 +1268,7 @@
                 scheduleResizeEditableToContent();
             }
 
-            if (typeof state.onChange === 'function') {
-                try {
-                    state.onChange(getValue(), container.__omoSimpleHtmlField || null);
-                } catch (error) {
-                }
-            }
+            emitChange();
         }
 
         function saveRange() {
@@ -1254,9 +1284,12 @@
         }
 
         function emitChange() {
+            const value = getValue();
+            if (value === lastNotifiedValue) return;
+            lastNotifiedValue = value;
             if (typeof state.onChange === 'function') {
                 try {
-                    state.onChange(getValue(), container.__omoSimpleHtmlField || null);
+                    state.onChange(value, container.__omoSimpleHtmlField || null);
                 } catch (error) {
                 }
             }
@@ -1456,6 +1489,8 @@
                 } catch (error) {
                     // The native selection fallback below is sufficient.
                 }
+            } else if (preview && !state.disabled) {
+                preview.focus({preventScroll: true});
             }
 
             let range = captureCurrentSelectionRange();
@@ -1478,6 +1513,22 @@
 
             saveRange();
             return !!captureCurrentSelectionRange();
+        }
+
+        function focusAfterResourceInsertion(paragraph) {
+            setCursorInParagraph(paragraph);
+            saveRange();
+            window.clearTimeout(insertionFocusTimer);
+            // Pickers close their modal after inserting; restore focus once that is done.
+            insertionFocusTimer = window.setTimeout(function () {
+                const editable = getEditableElement();
+                if (destroyed || state.disabled || !container.isConnected || !editable || !editable.contains(paragraph)) {
+                    return;
+                }
+                editable.focus({preventScroll: true});
+                setCursorInParagraph(paragraph);
+                saveRange();
+            }, 0);
         }
 
         function insertResourceEmbedAtMarker(markerNode, embedNode) {
@@ -1504,7 +1555,7 @@
             const embedParagraph = document.createElement('p');
             embedParagraph.appendChild(embedNode);
             if (markerParagraph instanceof HTMLParagraphElement && editable.contains(markerParagraph)) {
-                const trailingParagraph = markerParagraph.cloneNode(false);
+                let trailingParagraph = markerParagraph.cloneNode(false);
                 const splitRange = document.createRange();
                 splitRange.setStartAfter(markerNode);
                 splitRange.setEnd(markerParagraph, markerParagraph.childNodes.length);
@@ -1517,15 +1568,24 @@
                     markerParagraph.after(embedParagraph);
                 }
 
-                if (!isParagraphEmpty(trailingParagraph)) {
+                if (isParagraphEmpty(trailingParagraph) && embedParagraph.nextSibling instanceof HTMLParagraphElement
+                    && !isResourceEmbedOnlyParagraph(embedParagraph.nextSibling)) {
+                    trailingParagraph = embedParagraph.nextSibling;
+                } else {
+                    if (isParagraphEmpty(trailingParagraph)) {
+                        trailingParagraph.replaceChildren(document.createElement('br'));
+                    }
                     embedParagraph.after(trailingParagraph);
-                    setCursorInParagraph(trailingParagraph);
                 }
+                focusAfterResourceInsertion(trailingParagraph);
 
                 return true;
             }
 
             markerNode.replaceWith(embedParagraph);
+            const trailingParagraph = createNormalParagraph();
+            embedParagraph.after(trailingParagraph);
+            focusAfterResourceInsertion(trailingParagraph);
             return true;
         }
 
@@ -1574,7 +1634,7 @@
             }, 160);
         }
 
-        function getResourceGapTarget(target) {
+        function getResourceGapTarget(target, clientY) {
             const editable = getEditableElement();
             const targetElement = target instanceof Element ? target : null;
             const embed = targetElement ? targetElement.closest('[data-omo-embed-type]') : null;
@@ -1587,26 +1647,26 @@
                 return null;
             }
 
-            if (!paragraph.nextElementSibling || isResourceEmbedOnlyParagraph(paragraph.nextElementSibling)) {
-                return paragraph;
-            }
-
-            return isResourceEmbedOnlyParagraph(paragraph.previousElementSibling)
-                ? paragraph.previousElementSibling
-                : null;
+            const canInsertBefore = !paragraph.previousElementSibling || isResourceEmbedOnlyParagraph(paragraph.previousElementSibling);
+            const canInsertAfter = !paragraph.nextElementSibling || isResourceEmbedOnlyParagraph(paragraph.nextElementSibling);
+            if (!canInsertBefore && !canInsertAfter) return null;
+            const rect = paragraph.getBoundingClientRect();
+            const before = canInsertBefore && (!canInsertAfter || clientY < (rect.top + rect.bottom) / 2);
+            return {paragraph: paragraph, before: before};
         }
 
-        function showResourceGapHelper(paragraph) {
+        function showResourceGapHelper(target) {
             const editable = getEditableElement();
             const field = container.querySelector('.omo-simple-html-field');
+            const paragraph = target && target.paragraph;
             if (!resourceGapHelper || !editable || !field || !paragraph || !editable.contains(paragraph)) {
                 return;
             }
 
-            const nextParagraph = paragraph.nextElementSibling;
+            const adjacentParagraph = target.before ? paragraph.previousElementSibling : paragraph.nextElementSibling;
             if (
                 !isResourceEmbedOnlyParagraph(paragraph)
-                || (nextParagraph && !isResourceEmbedOnlyParagraph(nextParagraph))
+                || (adjacentParagraph && !isResourceEmbedOnlyParagraph(adjacentParagraph))
             ) {
                 hideResourceGapHelper();
                 return;
@@ -1614,12 +1674,12 @@
 
             const fieldRect = field.getBoundingClientRect();
             const firstRect = paragraph.getBoundingClientRect();
-            const nextRect = nextParagraph ? nextParagraph.getBoundingClientRect() : null;
-            resourceGapTarget = paragraph;
+            const adjacentRect = adjacentParagraph ? adjacentParagraph.getBoundingClientRect() : null;
+            resourceGapTarget = target;
             resourceGapHelper.style.left = ((firstRect.left + firstRect.right) / 2 - fieldRect.left) + 'px';
-            resourceGapHelper.style.top = (nextRect
-                ? ((firstRect.bottom + nextRect.top) / 2 - fieldRect.top)
-                : (firstRect.bottom - fieldRect.top + 8)) + 'px';
+            resourceGapHelper.style.top = (target.before
+                ? (adjacentRect ? (adjacentRect.bottom + firstRect.top) / 2 : firstRect.top - 8)
+                : (adjacentRect ? (firstRect.bottom + adjacentRect.top) / 2 : firstRect.bottom + 8)) - fieldRect.top + 'px';
             resourceGapHelper.style.display = 'inline-flex';
             clearResourceGapHideTimer();
         }
@@ -1644,20 +1704,22 @@
             resourceGapHelper.addEventListener('mouseenter', clearResourceGapHideTimer);
             resourceGapHelper.addEventListener('mouseleave', scheduleResourceGapHelperHide);
             resourceGapHelper.addEventListener('click', function () {
-                const paragraph = resourceGapTarget;
-                const nextParagraph = paragraph ? paragraph.nextElementSibling : null;
+                const target = resourceGapTarget;
+                const paragraph = target && target.paragraph;
+                const adjacentParagraph = paragraph ? (target.before ? paragraph.previousElementSibling : paragraph.nextElementSibling) : null;
                 if (
                     !paragraph
                     || !editable.contains(paragraph)
-                    || (nextParagraph && !isResourceEmbedOnlyParagraph(nextParagraph))
+                    || (adjacentParagraph && !isResourceEmbedOnlyParagraph(adjacentParagraph))
                 ) {
                     hideResourceGapHelper();
                     return;
                 }
 
                 const normalParagraph = createNormalParagraph();
-                paragraph.after(normalParagraph);
-                editable.focus();
+                if (target.before) paragraph.before(normalParagraph);
+                else paragraph.after(normalParagraph);
+                editable.focus({preventScroll: true});
                 setCursorInParagraph(normalParagraph);
                 saveRange();
                 scheduleResizeEditableToContent();
@@ -1666,9 +1728,9 @@
             field.appendChild(resourceGapHelper);
 
             editable.addEventListener('mousemove', function (event) {
-                const paragraph = getResourceGapTarget(event.target);
-                if (paragraph) {
-                    showResourceGapHelper(paragraph);
+                const target = getResourceGapTarget(event.target, event.clientY);
+                if (target) {
+                    showResourceGapHelper(target);
                 } else {
                     scheduleResourceGapHelperHide();
                 }
@@ -1792,7 +1854,44 @@
                 return safeHtml;
             }
 
-            setRawValue((state.value || '') + safeHtml);
+            if (preview) {
+                const range = getSelectionRange();
+                if (resourceEmbed) {
+                    const markerNode = buildCursorMarkerNode();
+                    if (range) {
+                        range.deleteContents();
+                        range.insertNode(markerNode);
+                    } else {
+                        preview.appendChild(markerNode);
+                    }
+                    if (insertResourceEmbedAtMarker(markerNode, resourceEmbed)) {
+                        setRawValue(preview.innerHTML);
+                        emitChange();
+                        return safeHtml;
+                    }
+                }
+                const fragment = document.createRange().createContextualFragment(safeHtml);
+                const lastNode = fragment.lastChild;
+                if (range) {
+                    range.deleteContents();
+                    range.insertNode(fragment);
+                } else {
+                    preview.appendChild(fragment);
+                }
+                if (lastNode && window.getSelection) {
+                    const caret = document.createRange();
+                    caret.setStartAfter(lastNode);
+                    caret.collapse(true);
+                    const selection = window.getSelection();
+                    selection.removeAllRanges();
+                    selection.addRange(caret);
+                }
+                setRawValue(preview.innerHTML);
+                saveRange();
+                emitChange();
+            } else {
+                setRawValue((state.value || '') + safeHtml);
+            }
             return safeHtml;
         }
 
@@ -1804,6 +1903,8 @@
             const safeHtml = sanitizeEditorHtml(nextHtml);
             const editable = getEditableElement();
             const emitChangeAfterReplace = shouldEmitChange !== false;
+            // A silent snapshot refresh must not swallow a pending real text edit.
+            if (!emitChangeAfterReplace) emitChange();
 
             if (!safeHtml || !editable || !targetNode || !editable.contains(targetNode)) {
                 return insertHtmlAtCursor(safeHtml);
@@ -1829,6 +1930,8 @@
 
                         if (emitChangeAfterReplace) {
                             emitChange();
+                        } else {
+                            lastNotifiedValue = getValue();
                         }
                         return safeHtml;
                     }
@@ -1880,6 +1983,8 @@
 
             if (emitChangeAfterReplace) {
                 emitChange();
+            } else {
+                lastNotifiedValue = getValue();
             }
             return safeHtml;
         }
@@ -2121,8 +2226,15 @@
             return insertTextAtCursor(text);
         }
 
-        function destroy() {
-            destroyed = true;
+        function releaseEditor(skipSync) {
+            window.clearTimeout(blurTimer);
+            if (toolbarObserver) {
+                toolbarObserver.disconnect();
+                toolbarObserver = null;
+            }
+            ['focusin', 'focusout', 'click', 'keyup'].forEach(function (type) {
+                document.removeEventListener(type, scheduleEditorBlur, true);
+            });
             hideResourceGapHelper();
             if (resourceGapHelper) {
                 resourceGapHelper.remove();
@@ -2131,8 +2243,17 @@
 
             if (initialized && $editor) {
                 try {
-                    setRawValue($editor.summernote('code'));
+                    const context = $editor.data('summernote');
+                    const modules = context ? context.modules : {};
+                    const backdrops = Object.keys(modules).map(function (name) {
+                        const dialog = modules[name].$dialog;
+                        const modal = dialog && dialog.data('modal');
+                        return modal && modal.$backdrop;
+                    }).filter(Boolean);
+                    if (!skipSync) setRawValue($editor.summernote('code'));
                     $editor.summernote('destroy');
+                    // Summernote Lite hides these body-mounted nodes without removing them.
+                    backdrops.forEach(function (backdrop) { backdrop.remove(); });
                 } catch (error) {
                     // ignore cleanup issues
                 }
@@ -2140,22 +2261,99 @@
 
             initialized = false;
             $editor = null;
+            if (destroyed) nativeSavedRange = null;
+            Object.keys(toolbarButtons).forEach(function (name) { delete toolbarButtons[name]; });
+        }
+
+        function scheduleEditorBlur() {
+            window.clearTimeout(blurTimer);
+            // Summernote resolves dialog actions asynchronously before restoring focus.
+            blurTimer = window.setTimeout(function () {
+                if (destroyed || !initialized || container.contains(document.activeElement)) return;
+                const context = $editor.data('summernote');
+                const modules = context ? context.modules : {};
+                const usingPopup = Object.keys(modules).some(function (name) {
+                    const module = modules[name];
+                    const dialog = module.$dialog && module.$dialog[0];
+                    const popover = module.$popover && module.$popover[0];
+                    return (dialog && dialog.getClientRects().length > 0)
+                        || (popover && popover.contains(document.activeElement));
+                });
+                if (usingPopup || (window.omoHighlightPalette
+                    && typeof window.omoHighlightPalette.containsFocus === 'function'
+                    && window.omoHighlightPalette.containsFocus(container))) return;
+                const restoreScroll = preserveAncestorScroll();
+                setRawValue(getValue());
+                emitChange();
+                // Keep live nodes for async insertions and temporary selection markers.
+                const content = $editor.summernote('codeview.isActivated') ? null : document.createDocumentFragment();
+                const editable = getEditableElement();
+                const scrollTop = editable.scrollTop;
+                const savedSelection = content && nativeSavedRange && editable.contains(nativeSavedRange.commonAncestorContainer)
+                    ? {start: nativeSavedRange.startContainer, startOffset: nativeSavedRange.startOffset,
+                        end: nativeSavedRange.endContainer, endOffset: nativeSavedRange.endOffset} : null;
+                if (content) {
+                    while (editable.firstChild) content.appendChild(editable.firstChild);
+                }
+                releaseEditor(true);
+                mountPreview(content, scrollTop);
+                if (savedSelection) {
+                    nativeSavedRange = document.createRange();
+                    nativeSavedRange.setStart(savedSelection.start === editable ? preview : savedSelection.start, savedSelection.startOffset);
+                    nativeSavedRange.setEnd(savedSelection.end === editable ? preview : savedSelection.end, savedSelection.endOffset);
+                }
+                restoreScroll();
+            }, 50);
+        }
+
+        function destroy() {
+            destroyed = true;
+            window.clearTimeout(insertionFocusTimer);
+            if (preview) {
+                preview.removeEventListener('focus', schedulePreviewInitialization);
+            }
+            releaseEditor();
             delete container.__omoSimpleHtmlField;
             delete container.__omoSimpleHtmlFieldDestroy;
         }
 
-        ensureDependencies()
+        function initializeEditor() {
+            if (destroyed || initialized || initializing || (state.lazy && (state.disabled || document.activeElement !== preview))) {
+                return;
+            }
+            initializing = true;
+            ensureDependencies()
             .then(function () {
-                if (destroyed || !textarea) {
+                if (destroyed || !textarea || (state.lazy && (!container.isConnected || document.activeElement !== preview))) {
+                    initializing = false;
                     return;
                 }
 
-                const toolbar = [
+                // Keep edits made while dependencies were loading, and the clicked caret.
+                const restoreScroll = preserveAncestorScroll();
+                const focusPreview = preview && document.activeElement === preview;
+                const previewScrollTop = preview ? preview.scrollTop : 0;
+                const selection = focusPreview && window.getSelection();
+                const currentRange = selection && selection.rangeCount ? selection.getRangeAt(0) : null;
+                const previewRange = currentRange && preview.contains(currentRange.commonAncestorContainer)
+                    ? {start: currentRange.startContainer, startOffset: currentRange.startOffset,
+                        end: currentRange.endContainer, endOffset: currentRange.endOffset} : null;
+                if (preview) {
+                    setRawValue(preview.innerHTML);
+                }
+
+                let toolbar = [
                     ['style', ['style']],
                     ['font', ['bold', 'italic', 'underline', 'clear']],
                     ['para', ['ul', 'ol']],
                     ['insert', ['link']]
                 ];
+                if (state.editorProfile === 'admin') {
+                    toolbar = [['style', ['style']], ['font', ['bold', 'italic', 'underline', 'clear']],
+                        ['para', ['ul', 'ol', 'paragraph']], ['insert', ['link', 'table', 'hr']], ['view', ['codeview']]];
+                } else if (state.editorProfile === 'simple') {
+                    toolbar = [['font', ['bold', 'italic', 'underline', 'clear']], ['para', ['ul', 'ol', 'paragraph']]];
+                }
                 const toolbarGroups = {};
                 const buttonsConfig = {};
 
@@ -2179,6 +2377,7 @@
                                 ? String(buttonConfig.contents || '')
                                 : escapeHtml(buttonConfig.label),
                             tooltip: buttonConfig.title,
+                            container: container,
                             className: buttonConfig.className,
                             click: function (event) {
                                 const fieldApi = container.__omoSimpleHtmlField || null;
@@ -2209,14 +2408,14 @@
                             }
                         }
                         $button.attr('data-omo-toolbar-button-name', buttonConfig.name);
-                        applyToolbarButtonState(buttonConfig.name, {
+                        applyToolbarButtonState(buttonConfig.name, Object.assign({
                             label: buttonConfig.label,
                             contents: buttonConfig.contents,
                             title: buttonConfig.title,
                             hidden: !!buttonConfig.hidden,
                             disabled: !!buttonConfig.disabled,
                             active: !!buttonConfig.active
-                        });
+                        }, toolbarButtonState[buttonConfig.name] || {}));
 
                         return $button;
                     };
@@ -2230,8 +2429,10 @@
                 $editor.summernote({
                     lang: 'fr-FR',
                     placeholder: state.placeholder,
-                    minHeight: Math.max(80, Number(state.minHeight || state.height || 180)),
+                    minHeight: null,
+                    height: null,
                     maxHeight: null,
+                    disableResizeEditor: true,
                     dialogsInBody: true,
                     disableDragAndDrop: true,
                     styleTags: [
@@ -2270,6 +2471,7 @@
                         },
                         onChange: function (contents) {
                             setRawValue(contents);
+                            if (!initialized) return;
                             saveRange();
                             scheduleResizeEditableToContent();
                             emitChange();
@@ -2298,8 +2500,59 @@
                 }
 
                 initialized = true;
+                initializing = false;
+                const toolbarNode = container.querySelector('.note-toolbar');
+                const keepToolbarFocus = function (event) {
+                    const target = event.target instanceof Element ? event.target : null;
+                    if (target && !target.closest('button, a, input, select, textarea, .note-btn, [role="menuitem"]')) {
+                        // Toolbar padding and group gaps must not blur the editable surface.
+                        event.preventDefault();
+                    }
+                };
+                if (toolbarNode) {
+                    toolbarNode.addEventListener('pointerdown', keepToolbarFocus);
+                    toolbarNode.addEventListener('mousedown', keepToolbarFocus);
+                }
+                if (state.lazy) {
+                    ['focusin', 'focusout', 'click', 'keyup'].forEach(function (type) {
+                        document.addEventListener(type, scheduleEditorBlur, true);
+                    });
+                }
+                if (preview) {
+                    const previousPreview = preview;
+                    const editable = container.querySelector('.note-editable');
+                    if (focusPreview && editable) {
+                        // Move the existing nodes so a click or keyboard selection survives.
+                        editable.replaceChildren(...Array.from(preview.childNodes));
+                    }
+                    preview.remove();
+                    preview = null;
+                    if (state.surfaceId) editable.id = state.surfaceId;
+                    resizeEditableToContent();
+                    editable.scrollTop = previewScrollTop;
+                    if (focusPreview && editable) {
+                        editable.focus({preventScroll: true});
+                        if (previewRange) {
+                            const range = document.createRange();
+                            range.setStart(previewRange.start === previousPreview ? editable : previewRange.start, previewRange.startOffset);
+                            range.setEnd(previewRange.end === previousPreview ? editable : previewRange.end, previewRange.endOffset);
+                            selection.removeAllRanges();
+                            selection.addRange(range);
+                        }
+                        saveRange();
+                    }
+                }
                 saveRange();
+                resizeEditableToContent();
+                getEditableElement().scrollTop = previewScrollTop;
+                restoreScroll();
+                // Initializing/normalizing the presentation is not a user edit.
+                lastNotifiedValue = getValue();
                 scheduleResizeEditableToContent();
+                if (window.ResizeObserver) {
+                    toolbarObserver = new ResizeObserver(resizeEditableToContent);
+                    toolbarObserver.observe(container.querySelector('.note-toolbar'));
+                }
 
                 const editable = getEditableElement();
                 if (editable) {
@@ -2327,7 +2580,7 @@
                         emitDoubleClick(event.target || null, event);
                     });
                 }
-                if (typeof state.onReady === 'function') {
+                if (!state.lazy && typeof state.onReady === 'function') {
                     try {
                         state.onReady(container.__omoSimpleHtmlField || null);
                     } catch (error) {
@@ -2339,11 +2592,62 @@
                     return;
                 }
 
-                container.innerHTML = '<div class="omo-simple-html-field__meta">Impossible de charger l editeur HTML.</div>';
+                initializing = false;
+                if (!preview) {
+                    container.innerHTML = '<div class="omo-simple-html-field__meta">Impossible de charger l editeur HTML.</div>';
+                }
                 if (window.console && typeof window.console.error === 'function') {
                     window.console.error(error);
                 }
             });
+        }
+
+        function schedulePreviewInitialization() {
+            // Focus fires before the browser places the caret for a pointer click.
+            // Wait for that default action even when Summernote is already cached.
+            window.setTimeout(initializeEditor, 0);
+        }
+
+        function mountPreview(content, scrollTop) {
+            textarea.hidden = true;
+            preview = document.createElement('div');
+            preview.className = 'generic-form-control omo-simple-html-render';
+            if (state.surfaceId) preview.id = state.surfaceId;
+            preview.setAttribute('data-html-editor-surface', '');
+            preview.contentEditable = state.disabled ? 'false' : 'true';
+            preview.setAttribute('role', 'textbox');
+            preview.setAttribute('aria-multiline', 'true');
+            preview.setAttribute('aria-label', state.placeholder);
+            preview.setAttribute('aria-readonly', state.disabled ? 'true' : 'false');
+            preview.innerHTML = sanitizeEditorHtml(state.value);
+            if (content) preview.replaceChildren(content);
+            preview.addEventListener('focus', schedulePreviewInitialization);
+            preview.addEventListener('input', function () {
+                setRawValue(preview.innerHTML);
+                emitChange();
+            });
+            preview.addEventListener('paste', function (event) {
+                if (!event.clipboardData) return;
+                event.preventDefault();
+                const html = event.clipboardData.getData('text/html');
+                const text = event.clipboardData.getData('text/plain');
+                document.execCommand('insertHTML', false, sanitizeEditorHtml(html || buildTextInsertionHtml(text)));
+            });
+            preview.addEventListener('drop', function (event) { event.preventDefault(); });
+            preview.addEventListener('mouseup', saveRange);
+            preview.addEventListener('keyup', saveRange);
+            preview.addEventListener('dblclick', function (event) { emitDoubleClick(event.target, event); });
+            refreshIndicatorValueControls(preview, state.indicatorValueUi);
+            textarea.parentNode.appendChild(preview);
+            resizeEditableToContent();
+            preview.scrollTop = scrollTop || 0;
+        }
+
+        if (state.lazy) {
+            mountPreview();
+        } else {
+            initializeEditor();
+        }
 
         container.__omoSimpleHtmlField = {
             version: OMO_SIMPLE_HTML_FIELD_VERSION,
@@ -2352,6 +2656,8 @@
             focus: function () {
                 if (initialized && $editor) {
                     $editor.summernote('focus');
+                } else if (preview && !state.disabled) {
+                    preview.focus();
                 }
             },
             focusForInsertion: focusForInsertion,
@@ -2374,6 +2680,14 @@
             destroy: destroy
         };
         container.__omoSimpleHtmlFieldDestroy = destroy;
+
+        if (state.lazy && typeof state.onReady === 'function') {
+            Promise.resolve().then(function () {
+                if (!destroyed && container.isConnected) {
+                    try { state.onReady(container.__omoSimpleHtmlField); } catch (error) { }
+                }
+            });
+        }
 
         return container.__omoSimpleHtmlField;
     }

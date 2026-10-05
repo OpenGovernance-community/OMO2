@@ -6,6 +6,10 @@ require_once dirname(__DIR__, 4) . '/common/openai_text.php';
 header('Content-Type: application/json; charset=UTF-8');
 
 $sourceLang = [
+    'documents.rewrite.error.configuration' => [
+        'text' => 'Configuration IA indisponible.',
+        'context' => 'Error returned when AI settings are unavailable.',
+    ],
     'documents.rewrite.error.contributor_required' => [
         'text' => 'Les fonctions IA sont réservées aux contributeurs Patreon actifs.',
         'context' => 'Error returned when the current user does not have access to AI features.',
@@ -49,6 +53,12 @@ if ($organizationId <= 0 || $currentUserId <= 0 || !commonCurrentUserHasOrganiza
     exit;
 }
 
+if (!commonAiIsConfigured(commonOpenAiGetRewriteModel())) {
+    http_response_code(503);
+    echo json_encode(['status' => false, 'message' => omoDocumentsRewriteT('documents.rewrite.error.configuration')]);
+    exit;
+}
+
 if (!patreonUserCanUseAi($currentUserId)) {
     http_response_code(403);
     echo json_encode(array(
@@ -85,6 +95,7 @@ if ($selectedText === '' || $fullText === '') {
 }
 
 $result = commonOpenAiRewriteSelectedDocumentText($selectedText, $fullText, array(
+    'user_id' => $currentUserId,
     'title' => $title,
     'rewrite_full_document' => $rewriteFullDocument,
 ));

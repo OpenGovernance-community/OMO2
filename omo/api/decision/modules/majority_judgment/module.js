@@ -754,7 +754,7 @@
                                 + '    ' + proposalTitleField
                                 + '    ' + proposalDescriptionField
                                 + '    <input type="hidden" name="proposal_info_urls[]" value="" data-omo-decision-mj-proposal-info-url>'
-                                + window.omoProposalDates(undefined, true, !payload.proposalContent || payload.proposalContent.date !== false)
+                                + window.omoProposalDates(undefined, true, !!payload.proposalContent && payload.proposalContent.date === true)
                                 + '    <input type="hidden" name="proposal_ids[]" value="0">'
                                 + '</div>'
                                 + '<div class="omo-decision-majority-judgment__proposal-menu" data-omo-decision-mj-proposal-menu>'
