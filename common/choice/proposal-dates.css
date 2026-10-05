@@ -23,7 +23,21 @@
     margin-top: var(--generic-space-2);
 }
 
-.choice-proposal-dates input[type="datetime-local"] {
+.choice-proposal-dates__row {
+    --param-form-grid-columns: minmax(0, max-content) minmax(0, 1fr);
+}
+
+.choice-proposal-dates__single {
+    --param-form-grid-columns: minmax(0, 160px) repeat(2, minmax(0, 110px));
+}
+
+.choice-proposal-dates__range {
+    --param-form-grid-columns: repeat(2, minmax(0, 220px));
+}
+
+.choice-proposal-dates input[type="datetime-local"],
+.choice-proposal-dates input[type="date"],
+.choice-proposal-dates input[type="time"] {
     min-width: 0;
     width: 100%;
     font-variant-numeric: tabular-nums;
@@ -97,6 +111,12 @@
 }
 
 @media (max-width: 480px) {
+    .choice-proposal-dates__row,
+    .choice-proposal-dates__single,
+    .choice-proposal-dates__range {
+        --param-form-grid-columns: minmax(0, 1fr);
+    }
+
     .choice-proposal-calendar {
         grid-template-columns: auto minmax(0, 1fr);
     }

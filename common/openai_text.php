@@ -1,16 +1,6 @@
 <?php
 
-if (!function_exists('commonOpenAiGetApiKey')) {
-    function commonOpenAiGetApiKey()
-    {
-        $globalKey = trim((string)($GLOBALS['OpenAI'] ?? ''));
-        if ($globalKey !== '') {
-            return $globalKey;
-        }
-
-        return function_exists('envValue') ? trim((string)envValue('OPENAI_API_KEY', '')) : '';
-    }
-}
+require_once __DIR__ . '/ai_access.php';
 
 function commonOpenAiGetRewriteModel()
 {
@@ -52,6 +42,9 @@ function commonOpenAiBuildRewriteModelFallbacks($preferredModel)
 
 function commonOpenAiRequestChatCompletion($apiKey, array $payload, int $timeout = 120)
 {
+    if (!commonAiIsConfigured((string)($payload['model'] ?? ''), (string)$apiKey)) {
+        return ['status' => false, 'message' => 'Configuration IA indisponible.'];
+    }
     $curl = curl_init('https://api.openai.com/v1/chat/completions');
     if ($curl === false) {
         return array(
@@ -143,13 +136,10 @@ function commonOpenAiDecodeRewriteResponse($content)
 
 function commonOpenAiRewriteSelectedDocumentText($selectedText, $fullText, array $options = array())
 {
-    $apiKey = commonOpenAiGetApiKey();
-    if ($apiKey === '') {
-        return array(
-            'status' => false,
-            'message' => 'OPENAI_API_KEY is not configured.',
-        );
+    if (!commonAiUserCanUse((int)($options['user_id'] ?? commonAiGetCurrentUserId()), (string)($options['model'] ?? commonOpenAiGetRewriteModel()))) {
+        return ['status' => false, 'message' => 'Fonctions IA indisponibles pour ce compte.'];
     }
+    $apiKey = commonOpenAiGetApiKey();
 
     $selectedText = trim((string)$selectedText);
     $fullText = trim((string)$fullText);
@@ -253,10 +243,10 @@ function commonOpenAiDecodeSummarizeResponse($content)
 
 function commonOpenAiSummarizeGovernanceChanges(array $modifications, string $locale): array
 {
-    $apiKey = commonOpenAiGetApiKey();
-    if ($apiKey === '') {
-        return ['status' => false, 'message' => 'OPENAI_API_KEY is not configured.'];
+    if (!commonAiUserCanUse(commonAiGetCurrentUserId(), commonOpenAiGetRewriteModel())) {
+        return ['status' => false, 'message' => 'Fonctions IA indisponibles pour ce compte.'];
     }
+    $apiKey = commonOpenAiGetApiKey();
 
     $locale = strtolower(str_replace('_', '-', trim($locale)));
     if (!preg_match('/^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/', $locale)) $locale = 'fr';
@@ -306,13 +296,10 @@ function commonOpenAiSummarizeGovernanceChanges(array $modifications, string $lo
 
 function commonOpenAiSummarizeSelectedDocumentText($selectedText, $fullText, array $options = array())
 {
-    $apiKey = commonOpenAiGetApiKey();
-    if ($apiKey === '') {
-        return array(
-            'status' => false,
-            'message' => 'OPENAI_API_KEY is not configured.',
-        );
+    if (!commonAiUserCanUse((int)($options['user_id'] ?? commonAiGetCurrentUserId()), (string)($options['model'] ?? commonOpenAiGetRewriteModel()))) {
+        return ['status' => false, 'message' => 'Fonctions IA indisponibles pour ce compte.'];
     }
+    $apiKey = commonOpenAiGetApiKey();
 
     $selectedText = trim((string)$selectedText);
     $fullText = trim((string)$fullText);

@@ -1,5 +1,33 @@
 # Journal Des Nouveautes
 
+- Memos : selecteur de documents partage avec les PV, navigation par cercles de holons, portees Local / Enfants directs / Descendants et recherche textuelle combinee. Seuls les Memos visibles sont proposes, en excluant le document en cours ; insertion et modification des references conservent le curseur.
+
+- Memos : les blocs documents integres affichent le meme bouton + au survol que les PV pour creer une ligne editable avant, apres ou entre deux blocs colles. Le curseur rejoint la nouvelle ligne pour continuer la saisie, y compris au debut et a la fin du document.
+
+- Fonctions IA : controle commun dans les documents, les PV, la gouvernance, la FAQ et Telegram. Configuration IA requise ; si Patreon est configure, compte connecte avec abonnement actif et montant strictement superieur a zero, y compris pour les administrateurs. Une configuration Patreon incomplete ne contourne plus ce controle. Les traductions automatiques de l interface restent independantes de Patreon.
+
+- Champs HTML : ouvrir puis quitter Summernote sans modifier le contenu ne declenche plus de notification de changement et laisse Enregistrer inactif. La saisie et la mise en forme restent detectees, sans notification repetee a la perte de focus ; les rafraichissements silencieux des ressources restent silencieux.
+
+- Champs HTML : au clic dans la div editable, Summernote conserve le curseur au caractere choisi, y compris apres chargement de l editeur et dans le texte mis en forme, sans modifier le defilement.
+
+- Champs HTML : passage entre div editable et Summernote sans saut de defilement de la page ou des panneaux. La hauteur est limitee des la creation de l editeur ; le defilement du contenu et le bloc insere restent en place au retour du focus.
+
+- Champs HTML : les espaces de la barre d outils conservent le focus et le curseur. Apres insertion d une ressource (document, projet, decision, etc.), retour du focus juste apres le bloc, avec un paragraphe editable cree si necessaire pour continuer la saisie.
+
+- API REST et MCP : lien public personnel de prise de rendez-vous disponible dans user.meeting_booking_url a la connexion et dans les fiches, listes et lectures de membres. Valeur null pour un profil absent, desactive ou sans calendrier de destination valide ; aucune configuration privee exposee. Descriptions et schemas expliquant comment partager le lien par e-mail via le module existant.
+
+- API REST et MCP : creation atomique de scrutins (vote, jugement majoritaire, consentement), question, propositions texte ou date, periodes d elaboration et d evaluation et invitations natives. Les propositions datees reservent des evenements provisoires. Decouverte des espaces autorises, consentement decisions:create, protection contre les doublons et liens interne/public pour l envoi aux participants avec le module e-mail existant. Formats de retour disponibles dans OpenAPI et /developer/.
+
+- Champs HTML vides : le placeholder et les infobulles Summernote laissent passer les clics vers le contenu editable, pour conserver le focus et eviter un retour intempestif a la div.
+
+- Champs HTML partages : div editable par defaut, Summernote au focus puis retour a la div en quittant le champ, dans OMO et adminEdit. Hauteur minimale commune de trois lignes, adaptation au contenu et plafond de 70 % de l ecran avec defilement. Les profils de barre d outils, le mode source, les insertions asynchrones des PV et la sauvegarde des formulaires sont conserves.
+
+- Propositions de dates : champs plus compacts et case "Sur plusieurs jours" alignee avec la saisie dans les deux modes sur ordinateur ; disposition empilee sur mobile.
+
+- Propositions de dates : option desactivee par defaut, saisie d une date avec deux heures et case "Sur plusieurs jours" pour un debut et une fin complets. Affichage adapte aux creneaux sur un ou plusieurs jours, sans changement du stockage en base.
+
+- Decisions : les descriptions des propositions dans Gerer restent des blocs editables legers. Summernote est initialise au focus, puis detruit quand on quitte le champ ; sa barre d outils, ses dialogues et le surlignage restent utilisables. La mise en forme et les valeurs non ouvertes sont conservees a la sauvegarde.
+
 - Performances Structure, PV et gouvernance : suppression du diagnostic de permissions inutilise, catalogues de ressources charges a l ouverture de leur selecteur, lecture des arbres par lots avec objets hydrates et mutualisation des calculs de droits pendant le rendu. Les instantanes de holons evitent les catalogues inutiles. Les lectures de proprietes heritees conservent le cache de lecture ; les ecritures et lectures verrouillantes l invalident. Tests de parite des donnees, droits et chargement asynchrone inclus.
 
 - API REST : formats de retour documentés pour les 17 opérations, avec champs imbriqués, types, valeurs nulles, variantes et exemples JSON fictifs. Contrats communs à OpenAPI et /developer/ ; la page présente les données retournées et les cas métier particuliers plutôt qu’une liste de codes HTTP standards. Vérification des contrats sur les réponses réelles des tests.

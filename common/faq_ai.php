@@ -24,12 +24,12 @@ function faqAiT(string $key): string
 }
 
 /** Return an optional draft; AI failures never prevent the question from being submitted. */
-function faqAiGenerateDraft(string $question, string $description, ?callable $request = null): string
+function faqAiGenerateDraft(string $question, string $description, ?callable $request = null, ?int $userId = null): string
 {
-    $apiKey = commonOpenAiGetApiKey();
-    if ($apiKey === '') {
+    if (!commonAiUserCanUse($userId ?? commonAiGetCurrentUserId(), commonOpenAiGetRewriteModel())) {
         return '';
     }
+    $apiKey = commonOpenAiGetApiKey();
 
     try {
         $path = dirname(__DIR__) . '/NOUVEAUTES.md';

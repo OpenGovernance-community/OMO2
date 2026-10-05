@@ -19,16 +19,18 @@ final class McpStructure
         $user = new User();
         if (!$user->load((int)$grant['IDuser'])) throw new \DomainException('User unavailable.');
         $root = $organization->getEnabledStructuralRootHolon((int)$grant['IDuser']);
-        return ['connected' => true, 'read_only' => !\omoMcpCanCreateDocuments($grant) && !\omoMcpCanSendMail($grant) && !\omoMcpCanCreateEvents($grant), 'scope' => $grant['scope'],
+        return ['connected' => true, 'read_only' => !\omoMcpCanCreateDocuments($grant) && !\omoMcpCanSendMail($grant) && !\omoMcpCanCreateEvents($grant) && !\omoMcpCanCreateDecisions($grant), 'scope' => $grant['scope'],
+            'decision_creation_authorized' => \omoMcpCanCreateDecisions($grant),
             'event_creation_authorized' => \omoMcpCanCreateEvents($grant),
             'document_creation_authorized' => \omoMcpCanCreateDocuments($grant),
             'mail_sending_authorized' => \omoMcpCanSendMail($grant),
-            'user' => ['id' => (int)$user->getId(), 'name' => \commonGetCurrentUserDisplayName()],
+            'user' => ['id' => (int)$user->getId(), 'name' => \commonGetCurrentUserDisplayName(),
+                'meeting_booking_url' => McpBrowse::meetingBookingUrl((int)$user->getId())],
             'organization' => ['id' => (int)$organization->getId(), 'name' => (string)$organization->get('name'),
                 'root_holon_id' => $root ? (int)$root->getId() : null,
                 'url' => \omoMcpIssuer() . '/omo/o/' . (int)$organization->getId()],
             'modules' => McpContent::enabledModules($organization, (int)$grant['IDuser']),
-            'coverage' => 'Complete paginated lists, user filters, role assignments, search and record text using your current OMO permissions. Resolve names with omo_list_records module team, then use omo_get_member for roles and related-object navigation. Filter calendar by invited and date_from for upcoming meetings; structure/effective_member lists effective holons. Use omo_list_object_members for effective holon memberships and meeting/event invitations, with scoped contact details. Use omo_get_availability for title-free member and common free times, including OMO and imported calendars. Optional events:create consent permits user-requested new events in holons discovered with omo_list_event_spaces, with default or explicit invitations. Optional mail:send consent permits user-requested email to object audiences through omo_send_object_email, with direct or automatic background delivery and tracking. Optional documents:create consent permits new text documents and original file imports through omo_create_document, only in spaces allowed by OMO. Discover destinations with omo_list_document_spaces. Search is bounded; use lists for full enumeration.'];
+            'coverage' => 'Complete paginated lists, user filters, role assignments, search and record text using your current OMO permissions. Resolve names with omo_list_records module team, then use omo_get_member for roles and related-object navigation. Filter calendar by invited and date_from for upcoming meetings; structure/effective_member lists effective holons. Use omo_list_object_members for effective holon memberships and meeting/event invitations, with scoped contact details. Use omo_get_availability for title-free member and common free times, including OMO and imported calendars. Optional events:create consent permits user-requested new events in holons discovered with omo_list_event_spaces, with default or explicit invitations. Optional mail:send consent permits user-requested email to object audiences through omo_send_object_email, with direct or automatic background delivery and tracking. Optional documents:create consent permits new text documents and original file imports through omo_create_document, only in spaces allowed by OMO. Discover destinations with omo_list_document_spaces. Optional decisions:create consent permits ballots with text/date proposals through omo_create_decision; discover omo_list_decision_spaces. Dated proposals reserve tentative native calendar events. Preview and send decision audience mail separately. Search is bounded; use lists for full enumeration.'];
     }
     public static function root(Organization $organization, int $userId): Holon
     {

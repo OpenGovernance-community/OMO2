@@ -3,6 +3,7 @@
 	require_once($_SERVER['DOCUMENT_ROOT']."/shared_functions.php");
 	require_once($_SERVER['DOCUMENT_ROOT']."/common/patreon.php");
 	require_once($_SERVER['DOCUMENT_ROOT']."/shared/openai.php");
+	require_once($_SERVER['DOCUMENT_ROOT']."/common/openai_audio.php");
 	require_once($_SERVER['DOCUMENT_ROOT']."/shared/telegram.php");
 
 	$minTimeMessage = 10; // Duree minimum en seconde du message pour justifier une transformation
@@ -1436,6 +1437,11 @@
 			return;
 		}
 
+		if (!commonAiIsConfigured() || !commonAiIsConfigured(commonOpenAiGetTranscriptionModel())) {
+			sendMessage($chatId, "Les fonctions IA sont indisponibles : configuration IA manquante.", null, $threadId);
+			return;
+		}
+
 		if (!patreonUserCanUseAi((int)$documentUser->getId())) {
 			sendMessage(
 				$chatId,
@@ -1511,29 +1517,19 @@
 			return;
 		}
 
-		$headers = array(
-			'Authorization: Bearer ' . OpenAI,
-		);
+		try {
+			$transcription = commonOpenAiTranscribeUploadedAudio([
+				'tmp_name' => $tempFilePath,
+				'name' => 'audio.ogg',
+				'type' => 'audio/ogg',
+				'size' => $audioBytesWritten,
+				'error' => UPLOAD_ERR_OK,
+			], ['user_id' => (int)$documentUser->getId()]);
+		} finally {
+			@unlink($tempFilePath);
+		}
 
-		$cfile = new CURLFile($tempFilePath);
-		$cfile->setMimeType("audio/ogg");
-		$cfile->setPostFilename("audio.ogg");
-
-		$ch = curl_init();
-		curl_setopt($ch, CURLOPT_URL, 'https://api.openai.com/v1/audio/transcriptions');
-		curl_setopt($ch, CURLOPT_POST, 1);
-		curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-		curl_setopt($ch, CURLOPT_POSTFIELDS, array(
-			'file' => $cfile,
-			'model' => 'whisper-1',
-		));
-		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-
-		$responseRaw = curl_exec($ch);
-		$curlError = curl_errno($ch) ? curl_error($ch) : null;
-		@unlink($tempFilePath);
-
-		if ($curlError || !$responseRaw) {
+		if (empty($transcription['status'])) {
 			if ($waitMessageId) {
 				deleteMessage($chatId, $waitMessageId, $threadId);
 			}
@@ -1541,7 +1537,7 @@
 			return;
 		}
 
-		$response = json_decode($responseRaw);
+		$response = (object)['text' => (string)($transcription['text'] ?? '')];
 		if (!is_object($response) || !isset($response->text) || trim((string)$response->text) === '') {
 			if ($waitMessageId) {
 				deleteMessage($chatId, $waitMessageId, $threadId);
@@ -1556,12 +1552,13 @@
 		if ($summaryOnly) {
 			$resume = trim((string)say(
 				"Summarize the following French text in no more than 150 characters. Return only the summary, without a title, label, markdown, or quotation marks.\n".$response->text,
-				"You produce concise French summaries."
+				"You produce concise French summaries.",
+				(int)$documentUser->getId()
 			));
 		} else {
 			$metadataPrompt = "Return exactly three lines for the following text. TITLE: a concise document title. SUMMARY: a French summary of at most 150 characters. KEYWORDS: three to five French keywords separated only by commas. Do not use markdown or add any other text.\n".$response->text;
 			$metadataSystemInstruction = "You generate document metadata. Always return the requested TITLE, SUMMARY, and KEYWORDS lines exactly, even when the source text is in French.";
-			$metadata = (string)say($metadataPrompt, $metadataSystemInstruction);
+			$metadata = (string)say($metadataPrompt, $metadataSystemInstruction, (int)$documentUser->getId());
 			if (preg_match('/^(?:TITLE|TITRE)\s*:\s*(.+)$/miu', $metadata, $titleMatch)) {
 				$title = trim($titleMatch[1], " \t\n\r\0\x0B*\"");
 			}

@@ -12,8 +12,11 @@ function omoApiResponseSchemas(): array
     $textNull = ['type' => ['string', 'null']];
     $idNull = ['type' => ['integer', 'null']];
     $url = $s + ['format' => 'uri', 'examples' => ['https://example.org/omo/o/1']];
+    $meetingUrl = ['type' => ['string', 'null'], 'format' => 'uri', 'examples' => ['https://example.org/meeting/alice'],
+        'description' => 'Public personal appointment booking URL. Share this exact URL in a user-requested message so recipients choose a time with this person. Sharing does not create a booking or guarantee a free slot. Null when no enabled booking profile with a valid destination calendar is configured. No private calendar settings are returned.'];
     $date = $s + ['format' => 'date', 'examples' => ['2026-10-01']];
     $instant = $s + ['format' => 'date-time', 'examples' => ['2026-10-01T10:00:00+02:00']];
+    $instantNull = ['type' => ['string', 'null'], 'format' => 'date-time', 'examples' => [null]];
     $strings = $list($s);
     $moduleSchema = $s + ['enum' => OMO_MCP_MODULES];
     $nextId = $idNull + ['description' => 'Cursor for the next page. Keep the same filters and continue until null, including after an empty page.', 'examples' => [null]];
@@ -51,6 +54,7 @@ function omoApiResponseSchemas(): array
         'date_field' => $s + ['description' => 'Name of the stored date field used by this module.'],
         'date' => ['type' => ['string', 'integer', 'null'], 'description' => 'Stored module date, normally YYYY-MM-DD HH:mm:ss; not an RFC 3339 timestamp.'],
         'user_id' => $i + ['description' => 'team only: member identifier.'], 'member_details' => $ref('Navigation') + ['description' => 'team only: member navigation.'],
+        'meeting_booking_url' => array_replace($meetingUrl, ['description' => 'team only: ' . $meetingUrl['description']]),
         'holon_id' => $idNull + ['description' => 'Present for modules attached to a holon.'],
         'parent_id' => $idNull + ['description' => 'structure, documents, pv and projects only.'],
         'status' => $s + ['description' => 'calendar, pv, decision, projects and processus only.'],
@@ -68,8 +72,8 @@ function omoApiResponseSchemas(): array
     $schemas['RecordSummary'] = $object($record, ['module', 'record_id', 'title', 'context_holon_id', 'url', 'date_field', 'date']);
     $schemas['Connection'] = $object([
         'connected' => $b + ['const' => true], 'read_only' => $b + ['examples' => [true]], 'scope' => $s + ['examples' => ['organization:read']],
-        'event_creation_authorized' => $b, 'document_creation_authorized' => $b, 'mail_sending_authorized' => $b,
-        'user' => $object(['id' => $i, 'name' => $s]),
+        'decision_creation_authorized' => $b, 'event_creation_authorized' => $b, 'document_creation_authorized' => $b, 'mail_sending_authorized' => $b,
+        'user' => $object(['id' => $i, 'name' => $s, 'meeting_booking_url' => $meetingUrl]),
         'organization' => $object(['id' => $i, 'name' => $s, 'root_holon_id' => $idNull, 'url' => $url]),
         'modules' => $list($moduleSchema), 'coverage' => $s,
     ]);
@@ -79,6 +83,8 @@ function omoApiResponseSchemas(): array
             'user_relations' => $strings, 'statuses' => $list(['type' => ['string', 'integer']]), 'date_field' => $s])),
         'availability' => $object(['tool' => $s, 'member_lookup_module' => $s, 'max_members' => $i, 'max_days' => $i,
             'includes_imported_calendars' => $b, 'timezone' => $s, 'private_event_details' => $b]),
+        'decision_creation' => $object(['authorized' => $b, 'scope' => $s, 'discover_tool' => $s, 'create_tool' => $s,
+            'requires_omo_permission' => $s, 'methods' => $strings, 'dated_proposals_reserve_calendar' => $b]),
         'event_creation' => $object(['authorized' => $b, 'scope' => $s, 'discover_tool' => $s, 'create_tool' => $s,
             'requires_omo_permission' => $s, 'invitation_modes' => $strings]),
         'member_exploration' => $object(['lookup_tool' => $s, 'lookup_module' => $s, 'details_tool' => $s, 'description' => $s]),
@@ -98,7 +104,7 @@ function omoApiResponseSchemas(): array
     $schemas['Member'] = $object([
         'organization_id' => $i,
         'member' => $object(array_replace($record, ['module' => $s + ['const' => 'team']]) + ['username' => $s, 'email' => $s, 'phone' => $s],
-            ['module', 'record_id', 'title', 'context_holon_id', 'url', 'date_field', 'date', 'user_id', 'member_details', 'username', 'email', 'phone']),
+            ['module', 'record_id', 'title', 'context_holon_id', 'url', 'date_field', 'date', 'user_id', 'member_details', 'meeting_booking_url', 'username', 'email', 'phone']),
         'profile' => $ref('Navigation'), 'assignments' => ['anyOf' => [$ref('AssignmentPage'), ['type' => 'null']],
             'description' => 'First direct assignment page, or null if Structure is unavailable.'],
         'related_records' => $list($object(['module' => $s, 'tool' => $s, 'arguments' => $map, 'user_relations' => $strings, 'coverage' => $s])),
@@ -186,6 +192,22 @@ function omoApiResponseSchemas(): array
             'members' => $i, 'individualMembers' => $i, 'invitedEmails' => $i, 'confirmedRegistrations' => $i]),
         'emails_sent' => $b + ['const' => false, 'description' => 'Saving invitations does not send email.'], 'url' => $url,
     ]);
+    $schemas['DecisionSpaces'] = $object([
+        'organization_id' => $i, 'items' => $list($object(['holon_id' => $i, 'name' => $s, 'visibility_types' => $strings])),
+        'next_after_id' => $nextId, 'complete' => $complete, 'write_authorized' => $b, 'required_scope' => $s,
+    ]);
+    $schemas['DecisionCreated'] = $object([
+        'created' => $b + ['const' => true], 'replayed' => $b, 'decision_id' => $i, 'group_id' => $i, 'organization_id' => $i,
+        'holon_id' => $i, 'title' => $s, 'question' => $s, 'method' => $s + ['enum' => ['simple_vote', 'majority_judgment', 'consent']],
+        'status' => $s, 'visibility_type' => $s, 'participant_count' => $i,
+        'consultation_start_at' => $instantNull, 'consultation_end_at' => $instantNull,
+        'evaluation_start_at' => $instantNull, 'evaluation_end_at' => $instantNull,
+        'proposals' => $list($object(['proposal_id' => $i, 'title' => $s, 'description' => $s + ['description' => 'Sanitized HTML.'],
+            'start_at' => $instantNull, 'end_at' => $instantNull, 'timezone' => $textNull,
+            'event_id' => $idNull, 'calendar_status' => $textNull])),
+        'emails_sent' => $b + ['const' => false], 'url' => $url,
+        'public_url' => $url + ['description' => 'Generic participation page. Native identity and invitation checks still apply; no anonymous access token.'],
+    ]);
     $schemas['EventConflict'] = $object([
         'created' => $b + ['const' => false], 'requires_confirmation' => $b + ['const' => true],
         'availability' => $object([
@@ -212,6 +234,7 @@ function omoApiResponseName(string $operation, int $status = 200): string
         'omo_list_document_spaces' => 'DocumentSpaces', 'omo_create_document' => 'DocumentCreated',
         'omo_send_object_email' => 'MailSent', 'omo_object_email_status' => 'MailStatus',
         'omo_get_availability' => 'Availability', 'omo_list_event_spaces' => 'EventSpaces', 'omo_create_event' => 'EventCreated',
+        'omo_list_decision_spaces' => 'DecisionSpaces', 'omo_create_decision' => 'DecisionCreated',
     };
 }
 

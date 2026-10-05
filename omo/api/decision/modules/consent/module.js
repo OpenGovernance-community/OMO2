@@ -525,7 +525,7 @@
                         field.appendChild(descriptionField);
                         field.appendChild(infoUrlInput);
                         field.appendChild(proposalIdInput);
-                        field.insertAdjacentHTML('beforeend', window.omoProposalDates(undefined, true, !payload.proposalContent || payload.proposalContent.date !== false));
+                        field.insertAdjacentHTML('beforeend', window.omoProposalDates(undefined, true, !!payload.proposalContent && payload.proposalContent.date === true));
                         card.appendChild(dragButton);
                         card.appendChild(field);
                         card.appendChild(menu);
