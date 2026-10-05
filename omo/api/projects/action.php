@@ -57,19 +57,6 @@ function omoProjectsApplyBlockedFields(Project $project, $status, array $input)
     $project->set('blocked_reactivate_status', Project::normalizeBlockedReactivateStatus($input['blocked_reactivate_status'] ?? Project::STATUS_READY));
 }
 
-function omoProjectsDispatchStatusChangeNotification(Project $project, $previousStatus, $actorUserId): void
-{
-    if (Project::normalizeStatus($previousStatus) === Project::normalizeStatus($project->get('status'))) {
-        return;
-    }
-
-    try {
-        require_once dirname(__DIR__, 3) . '/common/notification_center.php';
-        notificationCenterDispatchProjectStatusChange($project, $previousStatus, (int)$actorUserId);
-    } catch (\Throwable $exception) {
-        error_log('project_status_notification_failed: ' . $exception->getMessage());
-    }
-}
 
 function omoProjectsGetProjectTree(Project $project, $organizationId, $includeInactive = false)
 {

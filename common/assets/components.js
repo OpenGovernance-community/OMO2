@@ -45,6 +45,7 @@
         }).then(function () {
             // Initializers can add styles for editors or other shared widgets.
             if (options.isCurrent && !options.isCurrent()) return;
+            initGenericComponents(container);
             return waitForStylesheets(container);
         }).finally(reveal);
     }
@@ -360,6 +361,13 @@
         container.dataset.genericTabsReady = '1';
     }
 
+    function syncAccordionCheckbox(toggle) {
+        var accordion = toggle.closest('[data-generic-accordion]');
+        if (!accordion || accordion.querySelector('[data-generic-accordion-toggle]') !== toggle) return;
+        accordion.classList.toggle('is-collapsed', !toggle.checked);
+        toggle.setAttribute('aria-expanded', toggle.checked ? 'true' : 'false');
+    }
+
     function initAccordion(accordion) {
         if (!accordion || accordion.dataset.genericAccordionReady === '1') {
             return;
@@ -371,6 +379,10 @@
         }
 
         accordion.dataset.genericAccordionReady = '1';
+        if (toggle.matches('input[type="checkbox"]')) {
+            syncAccordionCheckbox(toggle);
+            return;
+        }
         toggle.setAttribute('aria-expanded', accordion.classList.contains('is-collapsed') ? 'false' : 'true');
         toggle.addEventListener('click', function (event) {
             var interactiveTarget = event.target.closest('a, button, input, select, textarea, label, [data-generic-accordion-ignore-toggle]');
@@ -1060,6 +1072,7 @@
             initTabs(scope);
         }
         toArray(scope.querySelectorAll('[data-generic-tabs]')).forEach(initTabs);
+        if (scope.matches && scope.matches('[data-generic-accordion]')) initAccordion(scope);
         toArray(scope.querySelectorAll('[data-generic-accordion]')).forEach(initAccordion);
     }
 
@@ -1424,6 +1437,9 @@
     }, true);
 
     document.addEventListener('click', handleEditableSelectClick);
+    document.addEventListener('change', function (event) {
+        if (event.target.matches('input[type="checkbox"][data-generic-accordion-toggle]')) syncAccordionCheckbox(event.target);
+    });
     document.addEventListener('input', handleEditableSelectInput);
     document.addEventListener('keydown', handleEditableSelectKeydown);
     document.addEventListener('click', handleGenericTabClick);

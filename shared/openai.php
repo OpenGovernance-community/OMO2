@@ -1,5 +1,10 @@
 <?php
-	function say($demand, $systemInstruction = null) {
+	require_once dirname(__DIR__) . '/common/ai_access.php';
+
+	function say($demand, $systemInstruction = null, ?int $userId = null) {
+		if (!commonAiUserCanUse($userId ?? commonAiGetCurrentUserId())) {
+			return '';
+		}
 
 		ini_set('default_socket_timeout', 240);
 		
@@ -39,7 +44,7 @@
 		curl_setopt_array($ch, array(
 			CURLOPT_POST => true,
 			CURLOPT_HTTPHEADER => array(
-				'Authorization: Bearer '.OpenAI,
+				'Authorization: Bearer '.commonOpenAiGetApiKey(),
 				'Content-Type: application/json',
 			),
 			CURLOPT_POSTFIELDS => $payload,

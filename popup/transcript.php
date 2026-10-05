@@ -1,12 +1,16 @@
 <?php
 	require_once("../config.php");
 	require_once("../shared_functions.php");
-	require_once("../common/patreon.php");
+	require_once("../common/ai_access.php");
 
 	// Il faut être connecté pour pouvoir partager.
 	// Initialise le login
 	$connected=checklogin();
 	if ($connected) {
+		if (!commonAiIsConfigured()) {
+			echo T_('Configuration IA indisponible.');
+			exit;
+		}
 		if (!patreonUserCanUseAi((int)($_SESSION['currentUser'] ?? 0))) {
 			echo 'Les fonctions IA sont reservees aux contributeurs Patreon actifs.';
 			exit;

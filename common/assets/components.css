@@ -666,7 +666,7 @@ input:focus-visible + .generic-choice-card,
 
 .generic-form-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--param-form-grid-min, var(--generic-form-grid-min, 220px))), 1fr));
+    grid-template-columns: var(--param-form-grid-columns, repeat(auto-fit, minmax(min(100%, var(--param-form-grid-min, var(--generic-form-grid-min, 220px))), 1fr)));
     gap: var(--generic-form-grid-gap, var(--generic-space-4));
 }
 
@@ -676,6 +676,10 @@ input:focus-visible + .generic-choice-card,
 
 .generic-form-grid--compact {
     gap: var(--generic-form-grid-gap, var(--generic-space-3));
+}
+
+.generic-form-grid--inline {
+    align-items: end;
 }
 
 .generic-form-grid--trio {
@@ -761,6 +765,11 @@ input:focus-visible + .generic-choice-card,
 .generic-checkbox > input {
     flex: 0 0 auto;
     margin-top: .2em;
+}
+
+.generic-checkbox--control {
+    align-items: center;
+    min-height: var(--param-checkbox-min-height, 38px);
 }
 
 .generic-checkbox > .generic-help-text {
@@ -1481,6 +1490,42 @@ html[data-theme="dark"] .black-icon,
     box-shadow: var(--generic-form-control-focus-shadow);
     background: var(--generic-form-control-background-focus);
 }
+
+/* Shared HTML controls: the same three-line surface before and after activation.
+   Consumers may change the line count or viewport cap for a documented variation. */
+.generic-html-editor {
+    --param-html-editor-min-lines: 3;
+    --param-html-editor-max-height: 70vh;
+    min-width: 0;
+}
+
+.generic-html-editor .note-editor,
+.generic-html-editor .note-editing-area {
+    font: inherit;
+}
+
+/* Empty-field hints and toolbar tooltips must never intercept editor clicks. */
+.generic-html-editor .note-placeholder,
+.generic-html-editor .note-tooltip {
+    pointer-events: none;
+}
+
+.generic-html-editor [data-html-editor-surface],
+.generic-html-editor .note-editable,
+.generic-html-editor .note-codable {
+    box-sizing: border-box;
+    min-height: min(calc(var(--param-html-editor-min-lines) * 1lh + 28px), calc(var(--param-html-editor-max-height) - var(--html-editor-toolbar-height, 0px)));
+    max-height: calc(var(--param-html-editor-max-height) - var(--html-editor-toolbar-height, 0px));
+    height: auto;
+    padding: 14px;
+    overflow: auto;
+    overflow-wrap: anywhere;
+    font: inherit;
+    line-height: 1.55;
+}
+
+.generic-html-editor [data-html-editor-surface] > :first-child { margin-top: 0; }
+.generic-html-editor [data-html-editor-surface] > :last-child { margin-bottom: 0; }
 
 /* Composite controls (for example tags) share the same focus treatment. */
 .generic-form-control--composite:focus-within {
@@ -2751,6 +2796,29 @@ html[data-theme="dark"] .generic-tabs__tab:focus-visible .generic-monochrome-ico
 
 .generic-accordion--collapsible.is-collapsed .generic-accordion__content {
     display: none;
+}
+
+/* Optional form sections keep their trigger beside the revealed fields. */
+.generic-accordion--inline {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 2fr);
+    align-items: end;
+    gap: var(--generic-space-3);
+}
+
+.generic-accordion--inline > .generic-accordion__header {
+    min-height: 40px;
+}
+
+.generic-accordion--inline > .generic-accordion__content {
+    margin-top: 0;
+    min-width: 0;
+}
+
+@media (max-width: 700px) {
+    .generic-accordion--inline {
+        grid-template-columns: minmax(0, 1fr);
+    }
 }
 
 .generic-accordion--collapsible.is-collapsed .generic-accordion__toggle {

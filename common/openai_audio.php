@@ -1,14 +1,6 @@
 <?php
 
-function commonOpenAiGetApiKey()
-{
-    $globalKey = trim((string)($GLOBALS['OpenAI'] ?? ''));
-    if ($globalKey !== '') {
-        return $globalKey;
-    }
-
-    return function_exists('envValue') ? trim((string)envValue('OPENAI_API_KEY', '')) : '';
-}
+require_once __DIR__ . '/ai_access.php';
 
 function commonOpenAiGetTranscriptionModel()
 {
@@ -156,6 +148,9 @@ function commonOpenAiBuildTranscriptionModelFallbacks($preferredModel)
 
 function commonOpenAiRequestAudioTranscription($apiKey, $tmpName, $mimeType, $filename, array $payload)
 {
+    if (!commonAiIsConfigured((string)($payload['model'] ?? ''), (string)$apiKey)) {
+        return ['status' => false, 'message' => 'Configuration IA indisponible.'];
+    }
     $curl = curl_init('https://api.openai.com/v1/audio/transcriptions');
     if ($curl === false) {
         return array(
@@ -221,13 +216,10 @@ function commonOpenAiRequestAudioTranscription($apiKey, $tmpName, $mimeType, $fi
 
 function commonOpenAiTranscribeUploadedAudio(array $uploadedFile, array $options = array())
 {
-    $apiKey = commonOpenAiGetApiKey();
-    if ($apiKey === '') {
-        return array(
-            'status' => false,
-            'message' => 'OPENAI_API_KEY is not configured.',
-        );
+    if (!commonAiUserCanUse((int)($options['user_id'] ?? commonAiGetCurrentUserId()), (string)($options['model'] ?? commonOpenAiGetTranscriptionModel()))) {
+        return ['status' => false, 'message' => 'Fonctions IA indisponibles pour ce compte.'];
     }
+    $apiKey = commonOpenAiGetApiKey();
 
     $uploadError = (int)($uploadedFile['error'] ?? UPLOAD_ERR_NO_FILE);
     if ($uploadError !== UPLOAD_ERR_OK) {

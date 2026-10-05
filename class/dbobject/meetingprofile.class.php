@@ -38,6 +38,24 @@ class MeetingProfile extends DbObject
         }
         return $profile;
     }
+    public function getDestinationCalendar(): ?ExternalCalendar
+    {
+        $calendar = new ExternalCalendar();
+        if (!$calendar->load((int)$this->get('IDexternalcalendar'), true)
+            || (int)$calendar->get('IDuser') !== (int)$this->get('IDuser') || !$calendar->get('active') || $calendar->get('availability_only')) {
+            return null;
+        }
+        return $calendar;
+    }
+    /** Public link only. Callers must first check access to the member; private settings remain owner-only. */
+    public static function publicBookingPathForUser(int $id): ?string
+    {
+        if ($id <= 0 || !self::isStorageAvailable()) return null;
+        $profile = self::forUser($id);
+        $slug = trim((string)$profile->get('slug'));
+        if (!$profile->get('enabled') || $slug === '' || !$profile->getDestinationCalendar()) return null;
+        return '/meeting/' . rawurlencode($slug);
+    }
     public static function defaultHours(): array
     {
         $days = [];

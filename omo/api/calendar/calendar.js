@@ -18,6 +18,11 @@ function omoCreateCalendarViews(root, config) {
         if (event.isOtherOrganization) Object.assign(attributes, attr('other-organization'));
         if (event.isExternal) {
             Object.assign(attributes, attr('external-event'), attr('external-event-data', JSON.stringify(event.externalDrawerData || {})));
+            if (event.isFree) {
+                css += ' is-free';
+                attributes.title = event.title + ' - ' + (config.labels['calendar.external.free_hint'] || '');
+                attributes['aria-label'] = attributes.title;
+            }
             // CSS color is the only non-numeric style value coming from event data.
             if (/^#[0-9a-f]{6}$/i.test(event.externalColor || '')) attributes.style = '--param-external-calendar-color: ' + event.externalColor + ';' + (attributes.style || '');
         }

@@ -772,13 +772,17 @@
 	}
 
 	function syncFaqRichTextFields(form) {
+		if (form && typeof window.adminEditSyncHtmlFields === 'function') {
+			window.adminEditSyncHtmlFields(form);
+			return;
+		}
 		if (!form || typeof window.jQuery !== 'function') {
 			return;
 		}
 
 		window.jQuery(form).find('textarea.summernote').each(function () {
 			const field = window.jQuery(this);
-			if (typeof field.summernote === 'function') {
+			if (field.data('summernote') && typeof field.summernote === 'function') {
 				try {
 					field.val(field.summernote('code'));
 				} catch (error) {

@@ -786,119 +786,30 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
     }
 
     function openPvDocumentEmbedPicker(field, targetNode) {
-        if (
-            !canEmbedDocuments
-            || !field
-            || typeof field.createTemporaryCursorMarker !== 'function'
-            || typeof field.replaceMarkerWithHtml !== 'function'
-            || typeof window.commonTopbarOpenModal !== 'function'
-        ) {
-            return;
-        }
-
-        const currentDocumentId = targetNode instanceof Element
-            ? Number.parseInt(String(targetNode.getAttribute('data-omo-document-id') || ''), 10)
-            : 0;
+        if (!canEmbedDocuments || !field || !window.omoDocumentEmbedPicker) return;
         let marker = targetNode ? null : field.createTemporaryCursorMarker();
         let resolved = false;
-        const modalHtml = ''
-            + '<div class="omo-document-embed-picker omo-resource-picker generic-drawer-content">'
-            + '<aside class="omo-resource-picker__navigation" data-omo-pv-document-embed-scope></aside>'
-            + '<div class="omo-resource-picker__content">'
-            + '<label class="omo-resource-picker__quick-search"><img src="/common/assets/icon-topbar-search.png" alt="" aria-hidden="true"><input type="search" class="generic-form-control" data-omo-pv-document-embed-search aria-label="' + escapeDocumentEmbedHtml(documentEmbedUi.search || '') + '" placeholder="' + escapeDocumentEmbedHtml(documentEmbedUi.quickSearchPlaceholder || '') + '"></label>'
-            + '<div class="omo-document-embed-picker__field"><select class="generic-form-control omo-document-embed-picker__select" data-omo-pv-document-embed-select aria-label="' + escapeDocumentEmbedHtml(documentEmbedUi.visibleDocuments || '') + '" size="10"></select></div>'
-            + '<div class="omo-document-embed-picker__preview"><div class="omo-document-embed-picker__preview-title" data-omo-pv-document-embed-title></div>'
-            + '<div class="omo-document-embed-picker__preview-description" data-omo-pv-document-embed-description hidden></div></div>'
-            + '<div class="omo-document-embed-picker__actions">'
-            + (targetNode ? '<button type="button" class="generic-action-button generic-action-button--danger" data-omo-pv-embed-remove>' + escapeDocumentEmbedHtml(documentEmbedUi.remove || '') + '</button>' : '')
-            + '<button type="button" class="generic-action-button generic-action-button--secondary" data-omo-pv-document-embed-cancel>' + escapeDocumentEmbedHtml(documentEmbedUi.cancel || '') + '</button>'
-            + '<button type="button" class="generic-action-button generic-action-button--main" data-omo-pv-document-embed-insert disabled>' + escapeDocumentEmbedHtml(documentEmbedUi.insert || '') + '</button></div></div></div>';
-
-        window.commonTopbarOpenModal(documentEmbedUi.modalTitle || '', modalHtml, 'html');
-        const modalBody = document.getElementById('commonTopbarModalBody');
-        if (!(modalBody instanceof Element)) {
-            if (marker) field.removeTemporaryMarker(marker);
-            return;
-        }
-
-        const searchNode = modalBody.querySelector('[data-omo-pv-document-embed-search]');
-        const selectNode = modalBody.querySelector('[data-omo-pv-document-embed-select]');
-        const titleNode = modalBody.querySelector('[data-omo-pv-document-embed-title]');
-        const descriptionNode = modalBody.querySelector('[data-omo-pv-document-embed-description]');
-        const cancelButton = modalBody.querySelector('[data-omo-pv-document-embed-cancel]');
-        const insertButton = modalBody.querySelector('[data-omo-pv-document-embed-insert]');
-        const removeButton = modalBody.querySelector('[data-omo-pv-embed-remove]');
-        let selectedItem = null;
-        let scopePicker = null;
-
         const cleanup = function () {
-            if (marker && typeof field.removeTemporaryMarker === 'function') {
-                field.removeTemporaryMarker(marker);
-            }
+            if (marker) field.removeTemporaryMarker(marker);
             marker = null;
         };
-        const render = function () {
-            const query = String(searchNode && searchNode.value || '').trim().toLowerCase();
-            const matches = embeddableDocuments.filter(function (item) {
-                return (!scopePicker || scopePicker.matches(item.contextHolonId))
-                    && (query === '' || [item.title, item.description, item.contextLabel].join(' ').toLowerCase().indexOf(query) >= 0);
-            });
-            if (selectNode) {
-                selectNode.innerHTML = '';
-                matches.forEach(function (item) {
-                    const option = document.createElement('option');
-                    option.value = String(item.id || '');
-                    option.textContent = String(item.title || '').trim() || String(documentEmbedUi.fallbackTitle || '').replace('{id}', String(item.id || ''));
-                    selectNode.appendChild(option);
-                });
-                selectNode.disabled = matches.length === 0;
-            }
-            selectedItem = matches.find(function (item) { return Number(item.id) === currentDocumentId; }) || matches[0] || null;
-            if (selectNode && selectedItem) selectNode.value = String(selectedItem.id);
-            updatePreview();
-        };
-        const updatePreview = function () {
-            if (selectNode && selectNode.value !== '') {
-                selectedItem = embeddableDocuments.find(function (item) { return String(item.id || '') === String(selectNode.value); }) || null;
-            }
-            const title = selectedItem ? (String(selectedItem.title || '').trim() || String(documentEmbedUi.fallbackTitle || '').replace('{id}', String(selectedItem.id || ''))) : String(documentEmbedUi.none || '');
-            if (titleNode) titleNode.textContent = title;
-            if (descriptionNode) {
-                descriptionNode.textContent = selectedItem ? String(selectedItem.description || '') : '';
-                descriptionNode.hidden = descriptionNode.textContent === '';
-            }
-            if (insertButton) insertButton.disabled = !selectedItem;
-        };
-
-        scopePicker = mountPvResourceScopePicker(modalBody, '[data-omo-pv-document-embed-scope]', render);
-
-        window.addEventListener('common-topbar-modal-close', function () {
-            if (!resolved) cleanup();
-        }, {once: true});
-        if (searchNode) {
-            searchNode.addEventListener('input', render);
-            searchNode.focus();
-        }
-        if (selectNode) selectNode.addEventListener('change', updatePreview);
-        if (cancelButton) cancelButton.addEventListener('click', function () {
-            cleanup();
-            if (typeof window.commonTopbarCloseModal === 'function') window.commonTopbarCloseModal();
+        const picker = window.omoDocumentEmbedPicker.open({
+            items: embeddableDocuments,
+            organizationId: resourcePickerOrganizationId,
+            initialHolonId: resourcePickerInitialHolonId,
+            scopeLabels: resourcePickerScopeUi,
+            labels: documentEmbedUi,
+            selectedId: targetNode ? Number(targetNode.getAttribute('data-omo-document-id') || 0) : 0,
+            onSelect: function (item) {
+                resolved = insertPvEmbedIntoField(field, targetNode, marker, buildPvDocumentEmbedHtml(item));
+                if (resolved) marker = null;
+                return resolved;
+            },
+            onRemove: targetNode ? function () { resolved = field.removeNode(targetNode); } : null,
+            onClose: function () { if (!resolved) cleanup(); }
         });
-        if (removeButton) removeButton.addEventListener('click', function () {
-            if (targetNode && typeof field.removeNode === 'function') {
-                resolved = field.removeNode(targetNode);
-            }
-            if (typeof window.commonTopbarCloseModal === 'function') window.commonTopbarCloseModal();
-        });
-        if (insertButton) insertButton.addEventListener('click', function () {
-            const embedHtml = buildPvDocumentEmbedHtml(selectedItem);
-            resolved = insertPvEmbedIntoField(field, targetNode, marker, embedHtml);
-            if (resolved) {
-                marker = null;
-            }
-            if (typeof window.commonTopbarCloseModal === 'function') window.commonTopbarCloseModal();
-        });
-        loadPvResourceCatalog('documents', embeddableDocuments, modalBody.querySelector('.omo-document-embed-picker'), render);
+        if (picker) loadPvResourceCatalog('documents', embeddableDocuments, picker.host, picker.render);
+        else cleanup();
     }
 
     function buildPvDecisionEmbedHtml(decisionItem) {
@@ -2392,7 +2303,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         const onReady = function () {
             ensureHighlightPalette(callback);
         };
-        const htmlFieldVersion = '20260912-toolbar-always-visible';
+        const htmlFieldVersion = '20261005-html-editor-gaps';
         if (
             window.omoSimpleHtmlField
             && typeof window.omoSimpleHtmlField.mount === 'function'

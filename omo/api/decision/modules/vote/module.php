@@ -9,7 +9,7 @@ require_once __DIR__ . '/shared.php';
 if (!function_exists('omoDecisionVoteModuleGetSourceLang')) {
     function omoDecisionVoteModuleGetSourceLang()
     {
-        return [
+        return omoDecisionScheduleGetSourceLang() + [
             'decisions.vote.title' => [
                 'text' => 'Configurer un vote simple',
                 'context' => 'Title of the simple vote management screen.',
@@ -764,7 +764,7 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                     data-omo-decision-editor-header-submit-label="<?= $isEditable ? $escape($decision instanceof DecisionProcess ? t('decisions.vote.action.save', [], $lang, $sourceLang) : t('decisions.vote.action.create', [], $lang, $sourceLang)) : '' ?>"
                     <?php endif; ?>
                 >
-                    <script src="/omo/api/decision/modules/lifecycle_status.js"></script>
+                    <script src="<?= commonAssetUrl('/omo/api/decision/modules/lifecycle_status.js') ?>"></script>
                     <input type="hidden" name="oid" value="<?= $escape((int)$context['organizationId']) ?>">
                     <input type="hidden" name="cid" value="<?= $escape((int)$context['targetHolonId']) ?>">
                     <input type="hidden" name="id" value="<?= $escape($isDuplicate ? 0 : ($decision instanceof DecisionProcess ? (int)$decision->getId() : 0)) ?>">
@@ -803,15 +803,6 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                         ><?= $escape($decision instanceof DecisionProcess ? trim((string)$decision->get('description')) : '') ?></textarea>
                     </label>
 
-                    <div class="generic-accordion generic-accordion--card generic-accordion--collapsible<?= $decision instanceof DecisionProcess && !$isDuplicate && (int)$decision->getId() > 0 ? '' : ' is-collapsed' ?>" data-generic-accordion>
-                        <div class="generic-accordion__header">
-                            <div class="generic-heading-with-help">
-                                <h4 class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.vote.field.schedule', [], $lang, $sourceLang)) ?></h4>
-                                <details class="generic-context-help generic-context-help--compact" data-generic-context-help-hover><summary aria-label="<?= $escape(t('decisions.vote.field.schedule_help', [], $lang, $sourceLang)) ?>">?</summary><div class="generic-context-help__content"><?= $escape(t('decisions.vote.field.schedule_help', [], $lang, $sourceLang)) ?></div></details>
-                            </div>
-                            <button type="button" class="generic-accordion__toggle" data-generic-accordion-toggle aria-expanded="<?= $decision instanceof DecisionProcess && !$isDuplicate && (int)$decision->getId() > 0 ? 'true' : 'false' ?>" aria-label="<?= $escape(t('decisions.vote.field.schedule', [], $lang, $sourceLang)) ?>">&#9662;</button>
-                        </div>
-                        <div class="generic-accordion__content generic-form-stack generic-form-stack--compact">
                     <div class="omo-decision-vote__grid omo-decision-schedule__primary">
                     <div class="generic-form-field omo-decision-vote__field">
                         <div class="generic-heading-with-help">
@@ -849,54 +840,7 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                         </label>
                     </div>
 
-                    <div class="generic-form-grid">
-                        <label class="generic-form-field omo-decision-vote__field">
-                            <span class="generic-form-label"><?= $escape(t('decisions.vote.field.consultation_start', [], $lang, $sourceLang)) ?></span>
-                            <input
-                                type="datetime-local"
-                                name="consultation_start_at"
-                                class="generic-form-control generic-form-control--compact"
-                                value="<?= $escape($decision instanceof DecisionProcess ? omoDecisionVoteFormatDateTimeLocal($decision->get('consultation_start_at')) : '') ?>"
-                                <?= $canEditStartDates ? '' : 'disabled' ?>
-                            >
-                        </label>
-
-                        <label class="generic-form-field omo-decision-vote__field">
-                            <span class="generic-form-label"><?= $escape(t('decisions.vote.field.consultation_end', [], $lang, $sourceLang)) ?></span>
-                            <input
-                                type="datetime-local"
-                                name="consultation_end_at"
-                                class="generic-form-control generic-form-control--compact"
-                                value="<?= $escape($decision instanceof DecisionProcess ? omoDecisionVoteFormatDateTimeLocal($decision->get('consultation_end_at')) : '') ?>"
-                                <?= $isEditable ? '' : 'disabled' ?>
-                            >
-                        </label>
-                        <?php if (!$consultationOnly): ?>
-                        <label class="generic-form-field omo-decision-vote__field">
-                            <span class="generic-form-label"><?= $escape(t('decisions.vote.field.evaluation_start', [], $lang, $sourceLang)) ?></span>
-                            <input
-                                type="datetime-local"
-                                name="evaluation_start_at"
-                                class="generic-form-control generic-form-control--compact"
-                                value="<?= $escape($decision instanceof DecisionProcess ? omoDecisionVoteFormatDateTimeLocal($decision->get('evaluation_start_at')) : '') ?>"
-                                <?= $canEditStartDates ? '' : 'disabled' ?>
-                            >
-                        </label>
-
-                        <label class="generic-form-field omo-decision-vote__field">
-                            <span class="generic-form-label"><?= $escape(t('decisions.vote.field.evaluation_end', [], $lang, $sourceLang)) ?></span>
-                            <input
-                                type="datetime-local"
-                                name="evaluation_end_at"
-                                class="generic-form-control generic-form-control--compact"
-                                value="<?= $escape($decision instanceof DecisionProcess ? omoDecisionVoteFormatDateTimeLocal($decision->get('evaluation_end_at')) : '') ?>"
-                                <?= $isEditable ? '' : 'disabled' ?>
-                            >
-                        </label>
-                        <?php endif; ?>
-                    </div>
-                        </div>
-                    </div>
+                    <?= omoDecisionRenderProcessSchedule($decision instanceof DecisionProcess ? $decision : null, $canEditStartDates, $isEditable, $lang, $sourceLang, $escape, $consultationOnly) ?>
 
                     <?= omoDecisionRenderInvitationSection($decision, array_merge($context, ['method' => $methodKey]), $lang, $sourceLang, $escape, 'omo-decision-vote__invitation-summary') ?>
 

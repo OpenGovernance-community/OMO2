@@ -57,7 +57,6 @@
                     value: initialValue,
                     disabled: disabled,
                     placeholder: String(options.placeholder || 'Ajoutez une description mise en forme...'),
-                    minHeight: Number(options.minHeight || 170),
                     customButtons: [{
                         name: 'omoProposalHighlight',
                         group: 'color',
@@ -101,7 +100,7 @@
             }
 
             var script = document.createElement('script');
-            script.src = '/omo/assets/js/simple-html-field.js?v=20260904-highlight-clear';
+            script.src = '/omo/assets/js/simple-html-field.js?v=20261005-html-editor-gaps';
             script.defer = true;
             script.setAttribute('data-omo-simple-html-field-loader', '1');
             script.addEventListener('load', start, {once: true});
@@ -184,7 +183,7 @@
 
         Array.prototype.forEach.call(cards, function (card) {
             var dates = card.querySelector('[data-omo-proposal-dates]');
-            if (dates && window.omoProposalDates) window.omoProposalDates.setEnabled(dates, content.date !== false);
+            if (dates && window.omoProposalDates) window.omoProposalDates.setEnabled(dates, content.date === true);
             var titleInput = card.querySelector('input[name="proposals[]"]');
             var descriptionInput = card.querySelector(descriptionSelector);
             var detailsButton = detailsSelector !== '' ? card.querySelector(detailsSelector) : null;

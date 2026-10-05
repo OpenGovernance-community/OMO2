@@ -34,7 +34,7 @@ if ((int)($context['targetHolonId'] ?? 0) <= 0
         : (empty($context['canCreate']) || empty($settings['governance']['enabled'])))) {
     $respond(403, ['status' => false, 'message' => 'Accès refusé.']);
 }
-if (commonOpenAiGetApiKey() === '' || !patreonUserCanUseAi($currentUserId)) {
+if (!commonAiUserCanUse($currentUserId, commonOpenAiGetRewriteModel())) {
     $respond(403, ['status' => false, 'message' => omoDecisionGovernanceT('governance.proposal.summary.unavailable')]);
 }
 

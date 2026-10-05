@@ -1,231 +1,110 @@
+window.adminEditHtmlFieldPromise = window.adminEditHtmlFieldPromise || null;
 
-    window.adminEditSummernoteInitPromise = window.adminEditSummernoteInitPromise || null;
-
-    function adminEditLoadStyleOnce(href, dataAttribute) {
-        return new Promise(function (resolve, reject) {
-            if (!href) {
-                resolve();
-                return;
-            }
-
-            var existingLink = document.querySelector('link[' + dataAttribute + '="' + href + '"]');
-            if (existingLink) {
-                resolve();
-                return;
-            }
-
-            var link = document.createElement('link');
-            link.rel = 'stylesheet';
-            link.href = href;
-            link.setAttribute(dataAttribute, href);
-            link.onload = function () {
-                resolve();
-            };
-            link.onerror = function () {
-                reject(new Error('summernote_css_load_failed'));
-            };
-            document.head.appendChild(link);
-        });
+function adminEditEnsureHtmlField() {
+    if (window.omoSimpleHtmlField && window.omoSimpleHtmlField.version === '20261005-html-editor-gaps') {
+        return Promise.resolve(window.omoSimpleHtmlField);
     }
-
-    function adminEditLoadScriptOnce(src, dataAttribute) {
-        return new Promise(function (resolve, reject) {
-            if (!src) {
-                resolve();
-                return;
-            }
-
-            var existingScript = document.querySelector('script[' + dataAttribute + '="' + src + '"]');
-            if (existingScript) {
-                if (existingScript.getAttribute('data-admin-edit-loaded') === '1') {
-                    resolve();
-                    return;
-                }
-
-                existingScript.addEventListener('load', function () {
-                    existingScript.setAttribute('data-admin-edit-loaded', '1');
-                    resolve();
-                }, { once: true });
-                existingScript.addEventListener('error', function () {
-                    reject(new Error('summernote_js_load_failed'));
-                }, { once: true });
-                return;
-            }
-
+    if (!window.adminEditHtmlFieldPromise) {
+        window.adminEditHtmlFieldPromise = new Promise(function (resolve, reject) {
             var script = document.createElement('script');
-            script.src = src;
-            script.async = false;
-            script.setAttribute(dataAttribute, src);
-            script.onload = function () {
-                script.setAttribute('data-admin-edit-loaded', '1');
-                resolve();
-            };
-            script.onerror = function () {
-                reject(new Error('summernote_js_load_failed'));
-            };
+            script.src = '/omo/assets/js/simple-html-field.js?v=20261005-html-editor-gaps';
+            script.onload = function () { resolve(window.omoSimpleHtmlField); };
+            script.onerror = function () { reject(new Error('html_field_load_failed')); };
             document.head.appendChild(script);
+        }).catch(function (error) {
+            window.adminEditHtmlFieldPromise = null;
+            throw error;
         });
     }
+    return window.adminEditHtmlFieldPromise;
+}
 
-    function adminEditEnsureSummernoteAssets() {
-        if (window.jQuery && window.jQuery.fn && typeof window.jQuery.fn.summernote === 'function') {
-            return Promise.resolve(window.jQuery);
+function adminEditSyncHtmlFields(scope) {
+    var root = scope || document;
+    root.querySelectorAll('textarea.summernote').forEach(function (field) {
+        if (field.__adminEditHtmlHost) {
+            field.value = field.__adminEditHtmlHost.__omoSimpleHtmlField.getValue();
         }
+    });
+}
 
-        if (window.adminEditSummernoteInitPromise) {
-            return window.adminEditSummernoteInitPromise;
-        }
-
-        var summernoteVersion = '0.8.18';
-        var summernoteCssUrl = 'https://cdnjs.cloudflare.com/ajax/libs/summernote/' + summernoteVersion + '/summernote-lite.min.css';
-        var summernoteJsUrl = 'https://cdnjs.cloudflare.com/ajax/libs/summernote/' + summernoteVersion + '/summernote-lite.min.js';
-        var summernoteLangUrl = 'https://cdnjs.cloudflare.com/ajax/libs/summernote/' + summernoteVersion + '/lang/summernote-fr-FR.min.js';
-
-        window.adminEditSummernoteInitPromise = adminEditLoadStyleOnce(summernoteCssUrl, 'data-admin-edit-summernote-css')
-            .then(function () {
-                return adminEditLoadScriptOnce(summernoteJsUrl, 'data-admin-edit-summernote-js');
-            })
-            .then(function () {
-                return adminEditLoadScriptOnce(summernoteLangUrl, 'data-admin-edit-summernote-lang');
-            })
-            .then(function () {
-                if (!window.jQuery || !window.jQuery.fn || typeof window.jQuery.fn.summernote !== 'function') {
-                    throw new Error('summernote_not_available');
-                }
-
-                return window.jQuery;
-            })
-            .catch(function (error) {
-                window.adminEditSummernoteInitPromise = null;
-                throw error;
+function adminEditDestroyHtmlFields(scope) {
+    var root = scope || document;
+    adminEditSyncHtmlFields(root);
+    root.querySelectorAll('textarea.summernote').forEach(function (field) {
+        var host = field.__adminEditHtmlHost;
+        if (host) {
+            host.__omoSimpleHtmlField.destroy();
+            host.remove();
+            delete field.__adminEditHtmlHost;
+            field.hidden = false;
+            (field.__adminEditHtmlLabels || []).forEach(function (binding) {
+                binding.label.removeEventListener('click', binding.focus);
+                binding.label.htmlFor = field.id;
             });
-
-        return window.adminEditSummernoteInitPromise;
-    }
-
-    function adminEditSyncHtmlFields(scope) {
-        if (!window.jQuery || !window.jQuery.fn) {
-            return;
+            delete field.__adminEditHtmlLabels;
         }
+    });
+}
 
-        var root = scope || document;
-        window.jQuery(root).find('textarea.summernote').each(function () {
-            var field = window.jQuery(this);
-            if (field.data('adminEditSummernoteBound') === true && typeof field.summernote === 'function') {
-                try {
-                    field.val(field.summernote('code'));
-                } catch (error) {
-                }
-            }
-        });
-    }
+function adminEditSetHtmlFieldValue(field, value) {
+    field.value = String(value || '');
+    var host = field.__adminEditHtmlHost;
+    if (host) host.__omoSimpleHtmlField.setValue(field.value);
+}
 
-    function adminEditDestroyHtmlFields(scope) {
-        if (!window.jQuery || !window.jQuery.fn) {
-            return;
-        }
-
-        var root = scope || document;
-        window.jQuery(root).find('textarea.summernote').each(function () {
-            var field = window.jQuery(this);
-            var isBound = field.data('adminEditSummernoteBound') === true
-                || field.next('.note-editor').length > 0;
-
-            if (isBound && typeof field.summernote === 'function') {
-                try {
-                    field.val(field.summernote('code'));
-                    field.summernote('destroy');
-                } catch (error) {
-                }
-            }
-
-            field.removeData('adminEditSummernoteBound');
-        });
-    }
-
-    function adminEditInitHtmlFields(scope) {
-        var root = scope || document;
-        var textareas = root.querySelectorAll ? root.querySelectorAll('textarea.summernote') : [];
-        if (!textareas || textareas.length === 0) {
-            return Promise.resolve();
-        }
-
-        function adminEditGetHtmlEditorOptions(field) {
-            var profile = (field.data('editorProfile') || '').toString();
-            var options = {
-                lang: 'fr-FR',
-                height: 240,
-                disableResizeEditor: true,
-                toolbar: [
-                    ['style', ['style']],
-                    ['font', ['bold', 'italic', 'underline', 'clear']],
-                    ['para', ['ul', 'ol', 'paragraph']],
-                    ['insert', ['link', 'table', 'hr']],
-                    ['view', ['codeview']]
-                ]
-            };
-
-            if (profile === 'simple') {
-                options.toolbar = [
-                    ['font', ['bold', 'italic', 'underline', 'clear']],
-                    ['para', ['ul', 'ol', 'paragraph']]
-                ];
-            }
-
-            options.buttons = {
-                omoHighlight: function () {
-                    return $.summernote.ui.button({
-                        contents: '<img src="/omo/images/tools/surligneur.png" alt="" style="display:block;width:18px;height:18px;object-fit:contain;">',
-                        tooltip: 'Modifier le surlignage',
-                        click: function (event) {
-                            field.summernote('saveRange');
-                            if (window.omoHighlightPalette) {
-                                window.omoHighlightPalette.open({
-                                    anchor: event && event.currentTarget,
-                                    onSelect: function (color) {
-                                        field.summernote('restoreRange');
-                                        field.summernote('backColor', color || 'transparent');
-                                    }
-                                });
-                            }
-                        }
-                    }).render();
-                }
-            };
-            var colorGroupIndex = options.toolbar.findIndex(function (group) {
-                return group[0] === 'para';
+function adminEditInitHtmlFields(scope) {
+    var root = scope || document;
+    var fields = root.querySelectorAll('textarea.summernote');
+    if (!fields.length) return Promise.resolve();
+    return adminEditEnsureHtmlField().then(function (htmlField) {
+        fields.forEach(function (field) {
+            if (!field.isConnected || field.__adminEditHtmlHost) return;
+            var host = document.createElement('div');
+            host.className = 'admin-edit__html-field';
+            field.after(host);
+            field.hidden = true;
+            field.__adminEditHtmlHost = host;
+            var labels = Array.from(document.querySelectorAll('label[for]')).filter(function (label) {
+                return field.id && label.htmlFor === field.id;
             });
-            options.toolbar.splice(colorGroupIndex >= 0 ? colorGroupIndex : options.toolbar.length, 0, ['color', ['omoHighlight']]);
-
-            options.callbacks = {
-                onChange: function (contents) {
-                    field.val(contents);
-                }
-            };
-
-            return options;
-        }
-
-        return adminEditEnsureSummernoteAssets()
-            .then(function ($) {
-                Array.prototype.forEach.call(textareas, function (textarea) {
-                    if (!document.documentElement.contains(textarea)) {
-                        return;
+            htmlField.mount(host, {
+                value: field.value,
+                disabled: field.disabled || field.readOnly,
+                placeholder: field.getAttribute('placeholder') || (labels[0] ? labels[0].textContent.trim() : ''),
+                surfaceId: field.id ? field.id + '-html' : '',
+                editorProfile: field.getAttribute('data-editor-profile') === 'simple' ? 'simple' : 'admin',
+                customButtons: [{
+                    name: 'omoHighlight', group: 'color', label: 'Surlignage', title: 'Modifier le surlignage',
+                    contents: '<img src="/omo/images/tools/surligneur.png" alt="" class="omo-simple-html-highlight-icon">',
+                    onClick: function (context) {
+                        if (!window.omoHighlightPalette) return;
+                        context.api.saveRange();
+                        window.omoHighlightPalette.open({
+                            anchor: context.event.currentTarget,
+                            onSelect: function (color) { context.api.applyBackgroundColor(color); }
+                        });
                     }
-
-                    var field = $(textarea);
-                    if (field.data('adminEditSummernoteBound') === true) {
-                        return;
-                    }
-
-                    field.data('adminEditSummernoteBound', true);
-                    field.summernote(adminEditGetHtmlEditorOptions(field));
-
-                    field.val(field.summernote('code'));
-                });
-            })
-            .catch(function () {
-                console.warn('Impossible de charger l editeur HTML adminEdit.');
+                }],
+                onChange: function (value) {
+                    field.value = value;
+                    field.dispatchEvent(new Event('input', {bubbles: true}));
+                    if (window.jQuery) window.jQuery(field).triggerHandler('summernote.change', [value]);
+                }
             });
-    }
-
+            var surface = host.querySelector('[data-html-editor-surface]');
+            // Keep existing labels pointing to the focusable HTML surface.
+            field.__adminEditHtmlLabels = labels.map(function (label) {
+                var focus = function (event) {
+                    event.preventDefault();
+                    host.__omoSimpleHtmlField.focus();
+                };
+                label.htmlFor = surface.id;
+                label.addEventListener('click', focus);
+                return {label: label, focus: focus};
+            });
+        });
+    }).catch(function (error) {
+        console.warn('Impossible de charger l editeur HTML adminEdit.', error);
+    });
+}

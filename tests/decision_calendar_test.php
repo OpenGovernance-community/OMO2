@@ -42,7 +42,8 @@ try {
     $org = dateFixture(\dbObject\Organization::class, ['name' => 'Dates ' . $nonce, 'shortname' => 'dates-' . $nonce]);
     foreach ([$owner, $guest] as $user) dateFixture(\dbObject\UserOrganization::class, ['IDorganization' => $org->getId(), 'IDuser' => $user->getId(), 'active' => 1]);
     $decision = dateFixture(DecisionProcess::class, ['IDorganization' => $org->getId(), 'IDuser' => $owner->getId(), 'title' => 'Schedule',
-        'status' => 'draft', 'decision_type' => 'decision', 'evaluation_method' => DecisionProcess::METHOD_SIMPLE_VOTE]);
+        'status' => 'draft', 'decision_type' => 'decision', 'evaluation_method' => DecisionProcess::METHOD_SIMPLE_VOTE,
+        'parameters' => ['simple_vote' => ['proposal_content' => ['date' => true]]]]);
     $invite = dateFixture(DecisionInvitation::class, ['IDdecision_process' => $decision->getId(), 'invitation_type' => 'user', 'IDuser' => $guest->getId(), 'active' => 1, 'status' => 'invited']);
     $external = dateFixture(DecisionInvitation::class, ['IDdecision_process' => $decision->getId(), 'invitation_type' => 'email', 'email' => 'external-' . $nonce . '@example.invalid', 'active' => 1, 'status' => 'invited']);
     $range = DecisionProposal::normalizeCalendarRange('2026-11-01T09:00', '2026-11-01T10:00', 'Europe/Zurich');
@@ -54,7 +55,7 @@ try {
     $group = $decision->getPrimaryGroup(false);
     $dateOnly = omoDecisionNormalizeProposalContent(['title' => false, 'description' => false, 'url' => false, 'date' => true]);
     dateExpect($dateOnly === ['title' => false, 'description' => false, 'url' => false, 'date' => true], 'Date-only proposals need no other content field');
-    dateExpect(omoDecisionNormalizeProposalContent(['title' => true])['date'], 'Existing proposal configurations retain dates');
+    dateExpect(!omoDecisionNormalizeProposalContent(['title' => true])['date'] && !omoDecisionGetDefaultProposalContent()['date'], 'Dates require explicit activation');
     $disabledContent = ['title' => true, 'description' => false, 'url' => false, 'date' => false];
     $disabledItems = omoDecisionBuildProposalItemsFromInput(['A'], [], [], [], $disabledContent, ['2026-11-01T09:00'], ['2026-11-01T10:00'], ['Europe/Zurich']);
     dateExpect($disabledItems[0]['start_at'] === null && $disabledItems[0]['end_at'] === null, 'Disabled dates ignore posted values');
@@ -77,7 +78,7 @@ try {
     dateExpect($group->save()['status'] && $decision->syncProposalCalendarEvents()['status'], 'Disable proposal dates');
     dateExpect(Event::findByDecisionProposal((int)$a->getId())->get('status') === 'cancelled', 'Disabling dates cancels calendar reservations');
     dateExpect(!str_contains(omoDecisionRenderProposalCalendar($a, [], 'htmlspecialchars'), 'choice-proposal-calendar__stamp'), 'Disabled dates are hidden in proposal cards');
-    $group->set('parameters', []);
+    $group->set('parameters', ['simple_vote' => ['proposal_content' => ['date' => true]]]);
     dateExpect($group->save()['status'] && $decision->syncProposalCalendarEvents()['status'], 'Enable proposal dates again');
     dateExpect(Event::findByDecisionProposal((int)$a->getId())->getId() === $eventId && Event::findByDecisionProposal((int)$a->getId())->get('status') === 'option', 'Re-enabling keeps the same event identity');
     $participant = DecisionParticipant::findByDecisionAndUser($decision->getId(), $guest->getId());
@@ -104,7 +105,7 @@ try {
     dateExpect($decision->save()['status'] && Event::findByDecisionProposal((int)$a->getId())->get('status') === 'confirmed', 'Manual selection survives saving process');
     $group->load($group->getId());
     $group->set('decision_type', 'consultation');
-    $group->set('parameters', []);
+    $group->set('parameters', ['simple_vote' => ['proposal_content' => ['date' => true]]]);
     dateExpect($group->save()['status'] && $decision->syncProposalCalendarEvents()['status'], 'Consultative ballot');
     dateExpect(Event::findByDecisionProposal((int)$a->getId())->get('status') === 'option', 'Consultation never auto-confirms');
     dateExpect($decision->setCalendarProposalStatus($a, 'confirmed')['status'] && $decision->setCalendarProposalStatus($b, 'confirmed')['status'], 'Consultation can confirm several dates');
@@ -115,6 +116,13 @@ try {
     $context = ['decision' => $decision, 'decisionGroup' => $group, 'organizationId' => (int)$org->getId(), 'targetHolonId' => 0,
         'canManage' => true, 'isOwner' => true, 'intent' => 'manage', 'accessMode' => 'private', 'participant' => DecisionParticipant::findByDecisionAndUser($decision->getId(), $owner->getId())];
     $calendarHtml = omoDecisionRenderProposalCalendar($a, $context, $escape);
+    $multiDayProposal = clone $b;
+    $multiRange = DecisionProposal::normalizeCalendarRange('2026-11-01T09:00', '2026-11-03T16:00', 'Europe/Zurich');
+    foreach ($multiRange['values'] as $field => $value) $multiDayProposal->set($field, $value);
+    $multiHtml = omoDecisionRenderProposalCalendar($multiDayProposal, $context, $escape);
+    dateExpect(str_contains($multiHtml, 'Du ') && str_contains($multiHtml, 'Au ') && str_contains($multiHtml, '16:00'), 'Multi-day display associates a date with each time');
+    $multiEditor = omoDecisionRenderProposalDates($multiRange['values'], $escape);
+    dateExpect(str_contains($multiEditor, 'data-omo-proposal-date-multiple checked') && str_contains($multiEditor, 'data-omo-proposal-date-single hidden'), 'Existing multi-day ranges open in multi-day mode');
     dateExpect(str_contains($calendarHtml, 'data-omo-proposal-calendar-action="confirmed"') && str_contains($calendarHtml, 'data-omo-proposal-calendar-action="cancelled"'), 'Manager can confirm and cancel consultation dates');
     dateExpect(!str_contains(omoDecisionRenderProposalCalendar($a, array_replace($context, ['canManage' => false]), $escape), 'data-omo-proposal-calendar-action'), 'Participants do not see manager actions');
     $group->load($group->getId(), true);
@@ -126,8 +134,9 @@ try {
     dateExpect(str_contains($moduleHtml, 'data-omo-proposal-calendar-action="confirmed"'), 'Actions visible in manager proposal list');
     if (($argv[1] ?? '') === '--preview') {
         $html = '<!doctype html><html lang="fr"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Test des propositions de dates</title><link rel="stylesheet" href="/common/assets/components.css"><link rel="stylesheet" href="/omo/assets/css/styles.css"><link rel="stylesheet" href="/common/choice/proposal-dates.css"><script src="/common/choice/proposal-dates.js" defer></script><body><main class="generic-section generic-section--stack" style="max-width:800px;margin:24px auto"><h1>Propositions de dates</h1><h2>Ajouter une plage horaire</h2>'
-            . omoDecisionRenderProposalDates(['start_at' => $range['values']['start_at'], 'end_at' => $range['values']['end_at'], 'timezone' => 'Europe/Zurich'], $escape)
-            . '<h2>Resultats de la consultation</h2>' . $calendarHtml . omoDecisionRenderProposalCalendar($b, $context, $escape) . '<h2>Liste complete</h2>' . $moduleHtml . '</main></body></html>';
+            . '<form id="date-preview-form">' . omoDecisionRenderProposalDates(['start_at' => $range['values']['start_at'], 'end_at' => $range['values']['end_at'], 'timezone' => 'Europe/Zurich'], $escape)
+            . '<button type="submit">Verifier la saisie</button><output id="date-preview-values"></output></form><script>document.getElementById("date-preview-form").addEventListener("submit",function(event){event.preventDefault();document.getElementById("date-preview-values").textContent=JSON.stringify(Array.from(new FormData(this).entries()));});</script>'
+            . '<h2>Resultats de la consultation</h2>' . $calendarHtml . $multiHtml . '<h2>Liste complete</h2>' . $moduleHtml . '</main></body></html>';
         file_put_contents(dirname(__DIR__) . '/tmp/decision-calendar-preview.html', $html);
     }
     $group->set('parameters', ['simple_vote' => ['proposal_content' => $disabledContent]]);
@@ -135,7 +144,7 @@ try {
     dateExpect(!$decision->setCalendarProposalStatus($a, 'confirmed')['status'], 'Disabled dates cannot be confirmed');
     $group->set('evaluation_method', 'consent');
     $group->set('decision_type', 'decision');
-    $group->set('parameters', []);
+    $group->set('parameters', ['consent' => ['proposal_content' => ['date' => true]]]);
     dateExpect($group->save()['status'], 'Consent group');
     $response->set('parameters', ['consent' => ['choices' => [$a->getId() => 'objection', $b->getId() => 'favor']]]);
     dateExpect($response->save()['status'], 'Consent ballot');
@@ -144,6 +153,7 @@ try {
     $response->set('parameters', ['consent' => ['choices' => [$a->getId() => 'no_objection', $b->getId() => 'favor']]]);
     dateExpect($response->save()['status'] && $decision->getCalendarWinningProposalId($group, [$response]) === (int)$b->getId(), 'Consent favors break equal objections');
     $group->set('evaluation_method', 'majority_judgment');
+    $group->set('parameters', ['majority_judgment' => ['proposal_content' => ['date' => true]]]);
     dateExpect($group->save()['status'], 'Majority judgment group');
     $response->set('parameters', ['majority_judgment' => ['scores' => [$a->getId() => 0, $b->getId() => 5]]]);
     dateExpect($response->save()['status'], 'Majority judgment ballot');
