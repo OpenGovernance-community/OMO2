@@ -188,15 +188,37 @@
 			}
 		}
 		
+		protected static function createPdoConnection(?int $timeoutSeconds = null): \PDO {
+			$dsn = "mysql:host=".$GLOBALS["dbServer"].";dbname=".$GLOBALS["dbName"].";charset=utf8mb4";
+			$options = array(
+				\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
+				\PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC,
+				\PDO::ATTR_EMULATE_PREPARES => false,
+			);
+			if ($timeoutSeconds !== null) {
+				$options[\PDO::ATTR_TIMEOUT] = $timeoutSeconds;
+			}
+			return new \PDO($dsn, $GLOBALS["dbUser"], $GLOBALS["dbPassword"], $options);
+		}
+
+		/** Fresh, read-only probe; connection/query errors are handled by the endpoint. */
+		public static function checkDatabaseHealth(): bool {
+			$pdo = static::createPdoConnection(3);
+			$statement = $pdo->query('SELECT 1');
+			if ($statement === false) {
+				return false;
+			}
+			try {
+				return (string)$statement->fetchColumn() === '1';
+			} finally {
+				$statement->closeCursor();
+			}
+		}
+
 		static public function refreshDbh() {
 			// Connexion à la base de donnée
 			try {
-				$dsn = "mysql:host=".$GLOBALS["dbServer"].";dbname=".$GLOBALS["dbName"].";charset=utf8mb4";
-				$pdo = new \PDO($dsn, $GLOBALS["dbUser"], $GLOBALS["dbPassword"], array(
-					\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
-					\PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC,
-					\PDO::ATTR_EMULATE_PREPARES => false,
-				));
+				$pdo = self::createPdoConnection();
 				self::$_dbh = new PdoDbhCompat($pdo);
 			} catch (\PDOException $e) {
 				self::rememberLastDbError("connect", array(
