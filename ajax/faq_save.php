@@ -34,9 +34,7 @@ $contextHolon = $faqContext['currentHolon'] ?? null;
 $contextOrganizationId = (int)($faqContext['organizationId'] ?? 0);
 $viewerAccess = \dbObject\FAQ::resolveViewerAccess($faqContext ?: array());
 $canManageFaqCollection = !empty($viewerAccess['canManageAllFaqs']) || !empty($viewerAccess['canManageOrganizationFaqs']);
-$canCreateContextualFaq = $contextHolon
-	? \dbObject\FAQ::canCreateContextualForHolon($contextHolon, $currentUserId, $contextOrganizationId, false)
-	: false;
+$canCreateContextualFaq = count(\dbObject\FAQ::loadContextualCreationTargets($contextOrganizationId, $currentUserId)) > 0;
 $canCreateParcoursFaqs = faqPopupCanCreateParcoursFaqs($faqContext ?: array(), $currentUserId, false);
 
 if (!$canManageFaqCollection && !$canCreateContextualFaq && !$canCreateParcoursFaqs) {

@@ -35,6 +35,7 @@
         for (var first = clicked; first >= Math.max(0, clicked - count + 1); first--) {
             var last = first + count - 1;
             if (last >= slots.length) { continue; }
+            if (slots[first].beforeFree === false || slots[last].afterFree === false) { continue; }
             var valid = true;
             for (var index = first; index <= last; index++) {
                 if (!slots[index].free || (index > first && slots[index - 1].end !== slots[index].start)) {

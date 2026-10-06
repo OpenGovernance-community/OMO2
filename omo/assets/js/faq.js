@@ -678,29 +678,18 @@
 		}
 
 		if (holonSelect) {
-			let hasVisibleHolonSelection = false;
-			Array.from(holonSelect.options || []).forEach(function (option, index) {
-				if (index === 0) {
-					option.hidden = false;
-					return;
+			const configs = JSON.parse(holonShell.getAttribute('data-faq-holon-configs') || '{}');
+			const names = JSON.parse(holonShell.getAttribute('data-faq-holon-names') || '{}');
+			const config = configs[String(organizationId)];
+			const pickerButton = holonShell.querySelector('[data-holon-target-selector]');
+			if (config) {
+				if (!config.selectableHolonIds.includes(Number(holonSelect.value || 0))) {
+					holonSelect.value = config.allowOrganization ? '0' : String(config.selectableHolonIds[0] || 0);
 				}
-
-				const optionOrganizationId = Number(option.getAttribute('data-organization-id') || 0);
-				const shouldShow = organizationId > 0 && optionOrganizationId === organizationId;
-				option.hidden = !shouldShow;
-				if (!shouldShow && option.selected) {
-					holonSelect.selectedIndex = 0;
-				}
-				if (shouldShow && option.selected) {
-					hasVisibleHolonSelection = true;
-				}
-			});
-
-			if (!hasVisibleHolonSelection && holonSelect.selectedIndex > 0) {
-				holonSelect.selectedIndex = 0;
-			}
-
-			holonSelect.disabled = scopeKind !== 'organization';
+				holonShell.querySelector('[data-holon-target-label]').value = names[holonSelect.value] || config.organizationLabel;
+				pickerButton.setAttribute('data-holon-target-selector', JSON.stringify(config));
+			} else { holonSelect.value = '0'; }
+			pickerButton.disabled = scopeKind !== 'organization' || !config;
 		}
 		if (parcoursSelect) {
 			let hasVisibleParcoursSelection = false;

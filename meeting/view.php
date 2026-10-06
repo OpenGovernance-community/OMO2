@@ -34,6 +34,7 @@ $methods = $profile ? $profile->methods() : [];
 $selectedMethod = $receipt ? $receipt->meetingMethod() : ($draft ? ($draft['method'] ?? null) : ($selectedMethod ?? ($methods[0] ?? null)));
 $methodQuery = $selectedMethod ? '&method=' . rawurlencode($selectedMethod['id']) : '';
 $monthData = ['month' => ($month ?? $currentMonth)->format('Y-m'), 'path' => $path, 'durationSlots' => intdiv($durationMinutes, 30), 'maxDuration' => $profile ? $profile->maxDurationMinutes() : 60, 'days' => [], 'dates' => [], 'weekdays' => [], 'labels' => []];
+$monthData['preparationMinutes'] = $profile ? (int)$profile->get('preparation_minutes') : 0;
 foreach (($dayResults ?? []) as $date => $result) {
     $dateObject = new DateTimeImmutable($date, $zone);
     $monthData['dates'][$date] = $formatDay($dateObject);
@@ -42,6 +43,7 @@ foreach (($dayResults ?? []) as $date => $result) {
         'busySlotCount' => $result['busySlotCount'] ?? 0, 'slots' => array_map(static fn(array $slot): array => [
             'time' => $slot['time'], 'end' => $slot['end']->format('H:i'), 'startEpoch' => $slot['start']->getTimestamp(),
             'free' => $slot['free'], 'pause' => $slot['pause'], 'bookable' => $slot['bookable'],
+            'beforeFree' => $slot['before_free'], 'afterFree' => $slot['after_free'],
         ], $result['slots'])];
 }
 foreach (['free', 'partial', 'full', 'closed', 'day_availability', 'select_day', 'day_hint', 'select_time', 'no_slots', 'pause', 'occupied', 'change_time', 'loading_month', 'unavailable', 'wait', 'continue', 'range_unavailable', 'duration_limited'] as $key) {

@@ -3,6 +3,7 @@ namespace dbObject;
 
 class MeetingProfile extends DbObject
 {
+    use CalendarTimeBuffer;
     public const MAX_DURATION_MINUTES = 1440;
     public const METHOD_TYPES = ['address', 'video', 'phone'];
     public const MAX_METHODS = 20;
@@ -11,7 +12,7 @@ class MeetingProfile extends DbObject
     {
         return [
             [['IDuser', 'slug', 'weekly_hours'], 'required'],
-            [['id', 'max_duration_minutes'], 'integer'], [['id'], 'safe'],
+            [['id', 'max_duration_minutes', 'preparation_minutes', 'closing_minutes'], 'integer'], [['id'], 'safe'],
             [['IDuser', 'IDexternalcalendar'], 'fk'],
             [['slug', 'timezone'], 'string'], [['weekly_hours', 'meeting_methods'], 'text'], [['enabled'], 'boolean'],
         ];
@@ -20,6 +21,7 @@ class MeetingProfile extends DbObject
     {
         return ['IDuser' => 'Utilisateur', 'slug' => 'Nom public', 'enabled' => 'Activer la prise de rendez-vous',
             'IDexternalcalendar' => 'Calendrier de destination', 'timezone' => 'Fuseau horaire', 'weekly_hours' => 'Horaires',
+            'preparation_minutes' => 'Preparation (minutes)', 'closing_minutes' => 'Cloture (minutes)',
             'max_duration_minutes' => 'Durée maximale (minutes)', 'meeting_methods' => 'Moyens de rencontre'];
     }
     public static function attributeLength() { return ['slug' => 48, 'timezone' => 64]; }

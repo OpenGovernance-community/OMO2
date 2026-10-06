@@ -15,6 +15,15 @@ function omoCreateCalendarViews(root, config) {
         [['isExternal', 'is-external-calendar'], ['isFaded', 'is-faded'], ['isRouteTarget', 'is-route-target'],
             ['isOtherOrganization', 'is-other-organization'], ['isOutsideScope', 'is-outside-scope']].forEach(([key, cls]) => { if (event[key]) css += ' ' + cls; });
         attributes = Object.assign(attr('event-id', event.id), attr('search-item'), attributes);
+        if (event.bufferKind) {
+            css += ' is-time-buffer';
+            Object.assign(attributes, attr('time-buffer', event.bufferKind), {
+                title: event.title + ' (' + event.timeLabel + ')', 'aria-label': event.title + ' (' + event.timeLabel + ')'
+            });
+        }
+        if (event.hasTimeBuffers) css += ' has-time-buffers';
+        if (event.documentUrl && !event.bufferKind) css += ' has-associated-document';
+        if (event.searchText) Object.assign(attributes, attr('search-text', event.searchText));
         if (event.isOtherOrganization) Object.assign(attributes, attr('other-organization'));
         if (event.isExternal) {
             Object.assign(attributes, attr('external-event'), attr('external-event-data', JSON.stringify(event.externalDrawerData || {})));
@@ -26,7 +35,7 @@ function omoCreateCalendarViews(root, config) {
             // CSS color is the only non-numeric style value coming from event data.
             if (/^#[0-9a-f]{6}$/i.test(event.externalColor || '')) attributes.style = '--param-external-calendar-color: ' + event.externalColor + ';' + (attributes.style || '');
         }
-        return tag(name, css, attributes, content);
+        return tag(name, css, attributes, (event.bufferKind ? '' : documentButton(event)) + content);
     }
     function documentButton(event) {
         if (!event.documentUrl) return '';
@@ -36,8 +45,7 @@ function omoCreateCalendarViews(root, config) {
         '<svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"><path d="M6 3.5h8l4 4v13H6z"></path><path d="M14 3.5v4h4M9 12h6M9 15.5h6"></path></svg>');
     }
     function timeRow(event, prefix) {
-        return event.timeLabel || event.documentUrl ? tag('span', prefix + '-row', {},
-            (event.timeLabel ? span(prefix, event.timeLabel) : '') + documentButton(event)) : '';
+        return event.timeLabel ? tag('span', prefix + '-row', {}, span(prefix, event.timeLabel)) : '';
     }
     function badge(count, label) {
         return tag('span', 'omo-calendar__timeline-count-badge', {'aria-label': label, title: label}, escape(count));
@@ -78,7 +86,7 @@ function omoCreateCalendarViews(root, config) {
             day.allDay.map(id => {
                 const event = item(id);
                 return eventTag('div', 'omo-calendar__time-all-day-chip', event, {}, tag('div', 'omo-calendar__time-all-day-title-row', {},
-                    tag('strong', '', {}, escape(event.title)) + documentButton(event)) + (event.holonLabel ? span('', event.holonLabel) : ''));
+                    tag('strong', '', {}, escape(event.title))) + (event.holonLabel ? span('', event.holonLabel) : ''));
             }).join(''))).join('');
         const columns = view.days.map(day => tag('div', 'omo-calendar__time-column' + (day.isToday ? ' is-today' : ''), attr('time-column-day', day.dayKey),
             tag('div', 'omo-calendar__time-column-grid', {}, '') + tag('div', 'omo-calendar__now-indicator',
@@ -86,11 +94,11 @@ function omoCreateCalendarViews(root, config) {
             + day.timed.map(id => {
                 const event = item(id);
                 const top = Math.max(0, Math.min(100, event.startMinute / 1440 * 100));
-                const height = Math.min(100 - top, Math.max(30 / 1440 * 100, (event.endMinute - event.startMinute) / 1440 * 100));
+                const height = Math.min(100 - top, Math.max((event.bufferKind || event.hasTimeBuffers ? 0 : 30) / 1440 * 100, (event.endMinute - event.startMinute) / 1440 * 100));
                 const width = 100 / Math.max(1, Number(event.columnCount) || 1);
                 const left = Math.max(0, Number(event.column) || 0) * width;
                 return eventTag('article', 'omo-calendar__time-event', event, {style: 'top:' + top + '%;height:' + height + '%;left:calc(' + left + '% + 4px);width:calc(' + width + '% - 8px);'},
-                    tag('strong', 'omo-calendar__time-event-title', {}, escape(event.title)) + timeRow(event, 'omo-calendar__time-event-time')
+                    event.bufferKind ? '' : tag('strong', 'omo-calendar__time-event-title', {}, escape(event.title)) + timeRow(event, 'omo-calendar__time-event-time')
                     + (event.holonLabel ? span('omo-calendar__time-event-context', event.holonLabel) : ''));
             }).join(''))).join('');
         return toolbar(view, true) + tag('div', 'omo-calendar__time-view', Object.assign({style: '--omo-calendar-time-columns:' + view.columnCount + ';'}, attr('time-view', mode)),
@@ -1025,8 +1033,8 @@ window.omoInitCalendar = function (root) {
 
             var contextId = Number(contextField.value || '0');
             var documentType = typeField ? String(typeField.value || '').trim() : '';
-            var contextOption = contextField.options[contextField.selectedIndex];
-            var contextPath = String(contextOption ? contextOption.getAttribute('data-omo-calendar-context-path') || '' : '')
+            var contextOption = contextField.options ? contextField.options[contextField.selectedIndex] : null;
+            var contextPath = String(contextField.getAttribute('data-holon-context-path') || (contextOption ? contextOption.getAttribute('data-omo-calendar-context-path') || '' : ''))
                 .split(',')
                 .map(function (value) { return Number(value); });
 
@@ -1526,7 +1534,10 @@ window.omoInitCalendar = function (root) {
             setDrawerHeader({
                 title: externalEventDrawerText.title,
                 description: externalEventDrawerText.description,
-                actions: []
+                actions: eventData.editUrl ? [{
+                    label: config.labels['calendar.action.edit'],
+                    attributes: { 'data-omo-calendar-open-edit-url': String(eventData.editUrl) }
+                }] : []
             });
             drawerBody.innerHTML = '<article class="omo-calendar__external-event-detail generic-drawer-content">'
                 + '<section class="generic-section generic-section--stack omo-calendar__external-event-overview">'
@@ -1809,7 +1820,7 @@ window.omoInitCalendar = function (root) {
                 var isOverflowExpanded = !!overflowCell && overflowCell.hasAttribute('data-omo-calendar-overflow-expanded');
                 item.hidden = query === ''
                     ? isOverflow && !isOverflowExpanded
-                    : normalizeCalendarSearch(item.textContent || '').indexOf(query) === -1;
+                    : normalizeCalendarSearch(item.getAttribute('data-omo-calendar-search-text') || item.textContent || '').indexOf(query) === -1;
             });
             root.querySelectorAll('[data-omo-calendar-more]').forEach(function (more) {
                 var overflowCell = more.closest('[data-omo-calendar-day]');
@@ -2783,6 +2794,12 @@ window.omoInitCalendar = function (root) {
                         window.omoInvalidateMainRightPanel();
                     }
 
+                    if (payload.warning && typeof window.commonNotify === 'function') {
+                        window.commonNotify(payload.warning, 'warning', {duration: 8000});
+                    }
+                    if (form.hasAttribute('data-omo-calendar-external-event-form') && typeof window.commonNotify === 'function') {
+                        window.commonNotify(payload.message, 'success');
+                    }
                     var refreshPromise = refreshCalendar(currentUrl);
                     if (payload.detailUrl) {
                         if (refreshPromise && typeof refreshPromise.then === 'function') {

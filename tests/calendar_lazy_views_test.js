@@ -15,7 +15,7 @@ const event = {id: 10, title: '<script>alert(1)</script>', status: 'confirmed', 
     documentUrl: '/document?id=10&x="', documentTitle: 'PV', documentPvEditorUrl: '/editor?id=10',
     holonLabel: 'Team', description: 'Description', weekdayLabel: 'Mer', dateLabel: '23', statusLabel: '',
     canEdit: true, canDelete: true, editUrl: '/edit', deleteUrl: '/delete', hasAssociatedDocuments: true,
-    startMinute: 600, endMinute: 660, column: 1, columnCount: 2};
+    startMinute: 600, endMinute: 660, column: 1, columnCount: 2, hasTimeBuffers: true};
 const external = {...event, id: -1, isExternal: true, externalColor: '#abcdef', externalDrawerData: {title: '<unsafe " & text>'}};
 const other = {...event, id: 11, isOtherOrganization: true, isFaded: true, documentUrl: '', title: 'Other organization'};
 const day = {dayKey: '2026-09-23', label: 'Mer 23', isToday: true, count: 3, countLabel: '3 events', allDay: [1], timed: [0, 2]};
@@ -25,7 +25,9 @@ const views = {
     day: {title: 'Day', subtitle: '3 events', count: 3, columnCount: 1, days: [day]},
     list: {sections: [{label: 'Today', items: [0, 1]}]}
 };
-const payload = {views: {contextual: views, children: {...views, list: {sections: []}}}, items: [event, external, other], labels: {}, weekdays: ['Mon'], hours: ['00:00', '01:00']};
+const buffer = {...event, bufferKind: 'before', startMinute: 585, endMinute: 600, documentUrl: '', title: 'Preparation - parent event'};
+day.timed.push(3);
+const payload = {views: {contextual: views, children: {...views, list: {sections: []}}}, items: [event, external, other, buffer], labels: {}, weekdays: ['Mon'], hours: ['00:00', '01:00']};
 const ensure = context.omoCreateCalendarViews(root, payload);
 assert.equal(panels.length, 0, 'No eager view construction.');
 const month = ensure('month', 'contextual');
@@ -42,6 +44,11 @@ assert.equal(panels.length, 2);
 assert(week.innerHTML.includes('data-omo-calendar-now-indicator'));
 assert(week.innerHTML.includes('data-omo-calendar-other-organization'));
 assert(week.innerHTML.includes('data-omo-calendar-external-event-data'));
+assert(week.innerHTML.includes('data-omo-calendar-time-buffer="before"'), 'Attached preparation renders with the parent event identity.');
+assert(week.innerHTML.includes('height:' + (15 / 1440 * 100) + '%'), '15-minute buffers retain their actual height.');
+assert(week.innerHTML.includes('has-time-buffers'), 'Buffered appointment uses square corners.');
+const bufferMarkup = week.innerHTML.match(/<article[^>]*data-omo-calendar-time-buffer="before"[^>]*>(.*?)<\/article>/s);
+assert.equal(bufferMarkup[1], '', 'Attached time remains visible without any printed legend.');
 assert(week.innerHTML.includes('left:calc(50% + 4px)'));
 assert(week.innerHTML.indexOf('omo-calendar__time-event-title') < week.innerHTML.indexOf('omo-calendar__time-event-time-row'));
 assert.equal(ensure('day', 'contextual').attributes['data-omo-calendar-timeline-panel'], 'day');

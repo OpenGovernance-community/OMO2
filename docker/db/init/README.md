@@ -39,6 +39,14 @@ Les propositions de decision acceptent des plages horaires et chaque evenement
 issu d une proposition conserve un lien unique vers celle-ci
 (`2026-10-03-05-decision-proposal-dates.sql`).
 
+Les dates, les reservations, leurs agendas synchronises et les profils de prise
+de rendez-vous incluent les temps de preparation et de cloture en minutes,
+initialement a zero (`2026-10-05-01-calendar-time-buffers.sql`). Le seed a ete
+regenere depuis une base temporaire vide, importee puis migree.
+Les annotations locales sur les evenements importes sont conservees grace a
+`external_calendar_event.time_buffers_local`
+(`2026-10-05-02-external-event-local-time-buffers.sql`).
+
 Pour une base existante, verifier l'historique `sql_migration` et appliquer les
 migrations manquantes avec `php scripts/run-migrations.php`. Un dump peut contenir
 des changements deja integres sans entree correspondante dans cet historique ;
