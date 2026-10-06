@@ -54,7 +54,9 @@
             var day = data.days[date];
             day.slots.forEach(function (slot) { if (slot.startEpoch <= now) { slot.free = false; } });
             var ranges = day.slots.map(function (slot) {
-                return {free: slot.free && !slot.pause, start: slot.startEpoch, end: slot.startEpoch + 1800};
+                return {free: slot.free && !slot.pause, start: slot.startEpoch, end: slot.startEpoch + 1800,
+                    beforeFree: slot.beforeFree !== false && slot.startEpoch - (data.preparationMinutes || 0) * 60 > now,
+                    afterFree: slot.afterFree !== false};
             });
             day.ranges = day.slots.map(function (_slot, index) { return model.selectRange(ranges, index, durationMinutes / 30); });
             day.workingCount = day.slots.filter(function (slot) { return !slot.pause; }).length;
@@ -162,7 +164,16 @@
         if (!selection) { showError(rangeError()); return; }
         next.href = data.path + '?date=' + selectedDate + '&time=' + day.slots[selection.first].time + '&duration=' + durationMinutes + (methodId ? '&method=' + encodeURIComponent(methodId) : '') + '#meeting-times';
     }
-    function navigate(url, push) {
+    function scrollToSlots() {
+        if (!data.days[selectedDate] || !window.matchMedia || !window.matchMedia('(max-width: 860px)').matches) { return; }
+        var heading = panel.querySelector('#meeting-day');
+        if (heading) {
+            heading.setAttribute('tabindex', '-1');
+            heading.focus({preventScroll: true});
+        }
+        panel.scrollIntoView({block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'});
+    }
+    function navigate(url, push, focusSlots) {
         var requestedMethod = url.searchParams.get('method');
         if (methodSelect && requestedMethod && Array.from(methodSelect.options).some(function (option) { return option.value === requestedMethod; })) {
             methodId = requestedMethod;
@@ -182,6 +193,7 @@
             layout.removeAttribute('aria-busy');
             renderDay(date);
             if (push) { history.pushState(null, '', url); }
+            if (focusSlots) { scrollToSlots(); }
             return;
         }
         layout.setAttribute('aria-busy', 'true');
@@ -198,6 +210,7 @@
             data = entry.data;
             renderDay(date);
             if (push) { history.pushState(null, '', url); }
+            if (focusSlots) { scrollToSlots(); }
         }).catch(function () {
             if (request === requestId) {
                 showError(data.labels.unavailable);
@@ -216,7 +229,7 @@
         if (url.pathname !== data.path || url.searchParams.has('time')) { return; }
         if (!url.searchParams.has('month') && !url.searchParams.has('date')) { return; }
         event.preventDefault();
-        navigate(url, true);
+        navigate(url, true, url.searchParams.has('date'));
     });
     window.addEventListener('popstate', function () {
         var url = new URL(location.href);

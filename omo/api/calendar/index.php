@@ -15,6 +15,8 @@ use dbObject\Holon;
 use dbObject\Organization;
 
 $sourceLang = [
+    'calendar.buffers.before' => ['text' => 'Preparation / deplacement', 'context' => 'Attached time before a calendar event.'],
+    'calendar.buffers.after' => ['text' => 'Cloture / deplacement', 'context' => 'Attached time after a calendar event.'],
     'calendar.external.free_hint' => ['text' => 'Libre : ne bloque pas les disponibilites.', 'context' => 'Tooltip explaining the diagonal stripes on imported calendar events that do not block availability.'],
     'calendar.external.availability' => ['text' => 'Disponibilités', 'context' => 'Calendar source suffix identifying external opening windows.'],
     'calendar.action.meeting_hint' => ['text' => 'Choisir vos horaires et votre agenda de reservation.', 'context' => 'Help below the calendar meeting menu action.'],
@@ -193,8 +195,8 @@ $sourceLang = [
         'context' => 'Title of the read-only drawer for an event from a connected calendar.',
     ],
     'calendar.external_drawer.description' => [
-        'text' => 'Consultation en lecture seule depuis un calendrier connecté.',
-        'context' => 'Description of the read-only drawer for an event from a connected calendar.',
+        'text' => 'Evenement synchronise depuis un calendrier externe.',
+        'context' => 'Description of an imported event with editable local time buffers.',
     ],
     'calendar.external_drawer.calendar' => [
         'text' => 'Agenda externe',
@@ -564,6 +566,29 @@ function omoCalendarAssignTimelineColumns(array $segments)
         return [];
     }
 
+    // Reserve one column for the full parent interval so attached bands always line up,
+    // including when another appointment overlaps only preparation or closing time.
+    if (array_filter($segments, static fn(array $segment): bool => !empty($segment['bufferKind']))) {
+        $parents = [];
+        foreach ($segments as $segment) {
+            $id = $segment['id'];
+            $parents[$id] = [
+                'id' => $id,
+                'startMinute' => min($parents[$id]['startMinute'] ?? 1440, $segment['startMinute']),
+                'endMinute' => max($parents[$id]['endMinute'] ?? 0, $segment['endMinute']),
+            ];
+        }
+        foreach (omoCalendarAssignTimelineColumns(array_values($parents)) as $parent) {
+            $parents[$parent['id']] = $parent;
+        }
+        foreach ($segments as &$segment) {
+            $segment['column'] = $parents[$segment['id']]['column'];
+            $segment['columnCount'] = $parents[$segment['id']]['columnCount'];
+        }
+        unset($segment);
+        return $segments;
+    }
+
     usort($segments, static function (array $left, array $right) {
         $leftStart = (int)($left['startMinute'] ?? 0);
         $rightStart = (int)($right['startMinute'] ?? 0);
@@ -846,7 +871,7 @@ if (ExternalCalendar::isStorageAvailable()) {
         // This display-only event has no database row to load lazily.
         $virtualEvent->hydrateFromDatabaseRow(['id' => $virtualEventId], true);
         unset(\dbObject\DbObject::$preload[Event::tableName() . '_' . $virtualEventId]);
-        foreach (['title', 'description', 'start_at', 'end_at', 'is_all_day'] as $field) {
+        foreach (['title', 'description', 'start_at', 'end_at', 'is_all_day', 'preparation_minutes', 'closing_minutes'] as $field) {
             $virtualEvent->set($field, $externalEvent->get($field));
         }
         $virtualEvent->set('IDorganization', $organizationId);
@@ -858,6 +883,8 @@ if (ExternalCalendar::isStorageAvailable()) {
             'color' => ExternalCalendar::normalizeColor($externalCalendar->get('color')),
             'isFree' => !$externalEvent->get('is_busy') || (bool)$externalCalendar->get('availability_only'),
             'location' => trim((string)$externalEvent->get('location')),
+            'editUrl' => !$externalCalendar->get('availability_only')
+                ? '/omo/api/calendar/external_event.php?oid=' . $organizationId . '&id=' . (int)$externalEvent->getId() : '',
         ];
         $events[] = $virtualEvent;
         $virtualEventId++;
@@ -989,8 +1016,10 @@ foreach ($events as $event) {
         'calendar' => $eventHolonLabel,
         'location' => trim((string)($externalMeta['location'] ?? '')),
         'color' => (string)($externalMeta['color'] ?? ''),
+        'editUrl' => (string)($externalMeta['editUrl'] ?? ''),
     ] : [];
     $isAllDay = (bool)$event->get('is_all_day');
+    [$occupiedStart, $occupiedEnd] = $event->getBusyInterval() ?? [$startAt, $endAt];
     $isInCurrentContext = !$canToggleScope || $eventHolonId === 0 || $eventHolonId === $currentHolonId;
     $isInDirectChildContext = $isInCurrentContext || ($eventHolonId > 0 && isset($directChildHolonIdMap[$eventHolonId]));
     $isInDescendantContext = $isInCurrentContext || ($eventHolonId > 0 && isset($descendantHolonIdMap[$eventHolonId]));
@@ -1119,11 +1148,11 @@ foreach ($events as $event) {
             $viewCountsByScope[$scopeKey]['list'] += 1;
         }
 
-        if ($startAt <= $weekEnd && $endAt >= $weekStart) {
+        if ($occupiedStart <= $weekEnd && $occupiedEnd > $weekStart) {
             $viewCountsByScope[$scopeKey]['week'] += 1;
         }
 
-        if ($startAt <= $dayEnd && $endAt >= $dayStart) {
+        if ($occupiedStart <= $dayEnd && $occupiedEnd > $dayStart) {
             $viewCountsByScope[$scopeKey]['day'] += 1;
         }
 
@@ -1164,7 +1193,8 @@ foreach ($events as $event) {
 
             $startMinute = max(0, (int)floor(($segmentStartTimestamp - $timelineDayStart->getTimestamp()) / 60));
             $endMinute = min(1440, (int)ceil(($segmentEndTimestamp - $timelineDayStart->getTimestamp()) / 60));
-            $displayEndMinute = max($startMinute + 30, $endMinute);
+            $hasTimeBuffers = (int)$event->get('preparation_minutes') > 0 || (int)$event->get('closing_minutes') > 0;
+            $displayEndMinute = max($startMinute + ($hasTimeBuffers ? 0 : 30), $endMinute);
 
             $timelineDay['timed'][] = [
                 'id' => $eventId,
@@ -1176,6 +1206,7 @@ foreach ($events as $event) {
                 'holonLabel' => $eventHolonLabel,
                 'startMinute' => $startMinute,
                 'endMinute' => min(1440, $displayEndMinute),
+                'hasTimeBuffers' => $hasTimeBuffers,
                 'isFaded' => $isFadedInScope,
                 'isRouteTarget' => $openEventTargetId > 0 && $eventId === $openEventTargetId,
                 'documentUrl' => $associatedDocumentOpenData['url'],
@@ -1226,7 +1257,8 @@ foreach ($events as $event) {
 
             $startMinute = max(0, (int)floor(($segmentStartTimestamp - $timelineDayStart->getTimestamp()) / 60));
             $endMinute = min(1440, (int)ceil(($segmentEndTimestamp - $timelineDayStart->getTimestamp()) / 60));
-            $displayEndMinute = max($startMinute + 30, $endMinute);
+            $hasTimeBuffers = (int)$event->get('preparation_minutes') > 0 || (int)$event->get('closing_minutes') > 0;
+            $displayEndMinute = max($startMinute + ($hasTimeBuffers ? 0 : 30), $endMinute);
 
             $timelineDay['timed'][] = [
                 'id' => $eventId,
@@ -1238,6 +1270,7 @@ foreach ($events as $event) {
                 'holonLabel' => $eventHolonLabel,
                 'startMinute' => $startMinute,
                 'endMinute' => min(1440, $displayEndMinute),
+                'hasTimeBuffers' => $hasTimeBuffers,
                 'isFaded' => $isFadedInScope,
                 'isRouteTarget' => $openEventTargetId > 0 && $eventId === $openEventTargetId,
                 'documentUrl' => $associatedDocumentOpenData['url'],
@@ -1250,6 +1283,36 @@ foreach ($events as $event) {
             ];
         }
         unset($timelineDay);
+
+        // Attached segments keep the parent's identity and drawer; they are never separate appointments.
+        $bufferBounds = [
+            'before' => [$occupiedStart, $isAllDay ? \DateTimeImmutable::createFromInterface($startAt)->setTime(0, 0) : $startAt],
+            'after' => [$isAllDay ? \DateTimeImmutable::createFromInterface($endAt)->setTime(0, 0)->modify('+1 day') : $endAt, $occupiedEnd],
+        ];
+        foreach (['week', 'day'] as $timelineKey) {
+            foreach ($timelineViewsByScope[$scopeKey][$timelineKey] as &$timelineDay) {
+                $dayBegin = $timelineDay['date']->setTime(0, 0);
+                $dayFinish = $dayBegin->modify('+1 day');
+                foreach ($bufferBounds as $kind => [$bufferStart, $bufferEnd]) {
+                    $from = max($bufferStart, $dayBegin);
+                    $to = min($bufferEnd, $dayFinish);
+                    if ($to <= $from) { continue; }
+                    $timelineDay['timed'][] = [
+                        'id' => $eventId, 'title' => omoCalendarT('calendar.buffers.' . $kind) . ' - ' . $eventTitle,
+                        'bufferKind' => $kind, 'timeLabel' => $from->format('H:i') . ' - ' . $to->format('H:i'),
+                        'searchText' => $eventTitle . ' ' . $eventHolonLabel . ' ' . omoCalendarFormatTimeLabel($event, $timelineDay['date']),
+                        'startMinute' => (int)$from->format('H') * 60 + (int)$from->format('i'),
+                        'endMinute' => $to == $dayFinish ? 1440 : (int)$to->format('H') * 60 + (int)$to->format('i'),
+                        'status' => $eventStatus, 'holonLabel' => '', 'documentUrl' => '',
+                        'isFaded' => $isFadedInScope, 'isOutsideScope' => $isTimelineOnlyInvitation,
+                        'isRouteTarget' => $openEventTargetId > 0 && $eventId === $openEventTargetId,
+                        'isExternal' => $isExternalEvent, 'externalDrawerData' => $externalDrawerData,
+                        'externalColor' => (string)($externalMeta['color'] ?? ''),
+                    ];
+                }
+            }
+            unset($timelineDay);
+        }
     }
 }
 
@@ -1459,7 +1522,7 @@ foreach ($calendarScopes as $scopeKey) {
         $timeline['days'] = array_values($timeline['days']);
         foreach ($timeline['days'] as &$timelineDay) {
             unset($timelineDay['date']);
-            $dayCount = count($timelineDay['allDay']) + count($timelineDay['timed']);
+            $dayCount = count(array_unique(array_column(array_merge($timelineDay['allDay'], $timelineDay['timed']), 'id')));
             $timelineDay['count'] = $dayCount;
             $timelineDay['countLabel'] = omoCalendarT('calendar.summary.day_column', ['count' => (string)$dayCount]);
             $timelineDay['allDay'] = $packCalendarItems($timelineDay['allDay']);

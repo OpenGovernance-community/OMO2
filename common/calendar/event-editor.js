@@ -335,7 +335,12 @@
                 });
             }).then(function (payload) {
                 if (!payload) { return; }
-                setFeedback(form, payload.message || 'Événement enregistré.', false);
+                if (payload.warning && typeof window.commonNotify === 'function') {
+                    setFeedback(form, '', false);
+                    window.commonNotify(payload.warning, 'warning', {duration: 8000});
+                } else {
+                    setFeedback(form, payload.warning || payload.message || 'Événement enregistré.', false);
+                }
                 if (options && typeof options.onSave === 'function') {
                     options.onSave(payload, form);
                 }

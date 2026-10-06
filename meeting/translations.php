@@ -7,6 +7,10 @@ function meetingT(string $key, array $replace = []): string
     static $sourceLang = null;
     if ($sourceLang === null) {
         $texts = [
+            'preparation_minutes' => 'Preparation par defaut (minutes)',
+            'closing_minutes' => 'Cloture par defaut (minutes)',
+            'buffers_hint' => 'Ces temps sont reserves avant et apres chaque rendez-vous et doivent tenir dans vos horaires, hors pauses.',
+            'buffer_invalid' => 'Indiquez des nombres entiers entre 0 et 1440 minutes.',
             'title' => 'Prise de rendez-vous', 'settings' => 'Paramètres de prise de rendez-vous',
             'enable' => 'Activer la prise de rendez-vous', 'slug' => 'Nom public unique',
             'slug_hint' => '3 à 48 caractères : lettres minuscules, chiffres et tirets. Ce nom ne modifie pas votre agenda externe.',

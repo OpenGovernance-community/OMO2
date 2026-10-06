@@ -1327,6 +1327,38 @@ html[data-theme="dark"] .black-icon,
     stroke-linejoin: round;
 }
 
+.generic-action-button--icon-only img {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+}
+
+/* A field and its adjacent action stay joined, including on narrow screens. */
+.generic-form-control-group {
+    display: flex;
+    align-items: stretch;
+    min-width: 0;
+}
+
+.generic-form-control-group > .generic-form-control {
+    flex: 1 1 auto;
+    min-width: 0;
+    border-start-end-radius: 0;
+    border-end-end-radius: 0;
+}
+
+.generic-form-control-group > .generic-action-button {
+    flex: 0 0 auto;
+    margin-inline-start: -1px;
+    border-start-start-radius: 0;
+    border-end-start-radius: 0;
+}
+
+.generic-form-control-group > :focus-visible {
+    position: relative;
+    z-index: 1;
+}
+
 .generic-action-button--quiet-icon {
     width: 34px;
     height: 34px;
@@ -2120,7 +2152,7 @@ html[data-theme="dark"] .generic-tabs__tab:focus-visible .generic-monochrome-ico
     --generic-file-list-padding-inline-end: 18px;
     --generic-file-list-header-padding-block: 14px;
     --generic-file-list-row-padding-block: 12px;
-    --generic-file-list-menu-space: 88px;
+    --generic-file-list-menu-space: var(--param-file-list-menu-space, 88px);
     display: grid;
     gap: var(--generic-file-list-title-gap);
 }
@@ -2554,7 +2586,7 @@ html[data-theme="dark"] .generic-tabs__tab:focus-visible .generic-monochrome-ico
 .generic-file-list--structured .generic-file-list__menu {
     position: absolute;
     top: 50%;
-    right: 14px;
+    right: var(--param-file-list-menu-inset-inline-end, 14px);
     transform: translateY(-50%);
     z-index: 2;
 }

@@ -1315,7 +1315,7 @@ if (!is_string($documentsPayload)) {
             </div>
 
             <script type="application/json" data-omo-documents-data><?= $documentsPayload ?></script>
-            <script src="/common/drawer/subdrawer.js?v=20260906-slide-right"></script>
+            <script src="<?= commonAssetUrl('/common/drawer/subdrawer.js') ?>"></script>
             <script src="/omo/assets/js/application-view-preferences.js?v=20260917-filter-hierarchy"></script>
             <script src="<?= commonAssetUrl('/omo/api/documents/progressive-list.js') ?>"></script>
 <?= commonPageScriptTags('/omo/api/documents/list.js', [

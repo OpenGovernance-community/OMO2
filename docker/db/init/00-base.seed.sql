@@ -1101,7 +1101,10 @@ CREATE TABLE `event` (
   `active` tinyint(1) NOT NULL DEFAULT 1,
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `preparation_minutes` smallint(5) unsigned NOT NULL DEFAULT 0,
+  `closing_minutes` smallint(5) unsigned NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_event_decision_proposal` (`IDdecision_proposal`),
   KEY `idx_event_org` (`IDorganization`),
   KEY `idx_event_holon` (`IDholon`),
   KEY `idx_event_user` (`IDuser`),
@@ -1111,7 +1114,6 @@ CREATE TABLE `event` (
   KEY `idx_event_org_start` (`IDorganization`,`start_at`),
   KEY `idx_event_location_mode` (`locationmode`),
   KEY `idx_event_project` (`IDproject`),
-  UNIQUE KEY `uq_event_decision_proposal` (`IDdecision_proposal`),
   CONSTRAINT `fk_event_decision_proposal` FOREIGN KEY (`IDdecision_proposal`) REFERENCES `decision_proposal` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_event_holon` FOREIGN KEY (`IDholon`) REFERENCES `holon` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_event_org` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE,
@@ -1275,6 +1277,9 @@ CREATE TABLE `external_calendar_event` (
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `is_busy` tinyint(1) NOT NULL DEFAULT 1,
+  `preparation_minutes` smallint(5) unsigned NOT NULL DEFAULT 0,
+  `closing_minutes` smallint(5) unsigned NOT NULL DEFAULT 0,
+  `time_buffers_local` tinyint(1) NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uniq_external_calendar_event_source` (`IDexternalcalendar`,`source_key`),
   KEY `idx_external_calendar_event_range` (`IDexternalcalendar`,`active`,`start_at`,`end_at`),
@@ -1765,6 +1770,8 @@ CREATE TABLE `meeting_booking` (
   `calendar_data` mediumtext NOT NULL,
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `email_sent_at` datetime DEFAULT NULL,
+  `preparation_minutes` smallint(5) unsigned NOT NULL DEFAULT 0,
+  `closing_minutes` smallint(5) unsigned NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   UNIQUE KEY `meeting_token` (`token`),
   KEY `meeting_busy` (`IDuser`,`status`,`start_at`,`end_at`),
@@ -1797,9 +1804,11 @@ CREATE TABLE `meeting_profile` (
   `slug` varchar(48) NOT NULL,
   `enabled` tinyint(1) NOT NULL DEFAULT 0,
   `timezone` varchar(64) NOT NULL DEFAULT 'Europe/Zurich',
-  `max_duration_minutes` smallint unsigned NOT NULL DEFAULT 60,
+  `max_duration_minutes` smallint(5) unsigned NOT NULL DEFAULT 60,
   `meeting_methods` text DEFAULT NULL,
   `weekly_hours` text NOT NULL,
+  `preparation_minutes` smallint(5) unsigned NOT NULL DEFAULT 0,
+  `closing_minutes` smallint(5) unsigned NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   UNIQUE KEY `meeting_user` (`IDuser`),
   UNIQUE KEY `meeting_slug` (`slug`),
@@ -3790,10 +3799,15 @@ INSERT INTO `sql_migration` VALUES
 ('2026-09-28-02-property-permission-scopes.sql','ce15fc201f33b750ccfe97dc1663eb2ebc11c815028832d9b2cff92cc39f38ae','2026-09-28 16:40:05'),
 ('2026-09-28-03-restore-parcours-permissions.sql','37e3d92db86b7124687579601484f88b2242278229757cd121cda79eeb698112','2026-09-28 16:40:05'),
 ('2026-09-28-04-parcours-delete-permission-and-archive.sql','00a06e2c1e50030546ff3fd086f3bb5033b0b7550e0eda9b0d08318d053bd927','2026-09-28 16:40:05'),
-('2026-09-28-05-property-type-activation.sql','81dd743356f3e3423f20b76441102a132825e47a6c5cd0e4538a8220df4063c7','2026-09-28 16:40:05');
+('2026-09-28-05-property-type-activation.sql','81dd743356f3e3423f20b76441102a132825e47a6c5cd0e4538a8220df4063c7','2026-09-28 16:40:05'),
+('2026-10-02-04-mcp-structure-oauth.sql','a5586cfa5440235dda71c9be8692fd9b43916c8a19fd44f3481d7a875eb189f3','2026-10-02 00:00:00'),
+('2026-10-02-05-mcp-refresh-replay.sql','359181229c14562ce7533c1d06d379f34df567ff13c1ed2a5eaf5417ffb16438','2026-10-02 00:00:00'),
+('2026-10-03-04-mcp-event-creation.sql','79e97cfcad2abcb3dcc9d9eaf71d2c68142001f3417847c0152ace9ca539c467','2026-10-03 00:00:00'),
+('2026-10-03-05-decision-proposal-dates.sql','a24a2680d09ce624448bd71ccd2e7c9897c18e289d9a85a3fe3f942cf51b5a63','2026-10-03 00:00:00'),
+('2026-10-05-01-calendar-time-buffers.sql','834935ebe4e26bc1e704ac06cd72220236ab09b73d0bc77013dd8c1098fb1f3c','2026-10-05 19:37:19'),
+('2026-10-05-02-external-event-local-time-buffers.sql','bd3611453665cd290a4e4cdebe232690e88f00bbe0d96d4f5490e606ec1d6200','2026-10-05 19:58:07');
 /*!40000 ALTER TABLE `sql_migration` ENABLE KEYS */;
 UNLOCK TABLES;
-
 --
 -- Table structure for table `stat_indicator`
 --
@@ -4906,13 +4920,3 @@ CREATE TABLE IF NOT EXISTS `mcp_event_creation` (
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*M!100616 SET NOTE_VERBOSITY=@OLD_NOTE_VERBOSITY */;
-
-INSERT INTO `sql_migration` (`filename`, `checksum`, `executed_at`) VALUES
-('2026-10-02-04-mcp-structure-oauth.sql', 'a5586cfa5440235dda71c9be8692fd9b43916c8a19fd44f3481d7a875eb189f3', '2026-10-02 00:00:00'),
-('2026-10-02-05-mcp-refresh-replay.sql', '359181229c14562ce7533c1d06d379f34df567ff13c1ed2a5eaf5417ffb16438', '2026-10-02 00:00:00');
-
-INSERT INTO `sql_migration` (`filename`, `checksum`, `executed_at`) VALUES
-('2026-10-03-04-mcp-event-creation.sql', '79e97cfcad2abcb3dcc9d9eaf71d2c68142001f3417847c0152ace9ca539c467', '2026-10-03 00:00:00');
-
-INSERT INTO `sql_migration` (`filename`, `checksum`, `executed_at`) VALUES
-('2026-10-03-05-decision-proposal-dates.sql', 'a24a2680d09ce624448bd71ccd2e7c9897c18e289d9a85a3fe3f942cf51b5a63', '2026-10-03 00:00:00');

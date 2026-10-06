@@ -3,6 +3,10 @@
 require_once __DIR__ . '/bootstrap.php';
 require_once dirname(__DIR__, 2) . '/common/holon_scope_helper.php';
 
+$sourceLang = ['space_hint' => ['text' => 'Choisissez un espace auquel vous appartenez pour declarer cette tension.', 'context' => 'Tension space assignment picker help.']];
+$locale = translationBundleResolveRequestLocale('lang', translationBundleGetSupportedLocales(), 'fr');
+$lang = loadTranslationBundle('tension_popup', $locale, $sourceLang);
+
 $currentUserId = (int)commonGetCurrentUserId();
 $organizationId = (int)($_GET['oid'] ?? $_POST['oid'] ?? ($_SESSION['currentOrganization'] ?? 0));
 $requestedHolonId = (int)($_GET['cid'] ?? $_POST['cid'] ?? 0);
@@ -41,6 +45,13 @@ if ($organizationId > 0 && $organization->load($organizationId)) {
         }
     }
 }
+$selectableHolonIds = array_map(static fn($option): int => (int)$option['id'], array_filter($holonOptions, static fn($option): bool => !empty($option['selectable'])));
+$organizationOptionSelectable = $rootHolon instanceof \dbObject\Holon && in_array((int)$rootHolon->getId(), $selectableHolonIds, true);
+$selectorLabels = commonHolonScopeTargetLabels(t('space_hint', [], $lang, $sourceLang));
+$selectedHolon = new \dbObject\Holon();
+$selectedHolonLabel = $selectedHolonId > 0 && $selectedHolon->load($selectedHolonId) ? trim((string)$selectedHolon->getDisplayName()) : $selectorLabels['none'];
+$holonSelectorConfig = ['organizationId' => $organizationId, 'selectableHolonIds' => array_values($selectableHolonIds),
+    'allowOrganization' => $organizationOptionSelectable, 'organizationLabel' => $selectorLabels['none'], 'labels' => $selectorLabels];
 ?>
 <div
     class="omo-tension-popup generic-stack generic-stack--flush"
@@ -102,41 +113,8 @@ if ($organizationId > 0 && $organization->load($organizationId)) {
                 </div>
 
                 <div class="omo-tension-popup__field generic-stack generic-stack--compact">
-                    <label for="omoTensionHolon"><?= htmlspecialchars(\dbObject\Organization::formatLexiconText('Holon', $organization->getLexicon()), ENT_QUOTES, 'UTF-8') ?></label>
-                    <?php if ($contextHolon instanceof \dbObject\Holon && !$currentContextSelectable): ?>
-                        <small class="omo-tension-popup__hint generic-help-text"><?= htmlspecialchars(\dbObject\Organization::formatLexiconText('Le holon courant n est pas selectionnable directement. Son chemin reste visible en grise ci-dessous.', $organization->getLexicon()), ENT_QUOTES, 'UTF-8') ?></small>
-                    <?php endif; ?>
-                    <select class="generic-form-control" id="omoTensionHolon" name="IDholon">
-                        <?php
-                        $organizationOptionSelectable = false;
-                        foreach ($holonOptions as $holonOption) {
-                            if (!$rootHolon instanceof \dbObject\Holon || (int)($holonOption['id'] ?? 0) !== (int)$rootHolon->getId()) {
-                                continue;
-                            }
-
-                            $organizationOptionSelectable = !empty($holonOption['selectable']);
-                            break;
-                        }
-                        ?>
-                        <option value=""<?= $organizationOptionSelectable ? '' : ' disabled' ?>>Organisation entiere</option>
-                        <?php foreach ($holonOptions as $holonOption): ?>
-                            <?php
-                            $optionId = (int)($holonOption['id'] ?? 0);
-                            $optionLabel = trim((string)($holonOption['label'] ?? ''));
-                            if ($optionId <= 0 || $optionLabel === '') {
-                                continue;
-                            }
-                            ?>
-                            <option
-                                value="<?= $optionId ?>"
-                                <?= $selectedHolonId === $optionId ? ' selected' : '' ?>
-                                <?= !empty($holonOption['disabled']) ? ' disabled' : '' ?>
-                                <?= !empty($holonOption['disabled']) ? ' style="color:#9ca3af;"' : '' ?>
-                            >
-                                <?= htmlspecialchars($optionLabel . (!empty($holonOption['disabled']) ? ' [chemin]' : ''), ENT_QUOTES, 'UTF-8') ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
+                    <label for="omoTensionHolonLabel"><?= htmlspecialchars(\dbObject\Organization::formatLexiconText('Holon', $organization->getLexicon()), ENT_QUOTES, 'UTF-8') ?></label>
+                    <?php commonHolonScopeRenderTargetField('IDholon', $selectedHolonId, $selectedHolonLabel, $holonSelectorConfig, ['id' => 'omoTensionHolon']); ?>
                 </div>
 
                 <div class="omo-tension-popup__field generic-stack generic-stack--compact">

@@ -56,12 +56,12 @@
     var drawer = root.querySelector('[data-omo-projects-drawer]');
     var drawerBody = root.querySelector('[data-omo-projects-drawer-body]');
     var drawerController = drawer && typeof window.omoCreateSubdrawerController === 'function'
-        ? window.omoCreateSubdrawerController({ drawer: drawer })
+        ? window.omoCreateSubdrawerController({ drawer: drawer, dismissAction: 'button[data-omo-projects-drawer-close]' })
         : null;
     var documentDrawer = root.querySelector('[data-omo-projects-document-drawer]');
     var documentDrawerBody = root.querySelector('[data-omo-projects-document-drawer-body]');
     var documentDrawerController = documentDrawer && typeof window.omoCreateSubdrawerController === 'function'
-        ? window.omoCreateSubdrawerController({ drawer: documentDrawer })
+        ? window.omoCreateSubdrawerController({ drawer: documentDrawer, dismissAction: 'button[data-omo-projects-document-drawer-close]' })
         : null;
     var currentUrl = root.getAttribute('data-omo-projects-current-url') || '';
     var createUrl = root.getAttribute('data-omo-projects-create-url') || '';

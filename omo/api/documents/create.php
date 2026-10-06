@@ -424,6 +424,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                 form="<?= $escape($documentFormId) ?>"
                 class="generic-action-button generic-action-button--secondary"
                 data-omo-subdrawer-action
+                data-omo-subdrawer-cancel
                 data-omo-document-editor-cancel
             ><?= $escape(omoDocumentsCreateT('documents.create.action.cancel')) ?></button>
             <button

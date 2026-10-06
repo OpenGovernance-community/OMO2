@@ -83,6 +83,41 @@ try {
         'post' => ['title' => 'Changed', 'IDholon' => $holon->getId(), 'status' => Event::STATUS_DRAFT,
             'start_at' => $day->format('Y-m-d') . 'T10:30', 'end_at' => $day->format('Y-m-d') . 'T11:30',
             'invitation_user_ids' => [(int)$guest->getId()]]];
+    $unchanged = $request;
+    $unchanged['post']['start_at'] = $day->format('Y-m-d') . 'T09:00';
+    $unchanged['post']['end_at'] = $day->format('Y-m-d') . 'T10:00';
+    $busy->set('start_at', $day->setTime(9, 30)); $busy->save();
+    $unchangedResult = confirmationRequest($unchanged);
+    confirmationExpect($unchangedResult['status'] && empty($unchangedResult['warning']), 'Unchanged dates save without reviewing existing conflicts.');
+    $calendar->load((int)$calendar->getId(), true);
+    confirmationExpect($calendar->get('last_sync_at') < new DateTimeImmutable('-2 hours'), 'Metadata-only edits do not synchronize calendars.');
+    $busy->set('start_at', $day->setTime(10, 0)); $busy->save();
+    $allDay = $unchanged; $allDay['post']['is_all_day'] = '1';
+    confirmationExpect(!confirmationRequest($allDay)['status'], 'All-day changes still check the occupied interval.');
+    $buffersOnly = $unchanged;
+    $buffersOnly['post']['time_buffers_enabled'] = '1'; $buffersOnly['post']['closing_minutes'] = '45';
+    confirmationExpect(!confirmationRequest($buffersOnly)['status'], 'Changing only the closing time still checks conflicts.');
+
+    $cached = $request;
+    $cached['post']['start_at'] = $day->format('Y-m-d') . 'T14:00';
+    $cached['post']['end_at'] = $day->format('Y-m-d') . 'T15:00';
+    $cachedResult = confirmationRequest($cached);
+    confirmationExpect($cachedResult['status'] && !empty($cachedResult['warning']), 'An unavailable provider must not prevent saving a conflict-free cached schedule.');
+    confirmationExpect(!isset($cachedResult['availability']) && !str_contains(json_encode($cachedResult), 'PRIVATE'), 'Cached fallback is non-blocking and does not disclose private data.');
+    $event->load((int)$event->getId(), true);
+    confirmationExpect($event->get('start_at')->format('H:i') === '14:00', 'Cached fallback actually persists the proposed dates.');
+    foreach (['title' => 'Original', 'start_at' => $day->setTime(9, 0), 'end_at' => $day->setTime(10, 0)] as $field => $value) { $event->set($field, $value); }
+    $event->save();
+    $fixture(\dbObject\HolonPermission::class, ['IDholon' => $holon->getId(),
+        'IDpermission' => \dbObject\Permission::findByKey('CAN_CREATE_EVENT')->getId(), 'member_type' => 'member', 'range' => 'self']);
+    $creation = $cached; unset($creation['get']['id']);
+    $creationResult = confirmationRequest($creation);
+    confirmationExpect($creationResult['status'] && !empty($creationResult['warning']), 'A new event also saves using an incomplete but conflict-free cache.');
+    $createdEvent = new Event();
+    confirmationExpect($createdEvent->load((int)$creationResult['eventId']), 'Reload the event created with cached availability.');
+    $fixtures[] = $createdEvent;
+    $createdEvent->set('active', 0); $createdEvent->save();
+    $calendar->set('last_sync_at', new DateTimeImmutable('-3 hours')); $calendar->set('last_sync_error', null); $calendar->save();
     $first = confirmationRequest($request);
     confirmationExpect(!$first['status'] && !empty($first['availability']['acknowledgement']), 'Expected a warning before saving: ' . json_encode($first));
     $calendar->load((int)$calendar->getId(), true);
@@ -92,11 +127,19 @@ try {
     $event->load((int)$event->getId(), true);
     confirmationExpect($event->get('title') === 'Original', 'Warning must not save yet.');
     $request['post']['availability_ack'] = $first['availability']['acknowledgement'];
+    $request['session']['calendar_availability_warnings'][$first['availability']['acknowledgement']] = true;
 
     $changed = $request;
     $changed['post']['end_at'] = $day->format('Y-m-d') . 'T12:30';
     $changedResult = confirmationRequest($changed);
     confirmationExpect(!$changedResult['status'] && $changedResult['availability']['acknowledgement'] !== $request['post']['availability_ack'], 'Changing the proposed schedule needs a new review.');
+    $changedBuffers = $request;
+    $changedBuffers['post']['time_buffers_enabled'] = '1';
+    $changedBuffers['post']['preparation_minutes'] = '15';
+    $changedBuffers['post']['closing_minutes'] = '20';
+    $bufferResult = confirmationRequest($changedBuffers);
+    confirmationExpect(!$bufferResult['status'] && $bufferResult['availability']['acknowledgement'] !== $request['post']['availability_ack'],
+        'Changing attached time invalidates the reviewed conflicts.');
     $outside = $request;
     $outside['post']['invitation_user_ids'] = [(int)$outsider->getId()];
     $oldSync = new DateTimeImmutable('-3 hours');
@@ -111,6 +154,7 @@ try {
     $guest->set('firstname', 'Updated guest'); $guest->save();
     $confirmed = confirmationRequest($request);
     confirmationExpect($confirmed['status'] === true, 'Confirmation must save despite changed conflicts: ' . json_encode($confirmed));
+    confirmationExpect(!empty($confirmed['warning']), 'The stale-cache caution survives confirmation of a real conflict.');
     $event->load((int)$event->getId(), true);
     $calendar->load((int)$calendar->getId(), true);
     confirmationExpect($event->get('title') === 'Changed' && $event->get('start_at')->format('H:i') === '10:30', 'Event edit must be persisted.');

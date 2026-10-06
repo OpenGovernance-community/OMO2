@@ -8,6 +8,7 @@ require_once dirname(__DIR__, 3) . '/common/notification_center.php';
 require_once dirname(__DIR__, 3) . '/common/external_calendar.php';
 require_once dirname(__DIR__, 3) . '/common/user_availability.php';
 require_once dirname(__DIR__, 3) . '/common/calendar/availability-grid.php';
+require_once dirname(__DIR__, 3) . '/common/calendar/time-buffers.php';
 
 use dbObject\ArrayHolon;
 use dbObject\Document;
@@ -17,6 +18,14 @@ use dbObject\Organization;
 use dbObject\Project;
 
 $sourceLang = array_merge([
+    'calendar.create.holon.choose' => ['text' => 'Choisir un espace', 'context' => 'Open the event assignment picker.'],
+    'calendar.create.holon.hint' => ['text' => 'Choisissez un espace dans lequel vous pouvez creer des evenements.', 'context' => 'Permission-filtered event assignment picker.'],
+    'calendar.create.holon.confirm' => ['text' => 'Choisir cet espace', 'context' => 'Confirm event assignment.'],
+    'calendar.create.buffers.enable' => ['text' => 'Definir du temps de preparation/cloture', 'context' => 'Toggle attached preparation and closing times.'],
+    'calendar.create.buffers.before' => ['text' => 'Preparation / deplacement avant (minutes)', 'context' => 'Minutes reserved before this event.'],
+    'calendar.create.buffers.after' => ['text' => 'Cloture / deplacement apres (minutes)', 'context' => 'Minutes reserved after this event.'],
+    'calendar.create.buffers.hint' => ['text' => 'Ces temps sont lies au rendez-vous et deduits des disponibilites.', 'context' => 'Explanation of event time buffers.'],
+    'calendar.create.buffers.invalid' => ['text' => 'Indiquez des nombres entiers entre 0 et 1440 minutes.', 'context' => 'Invalid event buffer duration.'],
     'calendar.availability.warning' => ['text' => 'Un point sur les disponibilites', 'context' => 'Heading of the event availability review.'],
     'calendar.availability.waiting' => ['text' => 'Verification des disponibilites...', 'context' => 'Animated progress indicator while checking and refreshing invitee calendars.'],
     'calendar.availability.waiting_hint' => ['text' => 'Les agendas sont actualisés si nécessaire.', 'context' => 'Explanation while refreshing calendars before saving an event.'],
@@ -29,6 +38,7 @@ $sourceLang = array_merge([
     'calendar.availability.omo' => ['text' => 'Agenda OMO', 'context' => 'Fallback source label when an appointment organization has no name.'],
     'calendar.availability.email' => ['text' => '{name} : agenda non accessible pour cette invitation par e-mail.', 'context' => 'Availability cannot be checked for an email-only invitee.'],
     'calendar.availability.cache' => ['text' => '{name} : l’agenda n’a pas pu être actualisé ou ne couvre pas cette période.', 'context' => 'Partial external calendar availability check after a refresh attempt.'],
+    'calendar.availability.saved_cache_warning' => ['text' => 'Evenement enregistre. Les conflits ont ete verifies avec les donnees disponibles, qui peuvent ne pas etre a jour.', 'context' => 'Non-blocking topbar warning after saving with an incomplete external calendar cache.'],
     'calendar.availability.detail.email' => ['text' => 'Cette invitation par e-mail ne donne pas accès à un agenda.', 'context' => 'Availability card for an email-only invitation.'],
     'calendar.availability.detail.cache' => ['text' => 'L’agenda n’a pas pu être actualisé ou ne couvre pas cette période.', 'context' => 'Availability card when refreshing is unsuccessful or coverage is incomplete.'],
     'calendar.availability.detail.storage' => ['text' => 'La verification est momentanement indisponible.', 'context' => 'Availability card when storage cannot be checked.'],
@@ -546,6 +556,7 @@ if ($hasStructureApplication) {
 }
 $allowedHolonIds = [];
 $holonContextPaths = [];
+$selectableHolonIds = [];
 
 foreach (['circle', 'role'] as $typeKey) {
     foreach (($holonOptions[$typeKey] ?? []) as $option) {
@@ -553,6 +564,10 @@ foreach (['circle', 'role'] as $typeKey) {
         $allowedHolonIds[$holonId] = $option;
         $holon = new Holon();
         if ($holonId > 0 && $holon->load($holonId)) {
+            if ($holon->isAllowed('CAN_CREATE_EVENT', false, $currentUserId)
+                && (!$isEditMode || omoCalendarCanUseEditEventPermission($holon, $organizationId, $currentUserId, false))) {
+                $selectableHolonIds[] = $holonId;
+            }
             $holonContextPaths[$holonId] = implode(',', array_map(static function ($pathHolon): int {
                 return (int)$pathHolon->getId();
             }, $holon->getPathHolons(true)));
@@ -736,6 +751,22 @@ if ($isEditMode) {
     }
 }
 
+$canChooseOrganization = $rootHolon instanceof Holon && $rootHolon->isAllowed('CAN_CREATE_EVENT', false, $currentUserId)
+    && (!$isEditMode || omoCalendarCanUseEditEventPermission($rootHolon, $organizationId, $currentUserId, false));
+// Keeping an existing association needs edit rights, not permission to create a new event there.
+if ($isEditMode) {
+    if ($defaultHolonId > 0) { $selectableHolonIds[] = $defaultHolonId; }
+    elseif ((int)$event->get('IDholon') === 0) { $canChooseOrganization = true; }
+}
+$holonSelectorConfig = [
+    'organizationId' => $organizationId, 'organizationLabel' => omoCalendarCreateT('calendar.create.field.none'),
+    'selectableHolonIds' => array_values(array_unique($selectableHolonIds)), 'allowOrganization' => $canChooseOrganization,
+    'contextPaths' => array_intersect_key($holonContextPaths, array_flip($selectableHolonIds)),
+    'labels' => ['title' => omoCalendarCreateT('calendar.create.holon.choose'), 'hint' => omoCalendarCreateT('calendar.create.holon.hint'),
+        'confirm' => omoCalendarCreateT('calendar.create.holon.confirm'), 'cancel' => omoCalendarCreateT('calendar.edit.cancel'),
+        'none' => omoCalendarCreateT('calendar.create.field.none')],
+];
+
 $documentTemplatesPayload = [];
 if (!$isEditMode || !($associatedDocument instanceof Document)) {
     $documentTemplates = new \dbObject\ArrayDocument();
@@ -840,6 +871,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'end' => $event->get('end_at') instanceof \DateTimeInterface ? $event->get('end_at')->format('Y-m-d H:i:s') : '',
         'allDay' => !empty($event->get('is_all_day')) ? 1 : 0,
     ] : null;
+    $previousTimeBuffers = $isEditMode ? [(int)$event->get('preparation_minutes'), (int)$event->get('closing_minutes')] : null;
 
     $title = trim((string)($_POST['title'] ?? ''));
     $description = trim((string)($_POST['description'] ?? ''));
@@ -852,6 +884,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $startAt = omoCalendarParseLocalDateTime($_POST['start_at'] ?? '');
     $endAt = omoCalendarParseLocalDateTime($_POST['end_at'] ?? '');
     $isAllDay = !empty($_POST['is_all_day']);
+    try {
+        $preparationMinutes = !empty($_POST['time_buffers_enabled']) ? Event::validateBufferMinutes($_POST['preparation_minutes'] ?? 0) : 0;
+        $closingMinutes = !empty($_POST['time_buffers_enabled']) ? Event::validateBufferMinutes($_POST['closing_minutes'] ?? 0) : 0;
+    } catch (RuntimeException $exception) {
+        echo json_encode(['status' => false, 'message' => omoCalendarCreateT('calendar.create.buffers.invalid')]);
+        exit;
+    }
     $locationMode = Event::normalizeLocationMode($_POST['location_mode'] ?? '');
     $locationAddress = trim((string)($_POST['location_address'] ?? ''));
     $videoMeetingUrl = Event::sanitizeVideoMeetingUrl($_POST['video_meeting_url'] ?? '');
@@ -909,6 +948,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'message' => omoCalendarCreateT('calendar.create.error.holon'),
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         exit;
+    }
+
+    if ($isEditMode && $selectedHolonId !== (int)$event->get('IDholon')) {
+        $destination = $selectedHolonId > 0 ? new Holon() : $rootHolon;
+        if ($selectedHolonId > 0 && !$destination->load($selectedHolonId, true)) { $destination = null; }
+        if (!$destination instanceof Holon || !$destination->isAllowed('CAN_CREATE_EVENT', false, $currentUserId)) {
+            http_response_code(403);
+            echo json_encode(['status' => false, 'message' => omoCalendarCreateT('calendar.edit.error.forbidden')]);
+            exit;
+        }
     }
 
     if ($isEditMode) {
@@ -1038,6 +1087,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $event->set('start_at', $startAt);
     $event->set('end_at', $endAt);
     $event->set('is_all_day', $isAllDay ? 1 : 0);
+    $event->set('preparation_minutes', $preparationMinutes);
+    $event->set('closing_minutes', $closingMinutes);
 
     // Validate participants before refreshing calendars or creating any event/document.
     $selection = omoCalendarPrepareInvitationSelections($organization, $organizationId, $selectedInvitationHolonIds, $selectedInvitationUserIds, $selectedInvitationEmails);
@@ -1062,12 +1113,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ], $selection['invitations']);
     $acknowledgement = hash_hmac('sha256', json_encode([
         $organizationId, $event->getId(), $event->get('IDuser'), $selectedHolonId,
-        $startAt->format('c'), $endAt->format('c'), $isAllDay, $availabilityParticipants,
+        $startAt->format('c'), $endAt->format('c'), $isAllDay, $preparationMinutes, $closingMinutes, $availabilityParticipants,
     ]), $_SESSION['calendar_availability_secret']);
-    if (!hash_equals($acknowledgement, (string)($_POST['availability_ack'] ?? ''))) {
-        $refreshDeadline = microtime(true) + 18;
+    $scheduleChanged = !$isEditMode || $previousSchedule !== [
+        'start' => $startAt->format('Y-m-d H:i:s'), 'end' => $endAt->format('Y-m-d H:i:s'), 'allDay' => $isAllDay ? 1 : 0,
+    ] || $previousTimeBuffers !== [$preparationMinutes, $closingMinutes];
+    $availabilityCacheWarning = $scheduleChanged && !empty($_SESSION['calendar_availability_warnings'][$acknowledgement]);
+    if ($scheduleChanged && !hash_equals($acknowledgement, (string)($_POST['availability_ack'] ?? ''))) {
+        unset($_SESSION['calendar_availability_warnings'][$acknowledgement]);
+        // Leave time for the actual save; one shared deadline covers every invitee.
+        $refreshDeadline = microtime(true) + 3;
         $availability = $event->checkInvitationAvailability($proposedInvitations,
             static fn(int $userId) => commonExternalCalendarRefreshForAvailability($userId, $refreshDeadline));
+        $availabilityCacheWarning = false;
+        $availability['unverified'] = array_values(array_filter($availability['unverified'], static function (array $unknown) use (&$availabilityCacheWarning): bool {
+            if ($unknown['reason'] !== 'cache') { return true; }
+            $availabilityCacheWarning = true;
+            return false;
+        }));
+        if ($availabilityCacheWarning) {
+            // Retain the caution through a confirmation of a real cached conflict.
+            $_SESSION['calendar_availability_warnings'][$acknowledgement] = true;
+            $_SESSION['calendar_availability_warnings'] = array_slice($_SESSION['calendar_availability_warnings'], -20, null, true);
+        }
         if ($availability['conflicts'] || $availability['unverified']) {
             $messages = [];
             $items = [];
@@ -1282,9 +1350,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         error_log('OMO calendar notification dispatch failed: ' . $exception->getMessage());
     }
 
+    unset($_SESSION['calendar_availability_warnings'][$acknowledgement]);
     echo json_encode([
         'status' => true,
         'message' => omoCalendarCreateT($isEditMode ? 'calendar.edit.success' : 'calendar.create.success'),
+        'warning' => $availabilityCacheWarning ? omoCalendarCreateT('calendar.availability.saved_cache_warning') : '',
         'eventId' => (int)$event->getId(),
         'projectId' => $project instanceof Project ? (int)$project->getId() : (int)$event->get('IDproject'),
         'documentId' => $linkedDocument instanceof Document ? (int)$linkedDocument->getId() : 0,
@@ -1319,6 +1389,9 @@ $statusDefault = $prefillEvent instanceof Event ? Event::normalizeStatus($prefil
 if (!array_key_exists($statusDefault, $editableEventStatuses)) {
     $statusDefault = Event::STATUS_CONFIRMED;
 }
+$preparationMinutesDefault = $prefillEvent instanceof Event ? (int)$prefillEvent->get('preparation_minutes') : 0;
+$closingMinutesDefault = $prefillEvent instanceof Event ? (int)$prefillEvent->get('closing_minutes') : 0;
+$timeBuffersEnabled = $preparationMinutesDefault > 0 || $closingMinutesDefault > 0;
 $isAllDayDefault = $prefillEvent instanceof Event ? (bool)$prefillEvent->get('is_all_day') : false;
 $locationDisplayData = $prefillEvent instanceof Event ? $prefillEvent->getLocationDisplayData() : ['mode' => '', 'address' => '', 'videoUrl' => ''];
 $locationModeDefault = $locationDisplayData['mode'] !== ''
@@ -1450,19 +1523,15 @@ if ($isEditMode) {
                             <?php if ($hasStructureApplication): ?>
                             <label class="omo-calendar-create__field generic-form-field">
                                 <span class="generic-form-label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.holon')) ?></span>
-                                <select<?= $project instanceof Project ? '' : ' name="IDholon"' ?> class="generic-form-control" data-omo-calendar-context-holon<?= $project instanceof Project ? ' disabled' : '' ?>>
-                                    <option value="0"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.none')) ?></option>
-                                    <?php foreach (['circle', 'role'] as $typeKey): ?>
-                                        <?php foreach (($holonOptions[$typeKey] ?? []) as $option): ?>
-                                            <option value="<?= (int)$option['id'] ?>" data-omo-calendar-context-path="<?= omoApiEscape((string)($holonContextPaths[(int)$option['id']] ?? '')) ?>"<?= (int)$option['id'] === $defaultHolonId ? ' selected' : '' ?>>
-                                                <?= omoApiEscape((string)$option['label']) ?>
-                                            </option>
-                                        <?php endforeach; ?>
-                                    <?php endforeach; ?>
-                                </select>
-                                <?php if ($project instanceof Project): ?>
-                                    <input type="hidden" name="IDholon" value="<?= (int)$defaultHolonId ?>">
-                                <?php endif; ?>
+                                <span class="generic-form-control-group">
+                                <input type="text" class="generic-form-control" readonly data-holon-target-label
+                                    value="<?= omoApiEscape($allowedHolonIds[$defaultHolonId]['name'] ?? omoCalendarCreateT('calendar.create.field.none')) ?>">
+                                <input type="hidden" name="IDholon" value="<?= (int)$defaultHolonId ?>" data-omo-calendar-context-holon data-holon-target-id
+                                    data-holon-context-path="<?= omoApiEscape($holonContextPaths[$defaultHolonId] ?? '') ?>">
+                                <button type="button" class="generic-action-button generic-action-button--secondary generic-action-button--icon-only"
+                                    title="<?= omoApiEscape(omoCalendarCreateT('calendar.create.holon.choose')) ?>" aria-label="<?= omoApiEscape(omoCalendarCreateT('calendar.create.holon.choose')) ?>"
+                                    data-holon-target-selector="<?= omoApiEscape(json_encode($holonSelectorConfig, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)) ?>"<?= $project instanceof Project ? ' disabled' : '' ?>><img src="/omo/images/tools/connection.png" class="black-icon" alt=""></button>
+                                </span>
                             </label>
                             <?php endif; ?>
 
@@ -1496,6 +1565,23 @@ if ($isEditMode) {
                                 class="generic-form-control"
                             ><?= omoApiEscape($descriptionDefault) ?></textarea>
                         </label>
+
+                        <section class="generic-form-stack">
+                            <label class="generic-checkbox">
+                                <input type="checkbox" name="time_buffers_enabled" value="1" data-omo-calendar-buffers-toggle<?= $timeBuffersEnabled ? ' checked' : '' ?>>
+                                <?= omoApiEscape(omoCalendarCreateT('calendar.create.buffers.enable')) ?>
+                            </label>
+                            <div class="generic-form-stack" data-omo-calendar-buffers-fields<?= $timeBuffersEnabled ? '' : ' hidden' ?>>
+                                <div class="generic-form-grid generic-form-grid--pair">
+                                    <?php foreach (['preparation_minutes' => ['before', $preparationMinutesDefault], 'closing_minutes' => ['after', $closingMinutesDefault]] as $field => [$label, $value]): ?>
+                                        <label class="generic-form-field"><span class="generic-form-label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.buffers.' . $label)) ?></span>
+                                            <?php commonCalendarRenderTimeBufferSelect($field, $value, $timeBuffersEnabled); ?>
+                                        </label>
+                                    <?php endforeach; ?>
+                                </div>
+                                <p class="generic-help-text"><?= omoApiEscape(omoCalendarCreateT('calendar.create.buffers.hint')) ?></p>
+                            </div>
+                        </section>
 
                         <label class="omo-calendar-create__check">
                             <input type="checkbox" name="is_all_day" value="1"<?= $isAllDayDefault ? ' checked' : '' ?>>

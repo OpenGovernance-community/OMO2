@@ -46,6 +46,18 @@ try {
     $end = new DateTimeImmutable('2026-10-05');
     $first = commonExternalCalendarSynchronize($calendar, $start, $end, true, null, $request);
     expectIcsSync($first['status'] && $first['count'] === 2, 'Initial ICS import failed.');
+    $annotated = ExternalCalendarEvent::findForCalendarSourceKey((int)$calendar->getId(), 'series|20261001T100000Z');
+    expectIcsSync($annotated->saveLocalTimeBuffers((int)$user->getId(), 30, 45), 'Annotate imported ICS event.');
+    $feed = str_replace('SUMMARY:Meeting', "SUMMARY:Updated meeting\r\nX-OMO-PREPARATION-MINUTES:15\r\nX-OMO-CLOSING-MINUTES:20", $feed);
+    expectIcsSync(commonExternalCalendarSynchronize($calendar, $start, $end, true, null, $request)['status'], 'Resync annotated event.');
+    $annotated->load((int)$annotated->getId(), true);
+    expectIcsSync($annotated->get('title') === 'Updated meeting' && (int)$annotated->get('preparation_minutes') === 30
+        && (int)$annotated->get('closing_minutes') === 45, 'Sync updates source content while preserving local buffers.');
+    expectIcsSync($annotated->saveLocalTimeBuffers((int)$user->getId(), 0, 0), 'Clear local buffers.');
+    commonExternalCalendarSynchronize($calendar, $start, $end, true, null, $request);
+    $annotated->load((int)$annotated->getId(), true);
+    expectIcsSync((int)$annotated->get('preparation_minutes') === 0 && (int)$annotated->get('closing_minutes') === 0,
+        'Explicit local zero overrides imported X-OMO durations.');
     $cancelled = ExternalCalendarEvent::findForCalendarSourceKey((int)$calendar->getId(), 'series|20261002T100000Z');
     expectIcsSync($cancelled instanceof ExternalCalendarEvent && (int)$cancelled->get('active') === 1, 'Second instance was not saved.');
     $feed = $makeFeed(true);
