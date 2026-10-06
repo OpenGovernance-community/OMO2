@@ -8,6 +8,7 @@ require_once dirname(__DIR__, 3) . '/common/notification_center.php';
 require_once dirname(__DIR__, 3) . '/common/external_calendar.php';
 require_once dirname(__DIR__, 3) . '/common/user_availability.php';
 require_once dirname(__DIR__, 3) . '/common/calendar/availability-grid.php';
+require_once dirname(__DIR__, 3) . '/common/calendar/time-buffers.php';
 
 use dbObject\ArrayHolon;
 use dbObject\Document;
@@ -17,6 +18,11 @@ use dbObject\Organization;
 use dbObject\Project;
 
 $sourceLang = array_merge([
+    'calendar.create.buffers.enable' => ['text' => 'Definir du temps de preparation/cloture', 'context' => 'Toggle attached preparation and closing times.'],
+    'calendar.create.buffers.before' => ['text' => 'Preparation / deplacement avant (minutes)', 'context' => 'Minutes reserved before this event.'],
+    'calendar.create.buffers.after' => ['text' => 'Cloture / deplacement apres (minutes)', 'context' => 'Minutes reserved after this event.'],
+    'calendar.create.buffers.hint' => ['text' => 'Ces temps sont lies au rendez-vous et deduits des disponibilites.', 'context' => 'Explanation of event time buffers.'],
+    'calendar.create.buffers.invalid' => ['text' => 'Indiquez des nombres entiers entre 0 et 1440 minutes.', 'context' => 'Invalid event buffer duration.'],
     'calendar.availability.warning' => ['text' => 'Un point sur les disponibilites', 'context' => 'Heading of the event availability review.'],
     'calendar.availability.waiting' => ['text' => 'Verification des disponibilites...', 'context' => 'Animated progress indicator while checking and refreshing invitee calendars.'],
     'calendar.availability.waiting_hint' => ['text' => 'Les agendas sont actualisés si nécessaire.', 'context' => 'Explanation while refreshing calendars before saving an event.'],
@@ -852,6 +858,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $startAt = omoCalendarParseLocalDateTime($_POST['start_at'] ?? '');
     $endAt = omoCalendarParseLocalDateTime($_POST['end_at'] ?? '');
     $isAllDay = !empty($_POST['is_all_day']);
+    try {
+        $preparationMinutes = !empty($_POST['time_buffers_enabled']) ? Event::validateBufferMinutes($_POST['preparation_minutes'] ?? 0) : 0;
+        $closingMinutes = !empty($_POST['time_buffers_enabled']) ? Event::validateBufferMinutes($_POST['closing_minutes'] ?? 0) : 0;
+    } catch (RuntimeException $exception) {
+        echo json_encode(['status' => false, 'message' => omoCalendarCreateT('calendar.create.buffers.invalid')]);
+        exit;
+    }
     $locationMode = Event::normalizeLocationMode($_POST['location_mode'] ?? '');
     $locationAddress = trim((string)($_POST['location_address'] ?? ''));
     $videoMeetingUrl = Event::sanitizeVideoMeetingUrl($_POST['video_meeting_url'] ?? '');
@@ -1038,6 +1051,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $event->set('start_at', $startAt);
     $event->set('end_at', $endAt);
     $event->set('is_all_day', $isAllDay ? 1 : 0);
+    $event->set('preparation_minutes', $preparationMinutes);
+    $event->set('closing_minutes', $closingMinutes);
 
     // Validate participants before refreshing calendars or creating any event/document.
     $selection = omoCalendarPrepareInvitationSelections($organization, $organizationId, $selectedInvitationHolonIds, $selectedInvitationUserIds, $selectedInvitationEmails);
@@ -1062,7 +1077,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ], $selection['invitations']);
     $acknowledgement = hash_hmac('sha256', json_encode([
         $organizationId, $event->getId(), $event->get('IDuser'), $selectedHolonId,
-        $startAt->format('c'), $endAt->format('c'), $isAllDay, $availabilityParticipants,
+        $startAt->format('c'), $endAt->format('c'), $isAllDay, $preparationMinutes, $closingMinutes, $availabilityParticipants,
     ]), $_SESSION['calendar_availability_secret']);
     if (!hash_equals($acknowledgement, (string)($_POST['availability_ack'] ?? ''))) {
         $refreshDeadline = microtime(true) + 18;
@@ -1319,6 +1334,9 @@ $statusDefault = $prefillEvent instanceof Event ? Event::normalizeStatus($prefil
 if (!array_key_exists($statusDefault, $editableEventStatuses)) {
     $statusDefault = Event::STATUS_CONFIRMED;
 }
+$preparationMinutesDefault = $prefillEvent instanceof Event ? (int)$prefillEvent->get('preparation_minutes') : 0;
+$closingMinutesDefault = $prefillEvent instanceof Event ? (int)$prefillEvent->get('closing_minutes') : 0;
+$timeBuffersEnabled = $preparationMinutesDefault > 0 || $closingMinutesDefault > 0;
 $isAllDayDefault = $prefillEvent instanceof Event ? (bool)$prefillEvent->get('is_all_day') : false;
 $locationDisplayData = $prefillEvent instanceof Event ? $prefillEvent->getLocationDisplayData() : ['mode' => '', 'address' => '', 'videoUrl' => ''];
 $locationModeDefault = $locationDisplayData['mode'] !== ''
@@ -1496,6 +1514,23 @@ if ($isEditMode) {
                                 class="generic-form-control"
                             ><?= omoApiEscape($descriptionDefault) ?></textarea>
                         </label>
+
+                        <section class="generic-form-stack">
+                            <label class="generic-checkbox">
+                                <input type="checkbox" name="time_buffers_enabled" value="1" data-omo-calendar-buffers-toggle<?= $timeBuffersEnabled ? ' checked' : '' ?>>
+                                <?= omoApiEscape(omoCalendarCreateT('calendar.create.buffers.enable')) ?>
+                            </label>
+                            <div class="generic-form-stack" data-omo-calendar-buffers-fields<?= $timeBuffersEnabled ? '' : ' hidden' ?>>
+                                <div class="generic-form-grid generic-form-grid--pair">
+                                    <?php foreach (['preparation_minutes' => ['before', $preparationMinutesDefault], 'closing_minutes' => ['after', $closingMinutesDefault]] as $field => [$label, $value]): ?>
+                                        <label class="generic-form-field"><span class="generic-form-label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.buffers.' . $label)) ?></span>
+                                            <?php commonCalendarRenderTimeBufferSelect($field, $value, $timeBuffersEnabled); ?>
+                                        </label>
+                                    <?php endforeach; ?>
+                                </div>
+                                <p class="generic-help-text"><?= omoApiEscape(omoCalendarCreateT('calendar.create.buffers.hint')) ?></p>
+                            </div>
+                        </section>
 
                         <label class="omo-calendar-create__check">
                             <input type="checkbox" name="is_all_day" value="1"<?= $isAllDayDefault ? ' checked' : '' ?>>

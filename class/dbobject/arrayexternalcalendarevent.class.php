@@ -20,16 +20,20 @@ class ArrayExternalCalendarEvent extends ArrayDbObject
                 $result['incomplete'] = true;
             }
         }
-        $rows = ExternalCalendarEvent::fetchAll('SELECT e.start_at, e.end_at, e.is_all_day, c.availability_only FROM external_calendar_event e
+        $rows = ExternalCalendarEvent::fetchAll('SELECT e.start_at, e.end_at, e.is_all_day, e.preparation_minutes, e.closing_minutes, c.availability_only FROM external_calendar_event e
             JOIN external_calendar c ON c.id = e.IDexternalcalendar
             WHERE c.IDuser = :uid AND c.active = 1 AND e.active = 1 AND (e.is_busy = 1 OR c.availability_only = 1)
-            AND e.start_at < :end AND e.end_at >= :start', ['uid' => $userId, 'start' => $start, 'end' => $end]);
+            AND DATE_SUB(e.start_at, INTERVAL e.preparation_minutes MINUTE) < :end AND DATE_ADD(e.end_at, INTERVAL e.closing_minutes MINUTE) >= :start', ['uid' => $userId, 'start' => $start, 'end' => $end]);
         if (!is_array($rows)) { throw new \RuntimeException('storage'); }
         $available = [];
         foreach ($rows as $row) {
             $busyStart = new \DateTimeImmutable($row['start_at']);
             $busyEnd = new \DateTimeImmutable($row['end_at']);
             if ($row['is_all_day']) { $busyEnd = $busyEnd->modify('+1 second'); }
+            if (!$row['availability_only']) {
+                $busyStart = $busyStart->modify('-' . (int)$row['preparation_minutes'] . ' minutes');
+                $busyEnd = $busyEnd->modify('+' . (int)$row['closing_minutes'] . ' minutes');
+            }
             if ($busyStart < $end && $busyEnd > $start) {
                 if ($row['availability_only']) { $available[] = [$busyStart, $busyEnd]; }
                 else { $result['intervals'][] = [$busyStart, $busyEnd]; }
@@ -75,8 +79,8 @@ class ArrayExternalCalendarEvent extends ArrayDbObject
              WHERE c.`IDuser` = :user_id
                AND c.`active` = 1
                AND e.`active` = 1
-               AND e.`start_at` <= :range_end
-               AND e.`end_at` >= :range_start
+               AND DATE_SUB(e.`start_at`, INTERVAL e.preparation_minutes MINUTE) <= :range_end
+               AND DATE_ADD(e.`end_at`, INTERVAL e.closing_minutes MINUTE) >= :range_start
              ORDER BY e.`start_at` ASC, e.`end_at` ASC, e.`id` ASC',
             [
                 'user_id' => $userId,

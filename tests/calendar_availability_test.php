@@ -216,8 +216,14 @@ try {
             availabilityExpect(str_contains($formHtml, 'data-omo-calendar-preview-tab')
                 && str_contains($formHtml, 'data-omo-calendar-preview-host')
                 && !str_contains($formHtml, 'calendar-freebusy-calendar'), 'Editor renders a lazy availability tab without precomputing the calendar.');
+            availabilityExpect(str_contains($formHtml, 'data-omo-calendar-buffers-toggle')
+                && str_contains($formHtml, 'name="preparation_minutes"') && str_contains($formHtml, 'name="closing_minutes"'),
+                'Date editor provides attached time controls.');
             echo "calendar_availability_test --form: OK\n";
         } elseif ($argv[1] === '--render') {
+            $bufferedEvent = availabilityFixture(Event::class, ['IDorganization' => $org->getId(), 'IDuser' => $guest->getId(),
+                'title' => 'Buffered fixture', 'start_at' => $day->setTime(10, 0), 'end_at' => $day->setTime(11, 0),
+                'active' => 1, 'status' => Event::STATUS_CONFIRMED, 'preparation_minutes' => 15, 'closing_minutes' => 20]);
             ob_start();
             (static function (): void {
                 global $lang, $sourceLang;
@@ -229,6 +235,26 @@ try {
             $xpath = new DOMXPath($dom);
             $dataNode = $xpath->query('//script[@data-omo-calendar-data]')->item(0);
             $payload = json_decode($dataNode->textContent, true, 512, JSON_THROW_ON_ERROR);
+            $importedItems = array_values(array_filter($payload['items'], static fn($item) => !empty($item['isExternal'])));
+            availabilityExpect(count($importedItems) > 0, 'Own imported events are included.');
+            foreach ($importedItems as $item) {
+                availabilityExpect($item['externalDrawerData']['editUrl'] === '/omo/api/calendar/external_event.php?oid='
+                    . $org->getId() . '&id=' . $external->getId(), 'Imported editor URL uses the real cache row, not its virtual event ID.');
+            }
+            $buffers = array_values(array_filter($payload['items'], static fn($item) => !empty($item['bufferKind'])
+                && (int)$item['id'] === (int)$bufferedEvent->getId()));
+            availabilityExpect(count($buffers) === 2 && $buffers[0]['startMinute'] === 585 && $buffers[0]['endMinute'] === 600
+                && $buffers[1]['startMinute'] === 660 && $buffers[1]['endMinute'] === 680, 'Timeline serializes the exact attached intervals.');
+            foreach (['week', 'day'] as $view) {
+                $dayItems = array_merge(...array_column($payload['views']['contextual'][$view]['days'], 'timed'));
+                $attached = array_filter($dayItems, static fn($id) => !empty($payload['items'][$id]['bufferKind'])
+                    && (int)$payload['items'][$id]['id'] === (int)$bufferedEvent->getId());
+                availabilityExpect(count($attached) === 2, 'Both week and day retain preparation and closing segments.');
+                $parentSegments = array_values(array_filter(array_map(static fn($id) => $payload['items'][$id], $dayItems),
+                    static fn($item) => (int)$item['id'] === (int)$bufferedEvent->getId()));
+                availabilityExpect(count(array_unique(array_column($parentSegments, 'column'))) === 1
+                    && count(array_unique(array_column($parentSegments, 'columnCount'))) === 1, 'Parent and attached bands keep the same width and position despite overlaps.');
+            }
             $otherItems = array_filter($payload['items'], static fn($item) => !empty($item['isOtherOrganization']));
             availabilityExpect(count($otherItems) > 0, 'Week/day data contains other-organization blocks');
             foreach ($otherItems as $itemId => $item) {

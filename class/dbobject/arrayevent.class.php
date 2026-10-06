@@ -7,9 +7,10 @@ class ArrayEvent extends ArrayDbObject
     {
         $this->exchangeArray([]);
         $rows = Event::fetchAll('SELECT e.id FROM `event` e WHERE e.active = 1 AND e.status <> :cancelled
-            AND e.start_at < :end AND (CASE WHEN e.is_all_day = 1
+            AND DATE_SUB(CASE WHEN e.is_all_day = 1 THEN DATE(e.start_at) ELSE e.start_at END,
+                INTERVAL e.preparation_minutes MINUTE) < :end AND DATE_ADD((CASE WHEN e.is_all_day = 1
                 THEN DATE_ADD(DATE(COALESCE(e.end_at, e.start_at)), INTERVAL 1 DAY)
-                ELSE COALESCE(e.end_at, DATE_ADD(e.start_at, INTERVAL 1 HOUR)) END) > :start
+                ELSE COALESCE(e.end_at, DATE_ADD(e.start_at, INTERVAL 1 HOUR)) END), INTERVAL e.closing_minutes MINUTE) > :start
             AND (e.IDuser = :owner OR EXISTS (SELECT 1 FROM user_organization uo
                 WHERE uo.IDorganization = e.IDorganization AND uo.IDuser = :member AND uo.active = 1))',
             ['cancelled' => Event::STATUS_CANCELLED, 'start' => $start, 'end' => $end, 'owner' => $userId, 'member' => $userId]);

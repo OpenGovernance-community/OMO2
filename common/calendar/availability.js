@@ -2,6 +2,16 @@
     'use strict';
     if (window.omoCalendarShowAvailability) { return; }
 
+    // Event editors are also opened from projects; use one delegated toggle for every host.
+    document.addEventListener('change', function (event) {
+        var toggle = event.target.closest('[data-omo-calendar-buffers-toggle]');
+        var form = toggle && toggle.closest('[data-omo-calendar-create-form]');
+        var fields = form && form.querySelector('[data-omo-calendar-buffers-fields]');
+        if (!fields) { return; }
+        fields.hidden = !toggle.checked;
+        fields.querySelectorAll('input, select').forEach(function (input) { input.disabled = !toggle.checked; });
+    });
+
     function dateLabel(value) {
         var parts = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
         if (!parts) { return value; }
