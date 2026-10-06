@@ -269,3 +269,15 @@ php scripts/optimize-profile-images.php --apply
 ```
 
 Une sauvegarde des fichiers concernes est recommandee avant l execution sur le serveur.
+
+## 10. Surveillance externe de la base de donnees
+
+Configurer un controle HTTPS GET sur `https://votre-domaine/omo/health.php`, par exemple dans UptimeRobot. Aucun compte utilisateur ou jeton n est necessaire. Le controle utilise les memes variables `DB_HOST`, `DB_NAME`, `DB_USER` et `DB_PASS` que le site, y compris les surcharges locales habituelles.
+
+- Etat attendu : HTTP **200**, avec `{"status":"ok","database":"ok"}`.
+- Echec de configuration, de connexion ou de requete : HTTP **503**, avec `{"status":"error","database":"unavailable"}`.
+- HEAD effectue le meme controle, mais sans corps de reponse.
+
+Chaque appel ouvre une connexion MySQL neuve (delai de connexion limite a trois secondes) et execute uniquement `SELECT 1`, via DbObject. Il ne cree pas de session, ne lance ni maintenance ni installation, et n expose aucun identifiant, contenu de table ou detail d erreur. Les reponses ne sont pas mises en cache.
+
+Ce controle confirme la disponibilite de la connexion et du moteur SQL ; il ne verifie pas les tables applicatives, les droits d ecriture, l integrite des donnees ou les sauvegardes. Une frequence de cinq minutes est suffisante pour une surveillance de base. Publier `omo/health.php` et la classe DbObject mise a jour ensemble avant d activer le moniteur.
