@@ -23,6 +23,8 @@ function omoUserContextT(string $key, array $replace = []): string
             'availability_tab' => 'Disponibilités',
             'availability_heading' => 'Disponibilités',
             'availability_hint' => 'Les créneaux sont calculés à partir des agendas OMO et des calendriers externes connectés.',
+            'book_meeting' => 'Prendre rendez-vous',
+            'book_meeting_hint' => 'Ouvrir la prise de rendez-vous dans une nouvelle fenetre',
             'select_day' => 'Choisissez un jour',
             'select_day_hint' => 'Sélectionnez une date dans le mois pour afficher les heures.',
             'free' => 'Libre',
@@ -875,6 +877,7 @@ $popupReloadUrl = '/popup/user.php?id=' . (int)$userId . '&oid=' . (int)$organiz
 $rightsFragmentUrl = '/popup/user.php?section=rights&id=' . (int)$userId . '&oid=' . (int)$organizationId;
 $availabilityFragmentUrl = '/popup/user.php?section=availability&id=' . (int)$userId . '&oid=' . (int)$organizationId
     . ($currentHolonId > 0 ? '&cid=' . (int)$currentHolonId : '');
+$meetingBookingPath = MeetingProfile::publicBookingPathForUser($userId);
 $initialTab = trim((string)($_GET['tab'] ?? ''));
 $initialTab = in_array($initialTab, array('availability', 'current-roles', 'organization-roles'), true) ? $initialTab : '';
 $showCurrentScope = $hasStructureContext && (int)$currentHolon->getId() !== (int)$rootHolon->getId();
@@ -1240,12 +1243,21 @@ foreach ($competenceRows as $competenceRow) {
                     </div>
 
                     <div id="omo-user-context-panel-availability" class="generic-tabs__panel" data-generic-tab-panel hidden>
-                        <div
-                            class="omo-user-context__fragment-host"
-                            data-user-fragment-host="1"
-                            data-user-availability-host="1"
-                            data-user-fragment-url="<?= omoApiEscape($availabilityFragmentUrl) ?>"
-                        ></div>
+                        <div class="generic-stack">
+                            <?php if ($meetingBookingPath !== null): ?>
+                                <div class="generic-action-row">
+                                    <a class="generic-action-button generic-action-button--main" href="<?= omoApiEscape($meetingBookingPath) ?>"
+                                        target="_blank" rel="noopener noreferrer" title="<?= omoApiEscape(omoUserContextT('book_meeting_hint')) ?>"
+                                    ><?= omoApiEscape(omoUserContextT('book_meeting')) ?></a>
+                                </div>
+                            <?php endif; ?>
+                            <div
+                                class="omo-user-context__fragment-host"
+                                data-user-fragment-host="1"
+                                data-user-availability-host="1"
+                                data-user-fragment-url="<?= omoApiEscape($availabilityFragmentUrl) ?>"
+                            ></div>
+                        </div>
                     </div>
 
                     <?php if ($hasStructureContext && $showCurrentScope): ?>

@@ -2,6 +2,7 @@
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once dirname(__DIR__, 3) . '/meeting/service.php';
 require_once dirname(__DIR__, 3) . '/meeting/translations.php';
+require_once dirname(__DIR__, 3) . '/common/calendar/time-buffers.php';
 
 use dbObject\MeetingProfile;
 use dbObject\ArrayExternalCalendar;
@@ -29,6 +30,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $methods = meetingValidateMethods($_POST['meeting_methods'] ?? [], $profile->methods());
         $profile->set('meeting_methods', json_encode($methods, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
         $profile->set('max_duration_minutes', meetingValidateDuration($_POST['max_duration_minutes'] ?? 60, MeetingProfile::MAX_DURATION_MINUTES));
+        foreach (['preparation_minutes', 'closing_minutes'] as $field) {
+            $profile->set($field, MeetingProfile::validateBufferMinutes($_POST[$field] ?? 0));
+        }
         $profile->set('slug', $slug);
         $profile->set('weekly_hours', json_encode($hours));
         $profile->set('enabled', empty($_POST['enabled']) ? 0 : 1);
@@ -42,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         echo json_encode(['status' => true, 'message' => meetingT('saved'), 'path' => '/meeting/' . $slug, 'methods' => $methods]);
     } catch (Throwable $exception) {
         $key = $exception instanceof RuntimeException ? $exception->getMessage() : 'storage';
-        if (!in_array($key, ['slug_invalid', 'slug_taken', 'csrf', 'busy', 'hours_invalid', 'duration_invalid', 'methods_invalid', 'calendar_invalid', 'storage'], true)) { $key = 'storage'; }
+        if (!in_array($key, ['slug_invalid', 'slug_taken', 'csrf', 'busy', 'hours_invalid', 'duration_invalid', 'buffer_invalid', 'methods_invalid', 'calendar_invalid', 'storage'], true)) { $key = 'storage'; }
         echo json_encode(['status' => false, 'message' => meetingT($key)]);
     } finally { if ($locked) { MeetingProfile::unlock($userId); } }
     exit;
@@ -113,6 +117,14 @@ $renderMethodRow = static function ($index, array $method = []): void {
                 <input type="number" class="generic-form-control" name="max_duration_minutes" min="30" max="<?= MeetingProfile::MAX_DURATION_MINUTES ?>" step="30" required value="<?= $profile->maxDurationMinutes() ?>">
                 <span class="generic-help-text"><?= meetingEscape(meetingT('max_duration_hint')) ?></span>
             </label>
+            <div class="generic-form-grid generic-form-grid--pair">
+                <?php foreach (['preparation_minutes', 'closing_minutes'] as $field): ?>
+                    <label class="generic-form-field"><span class="generic-form-label"><?= meetingEscape(meetingT($field)) ?></span>
+                        <?php commonCalendarRenderTimeBufferSelect($field, (int)$profile->get($field)); ?>
+                    </label>
+                <?php endforeach; ?>
+            </div>
+            <p class="generic-help-text"><?= meetingEscape(meetingT('buffers_hint')) ?></p>
             <div class="generic-form-section__copy">
                 <h3 class="generic-card-title"><?= meetingEscape(meetingT('hours')) ?></h3>
                 <p class="generic-help-text"><?= meetingEscape(meetingT('timezone')) ?></p>

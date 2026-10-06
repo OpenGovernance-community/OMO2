@@ -137,6 +137,7 @@ if (!function_exists('omoChecklistSourceLang')) {
             'checklist.form.step_description_placeholder' => ['text' => 'Saisissez la description de cette étape.', 'context' => 'Placeholder for a process step HTML description editor.'],
             'checklist.form.activity_description_placeholder' => ['text' => 'Saisissez la description de cette activité.', 'context' => 'Placeholder for a process activity HTML description editor.'],
             'checklist.form.holon' => ['text' => 'Espace responsable', 'context' => 'Checklist item space field.'],
+            'checklist.form.holon_hint' => ['text' => 'Choisissez l espace responsable de cette etape ou activite.', 'context' => 'Checklist template space assignment picker help.'],
             'checklist.form.parent' => ['text' => 'Sous-projet de', 'context' => 'Checklist item project parent field.'],
             'checklist.form.parent_root' => ['text' => 'Racine du processus', 'context' => 'Process root project parent option.'],
             'checklist.form.activation' => ['text' => 'Visibilité', 'context' => 'Checklist item activation field.'],
@@ -462,6 +463,7 @@ if (!function_exists('omoChecklistBuildHolonOptions')) {
                 $options[] = [
                     'id' => $holonId,
                     'label' => implode(' › ', $nextPath),
+                    'name' => $label,
                 ];
             }
             foreach ($holon->getChildren() as $child) {

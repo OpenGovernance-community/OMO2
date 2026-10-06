@@ -3,6 +3,7 @@ namespace dbObject;
 
 class Event extends DbObject
 {
+    use CalendarTimeBuffer;
     const STATUS_DRAFT = 'draft';
     const STATUS_OPTION = 'option';
     const STATUS_CONFIRMED = 'confirmed';
@@ -20,7 +21,7 @@ class Event extends DbObject
     {
         return [
             [['IDuser', 'title', 'status', 'start_at', 'end_at'], 'required'],
-            [['id'], 'integer'],
+            [['id', 'preparation_minutes', 'closing_minutes'], 'integer'],
             [['IDorganization', 'IDholon', 'IDproject', 'IDuser', 'IDdecision_proposal'], 'fk'],
             [['title', 'status', 'timezone', 'locationmode', 'locationaddress', 'videomeetingurl'], 'string'],
             [['description'], 'text'],
@@ -47,6 +48,7 @@ class Event extends DbObject
             'locationmode' => 'Format du lieu',
             'locationaddress' => 'Adresse',
             'videomeetingurl' => 'Lien de visio',
+            'preparation_minutes' => 'Preparation (minutes)', 'closing_minutes' => 'Cloture (minutes)',
             'start_at' => 'Début',
             'end_at' => 'Fin',
             'is_all_day' => 'Journée entière',
@@ -596,6 +598,8 @@ class Event extends DbObject
             $start = $start->setTime(0, 0);
             $end = $end->setTime(0, 0)->modify('+1 day');
         }
+        if ($end < $start) { return null; }
+        [$start, $end] = $this->withTimeBuffers($start, $end);
         return $end > $start ? [$start, $end] : null;
     }
 
@@ -1305,6 +1309,11 @@ class Event extends DbObject
 
     public function save()
     {
+        foreach (['preparation_minutes', 'closing_minutes'] as $field) {
+            if ((int)$this->get($field) < 0 || (int)$this->get($field) > self::MAX_BUFFER_MINUTES) {
+                return ['status' => false, 'text' => 'Invalid preparation/closing duration.'];
+            }
+        }
         $this->set('status', self::normalizeStatus($this->get('status')));
 
         $timezone = trim((string)$this->get('timezone'));

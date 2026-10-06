@@ -110,6 +110,8 @@ function commonExternalCalendarIcsValues(array $event, string $uid, string $key,
         'start_at' => $start->setTimezone($storageZone),
         'end_at' => ($allDay ? $end->modify('-1 second') : $end)->setTimezone($storageZone),
         'is_all_day' => $allDay ? 1 : 0,
+        'preparation_minutes' => min(1440, max(0, (int)($value('X-OMO-PREPARATION-MINUTES')))),
+        'closing_minutes' => min(1440, max(0, (int)($value('X-OMO-CLOSING-MINUTES')))),
         'is_busy' => strtoupper($value('TRANSP') ?: 'OPAQUE') === 'TRANSPARENT' ? 0 : 1,
     ];
 }

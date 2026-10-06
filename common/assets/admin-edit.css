@@ -165,17 +165,10 @@
     padding-left: 0;
 }
 
+/* Joined controls keep the shared component's field and button styling. */
 .admin-edit__control,
-#formulaire-edit input[type='text'],
-#formulaire-edit input[type='email'],
-#formulaire-edit input[type='password'],
-#formulaire-edit input[type='number'],
-#formulaire-edit input[type='date'],
-#formulaire-edit input[type='time'],
-#formulaire-edit input[type='datetime-local'],
-#formulaire-edit input[type='color'],
-#formulaire-edit select,
-#formulaire-edit textarea {
+#formulaire-edit :is(input[type='text'], input[type='email'], input[type='password'], input[type='number'],
+    input[type='date'], input[type='time'], input[type='datetime-local'], input[type='color'], select, textarea):not(.generic-form-control-group > *) {
     width: 100%;
     min-height: var(--generic-form-control-min-height, 44px);
     padding: var(--generic-form-control-padding-block, 11px) var(--generic-form-control-padding-inline, 12px);
@@ -281,7 +274,7 @@
     background: var(--color-surface, #ffffff);
 }
 
-#formulaire-edit button:not(.note-btn),
+#formulaire-edit button:not(.note-btn):not(.generic-form-control-group > *),
 #formulaire-edit input[type='button'],
 #formulaire-edit input[type='submit'] {
     min-height: 42px;
@@ -298,13 +291,13 @@
     transition: transform 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease, border-color 0.18s ease;
 }
 
-#formulaire-edit button:not(.note-btn):hover,
+#formulaire-edit button:not(.note-btn):not(.generic-form-control-group > *):hover,
 #formulaire-edit input[type='button']:hover,
 #formulaire-edit input[type='submit']:hover {
     transform: translateY(-1px);
 }
 
-#formulaire-edit button:not(.note-btn):disabled,
+#formulaire-edit button:not(.note-btn):not(.generic-form-control-group > *):disabled,
 #formulaire-edit input[type='button']:disabled,
 #formulaire-edit input[type='submit']:disabled {
     opacity: 0.6;

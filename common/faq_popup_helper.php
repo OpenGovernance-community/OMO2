@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/omo_context_scope.php';
 require_once __DIR__ . '/translation_bundles.php';
+require_once __DIR__ . '/holon_scope_helper.php';
 
 function faqPopupT(string $key): string
 {
@@ -18,6 +19,8 @@ function faqPopupT(string $key): string
 		'editor.publication' => ['text' => 'Publication', 'context' => 'FAQ visibility and ordering section.'],
 		'editor.publication_help' => ['text' => 'Cochez la case pour rendre cette réponse visible dans la FAQ choisie.', 'context' => 'FAQ publication help.'],
 		'editor.scope' => ['text' => 'Emplacement dans la FAQ', 'context' => 'FAQ attachment settings heading.'],
+		'editor.space_hint' => ['text' => 'Choisissez l espace dans lequel rattacher cette FAQ.', 'context' => 'FAQ space assignment picker help.'],
+		'editor.space' => ['text' => 'Espace', 'context' => 'FAQ attachment type when choosing a permitted space.'],
 		'request.pending' => ['text' => 'Question en attente de réponse', 'context' => 'Pending FAQ request heading.'],
 		'request.relayed' => ['text' => 'Question relayée aux administrateurs de l’organisation', 'context' => 'Relayed FAQ request heading.'],
 		'request.answered' => ['text' => 'Demande d’origine', 'context' => 'Original FAQ request heading.'],
@@ -544,6 +547,7 @@ if (!function_exists('faqPopupAppendHolonOptionsFromTree')) {
 			'id' => $holonId,
 			'organizationId' => $organizationId,
 			'label' => faqPopupFormatHolonOptionLabel($holon->getDisplayName(), $depth),
+			'name' => trim((string)$holon->getDisplayName()),
 			'organizationLabel' => trim((string)$organizationLabel),
 		);
 
@@ -718,20 +722,33 @@ if (!function_exists('faqPopupRenderScopeFields')) {
 		$organizations = faqPopupLoadOrganizationOptions($faqContext, $faq);
 		$holons = faqPopupLoadHolonOptions($faqContext, $organizations);
 		$parcoursOptions = faqPopupLoadParcoursOptions($faqContext, $organizations);
-		if ($allowContextualAttachment && $allowParcoursAttachment && !$canManageAllFaqs && !$canManageOrganizationFaqs) {
-			$currentHolon = $faqContext['currentHolon'] ?? null;
-			$holons = $currentHolon instanceof \dbObject\Holon
-				? array(array(
-					'id' => (int)$currentHolon->getId(),
-					'organizationId' => $contextOrganizationId,
-					'label' => trim((string)$currentHolon->getDisplayName()),
-					'organizationLabel' => '',
-				))
-				: array();
-			$selectedHolonId = $currentHolon instanceof \dbObject\Holon ? (int)$currentHolon->getId() : 0;
+		if ($allowContextualAttachment && !$canManageAllFaqs && !$canManageOrganizationFaqs) {
+			$holons = [];
+			foreach (\dbObject\FAQ::loadContextualCreationTargets($contextOrganizationId, (int)$viewerAccess['userId']) as $target) {
+				$holons[] = ['id' => (int)$target->getId(), 'organizationId' => $contextOrganizationId,
+					'name' => trim((string)$target->getDisplayName())];
+			}
+			if (!in_array($selectedHolonId, array_column($holons, 'id'), true)) { $selectedHolonId = (int)($holons[0]['id'] ?? 0); }
 			$selectedOrganizationId = $contextOrganizationId;
 		}
 		$applicationOptions = $canLinkApplication ? \dbObject\Application::fetchFaqAttachmentOptions() : array();
+		$selectorLabels = commonHolonScopeTargetLabels(faqPopupT('editor.space_hint'));
+		$holonSelectorConfigs = [];
+		foreach ($organizations as $targetOrganization) {
+			$targetOrganizationId = (int)$targetOrganization->getId();
+			$holonSelectorConfigs[$targetOrganizationId] = ['organizationId' => $targetOrganizationId, 'selectableHolonIds' => [],
+				'allowOrganization' => $canManageAllFaqs || $canManageOrganizationFaqs,
+				'organizationLabel' => $selectorLabels['none'], 'labels' => $selectorLabels];
+		}
+		$holonNames = [];
+		foreach ($holons as $option) {
+			$targetOrganizationId = (int)$option['organizationId'];
+			if (isset($holonSelectorConfigs[$targetOrganizationId])) { $holonSelectorConfigs[$targetOrganizationId]['selectableHolonIds'][] = (int)$option['id']; }
+			$holonNames[(int)$option['id']] = $option['name'];
+		}
+		$selectorOrganizationId = $selectedOrganizationId > 0 ? $selectedOrganizationId : $contextOrganizationId;
+		$holonSelectorConfig = $holonSelectorConfigs[$selectorOrganizationId] ?? ['organizationId' => $selectorOrganizationId, 'selectableHolonIds' => [],
+			'allowOrganization' => false, 'organizationLabel' => $selectorLabels['none'], 'labels' => $selectorLabels];
 		$hasScopeControls = $canManageAllFaqs || $canManageOrganizationFaqs || !$isContextualOnly || $allowParcoursAttachment;
 
 		if (!$hasScopeControls) {
@@ -814,7 +831,7 @@ if (!function_exists('faqPopupRenderScopeFields')) {
 						data-faq-scope-kind
 					>
 						<?php if ($allowContextualAttachment || $canManageAllFaqs || $canManageOrganizationFaqs): ?>
-							<option value="organization"<?= $selectedAttachmentType === 'organization' ? ' selected' : '' ?>><?= $allowContextualAttachment && !$canManageAllFaqs && !$canManageOrganizationFaqs ? htmlspecialchars(\dbObject\Organization::formatLexiconText('Holon courant'), ENT_QUOTES, 'UTF-8') : 'Organisation courante' ?></option>
+							<option value="organization"<?= $selectedAttachmentType === 'organization' ? ' selected' : '' ?>><?= htmlspecialchars(faqPopupT('editor.space'), ENT_QUOTES, 'UTF-8') ?></option>
 						<?php endif; ?>
 						<?php if ($allowParcoursAttachment || $canManageAllFaqs || $canManageOrganizationFaqs): ?>
 							<option value="parcours"<?= $selectedAttachmentType === 'parcours' ? ' selected' : '' ?>>Parcours</option>
@@ -848,31 +865,12 @@ if (!function_exists('faqPopupRenderScopeFields')) {
 						</select>
 					</div>
 				<?php endif; ?>
-				<div class="faq-popup__scope-field generic-form-field" data-faq-scope-holon-shell>
-					<label class="faq-popup__scope-label generic-form-label" for="faqScopeHolon"><?= htmlspecialchars(\dbObject\Organization::formatLexiconText('Holon'), ENT_QUOTES, 'UTF-8') ?></label>
-					<select
-						class="faq-popup__scope-control generic-form-control"
-						id="faqScopeHolon"
-						data-faq-scope-holon
-					>
-						<option value="">Toute l organisation</option>
-						<?php foreach ($holons as $holonOption): ?>
-							<?php
-							$holonOptionId = (int)($holonOption['id'] ?? 0);
-							$holonLabel = trim((string)($holonOption['label'] ?? ''));
-							if ($holonOptionId <= 0 || $holonLabel === '') {
-								continue;
-							}
-							?>
-							<option
-								value="<?= $holonOptionId ?>"
-								data-organization-id="<?= (int)($holonOption['organizationId'] ?? 0) ?>"
-								<?= $selectedHolonId === $holonOptionId ? ' selected' : '' ?>
-							>
-								<?= htmlspecialchars($holonLabel, ENT_QUOTES, 'UTF-8') ?>
-							</option>
-						<?php endforeach; ?>
-					</select>
+				<div class="faq-popup__scope-field generic-form-field" data-faq-scope-holon-shell
+					data-faq-holon-configs="<?= htmlspecialchars(json_encode($holonSelectorConfigs, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT), ENT_QUOTES, 'UTF-8') ?>"
+					data-faq-holon-names="<?= htmlspecialchars(json_encode($holonNames, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT), ENT_QUOTES, 'UTF-8') ?>">
+					<label class="faq-popup__scope-label generic-form-label" for="faqScopeHolonLabel"><?= htmlspecialchars(\dbObject\Organization::formatLexiconText('Holon'), ENT_QUOTES, 'UTF-8') ?></label>
+					<?php commonHolonScopeRenderTargetField('', $selectedHolonId, $holonNames[$selectedHolonId] ?? $selectorLabels['none'], $holonSelectorConfig,
+						['id' => 'faqScopeHolon', 'data-faq-scope-holon' => '']); ?>
 				</div>
 				<div class="faq-popup__scope-field generic-form-field" data-faq-scope-parcours-shell>
 					<label class="faq-popup__scope-label generic-form-label" for="faqScopeParcours">Parcours</label>
@@ -1098,8 +1096,11 @@ if (!function_exists('faqPopupResolveSubmittedScope')) {
 		}
 
 		if ($allowContextualCreate) {
-			$currentHolon = $faqContext['currentHolon'] ?? null;
-			if (!$currentHolon instanceof \dbObject\Holon || (int)$currentHolon->getId() <= 0) {
+			if (!$holon instanceof \dbObject\Holon || $attachmentType !== 'organization'
+				|| $organizationId !== $contextOrganizationId || $holon->resolveOrganizationId() !== $contextOrganizationId
+				|| !$holon->get('active') || !$holon->get('visible') || !in_array((int)$holon->get('IDtypeholon'), [1, 2], true)
+				|| !$holon->canViewDetail()
+				|| !\dbObject\FAQ::canCreateContextualForHolon($holon, (int)$viewerAccess['userId'], $contextOrganizationId, false)) {
 				return array(
 					'status' => false,
 					'message' => \dbObject\Organization::formatLexiconText('Contexte holon invalide.'),
@@ -1109,9 +1110,9 @@ if (!function_exists('faqPopupResolveSubmittedScope')) {
 			return array(
 				'status' => true,
 				'organizationId' => $contextOrganizationId > 0 ? $contextOrganizationId : null,
-				'holonId' => (int)$currentHolon->getId(),
+				'holonId' => (int)$holon->getId(),
 				'parcoursId' => null,
-				'holon' => $currentHolon,
+				'holon' => $holon,
 				'parcours' => null,
 			);
 		}

@@ -408,7 +408,9 @@ window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, p
                             const detailTitle = detailDrawer ? detailDrawer.querySelector('[data-omo-document-detail-title]') : null;
                             const detailDescription = detailDrawer ? detailDrawer.querySelector('[data-omo-document-detail-description]') : null;
                             const detailDrawerController = detailDrawer && typeof window.omoCreateSubdrawerController === 'function'
-                                ? (detailDrawer.__omoSubdrawerController || window.omoCreateSubdrawerController({ drawer: detailDrawer }))
+                                ? (detailDrawer.__omoSubdrawerController || window.omoCreateSubdrawerController({
+                                    drawer: detailDrawer, dismissAction: 'button[data-omo-document-detail-close]'
+                                }))
                                 : null;
 
                             if (detailDrawerController) {

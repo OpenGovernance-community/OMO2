@@ -316,6 +316,12 @@
         var renderedDpr = 0;
         var resizeFrameId = 0;
         var resizeObserver = null;
+        var focusedHolonId = String(getSelectedId() || '');
+        var lastSelectedHolonId = focusedHolonId;
+
+        function canNavigate(node) {
+            return node && (node.isSelectable !== false || String(node.type) === '2' || String(node.type) === '3');
+        }
 
         function scheduleDraw() {
             if (resizeFrameId !== 0) {
@@ -332,8 +338,8 @@
                 return;
             }
             var hoveredNode = drawnNodes.find(function (node) { return String(node.ID) === hoveredNodeId; });
-            var selectedNode = drawnNodes.find(function (node) { return String(node.ID) === String(getSelectedId() || ''); }) || drawnNodes[0] || null;
-            var displayedNode = hoveredNode || selectedNode;
+            var focusedNode = drawnNodes.find(function (node) { return String(node.ID) === focusedHolonId; }) || drawnNodes[0] || null;
+            var displayedNode = hoveredNode || focusedNode;
             tooltip.textContent = displayedNode ? String(displayedNode.name || '') : '';
             tooltip.hidden = !displayedNode || !displayedNode.name;
         }
@@ -384,7 +390,11 @@
                 .sort(comparePackNodes);
             var packedNodes = pack.nodes(packedRoot);
             var selectedId = String(getSelectedId() || '');
-            var focusedNode = packedNodes.find(function (node) { return String(node.ID) === selectedId; }) || packedNodes[0] || null;
+            if (selectedId !== lastSelectedHolonId) {
+                focusedHolonId = selectedId;
+                lastSelectedHolonId = selectedId;
+            }
+            var focusedNode = packedNodes.find(function (node) { return String(node.ID) === focusedHolonId; }) || packedNodes[0] || null;
             var focusDiameter = focusedNode
                 ? focusedNode.r * (String(focusedNode.type) === '1' ? 4.05 : 2.05)
                 : diameter;
@@ -398,7 +408,7 @@
                 projectedNode.ignoreAssignmentColor = ignoreAssignmentColor === true;
                 return projectedNode;
             });
-            var currentNode = drawnNodes.find(function (node) { return String(node.ID) === selectedId; }) || drawnNodes[0] || null;
+            var currentNode = drawnNodes.find(function (node) { return String(node.ID) === focusedHolonId; }) || drawnNodes[0] || null;
             var rootNode = drawnNodes[0] || null;
             var chartColors = getChartColors();
             var labels = [];
@@ -505,7 +515,7 @@
                 draw();
             }
             canvas.style.cursor = node
-                ? (node.isSelectable === false ? 'not-allowed' : 'pointer')
+                ? (node.isSelectable === false ? (canNavigate(node) ? 'zoom-in' : 'not-allowed') : 'pointer')
                 : 'default';
         });
         canvas.addEventListener('mouseleave', function () {
@@ -517,9 +527,11 @@
         });
         canvas.addEventListener('click', function (event) {
             var node = getNodeAt(event);
+            if (!canNavigate(node)) { return; }
+            focusedHolonId = String(node.ID);
             if (node && node.isSelectable !== false && typeof onSelect === 'function') {
                 onSelect(node.ID);
-            }
+            } else { draw(); }
         });
 
         if (typeof window.ResizeObserver === 'function') {
@@ -708,4 +720,61 @@
             }
         };
     };
+    // The same permission-filtered assignment dialog serves event and project forms.
+    document.addEventListener('click', function (event) {
+        var button = event.target.closest('[data-holon-target-selector]');
+        var form = button && button.closest('form');
+        if (!form || button.disabled || typeof window.commonTopbarOpenModal !== 'function') { return; }
+        var settings;
+        try { settings = JSON.parse(button.getAttribute('data-holon-target-selector')); } catch (error) { return; }
+        var field = form.querySelector('[data-holon-target-id]');
+        var label = form.querySelector('[data-holon-target-label]');
+        if (!field || !label || !Array.isArray(settings.selectableHolonIds)) { return; }
+        event.preventDefault();
+        var modal = document.getElementById('commonTopbarModal');
+        var nested = modal && !modal.hidden && typeof window.commonTopbarPushModal === 'function';
+        var open = nested ? window.commonTopbarPushModal : window.commonTopbarOpenModal;
+        var texts = settings.labels;
+        open(texts.title, '<div class="generic-drawer-content generic-form-stack" data-holon-target-dialog>'
+            + '<p class="generic-help-text">' + escapeHtml(texts.hint) + '</p><div data-holon-target-map></div>'
+            + '<div class="generic-form-actions">'
+            + (settings.allowOrganization ? '<button type="button" class="generic-action-button generic-action-button--secondary" data-holon-target-none>' + escapeHtml(texts.none) + '</button>' : '')
+            + '<button type="button" class="generic-action-button generic-action-button--secondary" data-holon-target-cancel>' + escapeHtml(texts.cancel) + '</button>'
+            + '<button type="button" class="generic-action-button generic-action-button--main" data-holon-target-apply disabled>' + escapeHtml(texts.confirm) + '</button></div></div>', 'html');
+        var body = document.getElementById('commonTopbarModalBody');
+        var dialog = body && body.querySelector('[data-holon-target-dialog]');
+        if (!dialog) { return; }
+        var apply = dialog.querySelector('[data-holon-target-apply]');
+        var selected = Number(field.value || 0);
+        var selectedLabel = label.value;
+        var ready = false;
+        function update(id) {
+            selected = Number(id || 0);
+            if (selected > 0 && picker) { selectedLabel = picker.getSelectedHolonLabel(); }
+            if (selected === 0) { selectedLabel = settings.organizationLabel; }
+            apply.disabled = !ready || !(selected === 0 ? settings.allowOrganization : settings.selectableHolonIds.indexOf(selected) !== -1);
+        }
+        var picker = window.omoMountHolonScopePicker({host: dialog.querySelector('[data-holon-target-map]'),
+            organizationId: settings.organizationId, initialHolonId: selected, selectableHolonIds: settings.selectableHolonIds,
+            allowEmptySelection: settings.allowOrganization, showModes: false, labelMode: 'context', onChange: update,
+            onReady: function (id) { ready = true; update(id); }});
+        var destroyed = false;
+        window.__omoPopupCleanup = function () {
+            if (!destroyed) { destroyed = true; picker.destroy(); }
+        };
+        function close() {
+            if (nested && typeof window.commonTopbarPopModal === 'function') { window.commonTopbarPopModal(); }
+            else { window.commonTopbarCloseModal(); }
+        }
+        dialog.addEventListener('click', function (click) {
+            if (click.target.closest('[data-holon-target-cancel]')) { close(); return; }
+            if (click.target.closest('[data-holon-target-none]')) { picker.setSelectedHolonId(0); update(0); return; }
+            if (!click.target.closest('[data-holon-target-apply]') || apply.disabled) { return; }
+            field.value = String(selected);
+            label.value = selectedLabel;
+            if (settings.contextPaths) { field.setAttribute('data-holon-context-path', settings.contextPaths[selected] || ''); }
+            close();
+            field.dispatchEvent(new Event('change', {bubbles: true}));
+        });
+    });
 })(window);
