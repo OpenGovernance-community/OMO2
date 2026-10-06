@@ -1274,3 +1274,24 @@
         width: 100%;
     }
 }
+
+/* Attached time uses its actual duration, including buffers shorter than 30 minutes. */
+.omo-calendar__time-event.is-time-buffer,
+.omo-calendar__time-event.has-time-buffers {
+    min-height: 0;
+    box-sizing: border-box;
+}
+.omo-calendar__time-event.is-time-buffer {
+    border-style: dashed;
+    background-image: repeating-linear-gradient(135deg, transparent 0 8px, rgba(100, 116, 139, 0.16) 8px 12px);
+    padding: 0;
+}
+.omo-calendar__time-event.has-time-buffers {
+    border-radius: 0;
+}
+.omo-calendar__time-event[data-omo-calendar-time-buffer="before"] {
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+.omo-calendar__time-event[data-omo-calendar-time-buffer="after"] {
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
+}

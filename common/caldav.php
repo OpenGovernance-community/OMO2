@@ -753,6 +753,8 @@ if (!function_exists('commonCalDavBuildEventCalendarData')) {
             $lines[] = commonCalDavBuildTimedDateLine('DTEND', $endAt instanceof DateTimeInterface ? $endAt : null, $eventTimezoneName);
         }
 
+        $lines[] = 'X-OMO-PREPARATION-MINUTES:' . (int)$event->get('preparation_minutes');
+        $lines[] = 'X-OMO-CLOSING-MINUTES:' . (int)$event->get('closing_minutes');
         $lines[] = 'END:VEVENT';
         $lines[] = 'END:VCALENDAR';
 

@@ -54,7 +54,9 @@
             var day = data.days[date];
             day.slots.forEach(function (slot) { if (slot.startEpoch <= now) { slot.free = false; } });
             var ranges = day.slots.map(function (slot) {
-                return {free: slot.free && !slot.pause, start: slot.startEpoch, end: slot.startEpoch + 1800};
+                return {free: slot.free && !slot.pause, start: slot.startEpoch, end: slot.startEpoch + 1800,
+                    beforeFree: slot.beforeFree !== false && slot.startEpoch - (data.preparationMinutes || 0) * 60 > now,
+                    afterFree: slot.afterFree !== false};
             });
             day.ranges = day.slots.map(function (_slot, index) { return model.selectRange(ranges, index, durationMinutes / 30); });
             day.workingCount = day.slots.filter(function (slot) { return !slot.pause; }).length;

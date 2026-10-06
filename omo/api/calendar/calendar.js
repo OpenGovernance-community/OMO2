@@ -15,6 +15,14 @@ function omoCreateCalendarViews(root, config) {
         [['isExternal', 'is-external-calendar'], ['isFaded', 'is-faded'], ['isRouteTarget', 'is-route-target'],
             ['isOtherOrganization', 'is-other-organization'], ['isOutsideScope', 'is-outside-scope']].forEach(([key, cls]) => { if (event[key]) css += ' ' + cls; });
         attributes = Object.assign(attr('event-id', event.id), attr('search-item'), attributes);
+        if (event.bufferKind) {
+            css += ' is-time-buffer';
+            Object.assign(attributes, attr('time-buffer', event.bufferKind), {
+                title: event.title + ' (' + event.timeLabel + ')', 'aria-label': event.title + ' (' + event.timeLabel + ')'
+            });
+        }
+        if (event.hasTimeBuffers) css += ' has-time-buffers';
+        if (event.searchText) Object.assign(attributes, attr('search-text', event.searchText));
         if (event.isOtherOrganization) Object.assign(attributes, attr('other-organization'));
         if (event.isExternal) {
             Object.assign(attributes, attr('external-event'), attr('external-event-data', JSON.stringify(event.externalDrawerData || {})));
@@ -86,11 +94,11 @@ function omoCreateCalendarViews(root, config) {
             + day.timed.map(id => {
                 const event = item(id);
                 const top = Math.max(0, Math.min(100, event.startMinute / 1440 * 100));
-                const height = Math.min(100 - top, Math.max(30 / 1440 * 100, (event.endMinute - event.startMinute) / 1440 * 100));
+                const height = Math.min(100 - top, Math.max((event.bufferKind || event.hasTimeBuffers ? 0 : 30) / 1440 * 100, (event.endMinute - event.startMinute) / 1440 * 100));
                 const width = 100 / Math.max(1, Number(event.columnCount) || 1);
                 const left = Math.max(0, Number(event.column) || 0) * width;
                 return eventTag('article', 'omo-calendar__time-event', event, {style: 'top:' + top + '%;height:' + height + '%;left:calc(' + left + '% + 4px);width:calc(' + width + '% - 8px);'},
-                    tag('strong', 'omo-calendar__time-event-title', {}, escape(event.title)) + timeRow(event, 'omo-calendar__time-event-time')
+                    event.bufferKind ? '' : tag('strong', 'omo-calendar__time-event-title', {}, escape(event.title)) + timeRow(event, 'omo-calendar__time-event-time')
                     + (event.holonLabel ? span('omo-calendar__time-event-context', event.holonLabel) : ''));
             }).join(''))).join('');
         return toolbar(view, true) + tag('div', 'omo-calendar__time-view', Object.assign({style: '--omo-calendar-time-columns:' + view.columnCount + ';'}, attr('time-view', mode)),
@@ -1526,7 +1534,10 @@ window.omoInitCalendar = function (root) {
             setDrawerHeader({
                 title: externalEventDrawerText.title,
                 description: externalEventDrawerText.description,
-                actions: []
+                actions: eventData.editUrl ? [{
+                    label: config.labels['calendar.action.edit'],
+                    attributes: { 'data-omo-calendar-open-edit-url': String(eventData.editUrl) }
+                }] : []
             });
             drawerBody.innerHTML = '<article class="omo-calendar__external-event-detail generic-drawer-content">'
                 + '<section class="generic-section generic-section--stack omo-calendar__external-event-overview">'
@@ -1809,7 +1820,7 @@ window.omoInitCalendar = function (root) {
                 var isOverflowExpanded = !!overflowCell && overflowCell.hasAttribute('data-omo-calendar-overflow-expanded');
                 item.hidden = query === ''
                     ? isOverflow && !isOverflowExpanded
-                    : normalizeCalendarSearch(item.textContent || '').indexOf(query) === -1;
+                    : normalizeCalendarSearch(item.getAttribute('data-omo-calendar-search-text') || item.textContent || '').indexOf(query) === -1;
             });
             root.querySelectorAll('[data-omo-calendar-more]').forEach(function (more) {
                 var overflowCell = more.closest('[data-omo-calendar-day]');
@@ -2783,6 +2794,9 @@ window.omoInitCalendar = function (root) {
                         window.omoInvalidateMainRightPanel();
                     }
 
+                    if (form.hasAttribute('data-omo-calendar-external-event-form') && typeof window.commonNotify === 'function') {
+                        window.commonNotify(payload.message, 'success');
+                    }
                     var refreshPromise = refreshCalendar(currentUrl);
                     if (payload.detailUrl) {
                         if (refreshPromise && typeof refreshPromise.then === 'function') {

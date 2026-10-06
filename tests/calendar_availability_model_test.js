@@ -46,4 +46,10 @@ assert.deepEqual(model.selectRange(rangeSlots, 3, 3), {first: 1, last: 3}, 'At c
 assert.equal(model.selectRange(rangeSlots, 5, 3), null, 'An isolated free slot cannot create a 90-minute appointment.');
 assert.equal(model.selectRange(rangeSlots, 4, 1), null, 'A busy clicked slot is never selected.');
 assert.equal(model.selectRange([{free: true, start: 0, end: 1}, {free: true, start: 2, end: 3}], 0, 2), null, 'Cannot cross an omitted pause or working-hour gap.');
+const buffered = [0, 1, 2, 3].map(index => ({free: true, start: index, end: index + 1,
+    beforeFree: index > 0, afterFree: index < 3}));
+assert.equal(model.selectRange(buffered, 0, 1), null, 'Preparation cannot precede opening.');
+assert.deepEqual(model.selectRange(buffered, 1, 2), {first: 1, last: 2}, 'Longer appointments validate buffers at their actual ends.');
+assert.equal(model.selectRange(buffered, 3, 1), null, 'Closing cannot follow the final available slot.');
+assert.deepEqual(model.selectRange(buffered, 2, 2), {first: 1, last: 2}, 'Backward fitting accounts for closing time.');
 console.log('calendar_availability_model_test: OK');

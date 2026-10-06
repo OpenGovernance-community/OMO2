@@ -97,6 +97,13 @@ try {
     $changed['post']['end_at'] = $day->format('Y-m-d') . 'T12:30';
     $changedResult = confirmationRequest($changed);
     confirmationExpect(!$changedResult['status'] && $changedResult['availability']['acknowledgement'] !== $request['post']['availability_ack'], 'Changing the proposed schedule needs a new review.');
+    $changedBuffers = $request;
+    $changedBuffers['post']['time_buffers_enabled'] = '1';
+    $changedBuffers['post']['preparation_minutes'] = '15';
+    $changedBuffers['post']['closing_minutes'] = '20';
+    $bufferResult = confirmationRequest($changedBuffers);
+    confirmationExpect(!$bufferResult['status'] && $bufferResult['availability']['acknowledgement'] !== $request['post']['availability_ack'],
+        'Changing attached time invalidates the reviewed conflicts.');
     $outside = $request;
     $outside['post']['invitation_user_ids'] = [(int)$outsider->getId()];
     $oldSync = new DateTimeImmutable('-3 hours');

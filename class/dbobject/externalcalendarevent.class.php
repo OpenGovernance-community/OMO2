@@ -3,6 +3,7 @@ namespace dbObject;
 
 class ExternalCalendarEvent extends DbObject
 {
+    use CalendarTimeBuffer;
     public static function tableName()
     {
         return 'external_calendar_event';
@@ -12,11 +13,11 @@ class ExternalCalendarEvent extends DbObject
     {
         return [
             [['IDexternalcalendar', 'source_key', 'title', 'start_at', 'end_at'], 'required'],
-            [['id'], 'integer'],
+            [['id', 'preparation_minutes', 'closing_minutes'], 'integer'],
             [['IDexternalcalendar'], 'fk'],
             [['source_key', 'source_etag', 'title', 'location', 'timezone'], 'string'],
             [['description'], 'text'],
-            [['is_all_day', 'is_busy', 'active'], 'boolean'],
+            [['is_all_day', 'is_busy', 'active', 'time_buffers_local'], 'boolean'],
             [['start_at', 'end_at', 'created_at', 'updated_at'], 'datetime'],
             [['id'], 'safe'],
         ];
@@ -32,6 +33,8 @@ class ExternalCalendarEvent extends DbObject
             'description' => 'Description',
             'location' => 'Lieu',
             'timezone' => 'Fuseau horaire',
+            'preparation_minutes' => 'Preparation (minutes)', 'closing_minutes' => 'Cloture (minutes)',
+            'time_buffers_local' => 'Temps personnalises dans OMO',
             'start_at' => 'Debut',
             'end_at' => 'Fin',
             'is_all_day' => 'Journee entiere',
@@ -50,6 +53,16 @@ class ExternalCalendarEvent extends DbObject
         ];
     }
 
+    public function getBusyInterval(): ?array
+    {
+        $start = $this->get('start_at');
+        $end = $this->get('end_at');
+        if (!$start instanceof \DateTimeInterface || !$end instanceof \DateTimeInterface) { return null; }
+        $end = \DateTimeImmutable::createFromInterface($end);
+        if ($this->get('is_all_day')) { $end = $end->modify('+1 second'); }
+        return $end > $start ? $this->withTimeBuffers($start, $end) : null;
+    }
+
     public static function findForCalendarSourceKey($calendarId, $sourceKey)
     {
         $calendarId = (int)$calendarId;
@@ -63,6 +76,54 @@ class ExternalCalendarEvent extends DbObject
             ['IDexternalcalendar', $calendarId],
             ['source_key', $sourceKey],
         ]) ? $event : null;
+    }
+
+    public function canEditTimeBuffers(int $userId): bool
+    {
+        $calendar = new ExternalCalendar();
+        return $userId > 0 && $this->get('active') && $calendar->load((int)$this->get('IDexternalcalendar'), true)
+            && $calendar->get('active') && !$calendar->get('availability_only') && (int)$calendar->get('IDuser') === $userId;
+    }
+
+    /** Only local annotations are writable; never overwrite imported event content or dates. */
+    public function saveLocalTimeBuffers(int $userId, $preparation, $closing): bool
+    {
+        $preparation = self::validateBufferMinutes($preparation);
+        $closing = self::validateBufferMinutes($closing);
+        if (!$this->canEditTimeBuffers($userId)) { return false; }
+        $saved = self::execute('UPDATE external_calendar_event e JOIN external_calendar c ON c.id = e.IDexternalcalendar
+            SET e.preparation_minutes = :preparation, e.closing_minutes = :closing, e.time_buffers_local = 1, e.updated_at = NOW()
+            WHERE e.id = :id AND e.active = 1 AND c.IDuser = :uid AND c.active = 1 AND c.availability_only = 0',
+            ['preparation' => $preparation, 'closing' => $closing, 'id' => (int)$this->getId(), 'uid' => $userId]);
+        return $saved && $this->load((int)$this->getId(), true) && $this->canEditTimeBuffers($userId)
+            && $this->get('time_buffers_local') && (int)$this->get('preparation_minutes') === $preparation
+            && (int)$this->get('closing_minutes') === $closing;
+    }
+
+    public function applyImportedValues(array $values): void
+    {
+        foreach (['source_key', 'source_etag', 'title', 'description', 'location', 'timezone', 'start_at', 'end_at',
+            'is_all_day', 'is_busy', 'preparation_minutes', 'closing_minutes'] as $field) {
+            if ($this->get('time_buffers_local') && in_array($field, ['preparation_minutes', 'closing_minutes'], true)) { continue; }
+            $this->set($field, $values[$field] ?? null);
+        }
+    }
+
+    /** Live booking checks must use the same annotations as the local cache. */
+    public static function withLocalTimeBuffers(int $calendarId, array $events): array
+    {
+        $rows = self::fetchAll('SELECT source_key, preparation_minutes, closing_minutes FROM external_calendar_event
+            WHERE IDexternalcalendar = :calendar AND time_buffers_local = 1 AND active = 1', ['calendar' => $calendarId]);
+        if (!is_array($rows)) { throw new \RuntimeException('storage'); }
+        $overrides = array_column($rows, null, 'source_key');
+        foreach ($events as &$event) {
+            if (!isset($overrides[$event['source_key']])) { continue; }
+            $row = $overrides[$event['source_key']];
+            $event['preparation_minutes'] = (int)$row['preparation_minutes'];
+            $event['closing_minutes'] = (int)$row['closing_minutes'];
+        }
+        unset($event);
+        return $events;
     }
 
     public static function deactivateForCalendar($calendarId)

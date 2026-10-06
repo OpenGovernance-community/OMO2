@@ -1,5 +1,11 @@
 # Journal Des Nouveautes
 
+- Calendrier : bouton Editer pour les evenements importes CalDAV et ICS, limite aux temps de preparation et de cloture. Durees locales conservees lors des synchronisations, y compris une remise a zero, et prises en compte dans les disponibilites et la prise de rendez-vous sans modifier l agenda source.
+
+- Calendrier : temps de preparation et de cloture lies aux rendez-vous et deduits des disponibilites. Activation dans le formulaire de date, durees predefinies de 15 minutes a 4h et valeurs par defaut pour la prise de rendez-vous ; conservation des durees existantes et de la synchronisation des agendas externes. Plages hachurees sans texte en semaine/jour, rendez-vous avec coins droits et arrondis uniquement aux bords exterieurs des plages avant/apres.
+
+- Calendrier : les plages de 15 minutes gardent leur hauteur reelle, bordures comprises, sans recouvrir le texte du rendez-vous adjacent.
+
 - Documents : la portee d edition du document autorise son contenu independamment du droit de modifier ses informations. Le bouton Editer reste disponible avec titre, description, tags et portees grises sans droit de gestion. Meme separation pour Memo, PAD, tableur, tableau blanc et Collabora ; les informations sont preservees cote serveur, meme dans une requete modifiee.
 
 - Export-import d organisation : conservation des visibilites de lecture et d edition des documents et PV, avec remappage de leurs cibles et du proprietaire des PV. Une portee absente utilise le role du document (ou son cercle) ; une cible invalide reste privee avec avertissement. Compatibilite conservee avec les anciennes visibilites numeriques OMO 1.

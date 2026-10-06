@@ -202,6 +202,35 @@ try {
     $halfBooking = meetingBook($uid, $halfDraft, $request, $mailer);
     meetingExpect($halfBooking->get('end_at')->getTimestamp() - $halfBooking->get('start_at')->getTimestamp() === 1800, 'Thirty-minute booking can end at closing');
 
+    $profile->set('preparation_minutes', 15); $profile->set('closing_minutes', 20); meetingSave($profile);
+    $bufferDraft = $draft; $bufferDraft['token'] = bin2hex(random_bytes(32));
+    $bufferDraft['date'] = (new DateTimeImmutable('+4 days', $zone))->format('Y-m-d');
+    $bufferBooking = meetingBook($uid, $bufferDraft, $request, fn() => false);
+    meetingExpect((int)$bufferBooking->get('preparation_minutes') === 15 && (int)$bufferBooking->get('closing_minutes') === 20,
+        'New bookings snapshot configured preparation and closing minutes.');
+    meetingExpect($bufferBooking->get('end_at')->getTimestamp() - $bufferBooking->get('start_at')->getTimestamp() === 3600,
+        'Guest appointment duration excludes attached time.');
+    $bufferDay = meetingDate($bufferDraft['date'], $zone);
+    $bufferBusy = meetingBusy($profile, $bufferDay, $bufferDay->modify('+1 day'), true, '', $request);
+    meetingExpect(meetingOverlap($bufferDay->setTime(9, 45), $bufferDay->setTime(10, 0), $bufferBusy)
+        && meetingOverlap($bufferDay->setTime(11, 0), $bufferDay->setTime(11, 20), $bufferBusy), 'Remote and cached booking buffers remain occupied.');
+    $adjacent = $bufferDraft; $adjacent['token'] = bin2hex(random_bytes(32)); $adjacent['time'] = '11:00'; $adjacent['duration'] = 30;
+    meetingReject(fn() => meetingBook($uid, $adjacent, $request, fn() => false), 'slot_taken');
+    $profile->set('preparation_minutes', 0); $profile->set('closing_minutes', 0); meetingSave($profile);
+    meetingExpect((int)meetingBook($uid, $bufferDraft, $request, fn() => false)->get('closing_minutes') === 20,
+        'Settings changes and confirmed retries preserve each booking snapshot.');
+    $cachedBuffers = \dbObject\ExternalCalendarEvent::findForCalendarSourceKey((int)$calendar->getId(),
+        commonExternalCalendarParseEvents($bufferBooking->get('calendar_data'))[0]['source_key']);
+    meetingExpect($cachedBuffers->saveLocalTimeBuffers($uid, 30, 45), 'Local CalDAV annotation saved.');
+    $localBusy = meetingBusy($profile, $bufferDay, $bufferDay->modify('+1 day'), true, '', $request);
+    meetingExpect(meetingOverlap($bufferDay->setTime(9, 30), $bufferDay->setTime(9, 45), $localBusy)
+        && meetingOverlap($bufferDay->setTime(11, 30), $bufferDay->setTime(11, 45), $localBusy),
+        'Live CalDAV booking checks overlay local annotations on remote buffers.');
+    meetingExpect($cachedBuffers->saveLocalTimeBuffers($uid, 0, 0), 'Local CalDAV annotation cleared.');
+    $localBusy = meetingBusy($profile, $bufferDay, $bufferDay->modify('+1 day'), true, '', $request);
+    meetingExpect(!meetingOverlap($bufferDay->setTime(9, 45), $bufferDay->setTime(10, 0), $localBusy),
+        'Explicit local zero also overrides remote buffers during live checks.');
+
     // Real local HTTP route, visitor session, privacy, review and CSRF (no real booking or email).
     $curl = curl_init();
     // Isolate local test traffic from the developer's rate-limit buckets; never relax production limits.
@@ -227,7 +256,7 @@ try {
     meetingExpect($monthData['durationSlots'] === 1 && $monthData['maxDuration'] === 90 && count($monthData['days']) >= 28, 'Month defaults to thirty minutes and exposes the configured limit');
     foreach ($monthData['days'] as $dayData) {
         foreach ($dayData['slots'] as $slotData) {
-            meetingExpect(array_keys($slotData) === ['time', 'end', 'startEpoch', 'free', 'pause', 'bookable'], 'Public slots contain only availability, never event details');
+            meetingExpect(array_keys($slotData) === ['time', 'end', 'startEpoch', 'free', 'pause', 'bookable', 'beforeFree', 'afterFree'], 'Public slots contain only availability, never event details');
         }
     }
     $dom = new DOMDocument();

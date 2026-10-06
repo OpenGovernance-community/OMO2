@@ -161,6 +161,7 @@ async function testEditor() {
 }
 function testConfirmation() {
     const app = setup('<form data-omo-calendar-create-form><input name="availability_ack" value=""><input name="title">' +
+        '<input type="checkbox" data-omo-calendar-buffers-toggle><div data-omo-calendar-buffers-fields hidden><select name="preparation_minutes" disabled><option value="15" selected>15 minutes</option></select><select name="closing_minutes" disabled><option value="20" selected>20 minutes</option></select></div>' +
         '<div data-calendar-availability-loading hidden></div><div data-calendar-availability data-acknowledgement="reviewed">' +
         '<button type="button" data-calendar-availability-confirm>Confirm</button></div></form>',
     'https://localtest.me/omo/', async () => { throw new Error('Confirmation must not fetch availability'); });
@@ -169,6 +170,17 @@ function testConfirmation() {
     let submitted = '';
     form.requestSubmit = () => { submitted = form.elements.availability_ack.value; };
     app.run('common/calendar/availability.js');
+    const toggle = form.querySelector('[data-omo-calendar-buffers-toggle]');
+    const bufferFields = form.querySelector('[data-omo-calendar-buffers-fields]');
+    toggle.checked = true;
+    toggle.dispatchEvent(new app.document.defaultView.Event('change', {bubbles: true}));
+    assert.equal(bufferFields.hidden, false, 'Any editor host can expand attached time fields.');
+    assert.equal(bufferFields.querySelector('select').disabled, false);
+    toggle.checked = false;
+    toggle.dispatchEvent(new app.document.defaultView.Event('change', {bubbles: true}));
+    assert.equal(bufferFields.hidden, true);
+    assert.equal(bufferFields.querySelector('select').value, '15', 'Toggling preserves values until save.');
+    assert.equal(bufferFields.querySelector('select').disabled, true, 'Inactive durations are omitted on submit.');
     app.window.omoCalendarSetAvailabilityPending(form, true);
     assert.equal(form.querySelector('[data-calendar-availability-loading]').hidden, false);
     app.window.omoCalendarSetAvailabilityPending(form, false);

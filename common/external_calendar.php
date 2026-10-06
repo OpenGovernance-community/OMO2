@@ -655,6 +655,8 @@ function commonExternalCalendarParseEvents($calendarData, $etag = '', $strict = 
             'start_at' => $startAt->setTimezone($defaultTimezone),
             'end_at' => $endAt->setTimezone($defaultTimezone),
             'is_all_day' => !empty($start['is_all_day']) ? 1 : 0,
+            'preparation_minutes' => min(1440, max(0, (int)($properties['X-OMO-PREPARATION-MINUTES']['value'] ?? ''))),
+            'closing_minutes' => min(1440, max(0, (int)($properties['X-OMO-CLOSING-MINUTES']['value'] ?? ''))),
             'is_busy' => strtoupper(trim($properties['TRANSP']['value'] ?? 'OPAQUE')) === 'TRANSPARENT' ? 0 : 1,
         ];
     }
@@ -767,9 +769,7 @@ function commonExternalCalendarSynchronize(ExternalCalendar $calendar, $rangeSta
                 $event->set('source_key', (string)$values['source_key']);
                 $event->set('created_at', new \DateTimeImmutable('now'));
             }
-            foreach (['source_etag', 'title', 'description', 'location', 'timezone', 'start_at', 'end_at', 'is_all_day', 'is_busy'] as $field) {
-                $event->set($field, $values[$field] ?? null);
-            }
+            $event->applyImportedValues($values);
             $event->set('active', 1);
             $event->set('updated_at', new \DateTimeImmutable('now'));
             $saveResult = $event->save();
