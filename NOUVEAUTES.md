@@ -1,5 +1,9 @@
 # Journal Des Nouveautes
 
+- Calendrier : sauvegarde sans nouvelle verification des conflits si les dates, le mode journee entiere et les temps de preparation/cloture sont inchanges. Actualisation des agendas limitee a trois secondes pour la sauvegarde ; un cache incomplet n impose plus de confirmation et signale les donnees disponibles par un avertissement dans la topbar. Les conflits detectes restent soumis a confirmation.
+
+- Profils : bouton Prendre rendez-vous dans l onglet Disponibilites lorsque la reservation est active, ouvrant la page publique dans une nouvelle fenetre.
+
 - Documents : le formulaire ouvert depuis le module Documents garde aussi un seul bouton Annuler dans l entete, a la place de Fermer, meme quand la liste initialise le panneau avant l editeur. Annuler une modification recharge correctement la fiche et ses actions.
 
 - FAQ : rattachement affiche comme Espace, avec tous les espaces autorises a la creation et controle des droits sur la destination lors de l enregistrement. Champs et boutons de structure correctement accoles dans adminEdit. Projets : une seule action Annuler dans l entete des formulaires, a la place de Fermer, y compris pour les documents crees depuis un projet.
