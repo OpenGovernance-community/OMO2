@@ -22,6 +22,7 @@ function omoCreateCalendarViews(root, config) {
             });
         }
         if (event.hasTimeBuffers) css += ' has-time-buffers';
+        if (event.documentUrl && !event.bufferKind) css += ' has-associated-document';
         if (event.searchText) Object.assign(attributes, attr('search-text', event.searchText));
         if (event.isOtherOrganization) Object.assign(attributes, attr('other-organization'));
         if (event.isExternal) {
@@ -34,7 +35,7 @@ function omoCreateCalendarViews(root, config) {
             // CSS color is the only non-numeric style value coming from event data.
             if (/^#[0-9a-f]{6}$/i.test(event.externalColor || '')) attributes.style = '--param-external-calendar-color: ' + event.externalColor + ';' + (attributes.style || '');
         }
-        return tag(name, css, attributes, content);
+        return tag(name, css, attributes, (event.bufferKind ? '' : documentButton(event)) + content);
     }
     function documentButton(event) {
         if (!event.documentUrl) return '';
@@ -44,8 +45,7 @@ function omoCreateCalendarViews(root, config) {
         '<svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"><path d="M6 3.5h8l4 4v13H6z"></path><path d="M14 3.5v4h4M9 12h6M9 15.5h6"></path></svg>');
     }
     function timeRow(event, prefix) {
-        return event.timeLabel || event.documentUrl ? tag('span', prefix + '-row', {},
-            (event.timeLabel ? span(prefix, event.timeLabel) : '') + documentButton(event)) : '';
+        return event.timeLabel ? tag('span', prefix + '-row', {}, span(prefix, event.timeLabel)) : '';
     }
     function badge(count, label) {
         return tag('span', 'omo-calendar__timeline-count-badge', {'aria-label': label, title: label}, escape(count));
@@ -86,7 +86,7 @@ function omoCreateCalendarViews(root, config) {
             day.allDay.map(id => {
                 const event = item(id);
                 return eventTag('div', 'omo-calendar__time-all-day-chip', event, {}, tag('div', 'omo-calendar__time-all-day-title-row', {},
-                    tag('strong', '', {}, escape(event.title)) + documentButton(event)) + (event.holonLabel ? span('', event.holonLabel) : ''));
+                    tag('strong', '', {}, escape(event.title))) + (event.holonLabel ? span('', event.holonLabel) : ''));
             }).join(''))).join('');
         const columns = view.days.map(day => tag('div', 'omo-calendar__time-column' + (day.isToday ? ' is-today' : ''), attr('time-column-day', day.dayKey),
             tag('div', 'omo-calendar__time-column-grid', {}, '') + tag('div', 'omo-calendar__now-indicator',
@@ -1033,8 +1033,8 @@ window.omoInitCalendar = function (root) {
 
             var contextId = Number(contextField.value || '0');
             var documentType = typeField ? String(typeField.value || '').trim() : '';
-            var contextOption = contextField.options[contextField.selectedIndex];
-            var contextPath = String(contextOption ? contextOption.getAttribute('data-omo-calendar-context-path') || '' : '')
+            var contextOption = contextField.options ? contextField.options[contextField.selectedIndex] : null;
+            var contextPath = String(contextField.getAttribute('data-holon-context-path') || (contextOption ? contextOption.getAttribute('data-omo-calendar-context-path') || '' : ''))
                 .split(',')
                 .map(function (value) { return Number(value); });
 

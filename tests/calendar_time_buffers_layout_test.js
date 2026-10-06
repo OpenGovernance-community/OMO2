@@ -17,10 +17,15 @@ const parent = {id: 10, title: 'Rendez-vous', timeLabel: '10:00 - 11:00', status
     startMinute: 600, endMinute: 660, hasTimeBuffers: true, column: 0, columnCount: 1};
 const before = {...parent, title: 'Preparation', bufferKind: 'before', startMinute: 585, endMinute: 600};
 const after = {...parent, title: 'Cloture', bufferKind: 'after', startMinute: 660, endMinute: 675};
-const day = {dayKey: '2030-01-07', label: 'Lun 7', count: 1, allDay: [], timed: [0, 1, 2]};
+const short = {...parent, id: 11, title: 'A very long appointment title that wraps onto several lines',
+    startMinute: 720, endMinute: 750, timeLabel: '12:00 - 12:30', columnCount: 4,
+    documentUrl: '/document?id=11', documentTitle: 'Document', canEdit: true, editUrl: '/edit'};
+const allDay = {...short, id: 12};
+const day = {dayKey: '2030-01-07', label: 'Lun 7', count: 3, allDay: [4], timed: [0, 1, 2, 3], items: [3]};
 const timeline = {title: 'Calendrier', count: 1, columnCount: 1, days: [day]};
-const ensure = context.omoCreateCalendarViews(host, {items: [parent, before, after],
-    views: {contextual: {week: timeline, day: timeline}}, labels: {}, hours: {}, weekdays: []});
+const ensure = context.omoCreateCalendarViews(host, {items: [parent, before, after, short, allDay],
+    views: {contextual: {week: timeline, day: timeline, month: timeline, list: {sections: [{label: 'Day', items: [3]}]}}},
+    labels: {}, hours: {}, weekdays: []});
 
 (async () => {
     const browser = await chromium.launch({headless: true, ...(process.argv[3] ? {executablePath: process.argv[3]} : {})});
@@ -30,6 +35,7 @@ const ensure = context.omoCreateCalendarViews(host, {items: [parent, before, aft
         for (const mode of ['week', 'day']) {
             const panel = ensure(mode, 'contextual');
             await page.setContent('<style>:root{--radius-md:6px}</style>' + panel.innerHTML);
+            await page.addStyleTag({content: fs.readFileSync(path.join(root, 'common/assets/components.css'), 'utf8')});
             await page.addStyleTag({content: fs.readFileSync(path.join(root, 'omo/api/calendar/calendar.css'), 'utf8')});
             const sizes = await page.locator('.omo-calendar__time-column').evaluate(column => {
                 const rect = node => {
@@ -56,7 +62,33 @@ const ensure = context.omoCreateCalendarViews(host, {items: [parent, before, aft
             assert.equal(sizes.before.bottomRadius, '0px');
             assert.equal(sizes.after.topRadius, '0px');
             assert.equal(sizes.after.bottomRadius, '6px');
+            const event = page.locator('.omo-calendar__time-event[data-omo-calendar-event-id="11"]');
+            await event.scrollIntoViewIfNeeded();
+            const shortcut = await event.evaluate(node => {
+                const button = node.querySelector('[data-omo-calendar-open-url]');
+                const title = node.querySelector('.omo-calendar__time-event-title').getBoundingClientRect();
+                const r = button.getBoundingClientRect(); const card = node.getBoundingClientRect();
+                const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+                return {visible: r.top >= card.top && r.bottom <= card.bottom, rightInset: card.right - r.right,
+                    topInset: r.top - card.top, overlapsTitle: title.right > r.left, clickable: hit === button || button.contains(hit)};
+            });
+            assert(shortcut.visible && shortcut.clickable, mode + ': document remains visible and clickable on a 30-minute event.');
+            assert(shortcut.topInset < 8 && shortcut.rightInset < 10, mode + ': shortcut sits at the top right.');
+            assert(!shortcut.overlapsTitle, mode + ': a wrapped title cannot cover the shortcut.');
         }
-        console.log('calendar_time_buffers_layout_test: OK (actual browser geometry, week/day, 15-minute buffers, corners, no overlap)');
+        for (const mode of ['month', 'list']) {
+            await page.setContent(ensure(mode, 'contextual').innerHTML);
+            await page.addStyleTag({content: fs.readFileSync(path.join(root, 'common/assets/components.css'), 'utf8')});
+            await page.addStyleTag({content: fs.readFileSync(path.join(root, 'omo/api/calendar/calendar.css'), 'utf8')});
+            const position = await page.locator('[data-omo-calendar-event-id="11"]').evaluate(node => {
+                const button = node.querySelector('[data-omo-calendar-open-url]').getBoundingClientRect();
+                const card = node.getBoundingClientRect(); const menu = node.querySelector('[data-omo-calendar-event-menu-toggle]')?.getBoundingClientRect();
+                return {topInset: button.top - card.top, rightInset: card.right - button.right,
+                    menuOverlap: menu && menu.right > button.left && menu.bottom > button.top && menu.top < button.bottom};
+            });
+            assert(position.topInset < 8 && position.rightInset < 10, mode + ': same top-right shortcut.');
+            assert(!position.menuOverlap, mode + ': shortcut does not cover the event menu.');
+        }
+        console.log('calendar_time_buffers_layout_test: OK (buffers, corners, 30-minute document shortcut, all four views)');
     } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

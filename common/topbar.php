@@ -433,7 +433,7 @@ function commonRenderTopbar(array $options = [])
         commonRenderTopbarJqueryAssets();
         echo '<link rel="stylesheet" href="' . commonAssetUrl('/common/assets/components.css') . '">' . PHP_EOL;
         echo '<script src="' . commonAssetUrl('/common/assets/components.js') . '" defer></script>' . PHP_EOL;
-        echo '<script src="/common/holon_scope_picker.js?v=20260908-picker-resize" defer></script>' . PHP_EOL;
+        echo '<script src="' . commonAssetUrl('/common/holon_scope_picker.js') . '" defer></script>' . PHP_EOL;
         echo '<script src="/common/project-picker/project-picker.js?v=20260922-shared" defer></script>' . PHP_EOL;
         echo '<link rel="stylesheet" href="' . commonAssetUrl('/common/assets/topbar.css') . '">' . PHP_EOL;
         echo '<link rel="stylesheet" href="' . commonAssetUrl('/common/notifications/notifications.css') . '">' . PHP_EOL;
@@ -868,7 +868,7 @@ function commonRenderTopbar(array $options = [])
 
 <div class="common-notifications" id="commonNotifications" aria-live="polite" aria-atomic="false"></div>
 
-<script src="/common/drawer/subdrawer.js?v=20260816-header-help"></script>
+<script src="<?= commonAssetUrl('/common/drawer/subdrawer.js') ?>"></script>
 <script>
 window.commonTopbarConfig = <?= json_encode($config, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 </script>

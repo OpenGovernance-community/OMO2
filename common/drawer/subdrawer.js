@@ -18,6 +18,8 @@
         var title = getElement(drawer, settings.title || '[data-omo-subdrawer-title]');
         var description = getElement(drawer, settings.description || '[data-omo-subdrawer-description]');
         var actions = getElement(drawer, settings.actions || '[data-omo-subdrawer-actions]');
+        var dismissAction = getElement(drawer, settings.dismissAction);
+        var cancelAction = null;
         var help = getElement(drawer, settings.help || '[data-omo-subdrawer-help-panel]');
         var defaultTitle = title ? title.textContent : '';
         var defaultDescription = description ? description.textContent : '';
@@ -111,6 +113,8 @@
                 return;
             }
 
+            if (cancelAction) { cancelAction.remove(); cancelAction = null; }
+            if (dismissAction) { dismissAction.hidden = false; }
             actions.innerHTML = '';
             (Array.isArray(headerSettings.actions) ? headerSettings.actions : []).forEach(function (action) {
                 var button;
@@ -137,6 +141,14 @@
                 }
                 actions.appendChild(button);
             });
+            // A form's cancel action occupies the permanent close button's position.
+            if (dismissAction) {
+                cancelAction = actions.querySelector('[data-omo-subdrawer-cancel]');
+                if (cancelAction) {
+                    dismissAction.hidden = true;
+                    dismissAction.parentNode.insertBefore(cancelAction, dismissAction);
+                }
+            }
         }
 
         function resetHeader() {

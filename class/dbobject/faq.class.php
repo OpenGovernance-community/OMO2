@@ -820,6 +820,19 @@ class FAQ extends DbObject
 		return $holon->isAllowed('CAN_CREATE_FAQ', (bool)$useSessionCache, $userId);
 	}
 
+	public static function loadContextualCreationTargets(int $organizationId, int $userId): ArrayHolon
+	{
+		$targets = new ArrayHolon();
+		$candidates = new ArrayHolon();
+		$candidates->loadVisibilityTargetsForOrganization($organizationId);
+		foreach ($candidates as $holon) {
+			if ($holon->canViewDetail() && self::canCreateContextualForHolon($holon, $userId, $organizationId, false)) {
+				$targets->append($holon);
+			}
+		}
+		return $targets;
+	}
+
 	public function incrementViewcount()
 	{
 		if (!self::hasViewcountColumn()) {

@@ -440,8 +440,7 @@ if ($action === 'update_kanban_position') {
             || !$targetHolon->isDescendantOf((int)$rootHolon->getId(), true)
             || !$targetHolon->canViewDetail()
             || ($targetHolonId !== (int)$existingProject->get('IDholon')
-                && !omoProjectsCanUsePermission($targetHolon, 'CAN_CREATE_PROJECT', $context)
-                && (int)$existingProject->get('IDuser') !== $currentUserId)
+                && !omoProjectsCanUsePermission($targetHolon, 'CAN_CREATE_PROJECT', $context))
         ) {
             omoProjectsActionRespond(false, omoProjectsT('projects.error.holon'), [], 422);
         }
@@ -646,8 +645,7 @@ if ($targetHolonId > 0) {
     omoProjectsActionRespond(false, omoProjectsT('projects.error.holon'), [], 422);
 }
 if ($projectId > 0 && $targetHolonId !== (int)$project->get('IDholon')
-    && !($targetHolon instanceof Holon && omoProjectsCanUsePermission($targetHolon, 'CAN_CREATE_PROJECT', $context))
-    && (int)$project->get('IDuser') !== $currentUserId) {
+    && !($targetHolon instanceof Holon && omoProjectsCanUsePermission($targetHolon, 'CAN_CREATE_PROJECT', $context))) {
     omoProjectsActionRespond(false, omoProjectsT('projects.error.forbidden'), [], 403);
 }
 if ($projectId <= 0) {

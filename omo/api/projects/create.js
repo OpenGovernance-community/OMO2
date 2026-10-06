@@ -11,8 +11,6 @@ window.commonPageScripts["/omo/api/projects/create.js"] = function (pageConfig, 
     var texts = pageConfig.texts;
     var parentId = form.querySelector('[data-omo-project-parent-id]');
     var parentLabel = document.getElementById('omo-project-parent-label');
-    var holonId = form.querySelector('[data-omo-project-holon-id]');
-    var holonLabel = document.getElementById('omo-project-holon-label');
     var feedback = form.querySelector('[data-omo-project-form-feedback]');
     var statusControl = form.querySelector('[name="status"]');
     var blockedSection = form.querySelector('[data-omo-project-blocked-section]');
@@ -127,43 +125,6 @@ window.commonPageScripts["/omo/api/projects/create.js"] = function (pageConfig, 
             });
         }
         render();
-    });
-
-    var holonPickerButton = root.querySelector('[data-omo-project-holon-picker]');
-    if (holonPickerButton) holonPickerButton.addEventListener('click', function () {
-        if (typeof window.commonTopbarOpenModal !== 'function' || typeof window.omoMountHolonScopePicker !== 'function') return;
-        var html = '<div class="omo-project-holon-picker generic-drawer-content">'
-            + '<p class="omo-project-move-dialog__hint generic-help-text">' + escapeHtml(texts.holonPickerHint) + '</p>'
-            + '<div data-omo-project-holon-scope></div>'
-            + '<div class="omo-project-parent-picker__actions"><button type="button" class="generic-action-button generic-action-button--secondary" data-omo-project-holon-cancel>' + escapeHtml(texts.cancel) + '</button><button type="button" class="generic-action-button generic-action-button--main" data-omo-project-holon-confirm>' + escapeHtml(texts.holonPickerConfirm) + '</button></div></div>';
-        window.commonTopbarOpenModal(texts.holonPickerTitle, html, 'html');
-        var modal = document.getElementById('commonTopbarModalBody');
-        var dialog = modal ? modal.querySelector('.omo-project-holon-picker') : null;
-        if (!(dialog instanceof Element)) return;
-        var selectedHolonId = Number(holonId && holonId.value || pageConfig.assignedHolonId);
-        var selectedHolonLabel = holonLabel ? String(holonLabel.value || '') : '';
-        var picker = window.omoMountHolonScopePicker({
-            host: dialog.querySelector('[data-omo-project-holon-scope]'),
-            organizationId: pageConfig.organizationId,
-            initialHolonId: selectedHolonId,
-            showModes: false,
-            onChange: function (nextHolonId) {
-                selectedHolonId = Number(nextHolonId || 0);
-                if (picker && typeof picker.getSelectedHolonLabel === 'function') {
-                    selectedHolonLabel = picker.getSelectedHolonLabel() || selectedHolonLabel;
-                }
-            }
-        });
-        dialog.addEventListener('click', function (event) {
-            if (event.target.closest('[data-omo-project-holon-cancel]')) {
-                window.commonTopbarCloseModal();
-                return;
-            }
-            if (!event.target.closest('[data-omo-project-holon-confirm]')) return;
-            if (holonId) holonId.value = selectedHolonId > 0 ? String(selectedHolonId) : '';
-            if (holonLabel && selectedHolonLabel !== '') holonLabel.value = selectedHolonLabel;
-            window.commonTopbarCloseModal();
-        });
     });
 
     var startDate = form.querySelector('[data-omo-project-start-date]');

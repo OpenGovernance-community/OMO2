@@ -91,7 +91,9 @@ window.commonPageScripts["/omo/api/documents/drawers.js"] = function (pageConfig
                 const titleNode = drawer ? drawer.querySelector('[data-omo-document-detail-title]') : null;
                 const descriptionNode = drawer ? drawer.querySelector('[data-omo-document-detail-description]') : null;
                 const drawerController = drawer && typeof window.omoCreateSubdrawerController === 'function'
-                    ? (drawer.__omoSubdrawerController || window.omoCreateSubdrawerController({ drawer: drawer }))
+                    ? (drawer.__omoSubdrawerController || window.omoCreateSubdrawerController({
+                        drawer: drawer, dismissAction: 'button[data-omo-document-detail-close]'
+                    }))
                     : null;
                 const targetUrl = String(url || '').trim();
 
@@ -375,7 +377,6 @@ window.commonPageScripts["/omo/api/documents/drawers.js"] = function (pageConfig
                         id: documentId,
                         contextUrl: buildDocumentDetailUrl(documentId, root)
                     };
-                    drawer.dataset.omoDocumentDrawerMode = 'detail';
                     window.omoOpenDocumentDetailByPayload(documentItem, root);
                     return;
                 }

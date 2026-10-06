@@ -231,6 +231,21 @@ try {
     meetingExpect(!meetingOverlap($bufferDay->setTime(9, 45), $bufferDay->setTime(10, 0), $localBusy),
         'Explicit local zero also overrides remote buffers during live checks.');
 
+    $profile->set('preparation_minutes', 30); $profile->set('closing_minutes', 30); meetingSave($profile);
+    $boundaryDraft = $draft;
+    $boundaryDraft['date'] = (new DateTimeImmutable('+5 days', $zone))->format('Y-m-d');
+    $boundaryDraft['duration'] = 60;
+    foreach (['09:00', '11:00', '13:00', '16:00'] as $boundaryTime) {
+        $boundaryDraft['token'] = bin2hex(random_bytes(32)); $boundaryDraft['time'] = $boundaryTime;
+        $boundaryBooking = meetingBook($uid, $boundaryDraft, $request, fn() => false);
+        meetingExpect($boundaryBooking->get('status') === 'confirmed' && $boundaryBooking->get('start_at')->format('H:i') === $boundaryTime
+            && (int)$boundaryBooking->get('preparation_minutes') === 30 && (int)$boundaryBooking->get('closing_minutes') === 30,
+            'Server accepts buffered bookings at opening, both lunch boundaries and closing: ' . $boundaryTime);
+    }
+    $boundaryDraft['token'] = bin2hex(random_bytes(32)); $boundaryDraft['time'] = '11:30';
+    meetingReject(fn() => meetingBook($uid, $boundaryDraft, $request, fn() => false), 'slot_taken');
+    $profile->set('preparation_minutes', 0); $profile->set('closing_minutes', 0); meetingSave($profile);
+
     // Real local HTTP route, visitor session, privacy, review and CSRF (no real booking or email).
     $curl = curl_init();
     // Isolate local test traffic from the developer's rate-limit buckets; never relax production limits.
