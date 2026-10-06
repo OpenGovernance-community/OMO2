@@ -35,11 +35,18 @@ $hours[1]['pause'] = true;
 $busy = [[$day->setTime(10, 0), $day->setTime(11, 0)]];
 $result = meetingDay($day, $hours, $busy, $day->modify('-1 day'), 30, 15, 20);
 $slots = array_column($result['slots'], null, 'time');
-bufferExpect(!$slots['09:00']['bookable'], 'Preparation must fit after opening.');
+bufferExpect($slots['09:00']['bookable'] && $slots['09:00']['before_free'], 'Preparation can precede opening.');
 bufferExpect(!$slots['09:30']['bookable'], 'Closing may conflict although the appointment ends at the busy start.');
-bufferExpect(!$slots['11:00']['bookable'] && $slots['11:30']['free'] && !$slots['11:30']['bookable'], 'Preparation and closing must avoid existing meetings and lunch.');
-bufferExpect(!$slots['13:00']['bookable'] && $slots['13:30']['bookable'], 'Preparation must fit after the pause.');
-bufferExpect($slots['16:00']['bookable'] && !$slots['16:30']['bookable'], 'Closing must fit before the working day ends.');
+bufferExpect(!$slots['11:00']['bookable'] && $slots['11:30']['bookable'] && $slots['11:30']['after_free'], 'Preparation avoids real conflicts while closing can overlap lunch.');
+bufferExpect($slots['13:00']['bookable'] && $slots['13:00']['before_free'], 'Preparation can overlap the pause before the afternoon opens.');
+bufferExpect($slots['16:00']['bookable'] && $slots['16:30']['bookable'] && $slots['16:30']['after_free'], 'Closing can follow the working day.');
+bufferExpect(!$slots['12:00']['bookable'] && !$slots['12:30']['bookable'], 'The appointment itself cannot overlap lunch.');
+$boundaryBusy = [[$day->setTime(8, 45), $day->setTime(9, 0)], [$day->setTime(12, 0), $day->setTime(12, 15)],
+    [$day->setTime(12, 45), $day->setTime(13, 0)], [$day->setTime(17, 0), $day->setTime(17, 15)]];
+$boundarySlots = array_column(meetingDay($day, $hours, $boundaryBusy, $day->modify('-1 day'), 30, 30, 30)['slots'], null, 'time');
+foreach (['09:00', '11:30', '13:00', '16:30'] as $time) {
+    bufferExpect($boundarySlots[$time]['free'] && !$boundarySlots[$time]['bookable'], 'Real appointments outside hours or during lunch still block buffers at ' . $time);
+}
 bufferExpect(!$slots['09:30']['after_free'] && !$slots['11:00']['before_free'], 'Browser receives precise buffer availability independently of duration.');
 $nowResult = meetingDay($day, $hours, [], $day->setTime(9, 20), 30, 15, 0);
 bufferExpect(!array_column($nowResult['slots'], 'bookable', 'time')['09:30'], 'Preparation cannot begin in the past.');

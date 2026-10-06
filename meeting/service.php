@@ -102,7 +102,6 @@ function meetingDay(DateTimeImmutable $day, array $hours, array $busy, DateTimeI
     $closingMinutes = MeetingProfile::validateBufferMinutes($closingMinutes);
     $row = $hours[(int)$day->format('N')];
     if (!$row['open'] || $day->modify('+1 day') <= $now) { return ['state' => 'closed', 'slots' => []]; }
-    $workingStart = $day->modify($row['start']);
     $finish = $day->modify($row['end']);
     $pauseStart = $day->modify($row['pause_start']);
     $pauseEnd = $day->modify($row['pause_end']);
@@ -123,11 +122,9 @@ function meetingDay(DateTimeImmutable $day, array $hours, array $busy, DateTimeI
             && $start->format('H:i') === $label && $end->getTimestamp() - $start->getTimestamp() === 1800;
         $bufferStart = $start->modify('-' . $preparationMinutes . ' minutes');
         $bufferEnd = $end->modify('+' . $closingMinutes . ' minutes');
-        $beforeFree = $bufferStart >= $workingStart && $bufferStart > $now
-            && !meetingOverlap($bufferStart, $start, $busy)
-            && !($row['pause'] && $bufferStart < $pauseEnd && $start > $pauseStart);
-        $afterFree = $bufferEnd <= $finish && !meetingOverlap($end, $bufferEnd, $busy)
-            && !($row['pause'] && $end < $pauseEnd && $bufferEnd > $pauseStart);
+        // Opening hours and pauses restrict the appointment, not its attached time.
+        $beforeFree = $bufferStart > $now && !meetingOverlap($bufferStart, $start, $busy);
+        $afterFree = !meetingOverlap($end, $bufferEnd, $busy);
         $slots[] = ['time' => $label, 'start' => $start, 'end' => $end, 'free' => $free, 'pause' => $pause,
             'before_free' => $beforeFree, 'after_free' => $afterFree];
         if (!$pause) {
@@ -139,9 +136,7 @@ function meetingDay(DateTimeImmutable $day, array $hours, array $busy, DateTimeI
     foreach ($slots as $index => &$slot) {
         $occupiedStart = $slot['start']->modify('-' . $preparationMinutes . ' minutes');
         $occupiedEnd = $slot['start']->modify('+' . ($durationMinutes + $closingMinutes) . ' minutes');
-        $slot['bookable'] = $occupiedStart >= $workingStart && $occupiedEnd <= $finish && $occupiedStart > $now
-            && !meetingOverlap($occupiedStart, $occupiedEnd, $busy)
-            && !($row['pause'] && $occupiedStart < $pauseEnd && $occupiedEnd > $pauseStart);
+        $slot['bookable'] = $occupiedStart > $now && !meetingOverlap($occupiedStart, $occupiedEnd, $busy);
         $slot['booking_end'] = $slot['start']->modify('+' . $durationMinutes . ' minutes');
         for ($offset = 0; $offset < $requiredSlots; $offset++) {
             $next = $slots[$index + $offset] ?? null;
@@ -353,7 +348,8 @@ function meetingBook(int $userId, array $draft, ?callable $request = null, ?call
                 if ($day < $now->setTime(0, 0) || $day > $now->modify('+365 days')) { throw new RuntimeException('date_invalid'); }
                 $preparationMinutes = (int)($existing ? $booking->get('preparation_minutes') : $profile->get('preparation_minutes'));
                 $closingMinutes = (int)($existing ? $booking->get('closing_minutes') : $profile->get('closing_minutes'));
-                $busy = meetingBusy($profile, $day, $day->modify('+1 day'), true, $draft['token'], $request);
+                $busy = meetingBusy($profile, $day->modify('-' . $preparationMinutes . ' minutes'),
+                    $day->modify('+1 day +' . $closingMinutes . ' minutes'), true, $draft['token'], $request);
                 $slot = null;
                 foreach (meetingDay($day, $profile->availabilityHours(), $busy, $now, $durationMinutes, $preparationMinutes, $closingMinutes)['slots'] as $candidate) {
                     if ($candidate['time'] === $draft['time'] && $candidate['bookable']) { $slot = $candidate; }

@@ -18,6 +18,9 @@ use dbObject\Organization;
 use dbObject\Project;
 
 $sourceLang = array_merge([
+    'calendar.create.holon.choose' => ['text' => 'Choisir un espace', 'context' => 'Open the event assignment picker.'],
+    'calendar.create.holon.hint' => ['text' => 'Choisissez un espace dans lequel vous pouvez creer des evenements.', 'context' => 'Permission-filtered event assignment picker.'],
+    'calendar.create.holon.confirm' => ['text' => 'Choisir cet espace', 'context' => 'Confirm event assignment.'],
     'calendar.create.buffers.enable' => ['text' => 'Definir du temps de preparation/cloture', 'context' => 'Toggle attached preparation and closing times.'],
     'calendar.create.buffers.before' => ['text' => 'Preparation / deplacement avant (minutes)', 'context' => 'Minutes reserved before this event.'],
     'calendar.create.buffers.after' => ['text' => 'Cloture / deplacement apres (minutes)', 'context' => 'Minutes reserved after this event.'],
@@ -552,6 +555,7 @@ if ($hasStructureApplication) {
 }
 $allowedHolonIds = [];
 $holonContextPaths = [];
+$selectableHolonIds = [];
 
 foreach (['circle', 'role'] as $typeKey) {
     foreach (($holonOptions[$typeKey] ?? []) as $option) {
@@ -559,6 +563,10 @@ foreach (['circle', 'role'] as $typeKey) {
         $allowedHolonIds[$holonId] = $option;
         $holon = new Holon();
         if ($holonId > 0 && $holon->load($holonId)) {
+            if ($holon->isAllowed('CAN_CREATE_EVENT', false, $currentUserId)
+                && (!$isEditMode || omoCalendarCanUseEditEventPermission($holon, $organizationId, $currentUserId, false))) {
+                $selectableHolonIds[] = $holonId;
+            }
             $holonContextPaths[$holonId] = implode(',', array_map(static function ($pathHolon): int {
                 return (int)$pathHolon->getId();
             }, $holon->getPathHolons(true)));
@@ -742,6 +750,22 @@ if ($isEditMode) {
     }
 }
 
+$canChooseOrganization = $rootHolon instanceof Holon && $rootHolon->isAllowed('CAN_CREATE_EVENT', false, $currentUserId)
+    && (!$isEditMode || omoCalendarCanUseEditEventPermission($rootHolon, $organizationId, $currentUserId, false));
+// Keeping an existing association needs edit rights, not permission to create a new event there.
+if ($isEditMode) {
+    if ($defaultHolonId > 0) { $selectableHolonIds[] = $defaultHolonId; }
+    elseif ((int)$event->get('IDholon') === 0) { $canChooseOrganization = true; }
+}
+$holonSelectorConfig = [
+    'organizationId' => $organizationId, 'organizationLabel' => omoCalendarCreateT('calendar.create.field.none'),
+    'selectableHolonIds' => array_values(array_unique($selectableHolonIds)), 'allowOrganization' => $canChooseOrganization,
+    'contextPaths' => array_intersect_key($holonContextPaths, array_flip($selectableHolonIds)),
+    'labels' => ['title' => omoCalendarCreateT('calendar.create.holon.choose'), 'hint' => omoCalendarCreateT('calendar.create.holon.hint'),
+        'confirm' => omoCalendarCreateT('calendar.create.holon.confirm'), 'cancel' => omoCalendarCreateT('calendar.edit.cancel'),
+        'none' => omoCalendarCreateT('calendar.create.field.none')],
+];
+
 $documentTemplatesPayload = [];
 if (!$isEditMode || !($associatedDocument instanceof Document)) {
     $documentTemplates = new \dbObject\ArrayDocument();
@@ -922,6 +946,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'message' => omoCalendarCreateT('calendar.create.error.holon'),
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         exit;
+    }
+
+    if ($isEditMode && $selectedHolonId !== (int)$event->get('IDholon')) {
+        $destination = $selectedHolonId > 0 ? new Holon() : $rootHolon;
+        if ($selectedHolonId > 0 && !$destination->load($selectedHolonId, true)) { $destination = null; }
+        if (!$destination instanceof Holon || !$destination->isAllowed('CAN_CREATE_EVENT', false, $currentUserId)) {
+            http_response_code(403);
+            echo json_encode(['status' => false, 'message' => omoCalendarCreateT('calendar.edit.error.forbidden')]);
+            exit;
+        }
     }
 
     if ($isEditMode) {
@@ -1468,19 +1502,15 @@ if ($isEditMode) {
                             <?php if ($hasStructureApplication): ?>
                             <label class="omo-calendar-create__field generic-form-field">
                                 <span class="generic-form-label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.holon')) ?></span>
-                                <select<?= $project instanceof Project ? '' : ' name="IDholon"' ?> class="generic-form-control" data-omo-calendar-context-holon<?= $project instanceof Project ? ' disabled' : '' ?>>
-                                    <option value="0"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.none')) ?></option>
-                                    <?php foreach (['circle', 'role'] as $typeKey): ?>
-                                        <?php foreach (($holonOptions[$typeKey] ?? []) as $option): ?>
-                                            <option value="<?= (int)$option['id'] ?>" data-omo-calendar-context-path="<?= omoApiEscape((string)($holonContextPaths[(int)$option['id']] ?? '')) ?>"<?= (int)$option['id'] === $defaultHolonId ? ' selected' : '' ?>>
-                                                <?= omoApiEscape((string)$option['label']) ?>
-                                            </option>
-                                        <?php endforeach; ?>
-                                    <?php endforeach; ?>
-                                </select>
-                                <?php if ($project instanceof Project): ?>
-                                    <input type="hidden" name="IDholon" value="<?= (int)$defaultHolonId ?>">
-                                <?php endif; ?>
+                                <span class="generic-form-control-group">
+                                <input type="text" class="generic-form-control" readonly data-holon-target-label
+                                    value="<?= omoApiEscape($allowedHolonIds[$defaultHolonId]['name'] ?? omoCalendarCreateT('calendar.create.field.none')) ?>">
+                                <input type="hidden" name="IDholon" value="<?= (int)$defaultHolonId ?>" data-omo-calendar-context-holon data-holon-target-id
+                                    data-holon-context-path="<?= omoApiEscape($holonContextPaths[$defaultHolonId] ?? '') ?>">
+                                <button type="button" class="generic-action-button generic-action-button--secondary generic-action-button--icon-only"
+                                    title="<?= omoApiEscape(omoCalendarCreateT('calendar.create.holon.choose')) ?>" aria-label="<?= omoApiEscape(omoCalendarCreateT('calendar.create.holon.choose')) ?>"
+                                    data-holon-target-selector="<?= omoApiEscape(json_encode($holonSelectorConfig, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)) ?>"<?= $project instanceof Project ? ' disabled' : '' ?>><img src="/omo/images/tools/connection.png" class="black-icon" alt=""></button>
+                                </span>
                             </label>
                             <?php endif; ?>
 

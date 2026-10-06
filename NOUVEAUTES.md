@@ -1,5 +1,19 @@
 # Journal Des Nouveautes
 
+- Documents : le formulaire ouvert depuis le module Documents garde aussi un seul bouton Annuler dans l entete, a la place de Fermer, meme quand la liste initialise le panneau avant l editeur. Annuler une modification recharge correctement la fiche et ses actions.
+
+- FAQ : rattachement affiche comme Espace, avec tous les espaces autorises a la creation et controle des droits sur la destination lors de l enregistrement. Champs et boutons de structure correctement accoles dans adminEdit. Projets : une seule action Annuler dans l entete des formulaires, a la place de Fermer, y compris pour les documents crees depuis un projet.
+
+- Espaces : meme selecteur avec nom seul et bouton de structure pour les tensions, les etapes/activites de checklist et le rattachement des FAQ. Regles de selection propres a chaque action conservees ; dans les FAQ, un changement d organisation renouvelle les destinations proposees et efface une selection devenue incompatible.
+
+- Calendrier : le champ de l espace associe affiche uniquement son nom des l ouverture du formulaire, sans le chemin des espaces englobants.
+
+- Evenements et projets : choix de l espace associe via un petit bouton avec l icone de structure accole au champ, ouvrant la carte partagee en popup avec uniquement les destinations autorisees a la creation selectionnables. Les espaces englobants restent cliquables pour le zoom sans changer la selection. Conservation de l espace actuel en edition et controle frais des droits cote serveur lors d un changement d espace, meme pour le proprietaire d un projet.
+
+- Calendrier : raccourci vers le document associe place en haut a droite dans les vues mois, semaine, jour et liste, visible sur la premiere ligne meme pour un rendez-vous de 30 minutes.
+
+- Prise de rendez-vous : les temps de preparation et de cloture peuvent deborder sur les pauses et hors des horaires d ouverture ; le rendez-vous reste dans les horaires autorises et les conflits reels restent bloquants sur toute la duree occupee. Sur mobile, choisir un jour amene le focus et fait defiler vers les creneaux horaires.
+
 - Calendrier : bouton Editer pour les evenements importes CalDAV et ICS, limite aux temps de preparation et de cloture. Durees locales conservees lors des synchronisations, y compris une remise a zero, et prises en compte dans les disponibilites et la prise de rendez-vous sans modifier l agenda source.
 
 - Calendrier : temps de preparation et de cloture lies aux rendez-vous et deduits des disponibilites. Activation dans le formulaire de date, durees predefinies de 15 minutes a 4h et valeurs par defaut pour la prise de rendez-vous ; conservation des durees existantes et de la synchronisation des agendas externes. Plages hachurees sans texte en semaine/jour, rendez-vous avec coins droits et arrondis uniquement aux bords exterieurs des plages avant/apres.

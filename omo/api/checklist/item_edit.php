@@ -1,6 +1,7 @@
 <?php
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/shared.php';
+require_once dirname(__DIR__, 3) . '/common/holon_scope_helper.php';
 
 use dbObject\Checklist;
 use dbObject\ChecklistItem;
@@ -87,6 +88,11 @@ $selectedHolonId = $isEdit
     ? (int)$project->get('IDholon')
     : ($defaultHolon instanceof Holon ? (int)$defaultHolon->getId() : 0);
 $holonOptions = omoChecklistBuildHolonOptions($context);
+$holonNames = array_column($holonOptions, 'name', 'id');
+if ($selectedHolonId <= 0 && $holonOptions) { $selectedHolonId = (int)$holonOptions[0]['id']; }
+$holonSelectorConfig = ['organizationId' => $organizationId, 'selectableHolonIds' => array_column($holonOptions, 'id'),
+    'allowOrganization' => false, 'organizationLabel' => '',
+    'labels' => commonHolonScopeTargetLabels(omoChecklistT('checklist.form.holon_hint'))];
 $relatedItems = [];
 $selectedParentItemId = 0;
 $selectedDependencyItemId = 0;
@@ -171,11 +177,7 @@ if ($currentHolonId > 0) {
                 <?php if (($context['rootHolon'] ?? null) instanceof Holon): ?>
                 <label class="omo-checklist-field omo-checklist-field--wide generic-form-field generic-form-field--full">
                     <span class="generic-form-label"><?= omoApiEscape(omoChecklistT('checklist.form.holon')) ?></span>
-                    <select class="generic-form-control" name="IDholon" required>
-                        <?php foreach ($holonOptions as $option): ?>
-                            <option value="<?= (int)$option['id'] ?>"<?= (int)$option['id'] === $selectedHolonId ? ' selected' : '' ?>><?= omoApiEscape((string)$option['label']) ?></option>
-                        <?php endforeach; ?>
-                    </select>
+                    <?php commonHolonScopeRenderTargetField('IDholon', $selectedHolonId, $holonNames[$selectedHolonId] ?? '', $holonSelectorConfig); ?>
                 </label>
                 <?php endif; ?>
                 <label class="omo-checklist-field generic-form-field" data-checklist-item-parent-field<?= $isContainerChecklist ? ' hidden' : '' ?>>
