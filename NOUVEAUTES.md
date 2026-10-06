@@ -1,5 +1,9 @@
 # Journal Des Nouveautes
 
+- Surveillance : endpoint public /omo/health.php pour verifier la connexion et une requete de lecture MySQL, sans session ni maintenance. Reponse JSON minimale, HTTP 200 si la base repond ou 503 en cas d echec, sans cache ni details techniques publics.
+
+- Accueil OMO2 (index2.php) : lien Disponibilite du service dans le footer vers le suivi public UptimeRobot, ouvert dans un nouvel onglet.
+
 - Calendrier : sauvegarde sans nouvelle verification des conflits si les dates, le mode journee entiere et les temps de preparation/cloture sont inchanges. Actualisation des agendas limitee a trois secondes pour la sauvegarde ; un cache incomplet n impose plus de confirmation et signale les donnees disponibles par un avertissement dans la topbar. Les conflits detectes restent soumis a confirmation.
 
 - Profils : bouton Prendre rendez-vous dans l onglet Disponibilites lorsque la reservation est active, ouvrant la page publique dans une nouvelle fenetre.
