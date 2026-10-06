@@ -38,6 +38,7 @@ $sourceLang = array_merge([
     'calendar.availability.omo' => ['text' => 'Agenda OMO', 'context' => 'Fallback source label when an appointment organization has no name.'],
     'calendar.availability.email' => ['text' => '{name} : agenda non accessible pour cette invitation par e-mail.', 'context' => 'Availability cannot be checked for an email-only invitee.'],
     'calendar.availability.cache' => ['text' => '{name} : l’agenda n’a pas pu être actualisé ou ne couvre pas cette période.', 'context' => 'Partial external calendar availability check after a refresh attempt.'],
+    'calendar.availability.saved_cache_warning' => ['text' => 'Evenement enregistre. Les conflits ont ete verifies avec les donnees disponibles, qui peuvent ne pas etre a jour.', 'context' => 'Non-blocking topbar warning after saving with an incomplete external calendar cache.'],
     'calendar.availability.detail.email' => ['text' => 'Cette invitation par e-mail ne donne pas accès à un agenda.', 'context' => 'Availability card for an email-only invitation.'],
     'calendar.availability.detail.cache' => ['text' => 'L’agenda n’a pas pu être actualisé ou ne couvre pas cette période.', 'context' => 'Availability card when refreshing is unsuccessful or coverage is incomplete.'],
     'calendar.availability.detail.storage' => ['text' => 'La verification est momentanement indisponible.', 'context' => 'Availability card when storage cannot be checked.'],
@@ -870,6 +871,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'end' => $event->get('end_at') instanceof \DateTimeInterface ? $event->get('end_at')->format('Y-m-d H:i:s') : '',
         'allDay' => !empty($event->get('is_all_day')) ? 1 : 0,
     ] : null;
+    $previousTimeBuffers = $isEditMode ? [(int)$event->get('preparation_minutes'), (int)$event->get('closing_minutes')] : null;
 
     $title = trim((string)($_POST['title'] ?? ''));
     $description = trim((string)($_POST['description'] ?? ''));
@@ -1113,10 +1115,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $organizationId, $event->getId(), $event->get('IDuser'), $selectedHolonId,
         $startAt->format('c'), $endAt->format('c'), $isAllDay, $preparationMinutes, $closingMinutes, $availabilityParticipants,
     ]), $_SESSION['calendar_availability_secret']);
-    if (!hash_equals($acknowledgement, (string)($_POST['availability_ack'] ?? ''))) {
-        $refreshDeadline = microtime(true) + 18;
+    $scheduleChanged = !$isEditMode || $previousSchedule !== [
+        'start' => $startAt->format('Y-m-d H:i:s'), 'end' => $endAt->format('Y-m-d H:i:s'), 'allDay' => $isAllDay ? 1 : 0,
+    ] || $previousTimeBuffers !== [$preparationMinutes, $closingMinutes];
+    $availabilityCacheWarning = $scheduleChanged && !empty($_SESSION['calendar_availability_warnings'][$acknowledgement]);
+    if ($scheduleChanged && !hash_equals($acknowledgement, (string)($_POST['availability_ack'] ?? ''))) {
+        unset($_SESSION['calendar_availability_warnings'][$acknowledgement]);
+        // Leave time for the actual save; one shared deadline covers every invitee.
+        $refreshDeadline = microtime(true) + 3;
         $availability = $event->checkInvitationAvailability($proposedInvitations,
             static fn(int $userId) => commonExternalCalendarRefreshForAvailability($userId, $refreshDeadline));
+        $availabilityCacheWarning = false;
+        $availability['unverified'] = array_values(array_filter($availability['unverified'], static function (array $unknown) use (&$availabilityCacheWarning): bool {
+            if ($unknown['reason'] !== 'cache') { return true; }
+            $availabilityCacheWarning = true;
+            return false;
+        }));
+        if ($availabilityCacheWarning) {
+            // Retain the caution through a confirmation of a real cached conflict.
+            $_SESSION['calendar_availability_warnings'][$acknowledgement] = true;
+            $_SESSION['calendar_availability_warnings'] = array_slice($_SESSION['calendar_availability_warnings'], -20, null, true);
+        }
         if ($availability['conflicts'] || $availability['unverified']) {
             $messages = [];
             $items = [];
@@ -1331,9 +1350,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         error_log('OMO calendar notification dispatch failed: ' . $exception->getMessage());
     }
 
+    unset($_SESSION['calendar_availability_warnings'][$acknowledgement]);
     echo json_encode([
         'status' => true,
         'message' => omoCalendarCreateT($isEditMode ? 'calendar.edit.success' : 'calendar.create.success'),
+        'warning' => $availabilityCacheWarning ? omoCalendarCreateT('calendar.availability.saved_cache_warning') : '',
         'eventId' => (int)$event->getId(),
         'projectId' => $project instanceof Project ? (int)$project->getId() : (int)$event->get('IDproject'),
         'documentId' => $linkedDocument instanceof Document ? (int)$linkedDocument->getId() : 0,
