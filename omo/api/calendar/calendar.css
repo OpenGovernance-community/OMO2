@@ -505,12 +505,17 @@
 }
 
 .omo-calendar__document-link {
+    position: absolute;
+    inset-block-start: 4px;
+    inset-inline-end: 6px;
+    z-index: 1;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     width: 20px;
     height: 20px;
-    margin-inline-start: 3px;
+    box-sizing: border-box;
+    margin: 0;
     padding: 2px;
     border: 0;
     border-radius: 4px;
@@ -519,6 +524,21 @@
     cursor: pointer;
     font: inherit;
     vertical-align: middle;
+}
+
+.omo-calendar__event-chip,
+.omo-calendar__time-all-day-chip {
+    position: relative;
+}
+
+.omo-calendar__event-chip.has-associated-document,
+.omo-calendar__time-all-day-chip.has-associated-document,
+.omo-calendar__time-event.has-associated-document {
+    padding-inline-end: 32px;
+}
+
+.omo-calendar__item-shell.has-associated-document {
+    --param-file-list-menu-inset-inline-end: 36px;
 }
 
 .omo-calendar__document-link svg {
@@ -839,7 +859,8 @@
     --generic-file-list-padding-inline-end: 18px;
     --generic-file-list-header-padding-block: 14px;
     --generic-file-list-row-padding-block: 12px;
-    --generic-file-list-menu-space: 44px;
+    /* Reserve room for both the document shortcut and the event menu. */
+    --param-file-list-menu-space: 76px;
     display: grid;
 }
 
@@ -1273,4 +1294,25 @@
     .omo-calendar__today-actions > .generic-action-button {
         width: 100%;
     }
+}
+
+/* Attached time uses its actual duration, including buffers shorter than 30 minutes. */
+.omo-calendar__time-event.is-time-buffer,
+.omo-calendar__time-event.has-time-buffers {
+    min-height: 0;
+    box-sizing: border-box;
+}
+.omo-calendar__time-event.is-time-buffer {
+    border-style: dashed;
+    background-image: repeating-linear-gradient(135deg, transparent 0 8px, rgba(100, 116, 139, 0.16) 8px 12px);
+    padding: 0;
+}
+.omo-calendar__time-event.has-time-buffers {
+    border-radius: 0;
+}
+.omo-calendar__time-event[data-omo-calendar-time-buffer="before"] {
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+.omo-calendar__time-event[data-omo-calendar-time-buffer="after"] {
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
 }

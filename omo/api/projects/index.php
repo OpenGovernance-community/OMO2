@@ -1297,7 +1297,7 @@ $projectTexts = [
         </div>
     </div>
 </div>
-<script src="/common/drawer/subdrawer.js?v=20260906-slide-right"></script>
+<script src="<?= commonAssetUrl('/common/drawer/subdrawer.js') ?>"></script>
 <link rel="stylesheet" href="/common/calendar/availability.css?v=20260916-conflict">
 <script src="<?= commonAssetUrl('/common/calendar/availability-model.js') ?>"></script>
 <script src="<?= commonAssetUrl('/common/calendar/availability-view.js') ?>"></script>

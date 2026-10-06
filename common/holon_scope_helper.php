@@ -1,5 +1,45 @@
 <?php
 
+require_once __DIR__ . '/translation_bundles.php';
+
+function commonHolonScopeTargetLabels(string $hint): array
+{
+    static $lang = null;
+    $sourceLang = [
+        'choose' => ['text' => 'Choisir un espace', 'context' => 'Space assignment picker title and accessible icon button label.'],
+        'confirm' => ['text' => 'Choisir cet espace', 'context' => 'Confirm a permitted space assignment.'],
+        'cancel' => ['text' => 'Annuler', 'context' => 'Cancel space assignment.'],
+        'organization' => ['text' => 'Toute l organisation', 'context' => 'Organization-wide assignment without a specific space.'],
+    ];
+    if ($lang === null) {
+        $locale = translationBundleResolveRequestLocale('lang', translationBundleGetSupportedLocales(), 'fr');
+        $lang = loadTranslationBundle('holon_target_selector', $locale, $sourceLang);
+    }
+    return ['title' => t('choose', [], $lang, $sourceLang), 'hint' => $hint,
+        'confirm' => t('confirm', [], $lang, $sourceLang), 'cancel' => t('cancel', [], $lang, $sourceLang),
+        'none' => t('organization', [], $lang, $sourceLang)];
+}
+
+function commonHolonScopeRenderTargetField(string $name, int $selectedId, string $selectedLabel, array $config, array $fieldAttributes = []): void
+{
+    $escape = static fn($value): string => htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
+    $title = $escape($config['labels']['title']);
+    ?>
+    <span class="generic-form-control-group">
+        <input class="generic-form-control" type="text" readonly data-holon-target-label value="<?= $escape($selectedLabel) ?>"<?= isset($fieldAttributes['id']) ? ' id="' . $escape($fieldAttributes['id'] . 'Label') . '"' : '' ?>>
+        <input type="hidden"<?= $name !== '' ? ' name="' . $escape($name) . '"' : '' ?> value="<?= $selectedId ?>" data-holon-target-id
+            <?php foreach ($fieldAttributes as $attribute => $value): ?>
+                <?= $escape($attribute) ?>="<?= $escape($value) ?>"
+            <?php endforeach; ?>
+        >
+        <button type="button" class="generic-action-button generic-action-button--secondary generic-action-button--icon-only" title="<?= $title ?>" aria-label="<?= $title ?>"
+            data-holon-target-selector="<?= $escape(json_encode($config, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)) ?>">
+            <img src="/omo/images/tools/connection.png" class="black-icon" alt="">
+        </button>
+    </span>
+    <?php
+}
+
 if (!function_exists('commonHolonScopeGetCacheVersion')) {
     function commonHolonScopeGetCacheVersion(): int
     {

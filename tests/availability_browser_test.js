@@ -85,7 +85,7 @@ async function testMeeting() {
         end: (9 + Math.floor((index + 1) / 2)).toString().padStart(2, '0') + (index % 2 ? ':00' : ':30'),
         startEpoch: start + index * 1800, free, pause: false
     }));
-    const data = {month: '2030-01', path: '/meeting/fixture', durationSlots: 3, maxDuration: 90, labels: {...labels, continue: 'Continuer', range_unavailable: 'Erreur {duration}', duration_limited: 'Choisissez une durée plus courte'},
+    const data = {month: '2030-01', path: '/meeting/fixture', durationSlots: 3, maxDuration: 90, preparationMinutes: 30, labels: {...labels, continue: 'Continuer', range_unavailable: 'Erreur {duration}', duration_limited: 'Choisissez une durée plus courte'},
         dates: {[date]: date}, weekdays: {[date]: 'Lundi'}, days: {[date]: {state: 'partial', slots}}};
     let requests = 0;
     const app = setup('<select data-meeting-method><option value="address" selected>Address</option><option value="video">Video</option></select><select data-meeting-duration><option value="30">30</option><option value="60">60</option><option value="90" selected>90</option></select><div class="meeting-layout"><section><a data-date="' + date + '" href="https://localtest.me/meeting/fixture?date=' + date + '">7</a></section>' +
@@ -93,13 +93,34 @@ async function testMeeting() {
     'https://localtest.me/meeting/fixture?date=' + date, async () => { requests++; throw new Error('Unexpected request'); });
     const messages = [];
     app.window.commonNotify = (message, options) => messages.push({message, options});
+    const scrolls = []; const focused = [];
+    let mobile = false; let reducedMotion = false;
+    app.window.matchMedia = query => ({matches: query.includes('reduced-motion') ? reducedMotion : mobile});
+    app.document.querySelector('#meeting-times').scrollIntoView = options => scrolls.push(options);
+    const makeElement = app.window.omoCalendarAvailabilityView.element;
+    app.window.omoCalendarAvailabilityView.element = (...args) => {
+        const node = makeElement(...args);
+        node.focus = options => focused.push({id: node.id, options});
+        return node;
+    };
     const selector = app.document.querySelector('[data-meeting-duration]');
     // linkedom implements select.value as a getter only.
     Object.defineProperty(selector, 'value', {writable: true, value: '90'});
     const methodSelector = app.document.querySelector('[data-meeting-method]');
     Object.defineProperty(methodSelector, 'value', {writable: true, value: 'address'});
     app.run('meeting/meeting.js');
+    assert.equal(scrolls.length, 0, 'Initial rendering never jumps to the time panel.');
+    app.click(app.document.querySelector('[data-date]'));
+    assert.equal(scrolls.length, 0, 'Desktop day selection keeps the two-column view in place.');
+    mobile = true;
+    app.click(app.document.querySelector('[data-date]'));
+    assert.equal(scrolls[0].block, 'start');
+    assert.equal(scrolls[0].behavior, 'smooth');
+    assert.equal(focused[0].id, 'meeting-day', 'Mobile selection focuses the rebuilt time heading.');
+    assert.equal(focused[0].options.preventScroll, true, 'Focus does not trigger a second uncontrolled scroll.');
+    assert.equal(app.document.querySelector('#meeting-day').getAttribute('tabindex'), '-1');
     assert.equal(app.document.querySelectorAll('[data-slot-index]').length, 6, 'Booking renders half-hour cells.');
+    assert.equal(app.document.querySelector('[data-slot-index="0"]').getAttribute('aria-disabled'), 'false', 'Preparation before opening does not gray the first slot.');
     app.click(app.document.querySelector('[data-slot-index="2"]'));
     assert.equal(app.document.querySelectorAll('[aria-pressed="true"]').length, 3, '90-minute booking selects three cells backwards when necessary.');
     const next = app.document.querySelector('[data-meeting-continue]');
@@ -122,11 +143,17 @@ async function testMeeting() {
     assert.equal(messages.at(-1).options.duration, 5000);
     selector.value = '30';
     selector.dispatchEvent(new app.document.defaultView.Event('change', {bubbles: true}));
+    assert.equal(scrolls.length, 1, 'Changing duration does not scroll again.');
     assert.equal(app.document.querySelector('[data-slot-index="4"]').getAttribute('aria-disabled'), 'false', 'Shorter duration immediately enables the isolated slot.');
     assert.ok(!app.document.querySelector('[data-slot-index="4"]').classList.contains('generic-action-button--choice-limited'));
     app.click(app.document.querySelector('[data-slot-index="4"]'));
     assert.equal(app.document.querySelectorAll('[aria-pressed="true"]').length, 1);
+    reducedMotion = true;
     app.click(app.document.querySelector('[data-date]'));
+    assert.equal(scrolls[1].behavior, 'instant', 'Reduced motion avoids animated scrolling on mobile.');
+    mobile = false;
+    app.click(app.document.querySelector('[data-date]'));
+    assert.equal(scrolls.length, 2, 'Desktop remains still after mobile day selections.');
     assert.equal(requests, 0, 'Day navigation and selection never fetch.');
 }
 async function testEditor() {
@@ -161,6 +188,7 @@ async function testEditor() {
 }
 function testConfirmation() {
     const app = setup('<form data-omo-calendar-create-form><input name="availability_ack" value=""><input name="title">' +
+        '<input type="checkbox" data-omo-calendar-buffers-toggle><div data-omo-calendar-buffers-fields hidden><select name="preparation_minutes" disabled><option value="15" selected>15 minutes</option></select><select name="closing_minutes" disabled><option value="20" selected>20 minutes</option></select></div>' +
         '<div data-calendar-availability-loading hidden></div><div data-calendar-availability data-acknowledgement="reviewed">' +
         '<button type="button" data-calendar-availability-confirm>Confirm</button></div></form>',
     'https://localtest.me/omo/', async () => { throw new Error('Confirmation must not fetch availability'); });
@@ -169,6 +197,17 @@ function testConfirmation() {
     let submitted = '';
     form.requestSubmit = () => { submitted = form.elements.availability_ack.value; };
     app.run('common/calendar/availability.js');
+    const toggle = form.querySelector('[data-omo-calendar-buffers-toggle]');
+    const bufferFields = form.querySelector('[data-omo-calendar-buffers-fields]');
+    toggle.checked = true;
+    toggle.dispatchEvent(new app.document.defaultView.Event('change', {bubbles: true}));
+    assert.equal(bufferFields.hidden, false, 'Any editor host can expand attached time fields.');
+    assert.equal(bufferFields.querySelector('select').disabled, false);
+    toggle.checked = false;
+    toggle.dispatchEvent(new app.document.defaultView.Event('change', {bubbles: true}));
+    assert.equal(bufferFields.hidden, true);
+    assert.equal(bufferFields.querySelector('select').value, '15', 'Toggling preserves values until save.');
+    assert.equal(bufferFields.querySelector('select').disabled, true, 'Inactive durations are omitted on submit.');
     app.window.omoCalendarSetAvailabilityPending(form, true);
     assert.equal(form.querySelector('[data-calendar-availability-loading]').hidden, false);
     app.window.omoCalendarSetAvailabilityPending(form, false);

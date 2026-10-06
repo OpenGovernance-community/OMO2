@@ -35,9 +35,7 @@ $canManageOrganizationFaqs = !empty($viewerAccess['canManageOrganizationFaqs']);
 $canManageFaqCollection = $canManageAllFaqs || $canManageOrganizationFaqs;
 $faqStorageAvailable = \dbObject\FAQ::hasFaqTable();
 $usePermissionSessionCache = $_SERVER['REQUEST_METHOD'] !== 'POST';
-$canCreateContextualFaq = $contextHolon
-	? \dbObject\FAQ::canCreateContextualForHolon($contextHolon, $currentUserId, $contextOrganizationId, $usePermissionSessionCache)
-	: false;
+$canCreateContextualFaq = count(\dbObject\FAQ::loadContextualCreationTargets($contextOrganizationId, $currentUserId)) > 0;
 $canCreateParcoursFaqs = $faqStorageAvailable
 	? faqPopupCanCreateParcoursFaqs($faqContext ?: array(), $currentUserId, $usePermissionSessionCache)
 	: false;
@@ -118,6 +116,12 @@ if ($canManageAllFaqs) {
 	$editorAllowScopeEditing = true;
 	$editorAllowParcoursAttachment = true;
 	$editorAllowContextualAttachment = $canCreateContextualFaq;
+}
+if (!$canManageFaqCollection && $canCreateContextualFaq) {
+	$editorAllowScopeEditing = true;
+	$editorAllowContextualAttachment = true;
+	$editorTitle = 'Nouvelle FAQ';
+	$editorStatus = faqPopupT('editor.space_hint');
 }
 
 ?>

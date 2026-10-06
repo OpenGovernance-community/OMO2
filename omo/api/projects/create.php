@@ -3,6 +3,7 @@ require_once dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/shared.php';
 
 use dbObject\ArrayProject;
+use dbObject\ArrayHolon;
 use dbObject\ArrayUserOrganization;
 use dbObject\DocumentPvPoint;
 use dbObject\Holon;
@@ -186,6 +187,25 @@ $formTexts = [
     'dateError' => omoProjectsT('projects.error.dates'),
     'saveError' => omoProjectsT('projects.error.save'),
 ];
+$assignmentTargets = new ArrayHolon();
+$assignmentTargets->loadVisibilityTargetsForOrganization($organizationId);
+$selectableHolonIds = [];
+$freshAssignmentContext = array_merge($context, ['freshPermissions' => true]);
+foreach ($assignmentTargets as $target) {
+    if ($target->canViewDetail() && omoProjectsCanUsePermission($target, 'CAN_CREATE_PROJECT', $freshAssignmentContext)) {
+        $selectableHolonIds[] = (int)$target->getId();
+    }
+}
+if (($isEdit || $isProposalForm || $canCreateSubprojectFromParent) && $assignedHolonId > 0) {
+    $selectableHolonIds[] = $assignedHolonId;
+}
+$holonSelectorConfig = [
+    'organizationId' => $organizationId, 'organizationLabel' => $assignedHolonLabel,
+    'selectableHolonIds' => array_values(array_unique($selectableHolonIds)),
+    'allowOrganization' => $isEdit && $assignedHolonId === 0,
+    'labels' => ['title' => $formTexts['holonPickerTitle'], 'hint' => $formTexts['holonPickerHint'],
+        'confirm' => $formTexts['holonPickerConfirm'], 'cancel' => $formTexts['cancel'], 'none' => $assignedHolonLabel],
+];
 ?>
 <div class="omo-project-form generic-drawer-content" data-omo-project-form-root>
     <div
@@ -195,7 +215,7 @@ $formTexts = [
         data-omo-subdrawer-description=""
     >
         <button type="submit" form="<?= $formId ?>" class="generic-action-button generic-action-button--main" data-omo-subdrawer-action data-omo-project-form-submit><?= omoApiEscape(omoProjectsT($isEdit ? 'projects.form.edit_submit' : ($isProposalForm ? 'projects.action.propose' : 'projects.form.submit'))) ?></button>
-        <button type="button" form="<?= $formId ?>" class="generic-action-button generic-action-button--secondary" data-omo-subdrawer-action data-omo-projects-cancel-create><?= omoApiEscape(omoProjectsT('projects.action.cancel')) ?></button>
+        <button type="button" form="<?= $formId ?>" class="generic-action-button generic-action-button--secondary" data-omo-subdrawer-action data-omo-subdrawer-cancel data-omo-projects-cancel-create><?= omoApiEscape(omoProjectsT('projects.action.cancel')) ?></button>
     </div>
 
     <form id="<?= $formId ?>" class="omo-project-form__fields generic-form-stack generic-form-stack--compact" action="/omo/api/projects/action.php" method="post" novalidate>
@@ -225,10 +245,12 @@ $formTexts = [
                 <?php if (($context['rootHolon'] ?? null) instanceof Holon): ?>
                 <div class="omo-project-form__field generic-form-field">
                     <label class="generic-form-label" for="omo-project-holon-label"><?= omoApiEscape(omoProjectsT('projects.field.holon')) ?></label>
-                    <div class="omo-project-form__parent-control">
-                        <input id="omo-project-holon-label" class="generic-form-control" type="text" value="<?= omoApiEscape($assignedHolonLabel) ?>" readonly>
-                        <input type="hidden" name="IDholon" value="<?= $assignedHolonId > 0 ? $assignedHolonId : '' ?>" data-omo-project-holon-id>
-                        <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-project-holon-picker><?= omoApiEscape(omoProjectsT('projects.holon.choose')) ?></button>
+                    <div class="generic-form-control-group">
+                        <input id="omo-project-holon-label" class="generic-form-control" type="text" value="<?= omoApiEscape($assignedHolonLabel) ?>" readonly data-holon-target-label>
+                        <input type="hidden" name="IDholon" value="<?= $assignedHolonId > 0 ? $assignedHolonId : '' ?>" data-omo-project-holon-id data-holon-target-id>
+                        <button type="button" class="generic-action-button generic-action-button--secondary generic-action-button--icon-only" data-omo-project-holon-picker
+                            title="<?= omoApiEscape(omoProjectsT('projects.holon.choose')) ?>" aria-label="<?= omoApiEscape(omoProjectsT('projects.holon.choose')) ?>"
+                            data-holon-target-selector="<?= omoApiEscape(json_encode($holonSelectorConfig, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)) ?>"><img src="/omo/images/tools/connection.png" class="black-icon" alt=""></button>
                     </div>
                 </div>
                 <?php endif; ?>
