@@ -1,5 +1,9 @@
 # Journal Des Nouveautes
 
+- Mise a jour (2026-10-07) : retrait du fichier versionne img/upload/.htaccess, qui pouvait remplacer un lien vers le stockage partage lors d une mise a jour forcee. Les protections des images restent dans le .htaccess racine. Les mises a jour suivantes refusent tout fichier distant sous img/upload, meme en mode force.
+
+- Connexion (2026-10-07) : verification de AUTH_PUBLIC_URL avant la creation et l envoi d un code. Une configuration absente ou invalide produit un message explicite et un diagnostic serveur, au lieu d une erreur 500 sans explication. Chaque environnement heberge doit definir son origine HTTPS publique dans son .env.
+
 - Team (2026-10-07) : textes d aide au remplacement admin, obligatoire ou facultatif, regroupes dans une capsule ? a cote du select. Case du pilote de contexte alignee en haut pour rester stable quand le choix du successeur apparait.
 
 - Contexte (2026-10-07) : action Plein ecran dans le menu de GetOrg pour toute la zone au-dessus du navigateur miniature, centree sur 1200 px maximum. Menu harmonise avec les autres applications, accessible sur mobile et en lecture seule ; retour par le menu, Echap ou la croix.
