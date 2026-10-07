@@ -63,6 +63,9 @@ foreach ($projects as $candidate) {
 }
 
 $children = $childrenByParent[$projectId] ?? array();
+if (!$renderForProjectEmbed) {
+    usort($children, 'omoProjectsCompareImportanceThenPriority');
+}
 $statusSummaryMemo = array();
 $listTag = $renderForProjectEmbed && ($renderJson || $renderInline) ? 'span' : 'ul';
 $childTag = $renderForProjectEmbed && ($renderJson || $renderInline) ? 'span' : 'li';

@@ -6,6 +6,7 @@ window.commonPageScripts["/common/assets/profile-totp.js"] = function (pageConfi
             var section = script ? script.previousElementSibling : null;
             if (!section || section.getAttribute("data-profile-totp-section") !== "1") return;
             var toggle = section.querySelector("[data-profile-totp-toggle]");
+            var enabled = toggle.checked;
             var setup = section.querySelector("[data-profile-totp-setup]");
             var endpoint = "/ajax/totp_setup.php";
             var disableConfirm = pageConfig.disableConfirm;
@@ -27,14 +28,14 @@ window.commonPageScripts["/common/assets/profile-totp.js"] = function (pageConfi
                 setup.className = error ? "profile-panel__feedback profile-panel__feedback--error" : "profile-panel__scope-help";
             }
 
-            function renderSetup(data) {
+            function renderSetup(data, disabling) {
                 setup.innerHTML = "";
                 var title = document.createElement("strong");
                 title.className = "generic-card-title generic-card-title--small";
                 title.textContent = ("" + pageConfig.setupTitle + "");
                 var instructions = document.createElement("p");
                 instructions.className = "profile-panel__scope-help";
-                instructions.textContent = ("" + pageConfig.setupInstructions + "");
+                instructions.textContent = disabling ? disableConfirm : ("" + pageConfig.setupInstructions + "");
                 setup.appendChild(title);
                 setup.appendChild(instructions);
                 if (data.qr_url) {
@@ -48,7 +49,7 @@ window.commonPageScripts["/common/assets/profile-totp.js"] = function (pageConfi
                 var manual = document.createElement("p");
                 manual.className = "profile-panel__scope-help";
                 manual.textContent = ("" + pageConfig.manualLabel + ": ") + (data.manual_secret || "");
-                setup.appendChild(manual);
+                if (!disabling) setup.appendChild(manual);
                 var code = document.createElement("input");
                 code.type = "text";
                 code.inputMode = "numeric";
@@ -61,25 +62,28 @@ window.commonPageScripts["/common/assets/profile-totp.js"] = function (pageConfi
                 button.textContent = ("" + pageConfig.confirmLabel + "");
                 button.addEventListener("click", function () {
                     button.disabled = true;
-                    request("confirm", { code: code.value }).then(function (result) {
+                    request(disabling ? "disable" : "confirm", { code: code.value }).then(function (result) {
                         button.disabled = false;
-                        if (!result.status) { setMessage(result.message || "Erreur.", true); return; }
-                        toggle.checked = true;
-                        setMessage(result.message || "", false);
+                        if (!result.status) { code.setCustomValidity(result.message || "Erreur."); code.reportValidity(); return; }
+                        toggle.checked = !disabling;
+                        enabled = !disabling;
+                        setup.textContent = "";
+                        if (window.commonNotify) window.commonNotify(result.message || "", "success");
                     }).catch(function () { button.disabled = false; setMessage("Erreur.", true); });
                 });
                 setup.appendChild(code);
+                code.className = "generic-form-control";
+                code.addEventListener("input", function () { code.setCustomValidity(""); });
                 setup.appendChild(button);
                 code.focus();
             }
 
             toggle.addEventListener("change", function () {
                 if (!toggle.checked) {
+                    if (!enabled) { setup.textContent = ""; return; }
                     if (!window.confirm(disableConfirm)) { toggle.checked = true; return; }
-                    request("disable", {}).then(function (result) {
-                        if (!result.status) { toggle.checked = true; setMessage(result.message || "Erreur.", true); return; }
-                        setMessage(result.message || "", false);
-                    }).catch(function () { toggle.checked = true; setMessage("Erreur.", true); });
+                    toggle.checked = true;
+                    renderSetup({}, true);
                     return;
                 }
                 request("start", {}).then(function (result) {

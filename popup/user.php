@@ -170,11 +170,19 @@ function omoUserContextBuildAssignmentBudgetLabels(array $assignment)
     return $labels;
 }
 
-function omoUserContextRenderRoleAssignment(array $assignment, $userId, $returnPopupUrl)
+function omoUserContextRenderRoleAssignment(array $assignment, $userId, $returnPopupUrl, string $adminLabel)
 {
     $roleId = (int)($assignment['holonId'] ?? 0);
     $roleName = (string)($assignment['displayName'] ?? ($assignment['name'] ?? ''));
     $roleLabel = $roleName !== '' ? $roleName : ('Role ' . $roleId);
+    $assignmentLabels = [$roleLabel];
+    if (!empty($assignment['isAdmin'])) {
+        $assignmentLabels[] = $adminLabel;
+    }
+    $focus = trim((string)($assignment['focus'] ?? ''));
+    if ($focus !== '') {
+        $assignmentLabels[] = $focus;
+    }
     $canEditAssignment = !empty($assignment['canEditAssignment']);
     $assignmentEditorUrl = '/omo/api/team/member_assignment_popup.php?hid=' . $roleId
         . '&user_id=' . (int)$userId
@@ -191,7 +199,7 @@ function omoUserContextRenderRoleAssignment(array $assignment, $userId, $returnP
             <div class="omo-user-context__role-head">
                 <div>
                     <div class="omo-user-context__role-name-line">
-                        <div class="omo-user-context__role-name"><?= omoApiEscape($roleLabel) ?></div>
+                        <div class="omo-user-context__role-name"><?= omoApiEscape(implode(" \u{2014} ", $assignmentLabels)) ?></div>
                         <?php foreach ((array)($assignment['budgetLabels'] ?? []) as $budgetLabel): ?>
                             <span class="omo-user-context__role-budget">| <?= omoApiEscape($budgetLabel) ?></span>
                         <?php endforeach; ?>
@@ -846,6 +854,7 @@ $joinedAtLabel = omoUserContextFormatDate($joinedAt);
 $lastSeenLabel = omoUserContextFormatDate($lastSeenAt);
 $isPending = $membership ? !(bool)$membership->get('active') : false;
 $isAdmin = $membership ? $membership->isOrganizationAdmin() : false;
+$assignmentAdminLabel = Organization::getLexiconLabel($organization->getLexicon(), 'admin');
 $currentAssignments = $hasStructureContext
     ? $currentHolon->getVisibleRoleAssignmentsForUser($userId, [
         'organizationId' => $organizationId,
@@ -1274,7 +1283,7 @@ foreach ($competenceRows as $competenceRow) {
                                 <?php else: ?>
                                     <ul class="omo-user-context__roles">
                                         <?php foreach ($currentAssignments as $assignment): ?>
-                                            <?php omoUserContextRenderRoleAssignment($assignment, $userId, $popupReloadUrl . '&tab=current-roles'); ?>
+                                            <?php omoUserContextRenderRoleAssignment($assignment, $userId, $popupReloadUrl . '&tab=current-roles', $assignmentAdminLabel); ?>
                                         <?php endforeach; ?>
                                     </ul>
                                 <?php endif; ?>
@@ -1296,7 +1305,7 @@ foreach ($competenceRows as $competenceRow) {
                                 <?php else: ?>
                                     <ul class="omo-user-context__roles">
                                         <?php foreach ($organizationAssignments as $assignment): ?>
-                                            <?php omoUserContextRenderRoleAssignment($assignment, $userId, $popupReloadUrl . '&tab=organization-roles'); ?>
+                                            <?php omoUserContextRenderRoleAssignment($assignment, $userId, $popupReloadUrl . '&tab=organization-roles', $assignmentAdminLabel); ?>
                                         <?php endforeach; ?>
                                     </ul>
                                 <?php endif; ?>

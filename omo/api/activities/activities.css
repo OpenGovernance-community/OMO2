@@ -13,10 +13,11 @@
 
 .omo-activities__body {
     min-height: 100%;
-    padding: 0 var(--generic-layout-gutter, 20px) var(--generic-layout-gutter, 20px);
+    padding-bottom: var(--generic-layout-gutter, 20px);
 }
 
 .omo-activities__groups {
+    --param-file-list-mobile-title-action-space: 36px;
     gap: 0;
 }
 
@@ -410,12 +411,15 @@
     color: #a21c1c;
 }
 
-@media (max-width: 900px) {
+@media (min-width: 761px) and (max-width: 900px) {
     .omo-activities__table .generic-file-list__header,
     .omo-activities__table .generic-file-list__row {
         grid-template-columns: minmax(230px, 2fr) minmax(120px, 0.8fr) minmax(155px, 1fr) minmax(175px, 1fr);
     }
 
+}
+
+@media (max-width: 900px) {
     .omo-activity-detail__hero {
         grid-template-columns: minmax(0, 1fr);
     }
@@ -433,7 +437,7 @@
     }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 760px) {
     .omo-activities__filter-grid {
         grid-template-columns: minmax(0, 1fr);
     }
@@ -446,10 +450,10 @@
         grid-template-columns: minmax(0, 1fr);
     }
 
-    .omo-activity-row__status-cell {
-        display: flex;
-        align-items: center;
-        justify-content: flex-start;
+    .omo-activity-row__menu {
+        top: 12px;
+        right: 10px;
+        transform: none;
     }
 
     .omo-activity-timeline {

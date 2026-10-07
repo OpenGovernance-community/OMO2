@@ -13,7 +13,7 @@ $activity = new ControlActivity();
 $activity = !empty($context['status']) && $activity->load((int)($_GET['id'] ?? 0)) ? $activity : null;
 if (!($activity instanceof ControlActivity)
     || (int)$activity->get('IDorganization') !== $organizationId
-    || (int)$activity->get('active') !== 1
+    || ((int)$activity->get('active') !== 1 && !($activity->get('archived_at') instanceof DateTimeInterface))
     || !omoActivityCanView($activity)
 ) {
     http_response_code(404);
@@ -21,12 +21,16 @@ if (!($activity instanceof ControlActivity)
     exit;
 }
 
-$now = new DateTimeImmutable('now');
+$isArchived = (int)$activity->get('active') !== 1;
+$now = $isArchived ? DateTimeImmutable::createFromInterface($activity->get('archived_at')) : new DateTimeImmutable('now');
 $state = $activity->getOccurrenceState($now);
 $stateKey = (string)($state['state'] ?? 'upcoming');
 $suffix = ($currentHolonId > 0 ? '&cid=' . $currentHolonId : '') . omoActivityPvMeetingQuery($organizationId);
 $editUrl = '/omo/api/activities/edit.php?oid=' . $organizationId . '&id=' . (int)$activity->getId() . $suffix;
 $history = $activity->getRegularity(12, $now);
+if ($isArchived) {
+    $history = array_filter($history, static fn ($entry) => ($entry['occurrenceAt'] ?? null) instanceof DateTimeInterface && $entry['occurrenceAt'] <= $now);
+}
 $holon = $activity->getHolon();
 $responsibilityLabel = omoActivityResponsibleAssignmentLabel($activity);
 $descriptionHtml = omoActivityDescriptionHtml($activity->get('description'));
@@ -103,13 +107,13 @@ if ($stateKey === 'due') {
         data-omo-subdrawer-title="<?= omoApiEscape((string)$activity->get('title')) ?>"
         data-omo-subdrawer-description="<?= omoApiEscape(omoActivityFrequencyLabel($activity->get('frequency')) . ' · ' . omoActivityScheduleLabel($activity->get('frequency'), $activity->get('schedule'))) ?>"
     >
-        <?php if (in_array($stateKey, ['due', 'missed'], true)): ?>
+        <?php if (!$isArchived && in_array($stateKey, ['due', 'missed'], true)): ?>
             <button type="button" class="generic-action-button generic-action-button--main" data-omo-subdrawer-action data-activity-post-action="check_activity" data-activity-id="<?= (int)$activity->getId() ?>"><?= omoApiEscape(omoActivityT('activity.done')) ?></button>
         <?php endif; ?>
-        <?php if (omoActivityCanEdit($activity)): ?>
+        <?php if (!$isArchived && omoActivityCanEdit($activity)): ?>
             <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-subdrawer-action data-activity-open-url="<?= omoApiEscape($editUrl) ?>"><?= omoApiEscape(omoActivityT('activity.edit')) ?></button>
         <?php endif; ?>
-        <?php if (omoActivityCanDelete($activity)): ?>
+        <?php if (!$isArchived && omoActivityCanDelete($activity)): ?>
             <div class="generic-menu omo-activity-detail__menu" data-omo-subdrawer-action data-activity-action-menu>
                 <button type="button" class="generic-menu-toggle" data-activity-action-menu-toggle aria-label="<?= omoApiEscape(omoActivityT('activity.more')) ?>" aria-expanded="false">...</button>
                 <div class="generic-menu-panel generic-menu-panel--wide generic-menu-panel--anchored" data-activity-action-menu-panel role="menu" hidden>
@@ -123,12 +127,12 @@ if ($stateKey === 'due') {
     <section class="generic-hero-panel omo-activity-detail__hero">
         <div class="omo-activity-detail__hero-copy">
             <div class="omo-activity-detail__badges">
-                <span class="omo-activity-badge omo-activity-badge--<?= omoApiEscape($stateKey) ?>"><?= omoApiEscape(omoActivityStateLabel($state, $now)) ?></span>
+                <?php if ($isArchived): ?><span class="omo-pill"><?= omoApiEscape(omoResourceArchivesT('archives.date', ['date' => $now->format('d.m.Y')])) ?></span><?php else: ?><span class="omo-activity-badge omo-activity-badge--<?= omoApiEscape($stateKey) ?>"><?= omoApiEscape(omoActivityStateLabel($state, $now)) ?></span><?php endif; ?>
                 <span class="omo-pill"><?= omoApiEscape($holon instanceof Holon ? $holon->getDisplayName() : (string)$context['organization']->get('name')) ?></span>
             </div>
             <h3 class="generic-card-title generic-card-title--large"><?= omoApiEscape((string)$activity->get('title')) ?></h3>
             <p class="generic-description"><?= omoApiEscape(omoActivityT('activity.responsibility.label')) ?> : <?= omoApiEscape($responsibilityLabel) ?></p>
-            <?php if ($stateDetail !== ''): ?><p class="omo-activity-detail__state-copy omo-activity-detail__state-copy--<?= omoApiEscape($stateKey) ?>"><?= omoApiEscape($stateDetail) ?></p><?php endif; ?>
+            <?php if (!$isArchived && $stateDetail !== ''): ?><p class="omo-activity-detail__state-copy omo-activity-detail__state-copy--<?= omoApiEscape($stateKey) ?>"><?= omoApiEscape($stateDetail) ?></p><?php endif; ?>
             <?php if ($descriptionHtml !== ''): ?><div class="omo-simple-html-render generic-description generic-description--relaxed"><?= $descriptionHtml ?></div><?php endif; ?>
         </div>
         <div class="omo-activity-detail__schedule">

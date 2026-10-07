@@ -599,10 +599,22 @@ if ($teamScope === 'children') {
 $canAddCurrentHolonMembers = $hasStructureContext ? $currentHolon->isAllowed('CAN_ADD_MEMBER') : false;
 $canRemoveCurrentHolonMembers = $hasStructureContext ? $currentHolon->isAllowed('CAN_DELETE_MEMBER') : false;
 $canGrantCurrentHolonAdmin = $hasStructureContext ? $currentHolon->isAllowed('CAN_ADD_ADMIN') : false;
-$canManageCurrentHolonMembers = $canRemoveCurrentHolonMembers || $canGrantCurrentHolonAdmin;
+$canManageCurrentHolonMembers = $canRemoveCurrentHolonMembers || ($canGrantCurrentHolonAdmin && $isOrganizationTeamContext);
 $canEditCurrentMemberAssignments = $hasStructureContext
     && !$currentHolon->isOrganizationHolon()
-    && ($currentHolon->isAllowed('CAN_EDIT_MEMBER_ASSIGNMENT') || $currentHolon->isAllowed('CAN_EDIT_AFFECTATION_BUDGET'));
+    && ($currentHolon->isAllowed('CAN_EDIT_MEMBER_ASSIGNMENT') || $currentHolon->isAllowed('CAN_EDIT_AFFECTATION_BUDGET') || $canGrantCurrentHolonAdmin);
+foreach ($memberCards as &$card) {
+    $card['canEditAssignment'] = $canEditCurrentMemberAssignments && !empty($card['isDirectContextMember']);
+    if ($canEditCurrentMemberAssignments && !$card['canEditAssignment'] && (int)$currentHolon->get('IDtypeholon') === 2) {
+        foreach ($currentHolon->getVisibleRoleAssignmentsForUser((int)$card['userId'], ['organizationId' => $organizationId]) as $roleAssignment) {
+            if (!empty($roleAssignment['canEditAssignment'])) {
+                $card['canEditAssignment'] = true;
+                break;
+            }
+        }
+    }
+}
+unset($card);
 $leafletMapsEnabled = function_exists('commonLeafletMapsEnabled') && commonLeafletMapsEnabled();
 $mapMembers = array_values(array_filter($memberCards, static function (array $card): bool {
     return is_array($card['latlong'] ?? null);
@@ -630,6 +642,62 @@ $mapMemberPayload = array_map(static function (array $card) use ($isOrganization
         'long' => (float)$card['latlong']['long'],
     );
 }, $mapMembers);
+$renderMemberMenu = static function (array $card, bool $compact = false) use (
+    $canManageCurrentHolonMembers, $canRemoveCurrentHolonMembers,
+    $canGrantCurrentHolonAdmin, $isOrganizationTeamContext, $currentHolonTemplateLabel, $contextAdminLabelLower, $lang, $sourceLang
+): void {
+    $canManageMember = $canManageCurrentHolonMembers && !empty($card['isRemovableInContext']);
+    ?>
+    <?php if ($canManageMember || !empty($card['canEditAssignment'])): ?>
+        <div class="<?= $compact ? 'generic-file-list__menu generic-menu' : 'omo-team-card__menu' ?>" data-team-member-menu="1" data-member-display-name="<?= omoApiEscape((string)$card['displayName']) ?>">
+            <button
+                type="button"
+                class="<?= $compact ? 'generic-menu-toggle generic-file-list__menu-toggle' : 'omo-team-card__menu-toggle' ?>"
+                data-team-member-menu-toggle="1"
+                aria-haspopup="menu"
+                aria-expanded="false"
+                aria-label="<?= omoApiEscape(omoTeamT('team.member.actions_for', ['name' => (string)$card['displayName']], $lang, $sourceLang)) ?>"
+            >&#8942;</button>
+            <div class="omo-team-card__menu-panel" data-team-member-menu-panel="1" hidden>
+                <?php if (!empty($card['canEditAssignment'])): ?>
+                    <button
+                        type="button"
+                        class="omo-team-card__menu-item"
+                        data-team-edit-assignment="1"
+                        data-user-id="<?= (int)$card['userId'] ?>"
+                    ><?= omoApiEscape(omoTeamT('team.action.edit_assignment', [], $lang, $sourceLang)) ?></button>
+                <?php endif; ?>
+                <?php if ($canManageMember && $canRemoveCurrentHolonMembers): ?>
+                    <button
+                        type="button"
+                        class="omo-team-card__menu-item omo-team-card__menu-item--danger"
+                        data-member-action="remove"
+                        data-user-id="<?= (int)$card['userId'] ?>"
+                    ><?= omoApiEscape(omoTeamT('team.action.remove_from_context', ['context' => (string)$currentHolonTemplateLabel], $lang, $sourceLang)) ?></button>
+                <?php endif; ?>
+                <?php if ($canManageMember && $canRemoveCurrentHolonMembers && $card['hasPendingInvitation']): ?>
+                    <button
+                        type="button"
+                        class="omo-team-card__menu-item omo-team-card__menu-item--danger"
+                        data-member-action="cancel_invitation"
+                        data-user-id="<?= (int)$card['userId'] ?>"
+                    ><?= omoApiEscape(omoTeamT('team.action.cancel_invitation', [], $lang, $sourceLang)) ?></button>
+                <?php endif; ?>
+                <?php if ($isOrganizationTeamContext && $canManageMember && $canGrantCurrentHolonAdmin && !$card['isPending']): ?>
+                    <button
+                        type="button"
+                        class="omo-team-card__menu-item"
+                        data-member-action="<?= $card['isContextAdmin'] ? 'revoke_admin' : 'grant_admin' ?>"
+                        data-user-id="<?= (int)$card['userId'] ?>"
+                    ><?= omoApiEscape($card['isContextAdmin']
+                        ? omoTeamT('team.action.revoke_context_admin', ['context' => (string)$currentHolonTemplateLabel, 'adminLabel' => $contextAdminLabelLower], $lang, $sourceLang)
+                        : omoTeamT('team.action.grant_context_admin', ['context' => (string)$currentHolonTemplateLabel, 'adminLabel' => $contextAdminLabelLower], $lang, $sourceLang)) ?></button>
+                <?php endif; ?>
+            </div>
+        </div>
+    <?php endif; ?>
+    <?php
+};
 $leafletAssetsHtml = '';
 if ($leafletMapsEnabled) {
     ob_start();
@@ -665,17 +733,28 @@ if ($leafletMapsEnabled) {
                     </div>
                 </div>
             </div>
-            <?php if ($canAddCurrentHolonMembers): ?>
                 <div class="omo-team__header-action" data-omo-header-actions>
+                    <?php if ($canAddCurrentHolonMembers): ?>
                     <button
                         type="button"
                         class="generic-action-button generic-action-button--main omo-team__add-member-button"
                         data-team-open-member-popup="1"
                         data-hid="<?= (int)$currentHolon->getId() ?>"
                     ><?= omoApiEscape(omoTeamT('team.action.add_member', [], $lang, $sourceLang)) ?></button>
+                    <?php endif; ?>
+                    <?php
+                    require_once dirname(__DIR__, 3) . '/common/object_mail/ui.php';
+                    ob_start();
+                    omoObjectMailButton($organizationId, $hasStructureContext ? 'holon' : 'organization', $hasStructureContext ? (int)$currentHolon->getId() : $organizationId, '', true);
+                    $teamMailAction = ob_get_clean();
+                    if ($teamMailAction !== ''):
+                    ?>
+                    <div class="generic-menu generic-menu--expanded-mobile generic-panel-actions">
+                        <button type="button" class="generic-menu-toggle" data-common-panel-menu-toggle aria-haspopup="menu" aria-expanded="false" aria-controls="omo-team-actions-panel" aria-label="<?= omoApiEscape(omoTeamT('team.popup.contextual_actions', [], $lang, $sourceLang)) ?>">&#8942;</button>
+                        <div id="omo-team-actions-panel" class="generic-menu-panel generic-menu-panel--wide generic-menu-panel--anchored" role="menu" hidden><?= $teamMailAction ?></div>
+                    </div>
+                    <?php endif; ?>
                 </div>
-            <?php endif; ?>
-            <?php if ($hasStructureContext): require_once dirname(__DIR__, 3) . '/common/object_mail/ui.php'; omoObjectMailButton($organizationId, 'holon', (int)$currentHolon->getId()); endif; ?>
         </div>
         <div class="omo-panel-view__header-secondary omo-team__header-secondary">
             <div class="omo-team__filter-toolbar omo-view-filter" data-team-filter-control role="group" aria-label="<?= omoApiEscape(omoTeamT('team.filters.aria', [], $lang, $sourceLang)) ?>">
@@ -730,7 +809,7 @@ if ($leafletMapsEnabled) {
                 <?= omoApiEscape($teamEmptyMessage) ?>
             </div>
         <?php else: ?>
-            <div class="omo-team__grid omo-card-grid omo-card-grid--fixed" data-team-items-container="cards">
+            <div class="omo-team__grid omo-card-grid omo-card-grid--bounded" data-team-items-container="cards">
                 <?php foreach ($memberCards as $card): ?>
                     <article
                         class="omo-team-card omo-card<?= $card['canViewDetail'] ? ' omo-card--interactive' : '' ?><?= $card['isPending'] || $card['hasPendingInvitation'] ? ' generic-member generic-member--inactive' : '' ?><?= $card['isAssignmentReviewOverdue'] ? ' omo-team-card--assignment-overdue' : '' ?>"
@@ -749,54 +828,7 @@ if ($leafletMapsEnabled) {
                         <?php endif; ?>
                     >
                         <div class="omo-team-card__banner">
-                            <?php if ($canManageCurrentHolonMembers && !empty($card['isRemovableInContext'])): ?>
-                                <div class="omo-team-card__menu" data-team-member-menu="1">
-                                    <button
-                                        type="button"
-                                        class="omo-team-card__menu-toggle"
-                                        data-team-member-menu-toggle="1"
-                                        aria-haspopup="menu"
-                                        aria-expanded="false"
-                                        aria-label="<?= omoApiEscape(omoTeamT('team.member.actions_for', ['name' => (string)$card['displayName']], $lang, $sourceLang)) ?>"
-                                    >...</button>
-                                    <div class="omo-team-card__menu-panel" data-team-member-menu-panel="1" hidden>
-                                        <?php if ($canEditCurrentMemberAssignments && !empty($card['isDirectContextMember'])): ?>
-                                            <button
-                                                type="button"
-                                                class="omo-team-card__menu-item"
-                                                data-team-edit-assignment="1"
-                                                data-user-id="<?= (int)$card['userId'] ?>"
-                                            ><?= omoApiEscape(omoTeamT('team.action.edit_assignment', [], $lang, $sourceLang)) ?></button>
-                                        <?php endif; ?>
-                                        <?php if ($canRemoveCurrentHolonMembers): ?>
-                                            <button
-                                                type="button"
-                                                class="omo-team-card__menu-item omo-team-card__menu-item--danger"
-                                                data-member-action="remove"
-                                                data-user-id="<?= (int)$card['userId'] ?>"
-                                            ><?= omoApiEscape(omoTeamT('team.action.remove_from_context', ['context' => (string)$currentHolonTemplateLabel], $lang, $sourceLang)) ?></button>
-                                        <?php endif; ?>
-                                        <?php if ($canRemoveCurrentHolonMembers && $card['hasPendingInvitation']): ?>
-                                            <button
-                                                type="button"
-                                                class="omo-team-card__menu-item omo-team-card__menu-item--danger"
-                                                data-member-action="cancel_invitation"
-                                                data-user-id="<?= (int)$card['userId'] ?>"
-                                            ><?= omoApiEscape(omoTeamT('team.action.cancel_invitation', [], $lang, $sourceLang)) ?></button>
-                                        <?php endif; ?>
-                                        <?php if ($canGrantCurrentHolonAdmin && !$card['isPending']): ?>
-                                            <button
-                                                type="button"
-                                                class="omo-team-card__menu-item"
-                                                data-member-action="<?= $card['isContextAdmin'] ? 'revoke_admin' : 'grant_admin' ?>"
-                                                data-user-id="<?= (int)$card['userId'] ?>"
-                                            ><?= omoApiEscape($card['isContextAdmin']
-                                                ? omoTeamT('team.action.revoke_context_admin', ['context' => (string)$currentHolonTemplateLabel, 'adminLabel' => $contextAdminLabelLower], $lang, $sourceLang)
-                                                : omoTeamT('team.action.grant_context_admin', ['context' => (string)$currentHolonTemplateLabel, 'adminLabel' => $contextAdminLabelLower], $lang, $sourceLang)) ?></button>
-                                        <?php endif; ?>
-                                    </div>
-                                </div>
-                            <?php endif; ?>
+                            <?php $renderMemberMenu($card); ?>
                         </div>
                         <div class="omo-team-card__media">
                             <?php if ($card['photoUrl'] !== ''): ?>
@@ -1013,7 +1045,7 @@ if ($leafletMapsEnabled) {
                         ?>
                         <article class="omo-team__compact-item-shell generic-file-list__item-shell" data-team-member-item data-team-member-search="<?= omoApiEscape((string)$card['searchText']) ?>">
                             <div
-                                class="omo-team__compact-row generic-file-list__row<?= $card['canViewDetail'] ? ' omo-team__compact-row--interactive' : '' ?><?= $card['isPending'] || $card['hasPendingInvitation'] ? ' generic-member generic-member--inactive' : '' ?><?= $card['isAssignmentReviewOverdue'] ? ' omo-team__compact-row--assignment-overdue' : '' ?>"
+                                class="omo-team__compact-row generic-file-list__row generic-file-list__row--with-menu<?= $card['canViewDetail'] ? ' omo-team__compact-row--interactive' : '' ?><?= $card['isPending'] || $card['hasPendingInvitation'] ? ' generic-member generic-member--inactive' : '' ?><?= $card['isAssignmentReviewOverdue'] ? ' omo-team__compact-row--assignment-overdue' : '' ?>"
                                 <?php if ($card['canViewDetail']): ?>
                                 data-open-user-context="1"
                                 tabindex="0"
@@ -1082,6 +1114,7 @@ if ($leafletMapsEnabled) {
 									<?php endif; ?>
                                 </div>
                             </div>
+                            <?php $renderMemberMenu($card, true); ?>
                         </article>
                     <?php endforeach; ?>
                 </div>

@@ -19,6 +19,33 @@
 
 .object-mail-form {
     flex: 1;
+    min-height: 0;
+}
+
+.object-mail-composer--writing {
+    height: 100dvh;
+    min-height: 520px;
+}
+
+.object-mail-composer--writing > header,
+.object-mail-composer--writing > .generic-drawer-content,
+.object-mail-form > footer {
+    flex-shrink: 0;
+}
+
+.object-mail-form-content {
+    flex: 1;
+    min-height: 0;
+    grid-template-rows: auto minmax(0, 1fr);
+}
+
+.object-mail-body-field,
+[data-object-mail-editor] {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    min-width: 0;
 }
 
 .object-mail-form > footer,
@@ -27,21 +54,198 @@
 }
 
 .object-mail-message {
-    resize: vertical;
-    min-height: 160px;
+    flex: 1;
+}
+
+.object-mail-sender {
+    display: grid;
+    gap: 2px;
+    overflow-wrap: anywhere;
+}
+
+.object-mail-address-grid {
+    /* Keep both address blocks readable before stacking in a narrow popup. */
+    --param-form-grid-min: 320px;
+    align-items: start;
 }
 
 .object-mail-recipients {
+    --param-checkbox-min-height: 26px;
+    --param-drawer-content-gap: 2px;
     list-style: none;
     margin: 0;
     max-height: 180px;
     overflow-y: auto;
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.object-mail-recipients > li {
+    min-width: 0;
+}
+
+.object-mail-recipient-popover {
+    width: max(100%, 360px);
 }
 
 .object-mail-delivery {
     margin: 0;
 }
 
+.object-mail-recipient-identity {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .object-mail-page [hidden] {
     display: none !important;
+}
+
+.object-mail-icon {
+    flex-shrink: 0;
+    vertical-align: middle;
+}
+
+.object-mail-folder-heading,
+.object-mail-compose-context,
+.object-mail-to-line {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.object-mail-folder-heading > .object-mail-icon,
+.object-mail-row__icon {
+    color: var(--color-text-light, #64748b);
+}
+
+.object-mail-row__icon {
+    padding-top: 3px;
+}
+
+.object-mail-row__main {
+    display: grid;
+    flex: 1;
+    min-width: 0;
+    gap: 5px;
+}
+
+.object-mail-row__subject,
+.object-mail-row__preview {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.object-mail-row__subject {
+    font-size: 0.95rem;
+    font-weight: 650;
+}
+
+.object-mail-row__preview {
+    color: var(--color-text-light, #64748b);
+    font-size: 0.86rem;
+}
+
+.object-mail-row__aside {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 12px;
+    white-space: nowrap;
+}
+
+.object-mail-subject {
+    margin: 4px 0 10px;
+    font-size: 1.45rem;
+    font-weight: 600;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+}
+
+.object-mail-letterhead {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.object-mail-avatar {
+    display: grid;
+    place-items: center;
+    flex: 0 0 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--color-surface-alt, #f1f5f9);
+    color: var(--color-text-light, #64748b);
+}
+
+.object-mail-letterhead__copy {
+    flex: 1;
+    min-width: 0;
+}
+
+.object-mail-letterhead__line {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 4px 16px;
+}
+
+.object-mail-addresses summary,
+.object-mail-retention summary {
+    cursor: pointer;
+}
+
+.object-mail-address-list {
+    margin: 8px 0;
+    padding-left: 16px;
+    font-size: 0.85rem;
+    overflow-wrap: anywhere;
+}
+
+.object-mail-history-message {
+    overflow-wrap: anywhere;
+    min-height: 140px;
+    padding: 20px 0;
+    line-height: 1.7;
+    font-size: 0.95rem;
+}
+
+.object-mail-history-message > :first-child { margin-top: 0; }
+.object-mail-history-message > :last-child { margin-bottom: 0; }
+
+.object-mail-tracking-row {
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    overflow-wrap: anywhere;
+}
+
+.object-mail-tracking-row > * {
+    min-width: 0;
+    margin: 0;
+}
+
+.object-mail-subject-field,
+.object-mail-address-field {
+    display: grid;
+    grid-template-columns: 46px minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+}
+
+@media (max-width: 540px) {
+    .object-mail-row { flex-wrap: wrap; }
+    .object-mail-row__icon { display: none; }
+    .object-mail-row__main { flex-basis: 100%; }
+    .object-mail-row__aside {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        gap: 8px;
+    }
+    .object-mail-letterhead__line { flex-direction: column; }
 }

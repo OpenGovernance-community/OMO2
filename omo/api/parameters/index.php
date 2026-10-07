@@ -351,7 +351,7 @@ $holonTemplateCardIconUrl = '/img/omo-parameters/holon-template.png';
                     <p class="omo-overlay-drawer__description" data-omo-settings-nested-description></p>
                 </div>
                 <div class="generic-drawer-header__actions">
-                    <button type="button" class="omo-overlay-drawer__close generic-action-button generic-action-button--secondary" data-omo-settings-nested-close><?= htmlspecialchars(omoParametersIndexT('parameters.index.action.close'), ENT_QUOTES, 'UTF-8') ?></button>
+                    <button type="button" class="omo-overlay-drawer__close generic-action-button generic-action-button--secondary generic-action-button--icon-only generic-action-button--close" data-omo-settings-nested-close title="<?= htmlspecialchars(omoParametersIndexT('parameters.index.action.close'), ENT_QUOTES, 'UTF-8') ?>" aria-label="<?= htmlspecialchars(omoParametersIndexT('parameters.index.action.close'), ENT_QUOTES, 'UTF-8') ?>"></button>
                 </div>
             </div>
             <div class="omo-overlay-drawer__body" data-omo-settings-nested-body></div>

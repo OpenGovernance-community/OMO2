@@ -63,7 +63,7 @@
 		echo json_encode([
 			'status' => 'error',
 			'message' => $message,
-			'debug' => $dbError['message'] ?? ''
+			'error' => 'save_failed'
 		]);
 		exit;
 	}

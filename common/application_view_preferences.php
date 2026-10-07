@@ -221,7 +221,8 @@ if (!function_exists('omoApplicationViewPreferencesGetDefaultViews')) {
                 ? $organization->getApplicationViewTemplateDefaultForHolon($holon, $applicationKey)
                 : null,
             'organization' => $applicationKey !== '' ? $organization->getApplicationViewDefault($applicationKey) : null,
-            'applicationType' => $applicationDefaults['baseType'] ?? null,
+            'applicationType' => $organization->getApplicationViewBaseTypeDefault($applicationKey, $typeId)
+                ?? $applicationDefaults['baseType'] ?? null,
             'global' => $applicationDefaults['global'] ?? null,
         );
     }

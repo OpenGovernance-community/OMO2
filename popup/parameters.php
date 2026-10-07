@@ -45,10 +45,10 @@
   <div>
 <?	
 	echo "<div class='settings-summary'>";
-	echo "<div class='settings-summary__item'><strong>Paramètre basic</strong>".$user->getParameter("basic")."</div>";
-	echo "<div class='settings-summary__item'><strong>Paramètre numeric</strong>".$user->getParameter("numeric")."</div>";
+	echo "<div class='settings-summary__item'><strong>Paramètre basic</strong>".htmlspecialchars((string)$user->getParameter("basic"), ENT_QUOTES, 'UTF-8')."</div>";
+	echo "<div class='settings-summary__item'><strong>Paramètre numeric</strong>".htmlspecialchars((string)$user->getParameter("numeric"), ENT_QUOTES, 'UTF-8')."</div>";
 	echo "<div class='settings-summary__item'><strong>Checkbox</strong>".($user->getParameter("check")?"true":"false")."</div>";
-	echo "<div class='settings-summary__item'><strong>Select</strong>".$user->getParameter("select")."</div>";
+	echo "<div class='settings-summary__item'><strong>Select</strong>".htmlspecialchars((string)$user->getParameter("select"), ENT_QUOTES, 'UTF-8')."</div>";
 	echo "</div>";
 ?>
 	</div>
