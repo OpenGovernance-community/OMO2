@@ -117,6 +117,21 @@ function omoInitMobileHeaderMenus(container) {
         return;
     }
 
+    if (window.commonPanelViewActions) {
+        window.commonPanelViewActions.mount(container, {
+            rootSelector: '.omo-panel-view, [data-common-panel-view]',
+            headerSelector: '.omo-panel-view__header',
+            headerMainSelector: '.omo-panel-view__header-main',
+            actionsSelector: '[data-omo-header-actions]',
+            actionsAttribute: 'data-omo-header-actions',
+            actionsGroupSelector: '.omo-panel-view__mobile-actions-menu',
+            focusSelector: '.omo-panel-view__mobile-actions-toggle, [data-common-panel-actions-toggle], .generic-menu-toggle',
+            locale: window.omoConfig && window.omoConfig.translationLocale,
+            getHost: function (root) { return root.closest('.drawer, #panel-right') || root; },
+            closeMenus: omoCloseMobileHeaderMenus
+        });
+    }
+
     const hosts = [];
     if (container.matches && container.matches('[data-omo-header-actions]')) {
         hosts.push(container);
@@ -135,6 +150,19 @@ function omoInitMobileHeaderMenus(container) {
             return;
         }
 
+        // A lone view menu already fits on mobile; avoid a menu inside a menu.
+        if (actions.length === 1 && actions[0].matches('.generic-menu') && actions[0].querySelector('[data-common-panel-menu-toggle]')) {
+            const viewMenu = actions[0];
+            viewMenu.classList.remove('generic-menu--expanded-mobile');
+            const panel = viewMenu.querySelector('.generic-menu-panel');
+            panel.hidden = true;
+            panel.setAttribute('role', 'menu');
+            panel.querySelectorAll('button').forEach(function (button) { button.setAttribute('role', 'menuitem'); });
+            viewMenu.querySelector('.generic-menu-toggle').setAttribute('aria-expanded', 'false');
+            host.dataset.omoHeaderActionsReady = '1';
+            return;
+        }
+
         omoMobileHeaderMenuSequence += 1;
         const menuId = 'omo-mobile-header-actions-' + String(omoMobileHeaderMenuSequence);
         const toggle = document.createElement('button');
@@ -143,7 +171,7 @@ function omoInitMobileHeaderMenus(container) {
         toggle.setAttribute('aria-label', 'Actions');
         toggle.setAttribute('aria-controls', menuId);
         toggle.setAttribute('aria-expanded', 'false');
-        toggle.innerHTML = '<span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span>';
+        toggle.textContent = '\u22ee';
 
         const menu = document.createElement('div');
         menu.id = menuId;
@@ -1981,6 +2009,7 @@ function closeAllDrawers(removeAfterClose = false) {
     if (!omoConfirmDiscardChanges()) {
         return;
     }
+    if (window.commonPanelViewActions) window.commonPanelViewActions.exit();
     $('.drawer.open').each(function () {
         const drawer = $(this);
 
@@ -3100,6 +3129,7 @@ function omoEnsureExternalPanelDrawer() {
         drawer.hidden = true;
         drawer.className = 'omo-overlay-drawer omo-external-panel-drawer';
         drawer.setAttribute('data-omo-external-panel-drawer', '1');
+        const closeLabel = String((window.omoConfig && window.omoConfig.drawerCloseLabel) || 'Fermer');
         drawer.innerHTML = ''
             + '<div class="omo-overlay-drawer__backdrop" data-omo-external-panel-drawer-close="1"></div>'
             + '<div class="omo-overlay-drawer__panel">'
@@ -3109,7 +3139,7 @@ function omoEnsureExternalPanelDrawer() {
             + '      <p class="omo-overlay-drawer__description" data-omo-external-panel-drawer-description hidden></p>'
             + '    </div>'
             + '    <div class="generic-drawer-header__actions">'
-            + '      <button type="button" class="omo-overlay-drawer__close generic-action-button generic-action-button--secondary" data-omo-external-panel-drawer-close="1">Fermer</button>'
+            + '      <button type="button" class="omo-overlay-drawer__close generic-action-button generic-action-button--secondary generic-action-button--icon-only generic-action-button--close" data-omo-external-panel-drawer-close="1"></button>'
             + '    </div>'
             + '  </div>'
             + '  <div class="omo-overlay-drawer__body" data-omo-external-panel-drawer-body></div>'
@@ -3120,6 +3150,10 @@ function omoEnsureExternalPanelDrawer() {
             + '</button>';
 
         drawer.querySelectorAll('[data-omo-external-panel-drawer-close="1"]').forEach(function (button) {
+            if (button.tagName === 'BUTTON') {
+                button.setAttribute('aria-label', closeLabel);
+                button.setAttribute('title', closeLabel);
+            }
             button.addEventListener('click', function () {
                 omoCloseExternalPanelDrawer();
             });

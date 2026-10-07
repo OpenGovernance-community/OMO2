@@ -65,10 +65,11 @@
 		}
 		
 	// Charge le compte avec cet ID
-	$user=new \dbObject\user();
-	$user->load(["code",$_GET["code"]]); // Chargement sur la base de l'email
+	$user=\dbObject\User::findByPasswordResetCode($_GET['code'] ?? null);
 	
-	if ($user->get("id")>0 && $user->get("codeexpiration")!=null && $user->get("codeexpiration")>new \DateTime()) {
+	if ($user) {
+		// The form sends the original token; only its hash is stored in the account.
+		$user->set('code', $_GET['code']);
 		
 		// Affiche un texte d'intro selon la situation
 		if ($user->get("password")!=null) {
@@ -77,6 +78,7 @@
 				$intro="<p>Veuillez définir un nouveau mot de passe, qui remplaçera le précédent. Si vous n'êtes pas l'auteur de cette demande de réinitialisation, ignorez simplement cette demande et connectez-vous comme normalement.</p>";
 				$btntxt="Valider le nouveau mot de passe";
 				$params=array(
+					"allowProtectedFields" => true,
 					"fields" => array(array("code",null,true),array("email",null,true),"motdepasse"),
 					"buttons" => false,
 					"action" => "/ajax/createaccount.php",
@@ -87,7 +89,8 @@
 				$intro="<p>Veuillez compléter les informations suivantes pour finaliser la création de votre compte.</p>";
 				$btntxt="Créer le compte";
 				$params=array(
-					"fields" => array(array("code",null,true),"username","firstname","lastname","email","motdepasse"),
+					"allowProtectedFields" => true,
+					"fields" => array(array("code",null,true),"username","firstname","lastname",array("email",null,true),"motdepasse"),
 					"buttons" => false,
 					"action" => "/ajax/createaccount.php",
 					"success" => "/license.php"

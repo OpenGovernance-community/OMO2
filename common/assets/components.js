@@ -1036,11 +1036,13 @@
     }
 
     var expandedMenuMedia = window.matchMedia('(max-width: 768px)');
+    var expandedHeaderMenuMedia = window.matchMedia('(max-width: 1024px)');
 
     // Reset a responsive header menu while retaining its inline mobile actions.
     function resetExpandedMenu(menu) {
         if (!menu || !menu.classList.contains('generic-menu--expanded-mobile')) { return false; }
-        var expanded = expandedMenuMedia.matches;
+        var expanded = expandedMenuMedia.matches || (expandedHeaderMenuMedia.matches
+            && menu.parentElement && menu.parentElement.classList.contains('generic-menu-panel--compact-mobile'));
         var panel = menu.querySelector('.generic-menu-panel');
         var toggle = menu.querySelector('.generic-menu-toggle');
         menu.classList.remove('is-open');
@@ -1056,9 +1058,11 @@
         return expanded;
     }
 
-    expandedMenuMedia.addEventListener('change', function () {
+    function resetExpandedMenus() {
         document.querySelectorAll('.generic-menu--expanded-mobile').forEach(resetExpandedMenu);
-    });
+    }
+    expandedMenuMedia.addEventListener('change', resetExpandedMenus);
+    expandedHeaderMenuMedia.addEventListener('change', resetExpandedMenus);
     window.resetGenericExpandedMenu = resetExpandedMenu;
 
     function initGenericComponents(root) {

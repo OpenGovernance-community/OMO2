@@ -279,6 +279,12 @@ function commonRenderTopbar(array $options = [])
             'markReadUrl' => (string)($options['notifications']['markReadUrl'] ?? ''),
             'csrfToken' => (string)($options['notifications']['csrfToken'] ?? ''),
         ],
+        'mail' => [
+            'enabled' => !empty($options['mail']['enabled']),
+            'buttonLabel' => (string)($options['mail']['buttonLabel'] ?? 'Mail'),
+            'title' => (string)($options['mail']['title'] ?? 'E-mails envoyes'),
+            'url' => (string)($options['mail']['url'] ?? ''),
+        ],
         'organizationLevel' => [
             'enabled' => !empty($options['organizationLevel']['enabled']),
             'label' => (string)($options['organizationLevel']['label'] ?? ''),
@@ -627,6 +633,15 @@ function commonRenderTopbar(array $options = [])
         </form>
         <?php endif; ?>
 
+        <?php if (!empty($config['mail']['enabled'])): ?>
+        <div class="common-topbar__menu-wrap">
+        <button type="button" class="common-topbar__action common-topbar__action--square common-topbar__action--icon-only" data-topbar-mail-url="<?= htmlspecialchars($config['mail']['url'], ENT_QUOTES, 'UTF-8') ?>" aria-haspopup="dialog" aria-label="<?= htmlspecialchars($config['mail']['title'], ENT_QUOTES, 'UTF-8') ?>" title="<?= htmlspecialchars($config['mail']['title'], ENT_QUOTES, 'UTF-8') ?>">
+            <span class="common-topbar__action-icon" aria-hidden="true"><img src="<?= commonAssetUrl('/common/assets/icon-topbar-mail.png') ?>" alt="" class="common-topbar__icon-image black-icon"></span>
+            <span class="generic-visually-hidden"><?= htmlspecialchars($config['mail']['buttonLabel']) ?></span>
+        </button>
+        </div>
+        <?php endif; ?>
+
         <?php if (!empty($config['notifications']['enabled'])): ?>
         <div class="common-topbar__menu-wrap common-topbar__menu-wrap--panel">
             <button type="button" class="common-topbar__action common-topbar__action--square common-topbar__action--icon-only common-topbar__notification-button" data-topbar-menu-trigger="notifications" aria-label="<?= htmlspecialchars($config['notifications']['buttonLabel']) ?>" title="<?= htmlspecialchars($config['notifications']['buttonLabel']) ?>">
@@ -870,7 +885,7 @@ function commonRenderTopbar(array $options = [])
 
 <script src="<?= commonAssetUrl('/common/drawer/subdrawer.js') ?>"></script>
 <script>
-window.commonTopbarConfig = <?= json_encode($config, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+window.commonTopbarConfig = <?= json_encode($config, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
 </script>
 <?php
 }

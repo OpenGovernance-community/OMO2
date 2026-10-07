@@ -257,10 +257,11 @@ $omoHolonTemplateTexts = [
                                     <input type="text" name="name" id="omo-template-name" maxlength="255" required>
                                 </label>
 
-                                <?php if ($propertiesOnly): ?>
+                                <?php if ($isHolonDefinitionMode): ?>
                                 <label class="omo-field">
                                     <span><?= omoHolonTemplateEscape(omoHolonTemplateT('parameters.holon_templates.field.full_name')) ?><?php if ($propertiesOnly): ?> <img src="/img/cadenas.png" class="black-icon" width="14" height="14" alt="<?= omoHolonTemplateEscape(omoHolonTemplateT('parameters.holon_templates.field.edit_denied')) ?>" title="<?= omoHolonTemplateEscape(omoHolonTemplateT('parameters.holon_templates.field.edit_denied')) ?>"><?php endif; ?></span>
-                                    <input type="text" value="<?= omoHolonTemplateEscape((string)$rootHolon->get('nomcomplet')) ?>" readonly>
+                                    <input type="text" name="fullName" id="omo-template-full-name" maxlength="255">
+                                    <small class="generic-help-text"><?= omoHolonTemplateEscape(omoHolonTemplateT('parameters.holon_templates.field.full_name_help')) ?></small>
                                 </label>
                                 <?php endif; ?>
 

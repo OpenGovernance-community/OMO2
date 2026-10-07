@@ -231,6 +231,12 @@
 			return (bool)$this->getParameter('isAdmin');
 		}
 
+		public function loadProfileInput(array $input): void
+		{
+			if (isset($input['image']) && !in_array($input['image'], ['newimage', '[object File]', '', $this->get('image')], true)) unset($input['image']);
+			$this->loadFromArray(array_intersect_key($input, array_flip(['username', 'phone', 'presentation', 'image'])));
+		}
+
 		public function setOrganizationAdmin($isAdmin)
 		{
 			$parameters = json_decode((string)$this->get('parameters'), true);

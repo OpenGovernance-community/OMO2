@@ -5,6 +5,7 @@ namespace dbObject {
     class DbObject
     {
         public static array $records = [];
+        public static int $fetchCount = 0;
         protected array $fields = [];
         protected int $id = 0;
         public function get($field) { return $this->fields[$field] ?? null; }
@@ -18,7 +19,7 @@ namespace dbObject {
             return true;
         }
         public function save() { return ['status' => true]; }
-        public static function fetchAll($sql, $params = []): array { return [['id' => 1], ['id' => 2]]; }
+        public static function fetchAll($sql, $params = []): array { self::$fetchCount++; return [['id' => 1], ['id' => 2]]; }
     }
     class ArrayDbObject extends \ArrayObject {}
     class ArrayAuthority extends \ArrayObject
@@ -105,6 +106,19 @@ namespace {
     policyAssert(count($rules) === 1 && $rules[0]->getId() === 1, 'Local without a structure lists directly attached organization rules.');
     $rules->loadForPolicyContexts(42, [], false, 'global');
     policyAssert(count($rules) === 2, 'Global needs no selected holon and includes the whole organization.');
+    $organizationRules = new \dbObject\ArrayRule();
+    $fetchCount = \dbObject\DbObject::$fetchCount;
+    $rules->loadForPolicyContexts(42, [9], false, 'local', $organizationRules);
+    policyAssert(count($rules) === 1 && $rules[0]->getId() === 2, 'Retaining the global set must preserve local filtering.');
+    policyAssert(count($organizationRules) === 2 && $rules[0] === $organizationRules[1],
+        'The global collection must retain all rules and reuse loaded objects.');
+    policyAssert(\dbObject\DbObject::$fetchCount === $fetchCount + 1, 'Retaining global rules must not issue a second query.');
+    $rules->loadForPolicyContexts(42, [9], false, 'contextual', $organizationRules);
+    policyAssert(count($rules) === 1 && count($organizationRules) === 2, 'Contextual filtering must retain the global set.');
+    $rules->loadForPolicyContexts(42, [], true, 'global', $organizationRules);
+    policyAssert(count($rules) === 2 && count($organizationRules) === 2, 'Repeated loads must reset both collections.');
+    $rules->loadForPolicyContexts(0, [], true, 'global', $organizationRules);
+    policyAssert(count($rules) === 0 && count($organizationRules) === 0, 'Invalid organization must clear both collections.');
     foreach (['children', 'descendants', 'unknown'] as $oldScope) {
         policyAssert(\dbObject\ArrayRule::normalizeViewScope($oldScope) === 'contextual', 'Retired or invalid filters fall back to contextual.');
     }

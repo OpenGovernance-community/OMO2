@@ -2123,6 +2123,11 @@ body {
     display: contents;
 }
 
+.omo-panel-view__header [data-omo-header-actions] {
+    gap: var(--param-panel-actions-gap, 12px);
+    justify-content: flex-end;
+}
+
 .omo-panel-view__mobile-actions-toggle {
     display: none;
 }
@@ -2254,7 +2259,7 @@ body {
 
 .omo-policy__rule-card {
     --param-section-gap: var(--generic-space-2);
-    margin-inline: var(--generic-container-gap);
+    margin-inline: var(--generic-list-gutter);
     border: 0;
     box-shadow: none;
 }
@@ -2702,14 +2707,8 @@ body {
         color: var(--color-text, #1f2937);
         cursor: pointer;
         box-sizing: border-box;
-    }
-
-    .omo-panel-view__mobile-actions-toggle span {
-        display: block;
-        width: 16px;
-        height: 2px;
-        border-radius: 999px;
-        background: currentColor;
+        font-size: 22px;
+        line-height: 1;
     }
 
     .omo-panel-view__mobile-actions-menu {
@@ -2720,7 +2719,7 @@ body {
         display: none;
         min-width: min(220px, calc(100vw - 24px));
         max-width: min(280px, calc(100vw - 24px));
-        gap: 6px;
+        gap: var(--param-panel-actions-gap, 12px);
         padding: 6px;
         border: 1px solid var(--color-border, #d1d5db);
         border-radius: var(--radius-md);
@@ -3279,6 +3278,20 @@ body {
     --omo-card-max: 240px;
     grid-template-columns: repeat(auto-fill, minmax(var(--omo-card-min), var(--omo-card-max)));
     justify-content: start;
+}
+
+/* Shared columns keep incomplete rows aligned, while cards retain their bounds. */
+.omo-card-grid--bounded {
+    --param-card-min: 220px;
+    --param-card-max: 240px;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--param-card-min)), 1fr));
+    align-items: stretch;
+}
+
+.omo-card-grid--bounded > .omo-card {
+    width: 100%;
+    max-width: min(100%, var(--param-card-max));
+    box-sizing: border-box;
 }
 
 .omo-card {

@@ -13,6 +13,7 @@ $before = $_SESSION; $items = mcpFixtures(); $smtp = null; $pipes = [];
 $capture = tempnam(sys_get_temp_dir(), 'omo-mail-sink-');
 try {
     $_ENV['MCP_PUBLIC_URL'] = 'https://mcp.example.invalid/mcp';
+    $_ENV['AUTH_PUBLIC_URL'] = '';
     $_ENV['MAIL_USER'] = ''; $_ENV['MAIL_FROM'] = ''; $GLOBALS['mailUser'] = '';
     $oid = (int)$items['org']->getId(); $uid = (int)$items['user']->getId(); $hid = (int)$items['role']->getId();
     $_SESSION = ['currentUser' => $uid, 'currentOrganization' => $oid];
@@ -77,7 +78,21 @@ try {
     $decision = ObjectAudience::resolve($oid, 'decision', (int)$items['decision']->getId());
     mcpCheck(count($decision['members']) === 1 && !str_contains(json_encode($decision['members']), 'access_token'), 'Decision members projected without tokens or votes');
     $_SESSION['currentUser'] = (int)$items['outsider']->getId();
-    objectMailDenied(fn () => ObjectAudience::resolve($oid, 'decision', (int)$items['decision']->getId()), 'Decision audience requires real management permission');
+    objectMailDenied(fn () => ObjectAudience::resolve($oid, 'decision', (int)$items['decision']->getId()), 'Sending does not disclose an inaccessible draft decision');
+    $items['visible_decision'] = mcpFixture(DecisionProcess::class, ['IDorganization' => $oid, 'IDholon' => $hid, 'IDuser' => $uid,
+        'title' => 'Visible decision', 'decision_type' => 'decision', 'status' => DecisionProcess::STATUS_SCHEDULED,
+        'evaluation_method' => 'simple_vote', 'visibility_type' => 'organization']);
+    $items['visible_participant'] = mcpFixture(DecisionParticipant::class, ['IDdecision_process' => $items['visible_decision']->getId(),
+        'IDuser' => $memberId, 'role' => 'participant', 'status' => 'active', 'active' => 1]);
+    $items['visible_guest'] = mcpFixture(DecisionParticipant::class, ['IDdecision_process' => $items['visible_decision']->getId(),
+        'email' => 'private-guest@example.invalid', 'display_name' => 'Private guest', 'role' => 'participant', 'status' => 'active', 'active' => 1]);
+    $visibleDecisionAudience = ObjectAudience::resolve($oid, 'decision', (int)$items['visible_decision']->getId());
+    mcpCheck($visibleDecisionAudience['can_send'] && count($visibleDecisionAudience['recipients']) === 1
+        && !str_contains(json_encode($visibleDecisionAudience), 'private-guest@example.invalid'),
+        'Ordinary members can contact visible decision colleagues without exposing external guests');
+    mcpCheck(ObjectAudience::resolve($oid, 'holon', $hid)['can_send'], 'An active member outside the holon can contact its colleagues');
+    mcpCheck(ObjectAudience::resolve($oid, 'project', (int)$items['project']->getId())['can_send'], 'An unassigned active member can contact project colleagues');
+    mcpCheck(ObjectAudience::resolve($oid, 'event', $eid)['can_send'], 'An uninvited active member can contact meeting colleagues');
     $viewerEvent = \dbObject\McpContent::read(['IDuser' => (int)$items['outsider']->getId(), 'IDorganization' => $oid], 'calendar', $eid, null, 0, 0, 12000);
     $viewerInvitees = $viewerEvent['record']['effective_invitees'];
     mcpCheck($viewerInvitees['total'] === 2 && !in_array(null, array_column($viewerInvitees['items'], 'user_id'), true)
@@ -91,6 +106,21 @@ try {
     $grant = McpOauthGrant::authenticate($tokens['access_token'], omoMcpPublicUrl());
     mcpCheck(McpOauthGrant::hasActiveCreationAuthorization($grant), 'Combined mail and document consent retains document creation');
     $args = ['object_type' => 'event', 'object_id' => $eid, 'subject' => 'Meeting message', 'message' => "Hello <script>test</script>\nSecond line", 'request_key' => 'test-mail-operation', 'audience_token' => $preview['audience_token']];
+    $selectedIds = ['user:' . $memberId, 'guest:' . hash('sha256', 'guest@example.invalid')];
+    $selectionArgs = array_replace($args, ['request_key' => 'native-selected-recipients']);
+    $selection = ObjectMail::enqueue($oid, $selectionArgs, null, $selectedIds);
+    $items['selection_mail'] = new ObjectMail(); $items['selection_mail']->load($selection['mail_id']);
+    $selectionRows = new \dbObject\ArrayObjectMailRecipient();
+    $selectionRows->load(['where' => [['field' => 'IDobject_mail', 'value' => $selection['mail_id']]]]);
+    $selectionEmails = []; foreach ($selectionRows as $row) $selectionEmails[] = $row->get('email');
+    sort($selectionEmails);
+    mcpCheck($selection['recipient_count'] === 2 && $selectionEmails === ['guest@example.invalid', 'work@example.invalid'], 'Native checkboxes queue only selected members and guests');
+    mcpCheck(ObjectMail::enqueue($oid, $selectionArgs, null, array_reverse($selectedIds))['replayed'], 'Selection order does not duplicate a retry');
+    objectMailDenied(fn () => ObjectMail::enqueue($oid, $selectionArgs, null, ['user:' . $uid]), 'A changed selection cannot reuse an existing send key');
+    foreach ([[], ['user:' . $memberId, 'user:' . $memberId], ['user:' . $items['outsider']->getId()], ['outside@example.invalid'], [1]] as $invalidIds) {
+        objectMailDenied(fn () => ObjectMail::enqueue($oid, array_replace($selectionArgs, ['request_key' => 'invalid-checkbox-selection']), null, $invalidIds), 'Empty, duplicated, unrelated or arbitrary recipients cannot become a full audience send');
+    }
+    objectMailDenied(fn () => ObjectMail::enqueue($oid, array_replace($selectionArgs, ['request_key' => 'stale-checkbox-audience', 'audience_token' => str_repeat('0', 64)]), null, $selectedIds), 'Native selection still checks the full displayed audience token');
     objectMailDenied(fn () => ObjectMail::enqueue($oid, $args, ['IDuser' => $uid, 'IDorganization' => $oid, 'scope' => OMO_MCP_SCOPE]), 'Read-only grant cannot send');
     objectMailDenied(fn () => ObjectMail::enqueue($oid, $args + ['emails' => ['outside@example.invalid']], $grant), 'Free recipient input denied');
     $result = ObjectMail::enqueue($oid, $args, $grant);
@@ -117,7 +147,8 @@ try {
     foreach ($captured as $message) {
         mcpCheck(count($message['recipients']) === 1 && !str_contains($message['data'], '\nBcc:') && !str_contains($message['data'], '\nCc:'), 'One recipient per delivery, no address leakage');
         mcpCheck(str_contains($message['data'], 'Reply-To:') && str_contains($message['data'], '&lt;script&gt;'), 'Authenticated reply-to and escaped plain text');
-        mcpCheck(str_contains($message['data'], 'From:') && str_contains($message['data'], (string)$items['user']->get('email')), 'A valid profile works with no MAIL_USER address');
+        mcpCheck(preg_match('/^From:.*<noreply@mcp\.example\.invalid>/m', $message['data']) === 1, 'Canonical configured domain supplies the technical sender without MAIL_USER');
+        mcpCheck(preg_match('/^Reply-To:.*' . preg_quote((string)$items['user']->get('email'), '/') . '/m', $message['data']) === 1, 'The member address belongs in Reply-To');
     }
     ObjectMail::enqueue($oid, $args, $grant); ObjectMail::processBatch(20, $result['mail_id']);
     mcpCheck(count(file($capture, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES)) === 2, 'Replay after SMTP success sends nothing');
@@ -173,10 +204,24 @@ try {
     mcpCheck(ObjectMail::status($oid, $large['mail_id'])['delivery']['skipped'] === 53, 'Deferred group deliveries also honor OAuth revocation');
     $storedGrant = new McpOauthGrant(); $storedGrant->load((int)$grant['id']);
     mcpCheck($storedGrant->delete(), 'Outbox cannot block OAuth client/account deletion');
+    $history = ObjectMail::getHistory($oid);
+    $historyById = array_column($history, null, 'id');
+    mcpCheck(isset($historyById[$result['mail_id']]) && $historyById[$result['mail_id']]['via_mcp'], 'MCP origin remains visible after OAuth grant deletion');
+    mcpCheck(isset($historyById[$selection['mail_id']]) && !$historyById[$selection['mail_id']]['via_mcp'], 'Native sends share history with a distinct origin');
+    mcpCheck($historyById[$result['mail_id']]['delivery']['sent'] === 2, 'History includes per-recipient delivery totals');
+    $mailDetail = ObjectMail::getHistoryDetail($oid, $result['mail_id']);
+    mcpCheck($mailDetail['mail']->get('subject') === 'Meeting message' && $mailDetail['mail']->get('message') === "Hello <script>test</script>\nSecond line"
+        && count($mailDetail['recipients']) === 3, 'Sender can retrieve immutable message and recipients after grant deletion');
+    objectMailDenied(fn () => ObjectMail::getHistoryDetail($oid + 1000000, $result['mail_id']), 'History detail cannot cross organizations');
     ObjectMail::processBatch(20, $deleted['mail_id']);
     mcpCheck(ObjectMail::status($oid, $deleted['mail_id'])['delivery']['skipped'] === 2, 'Deleted grant never converts queued MCP mail into native mail');
     $_SESSION['currentUser'] = $memberId;
     objectMailDenied(fn () => ObjectMail::status($oid, $result['mail_id']), 'Another member cannot inspect sender mail jobs');
+    mcpCheck(ObjectMail::getHistory($oid) === [], 'Another member cannot list the sender history');
+    objectMailDenied(fn () => ObjectMail::getHistoryDetail($oid, $result['mail_id']), 'Another member cannot retrieve a message by ID');
+    $_SESSION = [];
+    objectMailDenied(fn () => ObjectMail::getHistory($oid), 'Anonymous history access denied');
+    $_SESSION['currentUser'] = $memberId;
     mcpCheck(!$items['mail']->canViewDetail() && !$items['mail']->canEdit(), 'Outbox objects cannot be exposed or edited through generic object screens');
     echo "object_mail_test: OK\n";
 } finally {

@@ -417,7 +417,8 @@ $dashboardOrganizationModelLayout = $dashboardIsOrganizationHolon
     ? $organization->getDashboardOrganizationDefaultLayout()
     : null;
 $dashboardApplicationBaseTypeLayout = $scopeReferenceHolon instanceof Holon
-    ? ApplicationSetting::getDashboardBaseTypeDefaultLayoutForHolon($scopeReferenceHolon)
+    ? ($organization->getDashboardBaseTypeDefaultLayout((int)$scopeReferenceHolon->get('IDtypeholon'))
+        ?? ApplicationSetting::getDashboardBaseTypeDefaultLayoutForHolon($scopeReferenceHolon))
     : null;
 $dashboardGlobalLayout = ApplicationSetting::getDashboardGlobalDefaultLayout();
 $dashboardTemporaryLayout = $dashboardInterfaceLevel === Organization::INTERFACE_LEVEL_DISCOVERY && $currentUserId > 0
@@ -715,7 +716,7 @@ $dashboardMetricLabels = array(
                             </div>
                         <?php endif; ?>
                     </div>
-                    <button type="button" class="generic-action-button generic-action-button--compact generic-action-button--secondary" data-omo-dashboard-editor-close><?= omoApiEscape(t('personal_space.editor.close', [], $lang, $sourceLang)) ?></button>
+                    <button type="button" class="generic-action-button generic-action-button--compact generic-action-button--secondary generic-action-button--icon-only generic-action-button--close" data-omo-dashboard-editor-close title="<?= omoApiEscape(t('personal_space.editor.close', [], $lang, $sourceLang)) ?>" aria-label="<?= omoApiEscape(t('personal_space.editor.close', [], $lang, $sourceLang)) ?>"></button>
                 </div>
             </div>
             <div class="omo-overlay-drawer__body omo-dashboard-editor__body">

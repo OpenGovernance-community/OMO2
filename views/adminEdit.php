@@ -162,7 +162,7 @@ function adminEditResolveImageDisplaySize($object, $key) {
 }
 
 function adminEditLegacyEscape($value) {
-    return str_replace("'", "&apos;", (string)$value);
+    return htmlspecialchars((string)$value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
 function adminEditPlaceholderText($object, $key, ?array $translationBundle = null, ?array $translationSourceLang = null) {
@@ -490,7 +490,7 @@ function displayField($object, $key, $default = null, $filter = null, ?array $tr
             return $str;
             break;
         case "text" :
-            $str = $object->get($key);
+            $str = adminEditLegacyEscape($object->get($key));
             $tmp = "<textarea class='" . $class . "' name='" . $key . "' id='" . $key . "' style='width:100%'";
             if (isset($object::attributeLength()[$key])) {
                 $tmp .= "maxlength='" . $object::attributeLength()[$key] . "' onkeyup='countChar($(this), " . $object::attributeLength()[$key] . ")' onkeypress='countChar($(this), " . $object::attributeLength()[$key] . ")' >" . $str . "</textarea><div class='char_count'>" . htmlspecialchars(adminEditLengthText($object, $object::attributeLength()[$key], $translationBundle, $translationSourceLang), ENT_QUOTES, 'UTF-8') . "</div>";
@@ -500,7 +500,7 @@ function displayField($object, $key, $default = null, $filter = null, ?array $tr
 
             return $tmp;
         case "html" :
-            $str = $object->get($key);
+            $str = adminEditLegacyEscape($object->get($key));
             $editorProfiles = method_exists($object, 'attributeHtmlEditorProfiles') ? $object::attributeHtmlEditorProfiles() : array();
             $editorProfile = isset($editorProfiles[$key]) ? trim((string)$editorProfiles[$key]) : '';
             $profileAttribute = $editorProfile !== ''
@@ -516,7 +516,7 @@ function displayField($object, $key, $default = null, $filter = null, ?array $tr
         case "image" :
             list($displayWidth, $displayHeight) = adminEditResolveImageDisplaySize($object, $key);
             $output = "<input name='" . $key . "' id='" . $key . "' type='hidden' value='" . str_replace("'", "&apos;", (string)($object->get($key) ?? "")) . "'>";
-            $output .= "<input class='" . $class . "' name='" . $key . "_file' id='" . $key . "_file' type='file' onchange='previewFile(\"" . $key . "\",this)'><br>";
+            $output .= "<input class='" . $class . "' name='" . $key . "_file' id='" . $key . "_file' type='file' onchange='document.getElementById(\"" . $key . "\").value=\"newimage\";previewFile(\"" . $key . "\",this)'><br>";
             $output .= "<div id='img_" . $key . "'" . (trim((string)$object->get($key)) === '' ? " hidden" : "") . " style='width:" . $displayWidth . "px; height:" . $displayHeight . "px; border:1px solid var(--color-border, #d1d5db); background:url(" . $object->get($key) . "); background-size:cover; background-position:center center'>";
             $output .= "<div id='drag_img_" . $key . "' class='drag_img' data='#img_" . $key . "' style='width:100%; height:100%;'>";
             $output .= "</div>";
@@ -620,6 +620,9 @@ if (isset($params["action"]) && $params["action"]) {
     echo " action='" . $params["action"] . "'";
 }
 echo ">";
+if (function_exists('commonCsrfToken') && session_status() === PHP_SESSION_ACTIVE) {
+    echo "<input type='hidden' name='_csrf' value='" . htmlspecialchars(commonCsrfToken(), ENT_QUOTES, 'UTF-8') . "'>";
+}
 echo "<input type='hidden' name='MAX_FILE_SIZE' value='300000000' />";
 
 // Navigation buttons
@@ -655,7 +658,9 @@ if (!empty($params['sections']) && is_array($params['sections'])) {
             if ($field === 'id') $id = true;
             $fieldId = htmlspecialchars($field, ENT_QUOTES, 'UTF-8');
             $heading = adminEditFieldHeading($this, $field, $adminEditTranslationBundle, $adminEditTranslationSourceLang);
-            $widget = displayField($this, $field, null, $params['filter'][$field] ?? null, $adminEditTranslationBundle, $adminEditTranslationSourceLang, !empty($params['compact']));
+            $widget = in_array($field, $params['readOnlyFields'] ?? [], true)
+                ? htmlspecialchars((string)$this->get($field), ENT_QUOTES, 'UTF-8')
+                : displayField($this, $field, null, $params['filter'][$field] ?? null, $adminEditTranslationBundle, $adminEditTranslationSourceLang, !empty($params['compact']));
             echo "<div class='generic-form-field' id='row_" . $fieldId . "'>";
             if ($this->getFieldType($field) === 'boolean') {
                 echo "<label class='generic-checkbox'>" . $widget . "<span class='generic-form-label'>" . $heading . "</span></label>";

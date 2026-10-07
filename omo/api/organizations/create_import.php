@@ -21,7 +21,7 @@ if (!in_array($memberInvitationEmailChoice, array('send', 'skip'), true)) {
 
 if (!isset($_FILES['omo1_export_file']) || !is_array($_FILES['omo1_export_file'])) {
     http_response_code(400);
-    echo json_encode(array('status' => false, 'message' => 'Aucun fichier JSON n a ete transmis.'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    echo json_encode(array('status' => false, 'message' => 'Aucun fichier ZIP ou JSON n a ete transmis.'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
 
@@ -32,20 +32,14 @@ if ((int)($upload['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
     exit;
 }
 
-$rawPayload = @file_get_contents((string)($upload['tmp_name'] ?? ''));
-if (!is_string($rawPayload) || trim($rawPayload) === '') {
-    http_response_code(400);
-    echo json_encode(array('status' => false, 'message' => 'Le fichier d import est vide.'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+try {
+    $archive = \dbObject\OrganizationArchive::read((string)($upload['tmp_name'] ?? ''));
+    $payload = $archive['payload'];
+} catch (\Throwable $exception) {
+    http_response_code(422);
+    echo json_encode(['status' => false, 'message' => 'Import invalide : ' . $exception->getMessage()], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
-
-$payload = json_decode($rawPayload, true);
-if (!is_array($payload)) {
-    http_response_code(400);
-    echo json_encode(array('status' => false, 'message' => 'Le fichier d import n est pas un JSON valide.'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-    exit;
-}
-
 $availableModules = array('structure', 'rules', 'members', 'documents', 'projects', 'tasks', 'checklists', 'indicators', 'calendar', 'pv');
 $requestedModules = array();
 $postedModules = isset($_POST['modules']) && is_array($_POST['modules']) ? $_POST['modules'] : array();
@@ -56,6 +50,7 @@ foreach ($availableModules as $module) {
 $organizationName = trim((string)($_POST['organization_name'] ?? ''));
 $importOptions = array(
     'sendMemberInvitationEmails' => $memberInvitationEmailChoice === 'send',
+    'roleplay' => ($_POST['roleplay'] ?? '') === '1',
 );
 $templateCalibration = array(
     'templateRootHolonId' => (int)($_POST['organization_template_id'] ?? 0),
@@ -123,6 +118,14 @@ if (
     echo json_encode(array('status' => false, 'message' => 'Selectionnez le modele d organisation utilise pour les correspondances.'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
+try {
+    $archive = \dbObject\OrganizationArchive::read((string)$upload['tmp_name'], true);
+    $payload = $archive['payload'];
+} catch (\Throwable $exception) {
+    http_response_code(422);
+    echo json_encode(['status' => false, 'message' => $exception->getMessage()], JSON_UNESCAPED_UNICODE);
+    exit;
+}
 $result = \dbObject\Organization::importOmo1ExportAsNewOrganization(
     $payload,
     $requestedModules,
@@ -133,6 +136,7 @@ $result = \dbObject\Organization::importOmo1ExportAsNewOrganization(
 );
 
 if (empty($result['status']) || !($result['organization'] ?? null) instanceof \dbObject\Organization) {
+    \dbObject\OrganizationArchive::cleanup($archive['files']);
     http_response_code(422);
     $journalReference = trim((string)($result['importJournalReference'] ?? ''));
     $message = (string)($result['message'] ?? 'L import de la nouvelle organisation a echoue.');

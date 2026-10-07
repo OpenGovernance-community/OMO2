@@ -1002,7 +1002,7 @@
     flex-direction: column;
     min-height: 0;
     margin: 0;
-    padding: 4px 2px 8px;
+    padding-block: 4px 8px;
     gap: 14px;
     overflow-y: auto;
 }
@@ -1015,6 +1015,7 @@
 .omo-projects__list-group-items {
     display: grid;
     gap: 8px;
+    margin-inline: var(--generic-list-gutter);
 }
 
 .omo-project-list-item {

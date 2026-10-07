@@ -11,7 +11,7 @@ if (!isset($dashboardRuleItems, $dashboardRuleCounts, $dashboardMetricLabels)) {
 <div class="omo-personal-space__item-list omo-dashboard-module__list">
     <?php foreach ($dashboardRuleItems as $ruleItem): ?>
         <button type="button" class="omo-personal-space__item-button" data-omo-dashboard-filter-item="<?= omoApiEscape(implode(' ', $ruleItem['filters'])) ?>" data-omo-personal-space-route-token="policy"<?= $dashboardModuleForcedOpenScope !== '' ? ' data-omo-personal-space-forced-scope="' . omoApiEscape($dashboardModuleForcedOpenScope) . '"' : '' ?>>
-            <span class="omo-personal-space__item-title"><?= omoApiEscape($ruleItem['title']) ?></span>
+            <span class="omo-personal-space__item-title"><?= omoApiEscape($ruleItem['number'] . '. ' . $ruleItem['title']) ?></span>
             <span class="omo-personal-space__item-meta"><?= omoApiEscape(implode(' · ', array_map(static function ($filter) use ($dashboardMetricLabels): string { return (string)($dashboardMetricLabels['rules'][$filter] ?? $filter); }, $ruleItem['filters']))) ?></span>
         </button>
     <?php endforeach; ?>

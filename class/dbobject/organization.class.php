@@ -45,7 +45,7 @@
 			return [
 				'id' => 'ID',
 				'name' => 'Nom',
-				'shortname' => 'Nom court',
+				'shortname' => 'Identifiant URL',
 				'domain' => 'Domaine',
 				'interface_level' => 'Niveau d utilisation',
 				'isModel' => 'Modele public',
@@ -60,7 +60,7 @@
 		public static function attributeDescriptions() {
 			return [
 				'name' => 'Nom complet de l\'organisation',
-				'shortname' => 'Nom abrege utilise dans l\'interface et dans l\'URL de l\'organisation',
+				'shortname' => 'Identifiant utilise dans l\'URL de l\'organisation',
 				'domain' => 'Nom de domaine principal de l\'organisation',
 				'interface_level' => 'Niveau global de complexite de l interface, utilise pour afficher progressivement les options du logiciel.',
 				'latlong' => 'Position geographique facultative de l organisation pour l affichage sur une carte.',
@@ -287,6 +287,25 @@
 		public function setParametersArray(array $parameters): void
 		{
 			$this->set('parameters', $parameters);
+		}
+
+		public function getTransferConfigurationParameters(): array
+		{
+			return array_intersect_key($this->getLexiconParameters(), array_flip(OrganizationTransferConfiguration::ORGANIZATION_KEYS));
+		}
+
+		public function getApplicationViewBaseTypeDefault($applicationKey, $typeId): ?array
+		{
+			$parameters = $this->getParametersArray();
+			$views = UserHolon::normalizeApplicationViewBaseTypeDefaults($parameters[UserHolon::APPLICATION_VIEW_BASE_TYPE_DEFAULTS_PARAMETER] ?? []);
+			return $views[UserHolon::makeDashboardBaseTypeKey($typeId)][UserHolon::normalizeApplicationViewKey($applicationKey)] ?? null;
+		}
+
+		public function getDashboardBaseTypeDefaultLayout($typeId): ?array
+		{
+			$parameters = $this->getParametersArray();
+			$layouts = UserHolon::normalizeDashboardTemplateLayouts($parameters[UserHolon::DASHBOARD_BASE_TYPE_LAYOUTS_PARAMETER] ?? []);
+			return $layouts[UserHolon::makeDashboardBaseTypeKey($typeId)] ?? null;
 		}
 
 		public static function getDefaultStructureDisplaySettings(): array
@@ -1862,7 +1881,7 @@
 			if (!preg_match('/^[A-Za-z0-9_-]+$/', $value)) {
 				return array(
 					'status' => false,
-					'text' => 'Le nom court ne peut contenir que des lettres, chiffres, tirets et underscores.',
+					'text' => 'L identifiant URL ne peut contenir que des lettres, chiffres, tirets et underscores.',
 				);
 			}
 
@@ -1882,7 +1901,7 @@
 			if ($existing !== false) {
 				return array(
 					'status' => false,
-					'text' => 'Ce nom court est deja utilise par une autre organisation. Choisissez-en un autre.',
+					'text' => 'Cet identifiant URL est deja utilise par une autre organisation. Choisissez-en un autre.',
 				);
 			}
 
@@ -1919,7 +1938,7 @@
 					? $shortnameValidation
 					: array(
 						'status' => false,
-						'text' => "Le nom court de l'organisation est invalide.",
+						'text' => "L identifiant URL de l'organisation est invalide.",
 					);
 			}
 
@@ -3980,6 +3999,9 @@
 			$targetHolon->set('color_unassigned', trim((string)($record['unassignedColor'] ?? '')) !== '' ? $record['unassignedColor'] : null);
 			$targetHolon->set('icon', trim((string)($record['icon'] ?? '')) !== '' ? $record['icon'] : null);
 			$targetHolon->set('accesskey', trim((string)($record['accessKey'] ?? '')) !== '' ? $record['accessKey'] : null);
+			if (is_array($record['viewDefaults'] ?? null)) {
+				OrganizationTransferConfiguration::setHolonDefaults($targetHolon, $record['viewDefaults']);
+			}
 
 			if ($isOrganizationRoot) {
 				$targetHolon->set('IDholon_parent', null);
@@ -4046,6 +4068,11 @@
 
 			if (isset($payload['organization']) && is_array($payload['organization'])) {
 				$sanitizeRecord($payload['organization'], array('logo', 'banner'));
+			}
+			foreach ($payload['modules']['members']['records'] ?? [] as $index => $member) {
+				if (!is_array($member)) { continue; }
+				$sanitizeRecord($member, ['image']);
+				$payload['modules']['members']['records'][$index] = $member;
 			}
 
 			$sanitizeHolons = null;
@@ -4736,6 +4763,7 @@
 				$targetNode->set('color_unassigned', $sourceNode->get('color_unassigned') ?: null);
 				$targetNode->set('icon', $sourceNode->get('icon') ?: null);
 				$targetNode->set('accesskey', $sourceNode->get('accesskey') ?: null);
+				OrganizationTransferConfiguration::setHolonDefaults($targetNode, OrganizationTransferConfiguration::holonDefaults($sourceNode));
 				$targetNode->save();
 				if ((int)$targetNode->getId() <= 0) {
 					throw new \RuntimeException("Un template du modele selectionne n'a pas pu etre copie.");
@@ -4823,6 +4851,17 @@
 			$clonedTemplates = count($mappings) > 0
 				? $this->cloneImportTemplateNodes($templateRootHolon, $targetRootHolon, $userId)
 				: array('targetNodesBySourceId' => array(), 'propertyIdMap' => array());
+			if (count($mappings) > 0) {
+				$model = new self();
+				if (!$model->load((int)$templateRootHolon->get('IDorganization'))) {
+					throw new \RuntimeException('La configuration du modele est introuvable.');
+				}
+				OrganizationTransferConfiguration::apply($this, OrganizationTransferConfiguration::capture($model));
+				OrganizationTransferConfiguration::setHolonDefaults($targetRootHolon, OrganizationTransferConfiguration::holonDefaults($templateRootHolon));
+				if (empty($targetRootHolon->save()['status'])) {
+					throw new \RuntimeException('Impossible de copier les affichages du modele.');
+				}
+			}
 			$targetTemplateNodes = $clonedTemplates['targetNodesBySourceId'];
 			$clonedPropertyIdMap = isset($clonedTemplates['propertyIdMap']) && is_array($clonedTemplates['propertyIdMap'])
 				? $clonedTemplates['propertyIdMap']
@@ -5113,6 +5152,9 @@
 				$pdo->beginTransaction();
 				$settings = is_array($payload['propertyTypes'] ?? null) ? $payload['propertyTypes'] : array_intersect_key(self::getDefaultLexicon(), array_flip(Property::TYPES));
 				$this->setPropertyTypeSettings($settings);
+				if (is_array($payload['configuration'] ?? null)) {
+					OrganizationTransferConfiguration::apply($this, $payload['configuration']);
+				}
 				if (empty($this->save()['status'])) throw new \RuntimeException('Impossible d importer les types de proprietes.');
 
 				$targetRootHolon = $this->createStructuralRootHolon($userId);
@@ -5213,6 +5255,8 @@
 					if ($templateSourceId > 0 && !empty($mappedSourceTemplateIds[$templateSourceId])) {
 						$mappedTemplate = $targetHolonsBySourceId[$templateSourceId] ?? null;
 						if ($mappedTemplate instanceof \dbObject\Holon) {
+							// Local archive defaults must not hide the newly selected model.
+							OrganizationTransferConfiguration::setHolonDefaults($targetHolon, []);
 							$mappedTemplateName = trim((string)$mappedTemplate->getDisplayName());
 							if ($mappedTemplateName !== '' && (bool)$mappedTemplate->getEffectiveTemplateBooleanField('lockedname')) {
 								$targetHolon->set('name', $mappedTemplateName);
@@ -5354,6 +5398,8 @@
 					'templatePropertyIdMaps' => $templatePropertyIdMaps,
 					'templateExcludedPropertyIds' => $templateExcludedPropertyIds,
 					'authorityTemplateApplied' => !empty($calibrationResult['authorityTemplateApplied']),
+					'applicationConfigurationImported' => is_array($payload['configuration']['applications'] ?? null)
+						|| count($mappedSourceTemplateIds) > 0,
 					'warnings' => $calibrationWarnings,
 				);
 			} catch (\Throwable $exception) {
@@ -7178,6 +7224,10 @@
 
 		protected static function omo1ImportIndicatorRecurrence(array $record)
 		{
+			if (array_key_exists('measurementFrequency', $record)) {
+				$frequency = \dbObject\StatIndicator::normalizeMeasurementFrequency($record['measurementFrequency']);
+				return [$frequency, \dbObject\StatIndicator::normalizeMeasurementSchedule($frequency, $record['measurementSchedule'] ?? null)];
+			}
 			$legacyRecurrence = isset($record['legacyRecurrence']) && is_array($record['legacyRecurrence'])
 				? $record['legacyRecurrence']
 				: array();
@@ -7213,7 +7263,7 @@
 			return array($frequency, $schedule);
 		}
 
-		protected static function omo1ImportIndicators(\dbObject\Organization $organization, array $records, $actorUserId, array $userIdMap, array $holonIdMap, array &$stats)
+		protected static function omo1ImportIndicators(\dbObject\Organization $organization, array $records, $actorUserId, array $userIdMap, array $holonIdMap, array &$stats, array &$indicatorIdMap = [])
 		{
 			foreach ($records as $record) {
 				if (!is_array($record) || (int)($record['sourceId'] ?? 0) <= 0) {
@@ -7234,6 +7284,10 @@
 				$indicator->set('name', $name !== '' ? $name : 'Indicateur OMO 1 #' . (int)$record['sourceId']);
 				$indicator->set('description', $record['description'] ?? null);
 				$indicator->set('reference_type', \dbObject\StatIndicator::REFERENCE_NONE);
+				foreach (['sourceUrl' => 'source_url', 'referenceType' => 'reference_type', 'referenceScale' => 'reference_scale', 'chartMinValue' => 'chart_min_value', 'showCumulative' => 'show_cumulative'] as $source => $field) {
+					if (array_key_exists($source, $record)) { $indicator->set($field, $record[$source]); }
+				}
+				$indicator->set('IDuser_responsible', (int)($userIdMap[(int)($record['sourceResponsibleUserId'] ?? 0)] ?? 0) ?: null);
 				list($measurementFrequency, $measurementSchedule) = self::omo1ImportIndicatorRecurrence($record);
 				$indicator->set('measurement_frequency', $measurementFrequency);
 				$indicator->set('measurement_schedule', $measurementSchedule);
@@ -7244,6 +7298,8 @@
 				$indicator->set('active', !array_key_exists('active', $record) || (bool)$record['active']);
 				$indicator->set('archived_at', self::omo1ImportDate($record['archivedAt'] ?? null));
 				self::omo1ImportSave($indicator, 'Un indicateur n a pas pu etre cree');
+				$indicatorIdMap[(int)$record['sourceId']] = (int)$indicator->getId();
+				OrganizationTransferContent::restorePoints($record['referencePoints'] ?? [], (int)$indicator->getId());
 				$stats['indicators'] += 1;
 
 				$values = isset($record['values']) && is_array($record['values']) ? $record['values'] : array();
@@ -7257,7 +7313,7 @@
 					}
 					$value = new \dbObject\StatIndicatorValue();
 					$value->set('IDstatindicator', (int)$indicator->getId());
-					$value->set('IDuser', $targetUserId);
+					$value->set('IDuser', (int)($userIdMap[(int)($valueRecord['sourceUserId'] ?? 0)] ?? $targetUserId));
 					$value->set('value', (float)$valueRecord['value']);
 					$value->set('measured_at', $measuredAt);
 					self::omo1ImportSave($value, 'Une valeur d indicateur n a pas pu etre creee');
@@ -7800,6 +7856,8 @@
 
 		public static function importOmo1ExportAsNewOrganization(array $payload, array $requestedModules, $actorUserId, $organizationName = '', array $templateCalibration = array(), array $importOptions = array())
 		{
+			try { if (!empty($importOptions['roleplay'])) { $payload = OrganizationTransferDates::shift($payload); } }
+			catch (\Throwable $e) { return ['status' => false, 'message' => $e->getMessage()]; }
 			$actorUserId = (int)$actorUserId;
 			if ($actorUserId <= 0) {
 				return array('status' => false, 'message' => 'Connexion requise.');
@@ -7811,7 +7869,7 @@
 			if ((string)($payload['format'] ?? '') !== 'openmyorganization-structure-export' || (int)($payload['version'] ?? 0) !== 4) {
 				return array('status' => false, 'message' => 'Le fichier doit etre un export OMO compact version 4.');
 			}
-			$mediaWarnings = array();
+			$mediaWarnings = array_values(array_filter((array)($payload['source']['mediaWarnings'] ?? []), 'is_string'));
 			$payload = self::sanitizeOmo1ImportedMediaReferences($payload, $mediaWarnings);
 
 			$availableModules = array('structure', 'rules', 'members', 'documents', 'projects', 'tasks', 'checklists', 'indicators', 'calendar', 'pv');
@@ -7916,7 +7974,9 @@
 				}
 				$pdo->beginTransaction();
 				self::omo1ImportJournalWrite('content_transaction_started');
-				$applicationSync = $organization->synchronizeOmo1ImportedApplicationLinks($selectedModules, $sourceModules);
+				$applicationSync = !empty($structureResult['applicationConfigurationImported'])
+					? array('status' => true)
+					: $organization->synchronizeOmo1ImportedApplicationLinks($selectedModules, $sourceModules);
 				if (empty($applicationSync['status'])) {
 					throw new \RuntimeException((string)($applicationSync['message'] ?? 'Les applications de l organisation n ont pas pu etre configurees.'));
 				}
@@ -7955,6 +8015,7 @@
 					$memberRecords = self::omo1ImportModuleRecords($payload, 'members');
 					self::omo1ImportMembers($organization, $memberRecords, $actorUserId, $userIdMap, $pendingUserIds, $pendingInvitations, $stats, $warnings, $sendMemberInvitationEmails);
 					self::omo1ImportRoleAssignments($memberRecords, $userIdMap, $holonIdMap, $pendingUserIds, $stats);
+					if ($isOmo2Export) { OrganizationTransferContent::restoreMembers($organization, $memberRecords, $userIdMap, $holonIdMap); }
 					self::omo1ImportJournalWrite('module_members_completed', array(
 						'members' => (int)$stats['members'],
 						'roleAssignments' => (int)$stats['roleAssignments'],
@@ -8019,6 +8080,11 @@
 				if ($selectedModules['tasks']) {
 					self::omo1ImportJournalWrite('module_tasks_started');
 					self::omo1ImportTasks($organization, self::omo1ImportModuleRecords($payload, 'tasks'), $actorUserId, $userIdMap, $holonIdMap, $projectIdMap, $taskIdMap, $stats, $warnings);
+					if ($isOmo2Export) {
+						$taskRecords = self::omo1ImportModuleRecords($payload, 'tasks');
+						self::omo1ImportProjectUsers($taskRecords, $taskIdMap, $userIdMap);
+						self::omo1ImportProjectFollowers($taskRecords, $taskIdMap, $userIdMap, $stats, $warnings);
+					}
 					self::omo1ImportJournalWrite('module_tasks_completed', array('tasks' => (int)$stats['tasks']));
 				}
 				if ($selectedModules['documents'] && ($selectedModules['projects'] || $selectedModules['tasks'])) {
@@ -8052,7 +8118,9 @@
 				}
 				if ($selectedModules['indicators']) {
 					self::omo1ImportJournalWrite('module_indicators_started');
-					self::omo1ImportIndicators($organization, self::omo1ImportModuleRecords($payload, 'indicators'), $actorUserId, $userIdMap, $holonIdMap, $stats);
+					$indicatorIdMap = [];
+					self::omo1ImportIndicators($organization, self::omo1ImportModuleRecords($payload, 'indicators'), $actorUserId, $userIdMap, $holonIdMap, $stats, $indicatorIdMap);
+					if ($isOmo2Export) { OrganizationTransferContent::restoreIndicatorViews($organization, $payload['modules']['indicators'], $indicatorIdMap, $holonIdMap, $userIdMap); }
 					self::omo1ImportJournalWrite('module_indicators_completed', array('indicators' => (int)$stats['indicators']));
 				}
 				if ($selectedModules['calendar']) {
@@ -8234,34 +8302,10 @@
 
 			try {
 				$pdo->beginTransaction();
-				// Parameters contain the lexicon and the organization-level dashboard
-				// and application-view defaults. They do not contain activity history.
-				$target->set('parameters', $source->getLexiconParameters());
-				$target->setPropertyTypeSettings($source->getPropertyTypeSettings());
+				OrganizationTransferConfiguration::apply($target, OrganizationTransferConfiguration::capture($source));
 				$target->set('isModel', false);
-				$targetSave = $target->save();
-				if (!is_array($targetSave) || empty($targetSave['status'])) {
-					throw new \RuntimeException('Les reglages de l organisation du modele n ont pas pu etre copies.');
-				}
-
-				$sourceLinks = new \dbObject\ArrayOrganizationApplication();
-				$sourceLinks->load(array('where' => array(array('field' => 'IDorganization', 'value' => $sourceId))));
-				foreach ($sourceLinks as $sourceLink) {
-					$link = new \dbObject\OrganizationApplication();
-					if (!$link->load(array(
-						array('IDorganization', $targetId),
-						array('IDapplication', (int)$sourceLink->get('IDapplication')),
-					))) {
-						$link->set('IDorganization', $targetId);
-						$link->set('IDapplication', (int)$sourceLink->get('IDapplication'));
-					}
-					$link->set('position', (int)$sourceLink->get('position'));
-					$link->set('active', (bool)$sourceLink->get('active'));
-					$link->set('parameters', $sourceLink->getParametersArray());
-					$linkSave = $link->save();
-					if (!is_array($linkSave) || empty($linkSave['status'])) {
-						throw new \RuntimeException('L etat d activation dune application du modele n a pas pu etre copie.');
-					}
+				if (empty($target->save()['status'])) {
+					throw new \RuntimeException('Impossible de copier les reglages du modele.');
 				}
 
 				$sourceParcours = new \dbObject\ArrayOrganizationParcours();
@@ -9524,6 +9568,7 @@
 		protected function buildHolonDefinitionEditorNode(\dbObject\Holon $holon, $rootHolonId)
 		{
 			$node = $holon->toTemplateEditorNodeArray((int)$rootHolonId);
+			$node['fullName'] = (string)$holon->get('nomcomplet');
 			$node['properties'] = array_map(function ($property) use ($holon) {
 				$property['canEditValue'] = empty($property['effectiveLocked'])
 					&& $holon->isAllowed(Property::permissionKey('EDIT', $property['type'] ?? null), false);
@@ -14321,6 +14366,10 @@
 
 			if (!$propertiesOnly) {
 				$holon->set('name', $name);
+				if (array_key_exists('fullName', $payload)) {
+					$fullName = trim((string)$payload['fullName']);
+					$holon->set('nomcomplet', $fullName !== '' ? $fullName : null);
+				}
 				$holon->set('color', $color !== '' ? $color : null);
 				$holon->save();
 

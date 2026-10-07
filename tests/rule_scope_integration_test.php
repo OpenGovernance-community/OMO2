@@ -5,6 +5,7 @@ declare(strict_types=1);
 if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
 require_once dirname(__DIR__) . '/shared_functions.php';
 require_once dirname(__DIR__) . '/common/auth.php';
+require_once dirname(__DIR__) . '/omo/api/policy/shared.php';
 
 use dbObject\{DbObject, ArrayOrganization, ArrayRule, Holon, Authority, Rule, Property, HolonProperty, DecisionGovernanceAction};
 
@@ -17,9 +18,16 @@ function scopeSave($object): void {
 }
 
 $organizations = new ArrayOrganization();
-$organizations->load(['limit' => 1]);
-$organization = $organizations[0];
-$root = $organization->getStructuralRootHolon();
+$organizations->load();
+$root = null;
+foreach ($organizations as $candidate) {
+    $candidateRoot = $candidate->getStructuralRootHolon();
+    if ($candidateRoot instanceof Holon) {
+        $organization = $candidate;
+        $root = $candidateRoot;
+        break;
+    }
+}
 scopeCheck($root instanceof Holon, 'A local organization with a structure is required');
 $_SESSION['currentUser'] = 0;
 $pdo = DbObject::getPdo();
@@ -138,6 +146,33 @@ try {
     scopeCheck(empty(DecisionGovernanceAction::validateRuleCreate($base + ['scope' => 'invalid'], $outside->getId())['status']), 'Invalid deferred scope must fail');
     $invalidDates = array_merge($base, ['review_date' => '2028-01-01', 'expiration_date' => '2027-01-01']);
     scopeCheck(empty(DecisionGovernanceAction::validateRuleCreate($invalidDates, $outside->getId())['status']), 'Deferred create rejects reversed dates');
+    $numberedRules = [];
+    foreach (['A', 'B', 'C'] as $letter) {
+        $numberedRule = $makeRule($outside, 'local');
+        $numberedRule->set('title', 'AAA numbering ' . $letter);
+        scopeSave($numberedRule);
+        $numberedRules[] = $numberedRule;
+    }
+    $referenceMap = static function (Holon $holon, string $view) use ($organization): array {
+        $visible = new ArrayRule();
+        $all = new ArrayRule();
+        $visible->loadForPolicyContexts($organization->getId(), [$holon->getId()], false, $view, $all);
+        return omoPolicyBuildRuleGroups(omoPolicyBuildRuleEntries($all, $visible), 'holon', $organization)['ruleNumbers'];
+    };
+    $globalReferences = $referenceMap($outside, 'global');
+    foreach ([$role, $circle, $grandchild, $outside] as $target) {
+        foreach (['local', 'contextual', 'global'] as $view) {
+            scopeCheck($referenceMap($target, $view) === $globalReferences, 'Rule references must be identical in all contexts and scopes');
+        }
+    }
+    $prefix = substr($globalReferences[(int)$numberedRules[0]->getId()], 0, -1);
+    foreach ($numberedRules as $index => $numberedRule) {
+        scopeCheck($globalReferences[(int)$numberedRule->getId()] === $prefix . ($index + 1), 'Reference order follows titles');
+    }
+    scopeCheck($numberedRules[1]->delete(), 'Fixture rule deletion must succeed');
+    $afterDelete = $referenceMap($outside, 'global');
+    scopeCheck(!isset($afterDelete[(int)$numberedRules[1]->getId()]), 'Deleted rule must disappear from the reference map');
+    scopeCheck($afterDelete[(int)$numberedRules[2]->getId()] === $prefix . '2', 'Deletion must close the reference gap');
     echo "rule_scope_integration_test: OK\n";
 } finally {
     if ($pdo->inTransaction()) $pdo->rollBack();

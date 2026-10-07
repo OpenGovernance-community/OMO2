@@ -80,7 +80,7 @@ if (!function_exists('githubBugReportGetSourceLang')) {
             'issue_username' => 'Nom d’utilisateur',
             'issue_organization' => 'Organisation',
             'issue_organization_id' => 'Identifiant de l’organisation',
-            'issue_organization_shortname' => 'Nom court de l’organisation',
+            'issue_organization_shortname' => 'Identifiant URL de l organisation',
             'issue_browser' => 'Navigateur',
             'issue_os' => 'Système',
             'issue_user_agent' => 'Agent utilisateur',

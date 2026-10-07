@@ -49,10 +49,14 @@ class ArrayRule extends ArrayDbObject
     /**
      * Contextual: applicable rules; local: rules defined in the selected holons;
      * global: all rules of this organization. Each rule is included once.
+     * An optional collection retains all loaded rules before context filtering.
      */
-    public function loadForPolicyContexts($organizationId, array $contextHolonIds, $includeOrganizationRules = false, $viewScope = 'contextual')
+    public function loadForPolicyContexts($organizationId, array $contextHolonIds, $includeOrganizationRules = false, $viewScope = 'contextual', ?ArrayRule $organizationRules = null)
     {
         $this->exchangeArray([]);
+        if ($organizationRules !== null) {
+            $organizationRules->exchangeArray([]);
+        }
         $organizationId = (int)$organizationId;
         $viewScope = self::normalizeViewScope($viewScope);
         $contextHolons = [];
@@ -89,6 +93,9 @@ class ArrayRule extends ArrayDbObject
             $rule = new Rule();
             if (!$rule->load((int)($row['id'] ?? 0))) {
                 continue;
+            }
+            if ($organizationRules !== null) {
+                $organizationRules[] = $rule;
             }
             if ($viewScope === 'global') {
                 $this[] = $rule;

@@ -33,7 +33,7 @@ class FAQ extends DbObject
 			[['detail'], 'html'],
 			[['request_description'], 'text'],
 			[['request_author_name', 'request_author_email'], 'string'],
-			[['image'], 'image'],
+			[['image'], 'sizedimage'],
 			[['isactive', 'request_ai_draft'], 'boolean'],
 			[['created', 'updated', 'reliability_updated_at', 'score_decayed_at', 'request_answered_at', 'request_relayed_at'], 'datetime'],
 			[['id'], 'safe'],

@@ -270,7 +270,7 @@ if (!function_exists('omoRenderOrganizationInfoPanel')) {
                 <span class="omo-org-info-list__value generic-title generic-title--compact"><?= omoApiEscape($organizationName) ?></span>
             </div>
             <div class="omo-org-info-list__item">
-                <span class="omo-org-info-list__label generic-title generic-title--eyebrow">Nom court</span>
+                <span class="omo-org-info-list__label generic-title generic-title--eyebrow"><?= omoApiEscape(Organization::attributeLabels()['shortname']) ?></span>
                 <span class="omo-org-info-list__value generic-title generic-title--compact"><?= omoApiEscape($organizationShortname !== '' ? $organizationShortname : 'Non défini') ?></span>
             </div>
             <div class="omo-org-info-list__item">

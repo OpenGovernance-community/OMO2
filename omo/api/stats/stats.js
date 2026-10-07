@@ -1812,6 +1812,21 @@ window.commonPageScripts["/omo/api/stats/stats.js"] = function (pageConfig, page
         closeStatsItemMenus();
     });
 
+    var archivesButton = root.querySelector('[data-omo-stats-view-archives]');
+    if (archivesButton) {
+        archivesButton.addEventListener('click', function () {
+            morePanel.hidden = true;
+            moreToggle.setAttribute('aria-expanded', 'false');
+            moreMenu.classList.remove('is-open');
+            var archivesUrl = new URL(currentUrl, window.location.origin);
+            archivesUrl.pathname = '/omo/api/stats/archives.php';
+            archivesUrl.searchParams.set('stats_scope', currentScope);
+            archivesUrl.searchParams.set('stats_assignment', currentAssignment);
+            archivesUrl.searchParams.set('archive_query', currentSearch);
+            window.omoOpenResourceArchives({root: root, title: texts.archivesTitle, url: resolveUrl(archivesUrl.toString()), onOpen: openIndicator});
+        });
+    }
+
     var createButton = root.querySelector('[data-omo-stats-open-create]');
     if (createButton) {
         createButton.addEventListener('click', function () {

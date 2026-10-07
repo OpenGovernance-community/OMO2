@@ -47,6 +47,7 @@ if (!function_exists('omoApiCanBypassOrganizationAccessCheck')) {
             '/omo/api/organization/access_request_popup.php',
             '/omo/api/organizations/create_import_popup.php',
             '/omo/api/organizations/create_import.php',
+            '/omo/api/organizations/import_preview.php',
             '/omo/api/organizations/model_popup.php',
             '/omo/api/organizations/model_create.php',
         );

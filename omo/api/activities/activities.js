@@ -568,6 +568,10 @@
 
     function closeActionMenu() {
         root.querySelectorAll('[data-activity-action-menu]').forEach(function (menu) {
+            if (menu.classList.contains('generic-menu--expanded-mobile') && typeof window.resetGenericExpandedMenu === 'function') {
+                window.resetGenericExpandedMenu(menu);
+                return;
+            }
             menu.classList.remove('is-open');
             var rowShell = menu.closest('.omo-activity-row-shell');
             if (rowShell) {
@@ -632,6 +636,20 @@
     }
 
     root.addEventListener('click', function (event) {
+        var archivesButton = event.target.closest('[data-activity-view-archives]');
+        if (archivesButton) {
+            event.preventDefault();
+            closeActionMenu();
+            var archivesUrl = new URL(baseUrl, window.location.origin);
+            archivesUrl.pathname = '/omo/api/activities/archives.php';
+            archivesUrl.searchParams.set('activity_scope', currentScope);
+            archivesUrl.searchParams.set('activity_assignment', currentAssignment);
+            archivesUrl.searchParams.set('archive_query', currentSearch);
+            window.omoOpenResourceArchives({root: root, title: texts.archivesTitle, url: resolveUrl(archivesUrl.toString()), onOpen: function (id) {
+                openDrawer(buildDetailUrl(id));
+            }});
+            return;
+        }
         var actionMenuToggle = event.target.closest('[data-activity-action-menu-toggle]');
         if (actionMenuToggle) {
             event.preventDefault();

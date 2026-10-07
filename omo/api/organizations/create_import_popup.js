@@ -24,6 +24,7 @@ window.commonPageScripts["/omo/api/organizations/create_import_popup.js"] = func
     var propertyMappings = {};
     var touchedPropertyMappings = {};
     var isImporting = false;
+    var previewSequence = 0;
     var ui = pageConfig.ui;
 
     function setFeedback(message, isError) {
@@ -501,20 +502,27 @@ window.commonPageScripts["/omo/api/organizations/create_import_popup.js"] = func
     if (fileInput) {
         fileInput.addEventListener('change', function () {
             var file = fileInput.files && fileInput.files[0];
+            var sequence = ++previewSequence;
+            importPayload = null;
+            submitButton.disabled = true;
             if (!file) { return; }
-            var reader = new FileReader();
-            reader.onload = function () {
-                try {
-                    importPayload = JSON.parse(String(reader.result || ''));
+            var previewData = new FormData();
+            previewData.append('omo1_export_file', file);
+            fetch('/omo/api/organizations/import_preview.php', {method: 'POST', body: previewData, credentials: 'same-origin'})
+                .then(function (response) { return response.json(); })
+                .then(function (result) {
+                    if (sequence !== previewSequence) { return; }
+                    if (!result.status || !result.payload) { throw new Error(result.message || ui.genericError); }
+                    importPayload = result.payload;
                     templateMappings = {};
                     touchedTemplateMappings = {};
                     propertyMappings = {};
                     touchedPropertyMappings = {};
                     setModuleAvailability(importPayload);
                     renderTemplateMappings();
-                } catch (error) { showError(ui.genericError); }
-            };
-            reader.readAsText(file);
+                    submitButton.disabled = false;
+                })
+                .catch(function (error) { if (sequence === previewSequence) { showError(error.message || ui.genericError); } });
         });
     }
 
@@ -580,6 +588,7 @@ window.commonPageScripts["/omo/api/organizations/create_import_popup.js"] = func
     form.addEventListener('submit', function (event) {
         event.preventDefault();
         if (!fileInput || !fileInput.files || !fileInput.files[0]) { showError(ui.fileError); return; }
+        if (!importPayload) { showError(ui.genericError); return; }
         if (!memberInvitationEmailChoice || ['send', 'skip'].indexOf(memberInvitationEmailChoice.value) === -1) { showError(ui.memberInvitationEmailChoiceError); return; }
         if (hasDuplicateTemplateMappings()) { showError(ui.mappingDuplicate); return; }
         if (hasDuplicatePropertyMappings()) { showError(ui.propertyMappingDuplicate); return; }

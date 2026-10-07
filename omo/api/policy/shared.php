@@ -1,8 +1,10 @@
 <?php
 
 use dbObject\ArrayAuthority;
+use dbObject\Authority;
 use dbObject\Holon;
 use dbObject\Organization;
+use dbObject\Rule;
 
 if (!function_exists('omoPolicySourceLang')) {
     function omoPolicySourceLang()
@@ -170,5 +172,181 @@ if (!function_exists('omoPolicyGetDirectAuthorities')) {
 
         $authorities->loadForHolon((int)$holon->getId());
         return $authorities;
+    }
+}
+
+if (!function_exists('omoPolicyBuildRuleEntries')) {
+    function omoPolicyBuildRuleEntries(iterable $organizationRules, iterable $visibleRules): array
+    {
+        $visibleIds = [];
+        foreach ($visibleRules as $rule) {
+            $visibleIds[(int)$rule->getId()] = true;
+        }
+        $entries = [];
+        foreach ($organizationRules as $rule) {
+            if ($rule instanceof Rule) {
+                $entries[] = [
+                    'rule' => $rule,
+                    'visible' => isset($visibleIds[(int)$rule->getId()]),
+                    'holon' => $rule->getHolon(),
+                    'authority' => $rule->getAuthority(),
+                ];
+            }
+        }
+        return $entries;
+    }
+}
+
+if (!function_exists('omoPolicyBuildRuleGroups')) {
+    /** Holon groups define canonical references before filtering or display sorting. */
+    function omoPolicyBuildRuleGroups(array $policyRuleEntries, string $policyGroup, Organization $organization): array
+    {
+        $policyGroupNodes = [];
+        $policyRegisterNode = static function ($key, $label, $parentKey = null) use (&$policyGroupNodes) {
+            if (!isset($policyGroupNodes[$key])) {
+                $policyGroupNodes[$key] = [
+                    'key' => $key,
+                    'label' => $label,
+                    'parent' => $parentKey,
+                    'rules' => [],
+                    'allRules' => [],
+                    'children' => [],
+                ];
+            } elseif ($policyGroupNodes[$key]['parent'] === null && $parentKey !== null) {
+                $policyGroupNodes[$key]['parent'] = $parentKey;
+            }
+
+            return $key;
+        };
+        $policyRegisterHolon = null;
+        $policyRegisterHolon = static function ($holon, array $seen = []) use (&$policyRegisterHolon, $policyRegisterNode) {
+            if (!($holon instanceof Holon)) {
+                return null;
+            }
+
+            $holonId = (int)$holon->getId();
+            if ($holonId <= 0 || isset($seen[$holonId])) {
+                return null;
+            }
+            $seen[$holonId] = true;
+            $parent = $holon->getParentHolon();
+            $parentKey = $parent instanceof Holon ? $policyRegisterHolon($parent, $seen) : null;
+            return $policyRegisterNode('holon:' . $holonId, $holon->getFullDisplayName(), $parentKey);
+        };
+        $policyRegisterAuthority = null;
+        $policyRegisterAuthority = static function ($authority, array $seen = []) use (&$policyRegisterAuthority, $policyRegisterNode) {
+            if (!($authority instanceof Authority)) {
+                return null;
+            }
+
+            $authorityId = (int)$authority->getId();
+            if ($authorityId <= 0 || isset($seen[$authorityId])) {
+                return null;
+            }
+            $seen[$authorityId] = true;
+            $parent = $authority->getParent();
+            $parentKey = $parent instanceof Authority ? $policyRegisterAuthority($parent, $seen) : null;
+            if ((int)$authority->get('is_shell') === 1) {
+                return $parentKey;
+            }
+            $label = trim((string)$authority->get('label'));
+            return $policyRegisterNode('authority:' . $authorityId, $label !== '' ? $label : omoPolicyT('policy.group.unnamed_authority'), $parentKey);
+        };
+        if ($policyGroup === 'none') {
+            $policyGroupNodes['flat'] = [
+                'key' => 'flat',
+                'label' => '',
+                'parent' => null,
+                'rules' => array_values(array_filter($policyRuleEntries, static fn (array $entry) => $entry['visible'])),
+                'allRules' => $policyRuleEntries,
+                'children' => [],
+            ];
+        } else {
+            foreach ($policyRuleEntries as $entry) {
+                $ruleHolon = $entry['holon'];
+                $ruleAuthority = $entry['authority'];
+                if ($policyGroup === 'authority' && $ruleAuthority instanceof Authority) {
+                    $nodeKey = $policyRegisterAuthority($ruleAuthority);
+                } elseif ($policyGroup === 'authority') {
+                    $holonLabel = $ruleHolon instanceof Holon ? $ruleHolon->getFullDisplayName() : (string)$organization->get('name');
+                    $nodeKey = $policyRegisterNode('local:' . ($ruleHolon instanceof Holon ? (int)$ruleHolon->getId() : 'organization'), omoPolicyT('policy.group.local_rules', ['holon' => $holonLabel]));
+                } else {
+                    $nodeKey = $ruleHolon instanceof Holon
+                        ? $policyRegisterHolon($ruleHolon)
+                        : $policyRegisterNode('organization', (string)$organization->get('name'));
+                }
+
+                if ($nodeKey === null) {
+                    $nodeKey = $policyRegisterNode('unknown', omoPolicyT('policy.group.unknown'));
+                }
+                $policyGroupNodes[$nodeKey]['allRules'][] = $entry;
+                if ($entry['visible']) {
+                    $policyGroupNodes[$nodeKey]['rules'][] = $entry;
+                }
+            }
+        }
+        foreach ($policyGroupNodes as $nodeKey => $node) {
+            $parentKey = $node['parent'];
+            if ($parentKey !== null && isset($policyGroupNodes[$parentKey])) {
+                $policyGroupNodes[$parentKey]['children'][] = $nodeKey;
+            }
+        }
+        $policyRootGroupKeys = [];
+        foreach ($policyGroupNodes as $nodeKey => $node) {
+            if ($node['parent'] === null || !isset($policyGroupNodes[$node['parent']])) {
+                $policyRootGroupKeys[] = $nodeKey;
+            }
+        }
+        $policySortGroupKeys = static function (array $keys) use (&$policyGroupNodes) {
+            usort($keys, static function ($left, $right) use (&$policyGroupNodes) {
+                return strnatcasecmp($policyGroupNodes[$left]['label'], $policyGroupNodes[$right]['label'])
+                    ?: strnatcmp($left, $right);
+            });
+            return $keys;
+        };
+        // Rules precede child holons, sharing one sequence to avoid duplicate references.
+        $policyRuleNumbers = [];
+        $numberGroups = null;
+        $numberGroups = static function (array $keys, string $prefix = '', bool $showRootTitles = true, int $offset = 0) use (&$numberGroups, &$policyGroupNodes, &$policyRuleNumbers, $policySortGroupKeys, $policyGroup): array {
+            $visibleKeys = [];
+            foreach ($policySortGroupKeys($keys) as $index => $nodeKey) {
+                $showTitle = $showRootTitles || $prefix !== '';
+                $number = $prefix === '' ? (string)($offset + $index + 1) : $prefix . '.' . ($offset + $index + 1);
+                $policyGroupNodes[$nodeKey]['number'] = $number;
+                $policyGroupNodes[$nodeKey]['showTitle'] = $showTitle;
+                $nextPrefix = $showTitle ? $number : '';
+                $childOffset = 0;
+                if ($policyGroup === 'holon') {
+                    $allRules = $policyGroupNodes[$nodeKey]['allRules'];
+                    usort($allRules, static function (array $left, array $right): int {
+                        return strnatcasecmp((string)$left['rule']->get('title'), (string)$right['rule']->get('title'))
+                            ?: ((int)$left['rule']->getId() <=> (int)$right['rule']->getId());
+                    });
+                    foreach ($allRules as $ruleIndex => $entry) {
+                        $policyRuleNumbers[(int)$entry['rule']->getId()] = $nextPrefix === ''
+                            ? (string)($ruleIndex + 1) : $nextPrefix . '.' . ($ruleIndex + 1);
+                    }
+                    $childOffset = count($allRules);
+                }
+                $policyGroupNodes[$nodeKey]['children'] = $numberGroups(
+                    $policyGroupNodes[$nodeKey]['children'], $nextPrefix, true, $childOffset
+                );
+                if ($policyGroupNodes[$nodeKey]['rules'] !== [] || $policyGroupNodes[$nodeKey]['children'] !== []) {
+                    $visibleKeys[] = $nodeKey;
+                }
+            }
+            return $visibleKeys;
+        };
+        $policyRootGroupKeys = $numberGroups($policyRootGroupKeys, '', count($policyRootGroupKeys) > 1);
+        if ($policyGroup === 'holon') {
+            foreach ($policyGroupNodes as &$node) {
+                foreach ($node['rules'] as &$entry) {
+                    $entry['number'] = $policyRuleNumbers[(int)$entry['rule']->getId()];
+                }
+                unset($entry);
+            }
+            unset($node);
+        }
+        return ['nodes' => $policyGroupNodes, 'roots' => $policyRootGroupKeys, 'ruleNumbers' => $policyRuleNumbers];
     }
 }

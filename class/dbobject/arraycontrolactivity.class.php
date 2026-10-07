@@ -8,7 +8,7 @@ class ArrayControlActivity extends ArrayDbObject
         return '\\dbObject\\ControlActivity';
     }
 
-    public function loadForContext($organizationId, $holonIds, $activeOnly = true, $includeOrganizationTasks = false)
+    public function loadForContext($organizationId, $holonIds, $activeOnly = true, $includeOrganizationTasks = false, $archivedOnly = false)
     {
         $this->exchangeArray([]);
         $organizationId = (int)$organizationId;
@@ -23,7 +23,8 @@ class ArrayControlActivity extends ArrayDbObject
         if ($includeOrganizationTasks) {
             $holonFilter[] = ['field' => 'IDholon', 'op' => 'is null'];
         }
-        if ($activeOnly) { $where[] = ['field' => 'active', 'value' => 1]; }
+        if ($activeOnly || $archivedOnly) { $where[] = ['field' => 'active', 'value' => $archivedOnly ? 0 : 1]; }
+        if ($archivedOnly) { $where[] = ['field' => 'archived_at', 'op' => 'is not null']; }
         $this->load([
             'where' => $where,
             'whereAny' => $holonFilter,
