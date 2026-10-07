@@ -1,6 +1,12 @@
 <?php
 require_once dirname(__DIR__) . '/bootstrap.php';
 
+$sourceLang = [
+    'organization_import.roleplay' => ['text' => 'Importer comme jeu de role', 'context' => 'Date shift option on import.'],
+    'organization_import.roleplay_help' => ['text' => 'Decale les dates du nombre de jours entre l export et aujourd hui. Sans cette option, les dates sont conservees.', 'context' => 'Explanation of roleplay import.'],
+];
+$lang = omoLoadTranslationBundle('omo_organization_structure_import', $sourceLang);
+
 $organizationId = (int)($_SESSION['currentOrganization'] ?? ($_GET['oid'] ?? 0));
 $organization = new \dbObject\Organization();
 
@@ -19,25 +25,29 @@ if (
 ?>
 <div class="omo-import-popup generic-drawer-content" data-omo-org-import-popup="1" data-organization-id="<?= (int)$organizationId ?>">
     <div class="omo-import-popup__hero generic-hero-panel accent">
-        <div class="omo-import-popup__kicker generic-card-title generic-card-title--eyebrow">Import JSON</div>
+        <div class="omo-import-popup__kicker generic-card-title generic-card-title--eyebrow">Import ZIP / JSON</div>
         <h3 class="omo-import-popup__title generic-card-title generic-card-title--large">Importer une organisation</h3>
-        <p class="omo-import-popup__text generic-description"><?= htmlspecialchars(\dbObject\Organization::formatLexiconText('Selectionnez un fichier JSON exporte depuis le menu structure. L\'import reconstruit les holons, roles, proprietes et les references internes du sous-arbre.', $organization->getLexicon()), ENT_QUOTES, 'UTF-8') ?></p>
+        <p class="omo-import-popup__text generic-description"><?= htmlspecialchars(\dbObject\Organization::formatLexiconText('Selectionnez un fichier ZIP ou JSON exporte depuis le menu structure. L\'import reconstruit les holons, roles, proprietes et les references internes du sous-arbre.', $organization->getLexicon()), ENT_QUOTES, 'UTF-8') ?></p>
     </div>
 
     <form class="omo-import-popup__form" data-omo-org-import-form="1" enctype="multipart/form-data">
         <input type="hidden" name="oid" value="<?= (int)$organizationId ?>">
 
         <label class="omo-import-popup__field">
-            <span class="omo-import-popup__label generic-form-label">Fichier JSON</span>
+            <span class="omo-import-popup__label generic-form-label">Fichier ZIP ou JSON</span>
             <input
                 type="file"
                 name="structure_file"
                 class="omo-import-popup__input generic-form-control"
-                accept=".json,application/json"
+                accept=".zip,.json,application/zip,application/json"
                 required
             >
         </label>
 
+        <label class="omo-import-popup__field">
+            <span><input type="checkbox" name="roleplay" value="1"> <?= htmlspecialchars(t('organization_import.roleplay', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></span>
+            <small class="generic-help-text"><?= htmlspecialchars(t('organization_import.roleplay_help', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></small>
+        </label>
         <div class="omo-import-popup__hint generic-help-text">
             Conseil: creez d'abord une organisation vide, puis importez un fichier genere par `Export` depuis la vue structure.
         </div>

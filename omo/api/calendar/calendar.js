@@ -118,7 +118,7 @@ function omoCreateCalendarViews(root, config) {
             actions += tag('button', 'generic-menu-item generic-menu-item--danger', attributes, text('action.delete'));
         }
         return tag('div', 'omo-calendar__event-menu generic-menu generic-file-list__menu', attr('event-menu'),
-            tag('button', 'generic-menu-toggle generic-file-list__menu-toggle', Object.assign({type: 'button', 'aria-haspopup': 'menu', 'aria-expanded': 'false', 'aria-label': config.labels['calendar.action.more']}, attr('event-menu-toggle')), '...')
+            tag('button', 'generic-menu-toggle generic-file-list__menu-toggle', Object.assign({type: 'button', 'aria-haspopup': 'menu', 'aria-expanded': 'false', 'aria-label': config.labels['calendar.action.more']}, attr('event-menu-toggle')), '\u22ee')
             + tag('div', 'generic-menu-panel', Object.assign({role: 'menu', hidden: ''}, attr('event-menu-panel')), actions));
     }
     function list(view) {

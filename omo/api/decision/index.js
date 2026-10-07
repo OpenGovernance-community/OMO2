@@ -1632,7 +1632,7 @@ function buildDecisionActionMenuToggle(item, actions, className) {
     toggle.setAttribute('aria-haspopup', 'menu');
     toggle.setAttribute('aria-expanded', 'false');
     toggle.setAttribute('aria-label', String(payload.text && payload.text.moreActionAriaLabel ? payload.text.moreActionAriaLabel : 'Plus d actions pour cette prise de decision'));
-    toggle.textContent = String(payload.text && payload.text.moreActionLabel ? payload.text.moreActionLabel : '...');
+    toggle.textContent = String(payload.text && payload.text.moreActionLabel ? payload.text.moreActionLabel : '\u22ee');
     return toggle;
 }
 

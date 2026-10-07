@@ -1,8 +1,19 @@
-Options -MultiViews
+Options -Indexes -MultiViews
+
+# Never serve configuration, keys or database exports from the checkout.
+<FilesMatch "(?i)(^\.(?!well-known)|\.(?:sql|bak|key|pem|env)(?:\..*)?$|^APIKEY\.txt$|^SECURITY-)">
+    Require all denied
+</FilesMatch>
 
 # Only content-fingerprinted assets can be cached without revalidation.
 # Unversioned legacy assets keep the server's normal cache policy.
 <IfModule mod_headers.c>
+    Header unset X-Powered-By
+    Header always unset X-Powered-By
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Content-Security-Policy "base-uri 'self'; object-src 'none'"
+    Header always set Strict-Transport-Security "max-age=31536000" "expr=%{HTTPS} == 'on'"
     <FilesMatch "\.(css|js)$">
         Header set Cache-Control "public, max-age=31536000, immutable" "expr=%{QUERY_STRING} =~ m#(^|&)v=[a-f0-9]{12}(&|$)#"
     </FilesMatch>
@@ -19,6 +30,12 @@ Options -MultiViews
 ErrorDocument  404  /404.php
 
 RewriteEngine On
+
+RewriteRule (^|/)\.(?!well-known(?:/|$)) - [F,L]
+RewriteRule ^(?:docker|sql|tests|test|vendor|class|db|includes|scripts)(?:/|$) - [F,L]
+
+# Uploaded files must never reach an executable handler, including alternate suffixes.
+RewriteRule ^img/upload/.*\.(?:php[0-9]*|phtml|phar|cgi|pl|py|sh|shtml)(?:[./]|$) - [F,L,NC]
 
 RewriteRule ^tmp(?:/|$) - [F,L]
 RewriteRule ^log(?:/|$) - [F,L]

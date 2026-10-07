@@ -905,8 +905,8 @@ $(document)
   });
 
 $(document)
-  .off('click.omoTeamMenuSurface', '.omo-team-card__menu')
-  .on('click.omoTeamMenuSurface', '.omo-team-card__menu', function (event) {
+  .off('click.omoTeamMenuSurface', '[data-team-member-menu="1"]')
+  .on('click.omoTeamMenuSurface', '[data-team-member-menu="1"]', function (event) {
     event.stopPropagation();
   });
 
@@ -1052,16 +1052,16 @@ $(document)
     event.stopPropagation();
 
     const button = $(this);
-    const card = button.closest('.omo-team-card');
+    const menu = button.closest('[data-team-member-menu="1"]');
     const action = String(button.data('member-action') || '');
-    const userId = Number(button.data('user-id') || card.data('user-id') || 0);
+    const userId = Number(button.data('user-id') || 0);
     const organizationId = window.omoTeamPageConfig.organizationId;
     const currentHolonId = window.omoTeamPageConfig.currentHolonId;
     const rootHolonId = window.omoTeamPageConfig.rootHolonId;
     const teamRoot = omoTeamGetRoot();
     const currentTeamScope = omoTeamNormalizeScope(teamRoot ? teamRoot.getAttribute('data-team-scope') : omoTeamInitialScope);
     const contextLabel = window.omoTeamPageConfig.contextLabel;
-    const displayName = $.trim(card.find('.omo-team-card__identity h3').first().text()) || omoTeamText.thisMember;
+    const displayName = String(menu.attr('data-member-display-name') || '').trim() || omoTeamText.thisMember;
     let confirmationMessage = '';
 
     if (!action || !userId) {

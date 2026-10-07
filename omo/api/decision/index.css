@@ -222,7 +222,6 @@
 .omo-decisions__list.generic-file-list {
     --generic-file-list-columns: minmax(0, 2.7fr) minmax(130px, 0.95fr) minmax(150px, 1.1fr) minmax(132px, 0.95fr);
     --generic-file-list-title-gap: 18px;
-    --generic-file-list-table-margin-inline: 12px;
     --generic-file-list-padding-inline-start: 16px;
     --generic-file-list-padding-inline-end: 18px;
     --generic-file-list-header-padding-block: 14px;
@@ -235,7 +234,7 @@
 }
 
 .omo-decisions__list.generic-file-list .generic-file-list__table {
-    margin: 10px;
+    margin-block: 10px;
 }
 
 .omo-decisions__group {
@@ -245,7 +244,7 @@
 .omo-decisions__card-list {
     display: grid;
     gap: 10px;
-    margin: 10px;
+    margin: 10px var(--generic-list-gutter);
 }
 
 .omo-decisions__compact-row {
@@ -413,10 +412,6 @@
 
     .omo-decisions__status-scroll {
         width: 100%;
-    }
-
-    .omo-decisions__list.generic-file-list .generic-file-list__table {
-        margin-inline: 0;
     }
 
     .omo-decisions__compact-name-main {

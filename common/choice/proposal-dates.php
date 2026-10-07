@@ -73,11 +73,12 @@ function omoDecisionRenderProposalCalendar(\dbObject\DecisionProposal $proposal,
     $decision = $context['decision'] ?? null;
     if (!empty($context['canManage']) && $decision && in_array($decision->get('status'), ['results', 'archived'], true)) {
         $payload = omoDecisionModuleEncodeJsonPayload(omoDecisionBuildProposalDiscussionContextPayload($context));
+        $resolved = in_array($status, ['confirmed', 'cancelled'], true);
         $html .= '<div class="choice-proposal-calendar__actions">';
         foreach (['confirmed' => 'm5 12 4 4L19 6', 'cancelled' => 'm6 6 12 12M6 18 18 6'] as $action => $path) {
             $label = omoDecisionProposalT('decisions.proposals.dates.' . ($action === 'confirmed' ? 'confirm' : 'cancel'));
             $selected = $action === $status;
-            $html .= '<button type="button" class="generic-action-button generic-action-button--icon-only' . ($action === 'cancelled' ? ' generic-action-button--secondary' : '') . '" data-omo-proposal-calendar-action="' . $action . '" data-proposal-id="' . (int)$proposal->getId() . '" data-proposal-context="' . $escape($payload) . '" title="' . $escape($label) . '" aria-label="' . $escape($label) . '" aria-pressed="' . ($selected ? 'true' : 'false') . '"' . ($selected ? ' disabled' : '') . '><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' . $path . '"/></svg></button>';
+            $html .= '<button type="button" class="generic-action-button generic-action-button--icon-only' . ($action === 'cancelled' ? ' generic-action-button--secondary' : '') . '" data-omo-proposal-calendar-action="' . $action . '" data-proposal-id="' . (int)$proposal->getId() . '" data-proposal-context="' . $escape($payload) . '" title="' . $escape($label) . '" aria-label="' . $escape($label) . '" aria-pressed="' . ($selected ? 'true' : 'false') . '"' . ($resolved ? ' disabled' : '') . '><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' . $path . '"/></svg></button>';
         }
         $html .= '</div>';
     }

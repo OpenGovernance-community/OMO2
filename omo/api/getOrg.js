@@ -191,6 +191,7 @@ $(document)
   .off('click.omoOrgSection', '#panel-left .generic-accordion__header')
   .on('click.omoOrgSection', '#panel-left .generic-accordion__header', function () {
     const section = $(this).closest('.generic-accordion--collapsible');
+    if (section.hasClass('generic-panel-fullscreen-content')) return;
     const key = String(section.data('section-key') || omoNormalizeSectionKey(section.find('.generic-accordion__title').first().text()));
 
     section.toggleClass('is-collapsed');
@@ -279,36 +280,8 @@ $(document)
   });
 
 $(document)
-  .off('click.omoOrgHolonMenu', '#panel-left [data-holon-menu-toggle="1"]')
-  .on('click.omoOrgHolonMenu', '#panel-left [data-holon-menu-toggle="1"]', function (event) {
-    event.stopPropagation();
-
-    const menu = $(this).closest('[data-holon-menu="1"]');
-    const willOpen = !menu.hasClass('is-open');
-    omoCloseHolonMenus();
-
-    if (!willOpen) {
-        return;
-    }
-
-    menu.addClass('is-open');
-    menu.find('[data-holon-menu-panel="1"]').prop('hidden', false);
-    menu.find('[data-holon-menu-toggle="1"]').attr('aria-expanded', 'true');
-  });
-
-$(document)
   .off('click.omoOrgHolonMenuItem', '#panel-left [data-holon-menu-panel="1"] button')
   .on('click.omoOrgHolonMenuItem', '#panel-left [data-holon-menu-panel="1"] button', function () {
-    omoCloseHolonMenus();
-  });
-
-$(document)
-  .off('click.omoOrgHolonMenuOutside')
-  .on('click.omoOrgHolonMenuOutside', function (event) {
-    if ($(event.target).closest('#panel-left [data-holon-menu="1"]').length) {
-        return;
-    }
-
     omoCloseHolonMenus();
   });
 

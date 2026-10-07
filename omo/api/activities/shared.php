@@ -1,5 +1,6 @@
 <?php
 require_once dirname(__DIR__, 3) . '/common/pv_meeting_permissions.php';
+require_once dirname(__DIR__) . '/resource_archives.php';
 
 use dbObject\ControlActivity;
 use dbObject\DocumentPvPoint;
@@ -12,6 +13,8 @@ use dbObject\UserOrganization;
 function omoActivitySourceLang()
 {
     return [
+        'activity.archives.title' => ['text' => "Archives des t\u{00E2}ches r\u{00E9}currentes", 'context' => 'Archived resources modal title.'],
+        'activity.archives.empty' => ['text' => "Aucune archive ne correspond \u{00E0} cette vue.", 'context' => 'Empty archives view.'],
         'activity.title' => ['text' => 'Tâches récurrentes', 'context' => 'Recurring tasks application title.'],
         'activity.new' => ['text' => 'Ajouter une tâche récurrente', 'context' => 'Create recurring task action.'],
         'activity.edit' => ['text' => 'Modifier', 'context' => 'Edit activity action.'],
@@ -53,7 +56,7 @@ function omoActivitySourceLang()
         'activity.assignment.spaces' => ['text' => 'Mes espaces', 'context' => 'Recurring tasks belonging to the user spaces.'],
         'activity.assignment.all' => ['text' => 'Tous', 'context' => 'All recurring tasks in the visible scope.'],
         'activity.column.activity' => ['text' => 'Tâche récurrente', 'context' => 'Recurring task list title column.'],
-            'activity.column.context' => ['text' => 'Espace', 'context' => 'Activity list context column.'],
+            'activity.column.context' => ['text' => 'En charge', 'context' => 'Recurring task assignment column, showing the space and the responsible person.'],
         'activity.column.next' => ['text' => 'Échéance', 'context' => 'Activity list due date column.'],
         'activity.column.status' => ['text' => 'État', 'context' => 'Activity list state column.'],
         'activity.frequency' => ['text' => 'Récurrence', 'context' => 'Frequency field.'],
@@ -291,7 +294,7 @@ function omoActivityCanDelete(ControlActivity $activity)
     return $holon instanceof Holon && omoActivityCanUsePermission($holon, 'CAN_DELETE_RECURRING_TASK');
 }
 
-function omoActivityResponsibleAssignmentLabel(ControlActivity $activity)
+function omoActivityResponsibleAssignmentNames(ControlActivity $activity): array
 {
     $roleLabel = '';
     if ($activity->get('IDholon') === null) {
@@ -305,7 +308,13 @@ function omoActivityResponsibleAssignmentLabel(ControlActivity $activity)
     $responsibleLabel = $responsibleUserId > 0
         ? DocumentPvPoint::getUserDisplayNameForOrganization($responsibleUserId, (int)$activity->get('IDorganization'))
         : omoActivityT('activity.responsibility.unassigned');
-    return trim($roleLabel) . ' (' . trim((string)$responsibleLabel) . ')';
+    return ['space' => trim($roleLabel), 'person' => trim((string)$responsibleLabel)];
+}
+
+function omoActivityResponsibleAssignmentLabel(ControlActivity $activity)
+{
+    $names = omoActivityResponsibleAssignmentNames($activity);
+    return $names['space'] . ' (' . $names['person'] . ')';
 }
 
 function omoActivityFrequencyLabel($frequency)

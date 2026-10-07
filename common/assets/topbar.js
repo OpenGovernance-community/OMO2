@@ -1613,6 +1613,16 @@
         }
 
         var trigger = event.target.closest('[data-topbar-menu-trigger]');
+        var mailLink = event.target.closest('[data-topbar-mail-url]');
+        if (mailLink) {
+            event.preventDefault();
+            var mailConfig = getConfig().mail || {};
+            var mailUrl = new URL(mailLink.getAttribute('data-topbar-mail-url'), window.location.href);
+            if (mailUrl.origin !== window.location.origin || mailUrl.pathname !== '/omo/api/object_mail/history.php') return;
+            closeMenus();
+            openModal(mailConfig.title || mailConfig.buttonLabel, mailUrl.pathname + mailUrl.search, 'fetch');
+            return;
+        }
         if (trigger) {
             var name = trigger.getAttribute('data-topbar-menu-trigger');
             var menu = document.querySelector('[data-topbar-menu="' + name + '"]');

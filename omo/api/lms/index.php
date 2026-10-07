@@ -206,7 +206,7 @@ if (!$isEmbedded) {
                 class="card-menu-trigger"
                 aria-label="Actions"
                 onclick="toggleParcoursCardMenu(event, <?php echo (int)$p['id']; ?>)"
-            >...</button>
+            >&#8942;</button>
             <div class="card-menu" id="parcours-card-menu-<?php echo (int)$p['id']; ?>">
                 <?php if ($canEditThisParcours): ?>
                     <button type="button" class="card-menu-item" onclick="openEditParcoursDrawer(event, <?php echo (int)$p['id']; ?>)"><?php echo htmlspecialchars(lmsIndexT('lms.index.card.action.edit')); ?></button>
@@ -309,7 +309,7 @@ if (!$isEmbedded) {
                     class="card-menu-trigger"
                     aria-label="Actions"
                     onclick="toggleParcoursCardMenu(event, <?php echo (int)$p['id']; ?>)"
-                >...</button>
+                >&#8942;</button>
                 <div class="card-menu" id="parcours-card-menu-<?php echo (int)$p['id']; ?>">
                     <?php if ($canEditThisParcours): ?>
                         <button type="button" class="card-menu-item" onclick="openEditParcoursDrawer(event, <?php echo (int)$p['id']; ?>)"><?php echo htmlspecialchars(lmsIndexT('lms.index.card.action.edit')); ?></button>
@@ -385,7 +385,7 @@ if (!$isEmbedded) {
                     class="card-menu-trigger"
                     aria-label="Actions"
                     onclick="toggleParcoursCardMenu(event, <?php echo (int)$p['id']; ?>)"
-                >...</button>
+                >&#8942;</button>
                 <div class="card-menu" id="parcours-card-menu-<?php echo (int)$p['id']; ?>">
                     <?php if ($canEditThisParcours): ?>
                         <button type="button" class="card-menu-item" onclick="openEditParcoursDrawer(event, <?php echo (int)$p['id']; ?>)"><?php echo htmlspecialchars(lmsIndexT('lms.index.card.action.edit')); ?></button>

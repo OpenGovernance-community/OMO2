@@ -3,6 +3,7 @@
 	require_once("../config.php");
 	require_once("../shared_functions.php");
 	require_once("../common/auth.php");
+	if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') { http_response_code(405); exit; }
 
 	if (!checklogin()) {
 		echo json_encode([
@@ -45,12 +46,19 @@
 	}
 
 	$data = $_POST;
+	foreach (['current_password', 'new_password', 'new_password_confirm', 'allow_password_login'] as $field) {
+		if (isset($data[$field]) && !is_string($data[$field])) {
+			http_response_code(400);
+			echo json_encode(['status' => false, 'message' => 'Donnees invalides.']);
+			exit;
+		}
+	}
 	$passwordValidation = commonValidateUserPasswordUpdate(
 		(string)$object->get('password'),
 		(string)($data['current_password'] ?? ''),
 		(string)($data['new_password'] ?? ''),
 		(string)($data['new_password_confirm'] ?? ''),
-		(string)($data['email'] ?? $object->get('email'))
+		(string)$object->get('email')
 	);
 	if (empty($passwordValidation['status'])) {
 		echo json_encode([
@@ -67,19 +75,31 @@
 		$data['new_password_confirm'],
 		$data['allow_password_login']
 	);
-	$data["id"] = $currentUserId;
-	$object->loadFromArray($data);
+	try {
+		$object->loadProfileInput($data);
+	} catch (\InvalidArgumentException $error) {
+		http_response_code(400);
+		echo json_encode(['status' => false, 'message' => 'Donnees ou image invalides.']);
+		exit;
+	}
 	if (!empty($passwordValidation['shouldUpdate'])) {
 		$object->set('password', commonHashUserPassword((string)$_POST['new_password']));
 	}
-	$object->set(
+	if (array_key_exists('allow_password_login', $_POST)) $object->set(
 		'allow_password_login',
 		commonUserHasPasswordHash((string)$object->get('password'))
 			&& !empty($_POST['allow_password_login'])
 			? 1
 			: 0
 	);
-	$saveResult = $object->save();
+	try {
+		$saveResult = $object->saveSecurityChanges(!empty($passwordValidation['shouldUpdate']));
+	} catch (\Throwable $error) {
+		error_log('Profile security save failed: ' . get_class($error));
+		http_response_code(503);
+		echo json_encode(['status' => false, 'message' => 'Impossible d enregistrer ce profil.']);
+		exit;
+	}
 
 	if (!is_array($saveResult) || empty($saveResult['status'])) {
 		echo json_encode([
@@ -90,6 +110,11 @@
 		exit;
 	}
 
+	if (!empty($passwordValidation['shouldUpdate'])) {
+		$_SESSION['auth_security_version'] = (int)$object->get('security_version');
+		commonExpireCookieValue(commonGetRememberCookieName(), true);
+		session_regenerate_id(true);
+	}
 	$msg = !empty($passwordValidation['shouldUpdate'])
 		? 'Profil et mot de passe enregistres'
 		: 'Enregistrement reussi';

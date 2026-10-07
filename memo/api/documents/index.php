@@ -1,5 +1,12 @@
 <?php
 require_once dirname(__DIR__) . '/bootstrap.php';
+require_once dirname(__DIR__, 3) . '/common/translation_bundles.php';
+
+$sourceLang = [
+    'documents.drawer.close' => ['text' => 'Fermer', 'context' => 'Accessible label and tooltip for closing a document subdrawer in EasyMEMO.'],
+];
+$lang = loadTranslationBundle('memo_documents', commonAuthGetTranslationLocale(), $sourceLang);
+$drawerCloseLabel = memoApiEscape(t('documents.drawer.close', [], $lang, $sourceLang));
 
 $currentUserId = (int)commonGetCurrentUserId();
 $initialOpenDocumentId = isset($_GET['open_document_id']) ? (int)$_GET['open_document_id'] : 0;
@@ -195,7 +202,7 @@ if (!is_string($documentsPayload)) {
                     <h3 class="omo-overlay-drawer__title" data-memo-document-drawer-title>Détail du document</h3>
                 </div>
                 <div class="generic-drawer-header__actions">
-                    <button type="button" class="omo-overlay-drawer__close" data-memo-document-drawer-close>Fermer</button>
+                    <button type="button" class="omo-overlay-drawer__close generic-action-button generic-action-button--secondary generic-action-button--icon-only generic-action-button--close" data-memo-document-drawer-close title="<?= $drawerCloseLabel ?>" aria-label="<?= $drawerCloseLabel ?>"></button>
                 </div>
             </div>
             <div class="omo-overlay-drawer__body" data-memo-document-drawer-body></div>
@@ -211,7 +218,7 @@ if (!is_string($documentsPayload)) {
                     <p class="omo-overlay-drawer__description" data-memo-document-editor-description>Modification du document dans EasyMEMO.</p>
                 </div>
                 <div class="generic-drawer-header__actions">
-                    <button type="button" class="omo-overlay-drawer__close" data-memo-document-editor-close>Fermer</button>
+                    <button type="button" class="omo-overlay-drawer__close generic-action-button generic-action-button--secondary generic-action-button--icon-only generic-action-button--close" data-memo-document-editor-close title="<?= $drawerCloseLabel ?>" aria-label="<?= $drawerCloseLabel ?>"></button>
                 </div>
             </div>
             <div class="omo-overlay-drawer__body" data-memo-document-editor-body></div>

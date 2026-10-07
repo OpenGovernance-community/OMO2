@@ -718,7 +718,175 @@
 			$this->set('money_budget_recurrence', $moneyBudget['value'] !== null ? $moneyRecurrence : null);
 			$this->set('assignment_review_date', $assignmentReviewDate['value']);
 
-			return array('status' => $this->save(), 'reason' => 'save_failed');
+			$result = $this->save();
+			return array('status' => is_array($result) && !empty($result['status']), 'reason' => 'save_failed');
+		}
+
+		public function getAdminTransitionOptions(): array
+		{
+			$holon = new Holon();
+			if (!$holon->load((int)$this->get('IDholon')) || $holon->isOrganizationHolon()) {
+				return [];
+			}
+			$organizationId = $holon->resolveOrganizationId();
+			$state = $holon->getAdminMemberConstraintState($organizationId);
+			$inheritedAdmins = $holon->getInheritedContextAdminUserIds();
+			$pendingCount = Invitation::countPendingRequestedHolonAdmins($organizationId, (int)$holon->getId(), (int)$this->get('IDuser'));
+			$admins = [];
+			$successors = [];
+			$organizationSuccessors = [];
+			$contextMemberIds = $holon->getAssociatedMemberUserIds([
+				'organizationId' => $organizationId, 'includeDescendants' => false,
+				'skipPermissionFilter' => true, 'activeOnly' => true,
+			]);
+			$links = new ArrayUserHolon();
+			$links->loadActiveForHolonIds([(int)$holon->getId()]);
+			foreach ($links as $link) {
+				$userId = (int)$link->get('IDuser');
+				if ($userId === (int)$this->get('IDuser') || !UserOrganization::hasActiveMembership($userId, $organizationId)) continue;
+				$user = new User();
+				if (!$user->load($userId) || !(bool)$user->get('active')) continue;
+				$candidate = ['userId' => $userId, 'name' => $link->getUserDisplayName($organizationId), 'group' => 'context'];
+				if (in_array($userId, $inheritedAdmins, true)) continue;
+				if ($link->isHolonAdmin()) $admins[$userId] = $candidate;
+			}
+			$memberships = new ArrayUserOrganization();
+			$memberships->loadActiveForOrganization($organizationId);
+			foreach ($memberships as $membership) {
+				$userId = (int)$membership->get('IDuser');
+				if ($userId === (int)$this->get('IDuser') || in_array($userId, $state['adminUserIds'], true)) continue;
+				$user = new User();
+				if (!$user->load($userId) || !(bool)$user->get('active')) continue;
+				$inContext = in_array($userId, $contextMemberIds, true);
+				$candidate = ['userId' => $userId, 'name' => $membership->getUserDisplayName(), 'group' => $inContext ? 'context' : 'organization'];
+				if ($inContext) $successors[$userId] = $candidate;
+				else $organizationSuccessors[$userId] = $candidate;
+			}
+			$successors = array_merge(array_values($successors), array_values($organizationSuccessors));
+			$isAdmin = $this->isHolonAdmin();
+			$countDelta = in_array((int)$this->get('IDuser'), $inheritedAdmins, true) ? 0 : 1;
+			$grantRequired = !$isAdmin && $state['max'] !== null
+				? max(0, (int)$state['adminCount'] + $pendingCount + $countDelta - (int)$state['max']) : 0;
+			$remainingAdmins = (int)$state['adminCount'] - ($isAdmin ? $countDelta : 0);
+			$hasOtherMembers = count(array_diff($contextMemberIds, [(int)$this->get('IDuser')])) > 0;
+			$minimumWithMembers = max(1, (int)$state['min']);
+			$revokeRequired = $isAdmin && $hasOtherMembers ? max(0, $minimumWithMembers - $remainingAdmins) : 0;
+			$revokeChoices = $isAdmin ? max(0, $minimumWithMembers - $remainingAdmins) : 0;
+			$subject = new User();
+			return [
+				'isAdmin' => $isAdmin,
+				'eligible' => (bool)$this->get('active') && (bool)$this->get('is_membership')
+					&& $subject->load((int)$this->get('IDuser')) && (bool)$subject->get('active')
+					&& UserOrganization::hasActiveMembership((int)$this->get('IDuser'), $organizationId),
+				'min' => (int)$state['min'], 'max' => $state['max'],
+				'adminCount' => (int)$state['adminCount'], 'pendingCount' => $pendingCount,
+				'remainingAdmins' => $remainingAdmins,
+				'grant' => ['required' => $grantRequired, 'candidates' => array_values($admins),
+					'choices' => $grantRequired,
+					'blocked' => $state['max'] === 0 || $grantRequired > count($admins)],
+				'revoke' => ['required' => $revokeRequired, 'choices' => $revokeChoices, 'candidates' => $successors,
+					'blocked' => $revokeRequired > count($successors),
+					'vacant' => $isAdmin && !$hasOtherMembers && $remainingAdmins === 0],
+			];
+		}
+
+		/** Save fields and a possible admin handover as one operation. */
+		public function saveAssignmentWithAdmin(array $details, ?bool $isAdmin = null, array $replacementUserIds = [], ?bool $expectedAdmin = null): array
+		{
+			$pdo = self::getPdo();
+			if (!$pdo) return ['status' => false, 'reason' => 'save_failed'];
+			$context = new Holon();
+			if (!$context->load((int)$this->get('IDholon'))) return ['status' => false, 'reason' => 'invalid_assignment'];
+			$organizationId = $context->resolveOrganizationId();
+			$ownsTransaction = !$pdo->inTransaction();
+			$reason = 'save_failed';
+			$links = [];
+			try {
+				if ($ownsTransaction) $pdo->beginTransaction();
+				else $pdo->exec('SAVEPOINT member_assignment_edit');
+				// Serialize handovers in the organization, including admins inherited by circles.
+				if (!self::fetchRow('SELECT id FROM organization WHERE id = :id FOR UPDATE', ['id' => $organizationId])) throw new \RuntimeException();
+				$holonId = (int)$this->get('IDholon');
+				if (!self::fetchRow('SELECT id FROM holon WHERE id = :id FOR UPDATE', ['id' => $holonId])) throw new \RuntimeException();
+				$rows = self::fetchAll('SELECT * FROM user_holon WHERE IDholon = :id ORDER BY id FOR UPDATE', ['id' => $holonId]);
+				if (!is_array($rows)) throw new \RuntimeException();
+				$links = [];
+				foreach ($rows as $row) {
+					$link = new self();
+					$link->hydrateFromDatabaseRow($row, true);
+					$links[(int)$row['IDuser']] = $link;
+				}
+				$link = $links[(int)$this->get('IDuser')] ?? null;
+				$holon = new Holon();
+				if (!$link || !(bool)$link->get('is_membership') || !$holon->load($holonId, true) || $holon->isOrganizationHolon()) {
+					$reason = 'invalid_assignment'; throw new \RuntimeException();
+				}
+				$canEdit = $holon->isAllowed('CAN_EDIT_MEMBER_ASSIGNMENT', false);
+				$canAdmin = $holon->isAllowed('CAN_ADD_ADMIN', false);
+				$organization = new Organization();
+				$organization->load($holon->resolveOrganizationId());
+				$canBudget = $holon->isAllowed('CAN_EDIT_AFFECTATION_BUDGET', false)
+					&& $organization->isApplicationEnabled('budget', (int)\commonGetCurrentUserId());
+				if (!$holon->canViewDetail() || (!$canEdit && !$canAdmin && !$canBudget)) {
+					$reason = 'admin_forbidden'; throw new \RuntimeException();
+				}
+				$changedAdmin = $isAdmin !== null && $isAdmin !== $link->isHolonAdmin();
+				if ($isAdmin !== null && $expectedAdmin !== null && $expectedAdmin !== $link->isHolonAdmin()) {
+					$reason = 'admin_stale'; throw new \RuntimeException();
+				}
+				if ($changedAdmin) {
+					$options = $link->getAdminTransitionOptions();
+					if (!$canAdmin || empty($options['eligible'])) { $reason = 'admin_forbidden'; throw new \RuntimeException(); }
+					$plan = $options[$isAdmin ? 'grant' : 'revoke'];
+					$selected = array_values(array_filter(array_map('intval', $replacementUserIds)));
+					$allowed = array_column($plan['candidates'], 'userId');
+					if (!empty($plan['blocked']) || count($selected) < $plan['required'] || count($selected) > $plan['choices']
+						|| ($selected !== [] && count($selected) !== $plan['choices'])
+						|| count(array_unique($selected)) !== count($selected) || array_diff($selected, $allowed)) {
+						$reason = 'admin_replacement_required'; throw new \RuntimeException();
+					}
+					if (!$isAdmin && $selected !== [] && $options['max'] !== null
+						&& $options['remainingAdmins'] + count($selected) + $options['pendingCount'] > $options['max']) {
+						$reason = 'admin_replacement_required'; throw new \RuntimeException();
+					}
+					foreach ($selected as $replacementId) {
+						if (!$isAdmin) {
+							if (!isset($links[$replacementId])) {
+								$links[$replacementId] = new self();
+								$links[$replacementId]->set('IDuser', $replacementId);
+								$links[$replacementId]->set('IDholon', $holonId);
+							}
+							$links[$replacementId]->set('active', true);
+							$links[$replacementId]->set('is_membership', true);
+						}
+						$result = $links[$replacementId]->setHolonAdmin(!$isAdmin);
+						if (!is_array($result) || empty($result['status'])) throw new \RuntimeException();
+					}
+					$result = $link->setHolonAdmin($isAdmin);
+					if (!is_array($result) || empty($result['status'])) throw new \RuntimeException();
+				}
+				$values = [];
+				foreach (['focus', 'assignment_review_date', 'time_budget_hours', 'time_budget_recurrence', 'money_budget', 'money_budget_recurrence'] as $field) {
+					$editable = in_array($field, ['focus', 'assignment_review_date'], true) ? $canEdit : $canBudget;
+					$value = $editable && array_key_exists($field, $details) ? $details[$field] : $link->get($field);
+					if ($field === 'assignment_review_date' && $value instanceof \DateTimeInterface) $value = $value->format('Y-m-d');
+					$values[$field] = $value ?? '';
+				}
+				$result = $link->updateAssignmentDetails($values);
+				if (empty($result['status'])) { $reason = $result['reason'] ?? 'save_failed'; throw new \RuntimeException(); }
+				if ($ownsTransaction) $pdo->commit();
+				else $pdo->exec('RELEASE SAVEPOINT member_assignment_edit');
+				if ($changedAdmin && function_exists('commonClearCurrentUserPermissionCache')) \commonClearCurrentUserPermissionCache();
+				$this->load((int)$link->getId(), true);
+				return ['status' => true, 'adminChanged' => $changedAdmin];
+			} catch (\Throwable $exception) {
+				if ($pdo->inTransaction()) {
+					if ($ownsTransaction) $pdo->rollBack();
+					else { $pdo->exec('ROLLBACK TO SAVEPOINT member_assignment_edit'); $pdo->exec('RELEASE SAVEPOINT member_assignment_edit'); }
+				}
+				foreach ($links as $loadedLink) unset(self::$preload['user_holon_' . $loadedLink->getId()]);
+				return ['status' => false, 'reason' => $reason];
+			}
 		}
 
 		protected function loadScopedMembership($organizationId = 0)

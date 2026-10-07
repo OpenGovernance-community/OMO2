@@ -66,12 +66,10 @@ final class ObjectAudience
             if ($userIds !== null) foreach ($userIds as $memberId) {
                 if (!isset($members['user:' . $memberId])) throw new \DomainException('Un membre selectionne est indisponible ou inactif dans cette organisation.');
             }
-            $canManage = true; // Any authenticated active member may contact fellow members.
             $semantics = 'Membres actifs de l organisation autorisee, ou selection explicite par user_ids. Coordonnees propres a cette organisation. Aucun destinataire externe.';
         } elseif ($object instanceof Holon) {
             if (!$org->containsHolon($object) || !$object->get('visible') || !$object->canViewDetail()) throw new \DomainException('Holon indisponible.');
             foreach ($object->getAssociatedMemberUserIds(['organizationId' => $organizationId, 'activeOnly' => true, 'skipPermissionFilter' => true]) as $memberId) $addUser((int)$memberId, 'member');
-            $canManage = $object->isAllowed('CAN_ADD_MEMBER', false, $uid);
             $semantics = 'Membres effectifs du holon, y compris les roles descendants des cercles et les appartenances calculees. Le holon racine represente les membres actifs de l organisation.';
         } elseif ($object instanceof Event) {
             require_once dirname(__DIR__, 2) . '/omo/api/calendar/permissions_shared.php';
@@ -108,8 +106,6 @@ final class ObjectAudience
             foreach (array_replace($groupStatuses, $individualStatuses) as $key => $status) if (isset($members[$key])) $members[$key]['status'] = $status;
             $semantics = 'Liste native des invitations individuelles et des holons invites, ou membres du holon de la reunion en leur absence, independante de la presence. Les inscriptions publiques et adresses invitees sont visibles aux gestionnaires. Un contact reference peut etre liste sans etre eligible a l envoi. Une invitation refusee ne recoit pas de message.';
         } elseif ($object instanceof Project) {
-            $projectContext = \omoProjectsResolveContext($organizationId, $context['currentHolonId'], false);
-            $canManage = \omoProjectsCanManageProject($object, $projectContext);
             $addUser((int)$object->get('IDuser'), 'responsible');
             $assignments = new ArrayProjectUser();
             $assignments->load(['where' => [['field' => 'IDproject', 'value' => $id], ['field' => 'active', 'value' => 1]]]);
@@ -117,14 +113,12 @@ final class ObjectAudience
             $semantics = 'Responsable et personnes affectees activement au projet. Les abonnements et membres du holon ne constituent pas une invitation au projet.';
         } elseif ($object instanceof DecisionProcess) {
             $canManage = $object->canUseManagementPermission('CAN_EDIT_DECISION', $uid);
-            // Do not disclose private participant identities or voting information to a general viewer.
-            if (!$canManage) throw new \DomainException('Gestion de la decision requise pour consulter ses destinataires.');
             foreach ($object->getParticipants(true) as $participant) {
                 $status = DecisionParticipant::normalizeStatus($participant->get('status'));
                 if ($status === DecisionParticipant::STATUS_REVOKED) continue;
                 $memberId = (int)$participant->get('IDuser');
                 if ($memberId > 0) $addUser($memberId, (string)$participant->get('role'), $status);
-                else $addExternal((string)$participant->get('email'), (string)$participant->get('display_name'), (string)$participant->get('role'), $status);
+                elseif ($canManage) $addExternal((string)$participant->get('email'), (string)$participant->get('display_name'), (string)$participant->get('role'), $status);
             }
             $semantics = 'Participants actifs deja references dans la decision, sans votes ni jetons personnels. Les participants refuses ou revoques ne recoivent pas de message.';
         }
@@ -136,10 +130,10 @@ final class ObjectAudience
             if ($members[$member['member_id']]['mail_eligible']) $recipients[$member['email']] = $members[$member['member_id']];
         }
         ksort($recipients, SORT_STRING);
-        $canSend = $canManage || (isset($members['user:' . $uid]) && !in_array($members['user:' . $uid]['status'], ['declined', 'revoked'], true));
         $senderName = (string)$user->getScopedDisplayName($organizationId);
         $senderEmail = trim((string)$user->getScopedEmail($organizationId));
-        $canSend = $canSend && (bool)filter_var($senderEmail, FILTER_VALIDATE_EMAIL);
+        // Active organization membership was checked above; sending does not require an object role.
+        $canSend = (bool)filter_var($senderEmail, FILTER_VALIDATE_EMAIL);
         $title = $object instanceof Organization ? (string)$org->get('name')
             : ($object instanceof Holon ? (string)$object->getDisplayName() : (string)$object->get('title'));
         $tokenParts = [$organizationId, $type, $id, array_keys($recipients)];
@@ -150,6 +144,24 @@ final class ObjectAudience
             'audience_token' => hash('sha256', json_encode($tokenParts, JSON_THROW_ON_ERROR)),
             'semantics' => $semantics, 'sender' => ['user_id' => $uid, 'name' => $senderName, 'email' => $senderEmail],
             'organization_name' => (string)$org->get('name')];
+    }
+
+    /** Narrow an already permission-checked audience; never accept free addresses or an empty selection. */
+    public static function selectRecipients(array $audience, array $memberIds): array
+    {
+        if (!array_is_list($memberIds) || count($memberIds) < 1 || count($memberIds) > ObjectMail::MAX_RECIPIENTS) {
+            throw new \InvalidArgumentException('Selectionnez entre 1 et 500 destinataires.');
+        }
+        $eligible = array_column($audience['recipients'], null, 'member_id');
+        $selected = [];
+        foreach ($memberIds as $memberId) {
+            if (!is_string($memberId) || !isset($eligible[$memberId]) || isset($selected[$memberId])) {
+                throw new \DomainException('Un destinataire selectionne est indisponible ou invalide.');
+            }
+            $selected[$memberId] = true;
+        }
+        $audience['recipients'] = array_values(array_filter($audience['recipients'], static fn ($member) => isset($selected[$member['member_id']])));
+        return $audience;
     }
 
     public static function page(int $organizationId, array $args): array

@@ -1,0 +1,177 @@
+SECURISATION LOCALE - 2026-10-06
+Projet : pv.systemdd.ch
+
+Perimetre
+---------
+Revue du code PHP, des controles d acces, des recuperations de compte,
+des uploads, du webhook Telegram et du Docker local. Tests sur des comptes
+temporaires dans omodev avec PHP 8.5. Aucun deploiement ni test en production.
+Cette intervention traite les problemes identifies ci-dessous ; elle ne constitue
+pas une garantie d absence de toute autre vulnerabilite.
+
+Corrections
+-----------
+1. Critique : recuperation de compte sans code valide.
+   L ancienne route acceptait certains codes vides par comparaison souple.
+   Les codes sont maintenant aleatoires sur 256 bits, stockes sous forme de
+   SHA-256, expires apres une heure et consommes sous verrou transactionnel.
+   Les routes ancienne et moderne utilisent la meme implementation dbObject.
+   Un code ne peut servir qu une fois, meme avec deux requetes simultanees.
+
+2. Critique : modification des privileges depuis les profils.
+   Les champs acceptes sont explicitement listes. id, siteadmin, active,
+   security_version, activation_pending, telegramID, secrets TOTP, mot de passe
+   brut et parametres d administration sont exclus de la sauvegarde generique.
+   L adhesion et l organisation ne sont plus creees ou changees implicitement.
+   Les adresses e-mail sont affichees en lecture seule dans ces formulaires ;
+   leur modification doit passer par un parcours de verification dedie.
+
+3. Eleve : edition d une structure tierce par l ancienne route Circle.
+   La route verifie toute l arborescence avant d ecrire : proprietaire,
+   appartenance des enfants, templates, proprietes et references implicites.
+   Elle est reservee aux anciennes structures privees du proprietaire.
+   Les structures rattachees a une organisation utilisent les routes modernes.
+   Les copies de modeles appartenant a un autre utilisateur sont refusees.
+
+4. Eleve : webhook Telegram forge et actions sur un document tiers.
+   POST et en-tete secret Telegram sont obligatoires, compares en temps constant.
+   Taille du JSON limitee a 1 MiB. Partage, suppression et ajout de photo exigent
+   le proprietaire du document ; les callbacks exigent un compte actif.
+   Aucun appel de configuration a Telegram n a ete effectue.
+
+5. Eleve : injection HTML/JavaScript stockee.
+   Les configurations JSON de topbar et de connexion echappent les caracteres
+   capables de fermer une balise script. Les textarea texte et HTML d adminEdit
+   echappent leur contenu, tout en conservant sa valeur pour les editeurs.
+   Les valeurs de l ancienne page de preferences sont echappees a l affichage.
+
+6. Eleve : fichiers executables envoyes comme images.
+   Les deux types image et sizedimage decodent puis reencodent les fichiers
+   raster. Noms aleatoires et extensions choisies par le serveur.
+   Verification de l origine HTTP du fichier, limite de 8 MiB, 8192 pixels par
+   dimension et 16 millions de pixels. Les SVG envoyes sont refuses.
+   Les chemins executables sont interdits par Apache, meme en casse mixte
+   ou avec une extension alternative. La FAQ utilise sizedimage.
+
+7. Eleve : fichiers internes accessibles depuis la racine web.
+   Apache interdit les fichiers caches, exports SQL, sauvegardes, cles,
+   fichiers env et APIKEY.txt, ainsi que les repertoires internes sensibles.
+   Les repertoires tmp, log et telegram/data restent interdits.
+   Le present rapport est aussi refuse par HTTP.
+
+8. Eleve : requetes navigateur sans protection CSRF commune.
+   Les mutations avec une session authentifiee doivent provenir de l origine
+   exacte (schema, hote, port) ou porter un jeton de session valide.
+   Les formulaires adminEdit emettent le jeton _csrf ; les clients peuvent
+   egalement utiliser X-OMO-CSRF-Token. Les transports API/MCP/DAV et Telegram
+   conservent leurs propres mecanismes d authentification.
+
+9. Eleve : liens d authentification derives d un Host non fiable.
+   Les e-mails de connexion et de recuperation utilisent AUTH_PUBLIC_URL.
+   Sur les hotes non locaux, son absence provoque un refus d envoi.
+   X-Forwarded-Proto n est accepte que depuis AUTH_TRUSTED_PROXY_IPS.
+
+10. Eleve : acces persistants conserves apres changement de mot de passe.
+    Les remember tokens sont haches en base. Une version de securite est
+    verifiee dans les sessions, avec l etat actif du compte.
+    Recuperation, changement de mot de passe et changements TOTP revoquent
+    sessions precedentes, remember tokens, codes de connexion et grants MCP.
+    Une modification faite depuis le profil garde uniquement la session courante
+    renouvelee. La desactivation TOTP exige maintenant un code TOTP valide.
+    Les inscriptions en attente sont distinguees des comptes desactives.
+    Les sauvegardes d objets User devenus obsoletes sont refusees pour eviter
+    de restaurer un ancien mot de passe apres une revocation concurrente.
+
+11. Moyen : exposition des services Docker auxiliaires.
+    MariaDB, phpMyAdmin et Mailpit sont lies a 127.0.0.1.
+    Collabora ne tourne plus en mode privileged ; MKNOD et SYS_CHROOT sont
+    les seules capacites ajoutees. Demarrage et discovery verifies localement.
+    Apache conserve les ports web existants. Les autres services et volumes
+    ont ete conserves.
+
+12. Moyen : erreurs et en-tetes de securite.
+    Docker masque les erreurs PHP publiques et X-Powered-By, journalise les
+    erreurs et impose des cookies HttpOnly, SameSite=Lax et des sessions strictes.
+    Ajout de nosniff, Referrer-Policy, HSTS sur HTTPS et CSP minimale limitant
+    base-uri et object-src. Les politiques CSP plus strictes de MCP restent actives.
+    La sauvegarde PV ne retourne plus de diagnostic SQL au navigateur.
+
+Migrations et effets
+--------------------
+sql/2026-10-06-01-auth-security.sql : code VARCHAR(64), security_version,
+invalidation des anciens liens de recuperation et hachage des remember tokens.
+sql/2026-10-06-02-auth-pending-activation.sql : activation_pending.
+Les deux migrations sont appliquees a omodev par scripts/run-migrations.php.
+La premiere migration transforme les tokens existants UNE FOIS : utiliser le
+runner avec sa table sql_migration, ne pas la rejouer manuellement.
+Les anciens comptes inactifs ne sont pas marques automatiquement comme des
+inscriptions en attente. Leur activation demande une decision administrative.
+
+Avant publication
+-----------------
+A. Configurer AUTH_PUBLIC_URL avec l origine HTTPS publique officielle dans
+   l environnement de chaque serveur. Ne pas utiliser le domaine local.
+B. Configurer TELEGRAM_WEBHOOK_SECRET avec un secret aleatoire d au moins
+   32 caracteres, puis renseigner la meme valeur dans secret_token de setWebhook.
+   Sans cela, le webhook refuse toutes les requetes. Faire cette operation avec
+   les identifiants du bot dans l environnement cible, sans exposer le secret.
+C. Conserver AUTH_TOTP_ENCRYPTION_KEY et AUTH_RATE_LIMIT_SECRET hors du depot,
+   avec permissions limitees. Ne pas remplacer une cle TOTP existante sans
+   procedure de migration des secrets chiffres.
+D. Si un reverse proxy termine HTTPS, declarer uniquement ses IP/CIDR reels
+   dans AUTH_TRUSTED_PROXY_IPS et lui faire remplacer les en-tetes forwarded.
+E. Activer les modules Apache headers/rewrite, AllowOverride approprie et les
+   memes reglages PHP de securite sur le serveur heberge. .user.ini ne regle
+   pas un serveur utilisant mod_php. Verifier les refus HTTP apres publication.
+F. Utiliser des comptes SQL et des secrets propres a la production. Les mots
+   de passe omodev/root du Compose sont des valeurs de developpement ; changer
+   uniquement les variables Compose ne modifie pas un volume MariaDB existant.
+
+Travaux restant a planifier
+--------------------------
+- CSP complete avec nonces et reduction des scripts inline/CDN ; la politique
+  minimale ajoutee ne bloque pas a elle seule toute injection JavaScript.
+- Revue exhaustive des actions historiques en GET et des endpoints qui
+  n utilisent pas shared_functions.php. La garde commune couvre les mutations
+  authentifiees POST/PUT/PATCH/DELETE passant par ce bootstrap.
+- Parcours verifie pour changer l adresse de connexion depuis le profil.
+- Modernisation de l inscription legacy : son calcul anti-spam fourni par
+  le client reste faible ; les limites d envoi existantes restent necessaires.
+- Deduplication/reprise des updates Telegram et revue des fonctions de groupe.
+- SpaceDeck reste en mode development dans cette image locale : elle ne
+  contient pas les assets build requis en production. Construire et tester
+  une image production avant tout hebergement public de ce service.
+- Audit et mises a jour des dependances Node des services collaboratifs,
+  inventaire des CDN et politique de sauvegarde/restauration des volumes.
+- Validation complete d une edition Collabora avec un document reel.
+  Le retrait de privileged a ete teste au demarrage et sur discovery.
+
+Verification locale
+-------------------
+tests/security_hardening_test.php : tests HTTP sur fixtures temporaires,
+recuperation legacy/moderne et concurrente, champs proteges, CSRF, injection
+de textarea et script, fichiers recus, sessions/tokens et acces internes.
+Test MFA avec code valide si la cle TOTP locale est configuree ; refus sans
+code teste dans tous les cas. Les fixtures sont supprimees en fin de test.
+Regressions : auth_rate_limit_test, totp_authentication_test,
+password_login_permission_test, login_secondary_email_guard_test,
+readonly_session_test, dbobject_html_sanitization_test,
+dbobject_sized_image_optimization_test, getimg_security_test,
+telegram_document_visibility_test et mcp_http_test.
+Composer audit --locked : aucune alerte publiee pour le verrou PHP courant.
+Ce resultat ne couvre pas les dependances JavaScript/Node ni les CDN.
+
+References
+----------
+OWASP Forgot Password Cheat Sheet:
+https://cheatsheetseries.owasp.org/cheatsheets/Forgot_Password_Cheat_Sheet.html
+OWASP Mass Assignment Cheat Sheet:
+https://cheatsheetseries.owasp.org/cheatsheets/Mass_Assignment_Cheat_Sheet.html
+OWASP CSRF Prevention Cheat Sheet:
+https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html
+OWASP File Upload Cheat Sheet:
+https://cheatsheetseries.owasp.org/cheatsheets/File_Upload_Cheat_Sheet.html
+Telegram Bot API setWebhook:
+https://core.telegram.org/bots/api#setwebhook
+Collabora SDK Manual:
+https://sdk.collaboraonline.com/CO-SDK-manual.pdf

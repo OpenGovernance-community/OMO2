@@ -854,7 +854,6 @@
 .omo-calendar__results.generic-file-list {
     --generic-file-list-columns: minmax(106px, 0.78fr) minmax(0, 2.4fr) minmax(150px, 1.1fr) minmax(140px, 1fr);
     --generic-file-list-title-gap: 18px;
-    --generic-file-list-table-margin-inline: 12px;
     --generic-file-list-padding-inline-start: 16px;
     --generic-file-list-padding-inline-end: 18px;
     --generic-file-list-header-padding-block: 14px;
@@ -1066,10 +1065,6 @@
 
     .omo-calendar__list-date {
         align-items: flex-start;
-    }
-
-    .omo-calendar__results.generic-file-list {
-        --generic-file-list-table-margin-inline: 0px;
     }
 
     .omo-calendar__time-view {

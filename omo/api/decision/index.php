@@ -202,6 +202,7 @@ function omoDecisionsIndexResolvePrimaryActionLabel($status, $canManage, array $
 }
 
 $sourceLang = [
+    'decisions.index.action.close' => ['text' => 'Fermer', 'context' => 'Accessible label and tooltip for closing the decision editor drawer.'],
     'decisions.index.title' => [
         'text' => 'Décisions',
         'context' => 'Main title of the decisions drawer entry screen.',
@@ -595,7 +596,7 @@ $sourceLang = [
         'context' => 'Manager action used to delete a decision that has no submitted votes yet.',
     ],
     'decisions.index.action.more' => [
-        'text' => '...',
+        'text' => "\u{22EE}",
         'context' => 'Label of the secondary menu button shown on detailed decision cards.',
     ],
     'decisions.index.action.more_aria' => [
@@ -1512,7 +1513,7 @@ if (!is_string($payloadJson)) {
                         </div>
                         <div class="generic-drawer-header__actions">
                             <div data-omo-subdrawer-actions></div>
-                            <button type="button" class="omo-overlay-drawer__close generic-action-button generic-action-button--secondary" data-omo-decision-editor-close>Fermer</button>
+                            <button type="button" class="omo-overlay-drawer__close generic-action-button generic-action-button--secondary generic-action-button--icon-only generic-action-button--close" data-omo-decision-editor-close title="<?= $escape(t('decisions.index.action.close', [], $lang, $sourceLang)) ?>" aria-label="<?= $escape(t('decisions.index.action.close', [], $lang, $sourceLang)) ?>"></button>
                         </div>
                     </div>
                     <div class="omo-overlay-drawer__body omo-decisions__editor-body" data-omo-decision-editor-body></div>

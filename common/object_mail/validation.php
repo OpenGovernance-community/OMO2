@@ -14,9 +14,10 @@ function omoObjectMailValidateSelection(array $args): void
 function omoObjectMailValidate(array $args): void
 {
     omoObjectMailValidateSelection($args);
-    if (array_diff(array_keys($args), ['object_type', 'object_id', 'user_ids', 'subject', 'message', 'request_key', 'audience_token'])
+    if (array_diff(array_keys($args), ['object_type', 'object_id', 'user_ids', 'subject', 'message', 'message_format', 'request_key', 'audience_token'])
         || !in_array($args['object_type'] ?? null, ['organization', 'holon', 'event', 'project', 'decision'], true)
         || !is_int($args['object_id'] ?? null) || $args['object_id'] <= 0) throw new InvalidArgumentException('Objet invalide.');
+    if (!in_array($args['message_format'] ?? 'plain', ['plain', 'html'], true)) throw new InvalidArgumentException('Format de message invalide.');
     foreach (['subject' => 250, 'message' => 20000, 'request_key' => 100, 'audience_token' => 64] as $field => $maximum) {
         $value = $args[$field] ?? null;
         if (!is_string($value) || trim($value) === '' || !mb_check_encoding($value, 'UTF-8')

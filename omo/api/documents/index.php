@@ -1287,7 +1287,7 @@ if (!is_string($documentsPayload)) {
                                             aria-haspopup="menu"
                                             aria-expanded="false"
                                             aria-label="Actions pour <?= $escape($entry['title']) ?>"
-                                        >...</button>
+                                        >&#8942;</button>
                                     </div>
                                 <?php endif; ?>
                             </article>
@@ -1307,7 +1307,7 @@ if (!is_string($documentsPayload)) {
                         </div>
                         <div class="generic-drawer-header__actions">
                             <div class="omo-documents__drawer-custom-actions" data-omo-subdrawer-actions></div>
-                            <button type="button" class="omo-overlay-drawer__close generic-action-button generic-action-button--secondary" data-omo-document-detail-close><?= $escape(omoDocumentsScopeT('documents.drawer.close')) ?></button>
+                            <button type="button" class="omo-overlay-drawer__close generic-action-button generic-action-button--secondary generic-action-button--icon-only generic-action-button--close" data-omo-document-detail-close title="<?= $escape(omoDocumentsScopeT('documents.drawer.close')) ?>" aria-label="<?= $escape(omoDocumentsScopeT('documents.drawer.close')) ?>"></button>
                         </div>
                     </div>
                     <div class="omo-overlay-drawer__body" data-omo-document-detail-body></div>

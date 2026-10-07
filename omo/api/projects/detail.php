@@ -269,7 +269,6 @@ if ((int)($_GET['cid'] ?? 0) > 0) {
         data-omo-subdrawer-title="<?= omoApiEscape((string)$project->get('title')) ?>"
         data-omo-subdrawer-description="<?= omoApiEscape($contextLabel) ?>"
     >
-        <?php require_once dirname(__DIR__, 3) . '/common/object_mail/ui.php'; omoObjectMailButton($organizationId, 'project', (int)$project->getId(), 'data-omo-subdrawer-action'); ?>
         <div class="omo-project-discussion-action" data-omo-subdrawer-action data-omo-chat-action-container>
             <div class="omo-chat-popup-actions">
                 <span class="omo-chat-popup-count" data-omo-chat-message-count-display title="<?= omoApiEscape($projectDiscussionMessageCountLabel) ?>" aria-label="<?= omoApiEscape($projectDiscussionMessageCountLabel) ?>">
@@ -304,6 +303,18 @@ if ((int)($_GET['cid'] ?? 0) > 0) {
         <?php if ($canRespondToProposal): ?>
             <button type="button" class="generic-action-button generic-action-button--main" data-omo-project-proposal-response="accept_project_proposal" data-project-id="<?= (int)$project->getId() ?>"><?= omoApiEscape(omoProjectsT('projects.action.accept_proposal')) ?></button>
             <button type="button" class="generic-action-button generic-action-button--danger" data-omo-project-proposal-response="refuse_project_proposal" data-project-id="<?= (int)$project->getId() ?>"><?= omoApiEscape(omoProjectsT('projects.action.refuse_proposal')) ?></button>
+        <?php endif; ?>
+        <?php
+        require_once dirname(__DIR__, 3) . '/common/object_mail/ui.php';
+        ob_start();
+        omoObjectMailButton($organizationId, 'project', (int)$project->getId(), '', true);
+        $projectMailAction = ob_get_clean();
+        if ($projectMailAction !== ''):
+        ?>
+        <div class="generic-menu generic-panel-actions" data-omo-subdrawer-action>
+            <button type="button" class="generic-menu-toggle" data-common-panel-menu-toggle aria-haspopup="menu" aria-expanded="false" aria-controls="omo-project-actions-<?= (int)$project->getId() ?>" aria-label="<?= omoApiEscape(omoProjectsT('projects.action.more')) ?>">&#8942;</button>
+            <div id="omo-project-actions-<?= (int)$project->getId() ?>" class="generic-menu-panel generic-menu-panel--wide generic-menu-panel--anchored" role="menu" hidden><?= $projectMailAction ?></div>
+        </div>
         <?php endif; ?>
     </div>
     <div class="generic-tabs generic-tabs--icons-mobile omo-project-detail__tabs" data-generic-tabs>
