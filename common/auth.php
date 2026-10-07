@@ -521,6 +521,10 @@ function commonGetAuthSharedSourceLang(): array
             'text' => 'Trop de tentatives. Veuillez patienter avant de réessayer.',
             'context' => 'Generic error shown when an authentication request is temporarily rate limited.'
         ],
+        'auth.error.mail_configuration' => [
+            'text' => 'L envoi des e-mails de connexion est indisponible : la configuration du serveur est incomplete. Contactez l administrateur.',
+            'context' => 'Authentication email service is unavailable because its canonical public URL is missing or invalid.'
+        ],
         'auth.error.password_login_disabled' => [
             'text' => 'La connexion avec mot de passe n’est pas autorisée pour ce compte. Utilisez le code reçu par e-mail.',
             'context' => 'Error shown after a correct password is refused because the account only allows CalDAV or CardDAV use.'
@@ -2833,6 +2837,22 @@ function commonSendPasswordResetEmail(\dbObject\User $user, array $organizationC
     ];
 }
 
+function commonAuthRequireMailConfiguration(array $lang, array $sourceLang): void
+{
+    try {
+        commonSecurityBaseUrl();
+    } catch (\RuntimeException $error) {
+        error_log('[auth mail configuration] ' . $error->getMessage());
+        http_response_code(503);
+        header('Content-Type: application/json; charset=UTF-8');
+        echo json_encode([
+            'error' => 'mail_configuration',
+            'message' => commonAuthT('auth.error.mail_configuration', [], $lang, $sourceLang),
+        ]);
+        exit;
+    }
+}
+
 function commonHandleMagicLoginSend($defaultReturnTo = '/')
 {
     header('Content-Type: application/json; charset=UTF-8');
@@ -2850,6 +2870,7 @@ function commonHandleMagicLoginSend($defaultReturnTo = '/')
         exit;
     }
 
+    commonAuthRequireMailConfiguration($lang, $sourceLang);
     $requestLimit = commonAuthRunLimit('magic_request_ip', 'ip', commonGetRequestIp());
     if (empty($requestLimit['available']) || empty($requestLimit['allowed'])) {
         commonAuthSetLimitHttpResponse($requestLimit);
@@ -3027,6 +3048,7 @@ function commonHandlePasswordResetRequest($defaultReturnTo = '/')
         exit;
     }
 
+    commonAuthRequireMailConfiguration($lang, $sourceLang);
     $deliveryLimit = commonAuthEmailDeliveryLimits('reset', $email);
     if (empty($deliveryLimit['available']) || empty($deliveryLimit['allowed'])) {
         commonAuthSetLimitHttpResponse($deliveryLimit);
