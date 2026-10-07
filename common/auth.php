@@ -4,6 +4,7 @@ require_once __DIR__ . '/environment_subdomains.php';
 require_once __DIR__ . '/runtime_log.php';
 require_once __DIR__ . '/totp.php';
 require_once __DIR__ . '/assets.php';
+require_once __DIR__ . '/request_security.php';
 
 function commonGetDemoOrganizationId()
 {
@@ -18,20 +19,7 @@ function commonGetRequestHost()
 
 function commonGetRequestScheme()
 {
-    $https = strtolower((string)($_SERVER['HTTPS'] ?? ''));
-    if ($https !== '' && $https !== 'off') {
-        return 'https';
-    }
-
-    if ((string)($_SERVER['SERVER_PORT'] ?? '') === '443') {
-        return 'https';
-    }
-
-    if (strtolower((string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https') {
-        return 'https';
-    }
-
-    return 'http';
+    return commonSecurityRequestScheme($_SERVER);
 }
 
 function commonGetRequestPath()
@@ -415,7 +403,7 @@ function commonRefreshRememberedUser($remember)
     $remember->renew();
     commonSetCookieValue(
         commonGetRememberCookieName(),
-        (string)$remember->get('token'),
+        commonGetRememberCookieValue(),
         time() + commonGetRememberDurationSeconds(),
         true
     );
@@ -1082,6 +1070,12 @@ function commonRestoreRememberedUser()
 
     if (isset($_SESSION['currentUser']) && (int)$_SESSION['currentUser'] > 0) {
         $currentUserId = (int)$_SESSION['currentUser'];
+        $sessionUser = new \dbObject\User();
+        if (!$sessionUser->load($currentUserId) || !(bool)$sessionUser->get('active')
+            || (int)($_SESSION['auth_security_version'] ?? 0) !== (int)$sessionUser->get('security_version')) {
+            commonLogoutUser();
+            return 0;
+        }
         $rememberCookie = commonGetRememberCookieValue();
         if ($rememberCookie !== '') {
             $remember = \dbObject\UserRemember::findValidByToken($rememberCookie);
@@ -1109,6 +1103,13 @@ function commonRestoreRememberedUser()
 	unset($_SESSION['permissionCacheByOrganization']);
 	commonClearCurrentUserAllAdminModes();
 	$_SESSION['currentUser'] = (int)$remember->get('IDuser');
+	$rememberedUser = new \dbObject\User();
+	if (!$rememberedUser->load((int)$_SESSION['currentUser']) || !(bool)$rememberedUser->get('active')) {
+		commonLogoutUser();
+		return 0;
+	}
+	$_SESSION['auth_security_version'] = (int)$rememberedUser->get('security_version');
+	session_regenerate_id(true);
 	commonUpdateGlobalLastConnection((int)$_SESSION['currentUser']);
 	commonRefreshRememberedUser($remember);
     commonAuthSecurityLog('remember_login', 'success', ['user_id' => (int)$_SESSION['currentUser']]);
@@ -1127,6 +1128,7 @@ function commonGetCurrentUserId()
 /** Call after the last session write, including form tokens, on read-only endpoints. */
 function commonReleaseReadOnlySession(): void
 {
+    if (session_status() === PHP_SESSION_ACTIVE) commonCsrfToken();
     if (session_status() === PHP_SESSION_ACTIVE) {
         // Persist the current permission cache before rendering can refresh it lazily.
         if (commonGetCurrentUserId() > 0) {
@@ -1829,6 +1831,7 @@ function commonExpireLegacyAuthCookies()
 function commonLogoutUser()
 {
     unset($_SESSION['currentUser']);
+    unset($_SESSION['auth_security_version'], $_SESSION['common_csrf'], $_SESSION['pending_totp_setup']);
     commonClearCurrentUserAllAdminModes();
     unset($_SESSION['permissionCacheByOrganization']);
     unset($_SESSION['userRef']);
@@ -2497,6 +2500,8 @@ function commonCompleteInteractiveLogin($userId, $remember, $ipAddress)
         return false;
     }
 
+    $authenticatedUser = new \dbObject\User();
+    if (!$authenticatedUser->load($userId, true) || !$authenticatedUser->activateForVerifiedLogin()) return false;
     if ((int)$remember > 0) {
         $rememberToken = bin2hex(random_bytes(32));
         $ua = (string)($_SERVER['HTTP_USER_AGENT'] ?? '');
@@ -2511,6 +2516,7 @@ function commonCompleteInteractiveLogin($userId, $remember, $ipAddress)
     commonExpireLegacyAuthCookies();
     session_regenerate_id(true);
     $_SESSION['currentUser'] = $userId;
+    $_SESSION['auth_security_version'] = (int)$authenticatedUser->get('security_version');
     commonClearCurrentUserAllAdminModes();
     unset($_SESSION['permissionCacheByOrganization']);
     commonStorePendingLoginToken(null);
@@ -2632,7 +2638,7 @@ function commonSendLoginCode($userId, $email, array $organizationContext, $remem
     $returnTo = commonNormalizeLocalPath($returnTo, '/');
     $verifyPath = commonNormalizeLocalPath($verifyPath, '/common/login_verify.php');
     $querySeparator = strpos($verifyPath, '?') === false ? '?' : '&';
-    $link = commonGetRequestScheme() . "://" . ($_SERVER['HTTP_HOST'] ?? '') . $verifyPath . $querySeparator . "token=" . urlencode($requestToken) . "&code=" . urlencode($loginCode) . "&return_to=" . urlencode($returnTo);
+    $link = commonSecurityUrl($verifyPath . $querySeparator . "token=" . urlencode($requestToken) . "&code=" . urlencode($loginCode) . "&return_to=" . urlencode($returnTo));
 
     $codeLabel = commonAuthT('auth.email.subject', [], $lang, $sourceLang);
     $subject = $codeLabel . ' : ' . $loginCode;
@@ -2725,20 +2731,12 @@ function commonSendLoginCode($userId, $email, array $organizationContext, $remem
 
 function commonIssueUserPasswordResetCode(\dbObject\User $user)
 {
-    $resetCode = bin2hex(random_bytes(10));
-    $user->set('code', $resetCode);
-    $user->set('codeexpiration', (new \DateTime())->add(new \DateInterval('PT1H')));
-
-    if (!$user->save()) {
-        return '';
-    }
-
-    return $resetCode;
+    return $user->issuePasswordResetCode();
 }
 
 function commonBuildPasswordResetUrl($code)
 {
-    return commonBuildUrl('/common/password_reset.php?code=' . rawurlencode(trim((string)$code)));
+    return commonSecurityUrl('/common/password_reset.php?code=' . rawurlencode(trim((string)$code)));
 }
 
 function commonSendPasswordResetEmail(\dbObject\User $user, array $organizationContext)
@@ -2976,6 +2974,7 @@ function commonHandleMagicLoginSend($defaultReturnTo = '/')
     $user = new \dbObject\User();
     $user->set('email', $email);
     $user->set('active', 0);
+    $user->set('activation_pending', 1);
     $saveResult = $user->save();
 
     if (empty($saveResult['status'])) {
@@ -3110,7 +3109,7 @@ function commonHandleMagicLoginVerify($defaultReturnTo = '/')
             var status = document.getElementById('verifyStatus');
             var form = document.getElementById('verifyFallbackForm');
             if (!form) {
-                status.textContent = <?= json_encode(commonAuthT('auth.page.verify.auto_unavailable', [], $lang, $sourceLang), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+                status.textContent = <?= json_encode(commonAuthT('auth.page.verify.auto_unavailable', [], $lang, $sourceLang), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
                 status.className = 'auth-state-status error';
                 return;
             }
@@ -3302,7 +3301,7 @@ function commonHandleMagicLoginVerify($defaultReturnTo = '/')
     $loginToken->markUsed();
     commonAuthClearLimit('otp_account', 'user', (string)$loginUserId);
     commonAuthSecurityLog('login_code_verify', 'success', ['user_id' => $loginUserId]);
-    commonCompleteInteractiveLogin($loginUserId, (int)$loginToken->get('remember'), $currentIp);
+    if (!commonCompleteInteractiveLogin($loginUserId, (int)$loginToken->get('remember'), $currentIp)) $respondError('invalid');
     session_write_close();
 
     if ($wantsJson) {
@@ -3388,7 +3387,7 @@ function commonAttemptPasswordLogin($email, $password, $remember = 0)
 
     $userId = (int)$user->getId();
     commonAuthClearLimit('password_account', 'email', $email);
-    commonCompleteInteractiveLogin($userId, $remember, $ipAddress);
+    if (!commonCompleteInteractiveLogin($userId, $remember, $ipAddress)) return ['status' => false, 'error' => 'invalid_credentials'];
     $_SESSION['userRef'] = $user;
     commonAuthSecurityLog('password_login', 'success', [
         'email' => $email,
@@ -3552,7 +3551,7 @@ function commonHandleTotpLoginVerify($defaultReturnTo = '/')
 
     $loginToken->markUsed();
     commonAuthClearLimit('otp_account', 'user', (string)$userId);
-    commonCompleteInteractiveLogin($userId, (int)$loginToken->get('remember'), $ipAddress);
+    if (!commonCompleteInteractiveLogin($userId, (int)$loginToken->get('remember'), $ipAddress)) $respond(['error' => 'invalid'], 403);
     commonAuthSecurityLog('totp_login', 'success', ['user_id' => $userId]);
     session_write_close();
     $respond(['status' => 'ok', 'redirect_to' => $returnTo]);
@@ -3725,7 +3724,7 @@ function commonRenderMagicLoginPage(array $options = [])
     </main>
 
     <script>
-        window.commonLoginConfig = <?= json_encode($config, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
+        window.commonLoginConfig = <?= json_encode($config, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
     </script>
     <script src="/common/assets/auth.js"></script>
     <?php if ($bodyEndHtml !== ''): ?>

@@ -36,7 +36,7 @@ class ArrayStatIndicator extends ArrayDbObject
         return '\\dbObject\\StatIndicator';
     }
 
-    public function loadForContext($organizationId, $holonId = 0, $scope = 'contextual', array $descendantHolonIds = [], $includeOrganizationItems = false)
+    public function loadForContext($organizationId, $holonId = 0, $scope = 'contextual', array $descendantHolonIds = [], $includeOrganizationItems = false, $archivedOnly = false)
     {
         $organizationId = (int)$organizationId;
         $holonId = (int)$holonId;
@@ -50,13 +50,17 @@ class ArrayStatIndicator extends ArrayDbObject
         $params = [
             'where' => [
                 ['field' => 'IDorganization', 'value' => $organizationId],
-                ['field' => 'active', 'value' => 1],
+                ['field' => 'active', 'value' => $archivedOnly ? 0 : 1],
             ],
             'orderBy' => [
                 ['field' => 'name', 'dir' => 'ASC'],
                 ['field' => 'id', 'dir' => 'ASC'],
             ],
         ];
+
+        if ($archivedOnly) {
+            $params['where'][] = ['field' => 'archived_at', 'op' => 'is not null'];
+        }
 
         if ($scope === 'children' || $scope === 'descendants') {
             $descendantHolonIds = array_values(array_unique(array_filter(array_map('intval', $descendantHolonIds), static function ($candidateId) {

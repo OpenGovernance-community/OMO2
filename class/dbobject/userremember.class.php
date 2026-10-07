@@ -11,7 +11,8 @@
 		public static function rules()
 		{
 			return [
-				[['id', 'IDuser'], 'integer'],
+				[['id'], 'integer'],
+				[['IDuser'], 'fk'],
 				[['token', 'ip', 'browser', 'os'], 'string'],
 				[['user_agent'], 'text'],
 				[['expires_at', 'created_at'], 'datetime'],
@@ -58,7 +59,7 @@
 		public static function issue($userId, $token, $ip, $userAgent, $browser, $os) {
 			$item = new self();
 			$item->set('IDuser', (int)$userId);
-			$item->set('token', $token);
+			$item->set('token', hash('sha256', $token));
 			$item->set('expires_at', self::expiresAtDateTime());
 			$item->set('ip', $ip);
 			$item->set('user_agent', $userAgent);
@@ -73,6 +74,7 @@
 		}
 
 		public static function findValidByToken($token) {
+			if (!is_string($token) || !preg_match('/^[a-f0-9]{64}$/D', $token)) return false;
 			$query = "
 				SELECT *
 				FROM user_remember
@@ -81,7 +83,7 @@
 				LIMIT 1
 			";
 
-			$row = self::fetchRow($query, ['token' => $token]);
+			$row = self::fetchRow($query, ['token' => hash('sha256', $token)]);
 			if ($row === false) {
 				return false;
 			}
@@ -90,6 +92,11 @@
 			$item->loadFromArray($row);
 			$item->setId($row['id']);
 			return $item;
+		}
+
+		public static function revokeForUser(int $userId): bool
+		{
+			return self::execute('DELETE FROM user_remember WHERE IDuser = :id', ['id' => $userId]);
 		}
 	}
 

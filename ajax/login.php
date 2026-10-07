@@ -1,4 +1,4 @@
-<?
+<?php
 	/* Gestion des comptes
 	 * Ce fichier prends les différentes requêtes liées à la gestion du login en permettant:
 	 * - De créer des comptes, à partir d'un simple e-mail
@@ -103,15 +103,15 @@
 			} 
 			
 			// Le mot de passe existe déjà, compte existant dont il faut rappeler le mot de passe
-			$bytes = random_bytes(10);
-			$user->set("code",bin2hex($bytes));
+			$legacyCode = commonIssueUserPasswordResetCode($user);
+			if ($legacyCode === '') { http_response_code(503); exit; }
 			// Défini la durée de validité de ce code
 			$user->set("codeexpiration",(new \DateTime())->add(new \DateInterval("PT1H")));
 			
 			$msg="Si ce compte existe, la procédure de réinitialisation vous a été envoyée.\\n\\nVeuillez vérifier votre boîte e-mail et suivre les instructions envoyés pour modifier votre mot de passe.";
 			$title="Réinitialisation du mot de passe ".$GLOBALS["siteTitle"];
 			$txt="Bienvenue!";
-			$txt.="\n"."Cliquez ici pour redéfinir votre mot de passe : <a href='".appBuildAbsoluteUrl("/common/confirm.php?code=".$user->get("code"))."'>Accéder à mon compte</a>.";
+			$txt.="\n"."Cliquez ici pour redéfinir votre mot de passe : <a href='".commonSecurityUrl("/common/confirm.php?code=".$legacyCode)."'>Accéder à mon compte</a>.";
 			$formCode="$(this).html('<b>Veuillez vérifier votre boîte e-mail et suivre les instructions du mail envoyé pour modifier votre mot de passe.</b>');";
 
 			
@@ -132,13 +132,15 @@
 		// Crée le compte
 		$user->set("email",$_POST["email"]);
 		// Défini le code d'accès unique
-		$bytes = random_bytes(10);
-		$user->set("code",bin2hex($bytes));
+		$wasExistingUser = $user->getId() > 0;
+		if (!$wasExistingUser) $user->set('activation_pending', 1);
+		$legacyCode = commonIssueUserPasswordResetCode($user);
+		if ($legacyCode === '') { http_response_code(503); exit; }
 		// Défini la durée de validité de ce code
 		$user->set("codeexpiration",(new \DateTime())->add(new \DateInterval("PT1H")));
 		
 		// Si l'adresse existe, envoie un message pour redéfinir le mot de passe
-		if ($user->get("id")>0) {
+		if ($wasExistingUser) {
 			// Message d'alert affiché
 			$msg="Un compte avec cette adresse e-mail existe déjà.\\n\\nVeuillez vérifier votre boîte e-mail et suivre les instructions envoyés pour le réactiver ou modifier le mot de passe.";
 			// Texte de remplacement du formaulaire
@@ -146,7 +148,7 @@
 			// Création du message
 			$title="Création d'un compte sur ".$GLOBALS["siteTitle"];
 			$txt="Bienvenue!";
-			$txt.="\n"."Cliquez ici pour réactiver votre compte ou redéfinir votre mot de passe : <a href='".appBuildAbsoluteUrl("/common/confirm.php?code=".$user->get("code"))."'>Accéder à mon compte</a>.";
+			$txt.="\n"."Cliquez ici pour réactiver votre compte ou redéfinir votre mot de passe : <a href='".commonSecurityUrl("/common/confirm.php?code=".$legacyCode)."'>Accéder à mon compte</a>.";
 			
 		} else {
 		// Si elle n'existe pas
@@ -158,7 +160,7 @@
 			// Création du message
 			$title="Création d'un compte sur ".$GLOBALS["siteTitle"];
 			$txt="Bienvenue!";
-			$txt.="\n"."Cliquez ici pour finaliser la configuration de votre compte : <a href='".appBuildAbsoluteUrl("/common/confirm.php?code=".$user->get("code"))."'>Finaliser mon inscription</a>.";
+			$txt.="\n"."Cliquez ici pour finaliser la configuration de votre compte : <a href='".commonSecurityUrl("/common/confirm.php?code=".$legacyCode)."'>Finaliser mon inscription</a>.";
 		}	
 		}
 			// Envoie le message

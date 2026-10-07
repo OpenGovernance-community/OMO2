@@ -945,6 +945,48 @@
 			unset($this->_fields[$field]);
 		}
 
+		protected function setImageInput($field, $value, bool $resize): void {
+			$changing = in_array($value, ['newimage', '[object File]'], true);
+			$upload = $changing ? ($_FILES[$field] ?? ($_FILES[$field . '_file'] ?? null)) : null;
+			$binary = null;
+			if (is_array($upload) && ($upload['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
+				$path = $upload['tmp_name'] ?? null;
+				if (!is_string($path) || !is_uploaded_file($path) || filesize($path) > 8 * 1024 * 1024) {
+					throw new \InvalidArgumentException('Invalid image upload.');
+				}
+				$binary = file_get_contents($path);
+			} elseif ($changing && isset($_POST['imageDataInput_' . $field]) && $_POST['imageDataInput_' . $field] !== '') {
+				$data = $_POST['imageDataInput_' . $field];
+				unset($_POST['imageDataInput_' . $field]);
+				if (!is_string($data) || strlen($data) > 12 * 1024 * 1024
+					|| !preg_match('~^data:image/(?:png|jpeg|webp|avif);base64,~', $data, $prefix)) throw new \InvalidArgumentException('Invalid image data.');
+				$binary = base64_decode(substr($data, strlen($prefix[0])), true);
+			}
+			if ($binary !== null) {
+				$info = is_string($binary) && strlen($binary) <= 8 * 1024 * 1024 ? @getimagesizefromstring($binary) : false;
+				if (!$info || !in_array($info['mime'] ?? '', ['image/jpeg', 'image/png', 'image/webp', 'image/avif'], true)
+					|| $info[0] <= 0 || $info[1] <= 0 || $info[0] > 8192 || $info[1] > 8192
+					|| $info[0] * $info[1] > 16000000) throw new \InvalidArgumentException('Unsupported image.');
+				$source = @imagecreatefromstring($binary);
+				if ($source === false) throw new \InvalidArgumentException('Image decoding failed.');
+				$directory = '/img/upload/' . $this->tableName();
+				$absolute = rtrim($_SERVER['DOCUMENT_ROOT'], '/\\') . $directory;
+				if (!is_dir($absolute) && !mkdir($absolute, 0755, true) && !is_dir($absolute)) throw new \RuntimeException('Image storage unavailable.');
+				$config = $resize ? ($this::attributeLength()[$field] ?? []) : [];
+				$config = isset($config[0]) && is_array($config[0]) ? $config[0] : $config;
+				try {
+					if (!$this->saveSizedImageResource($source, $info['mime'], $field, $directory, $config[0] ?? null, $config[1] ?? null)) {
+						throw new \RuntimeException('Image storage failed.');
+					}
+				} finally { unset($source); }
+				return;
+			}
+			// Existing local assets are allowed; schemes, traversal and executable paths are not.
+			if (is_string($value) && !in_array($value, ['newimage', '[object File]'], true)
+				&& preg_match('~^/img/[a-zA-Z0-9_./% -]+\.(?:png|jpe?g|gif|webp|avif|svg)$~D', $value)
+				&& !str_contains(rawurldecode($value), '..')) $this->_fields[$field] = $value;
+		}
+
 		protected function saveSizedImageResource($source, $sourceMime, $field, $targetDirectory, $targetWidth, $targetHeight) {
 			if (!is_resource($source) && !($source instanceof \GdImage)) {
 				return false;
@@ -980,7 +1022,7 @@
 				);
 			}
 
-			$fileNameBase = time() . '_' . uniqid();
+			$fileNameBase = bin2hex(random_bytes(16));
 			$fullDirectory = rtrim((string)($_SERVER['DOCUMENT_ROOT'] ?? ''), '/\\') . $targetDirectory;
 			$stored = false;
 			$imagePath = '';
@@ -1005,7 +1047,8 @@
 
 			$oldImagePath = isset($this->_fields[$field]) ? trim((string)$this->_fields[$field]) : '';
 			$documentRoot = rtrim((string)($_SERVER['DOCUMENT_ROOT'] ?? ''), '/\\');
-			if ($oldImagePath !== '' && str_starts_with($oldImagePath, '/img/upload/') && is_file($documentRoot . $oldImagePath)) {
+			if ($oldImagePath !== '' && str_starts_with($oldImagePath, $targetDirectory . '/')
+				&& !str_contains(rawurldecode($oldImagePath), '..') && is_file($documentRoot . $oldImagePath)) {
 				@unlink($documentRoot . $oldImagePath);
 			}
 
@@ -1128,99 +1171,12 @@
 				} else
 					
 				if (false !== array_search("sizedimage", array_column($param, 1))) {
-					$target_dir="/img/upload/".$this->tableName();
-					if (!file_exists($_SERVER["DOCUMENT_ROOT"].$target_dir."/")) {
-						mkdir($_SERVER["DOCUMENT_ROOT"].$target_dir."/", 0777, true);
-					}
-					// Si c'est une image, ne peut se contenter d'une string: regarde si un fichier est envoyé
-					if ($value==="newimage" && isset($_FILES[$field]) && ($_FILES[$field]["error"] ?? UPLOAD_ERR_NO_FILE)===UPLOAD_ERR_OK) {
-						$tmpName = $_FILES[$field]["tmp_name"];
-						$mime = function_exists("mime_content_type") ? mime_content_type($tmpName) : ($_FILES[$field]["type"] ?? "");
-						$sizes = $this::attributeLength();
-						$sizeConfig = $sizes[$field] ?? null;
-						$targetWidth = null;
-						$targetHeight = null;
-
-						if (is_array($sizeConfig)) {
-							if (isset($sizeConfig[0]) && is_array($sizeConfig[0])) {
-								$targetWidth = $sizeConfig[0][0] ?? null;
-								$targetHeight = $sizeConfig[0][1] ?? null;
-							} else {
-								$targetWidth = $sizeConfig[0] ?? null;
-								$targetHeight = $sizeConfig[1] ?? null;
-							}
-						}
-
-						switch ($mime) {
-							case "image/jpeg":
-								$src = function_exists('imagecreatefromjpeg') ? @\imagecreatefromjpeg($tmpName) : false;
-								break;
-							case "image/png":
-								$src = function_exists('imagecreatefrompng') ? @\imagecreatefrompng($tmpName) : false;
-								break;
-							case "image/webp":
-								// GD can be installed without WebP decoding support.
-								$src = function_exists('imagecreatefromwebp') ? @\imagecreatefromwebp($tmpName) : false;
-								break;
-							case "image/avif":
-								$src = function_exists('imagecreatefromavif') ? @\imagecreatefromavif($tmpName) : false;
-								break;
-							default:
-								$src = false;
-								break;
-						}
-
-						if ($src !== false) {
-							$this->saveSizedImageResource($src, $mime, $field, $target_dir, $targetWidth, $targetHeight);
-						}
-					} else
-					if (isset($_POST["imageDataInput_".$field]) && $_POST["imageDataInput_".$field]!="") {
-						$target_dir="/img/upload/".$this->tableName();
-						if (!file_exists($_SERVER["DOCUMENT_ROOT"].$target_dir."/")) {
-							mkdir($_SERVER["DOCUMENT_ROOT"].$target_dir."/", 0777);
-						}
-						// Convertir les données en format binaire
-						$imageBinaryData = base64_decode(str_replace('data:image/png;base64,', '', $_POST["imageDataInput_".$field]), true);
-						$src = is_string($imageBinaryData) ? @imagecreatefromstring($imageBinaryData) : false;
-						if ($src !== false) {
-							$sizes = $this::attributeLength();
-							$sizeConfig = $sizes[$field] ?? null;
-							$targetWidth = isset($sizeConfig[0]) && is_array($sizeConfig[0]) ? ($sizeConfig[0][0] ?? null) : ($sizeConfig[0] ?? null);
-							$targetHeight = isset($sizeConfig[0]) && is_array($sizeConfig[0]) ? ($sizeConfig[0][1] ?? null) : ($sizeConfig[1] ?? null);
-							$this->saveSizedImageResource($src, 'image/png', $field, $target_dir, $targetWidth, $targetHeight);
-						}
-						unset($_POST["imageDataInput_".$field]);
-					} else {
-						if (is_string($value) && $value!="[object File]" && $value!="newimage")
-							$this->_fields[$field]=$value;	
-					} // On ne fait rien, ça n'a pas été modifié
-				} else
-				
-				if (false !== array_search("image", array_column($param, 1))) {
-					// Si c'est une image, ne peut se contenter d'une string: regarde si un fichier est envoyé
-					if (isset($_FILES[$field."_file"]) && $_FILES[$field."_file"]["tmp_name"]!="" && strpos($_FILES[$field."_file"]["name"],".php")==false) {					
-						$target_dir="/img/upload/".$this->tableName();
-						// Est-ce que le dossier existe? Si non, le crée
-						if (!file_exists($_SERVER["DOCUMENT_ROOT"].$target_dir."/")) {
-							mkdir($_SERVER["DOCUMENT_ROOT"].$target_dir."/", 0777);
-						}
-						
-						// Rend le nom URL compatible
-						$name=urlencode(str_replace(" ","",$_FILES[$field."_file"]["name"]));
-						$storedFileName = time()."_".$name;
-						move_uploaded_file($_FILES[$field."_file"]["tmp_name"], $_SERVER["DOCUMENT_ROOT"].$target_dir."/".$storedFileName);
-						$this->_fields[$field]=$target_dir."/".$storedFileName;
-						unset($_FILES[$field."_file"]); // Ca a été traité, plus besoin de le garder
-					} else {  
-						$this->_fields[$field]=$value;
-					} // Sinon laisse tel quel
-
-
-
-
-				} else
-				
-				if (false !== array_search("fk", array_column($param, 1))) {
+                    $this->setImageInput($field, $value, true);
+                } else
+                if (false !== array_search("image", array_column($param, 1))) {
+                    $this->setImageInput($field, $value, false);
+                } else
+                if (false !== array_search("fk", array_column($param, 1))) {
 					$this->_fields[$field]=$value;
 					// Est-ce un numéric?
 					if (!is_numeric($value)) {

@@ -57,7 +57,6 @@ foreach ($activities as $activity) {
         continue;
     }
     $state = $activity->getOccurrenceState($now);
-    $holon = $activity->getHolon();
     $check = $state['check'] ?? null;
     $checkedAt = $check instanceof ControlTaskCheck && $check->get('checked_at') instanceof DateTimeInterface
         ? DateTimeImmutable::createFromInterface($check->get('checked_at'))
@@ -73,12 +72,11 @@ foreach ($activities as $activity) {
         'activity' => $activity,
         'state' => $state,
         'stateKey' => $stateKey,
-        'holonName' => $holon instanceof Holon ? $holon->getDisplayName() : (string)$organization->get('name'),
         'checkedAt' => $checkedAt,
         'deadlineAt' => $deadlineAt instanceof DateTimeInterface ? $deadlineAt : null,
         'occurrenceAt' => $occurrenceAt instanceof DateTimeInterface ? $occurrenceAt : null,
         'overdueLabel' => omoActivityOverdueLabel($state, $now),
-        'responsibilityLabel' => omoActivityResponsibleAssignmentLabel($activity),
+        'responsibility' => omoActivityResponsibleAssignmentNames($activity),
         'detailUrl' => $detailUrl,
     ];
     $activityCount++;
@@ -112,13 +110,14 @@ $createUrl = '/omo/api/activities/edit.php?oid=' . $organizationId
 $canCreate = omoActivityCanUsePermission($currentHolon, 'CAN_CREATE_RECURRING_TASK', $organizationId);
 $stateFilters = ['all', 'attention', 'missed', 'checked', 'upcoming'];
 $texts = [
+    'archivesTitle' => omoActivityT('activity.archives.title'),
     'loading' => omoActivityT('activity.loading'),
     'loadingError' => omoActivityT('activity.error.load'),
     'actionError' => omoActivityT('activity.error.action'),
 ];
 ?>
 <link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260902-save-menu">
-<link rel="stylesheet" href="/omo/api/activities/activities.css?v=20260929-archive">
+<?= commonStylesheetTags('/omo/api/activities/activities.css') ?>
 <div
     class="omo-activities omo-panel-view"
     id="omo-activities-root"
@@ -145,11 +144,15 @@ $texts = [
                     </div>
                 </div>
             </div>
-            <?php if ($canCreate): ?>
-                <div class="omo-panel-view__header-actions" data-omo-header-actions>
-                    <button type="button" class="generic-action-button generic-action-button--main omo-mobile-corner-action" data-activity-open-url="<?= omoApiEscape($createUrl) ?>"><?= omoApiEscape(omoActivityT('activity.new')) ?></button>
+            <div class="omo-panel-view__header-actions" data-omo-header-actions>
+                <?php if ($canCreate): ?><button type="button" class="generic-action-button generic-action-button--main omo-mobile-corner-action" data-activity-open-url="<?= omoApiEscape($createUrl) ?>"><?= omoApiEscape(omoActivityT('activity.new')) ?></button><?php endif; ?>
+                <div class="generic-menu generic-menu--expanded-mobile generic-panel-actions" data-activity-action-menu>
+                    <button type="button" class="generic-menu-toggle" data-activity-action-menu-toggle aria-expanded="false" aria-label="<?= omoApiEscape(omoActivityT('activity.more')) ?>">&#8942;</button>
+                    <div class="generic-menu-panel generic-menu-panel--wide generic-menu-panel--anchored" data-activity-action-menu-panel role="menu" hidden>
+                        <button type="button" class="generic-menu-item" data-activity-view-archives role="menuitem"><?= omoApiEscape(omoResourceArchivesT('archives.open')) ?></button>
+                    </div>
                 </div>
-            <?php endif; ?>
+            </div>
         </div>
         <div class="omo-panel-view__header-secondary">
             <div class="omo-view-filter" data-activity-filter-control role="group" aria-label="<?= omoApiEscape(omoActivityT('activity.filters.aria')) ?>">
@@ -228,6 +231,7 @@ $texts = [
                                     <?php
                                     $activity = $row['activity'];
                                     $stateKey = $row['stateKey'];
+                                    $scheduleLabel = omoActivityScheduleLabel($frequency, $activity->get('schedule'));
                                     $dateLabel = '';
                                     if ($stateKey === 'checked' && $row['checkedAt'] instanceof DateTimeInterface) {
                                         $dateLabel = omoActivityT('activity.checked.on', ['date' => $row['checkedAt']->format('d.m.Y à H:i')]);
@@ -242,29 +246,43 @@ $texts = [
                                     }
                                     ?>
                                     <div class="generic-file-list__item-shell omo-activity-row-shell omo-activity-row-shell--<?= omoApiEscape($stateKey) ?>" data-activity-search-item data-activity-state="<?= omoApiEscape($stateKey) ?>">
-                                        <article class="generic-file-list__row omo-activity-row" data-activity-open-url="<?= omoApiEscape($row['detailUrl']) ?>" tabindex="0" role="button" aria-label="<?= omoApiEscape((string)$activity->get('title')) ?>">
+                                        <article class="generic-file-list__row generic-file-list__row--compact generic-file-list__row--summary-mobile omo-activity-row" data-activity-open-url="<?= omoApiEscape($row['detailUrl']) ?>" tabindex="0" role="button" aria-label="<?= omoApiEscape((string)$activity->get('title')) ?>">
                                             <div class="generic-file-list__cell generic-file-list__cell--name" data-label="<?= omoApiEscape(omoActivityT('activity.column.activity')) ?>">
                                                 <div class="generic-file-list__name-main">
                                                     <span class="generic-file-list__icon-box omo-activity-row__icon" aria-hidden="true"><img src="/omo/images/tools/control-list.png" alt=""></span>
                                                     <span class="generic-file-list__title-block">
                                                         <span class="generic-file-list__title-row"><strong class="generic-file-list__title"><?= omoApiEscape((string)$activity->get('title')) ?></strong></span>
-                                                        <?php $descriptionPreview = omoActivityDescriptionText($activity->get('description'), 85); ?>
-                                                        <span class="generic-file-list__meta-line"><?= omoApiEscape(omoActivityScheduleLabel($frequency, $activity->get('schedule'))) ?> · <?= omoApiEscape(omoActivityT('activity.responsibility.label')) ?> : <?= omoApiEscape($row['responsibilityLabel']) ?><?php if ($descriptionPreview !== ''): ?> · <?= omoApiEscape($descriptionPreview) ?><?php endif; ?></span>
                                                     </span>
                                                 </div>
                                             </div>
-                                            <div class="generic-file-list__cell" data-label="<?= omoApiEscape(omoActivityT('activity.column.context')) ?>"><span class="omo-activity-row__context"><?= omoApiEscape($row['holonName']) ?></span></div>
-                                            <div class="generic-file-list__cell" data-label="<?= omoApiEscape(omoActivityT('activity.column.next')) ?>"><time class="omo-activity-row__date<?= $stateKey === 'missed' ? ' is-missed' : '' ?>"><?= omoApiEscape($dateLabel) ?></time></div>
-                                            <div class="generic-file-list__cell omo-activity-row__status-cell" data-label="<?= omoApiEscape(omoActivityT('activity.column.status')) ?>">
+                                            <div class="generic-file-list__cell generic-file-list__cell--context" data-label="<?= omoApiEscape(omoActivityT('activity.column.context')) ?>">
+                                                <span class="generic-file-list__title-block">
+                                                    <span class="omo-activity-row__context"><?= omoApiEscape($row['responsibility']['space']) ?></span>
+                                                    <span class="generic-file-list__meta-line generic-file-list__meta-line--single-line"><?= omoApiEscape($row['responsibility']['person']) ?></span>
+                                                </span>
+                                            </div>
+                                            <div class="generic-file-list__cell generic-file-list__cell--schedule" data-label="<?= omoApiEscape(omoActivityT('activity.column.next')) ?>">
+                                                <span class="generic-file-list__title-block">
+                                                    <?php if ($scheduleLabel !== ''): ?>
+                                                        <span class="generic-file-list__meta-line"><?= omoApiEscape($scheduleLabel) ?></span>
+                                                    <?php endif; ?>
+                                                    <time class="omo-activity-row__date<?= $stateKey === 'missed' ? ' is-missed' : '' ?>"><?= omoApiEscape($dateLabel) ?></time>
+                                                </span>
+                                            </div>
+                                            <div class="generic-file-list__cell generic-file-list__cell--status omo-activity-row__status-cell" data-label="<?= omoApiEscape(omoActivityT('activity.column.status')) ?>">
                                                 <span class="omo-activity-badge omo-activity-badge--<?= omoApiEscape($stateKey) ?>"><?= omoApiEscape(omoActivityStateLabel($row['state'], $now)) ?></span>
                                                 <?php if (in_array($stateKey, ['due', 'missed'], true)): ?>
                                                     <button type="button" class="generic-action-button generic-action-button--main generic-action-button--compact omo-activity-row__check" data-activity-post-action="check_activity" data-activity-id="<?= (int)$activity->getId() ?>" data-activity-list-check><?= omoApiEscape(omoActivityT('activity.done')) ?></button>
                                                 <?php endif; ?>
                                             </div>
+                                            <?php $descriptionPreview = omoActivityDescriptionText($activity->get('description')); ?>
+                                            <?php if ($descriptionPreview !== ''): ?>
+                                                <div class="generic-file-list__description generic-file-list__meta-line generic-file-list__meta-line--full-width generic-file-list__meta-line--single-line" title="<?= omoApiEscape($descriptionPreview) ?>"><?= omoApiEscape($descriptionPreview) ?></div>
+                                            <?php endif; ?>
                                         </article>
                                         <?php if (omoActivityCanDelete($activity)): ?>
                                             <div class="generic-menu omo-activity-row__menu" data-activity-action-menu>
-                                                <button type="button" class="generic-menu-toggle" data-activity-action-menu-toggle aria-label="<?= omoApiEscape(omoActivityT('activity.more')) ?>" aria-expanded="false">...</button>
+                                                <button type="button" class="generic-menu-toggle" data-activity-action-menu-toggle aria-label="<?= omoApiEscape(omoActivityT('activity.more')) ?>" aria-expanded="false">&#8942;</button>
                                                 <div class="generic-menu-panel generic-menu-panel--wide generic-menu-panel--anchored" data-activity-action-menu-panel role="menu" hidden>
                                                     <button type="button" class="generic-menu-item" data-activity-post-action="archive_activity" data-activity-id="<?= (int)$activity->getId() ?>" data-activity-confirm="<?= omoApiEscape(omoActivityT('activity.confirm.archive')) ?>" role="menuitem"><?= omoApiEscape(omoActivityT('activity.archive')) ?></button>
                                                     <button type="button" class="generic-menu-item generic-menu-item--danger" data-activity-post-action="delete_activity" data-activity-id="<?= (int)$activity->getId() ?>" data-activity-confirm="<?= omoApiEscape(omoActivityT('activity.confirm.delete')) ?>" role="menuitem"><?= omoApiEscape(omoActivityT('activity.delete')) ?></button>
@@ -292,14 +310,15 @@ $texts = [
                 </div>
                 <div class="generic-drawer-header__actions">
                     <div data-omo-subdrawer-actions></div>
-                    <button type="button" class="generic-action-button generic-action-button--secondary" data-activity-close><?= omoApiEscape(omoActivityT('activity.close')) ?></button>
+                    <button type="button" class="generic-action-button generic-action-button--secondary generic-action-button--icon-only generic-action-button--close" data-activity-close title="<?= omoApiEscape(omoActivityT('activity.close')) ?>" aria-label="<?= omoApiEscape(omoActivityT('activity.close')) ?>"></button>
                 </div>
             </div>
             <div class="omo-overlay-drawer__body" data-activity-drawer-body></div>
         </div>
     </div>
 </div>
+<script src="<?= omoApiEscape(commonAssetUrl('/omo/assets/js/resource-archives.js')) ?>"></script>
 <script src="/common/drawer/subdrawer.js?v=20260906-slide-right"></script>
 <script src="/omo/assets/js/simple-html-field.js?v=20261005-html-editor-gaps"></script>
 <script src="/omo/assets/js/application-view-preferences.js?v=20260919-activity-assignment"></script>
-<script src="/omo/api/activities/activities.js?v=20260930-dashboard-refresh"></script>
+<script src="<?= omoApiEscape(commonAssetUrl('/omo/api/activities/activities.js')) ?>"></script>

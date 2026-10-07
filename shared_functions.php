@@ -3,6 +3,7 @@
 	require_once __DIR__ . '/shared/date_groups.php';
 	require_once __DIR__ . '/common/environment_subdomains.php';
 	require_once __DIR__ . '/common/runtime_log.php';
+	require_once __DIR__ . '/common/request_security.php';
 
 	function appGetReservedEnvironmentSubdomains() {
 		return commonGetConfiguredEnvironmentSubdomains();
@@ -138,16 +139,7 @@
 	}
 
 	function appShouldUseSecureCookies() {
-		$https = strtolower((string)($_SERVER['HTTPS'] ?? ''));
-		if ($https !== '' && $https !== 'off') {
-			return true;
-		}
-
-		if ((string)($_SERVER['SERVER_PORT'] ?? '') === '443') {
-			return true;
-		}
-
-		return strtolower((string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https';
+		return commonSecurityRequestScheme($_SERVER) === 'https';
 	}
 
 	function appGetCurrentSiteBaseUrl() {
@@ -513,6 +505,7 @@
 	
 	// Initialise le login pour chaque page
 	checkLogin();
+	commonGuardBrowserMutation();
 	
 	function writeHeadContent($title,$logiciel="EasyPV") {
 		echo '<title>'.$logiciel.' - '.$title.'</title>';

@@ -57,6 +57,7 @@ $leafletMapsEnabled = function_exists('commonLeafletMapsEnabled') && commonLeafl
 $userHasPassword = trim((string)$user->get('password')) !== '';
 $userAllowsPasswordLogin = commonUserAllowsPasswordLogin($user);
 
+
 function profilScopeFormatDateTime($value)
 {
     if ($value instanceof DateTimeInterface) {
@@ -242,6 +243,7 @@ function profilRenderProfileFragment($scope, \dbObject\User $user, $organization
     $params = array(
         "buttons" => false,
         "action" => "/ajax/saveaccount_organization.php?origin=profil&scope=organization",
+        "readOnlyFields" => ['email'],
         "success" => "profileHandleOrganizationSaved()",
         "sections" => array(
             array(
@@ -275,6 +277,7 @@ function profilRenderProfileFragment($scope, \dbObject\User $user, $organization
     $params = array(
         "buttons" => false,
         "action" => "/ajax/saveaccount.php?origin=profil&scope=general",
+        "readOnlyFields" => ['email'],
         "success" => "profileHandleGeneralSaved()",
         "allowProtectedFields" => true,
         "afterTableHtml" => '<section class="profile-panel__security generic-form-section">'

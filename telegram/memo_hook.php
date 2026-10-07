@@ -1,4 +1,13 @@
 <?php
+	require_once dirname(__DIR__) . '/includes/env.php';
+	foreach (envGetRuntimeEnvPaths() as $webhookEnvPath) loadEnv($webhookEnvPath);
+	$webhookSecret = (string)envValue('TELEGRAM_WEBHOOK_SECRET', '');
+	$receivedSecret = $_SERVER['HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN'] ?? null;
+	if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST' || strlen($webhookSecret) < 32
+		|| !is_string($receivedSecret) || !hash_equals($webhookSecret, $receivedSecret)) {
+		http_response_code(403);
+		exit;
+	}
 	require_once($_SERVER['DOCUMENT_ROOT']."/config.php");
 	require_once($_SERVER['DOCUMENT_ROOT']."/shared_functions.php");
 	require_once($_SERVER['DOCUMENT_ROOT']."/common/patreon.php");
@@ -1027,6 +1036,7 @@
 	}
 
 	function handleCallbackQuery(array $callbackQuery, \dbObject\User $user): void {
+		if ($user->getId() <= 0 || !(int)$user->get('active')) return;
 		$callbackId = $callbackQuery['id'] ?? '';
 		$callbackData = $callbackQuery['data'] ?? '';
 		$message = $callbackQuery['message'] ?? array();
@@ -1200,6 +1210,10 @@
 		}
 
 		if ($callbackData === 'btn_share') {
+			if (!$document || (int)$document->get('IDuser') !== (int)$user->getId()) {
+				answerCallbackQuery($callbackId, 'Acces refuse.');
+				return;
+			}
 			if ($document && $document->getId() > 0) {
 				if ($document->get("codeview") == null) {
 					$document->set("codeview", bin2hex(random_bytes(10)));
@@ -1243,6 +1257,10 @@
 		}
 
 		if ($callbackData === 'btn_del_file' || $callbackData === 'btn_del_all') {
+			if (!$document || (int)$document->get('IDuser') !== (int)$user->getId()) {
+				answerCallbackQuery($callbackId, 'Acces refuse.');
+				return;
+			}
 			if ($document && $document->getId() > 0) {
 				deleteDocumentBundle($document);
 				clearLastDocumentSessionFields($sessionData);
@@ -1372,6 +1390,11 @@
 		if (!isset($data->lastDoc) || (int)$data->lastDoc <= 0) {
 			return;
 		}
+		$photoOwner = loadTelegramUserByActorId($actorId);
+		$photoDocument = new \dbObject\Document();
+		if ($photoOwner->getId() <= 0 || !(int)$photoOwner->get('active')
+			|| !$photoDocument->load((int)$data->lastDoc)
+			|| (int)$photoDocument->get('IDuser') !== (int)$photoOwner->getId()) return;
 
 		$photo = end($message['photo']);
 		$fileId = $photo['file_id'] ?? '';
@@ -1844,7 +1867,8 @@
 		}
 	}
 
-	$content = file_get_contents('php://input');
+	$content = file_get_contents('php://input', false, null, 0, 1024 * 1024 + 1);
+	if (strlen($content) > 1024 * 1024) { http_response_code(413); exit; }
 	$update = json_decode($content, true);
 	if (!is_array($update)) {
 		exit;

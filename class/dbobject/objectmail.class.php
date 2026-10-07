@@ -11,12 +11,12 @@ final class ObjectMail extends DbObject
         [['IDuser', 'IDorganization', 'object_type', 'object_id', 'request_hash', 'payload_hash', 'subject', 'message', 'created_at'], 'required'],
         [['id', 'object_id', 'recipient_count', 'created_at'], 'integer'],
         [['IDuser', 'IDorganization', 'IDmcp_oauth_grant'], 'fk'],
-        [['object_type', 'request_hash', 'payload_hash', 'subject'], 'string'], [['message'], 'text'], [['id'], 'safe']]; }
+        [['object_type', 'request_hash', 'payload_hash', 'subject', 'message_format'], 'string'], [['message'], 'text'], [['id'], 'safe']]; }
     public static function attributeLabels() { return ['IDuser' => 'Expediteur', 'IDorganization' => 'Organisation',
         'IDmcp_oauth_grant' => 'Autorisation assistant', 'object_type' => 'Type', 'object_id' => 'Objet',
-        'subject' => 'Objet du message', 'message' => 'Message', 'recipient_count' => 'Destinataires', 'created_at' => 'Creation',
+        'subject' => 'Objet du message', 'message' => 'Message', 'message_format' => 'Format du message', 'recipient_count' => 'Destinataires', 'created_at' => 'Creation',
         'request_hash' => 'Identifiant de demande', 'payload_hash' => 'Empreinte du contenu']; }
-    public static function attributeLength() { return ['object_type' => 20, 'request_hash' => 64, 'payload_hash' => 64, 'subject' => 250, 'message' => 20000]; }
+    public static function attributeLength() { return ['object_type' => 20, 'request_hash' => 64, 'payload_hash' => 64, 'subject' => 250, 'message' => 20000, 'message_format' => 5]; }
     public function canView() { $uid = (int)\commonGetCurrentUserId(); $user = new User(); return $uid > 0
         && (int)$this->get('IDuser') === $uid && $user->load($uid, true) && $user->get('active')
         && UserOrganization::hasActiveMembership($uid, (int)$this->get('IDorganization')); }
@@ -29,17 +29,43 @@ final class ObjectMail extends DbObject
         \omoObjectMailValidate($args);
     }
 
-    public static function enqueue(int $oid, array $args, ?array $grant = null): array
+    /** Keep legacy/MCP text literal; only explicitly formatted messages render as HTML. */
+    public static function renderMessage(string $message, ?string $format = 'plain'): string
+    {
+        if ($format !== 'html') return nl2br(htmlspecialchars($message, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'));
+        return strip_tags(PropertyFormat::sanitizeHtml($message), '<p><div><br><strong><b><em><i><u><s><ul><ol><li><a><h1><h2><h3><blockquote>');
+    }
+
+    public static function messageText(string $message, ?string $format = 'plain'): string
+    {
+        if ($format !== 'html') return $message;
+        $html = self::renderMessage($message, 'html');
+        $html = preg_replace('~<br\s*/?>|</(?:p|div|li|h[1-3]|blockquote)>~i', "\n", $html);
+        return trim(html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+    }
+
+    public static function enqueue(int $oid, array $args, ?array $grant = null, ?array $recipientIds = null): array
     {
         self::validate($args);
+        $format = $args['message_format'] ?? 'plain';
+        if ($format === 'html') {
+            $args['message'] = self::renderMessage($args['message'], 'html');
+            if (!Rule::hasContentText($args['message']) || mb_strlen($args['message'], 'UTF-8') > 20000) throw new \InvalidArgumentException('Message vide ou trop long.');
+        }
         $uid = (int)\commonGetCurrentUserId();
         if ($grant !== null && ((int)$grant['IDuser'] !== $uid || (int)$grant['IDorganization'] !== $oid
             || !McpOauthGrant::hasActiveScopeAuthorization($grant, \OMO_MCP_MAIL_SCOPE))) throw new \DomainException('Autorisation mail:send absente, expiree ou revoquee.');
         $audience = ObjectAudience::resolve($oid, $args['object_type'], $args['object_id'], $args['user_ids'] ?? null);
-        if (!$audience['can_send']) throw new \DomainException('Vous devez participer a cet objet ou avoir le droit de le gerer pour envoyer un message.');
+        if (!$audience['can_send']) throw new \DomainException('Une adresse e-mail valide dans votre profil est requise pour envoyer un message.');
+        if ($recipientIds !== null) {
+            $audience = ObjectAudience::selectRecipients($audience, $recipientIds);
+            sort($recipientIds, SORT_STRING);
+        }
         $bindings = ['uid' => $uid, 'oid' => $oid, 'request' => hash('sha256', $args['request_key'])];
         $payload = [$args['object_type'], $args['object_id'], $args['subject'], $args['message'], $args['audience_token']];
+        if ($format === 'html') $payload[] = ['message_format' => 'html'];
         if (isset($args['user_ids'])) { $selected = $args['user_ids']; sort($selected, SORT_NUMERIC); $payload[] = $selected; }
+        if ($recipientIds !== null) $payload[] = $recipientIds;
         $hash = hash('sha256', json_encode($payload, JSON_THROW_ON_ERROR));
         $pdo = self::getPdo(); $pdo->beginTransaction();
         try {
@@ -64,7 +90,7 @@ final class ObjectMail extends DbObject
             $mail = new self();
             foreach (['IDuser' => $uid, 'IDorganization' => $oid, 'IDmcp_oauth_grant' => $grant['id'] ?? null,
                 'object_type' => $args['object_type'], 'object_id' => $args['object_id'], 'request_hash' => $bindings['request'],
-                'payload_hash' => $hash, 'subject' => $args['subject'], 'message' => $args['message'], 'recipient_count' => $count, 'created_at' => time()] as $field => $value) $mail->set($field, $value);
+                'payload_hash' => $hash, 'subject' => $args['subject'], 'message' => $args['message'], 'message_format' => $format, 'recipient_count' => $count, 'created_at' => time()] as $field => $value) $mail->set($field, $value);
             if (empty($mail->save()['status'])) throw new \RuntimeException('Impossible de mettre le message en attente.');
             foreach ($audience['recipients'] as $recipient) {
                 $delivery = new ObjectMailRecipient();
@@ -76,9 +102,9 @@ final class ObjectMail extends DbObject
         } catch (\Throwable $error) { if ($pdo->inTransaction()) $pdo->rollBack(); throw $error; }
     }
 
-    public static function send(int $oid, array $args, ?array $grant = null): array
+    public static function send(int $oid, array $args, ?array $grant = null, ?array $recipientIds = null): array
     {
-        $result = self::enqueue($oid, $args, $grant);
+        $result = self::enqueue($oid, $args, $grant, $recipientIds);
         if ($result['replayed']) return $result;
         $direct = $result['recipient_count'] <= self::DIRECT_RECIPIENT_LIMIT;
         if ($direct) self::processBatch(self::DIRECT_RECIPIENT_LIMIT, $result['mail_id']);
@@ -104,6 +130,52 @@ final class ObjectMail extends DbObject
             'instructions' => 'queued attend le traitement OMO ; sent indique l acceptation SMTP, pas la reception finale. failed et unknown ne sont jamais relances automatiquement pour eviter les doublons. skipped indique une invitation ou une autorisation devenue invalide. Reutilisez la meme request_key pour toute nouvelle tentative du meme envoi.'];
     }
 
+    /** Sender-owned history, including MCP operations whose grant no longer exists. */
+    public static function getHistory(int $oid, int $limit = 30): array
+    {
+        $uid = (int)\commonGetCurrentUserId();
+        $user = new User();
+        if ($uid <= 0 || !$user->load($uid, true) || !$user->get('active')
+            || !UserOrganization::hasActiveMembership($uid, $oid)
+            || (function_exists('commonGetCurrentShareLink') && \commonGetCurrentShareLink())) {
+            throw new \DomainException('Connexion avec un compte membre actif requise.');
+        }
+        $limit = max(1, min(30, $limit));
+        $rows = self::fetchAll('SELECT id, subject, LEFT(message, 1000) AS preview, message_format, created_at, object_type, object_id, recipient_count,
+            IDmcp_oauth_grant IS NOT NULL AS via_mcp, message = \'\' AS content_expired
+            FROM object_mail WHERE IDuser = :uid AND IDorganization = :oid
+            ORDER BY created_at DESC, id DESC LIMIT ' . $limit, ['uid' => $uid, 'oid' => $oid]);
+        if (!$rows) return [];
+        $bindings = []; $placeholders = [];
+        foreach ($rows as $index => $row) {
+            $placeholders[] = ':mail' . $index;
+            $bindings['mail' . $index] = (int)$row['id'];
+        }
+        $counts = [];
+        foreach (self::fetchAll('SELECT IDobject_mail, status, COUNT(*) AS total FROM object_mail_recipient
+            WHERE IDobject_mail IN (' . implode(',', $placeholders) . ') GROUP BY IDobject_mail, status', $bindings) as $row) {
+            $counts[(int)$row['IDobject_mail']][$row['status']] = (int)$row['total'];
+        }
+        foreach ($rows as &$row) {
+            $row['delivery'] = $counts[(int)$row['id']] ?? [];
+            $row['preview'] = mb_substr(self::messageText($row['preview'], $row['message_format']), 0, 160, 'UTF-8');
+        }
+        unset($row);
+        return $rows;
+    }
+
+    public static function getHistoryDetail(int $oid, int $id): array
+    {
+        $mail = new self();
+        if (!$mail->load($id) || (int)$mail->get('IDorganization') !== $oid || !$mail->canView()
+            || (function_exists('commonGetCurrentShareLink') && \commonGetCurrentShareLink())) {
+            throw new \DomainException('Message indisponible.');
+        }
+        $recipients = new ArrayObjectMailRecipient();
+        $recipients->load(['where' => [['field' => 'IDobject_mail', 'value' => $id]], 'order' => 'id ASC']);
+        return ['mail' => $mail, 'recipients' => $recipients];
+    }
+
     /** Existing OMO maintenance runs this queue. Never retry an ambiguous SMTP delivery. */
     public static function processBatch(int $limit = 20, ?int $mailId = null): int
     {
@@ -118,7 +190,7 @@ final class ObjectMail extends DbObject
                 $pdo->beginTransaction();
                 try {
                     $row = self::fetchRow("SELECT r.*, m.IDuser, m.IDorganization, m.IDmcp_oauth_grant, m.object_type, m.object_id,
-                        m.subject, m.message FROM object_mail_recipient r INNER JOIN object_mail m ON m.id = r.IDobject_mail
+                        m.subject, m.message, m.message_format FROM object_mail_recipient r INNER JOIN object_mail m ON m.id = r.IDobject_mail
                         WHERE r.status = 'queued'" . ($mailId !== null ? ' AND m.id = :mail_id' : '')
                         . ' ORDER BY r.id ASC LIMIT 1 FOR UPDATE SKIP LOCKED', $mailId !== null ? ['mail_id' => $mailId] : []);
                     if (!$row) { $pdo->commit(); break; }

@@ -1786,6 +1786,10 @@
 				'typeId' => (int)$this->get('IDtypeholon'),
 				'name' => (string)$this->get('name'),
 			);
+			$viewDefaults = OrganizationTransferConfiguration::holonDefaults($this);
+			if ($viewDefaults !== []) {
+				$record['viewDefaults'] = $viewDefaults;
+			}
 
 			if (trim((string)$this->get('nomcomplet')) !== '') {
 				$record['fullName'] = (string)$this->get('nomcomplet');
@@ -2738,11 +2742,13 @@
 					'holonId' => $roleHolonId,
 					'name' => $assignmentName,
 					'displayName' => $displayName,
+					'focus' => trim((string)($row['holon_focus'] ?? '')),
+					'isAdmin' => !empty(json_decode((string)($row['holon_parameters'] ?? ''), true)['isAdmin']),
 					'timeBudgetHours' => $row['holon_time_budget_hours'] ?? null,
 					'timeBudgetRecurrence' => trim((string)($row['holon_time_budget_recurrence'] ?? '')),
 					'moneyBudget' => $row['holon_money_budget'] ?? null,
 					'moneyBudgetRecurrence' => trim((string)($row['holon_money_budget_recurrence'] ?? '')),
-					'canEditAssignment' => $roleHolon->isAllowed('CAN_EDIT_MEMBER_ASSIGNMENT') || $roleHolon->isAllowed('CAN_EDIT_AFFECTATION_BUDGET'),
+					'canEditAssignment' => $roleHolon->isAllowed('CAN_EDIT_MEMBER_ASSIGNMENT') || $roleHolon->isAllowed('CAN_EDIT_AFFECTATION_BUDGET') || $roleHolon->isAllowed('CAN_ADD_ADMIN'),
 					'parentLabel' => $parentHolon ? trim((string)$parentHolon->getDisplayName()) : '',
 					'circleId' => $assignmentCircle ? (int)$assignmentCircle->getId() : 0,
 					'circleLabel' => $assignmentCircleLabel,
@@ -2810,6 +2816,12 @@
 				$userIds[$userId] = $userId;
 			}
 
+			return array_values(array_unique(array_merge(array_values($userIds), $this->getInheritedContextAdminUserIds())));
+		}
+
+		public function getInheritedContextAdminUserIds(): array
+		{
+			$userIds = array();
 			if ((int)$this->get('IDtypeholon') === 2) {
 				foreach ($this->getChildren() as $child) {
 					if (!$child->isParentAdminRole()) {
@@ -4838,6 +4850,66 @@
 			}
 
 			return parent::delete();
+		}
+
+		/** Legacy Circle writes are limited to private structures owned by the actor. */
+		public static function validateLegacyCircleInput(array $data, int $userId): bool
+		{
+			if ($userId <= 0 || (string)($data['type'] ?? '') !== '4') return false;
+			$rootId = (int)($data['IDdb'] ?? 0);
+			$owned = static function (int $id) use ($userId): ?self {
+				$object = new self();
+				return $id > 0 && $object->load($id, true) && (int)$object->get('IDuser') === $userId
+					&& $object->resolveOrganizationId() === 0 ? $object : null;
+			};
+			if ($rootId > 0) {
+				$root = $owned($rootId);
+				if (!$root || (int)$root->get('IDtypeholon') !== 4) return false;
+			}
+			$queue = [];
+			$seen = [];
+			$count = 0;
+			$propertyAllowed = static function ($id, $value) use ($owned, &$queue): bool {
+				if (!ctype_digit((string)$id)) return false;
+				$property = new Property();
+				if (!$property->load((int)$id, true) || !$owned((int)$property->get('IDholon_organization'))) return false;
+				if ((int)$property->get('IDpropertyformat') === PropertyFormat::FORMAT_LIST
+					&& Property::normalizeListItemType($property->get('listitemtype')) === Property::LIST_ITEM_HOLON) {
+					$items = is_string($value) ? json_decode($value, true) : $value;
+					if ($items !== null && !is_array($items)) return false;
+					foreach ($items ?? [] as $item) $queue[] = (int)(is_array($item) ? ($item['id'] ?? 0) : $item);
+				}
+				return true;
+			};
+			$visit = function ($node, int $depth, bool $isRoot = false) use (&$visit, &$count, &$queue, $rootId, $owned, $propertyAllowed): bool {
+				if (!is_array($node) || ++$count > 1000 || $depth > 40 || !is_string($node['name'] ?? null)
+					|| !is_array($node['children'] ?? []) || !is_array($node['data'] ?? [])) return false;
+				if (isset($node['IDdb'])) {
+					if (!ctype_digit((string)$node['IDdb'])) return false;
+					$existing = $owned((int)$node['IDdb']);
+					if (!$existing || (!$isRoot && ($existing->getId() === $rootId || (int)$existing->get('IDholon_org') !== $rootId))) return false;
+				}
+				foreach (['ID', 't'] as $key) {
+					if (isset($node[$key]) && is_numeric($node[$key])) $queue[] = (int)$node[$key];
+				}
+				foreach ($node['data'] ?? [] as $key => $value) {
+					if (!is_string($key) || !str_starts_with($key, 'd') || !$propertyAllowed(substr($key, 1), $value)) return false;
+				}
+				foreach ($node['children'] ?? [] as $child) if (!$visit($child, $depth + 1)) return false;
+				return true;
+			};
+			if (!$visit($data, 0, true)) return false;
+			while ($queue) {
+				$id = array_pop($queue);
+				if ($id <= 0 || isset($seen[$id])) continue;
+				if (count($seen) >= 1000 || !($source = $owned($id))) return false;
+				$seen[$id] = true;
+				foreach (['IDholon_template', 'IDholon_parent'] as $key) $queue[] = (int)$source->get($key);
+				foreach ($source->getHolonProperties() as $propertyValue) {
+					if (!$propertyAllowed($propertyValue->get('IDproperty'), $propertyValue->get('value'))) return false;
+				}
+			}
+			return true;
 		}
 
 		public function disableAllProperty() {

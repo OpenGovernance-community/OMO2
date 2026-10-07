@@ -281,6 +281,14 @@ function omoGetTopbarSourceLang(): array
             'text' => 'Notifications',
             'context' => 'Button label for the OMO notification inbox bell.',
         ],
+        'topbar.mail.title' => [
+            'text' => 'E-mails envoyes',
+            'context' => 'Title and accessible label for the sent email history popup.',
+        ],
+        'topbar.mail.button' => [
+            'text' => 'Mail',
+            'context' => 'Short label for the mail icon in the topbar.',
+        ],
         'topbar.notifications.mark_all_read' => [
             'text' => 'Tout marquer comme lu',
             'context' => 'Action label for marking all notifications in the current organization as read.',
@@ -609,6 +617,12 @@ function omoBuildTopbarOptions(array $organizationContext, array $options = []):
             'inboxUrl' => '/omo/api/notifications/inbox.php',
             'markReadUrl' => '/omo/api/notifications/mark_read.php',
             'csrfToken' => (string)($_SESSION['omo_notification_inbox_csrf'] ?? ''),
+        ],
+        'mail' => [
+            'enabled' => !$isDemoGuest && $variant === 'app' && $currentUserId > 0 && $hasOrganizationContext,
+            'buttonLabel' => omoTopbarTranslate('topbar.mail.button'),
+            'title' => omoTopbarTranslate('topbar.mail.title'),
+            'url' => '/omo/api/object_mail/history.php',
         ],
         'organizationLevel' => [
             'enabled' => $canOpenOrganizationParameters && $organizationInterfaceLevelLabel !== '',
