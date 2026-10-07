@@ -1,4 +1,4 @@
-Options -Indexes -MultiViews
+Options -ExecCGI -Indexes -MultiViews
 
 # Never serve configuration, keys or database exports from the checkout.
 <FilesMatch "(?i)(^\.(?!well-known)|\.(?:sql|bak|key|pem|env)(?:\..*)?$|^APIKEY\.txt$|^SECURITY-)">

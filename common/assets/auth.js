@@ -828,6 +828,8 @@
                     setStatus(data.message || t('auth.error.secondary_email_in_use'), 'error');
                 } else if (data.error === 'send_failed') {
                     setStatus(t('auth.error.send_failed') + (data.mail_error ? ' ' + data.mail_error : ''), 'error');
+                } else if (data.error === 'mail_configuration') {
+                    setStatus(data.message || t('auth.error.mail_configuration'), 'error');
                 } else {
                     setStatus(t('auth.error.unexpected'), 'error');
                 }
