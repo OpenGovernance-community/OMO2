@@ -22,7 +22,7 @@ final class ImportDetailImport extends \dbObject\StatIndicatorImport
 
 function omoStatsResolveContext($organizationId, $holonId) { return ['status' => true]; }
 function omoStatsLoadImport($id, $organizationId) { return $id === 20 ? $GLOBALS['fixtureImport'] : null; }
-function omoStatsLoadIndicator($id, $organizationId) { return $id === 10 && ($GLOBALS['fixtureScenario'] ?? '') !== 'archived' ? $GLOBALS['fixtureIndicator'] : null; }
+function omoStatsLoadIndicator($id, $organizationId, $allowArchived = false) { return $id === 10 && ($GLOBALS['fixtureScenario'] ?? '') !== 'archived' && ($allowArchived || ($GLOBALS['fixtureScenario'] ?? '') !== 'archived-original') ? $GLOBALS['fixtureIndicator'] : null; }
 function omoStatsCanEditIndicator($indicator, $context) { return true; }
 function omoStatsCanDeleteContextResource($import, $context) { return $GLOBALS['fixtureCanDetach']; }
 function omoStatsCanEditContextResource($import, $context) { return $GLOBALS['fixtureCanDetach']; }
@@ -33,6 +33,8 @@ function omoStatsGetIndicatorOverdueInfo($indicator) { return ['severity' => '',
 function omoStatsBuildIndicatorChartData($indicator, $values, $points, $severity) { return []; }
 function omoStatsRenderChart($indicator, $values, $points, $variant, $severity, $interactive) { return '<svg data-test-chart></svg>'; }
 function omoStatsRenderInteractiveChartRange($chartData) { return ''; }
+function omoLoadTranslationBundle($domain, $source) { return []; }
+function t($key, $params, $bundle, $source) { return strtr($source[$key]['text'], ['{date}' => $params['date'] ?? '']); }
 function omoStatsT($key, $params = []) { return $key; }
 function omoApiEscape($value) { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'); }
 
@@ -44,7 +46,7 @@ if (($argv[1] ?? '') === '--render') {
     $_SERVER['REQUEST_METHOD'] = 'GET';
     $_SESSION = ['currentOrganization' => 1];
     $_GET = ['cid' => 7, 'id' => 10];
-    if ($scenario !== 'original') {
+    if (!in_array($scenario, ['original', 'archived-original'], true)) {
         $_GET['import_id'] = match ($scenario) {
             'missing' => 999,
             'malformed' => 'invalid',
@@ -59,7 +61,8 @@ if (($argv[1] ?? '') === '--render') {
     $fixtureImport->set('IDstatindicator', 10);
     $fixtureIndicator = new ImportDetailIndicator();
     $fixtureIndicator->set('IDorganization', $scenario === 'foreign-source' ? 2 : 1);
-    $fixtureIndicator->set('active', $scenario === 'archived' ? 0 : 1);
+    $fixtureIndicator->set('active', in_array($scenario, ['archived', 'archived-original'], true) ? 0 : 1);
+    $fixtureIndicator->set('archived_at', new DateTimeImmutable('2026-10-06 12:00:00'));
     $fixtureIndicator->set('name', 'Source indicator');
     $fixtureIndicator->set('reference_type', 'none');
     $fixtureIndicator->set('source_type', 'manual');
@@ -85,7 +88,7 @@ function assertImportDetail(bool $condition, string $message): void
     }
 }
 
-foreach (['original', 'import', 'archived', 'read-only', 'wrong-source', 'foreign-source', 'missing', 'malformed'] as $scenario) {
+foreach (['original', 'archived-original', 'import', 'archived', 'read-only', 'wrong-source', 'foreign-source', 'missing', 'malformed'] as $scenario) {
     $command = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(__FILE__) . ' --render ' . escapeshellarg($scenario);
     $result = json_decode((string)shell_exec($command), true, 512, JSON_THROW_ON_ERROR);
     $html = $result['html'];
@@ -100,6 +103,11 @@ foreach (['original', 'import', 'archived', 'read-only', 'wrong-source', 'foreig
         assertImportDetail(str_contains($html, 'omo-stats-detail--source-archived'), 'An archived imported source must retain a neutral detail view.');
         assertImportDetail(str_contains($html, 'stats.card.source_archived_hint'), 'The archived import must explain how to replace its source.');
         assertImportDetail(!str_contains($html, 'omo-stats-overdue-label'), 'An archived import must not appear overdue.');
+    }
+    if ($scenario === 'archived-original') {
+        assertImportDetail(!str_contains($html, 'data-omo-stats-open-editor-url') && !str_contains($html, 'data-omo-stats-add-value-form'), 'Archived originals must be read-only even with editing permission.');
+        assertImportDetail(!str_contains($html, 'omo-stats-overdue-label'), 'Archived originals must not become overdue.');
+        continue;
     }
     if ($scenario === 'original') {
         assertImportDetail(str_contains($html, 'data-omo-stats-open-editor-url'), 'Originals must keep editing available.');

@@ -72,6 +72,7 @@ commonExpireLegacyRememberCookie();
 commonExpireLegacyAuthCookies();
 $_SESSION = [
     'currentUser' => $targetUserId,
+    'auth_security_version' => (int)$targetUser->get('security_version'),
     'currentOrganization' => $organizationId,
 ];
 session_write_close();

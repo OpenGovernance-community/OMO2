@@ -272,7 +272,7 @@ $structureTranslations = [
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js"></script>
 
 <link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/getStructure.css') ?>">
-    <div id="contentright" class="contentright">
+    <div id="contentright" class="contentright" data-common-panel-view>
         <div id="chart"></div>
         <div id="role_list" class="filter_zone"></div>
         <div id="omoStructureCanvasWarning" class="structure-browser-warning" hidden>
@@ -282,9 +282,9 @@ $structureTranslations = [
             </div>
             <button type="button" id="omoStructureCanvasWarningRestore" class="structure-browser-warning__restore"><?= omoApiEscape(t('structure.warning.restore')) ?></button>
         </div>
-        <div class="structure-actions" id="omoStructureActions">
-            <button type="button" class="structure-actions__toggle" id="omoStructureActionsToggle" aria-label="<?= omoApiEscape(t('structure.actions.menu_aria')) ?>">...</button>
-            <div class="structure-actions__panel" id="omoStructureActionsPanel">
+        <div class="structure-actions" id="omoStructureActions" data-common-panel-actions-menu>
+            <button type="button" class="structure-actions__toggle" id="omoStructureActionsToggle" data-common-panel-actions-toggle aria-haspopup="menu" aria-expanded="false" aria-label="<?= omoApiEscape(t('structure.actions.menu_aria')) ?>">&#8942;</button>
+            <div class="structure-actions__panel" id="omoStructureActionsPanel" data-common-panel-actions-panel role="menu">
                 <?php if ($canExportStructure) { ?>
                     <button type="button" class="structure-actions__item" data-omo-structure-action="export"><?= omoApiEscape(t('structure.actions.export')) ?></button>
                 <?php } ?>

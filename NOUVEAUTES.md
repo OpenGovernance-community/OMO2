@@ -1,5 +1,119 @@
 # Journal Des Nouveautes
 
+- Team (2026-10-07) : textes d aide au remplacement admin, obligatoire ou facultatif, regroupes dans une capsule ? a cote du select. Case du pilote de contexte alignee en haut pour rester stable quand le choix du successeur apparait.
+
+- Contexte (2026-10-07) : action Plein ecran dans le menu de GetOrg pour toute la zone au-dessus du navigateur miniature, centree sur 1200 px maximum. Menu harmonise avec les autres applications, accessible sur mobile et en lecture seule ; retour par le menu, Echap ou la croix.
+
+- Team (2026-10-07) : choix du remplacement admin sur la meme ligne dans un select, avec les membres du contexte en premier puis les autres membres de l organisation. Un successeur externe au contexte y est affecte comme admin a la sauvegarde. Le dernier admin doit etre remplace si d autres membres restent ; sans autre membre, le remplacement reste facultatif meme si l organisation propose des candidats.
+
+- Team (2026-10-07) : statut admin des roles et cercles gere dans l edition de l affectation, avec case masquee si le maximum est zero. Choix des admins a remplacer au maximum, ou des successeurs au minimum ; les personnes remplacees restent membres. Sans successeur disponible, le poste peut rester vacant. Sauvegarde des affectations et remplacements en une seule operation.
+
+- Team (2026-10-07) : action Editer l affectation visible pour les membres issus des roles d un cercle quand leurs affectations sont modifiables, notamment en mode admin d organisation. Le droit d edition seul suffit a afficher le menu, sans accorder les actions de suppression ou de gestion des admins.
+
+- Proprietes (2026-10-07) : icone Plein ecran compacte et sans fond au repos en fin de ligne de mise a jour dans GetOrg, avec fond gris au survol. Affichage de la propriete seule, centre et limite a 1200 px avec fond lateral discret et ombre legere ; pleine largeur sur mobile, defilement, retour par Echap et croix de fermeture. Liens et details interactifs conserves.
+
+- Team (2026-10-07) : edition des affectations des membres de cercle issus de roles corrigee. Le formulaire propose les roles modifiables au lieu de chercher un lien direct inexistant ; retour a la vue Team du cercle apres sauvegarde.
+
+- Team (2026-10-07) : menu des actions disponible en bout de ligne dans la vue compacte, avec les memes actions et droits que sur les fiches. Confirmations avec le nom du membre dans les deux vues.
+
+- Team (2026-10-07) : fiches de largeur souple entre 220 et 320 px, identique sur toutes les lignes, y compris la derniere ligne incomplete. Adaptation a la largeur disponible sans etirement au-dela du maximum.
+
+- E-mails (2026-10-07) : liste des destinataires en superposition sous le champ A, sans deplacer le libelle, l objet ni le message. Fermeture par clic exterieur ou touche Echap.
+
+- E-mails (2026-10-07) : champs De et A cote a cote dans la popup de redaction, avec retour automatique sur deux lignes sur les petits ecrans.
+
+- Profils (2026-10-07) : listes des roles enrichies du statut admin selon le lexique de l organisation et du focus de chaque affectation, sur la meme ligne avec des tirets longs.
+
+- E-mails (2026-10-07) : corps du message sur toute la hauteur disponible, avec defilement interne et taille stable au focus. Expediteur et adresse de reponse regroupes au-dessus des destinataires ; champ Objet avec le style classique des formulaires.
+
+- E-mails (2026-10-07) : expediteur technique configurable via MAIL_FROM, avec noreply sur le domaine SMTP par defaut. Plus de repli sur l adresse personnelle du membre ; Reply-To conserve pour lui adresser les reponses, y compris via MCP et les envois en arriere-plan.
+
+- E-mails (2026-10-07) : popups repensees comme un espace e-mail, avec dossier Envoyes compact, apercu du texte, lecture du message et suivi detaille repliable. Redaction avec Summernote au focus ; mise en forme conservee dans les envois et l historique, avec version texte pour les clients e-mail.
+
+- Import et modeles (2026-10-07) : reprise du lexique, des applications (activation, ordre et parametres), des vues et tableaux de bord par modele et type de holon. Sans mapping, restauration des reglages enregistres dans l archive ; avec mapping, priorite au modele choisi. Les nouveaux exports incluent ces reglages.
+
+- E-mails (2026-10-07) : envoi accessible a tout membre actif de l organisation, sans role administrateur ni appartenance au contexte. Meme controle dans le formulaire, MCP et le traitement des envois ; acces aux objets et controles des destinataires conserves. Separations gris clair entre Aide, Mail et Notifications dans la barre du haut.
+
+- Indicateurs (2026-10-07) : vue compacte mobile avec contexte sur une ligne, derniere valeur mise en avant a cote de sa date, graphiques de hauteur limitee et menu en haut a droite. Presentation commune aux indicateurs simples et groupes.
+
+- E-mails (2026-10-07) : icone Mail a cote de la cloche et popup des 30 derniers envois du compte dans l organisation courante. Origine Agent IA (MCP) ou OMO, sujet, contenu, destinataires et statuts consultables ; acces limite a l expediteur membre actif. Les traces dont le contenu a ete nettoye apres 30 jours sont signalees comme expirees.
+
+- Taches recurrentes (2026-10-07) : presentation mobile compacte avec titre lisible, responsable et recurrence regroupes, etat et validation sur une meme ligne, menu en haut a droite. Description complete accessible dans la fiche.
+
+- Listes (2026-10-07) : marges laterales communes de 12 px pour les indicateurs, taches recurrentes et autres listes des applications, sur ordinateur et mobile. Bandeaux de groupe conserves sur toute la largeur, sans cumul de marges dans les listes integrees aux fiches.
+
+- Sous-drawers (2026-10-07) : fermeture par une croix commune dans toutes les applications, apercus et editeurs imbriques, y compris les documents EasyMEMO. Libelles accessibles, infobulles et traductions conserves.
+
+- Projets (2026-10-07) : action Envoyer un e-mail deplacee dans le menu vertical de la fiche, bouton Discussion raccourci en Chat et fermeture par une croix tout a droite, avec libelle accessible et infobulle.
+
+- Activites (2026-10-07) : bandeaux de frequence sur toute la largeur de la vue, avec marges laterales conservees pour les fiches. Parametre commun pour les marges des tableaux de listes structurees.
+
+- Structure (2026-10-07) : listes de projets des proprietes triees par importance strategique calculee decroissante, puis par priorite decroissante, y compris les projets herites et les sous-projets deployes.
+
+- Documents (2026-10-07) : le bouton Nouveau conserve ses arrondis a droite lorsqu aucun bouton de modeles ne lui est accole.
+
+- Regles (2026-10-07) : les dates de requestionnement et d echeance utilisent le format natif du navigateur dans les formulaires de creation, de modification et les propositions. Saisie au clavier, calendrier et stockage des dates conserves.
+
+- Team et e-mails (2026-10-07) : action Envoyer un e-mail integree au menu vertical des actions. Liste compacte de destinataires cochables, nom et adresse sur une ligne ; Tout cocher / Tout decocher a cote du compteur dynamique. Selection vide bloquee et destinataires controles cote serveur ; droits, anti-doublons et suivi d envoi conserves.
+
+- Menu responsive (2026-10-07) : les taches recurrentes regroupent Ajouter, Plein ecran et Voir les archives dans un seul menu vertical. Les groupes d actions suivent le seuil du menu de leur en-tete, sans second bouton imbrique.
+
+- Taches recurrentes (2026-10-07) : menu des actions ancre sous son bouton, avec un ecart de 6 px et un alignement a droite conserve dans la vue responsive.
+
+- Archives (2026-10-07) : entree Voir les archives dans les menus des indicateurs et des taches recurrentes. Classement par date d archivage, respect de la portee, de l attribution et de la recherche ; consultation des fiches, valeurs et historiques en lecture seule.
+
+- Applications (2026-10-07) : menu vertical commun avec Plein ecran sur les vues des applications et le tableau de pilotage, y compris sans droits de modification. Action integree aux menus existants des projets, du calendrier, des indicateurs et de la structure. Echap et Quitter le plein ecran restaurent la vue ; filtres, sous-fiches, fenetres et notifications restent utilisables.
+
+- Actions des applications (2026-10-07) : menu vertical place en dernier, tout a droite des boutons, avec un espacement commun de 12 px et le meme ordre dans les menus responsive.
+
+- Projets (2026-10-07) : option Plein ecran dans le menu de la vue, sortie avec Echap ou le menu. Mode conserve lors des changements de filtres et de vue ; details, fenetres et notifications restent accessibles.
+
+- Organisations (2026-10-07) : les erreurs des actions Quitter, Supprimer et Partager comme modele sont affichees dans la notification commune de l annuaire, notamment le refus de depart du dernier administrateur.
+
+- Organisation de demo (2026-10-07) : migrations et scripts de creation de La Passerelle retires des fichiers a publier. Transfert par export/import uniquement ; organisation locale et archives ZIP conservees.
+
+- Import ZIP (2026-10-07) : droits du repertoire local des images corriges pour le compte du serveur web. Diagnostic explicite si le stockage est inaccessible ; test complet d import protege contre une execution root qui rendrait les imports web impossibles.
+
+- Reglement (2026-10-07) : reference de chaque regle calculee sur l arborescence globale des holons, avec ordre alphabetique et sans doublons entre regles et sections. Meme reference dans tous les contextes, tris, regroupements et sur le tableau de bord ; recalcul sans trous apres suppression. Les sections par autorite affichent leur nom seul.
+
+- Export/import (2026-10-07) : ZIP avec JSON, photos de profil, images des holons, logo et banniere de l organisation. Images locales verifiees et dedupliquees ; anciens JSON toujours acceptes. Competences, equipes et suivis des projets, parametres et groupes d indicateurs preserves. Option Importer comme jeu de role : decalage commun des dates selon le nombre de jours depuis l export, sans modifier les dates du fichier exporte.
+
+- Indicateurs (2026-10-07) : colonne En charge avec espace puis personne ; imports avec la mention Importe puis l origine ; groupes avec leurs origines sans doublons. Nombre de valeurs retire de la liste et des cartes. Cartes avec les deux lignes d attribution en haut, puis le titre sur toute la largeur sous le menu d actions.
+
+- Taches recurrentes (2026-10-07) : description sur toute la largeur des quatre colonnes, limitee a une ligne avec points de suspension et espacement resserre. Jour de recurrence au-dessus de l echeance ; colonne En charge avec l espace en premiere ligne et la personne en dessous, sans repetition sous le titre.
+
+- Organisation (2026-10-07) : nom court et nom complet facultatif editables sur le holon Organisation, avec sauvegarde et suivi des modifications non enregistrees. Le champ shortname des parametres est affiche comme Identifiant URL pour le distinguer du nom court du holon.
+
+- La Passerelle (2026-10-07) : dates de debut et de fin pour les 181 projets, sur une saison de demonstration de septembre 2026 a juin 2027. Concert en novembre, portes ouvertes fin novembre, camp en fevrier et chantiers de fond au printemps. Les 18 projets Un jour passent en Pret pour permettre leur planification ; les autres statuts sont conserves. Periodes enfants incluses dans celles des parents, echeances apres reexamen des blocages, historique natif et migration rejouable verifies.
+
+- Navigation OMO (2026-10-07) : le fil d'Ariane de getOrg.php affiche les noms courts des holons. Capsule du numero de holon deplacee en bas de la fiche, apres les espaces rattaches, avec copie du lien conservee.
+
+- La Passerelle (2026-10-06) : missions et contributions clarifiees pour les 60 roles et 9 cercles, avec une mission globale explicite. 271 attendus formules comme livrables ou services avec leurs destinataires ; noms courts et noms longs pour les fiches. Valeurs effectives des roles herites verifiees, hierarchie, modeles, autorites et autres proprietes preserves. Migration 14 ciblee, historique et rejeu sans duplication controles.
+
+- La Passerelle (2026-10-06) : revue de coherence de l organisation 828. Parcours fictifs concrets pour 69 competences de 20 membres ; 55 routines precisees et 9 archives ; 62 indicateurs avec consignes de collecte et 3 archives. Intentions et consignes des 54 regles clarifiees, 15 portees adaptees. Revue de 46 projets dont 23 liens parent corriges, criteres de fin et etude d opportunite du label ; 181 projets conserves. Historique et donnees fictives preserves, migration 13 ciblee et rejouable verifiee.
+
+- La Passerelle (2026-10-06) : quatre projets strategiques au niveau d Ancrage pour la participation des publics, l autonomie et les liens entre generations, la qualite de l accueil et la perennite du centre. Douze strategies de cercle et l etude energetique rattachees, soit 13 liens directs et 163 contributions en cascade. Responsabilite confiee aux Operations, importance maximale et aucun calendrier impose ; hierarchie existante conservee, historique, calcul d importance, affichage natif et migration ciblee et rejouable verifies.
+
+- La Passerelle (2026-10-06) : 12 projets strategiques rattaches aux sept cercles sous Ancrage, avec responsables, descriptions des resultats et importance maximale. 162 projets contribuent aux axes par 73 rattachements de tetes de chaine et 89 contributions en cascade ; tous les liens existants entre roles et cercles conserves. Trois projets sans contribution concrete restent hors des axes. Historique, importance calculee, affichage natif et migration ciblee et rejouable verifies.
+
+- La Passerelle (2026-10-06) : selection de 5 ou 6 indicateurs existants dans chacun des sept cercles sous Ancrage, visibles dans 4 ou 5 vues locales. 22 imports directs et 8 graphiques a courbes superposees, avec unites et periodes compatibles ; 40 sources au total, sans nouveau releve ni nouvel indicateur. Sources des roles conservees, affichage et permissions verifies, migration ciblee et rejouable.
+
+- La Passerelle (2026-10-06) : 65 indicateurs dans 31 roles des cercles sous Ancrage, avec une repartition de 0 a 5 selon les missions. Sources, calculs, unites, frequences et limites documentes dans chaque fiche ; questionnaire d accueil des artistes et taux de reponse. Responsables issus des roles, 390 releves fictifs et reperes de demonstration, graphiques natifs verifies et migration ciblee et rejouable.
+
+- La Passerelle (2026-10-06) : historique fictif de 5 ou 6 occurrences passees pour chacune des 64 taches recurrentes, soit 352 occurrences (260 faites a temps, 40 en retard et 52 manquees). Dates de creation reculees selon les frequences, validations attribuees aux responsables des roles, affichage natif de la regularite et migration ciblee et rejouable.
+
+- La Passerelle (2026-10-06) : 64 taches recurrentes dans les roles des cercles sous Ancrage, de 0 a 5 par role avec une moyenne de 2. Frequences hebdomadaires, mensuelles, trimestrielles, semestrielles et annuelles, responsables issus des roles et fenetres d anticipation adaptees. Migration ciblee et rejouable ; projets et controles existants conserves.
+
+- La Passerelle (2026-10-06) : 20 prochaines actions ajoutees comme sous-projets dans le meme role que leur parent, sans dates de planification supplementaires. Les 165 projets sont confies a 19 membres actifs selon leurs roles, puis leurs competences, specialites et affinites declarees. Maximum de 10 projets par role conserve ; historique des responsabilites et migrations ciblees et rejouables.
+
+- La Passerelle (2026-10-06) : 70 rattachements entre projets pour relier les activites et leurs contributions, dont 16 entre cercles differents. Chaines de concert, portes ouvertes, camp, cuisine, maintenance, communication et finances ; roles, statuts et dates conserves, importance calculee mise a jour et historique du rattachement. Migration ciblee et rejouable pour l organisation 828.
+
+- La Passerelle (2026-10-06) : 145 projets fictifs dans les 32 roles des cercles sous Ancrage, avec 1 a 10 projets par role, tailles et niveaux varies, cinq statuts et motifs de blocage. Titres et descriptions reutilisables sans dates precises ; seuls les debuts, clotures et reexamens requis sont dates. Migration ciblee et rejouable pour l organisation 828, sans projets pour les roles structurels, le CA ou les roles directs d Ancrage.
+
+- Securite (2026-10-06) : recuperation de compte a jeton hache, expire et usage unique ; profils limites aux champs autorises ; controle CSRF partage et isolation de l ancienne route Circle ; uploads image reencodes ; webhook Telegram authentifie ; injections de scripts et textarea corrigees ; revocation des acces apres changement de mot de passe ou TOTP ; services Docker auxiliaires limites a la machine locale. Migrations SQL et reglages avant publication documentes dans docs/SECURITY-HARDENING-2026-10-06.txt.
+
+- Scrutins : les deux boutons Confirmer et Annuler d une date deviennent inaccessibles une fois le choix enregistre, immediatement et apres rechargement. Les dates encore en option restent disponibles.
+
 - Surveillance : endpoint public /omo/health.php pour verifier la connexion et une requete de lecture MySQL, sans session ni maintenance. Reponse JSON minimale, HTTP 200 si la base repond ou 503 en cas d echec, sans cache ni details techniques publics.
 
 - Accueil OMO2 (index2.php) : lien Disponibilite du service dans le footer vers le suivi public UptimeRobot, ouvert dans un nouvel onglet.

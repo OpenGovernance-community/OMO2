@@ -363,7 +363,7 @@ function getImgEncode(
         default => false,
     };
     $content = (string)ob_get_clean();
-    imagedestroy($destination);
+    unset($destination);
 
     if (!$encoded || $content === '') {
         getImgFail(500, 'Unable to encode image.');
@@ -456,7 +456,7 @@ function getImgHandleRequest(): never
         $outputHeight,
         $extension
     );
-    imagedestroy($sourceImage);
+    unset($sourceImage);
 
     @file_put_contents($cachePath, $outputContent, LOCK_EX);
 

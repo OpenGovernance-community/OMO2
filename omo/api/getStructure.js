@@ -1050,6 +1050,7 @@ $(document)
     event.preventDefault();
     event.stopPropagation();
     $("#omoStructureActions").toggleClass("is-open");
+    this.setAttribute("aria-expanded", $("#omoStructureActions").hasClass("is-open") ? "true" : "false");
   });
 
 $(document)
@@ -1266,6 +1267,8 @@ $(document)
       const actions = document.getElementById("omoStructureActions");
       if (actions) {
         actions.classList.remove("is-open");
+        const toggle = actions.querySelector("#omoStructureActionsToggle");
+        if (toggle) toggle.setAttribute("aria-expanded", "false");
       }
     }
 

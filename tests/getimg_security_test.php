@@ -54,7 +54,7 @@ assertGetImgSecurity($testImage instanceof GdImage, 'The source test image must 
 $testColor = imagecolorallocate($testImage, 12, 80, 140);
 imagefilledrectangle($testImage, 0, 0, 79, 39, $testColor);
 imagepng($testImage, $sourcePath);
-imagedestroy($testImage);
+unset($testImage);
 
 $_SERVER['DOCUMENT_ROOT'] = $temporaryRoot;
 $localContent = getImgLoadLocalSource('/source.png');
@@ -62,7 +62,7 @@ assertGetImgSecurity($localContent !== '', 'A valid local image must be readable
 $localImage = imagecreatefromstring($localContent);
 assertGetImgSecurity($localImage instanceof GdImage, 'A valid local image must be decoded.');
 $encodedImage = getImgEncode($localImage, 80, 40, 40, 20, 'png');
-imagedestroy($localImage);
+unset($localImage);
 $encodedInfo = getimagesizefromstring($encodedImage);
 assertGetImgSecurity(
     is_array($encodedInfo) && $encodedInfo[0] === 40 && $encodedInfo[1] === 20,

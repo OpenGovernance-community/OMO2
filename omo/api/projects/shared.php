@@ -9,6 +9,12 @@ use dbObject\Document;
 use dbObject\OrganizationApplication;
 use dbObject\Project;
 
+function omoProjectsCompareImportanceThenPriority(Project $left, Project $right): int
+{
+    return ((float)$right->get('calculated_importance') <=> (float)$left->get('calculated_importance'))
+        ?: ((int)Project::normalizeLevel($right->get('priority')) <=> (int)Project::normalizeLevel($left->get('priority')));
+}
+
 if (!function_exists('omoProjectsSourceLang')) {
     function omoProjectsSourceLang()
     {
@@ -24,7 +30,7 @@ if (!function_exists('omoProjectsSourceLang')) {
             'projects.follow.tooltip' => ['text' => 'Suivi par : {names}', 'context' => 'Tooltip listing the people following a project.'],
             'projects.action.accept_proposal' => ['text' => 'Accepter le projet', 'context' => 'Action accepting a pending project proposal.'],
             'projects.action.refuse_proposal' => ['text' => 'Refuser le projet', 'context' => 'Action refusing a pending project proposal.'],
-            'projects.action.discuss' => ['text' => 'Discussion', 'context' => 'Button opening the project discussion.'],
+            'projects.action.discuss' => ['text' => 'Chat', 'context' => 'Short button label opening the project chat.'],
             'projects.action.close' => ['text' => 'Fermer', 'context' => 'Button closing the project subdrawer.'],
             'projects.action.save' => ['text' => 'Enregistrer', 'context' => 'Submit action saving a project.'],
             'projects.action.cancel' => ['text' => 'Annuler', 'context' => 'Button cancelling project creation.'],

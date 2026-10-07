@@ -68,34 +68,20 @@ if ((int)($upload['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
     exit;
 }
 
-$rawPayload = @file_get_contents((string)($upload['tmp_name'] ?? ''));
-if (!is_string($rawPayload) || trim($rawPayload) === '') {
-    http_response_code(400);
-    echo json_encode(
-        array(
-            'status' => 'error',
-            'message' => "Le fichier d'import est vide.",
-        ),
-        JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
-    );
+$archive = ['files' => []];
+try {
+    $archive = \dbObject\OrganizationArchive::read((string)$upload['tmp_name'], true);
+    $payload = $archive['payload'];
+    if (($_POST['roleplay'] ?? '') === '1') { $payload = \dbObject\OrganizationTransferDates::shift($payload); }
+} catch (\Throwable $exception) {
+    \dbObject\OrganizationArchive::cleanup($archive['files']);
+    http_response_code(422);
+    echo json_encode(['status' => 'error', 'message' => $exception->getMessage()], JSON_UNESCAPED_UNICODE);
     exit;
 }
-
-$payload = json_decode($rawPayload, true);
-if (!is_array($payload)) {
-    http_response_code(400);
-    echo json_encode(
-        array(
-            'status' => 'error',
-            'message' => "Le fichier d'import n'est pas un JSON valide.",
-        ),
-        JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
-    );
-    exit;
-}
-
 $result = $organization->importStructure($payload, (int)commonGetCurrentUserId());
 if (!($result['status'] ?? false)) {
+    \dbObject\OrganizationArchive::cleanup($archive['files']);
     http_response_code(422);
     echo json_encode(
         array(

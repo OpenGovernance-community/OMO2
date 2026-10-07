@@ -19,6 +19,10 @@ function omoGetOrgPanelSourceLang(): array
             'text' => 'Ajouter',
             'context' => 'Action menu label to create a child holon in the left panel.',
         ],
+        'leftbar.actions.more' => [
+            'text' => 'Autres options',
+            'context' => 'Accessible label for the action menu of the current holon.',
+        ],
         'leftbar.actions.delete' => [
             'text' => 'Supprimer',
             'context' => 'Action menu label to delete the current holon in the left panel.',
@@ -70,6 +74,14 @@ function omoGetOrgPanelSourceLang(): array
         'leftbar.detail.updated_at' => [
             'text' => 'Mis a jour le {date}',
             'context' => 'Update metadata shown below a left panel section when the updater is unknown.',
+        ],
+        'leftbar.detail.fullscreen' => [
+            'text' => 'Plein ecran',
+            'context' => 'Accessible label for the icon that expands a property to fullscreen.',
+        ],
+        'leftbar.detail.exit_fullscreen' => [
+            'text' => 'Quitter le plein ecran',
+            'context' => 'Accessible label for the close button of a fullscreen property, including on phones.',
         ],
         'leftbar.detail.updated_by' => [
             'text' => 'Mis a jour le {date} par {userName}',
@@ -370,6 +382,24 @@ function omoGetProjectReferenceData($projectId)
 	);
 }
 
+function omoSortProjectReferenceItems(array $items, bool $descriptors = false): array
+{
+    $rankedItems = array();
+    foreach ($items as $value) {
+        $item = $descriptors ? $value['item'] : $value;
+        $projectId = is_array($item) ? (int)($item['id'] ?? 0) : (int)$item;
+        $referenceData = omoGetProjectReferenceData($projectId);
+        $rankedItems[] = ['value' => $value, 'project' => $referenceData['project'] ?? null];
+    }
+    usort($rankedItems, static function (array $left, array $right): int {
+        if (!$left['project'] instanceof Project || !$right['project'] instanceof Project) {
+            return (int)($right['project'] instanceof Project) <=> (int)($left['project'] instanceof Project);
+        }
+        return omoProjectsCompareImportanceThenPriority($left['project'], $right['project']);
+    });
+    return array_column($rankedItems, 'value');
+}
+
 function omoRenderProjectReferenceItem($item, $source = '')
 {
     $projectId = is_array($item) ? (int)($item['id'] ?? 0) : (int)$item;
@@ -631,6 +661,9 @@ function omoRenderHtmlBlock($html, $className = 'section-html')
 
 function omoRenderFormattedList(array $items, array $entry, $className = 'section-list')
 {
+    if ((string)($entry['listItemType'] ?? '') === 'project') {
+        $items = omoSortProjectReferenceItems($items);
+    }
     if ((string)($entry['listItemType'] ?? '') === 'authority') {
         $items = omoFilterTopLevelAuthorityItems($items);
     }
@@ -693,6 +726,9 @@ function omoBuildListItemDescriptors(array $ancestorItems, array $currentItems)
 function omoRenderMixedList(array $ancestorItems, array $currentItems, array $entry, $className = 'section-list')
 {
     $descriptors = omoBuildListItemDescriptors($ancestorItems, $currentItems);
+    if ((string)($entry['listItemType'] ?? '') === 'project') {
+        $descriptors = omoSortProjectReferenceItems($descriptors, true);
+    }
     if ((string)($entry['listItemType'] ?? '') === 'authority') {
         $topLevelItems = omoFilterTopLevelAuthorityItems(array_column($descriptors, 'item'));
         $topLevelIds = array_fill_keys(array_map(static function ($item) {
@@ -929,7 +965,7 @@ function omoRenderSectionUpdateMeta(array $entry, $organizationId = 0)
         ]);
     }
 
-    return '<div class="section-update-meta">' . omoApiEscape($metaText) . '</div>';
+    return '<span>' . omoApiEscape($metaText) . '</span>';
 }
 
 function omoBuildSections(Holon $holon)
@@ -1144,7 +1180,6 @@ $deleteDescendantCount = $canDeleteHolon ? (int)$currentHolon->countVisibleDesce
 $parentHolonForDelete = $canDeleteHolon ? $currentHolon->getParentHolon() : null;
 $deleteParentId = $parentHolonForDelete ? (int)$parentHolonForDelete->getId() : 0;
 $deleteParentIsRoot = $parentHolonForDelete ? ((int)$parentHolonForDelete->get('IDtypeholon') === 4) : false;
-$hasHolonActions = $canCreateChildHolon || $canEditHolon || $canMoveHolon || $canDeleteHolon || $canViewHolonHistory || $canManageOrganizationModel;
 ?>
 
 <style>
@@ -1158,8 +1193,8 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canMoveHolon || $ca
 }
 </style>
 
-<div class="circle-panel">
-    <div class="circle-top">
+<div class="circle-panel generic-panel-fullscreen-content--contained generic-panel-fullscreen-content--scrollable" data-common-panel-view data-common-panel-fullscreen-isolate="#panel-left">
+    <div class="circle-top" data-common-panel-header>
     
 
     <div class="circle-header">
@@ -1175,7 +1210,7 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canMoveHolon || $ca
                     <span class="crumb<?= $isActive ? ' active' : '' ?>"
                           data-cid="<?= (int)$crumb->getId() ?>"
                           data-is-root="<?= $index === 0 ? '1' : '0' ?>">
-                        <?= omoApiEscape($crumb->getFullDisplayName()) ?>
+                        <?= omoApiEscape($crumb->getDisplayName()) ?>
                     </span>
                     <?php endif; ?>
                 <?php endforeach; ?>
@@ -1195,20 +1230,24 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canMoveHolon || $ca
             </div>
         </div>
         <div class="circle-meta">
-            <?php if ($hasHolonActions): ?>
-                <div class="circle-menu" data-holon-menu="1">
+                <div class="circle-menu generic-menu generic-panel-actions" data-holon-menu="1">
                     <button
                         type="button"
-                        class="circle-badge circle-badge--menu noMobile"
+                        class="generic-menu-toggle"
                         data-holon-menu-toggle="1"
+                        data-common-panel-menu-toggle
+                        aria-label="<?= omoApiEscape(t('leftbar.actions.more')) ?>"
+                        title="<?= omoApiEscape(t('leftbar.actions.more')) ?>"
+                        aria-controls="holon-actions-menu"
                         aria-haspopup="menu"
                         aria-expanded="false"
-                    >...</button>
-                    <div class="circle-menu__panel" data-holon-menu-panel="1" hidden>
+                    >&#8942;</button>
+                    <div id="holon-actions-menu" class="generic-menu-panel generic-menu-panel--wide generic-menu-panel--anchored" data-holon-menu-panel="1" role="menu" hidden>
+                        <button type="button" class="generic-menu-item" role="menuitem" data-common-panel-fullscreen><?= omoApiEscape(t('leftbar.detail.fullscreen')) ?></button>
                         <?php if ($canManageOrganizationModel): ?>
                             <button
                                 type="button"
-                                class="circle-menu__item"
+                                class="generic-menu-item" role="menuitem"
                                 data-toggle-organization-model="1"
                                 data-oid="<?= (int)$organizationId ?>"
                             ><?= omoApiEscape($organization->isSharedAsTemplate() ? t('leftbar.actions.stop_sharing_as_model') : t('leftbar.actions.share_as_model')) ?></button>
@@ -1216,7 +1255,7 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canMoveHolon || $ca
                         <?php if ($canCreateChildHolon): ?>
                             <button
                                 type="button"
-                                class="circle-menu__item"
+                                class="generic-menu-item" role="menuitem"
                                 data-open-create-holon="1"
                                 data-cid="<?= (int)$currentHolon->getId() ?>"
                             ><?= omoApiEscape(t('leftbar.actions.add')) ?></button>
@@ -1224,7 +1263,7 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canMoveHolon || $ca
                         <?php if ($canEditHolon): ?>
                             <button
                                 type="button"
-                                class="circle-menu__item"
+                                class="generic-menu-item" role="menuitem"
                                 data-open-edit-holon="1"
                                 data-hid="<?= (int)$currentHolon->getId() ?>"
                                 data-template-edit="<?= $isCurrentTemplateHolon ? '1' : '0' ?>"
@@ -1235,7 +1274,7 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canMoveHolon || $ca
                         <?php if ($canMoveHolon): ?>
                             <button
                                 type="button"
-                                class="circle-menu__item"
+                                class="generic-menu-item" role="menuitem"
                                 data-open-move-holon="1"
                                 data-hid="<?= (int)$currentHolon->getId() ?>"
                             ><?= omoApiEscape(t('leftbar.actions.move')) ?></button>
@@ -1243,7 +1282,7 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canMoveHolon || $ca
                         <?php if ($canViewHolonHistory): ?>
                             <button
                                 type="button"
-                                class="circle-menu__item"
+                                class="generic-menu-item" role="menuitem"
                                 data-open-holon-history="1"
                                 data-hid="<?= (int)$currentHolon->getId() ?>"
                             ><?= omoApiEscape(t('leftbar.actions.history')) ?></button>
@@ -1251,7 +1290,7 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canMoveHolon || $ca
                         <?php if ($canDeleteHolon): ?>
                             <button
                                 type="button"
-                                class="circle-menu__item circle-menu__item--danger"
+                                class="generic-menu-item generic-menu-item--danger" role="menuitem"
                                 data-delete-holon="1"
                                 data-hid="<?= (int)$currentHolon->getId() ?>"
                                 data-name="<?= omoApiEscape($currentHolon->getFullDisplayName()) ?>"
@@ -1263,8 +1302,7 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canMoveHolon || $ca
                         <?php endif; ?>
                     </div>
                 </div>
-            <?php endif; ?>
-            <button type="button" class="circle-badge circle-badge--link" data-copy-direct-link="1" data-cid="<?= (int)$currentHolon->getId() ?>">#<?= (int)$currentHolon->getId() ?></button>
+                <button type="button" class="generic-action-button generic-action-button--icon-only generic-action-button--close" data-common-panel-fullscreen data-common-panel-fullscreen-icon data-common-panel-fullscreen-close title="<?= omoApiEscape(t('leftbar.detail.exit_fullscreen')) ?>" aria-label="<?= omoApiEscape(t('leftbar.detail.exit_fullscreen')) ?>"></button>
         </div>
     </div>
     <?php if (count($memberCards) > 0 || $canAddMembers): ?>
@@ -1379,14 +1417,20 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canMoveHolon || $ca
     <?php endif; ?>
 
     <?php foreach ($sections as $section): ?>
-        <div class="circle-section generic-section generic-accordion generic-accordion--row generic-accordion--collapsible">
+        <div class="circle-section generic-section generic-accordion generic-accordion--row generic-accordion--collapsible generic-panel-fullscreen-content--contained" data-common-panel-view data-common-panel-fullscreen-isolate="#panel-left">
             <div class="generic-accordion__header">
                 <span class="generic-accordion__title generic-card-title generic-card-title--small"><?= omoApiEscape($section['title']) ?></span>
                 <span class="generic-accordion__toggle">&#9662;</span>
+                <button type="button" class="generic-action-button generic-action-button--icon-only generic-action-button--close" data-common-panel-fullscreen data-common-panel-fullscreen-icon data-common-panel-fullscreen-close title="<?= omoApiEscape(t('leftbar.detail.exit_fullscreen')) ?>" aria-label="<?= omoApiEscape(t('leftbar.detail.exit_fullscreen')) ?>"></button>
             </div>
             <div class="generic-accordion__content">
                 <?= omoRenderSectionBody($section['entry']) ?>
-                <?= omoRenderSectionUpdateMeta($section['entry'], $organizationId) ?>
+                <div class="section-update-meta">
+                    <?= omoRenderSectionUpdateMeta($section['entry'], $organizationId) ?>
+                    <button type="button" class="generic-action-button generic-action-button--icon-only generic-action-button--inline-icon" data-common-panel-fullscreen data-common-panel-fullscreen-icon title="<?= omoApiEscape(t('leftbar.detail.fullscreen')) ?>" aria-label="<?= omoApiEscape(t('leftbar.detail.fullscreen')) ?>">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M21 16v5h-5M8 21H3v-5"/></svg>
+                    </button>
+                </div>
             </div>
         </div>
     <?php endforeach; ?>
@@ -1442,7 +1486,9 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canMoveHolon || $ca
         </div>
     <?php endif; ?>
 
-
+    <div class="generic-drawer-footer circle-meta">
+        <button type="button" class="circle-badge circle-badge--link" data-copy-direct-link="1" data-cid="<?= (int)$currentHolon->getId() ?>">#<?= (int)$currentHolon->getId() ?></button>
+    </div>
 </div>
 
 <link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/getOrg.css') ?>">

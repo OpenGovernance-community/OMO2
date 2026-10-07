@@ -2,13 +2,15 @@
 require_once dirname(__DIR__) . '/bootstrap.php';
 
 $sourceLang = array(
+    'organization_import.roleplay' => ['text' => 'Importer comme jeu de role', 'context' => 'Date shift option on import.'],
+    'organization_import.roleplay_help' => ['text' => 'Decale les dates du nombre de jours entre la date d export et aujourd hui. Les heures et les intervalles sont conserves. Sans cette option, les dates du fichier sont conservees.', 'context' => 'Explanation of roleplay import.'],
     'organization_import.action.cancel' => array('text' => 'Annuler', 'context' => 'Cancel button in the organization import popup.'),
     'organization_import.action.submit' => array('text' => 'Créer et importer', 'context' => 'Submit button in the organization import popup.'),
     'organization_import.error.auth' => array('text' => 'Connexion requise.', 'context' => 'Authentication message in the organization import popup.'),
-    'organization_import.error.file' => array('text' => 'Choisissez un fichier JSON avant de continuer.', 'context' => 'Validation message when no import file is selected.'),
+    'organization_import.error.file' => array('text' => 'Choisissez un fichier ZIP ou JSON avant de continuer.', 'context' => 'Validation message when no import file is selected.'),
     'organization_import.error.member_invitation_email_choice' => array('text' => 'Choisissez explicitement le traitement des e-mails d’invitation aux membres.', 'context' => 'Validation message when the member invitation email choice is not selected.'),
     'organization_import.error.generic' => array('text' => 'Impossible d importer la nouvelle organisation.', 'context' => 'Fallback error message for the organization import popup.'),
-    'organization_import.field.file' => array('text' => 'Export JSON OMO 1', 'context' => 'File input label in the organization import popup.'),
+    'organization_import.field.file' => array('text' => 'Export OMO : ZIP ou ancien JSON', 'context' => 'File input label in the organization import popup.'),
     'organization_import.field.name' => array('text' => 'Nom de la nouvelle organisation', 'context' => 'Organization name label in the organization import popup.'),
     'organization_import.field.name_hint' => array('text' => 'Laissez vide pour reprendre le nom de l export.', 'context' => 'Organization name hint in the organization import popup.'),
     'organization_import.field.template' => array('text' => 'Modèle d’organisation de référence', 'context' => 'Organization template selector label in the organization import popup.'),
@@ -32,7 +34,8 @@ $sourceLang = array(
     'organization_import.field.member_invitation_email_choice_send' => array('text' => 'Envoyer maintenant les e-mails d’invitation', 'context' => 'Option sending invitation emails to imported members.'),
     'organization_import.field.member_invitation_email_choice_skip' => array('text' => 'Ne pas envoyer les e-mails d’invitation', 'context' => 'Option not sending invitation emails to imported members.'),
     'organization_import.field.member_invitation_email_choice_hint' => array('text' => 'Ce choix est obligatoire afin de confirmer le traitement des invitations des membres importés.', 'context' => 'Help text for the required member invitation email selector.'),
-    'organization_import.help' => array('text' => 'Cette action crée une nouvelle organisation. La structure est toujours importée. Les tâches OMO 1 deviennent des projets enfants et les anciennes listes récurrentes deviennent des tâches récurrentes rattachées directement à leurs holons.', 'context' => 'Help text in the organization import popup.'),
+    'organization_import.help' => array('text' => 'Cree une nouvelle organisation depuis un export OMO. La structure est toujours importee ; choisissez les autres contenus a reprendre. Les images locales du ZIP sont restaurees avec leurs objets.', 'context' => 'Help text in the organization import popup.'),
+    'organization_import.kicker' => ['text' => 'Export OMO : ZIP / JSON', 'context' => 'Organization import file formats.'],
     'organization_import.module.checklists' => array('text' => 'Tâches récurrentes', 'context' => 'Recurring tasks module label in the organization import popup.'),
     'organization_import.loading' => array('text' => 'Import en cours...', 'context' => 'Loading label shown during organization import.'),
     'organization_import.wait.title' => array('text' => 'Veuillez patienter', 'context' => 'Title of the full import waiting screen.'),
@@ -77,7 +80,7 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
 <div class="omo-create-import" data-omo-create-import="1">
     <header class="generic-drawer-header generic-drawer-header--sticky">
         <div class="generic-drawer-header__copy">
-            <div class="generic-card-title generic-card-title--eyebrow">OMO 1 vers OMO 2</div>
+            <div class="generic-card-title generic-card-title--eyebrow"><?= htmlspecialchars(t('organization_import.kicker', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></div>
             <h2 class="generic-card-title generic-card-title--large"><?= htmlspecialchars(t('organization_import.title', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></h2>
             <p><?= htmlspecialchars(t('organization_import.help', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></p>
         </div>
@@ -87,7 +90,7 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
     <form class="omo-create-import__form generic-section generic-section--stack" data-omo-create-import-form="1" enctype="multipart/form-data">
         <label class="omo-create-import__field">
             <span><?= htmlspecialchars(t('organization_import.field.file', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></span>
-            <input type="file" name="omo1_export_file" class="generic-form-control" accept=".json,application/json" required>
+            <input type="file" name="omo1_export_file" class="generic-form-control" accept=".zip,.json,application/zip,application/json" required>
         </label>
 
         <label class="omo-create-import__field">
@@ -96,6 +99,11 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
             <small><?= htmlspecialchars(t('organization_import.field.name_hint', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></small>
         </label>
 
+        <label class="omo-create-import__module">
+            <input type="checkbox" name="roleplay" value="1">
+            <span><?= htmlspecialchars(t('organization_import.roleplay', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></span>
+        </label>
+        <p class="generic-help-text"><?= htmlspecialchars(t('organization_import.roleplay_help', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></p>
         <label class="omo-create-import__field">
             <span><?= htmlspecialchars(t('organization_import.field.template', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></span>
             <select name="organization_template_id" class="generic-form-control" data-omo-create-import-template="1">

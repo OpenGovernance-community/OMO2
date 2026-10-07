@@ -17,6 +17,9 @@ function mcpHttp(string $path, ?array $body = null, bool $json = false, ?string 
     $curl = curl_init(omoMcpIssuer() . $path);
     $responseHeaders = [];
     $headers[] = 'Accept: application/json, text/event-stream';
+    if ($body !== null && !array_filter($headers, static fn($header) => str_starts_with(strtolower($header), 'origin:'))) {
+        $headers[] = 'Origin: ' . omoMcpIssuer();
+    }
     if ($body !== null) $headers[] = 'Content-Type: ' . ($json ? 'application/json' : 'application/x-www-form-urlencoded');
     if ($token !== null) $headers[] = 'Authorization: Bearer ' . $token;
     curl_setopt_array($curl, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 20,
@@ -273,6 +276,9 @@ try {
     mcpCheck(mcpHttpRpc('tools/list', [], $tokens['access_token'])['status'] === 401, 'Disabled account refused');
     $items['user']->set('active', 1);
     $items['user']->save();
+    $relogin = mcpHttp('/common/login_password.php', ['email' => $items['user']->get('email'),
+        'password' => $items['password']]);
+    mcpCheck(mcpHttpJson($relogin)['status'] === 'ok', 'Reenabled account starts a fresh browser session');
     $notice = mcpHttp(parse_url($endpoint, PHP_URL_PATH), ['jsonrpc' => '2.0', 'method' => 'notifications/initialized'], true, $tokens['access_token']);
     mcpCheck($notice['status'] === 202 && $notice['body'] === '', 'MCP notification response');
     $connections = mcpHttp('/mcp/connections.php');

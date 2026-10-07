@@ -8,6 +8,7 @@ require_once dirname(__DIR__) . '/common/web_push.php';
 require_once __DIR__ . '/topbar.php';
 
 $sourceLang = [
+    'app.drawer.close' => ['text' => 'Fermer', 'context' => 'Accessible label and tooltip for closing an external application subdrawer.'],
     'app.access_denied.message' => [
         'text' => "Votre compte est bien connecté, mais il n'a pas encore accès à l'organisation {organizationName}.",
         'context' => 'Message shown on the forbidden access page when the user is logged in but has no access to the organization.',
@@ -1389,6 +1390,7 @@ window.omoConfig = <?=
             'host' => $organizationContext['host'],
             'routeMode' => $organizationContext['routeMode'] ?? 'host',
             'translationLocale' => omoGetTranslationLocale(),
+            'drawerCloseLabel' => t('app.drawer.close'),
             'lexicon' => $organizationContext['lexicon'] ?? \dbObject\Organization::getDefaultLexicon(),
             'rootHolonId' => $organizationRootHolonId,
             'structureEnabled' => $isStructureApplicationEnabled,
@@ -1422,6 +1424,7 @@ window.omoConfig = <?=
 <script src="assets/js/simple-html-field.js?v=20261005-html-editor-gaps"></script>
 <script src="assets/js/application-view-preferences.js?v=20260923-first-view"></script>
 <script src="<?= commonAssetUrl('/omo/assets/js/app.js') ?>"></script>
+<script src="<?= commonAssetUrl('/common/panel-view/actions.js') ?>"></script>
 <script src="<?= commonAssetUrl('/common/object_mail/ui.js') ?>"></script>
 <script src="assets/js/structure-mini-map.js?v=20260916-structure-render-cache"></script>
 

@@ -1,4 +1,5 @@
 <?php
+require_once dirname(__DIR__, 3) . '/policy/shared.php';
 use dbObject\ArrayRule;
 use dbObject\Holon;
 use dbObject\Rule;
@@ -8,7 +9,11 @@ $dashboardRuleCounts = array('modified' => 0, 'review' => 0, 'obsolete' => 0);
 if (!empty($enabledAppHashes['policy']) && $scopeReferenceHolon instanceof Holon) {
     $ruleContextHolonIds = $dashboardModuleScopeHolonIds;
     $dashboardRules = new ArrayRule();
-    $dashboardRules->loadForPolicyContexts($currentOrganizationId, $ruleContextHolonIds, $dashboardIsOrganizationHolon);
+    $dashboardOrganizationRules = new ArrayRule();
+    $dashboardRules->loadForPolicyContexts($currentOrganizationId, $ruleContextHolonIds, $dashboardIsOrganizationHolon, 'contextual', $dashboardOrganizationRules);
+    $dashboardRuleGroups = omoPolicyBuildRuleGroups(
+        omoPolicyBuildRuleEntries($dashboardOrganizationRules, $dashboardRules), 'holon', $organization
+    );
     $today = new DateTimeImmutable('today');
     $recentThreshold = $today->modify('-6 days');
     foreach ($dashboardRules as $dashboardRule) {
@@ -38,6 +43,7 @@ if (!empty($enabledAppHashes['policy']) && $scopeReferenceHolon instanceof Holon
         $dashboardRuleItems[] = array(
             'id' => (int)$dashboardRule->getId(),
             'title' => trim((string)$dashboardRule->get('title')),
+            'number' => $dashboardRuleGroups['ruleNumbers'][(int)$dashboardRule->getId()],
             'filters' => $filters,
             'reviewDate' => $dashboardRule->get('review_date'),
             'expirationDate' => $dashboardRule->get('expiration_date'),

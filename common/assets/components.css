@@ -1,5 +1,92 @@
 @import url('/common/assets/theme.css?v=20260917-light-surfaces');
 
+.generic-panel-actions-host {
+    --param-panel-actions-gap: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--param-panel-actions-gap);
+    margin-inline-start: auto;
+}
+
+.generic-panel-actions {
+    position: relative;
+    display: inline-flex;
+    justify-self: end;
+}
+
+/* Remain above app navigation and below shared modals and notifications. */
+body .drawer.generic-panel-fullscreen-host,
+body .panel.panel-right.generic-panel-fullscreen-host,
+body .panel.panel-left.generic-panel-fullscreen-host,
+.generic-panel-fullscreen-host {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none !important;
+    max-height: none !important;
+    margin: 0 !important;
+    transform: none !important;
+    z-index: 1330 !important;
+    overflow: hidden;
+    background: var(--color-bg, var(--color-surface, #ffffff));
+}
+
+/* Isolate a section in its original host to preserve delegated interactions. */
+.generic-panel-fullscreen-hidden {
+    display: none !important;
+}
+
+[data-common-panel-view].generic-panel-fullscreen-content {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    background: var(--color-surface, #fff);
+    overflow: hidden;
+    padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+}
+
+/* Keep reading views centered, with the host background visible at the sides. */
+[data-common-panel-view].generic-panel-fullscreen-content.generic-panel-fullscreen-content--contained {
+    width: min(100%, 1200px);
+    box-sizing: border-box;
+    margin-inline: auto;
+    box-shadow: 0 0 32px color-mix(in srgb, var(--color-text, #1f2937) 12%, transparent);
+}
+
+/* Entire context views scroll beneath their own sticky header. */
+[data-common-panel-view].generic-panel-fullscreen-content.generic-panel-fullscreen-content--scrollable {
+    display: block;
+    padding: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+}
+
+.generic-panel-fullscreen-content > .generic-accordion__header {
+    flex: 0 0 auto;
+    cursor: default;
+}
+
+.generic-panel-fullscreen-content > .generic-accordion__content {
+    min-height: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+}
+
+.generic-action-button[data-common-panel-fullscreen-close],
+.generic-panel-fullscreen-content > .generic-accordion__header > .generic-accordion__toggle {
+    display: none;
+}
+
+.generic-panel-fullscreen-content > .generic-accordion__header > [data-common-panel-fullscreen-close],
+.generic-panel-fullscreen-content > [data-common-panel-header] [data-common-panel-fullscreen-close] {
+    display: inline-flex;
+}
+
 /* Keep AJAX fragments measurable while their styles and initializers load. */
 .generic-fragment-pending {
     opacity: 0 !important;
@@ -39,6 +126,7 @@
     --generic-title-size-page: 1.5rem;
     --generic-title-row-gap: 10px;
     --generic-layout-gutter: var(--generic-space-5);
+    --generic-list-gutter: var(--generic-space-3);
     --generic-container-gap: var(--generic-space-3);
     --generic-container-margin: var(--generic-layout-gutter);
     --generic-container-padding-block: var(--generic-space-4);
@@ -604,6 +692,34 @@ input:focus-visible + .generic-choice-card,
     --param-badge-color: var(--color-text-muted, #64748b);
 }
 
+/* Compact correspondence and delivery lists, without a card around each row. */
+.generic-correspondence-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid var(--color-border, #e5e7eb);
+}
+
+.generic-correspondence-list__row {
+    display: flex;
+    gap: var(--generic-space-3, 12px);
+    padding: 16px var(--generic-container-padding-inline, 20px);
+    border-bottom: 1px solid var(--color-border, #e5e7eb);
+    color: var(--color-text, #1f2937);
+    text-decoration: none;
+}
+
+a.generic-correspondence-list__row:hover {
+    background: var(--color-surface-alt, #f8fafc);
+    color: var(--color-text, #1f2937);
+    text-decoration: none;
+}
+
+a.generic-correspondence-list__row:focus-visible {
+    outline: 2px solid var(--color-primary, #2563eb);
+    outline-offset: -2px;
+}
+
 .generic-visually-hidden {
     position: absolute;
     width: 1px;
@@ -749,6 +865,10 @@ input:focus-visible + .generic-choice-card,
 
 .generic-setting-row > * {
     min-width: 0;
+}
+
+.generic-setting-row--top {
+    align-items: start;
 }
 
 @media (max-width: 480px) {
@@ -1317,6 +1437,27 @@ html[data-theme="dark"] .black-icon,
     padding-inline: 7px;
 }
 
+/* Small icon actions beside metadata should keep the text row compact. */
+.generic-action-button--inline-icon {
+    width: 24px;
+    min-width: 24px;
+    min-height: 24px;
+    padding: 2px;
+    background: transparent;
+}
+
+.generic-action-button--inline-icon:not(:disabled):hover {
+    background: var(--color-surface-alt, #f0f2f5);
+}
+
+.generic-action-button--close::before {
+    content: "\00d7";
+    width: 18px;
+    font-size: 22px;
+    font-weight: 400;
+    line-height: 18px;
+}
+
 .generic-action-button--icon-only svg {
     width: 18px;
     height: 18px;
@@ -1558,6 +1699,32 @@ html[data-theme="dark"] .black-icon,
 
 .generic-html-editor [data-html-editor-surface] > :first-child { margin-top: 0; }
 .generic-html-editor [data-html-editor-surface] > :last-child { margin-bottom: 0; }
+
+/* Fill a bounded writing pane; text scrolls inside, in preview and Summernote. */
+.generic-html-editor.generic-html-editor--fill,
+.generic-html-editor--fill .note-editor,
+.generic-html-editor--fill .note-editing-area {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    min-width: 0;
+}
+
+.generic-html-editor--fill [data-html-editor-surface],
+.generic-html-editor--fill .note-editable,
+.generic-html-editor--fill .note-codable {
+    flex: 1;
+    height: 0;
+    min-height: 0;
+    max-height: none;
+    overflow: auto;
+    resize: none;
+}
+
+.generic-html-editor--fill .note-toolbar {
+    flex-shrink: 0;
+}
 
 /* Composite controls (for example tags) share the same focus treatment. */
 .generic-form-control--composite:focus-within {
@@ -2147,7 +2314,7 @@ html[data-theme="dark"] .generic-tabs__tab:focus-visible .generic-monochrome-ico
     --generic-file-list-surface-alt: color-mix(in srgb, var(--color-surface-alt, #f8fafc) 78%, white 22%);
     --generic-file-list-text-light: var(--color-text-light, #6b7280);
     --generic-file-list-title-gap: 20px;
-    --generic-file-list-table-margin-inline: 0px;
+    --generic-file-list-table-margin-inline: var(--param-file-list-table-margin-inline, var(--generic-list-gutter));
     --generic-file-list-padding-inline-start: 16px;
     --generic-file-list-padding-inline-end: 18px;
     --generic-file-list-header-padding-block: 14px;
@@ -2155,6 +2322,11 @@ html[data-theme="dark"] .generic-tabs__tab:focus-visible .generic-monochrome-ico
     --generic-file-list-menu-space: var(--param-file-list-menu-space, 88px);
     display: grid;
     gap: var(--generic-file-list-title-gap);
+}
+
+/* Embedded lists already receive their outer spacing from the enclosing panel. */
+.generic-file-list--embedded {
+    --generic-file-list-table-margin-inline: 0px;
 }
 
 .generic-file-list--structured .generic-file-list__group {
@@ -2258,6 +2430,11 @@ html[data-theme="dark"] .generic-tabs__tab:focus-visible .generic-monochrome-ico
     align-items: center;
 }
 
+.generic-file-list--structured .generic-file-list__row.generic-file-list__row--compact {
+    row-gap: 6px;
+    padding-block: 8px;
+}
+
 .generic-file-list--structured .generic-file-list__cell--date {
     justify-content: flex-end;
     text-align: right;
@@ -2335,6 +2512,18 @@ html[data-theme="dark"] .generic-tabs__tab:focus-visible .generic-monochrome-ico
     color: var(--generic-file-list-text-light);
     font-size: 0.78rem;
     line-height: 1.35;
+}
+
+.generic-file-list--structured .generic-file-list__meta-line--full-width {
+    grid-column: 1 / -1;
+}
+
+.generic-file-list--structured .generic-file-list__meta-line--single-line {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .generic-file-list--structured .generic-file-list__type {
@@ -2602,6 +2791,10 @@ html[data-theme="dark"] .generic-tabs__tab:focus-visible .generic-monochrome-ico
     cursor: pointer;
 }
 
+.generic-file-list--structured .generic-file-list__menu.is-open {
+    z-index: 30;
+}
+
 .generic-file-list--structured.generic-file-list--stacked-sticky .generic-file-list__group-title {
     position: sticky;
     top: 0;
@@ -2686,6 +2879,11 @@ html[data-theme="dark"] .generic-tabs__tab:focus-visible .generic-monochrome-ico
         padding: 14px 14px 14px 12px;
     }
 
+    /* Keep inline row actions clear of the stacked fields on small screens. */
+    .generic-file-list--structured .generic-file-list__row--with-menu {
+        padding-inline-end: calc(var(--generic-file-list-padding-inline-end) + var(--generic-file-list-menu-space));
+    }
+
     .generic-file-list--structured .generic-file-list__cell {
         display: grid;
         gap: 4px;
@@ -2709,6 +2907,57 @@ html[data-theme="dark"] .generic-tabs__tab:focus-visible .generic-monochrome-ico
     .generic-file-list--structured .generic-file-list__cell--date {
         justify-content: flex-start;
         text-align: left;
+    }
+
+    /* A short mobile summary: title, inline metadata, then status and action. */
+    .generic-file-list--structured .generic-file-list__row.generic-file-list__row--summary-mobile {
+        gap: 8px;
+        padding: 12px;
+    }
+
+    .generic-file-list__row--summary-mobile .generic-file-list__cell {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .generic-file-list__row--summary-mobile .generic-file-list__cell::before,
+    .generic-file-list__row--summary-mobile .generic-file-list__icon-box,
+    .generic-file-list__row--summary-mobile .generic-file-list__description {
+        display: none;
+    }
+
+    .generic-file-list__row--summary-mobile .generic-file-list__cell--name {
+        padding-inline-end: var(--param-file-list-mobile-title-action-space, 0px);
+    }
+
+    .generic-file-list__row--summary-mobile .generic-file-list__cell--context .generic-file-list__title-block,
+    .generic-file-list__row--summary-mobile .generic-file-list__cell--schedule .generic-file-list__title-block {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 4px 8px;
+    }
+
+    .generic-file-list__row--summary-mobile .generic-file-list__cell--context .generic-file-list__meta-line {
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+
+    .generic-file-list__row--summary-mobile .generic-file-list__cell--context .generic-file-list__title-block > :not(:first-child)::before,
+    .generic-file-list__row--summary-mobile .generic-file-list__cell--schedule .generic-file-list__title-block > :not(:first-child)::before {
+        content: "\00b7";
+        margin-inline-end: 8px;
+    }
+
+    .generic-file-list__row--summary-mobile .generic-file-list__cell--status {
+        justify-content: space-between;
+    }
+
+    .generic-file-list__row--summary-mobile .generic-file-list__cell--status .generic-action-button {
+        min-height: 44px;
+        min-width: 64px;
     }
 }
 
@@ -2820,6 +3069,12 @@ html[data-theme="dark"] .generic-tabs__tab:focus-visible .generic-monochrome-ico
 
 .generic-accordion--inset > summary:focus-visible {
     outline-offset: -2px;
+}
+
+/* A details disclosure whose anchored panel floats over the surrounding form. */
+.generic-accordion--popover {
+    position: relative;
+    overflow: visible;
 }
 
 .generic-accordion__content {
@@ -3095,8 +3350,22 @@ html[data-theme="dark"] .generic-tabs__tab:focus-visible .generic-monochrome-ico
     .generic-menu--expanded-mobile .generic-menu-item__description { display: none; }
 }
 
-/* Compact actions for responsive header menus, including nested action groups. */
+/* Compact header menus expose nested action groups directly at their own breakpoint. */
 @media (max-width: 1024px) {
+    .generic-menu-panel--compact-mobile > .generic-menu--expanded-mobile { display: contents; }
+    .generic-menu-panel--compact-mobile > .generic-menu--expanded-mobile > .generic-menu-toggle { display: none; }
+    .generic-menu-panel--compact-mobile > .generic-menu--expanded-mobile > .generic-menu-panel {
+        position: static;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        min-width: 0;
+        max-width: none;
+        gap: var(--generic-space-2);
+        padding: 0;
+        border: 0;
+        box-shadow: none;
+        background: transparent;
+    }
     .generic-menu-panel--compact-mobile .generic-action-button,
     .generic-menu-panel--compact-mobile .generic-menu-item {
         box-sizing: border-box;
@@ -3112,3 +3381,13 @@ html[data-theme="dark"] .generic-tabs__tab:focus-visible .generic-monochrome-ico
     filter: grayscale(1);
     border-style: dashed;
 }
+
+/* Shared archive listings in application modals. */
+.generic-resource-archives,
+.generic-resource-archives__group { display: grid; gap: 12px; }
+.generic-resource-archives__main { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px 16px; }
+.generic-resource-archives__main > a { font-weight: 600; overflow-wrap: anywhere; }
+.generic-resource-archives__main > span { white-space: nowrap; }
+.generic-resource-archives__item { display: grid; gap: 8px; }
+
+.generic-resource-archives__item > .generic-meta { display: flex; flex-wrap: wrap; gap: 4px 16px; }
