@@ -555,6 +555,16 @@ function siteUpdateAdminValidateRelativePath(string $path, string $context = 'sa
     }
 }
 
+function siteUpdateAdminAssertUploadStorageExcluded(array $remoteFiles): void
+{
+    foreach (array_keys($remoteFiles) as $path) {
+        if ($path === 'img/upload' || str_starts_with($path, 'img/upload/')) {
+            throw new RuntimeException('Mise a jour refusee : le depot distant contient ' . $path
+                . '. Le stockage img/upload doit rester hors de Git pour conserver les images et les liens vers le stockage partage. Le mode force ne peut pas contourner cette protection.');
+        }
+    }
+}
+
 function siteUpdateAdminGetRemoteFiles(array $context, string $commit): array
 {
     $exitCode = 0;
@@ -576,6 +586,7 @@ function siteUpdateAdminGetRemoteFiles(array $context, string $commit): array
         siteUpdateAdminValidateRelativePath($parts[4], 'arbre distant');
         $files[$parts[4]] = array('mode' => $parts[1], 'hash' => $parts[3]);
     }
+    siteUpdateAdminAssertUploadStorageExcluded($files);
     return $files;
 }
 
