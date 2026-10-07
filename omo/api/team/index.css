@@ -40,16 +40,14 @@
 .omo-team__map-shell {
     display: grid;
     gap: 12px;
-    margin:10px;
+    margin: 10px var(--generic-list-gutter);
 }
 
 .omo-team__compact-list-shell {
+    /* Reserve the trailing space for one member action menu. */
+    --param-file-list-menu-space: 40px;
     --generic-file-list-columns: minmax(0, 1.5fr) minmax(0, 1.2fr) minmax(120px, 0.9fr) minmax(0, 1.7fr);
-    margin: 10px;
-}
-
-.omo-team__compact-list {
-    --generic-file-list-table-margin-inline: 0px;
+    margin-block: 10px;
 }
 
 .omo-team__compact-row {
@@ -403,10 +401,11 @@
 }
 
 .omo-team__grid {
-    --omo-card-min: 220px;
-    --omo-card-max: 240px;
+    /* Wider range lets member cards shrink before wrapping to the next row. */
+    --param-card-min: 220px;
+    --param-card-max: 320px;
     gap: 10px;
-    margin:10px;
+    margin: 10px var(--generic-list-gutter);
 }
 
 .omo-team-card {

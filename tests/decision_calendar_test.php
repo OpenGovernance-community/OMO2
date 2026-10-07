@@ -108,14 +108,26 @@ try {
     $group->set('parameters', ['simple_vote' => ['proposal_content' => ['date' => true]]]);
     dateExpect($group->save()['status'] && $decision->syncProposalCalendarEvents()['status'], 'Consultative ballot');
     dateExpect(Event::findByDecisionProposal((int)$a->getId())->get('status') === 'option', 'Consultation never auto-confirms');
+    $escape = static fn($value) => htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
+    $context = ['decision' => $decision, 'decisionGroup' => $group, 'organizationId' => (int)$org->getId(), 'targetHolonId' => 0,
+        'canManage' => true, 'isOwner' => true, 'intent' => 'manage', 'accessMode' => 'private', 'participant' => DecisionParticipant::findByDecisionAndUser($decision->getId(), $owner->getId())];
+    $optionCalendarHtml = omoDecisionRenderProposalCalendar($a, $context, $escape);
     dateExpect($decision->setCalendarProposalStatus($a, 'confirmed')['status'] && $decision->setCalendarProposalStatus($b, 'confirmed')['status'], 'Consultation can confirm several dates');
     dateExpect(Event::findByDecisionProposal((int)$a->getId())->get('status') === 'confirmed', 'Confirming B preserves A in consultation');
     dateExpect($decision->setCalendarProposalStatus($b, 'cancelled')['status'], 'Cancel consultation date');
     dateExpect($decision->syncProposalCalendarEvents()['status'] && Event::findByDecisionProposal((int)$b->getId())->get('status') === 'cancelled', 'Manual decision survives later synchronization');
-    $escape = static fn($value) => htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
-    $context = ['decision' => $decision, 'decisionGroup' => $group, 'organizationId' => (int)$org->getId(), 'targetHolonId' => 0,
-        'canManage' => true, 'isOwner' => true, 'intent' => 'manage', 'accessMode' => 'private', 'participant' => DecisionParticipant::findByDecisionAndUser($decision->getId(), $owner->getId())];
     $calendarHtml = omoDecisionRenderProposalCalendar($a, $context, $escape);
+    foreach (['option' => $optionCalendarHtml, 'confirmed' => $calendarHtml, 'cancelled' => omoDecisionRenderProposalCalendar($b, $context, $escape)] as $calendarStatus => $html) {
+        $document = new DOMDocument();
+        $previousErrors = libxml_use_internal_errors(true);
+        $document->loadHTML('<meta charset="utf-8">' . $html);
+        libxml_clear_errors();
+        libxml_use_internal_errors($previousErrors);
+        $xpath = new DOMXPath($document);
+        dateExpect($xpath->query('//button[@data-omo-proposal-calendar-action]')->length === 2, 'Both calendar actions remain visible: ' . $calendarStatus);
+        dateExpect($xpath->query('//button[@data-omo-proposal-calendar-action and @disabled]')->length === ($calendarStatus === 'option' ? 0 : 2), 'Both actions are locked once the date is decided: ' . $calendarStatus);
+        dateExpect($xpath->query('//button[@data-omo-proposal-calendar-action and @aria-pressed="true"]')->length === ($calendarStatus === 'option' ? 0 : 1), 'The chosen action stays identifiable: ' . $calendarStatus);
+    }
     $multiDayProposal = clone $b;
     $multiRange = DecisionProposal::normalizeCalendarRange('2026-11-01T09:00', '2026-11-03T16:00', 'Europe/Zurich');
     foreach ($multiRange['values'] as $field => $value) $multiDayProposal->set($field, $value);
@@ -123,7 +135,7 @@ try {
     dateExpect(str_contains($multiHtml, 'Du ') && str_contains($multiHtml, 'Au ') && str_contains($multiHtml, '16:00'), 'Multi-day display associates a date with each time');
     $multiEditor = omoDecisionRenderProposalDates($multiRange['values'], $escape);
     dateExpect(str_contains($multiEditor, 'data-omo-proposal-date-multiple checked') && str_contains($multiEditor, 'data-omo-proposal-date-single hidden'), 'Existing multi-day ranges open in multi-day mode');
-    dateExpect(str_contains($calendarHtml, 'data-omo-proposal-calendar-action="confirmed"') && str_contains($calendarHtml, 'data-omo-proposal-calendar-action="cancelled"'), 'Manager can confirm and cancel consultation dates');
+    dateExpect(str_contains($calendarHtml, 'data-omo-proposal-calendar-action="confirmed"') && str_contains($calendarHtml, 'data-omo-proposal-calendar-action="cancelled"'), 'Manager sees the calendar actions after deciding');
     dateExpect(!str_contains(omoDecisionRenderProposalCalendar($a, array_replace($context, ['canManage' => false]), $escape), 'data-omo-proposal-calendar-action'), 'Participants do not see manager actions');
     $group->load($group->getId(), true);
     require_once dirname(__DIR__) . '/omo/api/decision/modules/vote/module.php';

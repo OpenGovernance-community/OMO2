@@ -35,7 +35,7 @@ async function main() {
     let accept = false;
     let prompts = 0;
     window.confirm = message => { assert(message); prompts++; return accept; };
-    const templates = [1, 2].map(id => ({ id, name: 'Template ' + id, typeId: 1, properties: [], children: [] }));
+    const templates = [1, 2].map(id => ({ id, name: 'Template ' + id, fullName: 'Full name ' + id, typeId: 1, properties: [], children: [] }));
     window.eval(source.replace('omoHolonTemplateBootstrapInitialRender();\n});',
         'omoHolonTemplateBootstrapInitialRender(); window.testReady = true;\n});'));
     const editorData = { templates, rootHolonId: 10, types: [{ id: 1, name: 'Role' }], formats: [{ id: 1, name: 'Text' }], propertyTypes: [{ key: 'type1', label: 'Type 1', canCreate: true }] };
@@ -46,8 +46,14 @@ async function main() {
     await new Promise(resolve => setImmediate(resolve));
     assert(window.testReady, 'Editor must initialize');
     const name = window.document.getElementById('omo-template-name');
+    const fullName = window.document.getElementById('omo-template-full-name');
     const select = id => root.querySelector('[data-template-select="' + id + '"]').click();
     assert.equal(root.omoHasUnsavedChanges(), false);
+    assert.equal(fullName.value, 'Full name 1', 'The full name must load from the editor data');
+    fullName.value = 'Changed full name';
+    assert(root.omoHasUnsavedChanges(), 'A full name edit must activate the navigation guard');
+    fullName.value = 'Full name 1';
+    assert.equal(root.omoHasUnsavedChanges(), false, 'Reverting the full name must restore clean state');
     name.value = 'Changed';
     select(1);
     assert.equal(name.value, 'Changed', 'Selecting the same template must not reset it');
@@ -106,12 +112,15 @@ async function main() {
     assert.equal(name.value, 'Save failure');
     window.fetch = (url, options) => {
         const payload = JSON.parse(options.body.get('payload'));
-        const template = { ...templates[0], name: payload.name };
+        assert.equal(payload.fullName, 'Saved full name', 'Save must submit the full name');
+        const template = { ...templates[0], name: payload.name, fullName: payload.fullName };
         return Promise.resolve({ ok: true, json: () => Promise.resolve({ status: 'ok', template, data: { ...editorData, templates: [template, templates[1]] } }) });
     };
+    fullName.value = 'Saved full name';
     submit();
     await settle();
     assert.equal(root.omoHasUnsavedChanges(), false, 'Successful saves reset the baseline');
+    assert.equal(fullName.value, 'Saved full name', 'The saved full name must reload');
     const cleanUnload = new window.Event('beforeunload', { cancelable: true });
     window.dispatchEvent(cleanUnload);
     assert.equal(cleanUnload.defaultPrevented, false);

@@ -1274,7 +1274,7 @@ $projectTexts = [
                 </div>
                 <div class="generic-drawer-header__actions">
                     <div data-omo-subdrawer-actions></div>
-                    <button type="button" class="omo-overlay-drawer__close generic-action-button generic-action-button--secondary" data-omo-projects-drawer-close><?= omoApiEscape(omoProjectsT('projects.action.close')) ?></button>
+                    <button type="button" class="omo-overlay-drawer__close generic-action-button generic-action-button--secondary generic-action-button--icon-only generic-action-button--close" data-omo-projects-drawer-close title="<?= omoApiEscape(omoProjectsT('projects.action.close')) ?>" aria-label="<?= omoApiEscape(omoProjectsT('projects.action.close')) ?>"></button>
                 </div>
             </div>
             <div class="omo-overlay-drawer__body" data-omo-projects-drawer-body></div>
@@ -1290,7 +1290,7 @@ $projectTexts = [
                 </div>
                 <div class="generic-drawer-header__actions">
                     <div data-omo-subdrawer-actions></div>
-                    <button type="button" class="omo-overlay-drawer__close generic-action-button generic-action-button--secondary" data-omo-projects-document-drawer-close><?= omoApiEscape(omoProjectsT('projects.action.close')) ?></button>
+                    <button type="button" class="omo-overlay-drawer__close generic-action-button generic-action-button--secondary generic-action-button--icon-only generic-action-button--close" data-omo-projects-document-drawer-close title="<?= omoApiEscape(omoProjectsT('projects.action.close')) ?>" aria-label="<?= omoApiEscape(omoProjectsT('projects.action.close')) ?>"></button>
                 </div>
             </div>
             <div class="omo-overlay-drawer__body" data-omo-projects-document-drawer-body></div>

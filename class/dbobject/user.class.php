@@ -12,7 +12,7 @@
 		{
 			return [
 				[['email'], 'required'],
-				[['id'], 'integer'],
+				[['id', 'security_version'], 'integer'],
 				[['username', 'email', 'phone', 'firstname', 'lastname', 'code', 'telegramID'], 'string'],
 				[['presentation'], 'text'],
 				[['latlong'], 'latlong'],
@@ -21,8 +21,8 @@
 				[['parameters', 'param_easypv', 'param_easymemo', 'param_easycircle'], 'parameters'],
 				[['datecreation', 'dateconnexion', 'codeexpiration'], 'datetime'],
 				[['birthdate'], 'date'],
-				[['active', 'siteadmin', 'allow_password_login', 'totp_enabled'], 'boolean'],
-				[['id', 'password', 'email', 'code', 'datecreation', 'dateconnexion', 'codeexpiration', 'telegramID', 'allow_password_login', 'totp_enabled', 'totp_secret'], 'safe'],
+				[['active', 'activation_pending', 'siteadmin', 'allow_password_login', 'totp_enabled'], 'boolean'],
+				[['id', 'security_version', 'activation_pending', 'password', 'email', 'code', 'datecreation', 'dateconnexion', 'codeexpiration', 'telegramID', 'allow_password_login', 'totp_enabled', 'totp_secret'], 'safe'],
 			];
 		}
 
@@ -133,6 +133,144 @@
 			}
 
 			return false;
+		}
+
+		/** Profile input cannot assign privileges, credentials or identifiers. */
+		public function loadProfileInput(array $input): void
+		{
+			if (isset($input['image']) && !in_array($input['image'], ['newimage', '[object File]', '', $this->get('image')], true)) unset($input['image']);
+			$this->loadFromArray(array_intersect_key($input, array_flip([
+				'username', 'firstname', 'lastname', 'phone', 'presentation', 'birthdate', 'latlong', 'image',
+				'param_easypv', 'param_easymemo', 'param_easycircle',
+			])));
+			// Legacy preference forms must not replace security-related parameters.
+			$parameters = $input['parameters'] ?? null;
+			if (is_string($parameters)) $parameters = json_decode($parameters, true);
+			if (is_array($parameters)) {
+				$current = json_decode((string)$this->get('parameters'), true);
+				$current = is_array($current) ? $current : [];
+				foreach (['basic', 'text', 'numeric', 'check', 'select'] as $key) {
+					if (array_key_exists($key, $parameters)) $current[$key] = $parameters[$key];
+				}
+				$this->set('parameters', $current);
+			}
+		}
+
+		public function issuePasswordResetCode(): string
+		{
+			$code = bin2hex(random_bytes(32));
+			$this->set('code', hash('sha256', $code));
+			$this->set('codeexpiration', new \DateTime('+1 hour'));
+			return !empty($this->save()['status']) ? $code : '';
+		}
+
+		public function activateForVerifiedLogin(): bool
+		{
+			if ((int)$this->get('active')) return true;
+			if (!(int)$this->get('activation_pending')) return false;
+			$this->set('active', 1);
+			$this->set('activation_pending', 0);
+			return !empty($this->save()['status']);
+		}
+
+		public static function findByPasswordResetCode($code): ?self
+		{
+			if (!is_string($code) || !preg_match('/^[a-f0-9]{64}$/D', $code)) return null;
+			$user = new self();
+			if (!$user->load(['code', hash('sha256', $code)])) return null;
+			$expiration = $user->get('codeexpiration');
+			return $expiration instanceof \DateTimeInterface && $expiration > new \DateTime() ? $user : null;
+		}
+
+		/** Lock, validate and consume once, including against concurrent requests. */
+		public function consumePasswordResetCode($code, string $passwordHash, array $profile = []): bool
+		{
+			if (!is_string($code) || !preg_match('/^[a-f0-9]{64}$/D', $code) || $this->getId() <= 0) return false;
+			$pdo = self::getPdo();
+			if ($pdo->inTransaction()) throw new \LogicException('Recovery requires its own transaction.');
+			$pdo->beginTransaction();
+			try {
+				$row = self::fetchRow('SELECT code, codeexpiration FROM `user` WHERE id = :id FOR UPDATE', ['id' => (int)$this->getId()]);
+				if (!$row || !is_string($row['code']) || !hash_equals($row['code'], hash('sha256', $code))
+					|| !$row['codeexpiration'] || new \DateTime($row['codeexpiration']) <= new \DateTime()) {
+					$pdo->rollBack();
+					return false;
+				}
+				if (!$this->load($this->getId(), true)) throw new \RuntimeException('Account missing.');
+				$this->loadFromArray(array_intersect_key($profile, array_flip(['username', 'firstname', 'lastname'])));
+				$this->set('password', $passwordHash);
+				$this->set('code', null);
+				$this->set('codeexpiration', null);
+				if ((int)$this->get('activation_pending')) {
+					$this->set('active', 1);
+					$this->set('activation_pending', 0);
+				}
+				if (empty($this->save()['status']) || !$this->revokeAuthentication()) throw new \RuntimeException('Recovery failed.');
+				$pdo->commit();
+				return true;
+			} catch (\Throwable $error) {
+				if ($pdo->inTransaction()) $pdo->rollBack();
+				throw $error;
+			}
+		}
+
+		public function saveSecurityChanges(bool $revoke): array
+		{
+			$pdo = self::getPdo();
+			if ($pdo->inTransaction()) throw new \LogicException('Security changes require their own transaction.');
+			$pdo->beginTransaction();
+			try {
+				$result = $this->save();
+				if (empty($result['status']) || ($revoke && !$this->revokeAuthentication())) throw new \RuntimeException('Security changes failed.');
+				$pdo->commit();
+				return $result;
+			} catch (\Throwable $error) {
+				if ($pdo->inTransaction()) $pdo->rollBack();
+				throw $error;
+			}
+		}
+
+		/** A stale object must never restore credentials or a previous session version. */
+		public function save()
+		{
+			$id = (int)$this->getId();
+			$version = (int)$this->get('security_version');
+			$pdo = self::getPdo();
+			$ownsTransaction = !$pdo->inTransaction();
+			if ($ownsTransaction) $pdo->beginTransaction();
+			try {
+				if ($id > 0) {
+					$row = self::fetchRow('SELECT security_version FROM `user` WHERE id = :id FOR UPDATE', ['id' => $id]);
+					if (!$row || (int)$row['security_version'] !== $version) {
+						if ($ownsTransaction) $pdo->rollBack();
+						return ['status' => false, 'text' => 'Account changed. Reload before saving.'];
+					}
+				}
+				// Only revokeAuthentication may advance an existing security version.
+				unset($this->_fields['security_version']);
+				$result = parent::save();
+				if ($ownsTransaction) {
+					if (!empty($result['status'])) $pdo->commit();
+					else $pdo->rollBack();
+				}
+				return $result;
+			} catch (\Throwable $error) {
+				if ($ownsTransaction && $pdo->inTransaction()) $pdo->rollBack();
+				throw $error;
+			} finally {
+				$this->_fields['security_version'] = $version;
+			}
+		}
+
+		public function revokeAuthentication(): bool
+		{
+			$id = (int)$this->getId();
+			if ($id <= 0 || !self::execute('UPDATE `user` SET security_version = security_version + 1 WHERE id = :id', ['id' => $id])) return false;
+			$row = self::fetchRow('SELECT security_version FROM `user` WHERE id = :id', ['id' => $id]);
+			if (!$row) return false;
+			$this->set('security_version', (int)$row['security_version']);
+			if (!UserRemember::revokeForUser($id) || !UserLoginToken::invalidateActiveForUser($id)) return false;
+			return self::execute('UPDATE mcp_oauth_grant SET revoked_at = :now WHERE IDuser = :id AND revoked_at IS NULL', ['now' => time(), 'id' => $id]);
 		}
 
 		public function isSiteAdmin()

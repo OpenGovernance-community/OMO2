@@ -53,17 +53,17 @@ try {
     $name = strtolower((string)@iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $name));
     $name = trim((string)preg_replace('/[^a-z0-9]+/', '-', $name), '-');
     $name = $name !== '' ? $name : 'organisation';
-    $filename = 'omo2-export-' . $name . '-' . date('Ymd-His') . '.json';
-    $json = json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-    if (!is_string($json)) {
-        omoOrganizationExportError(500, 'Impossible de serialiser l export JSON.');
-    }
-
-    header('Content-Type: application/json; charset=UTF-8');
-    header('Content-Disposition: attachment; filename="' . $filename . '"');
-    header('Content-Length: ' . strlen($json));
-    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
-    echo $json;
+    $filename = 'omo2-export-' . $name . '-' . date('Ymd-His') . '.zip';
+    $temporary = tempnam(sys_get_temp_dir(), 'omo-export-');
+    if ($temporary === false) { throw new \RuntimeException('Impossible de creer le fichier temporaire.'); }
+    try {
+        \dbObject\OrganizationArchive::create($payload, $temporary);
+        header('Content-Type: application/zip');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Content-Length: ' . filesize($temporary));
+        header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+        readfile($temporary);
+    } finally { @unlink($temporary); }
 } catch (\Throwable $exception) {
     omoOrganizationExportError(500, $exception->getMessage());
 }

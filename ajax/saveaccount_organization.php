@@ -3,6 +3,7 @@
 	require_once("../config.php");
 	require_once("../shared_functions.php");
 	require_once("../common/auth.php");
+	if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') { http_response_code(405); exit; }
 
 	if (!checklogin()) {
 		echo json_encode([
@@ -32,8 +33,9 @@
 		['IDuser', $currentUserId],
 		['IDorganization', $currentOrganizationId],
 	])) {
-		$object->set('IDuser', $currentUserId);
-		$object->set('IDorganization', $currentOrganizationId);
+		http_response_code(403);
+		echo json_encode(['status' => false, 'message' => 'Adhesion requise.']);
+		exit;
 	}
 
 	if ((int)$object->getId() > 0 && !$object->canEdit()) {
@@ -45,13 +47,18 @@
 		exit;
 	}
 
-	$data = $_POST;
-	$data['IDuser'] = $currentUserId;
-	$data['IDorganization'] = $currentOrganizationId;
-	$object->loadFromArray($data);
-	$object->set('IDuser', $currentUserId);
-	$object->set('IDorganization', $currentOrganizationId);
-	$object->set('active', true);
+	if (!(bool)$object->get('active')) {
+		http_response_code(403);
+		echo json_encode(['status' => false, 'message' => 'Adhesion inactive.']);
+		exit;
+	}
+	try {
+		$object->loadProfileInput($_POST);
+	} catch (\InvalidArgumentException $error) {
+		http_response_code(400);
+		echo json_encode(['status' => false, 'message' => 'Donnees ou image invalides.']);
+		exit;
+	}
 	$saveResult = $object->save();
 
 	if (!is_array($saveResult) || empty($saveResult['status'])) {

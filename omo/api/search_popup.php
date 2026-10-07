@@ -630,7 +630,7 @@ omoSearchPopupRenderStyles();
                     <h3 class="omo-overlay-drawer__title" id="omo-search-preview-title" data-omo-subdrawer-title><?= $escape(omoSearchPreviewT('preview')) ?></h3>
                 </div>
                 <div class="generic-drawer-header__actions">
-                    <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-search-preview-close><?= $escape(omoSearchPreviewT('close')) ?></button>
+                    <button type="button" class="generic-action-button generic-action-button--secondary generic-action-button--icon-only generic-action-button--close" data-omo-search-preview-close title="<?= $escape(omoSearchPreviewT('close')) ?>" aria-label="<?= $escape(omoSearchPreviewT('close')) ?>"></button>
                 </div>
             </header>
             <div class="omo-overlay-drawer__body" data-omo-search-preview-body aria-live="polite"></div>

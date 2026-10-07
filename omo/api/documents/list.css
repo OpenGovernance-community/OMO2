@@ -118,7 +118,7 @@
     border-bottom-left-radius: 0;
 }
 
-.omo-documents__new-actions .omo-documents__new-button {
+.omo-documents__new-actions .omo-documents__new-button:not(:only-child) {
     border-top-right-radius: 0;
     border-bottom-right-radius: 0;
 }
@@ -259,7 +259,6 @@
 .omo-documents__results.generic-file-list {
     --generic-file-list-columns: minmax(260px, 2.35fr) minmax(120px, 1.15fr) minmax(92px, max-content);
     --generic-file-list-title-gap: 18px;
-    --generic-file-list-table-margin-inline: 12px;
     --generic-file-list-padding-inline-start: 16px;
     --generic-file-list-padding-inline-end: 18px;
     --generic-file-list-header-padding-block: 14px;
@@ -277,7 +276,7 @@
 }
 
 .omo-documents__list.omo-panel-view__body_content {
-    margin: 10px;
+    margin: 10px var(--generic-list-gutter);
     padding:0px;
 }
 

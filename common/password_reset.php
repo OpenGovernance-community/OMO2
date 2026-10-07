@@ -166,9 +166,10 @@ $organizationAccentColor = $organizationColor !== '' ? $organizationColor : '#00
 $organizationLogo = trim((string)($organizationContext['logo'] ?? ''));
 $organizationBanner = trim((string)($organizationContext['banner'] ?? ''));
 
-$code = trim((string)($_POST['code'] ?? $_GET['code'] ?? ''));
-$user = new \dbObject\User();
-$hasUser = $code !== '' && $user->load(['code', $code]);
+$submittedCode = $_POST['code'] ?? $_GET['code'] ?? '';
+$code = is_string($submittedCode) ? trim($submittedCode) : '';
+$user = \dbObject\User::findByPasswordResetCode($code);
+$hasUser = $user instanceof \dbObject\User;
 $isValidCode = $hasUser && commonPasswordResetIsUserCodeValid($user);
 $statusMessage = '';
 $statusType = '';
@@ -179,8 +180,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $statusMessage = commonAuthT('password_reset.status.invalid_copy', [], $lang, $sourceLang);
         $statusType = 'error';
     } else {
-        $password = (string)($_POST['password'] ?? '');
-        $passwordConfirm = (string)($_POST['password_confirm'] ?? '');
+        $password = is_string($_POST['password'] ?? null) ? $_POST['password'] : '';
+        $passwordConfirm = is_string($_POST['password_confirm'] ?? null) ? $_POST['password_confirm'] : '';
 
         if ($password === '' || $passwordConfirm === '') {
             $statusMessage = commonAuthT('password_reset.message.password_required', [], $lang, $sourceLang);
@@ -192,11 +193,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $statusMessage = commonAuthT('password_reset.message.password_mismatch', [], $lang, $sourceLang);
             $statusType = 'error';
         } else {
-            $user->set('password', commonHashUserPassword($password));
-            $user->set('code', null);
-            $user->set('codeexpiration', null);
-
-            if ($user->save()) {
+            try {
+                $consumed = $user->consumePasswordResetCode($code, commonHashUserPassword($password));
+            } catch (Throwable $error) {
+                error_log('Password recovery failed: ' . get_class($error));
+                $consumed = false;
+                http_response_code(503);
+            }
+            if ($consumed) {
                 $statusMessage = commonAuthT('password_reset.message.success', [], $lang, $sourceLang);
                 $statusType = 'success';
                 $resetCompleted = true;

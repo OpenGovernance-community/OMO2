@@ -61,6 +61,14 @@ $_FILES['image'] = array(
 );
 
 $object = new ImageOptimizationProbe();
+try {
+    $object->set('image', 'newimage');
+    throw new RuntimeException('A local file must not be accepted as an HTTP upload.');
+} catch (InvalidArgumentException $error) {
+    assertSizedImageOptimization(!$object->get('image'), 'Invalid upload preserves the image field.');
+}
+unset($_FILES['image']);
+$_POST['imageDataInput_image'] = 'data:image/png;base64,' . base64_encode(file_get_contents($sourcePath));
 $object->set('image', 'newimage');
 $storedPath = (string)$object->get('image');
 $storedFullPath = $temporaryRoot . str_replace('/', DIRECTORY_SEPARATOR, $storedPath);
@@ -88,6 +96,8 @@ $_FILES['image'] = array(
 );
 
 $jpegObject = new ImageOptimizationProbe();
+unset($_FILES['image']);
+$_POST['imageDataInput_image'] = 'data:image/jpeg;base64,' . base64_encode(file_get_contents($jpegSourcePath));
 $jpegObject->set('image', 'newimage');
 $jpegStoredPath = (string)$jpegObject->get('image');
 $jpegStoredFullPath = $temporaryRoot . str_replace('/', DIRECTORY_SEPARATOR, $jpegStoredPath);
@@ -125,18 +135,17 @@ if (!function_exists('imagecreatefromwebp')) {
 
     $unsupportedWebpObject = new ImageOptimizationProbe();
     $unsupportedWebpObject->set('image', '/img/upload/previous.png');
-    $unsupportedWebpObject->set('image', 'newimage');
+    unset($_FILES['image']);
+    $_POST['imageDataInput_image'] = 'data:image/webp;base64,' . base64_encode(file_get_contents($webpPath));
+    try { $unsupportedWebpObject->set('image', 'newimage'); }
+    catch (InvalidArgumentException $error) { /* Unsupported decoder keeps the old image. */ }
     assertSizedImageOptimization(
         $unsupportedWebpObject->get('image') === '/img/upload/previous.png',
         'An unsupported WebP upload must preserve the previous image without a fatal error.'
     );
     unset($_FILES['image']);
 
-    $unsupportedUploadDirectory = $temporaryRoot . DIRECTORY_SEPARATOR . 'img' . DIRECTORY_SEPARATOR . 'upload' . DIRECTORY_SEPARATOR . 'imageoptimizationprobe';
-    rmdir($unsupportedUploadDirectory);
-    rmdir(dirname($unsupportedUploadDirectory));
-    rmdir(dirname(dirname($unsupportedUploadDirectory)));
-    rmdir($temporaryRoot);
+    assertSizedImageOptimization(!is_dir($temporaryRoot), 'Rejected image data must not create a storage directory.');
 }
 
 echo "dbobject_sized_image_optimization_test: OK\n";

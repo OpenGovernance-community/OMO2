@@ -13,6 +13,20 @@ function totpSetupReply(array $payload, $statusCode = 200)
     exit;
 }
 
+function totpSetupSave(\dbObject\User $user): array
+{
+    try {
+        $result = $user->saveSecurityChanges(true);
+        $_SESSION['auth_security_version'] = (int)$user->get('security_version');
+        commonExpireCookieValue(commonGetRememberCookieName(), true);
+        session_regenerate_id(true);
+        return $result;
+    } catch (\Throwable $error) {
+        error_log('TOTP security save failed: ' . get_class($error));
+        return ['status' => false];
+    }
+}
+
 function totpSetupIsSameOriginRequest()
 {
     $currentHost = strtolower((string)preg_replace('/:\d+$/', '', (string)($_SERVER['HTTP_HOST'] ?? '')));
@@ -93,7 +107,7 @@ if ($action === 'confirm') {
 
     $user->set('totp_secret', $encryptedSecret);
     $user->set('totp_enabled', 1);
-    $result = $user->save();
+    $result = totpSetupSave($user);
     if (!is_array($result) || empty($result['status'])) {
         totpSetupReply(['status' => false, 'message' => 'Impossible d activer la double authentification.'], 500);
     }
@@ -104,9 +118,13 @@ if ($action === 'confirm') {
 }
 
 if ($action === 'disable') {
+    $secret = commonUserGetTotpSecret($user);
+    if ($secret === null || !is_string($_POST['code'] ?? null) || !commonTotpVerifyCode($secret, $_POST['code'])) {
+        totpSetupReply(['status' => false, 'message' => 'Le code de verification est invalide.'], 422);
+    }
     $user->set('totp_secret', null);
     $user->set('totp_enabled', 0);
-    $result = $user->save();
+    $result = totpSetupSave($user);
     if (!is_array($result) || empty($result['status'])) {
         totpSetupReply(['status' => false, 'message' => 'Impossible de desactiver la double authentification.'], 500);
     }

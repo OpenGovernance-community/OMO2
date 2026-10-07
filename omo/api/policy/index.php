@@ -4,9 +4,7 @@ require_once __DIR__ . '/shared.php';
 require_once dirname(__DIR__, 3) . '/common/choice/rule-scope-fields.php';
 
 use dbObject\ArrayRule;
-use dbObject\Authority;
 use dbObject\Holon;
-use dbObject\Rule;
 
 $organizationId = (int)($_SESSION['currentOrganization'] ?? ($_GET['oid'] ?? 0));
 $currentHolonId = isset($_GET['cid']) && is_numeric($_GET['cid']) ? (int)$_GET['cid'] : 0;
@@ -30,27 +28,17 @@ $policyScope = ArrayRule::normalizeViewScope(
 );
 $scopeHolonIds = $currentHolon instanceof Holon ? [(int)$currentHolon->getId()] : [];
 $rules = new ArrayRule();
+$organizationRules = new ArrayRule();
 $includeOrganizationRules = !($currentHolon instanceof Holon)
     || ($rootHolon instanceof Holon && (int)$currentHolon->getId() === (int)$rootHolon->getId());
-$rules->loadForPolicyContexts($organizationId, $scopeHolonIds, $includeOrganizationRules, $policyScope);
+$rules->loadForPolicyContexts($organizationId, $scopeHolonIds, $includeOrganizationRules, $policyScope, $organizationRules);
 $policySort = omoPolicyNormalizeSort(
     omoApplicationViewPreferencesGetInitialValue($applicationViewPreferences, 'policy_sort', 'sort', 'alpha')
 );
 $policyGroup = omoPolicyNormalizeGroup(
     omoApplicationViewPreferencesGetInitialValue($applicationViewPreferences, 'policy_group', 'group', 'holon')
 );
-$policyRuleEntries = [];
-foreach ($rules as $rule) {
-    if (!($rule instanceof Rule)) {
-        continue;
-    }
-
-    $policyRuleEntries[] = [
-        'rule' => $rule,
-        'holon' => $rule->getHolon(),
-        'authority' => $rule->getAuthority(),
-    ];
-}
+$policyRuleEntries = omoPolicyBuildRuleEntries($organizationRules, $rules);
 usort($policyRuleEntries, static function (array $left, array $right) use ($policySort) {
     $leftRule = $left['rule'];
     $rightRule = $right['rule'];
@@ -68,104 +56,18 @@ usort($policyRuleEntries, static function (array $left, array $right) use ($poli
     return strnatcasecmp((string)$leftRule->get('title'), (string)$rightRule->get('title'));
 });
 
-$policyGroupNodes = [];
-$policyRegisterNode = static function ($key, $label, $parentKey = null) use (&$policyGroupNodes) {
-    if (!isset($policyGroupNodes[$key])) {
-        $policyGroupNodes[$key] = [
-            'key' => $key,
-            'label' => $label,
-            'parent' => $parentKey,
-            'rules' => [],
-            'children' => [],
-        ];
-    } elseif ($policyGroupNodes[$key]['parent'] === null && $parentKey !== null) {
-        $policyGroupNodes[$key]['parent'] = $parentKey;
-    }
-
-    return $key;
-};
-$policyRegisterHolon = null;
-$policyRegisterHolon = static function ($holon, array $seen = []) use (&$policyRegisterHolon, $policyRegisterNode) {
-    if (!($holon instanceof Holon)) {
-        return null;
-    }
-
-    $holonId = (int)$holon->getId();
-    if ($holonId <= 0 || isset($seen[$holonId])) {
-        return null;
-    }
-    $seen[$holonId] = true;
-    $parent = $holon->getParentHolon();
-    $parentKey = $parent instanceof Holon ? $policyRegisterHolon($parent, $seen) : null;
-    return $policyRegisterNode('holon:' . $holonId, $holon->getFullDisplayName(), $parentKey);
-};
-$policyRegisterAuthority = null;
-$policyRegisterAuthority = static function ($authority, array $seen = []) use (&$policyRegisterAuthority, $policyRegisterNode) {
-    if (!($authority instanceof Authority)) {
-        return null;
-    }
-
-    $authorityId = (int)$authority->getId();
-    if ($authorityId <= 0 || isset($seen[$authorityId])) {
-        return null;
-    }
-    $seen[$authorityId] = true;
-    $parent = $authority->getParent();
-    $parentKey = $parent instanceof Authority ? $policyRegisterAuthority($parent, $seen) : null;
-    if ((int)$authority->get('is_shell') === 1) {
-        return $parentKey;
-    }
-    $label = trim((string)$authority->get('label'));
-    return $policyRegisterNode('authority:' . $authorityId, $label !== '' ? $label : omoPolicyT('policy.group.unnamed_authority'), $parentKey);
-};
-if ($policyGroup === 'none') {
-    $policyGroupNodes['flat'] = [
-        'key' => 'flat',
-        'label' => '',
-        'parent' => null,
-        'rules' => $policyRuleEntries,
-        'children' => [],
-    ];
+$canonicalGroups = omoPolicyBuildRuleGroups($policyRuleEntries, 'holon', $organization);
+if ($policyGroup === 'holon') {
+    $policyGroups = $canonicalGroups;
 } else {
-    foreach ($policyRuleEntries as $entry) {
-        $ruleHolon = $entry['holon'];
-        $ruleAuthority = $entry['authority'];
-        if ($policyGroup === 'authority' && $ruleAuthority instanceof Authority) {
-            $nodeKey = $policyRegisterAuthority($ruleAuthority);
-        } elseif ($policyGroup === 'authority') {
-            $holonLabel = $ruleHolon instanceof Holon ? $ruleHolon->getFullDisplayName() : (string)$organization->get('name');
-            $nodeKey = $policyRegisterNode('local:' . ($ruleHolon instanceof Holon ? (int)$ruleHolon->getId() : 'organization'), omoPolicyT('policy.group.local_rules', ['holon' => $holonLabel]));
-        } else {
-            $nodeKey = $ruleHolon instanceof Holon
-                ? $policyRegisterHolon($ruleHolon)
-                : $policyRegisterNode('organization', (string)$organization->get('name'));
-        }
-
-        if ($nodeKey === null) {
-            $nodeKey = $policyRegisterNode('unknown', omoPolicyT('policy.group.unknown'));
-        }
-        $policyGroupNodes[$nodeKey]['rules'][] = $entry;
+    foreach ($policyRuleEntries as &$entry) {
+        $entry['number'] = $canonicalGroups['ruleNumbers'][(int)$entry['rule']->getId()];
     }
+    unset($entry);
+    $policyGroups = omoPolicyBuildRuleGroups($policyRuleEntries, $policyGroup, $organization);
 }
-foreach ($policyGroupNodes as $nodeKey => $node) {
-    $parentKey = $node['parent'];
-    if ($parentKey !== null && isset($policyGroupNodes[$parentKey])) {
-        $policyGroupNodes[$parentKey]['children'][] = $nodeKey;
-    }
-}
-$policyRootGroupKeys = [];
-foreach ($policyGroupNodes as $nodeKey => $node) {
-    if ($node['parent'] === null || !isset($policyGroupNodes[$node['parent']])) {
-        $policyRootGroupKeys[] = $nodeKey;
-    }
-}
-$policySortGroupKeys = static function (array $keys) use (&$policyGroupNodes) {
-    usort($keys, static function ($left, $right) use (&$policyGroupNodes) {
-        return strnatcasecmp($policyGroupNodes[$left]['label'], $policyGroupNodes[$right]['label']);
-    });
-    return $keys;
-};
-$policyRootGroupKeys = $policySortGroupKeys($policyRootGroupKeys);
+$policyGroupNodes = $policyGroups['nodes'];
+$policyRootGroupKeys = $policyGroups['roots'];
 $canCreate = omoPolicyCanCreateLocalRule($context);
 $currentContextHolonId = $currentHolon instanceof Holon ? (int)$currentHolon->getId() : 0;
 $createUrl = '/omo/api/policy/edit.php?oid=' . rawurlencode((string)$organizationId) . '&cid=' . $currentContextHolonId;
@@ -264,18 +166,18 @@ $indexUrl = '/omo/api/policy/index.php?oid=' . rawurlencode((string)$organizatio
                     ? ' omo-policy__rule-card--expired'
                     : ($needsReview ? ' omo-policy__rule-card--review' : '');
                 ?>
-                <article class="omo-policy__rule-card omo-card generic-section--stack generic-accordion generic-accordion--collapsible is-collapsed<?= $statusClass ?>" data-generic-accordion data-policy-rule-card>
+                <article class="omo-policy__rule-card omo-card generic-section--stack generic-accordion generic-accordion--collapsible is-collapsed<?= $statusClass ?>" data-generic-accordion data-policy-rule-card data-policy-rule-id="<?= (int)$rule->getId() ?>" data-policy-rule-number="<?= omoApiEscape($entry['number']) ?>">
                     <div class="omo-policy__rule-head">
                         <h3 class="generic-card-title generic-card-title--big omo-policy__rule-title">
                             <button type="button" class="generic-accordion__trigger" data-generic-accordion-toggle aria-expanded="false" aria-controls="omo-policy-rule-content-<?= (int)$rule->getId() ?>">
-                                <span><span data-policy-search-text><?= omoApiEscape((string)$rule->get('title')) ?></span>
+                                <span><span data-policy-search-text><?= omoApiEscape($entry['number'] . '. ' . (string)$rule->get('title')) ?></span>
                                 <?php if ($isExpired): ?><span class="omo-policy__rule-status omo-policy__rule-status--expired"><?= omoApiEscape(omoPolicyT('policy.status.expired')) ?></span><?php elseif ($needsReview): ?><span class="omo-policy__rule-status omo-policy__rule-status--review"><?= omoApiEscape(omoPolicyT('policy.status.review')) ?></span><?php endif; ?></span>
                                 <span class="generic-accordion__toggle" aria-hidden="true">&#9662;</span>
                             </button>
                         </h3>
                         <?php if ($canEditRule || $canDeleteRule): ?>
                             <div class="generic-menu omo-policy__rule-menu" data-policy-rule-menu>
-                                <button type="button" class="generic-menu-toggle omo-policy__rule-menu-toggle" data-policy-rule-menu-toggle aria-haspopup="menu" aria-expanded="false" aria-label="<?= omoApiEscape(omoPolicyT('policy.edit')) ?>">...</button>
+                                <button type="button" class="generic-menu-toggle omo-policy__rule-menu-toggle" data-policy-rule-menu-toggle aria-haspopup="menu" aria-expanded="false" aria-label="<?= omoApiEscape(omoPolicyT('policy.edit')) ?>">&#8942;</button>
                                 <div class="generic-menu-panel omo-policy__rule-menu-panel" data-policy-rule-menu-panel role="menu" hidden>
                                     <?php if ($canEditRule): ?><button type="button" class="generic-menu-item" data-policy-rule-edit data-policy-edit-url="<?= omoApiEscape($ruleEditUrl) ?>" role="menuitem"><?= omoApiEscape(omoPolicyT('policy.edit')) ?></button><?php endif; ?>
                                     <?php if ($canDeleteRule): ?><button type="button" class="generic-menu-item generic-menu-item--danger" data-policy-rule-delete data-policy-rule-id="<?= (int)$rule->getId() ?>" role="menuitem"><?= omoApiEscape(omoPolicyT('policy.delete')) ?></button><?php endif; ?>
@@ -310,18 +212,15 @@ $indexUrl = '/omo/api/policy/index.php?oid=' . rawurlencode((string)$organizatio
                 <?php
             };
             $policyRenderGroups = null;
-            $policyRenderGroups = static function (array $keys, $prefix = '', $showRootTitles = true) use (&$policyRenderGroups, &$policyGroupNodes, $policySortGroupKeys, $policyRenderRule) {
-                foreach ($policySortGroupKeys($keys) as $index => $nodeKey) {
+            $policyRenderGroups = static function (array $keys) use (&$policyRenderGroups, &$policyGroupNodes, $policyRenderRule, $policyGroup) {
+                foreach ($keys as $nodeKey) {
                     $node = $policyGroupNodes[$nodeKey];
-                    $showTitle = $showRootTitles || $prefix !== '';
-                    $number = $prefix === '' ? (string)($index + 1) : $prefix . '.' . ($index + 1);
-                    $nextPrefix = $showTitle ? $number : '';
                     ?>
                     <section class="omo-policy__rule-group generic-file-list__group" data-policy-rule-group>
-                        <?php if ($showTitle): ?><h3 class="generic-file-list__group-title omo-policy__rule-group-title"><?= omoApiEscape($number . '. ' . $node['label']) ?></h3><?php endif; ?>
+                        <?php if ($node['showTitle']): ?><h3 class="generic-file-list__group-title omo-policy__rule-group-title"><?= omoApiEscape(($policyGroup === 'holon' ? $node['number'] . '. ' : '') . $node['label']) ?></h3><?php endif; ?>
                         <div class="omo-policy__rule-group-content">
                             <?php foreach ($node['rules'] as $entry): $policyRenderRule($entry); endforeach; ?>
-                            <?php if (!empty($node['children'])): $policyRenderGroups($node['children'], $nextPrefix, true); endif; ?>
+                            <?php if (!empty($node['children'])): $policyRenderGroups($node['children']); endif; ?>
                         </div>
                     </section>
                     <?php
@@ -329,14 +228,14 @@ $indexUrl = '/omo/api/policy/index.php?oid=' . rawurlencode((string)$organizatio
             };
             ?>
             <div class="omo-policy__groups generic-file-list generic-file-list--structured">
-                <?php $policyRenderGroups($policyRootGroupKeys, '', count($policyRootGroupKeys) > 1); ?>
+                <?php $policyRenderGroups($policyRootGroupKeys); ?>
             </div>
             <div class="omo-empty-state is-filter-hidden" data-policy-search-empty><?= omoApiEscape(omoPolicyT('policy.search.empty')) ?></div>
         <?php endif; ?>
     </div></div>
     <div class="omo-overlay-drawer" data-policy-drawer hidden>
         <div class="omo-overlay-drawer__backdrop" data-policy-close></div>
-        <div class="omo-overlay-drawer__panel"><div class="omo-overlay-drawer__header generic-drawer-header generic-drawer-header--sticky"><div class="generic-drawer-header__copy"><h3 class="omo-overlay-drawer__title"><?= omoApiEscape(omoPolicyT('policy.drawer.title')) ?></h3><p class="omo-overlay-drawer__description"><?= omoApiEscape(omoPolicyT($currentHolon instanceof Holon ? 'policy.drawer.description_local' : 'policy.drawer.description_organization')) ?></p></div><div class="generic-drawer-header__actions"><button type="button" class="generic-action-button generic-action-button--secondary" data-policy-close><?= omoApiEscape(omoPolicyT('policy.close')) ?></button></div></div><div class="omo-overlay-drawer__body" data-policy-drawer-body></div></div>
+        <div class="omo-overlay-drawer__panel"><div class="omo-overlay-drawer__header generic-drawer-header generic-drawer-header--sticky"><div class="generic-drawer-header__copy"><h3 class="omo-overlay-drawer__title"><?= omoApiEscape(omoPolicyT('policy.drawer.title')) ?></h3><p class="omo-overlay-drawer__description"><?= omoApiEscape(omoPolicyT($currentHolon instanceof Holon ? 'policy.drawer.description_local' : 'policy.drawer.description_organization')) ?></p></div><div class="generic-drawer-header__actions"><button type="button" class="generic-action-button generic-action-button--secondary generic-action-button--icon-only generic-action-button--close" data-policy-close title="<?= omoApiEscape(omoPolicyT('policy.close')) ?>" aria-label="<?= omoApiEscape(omoPolicyT('policy.close')) ?>"></button></div></div><div class="omo-overlay-drawer__body" data-policy-drawer-body></div></div>
     </div>
 </div>
 <script src="/omo/assets/js/application-view-preferences.js?v=20260917-filter-hierarchy"></script>

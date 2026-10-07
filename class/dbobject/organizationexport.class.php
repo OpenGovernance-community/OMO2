@@ -69,6 +69,7 @@ class OrganizationExport
             'holons' => $compact['holons'] ?? [],
             'propertyDefinitions' => $compact['propertyDefinitions'] ?? [],
             'propertyTypes' => $organization->getPropertyTypeSettings(),
+            'configuration' => OrganizationTransferConfiguration::capture($organization),
 			'authorities' => $compact['authorities'] ?? [],
 			'rules' => $selected['rules'] ? ($compact['rules'] ?? []) : [],
             'modules' => [],
@@ -116,7 +117,7 @@ class OrganizationExport
             'records' => [],
         ];
 
-        return $payload;
+        return OrganizationTransferContent::augment($payload, $organization);
     }
 
     public static function buildBackup(Organization $organization): array

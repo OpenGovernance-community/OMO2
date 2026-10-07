@@ -35,6 +35,7 @@ function assertReadOnlySession(bool $condition, string $message): void
 $sessionFile = $testDirectory . '/sess_' . session_id();
 try {
     session_start();
+    $sessionFile = $testDirectory . '/sess_' . session_id();
     $_SESSION['currentUser'] = 0;
     $_SESSION['omo_dashboard_layout_csrf'] = 'dashboard-token';
     $_SESSION['omo_application_view_preferences_csrf'] = 'preferences-token';

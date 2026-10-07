@@ -47,7 +47,7 @@
 		
 		function updateTemplate($idNode,$root) {
 			// Est-ce que le template est déjà dans la table de conversion, auquel cas retourne la valeur dans la table de conversion
-			if (in_array($idNode,$GLOBALS["convertedID"])) 
+			if (isset($GLOBALS["convertedID"][$idNode]))
 				return $GLOBALS["convertedID"][$idNode];
 			
 			// Charge le template
@@ -70,7 +70,7 @@
 			
 			// Et regarde son template
 			if (($template->get("IDholon_template")!==null) && is_numeric($template->get("IDholon_template")) && $template->get("IDholon_template")>0) {
-				$template->set("IDholon_template",updateTemplate($template->get("IDholon_template")));
+				$template->set("IDholon_template",updateTemplate($template->get("IDholon_template"), $root));
 			}
 			
 			// Sauve le template
@@ -217,6 +217,13 @@
 		// Récupérer les données JSON envoyées par jQuery
 		$tmp=file_get_contents('php://input');
 		$data = json_decode($tmp, true);
+		if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST' || strlen($tmp) > 2 * 1024 * 1024
+			|| !is_array($data) || !\dbObject\Holon::validateLegacyCircleInput($data, (int)$_SESSION['currentUser'])) {
+			http_response_code(403);
+			header('Content-Type: application/json; charset=UTF-8');
+			echo json_encode(['status' => 'error', 'message' => 'Structure non autorisee.']);
+			exit;
+		}
 
 		// Est-ce que le noeud de base est une orga ?
 		if (isset($data['type']) && $data['type']=="4") {

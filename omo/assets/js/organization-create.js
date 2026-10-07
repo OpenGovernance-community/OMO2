@@ -175,7 +175,7 @@ window.commonPageScripts["/omo/assets/js/organization-create.js"] = function (pa
                 return;
             }
 
-            hint.innerHTML = (uiLabels.shortnamePreviewExample || '') + '<br><code>' + shortnamePreviewScheme + '://nomcourt.' + shortnamePreviewHost + shortnamePreviewPath + '</code>';
+            hint.innerHTML = (uiLabels.shortnamePreviewExample || '') + '<br><code>' + shortnamePreviewScheme + '://identifiant.' + shortnamePreviewHost + shortnamePreviewPath + '</code>';
         }
 
         function setFeedback(message, isError, inline) {

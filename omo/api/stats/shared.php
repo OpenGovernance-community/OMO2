@@ -1,6 +1,7 @@
 <?php
 
 require_once dirname(__DIR__, 3) . '/common/pv_meeting_permissions.php';
+require_once dirname(__DIR__) . '/resource_archives.php';
 
 use dbObject\Holon;
 use dbObject\Organization;
@@ -17,6 +18,8 @@ if (!function_exists('omoStatsSourceLang')) {
     function omoStatsSourceLang()
     {
         return [
+            'stats.archives.title' => ['text' => "Archives des indicateurs", 'context' => 'Archived resources modal title.'],
+            'stats.archives.empty' => ['text' => "Aucune archive ne correspond \u{00E0} cette vue.", 'context' => 'Empty archives view.'],
             'stats.title' => ['text' => 'Indicateurs', 'context' => 'Main title of the contextual steering indicators application.'],
             'stats.scope.contextual' => ['text' => 'Local', 'context' => 'Scope label for indicators defined in the current holon.'],
             'stats.scope.children' => ['text' => 'Enfants directs', 'context' => 'Scope label for indicators defined in the current holon and its direct children.'],
@@ -98,7 +101,7 @@ if (!function_exists('omoStatsSourceLang')) {
             'stats.card.overdue_days' => ['one' => 'En retard de {count} jour', 'other' => 'En retard de {count} jours', 'context' => 'Delay shown below the latest value label on an overdue indicator card.'],
             'stats.card.open' => ['text' => "Ouvrir l'indicateur {name}", 'context' => 'Accessible label on an interactive indicator card or row.'],
             'stats.column.indicator' => ['text' => 'Indicateur', 'context' => 'Compact list column for the indicator identity.'],
-            'stats.column.context' => ['text' => 'Contexte', 'context' => 'Compact list column for the owning context.'],
+            'stats.column.context' => ['text' => 'En charge', 'context' => 'Indicator list assignment column, showing the space and person or the origins of imported and grouped indicators.'],
             'stats.column.latest' => ['text' => 'Dernière valeur', 'context' => 'Compact list column for the latest value.'],
             'stats.column.history' => ['text' => 'Historique', 'context' => 'Compact list column for the mini chart.'],
             'stats.drawer.title' => ['text' => 'Indicateur', 'context' => 'Nested drawer title.'],
@@ -834,14 +837,14 @@ if (!function_exists('omoStatsCanCreateContext')) {
 }
 
 if (!function_exists('omoStatsLoadIndicator')) {
-    function omoStatsLoadIndicator($indicatorId, $organizationId)
+    function omoStatsLoadIndicator($indicatorId, $organizationId, $allowArchived = false)
     {
         $indicator = new StatIndicator();
         if (
             (int)$indicatorId <= 0
             || !$indicator->load((int)$indicatorId)
             || (int)$indicator->get('IDorganization') !== (int)$organizationId
-            || !(bool)$indicator->get('active')
+            || (!(bool)$indicator->get('active') && !($allowArchived && $indicator->get('archived_at') instanceof DateTimeInterface))
             || !$indicator->canView()
         ) {
             return null;
@@ -1814,8 +1817,8 @@ if (!function_exists('omoStatsRenderInteractiveChartRange')) {
     }
 }
 
-if (!function_exists('omoStatsResponsibleAssignmentLabel')) {
-    function omoStatsResponsibleAssignmentLabel(StatIndicator $indicator): string
+if (!function_exists('omoStatsResponsibleAssignmentNames')) {
+    function omoStatsResponsibleAssignmentNames(StatIndicator $indicator): array
     {
         $holon = $indicator->getHolon();
         $roleLabel = $holon instanceof Holon
@@ -1826,7 +1829,15 @@ if (!function_exists('omoStatsResponsibleAssignmentLabel')) {
             ? \dbObject\DocumentPvPoint::getUserDisplayNameForOrganization($responsibleUserId, (int)$indicator->get('IDorganization'))
             : omoStatsT('stats.responsibility.unassigned');
 
-        return trim($roleLabel) . ' (' . trim($personLabel) . ')';
+        return ['space' => trim($roleLabel), 'person' => trim($personLabel)];
+    }
+}
+
+if (!function_exists('omoStatsResponsibleAssignmentLabel')) {
+    function omoStatsResponsibleAssignmentLabel(StatIndicator $indicator): string
+    {
+        $names = omoStatsResponsibleAssignmentNames($indicator);
+        return $names['space'] . ' (' . $names['person'] . ')';
     }
 }
 

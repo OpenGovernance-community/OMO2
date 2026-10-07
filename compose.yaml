@@ -17,6 +17,7 @@ services:
       - ./:/var/www/html
       - ./docker/app/.env:/var/www/html/.env
       - ./docker/apache/vhost.conf:/etc/apache2/sites-available/000-default.conf:ro
+      - ./docker/php/dev.ini:/usr/local/etc/php/conf.d/zz-dev.ini:ro
 
   etherpad:
     build:
@@ -96,7 +97,9 @@ services:
       - --o:net.content_security_policy=frame-ancestors localtest.me:* *.localtest.me:*
     expose:
       - "9980"
-    privileged: true
+    cap_add:
+      - MKNOD
+      - SYS_CHROOT
 
   spacedeck:
     build:
@@ -135,7 +138,7 @@ services:
       retries: 20
       start_period: 20s
     ports:
-      - "3307:3306"
+      - "127.0.0.1:3307:3306"
     volumes:
       - db_data:/var/lib/mysql
       - ./docker/db/init:/docker-entrypoint-initdb.d:ro
@@ -144,8 +147,8 @@ services:
   mailpit:
     image: axllent/mailpit:latest
     ports:
-      - "1025:1025"
-      - "8025:8025"
+      - "127.0.0.1:1025:1025"
+      - "127.0.0.1:8025:8025"
 
   phpmyadmin:
     image: phpmyadmin:latest
@@ -159,7 +162,7 @@ services:
       PMA_PASSWORD: root
       UPLOAD_LIMIT: 64M
     ports:
-      - "8081:80"
+      - "127.0.0.1:8081:80"
 
 volumes:
   db_data:

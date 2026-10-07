@@ -148,7 +148,7 @@ if (isset($_GET['picker'])) {
 <?php if (!$visibleAttachedIds): ?>
 <div class="omo-project-detail__documents-empty"><h3 class="generic-card-title generic-card-title--medium"><?= omoApiEscape(omoProjectsT('projects.resources.empty')) ?></h3></div>
 <?php else: ?>
-<div class="generic-file-list generic-file-list--structured omo-project-detail__resource-list<?= $isIndicator ? ' omo-stats' : '' ?>">
+<div class="generic-file-list generic-file-list--structured generic-file-list--embedded omo-project-detail__resource-list<?= $isIndicator ? ' omo-stats' : '' ?>">
     <div class="generic-file-list__table">
     <?php foreach ($links as $link): ?>
         <?php $resourceId = (int)$link->get($field); $resource = $visible[$resourceId] ?? null;

@@ -15,6 +15,7 @@ use dbObject\Holon;
 use dbObject\Organization;
 
 $sourceLang = [
+    'calendar.action.close' => ['text' => 'Fermer', 'context' => 'Accessible label and tooltip for closing the calendar editor drawer.'],
     'calendar.buffers.before' => ['text' => 'Preparation / deplacement', 'context' => 'Attached time before a calendar event.'],
     'calendar.buffers.after' => ['text' => 'Cloture / deplacement', 'context' => 'Attached time after a calendar event.'],
     'calendar.external.free_hint' => ['text' => 'Libre : ne bloque pas les disponibilites.', 'context' => 'Tooltip explaining the diagonal stripes on imported calendar events that do not block availability.'],
@@ -1766,7 +1767,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                 </div>
                 <div class="generic-drawer-header__actions">
                     <div class="omo-calendar__drawer-custom-actions" data-omo-calendar-editor-actions></div>
-                    <button type="button" class="omo-overlay-drawer__close generic-action-button generic-action-button--secondary" data-omo-calendar-editor-close>Fermer</button>
+                    <button type="button" class="omo-overlay-drawer__close generic-action-button generic-action-button--secondary generic-action-button--icon-only generic-action-button--close" data-omo-calendar-editor-close title="<?= omoApiEscape(omoCalendarT('calendar.action.close')) ?>" aria-label="<?= omoApiEscape(omoCalendarT('calendar.action.close')) ?>"></button>
                 </div>
             </div>
             <div class="omo-overlay-drawer__body" data-omo-calendar-editor-body></div>

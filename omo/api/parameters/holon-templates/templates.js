@@ -31,6 +31,7 @@ const omoHolonTemplateElements = {
     parent: omoHolonTemplateRoot.querySelector('#omo-template-parent'),
     definitionHolon: omoHolonTemplateRoot.querySelector('#omo-template-definition-holon'),
     name: omoHolonTemplateRoot.querySelector('#omo-template-name'),
+    fullName: omoHolonTemplateRoot.querySelector('#omo-template-full-name'),
     colorEnabled: omoHolonTemplateRoot.querySelector('#omo-template-color-enabled'),
     colorOverrideLabel: omoHolonTemplateRoot.querySelector('#omo-template-color-override-label'),
     colorBody: omoHolonTemplateRoot.querySelector('#omo-template-color-body'),
@@ -686,6 +687,7 @@ function omoHolonTemplateReadCurrentFormState() {
     return {
         id: currentId,
         name: String(omoHolonTemplateElements.name.value || ''),
+        fullName: String(omoHolonTemplateElements.fullName && omoHolonTemplateElements.fullName.value || ''),
         color: Boolean(omoHolonTemplateElements.colorEnabled && omoHolonTemplateElements.colorEnabled.checked)
             ? String(omoHolonTemplateElements.color && omoHolonTemplateElements.color.value ? omoHolonTemplateElements.color.value : '')
             : '',
@@ -2761,6 +2763,9 @@ function omoHolonTemplateFillForm(template, options) {
         current.definitionHolonIds
     );
     omoHolonTemplateElements.name.value = current.name || '';
+    if (omoHolonTemplateElements.fullName) {
+        omoHolonTemplateElements.fullName.value = current.fullName || '';
+    }
     if (omoHolonTemplateElements.colorEnabled) {
         omoHolonTemplateElements.colorEnabled.checked = String(current.color || '').trim() !== '';
     }
@@ -2985,6 +2990,7 @@ function omoHolonTemplateSave(event) {
                 id: Number(omoHolonTemplateElements.form.dataset.templateId || 0),
                 typeId: omoHolonTemplateGetEffectiveTypeId(omoHolonTemplateElements.type.value || 0, omoHolonTemplateGetEffectiveInheritanceIdFromParent(omoHolonTemplateElements.parent.value || 0)),
                 name: omoHolonTemplateElements.name.value.trim(),
+                fullName: String(omoHolonTemplateElements.fullName && omoHolonTemplateElements.fullName.value || '').trim(),
                 color: Boolean(omoHolonTemplateElements.colorEnabled && omoHolonTemplateElements.colorEnabled.checked)
                     ? String(omoHolonTemplateElements.color && omoHolonTemplateElements.color.value ? omoHolonTemplateElements.color.value : '')
                     : '',
