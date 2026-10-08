@@ -259,7 +259,13 @@
 
     function renderLocalChanges(payload) {
         var changes = payload && Array.isArray(payload.localChanges) ? payload.localChanges : [];
-        var overlapCount = payload && payload.overlappingLocalChangeCount ? Number(payload.overlappingLocalChangeCount) : 0;
+        changes = changes.filter(function (change) {
+            var states = change && Array.isArray(change.states) ? change.states : [];
+            return change && (change.overlapsRemoteUpdate === true || states.includes('modified') || states.includes('indexed'));
+        });
+        var overlapCount = changes.filter(function (change) {
+            return change.overlapsRemoteUpdate === true;
+        }).length;
 
         if (changes.length === 0) {
             return '';
