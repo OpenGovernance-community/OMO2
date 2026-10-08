@@ -1,5 +1,7 @@
 # Journal Des Nouveautes
 
+- PV (2026-10-08) : le bouton Ajouter un point conserve ses quatre coins arrondis lorsqu aucun menu ne lui est accole.
+
 - PV (2026-10-08) : correction du bouton Ajouter un point masque pour l editeur utilisant son lien individuel sans connexion, y compris apres actualisation et reprise de la main.
 
 - PV (2026-10-08) : le lien individuel d un editeur autorise aussi le tri, le deplacement des points et la creation, le renommage et la suppression des groupes sans connexion au compte. Les commandes Passer la main, Prendre la main et Reprendre la main utilisent les droits actuels du destinataire sur ce PV ; les options restent disponibles apres actualisation.
