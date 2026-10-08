@@ -105,8 +105,9 @@
     var temporaryDisplayPreferencesStorageKey = 'omo.projects.session-views.v1';
     var columns = [];
     var texts = {
-        loading: 'Chargement du projet…',
+        loading: 'Chargement...',
         loadingError: 'Impossible de charger ce projet.',
+        retryLoading: 'Actualiser',
         emptyColumn: 'Aucun projet dans cette colonne.',
         statusUpdateError: 'Impossible de changer le statut.',
         blockedDialogTitle: 'Projet bloqué',
@@ -574,8 +575,23 @@
         if (drawerController) {
             drawerController.resetHeader();
         }
-        drawerBody.innerHTML = '<div class="generic-section omo-projects-feedback' + (isError ? ' is-error' : '') + '"></div>';
-        drawerBody.firstElementChild.textContent = String(message || '');
+        if (!isError) {
+            window.commonRenderLoadingState(drawerBody, message);
+            return;
+        }
+        drawerBody.innerHTML = '<div class="generic-content-state" role="status">'
+            + '<p class="generic-description" data-omo-projects-drawer-message></p>'
+            + '<button type="button" class="generic-action-button generic-action-button--secondary" data-omo-projects-drawer-retry>'
+            + '<i class="fa fa-refresh" aria-hidden="true"></i><span></span></button>'
+            + '</div>';
+        drawerBody.querySelector('[data-omo-projects-drawer-message]').textContent = String(message || '');
+        var retryButton = drawerBody.querySelector('[data-omo-projects-drawer-retry]');
+        if (retryButton) {
+            retryButton.querySelector('span').textContent = texts.retryLoading;
+            retryButton.addEventListener('click', function () {
+                openDrawerWithUrl(currentDrawerUrl);
+            });
+        }
     }
 
     function handleRuntimeMaintenance(event) {
@@ -653,6 +669,10 @@
         }
         if (documentDrawerController) {
             documentDrawerController.resetHeader();
+        }
+        if (!isError) {
+            window.commonRenderLoadingState(documentDrawerBody, message);
+            return;
         }
         documentDrawerBody.innerHTML = '<div class="generic-section omo-projects-feedback' + (isError ? ' is-error' : '') + '"></div>';
         documentDrawerBody.firstElementChild.textContent = String(message || '');

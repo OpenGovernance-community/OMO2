@@ -95,8 +95,8 @@
 
         var contextId = Number(contextField.value || '0');
         var documentType = typeField ? String(typeField.value || '') : '';
-        var contextOption = contextField.options[contextField.selectedIndex];
-        var contextPath = String(contextOption ? contextOption.getAttribute('data-omo-calendar-context-path') || '' : '')
+        var contextOption = contextField.options ? contextField.options[contextField.selectedIndex] : null;
+        var contextPath = String(contextField.getAttribute('data-holon-context-path') || (contextOption ? contextOption.getAttribute('data-omo-calendar-context-path') || '' : ''))
             .split(',')
             .map(function (value) { return Number(value); });
 

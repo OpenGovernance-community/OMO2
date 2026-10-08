@@ -136,9 +136,7 @@ window.commonPageScripts["/omo/api/documents/drawers.js"] = function (pageConfig
                         || pageConfig.documentsDrawerEditorDescription;
                 }
 
-                body.innerHTML = window.getSkeleton
-                    ? getSkeleton('panel')
-                    : ("<div class=\"loading\">" + pageConfig.documentsActionLoading + "</div>");
+                window.commonRenderLoadingState(body, pageConfig.documentsActionLoading);
 
                 if (drawerController && typeof drawerController.open === 'function') {
                     drawerController.open();
@@ -568,7 +566,7 @@ window.commonPageScripts["/omo/api/documents/drawers.js"] = function (pageConfig
                 const requestedDocumentId = Number(documentItem && documentItem.id ? documentItem.id : 0);
                 const cachedDocumentId = Number(drawer.dataset.omoDocumentDrawerDocumentId || 0);
                 const hasRenderedDetail = body.childElementCount > 0
-                    && !body.querySelector('.loading, .skeleton');
+                    && !body.querySelector('.loading, .skeleton, [data-common-loading-state]');
                 if (
                     Number.isInteger(requestedDocumentId)
                     && requestedDocumentId > 0
@@ -606,9 +604,7 @@ window.commonPageScripts["/omo/api/documents/drawers.js"] = function (pageConfig
                         : pageConfig.documentsDrawerDetailDescription;
                 }
 
-                body.innerHTML = window.getSkeleton
-                    ? getSkeleton('panel')
-                    : ("<div class=\"loading\">" + pageConfig.documentsActionLoading + "</div>");
+                window.commonRenderLoadingState(body, pageConfig.documentsActionLoading);
 
                 drawer.hidden = false;
                 requestAnimationFrame(function () {

@@ -320,7 +320,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
 ?>
 <link rel="stylesheet" href="/common/choice/change-details.css?v=20260923-lifecycle-details">
 <?php if ($isPvReviewDiscussion): ?>
-<link rel="stylesheet" href="/common/chat/thread.css?v=20260821-pv-review-access-2">
+<link rel="stylesheet" href="<?= commonAssetUrl('/common/chat/thread.css') ?>">
 <?php endif; ?>
 <div
     class="omo-pv-editor<?= $showPvApplicationTabs ? ' omo-pv-editor--has-application-tabs' : '' ?>"
@@ -382,7 +382,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                     </details>
                 <button type="button" class="omo-pv-editor__delete-dropzone" data-omo-pv-delete-dropzone title="<?= $escape((string)$uiText['deleteItem']) ?>" aria-label="<?= $escape((string)$uiText['deleteItem']) ?>"<?= $isPvReview || ($isPvEditor && !$canManagePvStructure) ? ' hidden' : '' ?>><img src="/omo/assets/images/documents/poubelle.png" alt="" aria-hidden="true"></button>
                 <button type="button" class="generic-action-button generic-action-button--secondary omo-pv-editor__add-button" data-omo-pv-editor-add-group title="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.action.add_group')) ?>" aria-label="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.action.add_group')) ?>"<?= $canCreatePvGroups ? '' : ' hidden' ?>><img src="/omo/assets/images/documents/add-folder.png" class="omo-pv-editor__toolbar-icon black-icon" alt="" aria-hidden="true"></button>
-                <div class="generic-menu<?= !$isPublicParticipation ? ' generic-menu--split' : '' ?>" data-omo-pv-add-menu<?= $isPvEditor && !$canManagePvStructure ? ' hidden' : '' ?>>
+                <div class="generic-menu<?= !$isPublicParticipation ? ' generic-menu--split' : '' ?>" data-omo-pv-add-menu<?= $isPvReview || ($isPvEditor && !$canManagePvStructure) ? ' hidden' : '' ?>>
                     <button type="button" class="generic-action-button generic-action-button--main omo-pv-editor__add-button" data-omo-pv-editor-add-point<?= $isPvValidated || $isPvReview ? ' disabled' : '' ?> title="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.action.add_point')) ?>" aria-label="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.action.add_point')) ?>"><img src="/omo/assets/images/documents/add.png" class="omo-pv-editor__toolbar-icon omo-pv-editor__toolbar-icon--on-main" alt="" aria-hidden="true"></button>
                     <?php if (!$isPublicParticipation): ?>
                     <button type="button" class="generic-menu-toggle" data-omo-pv-add-toggle aria-expanded="false" aria-controls="omoPvAddMenuPanel" aria-label="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.import.options')) ?>"<?= \dbObject\DocumentPvPoint::canImportIntoDocument($document, $currentUserId) ? '' : ' disabled' ?>>&#9662;</button>
@@ -658,7 +658,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
 <script src="<?= commonAssetUrl('/common/choice/change-details.js') ?>"></script>
 <script src="<?= commonAssetUrl('/common/document/embed-picker.js') ?>"></script>
 <?php if ($isPvReviewDiscussion): ?>
-<script src="/common/chat/thread.js?v=20260821-pv-review-access-2"></script>
+<script src="<?= commonAssetUrl('/common/chat/thread.js') ?>"></script>
 <?php endif; ?>
 
 <?= commonPageScriptTags('/omo/api/documents/pv/editor.js', [

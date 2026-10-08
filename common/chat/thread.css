@@ -39,6 +39,20 @@
     text-align: center;
 }
 
+button.omo-chat-popup-count {
+    border: 0;
+    padding: 0 0 6px;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+button.omo-chat-popup-count:hover,
+button.omo-chat-popup-count:focus-visible {
+    color: var(--color-primary, #2563eb);
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+}
+
 .omo-chat-popup-content,
 .omo-proposal-popup-content {
     box-sizing: border-box;
