@@ -18,68 +18,11 @@
     /* The standalone mobile page scrolls as one document, including its agenda. */
     .omo-pv-participation-page,
     .omo-pv-participation-page body,
-    .omo-pv-participation,
-    .omo-pv-participation .omo-pv-editor {
+    .omo-pv-participation {
         height: auto;
         max-height: none;
         min-height: 100%;
         overflow: visible;
     }
 
-    .omo-pv-participation .omo-pv-editor {
-        grid-template-columns: minmax(0, 1fr);
-        grid-template-rows: auto auto;
-        gap: 12px;
-    }
-
-    .omo-pv-participation .omo-pv-editor__sidebar,
-    .omo-pv-participation .omo-pv-editor__sidebar.is-timing-collapsed {
-        grid-template-rows: auto;
-    }
-
-    .omo-pv-participation .omo-pv-editor__timing,
-    .omo-pv-participation .omo-pv-editor__timing-resizer {
-        display: none;
-    }
-
-    .omo-pv-participation .omo-pv-editor__nav {
-        overflow: visible;
-        padding-right: 0;
-    }
-
-    .omo-pv-participation .omo-pv-editor__nav-title {
-        white-space: normal;
-        overflow-wrap: anywhere;
-    }
-
-    .omo-pv-participation .omo-pv-editor__points {
-        min-width: 0;
-        padding-right: 0;
-    }
-
-    /* The public header has no identity icon: its copy needs the full row. */
-    .omo-pv-participation .omo-pv-editor__page-title {
-        grid-template-columns: minmax(0, 1fr);
-    }
-}
-
-@media (max-width: 620px) {
-    .omo-pv-participation .omo-pv-editor .omo-document-pv__point-topline {
-        flex-wrap: wrap;
-    }
-
-    .omo-pv-participation .omo-pv-editor__point-title-input,
-    .omo-pv-participation .omo-pv-editor .omo-document-pv__point-title {
-        flex-basis: calc(100% - 48px);
-    }
-
-    .omo-pv-participation .omo-pv-editor .omo-document-pv__point-title {
-        white-space: normal;
-        overflow-wrap: anywhere;
-    }
-
-    .omo-pv-participation .omo-pv-editor__point-concerned {
-        max-width: 100%;
-        flex-wrap: wrap;
-    }
 }
