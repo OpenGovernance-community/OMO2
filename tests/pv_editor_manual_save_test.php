@@ -16,7 +16,7 @@ assertPvEditorManualSave(
     strpos($editorSource, 'data-omo-pv-auto-save') === false
         && strpos($editorSource, 'schedulePointAutoSave') === false
         && strpos($editorSource, 'scheduleDocumentMetadataAutoSave') === false,
-    'The PV editor must not schedule automatic saves.'
+    'The PV editor must not schedule timer-based automatic saves.'
 );
 assertPvEditorManualSave(
     strpos($helpersSource, 'data-omo-pv-group-title-save') !== false

@@ -695,6 +695,7 @@ function siteUpdateAdminHasTrackedLocalChanges(array $localChangesPayload)
 
 function siteUpdateAdminBackupLocalChanges(array $context, array $payload, array $remoteFiles): array
 {
+    siteUpdateAdminAssertUploadStorageExcluded($remoteFiles);
     $backup = array('backupPath' => '', 'backedUpFileCount' => 0, 'identicalFileCount' => 0);
     $entries = array();
     $root = realpath($context['repoRoot']);
@@ -710,11 +711,16 @@ function siteUpdateAdminBackupLocalChanges(array $context, array $payload, array
             continue;
         }
         $relative = $change['path'];
+        siteUpdateAdminValidateRelativePath($relative);
+        // Older releases tracked upload/.htaccess. When removing it from Git,
+        // preserve the restored storage link without traversing shared files.
+        if (str_starts_with($relative, 'img/upload/') && is_link($root . '/img/upload')) {
+            $relative = 'img/upload';
+        }
         if (isset($visited[$relative])) {
             continue;
         }
         $visited[$relative] = true;
-        siteUpdateAdminValidateRelativePath($relative);
         $path = $root . '/' . $relative;
         $parent = dirname($path);
         while ($parent !== $root) {
