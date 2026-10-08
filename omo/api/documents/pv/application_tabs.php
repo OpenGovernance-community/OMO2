@@ -44,6 +44,8 @@ if (
     || $organizationId <= 0
     || !$document->load($documentId)
     || (int)$document->get('IDorganization') !== $organizationId
+    || $document->getPvStage() === \dbObject\Document::PV_STAGE_REVIEW
+    || $document->isPvValidated()
     || !$document->canUserManagePvStructure($organizationId, $currentUserId)
 ) {
     $respond(false, 'Vous ne pouvez pas modifier les applications de ce PV.', [], 403);

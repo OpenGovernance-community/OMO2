@@ -274,6 +274,7 @@ if (!$isPublicParticipation && $hasOrganization) {
 }
 $pvApplicationCatalog = array_values($pvApplicationCatalog);
 $showPvApplicationTabs = !$isPublicParticipation
+    && !$isPvReview && !$isPvValidated
     && ($canManagePvStructure || $isPvEditor || $canClaimPvEditor || $canReplacePvEditor || count($pvApplicationTabsPayload) > 0);
 
 $authorHolonOptions = omoDocumentsPvEditorBuildAuthorHolonOptions(
