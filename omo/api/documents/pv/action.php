@@ -1168,10 +1168,11 @@ if ($action === 'save_point') {
         ], 403);
     }
 
+    $isReview = $document->getPvStage() === \dbObject\Document::PV_STAGE_REVIEW;
     $canEditPointDetails = $isPublicParticipation
         || !$document->isPvEditor($currentUserId)
         || $document->canUserManagePvStructure($organizationId, $currentUserId);
-    if ($canEditPointDetails && $isPublicParticipation) {
+    if ($canEditPointDetails && !$isReview && $isPublicParticipation) {
         $requestedAuthorUserId = $publicParticipationLink->getRecipientUserId();
         $requestedAuthorEmail = $requestedAuthorUserId > 0 ? '' : $publicParticipationLink->getRecipientEmail();
         $requestedConcernedHolonId = $hasStructureApplication
@@ -1186,7 +1187,7 @@ if ($action === 'save_point') {
                 'message' => omoDocumentsPvEditorActionT('documents.pv_editor.error.forbidden'),
             ], 403);
         }
-    } elseif ($canEditPointDetails) {
+    } elseif ($canEditPointDetails && !$isReview) {
         $currentAuthorValue = (int)$point->get('IDuser_author') > 0
             ? 'user:' . (int)$point->get('IDuser_author')
             : (trim((string)$point->get('author_email')) !== '' ? 'email:' . trim((string)$point->get('author_email')) : '');
@@ -1235,19 +1236,18 @@ if ($action === 'save_point') {
         }
     }
 
-    $isReview = $document->getPvStage() === \dbObject\Document::PV_STAGE_REVIEW;
     if ($canEditPointDetails) {
         $point->set('title', trim((string)($_POST['title'] ?? '')));
+    }
+    // Review corrects the transcript, not the meeting's point settings.
+    if ($canEditPointDetails && !$isReview) {
         $point->set('pointtype', trim((string)($_POST['pointtype'] ?? '')));
-        $point->set(
-            'desired_duration_minutes',
-            $isReview ? $point->get('desired_duration_minutes') : trim((string)($_POST['desired_duration_minutes'] ?? ''))
-        );
+        $point->set('desired_duration_minutes', trim((string)($_POST['desired_duration_minutes'] ?? '')));
         $point->set('priority', \dbObject\DocumentPvPoint::normalizePriority($_POST['priority'] ?? null));
         $point->set('IDuser_author', $requestedAuthorUserId > 0 ? $requestedAuthorUserId : null);
         $point->set('author_email', $requestedAuthorEmail !== '' ? $requestedAuthorEmail : null);
         $point->set('IDholon_concerned', $requestedConcernedHolonId > 0 ? $requestedConcernedHolonId : null);
-        $point->set('is_confidential', $isReview ? $point->isConfidential() : (!$isPublicParticipation && !empty($_POST['is_confidential'])));
+        $point->set('is_confidential', !$isPublicParticipation && !empty($_POST['is_confidential']));
     }
     $pointContent = (string)($_POST['content'] ?? '');
     if ($isPublicParticipation && !$publicParticipationLink->canUsePvDocumentReferences($pointContent, (string)$point->get('content'))) {

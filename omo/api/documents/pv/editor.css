@@ -118,6 +118,7 @@
     overflow: hidden;
 }
 
+.omo-pv-editor__application-tabs[hidden],
 .omo-pv-editor__application-workspace[hidden],
 .omo-pv-editor__application-panel[hidden] {
     display: none !important;

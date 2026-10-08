@@ -149,7 +149,7 @@ if (!function_exists('omoProjectsSourceLang')) {
             'projects.proposal.proposed_by' => ['text' => 'Proposé par', 'context' => 'Label identifying the author of a project proposal.'],
             'projects.proposal.proposed_at' => ['text' => 'Proposé le', 'context' => 'Label identifying when a project was proposed.'],
             'projects.proposal.refused_notification_title' => ['text' => 'Projet refusé', 'context' => 'Title of the notification sent after a project proposal is refused.'],
-            'projects.proposal.refused_notification_body' => ['text' => 'Votre proposition de projet "{title}" a été refusée.', 'context' => 'Body of the notification sent after a project proposal is refused.'],
+            'projects.proposal.refused_notification_body_by_actor' => ['text' => '{actor} a refuse votre proposition de projet "{title}".', 'context' => 'Body of the notification sent after a project proposal is refused, naming the person who refused it.'],
             'projects.chat.title' => ['text' => 'Discussion du projet', 'context' => 'Title of the chat window for a project.'],
             'projects.chat.open' => ['text' => 'Ouvrir la discussion du projet', 'context' => 'Accessible label for the button opening the project chat.'],
             'projects.chat.loading' => ['text' => 'Chargement de la discussion...', 'context' => 'Loading label shown while project chat messages load.'],
