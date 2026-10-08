@@ -342,6 +342,10 @@
         if (drawerController) {
             drawerController.resetHeader();
         }
+        if (!isError) {
+            window.commonRenderLoadingState(body, message);
+            return;
+        }
         body.innerHTML = '<div class="generic-section omo-activity-feedback' + (isError ? ' is-error' : '') + '"></div>';
         body.firstElementChild.textContent = String(message || '');
     }

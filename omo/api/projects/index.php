@@ -780,6 +780,7 @@ $projectAssignmentLabelKey = $projectAssignment === 'mine'
 $projectTexts = [
     'loading' => omoProjectsT('projects.loading'),
     'loadingError' => omoProjectsT('projects.loading_error'),
+    'retryLoading' => omoProjectsT('projects.retry_loading'),
     'emptyColumn' => omoProjectsT('projects.empty.column'),
     'statusUpdateError' => omoProjectsT('projects.status_update_error'),
     'blockedDialogTitle' => omoProjectsT('projects.blocked.dialog.title'),
@@ -1302,7 +1303,7 @@ $projectTexts = [
 <script src="<?= commonAssetUrl('/common/calendar/availability-model.js') ?>"></script>
 <script src="<?= commonAssetUrl('/common/calendar/availability-view.js') ?>"></script>
 <script src="<?= commonAssetUrl('/common/calendar/availability.js') ?>"></script>
-<script src="/common/calendar/event-editor.js?v=20260922-document-templates"></script>
+<script src="<?= commonAssetUrl('/common/calendar/event-editor.js') ?>"></script>
 <script src="/omo/assets/js/application-view-preferences.js?v=20260917-filter-hierarchy"></script>
 <script src="/common/choice/word-diff.js?v=20260816"></script>
 <script src="<?= commonAssetUrl('/common/choice/change-details.js') ?>"></script>
