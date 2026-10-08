@@ -1126,8 +1126,9 @@ function omoDocumentsPvEditorRenderPointDiscussionTrigger(array $pointData, arra
         . ' data-omo-chat-message-count="' . $messageCount . '"';
 
     return '<div class="omo-chat-popup-actions">'
-        . '<span class="omo-chat-popup-count" data-omo-chat-message-count-display title="' . omoDocumentsPvEditorEscape($messageCountLabel) . '" aria-label="' . omoDocumentsPvEditorEscape($messageCountLabel) . '">'
-        . '<span class="omo-chat-popup-count-value">' . $messageCount . '</span></span>'
+        . '<button type="button" class="omo-chat-popup-count" data-omo-chat-message-count-display aria-haspopup="dialog"' . $triggerAttributes
+        . ' title="' . omoDocumentsPvEditorEscape($messageCountLabel) . '" aria-label="' . omoDocumentsPvEditorEscape($messageCountLabel) . '">'
+        . '<span class="omo-chat-popup-count-value">' . $messageCount . '</span></button>'
         . '<button type="button" class="generic-action-button generic-action-button--main omo-pv-editor__save-button omo-chat-popup-trigger"'
         . $triggerAttributes
         . ' title="' . omoDocumentsPvEditorEscape((string)($uiText['chatOpen'] ?? 'Signaler des erreurs sur ce point')) . '"'
