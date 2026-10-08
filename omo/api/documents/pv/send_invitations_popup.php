@@ -21,6 +21,7 @@ $sourceLang = [
     'documents.pv_invitations.send_unknown' => ['text' => 'Le resultat de certains envois est incertain. Verifiez leur suivi dans les messages envoyes avant de renvoyer une invitation.', 'context' => 'Warning when invitation delivery throws and SMTP acceptance cannot be determined.'],
     'documents.pv_invitations.message' => ['text' => 'Texte du message', 'context' => 'Label for the customizable PV invitation email message.'],
     'documents.pv_invitations.send' => ['text' => 'Envoyer les invitations', 'context' => 'Submit button for sending PV invitation emails.'],
+    'documents.pv_invitations.already_sent' => ['text' => 'Le message a déjà été envoyé', 'context' => 'Tooltip on the disabled send button when the current message and recipients match the last successful send.'],
     'documents.pv_invitations.message_required' => ['text' => 'Le texte du message est obligatoire.', 'context' => 'Error returned when the PV invitation email message is empty.'],
     'documents.pv_invitations.share_error' => ['text' => 'Le lien public de la réunion n’a pas pu être créé. Aucun e-mail n’a été envoyé.', 'context' => 'Error returned when the public PV share link cannot be created before invitation emails are sent.'],
     'documents.pv_invitations.send_error' => ['text' => 'Aucune invitation n’a pu être envoyée.', 'context' => 'Error returned when every PV invitation email failed.'],
@@ -80,8 +81,8 @@ function omoDocumentsPvSendInvitationEmail(Document $document, Organization $org
     $html = commonRenderMailLayout([
         'brand_name' => $organizationName,
         'brand_color' => trim((string)$organization->get('color')),
-        'logo_url' => trim((string)$organization->get('logo')),
-        'banner_url' => trim((string)$organization->get('banner')),
+        'logo_url' => commonBuildAbsoluteAssetUrl((string)$organization->get('logo')),
+        'banner_url' => commonBuildAbsoluteAssetUrl((string)$organization->get('banner')),
         'heading' => $documentTitle,
         'intro_html' => commonMailTextToHtml($message),
         'button_label' => omoDocumentsPvSendInvitationT('documents.pv_invitations.open'),
@@ -320,18 +321,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     const recipientFields = form.querySelector('[data-pv-invitation-recipients]');
     const recipientCount = form.querySelector('[data-pv-invitation-count]');
     const selectionError = form.querySelector('[data-pv-invitation-selection-error]');
+    const messageField = form.querySelector('[name="message"]');
+    const alreadySentLabel = <?= json_encode(omoDocumentsPvSendInvitationT('documents.pv_invitations.already_sent'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     let sending = false;
+    let sentSignature = null;
+    function currentSignature() {
+        return JSON.stringify([
+            messageField.value,
+            Array.from(form.querySelectorAll('[name="recipient_emails[]"]:checked'), field => field.value).sort()
+        ]);
+    }
     function updateSelection() {
         const count = form.querySelectorAll('[name="recipient_emails[]"]:checked').length;
         if (recipientCount) {
             recipientCount.textContent = count === 1 ? recipientCount.dataset.one : recipientCount.dataset.other.replace('{count}', String(count));
         }
         if (selectionError) { selectionError.hidden = count > 0; }
-        submitButton.disabled = sending || count === 0;
-        return count > 0;
+        const alreadySent = sentSignature !== null && sentSignature === currentSignature();
+        submitButton.disabled = sending || count === 0 || alreadySent;
+        submitButton.classList.toggle('generic-action-button--unavailable', alreadySent && !sending);
+        if (alreadySent) { submitButton.title = alreadySentLabel; }
+        else { submitButton.removeAttribute('title'); }
+        return count > 0 && !alreadySent;
     }
+    messageField.addEventListener('input', updateSelection);
     form.addEventListener('change', function (event) {
-        if (event.target.matches('[name="recipient_emails[]"]')) { updateSelection(); }
+        if (event.target.matches('[name="recipient_emails[]"], [name="message"]')) { updateSelection(); }
     });
     updateSelection();
 
@@ -339,6 +354,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         event.preventDefault();
         if (sending || !updateSelection()) { return; }
         const body = new FormData(form);
+        const submittedSignature = currentSignature();
         sending = true;
         submitButton.disabled = true;
         if (recipientFields) { recipientFields.disabled = true; }
@@ -361,6 +377,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     message += '\n' + result.payload.diagnostic;
                 }
                 const success = result.ok && result.payload && result.payload.status === true;
+                if (success) { sentSignature = submittedSignature; }
                 window.commonNotify(message, success ? 'success' : 'error', {duration: success ? 5000 : 7000});
             })
             .catch(function () {
