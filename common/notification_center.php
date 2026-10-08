@@ -2,6 +2,65 @@
 require_once __DIR__ . '/web_push.php';
 require_once dirname(__DIR__) . '/shared/telegram.php';
 
+if (!function_exists('notificationCenterT')) {
+    function notificationCenterT($key, array $variables = [])
+    {
+        static $bundle = null;
+        static $sourceLang = [
+            'notification.member' => ['text' => 'Un membre', 'context' => 'Fallback when a notification actor cannot be identified.'],
+            'notification.participant' => ['text' => 'Un participant', 'context' => 'Anonymous or unidentified decision participant.'],
+            'notification.event.invitation_title' => ['text' => 'Nouvel evenement - {title}', 'context' => 'Event invitation notification title.'],
+            'notification.event.invitation' => ['text' => '{actor} vous invite a l evenement "{title}".', 'context' => 'Event invitation with the person who sent it.'],
+            'notification.event.organizer' => ['text' => ' Evenement organise par {organizer}.', 'context' => 'Event creator when someone else sends the invitation.'],
+            'notification.event.start' => ['text' => ' Il est prevu le {date}.', 'context' => 'Start date appended to an event invitation.'],
+            'notification.event.schedule_title' => ['text' => 'Modification de l horaire - {title}', 'context' => 'Event schedule change notification title.'],
+            'notification.event.location_title' => ['text' => 'Modification du lieu - {title}', 'context' => 'Event location change notification title.'],
+            'notification.event.schedule' => ['text' => '{actor} a modifie l horaire de l evenement "{title}".', 'context' => 'Event schedule change with the actual editor.'],
+            'notification.event.location' => ['text' => '{actor} a modifie le lieu de l evenement "{title}".', 'context' => 'Event location change with the actual editor.'],
+            'notification.event.new_start' => ['text' => ' Nouveau debut : {date}.', 'context' => 'Updated event start date.'],
+            'notification.event.new_end' => ['text' => ' Nouvelle fin : {date}.', 'context' => 'Updated event end date.'],
+            'notification.event.new_address' => ['text' => ' Nouveau lieu : {address}.', 'context' => 'Updated event physical location.'],
+            'notification.event.new_video' => ['text' => ' Visioconference : {url}.', 'context' => 'Updated event video meeting link.'],
+            'notification.event.updated' => ['text' => ' Mise a jour le {date}.', 'context' => 'Date of an event change.'],
+            'notification.proposal.title' => ['text' => 'Nouvelle proposition - {title}', 'context' => 'Decision proposal notification title.'],
+            'notification.proposal.added' => ['text' => '{actor} a ajoute la proposition "{proposal}" au scrutin "{title}".', 'context' => 'New decision proposal with its author.'],
+            'notification.proposal.added_untitled' => ['text' => '{actor} a ajoute une nouvelle proposition au scrutin "{title}".', 'context' => 'New untitled decision proposal with its author.'],
+            'notification.decision.comment' => ['text' => '{actor} a commente la proposition "{proposal}" dans le scrutin "{title}".', 'context' => 'Decision comment notification with its author.'],
+            'notification.project.message' => ['text' => '{actor} a ecrit dans la discussion du projet "{title}".', 'context' => 'Project discussion notification with its author.'],
+            'notification.project.status_title' => ['text' => 'Statut modifie - {title}', 'context' => 'Project status change notification title.'],
+            'notification.project.status' => ['text' => '{actor} a change le statut du projet "{title}" de "{previous}" a "{current}".', 'context' => 'Manual project status change with the actual editor.'],
+            'notification.project.status_auto' => ['text' => 'Le statut du projet "{title}" est passe automatiquement de "{previous}" a "{current}".', 'context' => 'Automatic project status change without a human actor.'],
+        ];
+        if ($bundle === null) {
+            $bundle = function_exists('omoLoadTranslationBundle')
+                ? omoLoadTranslationBundle('common_notification_center', $sourceLang)
+                : [];
+        }
+        if (function_exists('t')) {
+            return t($key, $variables, $bundle, $sourceLang);
+        }
+        $text = $sourceLang[$key]['text'] ?? $key;
+        foreach ($variables as $name => $value) {
+            $text = str_replace('{' . $name . '}', (string)$value, $text);
+        }
+        return $text;
+    }
+}
+
+if (!function_exists('notificationCenterActorName')) {
+    function notificationCenterActorName($userId, $organizationId, $fallback = '')
+    {
+        $user = new \dbObject\User();
+        if ((int)$userId > 0 && $user->load((int)$userId)) {
+            $name = mb_substr(trim((string)$user->getScopedDisplayName((int)$organizationId)), 0, 80, 'UTF-8');
+            if ($name !== '') {
+                return $name;
+            }
+        }
+        return $fallback !== '' ? $fallback : notificationCenterT('notification.member');
+    }
+}
+
 if (!function_exists('notificationCenterEventCatalog')) {
     function notificationCenterEventCatalog()
     {
@@ -276,16 +335,26 @@ if (!function_exists('notificationCenterDispatchEventInvitation')) {
         }
         $eventTitle = mb_substr(trim((string)$event->get('title')), 0, 140, 'UTF-8');
         $startAt = notificationCenterFormatEventDateTime($event->get('start_at'));
-        $body = 'Vous etes invite a l evenement "' . $eventTitle . '".';
+        $inviterId = (int)$actorUserId > 0 ? (int)$actorUserId : (int)$event->get('IDuser');
+        $body = notificationCenterT('notification.event.invitation', [
+            'actor' => notificationCenterActorName($inviterId, $organizationId),
+            'title' => $eventTitle,
+        ]);
+        if ($inviterId !== (int)$event->get('IDuser')) {
+            $organizer = trim((string)$event->getCreatedByDisplayName());
+            if ($organizer !== '') {
+                $body .= notificationCenterT('notification.event.organizer', ['organizer' => $organizer]);
+            }
+        }
         if ($startAt !== '') {
-            $body .= ' Il est prevu le ' . $startAt . '.';
+            $body .= notificationCenterT('notification.event.start', ['date' => $startAt]);
         }
         notificationCenterCreateForUsers(
             $organizationId,
             'calendar_event_invited',
             $event->getNotificationRecipientUserIds(),
             'calendar-event-invited-' . $eventId,
-            'Nouvel evenement - ' . $eventTitle,
+            notificationCenterT('notification.event.invitation_title', ['title' => $eventTitle]),
             $body,
             notificationCenterBuildEventUrl($organizationId, $eventId),
             '',
@@ -310,23 +379,38 @@ if (!function_exists('notificationCenterDispatchEventChange')) {
         $sourceSuffix = $event->get('updated_at') instanceof \DateTimeInterface
             ? $event->get('updated_at')->format('YmdHis')
             : sha1($eventTitle . '|' . $changeType . '|' . microtime(true));
-        $changeLabel = $changeType === 'schedule' ? 'horaire' : 'lieu';
-        $body = 'Le ' . $changeLabel . ' de l evenement "' . $eventTitle . '" a ete modifie.';
+        $body = notificationCenterT('notification.event.' . $changeType, [
+            'actor' => notificationCenterActorName($actorUserId, $organizationId),
+            'title' => $eventTitle,
+        ]);
         if ($changeType === 'schedule') {
             $startAt = notificationCenterFormatEventDateTime($event->get('start_at'));
             if ($startAt !== '') {
-                $body .= ' Nouveau debut : ' . $startAt . '.';
+                $body .= notificationCenterT('notification.event.new_start', ['date' => $startAt]);
+            }
+            $endAt = notificationCenterFormatEventDateTime($event->get('end_at'));
+            if ($endAt !== '') {
+                $body .= notificationCenterT('notification.event.new_end', ['date' => $endAt]);
+            }
+        } else {
+            $address = trim((string)$event->getResolvedLocationAddress());
+            $videoUrl = trim((string)$event->getResolvedVideoMeetingUrl());
+            if ($address !== '') {
+                $body .= notificationCenterT('notification.event.new_address', ['address' => $address]);
+            }
+            if ($videoUrl !== '') {
+                $body .= notificationCenterT('notification.event.new_video', ['url' => $videoUrl]);
             }
         }
         if ($updatedAt !== '') {
-            $body .= ' Mise a jour le ' . $updatedAt . '.';
+            $body .= notificationCenterT('notification.event.updated', ['date' => $updatedAt]);
         }
         notificationCenterCreateForUsers(
             $organizationId,
             $eventKey,
             $event->getNotificationRecipientUserIds(),
             'calendar-event-' . $changeType . '-' . $eventId . '-' . $sourceSuffix,
-            'Modification de ' . $changeLabel . ' - ' . $eventTitle,
+            notificationCenterT('notification.event.' . $changeType . '_title', ['title' => $eventTitle]),
             $body,
             notificationCenterBuildEventUrl($organizationId, $eventId),
             '',
@@ -456,13 +540,22 @@ if (!function_exists('notificationCenterDispatchDecisionProposal')) {
             $decisionTitle = 'ce scrutin';
         }
         $proposalLabel = notificationCenterBuildDecisionProposalLabel($proposal);
-        $title = 'Nouvelle proposition - ' . $decisionTitle;
-        $body = $proposalLabel !== ''
-            ? 'La proposition "' . $proposalLabel . '" vient d’être ajoutée au scrutin "' . $decisionTitle . '".'
-            : 'Une nouvelle proposition vient d’être ajoutée au scrutin "' . $decisionTitle . '".';
+        $actorUserId = (int)$proposal->getAuthorUserId();
+        $authorName = notificationCenterT('notification.participant');
+        if (!$proposal->isAnonymous()) {
+            $participant = $proposal->getAuthorParticipant();
+            $authorName = $participant instanceof \dbObject\DecisionParticipant
+                ? mb_substr(trim((string)$participant->getIdentityLabel($organizationId)), 0, 80, 'UTF-8')
+                : notificationCenterActorName($actorUserId, $organizationId, $authorName);
+        }
+        $title = notificationCenterT('notification.proposal.title', ['title' => $decisionTitle]);
+        $body = notificationCenterT($proposalLabel !== '' ? 'notification.proposal.added' : 'notification.proposal.added_untitled', [
+            'actor' => $authorName !== '' ? $authorName : notificationCenterT('notification.participant'),
+            'proposal' => $proposalLabel,
+            'title' => $decisionTitle,
+        ]);
         $url = notificationCenterBuildDecisionUrl($organizationId, $decisionId);
         $dedupeKey = 'PROPOSAL_' . $organizationId . '_' . $proposalId;
-        $actorUserId = (int)$proposal->getAuthorUserId();
         $ownerId = (int)$decision->get('IDuser');
         notificationCenterCreateForUsers($organizationId, 'decision_proposal_owner', $ownerId > 0 ? [$ownerId] : [], 'decision-proposal-owner-' . $proposalId, $title, $body, $url, $dedupeKey, $actorUserId);
         notificationCenterCreateForUsers(
@@ -500,13 +593,13 @@ if (!function_exists('notificationCenterDispatchDecisionChatMessage')) {
         $decisionTitle = mb_substr(trim((string)$decision->get('title')), 0, 120, 'UTF-8');
         $proposalTitle = mb_substr(trim((string)$proposal->get('title')), 0, 120, 'UTF-8');
         $authorName = $message->isAnonymous()
-            ? 'Un participant'
+            ? notificationCenterT('notification.participant')
             : mb_substr(trim((string)$message->get('author_name')), 0, 80, 'UTF-8');
-        if ($authorName === '') {
-            $authorName = 'Un participant';
+        if ($authorName === '' && !$message->isAnonymous()) {
+            $authorName = notificationCenterActorName($message->get('IDuser'), $organizationId, notificationCenterT('notification.participant'));
         }
         $title = 'Nouveau commentaire - ' . $decisionTitle;
-        $body = $authorName . ' a commente la proposition "' . $proposalTitle . '" dans le scrutin "' . $decisionTitle . '".';
+        $body = notificationCenterT('notification.decision.comment', ['actor' => $authorName, 'proposal' => $proposalTitle, 'title' => $decisionTitle]);
         $url = notificationCenterBuildDecisionUrl($organizationId, $decisionId);
         $dedupeKey = 'CHAT_' . $organizationId . '_' . (int)$proposal->getId();
         $actorUserId = (int)$message->get('IDuser');
@@ -555,12 +648,14 @@ if (!function_exists('notificationCenterDispatchProjectChatMessage')) {
         if ($projectTitle === '') {
             $projectTitle = 'ce projet';
         }
-        $authorName = mb_substr(trim((string)$message->get('author_name')), 0, 80, 'UTF-8');
-        if ($authorName === '') {
-            $authorName = 'Un membre';
+        $authorName = $message->isAnonymous()
+            ? notificationCenterT('notification.participant')
+            : mb_substr(trim((string)$message->get('author_name')), 0, 80, 'UTF-8');
+        if ($authorName === '' && !$message->isAnonymous()) {
+            $authorName = notificationCenterActorName($message->get('IDuser'), $organizationId);
         }
         $title = 'Nouveau message - ' . $projectTitle;
-        $body = $authorName . ' a ecrit dans la discussion du projet "' . $projectTitle . '".';
+        $body = notificationCenterT('notification.project.message', ['actor' => $authorName, 'title' => $projectTitle]);
         $url = notificationCenterBuildProjectUrl($organizationId, $projectId);
         $messageId = (int)$message->getId();
         $actorUserId = (int)$message->get('IDuser');
@@ -623,8 +718,13 @@ if (!function_exists('notificationCenterDispatchProjectStatusChange')) {
             'project_status_changed',
             $followerUserIds,
             $sourceKey,
-            'Statut modifie - ' . $projectTitle,
-            'Le statut du projet "' . $projectTitle . '" est passe de "' . $previousLabel . '" a "' . $currentLabel . '".',
+            notificationCenterT('notification.project.status_title', ['title' => $projectTitle]),
+            notificationCenterT((int)$actorUserId > 0 ? 'notification.project.status' : 'notification.project.status_auto', [
+                'actor' => (int)$actorUserId > 0 ? notificationCenterActorName($actorUserId, $organizationId) : '',
+                'title' => $projectTitle,
+                'previous' => $previousLabel,
+                'current' => $currentLabel,
+            ]),
             notificationCenterBuildProjectUrl($organizationId, $projectId),
             '',
             (int)$actorUserId

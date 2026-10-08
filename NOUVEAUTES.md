@@ -1,5 +1,9 @@
 # Journal Des Nouveautes
 
+- Notifications (2026-10-08) : nom de la personne dans les invitations, changements d horaire ou de lieu, nouvelles propositions, refus et changements de statut des projets. Organisateur indique si l invitation est envoyee par un autre membre ; nouvelle fin et lieu precises. Repli sur l auteur du commentaire si son nom manque, anonymat conserve et changements automatiques de statut identifies.
+
+- PV (2026-10-08) : en relecture, priorite, type, auteur, espace concerne, duree et confidentialite des points sont figes, y compris lors de la sauvegarde. Les corrections du titre et du contenu restent possibles pour l editeur. Onglets d applications masques et ajout ou retrait refuses, y compris lors du passage en relecture sans rechargement.
+
 - Evenements (2026-10-08) : case Journee entiere placee a cote de Debut et Fin. Les deux champs sont grises et non modifiables quand elle est cochee, avec leurs valeurs conservees pour l enregistrement et retablies en decochant.
 
 - PV (2026-10-08) : ajout et import de points masques en relecture. La bulle du nombre de messages ouvre les signalements sur tous les ecrans ; sur mobile, le bouton Signaler des erreurs reste visible sauf lorsque Enregistrer et Annuler sont affiches sur le point en cours d edition.

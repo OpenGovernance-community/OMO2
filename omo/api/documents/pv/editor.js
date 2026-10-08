@@ -217,7 +217,8 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
     }
 
     function setActiveApplicationTab(tabId) {
-        const normalizedTabId = Number(tabId || 0);
+        const normalizedTabId = currentDocumentPayload.pvStage === 'review' || currentDocumentPayload.isPvValidated === true
+            ? 0 : Number(tabId || 0);
         const applicationTab = applicationTabsById.get(normalizedTabId) || null;
         if (normalizedTabId > 0 && !applicationTab) {
             return;
@@ -2740,12 +2741,18 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
             addMenuToggle.disabled = isReview || documentPayload.isPvValidated === true || documentPayload.isPvTemplate === true || (isCurrentEditor && !canManageAgenda);
             if (addMenuToggle.disabled) closeAddMenu();
         }
-        canManageApplicationTabs = canManageStructure;
+        const hideApplicationTabs = isReview || documentPayload.isPvValidated === true;
+        canManageApplicationTabs = canManageStructure && !hideApplicationTabs;
+        if (applicationTabsNav) {
+            applicationTabsNav.hidden = hideApplicationTabs;
+            root.classList.toggle('omo-pv-editor--has-application-tabs', !hideApplicationTabs);
+            if (hideApplicationTabs) setActiveApplicationTab(0);
+        }
         const applicationTabAddButton = applicationTabsNav instanceof Element
             ? applicationTabsNav.querySelector('[data-omo-pv-application-tab-add]')
             : null;
         if (applicationTabAddButton instanceof HTMLButtonElement) {
-            applicationTabAddButton.hidden = !canManageStructure;
+            applicationTabAddButton.hidden = !canManageApplicationTabs;
         }
         if (sortMenu instanceof HTMLDetailsElement) {
             sortMenu.hidden = documentPayload.canSortPvAgenda !== true;

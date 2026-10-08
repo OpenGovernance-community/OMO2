@@ -1280,7 +1280,7 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
     $isEditable = !empty($pointData['isEditable']);
     $canEditNow = !empty($pointData['canEditNow']);
     $canEditPointDetails = !empty($pointData['canEditPointDetails']);
-    $canAssignAuthor = !empty($pointData['canAssignAuthor']);
+    $canAssignAuthor = !empty($pointData['canAssignAuthor']) && empty($pointData['isReview']);
     $canReorder = !empty($pointData['canReorder']);
     $isReview = !empty($pointData['isReview']);
     $canEditDuration = $canEditNow && $canEditPointDetails && !$isReview;
@@ -1325,6 +1325,10 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
     $html .= '      <span class="omo-document-pv__point-order">' . omoDocumentsPvEditorEscape((string)($pointData['positionLabel'] ?? '--')) . '</span>';
     if ($canEditNow && $canEditPointDetails) {
         $html .= '      <input type="text" class="omo-pv-editor__point-title-input" maxlength="80" value="' . omoDocumentsPvEditorEscape($title) . '" data-omo-pv-point-title="' . $pointId . '" aria-label="' . omoDocumentsPvEditorEscape((string)$uiText['title']) . '">';
+    } else {
+        $html .= '      <h3 class="omo-document-pv__point-title">' . omoDocumentsPvEditorEscape($title) . '</h3>';
+    }
+    if ($canEditNow && $canEditPointDetails && !$isReview) {
         if ($canEditDuration) {
             $html .= '      <label class="omo-pv-editor__point-duration-shell" title="' . omoDocumentsPvEditorEscape((string)$uiText['duration']) . '">';
             $html .= '          <input type="number" min="0" step="1" class="omo-pv-editor__point-duration-input" value="' . omoDocumentsPvEditorEscape($durationValue > 0 ? (string)$durationValue : '') . '" data-omo-pv-point-duration="' . $pointId . '" aria-label="' . omoDocumentsPvEditorEscape((string)$uiText['duration']) . '">';
@@ -1366,7 +1370,6 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
         $html .= '          </div>';
         $html .= '      </details>';
     } else {
-        $html .= '      <h3 class="omo-document-pv__point-title">' . omoDocumentsPvEditorEscape($title) . '</h3>';
         $html .= '      <span class="omo-pv-editor__point-duration-readonly">' . omoDocumentsPvEditorEscape($durationLabel) . '</span>';
         $html .= '      <span class="omo-document-pv__point-type omo-document-pv__point-type--' . omoDocumentsPvEditorEscape($pointType) . '">';
         $html .= '          <img src="' . omoDocumentsPvEditorEscape($pointTypeIcon) . '" alt="" aria-hidden="true" class="omo-document-pv__point-type-icon omo-pv-editor__point-type-icon">';
@@ -1404,7 +1407,7 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
     } else {
         $html .= '      <span class="omo-pv-editor__point-author">' . omoDocumentsPvEditorEscape($authorLabel !== '' ? $authorLabel : (string)($uiText['readonly'] ?? 'Lecture seule')) . '</span>';
     }
-    if ($canEditNow && $canEditPointDetails && !empty($pointData['hasStructureApplication'])) {
+    if ($canEditNow && $canEditPointDetails && !$isReview && !empty($pointData['hasStructureApplication'])) {
         $html .= '      <label class="omo-pv-editor__point-concerned">';
         $html .= '          <span class="omo-pv-editor__point-concerned-label">' . omoDocumentsPvEditorEscape((string)$uiText['concernedHolon']) . '</span>';
         $html .= '          <select class="omo-pv-editor__point-concerned-select" data-omo-pv-point-concerned-holon="' . $pointId . '" aria-label="' . omoDocumentsPvEditorEscape((string)$uiText['concernedHolon']) . '">';
