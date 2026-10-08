@@ -1,5 +1,9 @@
 # Journal Des Nouveautes
 
+- Mise a jour (2026-10-08) : la sauvegarde de transition vers le stockage partage conserve le lien img/upload sans traverser ses fichiers, meme si une ancienne version suivait encore son .htaccess. Git ignore desormais aussi le lien lui-meme. La liste des problemes masque les fichiers non suivis sans conflit et compte uniquement les fichiers affiches.
+
+- PV (2026-10-08) : boutons Enregistrer et Annuler des la premiere modification d un point. Annuler restaure le contenu et les champs du debut de l edition. Le passage dans un autre point sauvegarde les modifications ; les popups et les pertes de focus hors des points ne declenchent pas de sauvegarde. Un echec conserve le brouillon et affiche une notification.
+
 - Mise a jour (2026-10-07) : retrait du fichier versionne img/upload/.htaccess, qui pouvait remplacer un lien vers le stockage partage lors d une mise a jour forcee. Les protections des images restent dans le .htaccess racine. Les mises a jour suivantes refusent tout fichier distant sous img/upload, meme en mode force.
 
 - Connexion (2026-10-07) : verification de AUTH_PUBLIC_URL avant la creation et l envoi d un code. Une configuration absente ou invalide produit un message explicite et un diagnostic serveur, au lieu d une erreur 500 sans explication. Chaque environnement heberge doit definir son origine HTTPS publique dans son .env.
