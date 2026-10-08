@@ -13,7 +13,7 @@ const {chromium} = require(process.argv[3] || 'playwright');
         page.on('pageerror', error => errors.push(error.message));
         await page.route('**/omo/pv_participation.php?*', route => route.fulfill({contentType: 'text/html', body: fixture.html}));
         await page.route('**/omo/api/documents/pv/action.php*', route => {
-            const post = new URLSearchParams(route.request().postData());
+            const post = new Map(Array.from((route.request().postData() || '').matchAll(/name="([^"]+)"\r\n\r\n([^\r]*)/g), match => [match[1], match[2]]));
             const action = post.get('action');
             actions.push({action, title: post.get('title')});
             let payload = fixture.responses[action] || {status: true};
