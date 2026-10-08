@@ -56,6 +56,7 @@ namespace {
     function commonGetCurrentUserId(): int { return 7; }
     function commonGetRequestHost(): string { return 'example.invalid'; }
     function commonBuildUrl($path, $host): string { return 'https://' . $host . $path; }
+    function commonBuildAbsoluteAssetUrl($path): string { return $path === '' ? '' : commonBuildUrl($path, commonGetRequestHost()); }
     function myHTMLMail($from, $to, $subject, $html): bool
     {
         $GLOBALS['fixtureMails'][] = ['email' => $to, 'html' => $html];

@@ -1,5 +1,9 @@
 # Journal Des Nouveautes
 
+- E-mails (2026-10-08) : logo et banniere de l organisation convertis en URL completes dans les invitations aux PV et les e-mails de decision, pour permettre leur chargement depuis les lecteurs de messagerie.
+
+- PV (2026-10-08) : apres un envoi d invitations reussi, le bouton Envoyer est grise avec une infobulle indiquant que le message a deja ete envoye. Modifier le texte ou les destinataires permet un nouvel envoi.
+
 - PV (2026-10-08) : le bouton Ajouter un point conserve ses quatre coins arrondis lorsqu aucun menu ne lui est accole.
 
 - PV (2026-10-08) : correction du bouton Ajouter un point masque pour l editeur utilisant son lien individuel sans connexion, y compris apres actualisation et reprise de la main.
