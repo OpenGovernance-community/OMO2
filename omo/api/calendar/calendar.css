@@ -393,9 +393,17 @@
     gap: 8px;
 }
 
+.omo-calendar__cell,
+.omo-calendar__cell-items,
+.omo-calendar__event-chip {
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr);
+}
+
 .omo-calendar__event-chip {
     display: grid;
     gap: 4px;
+    overflow-wrap: anywhere;
     padding: 8px 9px;
     border-radius: var(--radius-md);
     background: color-mix(in srgb, var(--color-primary, #2563eb) 9%, var(--color-surface, #ffffff));
