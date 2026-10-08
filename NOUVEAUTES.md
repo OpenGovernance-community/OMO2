@@ -1,5 +1,13 @@
 # Journal Des Nouveautes
 
+- PV (2026-10-08) : le lien individuel d un editeur autorise aussi le tri, le deplacement des points et la creation, le renommage et la suppression des groupes sans connexion au compte. Les commandes Passer la main, Prendre la main et Reprendre la main utilisent les droits actuels du destinataire sur ce PV ; les options restent disponibles apres actualisation.
+
+- PV (2026-10-08) : le lien de participation conserve les outils habituels de l editeur connecte a son compte OMO, dont le tri, les dossiers et le deplacement des points. Les controles existants de droits et de sauvegarde sont reutilises ; le lien d invitation seul reste en mode participant.
+
+- PV (2026-10-08) : page publique de participation adaptee au mobile, avec ordre du jour complet en haut, points en dessous et defilement de toute la page. Timer masque sur petit ecran et titre de reunion sur toute la largeur ; fonctions d edition conservees.
+
+- PV (2026-10-08) : les documents inseres dans les points visibles s ouvrent en lecture seule depuis le lien public de participation, y compris avec un lien direct #documents-d. Cet acces reste limite a la reunion sans rendre les documents publics ; les liens expires et les documents indisponibles affichent une explication. Les fichiers joints peuvent etre telecharges via le meme acces. Le clic sur une reference ouvre directement le document sans activer l editeur du point pour son auteur.
+
 - PV (2026-10-08) : les invitations figurent desormais dans les messages envoyes de la topbar, avec le sujet, le texte, les destinataires selectionnes et le resultat individuel. L historique est cree avant l envoi ; les echecs et resultats incertains sont conserves sans relance automatique.
 
 - PV (2026-10-08) : le nombre de destinataires des invitations se deplie pour afficher les noms et adresses avec des cases cochees par defaut. Seules les personnes selectionnees recoivent le message et leur lien individuel ; le compteur suit la selection et un envoi sans destinataire est refuse.

@@ -58,7 +58,33 @@ function commonResolvePublicPvParticipationLink()
 
 function commonGetPublicPvParticipationLink()
 {
-    return $GLOBALS['omoPublicPvParticipationLink'] ?? null;
+    $link = $GLOBALS['omoPublicPvParticipationLink'] ?? null;
+    $userId = (int)commonGetCurrentUserId();
+    if ($link instanceof \dbObject\DocumentShareLink && $userId > 0) {
+        $organizationId = (int)$link->get('IDorganization');
+        $document = $link->getDocument();
+        // A restored account session uses the same editor and permissions as OMO.
+        // A participation token alone never upgrades the recipient's rights.
+        if (\dbObject\UserOrganization::hasActiveMembership($userId, $organizationId)
+            && $document instanceof \dbObject\Document
+            && (int)$document->get('IDorganization') === $organizationId
+            && ($document->isPvEditor($userId) || $document->canUserManagePvStructure($organizationId, $userId))
+            && $document->canUserOpenPvEditor($userId, $organizationId)) {
+            return null;
+        }
+    }
+    return $link;
+}
+
+// This grant is used only by the standalone reader and the file download route.
+function commonResolvePvEmbeddedDocument(): ?\dbObject\Document
+{
+    $token = trim((string)($_GET['pv_token'] ?? ''));
+    $sourceId = (int)($_GET['pv_document_id'] ?? 0);
+    $link = \dbObject\DocumentShareLink::findValidByToken($token);
+    if (!$link || $sourceId <= 0 || (int)$link->get('IDdocument') !== $sourceId
+        || ($link->requiresPassword() && !commonIsSharePasswordVerified($token))) return null;
+    return $link->getReadablePvEmbeddedDocument((int)($_GET['id'] ?? 0));
 }
 
 function commonPvParticipationRecipientIsOrganizationMember($shareLink, int $organizationId): bool

@@ -790,10 +790,12 @@ function omoDocumentsPvEditorBuildContextualPointPayload(
         if (!empty($pointData['takeover']['mustYield'])) {
             $pointData['canEditNow'] = false;
         }
-        $pointData['canReorder'] = false;
+        $agendaUserId = $publicParticipationLink->getPvAgendaManagerUserId($document);
+        $pointData['canReorder'] = $agendaUserId > 0 && $document->canUserReorderPvItem($point, $agendaUserId);
         $pointData['canEditPointDetails'] = true;
-        $pointData['canEditGroup'] = false;
-        $pointData['canDelete'] = !$pointData['isReview'] && !$pointData['isHandled'] && $pointData['canEditNow'];
+        $pointData['canEditGroup'] = $point->isGroup() && $agendaUserId > 0 && $document->canUserCreatePvGroups($agendaUserId);
+        $pointData['canDelete'] = !$pointData['isReview'] && !$pointData['isHandled']
+            && ($point->isGroup() ? $pointData['canEditGroup'] : $pointData['canEditNow']);
         $pointData['isPvEditor'] = false;
         $pointData['canTakeOverLock'] = false;
         $pointData['canToggleHandled'] = false;

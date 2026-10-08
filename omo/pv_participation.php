@@ -11,6 +11,8 @@ $participationSourceLang = [
     'documents.pv_participation.default_title' => ['text' => 'Réunion', 'context' => 'Fallback title of a public PV participation page.'],
     'documents.pv_participation.close' => ['text' => 'Fermer', 'context' => 'Accessible label for closing the public PV discussion dialog.'],
     'documents.pv_participation.discussion' => ['text' => 'Discussion', 'context' => 'Fallback title of a public PV discussion dialog.'],
+    'documents.pv_participation.document' => ['text' => 'Document de la reunion', 'context' => 'Public PV document drawer title.'],
+    'documents.pv_participation.open_window' => ['text' => 'Ouvrir dans une nouvelle fenetre', 'context' => 'Public PV document drawer external link.'],
 ];
 $participationLang = omoLoadTranslationBundle('omo_pv_participation', $participationSourceLang);
 $participationT = static function (string $key) use ($participationLang, $participationSourceLang): string {
@@ -62,7 +64,7 @@ $_REQUEST['pv_token'] = $token;
 require_once __DIR__ . '/api/bootstrap.php';
 ?>
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="fr" class="omo-pv-participation-page">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -72,17 +74,28 @@ require_once __DIR__ . '/api/bootstrap.php';
     <script>sharedApplyDocumentTheme();</script>
     <link rel="stylesheet" href="<?= commonAssetUrl('/common/assets/components.css') ?>">
     <link rel="stylesheet" href="<?= commonAssetUrl('/common/assets/topbar.css') ?>">
+    <link rel="stylesheet" href="<?= commonAssetUrl('/common/meeting/document-drawer.css') ?>">
     <?= commonStylesheetTags('/omo/assets/css/styles.css') ?>
-    <style>
-    html, body { height: 100%; margin: 0; }
-    body { background: var(--color-bg, #f8fafc); color: var(--color-text, #1f2937); }
-    .omo-pv-participation { height: 100%; min-height: 100%; }
-    </style>
+    <link rel="stylesheet" href="<?= commonAssetUrl('/omo/pv_participation.css') ?>">
 </head>
 <body>
     <main class="omo-pv-participation">
         <?php require __DIR__ . '/api/documents/pv/editor.php'; ?>
     </main>
+    <dialog class="meeting-document-drawer" data-meeting-document-drawer
+        data-pv-document-url="<?= htmlspecialchars('/omo/pv_document.php?' . http_build_query(['pv_document_id' => (int)$document->getId(), 'pv_token' => $token]), ENT_QUOTES, 'UTF-8') ?>"
+        aria-labelledby="pvDocumentTitle">
+        <div class="generic-drawer-header">
+            <div class="generic-drawer-header__copy"><h2 class="generic-card-title generic-card-title--medium" id="pvDocumentTitle" data-meeting-document-title><?= htmlspecialchars($participationT('documents.pv_participation.document'), ENT_QUOTES, 'UTF-8') ?></h2></div>
+            <div class="generic-drawer-header__actions">
+                <a class="generic-action-button generic-action-button--secondary" data-meeting-document-external target="_blank" rel="noopener noreferrer"><?= htmlspecialchars($participationT('documents.pv_participation.open_window'), ENT_QUOTES, 'UTF-8') ?></a>
+                <button type="button" class="generic-action-button generic-action-button--secondary" data-meeting-document-close><?= htmlspecialchars($participationT('documents.pv_participation.close'), ENT_QUOTES, 'UTF-8') ?></button>
+            </div>
+        </div>
+        <iframe class="meeting-document-drawer__frame" title="<?= htmlspecialchars($participationT('documents.pv_participation.document'), ENT_QUOTES, 'UTF-8') ?>" referrerpolicy="no-referrer" sandbox="allow-scripts allow-same-origin allow-popups allow-downloads"></iframe>
+    </dialog>
+    <script src="<?= commonAssetUrl('/common/meeting/document-drawer.js') ?>" defer></script>
+    <script src="<?= commonAssetUrl('/omo/pv_participation.js') ?>" defer></script>
     <div class="common-topbar-modal" id="commonTopbarModal" hidden>
         <div class="common-topbar-modal__backdrop" data-topbar-modal-close></div>
         <div class="common-topbar-modal__panel" role="dialog" aria-modal="true" aria-labelledby="commonTopbarModalTitle">
