@@ -425,6 +425,62 @@
 			return (int)$this->get('recipient_user_id');
 		}
 
+		public function getPvAgendaManagerUserId(Document $document): int
+		{
+			$userId = $this->getRecipientUserId();
+			$organizationId = (int)$this->get('IDorganization');
+			return $this->allowsPvContribution() && (bool)$this->get('active') && !$this->isExpired()
+				&& (int)$this->get('IDdocument') === (int)$document->getId()
+				&& (int)$document->get('IDorganization') === $organizationId
+				&& in_array($document->getPvStage(), [Document::PV_STAGE_PREPARATION, Document::PV_STAGE_MEETING], true)
+				&& UserOrganization::hasActiveMembership($userId, $organizationId)
+				&& $document->canUserManagePvStructure($organizationId, $userId) ? $userId : 0;
+		}
+
+		/** Read access granted only by a saved reference in a visible meeting point. */
+		public function getReadablePvEmbeddedDocument(int $documentId): ?Document
+		{
+			$link = self::findValidByToken((string)$this->get('token'));
+			if (!$link || $link->isExpired() || !$link->allowsPvContribution() || $documentId <= 0) return null;
+			$pv = $link->getDocument();
+			if (!$pv || !$pv->isPvDocument() || $pv->isPvValidated() || !(bool)$pv->get('active')) return null;
+			$organizationId = (int)$pv->get('IDorganization');
+			if ($organizationId !== (int)$link->get('IDorganization')) return null;
+			$userId = UserOrganization::hasActiveMembership($link->getRecipientUserId(), $organizationId)
+				? $link->getRecipientUserId() : 0;
+			$referenced = false;
+			foreach ($pv->getVisiblePvPointsForUser($userId) as $point) {
+				if ($point->isGroup() || $point->isMoved()) continue;
+				if (in_array($documentId, Document::getEmbeddedDocumentIds((string)$point->get('content')), true)) {
+					$referenced = true;
+					break;
+				}
+			}
+			if (!$referenced) return null;
+			$document = new Document();
+			return $document->load($documentId) && (bool)$document->get('active')
+				&& (int)$document->get('IDorganization') === $organizationId && $document->canBeEmbedded()
+				? $document : null;
+		}
+
+		public function canUsePvDocumentReferences(string $content, string $previousContent = ''): bool
+		{
+			$organizationId = (int)$this->get('IDorganization');
+			$userId = $this->getRecipientUserId();
+			$isMember = UserOrganization::hasActiveMembership($userId, $organizationId);
+			$previousIds = Document::getEmbeddedDocumentIds($previousContent);
+			foreach (Document::getEmbeddedDocumentIds($content) as $id) {
+				// Keep unavailable references editable, without granting access to them.
+				if (in_array($id, $previousIds, true)) continue;
+				if ($this->getReadablePvEmbeddedDocument($id)) continue;
+				$target = new Document();
+				if (!$isMember || !$target->load($id) || !(bool)$target->get('active')
+					|| (int)$target->get('IDorganization') !== $organizationId || !$target->canBeEmbedded()
+					|| !$target->canViewInOrganizationContext($organizationId, (int)$target->get('IDholon') ?: null, $userId)) return false;
+			}
+			return true;
+		}
+
 		public function getDocument()
 		{
 			$documentId = (int)$this->get('IDdocument');

@@ -1,7 +1,7 @@
 (function (window, document) {
     'use strict';
 
-    const OMO_SIMPLE_HTML_FIELD_VERSION = '20261005-html-editor-gaps';
+    const OMO_SIMPLE_HTML_FIELD_VERSION = '20261008-html-editor-embed-links';
 
     if (
         window.omoSimpleHtmlField
@@ -2622,6 +2622,12 @@
             preview.innerHTML = sanitizeEditorHtml(state.value);
             if (content) preview.replaceChildren(content);
             preview.addEventListener('focus', schedulePreviewInitialization);
+            preview.addEventListener('mousedown', function (event) {
+                // Opening an embedded resource must not initialize the editor first.
+                if (event.target instanceof Element && event.target.closest('a[href]')) {
+                    preventResourceEmbedPointerFocus(event);
+                }
+            }, true);
             preview.addEventListener('input', function () {
                 setRawValue(preview.innerHTML);
                 emitChange();

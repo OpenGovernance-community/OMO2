@@ -3305,6 +3305,20 @@
 			);
 		}
 
+		public static function getEmbeddedDocumentIds(string $content): array
+		{
+			$html = new \DOMDocument('1.0', 'UTF-8');
+			$previous = libxml_use_internal_errors(true);
+			$html->loadHTML('<?xml encoding="utf-8" ?><div>' . $content . '</div>', LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+			libxml_clear_errors();
+			libxml_use_internal_errors($previous);
+			$ids = [];
+			foreach ((new \DOMXPath($html))->query('//*[@data-omo-embed-type="document"]') as $element) {
+				if (self::isDocumentEmbedElement($element)) $ids[] = (int)$element->getAttribute('data-omo-document-id');
+			}
+			return array_values(array_unique($ids));
+		}
+
 		protected static function getDocumentEmbedAttributeValue(\DOMElement $element, string $attributeName): string
 		{
 			return $element->hasAttribute($attributeName)
@@ -4026,10 +4040,12 @@
 			}
 
 			if (self::isProjectEmbedElement($node)) {
+				if (isset($options['pvParticipationLink'])) return htmlspecialchars($node->getAttribute('data-omo-project-title'), ENT_QUOTES, 'UTF-8');
 				return self::renderEmbeddedProjectReference($node, $organizationId);
 			}
 
 			if (self::isChecklistEmbedElement($node)) {
+				if (isset($options['pvParticipationLink'])) return htmlspecialchars($node->getAttribute('data-omo-checklist-title'), ENT_QUOTES, 'UTF-8');
 				return self::renderEmbeddedChecklistReference($node, $organizationId);
 			}
 
@@ -4119,11 +4135,16 @@
 
 			$targetOrganizationId = (int)$targetDocument->get('IDorganization');
 			$targetHolonId = (int)$targetDocument->get('IDholon');
-			$canViewTarget = $targetOrganizationId > 0
-				&& $targetDocument->canViewInOrganizationContext(
-					$targetOrganizationId,
-					$targetHolonId > 0 ? $targetHolonId : null
-				);
+			if (isset($options['pvParticipationLink'])) {
+				$canViewTarget = $options['pvParticipationLink'] instanceof DocumentShareLink
+					&& $options['pvParticipationLink']->getReadablePvEmbeddedDocument($targetDocumentId) !== null;
+			} else {
+				$canViewTarget = $targetOrganizationId > 0
+					&& $targetDocument->canViewInOrganizationContext(
+						$targetOrganizationId,
+						$targetHolonId > 0 ? $targetHolonId : null
+					);
+			}
 
 			$targetTitle = trim((string)$targetDocument->get('title'));
 			$targetDescription = trim((string)$targetDocument->get('description'));
