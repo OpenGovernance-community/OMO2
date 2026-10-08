@@ -84,9 +84,11 @@ assertCalendarPvTemplateVisibility(
 );
 assertCalendarPvTemplateVisibility(
     strpos($calendarCreateSource, 'data-omo-calendar-document-template-scope') !== false
-        && strpos($calendarCreateSource, 'data-omo-calendar-context-path') !== false
+        && strpos($calendarCreateSource, 'data-holon-context-path') !== false
         && strpos($calendarSource, 'function syncDocumentTemplateOptions') !== false
-        && strpos($projectEditorSource, 'function syncDocumentTemplateOptions') !== false,
+        && strpos($calendarSource, 'data-holon-context-path') !== false
+        && strpos($projectEditorSource, 'function syncDocumentTemplateOptions') !== false
+        && strpos($projectEditorSource, 'data-holon-context-path') !== false,
     'Calendar and project event forms must refresh template choices when their context changes.'
 );
 

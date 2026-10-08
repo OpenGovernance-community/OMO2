@@ -275,7 +275,7 @@
         container.setAttribute('data-topbar-remote-url', String(url || ''));
         container.__commonTopbarRemoteRequestId = requestId;
         runContainerCleanup(container);
-        container.innerHTML = '<div class="loading">' + getConfigTextValue('translations.loadingLabel', 'Chargement...') + '</div>';
+        window.commonRenderLoadingState(container, getConfigTextValue('translations.loadingLabel', 'Chargement...'));
 
         fetch(resolvedUrl, {
             credentials: 'same-origin',

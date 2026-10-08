@@ -2,6 +2,18 @@
     'use strict';
     if (window.omoCalendarShowAvailability) { return; }
 
+    // Readonly keeps the selected dates in FormData when the event lasts all day.
+    document.addEventListener('change', function (event) {
+        var toggle = event.target.closest('input[name="is_all_day"]');
+        var form = toggle && toggle.closest('[data-omo-calendar-create-form]');
+        if (!form) { return; }
+        form.querySelectorAll('input[name="start_at"], input[name="end_at"]').forEach(function (field) {
+            field.readOnly = toggle.checked;
+            if (toggle.checked) { field.setAttribute('aria-disabled', 'true'); }
+            else { field.removeAttribute('aria-disabled'); }
+        });
+    });
+
     // Event editors are also opened from projects; use one delegated toggle for every host.
     document.addEventListener('change', function (event) {
         var toggle = event.target.closest('[data-omo-calendar-buffers-toggle]');

@@ -1532,7 +1532,9 @@ if ($isEditMode) {
                                 </span>
                             </label>
                             <?php endif; ?>
+                        </div>
 
+                        <div class="generic-form-grid generic-form-grid--trio generic-form-grid--inline" data-omo-calendar-schedule-fields>
                             <label class="omo-calendar-create__field generic-form-field">
                                 <span class="generic-form-label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.start')) ?></span>
                                 <input
@@ -1540,6 +1542,7 @@ if ($isEditMode) {
                                     name="start_at"
                                     class="generic-form-control"
                                     value="<?= omoApiEscape($startDefault instanceof \DateTimeInterface ? $startDefault->format('Y-m-d\TH:i') : '') ?>"
+                                    <?= $isAllDayDefault ? 'readonly aria-disabled="true"' : '' ?>
                                     required
                                 >
                             </label>
@@ -1551,8 +1554,13 @@ if ($isEditMode) {
                                     name="end_at"
                                     class="generic-form-control"
                                     value="<?= omoApiEscape($endDefault instanceof \DateTimeInterface ? $endDefault->format('Y-m-d\TH:i') : '') ?>"
+                                    <?= $isAllDayDefault ? 'readonly aria-disabled="true"' : '' ?>
                                     required
                                 >
+                            </label>
+                            <label class="generic-checkbox generic-checkbox--control">
+                                <input type="checkbox" name="is_all_day" value="1"<?= $isAllDayDefault ? ' checked' : '' ?>>
+                                <span><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.all_day')) ?></span>
                             </label>
                         </div>
 
@@ -1580,11 +1588,6 @@ if ($isEditMode) {
                                 <p class="generic-help-text"><?= omoApiEscape(omoCalendarCreateT('calendar.create.buffers.hint')) ?></p>
                             </div>
                         </section>
-
-                        <label class="omo-calendar-create__check">
-                            <input type="checkbox" name="is_all_day" value="1"<?= $isAllDayDefault ? ' checked' : '' ?>>
-                            <span><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.all_day')) ?></span>
-                        </label>
 
                         <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided generic-form-section--compact omo-calendar-create__block">
                             <div class="omo-calendar-create__block-head generic-form-section__heading">

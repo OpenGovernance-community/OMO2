@@ -37,12 +37,7 @@ document.querySelectorAll('.omo-settings').forEach(function (root) {
             return;
         }
 
-        if (typeof window.getSkeleton === 'function') {
-            nestedBody.innerHTML = window.getSkeleton('panel');
-            return;
-        }
-
-        nestedBody.innerHTML = '<div class="loading">' + String(settingsTexts.loading || '') + '</div>';
+        window.commonRenderLoadingState(nestedBody, settingsTexts.loading);
     }
 
     function renderNestedDrawerError() {

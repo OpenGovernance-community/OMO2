@@ -1,5 +1,15 @@
 # Journal Des Nouveautes
 
+- Evenements (2026-10-08) : case Journee entiere placee a cote de Debut et Fin. Les deux champs sont grises et non modifiables quand elle est cochee, avec leurs valeurs conservees pour l enregistrement et retablies en decochant.
+
+- PV (2026-10-08) : ajout et import de points masques en relecture. La bulle du nombre de messages ouvre les signalements sur tous les ecrans ; sur mobile, le bouton Signaler des erreurs reste visible sauf lorsque Enregistrer et Annuler sont affiches sur le point en cours d edition.
+
+- Chargements (2026-10-08) : affichage commun centre avec petit indicateur anime, sans cadre arrondi, dans les fiches projets, evenements, documents, processus, indicateurs, taches recurrentes, parametres et fenetres partagees. Les editeurs de documents, decisions et parametres utilisent aussi cet affichage quand les squelettes generaux sont disponibles.
+
+- Projets (2026-10-08) : correction de l ajout d evenement, dont l initialisation echouait avec le nouveau selecteur de contexte et affichait a tort le titre Documents. Filtrage des modeles conserve et message d attente commun Chargement... pour les fiches et leurs contenus.
+
+- Projets (2026-10-08) : indicateur de chargement discret sans cadre et bouton Actualiser en cas d erreur pour relancer le chargement de la fiche ouverte.
+
 - E-mails (2026-10-08) : logo et banniere de l organisation convertis en URL completes dans les invitations aux PV et les e-mails de decision, pour permettre leur chargement depuis les lecteurs de messagerie.
 
 - PV (2026-10-08) : apres un envoi d invitations reussi, le bouton Envoyer est grise avec une infobulle indiquant que le message a deja ete envoye. Modifier le texte ou les destinataires permet un nouvel envoi.
