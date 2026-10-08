@@ -2,7 +2,7 @@
 
 - PV (2026-10-08) : le lien individuel d un editeur autorise aussi le tri, le deplacement des points et la creation, le renommage et la suppression des groupes sans connexion au compte. Les commandes Passer la main, Prendre la main et Reprendre la main utilisent les droits actuels du destinataire sur ce PV ; les options restent disponibles apres actualisation.
 
-- PV (2026-10-08) : le lien de participation conserve les outils habituels de l editeur connecte a son compte OMO, dont le tri, les dossiers et le deplacement des points. Les controles existants de droits et de sauvegarde sont reutilises ; le lien d invitation seul reste en mode participant.
+- PV (2026-10-08) : le lien de participation conserve les outils habituels de l editeur connecte a son compte OMO. Sans connexion, les commandes disponibles sont limitees aux droits du destinataire sur la reunion.
 
 - PV (2026-10-08) : page publique de participation adaptee au mobile, avec ordre du jour complet en haut, points en dessous et defilement de toute la page. Timer masque sur petit ecran et titre de reunion sur toute la largeur ; fonctions d edition conservees.
 
