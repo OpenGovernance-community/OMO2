@@ -199,7 +199,8 @@ try {
     });
     availabilityExpect(!$freeAfterRefresh['conflicts'] && !$freeAfterRefresh['unverified'], 'Successful refresh with no conflict allows normal save');
     $emailInvite = new EventInvitation(); $emailInvite->set('invitation_type', 'email'); $emailInvite->set('email', 'unknown@example.invalid');
-    availabilityExpect($proposed->checkInvitationAvailability([$emailInvite])['unverified'][0]['reason'] === 'email', 'External email availability unknown');
+    $emailReport = $proposed->checkInvitationAvailability([$emailInvite]);
+    availabilityExpect(!$emailReport['unverified'] && !$emailReport['conflicts'], 'Email-only invitations do not require an availability warning');
     if (in_array($argv[1] ?? '', ['--render', '--form', '--post-warning', '--preview'], true)) {
         $busy->set('active', 1); $busy->set('is_all_day', 0); $busy->save();
         $_SESSION['currentUser'] = (int)$guest->getId();

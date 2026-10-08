@@ -609,9 +609,7 @@ class Event extends DbObject
         $organizationId = (int)$this->get('IDorganization');
         $targets = $this->getEffectiveInvitationTargets($organizationId, $proposedInvitations);
         $report = ['conflicts' => [], 'unverified' => [], 'externalCache' => false];
-        foreach ($targets['emails'] as $email) {
-            $report['unverified'][] = ['name' => $email, 'reason' => 'email'];
-        }
+        // Email-only invitations have no calendar to check.
         $interval = $this->getBusyInterval();
         if ($interval === null) { return $report; }
         [$start, $end] = $interval;
