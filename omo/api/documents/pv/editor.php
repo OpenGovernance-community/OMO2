@@ -107,6 +107,9 @@ $pvCreatorLabel = $pvCreatorUserId > 0
 $isPvEditor = !$isPublicParticipation && $document->isPvEditor($currentUserId);
 $canManagePvDocument = !$isPublicParticipation && $document->canUserManagePvDocument($currentUserId);
 $canManagePvStructure = !$isPublicParticipation && $document->canUserManagePvStructure($organizationId, $currentUserId);
+$agendaUserId = $isPublicParticipation ? $publicParticipationLink->getPvAgendaManagerUserId($document) : $currentUserId;
+$canSortPvAgenda = $agendaUserId > 0 && $document->isPvEditor($agendaUserId)
+    && $document->canUserCreatePvGroups($agendaUserId);
 $pvApplicationTabsCsrf = '';
 if (!$isPublicParticipation) {
     if (empty($_SESSION['omo_pv_application_tabs_csrf'])) {
@@ -120,11 +123,13 @@ $canEditPvDocumentHeader = $canManagePvStructure && !$isPvReview;
 $canExtendAssociatedEvent = !$isPublicParticipation
     && $hasAssociatedEvent
     && $document->getPvStage() === \dbObject\Document::PV_STAGE_MEETING;
-$canPassPvEditor = $isPvEditor && !$isPvReview;
+$handoverUserId = $isPublicParticipation ? $publicParticipationUserId : $currentUserId;
+$isParticipationPvEditor = $document->isPvEditor($handoverUserId);
+$canPassPvEditor = $isParticipationPvEditor && !$isPvReview;
 $isPvTemplate = $document->isPvTemplate();
-$canCreatePvGroups = !$isPublicParticipation && $document->canUserCreatePvGroups($currentUserId);
-$canClaimPvEditor = !$isPublicParticipation && $document->canUserClaimPvEditor($organizationId, $currentUserId);
-$canReplacePvEditor = !$isPublicParticipation && $document->canUserReplacePvEditor($organizationId, $currentUserId);
+$canCreatePvGroups = $agendaUserId > 0 && $document->canUserCreatePvGroups($agendaUserId);
+$canClaimPvEditor = $handoverUserId > 0 && $document->canUserClaimPvEditor($organizationId, $handoverUserId);
+$canReplacePvEditor = $handoverUserId > 0 && $document->canUserReplacePvEditor($organizationId, $handoverUserId);
 $pvEditorHandoverOpen = $document->isPvEditorHandoverOpen();
 $isPvValidated = $document->isPvValidated();
 $locationData = $hasAssociatedEvent ? $event->getLocationDisplayData() : [];
@@ -196,7 +201,7 @@ $pvInvitationSendPopupUrl = '/omo/api/documents/pv/send_invitations_popup.php?oi
     . '&id=' . rawurlencode((string)(int)$document->getId());
 
 $points = new \dbObject\ArrayDocumentPvPoint();
-$points = $document->getVisiblePvPointsForUser($currentUserId, true);
+$points = $document->getVisiblePvPointsForUser($agendaUserId ?: $currentUserId, true);
 $groupSummaryMap = omoDocumentsPvEditorBuildGroupSummaryMap($points);
 $pointPositionLabels = \dbObject\DocumentPvPoint::buildHierarchyPositionLabels($points);
 $authorOptions = $isPublicParticipation ? [[
@@ -354,8 +359,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     <aside class="omo-pv-editor__sidebar">
         <section class="omo-pv-editor__panel generic-section omo-pv-editor__agenda-panel">
             <div class="omo-pv-editor__toolbar">
-                <?php if (!$isPublicParticipation): ?>
-                    <details class="omo-pv-editor__sort-menu" data-omo-pv-sort-menu<?= $isPvEditor && $canManagePvStructure && !$isPvReview ? '' : ' hidden' ?>>
+                    <details class="omo-pv-editor__sort-menu" data-omo-pv-sort-menu<?= $canSortPvAgenda ? '' : ' hidden' ?>>
                         <summary class="generic-action-button generic-action-button--secondary" title="<?= $escape((string)$uiText['sort']) ?>" aria-label="<?= $escape((string)$uiText['sort']) ?>"><img src="/omo/assets/images/documents/sort-ascending.png" class="omo-pv-editor__toolbar-icon black-icon" alt="" aria-hidden="true"></summary>
                         <form class="omo-pv-editor__sort-menu-panel" data-omo-pv-sort-form>
                             <fieldset class="omo-pv-editor__sort-options">
@@ -376,7 +380,6 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                             <button type="submit" class="generic-action-button generic-action-button--main omo-pv-editor__sort-submit" data-omo-pv-sort-submit data-omo-pv-sort-label="<?= $escape((string)$uiText['sortApply']) ?>" data-omo-pv-sort-applying-label="<?= $escape((string)$uiText['sortApplying']) ?>"><?= $escape((string)$uiText['sortApply']) ?></button>
                         </form>
                     </details>
-                <?php endif; ?>
                 <button type="button" class="omo-pv-editor__delete-dropzone" data-omo-pv-delete-dropzone title="<?= $escape((string)$uiText['deleteItem']) ?>" aria-label="<?= $escape((string)$uiText['deleteItem']) ?>"<?= $isPvReview || ($isPvEditor && !$canManagePvStructure) ? ' hidden' : '' ?>><img src="/omo/assets/images/documents/poubelle.png" alt="" aria-hidden="true"></button>
                 <button type="button" class="generic-action-button generic-action-button--secondary omo-pv-editor__add-button" data-omo-pv-editor-add-group title="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.action.add_group')) ?>" aria-label="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.action.add_group')) ?>"<?= $canCreatePvGroups ? '' : ' hidden' ?>><img src="/omo/assets/images/documents/add-folder.png" class="omo-pv-editor__toolbar-icon black-icon" alt="" aria-hidden="true"></button>
                 <div class="generic-menu generic-menu--split" data-omo-pv-add-menu<?= $isPvEditor && !$canManagePvStructure ? ' hidden' : '' ?>>
@@ -561,12 +564,12 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                         <span class="omo-pv-editor__person-copy">
                             <span class="omo-pv-editor__field-label"><?= $escape((string)$uiText['pvEditor']) ?></span>
                             <span class="omo-pv-editor__secretary-name" data-omo-pv-secretary-name><?= $escape($pvEditorLabel !== '' ? $pvEditorLabel : (string)$uiText['pvEditorEmpty']) ?></span>
-                            <span class="omo-pv-editor__secretary-state<?= $isPvEditor && $pvEditorHandoverOpen ? ' is-waiting' : '' ?>" data-omo-pv-secretary-state<?= $isPvEditor ? '' : ' hidden' ?>><?= $escape($isPvEditor && $pvEditorHandoverOpen ? (string)$uiText['pvEditorHandoverWaiting'] : (string)$uiText['pvEditorActive']) ?></span>
+                            <span class="omo-pv-editor__secretary-state<?= $isParticipationPvEditor && $pvEditorHandoverOpen ? ' is-waiting' : '' ?>" data-omo-pv-secretary-state<?= $isParticipationPvEditor ? '' : ' hidden' ?>><?= $escape($isParticipationPvEditor && $pvEditorHandoverOpen ? (string)$uiText['pvEditorHandoverWaiting'] : (string)$uiText['pvEditorActive']) ?></span>
                         </span>
                     </div>
                 </div>
                 <div class="omo-pv-editor__secretary-actions">
-                    <button type="button" class="generic-action-button generic-action-button--main omo-pv-editor__secretary-claim<?= $isPvEditor && $pvEditorHandoverOpen ? ' is-waiting' : '' ?>" data-omo-pv-claim-secretary data-omo-pv-secretary-action="<?= $escape($isPvEditor ? 'pass_pv_editor' : ($canClaimPvEditor ? 'claim_pv_editor' : 'replace_pv_editor')) ?>"<?= (!$isPvReview && ($canPassPvEditor || $canClaimPvEditor || $canReplacePvEditor)) ? '' : ' hidden' ?><?= $isPvEditor && $pvEditorHandoverOpen ? ' disabled' : '' ?>><?php if ($isPvEditor && $pvEditorHandoverOpen): ?><svg class="omo-pv-editor__secretary-claim-spinner" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-dasharray="32 18"></circle></svg><span><?= $escape((string)$uiText['pvEditorHandoverWaiting']) ?></span><?php else: ?><?= $escape($isPvEditor ? (string)$uiText['passPvEditor'] : ($canClaimPvEditor && $pvEditorUserId > 0 ? (string)$uiText['reclaimPvEditor'] : ($canReplacePvEditor ? (string)$uiText['replacePvEditor'] : (string)$uiText['claimPvEditor']))) ?><?php endif; ?></button>
+                    <button type="button" class="generic-action-button generic-action-button--main omo-pv-editor__secretary-claim<?= $isParticipationPvEditor && $pvEditorHandoverOpen ? ' is-waiting' : '' ?>" data-omo-pv-claim-secretary data-omo-pv-secretary-action="<?= $escape($isParticipationPvEditor ? 'pass_pv_editor' : ($canClaimPvEditor ? 'claim_pv_editor' : 'replace_pv_editor')) ?>"<?= (!$isPvReview && ($canPassPvEditor || $canClaimPvEditor || $canReplacePvEditor)) ? '' : ' hidden' ?><?= $isParticipationPvEditor && $pvEditorHandoverOpen ? ' disabled' : '' ?>><?php if ($isParticipationPvEditor && $pvEditorHandoverOpen): ?><svg class="omo-pv-editor__secretary-claim-spinner" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-dasharray="32 18"></circle></svg><span><?= $escape((string)$uiText['pvEditorHandoverWaiting']) ?></span><?php else: ?><?= $escape($isParticipationPvEditor ? (string)$uiText['passPvEditor'] : ($canClaimPvEditor && $pvEditorUserId > 0 ? (string)$uiText['reclaimPvEditor'] : ($canReplacePvEditor ? (string)$uiText['replacePvEditor'] : (string)$uiText['claimPvEditor']))) ?><?php endif; ?></button>
                     <?php if ($pvInvitationPopupUrl !== ''): ?>
                         <div class="generic-menu generic-menu--split" data-omo-pv-invitations-menu<?= $canManagePvInvitations ? '' : ' hidden' ?>>
                             <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-pv-invitations-url="<?= $escape($pvInvitationPopupUrl) ?>" data-omo-pv-invitations-title="<?= $escape((string)$uiText['inviteTitle']) ?>"<?= $canManagePvInvitations ? '' : ' disabled' ?>><?= $escape((string)$uiText['invite']) ?></button>
@@ -686,8 +689,11 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         'isPvEditor' => $isPvEditor,
         'canManagePvDocument' => $canManagePvDocument,
         'canManagePvStructure' => $canManagePvStructure,
+        'canSortPvAgenda' => $canSortPvAgenda,
+        'canCreatePvGroups' => $canCreatePvGroups,
         'canClaimPvEditor' => $canClaimPvEditor,
         'canReplacePvEditor' => $canReplacePvEditor,
+        'canPassPvEditor' => $canPassPvEditor,
         'pvEditorHandoverOpen' => $pvEditorHandoverOpen,
         'isPvValidated' => $isPvValidated,
         'isPvTemplate' => $isPvTemplate,

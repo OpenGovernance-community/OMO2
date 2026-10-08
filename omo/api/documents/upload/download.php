@@ -1,5 +1,20 @@
 <?php
-require_once dirname(__DIR__, 2) . '/bootstrap.php';
+if (isset($_GET['pv_document_id'])) {
+    require_once dirname(__DIR__, 4) . '/shared_functions.php';
+    require_once dirname(__DIR__, 4) . '/common/auth.php';
+    require_once dirname(__DIR__, 4) . '/common/pv_participation.php';
+    $pvDocument = commonResolvePvEmbeddedDocument();
+    header('Cache-Control: private, no-store');
+    header('Referrer-Policy: no-referrer');
+    if (!$pvDocument) {
+        http_response_code(404);
+        header('Content-Type: text/plain; charset=UTF-8');
+        echo 'Document introuvable ou inaccessible avec ce lien de reunion.';
+        exit;
+    }
+} else {
+    require_once dirname(__DIR__, 2) . '/bootstrap.php';
+}
 
 use dbObject\Document;
 use dbObject\Organization;
@@ -31,7 +46,7 @@ if ($holonId <= 0) {
     $holonId = (int)$document->get('IDholon');
 }
 
-if (!$document->canViewInOrganizationContext($organizationId, $holonId > 0 ? $holonId : null)) {
+if (!isset($pvDocument) && !$document->canViewInOrganizationContext($organizationId, $holonId > 0 ? $holonId : null)) {
     http_response_code(404);
     header('Content-Type: text/plain; charset=UTF-8');
     echo 'Document introuvable ou inaccessible.';
@@ -73,7 +88,7 @@ if ($contentType === '' || $contentType === 'application/octet-stream') {
 }
 $contentLength = max(0, (int)($downloadResult['contentLength'] ?? 0));
 $body = (string)($downloadResult['body'] ?? '');
-$inline = !empty($_GET['inline']);
+$inline = !empty($_GET['inline']) && (!isset($pvDocument) || $document->isStoredPdfFile());
 
 header('X-Content-Type-Options: nosniff');
 header('Content-Type: ' . $contentType);
