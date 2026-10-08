@@ -62,6 +62,7 @@ const {chromium} = require(process.argv[2] || 'playwright');
                     <button class="generic-action-button" data-omo-document-detail-close>Fermer</button></div>
                 </header><div data-omo-document-detail-body></div></div></div>`);
         await documentsPage.addStyleTag({content: fs.readFileSync(path.join(__dirname, '../common/assets/components.css'), 'utf8')});
+        await documentsPage.addScriptTag({content: fs.readFileSync(path.join(__dirname, '../common/assets/components.js'), 'utf8')});
         await documentsPage.addScriptTag({content: fs.readFileSync(path.join(__dirname, '../common/drawer/subdrawer.js'), 'utf8')});
         await documentsPage.addScriptTag({content: fs.readFileSync(path.join(__dirname, '../omo/api/documents/list.js'), 'utf8')});
         await documentsPage.evaluate(() => window.commonPageScripts['/omo/api/documents/list.js']({}));
@@ -70,13 +71,18 @@ const {chromium} = require(process.argv[2] || 'playwright');
         await documentsPage.evaluate(() => {
             window.omoDocumentsFindRoot = () => document.getElementById('omo-documents-root');
             window.commonExecuteFragmentScripts = () => Promise.resolve();
-            window.fetch = async (url) => ({ok: true, text: async () => String(url).includes('create.php')
+            window.getSkeleton = () => '<div class="skeleton">Old loading state</div>';
+            window.documentLoadingGate = new Promise(resolve => {window.releaseDocumentLoading = resolve;});
+            window.fetch = async (url) => {
+                await window.documentLoadingGate;
+                return {ok: true, text: async () => String(url).includes('create.php')
                 ? '<div hidden data-omo-subdrawer-header data-omo-subdrawer-title="New document">'
                     + '<button form="document-editor" data-omo-subdrawer-action data-omo-subdrawer-cancel data-omo-document-editor-cancel>Annuler</button>'
                     + '<button type="submit" form="document-editor" data-omo-subdrawer-action>Creer le document</button></div>'
                     + '<form id="document-editor"><input name="title"></form>'
                 : '<div hidden data-omo-subdrawer-header data-omo-subdrawer-title="Document detail">'
-                    + '<button data-omo-subdrawer-action>Modifier</button></div><div data-document-detail>Content</div>'});
+                    + '<button data-omo-subdrawer-action>Modifier</button></div><div data-document-detail>Content</div>'};
+            };
         });
         await documentsPage.addScriptTag({content: fs.readFileSync(path.join(__dirname, '../omo/api/documents/drawers.js'), 'utf8')});
         await documentsPage.evaluate(() => window.commonPageScripts['/omo/api/documents/drawers.js']({
@@ -84,6 +90,12 @@ const {chromium} = require(process.argv[2] || 'playwright');
             documentsDrawerDetailDescription: 'Detail', documentsActionLoading: 'Loading'
         }));
         await documentsPage.locator('[data-omo-documents-new]').click();
+        const loading = documentsPage.locator('[data-common-loading-state]');
+        assert.equal(await loading.innerText(), 'Loading');
+        assert.equal(await documentsPage.locator('.skeleton').count(), 0, 'Drawers must use the shared indicator even when skeletons are available.');
+        assert.equal(await loading.evaluate(el => getComputedStyle(el).justifyItems), 'center');
+        assert.equal(await loading.locator('.generic-loading-indicator__spinner').evaluate(el => getComputedStyle(el).animationName), 'generic-loading-indicator-spin');
+        await documentsPage.evaluate(() => window.releaseDocumentLoading());
         await documentsPage.locator('header [data-omo-subdrawer-cancel]').waitFor({state: 'visible'});
         assert.deepEqual(await documentsPage.locator('header button:visible').allTextContents(), ['Creer le document', 'Annuler']);
         await documentsPage.locator('header [data-omo-subdrawer-cancel]').click();

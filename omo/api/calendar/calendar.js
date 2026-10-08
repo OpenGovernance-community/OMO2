@@ -1378,7 +1378,7 @@ window.omoInitCalendar = function (root) {
             }
 
             resetDrawerHeader();
-            drawerBody.innerHTML = '<div class="generic-section">' + escapeCalendarHtml(config.labels['calendar.loading']) + '</div>';
+            window.commonRenderLoadingState(drawerBody, config.labels['calendar.loading']);
         }
 
         function setDrawerError() {

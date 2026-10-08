@@ -691,6 +691,10 @@ window.commonPageScripts["/omo/api/stats/stats.js"] = function (pageConfig, page
         if (drawerController) {
             drawerController.resetHeader();
         }
+        if (!isError) {
+            window.commonRenderLoadingState(drawerBody, message);
+            return;
+        }
         drawerBody.innerHTML = '<div class="generic-section' + (isError ? ' omo-stats-feedback is-error' : '') + '"></div>';
         drawerBody.firstElementChild.textContent = message;
     }

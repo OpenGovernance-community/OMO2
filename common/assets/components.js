@@ -8,6 +8,21 @@
         return Array.prototype.slice.call(items || []);
     }
 
+    function renderLoadingState(container, message) {
+        if (!container) return;
+        var state = document.createElement('div');
+        state.className = 'generic-content-state';
+        state.setAttribute('role', 'status');
+        state.setAttribute('data-common-loading-state', '1');
+        state.innerHTML = '<span class="generic-loading-indicator">'
+            + '<svg class="generic-loading-indicator__spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">'
+            + '<circle class="generic-loading-indicator__track" cx="12" cy="12" r="9"></circle>'
+            + '<path class="generic-loading-indicator__arc" d="M12 3a9 9 0 0 1 9 9"></path></svg><span></span></span>';
+        state.querySelector('span > span').textContent = String(message || '');
+        container.replaceChildren(state);
+        return state;
+    }
+
     // Native innerHTML leaves scripts inert. Replay only executable scripts in
     // source order, retaining their DOM position and the host application's context.
     function executeFragmentScripts(container, options) {
@@ -1465,6 +1480,7 @@
     window.initGenericComponents = initGenericComponents;
     window.genericAwaitStylesheets = awaitStylesheets;
     window.commonExecuteFragmentScripts = executeFragmentScripts;
+    window.commonRenderLoadingState = renderLoadingState;
     window.initGenericEditableSelects = initEditableSelects;
     window.initGenericFileLists = initFileLists;
     window.syncGenericFileLists = function (root) {

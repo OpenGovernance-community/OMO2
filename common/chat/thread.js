@@ -288,7 +288,9 @@
         var countDisplay = actionContainer.querySelector('[data-omo-chat-message-count-display]');
         if (!countDisplay) return;
         var countLabel = String(root.__omoChatLabels.messageCount || '').replace('{count}', String(messageCount));
-        trigger.setAttribute('data-omo-chat-message-count', String(messageCount));
+        actionContainer.querySelectorAll('[data-omo-chat-open]').forEach(function (action) {
+            action.setAttribute('data-omo-chat-message-count', String(messageCount));
+        });
         countDisplay.setAttribute('title', countLabel);
         countDisplay.setAttribute('aria-label', countLabel);
         var countValue = countDisplay.querySelector('.omo-chat-popup-count-value');
