@@ -1032,7 +1032,7 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
             return;
         }
 
-        const htmlFieldVersion = '20261005-html-editor-gaps';
+        const htmlFieldVersion = '20261008-html-editor-embed-links';
         if (
             window.omoSimpleHtmlField
             && typeof window.omoSimpleHtmlField.mount === 'function'
