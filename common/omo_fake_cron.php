@@ -51,6 +51,12 @@ if (!function_exists('omo_run_fake_cron_maintenance')) {
             static fn () => omoProcessOrganizationBackups((string)$source)
         );
 
+        $result['scrumSprintsUpdated'] = $runTask(
+            'scrum_sprints',
+            'OMO Scrum maintenance failed: ',
+            static fn () => \dbObject\ScrumSprint::maintenance()
+        );
+
         $result['calDavCacheEntriesDeleted'] = $runTask(
             'caldav_cache_cleanup',
             'OMO fake cron CalDAV cache cleanup failed: ',

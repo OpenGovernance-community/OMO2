@@ -935,6 +935,28 @@ class Project extends DbObject
 
     public function save()
     {
+        if (!ScrumSprint::available()) { return $this->saveProject(); }
+        try {
+            return ScrumSprint::locked((int)$this->get('IDorganization'), function () {
+                // Close expired sprints before a project can change their final state.
+                $before = (int)$this->getId() > 0 ? self::getStoredHistoryState((int)$this->getId()) : null;
+                ScrumSprint::syncProject((int)$this->getId(), false);
+                $error = ScrumSprint::validateProjectChange($this);
+                if ($error !== null) { return ['status' => false, 'errorCode' => $error]; }
+                $result = $this->saveProject();
+                if (!empty($result['status']) && ($before['_status'] ?? '') !== (string)$this->get('status')) {
+                    ScrumSprint::syncProject((int)$this->getId(), true);
+                }
+                return $result;
+            });
+        } catch (\Throwable $error) {
+            error_log('Scrum project save failed: ' . $error->getMessage());
+            return ['status' => false, 'errorCode' => 'scrum_save'];
+        }
+    }
+
+    private function saveProject()
+    {
         $historyBeforeState = (int)$this->getId() > 0 ? self::getStoredHistoryState((int)$this->getId()) : null;
         $historyActionOverride = $this->historyActionOverride;
         $storedInputs = (int)$this->getId() > 0 ? self::getStoredImportanceInputs((int)$this->getId()) : null;
@@ -1326,6 +1348,16 @@ class Project extends DbObject
     }
 
     public function delete()
+    {
+        if (!ScrumSprint::available()) { return $this->deleteProject(); }
+        return ScrumSprint::locked((int)$this->get('IDorganization'), function () {
+            ScrumSprint::syncProject((int)$this->getId(), false);
+            if (ScrumSprint::hasUnfinishedProject((int)$this->getId())) { return false; }
+            return $this->deleteProject();
+        });
+    }
+
+    private function deleteProject()
     {
         $projectId = (int)$this->getId();
         $organizationId = (int)$this->get('IDorganization');

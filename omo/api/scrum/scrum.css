@@ -1,0 +1,14 @@
+.scrum-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+    gap: 1.5rem;
+    align-items: center;
+}
+.scrum-chart { width: 100%; max-height: 230px; }
+.scrum-objective { white-space: pre-wrap; }
+.scrum-summary[data-scrum-card] { cursor: pointer; }
+.scrum-estimate-row { display: grid; grid-template-columns: minmax(0, 1fr) 8rem; gap: .75rem; align-items: center; margin-block: .5rem; }
+.scrum-estimate-row small { grid-column: 1 / -1; }
+@media (max-width: 700px) {
+    .scrum-summary { grid-template-columns: minmax(0, 1fr); }
+}
