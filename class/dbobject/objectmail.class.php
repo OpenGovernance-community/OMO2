@@ -116,6 +116,65 @@ final class ObjectMail extends DbObject
         return $result;
     }
 
+    /** Track native PV invitations before SMTP, without putting them in the generic queue. */
+    public static function beginPvInvitationDelivery(Document $document, string $subject, string $message, array $recipients): self
+    {
+        $uid = (int)\commonGetCurrentUserId();
+        $oid = (int)$document->get('IDorganization');
+        $user = new User();
+        if ($uid <= 0 || !$user->load($uid, true) || !$user->get('active')
+            || !UserOrganization::hasActiveMembership($uid, $oid) || !$document->isPvDocument()
+            || $document->getPvStage() !== Document::PV_STAGE_PREPARATION
+            || !$document->canUserManagePvStructure($oid, $uid)) {
+            throw new \DomainException('Invitation PV non autorisee.');
+        }
+        if (!$recipients || trim($subject) === '' || trim($message) === '') {
+            throw new \InvalidArgumentException('Message et destinataires requis.');
+        }
+        $pdo = self::getPdo();
+        $pdo->beginTransaction();
+        try {
+            $mail = new self();
+            foreach (['IDuser' => $uid, 'IDorganization' => $oid, 'object_type' => 'pv_invitation',
+                'object_id' => (int)$document->getId(), 'request_hash' => hash('sha256', random_bytes(32)),
+                'payload_hash' => hash('sha256', json_encode([$subject, $message, $recipients], JSON_THROW_ON_ERROR)),
+                'subject' => $subject, 'message' => $message, 'message_format' => 'plain',
+                'recipient_count' => count($recipients), 'created_at' => time()] as $field => $value) {
+                $mail->set($field, $value);
+            }
+            if (empty($mail->save()['status'])) throw new \RuntimeException('Impossible de conserver l invitation.');
+            foreach ($recipients as $recipient) {
+                $email = (string)($recipient['email'] ?? '');
+                if (!filter_var($email, FILTER_VALIDATE_EMAIL)) throw new \InvalidArgumentException('Destinataire invalide.');
+                $memberId = (int)($recipient['user_id'] ?? 0);
+                $delivery = new ObjectMailRecipient();
+                foreach (['IDobject_mail' => $mail->getId(),
+                    'member_id' => $memberId > 0 ? 'user:' . $memberId : 'guest:' . hash('sha256', $email),
+                    'email' => $email, 'status' => 'sending', 'updated_at' => time()] as $field => $value) {
+                    $delivery->set($field, $value);
+                }
+                if (empty($delivery->save()['status'])) throw new \RuntimeException('Impossible de conserver le destinataire.');
+            }
+            $pdo->commit();
+            return $mail;
+        } catch (\Throwable $error) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            throw $error;
+        }
+    }
+
+    public function recordRecipientDelivery(string $email, string $status): void
+    {
+        if (!in_array($status, ['sent', 'failed', 'unknown'], true)) throw new \InvalidArgumentException('Statut d envoi invalide.');
+        $recipient = new ObjectMailRecipient();
+        if (!$recipient->load([['IDobject_mail', (int)$this->getId()], ['email', $email]])) {
+            throw new \RuntimeException('Destinataire de l envoi introuvable.');
+        }
+        $recipient->set('status', $status);
+        $recipient->set('updated_at', time());
+        if (empty($recipient->save()['status'])) throw new \RuntimeException('Impossible de conserver le resultat de l envoi.');
+    }
+
     public static function status(int $oid, int $id): array
     {
         $uid = (int)\commonGetCurrentUserId(); $user = new User();
