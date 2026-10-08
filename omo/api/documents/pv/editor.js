@@ -2164,6 +2164,13 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         const minHeight = 92;
         let isResizing = false;
 
+        // A responsive layout can hide the timer without collapsing the desktop panel.
+        const getTimingHeight = function () {
+            return timingPanel.getClientRects().length
+                ? timingPanel.getBoundingClientRect().height
+                : parseFloat(window.getComputedStyle(sidebar).getPropertyValue('--omo-pv-editor-timing-height'));
+        };
+
         const timingChartShell = root.querySelector('.omo-pv-editor__timing-chart-shell');
         const getTimingPanelPaddingHeight = function () {
             const panelStyle = window.getComputedStyle(timingPanel);
@@ -2196,6 +2203,12 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
                 return null;
             }
 
+            if (!timingPanel.getClientRects().length) {
+                sidebar.classList.toggle('is-timing-collapsed', numericHeight === 0);
+                sidebar.style.setProperty('--omo-pv-editor-timing-height', numericHeight + 'px');
+                return numericHeight;
+            }
+
             const sidebarHeight = sidebar.getBoundingClientRect().height;
             const collapseThreshold = minHeight / 2;
             const maxHeightFromChart = getTimingChartMaxSize() + getTimingPanelPaddingHeight();
@@ -2221,11 +2234,11 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
             if (savedHeight !== null) {
                 applyTimingHeight(savedHeight);
             } else {
-                applyTimingHeight(timingPanel.getBoundingClientRect().height);
+                applyTimingHeight(getTimingHeight());
             }
         } catch (error) {
             // Keep the default height when browser storage is unavailable.
-            applyTimingHeight(timingPanel.getBoundingClientRect().height);
+            applyTimingHeight(getTimingHeight());
         }
 
         timingResizer.addEventListener('mousedown', function (event) {
@@ -2264,14 +2277,14 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         document.addEventListener('mouseup', stopResizing);
         window.addEventListener('blur', stopResizing);
         window.addEventListener('resize', function () {
-            applyTimingHeight(sidebar.classList.contains('is-timing-collapsed') ? 0 : timingPanel.getBoundingClientRect().height);
+            applyTimingHeight(sidebar.classList.contains('is-timing-collapsed') ? 0 : getTimingHeight());
             syncTimingChartSize();
         });
 
         if (typeof ResizeObserver === 'function') {
             const timingResizeObserver = new ResizeObserver(function () {
                 if (!sidebar.classList.contains('is-timing-collapsed')) {
-                    applyTimingHeight(timingPanel.getBoundingClientRect().height);
+                    applyTimingHeight(getTimingHeight());
                 }
                 syncTimingChartSize();
             });
@@ -2311,7 +2324,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         const onReady = function () {
             ensureHighlightPalette(callback);
         };
-        const htmlFieldVersion = '20261005-html-editor-gaps';
+        const htmlFieldVersion = '20261008-html-editor-embed-links';
         if (
             window.omoSimpleHtmlField
             && typeof window.omoSimpleHtmlField.mount === 'function'
@@ -2716,14 +2729,15 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
             secretaryName.textContent = label !== '' ? label : pageConfig.label;
         }
 
-        const isCurrentEditor = currentUserId > 0
-            && Number(documentPayload.pvEditorUserId || 0) === currentUserId;
+        const isCurrentEditor = documentPayload.canPassPvEditor === true || (currentUserId > 0
+            && Number(documentPayload.pvEditorUserId || 0) === currentUserId);
         const isWaitingForReplacement = isCurrentEditor && documentPayload.pvEditorHandoverOpen === true;
         const canManageStructure = documentPayload.canManagePvStructure === true;
+        const canManageAgenda = canManageStructure || documentPayload.canCreatePvGroups === true;
         const isReview = String(documentPayload.pvStage || '') === 'review';
-        if (addMenu) addMenu.hidden = isCurrentEditor && !canManageStructure;
+        if (addMenu) addMenu.hidden = isCurrentEditor && !canManageAgenda;
         if (addMenuToggle) {
-            addMenuToggle.disabled = isReview || documentPayload.isPvValidated === true || documentPayload.isPvTemplate === true || (isCurrentEditor && !canManageStructure);
+            addMenuToggle.disabled = isReview || documentPayload.isPvValidated === true || documentPayload.isPvTemplate === true || (isCurrentEditor && !canManageAgenda);
             if (addMenuToggle.disabled) closeAddMenu();
         }
         canManageApplicationTabs = canManageStructure;
@@ -2734,14 +2748,14 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
             applicationTabAddButton.hidden = !canManageStructure;
         }
         if (sortMenu instanceof HTMLDetailsElement) {
-            sortMenu.hidden = !isCurrentEditor || !canManageStructure || isReview;
+            sortMenu.hidden = documentPayload.canSortPvAgenda !== true;
             if (sortMenu.hidden) sortMenu.open = false;
         }
         if (addGroupButton instanceof HTMLButtonElement) {
-            addGroupButton.hidden = !canManageStructure || isReview;
+            addGroupButton.hidden = documentPayload.canCreatePvGroups !== true;
         }
         if (deleteDropzone instanceof HTMLButtonElement) {
-            deleteDropzone.hidden = isReview || (isCurrentEditor && !canManageStructure);
+            deleteDropzone.hidden = isReview || (isCurrentEditor && !canManageAgenda);
         }
         if (secretaryState instanceof Element) {
             secretaryState.hidden = !isCurrentEditor;
@@ -6705,7 +6719,9 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
                 const remoteDocumentPayload = payload && payload.document ? payload.document : null;
                 const editorRightsChanged = remoteDocumentPayload
                     && (Number(remoteDocumentPayload.pvEditorUserId || 0) !== Number(currentDocumentPayload.pvEditorUserId || 0)
-                        || remoteDocumentPayload.canManagePvStructure !== currentDocumentPayload.canManagePvStructure);
+                        || remoteDocumentPayload.canManagePvStructure !== currentDocumentPayload.canManagePvStructure
+                        || remoteDocumentPayload.canSortPvAgenda !== currentDocumentPayload.canSortPvAgenda
+                        || remoteDocumentPayload.canCreatePvGroups !== currentDocumentPayload.canCreatePvGroups);
                 if (documentPayloadHasRemoteChanges(remoteDocumentPayload)) {
                     mergeCurrentDocumentPayload(remoteDocumentPayload);
                 }

@@ -126,7 +126,8 @@ function omoDocumentsPvEditorBuildPointResponsePayload(\dbObject\DocumentPvPoint
     if (!$document->load((int)$point->get('IDdocument'))) {
         return [];
     }
-    $allPoints = $document->getVisiblePvPointsForUser($currentUserId, true);
+    $agendaUserId = $isPublicParticipation ? $publicParticipationLink->getPvAgendaManagerUserId($document) : 0;
+    $allPoints = $document->getVisiblePvPointsForUser($agendaUserId ?: $currentUserId, true);
     $groupSummaryMap = omoDocumentsPvEditorBuildGroupSummaryMap($allPoints);
     $authorOptions = $isPublicParticipation ? [[
         'value' => 'user:' . $publicParticipationLink->getRecipientUserId(),
@@ -169,8 +170,9 @@ function omoDocumentsPvEditorBuildPointsPayloadForDocument(int $documentId, int 
     );
     $document = new \dbObject\Document();
     $hasDocument = $document->load($documentId);
+    $agendaUserId = $hasDocument && $publicParticipationLink ? $publicParticipationLink->getPvAgendaManagerUserId($document) : 0;
     $points = $hasDocument
-        ? $document->getVisiblePvPointsForUser($currentUserId, true)
+        ? $document->getVisiblePvPointsForUser($agendaUserId ?: $currentUserId, true)
         : new \dbObject\ArrayDocumentPvPoint();
     $isPublicParticipation = $publicParticipationLink instanceof \dbObject\DocumentShareLink;
     $hasStructureApplication = $isPublicParticipation
@@ -225,6 +227,7 @@ function omoDocumentsPvEditorBuildDocumentPayload(\dbObject\Document $document, 
     $stageUserId = $publicParticipationLink instanceof \dbObject\DocumentShareLink
         ? commonPvParticipationRecipientOrganizationUserId($publicParticipationLink, $organizationId)
         : $currentUserId;
+    $agendaUserId = $publicParticipationLink ? $publicParticipationLink->getPvAgendaManagerUserId($document) : $currentUserId;
     $pvEditorUserId = $document->getPvEditorUserId();
     $visibility = $document->getVisibilityDisplayData($organizationId);
     $modifiedAt = $document->get('datemodification');
@@ -262,8 +265,11 @@ function omoDocumentsPvEditorBuildDocumentPayload(\dbObject\Document $document, 
         'isPvEditor' => $document->isPvEditor($currentUserId),
         'canManagePvDocument' => $document->canUserManagePvDocument($currentUserId),
         'canManagePvStructure' => $document->canUserManagePvStructure($organizationId, $currentUserId),
-        'canClaimPvEditor' => $document->canUserClaimPvEditor($organizationId, $currentUserId),
-        'canReplacePvEditor' => $document->canUserReplacePvEditor($organizationId, $currentUserId),
+        'canSortPvAgenda' => $agendaUserId > 0 && $document->isPvEditor($agendaUserId) && $document->canUserCreatePvGroups($agendaUserId),
+        'canCreatePvGroups' => $agendaUserId > 0 && $document->canUserCreatePvGroups($agendaUserId),
+        'canClaimPvEditor' => $stageUserId > 0 && $document->canUserClaimPvEditor($organizationId, $stageUserId),
+        'canReplacePvEditor' => $stageUserId > 0 && $document->canUserReplacePvEditor($organizationId, $stageUserId),
+        'canPassPvEditor' => $document->isPvEditor($stageUserId) && $document->getPvStage() !== \dbObject\Document::PV_STAGE_REVIEW,
         'pvEditorHandoverOpen' => $document->isPvEditorHandoverOpen(),
         'isPvValidated' => $document->isPvValidated(),
         'isPvTemplate' => $document->isPvTemplate(),
@@ -431,9 +437,19 @@ if ($action === 'heartbeat_locks' || $action === 'release_locks') {
 }
 
 $document = omoDocumentsPvEditorLoadDocumentOrFail($documentId, $organizationId, $currentUserId);
+$agendaUserId = $isPublicParticipation ? $publicParticipationLink->getPvAgendaManagerUserId($document) : $currentUserId;
+$publicAgendaActionAllowed = $isPublicParticipation && $agendaUserId > 0
+    && in_array($action, ['add_group', 'update_group', 'reorder_points', 'sort_points'], true)
+    && omoDocumentsPvEditorHasValidSessionToken($organizationId, $documentId, $editorActorKey, $editorToken);
+$handoverUserId = $isPublicParticipation ? $publicParticipationUserId : $currentUserId;
+$publicHandoverActionAllowed = $isPublicParticipation && $handoverUserId > 0
+    && in_array($action, ['claim_pv_editor', 'replace_pv_editor', 'pass_pv_editor'], true)
+    && omoDocumentsPvEditorHasValidSessionToken($organizationId, $documentId, $editorActorKey, $editorToken);
 if (
     $isPublicParticipation
     && !in_array($action, ['poll_updates', 'heartbeat_locks', 'release_locks', 'add_point', 'lock_point', 'unlock_point', 'save_point', 'delete_point'], true)
+    && !$publicAgendaActionAllowed
+    && !$publicHandoverActionAllowed
     && !($action === 'update_stage' && $document->canManagePvStage($organizationId, $publicParticipationUserId))
 ) {
     omoDocumentsPvEditorJsonResponse([
@@ -598,52 +614,52 @@ if ($action === 'set_pv_template') {
 }
 
 if ($action === 'claim_pv_editor') {
-    $claimResult = $document->claimPvEditor($organizationId, $currentUserId);
+    $claimResult = $document->claimPvEditor($organizationId, $handoverUserId);
     if (!is_array($claimResult) || ($claimResult['status'] ?? false) !== true) {
         omoDocumentsPvEditorJsonResponse([
             'status' => false,
             'message' => trim((string)($claimResult['text'] ?? omoDocumentsPvEditorActionT('documents.pv_editor.error.operation_failed'))),
-            'document' => omoDocumentsPvEditorBuildDocumentPayload($document, $organizationId, $currentUserId),
+            'document' => omoDocumentsPvEditorBuildDocumentPayload($document, $organizationId, $currentUserId, $publicParticipationLink),
         ], 403);
     }
 
     omoDocumentsPvEditorJsonResponse([
         'status' => true,
-        'document' => omoDocumentsPvEditorBuildDocumentPayload($document, $organizationId, $currentUserId),
-        'points' => omoDocumentsPvEditorBuildPointsPayloadForDocument((int)$document->getId(), $organizationId, $currentUserId, $editorToken),
+        'document' => omoDocumentsPvEditorBuildDocumentPayload($document, $organizationId, $currentUserId, $publicParticipationLink),
+        'points' => omoDocumentsPvEditorBuildPointsPayloadForDocument((int)$document->getId(), $organizationId, $currentUserId, $editorToken, $publicParticipationLink),
     ]);
 }
 
 if ($action === 'pass_pv_editor') {
-    $handoverResult = $document->openPvEditorHandover($currentUserId);
+    $handoverResult = $document->openPvEditorHandover($handoverUserId);
     if (!is_array($handoverResult) || ($handoverResult['status'] ?? false) !== true) {
         omoDocumentsPvEditorJsonResponse([
             'status' => false,
             'message' => trim((string)($handoverResult['text'] ?? omoDocumentsPvEditorActionT('documents.pv_editor.error.operation_failed'))),
-            'document' => omoDocumentsPvEditorBuildDocumentPayload($document, $organizationId, $currentUserId),
+            'document' => omoDocumentsPvEditorBuildDocumentPayload($document, $organizationId, $currentUserId, $publicParticipationLink),
         ], 403);
     }
 
     omoDocumentsPvEditorJsonResponse([
         'status' => true,
-        'document' => omoDocumentsPvEditorBuildDocumentPayload($document, $organizationId, $currentUserId),
+        'document' => omoDocumentsPvEditorBuildDocumentPayload($document, $organizationId, $currentUserId, $publicParticipationLink),
     ]);
 }
 
 if ($action === 'replace_pv_editor') {
-    $replaceResult = $document->replacePvEditor($organizationId, $currentUserId);
+    $replaceResult = $document->replacePvEditor($organizationId, $handoverUserId);
     if (!is_array($replaceResult) || ($replaceResult['status'] ?? false) !== true) {
         omoDocumentsPvEditorJsonResponse([
             'status' => false,
             'message' => trim((string)($replaceResult['text'] ?? omoDocumentsPvEditorActionT('documents.pv_editor.error.operation_failed'))),
-            'document' => omoDocumentsPvEditorBuildDocumentPayload($document, $organizationId, $currentUserId),
+            'document' => omoDocumentsPvEditorBuildDocumentPayload($document, $organizationId, $currentUserId, $publicParticipationLink),
         ], 403);
     }
 
     omoDocumentsPvEditorJsonResponse([
         'status' => true,
-        'document' => omoDocumentsPvEditorBuildDocumentPayload($document, $organizationId, $currentUserId),
-        'points' => omoDocumentsPvEditorBuildPointsPayloadForDocument((int)$document->getId(), $organizationId, $currentUserId, $editorToken),
+        'document' => omoDocumentsPvEditorBuildDocumentPayload($document, $organizationId, $currentUserId, $publicParticipationLink),
+        'points' => omoDocumentsPvEditorBuildPointsPayloadForDocument((int)$document->getId(), $organizationId, $currentUserId, $editorToken, $publicParticipationLink),
     ]);
 }
 
@@ -962,7 +978,7 @@ if ($action === 'add_point') {
 }
 
 if ($action === 'add_group') {
-    if (!$document->canUserCreatePvGroups($currentUserId)) {
+    if ($agendaUserId <= 0 || !$document->canUserCreatePvGroups($agendaUserId)) {
         omoDocumentsPvEditorJsonResponse([
             'status' => false,
             'message' => omoDocumentsPvEditorActionT('documents.pv_editor.error.forbidden'),
@@ -972,7 +988,7 @@ if ($action === 'add_group') {
     $group = new \dbObject\DocumentPvPoint();
     $group->set('IDdocument', (int)$document->getId());
     $group->set('item_type', \dbObject\DocumentPvPoint::ITEM_TYPE_GROUP);
-    $group->set('IDuser_modification', $currentUserId);
+    $group->set('IDuser_modification', $agendaUserId);
     $group->set('title', omoDocumentsPvEditorActionT('documents.pv_editor.group.default_title'));
     $group->set('pointtype', \dbObject\DocumentPvPoint::TYPE_INFORMATION);
     $group->set('active', 1);
@@ -986,7 +1002,7 @@ if ($action === 'add_group') {
 
     omoDocumentsPvEditorJsonResponse([
         'status' => true,
-        'point' => omoDocumentsPvEditorBuildPointResponsePayload($group, $organizationId, $currentUserId),
+        'point' => omoDocumentsPvEditorBuildPointResponsePayload($group, $organizationId, $currentUserId, $publicParticipationLink),
     ]);
 }
 
@@ -994,7 +1010,7 @@ if ($action === 'update_group') {
     $groupId = isset($_POST['point_id']) ? (int)$_POST['point_id'] : 0;
     $group = new \dbObject\DocumentPvPoint();
     if (
-        !$document->canUserCreatePvGroups($currentUserId)
+        $agendaUserId <= 0 || !$document->canUserCreatePvGroups($agendaUserId)
         || $groupId <= 0
         || !$group->load($groupId)
         || !$group->isGroup()
@@ -1007,7 +1023,7 @@ if ($action === 'update_group') {
     }
 
     $group->set('title', trim((string)($_POST['title'] ?? '')));
-    $group->set('IDuser_modification', $currentUserId);
+    $group->set('IDuser_modification', $agendaUserId);
     $saveResult = $group->save();
     if (!is_array($saveResult) || ($saveResult['status'] ?? false) !== true) {
         omoDocumentsPvEditorJsonResponse([
@@ -1018,7 +1034,7 @@ if ($action === 'update_group') {
 
     omoDocumentsPvEditorJsonResponse([
         'status' => true,
-        'point' => omoDocumentsPvEditorBuildPointResponsePayload($group, $organizationId, $currentUserId),
+        'point' => omoDocumentsPvEditorBuildPointResponsePayload($group, $organizationId, $currentUserId, $publicParticipationLink),
     ]);
 }
 
@@ -1233,7 +1249,14 @@ if ($action === 'save_point') {
         $point->set('IDholon_concerned', $requestedConcernedHolonId > 0 ? $requestedConcernedHolonId : null);
         $point->set('is_confidential', $isReview ? $point->isConfidential() : (!$isPublicParticipation && !empty($_POST['is_confidential'])));
     }
-    $point->set('content', (string)($_POST['content'] ?? ''));
+    $pointContent = (string)($_POST['content'] ?? '');
+    if ($isPublicParticipation && !$publicParticipationLink->canUsePvDocumentReferences($pointContent, (string)$point->get('content'))) {
+        omoDocumentsPvEditorJsonResponse([
+            'status' => false,
+            'message' => omoDocumentsPvEditorActionT('documents.pv_editor.error.forbidden'),
+        ], 403);
+    }
+    $point->set('content', $pointContent);
     $point->set('IDuser_modification', $isPublicParticipation
         ? ($publicParticipationLink->getRecipientUserId() ?: null)
         : ($currentUserId > 0 ? $currentUserId : null));
@@ -1280,7 +1303,9 @@ if ($action === 'delete_point') {
             && !$document->canUserEditPvPoint($point, $currentUserId))
         || (!$isPublicParticipation && $point->isGroup()
             && !$document->canUserCreatePvGroups($currentUserId))
-        || ($isPublicParticipation && !commonPvParticipationCanEditPoint($document, $point, $publicParticipationLink))
+        || ($isPublicParticipation && !commonPvParticipationCanEditPoint($document, $point, $publicParticipationLink)
+            && !($point->isGroup() && $agendaUserId > 0 && $document->canUserCreatePvGroups($agendaUserId)
+                && omoDocumentsPvEditorHasValidSessionToken($organizationId, $documentId, $editorActorKey, $editorToken)))
     ) {
         omoDocumentsPvEditorJsonResponse([
             'status' => false,
@@ -1370,7 +1395,7 @@ if ($action === 'toggle_handled') {
 }
 
 if ($action === 'reorder_points') {
-    if (!$document->canUserReorderPvPoints($currentUserId)) {
+    if ($agendaUserId <= 0 || !$document->canUserReorderPvPoints($agendaUserId)) {
         omoDocumentsPvEditorJsonResponse([
             'status' => false,
             'message' => omoDocumentsPvEditorActionT('documents.pv_editor.error.forbidden'),
@@ -1382,7 +1407,7 @@ if ($action === 'reorder_points') {
     $reorderResult = \dbObject\DocumentPvPoint::reorderHierarchyForDocumentByUser(
         (int)$document->getId(),
         $layout,
-        $currentUserId
+        $agendaUserId
     );
     if (!is_array($reorderResult) || ($reorderResult['status'] ?? false) !== true) {
         omoDocumentsPvEditorJsonResponse([
@@ -1393,13 +1418,13 @@ if ($action === 'reorder_points') {
 
     omoDocumentsPvEditorJsonResponse([
         'status' => true,
-        'points' => omoDocumentsPvEditorBuildPointsPayloadForDocument((int)$document->getId(), $organizationId, $currentUserId, $editorToken),
+        'points' => omoDocumentsPvEditorBuildPointsPayloadForDocument((int)$document->getId(), $organizationId, $currentUserId, $editorToken, $publicParticipationLink),
     ]);
 }
 
 if ($action === 'sort_points') {
-    if (!$document->isPvEditor($currentUserId)
-        || !$document->canUserManagePvStructure($organizationId, $currentUserId)
+    if ($agendaUserId <= 0 || !$document->isPvEditor($agendaUserId)
+        || !$document->canUserManagePvStructure($organizationId, $agendaUserId)
         || $document->getPvStage() === \dbObject\Document::PV_STAGE_REVIEW) {
         omoDocumentsPvEditorJsonResponse([
             'status' => false,
@@ -1409,7 +1434,7 @@ if ($action === 'sort_points') {
 
     $sortResult = \dbObject\DocumentPvPoint::sortAgendaForDocumentByUser(
         (int)$document->getId(),
-        $currentUserId,
+        $agendaUserId,
         $_POST['sort_mode'] ?? 'none',
         !empty($_POST['handled_last']),
         !empty($_POST['group_by_type']),
@@ -1424,7 +1449,7 @@ if ($action === 'sort_points') {
 
     omoDocumentsPvEditorJsonResponse([
         'status' => true,
-        'points' => omoDocumentsPvEditorBuildPointsPayloadForDocument((int)$document->getId(), $organizationId, $currentUserId, $editorToken),
+        'points' => omoDocumentsPvEditorBuildPointsPayloadForDocument((int)$document->getId(), $organizationId, $currentUserId, $editorToken, $publicParticipationLink),
     ]);
 }
 
