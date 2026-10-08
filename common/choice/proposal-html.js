@@ -100,7 +100,7 @@
             }
 
             var script = document.createElement('script');
-            script.src = '/omo/assets/js/simple-html-field.js?v=20261005-html-editor-gaps';
+            script.src = '/omo/assets/js/simple-html-field.js?v=20261008-html-editor-embed-links';
             script.defer = true;
             script.setAttribute('data-omo-simple-html-field-loader', '1');
             script.addEventListener('load', start, {once: true});

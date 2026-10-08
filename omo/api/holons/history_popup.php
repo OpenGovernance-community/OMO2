@@ -160,7 +160,7 @@ if ($requestFragment === 'items') {
 	</div>
 </div>
 
-<script src="/omo/assets/js/simple-html-field.js?v=20261005-html-editor-gaps"></script>
+<script src="/omo/assets/js/simple-html-field.js?v=20261008-html-editor-embed-links"></script>
 <script src="/common/choice/word-diff.js?v=20260816"></script>
 <script src="<?= commonAssetUrl('/common/choice/change-details.js') ?>"></script>
 <script src="<?= commonAssetUrl('/omo/api/holons/history_popup.js') ?>"></script>

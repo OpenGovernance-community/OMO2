@@ -190,7 +190,7 @@ $activityHelp = static function ($label, $text) {
     </form>
 </div>
 <?php if ($deferredEditor): ?>
-<script src="/omo/assets/js/simple-html-field.js?v=20261005-html-editor-gaps"></script>
+<script src="/omo/assets/js/simple-html-field.js?v=20261008-html-editor-embed-links"></script>
 <script src="/common/choice/deferred-object-editor.js?v=20260924-shared-form-validation"></script>
 <script>window.omoDeferredObjectEditorInit(document.querySelector('[data-deferred-object-editor]'), <?= json_encode(['origin'=>$deferredEditor['origin'],'targetType'=>$deferredEditor['targetType'],'holonId'=>$currentHolonId,'pointId'=>$deferredEditor['pointId'] ?? 0], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>);</script>
 <?php endif; ?>
