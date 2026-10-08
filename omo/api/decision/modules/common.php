@@ -3095,8 +3095,8 @@ if (!function_exists('omoDecisionSendParticipantAccessEmail')) {
         $html = commonRenderMailLayout([
             'brand_name' => $organizationName,
             'brand_color' => $organization ? trim((string)$organization->get('color')) : '',
-            'logo_url' => $organization ? trim((string)$organization->get('logo')) : '',
-            'banner_url' => $organization ? trim((string)$organization->get('banner')) : '',
+            'logo_url' => $organization ? commonBuildAbsoluteAssetUrl((string)$organization->get('logo')) : '',
+            'banner_url' => $organization ? commonBuildAbsoluteAssetUrl((string)$organization->get('banner')) : '',
             'heading' => $decisionTitle !== '' ? $decisionTitle : omoDecisionInvitationT('decisions.invitations.email.default_title'),
             'intro_html' => commonMailTextToHtml($message),
             'details_html' => $detailsHtml,
@@ -3209,8 +3209,8 @@ if (!function_exists('omoDecisionSendParticipantAccessCodeEmail')) {
         $html = commonRenderMailLayout([
             'brand_name' => $organizationName,
             'brand_color' => $organization ? trim((string)$organization->get('color')) : '',
-            'logo_url' => $organization ? trim((string)$organization->get('logo')) : '',
-            'banner_url' => $organization ? trim((string)$organization->get('banner')) : '',
+            'logo_url' => $organization ? commonBuildAbsoluteAssetUrl((string)$organization->get('logo')) : '',
+            'banner_url' => $organization ? commonBuildAbsoluteAssetUrl((string)$organization->get('banner')) : '',
             'heading' => $decisionTitle !== '' ? $decisionTitle : omoDecisionInvitationT('decisions.invitations.email.default_title'),
             'intro_html' => commonMailTextToHtml(implode("\n", $messageLines)),
             'details_html' => $codeHtml,
