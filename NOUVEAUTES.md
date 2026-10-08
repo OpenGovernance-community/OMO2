@@ -1,5 +1,11 @@
 # Journal Des Nouveautes
 
+- PV (2026-10-08) : les invitations figurent desormais dans les messages envoyes de la topbar, avec le sujet, le texte, les destinataires selectionnes et le resultat individuel. L historique est cree avant l envoi ; les echecs et resultats incertains sont conserves sans relance automatique.
+
+- PV (2026-10-08) : le nombre de destinataires des invitations se deplie pour afficher les noms et adresses avec des cases cochees par defaut. Seules les personnes selectionnees recoivent le message et leur lien individuel ; le compteur suit la selection et un envoi sans destinataire est refuse.
+
+- Calendrier (2026-10-08) : les invitations externes par e-mail sans agenda accessible ne produisent plus de ligne A verifier lors de la sauvegarde. Les conflits des membres et les problemes de lecture de leurs calendriers restent signales.
+
 - Mise a jour (2026-10-08) : la sauvegarde de transition vers le stockage partage conserve le lien img/upload sans traverser ses fichiers, meme si une ancienne version suivait encore son .htaccess. Git ignore desormais aussi le lien lui-meme. La liste des problemes masque les fichiers non suivis sans conflit et compte uniquement les fichiers affiches.
 
 - PV (2026-10-08) : boutons Enregistrer et Annuler des la premiere modification d un point. Annuler restaure le contenu et les champs du debut de l edition. Le passage dans un autre point sauvegarde les modifications ; les popups et les pertes de focus hors des points ne declenchent pas de sauvegarde. Un echec conserve le brouillon et affiche une notification.
