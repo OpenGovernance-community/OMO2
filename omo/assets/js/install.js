@@ -169,8 +169,29 @@
         return bannerElement;
     }
 
-    function omoShowBanner() {
+    async function omoShowBanner() {
         if (!deferredInstallPrompt || omoIsStandalone() || omoShouldSuppressBanner()) {
+            return;
+        }
+
+        const installPrompt = deferredInstallPrompt;
+
+        if (typeof navigator.getInstalledRelatedApps === 'function') {
+            try {
+                const installedApps = await navigator.getInstalledRelatedApps();
+
+                // The current manifest declares only this organization's PWA as a related webapp.
+                if (installedApps.some(function (app) { return app.platform === 'webapp'; })) {
+                    omoHideBanner();
+                    return;
+                }
+            } catch (error) {
+                console.warn('Impossible de verifier l installation OMO.', error);
+            }
+        }
+
+        // Installation or dismissal may have occurred while the browser was checking.
+        if (deferredInstallPrompt !== installPrompt || omoIsStandalone() || omoShouldSuppressBanner()) {
             return;
         }
 

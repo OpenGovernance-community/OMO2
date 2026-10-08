@@ -1700,6 +1700,58 @@ html[data-theme="dark"] .black-icon,
 .generic-html-editor [data-html-editor-surface] > :first-child { margin-top: 0; }
 .generic-html-editor [data-html-editor-surface] > :last-child { margin-bottom: 0; }
 
+/* Summernote saves palette highlights as inline HEX/RGB colors. Adapt their
+   screen rendering without changing saved HTML or light document exports. */
+@media screen {
+    html[data-theme="dark"] :is(.note-editable, .omo-simple-html-render, .omo-highlight-palette) :is(
+        [style*="background-color: #f3e7ae" i], [style*="background-color:#f3e7ae" i],
+        [style*="background-color: rgb(243, 231, 174)" i], [style*="background-color:rgb(243, 231, 174)" i],
+        [style*="background-color: rgb(243,231,174)" i], [style*="background-color:rgb(243,231,174)" i]
+    ) {
+        background-color: color-mix(in srgb, #f3e7ae 25%, var(--color-surface, #16202b)) !important;
+    }
+
+    html[data-theme="dark"] :is(.note-editable, .omo-simple-html-render, .omo-highlight-palette) :is(
+        [style*="background-color: #cfe8d2" i], [style*="background-color:#cfe8d2" i],
+        [style*="background-color: rgb(207, 232, 210)" i], [style*="background-color:rgb(207, 232, 210)" i],
+        [style*="background-color: rgb(207,232,210)" i], [style*="background-color:rgb(207,232,210)" i]
+    ) {
+        background-color: color-mix(in srgb, #cfe8d2 25%, var(--color-surface, #16202b)) !important;
+    }
+
+    html[data-theme="dark"] :is(.note-editable, .omo-simple-html-render, .omo-highlight-palette) :is(
+        [style*="background-color: #cbdcf0" i], [style*="background-color:#cbdcf0" i],
+        [style*="background-color: rgb(203, 220, 240)" i], [style*="background-color:rgb(203, 220, 240)" i],
+        [style*="background-color: rgb(203,220,240)" i], [style*="background-color:rgb(203,220,240)" i]
+    ) {
+        background-color: color-mix(in srgb, #cbdcf0 25%, var(--color-surface, #16202b)) !important;
+    }
+
+    html[data-theme="dark"] :is(.note-editable, .omo-simple-html-render, .omo-highlight-palette) :is(
+        [style*="background-color: #f5d3ad" i], [style*="background-color:#f5d3ad" i],
+        [style*="background-color: rgb(245, 211, 173)" i], [style*="background-color:rgb(245, 211, 173)" i],
+        [style*="background-color: rgb(245,211,173)" i], [style*="background-color:rgb(245,211,173)" i]
+    ) {
+        background-color: color-mix(in srgb, #f5d3ad 25%, var(--color-surface, #16202b)) !important;
+    }
+
+    html[data-theme="dark"] :is(.note-editable, .omo-simple-html-render, .omo-highlight-palette) :is(
+        [style*="background-color: #f1c4c4" i], [style*="background-color:#f1c4c4" i],
+        [style*="background-color: rgb(241, 196, 196)" i], [style*="background-color:rgb(241, 196, 196)" i],
+        [style*="background-color: rgb(241,196,196)" i], [style*="background-color:rgb(241,196,196)" i]
+    ) {
+        background-color: color-mix(in srgb, #f1c4c4 25%, var(--color-surface, #16202b)) !important;
+    }
+
+    html[data-theme="dark"] :is(.note-editable, .omo-simple-html-render, .omo-highlight-palette) :is(
+        [style*="background-color: #ddd0ee" i], [style*="background-color:#ddd0ee" i],
+        [style*="background-color: rgb(221, 208, 238)" i], [style*="background-color:rgb(221, 208, 238)" i],
+        [style*="background-color: rgb(221,208,238)" i], [style*="background-color:rgb(221,208,238)" i]
+    ) {
+        background-color: color-mix(in srgb, #ddd0ee 25%, var(--color-surface, #16202b)) !important;
+    }
+}
+
 /* Fill a bounded writing pane; text scrolls inside, in preview and Summernote. */
 .generic-html-editor.generic-html-editor--fill,
 .generic-html-editor--fill .note-editor,
