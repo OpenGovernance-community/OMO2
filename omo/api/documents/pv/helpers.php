@@ -493,6 +493,7 @@ function omoDocumentsPvEditorBuildUiText(?callable $translate = null, array $pri
         'sendInvitations' => $resolve('documents.pv_editor.action.send_invitations', 'Envoyer les invitations'),
         'invitationOptions' => $resolve('documents.pv_editor.action.invitation_options', 'Options des invitations'),
         'moreActions' => $resolve('documents.pv_editor.action.more', 'Plus d’actions'),
+        'cancel' => $resolve('documents.pv_editor.action.cancel', 'Annuler'),
         'markTemplate' => $resolve('documents.pv_editor.action.mark_template', 'Enregistrer comme modèle'),
         'unmarkTemplate' => $resolve('documents.pv_editor.action.unmark_template', 'Retirer des modèles'),
         'exportPdf' => $resolve('documents.pv_editor.action.export_pdf', 'Exporter en PDF'),
@@ -1438,7 +1439,8 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
     }
     if ($canEditNow) {
         $html .= '      <div class="omo-pv-editor__point-actions omo-pv-editor__point-meta-actions">';
-        $html .= '        <button type="button" class="generic-action-button omo-pv-editor__save-button" data-omo-pv-point-save="' . $pointId . '" disabled aria-disabled="true">' . omoDocumentsPvEditorEscape((string)$uiText['saved']) . '</button>';
+        $html .= '        <button type="button" class="generic-action-button omo-pv-editor__save-button" data-omo-pv-point-save="' . $pointId . '" hidden disabled aria-disabled="true">' . omoDocumentsPvEditorEscape((string)$uiText['saved']) . '</button>';
+        $html .= '        <button type="button" class="generic-action-button generic-action-button--secondary omo-pv-editor__save-button" data-omo-pv-point-cancel="' . $pointId . '" hidden>' . omoDocumentsPvEditorEscape((string)$uiText['cancel']) . '</button>';
         if (!empty($pointData['canDelete'])) {
             $html .= '        <button type="button" class="omo-pv-editor__delete-button" data-omo-pv-point-delete="' . $pointId . '" title="' . omoDocumentsPvEditorEscape((string)($uiText['deletePoint'] ?? 'Supprimer le point')) . '" aria-label="' . omoDocumentsPvEditorEscape((string)($uiText['deletePoint'] ?? 'Supprimer le point')) . '"><img src="/omo/assets/images/documents/poubelle.png" alt="" aria-hidden="true"></button>';
         }
