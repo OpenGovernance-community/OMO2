@@ -82,6 +82,10 @@
         if (drawerController) {
             drawerController.resetHeader();
         }
+        if (!isError) {
+            window.commonRenderLoadingState(drawerBody, message);
+            return;
+        }
         drawerBody.innerHTML = '<div class="generic-section omo-checklist-feedback' + (isError ? ' is-error' : '') + '"></div>';
         drawerBody.firstElementChild.textContent = String(message || '');
     }

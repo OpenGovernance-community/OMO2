@@ -962,12 +962,7 @@ function omoDecisionRenderNestedEditorLoading() {
         return;
     }
 
-    if (typeof window.getSkeleton === 'function') {
-        elements.editorBody.innerHTML = window.getSkeleton('panel');
-        return;
-    }
-
-    elements.editorBody.innerHTML = '<div class="loading">Chargement...</div>';
+    window.commonRenderLoadingState(elements.editorBody, 'Chargement...');
 }
 
 function omoDecisionRenderNestedEditorError() {

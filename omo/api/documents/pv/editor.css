@@ -2282,6 +2282,15 @@ html[data-theme="dark"] .omo-pv-editor__nav-point-type-icon {
 }
 
 @media (max-width: 620px) {
+    .omo-pv-editor__point-meta-actions:has([data-omo-pv-point-save]:not([hidden])):has([data-omo-pv-point-cancel]:not([hidden])) .omo-chat-popup-trigger {
+        display: none;
+    }
+
+    .omo-pv-editor__point-meta-actions {
+        flex-wrap: wrap;
+        max-width: 100%;
+    }
+
     .omo-pv-editor__header-card {
         padding: 16px;
     }

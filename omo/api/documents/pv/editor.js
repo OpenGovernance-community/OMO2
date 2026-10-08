@@ -2735,7 +2735,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         const canManageStructure = documentPayload.canManagePvStructure === true;
         const canManageAgenda = canManageStructure || documentPayload.canCreatePvGroups === true;
         const isReview = String(documentPayload.pvStage || '') === 'review';
-        if (addMenu) addMenu.hidden = isCurrentEditor && !canManageAgenda;
+        if (addMenu) addMenu.hidden = isReview || (isCurrentEditor && !canManageAgenda);
         if (addMenuToggle) {
             addMenuToggle.disabled = isReview || documentPayload.isPvValidated === true || documentPayload.isPvTemplate === true || (isCurrentEditor && !canManageAgenda);
             if (addMenuToggle.disabled) closeAddMenu();
@@ -2822,7 +2822,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         }
 
         if (addButton instanceof HTMLButtonElement) {
-            addButton.hidden = isCurrentEditor && !canManageAgenda;
+            addButton.hidden = isReview || (isCurrentEditor && !canManageAgenda);
             addButton.disabled = documentPayload.isPvValidated === true || isReview || addButton.hidden;
         }
         if (templateToggleButton instanceof HTMLButtonElement) {

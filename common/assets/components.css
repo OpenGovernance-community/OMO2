@@ -1733,7 +1733,8 @@ html[data-theme="dark"] .black-icon,
     background: var(--generic-form-control-background-focus);
 }
 
-.generic-form-control:disabled {
+.generic-form-control:disabled,
+.generic-form-control[readonly][aria-disabled="true"] {
     cursor: not-allowed;
     color: var(--color-text-light, #64748b);
     background: var(--color-surface-alt, #f0f2f5);
@@ -3199,6 +3200,16 @@ html[data-theme="dark"] .generic-tabs__tab:focus-visible .generic-monochrome-ico
     color: #8a1c14;
 }
 
+.generic-content-state {
+    display: grid;
+    justify-items: center;
+    align-content: center;
+    gap: 16px;
+    min-height: 160px;
+    padding: 24px;
+    text-align: center;
+}
+
 .generic-loading-indicator {
     display: inline-flex;
     align-items: center;
@@ -3213,6 +3224,7 @@ html[data-theme="dark"] .generic-tabs__tab:focus-visible .generic-monochrome-ico
 }
 
 .generic-loading-indicator__spinner {
+    flex-shrink: 0;
     width: 16px;
     height: 16px;
     animation: generic-loading-indicator-spin 0.8s linear infinite;
