@@ -12,7 +12,7 @@
 /docker/db/init/*.local.sql
 /docker/db/init/*.private.sql
 /docker/db/init/*.disabled
-/img/upload/**
+/img/upload
 
 /test/**
 !/test/
