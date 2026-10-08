@@ -1,5 +1,9 @@
 # Journal Des Nouveautes
 
+- Calendrier (2026-10-08) : en vue mensuelle, les evenements avec un document joint restent dans la largeur de leur jour, y compris avec des titres ou des noms de contexte longs. Le raccourci du document reste accessible.
+
+- PV (2026-10-08) : mise en page mobile commune au lien de participation et au volet ouvert depuis le calendrier ou les documents. Ordre du jour complet, points en dessous, timer masque et titre sur toute la largeur ; suppression des defilements internes de l ordre du jour.
+
 - Notifications (2026-10-08) : nom de la personne dans les invitations, changements d horaire ou de lieu, nouvelles propositions, refus et changements de statut des projets. Organisateur indique si l invitation est envoyee par un autre membre ; nouvelle fin et lieu precises. Repli sur l auteur du commentaire si son nom manque, anonymat conserve et changements automatiques de statut identifies.
 
 - PV (2026-10-08) : en relecture, priorite, type, auteur, espace concerne, duree et confidentialite des points sont figes, y compris lors de la sauvegarde. Les corrections du titre et du contenu restent possibles pour l editeur. Onglets d applications masques et ajout ou retrait refuses, y compris lors du passage en relecture sans rechargement.
