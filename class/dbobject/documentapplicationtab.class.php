@@ -119,6 +119,7 @@ class DocumentApplicationTab extends DbObject
             $documentId <= 0
             || !$document->isPvDocument()
             || $document->isPvValidated()
+            || $document->getPvStage() === Document::PV_STAGE_REVIEW
             || $applicationId <= 0
             || !self::hasTable()
             || !Application::isEnabledForOrganization($applicationId, $organizationId)

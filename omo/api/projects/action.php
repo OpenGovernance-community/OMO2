@@ -249,7 +249,8 @@ if (in_array($action, ['accept_project_proposal', 'refuse_project_proposal'], tr
                 [$proposerId],
                 'project_proposal_refused:' . (int)$existingProject->getId(),
                 omoProjectsT('projects.proposal.refused_notification_title'),
-                omoProjectsT('projects.proposal.refused_notification_body', [
+                omoProjectsT('projects.proposal.refused_notification_body_by_actor', [
+                    'actor' => notificationCenterActorName($currentUserId, $organizationId),
                     'title' => trim((string)$existingProject->get('title')),
                 ]),
                 '/omo/o/' . $organizationId . '#projects-d' . (int)$existingProject->getId(),
