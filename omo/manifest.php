@@ -141,6 +141,11 @@ $manifest = [
     'dir' => 'ltr',
     'start_url' => $startUrl,
     'scope' => $scope,
+    'related_applications' => [[
+        'platform' => 'webapp',
+        'url' => '/omo/manifest.php' . ($requestedOrganizationId > 0 ? '?oid=' . $requestedOrganizationId : ''),
+        'id' => commonBuildUrl($startUrl),
+    ]],
     'display' => 'standalone',
     'orientation' => 'any',
     'background_color' => '#f7f8fa',
