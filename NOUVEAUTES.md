@@ -1,5 +1,9 @@
 # Journal Des Nouveautes
 
+- Scrum (2026-10-08) : charge multipliee par quatre entre chaque taille (S=1, M=4, L=16, XL=64, XXL=256), dans le calcul et l apercu d import. Les charges deja figees au demarrage restent conservees jusqu a une relance.
+
+- Scrum (2026-10-08) : nouvelle application de sprints par espace, import des projets avec tous leurs descendants et estimation de charge sans double comptage. Kanban partage avec Projets, demarrage date, arret et relance, burndown aux changements de statut et quotidien, bilan fige, archives et suppression du sprint sans supprimer les projets.
+
 - PV (2026-10-08) : les comparaisons de contenu du chat de relecture separent les paragraphes, listes, cellules et retours a la ligne par des espaces, pour eviter les mots colles et limiter le surlignage au texte modifie. Correction aussi appliquee a l affichage des anciennes entrees.
 
 - Installation OMO (2026-10-08) : detection de l application de l organisation deja installee via getInstalledRelatedApps avant d afficher le bandeau, sans memoire locale de l installation. Apres desinstallation, la proposition peut revenir ; comportement habituel conserve si le navigateur ne prend pas en charge la detection.

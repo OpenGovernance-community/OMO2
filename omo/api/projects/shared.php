@@ -19,6 +19,9 @@ if (!function_exists('omoProjectsSourceLang')) {
     function omoProjectsSourceLang()
     {
         return [
+            'projects.error.children_not_done' => ['text' => 'Terminez tous les sous-projets avant de terminer leur parent.', 'context' => 'A project cannot finish before its children.'],
+            'projects.error.sprint_tree_locked' => ['text' => 'Arretez le sprint avant de modifier la hierarchie de ses projets.', 'context' => 'A running sprint freezes its project tree.'],
+            'projects.error.sprint_someday' => ['text' => 'Un projet importe dans un sprint ne peut pas retourner dans Un jour peut-etre avant la fin.', 'context' => 'Sprint projects must remain on the active board.'],
             'projects.title' => ['text' => 'Projets', 'context' => 'Main title of the projects application.'],
             'projects.action.more' => ['text' => 'Autres options', 'context' => 'Accessible label for the project application actions menu.'],
             'projects.action.view_archives' => ['text' => 'Voir les archives', 'context' => 'Menu action opening the archived projects popup.'],

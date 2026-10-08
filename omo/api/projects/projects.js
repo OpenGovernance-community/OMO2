@@ -8,10 +8,12 @@
         return;
     }
     root.dataset.omoProjectsReady = '1';
+    var scrumMode = root.getAttribute('data-omo-projects-scrum') === '1';
 
     var useLocalDrawerNavigation = typeof window.omoIsPvApplicationTabContext === 'function'
         && window.omoIsPvApplicationTabContext(root);
     var isPvApplicationTab = useLocalDrawerNavigation;
+    if (scrumMode) { useLocalDrawerNavigation = true; }
     if (!isPvApplicationTab) {
         try {
             var declaredViewPreferences = JSON.parse(root.getAttribute('data-omo-app-view-preferences') || '{}');
@@ -551,16 +553,15 @@
             return Promise.resolve(null);
         }
         return window.omoReplaceFetchedPanelRoot({
-            rootSelector: '#omo-projects-root',
-            currentRoot: root,
+            rootSelector: scrumMode ? '#omo-scrum-root' : '#omo-projects-root',
+            currentRoot: scrumMode ? root.closest('#omo-scrum-root') : root,
             url: resolveUrl(targetUrl),
             setLoadingState: setLoading,
             beforeReplace: function () {
-                removeProjectFilterOutsideHandler();
-                window.removeEventListener('omo-projects-route-change', handleProjectRouteChange);
-                window.removeEventListener('omo-runtime-maintenance', handleRuntimeMaintenance);
+                disposeProjectView();
             }
         }).then(function (nextRoot) {
+            if (scrumMode && nextRoot) { nextRoot = nextRoot.querySelector('#omo-projects-root'); }
             restoreContentScrollPosition(nextRoot, scrollPosition, function () {
                 revealKanbanProjectIfNeeded(nextRoot, revealProjectId);
             });
@@ -1251,6 +1252,7 @@
     }
 
     function buildProjectsUrl(scope, view, listSort, assignment, quickSearch) {
+        if (scrumMode) { return currentUrl; }
         var organizationId = Number(root.getAttribute('data-omo-projects-oid') || 0);
         var query = ['oid=' + encodeURIComponent(String(organizationId))];
         var nextScope = scope === 'global' ? 'descendants' : (scope === 'descendants' || scope === 'children' ? scope : 'contextual');
@@ -1424,6 +1426,7 @@
     }
 
     function applyStoredDisplayPreferences() {
+        if (scrumMode) { return false; }
         var serverDefault = typeof window.omoApplicationViewPreferencesGetDefault === 'function'
             ? window.omoApplicationViewPreferencesGetDefault(root)
             : null;
@@ -3479,6 +3482,16 @@
     window.addEventListener('omo-project-document-saved', refreshProjectDocumentsAfterSave);
     window.addEventListener('omo-project-event-saved', refreshProjectEventsAfterSave);
     window.addEventListener('resize', syncGroupedKanbanHeaderOffset);
+
+    function disposeProjectView() {
+        removeProjectFilterOutsideHandler();
+        window.removeEventListener('omo-projects-route-change', handleProjectRouteChange);
+        window.removeEventListener('omo-runtime-maintenance', handleRuntimeMaintenance);
+        window.removeEventListener('omo-project-document-saved', refreshProjectDocumentsAfterSave);
+        window.removeEventListener('omo-project-event-saved', refreshProjectEventsAfterSave);
+        window.removeEventListener('resize', syncGroupedKanbanHeaderOffset);
+    }
+    root.omoDisposeProjects = disposeProjectView;
 
     applyQuickSearch();
     syncGroupedKanbanHeaderOffset();

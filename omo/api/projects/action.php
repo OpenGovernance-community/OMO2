@@ -32,6 +32,9 @@ function omoProjectsActionRespond($success, $message = '', array $extra = [], $s
 function omoProjectsSaveFailureMessage($saveResult)
 {
     $errorCode = is_array($saveResult) ? (string)($saveResult['errorCode'] ?? '') : '';
+    if (in_array($errorCode, ['children_not_done', 'sprint_tree_locked', 'sprint_someday'], true)) {
+        return omoProjectsT('projects.error.' . $errorCode);
+    }
     if ($errorCode === Project::SAVE_ERROR_PARENT_SOMEDAY) {
         return omoProjectsT('projects.error.parent_someday');
     }
