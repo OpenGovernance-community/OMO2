@@ -1,5 +1,11 @@
 # Journal Des Nouveautes
 
+- PV (2026-10-08) : les comparaisons de contenu du chat de relecture separent les paragraphes, listes, cellules et retours a la ligne par des espaces, pour eviter les mots colles et limiter le surlignage au texte modifie. Correction aussi appliquee a l affichage des anciennes entrees.
+
+- Installation OMO (2026-10-08) : detection de l application de l organisation deja installee via getInstalledRelatedApps avant d afficher le bandeau, sans memoire locale de l installation. Apres desinstallation, la proposition peut revenir ; comportement habituel conserve si le navigateur ne prend pas en charge la detection.
+
+- Editeurs HTML (2026-10-08) : les six couleurs de surlignage de la palette commune s adaptent au theme sombre en edition, en lecture et dans la palette. Les anciens contenus sont aussi adaptes a l affichage ; les couleurs enregistrees, les exports et l impression restent conserves.
+
 - Calendrier (2026-10-08) : en vue mensuelle, les evenements avec un document joint restent dans la largeur de leur jour, y compris avec des titres ou des noms de contexte longs. Le raccourci du document reste accessible.
 
 - PV (2026-10-08) : mise en page mobile commune au lien de participation et au volet ouvert depuis le calendrier ou les documents. Ordre du jour complet, points en dessous, timer masque et titre sur toute la largeur ; suppression des defilements internes de l ordre du jour.
