@@ -2822,7 +2822,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         }
 
         if (addButton instanceof HTMLButtonElement) {
-            addButton.hidden = isCurrentEditor && !canManageStructure;
+            addButton.hidden = isCurrentEditor && !canManageAgenda;
             addButton.disabled = documentPayload.isPvValidated === true || isReview || addButton.hidden;
         }
         if (templateToggleButton instanceof HTMLButtonElement) {
