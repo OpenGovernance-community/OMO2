@@ -1,5 +1,45 @@
 # Journal Des Nouveautes
 
+- IA (2026-10-09) : Mistral rejoint les fournisseurs de texte ; Groq et Mistral rejoignent la transcription audio avec leurs propres adresses, modeles par defaut et format de requete adapte. Le choix Desactive pour le texte retire les outils correspondants et suspend les nouvelles traductions automatiques, en conservant les reglages et les traductions existantes. La transcription conserve son interrupteur independant. Un changement de service exige de saisir explicitement sa cle API.
+
+- IA (2026-10-09) : ajout du choix API compatible avec OpenRouter par defaut et une adresse de base HTTPS modifiable. Le champ apparait uniquement pour ce choix. Les requetes texte et traduction conservent le format Chat Completions et leurs modeles distincts ; une nouvelle destination demande de remplacer explicitement la cle API, sans reutiliser cette cle pour la transcription audio.
+
+- IA (2026-10-09) : onglet separe en Texte et traduction, puis Transcription audio, avec aides ? sur tous les champs. Choix du fournisseur de texte OpenAI ou Claude (Anthropic), modele principal et modele de traduction distincts. La dictee et les memos Telegram utilisent leur propre cle et modele de transcription, avec possibilite de desactivation. Compatibilite avec les anciennes cles conservee, remplacement explicite de la cle lors d un changement de fournisseur, et respect du modele choisi sans substitution automatique.
+
+- Configuration Push (2026-10-09) : retrait du chemin PHP des notifications de l interface. Ce reglage avance reste documente dans .env.example, avec detection automatique par defaut et conservation des valeurs existantes lors des sauvegardes.
+
+- Configuration MCP (2026-10-09) : seule l adresse publique reste dans l interface, avec une aide precisant que la laisser vide desactive MCP et l API REST associee. Les options HTTP local et origines navigateur restent documentees dans .env.example pour les usages avances ; les valeurs configurees sont conservees lors des sauvegardes.
+
+- Configuration serveur (2026-10-09) : SpaceDeck rejoint EtherCalc et Etherpad dans l onglet Documents. Accordeon technique principal encadre avec toute la barre de titre cliquable. Dans les rubriques, fleche avant le titre et aide ? juste apres, avec ouverture au clavier conservee.
+
+- Configuration technique (2026-10-09) : rangement en six rubriques repliees (hebergement, MySQL, connexions et alertes, cles de protection, maintenance, journaux), avec aides ? pour chaque rubrique et chaque champ. Retrait de l import automatique des variables inconnues et des anciens parametres GitHub Projects inutilises ; conservation des autres variables propres a l hebergement. Le chemin PHP des notifications rejoint Push. Les acces MySQL restent verrouilles par defaut.
+
+- Projets (2026-10-09) : un document, indicateur ou tache recurrente lie a plusieurs projets reste obligatoirement visible dans l espace. La case est cochee et verrouillee avec une explication ; les sauvegardes et les listes appliquent aussi cette regle, y compris pour les liaisons existantes. Avec un seul projet, la visibilite redevient modifiable.
+
+- Installation / configuration (2026-10-09) : assistant limite a l adresse publique du site, aux acces MySQL, au compte administrateur et au SMTP de verification. Les integrations se completent ensuite dans l administration du serveur. Le .env initial reprend tous les champs du modele, avec generation des secrets de protection et de chiffrement. Sous les onglets, un accordeon Reglages techniques ferme au depart signale les risques de coupure et de perte d acces aux donnees chiffrees ; les acces MySQL demandent une activation explicite avant modification. Reglages de securite, journaux, push, MCP et variables propres a l hebergement accessibles ensuite, sans exposer les secrets.
+
+- Projets (2026-10-09) : la case Afficher dans l espace utilise le meme affichage en haut a droite des formulaires Documents, Indicateurs et Taches recurrentes, avec une aide partagee et une ligne de separation uniquement quand la case est presente. Le formulaire des indicateurs reprend les sous-titres d identite et de Recurrence des taches recurrentes. Les champs caches ne creent plus de separateur avant la premiere section visible d un formulaire.
+
+- Projets (2026-10-09) : indicateurs et taches recurrentes reprennent la case Afficher dans l espace des documents. Un element lie a un projet est masque dans les listes de l espace par defaut, y compris apres import ; la case reste modifiable dans son formulaire pour l afficher aux deux endroits. Les alertes et les acces depuis le projet sont conserves.
+
+- Parametres serveur (2026-10-09) : reglages generaux toujours visibles au-dessus des onglets GitHub, Patreon, Telegram, Documents (EtherCalc et Etherpad), SpaceDeck, E-mail, IA et Cartographie. Retrait des cadres imbriques et de leur marge. Bulles d aide conservees, secret du webhook Telegram editable sans exposer sa valeur, tests de connexion conserves. Nextcloud et Collabora restent dans les reglages d organisation.
+
+- Soutien (2026-10-09) : retrait de l integration PayPal, des boutons d abonnement et de don, des scripts charges sur chaque page et des champs de configuration et d installation. Le soutien passe par Patreon ; les anciennes cles d environnement sont retirees lors du prochain enregistrement de la configuration serveur.
+
+- IA / Patreon (2026-10-09) : exception pour le createur via PATREON_CREATOR_USER_ID dans la configuration serveur. Un compte Patreon relie dont l identite OAuth correspond exactement peut utiliser l IA sans contribution. Aucun droit Patreon supplementaire demande ; restrictions des autres comptes et des autres avantages conservees.
+
+- Parametres serveur / Patreon (2026-10-09) : aides dans des bulles ? partagees, avec les indications pour retrouver les identifiants et les liens de documentation. L ID utilisateur Patreon du compte relie est affiche en lecture seule dans Mon profil > Patreon pour faciliter la configuration de l acces IA du createur.
+
+- Projets (2026-10-09) : les taches recurrentes utilisent aussi le bouton Creer avec formulaire complet dans un drawer, et la fleche Importer pour le selecteur partage. La creation enregistre la liaison au projet ; la recurrence et la description reutilisent les memes controles que l application Taches recurrentes.
+
+- Projets (2026-10-09) : l onglet Indicateurs propose Creer un indicateur dans le drawer du formulaire complet, et Importer un indicateur via la fleche accolee. L import utilise le selecteur partage sans formulaire reduit ; la creation enregistre aussi la liaison au projet.
+
+- Projets (2026-10-09) : l onglet Documents reprend les actions des evenements. Creer un document ouvre le formulaire complet dans un drawer ; la fleche accolee propose Importer un document dans le selecteur partage, avec recherche et navigation dans la structure, sans onglet de creation.
+
+- Popups (2026-10-09) : aide optionnelle dans une pastille a cote du titre. L explication du selecteur d import d evenements est deplacee dans cette aide pour liberer de la place. Les deux onglets de sources sont conserves et utilisent le style generique des onglets, avec un petit espace au-dessus. Le selecteur espace aussi la liste, l apercu et les boutons avec les composants generiques de formulaire.
+
+- Projets (2026-10-09) : menu Importer un evenement a cote de Creer un evenement. Selection des evenements OMO dans la structure ou des rendez-vous des calendriers externes synchronises, liaison et retrait du projet. Les modifications externes sont suivies ; les rendez-vous a venir disparus sont retires apres une synchronisation reussie. Les evenements deja passes restent documentes localement, meme si le flux ICS ne les fournit plus.
+
 - Decisions (2026-10-09) : revenir au contexte organisation recharge ses decisions locales, sans reprendre le dernier cercle selectionne dans la vue Structure.
 
 - Taches recurrentes (2026-10-09) : fermer la fiche ouverte via la pastille conserve le drawer de l application et revient a la liste, sans rechargement du panneau principal.

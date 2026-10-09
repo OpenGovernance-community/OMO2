@@ -73,7 +73,8 @@ foreach ($resources as $resource) {
 }
 $visibleAttachedIds = array_intersect_key($attachedIds, $visible);
 $now = $isTask ? new DateTimeImmutable('now') : null;
-$canManage = (int)$project->get('active') === 1 && omoProjectsCanManageProject($project, $context);
+$canManage = (int)$project->get('active') === 1 && !$project->isPendingProposal()
+    && omoProjectsCanManageProject($project, $context);
 $resourceHolon = $projectHolon instanceof Holon ? $projectHolon : ($rootHolon instanceof Holon ? $rootHolon : null);
 $canCreate = false;
 if ($canManage) {
@@ -97,7 +98,6 @@ if (isset($_GET['picker'])) {
         $items[] = [
             'id' => $resourceId,
             'title' => trim((string)$resource->get($isIndicator ? 'name' : 'title')),
-            'description' => trim(strip_tags((string)$resource->get('description'))),
             'contextHolonId' => (int)$resource->get('IDholon'),
             'contextLabel' => $itemHolon instanceof Holon
                 ? trim((string)$itemHolon->getDisplayName())
@@ -105,34 +105,19 @@ if (isset($_GET['picker'])) {
         ];
     }
     echo json_encode([
-        'success' => true, 'projectId' => $projectId, 'type' => $type,
-        'projectHolonId' => $cid, 'canCreate' => $canCreate, 'items' => $items,
-        'scheduleOptions' => $isTask ? omoActivityScheduleOptions() : [],
-        'frequencyLabels' => $isTask ? [
-            'daily' => omoActivityT('activity.frequency.daily'),
-            'weekly' => omoActivityT('activity.frequency.weekly'),
-            'monthly' => omoActivityT('activity.frequency.monthly'),
-            'quarterly' => omoActivityT('activity.frequency.quarterly'),
-            'semiannual' => omoActivityT('activity.frequency.semiannual'),
-            'yearly' => omoActivityT('activity.frequency.yearly'),
-        ] : [],
+        'success' => true, 'organizationId' => $organizationId, 'projectId' => $projectId, 'type' => $type,
+        'projectHolonId' => $cid, 'items' => $items,
         'scopeLabels' => [
             'local' => omoProjectsT('projects.scope.contextual'),
             'children' => omoProjectsT('projects.scope.children'),
             'descendants' => omoProjectsT('projects.scope.descendants'),
         ],
         'labels' => [
-            'title' => omoProjectsT($isIndicator ? 'projects.resources.add_indicator' : 'projects.resources.add_recurring_task'),
+            'title' => omoProjectsT($isIndicator ? 'projects.resources.import_indicator' : 'projects.resources.import_recurring_task'),
             'existing' => omoProjectsT('projects.resources.existing'),
-            'new' => omoProjectsT('projects.resources.new'),
             'search' => omoProjectsT('projects.resources.search'),
             'none' => omoProjectsT('projects.resources.none'),
             'attach' => omoProjectsT('projects.resources.attach'),
-            'create' => omoProjectsT('projects.resources.create'),
-            'name' => omoProjectsT($isIndicator ? 'projects.resources.name' : 'projects.resources.title'),
-            'description' => omoProjectsT('projects.resources.description'),
-            'frequency' => omoProjectsT('projects.resources.frequency'),
-            'schedule' => omoProjectsT('projects.resources.schedule'),
             'error' => omoProjectsT('projects.resources.error'),
             'cancel' => omoProjectsT('projects.action.cancel'),
         ],
@@ -142,7 +127,14 @@ if (isset($_GET['picker'])) {
 ?>
 <?php if ($canManage): ?>
 <div class="omo-project-detail__documents-actions">
-    <button type="button" class="generic-action-button generic-action-button--main" data-omo-project-resource-add data-resource-url="<?= omoApiEscape($baseUrl . '&picker=1') ?>" data-resource-title="<?= omoApiEscape(omoProjectsT($isIndicator ? 'projects.resources.add_indicator' : 'projects.resources.add_recurring_task')) ?>"><?= omoApiEscape(omoProjectsT($isIndicator ? 'projects.resources.add_indicator' : 'projects.resources.add_recurring_task')) ?></button>
+        <?php if ($canCreate): ?>
+        <div class="generic-menu generic-menu--split" data-omo-project-detail-document-menu>
+            <button type="button" class="generic-action-button generic-action-button--main" <?= $isIndicator ? 'data-omo-project-indicator-editor-url' : 'data-omo-project-recurring-task-editor-url' ?>="<?= omoApiEscape('/omo/api/' . ($isIndicator ? 'stats' : 'activities') . '/edit.php?oid=' . $organizationId . '&cid=' . $cid . '&project_id=' . $projectId) ?>"><?= omoApiEscape(omoProjectsT($isIndicator ? 'projects.resources.create_indicator' : 'projects.resources.create_recurring_task')) ?></button>
+            <button type="button" class="generic-menu-toggle" data-omo-project-detail-document-menu-toggle aria-expanded="false" aria-label="<?= omoApiEscape(omoProjectsT($isIndicator ? 'projects.resources.indicator_menu' : 'projects.resources.recurring_task_menu')) ?>">&#9662;</button>
+            <div class="generic-menu-panel" data-omo-project-detail-document-menu-panel hidden>
+        <?php endif; ?>
+            <button type="button" class="<?= $canCreate ? 'generic-menu-item' : 'generic-action-button generic-action-button--main' ?>" data-omo-project-resource-add data-resource-url="<?= omoApiEscape($baseUrl . '&picker=1') ?>" data-resource-title="<?= omoApiEscape(omoProjectsT($isIndicator ? 'projects.resources.import_indicator' : 'projects.resources.import_recurring_task')) ?>"><?= omoApiEscape(omoProjectsT($isIndicator ? 'projects.resources.import_indicator' : 'projects.resources.import_recurring_task')) ?></button>
+        <?php if ($canCreate): ?></div></div><?php endif; ?>
 </div>
 <?php endif; ?>
 <?php if (!$visibleAttachedIds): ?>

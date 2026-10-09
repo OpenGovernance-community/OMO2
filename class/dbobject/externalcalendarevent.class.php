@@ -78,6 +78,21 @@ class ExternalCalendarEvent extends DbObject
         ]) ? $event : null;
     }
 
+    /** Preserve local links and annotations when a standalone appointment changes its start time. */
+    public static function findForImportedValues(int $calendarId, array $values): ?self
+    {
+        $event = self::findForCalendarSourceKey($calendarId, (string)$values['source_key']);
+        $prefix = (string)($values['single_source_prefix'] ?? '');
+        if ($event instanceof self || $prefix === '' || strlen($prefix) >= 512) { return $event; }
+        // Ambiguous series or reused UIDs must never be merged into another occurrence.
+        $rows = self::fetchAll('SELECT id FROM external_calendar_event
+            WHERE IDexternalcalendar = :calendar AND LEFT(source_key, CHAR_LENGTH(:prefix_length)) = :prefix
+            LIMIT 2', ['calendar' => $calendarId, 'prefix_length' => $prefix, 'prefix' => $prefix]);
+        if (!is_array($rows) || count($rows) !== 1) { return null; }
+        $event = new self();
+        return $event->load((int)$rows[0]['id'], true) ? $event : null;
+    }
+
     public function canEditTimeBuffers(int $userId): bool
     {
         $calendar = new ExternalCalendar();

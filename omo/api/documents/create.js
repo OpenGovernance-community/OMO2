@@ -37,6 +37,8 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
     const uploadInput = form.querySelector('[data-omo-document-upload-input]');
     const uploadHasExistingFile = pageConfig.uploadHasExistingFile;
     const aiToolsEnabled = pageConfig.aiToolsEnabled;
+    const textToolsEnabled = pageConfig.textToolsEnabled;
+    const transcriptionEnabled = pageConfig.transcriptionEnabled;
     const initialHtmlValue = pageConfig.initialHtmlValue;
     const embeddableDocuments = pageConfig.embeddableDocuments;
     const uiText = pageConfig.uiText;
@@ -653,31 +655,31 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
             label: isRecording ? 'En cours…' : 'Dicter',
             title: isRecording ? 'Enregistrement en cours' : 'Démarrer une dictée',
             disabled: isRecording || isTranscribing || isRewriting || isSummarizing,
-            hidden: !aiToolsVisible
+            hidden: !aiToolsVisible || !transcriptionEnabled
         });
         htmlField.setToolbarButtonState('omoDocumentTranscript', {
             label: isTranscribing ? 'Transcription…' : 'Transcrire',
             title: 'Arrêter l’enregistrement et transcrire',
             disabled: !isRecording || isTranscribing || isRewriting || isSummarizing,
-            hidden: !aiToolsVisible
+            hidden: !aiToolsVisible || !transcriptionEnabled
         });
         htmlField.setToolbarButtonState('omoDocumentDictationCancel', {
             label: 'Annuler',
             title: 'Annuler la dictée en cours',
             disabled: (!isRecording && !isTranscribing),
-            hidden: !aiToolsVisible || (!isRecording && !isTranscribing)
+            hidden: !aiToolsVisible || !transcriptionEnabled || (!isRecording && !isTranscribing)
         });
         htmlField.setToolbarButtonState('omoDocumentRewrite', {
             label: isRewriting ? 'Réécriture…' : 'Réécrire',
             title: isRewriting ? 'Réécriture en cours' : 'Réécrire la sélection',
             disabled: isRecording || isTranscribing || isRewriting || isSummarizing,
-            hidden: !aiToolsVisible
+            hidden: !aiToolsVisible || !textToolsEnabled
         });
         htmlField.setToolbarButtonState('omoDocumentSummarize', {
             label: isSummarizing ? 'Résumé…' : 'Résumer',
             title: isSummarizing ? 'Résumé en cours' : 'Résumer la sélection',
             disabled: isRecording || isTranscribing || isRewriting || isSummarizing,
-            hidden: !aiToolsVisible
+            hidden: !aiToolsVisible || !textToolsEnabled
         });
 
         if (submitButton) {
@@ -1066,7 +1068,7 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
     }
 
     async function startDictation() {
-        if (!aiToolsEnabled || dictationMode === 'recording' || dictationMode === 'transcribing') {
+        if (!transcriptionEnabled || dictationMode === 'recording' || dictationMode === 'transcribing') {
             return;
         }
 
@@ -1179,7 +1181,7 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
     }
 
     async function rewriteSelectedPassage() {
-        if (!aiToolsEnabled || rewriteMode === 'pending' || summarizeMode === 'pending' || dictationMode === 'recording' || dictationMode === 'transcribing') {
+        if (!textToolsEnabled || rewriteMode === 'pending' || summarizeMode === 'pending' || dictationMode === 'recording' || dictationMode === 'transcribing') {
             return;
         }
 
@@ -1270,7 +1272,7 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
     }
 
     async function summarizeSelectedPassage() {
-        if (!aiToolsEnabled || summarizeMode === 'pending' || rewriteMode === 'pending' || dictationMode === 'recording' || dictationMode === 'transcribing') {
+        if (!textToolsEnabled || summarizeMode === 'pending' || rewriteMode === 'pending' || dictationMode === 'recording' || dictationMode === 'transcribing') {
             return;
         }
 

@@ -37,7 +37,7 @@ try {
     $submittedValues = serverEnvAdminReadSubmittedValues($_POST);
     $currentValues = serverEnvAdminBuildCurrentValues();
     $mergedValues = serverEnvAdminMergeSubmittedValues($submittedValues, $currentValues);
-    $errors = serverEnvAdminValidateValues($mergedValues);
+    $errors = serverEnvAdminValidateValues($mergedValues, $currentValues, $submittedValues);
 
     if ($errors !== []) {
         http_response_code(422);

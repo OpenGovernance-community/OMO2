@@ -501,7 +501,7 @@
             return;
         }
 
-        if (event.target && event.target.closest && event.target.closest('[data-topbar-modal-close]')) {
+        if (event.target && event.target.closest && event.target.closest('[data-topbar-modal-close], .generic-context-help')) {
             return;
         }
 
@@ -573,7 +573,15 @@
         document.body.classList.add('common-topbar-drawer-open');
     }
 
-    function openModal(title, content, mode) {
+    function setModalHelp(text) {
+        var host = document.getElementById('commonTopbarModalHelp');
+        if (!host) return;
+        host.querySelector('.generic-context-help__content').textContent = String(text || '');
+        host.querySelector('details').removeAttribute('open');
+        host.hidden = !text;
+    }
+
+    function openModal(title, content, mode, options) {
         var modal = document.getElementById('commonTopbarModal');
         var body = document.getElementById('commonTopbarModalBody');
         var titleNode = document.getElementById('commonTopbarModalTitle');
@@ -594,6 +602,7 @@
         syncModalPanelPreferredWidth(null);
         body.setAttribute('data-topbar-modal-url', String(content || ''));
         titleNode.textContent = title || getConfigTextValue('modal.defaultTitle', 'Panneau');
+        setModalHelp(options && options.help);
         if (mode === 'iframe') {
             body.innerHTML = '<iframe class="common-topbar-modal__iframe" src="' + resolvedContent + '"></iframe>';
             bindIframeThemeSync(body.querySelector('iframe'));
@@ -651,7 +660,7 @@
         });
     }
 
-    function pushModal(title, content, mode) {
+    function pushModal(title, content, mode, options) {
         var modal = document.getElementById('commonTopbarModal');
         var body = document.getElementById('commonTopbarModalBody');
         var titleNode = document.getElementById('commonTopbarModalTitle');
@@ -667,7 +676,7 @@
             return false;
         }
         if (modal.hidden) {
-            openModal(title, content, mode);
+            openModal(title, content, mode, options);
             return true;
         }
 
@@ -680,6 +689,7 @@
         modalStack.push({
             fragment: fragment,
             title: titleNode.textContent,
+            help: (document.querySelector('#commonTopbarModalHelp .generic-context-help__content') || {}).textContent || '',
             attributes: getModalBodyDynamicAttributes(body),
             remoteRequestId: body.__commonTopbarRemoteRequestId,
             scrollTop: currentScrollTop,
@@ -701,6 +711,7 @@
         syncModalPanelPreferredWidth(null);
         body.setAttribute('data-topbar-modal-url', String(content || ''));
         titleNode.textContent = title || getConfigTextValue('modal.defaultTitle', 'Panneau');
+        setModalHelp(options && options.help);
 
         if (mode === 'iframe') {
             body.innerHTML = '<iframe class="common-topbar-modal__iframe" src="' + resolvedContent + '"></iframe>';
@@ -750,6 +761,7 @@
         body.appendChild(state.fragment);
         body.__commonTopbarRemoteRequestId = state.remoteRequestId;
         titleNode.textContent = state.title || getConfigTextValue('modal.defaultTitle', 'Panneau');
+        setModalHelp(state.help);
         window.commonTopbarModalCanClose = state.closeGuard || null;
         window.__omoPopupCleanup = state.popupCleanup || null;
         window.__omoFaqPopupCleanup = state.faqPopupCleanup || null;
@@ -806,6 +818,7 @@
         }
         stopModalDrag();
         modal.hidden = true;
+        setModalHelp('');
         syncModalPanelPreferredWidth(null);
         if (body) {
             runContainerCleanup(body);
