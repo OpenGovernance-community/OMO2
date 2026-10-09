@@ -1,5 +1,7 @@
 <?php
 require_once __DIR__ . '/env.php';
+require_once dirname(__DIR__) . '/common/ai_config.php';
+require_once dirname(__DIR__) . '/omo/api/parameters/server_env_fields.php';
 require_once dirname(__DIR__) . '/common/etherpad.php';
 
 function serverEnvAdminT($key, $fallback, array $replace = [])
@@ -107,6 +109,146 @@ function serverEnvAdminGetEditableSections()
                 ],
             ],
         ],
+        'github' => [
+            'title' => serverEnvAdminT('parameters.server_env.section.github.title', 'GitHub'),
+            'intro' => serverEnvAdminT('parameters.server_env.section.github.intro', 'Depot et identite technique utilises pour envoyer les signalements de bugs.'),
+            'fields' => [
+                [
+                    'key' => 'GITHUB_BUGREPORT_TOKEN',
+                    'label' => serverEnvAdminT('parameters.server_env.field.GITHUB_BUGREPORT_TOKEN.label', 'Token GitHub bug report'),
+                    'type' => 'password',
+                    'secret' => true,
+                    'help' => serverEnvAdminT('parameters.server_env.field.secret_keep.help', 'Laissez vide pour conserver la valeur actuelle.'),
+                ],
+                [
+                    'key' => 'GITHUB_BUGREPORT_REPO_OWNER',
+                    'label' => serverEnvAdminT('parameters.server_env.field.GITHUB_BUGREPORT_REPO_OWNER.label', 'Repository owner GitHub'),
+                    'type' => 'text',
+                ],
+                [
+                    'key' => 'GITHUB_BUGREPORT_REPO_NAME',
+                    'label' => serverEnvAdminT('parameters.server_env.field.GITHUB_BUGREPORT_REPO_NAME.label', 'Repository name GitHub'),
+                    'type' => 'text',
+                ],
+                [
+                    'key' => 'GITHUB_BUGREPORT_LABELS',
+                    'label' => serverEnvAdminT('parameters.server_env.field.GITHUB_BUGREPORT_LABELS.label', 'Labels GitHub'),
+                    'type' => 'text',
+                    'placeholder' => 'bug,triage',
+                ],
+                [
+                    'key' => 'GITHUB_BUGREPORT_USER_AGENT',
+                    'label' => serverEnvAdminT('parameters.server_env.field.GITHUB_BUGREPORT_USER_AGENT.label', 'User-Agent GitHub'),
+                    'type' => 'text',
+                ],
+            ],
+        ],
+        'patreon' => [
+            'title' => serverEnvAdminT('parameters.server_env.section.patreon.title', 'Patreon'),
+            'intro' => serverEnvAdminT('parameters.server_env.section.patreon.intro', 'Connexion des comptes Patreon, campagne soutenue et acces du createur.'),
+            'fields' => [
+                [
+                    'key' => 'PATREON_CLIENT_ID',
+                    'label' => serverEnvAdminT('parameters.server_env.field.PATREON_CLIENT_ID.label', 'Client ID Patreon'),
+                    'type' => 'text',
+                    'help' => serverEnvAdminT('parameters.server_env.field.PATREON_CLIENT_ID.help', 'Dans Patreon, ouvrez la page Clients & API Keys et selectionnez votre application OAuth v2. Copiez son Client ID. Il identifie l application, pas votre compte ni votre campagne. Configurez ces acces sur le serveur central de connexion.'),
+                    'help_url' => 'https://docs.patreon.com/#clients-and-api-keys',
+                ],
+                [
+                    'key' => 'PATREON_CLIENT_SECRET',
+                    'label' => serverEnvAdminT('parameters.server_env.field.PATREON_CLIENT_SECRET.label', 'Client secret Patreon'),
+                    'type' => 'password',
+                    'secret' => true,
+                    'help' => serverEnvAdminT('parameters.server_env.field.PATREON_CLIENT_SECRET.help', 'Sur la page Patreon Clients & API Keys, ouvrez la meme application que pour le Client ID et copiez son Client Secret. Gardez ce secret prive. Laissez vide pour conserver la valeur actuelle.'),
+                    'help_url' => 'https://docs.patreon.com/#clients-and-api-keys',
+                ],
+                [
+                    'key' => 'PATREON_CONNECT_URL',
+                    'label' => serverEnvAdminT('parameters.server_env.field.PATREON_CONNECT_URL.label', 'URL centrale de connexion Patreon'),
+                    'type' => 'text',
+                    'help' => serverEnvAdminT('parameters.server_env.field.PATREON_CONNECT_URL.help', 'Adresse OMO du serveur qui gere les connexions Patreon, par exemple https://omo2.org/common/patreon_connect.php. Utilisez la meme URL sur les sites qui partagent cette connexion. Ce n est pas l adresse de votre page Patreon.'),
+                ],
+                [
+                    'key' => 'PATREON_CONNECT_ALLOWED_ORIGINS',
+                    'label' => serverEnvAdminT('parameters.server_env.field.PATREON_CONNECT_ALLOWED_ORIGINS.label', 'Domaines de retour Patreon autorisés'),
+                    'type' => 'text',
+                    'help' => serverEnvAdminT('parameters.server_env.field.PATREON_CONNECT_ALLOWED_ORIGINS.help', 'Liste d origines HTTPS séparées par des virgules. https://*.dev.opengov.tools autorise ses sous-domaines ; ajoutez aussi https://dev.opengov.tools pour le domaine principal.'),
+                ],
+                [
+                    'key' => 'PATREON_REDIRECT_URI',
+                    'label' => serverEnvAdminT('parameters.server_env.field.PATREON_REDIRECT_URI.label', 'Redirect URI Patreon'),
+                    'type' => 'text',
+                    'help' => serverEnvAdminT('parameters.server_env.field.PATREON_REDIRECT_URI.help', 'Adresse de retour a declarer aussi dans votre application Patreon, par exemple https://omo2.org/common/patreon_callback.php. Si l URL centrale de connexion est renseignee, OMO utilise automatiquement /common/patreon_callback.php sur ce domaine. Les deux adresses doivent correspondre.'),
+                    'help_url' => 'https://docs.patreon.com/#clients-and-api-keys',
+                ],
+                [
+                    'key' => 'PATREON_CREATOR_CAMPAIGN_ID',
+                    'label' => serverEnvAdminT('parameters.server_env.field.PATREON_CREATOR_CAMPAIGN_ID.label', 'Campaign ID Patreon'),
+                    'type' => 'text',
+                    'help' => serverEnvAdminT('parameters.server_env.field.PATREON_CREATOR_CAMPAIGN_ID.help', 'Code numerique de la campagne soutenue. Il est renvoye comme id par l API Patreon /api/oauth2/v2/campaigns avec le jeton du createur. Ce n est ni le nom de la page Patreon, ni l ID utilisateur du createur. Conservez la valeur existante si la campagne ne change pas.'),
+                    'help_url' => 'https://docs.patreon.com/#get-api-oauth2-v2-campaigns',
+                ],
+                [
+                    'key' => 'PATREON_CREATOR_USER_ID',
+                    'label' => serverEnvAdminT('parameters.server_env.field.PATREON_CREATOR_USER_ID.label', 'ID utilisateur Patreon du createur'),
+                    'type' => 'text',
+                    'help' => serverEnvAdminT('parameters.server_env.field.PATREON_CREATOR_USER_ID.help', 'Dans OMO, ouvrez Mon profil > Patreon, connectez votre compte puis cliquez sur Synchroniser si necessaire. Copiez le code affiche sous ID utilisateur Patreon. Ce n est ni votre nom public, ni votre e-mail, ni l ID de campagne ou l ID OMO. Ce compte relie aura acces a l IA sans contribution. Vide : aucune exception.'),
+                ],
+                [
+                    'key' => 'PATREON_USER_AGENT',
+                    'label' => serverEnvAdminT('parameters.server_env.field.PATREON_USER_AGENT.label', 'User-Agent Patreon'),
+                    'type' => 'text',
+                    'help' => serverEnvAdminT('parameters.server_env.field.PATREON_USER_AGENT.help', 'Nom technique transmis a Patreon pour identifier les appels de votre site, par exemple OMO Patreon Sync. Vous choisissez ce texte ; aucune cle ni aucun identifiant Patreon n est necessaire ici.'),
+                ],
+            ],
+        ],
+        'telegram' => [
+            'title' => serverEnvAdminT('parameters.server_env.section.telegram.title', 'Telegram'),
+            'intro' => serverEnvAdminT('parameters.server_env.section.telegram.intro', 'Identite du bot et protection des appels entrants du webhook.'),
+            'fields' => [
+                [
+                    'key' => 'TELEGRAM_BOT_TOKEN',
+                    'label' => serverEnvAdminT('parameters.server_env.field.TELEGRAM_BOT_TOKEN.label', 'Token Telegram'),
+                    'type' => 'password',
+                    'secret' => true,
+                    'help' => serverEnvAdminT('parameters.server_env.field.secret_keep.help', 'Laissez vide pour conserver la valeur actuelle.'),
+                ],
+                [
+                    'key' => 'TELEGRAM_WEBHOOK_SECRET',
+                    'label' => serverEnvAdminT('parameters.server_env.field.TELEGRAM_WEBHOOK_SECRET.label', 'Secret du webhook Telegram'),
+                    'type' => 'password',
+                    'secret' => true,
+                    'help' => serverEnvAdminT('parameters.server_env.field.TELEGRAM_WEBHOOK_SECRET.help', 'Secret choisi pour proteger les appels du bot : 32 a 256 caracteres, lettres, chiffres, tirets ou underscores. La meme valeur doit etre enregistree aupres de Telegram avec setWebhook et son parametre secret_token. Modifier ce champ ne reenregistre pas le webhook. Laissez vide pour conserver le secret actuel.'),
+                ],
+            ],
+        ],
+        'ethercalc' => [
+            'title' => serverEnvAdminT('parameters.server_env.section.ethercalc.title', 'EtherCalc'),
+            'intro' => serverEnvAdminT('parameters.server_env.section.ethercalc.intro', 'Connexion globale au serveur EtherCalc utilise par les tableurs collaboratifs.'),
+            'fields' => [
+                [
+                    'key' => 'ETHERCALC_URL',
+                    'label' => serverEnvAdminT('parameters.server_env.field.ETHERCALC_URL.label', 'URL publique EtherCalc'),
+                    'type' => 'url',
+                    'placeholder' => 'https://calc.opengov.tools',
+                    'help' => serverEnvAdminT('parameters.server_env.field.ETHERCALC_URL.help', 'Adresse de base du serveur EtherCalc, sans le nom de la feuille.'),
+                ],
+                [
+                    'key' => 'ETHERCALC_INTERNAL_URL',
+                    'label' => serverEnvAdminT('parameters.server_env.field.ETHERCALC_INTERNAL_URL.label', 'URL interne EtherCalc'),
+                    'type' => 'url',
+                    'placeholder' => 'http://ethercalc:8000',
+                    'help' => serverEnvAdminT('parameters.server_env.field.ETHERCALC_INTERNAL_URL.help', 'Optionnel. Utilisee uniquement par le serveur OMO pour joindre EtherCalc dans le meme reseau. Laissez vide dans les autres cas.'),
+                ],
+                [
+                    'key' => 'ETHERCALC_KEY',
+                    'label' => serverEnvAdminT('parameters.server_env.field.ETHERCALC_KEY.label', 'Cle EtherCalc'),
+                    'type' => 'password',
+                    'secret' => true,
+                    'help' => serverEnvAdminT('parameters.server_env.field.secret_keep.help', 'Laissez vide pour conserver la valeur actuelle.'),
+                ],
+            ],
+        ],
         'etherpad' => [
             'title' => serverEnvAdminT('parameters.server_env.section.etherpad.title', 'Etherpad'),
             'intro' => serverEnvAdminT('parameters.server_env.section.etherpad.intro', 'Connexion globale au serveur Etherpad utilise par les documents collaboratifs.'),
@@ -138,33 +280,6 @@ function serverEnvAdminGetEditableSections()
                     'type' => 'text',
                     'placeholder' => '.opengov.tools',
                     'help' => serverEnvAdminT('parameters.server_env.field.ETHERPAD_COOKIE_DOMAIN.help', 'Optionnel. OMO déduit normalement le domaine du cookie de l’adresse Etherpad choisie.'),
-                ],
-            ],
-        ],
-        'ethercalc' => [
-            'title' => serverEnvAdminT('parameters.server_env.section.ethercalc.title', 'EtherCalc'),
-            'intro' => serverEnvAdminT('parameters.server_env.section.ethercalc.intro', 'Connexion globale au serveur EtherCalc utilise par les tableurs collaboratifs.'),
-            'fields' => [
-                [
-                    'key' => 'ETHERCALC_URL',
-                    'label' => serverEnvAdminT('parameters.server_env.field.ETHERCALC_URL.label', 'URL publique EtherCalc'),
-                    'type' => 'url',
-                    'placeholder' => 'https://calc.opengov.tools',
-                    'help' => serverEnvAdminT('parameters.server_env.field.ETHERCALC_URL.help', 'Adresse de base du serveur EtherCalc, sans le nom de la feuille.'),
-                ],
-                [
-                    'key' => 'ETHERCALC_INTERNAL_URL',
-                    'label' => serverEnvAdminT('parameters.server_env.field.ETHERCALC_INTERNAL_URL.label', 'URL interne EtherCalc'),
-                    'type' => 'url',
-                    'placeholder' => 'http://ethercalc:8000',
-                    'help' => serverEnvAdminT('parameters.server_env.field.ETHERCALC_INTERNAL_URL.help', 'Optionnel. Utilisee uniquement par le serveur OMO pour joindre EtherCalc dans le meme reseau. Laissez vide dans les autres cas.'),
-                ],
-                [
-                    'key' => 'ETHERCALC_KEY',
-                    'label' => serverEnvAdminT('parameters.server_env.field.ETHERCALC_KEY.label', 'Cle EtherCalc'),
-                    'type' => 'password',
-                    'secret' => true,
-                    'help' => serverEnvAdminT('parameters.server_env.field.secret_keep.help', 'Laissez vide pour conserver la valeur actuelle.'),
                 ],
             ],
         ],
@@ -215,6 +330,8 @@ function serverEnvAdminGetEditableSections()
                     'key' => 'MAIL_PORT',
                     'label' => serverEnvAdminT('parameters.server_env.field.MAIL_PORT.label', 'Port SMTP'),
                     'type' => 'number',
+                    'min' => 1,
+                    'max' => 65535,
                 ],
                 [
                     'key' => 'MAIL_SECURE',
@@ -250,34 +367,10 @@ function serverEnvAdminGetEditableSections()
                 ],
             ],
         ],
-        'ai' => [
-            'title' => serverEnvAdminT('parameters.server_env.section.ai.title', 'IA'),
-            'intro' => serverEnvAdminT('parameters.server_env.section.ai.intro', 'Cles et modeles utilises par les fonctions OpenAI.'),
+        'maps' => [
+            'title' => serverEnvAdminT('parameters.server_env.section.maps.title', 'Cartographie'),
+            'intro' => serverEnvAdminT('parameters.server_env.section.maps.intro', 'Cle utilisee pour afficher les fonds de carte Stadia Maps.'),
             'fields' => [
-                [
-                    'key' => 'OPENAI_API_KEY',
-                    'label' => serverEnvAdminT('parameters.server_env.field.OPENAI_API_KEY.label', 'Cle OpenAI'),
-                    'type' => 'password',
-                    'secret' => true,
-                    'help' => serverEnvAdminT('parameters.server_env.field.secret_keep.help', 'Laissez vide pour conserver la valeur actuelle.'),
-                ],
-                [
-                    'key' => 'OPENAI_UPLOAD_API_KEY',
-                    'label' => serverEnvAdminT('parameters.server_env.field.OPENAI_UPLOAD_API_KEY.label', 'Cle OpenAI upload'),
-                    'type' => 'password',
-                    'secret' => true,
-                    'help' => serverEnvAdminT('parameters.server_env.field.secret_keep.help', 'Laissez vide pour conserver la valeur actuelle.'),
-                ],
-                [
-                    'key' => 'OPENAI_MODEL',
-                    'label' => serverEnvAdminT('parameters.server_env.field.OPENAI_MODEL.label', 'Modele OpenAI'),
-                    'type' => 'text',
-                ],
-                [
-                    'key' => 'OPENAI_TRANSLATION_MODEL',
-                    'label' => serverEnvAdminT('parameters.server_env.field.OPENAI_TRANSLATION_MODEL.label', 'Modele de traduction OpenAI'),
-                    'type' => 'text',
-                ],
                 [
                     'key' => 'STADIA_MAPS_API_KEY',
                     'label' => serverEnvAdminT('parameters.server_env.field.STADIA_MAPS_API_KEY.label', 'Cle Stadia Maps'),
@@ -287,92 +380,45 @@ function serverEnvAdminGetEditableSections()
                 ],
             ],
         ],
-        'integrations' => [
-            'title' => serverEnvAdminT('parameters.server_env.section.integrations.title', 'Integrations'),
-            'intro' => serverEnvAdminT('parameters.server_env.section.integrations.intro', 'Services externes optionnels du serveur.'),
-            'fields' => [
-                [
-                    'key' => 'PAYPAL_CLIENT_ID',
-                    'label' => serverEnvAdminT('parameters.server_env.field.PAYPAL_CLIENT_ID.label', 'Client ID PayPal'),
-                    'type' => 'text',
-                ],
-                [
-                    'key' => 'TELEGRAM_BOT_TOKEN',
-                    'label' => serverEnvAdminT('parameters.server_env.field.TELEGRAM_BOT_TOKEN.label', 'Token Telegram'),
-                    'type' => 'password',
-                    'secret' => true,
-                    'help' => serverEnvAdminT('parameters.server_env.field.secret_keep.help', 'Laissez vide pour conserver la valeur actuelle.'),
-                ],
-                [
-                    'key' => 'PATREON_CLIENT_ID',
-                    'label' => serverEnvAdminT('parameters.server_env.field.PATREON_CLIENT_ID.label', 'Client ID Patreon'),
-                    'type' => 'text',
-                ],
-                [
-                    'key' => 'PATREON_CLIENT_SECRET',
-                    'label' => serverEnvAdminT('parameters.server_env.field.PATREON_CLIENT_SECRET.label', 'Client secret Patreon'),
-                    'type' => 'password',
-                    'secret' => true,
-                    'help' => serverEnvAdminT('parameters.server_env.field.secret_keep.help', 'Laissez vide pour conserver la valeur actuelle.'),
-                ],
-                [
-                    'key' => 'PATREON_CONNECT_URL',
-                    'label' => serverEnvAdminT('parameters.server_env.field.PATREON_CONNECT_URL.label', 'URL centrale de connexion Patreon'),
-                    'type' => 'text',
-                    'help' => serverEnvAdminT('parameters.server_env.field.PATREON_CONNECT_URL.help', 'URL du point de connexion central, par exemple https://omo2.org/common/patreon_connect.php.'),
-                ],
-                [
-                    'key' => 'PATREON_CONNECT_ALLOWED_ORIGINS',
-                    'label' => serverEnvAdminT('parameters.server_env.field.PATREON_CONNECT_ALLOWED_ORIGINS.label', 'Domaines de retour Patreon autorisés'),
-                    'type' => 'text',
-                    'help' => serverEnvAdminT('parameters.server_env.field.PATREON_CONNECT_ALLOWED_ORIGINS.help', 'Liste d origines HTTPS séparées par des virgules. https://*.dev.opengov.tools autorise ses sous-domaines ; ajoutez aussi https://dev.opengov.tools pour le domaine principal.'),
-                ],
-                [
-                    'key' => 'PATREON_REDIRECT_URI',
-                    'label' => serverEnvAdminT('parameters.server_env.field.PATREON_REDIRECT_URI.label', 'Redirect URI Patreon'),
-                    'type' => 'text',
-                ],
-                [
-                    'key' => 'PATREON_CREATOR_CAMPAIGN_ID',
-                    'label' => serverEnvAdminT('parameters.server_env.field.PATREON_CREATOR_CAMPAIGN_ID.label', 'Campaign ID Patreon'),
-                    'type' => 'text',
-                ],
-                [
-                    'key' => 'PATREON_USER_AGENT',
-                    'label' => serverEnvAdminT('parameters.server_env.field.PATREON_USER_AGENT.label', 'User-Agent Patreon'),
-                    'type' => 'text',
-                ],
-                [
-                    'key' => 'GITHUB_BUGREPORT_TOKEN',
-                    'label' => serverEnvAdminT('parameters.server_env.field.GITHUB_BUGREPORT_TOKEN.label', 'Token GitHub bug report'),
-                    'type' => 'password',
-                    'secret' => true,
-                    'help' => serverEnvAdminT('parameters.server_env.field.secret_keep.help', 'Laissez vide pour conserver la valeur actuelle.'),
-                ],
-                [
-                    'key' => 'GITHUB_BUGREPORT_REPO_OWNER',
-                    'label' => serverEnvAdminT('parameters.server_env.field.GITHUB_BUGREPORT_REPO_OWNER.label', 'Repository owner GitHub'),
-                    'type' => 'text',
-                ],
-                [
-                    'key' => 'GITHUB_BUGREPORT_REPO_NAME',
-                    'label' => serverEnvAdminT('parameters.server_env.field.GITHUB_BUGREPORT_REPO_NAME.label', 'Repository name GitHub'),
-                    'type' => 'text',
-                ],
-                [
-                    'key' => 'GITHUB_BUGREPORT_LABELS',
-                    'label' => serverEnvAdminT('parameters.server_env.field.GITHUB_BUGREPORT_LABELS.label', 'Labels GitHub'),
-                    'type' => 'text',
-                    'placeholder' => 'bug,triage',
-                ],
-                [
-                    'key' => 'GITHUB_BUGREPORT_USER_AGENT',
-                    'label' => serverEnvAdminT('parameters.server_env.field.GITHUB_BUGREPORT_USER_AGENT.label', 'User-Agent GitHub'),
-                    'type' => 'text',
-                ],
-            ],
-        ],
     ];
+
+    foreach (omoServerEnvAdditionalSections() as $sectionKey => $section) {
+        $sections[$sectionKey] = [
+            'title' => serverEnvAdminT('parameters.server_env.section.' . $sectionKey . '.title', $section['title']),
+            'intro' => serverEnvAdminT('parameters.server_env.section.' . $sectionKey . '.intro', $section['intro']),
+            'fields' => [],
+            'technical' => !empty($section['technical']),
+        ];
+    }
+    $additionalFields = omoServerEnvAdditionalServiceFields();
+    foreach (omoServerEnvAdditionalSections() as $sectionKey => $section) {
+        $additionalFields[$sectionKey] = $section['fields'];
+    }
+    foreach ($additionalFields as $sectionKey => $fields) {
+        foreach ($fields as $key => $field) {
+            $field['key'] = $key;
+            $field['label'] = serverEnvAdminT('parameters.server_env.field.' . $key . '.label', $field['label']);
+            $field['type'] = $field['type'] ?? (!empty($field['secret']) ? 'password' : 'text');
+            if ($field['type'] === 'boolean') {
+                $field['type'] = 'select';
+                $field['options'] = [
+                    'true' => serverEnvAdminT('parameters.server_env.option.boolean.true', 'Oui'),
+                    'false' => serverEnvAdminT('parameters.server_env.option.boolean.false', 'Non'),
+                ];
+            }
+            if (isset($field['options']) && ($fields[$key]['type'] ?? '') === 'select') {
+                foreach ($field['options'] as $optionValue => $label) {
+                    $field['options'][$optionValue] = serverEnvAdminT('parameters.server_env.field.' . $key . '.option.' . $optionValue, $label);
+                }
+            }
+            if (!empty($field['help'])) {
+                $field['help'] = serverEnvAdminT('parameters.server_env.field.' . $key . '.help', $field['help']);
+            } elseif (!empty($field['secret'])) {
+                $field['help'] = serverEnvAdminT('parameters.server_env.field.secret_keep.help', 'Laissez vide pour conserver la valeur actuelle.');
+            }
+            $sections[$sectionKey]['fields'][] = $field;
+        }
+    }
 
     $defaults = serverEnvAdminReadEnvDefaults(serverEnvAdminGetExampleEnvPath());
     foreach ($sections as $sectionKey => $section) {
@@ -383,6 +429,11 @@ function serverEnvAdminGetEditableSections()
     }
 
     return $sections;
+}
+
+function serverEnvAdminGetRetiredKeys()
+{
+    return ['PAYPAL_CLIENT_ID', 'GITHUB_BUGREPORT_PROJECT_OWNER', 'GITHUB_BUGREPORT_PROJECT_NUMBER'];
 }
 
 function serverEnvAdminGetFieldMap()
@@ -471,6 +522,13 @@ function serverEnvAdminBuildCurrentValues()
         $values[$key] = (string)envValue($key, $default);
     }
 
+    $values['AI_PROVIDER'] = commonAiGetProvider();
+    $values['AI_API_KEY'] = commonAiGetApiKey();
+    $values['AI_MODEL'] = commonAiGetModel();
+    $values['AI_TRANSLATION_MODEL'] = commonAiGetModel(true);
+    $values['TRANSCRIPTION_PROVIDER'] = commonAiGetTranscriptionProvider();
+    $values['TRANSCRIPTION_API_KEY'] = commonAiGetTranscriptionApiKey();
+    $values['TRANSCRIPTION_MODEL'] = commonAiGetTranscriptionModel();
     return $values;
 }
 
@@ -485,6 +543,12 @@ function serverEnvAdminBuildDisplayValues(array $actualValues)
         }
 
         $displayValues[$key] = (string)($actualValues[$key] ?? '');
+        if ($displayValues[$key] !== '' && isset($field['options']['true'], $field['options']['false'])) {
+            $booleanValue = filter_var($displayValues[$key], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+            if ($booleanValue !== null) {
+                $displayValues[$key] = $booleanValue ? 'true' : 'false';
+            }
+        }
     }
 
     return $displayValues;
@@ -510,7 +574,10 @@ function serverEnvAdminReadSubmittedValues(array $source)
     $values = [];
 
     foreach (serverEnvAdminGetFieldMap() as $key => $field) {
-        $value = array_key_exists($key, $source) ? (string)$source[$key] : '';
+        if (!array_key_exists($key, $source)) {
+            continue;
+        }
+        $value = (string)$source[$key];
         $value = str_replace(["\r\n", "\r"], "\n", $value);
         $value = trim($value);
         $values[$key] = str_replace("\n", ' ', $value);
@@ -527,7 +594,7 @@ function serverEnvAdminMergeSubmittedValues(array $submittedValues, array $curre
         $submittedValue = (string)($submittedValues[$key] ?? '');
         $currentValue = (string)($currentValues[$key] ?? '');
 
-        if (!empty($field['secret']) && $submittedValue === '') {
+        if (!array_key_exists($key, $submittedValues) || ((!empty($field['secret']) || !empty($field['preserve_empty'])) && $submittedValue === '')) {
             $mergedValues[$key] = $currentValue;
             continue;
         }
@@ -553,6 +620,16 @@ function serverEnvAdminIsHttpUrl($value)
         && !isset($parsedServerUrl['fragment']);
 }
 
+function serverEnvAdminIsValidPublicOrigin($value)
+{
+    if (!serverEnvAdminIsHttpUrl($value) || filter_var($value, FILTER_VALIDATE_URL) === false) {
+        return false;
+    }
+    $parts = parse_url($value);
+    return in_array($parts['path'] ?? '', ['', '/'], true)
+        && (strtolower($parts['scheme']) === 'https' || in_array(strtolower($parts['host']), ['localhost', '127.0.0.1'], true));
+}
+
 function serverEnvAdminParseEtherpadUrls($value)
 {
     $value = trim((string)$value);
@@ -573,13 +650,48 @@ function serverEnvAdminParseEtherpadUrls($value)
     return array_values($baseUrls);
 }
 
-function serverEnvAdminValidateValues(array $values)
+function serverEnvAdminValidateValues(array $values, ?array $currentValues = null, ?array $submittedValues = null)
 {
     $errors = [];
 
+    $provider = ($values['AI_PROVIDER'] ?? '') ?: 'openai';
+    $destinationChanged = $currentValues !== null && $provider !== (($currentValues['AI_PROVIDER'] ?? '') ?: 'openai');
+    if ($provider === 'openai_compatible') {
+        try {
+            $baseUrl = commonAiGetCompatibleBaseUrl((string)($values['AI_BASE_URL'] ?? ''));
+            if ($currentValues !== null) {
+                $currentBaseUrl = rtrim(trim((string)($currentValues['AI_BASE_URL'] ?? '')), '/') ?: 'https://openrouter.ai/api/v1';
+                $destinationChanged = $destinationChanged || $baseUrl !== $currentBaseUrl;
+            }
+        } catch (InvalidArgumentException $error) {
+            $errors[] = serverEnvAdminT('parameters.server_env.error.ai_base_url', 'Indiquez une adresse de base HTTPS valide, sans identifiants, parametres ni suffixe /chat/completions.');
+        }
+    }
+    if ($currentValues !== null
+        && $provider !== 'disabled'
+        && $destinationChanged
+        && trim((string)($currentValues['AI_API_KEY'] ?? '')) !== ''
+        && trim((string)($submittedValues['AI_API_KEY'] ?? '')) === ''
+        && ($values['AI_API_KEY'] ?? '') === ($currentValues['AI_API_KEY'] ?? '')) {
+        $errors[] = serverEnvAdminT('parameters.server_env.error.ai_provider_key', 'Saisissez la cle API du fournisseur choisi lorsque vous changez de fournisseur de texte ou d adresse API.');
+    }
+    $audioProvider = ($values['TRANSCRIPTION_PROVIDER'] ?? '') ?: 'openai';
+    if ($currentValues !== null && $audioProvider !== 'disabled'
+        && $audioProvider !== (($currentValues['TRANSCRIPTION_PROVIDER'] ?? '') ?: 'openai')
+        && trim((string)($currentValues['TRANSCRIPTION_API_KEY'] ?? '')) !== ''
+        && trim((string)($submittedValues['TRANSCRIPTION_API_KEY'] ?? '')) === ''
+        && ($values['TRANSCRIPTION_API_KEY'] ?? '') === ($currentValues['TRANSCRIPTION_API_KEY'] ?? '')) {
+        $errors[] = serverEnvAdminT('parameters.server_env.error.transcription_provider_key', 'Saisissez la cle API du service choisi lorsque vous changez de fournisseur de transcription.');
+    }
+    if (in_array($provider, ['anthropic', 'mistral', 'openai_compatible'], true)
+        && trim((string)($values['AI_API_KEY'] ?? '')) !== ''
+        && trim((string)($values['AI_MODEL'] ?? '')) === '') {
+        $errors[] = serverEnvAdminT('parameters.server_env.error.ai_model_required', 'Indiquez le modele principal du fournisseur de texte choisi.');
+    }
+
     $fieldMap = serverEnvAdminGetFieldMap();
 
-    foreach (['APP_LANG', 'MAIL_AUTH'] as $key) {
+    foreach ($fieldMap as $key => $field) {
         if (!isset($fieldMap[$key]['options'])) {
             continue;
         }
@@ -598,8 +710,46 @@ function serverEnvAdminValidateValues(array $values)
         }
     }
 
-    if (isset($values['MAIL_PORT']) && $values['MAIL_PORT'] !== '' && !ctype_digit((string)$values['MAIL_PORT'])) {
-        $errors[] = 'Le port SMTP doit etre numerique.';
+    foreach ($fieldMap as $key => $field) {
+        $value = (string)($values[$key] ?? '');
+        if ($value === '') {
+            continue;
+        }
+        if (($field['type'] ?? '') === 'number' && (preg_match('/^[0-9]+$/D', $value) !== 1
+            || (isset($field['min']) && (float)$value < $field['min'])
+            || (isset($field['max']) && (float)$value > $field['max']))) {
+            $errors[] = serverEnvAdminT('parameters.server_env.error.invalid_numeric_field', 'La valeur numerique de {label} est invalide.', ['label' => $field['label']]);
+        }
+        if (($field['type'] ?? '') === 'email' && !filter_var($value, FILTER_VALIDATE_EMAIL)) {
+            $errors[] = serverEnvAdminT('parameters.server_env.error.invalid_email_field', 'L adresse e-mail de {label} est invalide.', ['label' => $field['label']]);
+        }
+    }
+
+    $publicUrl = (string)($values['AUTH_PUBLIC_URL'] ?? '');
+    if ($publicUrl !== '' && !serverEnvAdminIsValidPublicOrigin($publicUrl)) {
+        $errors[] = serverEnvAdminT('parameters.server_env.error.invalid_public_url', 'L adresse publique doit etre une origine HTTPS sans chemin ni parametre. HTTP est reserve a localhost et 127.0.0.1.');
+    }
+    foreach (['NOMINATIM_SEARCH_URL', 'MCP_PUBLIC_URL'] as $key) {
+        $url = (string)($values[$key] ?? '');
+        if ($url !== '' && !serverEnvAdminIsHttpUrl($url)) {
+            $errors[] = serverEnvAdminT('parameters.server_env.error.invalid_url_field', 'L adresse de {label} est invalide.', ['label' => $fieldMap[$key]['label']]);
+        }
+    }
+
+    $telegramWebhookSecret = (string)($values['TELEGRAM_WEBHOOK_SECRET'] ?? '');
+    if ($telegramWebhookSecret !== '' && preg_match('/^[A-Za-z0-9_-]{32,256}$/D', $telegramWebhookSecret) !== 1) {
+        $errors[] = serverEnvAdminT(
+            'parameters.server_env.error.invalid_telegram_webhook_secret',
+            'Le secret du webhook Telegram doit contenir 32 a 256 lettres, chiffres, tirets ou underscores.'
+        );
+    }
+
+    $patreonCreatorUserId = trim((string)($values['PATREON_CREATOR_USER_ID'] ?? ''));
+    if ($patreonCreatorUserId !== '' && preg_match('/^[1-9][0-9]*$/D', $patreonCreatorUserId) !== 1) {
+        $errors[] = serverEnvAdminT(
+            'parameters.server_env.error.invalid_patreon_creator_user_id',
+            'L ID utilisateur Patreon du createur doit etre un identifiant numerique strictement positif.'
+        );
     }
 
     $serverUrlFields = array(
@@ -995,6 +1145,14 @@ function serverEnvAdminWriteValues(array $values)
             ['target' => $targetLabel]
         ));
     }
+
+    // Remove retired application settings while preserving unrelated hosting variables.
+    $lines = array_values(array_filter($lines, static function ($line) {
+        if (preg_match('/^\s*(?:export\s+)?([A-Z][A-Z0-9_]*)\s*=/', (string)$line, $matches) !== 1) {
+            return true;
+        }
+        return !in_array($matches[1], serverEnvAdminGetRetiredKeys(), true);
+    }));
 
     $fieldMap = serverEnvAdminGetFieldMap();
     $lineIndexesByKey = [];

@@ -245,7 +245,15 @@
 
 		public function isVisibleInHolonWhenProjectDocument(): bool
 		{
-			return (int)$this->get('project_visible_in_holon') === 1;
+			return (int)$this->get('project_visible_in_holon') === 1 || $this->hasMultipleProjectAssociations();
+		}
+
+		public function hasMultipleProjectAssociations(): bool
+		{
+			if ((int)$this->getId() <= 0) return false;
+			$links = new ArrayProjectDocument();
+			$links->load(['where' => [['field' => 'IDdocument', 'value' => (int)$this->getId()]], 'limit' => 2]);
+			return count($links) > 1;
 		}
 
 		public function hasProjectAssociation(): bool
@@ -265,7 +273,7 @@
 				return array('status' => false, 'text' => 'Document introuvable.');
 			}
 
-			$this->set('project_visible_in_holon', $visible ? 1 : 0);
+			$this->set('project_visible_in_holon', $visible || $this->hasMultipleProjectAssociations() ? 1 : 0);
 			$result = $this->save();
 			return is_array($result)
 				? $result

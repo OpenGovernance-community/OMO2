@@ -12,7 +12,7 @@ function checkFaqAi(bool $condition, string $message): void
 
 $GLOBALS['OpenAI'] = 'test-key';
 $_SESSION['currentUser'] = 1;
-foreach (['patreonClientId', 'patreonClientSecret', 'patreonCreatorCampaignId', 'patreonConnectUrl', 'patreonRedirectUri', 'patreonConnectAllowedOrigins'] as $key) {
+foreach (['patreonClientId', 'patreonClientSecret', 'patreonCreatorCampaignId', 'patreonCreatorUserId', 'patreonConnectUrl', 'patreonRedirectUri', 'patreonConnectAllowedOrigins'] as $key) {
     $GLOBALS[$key] = '';
 }
 $question = 'Comment poser une question ?';

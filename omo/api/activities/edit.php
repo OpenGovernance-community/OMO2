@@ -1,6 +1,7 @@
 <?php
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/shared.php';
+require_once dirname(__DIR__) . '/projects/shared.php';
 
 use dbObject\ControlActivity;
 use dbObject\ArrayUserOrganization;
@@ -10,6 +11,17 @@ use dbObject\RecurrenceSchedule;
 $deferredEditor = $GLOBALS['omoDeferredObjectEditor'] ?? null;
 $organizationId = $deferredEditor ? (int)$deferredEditor['organizationId'] : (int)($_SESSION['currentOrganization'] ?? ($_GET['oid'] ?? 0));
 $currentHolonId = $deferredEditor ? (int)$deferredEditor['holonId'] : (int)($_GET['cid'] ?? 0);
+$projectId = $deferredEditor ? 0 : max(0, (int)($_GET['project_id'] ?? 0));
+if ($projectId > 0) {
+    $project = omoProjectsLoadManagedResourceProject($organizationId, $projectId);
+    if (!$project) {
+        http_response_code(403);
+        echo '<div class="omo-empty-state">' . omoApiEscape(omoActivityT('activity.error.forbidden')) . '</div>';
+        exit;
+    }
+    $currentHolonId = (int)$project->get('IDholon');
+}
+$activityFormId = $projectId > 0 ? 'omo-project-activity-editor-form' : 'omo-activity-editor-form';
 $context = $deferredEditor ? ['status' => true] : omoActivityResolveContext($organizationId, $currentHolonId);
 $activityId = $deferredEditor ? (int)$deferredEditor['objectId'] : (int)($_GET['id'] ?? 0);
 $activity = new ControlActivity();
@@ -56,7 +68,7 @@ $activityHelp = static function ($label, $text) {
         . '<div class="generic-context-help__content">' . omoApiEscape($text) . '</div></details>';
 };
 ?>
-<?php if ($deferredEditor): ?><link rel="stylesheet" href="/omo/api/activities/activities.css?v=20260921-compact-editor"><?php endif; ?>
+<?php if ($deferredEditor || $projectId > 0): ?><link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/activities/activities.css') ?>"><?php endif; ?>
 <div class="omo-activity-detail generic-drawer-content"<?= $deferredEditor ? ' data-deferred-object-editor' : '' ?>>
     <?php if (!$deferredEditor): ?>
     <div
@@ -65,13 +77,13 @@ $activityHelp = static function ($label, $text) {
         data-omo-subdrawer-title="<?= omoApiEscape($drawerTitle) ?>"
         data-omo-subdrawer-description=""
     >
-        <button type="submit" form="omo-activity-editor-form" class="generic-action-button generic-action-button--main" data-omo-subdrawer-action><?= omoApiEscape(omoActivityT('activity.save')) ?></button>
-        <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-subdrawer-action data-activity-editor-cancel<?= $backUrl !== '' ? ' data-activity-open-url="' . omoApiEscape($backUrl) . '"' : '' ?>><?= omoApiEscape(omoActivityT('activity.cancel')) ?></button>
+        <button type="submit" form="<?= $activityFormId ?>" class="generic-action-button generic-action-button--main" data-omo-subdrawer-action><?= omoApiEscape(omoActivityT('activity.save')) ?></button>
+        <button type="button" form="<?= $activityFormId ?>" class="generic-action-button generic-action-button--secondary" data-omo-subdrawer-action data-activity-editor-cancel<?= $backUrl !== '' ? ' data-activity-open-url="' . omoApiEscape($backUrl) . '"' : '' ?>><?= omoApiEscape(omoActivityT('activity.cancel')) ?></button>
     </div>
     <?php endif; ?>
 
     <form
-        id="omo-activity-editor-form"
+        id="<?= $activityFormId ?>"
         class="generic-form-stack generic-form-stack--compact"
         action="<?= $deferredEditor && $deferredEditor['origin'] === 'pv' ? '/omo/api/deferred_proposals/pv_object_save.php' : '/omo/api/activities/action.php' ?>"
         method="post"
@@ -82,6 +94,7 @@ $activityHelp = static function ($label, $text) {
         <input type="hidden" name="activity_action" value="save_activity">
         <input type="hidden" name="oid" value="<?= (int)$organizationId ?>">
         <input type="hidden" name="cid" value="<?= (int)$currentHolonId ?>">
+        <?php if ($projectId > 0): ?><input type="hidden" name="project_id" value="<?= $projectId ?>"><?php endif; ?>
         <?php if ($pvMeetingQuery !== ''): ?>
             <input type="hidden" name="pv_meeting_document_id" value="<?= (int)($_GET['pv_meeting_document_id'] ?? 0) ?>">
             <input type="hidden" name="pv_meeting_editor_token" value="<?= omoApiEscape((string)($_GET['pv_meeting_editor_token'] ?? '')) ?>">
@@ -91,6 +104,10 @@ $activityHelp = static function ($label, $text) {
             <?php foreach (['oid' => $organizationId, 'point_id' => $deferredEditor['pointId'], 'proposal_id' => $deferredEditor['proposalId'], 'target_type' => $deferredEditor['targetType'], 'operation' => $deferredEditor['operation'], 'holon_id' => $currentHolonId, 'object_id' => $activityId] as $key => $entry): ?>
                 <input type="hidden" name="<?= omoApiEscape($key) ?>" value="<?= omoApiEscape((string)$entry) ?>">
             <?php endforeach; ?>
+        <?php endif; ?>
+
+        <?php if (!$deferredEditor && ($projectId > 0 || $activity->hasProjectAssociation())): ?>
+            <?= omoProjectsRenderResourceHolonVisibility($activity) ?>
         <?php endif; ?>
 
         <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided generic-form-section--compact">
@@ -189,6 +206,12 @@ $activityHelp = static function ($label, $text) {
         <?php endif; ?>
     </form>
 </div>
+<?php if ($projectId > 0): ?>
+<script src="<?= commonAssetUrl('/omo/assets/js/simple-html-field.js') ?>"></script>
+<?= commonPageScriptTags('/common/recurring-task/editor.js', [
+    'projectId' => $projectId, 'formId' => $activityFormId, 'saveError' => omoActivityT('activity.error.action'),
+]) ?>
+<?php endif; ?>
 <?php if ($deferredEditor): ?>
 <script src="/omo/assets/js/simple-html-field.js?v=20261008-html-editor-embed-links"></script>
 <script src="/common/choice/deferred-object-editor.js?v=20260924-shared-form-validation"></script>

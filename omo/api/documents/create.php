@@ -1,5 +1,6 @@
 <?php
 require_once dirname(__DIR__) . '/bootstrap.php';
+require_once dirname(__DIR__) . '/projects/shared.php';
 require_once dirname(__DIR__, 3) . '/common/etherpad.php';
 require_once dirname(__DIR__, 3) . '/common/ethercalc.php';
 require_once dirname(__DIR__, 3) . '/common/collabora.php';
@@ -55,8 +56,6 @@ $sourceLang = [
     'documents.create.field.tags_remove' => ['text' => 'Retirer le tag', 'context' => 'Accessible label prefix used to remove a tag from the editor.'],
     'documents.create.field.edit_visibility' => ['text' => 'Édition', 'context' => 'Label of the document edit visibility field.'],
     'documents.create.field.visibility' => ['text' => 'Visibilité', 'context' => 'Label of the document visibility field.'],
-    'documents.create.field.project_visible_in_holon' => ['text' => 'Afficher dans l’espace', 'context' => 'Checkbox allowing a project-attached document to remain visible in the space document list.'],
-    'documents.create.field.project_visible_in_holon_hint' => ['text' => 'Les documents liés à un projet sont masqués dans l’espace par défaut.', 'context' => 'Help text for the project document space visibility checkbox.'],
     'documents.create.field.html' => ['text' => 'Contenu HTML', 'context' => 'Label of the HTML content area.'],
     'documents.create.field.external_url' => ['text' => 'URL externe', 'context' => 'Label of the external URL field.'],
     'documents.create.field.external_url_placeholder' => ['text' => 'https://example.com/', 'context' => 'Placeholder shown in the external URL field.'],
@@ -142,9 +141,9 @@ $canUseForm = $canCreate;
 $canManageDocument = false;
 $canEditDocumentContent = false;
 $isProjectDocument = false;
-$projectVisibleInHolon = false;
 $formErrorMessage = '';
 $canUseAiTools = commonAiUserCanUse($currentUserId, commonOpenAiGetRewriteModel());
+$canUseTranscription = commonAiUserCanTranscribe($currentUserId);
 
 if ($documentId > 0) {
     $isEditing = $document->load($documentId);
@@ -155,7 +154,6 @@ if ($documentId > 0) {
         $canEditDocumentContent = !$document->isPvDocument()
             && $document->canEditInOrganizationContext($organizationId, $currentUserId, false);
         $isProjectDocument = $document->hasProjectAssociation();
-        $projectVisibleInHolon = $document->isVisibleInHolonWhenProjectDocument();
     }
     $canUseForm = $isEditing && ($canManageDocument || $canEditDocumentContent);
 
@@ -177,6 +175,7 @@ $isProjectDocument = $isProjectDocument || $projectId > 0;
 
 if ($isEditing && !$canEditDocumentContent) {
     $canUseAiTools = false;
+    $canUseTranscription = false;
 }
 
 $visibilityOptions = ObjectVisibility::getVisibilityTypeOptions();
@@ -444,6 +443,10 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                 <input type="hidden" name="id" value="<?= (int)$document->getId() ?>">
             <?php endif; ?>
 
+            <?php if ($isProjectDocument): ?>
+                <?= omoProjectsRenderResourceHolonVisibility($document, $isEditing && !$canManageDocument) ?>
+            <?php endif; ?>
+
             <div class="omo-document-editor__grid generic-section generic-section--stack generic-form-section generic-form-section--divided generic-form-section--compact">
                 <fieldset class="omo-document-editor__metadata"<?= $isEditing && !$canManageDocument ? ' disabled' : '' ?>>
                 <div class="omo-document-editor__meta-row generic-form-grid generic-form-grid--trio">
@@ -530,21 +533,6 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                         )) ?>
                     </div>
 
-                    <?php if ($isProjectDocument): ?>
-                        <div class="generic-inline-help generic-form-field generic-form-field--full">
-                            <label class="omo-document-editor__checkbox generic-checkbox">
-                                <input
-                                    type="checkbox"
-                                    name="project_visible_in_holon"
-                                    value="1"
-                                    <?= $projectVisibleInHolon ? ' checked' : '' ?>
-                                    <?= $isEditing && !$canManageDocument ? ' disabled' : '' ?>
-                                >
-                                <span><?= $escape(omoDocumentsCreateT('documents.create.field.project_visible_in_holon')) ?></span>
-                            </label>
-                            <?= $documentHelp(omoDocumentsCreateT('documents.create.field.project_visible_in_holon'), omoDocumentsCreateT('documents.create.field.project_visible_in_holon_hint')) ?>
-                        </div>
-                    <?php endif; ?>
                 </div>
 
                 <div class="generic-form-grid generic-form-grid--main-aside">
@@ -773,7 +761,9 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
 <?= commonPageScriptTags('/omo/api/documents/create.js', [
     'documentFormId' => $documentFormId,
     'uploadHasExistingFile' => ($documentType === Document::TYPE_UPLOADED_FILE && $documentHasStoredFile),
-    'aiToolsEnabled' => ($canUseAiTools),
+    'aiToolsEnabled' => ($canUseAiTools || $canUseTranscription),
+    'textToolsEnabled' => $canUseAiTools,
+    'transcriptionEnabled' => $canUseTranscription,
     'initialHtmlValue' => $documentContent,
     'embeddableDocuments' => $embeddableDocumentsPayload,
     'uiText' => [

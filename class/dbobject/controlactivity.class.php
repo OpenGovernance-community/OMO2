@@ -16,7 +16,7 @@ class ControlActivity extends ControlTask
             [['IDorganization', 'IDholon', 'IDuser_responsible'], 'fk'],
             [['title', 'frequency', 'schedule', 'display_lead_unit', 'execution_duration_unit'], 'string'],
             [['description'], 'html'],
-            [['active'], 'boolean'],
+            [['active', 'project_visible_in_holon'], 'boolean'],
             [['created_at', 'updated_at', 'archived_at'], 'datetime'],
             [['id'], 'safe'],
         ];

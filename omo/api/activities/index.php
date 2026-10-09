@@ -320,5 +320,6 @@ $texts = [
 <script src="<?= omoApiEscape(commonAssetUrl('/omo/assets/js/resource-archives.js')) ?>"></script>
 <script src="/common/drawer/subdrawer.js?v=20260906-slide-right"></script>
 <script src="/omo/assets/js/simple-html-field.js?v=20261008-html-editor-embed-links"></script>
+<script src="<?= commonAssetUrl('/common/recurring-task/editor.js') ?>"></script>
 <script src="/omo/assets/js/application-view-preferences.js?v=20260919-activity-assignment"></script>
 <script src="<?= omoApiEscape(commonAssetUrl('/omo/api/activities/activities.js')) ?>"></script>

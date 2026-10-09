@@ -102,6 +102,8 @@ function commonExternalCalendarIcsValues(array $event, string $uid, string $key,
     $storageZone = new \DateTimeZone(date_default_timezone_get());
     return [
         'source_key' => $sourceKey,
+        'single_source_prefix' => !isset($event['RRULE']) && !isset($event['RDATE'])
+            && !isset($event['RECURRENCE-ID']) ? $uid . '|' : null,
         'source_etag' => '',
         'title' => $value('SUMMARY') ?: 'Evenement externe',
         'description' => $value('DESCRIPTION'),
