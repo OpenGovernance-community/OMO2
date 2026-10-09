@@ -85,6 +85,9 @@ function patreonCanManageOrganizationRouting($userId, $minimumAmountCents = 2000
 {
 	$userId = (int)$userId;
 	$minimumAmountCents = max(0, (int)$minimumAmountCents);
+	if (function_exists('commonUserHasSiteAdminOverride') && commonUserHasSiteAdminOverride($userId)) {
+		return true;
+	}
 
 	if ($userId <= 0 || !class_exists('\\dbObject\\UserPatreon') || !\dbObject\UserPatreon::isStorageAvailable()) {
 		return false;
@@ -107,6 +110,9 @@ function patreonUserCanUseAi($userId)
 	$userId = (int)$userId;
 	if ($userId <= 0) {
 		return false;
+	}
+	if (function_exists('commonUserHasSiteAdminOverride') && commonUserHasSiteAdminOverride($userId)) {
+		return true;
 	}
 
 	// A broken OAuth UI or unavailable storage must never disable the paywall.
