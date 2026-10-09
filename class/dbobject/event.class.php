@@ -1399,6 +1399,26 @@ class Event extends DbObject
         return $saveResult;
     }
 
+    /** Conditional linking avoids silently moving an event already assigned to another project. */
+    public function attachToProject(Project $project): bool
+    {
+        $projectId = (int)$project->getId();
+        if ($projectId <= 0 || !$project->get('active') || $project->isPendingProposal()
+            || (int)$project->get('IDorganization') !== (int)$this->get('IDorganization')) { return false; }
+        $saved = self::execute('UPDATE event SET IDproject = :project, updated_at = NOW()
+            WHERE id = :id AND IDorganization = :organization AND active = 1 AND status <> :cancelled
+                AND (IDproject IS NULL OR IDproject = 0 OR IDproject = :current_project)',
+            ['project' => $projectId, 'id' => (int)$this->getId(), 'organization' => (int)$project->get('IDorganization'),
+                'cancelled' => self::STATUS_CANCELLED, 'current_project' => $projectId]);
+        return $saved && $this->load((int)$this->getId(), true) && (int)$this->get('IDproject') === $projectId;
+    }
+
+    public function detachFromProject(int $projectId): bool
+    {
+        return $projectId > 0 && self::execute('UPDATE event SET IDproject = NULL, updated_at = NOW()
+            WHERE id = :id AND IDproject = :project', ['id' => (int)$this->getId(), 'project' => $projectId]);
+    }
+
     public function delete()
     {
         $organizationId = (int)$this->get('IDorganization');

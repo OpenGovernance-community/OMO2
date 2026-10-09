@@ -63,6 +63,7 @@
     var documentDrawerController = documentDrawer && typeof window.omoCreateSubdrawerController === 'function'
         ? window.omoCreateSubdrawerController({ drawer: documentDrawer, dismissAction: 'button[data-omo-projects-document-drawer-close]' })
         : null;
+    if (documentDrawer) documentDrawer.__omoSubdrawerController = documentDrawerController;
     var currentUrl = root.getAttribute('data-omo-projects-current-url') || '';
     var createUrl = root.getAttribute('data-omo-projects-create-url') || '';
     var detailUrl = root.getAttribute('data-omo-projects-detail-url') || '';
@@ -133,21 +134,13 @@
         attachSubmit: 'Attacher',
         attachSelectRequired: 'Choisissez un projet à attacher.',
         cancel: 'Annuler',
-        documentsPickerTitle: 'Ajouter un document',
-        documentsPickerTabs: 'Choix du document',
-        documentsPickerExisting: 'Document existant',
-        documentsPickerNew: 'Nouveau document',
+        documentsPickerTitle: 'Importer un document',
         documentsPickerSearch: 'Rechercher un document',
         documentsPickerVisible: 'Documents visibles',
         documentsPickerNone: 'Aucun document ne correspond à votre recherche.',
         documentsPickerAttach: 'Associer au projet',
-        documentsPickerSelectRequired: 'Choisissez un document à associer.',
         documentsPickerError: 'Impossible de charger les documents disponibles.',
         documentsPickerAttachError: "Impossible d'associer ce document au projet.",
-        documentsPickerCreateError: 'Impossible de créer ce document.',
-        documentsPickerTemplateHint: 'Choisissez un modèle ou créez un document vide.',
-        documentsPickerBlank: 'Créer un document vide',
-        documentsPickerTemplateError: 'Impossible de créer le document depuis ce modèle.'
     };
     var mobileColumnIndex = 0;
     var requestToken = 0;
@@ -758,6 +751,38 @@
         }
     }
 
+    function mutateProjectEvent(url, data) {
+        var form = new FormData();
+        Object.keys(data).forEach(function (key) { form.set(key, String(data[key])); });
+        return fetch(resolveUrl(url), {method: 'POST', credentials: 'same-origin', body: form,
+            headers: {'X-Requested-With': 'XMLHttpRequest'}}).then(function (response) {
+            return response.json().then(function (result) {
+                if (!response.ok || !result.success) { throw new Error(result.message || texts.actionError); }
+                window.omoNotify(result.message, 'success');
+                window.dispatchEvent(new CustomEvent('omo-project-event-saved', {detail: {projectId: result.projectId}}));
+                return true;
+            });
+        });
+    }
+
+    function openProjectEventPicker(url) {
+        fetch(resolveUrl(url), {credentials: 'same-origin', cache: 'no-store', headers: {'X-Requested-With': 'XMLHttpRequest'}})
+            .then(function (response) {
+                return response.json().then(function (data) {
+                    if (!response.ok || !data.success) { throw new Error(data.message || texts.actionError); }
+                    return data;
+                });
+            }).then(function (data) {
+                if (!window.omoDocumentEmbedPicker) { throw new Error(data.labels.error); }
+                window.omoDocumentEmbedPicker.open({items: data.items, tabs: data.tabs, labels: data.labels,
+                    organizationId: data.organizationId, initialHolonId: data.projectHolonId, scopeLabels: data.scopeLabels,
+                    onSelect: function (item) {
+                        return mutateProjectEvent(url, {id: data.projectId, _csrf: data.csrf,
+                            action: 'attach', source: item.source, event_id: item.eventId});
+                    }});
+            }).catch(function (error) { window.omoNotify(error.message || texts.actionError, 'error'); });
+    }
+
     function openProjectResourcePicker(url, title) {
         if (!url || typeof window.commonTopbarOpenModal !== 'function') {
             return;
@@ -770,110 +795,19 @@
                 if (!host) { return; }
                 var labels = data.labels || {};
                 var type = data.type;
-                var projectId = Number(data.projectId || 0);
-                var uid = String(Date.now());
-                var existingId = 'omo-project-resource-existing-' + uid;
-                var newId = 'omo-project-resource-new-' + uid;
-                var createHtml = '';
-                if (data.canCreate) {
-                    createHtml = '<button type="button" class="generic-tabs__tab" data-generic-tab data-generic-tab-target="' + newId + '">' + escapeHtml(labels.new) + '</button>';
-                }
-                host.innerHTML = '<div class="generic-tabs omo-document-embed-picker omo-project-document-picker omo-project-resource-picker generic-drawer-content" data-generic-tabs>'
-                    + '<div class="generic-tabs__list"><button type="button" class="generic-tabs__tab is-active" data-generic-tab data-generic-tab-target="' + existingId + '">' + escapeHtml(labels.existing) + '</button>' + createHtml + '</div>'
-                    + '<div class="generic-tabs__panels"><section id="' + existingId + '" class="generic-tabs__panel" data-generic-tab-panel>'
-                    + '<div class="omo-resource-picker omo-resource-picker--mobile-scope"><aside class="omo-resource-picker__navigation" data-resource-scope></aside>'
-                    + '<div class="omo-resource-picker__content"><label class="omo-resource-picker__quick-search"><img src="/common/assets/icon-topbar-search.png" alt="" aria-hidden="true"><input type="search" class="generic-form-control" data-resource-search placeholder="' + escapeHtml(labels.search) + '" aria-label="' + escapeHtml(labels.search) + '"></label>'
-                    + '<div class="omo-document-embed-picker__field"><select class="generic-form-control omo-document-embed-picker__select" size="10" data-resource-select aria-label="' + escapeHtml(labels.existing) + '"></select></div>'
-                    + '<div class="omo-document-embed-picker__preview"><div class="omo-document-embed-picker__preview-title" data-resource-title></div><div class="omo-document-embed-picker__preview-description" data-resource-description hidden></div></div>'
-                    + '<div class="omo-document-embed-picker__actions"><button type="button" class="generic-action-button generic-action-button--secondary" data-resource-cancel>' + escapeHtml(labels.cancel) + '</button><button type="button" class="generic-action-button generic-action-button--main" data-resource-attach disabled>' + escapeHtml(labels.attach) + '</button></div></div></div></section>'
-                    + (data.canCreate ? '<section id="' + newId + '" class="generic-tabs__panel" data-generic-tab-panel hidden><form class="generic-form-stack" data-resource-create>'
-                        + '<label class="generic-form-field"><span class="generic-form-label">' + escapeHtml(labels.name) + '</span><input class="generic-form-control" name="resource_name" maxlength="' + (type === 'indicator' ? '190' : '255') + '" required></label>'
-                        + '<label class="generic-form-field"><span class="generic-form-label">' + escapeHtml(labels.description) + '</span><textarea class="generic-form-control" name="description" rows="3"></textarea></label>'
-                        + (type === 'recurring_task' ? '<div class="generic-form-grid generic-form-grid--pair"><label class="generic-form-field"><span class="generic-form-label">' + escapeHtml(labels.frequency) + '</span><select class="generic-form-control" name="frequency" data-resource-frequency>' + Object.keys(data.frequencyLabels || {}).map(function (key) { return '<option value="' + escapeHtml(key) + '">' + escapeHtml(data.frequencyLabels[key]) + '</option>'; }).join('') + '</select></label><label class="generic-form-field"><span class="generic-form-label">' + escapeHtml(labels.schedule) + '</span><select class="generic-form-control" name="schedule" data-resource-schedule></select></label></div>' : '')
-                        + '<div class="generic-form-actions"><button type="submit" class="generic-action-button generic-action-button--main">' + escapeHtml(labels.create) + '</button></div></form></section>' : '')
-                    + '</div><p class="generic-feedback" data-resource-error hidden></p></div>';
-                if (typeof window.initGenericComponents === 'function') { window.initGenericComponents(host); }
-                var search = host.querySelector('[data-resource-search]');
-                var select = host.querySelector('[data-resource-select]');
-                var attach = host.querySelector('[data-resource-attach]');
-                var previewTitle = host.querySelector('[data-resource-title]');
-                var description = host.querySelector('[data-resource-description]');
-                var error = host.querySelector('[data-resource-error]');
-                var items = Array.isArray(data.items) ? data.items : [];
-                var scopePicker = null;
-                function showError(message) { error.textContent = ''; error.hidden = true; window.omoNotify(String(message || labels.error), 'error'); }
-                function render() {
-                    var query = String(search.value || '').trim().toLowerCase();
-                    var selected = select.value;
-                    select.innerHTML = '';
-                    items.filter(function (item) {
-                        var holonId = Number(item.contextHolonId || 0);
-                        return (!scopePicker || holonId <= 0 || scopePicker.matches(holonId))
-                            && (!query || [item.title, item.description, item.contextLabel].join(' ').toLowerCase().indexOf(query) !== -1);
-                    }).forEach(function (item) {
-                        var option = document.createElement('option');
-                        option.value = String(item.id);
-                        option.textContent = String(item.title || '') + (item.contextLabel ? ' - ' + String(item.contextLabel) : '');
-                        select.appendChild(option);
-                    });
-                    select.value = selected;
-                    var item = items.find(function (candidate) { return String(candidate.id) === select.value; });
-                    previewTitle.textContent = item ? String(item.title || '') : String(labels.none || '');
-                    description.textContent = item ? String(item.description || '') : '';
-                    description.hidden = !item || !item.description;
-                    attach.disabled = !item;
-                }
-                scopePicker = typeof window.omoMountHolonScopePicker === 'function'
-                    ? window.omoMountHolonScopePicker({
-                        host: host.querySelector('[data-resource-scope]'),
-                        organizationId: Number(root.getAttribute('data-omo-projects-oid') || 0),
-                        initialHolonId: Number(data.projectHolonId || routeCid || 0),
-                        initialScope: 'local',
-                        labels: data.scopeLabels || {},
-                        onChange: render
-                    })
-                    : null;
-                search.addEventListener('input', render);
-                select.addEventListener('change', render);
-                host.querySelector('[data-resource-cancel]').addEventListener('click', function () { window.commonTopbarCloseModal(); });
-                render();
-                attach.addEventListener('click', function () {
-                    var resourceId = Number(select.value || 0);
-                    if (resourceId <= 0) { return; }
-                    attach.disabled = true;
-                    postProjectAction(projectId, 'attach_resource', {resource_type: type, resource_id: resourceId})
-                        .then(function () { refreshProjectResource(projectId, type); window.commonTopbarCloseModal(); })
-                        .catch(function (failure) { attach.disabled = false; showError(failure.message); });
-                });
-                var create = host.querySelector('[data-resource-create]');
-                if (create) {
-                    var frequency = create.querySelector('[data-resource-frequency]');
-                    var schedule = create.querySelector('[data-resource-schedule]');
-                    function renderSchedule() {
-                        if (!frequency || !schedule) { return; }
-                        schedule.innerHTML = '';
-                        (data.scheduleOptions[frequency.value] || []).forEach(function (item) { var option = document.createElement('option'); option.value = String(item.value); option.textContent = String(item.label); schedule.appendChild(option); });
+                window.omoDocumentEmbedPicker.open({
+                    items: data.items, organizationId: data.organizationId, initialHolonId: data.projectHolonId,
+                    includeUnscoped: true, scopeLabels: data.scopeLabels,
+                    labels: {modalTitle: labels.title, search: labels.search, quickSearchPlaceholder: labels.search,
+                        visibleDocuments: labels.existing, none: labels.none, insert: labels.attach, cancel: labels.cancel, error: labels.error},
+                    onSelect: function (item) {
+                        return postProjectAction(Number(data.projectId), 'attach_resource', {resource_type: type, resource_id: item.id})
+                            .then(function (result) {
+                                if (result.message) window.omoNotify(result.message, 'success');
+                                refreshProjectResource(Number(data.projectId), type);
+                            });
                     }
-                    if (frequency) { frequency.addEventListener('change', renderSchedule); renderSchedule(); }
-                    create.addEventListener('submit', function (event) {
-                        event.preventDefault();
-                        if (!create.reportValidity()) { return; }
-                        var payload = new FormData(create);
-                        var name = String(payload.get('resource_name') || '').trim();
-                        payload.delete('resource_name');
-                        payload.set('oid', String(root.getAttribute('data-omo-projects-oid') || 0));
-                        payload.set('cid', String(data.projectHolonId || 0));
-                        if (type === 'indicator') { payload.set('stats_action', 'save_indicator'); payload.set('name', name); payload.set('reference_type', 'none'); }
-                        else { payload.set('activity_action', 'save_activity'); payload.set('title', name); }
-                        var button = create.querySelector('[type="submit"]');
-                        button.disabled = true;
-                        fetch(resolveUrl(type === 'indicator' ? '/omo/api/stats/action.php' : '/omo/api/activities/action.php'), {method: 'POST', credentials: 'same-origin', body: payload, headers: {'X-Requested-With': 'XMLHttpRequest'}})
-                            .then(function (response) { return response.json().then(function (result) { if (!response.ok || !(result.success || result.status)) { throw new Error(result.message || labels.error); } return result; }); })
-                            .then(function (result) { var resourceId = Number(result.id || (String(result.detailUrl || '').match(/[?&]id=(\d+)/) || [])[1] || 0); if (resourceId <= 0) { throw new Error(labels.error); } return postProjectAction(projectId, 'attach_resource', {resource_type: type, resource_id: resourceId}); })
-                            .then(function () { refreshProjectResource(projectId, type); window.commonTopbarCloseModal(); })
-                            .catch(function (failure) { button.disabled = false; showError(failure.message); });
-                    });
-                }
+                });
             }).catch(function (failure) {
                 var host = document.getElementById('commonTopbarModalBody');
                 if (host) { host.textContent = failure.message || texts.actionError; }
@@ -881,331 +815,46 @@
     }
 
     function openProjectDocumentPicker(url) {
-        if (!url || typeof window.commonTopbarOpenModal !== 'function') {
-            return;
-        }
-
-        window.commonTopbarOpenModal(
-            texts.documentsPickerTitle || 'Ajouter un document',
-            '<p class="omo-project-document-picker__loading generic-description generic-description--small">' + escapeHtml(texts.documentsLoading || 'Chargement...') + '</p>',
-            'html'
-        );
-
+        if (!url || !window.omoDocumentEmbedPicker) return;
         fetch(resolveUrl(url), {
             credentials: 'same-origin',
             headers: {'X-Requested-With': 'XMLHttpRequest'},
             cache: 'no-store'
         }).then(function (response) {
-            return response.text().then(function (body) {
-                var data;
-                try {
-                    data = JSON.parse(body);
-                } catch (error) {
-                    data = null;
-                }
+            return response.json().then(function (data) {
                 if (!response.ok || !data || !data.success) {
-                    throw new Error(data && data.message ? data.message : texts.documentsPickerError);
+                    throw new Error(data && data.message || texts.documentsPickerError);
                 }
                 return data;
             });
         }).then(function (data) {
-            var modalBody = document.getElementById('commonTopbarModalBody');
-            if (!(modalBody instanceof Element)) {
-                return;
-            }
-
-            var existingTabId = 'omo-project-document-picker-existing-' + String(Date.now());
-            var newTabId = 'omo-project-document-picker-new-' + String(Date.now() + 1);
-            var html = '<div class="generic-tabs omo-document-embed-picker omo-project-document-picker generic-drawer-content" data-generic-tabs>'
-                + '<div class="generic-tabs__list" aria-label="' + escapeHtml(texts.documentsPickerTabs || 'Choix du document') + '">'
-                + '<button type="button" class="generic-tabs__tab is-active" data-generic-tab data-generic-tab-target="' + existingTabId + '">' + escapeHtml(texts.documentsPickerExisting || 'Document existant') + '</button>'
-                + '<button type="button" class="generic-tabs__tab" data-generic-tab data-generic-tab-target="' + newTabId + '">' + escapeHtml(texts.documentsPickerNew || 'Nouveau document') + '</button>'
-                + '</div><div class="generic-tabs__panels">'
-                + '<section id="' + existingTabId + '" class="generic-tabs__panel" data-generic-tab-panel>'
-                + '<div class="omo-resource-picker omo-resource-picker--mobile-scope"><aside class="omo-resource-picker__navigation" data-omo-project-document-picker-scope></aside>'
-                + '<div class="omo-resource-picker__content">'
-                + '<label class="omo-resource-picker__quick-search"><img src="/common/assets/icon-topbar-search.png" alt="" aria-hidden="true"><input type="search" class="generic-form-control" data-omo-project-document-picker-search aria-label="' + escapeHtml(texts.documentsPickerSearch || 'Rechercher un document') + '" placeholder="' + escapeHtml(texts.documentsPickerSearch || 'Rechercher un document') + '"></label>'
-                + '<div class="omo-document-embed-picker__field"><select class="generic-form-control omo-document-embed-picker__select" data-omo-project-document-picker-select aria-label="' + escapeHtml(texts.documentsPickerVisible || 'Documents visibles') + '" size="10"></select></div>'
-                + '<div class="omo-document-embed-picker__preview"><div class="omo-document-embed-picker__preview-title" data-omo-project-document-picker-title></div><div class="omo-document-embed-picker__preview-description" data-omo-project-document-picker-description hidden></div></div>'
-                + '<p class="omo-project-document-picker__error" data-omo-project-document-picker-error hidden></p>'
-                + '<div class="omo-document-embed-picker__actions"><button type="button" class="generic-action-button generic-action-button--secondary" data-omo-project-document-picker-cancel>' + escapeHtml(texts.cancel || 'Annuler') + '</button><button type="button" class="generic-action-button generic-action-button--main" data-omo-project-document-picker-attach disabled>' + escapeHtml(texts.documentsPickerAttach || 'Associer au projet') + '</button></div>'
-                + '</div></div></section>'
-                + '<section id="' + newTabId + '" class="generic-tabs__panel" data-generic-tab-panel hidden><div data-omo-project-document-picker-create-content><p class="omo-project-document-picker__loading generic-description generic-description--small">' + escapeHtml(texts.documentsLoading || 'Chargement...') + '</p></div></section></div></div>';
-
-            modalBody.innerHTML = html;
-            if (typeof window.initGenericComponents === 'function') {
-                window.initGenericComponents(modalBody);
-            }
-
-            var dialog = modalBody.querySelector('[data-generic-tabs].omo-project-document-picker');
-            if (!dialog) {
-                return;
-            }
-
-            var search = dialog.querySelector('[data-omo-project-document-picker-search]');
-            var select = dialog.querySelector('[data-omo-project-document-picker-select]');
-            var title = dialog.querySelector('[data-omo-project-document-picker-title]');
-            var description = dialog.querySelector('[data-omo-project-document-picker-description]');
-            var error = dialog.querySelector('[data-omo-project-document-picker-error]');
-            var attachButton = dialog.querySelector('[data-omo-project-document-picker-attach]');
-            var createContent = dialog.querySelector('[data-omo-project-document-picker-create-content]');
-            var newTabButton = dialog.querySelector('[data-generic-tab-target="' + newTabId + '"]');
-            var selectedDocumentId = 0;
-            var scopePicker = null;
-            var documents = Array.isArray(data.documents) ? data.documents : [];
-            var documentTemplates = Array.isArray(data.templates) ? data.templates : [];
-
-            function showError(target, message) {
-                if (target) {
-                    target.textContent = String(message || '');
-                    target.hidden = false;
+            window.omoDocumentEmbedPicker.open({
+                items: data.documents,
+                organizationId: data.organizationId,
+                initialHolonId: data.projectHolonId,
+                includeUnscoped: true,
+                scopeLabels: data.scopeLabels,
+                labels: {
+                    modalTitle: texts.documentsPickerTitle,
+                    search: texts.documentsPickerSearch,
+                    quickSearchPlaceholder: texts.documentsPickerSearch,
+                    visibleDocuments: texts.documentsPickerVisible,
+                    none: texts.documentsPickerNone,
+                    insert: texts.documentsPickerAttach,
+                    cancel: texts.cancel,
+                    error: texts.documentsPickerAttachError
+                },
+                onSelect: function (item) {
+                    return postProjectAction(Number(data.projectId), 'attach_document', {document_id: item.id}).then(function (result) {
+                        if (result.message) window.omoNotify(result.message, 'success');
+                        window.dispatchEvent(new CustomEvent('omo-project-document-saved', {
+                            detail: {projectId: Number(result.projectId || data.projectId), documentId: Number(result.documentId || item.id)}
+                        }));
+                    });
                 }
-            }
-
-            function renderDocuments() {
-                if (!select) {
-                    return;
-                }
-                var query = String(search && search.value || '').trim().toLowerCase();
-                var matches = documents.filter(function (item) {
-                    var contextHolonId = Number(item && item.contextHolonId || 0);
-                    var matchesScope = !scopePicker || contextHolonId <= 0 || scopePicker.matches(contextHolonId);
-                    var text = [item && item.title, item && item.description, item && item.contextLabel].join(' ').toLowerCase();
-                    return matchesScope && (query === '' || text.indexOf(query) !== -1);
-                });
-                select.innerHTML = '';
-                matches.forEach(function (item) {
-                    var option = document.createElement('option');
-                    option.value = String(item.id || 0);
-                    option.textContent = String(item.title || '') + (item.contextLabel ? ' - ' + String(item.contextLabel) : '');
-                    select.appendChild(option);
-                });
-                selectedDocumentId = matches.some(function (item) { return Number(item.id || 0) === selectedDocumentId; }) ? selectedDocumentId : 0;
-                select.value = selectedDocumentId > 0 ? String(selectedDocumentId) : '';
-                if (title) {
-                    title.textContent = selectedDocumentId > 0 ? String((documents.find(function (item) { return Number(item.id || 0) === selectedDocumentId; }) || {}).title || '') : (texts.documentsPickerNone || '');
-                }
-                var selectedItem = documents.find(function (item) { return Number(item.id || 0) === selectedDocumentId; });
-                if (description) {
-                    description.textContent = selectedItem && selectedItem.description ? String(selectedItem.description) : '';
-                    description.hidden = !selectedItem || !selectedItem.description;
-                }
-                if (attachButton) {
-                    attachButton.disabled = selectedDocumentId <= 0;
-                }
-            }
-
-            scopePicker = typeof window.omoMountHolonScopePicker === 'function'
-                ? window.omoMountHolonScopePicker({
-                    host: dialog.querySelector('[data-omo-project-document-picker-scope]'),
-                    organizationId: Number(root.getAttribute('data-omo-projects-oid') || 0),
-                    initialHolonId: Number(data.projectHolonId || routeCid || 0),
-                    initialScope: 'local',
-                    labels: data.scopeLabels || {},
-                    onChange: renderDocuments
-                })
-                : null;
-
-            if (search) {
-                search.addEventListener('input', renderDocuments);
-                search.focus();
-            }
-            if (select) {
-                select.addEventListener('change', function () {
-                    selectedDocumentId = Number(select.value || 0);
-                    renderDocuments();
-                    if (error) {
-                        error.hidden = true;
-                    }
-                });
-            }
-            dialog.querySelectorAll('[data-omo-project-document-picker-cancel]').forEach(function (button) {
-                button.addEventListener('click', function () {
-                    window.commonTopbarCloseModal();
-                });
             });
-            if (attachButton) {
-                attachButton.addEventListener('click', function () {
-                    if (selectedDocumentId <= 0) {
-                        showError(error, texts.documentsPickerSelectRequired);
-                        return;
-                    }
-                    attachButton.disabled = true;
-                    postProjectAction(Number(data.projectId || 0), 'attach_document', {document_id: selectedDocumentId}).then(function (result) {
-                        window.dispatchEvent(new CustomEvent('omo-project-document-saved', {detail: {projectId: Number(result.projectId || data.projectId || 0), documentId: Number(result.documentId || selectedDocumentId)}}));
-                        window.commonTopbarCloseModal();
-                    }).catch(function (actionError) {
-                        attachButton.disabled = false;
-                        showError(error, actionError.message || texts.documentsPickerAttachError);
-                    });
-                });
-            }
-            function loadCreateForm() {
-                if (!createContent || createContent.dataset.omoProjectDocumentCreateLoaded === '1' || createContent.dataset.omoProjectDocumentCreateLoading === '1') {
-                    return;
-                }
-
-                var createUrl = String(data.createUrl || '');
-                if (createUrl === '') {
-                    createContent.innerHTML = '<p class="omo-project-document-picker__error"></p>';
-                    showError(createContent.firstElementChild, texts.documentsPickerCreateError);
-                    return;
-                }
-
-                createContent.dataset.omoProjectDocumentCreateLoading = '1';
-                fetch(resolveUrl(createUrl + '&editor_instance=' + encodeURIComponent(String(Date.now()))), {
-                    credentials: 'same-origin',
-                    headers: {'X-Requested-With': 'XMLHttpRequest'},
-                    cache: 'no-store'
-                }).then(function (response) {
-                    if (!response.ok) {
-                        throw new Error('load_failed');
-                    }
-                    return response.text();
-                }).then(function (html) {
-                    if (!createContent.isConnected) {
-                        return;
-                    }
-                    createContent.innerHTML = html;
-                    createContent.dataset.omoProjectDocumentCreateLoaded = '1';
-                    createContent.removeAttribute('data-omo-project-document-create-loading');
-                    if (typeof window.initGenericComponents === 'function') {
-                        window.initGenericComponents(createContent);
-                    }
-                    return executeFetchedScripts(createContent).then(function () {
-                        if (typeof window.initGenericComponents === 'function') {
-                            window.initGenericComponents(createContent);
-                        }
-                    });
-                }).catch(function () {
-                    if (!createContent.isConnected) {
-                        return;
-                    }
-                    createContent.innerHTML = '<p class="omo-project-document-picker__error"></p>';
-                    showError(createContent.firstElementChild, texts.documentsPickerCreateError);
-                }).finally(function () {
-                    if (createContent.isConnected) {
-                        createContent.removeAttribute('data-omo-project-document-create-loading');
-                    }
-                });
-            }
-
-            function createDocumentFromTemplate(templateId, button, errorTarget) {
-                if (!Number.isInteger(templateId) || templateId <= 0) {
-                    return;
-                }
-
-                if (button) {
-                    button.disabled = true;
-                }
-                fetch('/omo/api/documents/template_action.php', {
-                    method: 'POST',
-                    credentials: 'same-origin',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        id: templateId,
-                        action: 'duplicate',
-                        oid: Number(root.getAttribute('data-omo-projects-oid') || 0),
-                        cid: Number(data.projectHolonId || 0),
-                        project_id: Number(data.projectId || 0)
-                    })
-                }).then(function (response) {
-                    return response.json().then(function (payload) {
-                        if (!response.ok || !payload || payload.status !== true) {
-                            throw new Error(String(payload && payload.message || texts.documentsPickerTemplateError));
-                        }
-                        return payload;
-                    });
-                }).then(function (result) {
-                    window.dispatchEvent(new CustomEvent('omo-project-document-saved', {
-                        detail: {
-                            projectId: Number(result.projectId || data.projectId || 0),
-                            documentId: Number(result.id || 0)
-                        }
-                    }));
-                    window.commonTopbarCloseModal();
-                }).catch(function (templateError) {
-                    if (button) {
-                        button.disabled = false;
-                    }
-                    showError(errorTarget, templateError.message || texts.documentsPickerTemplateError);
-                });
-            }
-
-            function renderCreateChoices() {
-                if (!createContent || createContent.dataset.omoProjectDocumentCreateLoaded === '1') {
-                    return;
-                }
-                if (documentTemplates.length === 0) {
-                    loadCreateForm();
-                    return;
-                }
-
-                var templateGroups = {};
-                documentTemplates.forEach(function (template) {
-                    var templateId = Number(template && template.id || 0);
-                    var title = String(template && template.title || '');
-                    var groupKey = String(template && template.groupKey || 'organization');
-                    var groupLabel = String(template && template.groupLabel || '');
-                    if (templateId <= 0 || title === '' || groupLabel === '') {
-                        return;
-                    }
-                    if (!templateGroups[groupKey]) {
-                        templateGroups[groupKey] = {label: groupLabel, templates: []};
-                    }
-                    templateGroups[groupKey].templates.push({id: templateId, title: title});
-                });
-                var templateGroupsHtml = Object.keys(templateGroups).map(function (groupKey) {
-                    return templateGroups[groupKey];
-                }).sort(function (left, right) {
-                    return left.label.localeCompare(right.label, undefined, {sensitivity: 'base'});
-                }).map(function (group) {
-                    var buttons = group.templates.sort(function (left, right) {
-                        return left.title.localeCompare(right.title, undefined, {sensitivity: 'base'});
-                    }).map(function (template) {
-                        return '<button type="button" class="generic-action-button generic-action-button--secondary" data-omo-project-document-template-id="'
-                            + String(template.id) + '">' + escapeHtml(template.title) + '</button>';
-                    }).join('');
-                    return '<div class="generic-menu-group" role="group" aria-label="' + escapeHtml(group.label) + '">'
-                        + '<span class="generic-menu-group-label">' + escapeHtml(group.label) + '</span>'
-                        + '<div class="generic-form-stack generic-form-stack--compact">' + buttons + '</div></div>';
-                }).join('');
-                if (templateGroupsHtml === '') {
-                    loadCreateForm();
-                    return;
-                }
-
-                createContent.innerHTML = '<div class="generic-section generic-section--stack">'
-                    + '<p class="generic-description generic-description--small">' + escapeHtml(texts.documentsPickerTemplateHint || '') + '</p>'
-                    + '<div class="generic-menu">' + templateGroupsHtml + '</div>'
-                    + '<button type="button" class="generic-action-button generic-action-button--main" data-omo-project-document-create-blank>'
-                    + escapeHtml(texts.documentsPickerBlank || 'Créer un document vide') + '</button>'
-                    + '<p class="omo-project-document-picker__error" data-omo-project-document-template-error hidden></p></div>';
-                var templateError = createContent.querySelector('[data-omo-project-document-template-error]');
-                createContent.querySelectorAll('[data-omo-project-document-template-id]').forEach(function (button) {
-                    button.addEventListener('click', function () {
-                        createDocumentFromTemplate(Number(button.getAttribute('data-omo-project-document-template-id') || 0), button, templateError);
-                    });
-                });
-                var blankButton = createContent.querySelector('[data-omo-project-document-create-blank]');
-                if (blankButton) {
-                    blankButton.addEventListener('click', loadCreateForm);
-                }
-            }
-
-            if (newTabButton) {
-                newTabButton.addEventListener('click', renderCreateChoices);
-            }
-            renderDocuments();
         }).catch(function (error) {
-            var modalBody = document.getElementById('commonTopbarModalBody');
-            if (modalBody) {
-                modalBody.innerHTML = '<p class="omo-project-document-picker__error"></p>';
-                var message = modalBody.querySelector('.omo-project-document-picker__error');
-                if (message) {
-                    message.textContent = error.message || texts.documentsPickerError;
-                }
-            }
+            window.omoNotify(error.message || texts.documentsPickerError, 'error');
         });
     }
 
@@ -2687,14 +2336,34 @@
         if (addDocumentButton) {
             event.preventDefault();
             event.stopPropagation();
-            openProjectDocumentPicker(addDocumentButton.getAttribute('data-omo-project-detail-add-document-url') || '');
+            closeProjectMenus();
+            openProjectDocumentDrawer(addDocumentButton.getAttribute('data-omo-project-detail-add-document-url') || '');
+            return;
+        }
+
+        var importDocumentButton = event.target.closest('[data-omo-project-import-document-url]');
+        if (importDocumentButton) {
+            event.preventDefault();
+            event.stopPropagation();
+            closeProjectMenus();
+            openProjectDocumentPicker(importDocumentButton.getAttribute('data-omo-project-import-document-url') || '');
             return;
         }
 
         var addResourceButton = event.target.closest('[data-omo-project-resource-add]');
         if (addResourceButton) {
             event.preventDefault();
+            closeProjectMenus();
             openProjectResourcePicker(addResourceButton.getAttribute('data-resource-url') || '', addResourceButton.getAttribute('data-resource-title') || '');
+            return;
+        }
+
+        var indicatorEditorButton = event.target.closest('[data-omo-project-indicator-editor-url], [data-omo-project-recurring-task-editor-url]');
+        if (indicatorEditorButton) {
+            event.preventDefault();
+            closeProjectMenus();
+            openProjectDocumentDrawer(indicatorEditorButton.getAttribute('data-omo-project-indicator-editor-url')
+                || indicatorEditorButton.getAttribute('data-omo-project-recurring-task-editor-url') || '');
             return;
         }
 
@@ -2716,6 +2385,35 @@
             event.preventDefault();
             if (typeof window.omoOpenDrawerHashState === 'function') { window.omoOpenDrawerHashState(String(resourceLink.getAttribute('href') || '').replace(/^#/, '')); }
             else { window.location.hash = resourceLink.getAttribute('href') || ''; }
+            return;
+        }
+
+        var importEventButton = event.target.closest('[data-omo-project-import-event-url]');
+        if (importEventButton) {
+            event.preventDefault();
+            event.stopPropagation();
+            closeProjectMenus();
+            openProjectEventPicker(importEventButton.getAttribute('data-omo-project-import-event-url'));
+            return;
+        }
+        var detachEventButton = event.target.closest('[data-omo-project-detach-event]');
+        if (detachEventButton) {
+            event.preventDefault();
+            event.stopPropagation();
+            closeProjectMenus();
+            detachEventButton.disabled = true;
+            mutateProjectEvent(detachEventButton.getAttribute('data-import-url'), {
+                id: detachEventButton.getAttribute('data-project-id'), _csrf: detachEventButton.getAttribute('data-csrf'),
+                action: 'detach', source: detachEventButton.getAttribute('data-source'), event_id: detachEventButton.getAttribute('data-event-id')
+            }).catch(function (error) { window.omoNotify(error.message || texts.actionError, 'error'); })
+                .finally(function () { detachEventButton.disabled = false; });
+            return;
+        }
+        var externalEventLink = event.target.closest('[data-omo-project-external-event-url]');
+        if (externalEventLink) {
+            event.preventDefault();
+            event.stopPropagation();
+            window.commonTopbarOpenModal(externalEventLink.textContent.trim(), externalEventLink.getAttribute('data-omo-project-external-event-url'), 'fetch');
             return;
         }
 
@@ -3477,6 +3175,12 @@
     window.addEventListener('omo-projects-route-change', handleProjectRouteChange);
     window.addEventListener('omo-runtime-maintenance', handleRuntimeMaintenance);
     window.addEventListener('omo-project-document-saved', refreshProjectDocumentsAfterSave);
+    window.addEventListener('omo-project-resource-saved', function (event) {
+        var details = event.detail || {};
+        if (Number(details.projectId) > 0 && ['indicator', 'recurring_task'].includes(details.resourceType)) {
+            refreshProjectResource(Number(details.projectId), details.resourceType);
+        }
+    });
     window.addEventListener('omo-project-event-saved', refreshProjectEventsAfterSave);
     window.addEventListener('resize', syncGroupedKanbanHeaderOffset);
 

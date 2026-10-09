@@ -29,7 +29,28 @@ class ArrayControlActivity extends ArrayDbObject
             'where' => $where,
             'whereAny' => $holonFilter,
             'orderBy' => [['field' => 'position', 'dir' => 'ASC'], ['field' => 'title', 'dir' => 'ASC'], ['field' => 'id', 'dir' => 'ASC']],
+            'hydrate' => true,
         ]);
+        $this->filterProjectOnlyTasks();
+    }
+
+    protected function filterProjectOnlyTasks(): void
+    {
+        $candidates = [];
+        foreach ($this as $task) {
+            if ((int)$task->get('project_visible_in_holon') !== 1) $candidates[] = (int)$task->getId();
+        }
+        if (!$candidates) return;
+        $links = new ArrayProjectRecurringTask();
+        $links->load(['where' => [['field' => 'IDrecurringtask', 'op' => 'in', 'value' => $candidates]], 'hydrate' => ['IDrecurringtask']]);
+        $linkCounts = [];
+        foreach ($links as $link) {
+            $id = (int)$link->get('IDrecurringtask');
+            $linkCounts[$id] = ($linkCounts[$id] ?? 0) + 1;
+        }
+        $this->exchangeArray(array_values(array_filter($this->getArrayCopy(), static function ($task) use ($linkCounts) {
+            return ($linkCounts[(int)$task->getId()] ?? 0) !== 1;
+        })));
     }
 }
 ?>

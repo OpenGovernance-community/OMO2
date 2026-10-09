@@ -205,6 +205,18 @@ if (!function_exists('omoProjectsSourceLang')) {
             'projects.detail.events.section.this_month' => ['text' => 'Ce mois', 'context' => 'Project events section for events happening later this month.'],
             'projects.detail.events.section.next_month' => ['text' => 'Le mois prochain', 'context' => 'Project events section for events happening next month.'],
             'projects.detail.events.section.past' => ['text' => 'Evenements passes', 'context' => 'Project events section for past events, displayed after upcoming events.'],
+            'projects.events.import' => ['text' => 'Importer un evenement', 'context' => 'Open the project event import picker.'],
+            'projects.events.import.internal' => ['text' => 'Evenements OMO', 'context' => 'Internal events tab of the import picker.'],
+            'projects.events.import.external' => ['text' => 'Calendriers externes', 'context' => 'Personal synchronized events tab of the import picker.'],
+            'projects.events.import.search' => ['text' => 'Rechercher un evenement', 'context' => 'Event import search label.'],
+            'projects.events.import.none' => ['text' => 'Aucun evenement disponible dans cette selection.', 'context' => 'Empty event import search result.'],
+            'projects.events.import.attach' => ['text' => 'Lier au projet', 'context' => 'Confirm the selected event import.'],
+            'projects.events.import.hint' => ['text' => 'Choisissez un evenement existant. Pour un calendrier externe, seules les dates deja synchronisees sont proposees. Le titre, les dates, le lieu et la description seront visibles par les personnes ayant acces au projet.', 'context' => 'Explain external event sharing before import.'],
+            'projects.events.import.error' => ['text' => 'Impossible de lier cet evenement. Verifiez vos droits et qu il n est pas deja lie a un autre projet.', 'context' => 'Event import failure or conflicting project assignment.'],
+            'projects.events.import.success' => ['text' => 'Evenement lie au projet.', 'context' => 'Event import success notification.'],
+            'projects.events.detach' => ['text' => 'Detacher du projet', 'context' => 'Remove only the project event association.'],
+            'projects.events.detached' => ['text' => 'Evenement detache du projet.', 'context' => 'Project event association removed.'],
+            'projects.events.external' => ['text' => 'Calendrier externe : {calendar}', 'context' => 'Source calendar of an imported project event.'],
             'projects.detail.events.month.1' => ['text' => 'Janvier', 'context' => 'Project events section label for January.'],
             'projects.detail.events.month.2' => ['text' => 'Février', 'context' => 'Project events section label for February.'],
             'projects.detail.events.month.3' => ['text' => 'Mars', 'context' => 'Project events section label for March.'],
@@ -220,7 +232,16 @@ if (!function_exists('omoProjectsSourceLang')) {
             'projects.detail.tabs.documents' => ['text' => 'Documents', 'context' => 'Project detail documents tab.'],
             'projects.resources.empty' => ['text' => 'Aucun élément lié à ce projet.', 'context' => 'Empty project resource tab.'],
             'projects.resources.add_indicator' => ['text' => 'Ajouter un indicateur', 'context' => 'Open indicator picker for a project.'],
+            'projects.resources.create_indicator' => ['text' => 'Creer un indicateur', 'context' => 'Open the full indicator editor from a project.'],
+            'projects.resources.import_indicator' => ['text' => 'Importer un indicateur', 'context' => 'Open the existing indicator selector from a project.'],
+            'projects.resources.indicator_menu' => ['text' => 'Options des indicateurs', 'context' => 'Accessible label for the project indicator creation and import menu.'],
             'projects.resources.add_recurring_task' => ['text' => 'Ajouter une tâche récurrente', 'context' => 'Open recurring task picker for a project.'],
+            'projects.resources.create_recurring_task' => ['text' => 'Creer une tache recurrente', 'context' => 'Open the full recurring task editor from a project.'],
+            'projects.resources.import_recurring_task' => ['text' => 'Importer une tache recurrente', 'context' => 'Open the existing recurring task selector from a project.'],
+            'projects.resources.recurring_task_menu' => ['text' => 'Options des taches recurrentes', 'context' => 'Accessible label for the recurring task creation and import menu.'],
+            'projects.resources.visible_in_holon' => ['text' => 'Afficher dans l espace', 'context' => 'Checkbox keeping a project resource visible in its space.'],
+            'projects.resources.visible_in_holon_hint' => ['text' => 'Les elements lies a un projet sont masques dans l espace par defaut. Cochez pour les afficher aux deux endroits.', 'context' => 'Help for document, indicator and recurring task space visibility.'],
+            'projects.resources.visible_in_holon_required' => ['text' => 'Cet element est lie a plusieurs projets. Il reste visible dans l espace et cette option ne peut pas etre decochee.', 'context' => 'Help explaining why space visibility is mandatory for a resource shared by several projects.'],
             'projects.resources.existing' => ['text' => 'Élément existant', 'context' => 'Existing resource picker tab.'],
             'projects.resources.new' => ['text' => 'Nouvel élément', 'context' => 'New resource picker tab.'],
             'projects.resources.search' => ['text' => 'Rechercher', 'context' => 'Resource picker search field.'],
@@ -236,7 +257,7 @@ if (!function_exists('omoProjectsSourceLang')) {
             'projects.resources.error' => ['text' => 'Impossible de lier cet élément au projet.', 'context' => 'Project resource action error.'],
             'projects.detail.documents.empty' => ['text' => 'Aucun fichier à afficher', 'context' => 'Empty state for a project without attached documents.'],
             'projects.detail.documents.empty_hint' => ['text' => 'Créez un premier fichier pour le retrouver directement dans ce projet.', 'context' => 'Explanation shown in the empty project documents tab.'],
-            'projects.detail.documents.new' => ['text' => 'Ajouter un document', 'context' => 'Action opening the project document creation drawer.'],
+            'projects.detail.documents.new' => ['text' => 'Creer un document', 'context' => 'Action opening the project document creation drawer.'],
             'projects.detail.documents.drawer_title' => ['text' => 'Ajouter un document', 'context' => 'Title of the document creation subdrawer opened from a project.'],
             'projects.detail.documents.drawer_description' => ['text' => 'Ajoutez un document associé à ce projet.', 'context' => 'Description of the document creation subdrawer opened from a project.'],
             'projects.detail.documents.add' => ['text' => 'Ajouter un document', 'context' => 'Action opening the documents application from an empty project document list.'],
@@ -261,21 +282,13 @@ if (!function_exists('omoProjectsSourceLang')) {
             'projects.detail.documents.confirm_detach' => ['text' => 'Détacher ce document du projet ?', 'context' => 'Confirmation before removing a project-document association.'],
             'projects.detail.documents.confirm_delete' => ['text' => 'Supprimer définitivement ce document ?', 'context' => 'Confirmation before deleting a project-owned document.'],
             'projects.detail.documents.remove_error' => ['text' => 'Impossible de retirer ce document du projet.', 'context' => 'Error shown when a project document cannot be detached or deleted.'],
-            'projects.detail.documents.picker_title' => ['text' => 'Ajouter un document', 'context' => 'Title of the project document picker.'],
-            'projects.detail.documents.picker_tabs' => ['text' => 'Choix du document', 'context' => 'Accessible label for the project document picker tabs.'],
-            'projects.detail.documents.picker_existing' => ['text' => 'Document existant', 'context' => 'Existing document tab in the project document picker.'],
-            'projects.detail.documents.picker_new' => ['text' => 'Nouveau document', 'context' => 'New document tab in the project document picker.'],
+            'projects.detail.documents.picker_title' => ['text' => 'Importer un document', 'context' => 'Title and menu action for the existing project document picker.'],
             'projects.detail.documents.picker_search' => ['text' => 'Rechercher un document', 'context' => 'Search label in the project document picker.'],
             'projects.detail.documents.picker_visible' => ['text' => 'Documents visibles', 'context' => 'Accessible label for the document selection list.'],
             'projects.detail.documents.picker_none' => ['text' => 'Aucun document ne correspond à votre recherche.', 'context' => 'Empty state in the project document picker.'],
             'projects.detail.documents.picker_attach' => ['text' => 'Associer au projet', 'context' => 'Action associating an existing document with a project.'],
-            'projects.detail.documents.picker_select_required' => ['text' => 'Choisissez un document à associer.', 'context' => 'Validation message when no document is selected.'],
             'projects.detail.documents.picker_error' => ['text' => 'Impossible de charger les documents disponibles.', 'context' => 'Error shown when the project document picker cannot load.'],
             'projects.detail.documents.picker_attach_error' => ['text' => "Impossible d'associer ce document au projet.", 'context' => 'Error shown when an existing document cannot be associated.'],
-            'projects.detail.documents.picker_create_error' => ['text' => 'Impossible de créer ce document.', 'context' => 'Error shown when a new project document cannot be created.'],
-            'projects.detail.documents.picker_template_hint' => ['text' => 'Choisissez un modèle ou créez un document vide.', 'context' => 'Instruction shown when creating a document from a project.'],
-            'projects.detail.documents.picker_blank' => ['text' => 'Créer un document vide', 'context' => 'Action opening the blank document form from a project.'],
-            'projects.detail.documents.picker_template_error' => ['text' => 'Impossible de créer le document depuis ce modèle.', 'context' => 'Error shown when a document template cannot be copied for a project.'],
             'projects.detail.task.archive' => ['text' => 'Archiver', 'context' => 'Task action in the project detail status selector.'],
             'projects.detail.task.delete' => ['text' => 'Supprimer', 'context' => 'Task action in the project detail status selector.'],
             'projects.detail.task.delete_confirm' => ['text' => 'Supprimer définitivement cette tâche ? Cette action est irréversible.', 'context' => 'Confirmation before permanently deleting a task from the project detail.'],
@@ -625,6 +638,13 @@ if (!function_exists('omoProjectsCanViewProject')) {
     }
 }
 
+function omoProjectsCanImportEvents(Project $project, array $context): bool
+{
+    return (int)commonGetCurrentUserId() > 0 && (int)$project->get('active') === 1 && !$project->isPendingProposal()
+        && omoProjectsCanManageProject($project, $context)
+        && $context['organization']->isApplicationEnabled('calendar', (int)commonGetCurrentUserId());
+}
+
 if (!function_exists('omoProjectsCanManageProject')) {
     function omoProjectsCanManageProject(Project $project, array $context)
     {
@@ -677,6 +697,35 @@ if (!function_exists('omoProjectsCanManageProject')) {
         $organization = $context['organization'] ?? null;
         return $organization instanceof Organization && (\dbObject\Permission::userCanInOrganization('CAN_EDIT_PROJECT', (int)$organization->getId(), (int)commonGetCurrentUserId()));
     }
+}
+
+function omoProjectsLoadManagedResourceProject(int $organizationId, int $projectId): ?Project
+{
+    $project = new Project();
+    if ($projectId <= 0 || !$project->load($projectId)
+        || (int)$project->get('IDorganization') !== $organizationId
+        || (int)$project->get('active') !== 1 || $project->isPendingProposal()) {
+        return null;
+    }
+    $context = omoProjectsResolveContext($organizationId, (int)$project->get('IDholon'), false);
+    return !empty($context['status']) && omoProjectsCanViewProject($project, $context)
+        && omoProjectsCanManageProject($project, $context) ? $project : null;
+}
+
+function omoProjectsRenderResourceHolonVisibility(\dbObject\DbObject $resource, bool $disabled = false): string
+{
+    $label = omoProjectsT('projects.resources.visible_in_holon');
+    $required = $resource->hasMultipleProjectAssociations();
+    return '<div class="generic-action-row"><div class="generic-inline-help">'
+        . '<input type="hidden" name="project_visibility_present" value="1">'
+        . '<label class="generic-checkbox"><input type="checkbox" name="project_visible_in_holon" value="1"'
+        . ($required || (int)$resource->get('project_visible_in_holon') === 1 ? ' checked' : '')
+        . ($disabled || $required ? ' disabled' : '') . '>'
+        . '<span>' . omoApiEscape($label) . '</span></label>'
+        . '<details class="generic-context-help generic-context-help--compact" data-generic-context-help-hover>'
+        . '<summary aria-label="' . omoApiEscape($label) . '">?</summary>'
+        . '<div class="generic-context-help__content">' . omoApiEscape(omoProjectsT($required ? 'projects.resources.visible_in_holon_required' : 'projects.resources.visible_in_holon_hint'))
+        . '</div></details></div></div>';
 }
 
 if (!function_exists('omoProjectsCanCreateDocument')) {

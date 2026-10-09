@@ -853,7 +853,15 @@ function commonRenderTopbar(array $options = [])
     <div class="common-topbar-modal__backdrop" data-topbar-modal-close></div>
     <div class="common-topbar-modal__panel" role="dialog" aria-modal="true" aria-labelledby="commonTopbarModalTitle">
         <div class="common-topbar-modal__header">
-            <h3 id="commonTopbarModalTitle"><?= htmlspecialchars($config['modal']['defaultTitle']) ?></h3>
+            <div class="generic-heading-with-help">
+                <h3 id="commonTopbarModalTitle"><?= htmlspecialchars($config['modal']['defaultTitle']) ?></h3>
+                <div id="commonTopbarModalHelp" hidden>
+                    <details class="generic-context-help generic-context-help--compact generic-context-help--align-start">
+                        <summary aria-label="<?= htmlspecialchars($config['helpLabel']) ?>">i</summary>
+                        <div class="generic-context-help__content"></div>
+                    </details>
+                </div>
+            </div>
             <button type="button" class="common-topbar-modal__close" data-topbar-modal-close aria-label="<?= htmlspecialchars($config['modal']['closeLabel']) ?>">
                 <span aria-hidden="true">&times;</span>
                 <span class="common-topbar__visually-hidden generic-visually-hidden"><?= htmlspecialchars($config['modal']['closeLabel']) ?></span>

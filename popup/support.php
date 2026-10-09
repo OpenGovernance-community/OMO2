@@ -1,107 +1,19 @@
-<?
-	require_once("../config.php");
-	require_once("../shared_functions.php");
+<?php
+require_once dirname(__DIR__) . '/shared_functions.php';
+require_once dirname(__DIR__) . '/omo/translations.php';
+
+checklogin();
+$sourceLang = [
+    'support.title' => ['text' => 'Soutenir OpenGovernance', 'context' => 'Title of the support popup.'],
+    'support.description' => ['text' => 'Votre soutien sur Patreon contribue au developpement des outils OpenGovernance.', 'context' => 'Explain how to support the project.'],
+    'support.profile_hint' => ['text' => 'Ouvrez Mon profil > Patreon pour relier votre compte et synchroniser votre soutien.', 'context' => 'Explain where the Patreon account connection is available.'],
+    'support.patreon' => ['text' => 'Soutenir sur Patreon', 'context' => 'Action opening the project Patreon campaign.'],
+];
+$lang = omoLoadTranslationBundle('support_popup', $sourceLang);
 ?>
-<style>
-	#rememberbtn {text-decoration:underline;}
-</style>
-<div id="accordion" class="generic-accordion-ui">
-<?	
-	// Initialise le login
-	$connected=checklogin();
-	if ($connected) {
-?>
-  <h3><?=T_("Abonnement mensuel")?></h3>
-  <div>
-<h1>Soutenez le développement des outils de OpenGovernance!</h1>
-<p>Nous développons un ensemble de logiciels interconnectés soutenant les organisations de façon efficace et humaniste, dans la philosophie de la gouvernance partagée.</p>
-
-<p>Soutenez-nous en vous abonnant pour un franc par mois, avec la possibilité de résilier à tout moment!</p>
-<div id="paypal-button-container-P-2RA96585G5695464VMXHXTMA"></div>
-<script>
-	$(function () {
-	  paypal_sdk.Buttons({
-		  style: {
-			  shape: 'rect',
-			  color: 'gold',
-			  layout: 'vertical',
-			  label: 'subscribe'
-		  },
-		  createSubscription: function(data, actions) {
-			return actions.subscription.create({
-
-				"plan_id": "P-2RA96585G5695464VMXHXTMA",
-				
-				"subscriber": 
-				{
-
-					"name": 
-
-					{
-						"given_name": "John",
-						"surname": "Doe"
-					},
-					"email_address": "customer@example.com",
-					
-
-				},
-				"application_context": 
-				{
-
-					"brand_name": "System D2",
-					"locale": "fr-CH",
-					"shipping_preference": "NO_SHIPPING",
-					"user_action": "SUBSCRIBE_NOW"
-					}
-
-				});
-		  },
-		  onApprove: function(data, actions) {
-			(typeof window.commonNotify === 'function' ? window.commonNotify : window.alert).call(window, data.subscriptionID, 'success'); // You can add optional success message for the subscriber here
-		  }
-	  }).render('#paypal-button-container-P-2RA96585G5695464VMXHXTMA'); // Renders the PayPal button
-	});
-</script>
+<div class="generic-section generic-section--stack">
+    <h2 class="generic-card-title generic-card-title--medium"><?= htmlspecialchars(t('support.title', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></h2>
+    <p><?= htmlspecialchars(t('support.description', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></p>
+    <p><?= htmlspecialchars(t('support.profile_hint', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></p>
+    <a class="generic-action-button generic-action-button--main" href="https://www.patreon.com/cw/OpenGovernance" target="_blank" rel="noopener noreferrer"><?= htmlspecialchars(t('support.patreon', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></a>
 </div>
-<h3><?=T_("Je préfère faire un don unique")?></h3><div>
-	<?=T_("Si vous préférez donner une seule fois, c'est parfait également. Cependant, vous n'accèderez pas ainsi à certaines fonctionnalités réservées aux donnateurs réguliers, comme toutes les fonctions associiées à l'IA ou à des services tiers payants, comme le téléchargement au format Word.")?>
-<?
-	} else {
-?>
-<h3><?=T_("Faire un don")?></h3><div>
-	
-Vous pouvez faire un don unique.
-<?
-	}
-?>
-<div id="donate-button-container">
-<div id="donate-button"></div>
-
-</div></div>
-</div>
-<script>
-	
-PayPal.Donation.Button({
-env:'production',
-hosted_button_id:'58QWBGDQVPWWW',
-image: {
-src:'https://www.paypalobjects.com/fr_FR/CH/i/btn/btn_donateCC_LG.gif',
-alt:'Bouton Faites un don avec PayPal',
-title:'PayPal - The safer, easier way to pay online!',
-}
-}).render('#donate-button');
-
-
-
-  $( function() {
-
-	  
-    // Crée l'accordeon
-    $( "#accordion" ).accordion({heightStyle: "fill"});
-    // Le met à jour lorsque la fenêtre change
-    window.onresize = function() {
-		$( "#accordion" ).accordion( "refresh" );
-	};
-	
-});
-</script>

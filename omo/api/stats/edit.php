@@ -1,6 +1,7 @@
 <?php
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/shared.php';
+require_once dirname(__DIR__) . '/projects/shared.php';
 require_once dirname(__DIR__, 3) . '/common/spreadsheet.php';
 
 use dbObject\StatIndicator;
@@ -14,6 +15,16 @@ $deferredEditor = $GLOBALS['omoDeferredObjectEditor'] ?? null;
 $organizationId = $deferredEditor ? (int)$deferredEditor['organizationId'] : (int)($_SESSION['currentOrganization'] ?? ($_GET['oid'] ?? 0));
 $currentHolonId = $deferredEditor ? (int)$deferredEditor['holonId'] : (isset($_GET['cid']) && is_numeric($_GET['cid']) ? (int)$_GET['cid'] : 0);
 $indicatorId = $deferredEditor ? (int)$deferredEditor['objectId'] : (isset($_GET['id']) && is_numeric($_GET['id']) ? (int)$_GET['id'] : 0);
+$projectId = $deferredEditor ? 0 : max(0, (int)($_GET['project_id'] ?? 0));
+if ($projectId > 0) {
+    $project = omoProjectsLoadManagedResourceProject($organizationId, $projectId);
+    if (!$project) {
+        http_response_code(403);
+        echo '<div class="omo-empty-state">' . omoApiEscape(omoStatsT('stats.error.forbidden')) . '</div>';
+        exit;
+    }
+    $currentHolonId = (int)$project->get('IDholon');
+}
 $context = $deferredEditor ? ['status' => true] : omoStatsResolveContext($organizationId, $currentHolonId);
 $context['pvMeetingPermission'] = $deferredEditor ? null : commonResolvePvMeetingPermissionContext($organizationId);
 
@@ -177,6 +188,7 @@ $sourceLang = [
     'editor.description' => ['text' => 'Description', 'context' => 'Indicator description field.'],
     'editor.description_placeholder' => ['text' => 'Que mesure cet indicateur ? Dans quelle unite ?', 'context' => 'Description prompt.'],
     'editor.source_url' => ['text' => 'Lien vers la source', 'context' => 'Optional measurement source URL field.'],
+    'editor.recurrence' => ['text' => 'Recurrence', 'context' => 'Heading for indicator measurement schedule, matching the recurring task editor.'],
     'editor.chart' => ['text' => 'Graphique et reference', 'context' => 'Heading for indicator chart settings.'],
     'editor.chart_help' => ['text' => 'Choisissez comment lire vos mesures et les comparer a votre objectif.', 'context' => 'Chart settings help.'],
     'editor.cumulative' => ['text' => 'Afficher le cumul', 'context' => 'Cumulative display checkbox.'],
@@ -205,18 +217,23 @@ $referenceScale = StatIndicator::normalizeReferenceScale($indicator->get('refere
 $showCumulative = (int)$indicator->get('show_cumulative') > 0;
 ?>
 <link rel="stylesheet" href="<?= commonAssetUrl('/common/assets/components.css') ?>">
-<?php if ($deferredEditor): ?><link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/stats/stats.css') ?>"><?php endif; ?>
-<div class="omo-stats-editor generic-drawer-content" data-omo-stats-editor<?= $deferredEditor ? ' data-deferred-object-editor' : '' ?> data-indicator-id="<?= (int)$indicatorId ?>">
+<?php if ($deferredEditor || $projectId > 0): ?><link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/stats/stats.css') ?>"><?php endif; ?>
+<div class="omo-stats-editor generic-drawer-content"<?= $projectId > 0 ? ' id="omoProjectIndicatorEditor"' : '' ?> data-omo-stats-editor<?= $deferredEditor ? ' data-deferred-object-editor' : '' ?> data-indicator-id="<?= (int)$indicatorId ?>">
     <div hidden data-omo-subdrawer-header
         data-omo-subdrawer-title="<?= omoApiEscape(omoStatsT($indicatorId > 0 ? 'stats.form.edit_title' : 'stats.form.create_title')) ?>"
         data-omo-subdrawer-description="<?= omoApiEscape(omoStatsT('stats.form.intro')) ?>"></div>
-    <form id="omoStatsIndicatorForm" class="generic-form-stack generic-form-stack--compact" action="<?= $deferredEditor && $deferredEditor['origin'] === 'pv' ? '/omo/api/deferred_proposals/pv_object_save.php' : '/omo/api/stats/action.php' ?>" method="post"<?= $deferredEditor ? ' data-deferred-object-form' : '' ?>>
-        <section class="generic-form-grid generic-form-grid--pair" aria-label="<?= omoApiEscape($editT('editor.identity')) ?>">
+    <form id="<?= $projectId > 0 ? 'omoProjectIndicatorForm' : 'omoStatsIndicatorForm' ?>" class="generic-form-stack generic-form-stack--compact" action="<?= $deferredEditor && $deferredEditor['origin'] === 'pv' ? '/omo/api/deferred_proposals/pv_object_save.php' : '/omo/api/stats/action.php' ?>" method="post"<?= $deferredEditor ? ' data-deferred-object-form' : '' ?>>
+        <?php if (!$deferredEditor && ($projectId > 0 || $indicator->hasProjectAssociation())): ?>
+            <?= omoProjectsRenderResourceHolonVisibility($indicator) ?>
+        <?php endif; ?>
+        <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided generic-form-section--compact" aria-label="<?= omoApiEscape($editT('editor.identity')) ?>">
+            <div class="generic-heading-with-help">
+                <h3 class="generic-card-title generic-card-title--small"><?= omoApiEscape($editT('editor.identity')) ?></h3>
+                <?= $editHelp($editT('editor.identity'), $editT('editor.identity_help')) ?>
+            </div>
+            <div class="generic-form-grid generic-form-grid--pair">
             <div class="generic-form-field">
-                <div class="generic-inline-help">
-                    <label class="generic-form-label" for="stats-editor-name"><?= omoApiEscape($editT('editor.name')) ?> *</label>
-                    <?= $editHelp($editT('editor.name'), $editT('editor.identity_help')) ?>
-                </div>
+                <label class="generic-form-label" for="stats-editor-name"><?= omoApiEscape($editT('editor.name')) ?> *</label>
                 <input id="stats-editor-name" class="generic-form-control generic-form-control--compact" type="text" name="name" value="<?= omoApiEscape((string)$indicator->get('name')) ?>" maxlength="<?= (int)$fieldLengths['name'] ?>" placeholder="<?= omoApiEscape($editT('editor.name_placeholder')) ?>" required>
             </div>
             <div class="generic-form-field">
@@ -235,6 +252,7 @@ $showCumulative = (int)$indicator->get('show_cumulative') > 0;
                 <span class="generic-form-label"><?= omoApiEscape($editT('editor.description')) ?></span>
                 <textarea class="generic-form-control generic-form-control--compact" name="description" rows="2" placeholder="<?= omoApiEscape($editT('editor.description_placeholder')) ?>"><?= omoApiEscape((string)$indicator->get('description')) ?></textarea>
             </label>
+            </div>
         </section>
 
     <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided generic-form-section--compact">
@@ -355,22 +373,20 @@ $showCumulative = (int)$indicator->get('show_cumulative') > 0;
             </label>
         </div>
     </section>
-<section
-    class="generic-form-grid omo-stats-schedule"
-    data-omo-stats-source-panel="manual"
-    <?= $isAutomaticSource ? ' hidden' : '' ?>
->
-
-    <label class="generic-form-field">
+    <label class="generic-form-field" data-omo-stats-source-panel="manual"<?= $isAutomaticSource ? ' hidden' : '' ?>>
         <span class="generic-form-label"><?= omoApiEscape($editT('editor.source_url')) ?></span>
         <input type="url" class="generic-form-control generic-form-control--compact" name="source_url" maxlength="<?= (int)$fieldLengths['source_url'] ?>" value="<?= omoApiEscape((string)$indicator->get('source_url')) ?>" placeholder="https://">
     </label>
+    </section>
 
+    <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided generic-form-section--compact" data-omo-stats-source-panel="manual"<?= $isAutomaticSource ? ' hidden' : '' ?>>
+        <div class="generic-heading-with-help">
+            <h3 class="generic-card-title generic-card-title--small"><?= omoApiEscape($editT('editor.recurrence')) ?></h3>
+            <?= $editHelp($editT('editor.recurrence'), omoStatsT('stats.form.schedule_help')) ?>
+        </div>
+        <div class="generic-form-grid generic-form-grid--pair">
         <div class="generic-form-field">
-            <div class="generic-inline-help">
-                <label class="generic-form-label" for="stats-editor-frequency"><?= omoApiEscape(omoStatsT('stats.form.frequency')) ?></label>
-                <?= $editHelp(omoStatsT('stats.form.frequency'), omoStatsT('stats.form.schedule_help')) ?>
-            </div>
+            <label class="generic-form-label" for="stats-editor-frequency"><?= omoApiEscape(omoStatsT('stats.form.frequency')) ?></label>
             <select id="stats-editor-frequency" class="generic-form-control generic-form-control--compact" name="measurement_frequency" data-omo-stats-measurement-frequency>
                 <?php foreach ($measurementFrequencyOptions as $option): ?>
                     <option value="<?= omoApiEscape((string)$option['value']) ?>"<?= (string)$option['value'] === (string)$measurementFrequency ? ' selected' : '' ?>><?= omoApiEscape((string)$option['label']) ?></option>
@@ -381,8 +397,7 @@ $showCumulative = (int)$indicator->get('show_cumulative') > 0;
             <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.form.schedule')) ?></span>
             <select class="generic-form-control generic-form-control--compact" name="measurement_schedule" data-omo-stats-measurement-schedule data-selected-schedule="<?= omoApiEscape((string)$measurementSchedule) ?>"></select>
         </label>
-</section>
-
+        </div>
     </section>
     <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided generic-form-section--compact" aria-labelledby="stats-editor-chart">
         <div class="generic-form-section__copy">
@@ -502,6 +517,7 @@ $showCumulative = (int)$indicator->get('show_cumulative') > 0;
 <input type="hidden" name="id" value="<?= (int)$indicatorId ?>">
 <input type="hidden" name="stats_action" value="save_indicator">
 <input type="hidden" name="oid" value="<?= (int)$organizationId ?>">
+<?php if ($projectId > 0): ?><input type="hidden" name="project_id" value="<?= $projectId ?>"><?php endif; ?>
  <input type="hidden" name="cid" value="<?= (int)$currentHolonId ?>">
  <?php if ($deferredEditor && $deferredEditor['origin'] === 'pv'): ?>
      <?php foreach (['point_id' => $deferredEditor['pointId'], 'proposal_id' => $deferredEditor['proposalId'], 'target_type' => $deferredEditor['targetType'], 'operation' => $deferredEditor['operation'], 'holon_id' => $currentHolonId, 'object_id' => $indicatorId] as $key => $entry): ?>
@@ -521,6 +537,7 @@ $showCumulative = (int)$indicator->get('show_cumulative') > 0;
 </div>
 <script src="/omo/api/stats/reference-editor.js?v=20260919-reference-scale"></script>
 <?= commonPageScriptTags('/omo/api/stats/edit.js', [
+    'projectId' => $projectId,
     'selectedSourceType' => $selectedSourceType,
     'title' => omoStatsT($indicatorId > 0 ? 'stats.form.edit_title' : 'stats.form.create_title'),
     'description' => omoStatsT('stats.form.intro'),

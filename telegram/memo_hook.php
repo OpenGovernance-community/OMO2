@@ -1460,7 +1460,7 @@
 			return;
 		}
 
-		if (!commonAiIsConfigured() || !commonAiIsConfigured(commonOpenAiGetTranscriptionModel())) {
+		if (!commonAiIsTranscriptionConfigured()) {
 			sendMessage($chatId, "Les fonctions IA sont indisponibles : configuration IA manquante.", null, $threadId);
 			return;
 		}

@@ -86,39 +86,11 @@ usort($payload, static function (array $left, array $right): int {
     return strnatcasecmp((string)($left['title'] ?? ''), (string)($right['title'] ?? ''));
 });
 
-$templates = new ArrayDocument();
-$templates->loadDocumentTemplatesForOrganization($organizationId);
-$templatePayload = [];
-foreach ($templates as $template) {
-    if (!($template instanceof \dbObject\Document)
-        || !$template->canUseAsDocumentTemplateInOrganizationContext(
-            $organizationId,
-            $projectHolon instanceof Holon ? (int)$projectHolon->getId() : null
-        )) {
-        continue;
-    }
-
-    $templatePayload[] = [
-        'id' => (int)$template->getId(),
-        'title' => trim((string)$template->get('title')),
-        'documentType' => $template->getDocumentType(),
-        'groupKey' => (int)$template->get('IDholon') > 0
-            ? 'holon-' . (int)$template->get('IDholon')
-            : 'organization',
-        'groupLabel' => $template->getTemplateGroupLabel(),
-    ];
-}
-
 $respond(true, [
+    'organizationId' => $organizationId,
     'projectId' => $projectId,
     'projectHolonId' => $projectHolon instanceof Holon ? (int)$projectHolon->getId() : 0,
-    'canCreate' => true,
-    'createUrl' => '/omo/api/documents/create.php?oid=' . rawurlencode((string)$organizationId)
-        . ($projectHolon instanceof Holon ? '&cid=' . rawurlencode((string)(int)$projectHolon->getId()) : '')
-        . '&project_id=' . rawurlencode((string)$projectId)
-        . '&editor_host=project_picker',
     'documents' => $payload,
-    'templates' => $templatePayload,
     'scopeLabels' => [
         'local' => omoProjectsT('projects.scope.contextual'),
         'children' => omoProjectsT('projects.scope.children'),

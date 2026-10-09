@@ -912,7 +912,8 @@ a.generic-correspondence-list__row:focus-visible {
     box-shadow: none;
 }
 
-.generic-form-section--divided:first-child {
+.generic-form-section--divided:first-child,
+.generic-form-stack > .generic-form-section--divided:nth-child(1 of :not(input[type="hidden"], [hidden])) {
     padding-top: 0;
     border-top: 0;
 }
@@ -1203,6 +1204,11 @@ a.generic-correspondence-list__row:focus-visible {
 .generic-heading-with-help .generic-context-help__content {
     right: 0;
     left: auto;
+}
+
+.generic-heading-with-help .generic-context-help--align-start .generic-context-help__content {
+    right: auto;
+    left: 0;
 }
 
 .generic-context-help.is-positioned-above .generic-context-help__content {
@@ -2209,6 +2215,10 @@ html[data-theme="dark"] .generic-tabs__tab:focus-visible .generic-monochrome-ico
     gap: var(--generic-space-4);
 }
 
+.generic-tabs--spaced-top {
+    padding-block-start: var(--generic-space-3);
+}
+
 /* The host drawer supplies the surface and its panels own their padding. */
 .generic-tabs--embedded > .generic-tabs__panels {
     padding: 0;
@@ -3073,6 +3083,11 @@ html[data-theme="dark"] .generic-tabs__tab:focus-visible .generic-monochrome-ico
 .generic-accordion__trigger:focus-visible {
     outline: 2px solid var(--color-primary, #2563eb);
     outline-offset: 3px;
+}
+
+.generic-accordion__trigger--inline {
+    width: auto;
+    justify-content: flex-start;
 }
 
 .generic-search-highlight {
