@@ -2325,7 +2325,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         const onReady = function () {
             ensureHighlightPalette(callback);
         };
-        const htmlFieldVersion = '20261008-html-editor-embed-links';
+        const htmlFieldVersion = '20261009-html-editor-placeholder';
         if (
             window.omoSimpleHtmlField
             && typeof window.omoSimpleHtmlField.mount === 'function'
