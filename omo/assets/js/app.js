@@ -2864,19 +2864,9 @@ function omoRefreshSidebar(onLoaded = null) {
 }
 
 function buildDrawerUrl(baseUrl, oid, cid = null, options = {}) {
-    let resolvedCid = cid;
+    // A missing cid is the organization context, even if Structure still shows another circle.
+    const resolvedCid = omoNormalizeRouteCid(cid);
     const forcedScope = omoNormalizeDrawerForcedScope(options && options.forcedScope);
-
-    if ((!resolvedCid || Number(resolvedCid) <= 0) && typeof baseUrl === 'string' && baseUrl.indexOf('api/decision/') !== -1) {
-        if (typeof window.omoGetCurrentStructureHolonId === 'function') {
-            const structureCid = Number(window.omoGetCurrentStructureHolonId() || 0);
-            if (Number.isInteger(structureCid) && structureCid > 0) {
-                resolvedCid = structureCid;
-            }
-        }
-    }
-
-    resolvedCid = omoNormalizeRouteCid(resolvedCid);
 
     const separator = baseUrl.indexOf('?') === -1 ? '?' : '&';
     let url = `${baseUrl}${separator}oid=${encodeURIComponent(oid)}`;
@@ -5095,6 +5085,7 @@ function handleRoute() {
             || activeMenuHash === 'processus'
             || activeMenuHash === 'documents'
             || activeMenuHash === 'projects'
+            || activeMenuHash === 'activities'
         );
 
     if (isInSpecialDrawerOnlyRouteChange) {

@@ -63,6 +63,7 @@ $sectionLabels = [
     'next_week' => omoProjectsT('projects.detail.events.section.next_week'),
     'this_month' => omoProjectsT('projects.detail.events.section.this_month'),
     'next_month' => omoProjectsT('projects.detail.events.section.next_month'),
+    'past' => omoProjectsT('projects.detail.events.section.past'),
 ];
 $eventSections = [];
 
@@ -73,7 +74,7 @@ foreach ($events as $event) {
 
     $startAt = $event->get('start_at');
     $endAt = $event->get('end_at');
-    if (!($startAt instanceof \DateTimeInterface) || !($endAt instanceof \DateTimeInterface) || $endAt < $todayStart) {
+    if (!($startAt instanceof \DateTimeInterface) || !($endAt instanceof \DateTimeInterface)) {
         continue;
     }
 
@@ -82,7 +83,9 @@ foreach ($events as $event) {
         $anchorDate = $todayStart;
     }
 
-    $section = omoCalendarGetUpcomingSectionMetadata($anchorDate, $todayStart);
+    $section = $endAt < $todayStart
+        ? ['key' => 'past', 'sort' => PHP_INT_MAX]
+        : omoCalendarGetUpcomingSectionMetadata($anchorDate, $todayStart);
     $sectionKey = (string)$section['key'];
     $sectionLabel = isset($section['month']) && $section['month'] instanceof \DateTimeInterface
         ? omoProjectsT('projects.detail.events.month.' . (int)$section['month']->format('n')) . ' ' . $section['month']->format('Y')
@@ -102,12 +105,12 @@ foreach ($events as $event) {
     ];
 }
 
-foreach ($eventSections as &$eventSection) {
-    usort($eventSection['items'], static function (array $left, array $right): int {
+foreach ($eventSections as $sectionKey => &$eventSection) {
+    usort($eventSection['items'], static function (array $left, array $right) use ($sectionKey): int {
         $leftSort = (int)($left['sort'] ?? 0);
         $rightSort = (int)($right['sort'] ?? 0);
         if ($leftSort !== $rightSort) {
-            return $leftSort <=> $rightSort;
+            return $sectionKey === 'past' ? $rightSort <=> $leftSort : $leftSort <=> $rightSort;
         }
         return (int)$left['event']->getId() <=> (int)$right['event']->getId();
     });
