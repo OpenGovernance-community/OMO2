@@ -47,6 +47,11 @@ Les annotations locales sur les evenements importes sont conservees grace a
 `external_calendar_event.time_buffers_local`
 (`2026-10-05-02-external-event-local-time-buffers.sql`).
 
+Les evenements OMO utilisent des durees individuelles dans `event_time_buffer`
+(`2026-10-09-02-event-personal-time-buffers.sql`). Les anciennes colonnes de
+`event` sont retirees. Le schema et l historique correspondants du seed ont
+ete regeneres depuis une base temporaire vide, importee puis migree.
+
 Pour une base existante, verifier l'historique `sql_migration` et appliquer les
 migrations manquantes avec `php scripts/run-migrations.php`. Un dump peut contenir
 des changements deja integres sans entree correspondante dans cet historique ;

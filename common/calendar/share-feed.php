@@ -66,7 +66,7 @@ function calendarShareLoadScopedOmoEvents(CalendarShare $share, array $scope): a
     return $visibleEvents;
 }
 
-/** Export normalized local instances only: no remote requests, alarms or attendee addresses. */
+/** Export base appointment times; personal occupied bounds remain internal to OMO. */
 function calendarShareBuildFeed(CalendarShare $share, ?DateTimeImmutable $now = null): string
 {
     [$start, $end] = $share->visibilityRange($now);
@@ -99,6 +99,7 @@ function calendarShareBuildFeed(CalendarShare $share, ?DateTimeImmutable $now = 
             $busy = $isOmo || (!isset($availabilityCalendars[(int)$event->get('IDexternalcalendar')]) && (bool)$event->get('is_busy'));
             if (!$details && !$busy) { continue; }
             $allDay = (bool)$event->get('is_all_day');
+            [$preparation] = $isOmo ? $event->getTimeBuffers($userId) : [(int)$event->get('preparation_minutes')];
             if ($isOmo) {
                 $interval = $event->getBusyInterval();
                 if ($interval === null) { continue; }
@@ -131,6 +132,10 @@ function calendarShareBuildFeed(CalendarShare $share, ?DateTimeImmutable $now = 
                 : commonCalDavBuildTimedDateLine('DTSTART', $eventStart, 'UTC');
             $lines[] = $allDay ? commonCalDavBuildAllDayDateLine('DTEND', $eventEnd)
                 : commonCalDavBuildTimedDateLine('DTEND', $eventEnd, 'UTC');
+            // Availability windows are not appointments and must not raise reminders.
+            if ($isOmo || !isset($availabilityCalendars[(int)$event->get('IDexternalcalendar')])) {
+                array_push($lines, ...commonCalendarIcsReminderLines($preparation, $details ? (string)$event->get('title') : 'Occupe'));
+            }
             $lines[] = 'END:VEVENT';
         }
     }

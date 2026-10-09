@@ -11,6 +11,9 @@ use dbObject\ExternalCalendarEvent;
 if (($argv[1] ?? '') === '--request') {
     $request = json_decode(base64_decode($argv[2]), true, 512, JSON_THROW_ON_ERROR);
     $_SESSION = $request['session'];
+    $sessionUser = new \dbObject\User();
+    $sessionUser->load((int)$_SESSION['currentUser']);
+    $_SESSION['auth_security_version'] = (int)$sessionUser->get('security_version');
     $_GET = $request['get'];
     $_POST = $request['post'];
     $_REQUEST = array_merge($_GET, $_POST);
@@ -43,6 +46,7 @@ function confirmationRequest(array $request): array
 $fixtures = [];
 $fixture = static function (string $class, array $fields) use (&$fixtures): DbObject {
     $object = new $class();
+    if ($class === \dbObject\User::class) { $object->set('active', 1); }
     foreach ($fields as $field => $value) { $object->set($field, $value); }
     confirmationExpect(!empty($object->save()['status']), 'Fixture save failed: ' . $class);
     $fixtures[] = $object;
@@ -96,7 +100,9 @@ try {
     confirmationExpect(!confirmationRequest($allDay)['status'], 'All-day changes still check the occupied interval.');
     $buffersOnly = $unchanged;
     $buffersOnly['post']['time_buffers_enabled'] = '1'; $buffersOnly['post']['closing_minutes'] = '45';
-    confirmationExpect(!confirmationRequest($buffersOnly)['status'], 'Changing only the closing time still checks conflicts.');
+    confirmationExpect(confirmationRequest($buffersOnly)['status'], 'The organizer closing time must not extend the guest occupied interval.');
+    confirmationExpect($event->getTimeBuffers((int)$guest->getId()) === [0, 0], 'Personal times are never copied to an invitee.');
+    confirmationExpect($event->saveTimeBuffers((int)$user->getId(), 0, 0), 'Reset organizer personal times.');
 
     $cached = $request;
     $cached['post']['start_at'] = $day->format('Y-m-d') . 'T14:00';
