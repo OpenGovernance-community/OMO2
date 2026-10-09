@@ -71,9 +71,9 @@ try {
     $org = bufferFixture(Organization::class, ['name' => 'Buffer ' . $nonce, 'shortname' => 'buf-' . $nonce]);
     $event = bufferFixture(Event::class, ['IDuser' => $user->getId(), 'IDorganization' => $org->getId(),
         'title' => 'Buffered event', 'status' => Event::STATUS_CONFIRMED, 'active' => 1,
-        'start_at' => $day->setTime(10, 0), 'end_at' => $day->setTime(11, 0),
-        'preparation_minutes' => 15, 'closing_minutes' => 20]);
-    [$from, $to] = $event->getBusyInterval();
+        'start_at' => $day->setTime(10, 0), 'end_at' => $day->setTime(11, 0)]);
+    bufferExpect($event->saveTimeBuffers((int)$user->getId(), 15, 20), 'Save personal durations.');
+    [$from, $to] = $event->getBusyInterval((int)$user->getId());
     bufferExpect($from->format('H:i') === '09:45' && $to->format('H:i') === '11:20', 'Attached durations expand occupied time.');
     bufferExpect($event->get('start_at')->format('H:i') === '10:00', 'Actual appointment time is unchanged.');
     foreach ([['09:45', '10:00'], ['11:00', '11:20']] as [$start, $end]) {
@@ -85,11 +85,11 @@ try {
     foreach (['IDuser' => $user->getId(), 'IDorganization' => $org->getId(),
         'start_at' => $day->setTime(11, 20), 'end_at' => $day->setTime(11, 50)] as $field => $value) { $proposed->set($field, $value); }
     bufferExpect(!$proposed->checkInvitationAvailability([])['conflicts'], 'Touching occupied bounds is allowed.');
-    $proposed->set('preparation_minutes', 1);
+    $proposed->setTimeBuffers((int)$user->getId(), 1, 0);
     bufferExpect(count($proposed->checkInvitationAvailability([])['conflicts']) === 1, 'Proposed preparation triggers a conflict.');
     $event->set('is_all_day', 1);
     meetingSave($event);
-    [$from, $to] = $event->getBusyInterval();
+    [$from, $to] = $event->getBusyInterval((int)$user->getId());
     bufferExpect($from == $day->modify('-15 minutes') && $to == $day->modify('+1 day +20 minutes'), 'All-day buffers surround the full inclusive day.');
     $events = new ArrayEvent();
     $events->loadBusyForUserDateRange((int)$user->getId(), $day->modify('-15 minutes'), $day);
@@ -100,6 +100,7 @@ try {
         'username' => 'fixture', 'password_encrypted' => 'unused', 'active' => 1, 'last_sync_at' => new DateTimeImmutable()]);
     $ics = meetingIcs($nonce, $day->setTime(10, 0), $day->setTime(11, 0), 'Buffered booking', '', '', 15, 20);
     $values = commonExternalCalendarParseEvents($ics, '', true)[0];
+    unset($values['single_source_prefix']); // Import metadata is not a database field.
     bufferExpect($values['preparation_minutes'] === 15 && $values['closing_minutes'] === 20, 'ICS round trip keeps both durations.');
     bufferFixture(ExternalCalendarEvent::class, $values + ['IDexternalcalendar' => $calendar->getId(), 'active' => 1]);
     $external = ArrayExternalCalendarEvent::busyIntervalsForUser((int)$user->getId(), $day->setTime(9, 45), $day->setTime(10, 0));

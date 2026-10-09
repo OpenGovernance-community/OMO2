@@ -64,7 +64,7 @@ try {
         if (isset($_GET['download'])) {
             header('Content-Type: text/calendar; charset=UTF-8');
             header('Content-Disposition: attachment; filename="rendez-vous.ics"');
-            echo $booking->get('calendar_data'); exit;
+            echo meetingGuestIcs($booking); exit;
         }
     } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!hash_equals($csrf, (string)($_POST['csrf'] ?? ''))) { http_response_code(403); throw new RuntimeException('csrf'); }
