@@ -552,6 +552,7 @@
             if (!result.status) {
                 throw new Error(result.message || texts.actionError);
             }
+            window.dispatchEvent(new CustomEvent('omo-activities-changed'));
             if ((action === 'delete_activity' || action === 'archive_activity')
                 && typeof window.omoInvalidateMainRightPanel === 'function') {
                 window.omoInvalidateMainRightPanel();
@@ -821,6 +822,7 @@
                 return;
             }
             notify(result.message, 'success');
+            window.dispatchEvent(new CustomEvent('omo-activities-changed'));
             if (result.status && result.detailUrl) {
                 rootNeedsRefresh = true;
                 openDrawer(result.detailUrl);

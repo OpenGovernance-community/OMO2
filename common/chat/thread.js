@@ -63,6 +63,11 @@
             var embedText = String(embed.textContent || '').replace(/\s+/g, ' ').trim();
             embed.textContent = ' [' + embedText + '] ';
         });
+        // textContent omits HTML layout boundaries; keep words in separate blocks apart.
+        source.querySelectorAll('br, hr, p, div, h1, h2, h3, h4, h5, h6, blockquote, pre, ul, ol, li, dl, dt, dd, table, caption, tr, th, td, section, article, header, footer').forEach(function (block) {
+            block.before(document.createTextNode(' '));
+            block.after(document.createTextNode(' '));
+        });
         return String(source.textContent || '').replace(/\s+/g, ' ').trim();
     }
 

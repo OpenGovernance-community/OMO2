@@ -40,6 +40,11 @@ $renderMenuItem = static function (array $item) use ($escape) {
         'data-navigation-mode' => $item['navigationmode'] ?? 'drawer',
     ];
 
+    $hasAttentionBadge = in_array($item['hash'] ?? '', ['decision', 'activities'], true);
+    if ($hasAttentionBadge) {
+        $attributes['class'] .= ' omo-attention-target';
+    }
+
     if (!empty($item['drawer'])) {
         $attributes['data-drawer'] = $item['drawer'];
     }
@@ -63,6 +68,9 @@ $renderMenuItem = static function (array $item) use ($escape) {
         <img src="<?= $escape($item['icon'] ?? '') ?>" class="icon-img black-icon">
     </span>
     <span class="label"><?= $escape($item['label'] ?? '') ?></span>
+    <?php if ($hasAttentionBadge): ?>
+        <a class="omo-attention-badge" data-omo-attention-badge="<?= $escape($item['hash']) ?>" hidden></a>
+    <?php endif; ?>
 </div>
 <?php
 };

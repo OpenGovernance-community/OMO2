@@ -1249,6 +1249,7 @@ if (!$isDemoGuest && $currentUserId > 0 && patreonSupportUiIsEnabled()) {
     <?= $omoThemeBootstrapHtml . PHP_EOL ?>
     <?= $omoPwaHeadHtml . PHP_EOL ?>
 <?= commonStylesheetTags('/omo/assets/css/styles.css') ?>
+<?= commonStylesheetTags('/omo/assets/css/attention.css') ?>
     <style>
         html[data-omo-organization-accent] {
             --omo-organization-accent: <?= $omoOrganizationAccentColorCss ?>;
@@ -1424,6 +1425,7 @@ window.omoConfig = <?=
 <script src="assets/js/simple-html-field.js?v=20261008-html-editor-embed-links"></script>
 <script src="assets/js/application-view-preferences.js?v=20260923-first-view"></script>
 <script src="<?= commonAssetUrl('/omo/assets/js/app.js') ?>"></script>
+<script src="<?= commonAssetUrl('/omo/assets/js/attention.js') ?>" defer></script>
 <script src="<?= commonAssetUrl('/common/panel-view/actions.js') ?>"></script>
 <script src="<?= commonAssetUrl('/common/object_mail/ui.js') ?>"></script>
 <script src="assets/js/structure-mini-map.js?v=20260916-structure-render-cache"></script>
