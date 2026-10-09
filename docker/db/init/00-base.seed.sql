@@ -1101,8 +1101,6 @@ CREATE TABLE `event` (
   `active` tinyint(1) NOT NULL DEFAULT 1,
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  `preparation_minutes` smallint(5) unsigned NOT NULL DEFAULT 0,
-  `closing_minutes` smallint(5) unsigned NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_event_decision_proposal` (`IDdecision_proposal`),
   KEY `idx_event_org` (`IDorganization`),
@@ -1213,6 +1211,37 @@ CREATE TABLE `event_invitation` (
 LOCK TABLES `event_invitation` WRITE;
 /*!40000 ALTER TABLE `event_invitation` DISABLE KEYS */;
 /*!40000 ALTER TABLE `event_invitation` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `event_time_buffer`
+--
+
+DROP TABLE IF EXISTS `event_time_buffer`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `event_time_buffer` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDevent` int(11) NOT NULL,
+  `IDuser` int(11) NOT NULL,
+  `preparation_minutes` smallint(5) unsigned NOT NULL DEFAULT 0,
+  `closing_minutes` smallint(5) unsigned NOT NULL DEFAULT 0,
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_event_time_buffer_user` (`IDevent`,`IDuser`),
+  KEY `idx_event_time_buffer_user` (`IDuser`),
+  CONSTRAINT `fk_event_time_buffer_event` FOREIGN KEY (`IDevent`) REFERENCES `event` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_event_time_buffer_user` FOREIGN KEY (`IDuser`) REFERENCES `user` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `event_time_buffer`
+--
+
+LOCK TABLES `event_time_buffer` WRITE;
+/*!40000 ALTER TABLE `event_time_buffer` DISABLE KEYS */;
+/*!40000 ALTER TABLE `event_time_buffer` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -3805,9 +3834,11 @@ INSERT INTO `sql_migration` VALUES
 ('2026-10-03-04-mcp-event-creation.sql','79e97cfcad2abcb3dcc9d9eaf71d2c68142001f3417847c0152ace9ca539c467','2026-10-03 00:00:00'),
 ('2026-10-03-05-decision-proposal-dates.sql','a24a2680d09ce624448bd71ccd2e7c9897c18e289d9a85a3fe3f942cf51b5a63','2026-10-03 00:00:00'),
 ('2026-10-05-01-calendar-time-buffers.sql','834935ebe4e26bc1e704ac06cd72220236ab09b73d0bc77013dd8c1098fb1f3c','2026-10-05 19:37:19'),
-('2026-10-05-02-external-event-local-time-buffers.sql','bd3611453665cd290a4e4cdebe232690e88f00bbe0d96d4f5490e606ec1d6200','2026-10-05 19:58:07');
+('2026-10-05-02-external-event-local-time-buffers.sql','bd3611453665cd290a4e4cdebe232690e88f00bbe0d96d4f5490e606ec1d6200','2026-10-05 19:58:07'),
+('2026-10-09-02-event-personal-time-buffers.sql','2b866f825e84ee14e2e9c4d02f15841d2ea8ebf9f49997f51581fbd5ebb1911d','2026-10-09 11:02:20');
 /*!40000 ALTER TABLE `sql_migration` ENABLE KEYS */;
 UNLOCK TABLES;
+
 --
 -- Table structure for table `stat_indicator`
 --

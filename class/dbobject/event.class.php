@@ -21,7 +21,7 @@ class Event extends DbObject
     {
         return [
             [['IDuser', 'title', 'status', 'start_at', 'end_at'], 'required'],
-            [['id', 'preparation_minutes', 'closing_minutes'], 'integer'],
+            [['id'], 'integer'],
             [['IDorganization', 'IDholon', 'IDproject', 'IDuser', 'IDdecision_proposal'], 'fk'],
             [['title', 'status', 'timezone', 'locationmode', 'locationaddress', 'videomeetingurl'], 'string'],
             [['description'], 'text'],
@@ -48,7 +48,6 @@ class Event extends DbObject
             'locationmode' => 'Format du lieu',
             'locationaddress' => 'Adresse',
             'videomeetingurl' => 'Lien de visio',
-            'preparation_minutes' => 'Preparation (minutes)', 'closing_minutes' => 'Cloture (minutes)',
             'start_at' => 'Début',
             'end_at' => 'Fin',
             'is_all_day' => 'Journée entière',
@@ -586,8 +585,53 @@ class Event extends DbObject
         ];
     }
 
-    /** Calendar intervals have an exclusive end; OMO all-day dates are inclusive. */
-    public function getBusyInterval(): ?array
+    /** Unsaved personal choices used while reviewing a proposed schedule. */
+    private array $proposedTimeBuffers = [];
+
+    public function getTimeBuffers(int $userId): array
+    {
+        if (isset($this->proposedTimeBuffers[$userId])) { return $this->proposedTimeBuffers[$userId]; }
+        if ($userId <= 0 || (int)$this->getId() <= 0) { return [0, 0]; }
+        $item = EventTimeBuffer::forUser((int)$this->getId(), $userId);
+        return [(int)$item->get('preparation_minutes'), (int)$item->get('closing_minutes')];
+    }
+
+    public function setTimeBuffers(int $userId, $preparation, $closing): void
+    {
+        $this->proposedTimeBuffers[$userId] = [self::validateBufferMinutes($preparation), self::validateBufferMinutes($closing)];
+    }
+
+    public function withTimeBuffers(\DateTimeInterface $start, \DateTimeInterface $end, int $userId = 0): array
+    {
+        [$preparation, $closing] = $this->getTimeBuffers($userId);
+        return [\DateTimeImmutable::createFromInterface($start)->modify('-' . $preparation . ' minutes'),
+            \DateTimeImmutable::createFromInterface($end)->modify('+' . $closing . ' minutes')];
+    }
+
+    public function canEditTimeBuffers(int $userId): bool
+    {
+        if ($userId <= 0 || (int)$this->getId() <= 0 || !$this->get('active')
+            || self::normalizeStatus($this->get('status')) === self::STATUS_CANCELLED) { return false; }
+        if ((int)$this->get('IDuser') === $userId) { return true; }
+        $member = new UserOrganization();
+        return $member->load([['IDorganization', (int)$this->get('IDorganization')], ['IDuser', $userId], ['active', 1]])
+            && $this->isVisibleToInvitationViewer($userId, (int)$this->get('IDorganization'));
+    }
+
+    public function saveTimeBuffers(int $userId, $preparation, $closing): bool
+    {
+        if (!$this->canEditTimeBuffers($userId)) { return false; }
+        $item = EventTimeBuffer::forUser((int)$this->getId(), $userId);
+        $item->set('preparation_minutes', self::validateBufferMinutes($preparation));
+        $item->set('closing_minutes', self::validateBufferMinutes($closing));
+        $result = $item->save();
+        if (!is_array($result) || empty($result['status'])) { return false; }
+        unset($this->proposedTimeBuffers[$userId]);
+        return true;
+    }
+
+    /** Calendar intervals have an exclusive end; no personal time without a viewer. */
+    public function getBusyInterval(int $userId = 0): ?array
     {
         $start = $this->get('start_at');
         $end = $this->get('end_at');
@@ -599,7 +643,7 @@ class Event extends DbObject
             $end = $end->setTime(0, 0)->modify('+1 day');
         }
         if ($end < $start) { return null; }
-        [$start, $end] = $this->withTimeBuffers($start, $end);
+        [$start, $end] = $this->withTimeBuffers($start, $end, $userId);
         return $end > $start ? [$start, $end] : null;
     }
 
@@ -610,14 +654,14 @@ class Event extends DbObject
         $targets = $this->getEffectiveInvitationTargets($organizationId, $proposedInvitations);
         $report = ['conflicts' => [], 'unverified' => [], 'externalCache' => false];
         // Email-only invitations have no calendar to check.
-        $interval = $this->getBusyInterval();
-        if ($interval === null) { return $report; }
-        [$start, $end] = $interval;
         $userIds = array_unique(array_merge($targets['userIds'], [(int)$this->get('IDuser')]));
         $organizationLabels = [];
         $holonLabels = [];
         foreach ($userIds as $userId) {
             if ($userId <= 0) { continue; }
+            $interval = $this->getBusyInterval($userId);
+            if ($interval === null) { continue; }
+            [$start, $end] = $interval;
             $name = $this->getViewerDisplayName($userId, $organizationId);
             $intervals = [];
             try {
@@ -625,7 +669,7 @@ class Event extends DbObject
                 $events->loadBusyForUserDateRange($userId, $start, $end);
                 foreach ($events as $event) {
                     if ((int)$this->getId() > 0 && (int)$event->getId() === (int)$this->getId()) { continue; }
-                    $busy = $event->getBusyInterval();
+                    $busy = $event->getBusyInterval($userId);
                     if ($busy === null || $busy[0] >= $end || $busy[1] <= $start) { continue; }
                     $eventOrganizationId = (int)$event->get('IDorganization');
                     $holonId = (int)$event->get('IDholon');
@@ -1307,11 +1351,6 @@ class Event extends DbObject
 
     public function save()
     {
-        foreach (['preparation_minutes', 'closing_minutes'] as $field) {
-            if ((int)$this->get($field) < 0 || (int)$this->get($field) > self::MAX_BUFFER_MINUTES) {
-                return ['status' => false, 'text' => 'Invalid preparation/closing duration.'];
-            }
-        }
         $this->set('status', self::normalizeStatus($this->get('status')));
 
         $timezone = trim((string)$this->get('timezone'));

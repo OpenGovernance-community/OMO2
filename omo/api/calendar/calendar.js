@@ -2797,7 +2797,7 @@ window.omoInitCalendar = function (root) {
                     if (payload.warning && typeof window.commonNotify === 'function') {
                         window.commonNotify(payload.warning, 'warning', {duration: 8000});
                     }
-                    if (form.hasAttribute('data-omo-calendar-external-event-form') && typeof window.commonNotify === 'function') {
+                    if ((form.hasAttribute('data-omo-calendar-personal-time-buffers-form') || form.hasAttribute('data-omo-calendar-external-event-form')) && typeof window.commonNotify === 'function') {
                         window.commonNotify(payload.message, 'success');
                     }
                     var refreshPromise = refreshCalendar(currentUrl);

@@ -1,5 +1,9 @@
 # Journal Des Nouveautes
 
+- Calendrier / exports (2026-10-09) : CalDAV, abonnements ICS et reservations exportent les horaires reels des rendez-vous, sans etendre leur duree aux temps avant/apres. Rappels personnels au debut de la preparation puis 5 minutes avant ; un seul rappel a 5 minutes si la preparation est absente ou plus courte. Les fichiers remis aux visiteurs ont un rappel a 5 minutes, sans les temps personnels de l organisateur. Les plages de disponibilite ne declenchent pas de rappel. Le cache et les jetons CalDAV sont renouveles pour actualiser les agendas deja synchronises.
+
+- Calendrier (2026-10-09) : les temps de preparation et de cloture sont propres a chaque personne et evenement, y compris les invitations par espace. Les invites sans droit de modification disposent d un formulaire limite a leurs temps personnels, avec un recapitulatif en lecture seule. Disponibilites, reservations publiques et exports personnels utilisent ces durees individuelles. Migration des anciennes durees vers le createur de l evenement ; les invites choisissent leurs propres temps.
+
 - Editeurs HTML / dictee (2026-10-09) : le placeholder disparait immediatement apres l insertion d une transcription ou de HTML, sans frappe supplementaire. Les insertions directes signalent aussi leur changement a la sauvegarde, une seule fois.
 
 - Memos / audio OpenAI (2026-10-09) : retrait du vidage anticipe de MediaRecorder avant son arret, qui laissait les fichiers WebM sans taille ni duree finales et provoquait le refus Audio file might be corrupted or unsupported. Validation avec un vrai enregistrement navigateur et le service OpenAI. Detection du format compatible PHP 8.5 sans finfo_close deprecie.

@@ -3,6 +3,7 @@
 require_once __DIR__ . '/carddav.php';
 require_once __DIR__ . '/omo_context_scope.php';
 require_once dirname(__DIR__) . '/omo/api/calendar/permissions_shared.php';
+require_once __DIR__ . '/calendar/icalendar.php';
 
 use dbObject\ArrayEvent;
 use dbObject\ArrayUserOrganization;
@@ -554,12 +555,7 @@ if (!function_exists('commonCalDavSendMultistatus')) {
 if (!function_exists('commonCalDavEscapeText')) {
     function commonCalDavEscapeText($value)
     {
-        $value = str_replace("\r\n", "\n", (string)$value);
-        $value = str_replace("\r", "\n", $value);
-        $value = str_replace("\\", "\\\\", $value);
-        $value = str_replace(';', '\;', $value);
-        $value = str_replace(',', '\,', $value);
-        return str_replace("\n", '\\n', $value);
+        return commonCalendarEscapeIcsText($value);
     }
 }
 
@@ -681,7 +677,7 @@ if (!function_exists('commonCalDavResolveAllDayEndExclusive')) {
 }
 
 if (!function_exists('commonCalDavBuildEventCalendarData')) {
-    function commonCalDavBuildEventCalendarData(Organization $organization, Event $event)
+    function commonCalDavBuildEventCalendarData(Organization $organization, Event $event, int $viewerUserId = 0)
     {
         $updatedAt = commonCalDavResolveEventUpdatedAt($event);
         $createdAt = commonCalDavResolveEventCreatedAt($event);
@@ -753,8 +749,12 @@ if (!function_exists('commonCalDavBuildEventCalendarData')) {
             $lines[] = commonCalDavBuildTimedDateLine('DTEND', $endAt instanceof DateTimeInterface ? $endAt : null, $eventTimezoneName);
         }
 
-        $lines[] = 'X-OMO-PREPARATION-MINUTES:' . (int)$event->get('preparation_minutes');
-        $lines[] = 'X-OMO-CLOSING-MINUTES:' . (int)$event->get('closing_minutes');
+        [$preparation, $closing] = $event->getTimeBuffers($viewerUserId);
+        $lines[] = 'X-OMO-PREPARATION-MINUTES:' . $preparation;
+        $lines[] = 'X-OMO-CLOSING-MINUTES:' . $closing;
+        if (commonCalDavNormalizeEventStatus($event) !== 'CANCELLED') {
+            array_push($lines, ...commonCalendarIcsReminderLines($preparation, $title !== '' ? $title : ('Event ' . (int)$event->getId())));
+        }
         $lines[] = 'END:VEVENT';
         $lines[] = 'END:VCALENDAR';
 
@@ -782,7 +782,7 @@ if (!function_exists('commonCalDavBuildEventResource')) {
         $calendarHref = rtrim($calendarHref, '/') . '/';
         $calendarIdentity = trim((string)($options['calendarIdentity'] ?? ''));
         $href = $calendarHref . $fileName;
-        $calendarData = commonCalDavBuildEventCalendarData($organization, $event);
+        $calendarData = commonCalDavBuildEventCalendarData($organization, $event, $viewerUserId);
         $updatedAt = commonCalDavResolveEventUpdatedAt($event);
         $createdAt = commonCalDavResolveEventCreatedAt($event);
         $etag = '"' . sha1($calendarData . '|' . ($updatedAt ? $updatedAt->format('c') : '')) . '"';
@@ -823,7 +823,8 @@ if (!function_exists('commonCalDavBuildCalendarSyncToken')) {
         $calendarKey = sha1('caldav-sync:' . $calendarIdentity);
         $changeId = CalDavSyncChange::getLatestChangeId($organizationId);
 
-        return 'data:,omo-caldav-sync-v1-'
+        // Changed export contents require existing clients to fetch every event again.
+        return 'data:,omo-caldav-sync-v2-'
             . $organizationId
             . '-'
             . $calendarKey
@@ -1860,7 +1861,7 @@ if (!function_exists('commonCalDavParseSyncCollectionToken')) {
             return null;
         }
 
-        $pattern = '#^data:,omo-caldav-sync-v1-'
+        $pattern = '#^data:,omo-caldav-sync-v2-'
             . preg_quote((string)$organizationId, '#')
             . '-'
             . preg_quote($calendarKey, '#')
