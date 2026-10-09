@@ -69,9 +69,11 @@ try {
     $nonce = bin2hex(random_bytes(6));
     $user = bufferFixture(User::class, ['email' => 'buffer-' . $nonce . '@example.invalid', 'firstname' => 'Buffer']);
     $org = bufferFixture(Organization::class, ['name' => 'Buffer ' . $nonce, 'shortname' => 'buf-' . $nonce]);
+    bufferFixture(\dbObject\UserOrganization::class, ['IDuser' => $user->getId(), 'IDorganization' => $org->getId(), 'active' => 1]);
     $event = bufferFixture(Event::class, ['IDuser' => $user->getId(), 'IDorganization' => $org->getId(),
         'title' => 'Buffered event', 'status' => Event::STATUS_CONFIRMED, 'active' => 1,
         'start_at' => $day->setTime(10, 0), 'end_at' => $day->setTime(11, 0)]);
+    $invite = bufferFixture(\dbObject\EventInvitation::class, ['IDevent' => $event->getId(), 'invitation_type' => 'user', 'IDuser' => $user->getId()]);
     bufferExpect($event->saveTimeBuffers((int)$user->getId(), 15, 20), 'Save personal durations.');
     [$from, $to] = $event->getBusyInterval((int)$user->getId());
     bufferExpect($from->format('H:i') === '09:45' && $to->format('H:i') === '11:20', 'Attached durations expand occupied time.');
@@ -84,9 +86,9 @@ try {
     $proposed = new Event();
     foreach (['IDuser' => $user->getId(), 'IDorganization' => $org->getId(),
         'start_at' => $day->setTime(11, 20), 'end_at' => $day->setTime(11, 50)] as $field => $value) { $proposed->set($field, $value); }
-    bufferExpect(!$proposed->checkInvitationAvailability([])['conflicts'], 'Touching occupied bounds is allowed.');
+    bufferExpect(!$proposed->checkInvitationAvailability([$invite])['conflicts'], 'Touching occupied bounds is allowed.');
     $proposed->setTimeBuffers((int)$user->getId(), 1, 0);
-    bufferExpect(count($proposed->checkInvitationAvailability([])['conflicts']) === 1, 'Proposed preparation triggers a conflict.');
+    bufferExpect(count($proposed->checkInvitationAvailability([$invite])['conflicts']) === 1, 'Proposed preparation triggers a conflict.');
     $event->set('is_all_day', 1);
     meetingSave($event);
     [$from, $to] = $event->getBusyInterval((int)$user->getId());

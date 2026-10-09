@@ -102,7 +102,8 @@ try {
     $buffersOnly['post']['time_buffers_enabled'] = '1'; $buffersOnly['post']['closing_minutes'] = '45';
     confirmationExpect(confirmationRequest($buffersOnly)['status'], 'The organizer closing time must not extend the guest occupied interval.');
     confirmationExpect($event->getTimeBuffers((int)$guest->getId()) === [0, 0], 'Personal times are never copied to an invitee.');
-    confirmationExpect($event->saveTimeBuffers((int)$user->getId(), 0, 0), 'Reset organizer personal times.');
+    confirmationExpect(!$event->canEditTimeBuffers((int)$user->getId()) && $event->getTimeBuffers((int)$user->getId()) === [0, 0],
+        'The uninvited organizer has no personal attendance times.');
 
     $cached = $request;
     $cached['post']['start_at'] = $day->format('Y-m-d') . 'T14:00';

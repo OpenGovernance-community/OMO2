@@ -12,7 +12,7 @@ function assertCalDavSyncChangesTest(bool $condition, string $message): void
 
 $organizationId = 42;
 $calendarSlug = 'organization-42';
-$token = 'data:,omo-caldav-sync-v2-'
+$token = 'data:,omo-caldav-sync-v3-'
     . $organizationId
     . '-'
     . sha1('caldav-sync:' . $calendarSlug)
@@ -31,8 +31,8 @@ assertCalDavSyncChangesTest(
     'A legacy snapshot token must trigger a full resynchronization.'
 );
 assertCalDavSyncChangesTest(
-    commonCalDavParseSyncCollectionToken(str_replace('-v2-', '-v1-', $token), $organizationId, $calendarSlug) === false,
-    'Clients with the old export format must fetch appointments and their new reminders again.'
+    commonCalDavParseSyncCollectionToken(str_replace('-v3-', '-v2-', $token), $organizationId, $calendarSlug) === false,
+    'Clients must resynchronize to remove appointments without an invitation.'
 );
 
 $root = dirname(__DIR__);

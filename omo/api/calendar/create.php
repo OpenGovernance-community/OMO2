@@ -656,8 +656,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['availability_preview
         $invitation->set('status', \dbObject\EventInvitation::STATUS_INVITED);
         $proposedInvitations[] = $invitation;
     }
-    $targets = $previewEvent->getEffectiveInvitationTargets($organizationId, $proposedInvitations);
-    $userIds = array_values(array_unique(array_filter(array_merge($targets['userIds'], [(int)$previewEvent->get('IDuser')]))));
+    $targets = $previewEvent->getEffectiveInvitationTargets($organizationId, $proposedInvitations, explicitOnly: true);
+    $userIds = $targets['userIds'];
     $rangeStart = $month->setTime(0, 0);
     $rangeEnd = $month->modify('+1 month')->setTime(0, 0);
     $participants = [];
