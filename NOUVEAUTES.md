@@ -1,5 +1,17 @@
 # Journal Des Nouveautes
 
+- Decisions (2026-10-09) : revenir au contexte organisation recharge ses decisions locales, sans reprendre le dernier cercle selectionne dans la vue Structure.
+
+- Taches recurrentes (2026-10-09) : fermer la fiche ouverte via la pastille conserve le drawer de l application et revient a la liste, sans rechargement du panneau principal.
+
+- OMO (2026-10-09) : verification periodique des pastilles espacee a 15 minutes pour limiter les requetes serveur. Rafraichissements immediats conserves apres les actions et au retour sur un onglet masque.
+
+- OMO (2026-10-09) : pastille rouge sur Taches recurrentes pour les taches encore non faites en retard et nommement attribuees a la personne connectee. Premiere echeance en retard prioritaire, titre et espace dans l infobulle, decompte des autres taches et de leurs espaces, lien direct vers la premiere fiche. Calcul asynchrone commun aux decisions, actualise apres validation, modification ou archivage.
+
+- Projets (2026-10-09) : les evenements passes restent consultables dans la fiche du projet, sous les evenements planifies, du plus recent au plus ancien, avec les liens et actions habituels.
+
+- OMO (2026-10-09) : calcul asynchrone des decisions invitees encore sans reponse soumise dans tous les espaces de l organisation. Pastille rouge animee directement sur le bouton de l application Decision, y compris dans le menu mobile et apres rechargement de la barre. Infobulle avec le contexte et le nombre d autres decisions, acces direct a la participation. Actualisation apres un vote et en arriere-plan, sans calcul dans le chargement initial ni verrouillage de la session pendant la recherche.
+
 - PV (2026-10-08) : les comparaisons de contenu du chat de relecture separent les paragraphes, listes, cellules et retours a la ligne par des espaces, pour eviter les mots colles et limiter le surlignage au texte modifie. Correction aussi appliquee a l affichage des anciennes entrees.
 
 - Installation OMO (2026-10-08) : detection de l application de l organisation deja installee via getInstalledRelatedApps avant d afficher le bandeau, sans memoire locale de l installation. Apres desinstallation, la proposition peut revenir ; comportement habituel conserve si le navigateur ne prend pas en charge la detection.

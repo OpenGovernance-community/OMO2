@@ -996,6 +996,7 @@
                                         throw new Error(result && result.message ? result.message : (payload.texts && payload.texts.error ? payload.texts.error : 'Erreur'));
                                     }
                                     setFeedback(result.message || (payload.texts && payload.texts.success ? payload.texts.success : ''), false);
+                                    window.dispatchEvent(new CustomEvent('omo-decision-response-saved'));
                                     if (result.redirectUrl) {
                                         if (typeof window.omoDecisionOpenNestedDrawer === 'function') {
                                             window.omoDecisionOpenNestedDrawer(result.drawerTitle || payload.drawerTitle || 'Prises de decision', result.redirectUrl, '');

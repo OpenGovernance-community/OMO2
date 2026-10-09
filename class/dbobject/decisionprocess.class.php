@@ -3190,6 +3190,56 @@ class DecisionProcess extends DbObject
         return is_array($rows) ? $rows : [];
     }
 
+    /** Invitations awaiting a submitted ballot, across every space in the organization. */
+    public static function getPendingEvaluationsForUser(int $organizationId, int $userId): array
+    {
+        if ($organizationId <= 0 || $userId <= 0) return [];
+        $user = new User();
+        if (!$user->load($userId)) return [];
+        $email = trim(mb_strtolower((string)$user->getScopedEmail($organizationId), 'UTF-8'));
+        $rows = self::fetchAll(
+            'SELECT process.* FROM decision_process process
+             WHERE process.IDorganization = :organization_id
+               AND process.status NOT IN (:results_status, :archived_status)
+               AND EXISTS (
+                   SELECT 1 FROM decision_participant participant
+                   WHERE participant.IDdecision_process = process.id
+                     AND participant.active = 1
+                     AND participant.status NOT IN (:declined_status, :revoked_status)
+                     AND (participant.IDuser = :user_id OR (:has_email = 1 AND participant.email = :email))
+               )
+             ORDER BY process.evaluation_end_at IS NULL, process.evaluation_end_at ASC, process.id ASC',
+            [
+                'organization_id' => $organizationId,
+                'results_status' => self::STATUS_RESULTS,
+                'archived_status' => self::STATUS_ARCHIVED,
+                'declined_status' => DecisionParticipant::STATUS_DECLINED,
+                'revoked_status' => DecisionParticipant::STATUS_REVOKED,
+                'user_id' => $userId,
+                'has_email' => $email !== '' ? 1 : 0,
+                'email' => $email,
+            ]
+        );
+        $pending = [];
+        foreach ($rows ?: [] as $row) {
+            $decision = new self();
+            $decision->hydrateFromDatabaseRow($row, true);
+            // Read the effective phase without triggering saves, mail or calendar work during polling.
+            $decision->set('status', $decision->resolveAutomaticStatus());
+            if ($decision->get('status') !== self::STATUS_EVALUATION) continue;
+            $participant = DecisionParticipant::findByDecisionAndUser((int)$decision->getId(), $userId);
+            if ((!$participant || (int)$participant->get('active') !== 1) && $email !== '') {
+                $participant = DecisionParticipant::findByDecisionAndEmail((int)$decision->getId(), $email);
+            }
+            $groupId = $participant ? $decision->getPendingEvaluationGroupIdForParticipant($participant) : null;
+            if ($groupId !== null) {
+                $row['pending_group_id'] = $groupId;
+                $pending[] = $row;
+            }
+        }
+        return $pending;
+    }
+
     public static function fetchRelevantRowsForUser($userId, $userEmail = '')
     {
         $userId = (int)$userId;
