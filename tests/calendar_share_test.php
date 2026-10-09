@@ -50,9 +50,10 @@ try {
         $org = shareFixture(Organization::class, ['name' => 'SECRET Org ' . $name, 'shortname' => 'share-' . $name . '-' . $nonce]);
         shareFixture(UserOrganization::class, ['IDuser' => $uid, 'IDorganization' => $org->getId(), 'active' => 1]);
         $orgs[] = $org;
-        shareFixture(Event::class, ['IDuser' => $uid, 'IDorganization' => $org->getId(), 'title' => 'SECRET ' . $name,
+        $event = shareFixture(Event::class, ['IDuser' => $uid, 'IDorganization' => $org->getId(), 'title' => 'SECRET ' . $name,
             'description' => "SECRET description\r\nATTENDEE:injected@example.invalid", 'start_at' => $day->setTime(9, 0),
             'end_at' => $day->setTime(11, 0), 'active' => 1, 'status' => Event::STATUS_CONFIRMED]);
+        shareExpect($event->saveTimeBuffers($uid, $name === 'One' ? 120 : 0, 45), 'Save personal preparation for export fixtures.');
     }
     // An invitation-only meeting for someone else in an organization the owner belongs to.
     $unrelated = shareFixture(Event::class, ['IDuser' => $other->getId(), 'IDorganization' => $orgs[0]->getId(), 'title' => 'UNRELATED',
@@ -68,13 +69,18 @@ try {
         'calendar_url' => 'https://example.invalid/calendar', 'username' => 'SECRET account', 'password_encrypted' => 'unused', 'active' => 1]);
     $external = shareFixture(ExternalCalendarEvent::class, ['IDexternalcalendar' => $calendar->getId(), 'source_key' => 'SECRET uid',
         'title' => str_repeat('SECRET external ', 12), 'description' => 'SECRET notes', 'location' => 'SECRET place',
-        'start_at' => $day->setTime(8, 0), 'end_at' => $day->setTime(12, 0), 'active' => 1, 'is_busy' => 1]);
+        'start_at' => $day->setTime(8, 0), 'end_at' => $day->setTime(12, 0), 'active' => 1, 'is_busy' => 1,
+        'preparation_minutes' => 30, 'closing_minutes' => 15]);
     shareFixture(ExternalCalendarEvent::class, ['IDexternalcalendar' => $calendar->getId(), 'source_key' => 'all-day',
         'title' => 'SECRET all day', 'start_at' => $day, 'end_at' => $day->setTime(23, 59, 59), 'is_all_day' => 1, 'active' => 1, 'is_busy' => 1]);
     shareFixture(ExternalCalendarEvent::class, ['IDexternalcalendar' => $calendar->getId(), 'source_key' => 'transparent',
         'title' => 'SECRET transparent', 'start_at' => $day->setTime(8, 0), 'end_at' => $day->setTime(12, 0), 'active' => 1, 'is_busy' => 0]);
     $busy = CalendarShare::createForUser($uid, 'PRIVATE recipient', 3, false, '');
     $clear = CalendarShare::createForUser($uid, 'PRIVATE recipient 2', 3, true, '');
+    [, $horizonEnd] = $busy->visibilityRange($today);
+    $horizonEvent = shareFixture(Event::class, ['IDuser' => $uid, 'IDorganization' => $orgs[0]->getId(), 'title' => 'OUTSIDE horizon',
+        'start_at' => $horizonEnd->modify('+30 minutes'), 'end_at' => $horizonEnd->modify('+1 hour'), 'active' => 1, 'status' => Event::STATUS_CONFIRMED]);
+    shareExpect($horizonEvent->saveTimeBuffers($uid, 120, 0), 'Horizon fixture overlaps only through preparation.');
     shareExpect(count(CalendarShare::forUser($uid)) === 2 && CalendarShare::forUser((int)$other->getId()) === [], 'Shares are owner scoped');
     shareExpect($busy->get('token') !== $clear->get('token') && strlen($busy->get('token')) === 64, 'Independent strong tokens');
     shareExpect(CalendarShare::resolveToken($busy->get('token')) !== null, 'Live link resolves');
@@ -89,13 +95,24 @@ try {
 
     $_SESSION['currentUser'] = (int)$other->getId();
     $busyIcs = calendarShareBuildFeed($busy, $today);
-    shareExpect(!str_contains($busyIcs, 'SECRET') && !str_contains($busyIcs, 'PRIVATE') && !str_contains($busyIcs, 'DESCRIPTION:')
+    shareExpect(!str_contains($busyIcs, 'SECRET') && !str_contains($busyIcs, 'PRIVATE') && !str_contains($busyIcs, 'DESCRIPTION:SECRET')
         && !str_contains($busyIcs, 'LOCATION:') && !str_contains($busyIcs, 'ATTENDEE:'), 'Busy mode discloses no private metadata');
     $busyEvents = commonExternalCalendarParseEvents($busyIcs, '', true);
     shareExpect(count($busyEvents) === 4, 'Both OMO organizations and busy external instances aggregated without unrelated events');
     $clearIcs = calendarShareBuildFeed($clear, $today);
     $clearEvents = commonExternalCalendarParseEvents($clearIcs, '', true);
     shareExpect(count($clearEvents) === 5, 'Detailed feed includes transparent external events');
+    foreach ([$busyIcs, $clearIcs] as $feed) {
+        shareExpect(substr_count($feed, 'TRIGGER;RELATED=START:-PT120M') === 1
+            && substr_count($feed, 'TRIGGER;RELATED=START:-PT30M') === 1, 'Shared feeds include the owner personal preparation reminders.');
+        shareExpect(substr_count($feed, 'TRIGGER;RELATED=START:-PT5M') === substr_count($feed, 'BEGIN:VEVENT'),
+            'Every actual appointment gets exactly one five-minute reminder.');
+    }
+    $omoEvents = array_values(array_filter($clearEvents, static fn($event) => in_array($event['title'], ['SECRET One', 'SECRET Two'], true)));
+    foreach ($omoEvents as $omoEvent) {
+        shareExpect($omoEvent['start_at'] == $day->setTime(9, 0) && $omoEvent['end_at'] == $day->setTime(11, 0),
+            'Shared OMO appointment times exclude personal preparation and closing.');
+    }
     shareExpect(str_contains($clearIcs, 'SECRET One') && str_contains($clearIcs, 'SECRET Two') && str_contains($clearIcs, 'LOCATION:SECRET place'), 'Detailed content exported');
     shareExpect(!str_contains($clearIcs, 'UNRELATED') && !str_contains($clearIcs, 'OUTSIDE') && !str_contains($clearIcs, 'CANCELLED'), 'Scope, horizon and cancellation respected');
     shareExpect(!str_contains($clearIcs, 'SECRET account') && !str_contains($clearIcs, 'PRIVATE') && !str_contains($clearIcs, 'SECRET uid'), 'No credentials, private share names or source keys exported');
@@ -106,6 +123,13 @@ try {
     $allDay = array_values(array_filter($clearEvents, static fn($event) => $event['title'] === 'SECRET all day'))[0];
     shareExpect($allDay['is_all_day'] && $allDay['end_at'] == $day->modify('+1 day'), 'All-day exclusive ICS end round trips');
     shareExpect($clearIcs === calendarShareBuildFeed($clear, $today), 'Stable feed enables conditional requests');
+    $openingCalendar = shareFixture(ExternalCalendar::class, ['IDuser' => $uid, 'provider' => 'caldav', 'title' => 'Opening calendar',
+        'calendar_url' => 'https://example.invalid/opening', 'username' => 'unused', 'password_encrypted' => 'unused', 'active' => 1, 'availability_only' => 1]);
+    shareFixture(ExternalCalendarEvent::class, ['IDexternalcalendar' => $openingCalendar->getId(), 'source_key' => 'opening',
+        'title' => 'OPENING WINDOW', 'start_at' => $day->setTime(8, 0), 'end_at' => $day->setTime(18, 0), 'active' => 1, 'is_busy' => 1]);
+    $withOpening = calendarShareBuildFeed($clear, $today);
+    $openingBlock = array_values(array_filter(explode('BEGIN:VEVENT', $withOpening), static fn($block) => str_contains($block, 'SUMMARY:OPENING WINDOW')));
+    shareExpect(count($openingBlock) === 1 && !str_contains($openingBlock[0], 'BEGIN:VALARM'), 'Availability windows do not receive appointment reminders.');
     $external->set('title', 'UPDATED external'); $external->save();
     shareExpect(str_contains(calendarShareBuildFeed($clear, $today), 'UPDATED external'), 'Feed follows local changes without regenerating link');
     shareReject(fn() => CalendarShare::revokeForUser((int)$busy->getId(), (int)$other->getId()), 'missing');

@@ -38,7 +38,7 @@ function commonUserAvailabilityLoadBusyIntervals(int $userId, DateTimeInterface 
         if ($excludeEventId > 0 && (int)$event->getId() === $excludeEventId) {
             continue;
         }
-        $interval = $event->getBusyInterval();
+        $interval = $event->getBusyInterval($userId);
         if ($interval !== null) {
             $intervals[] = $interval;
         }

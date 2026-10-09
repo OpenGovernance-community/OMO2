@@ -196,6 +196,7 @@ if (count($eventSections) === 0) {
                         : trim((string)($statusCatalog[$status]['label'] ?? ''));
                     $eventPermissionHolon = $isExternal ? null : omoCalendarResolveEventPermissionHolon($event, $rootHolon);
                     $canEditEvent = !$isExternal && omoCalendarCanEditEvent($event, $organizationId, $currentUserId, $rootHolon, true);
+                    $canOpenEventEditor = $canEditEvent || (!$isExternal && $event->canEditTimeBuffers($currentUserId));
                     $canDetachEvent = $canImportEvents && ($isExternal || $canEditEvent);
                     $canDeleteEvent = !$isExternal && $currentUserId > 0 && (
                         $eventPermissionHolon instanceof Holon
@@ -234,7 +235,7 @@ if (count($eventSections) === 0) {
                             })))) ?></span>
                         </span>
                     </a>
-                    <?php if ($canEditEvent || $canDeleteEvent || (!$isExternal && $canCreateEvent) || $canDetachEvent): ?>
+                    <?php if ($canOpenEventEditor || $canDeleteEvent || (!$isExternal && $canCreateEvent) || $canDetachEvent): ?>
                         <div class="generic-menu omo-project-detail__event-menu" data-omo-project-detail-event-menu>
                             <button
                                 type="button"
@@ -244,7 +245,7 @@ if (count($eventSections) === 0) {
                                 aria-expanded="false"
                             >&#8230;</button>
                             <div class="generic-menu-panel omo-project-detail__event-menu-panel" data-omo-project-detail-event-menu-panel hidden>
-                                <?php if ($canEditEvent): ?>
+                                <?php if ($canOpenEventEditor): ?>
                                     <button type="button" class="generic-menu-item" data-omo-project-detail-event-editor-url="<?= omoApiEscape($eventEditUrl) ?>">
                                         <?= omoApiEscape(omoProjectsT('projects.detail.events.edit')) ?>
                                     </button>
