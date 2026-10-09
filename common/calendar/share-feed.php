@@ -51,7 +51,7 @@ function calendarShareLoadScopedOmoEvents(CalendarShare $share, array $scope): a
     $events->loadForOrganization($organizationId, false, true);
     $visibleEvents = [];
     foreach ($events as $event) {
-        if (!($event instanceof Event) || !$event->isVisibleToInvitationViewer($userId, $organizationId)) {
+        if (!($event instanceof Event) || !$event->isInvitedToEvent($userId, $organizationId)) {
             continue;
         }
 

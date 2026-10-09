@@ -1021,16 +1021,12 @@ foreach ($events as $event) {
         'editUrl' => (string)($externalMeta['editUrl'] ?? ''),
     ] : [];
     $isAllDay = (bool)$event->get('is_all_day');
-    [$preparationMinutes, $closingMinutes] = $event->getTimeBuffers($currentUserId);
-    [$occupiedStart, $occupiedEnd] = $event->getBusyInterval($currentUserId) ?? [$startAt, $endAt];
+    $isPersonallyRelevant = $isExternalEvent || $event->isPersonallyRelevantToViewer($currentUserId, $organizationId);
+    [$preparationMinutes, $closingMinutes] = $isPersonallyRelevant ? $event->getTimeBuffers($currentUserId) : [0, 0];
+    [$occupiedStart, $occupiedEnd] = $event->getBusyInterval($isPersonallyRelevant ? $currentUserId : 0) ?? [$startAt, $endAt];
     $isInCurrentContext = !$canToggleScope || $eventHolonId === 0 || $eventHolonId === $currentHolonId;
     $isInDirectChildContext = $isInCurrentContext || ($eventHolonId > 0 && isset($directChildHolonIdMap[$eventHolonId]));
     $isInDescendantContext = $isInCurrentContext || ($eventHolonId > 0 && isset($descendantHolonIdMap[$eventHolonId]));
-    $isPersonallyRelevant = $isExternalEvent || $event->isPersonallyRelevantToViewer($currentUserId, $organizationId);
-    $isInvitedOrOwner = $currentUserId > 0 && !$isExternalEvent && (
-        (int)$event->get('IDuser') === $currentUserId
-        || $event->isVisibleToInvitationViewer($currentUserId, $organizationId)
-    );
     $canEditEvent = !$isExternalEvent && (omoCalendarCanEditEvent($event, $organizationId, $currentUserId, $rootHolon, false)
         || $event->canEditTimeBuffers($currentUserId));
     $deletePermissionHolon = $rootHolon;
@@ -1066,7 +1062,7 @@ foreach ($events as $event) {
         $includeEvent = $scopeKey === 'children'
             ? $isInDirectChildContext
             : ($scopeKey === 'descendants' ? $isInDescendantContext : $isInCurrentContext);
-        $isTimelineOnlyInvitation = !$includeEvent && $isInvitedOrOwner;
+        $isTimelineOnlyInvitation = !$includeEvent && $isPersonallyRelevant && !$isExternalEvent;
         if (!$includeEvent && !$isTimelineOnlyInvitation) {
             continue;
         }

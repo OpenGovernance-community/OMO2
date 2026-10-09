@@ -13,14 +13,13 @@ class ArrayEvent extends ArrayDbObject
                 INTERVAL COALESCE(b.preparation_minutes, 0) MINUTE) < :end AND DATE_ADD((CASE WHEN e.is_all_day = 1
                 THEN DATE_ADD(DATE(COALESCE(e.end_at, e.start_at)), INTERVAL 1 DAY)
                 ELSE COALESCE(e.end_at, DATE_ADD(e.start_at, INTERVAL 1 HOUR)) END), INTERVAL COALESCE(b.closing_minutes, 0) MINUTE) > :start
-            AND (e.IDuser = :owner OR EXISTS (SELECT 1 FROM user_organization uo
-                WHERE uo.IDorganization = e.IDorganization AND uo.IDuser = :member AND uo.active = 1))',
-            ['buffer_user' => $userId, 'cancelled' => Event::STATUS_CANCELLED, 'start' => $start, 'end' => $end, 'owner' => $userId, 'member' => $userId]);
+            AND EXISTS (SELECT 1 FROM user_organization uo
+                WHERE uo.IDorganization = e.IDorganization AND uo.IDuser = :member AND uo.active = 1)',
+            ['buffer_user' => $userId, 'cancelled' => Event::STATUS_CANCELLED, 'start' => $start, 'end' => $end, 'member' => $userId]);
         if (!is_array($rows)) { throw new \RuntimeException('storage'); }
         foreach ($rows as $row) {
             $event = new Event();
-            if ($event->load((int)$row['id']) && ((int)$event->get('IDuser') === $userId
-                || $event->isVisibleToInvitationViewer($userId, (int)$event->get('IDorganization')))) {
+            if ($event->load((int)$row['id']) && $event->isInvitedToEvent($userId)) {
                 $this[] = $event;
             }
         }
@@ -452,7 +451,7 @@ class ArrayEvent extends ArrayDbObject
             return false;
         }
 
-        return $event->isVisibleToInvitationViewer($userId, $organizationId);
+        return $event->isInvitedToEvent($userId, $organizationId);
     }
 
     public function loadUpcomingForPersonalSpace($organizationId, $userId, $limit = 5, $referenceStart = null)
