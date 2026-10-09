@@ -27,7 +27,7 @@ if (
     $organizationId = (int)$scope['organizationId'];
     $revision = \dbObject\CalDavCache::getOrganizationRevision($organizationId);
     $cacheKey = \dbObject\CalDavCache::buildResponseKey(array(
-        'schema' => 2,
+        'schema' => 3,
         'viewer' => (int)$viewer->getId(),
         'organization' => $organizationId,
         'revision' => $revision,
