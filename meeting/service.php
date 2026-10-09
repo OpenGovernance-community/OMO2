@@ -1,5 +1,6 @@
 <?php
 require_once dirname(__DIR__) . '/common/external_calendar.php';
+require_once dirname(__DIR__) . '/common/calendar/icalendar.php';
 
 use dbObject\MeetingProfile;
 use dbObject\MeetingBooking;
@@ -187,7 +188,7 @@ function meetingBusy(MeetingProfile $profile, DateTimeImmutable $start, DateTime
     $events = new ArrayEvent();
     $events->loadBusyForUserDateRange($uid, $storageStart, $storageEnd);
     foreach ($events as $event) {
-        $interval = $event->getBusyInterval();
+        $interval = $event->getBusyInterval($uid);
         if ($interval !== null) { $busy[] = $interval; }
     }
     $calendars = new ArrayExternalCalendar();
@@ -255,15 +256,15 @@ function meetingBusy(MeetingProfile $profile, DateTimeImmutable $start, DateTime
 
 function meetingIcs(string $token, DateTimeImmutable $start, DateTimeImmutable $end, string $title, string $description, string $location = '', int $preparationMinutes = 0, int $closingMinutes = 0): string
 {
-    $escape = static fn($text) => str_replace(["\\", "\r\n", "\r", "\n", ';', ','], ['\\\\', '\\n', '\\n', '\\n', '\\;', '\\,'], $text);
     $utc = new DateTimeZone('UTC');
     $lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//OMO//Meeting//FR', 'CALSCALE:GREGORIAN', 'BEGIN:VEVENT',
         'UID:' . $token . '@omo2.org', 'DTSTAMP:' . gmdate('Ymd\THis\Z'),
         'DTSTART:' . $start->setTimezone($utc)->format('Ymd\THis\Z'), 'DTEND:' . $end->setTimezone($utc)->format('Ymd\THis\Z'),
-        'SUMMARY:' . $escape($title), 'DESCRIPTION:' . $escape($description)];
-    if ($location !== '') { $lines[] = 'LOCATION:' . $escape($location); }
+        'SUMMARY:' . commonCalendarEscapeIcsText($title), 'DESCRIPTION:' . commonCalendarEscapeIcsText($description)];
+    if ($location !== '') { $lines[] = 'LOCATION:' . commonCalendarEscapeIcsText($location); }
     $lines[] = 'X-OMO-PREPARATION-MINUTES:' . MeetingProfile::validateBufferMinutes($preparationMinutes);
     $lines[] = 'X-OMO-CLOSING-MINUTES:' . MeetingProfile::validateBufferMinutes($closingMinutes);
+    array_push($lines, ...commonCalendarIcsReminderLines($preparationMinutes, $title));
     array_push($lines, 'STATUS:CONFIRMED', 'TRANSP:OPAQUE', 'END:VEVENT', 'END:VCALENDAR');
     $folded = [];
     foreach ($lines as $line) {
@@ -277,6 +278,20 @@ function meetingIcs(string $token, DateTimeImmutable $start, DateTimeImmutable $
     return implode("\r\n", $folded) . "\r\n";
 }
 
+/** Visitor copies keep the appointment and a five-minute reminder, without the host's personal buffers. */
+function meetingGuestIcs(MeetingBooking $booking): string
+{
+    $source = commonExternalCalendarParseEvents((string)$booking->get('calendar_data'), '', true)[0];
+    $token = (string)$booking->get('token');
+    if ($token === '') {
+        $components = commonExternalCalendarIcsComponents((string)$booking->get('calendar_data'));
+        $uid = (string)(commonExternalCalendarIcsProperty($components['events'][0], 'UID')['value'] ?? '');
+        $token = preg_replace('/@omo2\.org$/', '', $uid);
+    }
+    return meetingIcs($token, DateTimeImmutable::createFromInterface($booking->get('start_at')),
+        DateTimeImmutable::createFromInterface($booking->get('end_at')), $source['title'], $source['description'], $source['location']);
+}
+
 function meetingMail(MeetingBooking $booking): bool
 {
     require_once dirname(__DIR__) . '/common/email_layout.php';
@@ -287,7 +302,7 @@ function meetingMail(MeetingBooking $booking): bool
         $from = 'noreply@' . preg_replace('/:\d+$/', '', (string)$host);
         if (!filter_var($from, FILTER_VALIDATE_EMAIL)) { $from = 'noreply@localhost.invalid'; }
     }
-    $ics = (string)$booking->get('calendar_data');
+    $ics = meetingGuestIcs($booking);
     $events = commonExternalCalendarParseEvents($ics);
     $title = $events[0]['title'] ?? meetingT('title');
     $start = DateTimeImmutable::createFromInterface($booking->get('start_at'))->setTimezone(new DateTimeZone('Europe/Zurich'));

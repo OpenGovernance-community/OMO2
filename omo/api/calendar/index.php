@@ -872,9 +872,10 @@ if (ExternalCalendar::isStorageAvailable()) {
         // This display-only event has no database row to load lazily.
         $virtualEvent->hydrateFromDatabaseRow(['id' => $virtualEventId], true);
         unset(\dbObject\DbObject::$preload[Event::tableName() . '_' . $virtualEventId]);
-        foreach (['title', 'description', 'start_at', 'end_at', 'is_all_day', 'preparation_minutes', 'closing_minutes'] as $field) {
+        foreach (['title', 'description', 'start_at', 'end_at', 'is_all_day'] as $field) {
             $virtualEvent->set($field, $externalEvent->get($field));
         }
+        $virtualEvent->setTimeBuffers($currentUserId, (int)$externalEvent->get('preparation_minutes'), (int)$externalEvent->get('closing_minutes'));
         $virtualEvent->set('IDorganization', $organizationId);
         $virtualEvent->set('IDuser', $currentUserId);
         $virtualEvent->set('status', Event::STATUS_CONFIRMED);
@@ -1020,7 +1021,8 @@ foreach ($events as $event) {
         'editUrl' => (string)($externalMeta['editUrl'] ?? ''),
     ] : [];
     $isAllDay = (bool)$event->get('is_all_day');
-    [$occupiedStart, $occupiedEnd] = $event->getBusyInterval() ?? [$startAt, $endAt];
+    [$preparationMinutes, $closingMinutes] = $event->getTimeBuffers($currentUserId);
+    [$occupiedStart, $occupiedEnd] = $event->getBusyInterval($currentUserId) ?? [$startAt, $endAt];
     $isInCurrentContext = !$canToggleScope || $eventHolonId === 0 || $eventHolonId === $currentHolonId;
     $isInDirectChildContext = $isInCurrentContext || ($eventHolonId > 0 && isset($directChildHolonIdMap[$eventHolonId]));
     $isInDescendantContext = $isInCurrentContext || ($eventHolonId > 0 && isset($descendantHolonIdMap[$eventHolonId]));
@@ -1029,7 +1031,8 @@ foreach ($events as $event) {
         (int)$event->get('IDuser') === $currentUserId
         || $event->isVisibleToInvitationViewer($currentUserId, $organizationId)
     );
-    $canEditEvent = !$isExternalEvent && omoCalendarCanEditEvent($event, $organizationId, $currentUserId, $rootHolon, false);
+    $canEditEvent = !$isExternalEvent && (omoCalendarCanEditEvent($event, $organizationId, $currentUserId, $rootHolon, false)
+        || $event->canEditTimeBuffers($currentUserId));
     $deletePermissionHolon = $rootHolon;
     if ($eventHolonId > 0) {
         $eventPermissionHolon = new Holon();
@@ -1194,7 +1197,7 @@ foreach ($events as $event) {
 
             $startMinute = max(0, (int)floor(($segmentStartTimestamp - $timelineDayStart->getTimestamp()) / 60));
             $endMinute = min(1440, (int)ceil(($segmentEndTimestamp - $timelineDayStart->getTimestamp()) / 60));
-            $hasTimeBuffers = (int)$event->get('preparation_minutes') > 0 || (int)$event->get('closing_minutes') > 0;
+            $hasTimeBuffers = $preparationMinutes > 0 || $closingMinutes > 0;
             $displayEndMinute = max($startMinute + ($hasTimeBuffers ? 0 : 30), $endMinute);
 
             $timelineDay['timed'][] = [
@@ -1258,7 +1261,7 @@ foreach ($events as $event) {
 
             $startMinute = max(0, (int)floor(($segmentStartTimestamp - $timelineDayStart->getTimestamp()) / 60));
             $endMinute = min(1440, (int)ceil(($segmentEndTimestamp - $timelineDayStart->getTimestamp()) / 60));
-            $hasTimeBuffers = (int)$event->get('preparation_minutes') > 0 || (int)$event->get('closing_minutes') > 0;
+            $hasTimeBuffers = $preparationMinutes > 0 || $closingMinutes > 0;
             $displayEndMinute = max($startMinute + ($hasTimeBuffers ? 0 : 30), $endMinute);
 
             $timelineDay['timed'][] = [

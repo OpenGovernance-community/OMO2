@@ -21,10 +21,10 @@ $sourceLang = array_merge([
     'calendar.create.holon.choose' => ['text' => 'Choisir un espace', 'context' => 'Open the event assignment picker.'],
     'calendar.create.holon.hint' => ['text' => 'Choisissez un espace dans lequel vous pouvez creer des evenements.', 'context' => 'Permission-filtered event assignment picker.'],
     'calendar.create.holon.confirm' => ['text' => 'Choisir cet espace', 'context' => 'Confirm event assignment.'],
-    'calendar.create.buffers.enable' => ['text' => 'Definir du temps de preparation/cloture', 'context' => 'Toggle attached preparation and closing times.'],
+    'calendar.create.buffers.enable' => ['text' => 'Definir mes temps de preparation/cloture', 'context' => 'Toggle personal preparation and closing times.'],
     'calendar.create.buffers.before' => ['text' => 'Preparation / deplacement avant (minutes)', 'context' => 'Minutes reserved before this event.'],
     'calendar.create.buffers.after' => ['text' => 'Cloture / deplacement apres (minutes)', 'context' => 'Minutes reserved after this event.'],
-    'calendar.create.buffers.hint' => ['text' => 'Ces temps sont lies au rendez-vous et deduits des disponibilites.', 'context' => 'Explanation of event time buffers.'],
+    'calendar.create.buffers.hint' => ['text' => 'Ces temps sont personnels et deduits uniquement de vos disponibilites. Chaque invite definit ses propres durees.', 'context' => 'Explanation of personal event time buffers.'],
     'calendar.create.buffers.invalid' => ['text' => 'Indiquez des nombres entiers entre 0 et 1440 minutes.', 'context' => 'Invalid event buffer duration.'],
     'calendar.availability.warning' => ['text' => 'Un point sur les disponibilites', 'context' => 'Heading of the event availability review.'],
     'calendar.availability.waiting' => ['text' => 'Verification des disponibilites...', 'context' => 'Animated progress indicator while checking and refreshing invitee calendars.'],
@@ -499,6 +499,10 @@ if ($eventId > 0) {
     }
 
     if (!omoCalendarCanEditEvent($event, $organizationId, $currentUserId, $rootHolon, false)) {
+        if ($event->canEditTimeBuffers($currentUserId)) {
+            require __DIR__ . '/personal_time_buffers.php';
+            exit;
+        }
         http_response_code(403);
         if (commonIsAjaxJsonRequest()) {
             header('Content-Type: application/json; charset=UTF-8');
@@ -514,6 +518,8 @@ if ($eventId > 0) {
 
     $isEditMode = true;
 }
+
+$canEditPersonalTimeBuffers = !$isEditMode || $event->canEditTimeBuffers($currentUserId);
 
 $isDuplicateMode = !$isEditMode && $duplicateEventId > 0;
 if ($isDuplicateMode) {
@@ -869,7 +875,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'end' => $event->get('end_at') instanceof \DateTimeInterface ? $event->get('end_at')->format('Y-m-d H:i:s') : '',
         'allDay' => !empty($event->get('is_all_day')) ? 1 : 0,
     ] : null;
-    $previousTimeBuffers = $isEditMode ? [(int)$event->get('preparation_minutes'), (int)$event->get('closing_minutes')] : null;
+    $previousTimeBuffers = $isEditMode ? $event->getTimeBuffers($currentUserId) : null;
 
     $title = trim((string)($_POST['title'] ?? ''));
     $description = trim((string)($_POST['description'] ?? ''));
@@ -1085,8 +1091,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $event->set('start_at', $startAt);
     $event->set('end_at', $endAt);
     $event->set('is_all_day', $isAllDay ? 1 : 0);
-    $event->set('preparation_minutes', $preparationMinutes);
-    $event->set('closing_minutes', $closingMinutes);
+    if ($canEditPersonalTimeBuffers) { $event->setTimeBuffers($currentUserId, $preparationMinutes, $closingMinutes); }
 
     // Validate participants before refreshing calendars or creating any event/document.
     $selection = omoCalendarPrepareInvitationSelections($organization, $organizationId, $selectedInvitationHolonIds, $selectedInvitationUserIds, $selectedInvitationEmails);
@@ -1115,7 +1120,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ]), $_SESSION['calendar_availability_secret']);
     $scheduleChanged = !$isEditMode || $previousSchedule !== [
         'start' => $startAt->format('Y-m-d H:i:s'), 'end' => $endAt->format('Y-m-d H:i:s'), 'allDay' => $isAllDay ? 1 : 0,
-    ] || $previousTimeBuffers !== [$preparationMinutes, $closingMinutes];
+    ] || ($canEditPersonalTimeBuffers && $previousTimeBuffers !== [$preparationMinutes, $closingMinutes]);
     $availabilityCacheWarning = $scheduleChanged && !empty($_SESSION['calendar_availability_warnings'][$acknowledgement]);
     if ($scheduleChanged && !hash_equals($acknowledgement, (string)($_POST['availability_ack'] ?? ''))) {
         unset($_SESSION['calendar_availability_warnings'][$acknowledgement]);
@@ -1295,6 +1300,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
 
+        if ($canEditPersonalTimeBuffers && $event->canEditTimeBuffers($currentUserId)
+            && !$event->saveTimeBuffers($currentUserId, $preparationMinutes, $closingMinutes)) {
+            throw new RuntimeException('personal_time_buffers_save');
+        }
+
         if ($startedTransaction && $pdo instanceof \PDO && $pdo->inTransaction()) {
             $pdo->commit();
         }
@@ -1387,8 +1397,7 @@ $statusDefault = $prefillEvent instanceof Event ? Event::normalizeStatus($prefil
 if (!array_key_exists($statusDefault, $editableEventStatuses)) {
     $statusDefault = Event::STATUS_CONFIRMED;
 }
-$preparationMinutesDefault = $prefillEvent instanceof Event ? (int)$prefillEvent->get('preparation_minutes') : 0;
-$closingMinutesDefault = $prefillEvent instanceof Event ? (int)$prefillEvent->get('closing_minutes') : 0;
+[$preparationMinutesDefault, $closingMinutesDefault] = $prefillEvent instanceof Event ? $prefillEvent->getTimeBuffers($currentUserId) : [0, 0];
 $timeBuffersEnabled = $preparationMinutesDefault > 0 || $closingMinutesDefault > 0;
 $isAllDayDefault = $prefillEvent instanceof Event ? (bool)$prefillEvent->get('is_all_day') : false;
 $locationDisplayData = $prefillEvent instanceof Event ? $prefillEvent->getLocationDisplayData() : ['mode' => '', 'address' => '', 'videoUrl' => ''];
@@ -1572,6 +1581,7 @@ if ($isEditMode) {
                             ><?= omoApiEscape($descriptionDefault) ?></textarea>
                         </label>
 
+                        <?php if ($canEditPersonalTimeBuffers): ?>
                         <section class="generic-form-stack">
                             <label class="generic-checkbox">
                                 <input type="checkbox" name="time_buffers_enabled" value="1" data-omo-calendar-buffers-toggle<?= $timeBuffersEnabled ? ' checked' : '' ?>>
@@ -1589,6 +1599,7 @@ if ($isEditMode) {
                             </div>
                         </section>
 
+                        <?php endif; ?>
                         <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided generic-form-section--compact omo-calendar-create__block">
                             <div class="omo-calendar-create__block-head generic-form-section__heading">
                                 <h3 class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.location_mode')) ?></h3>
