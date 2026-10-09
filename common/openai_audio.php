@@ -4,22 +4,7 @@ require_once __DIR__ . '/ai_access.php';
 
 function commonOpenAiGetTranscriptionModel()
 {
-    $globalModel = trim((string)($GLOBALS['openAiTranscriptionModel'] ?? ''));
-    if ($globalModel !== '') {
-        return $globalModel;
-    }
-
-    if (function_exists('envValue')) {
-        $configuredModel = trim((string)envValue(
-            'OPENAI_TRANSCRIPTION_MODEL',
-            envValue('OPENAI_AUDIO_TRANSCRIPTION_MODEL', 'gpt-4o-mini-transcribe')
-        ));
-        if ($configuredModel !== '') {
-            return $configuredModel;
-        }
-    }
-
-    return 'gpt-4o-mini-transcribe';
+    return commonAiGetTranscriptionModel();
 }
 
 function commonOpenAiGetDefaultTranscriptionPrompt()
@@ -37,14 +22,11 @@ function commonOpenAiGetDefaultTranscriptionPrompt()
 function commonOpenAiDetectUploadedAudioMimeType(array $uploadedFile)
 {
     $tmpName = trim((string)($uploadedFile['tmp_name'] ?? ''));
-    if ($tmpName !== '' && is_file($tmpName) && function_exists('finfo_open')) {
-        $finfo = finfo_open(FILEINFO_MIME_TYPE);
-        if ($finfo) {
-            $mimeType = trim((string)finfo_file($finfo, $tmpName));
-            finfo_close($finfo);
-            if ($mimeType !== '') {
-                return strtolower($mimeType);
-            }
+    if ($tmpName !== '' && is_file($tmpName) && class_exists('finfo')) {
+        $finfo = new \finfo(FILEINFO_MIME_TYPE);
+        $mimeType = trim((string)$finfo->file($tmpName));
+        if ($mimeType !== '') {
+            return strtolower($mimeType);
         }
     }
 
@@ -130,44 +112,44 @@ function commonOpenAiNormalizeAudioUploadMimeType($mimeType, $extension = '')
 
 function commonOpenAiBuildTranscriptionModelFallbacks($preferredModel)
 {
-    $normalizedPreferredModel = trim((string)$preferredModel);
-    $models = array();
-
-    if ($normalizedPreferredModel !== '') {
-        $models[] = $normalizedPreferredModel;
-    }
-
-    foreach (array('gpt-4o-mini-transcribe', 'gpt-4o-transcribe', 'whisper-1') as $candidateModel) {
-        if (!in_array($candidateModel, $models, true)) {
-            $models[] = $candidateModel;
-        }
-    }
-
-    return $models;
+    $model = trim((string)$preferredModel);
+    return $model === '' ? [] : [$model];
 }
 
 function commonOpenAiRequestAudioTranscription($apiKey, $tmpName, $mimeType, $filename, array $payload)
 {
-    if (!commonAiIsConfigured((string)($payload['model'] ?? ''), (string)$apiKey)) {
+    if (!commonAiIsTranscriptionConfigured((string)($payload['model'] ?? ''), (string)$apiKey)) {
         return ['status' => false, 'message' => 'Configuration IA indisponible.'];
     }
-    $curl = curl_init('https://api.openai.com/v1/audio/transcriptions');
+    $provider = commonAiGetTranscriptionProvider();
+    $url = match ($provider) {
+        'groq' => 'https://api.groq.com/openai/v1/audio/transcriptions',
+        'mistral' => 'https://api.mistral.ai/v1/audio/transcriptions',
+        default => 'https://api.openai.com/v1/audio/transcriptions',
+    };
+    $curl = curl_init($url);
     if ($curl === false) {
         return array(
             'status' => false,
-            'message' => 'Impossible de preparer la requete OpenAI.',
+            'message' => 'Impossible de preparer la requete de transcription.',
         );
     }
 
     $multipartPayload = $payload;
+    if ($provider === 'mistral') {
+        // Voxtral returns JSON natively and does not accept OpenAI prompt/response_format fields.
+        unset($multipartPayload['prompt'], $multipartPayload['response_format']);
+    }
     $multipartPayload['file'] = new \CURLFile($tmpName, $mimeType, $filename);
 
     curl_setopt_array($curl, array(
-        CURLOPT_URL => 'https://api.openai.com/v1/audio/transcriptions',
+        CURLOPT_URL => $url,
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_POST => true,
         CURLOPT_POSTFIELDS => $multipartPayload,
+        CURLOPT_CONNECTTIMEOUT => 10,
         CURLOPT_TIMEOUT => 120,
+        CURLOPT_FOLLOWLOCATION => false,
         CURLOPT_HTTPHEADER => array(
             'Authorization: Bearer ' . $apiKey,
         ),
@@ -195,6 +177,10 @@ function commonOpenAiRequestAudioTranscription($apiKey, $tmpName, $mimeType, $fi
         );
     }
 
+    if ($httpCode < 200 || $httpCode >= 300) {
+        return ['status' => false, 'http_code' => $httpCode, 'message' => 'La requete de transcription a echoue.'];
+    }
+
     $text = is_array($decodedResponse)
         ? trim((string)($decodedResponse['text'] ?? ''))
         : trim((string)$response);
@@ -202,7 +188,7 @@ function commonOpenAiRequestAudioTranscription($apiKey, $tmpName, $mimeType, $fi
     if ($text === '') {
         return array(
             'status' => false,
-            'message' => 'OpenAI returned an empty transcription.',
+            'message' => 'Le service a renvoye une transcription vide.',
             'http_code' => $httpCode,
         );
     }
@@ -216,10 +202,10 @@ function commonOpenAiRequestAudioTranscription($apiKey, $tmpName, $mimeType, $fi
 
 function commonOpenAiTranscribeUploadedAudio(array $uploadedFile, array $options = array())
 {
-    if (!commonAiUserCanUse((int)($options['user_id'] ?? commonAiGetCurrentUserId()), (string)($options['model'] ?? commonOpenAiGetTranscriptionModel()))) {
+    if (!commonAiUserCanTranscribe((int)($options['user_id'] ?? commonAiGetCurrentUserId()), (string)($options['model'] ?? commonOpenAiGetTranscriptionModel()))) {
         return ['status' => false, 'message' => 'Fonctions IA indisponibles pour ce compte.'];
     }
-    $apiKey = commonOpenAiGetApiKey();
+    $apiKey = commonAiGetTranscriptionApiKey();
 
     $uploadError = (int)($uploadedFile['error'] ?? UPLOAD_ERR_NO_FILE);
     if ($uploadError !== UPLOAD_ERR_OK) {

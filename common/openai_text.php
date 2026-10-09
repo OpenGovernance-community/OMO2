@@ -1,118 +1,27 @@
 <?php
 
 require_once __DIR__ . '/ai_access.php';
+require_once __DIR__ . '/ai_client.php';
 
 function commonOpenAiGetRewriteModel()
 {
-    $globalModel = trim((string)($GLOBALS['openAiRewriteModel'] ?? ''));
-    if ($globalModel !== '') {
-        return $globalModel;
+    if (commonAiGetProvider() === 'openai' && commonAiEnv('AI_MODEL') === '') {
+        $legacyModel = trim((string)($GLOBALS['openAiRewriteModel'] ?? commonAiEnv('OPENAI_REWRITE_MODEL')));
+        if ($legacyModel !== '') return $legacyModel;
     }
-
-    if (function_exists('envValue')) {
-        $configuredModel = trim((string)envValue(
-            'OPENAI_REWRITE_MODEL',
-            envValue('OPENAI_MODEL', 'gpt-4.1-mini')
-        ));
-        if ($configuredModel !== '') {
-            return $configuredModel;
-        }
-    }
-
-    return 'gpt-4.1-mini';
+    return commonAiGetModel();
 }
 
 function commonOpenAiBuildRewriteModelFallbacks($preferredModel)
 {
-    $models = array();
-    $normalizedPreferredModel = trim((string)$preferredModel);
-
-    if ($normalizedPreferredModel !== '') {
-        $models[] = $normalizedPreferredModel;
-    }
-
-    foreach (array('gpt-4.1-mini', 'gpt-4o-mini', 'gpt-4.1', 'gpt-4o') as $candidateModel) {
-        if (!in_array($candidateModel, $models, true)) {
-            $models[] = $candidateModel;
-        }
-    }
-
-    return $models;
+    // Respect the selected model and provider; never substitute a more costly model.
+    $model = trim((string)$preferredModel);
+    return $model === '' ? [] : [$model];
 }
 
 function commonOpenAiRequestChatCompletion($apiKey, array $payload, int $timeout = 120)
 {
-    if (!commonAiIsConfigured((string)($payload['model'] ?? ''), (string)$apiKey)) {
-        return ['status' => false, 'message' => 'Configuration IA indisponible.'];
-    }
-    $curl = curl_init('https://api.openai.com/v1/chat/completions');
-    if ($curl === false) {
-        return array(
-            'status' => false,
-            'message' => 'Impossible de preparer la requete OpenAI.',
-        );
-    }
-
-    $encodedPayload = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-    if (!is_string($encodedPayload) || $encodedPayload === '') {
-        return array(
-            'status' => false,
-            'message' => 'Impossible d encoder la requete OpenAI.',
-        );
-    }
-
-    curl_setopt_array($curl, array(
-        CURLOPT_URL => 'https://api.openai.com/v1/chat/completions',
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_POST => true,
-        CURLOPT_POSTFIELDS => $encodedPayload,
-        CURLOPT_CONNECTTIMEOUT => min(10, max(1, $timeout)),
-        CURLOPT_TIMEOUT => max(1, $timeout),
-        CURLOPT_HTTPHEADER => array(
-            'Authorization: Bearer ' . $apiKey,
-            'Content-Type: application/json',
-        ),
-    ));
-
-    $response = curl_exec($curl);
-    $curlError = curl_error($curl);
-    $httpCode = (int)curl_getinfo($curl, CURLINFO_HTTP_CODE);
-
-    if ($response === false) {
-        return array(
-            'status' => false,
-            'message' => $curlError !== '' ? $curlError : 'La requete OpenAI a echoue.',
-            'http_code' => $httpCode,
-        );
-    }
-
-    $decodedResponse = json_decode((string)$response, true);
-    if (is_array($decodedResponse) && isset($decodedResponse['error']['message'])) {
-        return array(
-            'status' => false,
-            'message' => trim((string)$decodedResponse['error']['message']),
-            'http_code' => $httpCode,
-            'raw' => $decodedResponse,
-        );
-    }
-
-    $content = is_array($decodedResponse)
-        ? trim((string)($decodedResponse['choices'][0]['message']['content'] ?? ''))
-        : '';
-
-    if ($content === '') {
-        return array(
-            'status' => false,
-            'message' => 'OpenAI returned an empty response.',
-            'http_code' => $httpCode,
-        );
-    }
-
-    return array(
-        'status' => true,
-        'content' => $content,
-        'http_code' => $httpCode,
-    );
+    return commonAiRequestText((string)$apiKey, $payload, $timeout);
 }
 
 function commonOpenAiDecodeRewriteResponse($content)
@@ -204,7 +113,7 @@ function commonOpenAiRewriteSelectedDocumentText($selectedText, $fullText, array
         if ($rewrittenText === '') {
             $lastFailure = array(
                 'status' => false,
-                'message' => 'OpenAI returned an empty rewritten text.',
+                'message' => 'AI returned an empty rewritten text.',
             );
             continue;
         }
@@ -280,7 +189,7 @@ function commonOpenAiSummarizeGovernanceChanges(array $modifications, string $lo
         $summary = preg_replace('/\s+/u', ' ', commonOpenAiDecodeSummarizeResponse($result['content'] ?? ''));
         $summary = trim((string)$summary);
         if ($summary === '') {
-            $lastFailure = ['message' => 'OpenAI returned an empty summary.'];
+            $lastFailure = ['message' => 'AI returned an empty summary.'];
             continue;
         }
         if (mb_strlen($summary, 'UTF-8') > 400) {
@@ -368,7 +277,7 @@ function commonOpenAiSummarizeSelectedDocumentText($selectedText, $fullText, arr
         if ($summarizedText === '') {
             $lastFailure = array(
                 'status' => false,
-                'message' => 'OpenAI returned an empty summarized text.',
+                'message' => 'AI returned an empty summarized text.',
             );
             continue;
         }

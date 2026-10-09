@@ -6,6 +6,7 @@ require_once dirname(__DIR__) . '/common/openai_text.php';
 require_once dirname(__DIR__) . '/common/openai_audio.php';
 require_once dirname(__DIR__) . '/common/faq_ai.php';
 require_once dirname(__DIR__) . '/shared/openai.php';
+require_once dirname(__DIR__) . '/includes/server_env_admin.php';
 
 function aiAccessExpect(bool $condition, string $message): void
 {
@@ -15,6 +16,13 @@ function aiAccessExpect(bool $condition, string $message): void
 function aiAccessSave($object): void
 {
     aiAccessExpect(!empty($object->save()['status']), 'Could not save access fixture.');
+}
+
+foreach (['', '123456789', ' 123456789 '] as $creatorId) {
+    aiAccessExpect(serverEnvAdminValidateValues(['PATREON_CREATOR_USER_ID' => $creatorId]) === [], 'Creator setting accepts an empty value or a positive numeric Patreon ID.');
+}
+foreach (['0', '0123', '123e0', 'profile-name', '123,456', "123\n456"] as $creatorId) {
+    aiAccessExpect(serverEnvAdminValidateValues(['PATREON_CREATOR_USER_ID' => $creatorId]) !== [], 'Creator setting rejects malformed or multiple identities.');
 }
 
 if (!function_exists('curl_init')) {
@@ -41,7 +49,7 @@ $pdo = dbObject\DbObject::getPdo();
 $pdo->beginTransaction();
 try {
     $GLOBALS['OpenAI'] = 'test-key-never-sent';
-    $patreonKeys = ['patreonClientId', 'patreonClientSecret', 'patreonCreatorCampaignId', 'patreonConnectUrl', 'patreonRedirectUri', 'patreonConnectAllowedOrigins'];
+    $patreonKeys = ['patreonClientId', 'patreonClientSecret', 'patreonCreatorCampaignId', 'patreonCreatorUserId', 'patreonConnectUrl', 'patreonRedirectUri', 'patreonConnectAllowedOrigins'];
     foreach ($patreonKeys as $key) $GLOBALS[$key] = '';
     $user = new dbObject\User();
     $user->set('email', 'ai-access-' . bin2hex(random_bytes(6)) . '@example.invalid');
@@ -86,6 +94,46 @@ try {
     $user->set('siteadmin', false);
     aiAccessSave($user);
     aiAccessExpect(commonAiUserCanUse($userId), 'A regular paid user has the same entitlement as an administrator.');
+
+    $subscription->set('patron_status', null);
+    $subscription->set('currently_entitled_amount_cents', 0);
+    $subscription->set('patreon_user_id', '123456789');
+    aiAccessSave($subscription);
+    foreach (['', '987654321', '123456789e0', '0', '0123456789', '*', '123456789,987654321'] as $creatorId) {
+        $GLOBALS['patreonCreatorUserId'] = $creatorId;
+        aiAccessExpect(!commonAiUserCanUse($userId), 'Only an exact valid configured creator identity grants access: ' . $creatorId);
+    }
+    $GLOBALS['patreonCreatorUserId'] = '123456789';
+    aiAccessExpect(commonAiUserCanUse($userId), 'A connected verified creator needs neither membership nor payment nor administrator status.');
+    aiAccessExpect(!commonAiUserCanUse(0), 'A configured creator does not grant anonymous access.');
+    foreach ([[0, 'refresh'], [1, '']] as [$connected, $refresh]) {
+        $subscription->set('is_connected', $connected);
+        $subscription->set('refresh_token', $refresh);
+        aiAccessSave($subscription);
+        aiAccessExpect(!commonAiUserCanUse($userId), 'A disconnected creator cannot use AI.');
+    }
+    $subscription->set('is_connected', 1);
+    $subscription->set('refresh_token', 'refresh');
+    $subscription->set('patreon_user_id', '');
+    aiAccessSave($subscription);
+    aiAccessExpect(!commonAiUserCanUse($userId), 'A connection without a verified Patreon identity cannot qualify as creator.');
+    $subscription->set('patreon_user_id', '123456789');
+    aiAccessSave($subscription);
+    $GLOBALS['OpenAI'] = '';
+    aiAccessExpect(!commonAiUserCanUse($userId), 'Creator access still requires configured AI.');
+    $GLOBALS['OpenAI'] = 'test-key-never-sent';
+    $GLOBALS['patreonClientSecret'] = '';
+    aiAccessExpect(!commonAiUserCanUse($userId), 'Creator access cannot bypass incomplete Patreon configuration.');
+    $GLOBALS['patreonClientSecret'] = 'configured-secret';
+    $storageFlag->setValue(null, false);
+    aiAccessExpect(!commonAiUserCanUse($userId), 'Creator access cannot bypass unavailable Patreon storage.');
+    $storageFlag->setValue(null, true);
+    aiAccessExpect(patreonGetRequestedScopes() === 'identity', 'Creator access requests no additional Patreon scopes.');
+    $GLOBALS['patreonCreatorUserId'] = '';
+    $subscription->set('patron_status', 'active_patron');
+    $subscription->set('currently_entitled_amount_cents', 1);
+    aiAccessSave($subscription);
+
     $GLOBALS['OpenAI'] = ' ';
     aiAccessExpect(!commonAiUserCanUse($userId), 'A paid subscription cannot enable unconfigured AI.');
     $GLOBALS['aiAccessTelegramMessages'] = [];

@@ -545,6 +545,18 @@ function profilRenderPatreonFragment(\dbObject\User $user)
                 : profilPopupT('profile.popup.patreon.connection.disconnected')) ?>
         </div>
         <?php if ($patreonConnection !== false): ?>
+        <?php if ($patreonConnected && trim((string)$patreonConnection->get('patreon_user_id')) !== ''): ?>
+        <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
+            <div class="generic-inline-help">
+                <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.patreon.user_id.label')) ?></strong>
+                <details class="generic-context-help generic-context-help--compact" data-generic-context-help-hover>
+                    <summary aria-label="<?= htmlspecialchars(profilPopupT('profile.popup.patreon.user_id.help'), ENT_QUOTES, 'UTF-8') ?>">?</summary>
+                    <div class="generic-context-help__content"><?= htmlspecialchars(profilPopupT('profile.popup.patreon.user_id.help'), ENT_QUOTES, 'UTF-8') ?></div>
+                </details>
+            </div>
+            <span><?= htmlspecialchars((string)$patreonConnection->get('patreon_user_id'), ENT_QUOTES, 'UTF-8') ?></span>
+        </div>
+        <?php endif; ?>
         <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
             <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.patreon.name.label')) ?></strong>
             <?= htmlspecialchars((string)($patreonConnection->get('full_name') ?: profilPopupT('profile.popup.value.not_provided'))) ?>

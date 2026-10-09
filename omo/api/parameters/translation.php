@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/server_env_fields.php';
+
 function omoParametersIndexSourceLang()
 {
     static $sourceLang = null;
@@ -95,7 +97,7 @@ function omoServerEnvSourceLang()
         'parameters.server_env.auth.forbidden_message' => ['text' => "Ce panneau est réservé à l'admin du serveur.", 'context' => 'Message shown in the server environment popup when the current user is not a site admin.'],
         'parameters.server_env.hero.eyebrow' => ['text' => 'Configuration sensible', 'context' => 'Small eyebrow shown above the server environment popup title.'],
         'parameters.server_env.hero.title' => ['text' => 'Admin du serveur', 'context' => 'Main title of the server environment popup.'],
-        'parameters.server_env.hero.description' => ['text' => "Ce panneau permet de compléter les variables globales du fichier d'environnement hors base de données, comme Telegram, Patreon, OpenAI, SMTP ou GitHub.", 'context' => 'Intro text shown in the server environment popup.'],
+        'parameters.server_env.hero.description' => ['text' => "Ce panneau permet de compléter les variables globales du fichier d'environnement hors base de données, comme Telegram, Patreon, IA, SMTP ou GitHub.", 'context' => 'Intro text shown in the server environment popup.'],
         'parameters.server_env.hero.target' => ['text' => 'Fichier cible : {target}', 'context' => 'Badge showing the target .env file edited by the server environment popup.'],
         'parameters.server_env.hero.unlock_ttl' => ['text' => 'Vérification valable {minutes} min', 'context' => 'Badge showing how long the password confirmation remains valid in the server environment popup.'],
         'parameters.server_env.password.unavailable_title' => ['text' => 'Mot de passe indisponible', 'context' => 'Title shown when the current account has no local password for server environment editing.'],
@@ -117,6 +119,33 @@ function omoServerEnvSourceLang()
         'parameters.server_env.feedback.operation_done' => ['text' => 'Opération terminée.', 'context' => 'Generic fallback message shown after saving the server environment popup form.'],
         'parameters.server_env.feedback.save_failed' => ['text' => "Impossible d'enregistrer le fichier {target}.", 'context' => 'Error shown when saving the .env file failed unexpectedly in the server environment popup.'],
         'parameters.server_env.feedback.test_failed' => ['text' => 'Test de connexion impossible.', 'context' => 'Error shown when a connection test request failed unexpectedly in the server environment popup.'],
+        'parameters.server_env.tabs.aria' => ['text' => 'Services et parametres du serveur', 'context' => 'Accessible label for the server configuration tabs.'],
+        'parameters.server_env.technical.title' => ['text' => 'Reglages techniques', 'context' => 'Title of the collapsed advanced settings accordion below the service tabs.'],
+        'parameters.server_env.technical.badge' => ['text' => 'Acces sensibles', 'context' => 'Visible warning badge on the technical settings accordion.'],
+        'parameters.server_env.technical.toggle' => ['text' => 'Ouvrir ou fermer les reglages techniques', 'context' => 'Accessible label for the technical settings accordion toggle.'],
+        'parameters.server_env.technical.warning' => ['text' => 'Ces reglages agissent sur le fonctionnement du site. Modifier les acces MySQL peut interrompre l acces a l application. Remplacer une cle de chiffrement peut rendre les donnees existantes illisibles. Sauvegardez la configuration avant toute modification.', 'context' => 'Persistent warning explaining the consequences of changing database and encryption settings.'],
+        'parameters.server_env.technical.enable_database' => ['text' => 'Je souhaite modifier les acces MySQL de cette installation', 'context' => 'Explicit action unlocking database credentials for editing.'],
+        'parameters.server_env.error.invalid_numeric_field' => ['text' => 'La valeur numerique de {label} est invalide.', 'context' => 'Invalid numeric environment setting.'],
+        'parameters.server_env.error.invalid_email_field' => ['text' => 'L adresse e-mail de {label} est invalide.', 'context' => 'Invalid email environment setting.'],
+        'parameters.server_env.error.invalid_url_field' => ['text' => 'L adresse de {label} est invalide.', 'context' => 'Invalid URL environment setting.'],
+        'parameters.server_env.error.invalid_public_url' => ['text' => 'L adresse publique doit etre une origine HTTPS sans chemin ni parametre. HTTP est reserve a localhost et 127.0.0.1.', 'context' => 'Invalid canonical origin used in security email links.'],
+        'parameters.server_env.tabs.ai' => ['text' => 'IA', 'context' => 'Server configuration tab for text, translation and audio services.'],
+        'parameters.server_env.error.ai_provider_key' => ['text' => 'Saisissez la cle API du fournisseur choisi lorsque vous changez de fournisseur de texte ou d adresse API.', 'context' => 'Prevent sending an existing secret to a different AI provider or API address.'],
+        'parameters.server_env.error.transcription_provider_key' => ['text' => 'Saisissez la cle API du service choisi lorsque vous changez de fournisseur de transcription.', 'context' => 'Prevent sending an existing audio secret to a different provider.'],
+        'parameters.server_env.error.ai_model_required' => ['text' => 'Indiquez le modele principal du fournisseur de texte choisi.', 'context' => 'Claude, Mistral and compatible APIs require an explicit main model identifier.'],
+        'parameters.server_env.error.ai_base_url' => ['text' => 'Indiquez une adresse de base HTTPS valide, sans identifiants, parametres ni suffixe /chat/completions.', 'context' => 'Validation of the custom OpenAI-compatible API base URL.'],
+        'parameters.server_env.tabs.documents' => ['text' => 'Documents', 'context' => 'Short shared tab label for EtherCalc and Etherpad connection settings.'],
+        'parameters.server_env.section.github.title' => ['text' => 'GitHub', 'context' => 'Title of the GitHub connection tab.'],
+        'parameters.server_env.section.github.intro' => ['text' => 'Depot et identite technique utilises pour envoyer les signalements de bugs.', 'context' => 'Description of the GitHub connection settings.'],
+        'parameters.server_env.section.patreon.title' => ['text' => 'Patreon', 'context' => 'Title of the Patreon connection tab.'],
+        'parameters.server_env.section.patreon.intro' => ['text' => 'Connexion des comptes Patreon, campagne soutenue et acces du createur.', 'context' => 'Description of the Patreon connection settings.'],
+        'parameters.server_env.section.telegram.title' => ['text' => 'Telegram', 'context' => 'Title of the Telegram connection tab.'],
+        'parameters.server_env.section.telegram.intro' => ['text' => 'Identite du bot et protection des appels entrants du webhook.', 'context' => 'Description of the Telegram connection settings.'],
+        'parameters.server_env.section.maps.title' => ['text' => 'Cartographie', 'context' => 'Title of the mapping settings tab.'],
+        'parameters.server_env.section.maps.intro' => ['text' => 'Cle utilisee pour afficher les fonds de carte Stadia Maps.', 'context' => 'Description of the mapping settings.'],
+        'parameters.server_env.field.TELEGRAM_WEBHOOK_SECRET.label' => ['text' => 'Secret du webhook Telegram', 'context' => 'Label for the Telegram webhook authentication secret.'],
+        'parameters.server_env.field.TELEGRAM_WEBHOOK_SECRET.help' => ['text' => 'Secret choisi pour proteger les appels du bot : 32 a 256 caracteres, lettres, chiffres, tirets ou underscores. La meme valeur doit etre enregistree aupres de Telegram avec setWebhook et son parametre secret_token. Modifier ce champ ne reenregistre pas le webhook. Laissez vide pour conserver le secret actuel.', 'context' => 'Explain how the webhook secret is chosen, registered and retained.'],
+        'parameters.server_env.error.invalid_telegram_webhook_secret' => ['text' => 'Le secret du webhook Telegram doit contenir 32 a 256 lettres, chiffres, tirets ou underscores.', 'context' => 'Validation error for the Telegram webhook secret.'],
         'parameters.server_env.section.general.title' => ['text' => 'Paramètres généraux', 'context' => 'Title of the general section in the server environment editor.'],
         'parameters.server_env.section.general.intro' => ['text' => 'Réglages globaux du site visibles sur plusieurs pages.', 'context' => 'Intro of the general section in the server environment editor.'],
         'parameters.server_env.section.etherpad.title' => ['text' => 'Etherpad', 'context' => 'Title of the Etherpad section in the server environment editor.'],
@@ -127,10 +156,6 @@ function omoServerEnvSourceLang()
         'parameters.server_env.section.spacedeck.intro' => ['text' => 'Connexion globale au serveur de tableaux blancs collaboratifs.', 'context' => 'Intro of the SpaceDeck section in the server environment editor.'],
         'parameters.server_env.section.mail.title' => ['text' => 'E-mail', 'context' => 'Title of the mail section in the server environment editor.'],
         'parameters.server_env.section.mail.intro' => ['text' => 'Configuration SMTP générale du serveur.', 'context' => 'Intro of the mail section in the server environment editor.'],
-        'parameters.server_env.section.ai.title' => ['text' => 'IA', 'context' => 'Title of the AI section in the server environment editor.'],
-        'parameters.server_env.section.ai.intro' => ['text' => 'Clés et modèles utilisés par les fonctions OpenAI.', 'context' => 'Intro of the AI section in the server environment editor.'],
-        'parameters.server_env.section.integrations.title' => ['text' => 'Intégrations', 'context' => 'Title of the integrations section in the server environment editor.'],
-        'parameters.server_env.section.integrations.intro' => ['text' => 'Services externes optionnels du serveur.', 'context' => 'Intro of the integrations section in the server environment editor.'],
         'parameters.server_env.field.SITE_TITLE.label' => ['text' => 'Titre du site', 'context' => 'Label of the SITE_TITLE field in the server environment editor.'],
         'parameters.server_env.field.HOME_TITLE.label' => ['text' => "Titre de la page d'accueil", 'context' => 'Label of the HOME_TITLE field in the server environment editor.'],
         'parameters.server_env.field.APP_LANG.label' => ['text' => 'Langue par défaut', 'context' => 'Label of the APP_LANG field in the server environment editor.'],
@@ -168,21 +193,19 @@ function omoServerEnvSourceLang()
         'parameters.server_env.field.MAIL_CHARSET.label' => ['text' => 'Jeu de caractères e-mail', 'context' => 'Label of the MAIL_CHARSET field in the server environment editor.'],
         'parameters.server_env.field.MAIL_USER.label' => ['text' => 'Utilisateur SMTP', 'context' => 'Label of the MAIL_USER field in the server environment editor.'],
         'parameters.server_env.field.MAIL_PASS.label' => ['text' => 'Mot de passe SMTP', 'context' => 'Label of the MAIL_PASS field in the server environment editor.'],
-        'parameters.server_env.field.OPENAI_API_KEY.label' => ['text' => 'Clé OpenAI', 'context' => 'Label of the OPENAI_API_KEY field in the server environment editor.'],
-        'parameters.server_env.field.OPENAI_UPLOAD_API_KEY.label' => ['text' => 'Clé OpenAI upload', 'context' => 'Label of the OPENAI_UPLOAD_API_KEY field in the server environment editor.'],
-        'parameters.server_env.field.OPENAI_MODEL.label' => ['text' => 'Modèle OpenAI', 'context' => 'Label of the OPENAI_MODEL field in the server environment editor.'],
-        'parameters.server_env.field.OPENAI_TRANSLATION_MODEL.label' => ['text' => 'Modèle de traduction OpenAI', 'context' => 'Label of the OPENAI_TRANSLATION_MODEL field in the server environment editor.'],
         'parameters.server_env.field.STADIA_MAPS_API_KEY.label' => ['text' => 'Clé Stadia Maps', 'context' => 'Label of the STADIA_MAPS_API_KEY field in the server environment editor.'],
-        'parameters.server_env.field.PAYPAL_CLIENT_ID.label' => ['text' => 'Client ID PayPal', 'context' => 'Label of the PAYPAL_CLIENT_ID field in the server environment editor.'],
         'parameters.server_env.field.TELEGRAM_BOT_TOKEN.label' => ['text' => 'Token Telegram', 'context' => 'Label of the TELEGRAM_BOT_TOKEN field in the server environment editor.'],
         'parameters.server_env.field.PATREON_CLIENT_ID.label' => ['text' => 'Client ID Patreon', 'context' => 'Label of the PATREON_CLIENT_ID field in the server environment editor.'],
         'parameters.server_env.field.PATREON_CLIENT_SECRET.label' => ['text' => 'Client secret Patreon', 'context' => 'Label of the PATREON_CLIENT_SECRET field in the server environment editor.'],
         'parameters.server_env.field.PATREON_CONNECT_URL.label' => ['text' => 'URL centrale de connexion Patreon', 'context' => 'Label of the PATREON_CONNECT_URL field in the server environment editor.'],
-        'parameters.server_env.field.PATREON_CONNECT_URL.help' => ['text' => 'URL du point de connexion central, par exemple https://omo2.org/common/patreon_connect.php.', 'context' => 'Help text of the PATREON_CONNECT_URL field in the server environment editor.'],
+        'parameters.server_env.field.PATREON_CONNECT_URL.help' => ['text' => 'Adresse OMO du serveur qui gere les connexions Patreon, par exemple https://omo2.org/common/patreon_connect.php. Utilisez la meme URL sur les sites qui partagent cette connexion. Ce n est pas l adresse de votre page Patreon.', 'context' => 'Help text of the PATREON_CONNECT_URL field in the server environment editor.'],
         'parameters.server_env.field.PATREON_CONNECT_ALLOWED_ORIGINS.label' => ['text' => 'Domaines de retour Patreon autorisés', 'context' => 'Label of the PATREON_CONNECT_ALLOWED_ORIGINS field in the server environment editor.'],
         'parameters.server_env.field.PATREON_CONNECT_ALLOWED_ORIGINS.help' => ['text' => 'Liste d origines HTTPS séparées par des virgules. https://*.dev.opengov.tools autorise ses sous-domaines ; ajoutez aussi https://dev.opengov.tools pour le domaine principal.', 'context' => 'Help text of the PATREON_CONNECT_ALLOWED_ORIGINS field in the server environment editor.'],
         'parameters.server_env.field.PATREON_REDIRECT_URI.label' => ['text' => 'Redirect URI Patreon', 'context' => 'Label of the PATREON_REDIRECT_URI field in the server environment editor.'],
         'parameters.server_env.field.PATREON_CREATOR_CAMPAIGN_ID.label' => ['text' => 'Campaign ID Patreon', 'context' => 'Label of the PATREON_CREATOR_CAMPAIGN_ID field in the server environment editor.'],
+        'parameters.server_env.field.PATREON_CREATOR_USER_ID.label' => ['text' => 'ID utilisateur Patreon du createur', 'context' => 'Server setting for the verified Patreon creator identity allowed to use AI without a contribution.'],
+        'parameters.server_env.field.PATREON_CREATOR_USER_ID.help' => ['text' => 'Dans OMO, ouvrez Mon profil > Patreon, connectez votre compte puis cliquez sur Synchroniser si necessaire. Copiez le code affiche sous ID utilisateur Patreon. Ce n est ni votre nom public, ni votre e-mail, ni l ID de campagne ou l ID OMO. Ce compte relie aura acces a l IA sans contribution. Vide : aucune exception.', 'context' => 'Where to obtain the numeric verified creator identity without collecting additional Patreon data.'],
+        'parameters.server_env.error.invalid_patreon_creator_user_id' => ['text' => 'L ID utilisateur Patreon du createur doit etre un identifiant numerique strictement positif.', 'context' => 'Validation error for a malformed Patreon creator user ID in server settings.'],
         'parameters.server_env.field.PATREON_USER_AGENT.label' => ['text' => 'User-Agent Patreon', 'context' => 'Label of the PATREON_USER_AGENT field in the server environment editor.'],
         'parameters.server_env.field.GITHUB_BUGREPORT_TOKEN.label' => ['text' => 'Token GitHub bug report', 'context' => 'Label of the GITHUB_BUGREPORT_TOKEN field in the server environment editor.'],
         'parameters.server_env.field.GITHUB_BUGREPORT_REPO_OWNER.label' => ['text' => 'Repository owner GitHub', 'context' => 'Label of the GITHUB_BUGREPORT_REPO_OWNER field in the server environment editor.'],
@@ -190,6 +213,13 @@ function omoServerEnvSourceLang()
         'parameters.server_env.field.GITHUB_BUGREPORT_LABELS.label' => ['text' => 'Labels GitHub', 'context' => 'Label of the GITHUB_BUGREPORT_LABELS field in the server environment editor.'],
         'parameters.server_env.field.GITHUB_BUGREPORT_USER_AGENT.label' => ['text' => 'User-Agent GitHub', 'context' => 'Label of the GITHUB_BUGREPORT_USER_AGENT field in the server environment editor.'],
         'parameters.server_env.field.secret_keep.help' => ['text' => 'Laissez vide pour conserver la valeur actuelle.', 'context' => 'Help text shown under secret fields in the server environment editor.'],
+        'parameters.server_env.field.help_label' => ['text' => 'Aide : {field}', 'context' => 'Accessible label for a server configuration field help bubble.'],
+        'parameters.server_env.field.help_source' => ['text' => 'Ouvrir la documentation Patreon', 'context' => 'Link inside Patreon settings help bubbles to the official documentation.'],
+        'parameters.server_env.field.PATREON_CLIENT_ID.help' => ['text' => 'Dans Patreon, ouvrez la page Clients & API Keys et selectionnez votre application OAuth v2. Copiez son Client ID. Il identifie l application, pas votre compte ni votre campagne. Configurez ces acces sur le serveur central de connexion.', 'context' => 'Where to obtain the OAuth application Client ID.'],
+        'parameters.server_env.field.PATREON_CLIENT_SECRET.help' => ['text' => 'Sur la page Patreon Clients & API Keys, ouvrez la meme application que pour le Client ID et copiez son Client Secret. Gardez ce secret prive. Laissez vide pour conserver la valeur actuelle.', 'context' => 'Where to obtain the OAuth Client Secret and how blank input preserves it.'],
+        'parameters.server_env.field.PATREON_REDIRECT_URI.help' => ['text' => 'Adresse de retour a declarer aussi dans votre application Patreon, par exemple https://omo2.org/common/patreon_callback.php. Si l URL centrale de connexion est renseignee, OMO utilise automatiquement /common/patreon_callback.php sur ce domaine. Les deux adresses doivent correspondre.', 'context' => 'How to choose and register the callback URL for central Patreon OAuth.'],
+        'parameters.server_env.field.PATREON_CREATOR_CAMPAIGN_ID.help' => ['text' => 'Code numerique de la campagne soutenue. Il est renvoye comme id par l API Patreon /api/oauth2/v2/campaigns avec le jeton du createur. Ce n est ni le nom de la page Patreon, ni l ID utilisateur du createur. Conservez la valeur existante si la campagne ne change pas.', 'context' => 'Where to obtain the numeric campaign ID; distinguishes it from the creator user ID.'],
+        'parameters.server_env.field.PATREON_USER_AGENT.help' => ['text' => 'Nom technique transmis a Patreon pour identifier les appels de votre site, par exemple OMO Patreon Sync. Vous choisissez ce texte ; aucune cle ni aucun identifiant Patreon n est necessaire ici.', 'context' => 'Explains the freely chosen API User-Agent value.'],
         'parameters.server_env.option.boolean.true' => ['text' => 'Oui', 'context' => 'Yes option label used in boolean selects in the server environment editor.'],
         'parameters.server_env.option.boolean.false' => ['text' => 'Non', 'context' => 'No option label used in boolean selects in the server environment editor.'],
         'parameters.server_env.error.required' => ['text' => 'Connexion requise.', 'context' => 'JSON error returned when the current user is not connected to use the server environment endpoints.'],
@@ -218,6 +248,24 @@ function omoServerEnvSourceLang()
         'parameters.server_env.error.read_failed' => ['text' => 'Impossible de lire le fichier {target}.', 'context' => 'Error returned when the server environment target file cannot be read.'],
         'parameters.server_env.error.write_failed' => ['text' => "Impossible d'écrire le fichier {target}. Vérifiez les permissions ou un montage Docker en lecture seule.", 'context' => 'Error returned when the server environment target file cannot be written.'],
     ];
+
+    $additionalFields = omoServerEnvAdditionalServiceFields();
+    foreach (omoServerEnvAdditionalSections() as $sectionKey => $section) {
+        $sourceLang['parameters.server_env.section.' . $sectionKey . '.title'] = ['text' => $section['title'], 'context' => 'Server configuration section title.'];
+        $sourceLang['parameters.server_env.section.' . $sectionKey . '.intro'] = ['text' => $section['intro'], 'context' => 'Server configuration section description.'];
+        $additionalFields[$sectionKey] = $section['fields'];
+    }
+    foreach ($additionalFields as $fields) {
+        foreach ($fields as $key => $field) {
+            foreach ($field['options'] ?? [] as $value => $label) {
+                $sourceLang['parameters.server_env.field.' . $key . '.option.' . $value] = ['text' => $label, 'context' => 'Server environment choice for ' . $key];
+            }
+            $sourceLang['parameters.server_env.field.' . $key . '.label'] = ['text' => $field['label'], 'context' => 'Server environment field label: ' . $key];
+            if (!empty($field['help'])) {
+                $sourceLang['parameters.server_env.field.' . $key . '.help'] = ['text' => $field['help'], 'context' => 'Help explaining the server environment field: ' . $key];
+            }
+        }
+    }
 
     return $sourceLang;
 }

@@ -53,7 +53,7 @@ if ($organizationId <= 0 || $currentUserId <= 0 || !commonCurrentUserHasOrganiza
     exit;
 }
 
-if (!commonAiIsConfigured(commonOpenAiGetTranscriptionModel())) {
+if (!commonAiIsTranscriptionConfigured()) {
     http_response_code(503);
     echo json_encode(['status' => false, 'message' => omoDocumentsTranscribeT('documents.transcribe.error.configuration')]);
     exit;

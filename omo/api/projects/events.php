@@ -7,6 +7,8 @@ require_once dirname(__DIR__) . '/calendar/permissions_shared.php';
 use dbObject\Event;
 use dbObject\Holon;
 use dbObject\Project;
+use dbObject\ArrayProjectExternalEvent;
+use dbObject\ProjectExternalEvent;
 
 $organizationId = (int)($_SESSION['currentOrganization'] ?? ($_GET['oid'] ?? 0));
 $projectId = isset($_GET['id']) && is_numeric($_GET['id']) ? (int)$_GET['id'] : 0;
@@ -54,7 +56,10 @@ $canCreateEvent = !$isArchivedProject && !$project->isPendingProposal() && $curr
             ? $createPermissionHolon->isAllowed('CAN_CREATE_EVENT', true, $currentUserId)
             : commonCurrentUserHasOrganizationAccess($organizationId)
     );
-$events = $project->getEvents();
+$canImportEvents = omoProjectsCanImportEvents($project, $context);
+$externalEvents = new ArrayProjectExternalEvent();
+$externalEvents->loadForProject($projectId);
+$events = array_merge($project->getEvents()->getArrayCopy(), $externalEvents->getArrayCopy());
 $todayStart = new \DateTimeImmutable('today 00:00:00');
 $sectionLabels = [
     'today' => omoProjectsT('projects.detail.events.section.today'),
@@ -68,7 +73,8 @@ $sectionLabels = [
 $eventSections = [];
 
 foreach ($events as $event) {
-    if (!($event instanceof Event) || !$event->isDraftVisibleToViewer($currentUserId)) {
+    if ($event instanceof ProjectExternalEvent ? $event->isSourceMissing()
+        : (!($event instanceof Event) || !$event->isDraftVisibleToViewer($currentUserId))) {
         continue;
     }
 
@@ -132,11 +138,24 @@ $createEventButton = '<button type="button" class="generic-action-button generic
     . ' data-omo-project-detail-add-event-url="' . omoApiEscape($createEventUrl) . '">'
     . omoApiEscape(omoProjectsT('projects.detail.events.new'))
     . '</button>';
+$importUrl = '/omo/api/projects/event_import.php?oid=' . $organizationId . '&id=' . $projectId
+    . '&cid=' . (int)($projectHolon instanceof Holon ? $projectHolon->getId() : 0);
+$importButton = '<button type="button" class="generic-menu-item" data-omo-project-import-event-url="'
+    . omoApiEscape($importUrl) . '">' . omoApiEscape(omoProjectsT('projects.events.import')) . '</button>';
+if ($canCreateEvent && $canImportEvents) {
+    $createEventButton = '<div class="generic-menu generic-menu--split" data-omo-project-detail-event-menu>' . $createEventButton
+        . '<button type="button" class="generic-menu-toggle" data-omo-project-detail-event-menu-toggle aria-expanded="false"'
+        . ' aria-label="' . omoApiEscape(omoProjectsT('projects.detail.events.menu')) . '">&#9662;</button>'
+        . '<div class="generic-menu-panel" data-omo-project-detail-event-menu-panel hidden>' . $importButton . '</div></div>';
+} elseif (!$canCreateEvent && $canImportEvents) {
+    $createEventButton = '<button type="button" class="generic-action-button generic-action-button--main" data-omo-project-import-event-url="'
+        . omoApiEscape($importUrl) . '">' . omoApiEscape(omoProjectsT('projects.events.import')) . '</button>';
+}
 
 if (count($eventSections) === 0) {
     echo '<div class="omo-project-detail__events-empty">'
         . '<h3 class="generic-card-title generic-card-title--medium">' . omoApiEscape(omoProjectsT('projects.detail.events.empty')) . '</h3>';
-    if ($canCreateEvent) {
+    if ($canCreateEvent || $canImportEvents) {
         echo '<p class="generic-description generic-description--small">' . omoApiEscape(omoProjectsT('projects.detail.events.empty_hint')) . '</p>'
             . $createEventButton;
     }
@@ -144,7 +163,7 @@ if (count($eventSections) === 0) {
     exit;
 }
 ?>
-<?php if ($canCreateEvent): ?>
+<?php if ($canCreateEvent || $canImportEvents): ?>
     <div class="omo-project-detail__events-actions">
         <?= $createEventButton ?>
     </div>
@@ -157,6 +176,7 @@ if (count($eventSections) === 0) {
                 <?php foreach ($eventSection['items'] as $eventItem): ?>
                     <?php
                     $event = $eventItem['event'];
+                    $isExternal = $event instanceof ProjectExternalEvent;
                     $startAt = $event->get('start_at');
                     $endAt = $event->get('end_at');
                     $isAllDay = (bool)$event->get('is_all_day');
@@ -170,12 +190,14 @@ if (count($eventSections) === 0) {
                             $timeLabel .= '–' . $endAt->format('H:i');
                         }
                     }
-                    $status = Event::normalizeStatus($event->get('status'));
+                    $status = $isExternal ? Event::STATUS_CONFIRMED : Event::normalizeStatus($event->get('status'));
                     $statusCatalog = Event::getStatusCatalog();
-                    $statusLabel = trim((string)($statusCatalog[$status]['label'] ?? ''));
-                    $eventPermissionHolon = omoCalendarResolveEventPermissionHolon($event, $rootHolon);
-                    $canEditEvent = omoCalendarCanEditEvent($event, $organizationId, $currentUserId, $rootHolon, true);
-                    $canDeleteEvent = $currentUserId > 0 && (
+                    $statusLabel = $isExternal ? omoProjectsT('projects.events.external', ['calendar' => $event->get('calendar_title')])
+                        : trim((string)($statusCatalog[$status]['label'] ?? ''));
+                    $eventPermissionHolon = $isExternal ? null : omoCalendarResolveEventPermissionHolon($event, $rootHolon);
+                    $canEditEvent = !$isExternal && omoCalendarCanEditEvent($event, $organizationId, $currentUserId, $rootHolon, true);
+                    $canDetachEvent = $canImportEvents && ($isExternal || $canEditEvent);
+                    $canDeleteEvent = !$isExternal && $currentUserId > 0 && (
                         $eventPermissionHolon instanceof Holon
                             ? $eventPermissionHolon->isAllowed('CAN_DELETE_EVENT', false, $currentUserId)
                             : commonCurrentUserHasOrganizationAccess($organizationId)
@@ -187,6 +209,7 @@ if (count($eventSections) === 0) {
                         $eventEditorUrl .= '&cid=' . rawurlencode((string)(int)$projectHolon->getId());
                     }
                     $eventId = (int)$event->getId();
+                    $externalDetailUrl = $importUrl . '&action=detail&link_id=' . $eventId;
                     $eventEditUrl = $eventEditorUrl . '&id=' . rawurlencode((string)$eventId);
                     $eventDuplicateUrl = $eventEditorUrl . '&duplicate_id=' . rawurlencode((string)$eventId);
                     $eventDeleteUrl = '/omo/api/calendar/delete.php?oid=' . rawurlencode((string)$organizationId)
@@ -196,8 +219,8 @@ if (count($eventSections) === 0) {
                         <div class="omo-project-detail__event-item is-status-<?= omoApiEscape($status) ?>">
                     <a
                         class="omo-project-detail__event-link"
-                        href="#calendar-e<?= $eventId ?>"
-                        data-omo-project-detail-event-link
+                        href="<?= omoApiEscape($isExternal ? $externalDetailUrl : '#calendar-e' . $eventId) ?>"
+                        <?php if ($isExternal): ?>data-omo-project-external-event-url="<?= omoApiEscape($externalDetailUrl) ?>"<?php else: ?>data-omo-project-detail-event-link<?php endif; ?>
                         data-event-id="<?= $eventId ?>"
                     >
                         <span class="omo-project-detail__event-date" aria-hidden="true">
@@ -211,7 +234,7 @@ if (count($eventSections) === 0) {
                             })))) ?></span>
                         </span>
                     </a>
-                    <?php if ($canEditEvent || $canDeleteEvent || $canCreateEvent): ?>
+                    <?php if ($canEditEvent || $canDeleteEvent || (!$isExternal && $canCreateEvent) || $canDetachEvent): ?>
                         <div class="generic-menu omo-project-detail__event-menu" data-omo-project-detail-event-menu>
                             <button
                                 type="button"
@@ -226,10 +249,16 @@ if (count($eventSections) === 0) {
                                         <?= omoApiEscape(omoProjectsT('projects.detail.events.edit')) ?>
                                     </button>
                                 <?php endif; ?>
-                                <?php if ($canCreateEvent): ?>
+                                <?php if (!$isExternal && $canCreateEvent): ?>
                                     <button type="button" class="generic-menu-item" data-omo-project-detail-event-editor-url="<?= omoApiEscape($eventDuplicateUrl) ?>">
                                         <?= omoApiEscape(omoProjectsT('projects.detail.events.duplicate')) ?>
                                     </button>
+                                <?php endif; ?>
+                                <?php if ($canDetachEvent): ?>
+                                    <button type="button" class="generic-menu-item" data-omo-project-detach-event
+                                        data-import-url="<?= omoApiEscape($importUrl) ?>" data-event-id="<?= $eventId ?>"
+                                        data-source="<?= $isExternal ? 'external' : 'internal' ?>" data-project-id="<?= $projectId ?>"
+                                        data-csrf="<?= omoApiEscape(commonCsrfToken()) ?>"><?= omoApiEscape(omoProjectsT('projects.events.detach')) ?></button>
                                 <?php endif; ?>
                                 <?php if ($canDeleteEvent): ?>
                                     <button

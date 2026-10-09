@@ -5,12 +5,44 @@ function omoActivityRespond($status, $message, array $extra = []) { echo json_en
 if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') { omoActivityRespond(false, omoActivityT('activity.error.forbidden')); }
 $oid = (int)($_SESSION['currentOrganization'] ?? ($_POST['oid'] ?? 0)); $cid = (int)($_POST['cid'] ?? 0); $context = omoActivityResolveContext($oid, $cid); if (empty($context['status'])) { omoActivityRespond(false, $context['message']); } $action = trim((string)($_POST['activity_action'] ?? '')); $suffix = ($cid > 0 ? '&cid=' . $cid : '') . omoActivityPvMeetingQuery($oid);
 if ($action === 'save_activity') {
+    $projectId = max(0, (int)($_POST['project_id'] ?? 0));
+    $project = null;
+    if ($projectId > 0) {
+        require_once dirname(__DIR__) . '/projects/shared.php';
+        $project = omoProjectsLoadManagedResourceProject($oid, $projectId);
+        if (!$project) { omoActivityRespond(false, omoActivityT('activity.error.forbidden')); }
+    }
     $id = (int)($_POST['id'] ?? 0); $activity = new ControlActivity(); if ($id > 0 && (!$activity->load($id) || (int)$activity->get('IDorganization') !== $oid || (int)$activity->get('active') !== 1)) { omoActivityRespond(false, omoActivityT('activity.error.not_found')); }
     if ($id > 0 ? !omoActivityCanEdit($activity) : !omoActivityCanUsePermission($context['currentHolon'], 'CAN_CREATE_RECURRING_TASK', $oid)) { omoActivityRespond(false, omoActivityT('activity.error.forbidden')); }
     $title = trim((string)($_POST['title'] ?? '')); $frequency = RecurrenceSchedule::normalizeFrequency($_POST['frequency'] ?? ''); $schedule = RecurrenceSchedule::normalizeSchedule($frequency, $_POST['schedule'] ?? ''); if ($title === '') { omoActivityRespond(false, omoActivityT('activity.error.title')); } if (!$frequency || !$schedule) { omoActivityRespond(false, omoActivityT('activity.error.schedule')); } $responsibleUserId = isset($_POST['IDuser_responsible']) && is_numeric($_POST['IDuser_responsible']) ? (int)$_POST['IDuser_responsible'] : 0; if ($responsibleUserId > 0 && !UserOrganization::hasActiveMembership($responsibleUserId, $oid)) { $responsibleUserId = 0; }
     if ($id === 0) { $activity->set('IDorganization', $oid); $activity->set('IDholon', $context['currentHolon'] instanceof \dbObject\Holon ? (int)$context['currentHolon']->getId() : null); $activity->set('position', 0); $activity->set('active', 1); }
-    $activity->set('title', $title); $activity->set('description', trim((string)($_POST['description'] ?? ''))); $activity->set('frequency', $frequency); $activity->set('schedule', $schedule); $activity->set('IDuser_responsible', $responsibleUserId > 0 ? $responsibleUserId : null); $activity->set('display_lead_value', max(0, (int)($_POST['display_lead_value'] ?? 0))); $activity->set('display_lead_unit', $_POST['display_lead_unit'] ?? 'day'); $activity->set('execution_duration_value', max(1, (int)($_POST['execution_duration_value'] ?? 1))); $activity->set('execution_duration_unit', $_POST['execution_duration_unit'] ?? 'day'); $result = $activity->save(); if (!is_array($result) || empty($result['status'])) { omoActivityRespond(false, omoActivityT('activity.error.save')); }
-    omoActivityRespond(true, omoActivityT('activity.success.saved'), ['detailUrl' => '/omo/api/activities/detail.php?oid=' . $oid . '&id=' . (int)$activity->getId() . $suffix]);
+    $activity->set('title', $title); $activity->set('description', trim((string)($_POST['description'] ?? ''))); $activity->set('frequency', $frequency); $activity->set('schedule', $schedule); $activity->set('IDuser_responsible', $responsibleUserId > 0 ? $responsibleUserId : null); $activity->set('display_lead_value', max(0, (int)($_POST['display_lead_value'] ?? 0))); $activity->set('display_lead_unit', $_POST['display_lead_unit'] ?? 'day'); $activity->set('execution_duration_value', max(1, (int)($_POST['execution_duration_value'] ?? 1))); $activity->set('execution_duration_unit', $_POST['execution_duration_unit'] ?? 'day');
+    $pdo = DbObject::getPdo();
+    if (($project || $activity->hasProjectAssociation())
+        && ($id <= 0 || !empty($_POST['project_visibility_present']) || array_key_exists('project_visible_in_holon', $_POST))) {
+        $activity->set('project_visible_in_holon', !empty($_POST['project_visible_in_holon']) ? 1 : 0);
+    }
+    $startedTransaction = false;
+    try {
+        if ($pdo && !$pdo->inTransaction()) { $pdo->beginTransaction(); $startedTransaction = true; }
+        $result = $activity->save();
+        if (!is_array($result) || empty($result['status'])) { throw new RuntimeException(omoActivityT('activity.error.save')); }
+        if ($project) {
+            $link = new \dbObject\ProjectRecurringTask();
+            if (!$link->load([['IDproject', $projectId], ['IDrecurringtask', (int)$activity->getId()]])) {
+                $link->set('IDproject', $projectId);
+                $link->set('IDrecurringtask', (int)$activity->getId());
+                $linkResult = $link->save();
+                if (!is_array($linkResult) || empty($linkResult['status'])) { throw new RuntimeException(omoActivityT('activity.error.save')); }
+                $project->recordAssociationHistory('recurring_task', (int)$activity->getId(), $title, 'added', (int)commonGetCurrentUserId());
+            }
+        }
+        if ($startedTransaction && $pdo && $pdo->inTransaction()) { $pdo->commit(); }
+    } catch (Throwable $error) {
+        if ($startedTransaction && $pdo && $pdo->inTransaction()) { $pdo->rollBack(); }
+        omoActivityRespond(false, omoActivityT('activity.error.save'));
+    }
+    omoActivityRespond(true, omoActivityT('activity.success.saved'), ['id' => (int)$activity->getId(), 'detailUrl' => '/omo/api/activities/detail.php?oid=' . $oid . '&id=' . (int)$activity->getId() . $suffix]);
 }
 if ($action === 'check_activity') {
     $activity = new ControlActivity(); if (!$activity->load((int)($_POST['id'] ?? 0)) || (int)$activity->get('IDorganization') !== $oid || (int)$activity->get('active') !== 1 || !omoActivityCanView($activity)) { omoActivityRespond(false, omoActivityT('activity.error.not_found')); }

@@ -1,7 +1,8 @@
 window.commonPageScripts = window.commonPageScripts || {};
 window.commonPageScripts["/omo/api/stats/edit.js"] = function (pageConfig, pageScript) {
 (function () {
-    var editor = document.querySelector('[data-omo-stats-editor]');
+    var projectId = Number(pageConfig.projectId || 0);
+    var editor = projectId > 0 ? document.getElementById('omoProjectIndicatorEditor') : document.querySelector('[data-omo-stats-editor]');
     if (!editor || editor.dataset.omoStatsEditorReady === '1') {
         return;
     }
@@ -47,7 +48,16 @@ window.commonPageScripts["/omo/api/stats/edit.js"] = function (pageConfig, pageS
     var editorForm = editor.querySelector('form');
     var cancelEditorButton = editor.querySelector('[data-omo-stats-cancel-editor]');
     var saveEditorButton = editor.querySelector('[data-omo-stats-save-editor]');
-    if (editorForm && window.omoStatsDrawer && typeof window.omoStatsDrawer.setHeader === 'function') {
+    var projectDrawer = projectId > 0 ? editor.closest('[data-omo-projects-document-drawer]') : null;
+    var editorDrawerController = projectDrawer ? projectDrawer.__omoSubdrawerController : window.omoStatsDrawer;
+    if (projectId > 0 && cancelEditorButton) {
+        cancelEditorButton.addEventListener('click', function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            window.omoCloseProjectDocumentEditorDrawer();
+        });
+    }
+    if (editorForm && editorDrawerController && typeof editorDrawerController.setHeader === 'function') {
         if (!editorForm.id) {
             editorForm.id = 'omoStatsIndicatorForm';
         }
@@ -67,7 +77,7 @@ window.commonPageScripts["/omo/api/stats/edit.js"] = function (pageConfig, pageS
                 editorForm.dispatchEvent(new Event('submit', {bubbles: true, cancelable: true}));
             });
         }
-        window.omoStatsDrawer.setHeader({
+        editorDrawerController.setHeader({
             title: pageConfig.title,
             description: pageConfig.description,
             actions: [cancelEditorButton, saveEditorButton].filter(function (button) {
@@ -106,7 +116,13 @@ window.commonPageScripts["/omo/api/stats/edit.js"] = function (pageConfig, pageS
                 throw new Error(result.message || saveError);
             }
             editorForm.elements.namedItem('id').value = String(result.id);
-            if (typeof window.omoStatsAfterIndicatorSave === 'function') {
+            if (projectId > 0) {
+                window.dispatchEvent(new CustomEvent('omo-project-resource-saved', {
+                    detail: {projectId: projectId, resourceType: 'indicator', resourceId: Number(result.id)}
+                }));
+                window.omoCloseProjectDocumentEditorDrawer();
+                if (typeof window.commonNotify === 'function') window.commonNotify(pageConfig.editorSaved, 'success');
+            } else if (typeof window.omoStatsAfterIndicatorSave === 'function') {
                 window.omoStatsAfterIndicatorSave();
             } else if (typeof window.commonNotify === 'function') {
                 window.commonNotify(pageConfig.editorSaved, 'success');
