@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/ai_client.php';
+
 // This helper expects the shared dbObject autoload to already be initialized.
 
 function translationBundleNormalizeLocale($locale)
@@ -684,6 +686,7 @@ function translationBundleTriggerAsyncRefreshJob($jobId)
 
 function translationBundleQueueRefresh(string $bundleKey, string $locale, array $sourceLang, string $storageLocale = ''): bool
 {
+    if (commonAiGetProvider() === 'disabled') return false;
     $bundleKey = trim($bundleKey);
     $storageLocale = translationBundleResolveStorageLocale($storageLocale !== '' ? $storageLocale : $locale);
 
@@ -713,29 +716,12 @@ function translationBundleQueueRefresh(string $bundleKey, string $locale, array 
 
 function translationBundleGetOpenAiApiKey()
 {
-    $globalKey = trim((string)($GLOBALS['OpenAI'] ?? ''));
-    if ($globalKey !== '') {
-        return $globalKey;
-    }
-
-    return function_exists('envValue') ? trim((string)envValue('OPENAI_API_KEY', '')) : '';
+    return commonAiGetApiKey();
 }
 
 function translationBundleGetOpenAiTranslationModel()
 {
-    $globalModel = trim((string)($GLOBALS['openAiTranslationModel'] ?? ''));
-    if ($globalModel !== '') {
-        return $globalModel;
-    }
-
-    if (function_exists('envValue')) {
-        $configuredModel = trim((string)envValue('OPENAI_TRANSLATION_MODEL', envValue('OPENAI_MODEL', 'gpt-4o')));
-        if ($configuredModel !== '') {
-            return $configuredModel;
-        }
-    }
-
-    return 'gpt-4o';
+    return commonAiGetModel(true);
 }
 
 function translationBundleDecodeJsonString($payload)
@@ -791,17 +777,13 @@ function translationBundleFilterTranslatedPayload(array $sourceLang, array $tran
 
 function translationBundleTranslateWithAi(string $bundleKey, string $locale, array $sourceLang): array
 {
+    if (commonAiGetProvider() === 'disabled') throw new \RuntimeException('Text AI is disabled.');
     $apiKey = translationBundleGetOpenAiApiKey();
     if ($apiKey === '') {
-        throw new \RuntimeException('OPENAI_API_KEY is not configured.');
-    }
-
-    if (!class_exists('\Orhanerday\OpenAi\OpenAi')) {
-        throw new \RuntimeException('OpenAI client library is not available.');
+        throw new \RuntimeException('AI API key is not configured.');
     }
 
     $translationModel = translationBundleGetOpenAiTranslationModel();
-    $openAi = new \Orhanerday\OpenAi\OpenAi($apiKey);
 
     $systemPrompt = 'You are a professional translator for software user interfaces. '
         . 'Translate the provided bundle from French into the requested locale. '
@@ -816,7 +798,7 @@ function translationBundleTranslateWithAi(string $bundleKey, string $locale, arr
         'source_bundle' => $sourceLang,
     ];
 
-    $result = $openAi->chat([
+    $result = commonAiRequestText($apiKey, [
         'model' => $translationModel,
         'messages' => [
             ['role' => 'system', 'content' => $systemPrompt],
@@ -826,21 +808,14 @@ function translationBundleTranslateWithAi(string $bundleKey, string $locale, arr
         'max_tokens' => 8000,
     ]);
 
-    $decodedResult = json_decode((string)$result, true);
-    if (is_array($decodedResult) && isset($decodedResult['error']['message'])) {
-        throw new \RuntimeException((string)$decodedResult['error']['message']);
+    if (empty($result['status'])) {
+        throw new \RuntimeException((string)($result['message'] ?? 'AI translation failed.'));
     }
-
-    $content = is_array($decodedResult)
-        ? (string)($decodedResult['choices'][0]['message']['content'] ?? '')
-        : '';
-    if ($content === '') {
-        throw new \RuntimeException('OpenAI returned an empty translation response.');
-    }
+    $content = (string)$result['content'];
 
     $translatedPayload = translationBundleDecodeJsonString($content);
     if (!is_array($translatedPayload)) {
-        throw new \RuntimeException('OpenAI returned invalid JSON for the translation bundle.');
+        throw new \RuntimeException('AI returned invalid JSON for the translation bundle.');
     }
 
     return translationBundleFilterTranslatedPayload($sourceLang, $translatedPayload);

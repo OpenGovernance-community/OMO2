@@ -48,7 +48,7 @@ class StatIndicator extends DbObject
             [['name', 'source_url', 'reference_type', 'reference_scale', 'measurement_frequency', 'measurement_schedule', 'source_type', 'ethercalc_cell', 'ethercalc_frequency', 'ethercalc_range', 'ethercalc_date_column', 'ethercalc_value_column', 'spreadsheet_sheet', 'spreadsheet_cell', 'spreadsheet_frequency', 'spreadsheet_range', 'spreadsheet_date_column', 'spreadsheet_value_column'], 'string'],
             [['description'], 'text'],
             [['chart_min_value'], 'float'],
-            [['show_cumulative', 'active'], 'boolean'],
+            [['show_cumulative', 'active', 'project_visible_in_holon'], 'boolean'],
             [['created_at', 'updated_at', 'archived_at', 'ethercalc_last_sync_at', 'spreadsheet_last_sync_at'], 'datetime'],
             [['id'], 'safe'],
         ];
@@ -86,6 +86,7 @@ class StatIndicator extends DbObject
             'spreadsheet_last_sync_at' => 'Derniere synchronisation du tableur',
             'chart_min_value' => 'Valeur basse du graphique',
             'show_cumulative' => 'Afficher le cumul',
+            'project_visible_in_holon' => 'Afficher dans l espace si lie a un projet',
             'active' => 'Actif',
             'archived_at' => 'Date d archivage',
             'created_at' => 'Création',
@@ -104,6 +105,7 @@ class StatIndicator extends DbObject
             'measurement_schedule' => 'Heure, jour ou mois attendu selon la cadence. Cette information est facultative.',
             'chart_min_value' => 'Borne facultative incluse dans l échelle verticale du graphique.',
             'show_cumulative' => 'Affiche les mesures en barres et leur cumul sur une seconde échelle.',
+            'project_visible_in_holon' => 'Conserve cet indicateur dans les listes de l espace lorsqu il est lie a un projet.',
         ];
     }
 
@@ -322,6 +324,7 @@ class StatIndicator extends DbObject
         $this->set('reference_type', self::normalizeReferenceType($this->get('reference_type')));
         $this->set('reference_scale', self::normalizeReferenceScale($this->get('reference_scale')));
         $this->set('show_cumulative', (int)$this->get('show_cumulative') > 0 ? 1 : 0);
+        $this->set('project_visible_in_holon', (int)$this->get('project_visible_in_holon') === 1 || $this->hasMultipleProjectAssociations() ? 1 : 0);
         $measurementFrequency = self::normalizeMeasurementFrequency($this->get('measurement_frequency'));
         $this->set('measurement_frequency', $measurementFrequency);
         $this->set('measurement_schedule', self::normalizeMeasurementSchedule($measurementFrequency, $this->get('measurement_schedule')));
@@ -445,6 +448,22 @@ class StatIndicator extends DbObject
             return self::normalizeMeasurementFrequency($this->get('spreadsheet_frequency'));
         }
         return self::normalizeMeasurementFrequency($this->get('measurement_frequency'));
+    }
+
+    public function hasProjectAssociation(): bool
+    {
+        if ((int)$this->getId() <= 0) return false;
+        $links = new ArrayProjectIndicator();
+        $links->load(['where' => [['field' => 'IDstatindicator', 'value' => (int)$this->getId()]], 'limit' => 1]);
+        return count($links) > 0;
+    }
+
+    public function hasMultipleProjectAssociations(): bool
+    {
+        if ((int)$this->getId() <= 0) return false;
+        $links = new ArrayProjectIndicator();
+        $links->load(['where' => [['field' => 'IDstatindicator', 'value' => (int)$this->getId()]], 'limit' => 2]);
+        return count($links) > 1;
     }
 
     public function isHiddenFromCatalog()

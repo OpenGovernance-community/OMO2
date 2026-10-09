@@ -21,7 +21,7 @@ class ControlTask extends DbObject
             [['IDorganization', 'IDholon', 'IDuser_responsible'], 'fk'],
             [['title', 'frequency', 'schedule', 'display_lead_unit', 'execution_duration_unit'], 'string'],
             [['description'], 'text'],
-            [['active'], 'boolean'],
+            [['active', 'project_visible_in_holon'], 'boolean'],
             [['created_at', 'updated_at', 'archived_at'], 'datetime'],
             [['id'], 'safe'],
         ];
@@ -43,11 +43,33 @@ class ControlTask extends DbObject
             'execution_duration_value' => 'Delai avant retard',
             'execution_duration_unit' => 'Unite du delai avant retard',
             'position' => 'Position',
+            'project_visible_in_holon' => 'Afficher dans l espace si liee a un projet',
             'active' => 'Active',
             'archived_at' => 'Date d archivage',
             'created_at' => 'Creation',
             'updated_at' => 'Mise a jour',
         ];
+    }
+
+    public static function attributeDescriptions()
+    {
+        return ['project_visible_in_holon' => 'Conserve cette tache dans les listes de l espace lorsqu elle est liee a un projet.'];
+    }
+
+    public function hasProjectAssociation(): bool
+    {
+        if ((int)$this->getId() <= 0) return false;
+        $links = new ArrayProjectRecurringTask();
+        $links->load(['where' => [['field' => 'IDrecurringtask', 'value' => (int)$this->getId()]], 'limit' => 1]);
+        return count($links) > 0;
+    }
+
+    public function hasMultipleProjectAssociations(): bool
+    {
+        if ((int)$this->getId() <= 0) return false;
+        $links = new ArrayProjectRecurringTask();
+        $links->load(['where' => [['field' => 'IDrecurringtask', 'value' => (int)$this->getId()]], 'limit' => 2]);
+        return count($links) > 1;
     }
 
     public static function attributeLength()
@@ -93,6 +115,7 @@ class ControlTask extends DbObject
 
     public function save()
     {
+        $this->set('project_visible_in_holon', (int)$this->get('project_visible_in_holon') === 1 || $this->hasMultipleProjectAssociations() ? 1 : 0);
         $frequency = RecurrenceSchedule::normalizeFrequency($this->get('frequency'));
         $schedule = RecurrenceSchedule::normalizeSchedule($frequency, $this->get('schedule'));
         $this->set('title', trim((string)$this->get('title')));

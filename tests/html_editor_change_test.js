@@ -40,6 +40,27 @@ const root = path.join(__dirname, '..');
             }
         }
 
+        // Direct async insertions update the placeholder and notify exactly once.
+        for (const insertion of [
+            {method: 'insertTextAtCursor', value: 'Dictated text'},
+            {method: 'insertHtmlAtCursor', value: '<strong>Inserted text</strong>'},
+            {method: 'insertHtmlAtCursor', value: embed}
+        ]) {
+            await page.evaluate(() => { window.api.setValue(''); window.changes = []; });
+            await page.locator('#host [data-html-editor-surface]').focus();
+            await page.locator('#host .note-editable').waitFor();
+            assert.equal(await page.locator('#host .note-placeholder').isVisible(), true);
+            const notifications = await page.evaluate(insertion => {
+                window.api[insertion.method](insertion.value);
+                return window.changes.length;
+            }, insertion);
+            assert.equal(notifications, 1, 'Direct insertion immediately reports one change for saving.');
+            assert.equal(await page.locator('#host .note-placeholder').isHidden(), true, 'Insertion immediately hides the empty-field hint.');
+            await page.locator('#outside').focus();
+            await page.locator('#host .note-editor').waitFor({state: 'detached'});
+            assert.equal(await page.evaluate(() => window.changes.length), 1, 'Blur does not repeat the insertion notification.');
+        }
+
         await page.evaluate(() => { window.api.setValue('<p>Hello world</p>'); window.changes = []; });
         await page.locator('#host [data-html-editor-surface]').focus();
         await page.locator('#host .note-editable').waitFor();

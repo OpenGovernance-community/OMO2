@@ -85,6 +85,9 @@ function patreonCanManageOrganizationRouting($userId, $minimumAmountCents = 2000
 {
 	$userId = (int)$userId;
 	$minimumAmountCents = max(0, (int)$minimumAmountCents);
+	if (function_exists('commonUserHasSiteAdminOverride') && commonUserHasSiteAdminOverride($userId)) {
+		return true;
+	}
 
 	if ($userId <= 0 || !class_exists('\\dbObject\\UserPatreon') || !\dbObject\UserPatreon::isStorageAvailable()) {
 		return false;
@@ -108,10 +111,13 @@ function patreonUserCanUseAi($userId)
 	if ($userId <= 0) {
 		return false;
 	}
+	if (function_exists('commonUserHasSiteAdminOverride') && commonUserHasSiteAdminOverride($userId)) {
+		return true;
+	}
 
 	// A broken OAuth UI or unavailable storage must never disable the paywall.
 	$configured = false;
-	foreach (['patreonClientId', 'patreonClientSecret', 'patreonCreatorCampaignId', 'patreonConnectUrl', 'patreonRedirectUri', 'patreonConnectAllowedOrigins'] as $key) {
+	foreach (['patreonClientId', 'patreonClientSecret', 'patreonCreatorCampaignId', 'patreonCreatorUserId', 'patreonConnectUrl', 'patreonRedirectUri', 'patreonConnectAllowedOrigins'] as $key) {
 		if (trim((string)($GLOBALS[$key] ?? '')) !== '') {
 			$configured = true;
 			break;
@@ -133,6 +139,13 @@ function patreonUserCanUseAi($userId)
 	$connection = \dbObject\UserPatreon::findByUserId($userId);
 	if (!($connection instanceof \dbObject\UserPatreon) || !$connection->isConnected()) {
 		return false;
+	}
+
+	// Match only the identity saved by the server after Patreon OAuth/sync.
+	$creatorUserId = trim((string)($GLOBALS['patreonCreatorUserId'] ?? ''));
+	if (preg_match('/^[1-9][0-9]*$/D', $creatorUserId) === 1
+		&& $creatorUserId === (string)$connection->get('patreon_user_id')) {
+		return true;
 	}
 
 	return (string)$connection->get('patron_status') === 'active_patron'

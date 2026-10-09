@@ -380,8 +380,7 @@
             if (typeof window.initGenericComponents === 'function') {
                 window.initGenericComponents(body);
             }
-            body.querySelectorAll('[data-activity-task-form]').forEach(updateSchedule);
-            initializeHtmlEditors(body);
+            body.querySelectorAll('[data-activity-task-form]').forEach(function (form) { window.omoRecurringTaskEditor.mount(form); });
             return true;
         }).catch(function () {
             if (localToken === requestToken) {
@@ -452,82 +451,6 @@
                 refreshRoot(currentUrl);
             }
         }, 180);
-    }
-
-    function updateSchedule(form) {
-        var frequency = form.querySelector('[data-activity-frequency]');
-        var schedule = form.querySelector('[data-activity-schedule]');
-        var options;
-        var selected;
-        if (!frequency || !schedule) {
-            return;
-        }
-        try {
-            options = JSON.parse(form.getAttribute('data-activity-schedule-options') || '{}');
-        } catch (error) {
-            options = {};
-        }
-        selected = schedule.getAttribute('data-selected-value') || schedule.value;
-        schedule.innerHTML = '';
-        (options[frequency.value] || []).forEach(function (entry) {
-            var option = document.createElement('option');
-            option.value = entry.value;
-            option.textContent = entry.label;
-            schedule.appendChild(option);
-        });
-        if (Array.prototype.some.call(schedule.options, function (option) { return option.value === selected; })) {
-            schedule.value = selected;
-        }
-        schedule.removeAttribute('data-selected-value');
-    }
-
-    function initializeHtmlEditors(container) {
-        if (!window.omoSimpleHtmlField || typeof window.omoSimpleHtmlField.mount !== 'function') {
-            return;
-        }
-
-        container.querySelectorAll('[data-activity-html-editor]').forEach(function (editorHost) {
-            if (editorHost.dataset.activityHtmlEditorReady === '1') {
-                return;
-            }
-
-            var fieldContainer = editorHost.closest('[data-activity-html-editor-container]');
-            var valueField = fieldContainer
-                ? fieldContainer.querySelector('[data-activity-html-value]')
-                : null;
-            if (!valueField) {
-                return;
-            }
-
-            editorHost.dataset.activityHtmlEditorReady = '1';
-            window.omoSimpleHtmlField.mount(editorHost, {
-                value: valueField.value || '',
-                placeholder: '',
-                simpleOnly: true,
-                onChange: function (value) {
-                    valueField.value = String(value || '');
-                },
-                onReady: function (api) {
-                    if (api && typeof api.getValue === 'function') {
-                        valueField.value = String(api.getValue() || '');
-                    }
-                }
-            });
-        });
-    }
-
-    function syncHtmlEditors(form) {
-        form.querySelectorAll('[data-activity-html-editor]').forEach(function (editorHost) {
-            var fieldContainer = editorHost.closest('[data-activity-html-editor-container]');
-            var valueField = fieldContainer
-                ? fieldContainer.querySelector('[data-activity-html-value]')
-                : null;
-            var api = editorHost.__omoSimpleHtmlField;
-
-            if (valueField && api && typeof api.getValue === 'function') {
-                valueField.value = String(api.getValue() || '');
-            }
-        });
     }
 
     function postAction(action, id, element) {
@@ -768,11 +691,6 @@
         }
     });
 
-    root.addEventListener('change', function (event) {
-        if (event.target.matches('[data-activity-frequency]')) {
-            updateSchedule(event.target.closest('[data-activity-task-form]'));
-        }
-    });
 
     root.addEventListener('input', function (event) {
         if (!event.target.matches('[data-activity-quick-search]')) {
@@ -792,7 +710,7 @@
         if (!form.reportValidity()) {
             return;
         }
-        syncHtmlEditors(form);
+        window.omoRecurringTaskEditor.syncHtml(form);
         var feedback = form.querySelector('[data-activity-feedback]');
         var formData = new FormData(form);
         appendPvMeetingContext(formData);

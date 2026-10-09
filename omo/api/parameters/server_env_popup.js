@@ -132,6 +132,50 @@ window.commonPageScripts["/omo/api/parameters/server_env_popup.js"] = function (
         return;
     }
 
+    var tabs = document.getElementById('omoServerEnvTabs');
+    if (typeof window.initGenericComponents === 'function') {
+        window.initGenericComponents(root);
+    } else if (tabs && typeof window.initGenericTabs === 'function') {
+        window.initGenericTabs(tabs);
+    }
+    var technical = document.getElementById('omoServerEnvTechnical');
+    var aiProvider = form.elements.namedItem('AI_PROVIDER');
+    var transcriptionProvider = form.elements.namedItem('TRANSCRIPTION_PROVIDER');
+    function syncAiFields() {
+        form.querySelectorAll('[name^="AI_"], [name^="TRANSCRIPTION_"]').forEach(function (input) {
+            if (input === aiProvider || input === transcriptionProvider) return;
+            var provider = input.name.indexOf('TRANSCRIPTION_') === 0 ? transcriptionProvider : aiProvider;
+            var inactive = provider && provider.value === 'disabled';
+            if (input.name === 'AI_BASE_URL') inactive = !aiProvider || aiProvider.value !== 'openai_compatible';
+            input.closest('.generic-form-field').hidden = inactive;
+            input.disabled = inactive;
+        });
+    }
+    if (aiProvider) aiProvider.addEventListener('change', syncAiFields);
+    if (transcriptionProvider) {
+        transcriptionProvider.addEventListener('change', function () {
+            var model = form.elements.namedItem('TRANSCRIPTION_MODEL');
+            var defaults = pageConfig.transcriptionDefaultModels || {};
+            if (model && defaults[transcriptionProvider.value]
+                && (!model.value.trim() || Object.values(defaults).indexOf(model.value.trim()) !== -1)) {
+                model.value = defaults[transcriptionProvider.value];
+            }
+            syncAiFields();
+        });
+    }
+    syncAiFields();
+    var enableDatabase = document.getElementById('omoServerEnvEnableDatabase');
+    if (enableDatabase) {
+        enableDatabase.addEventListener('change', function () {
+            form.querySelectorAll('[data-server-env-database-access]').forEach(function (input) {
+                input.disabled = !enableDatabase.checked;
+            });
+        });
+    }
+
+    // Reveal the first invalid field before asking the browser to focus it.
+    form.noValidate = true;
+
     var feedback = document.getElementById('omoServerEnvFeedback');
     var submitButton = document.getElementById('omoServerEnvSubmit');
     var firstInput = form.querySelector('input, select, textarea');
@@ -189,6 +233,31 @@ window.commonPageScripts["/omo/api/parameters/server_env_popup.js"] = function (
 
     form.addEventListener('submit', function (event) {
         event.preventDefault();
+        if (!form.checkValidity()) {
+            var invalidField = form.querySelector(':invalid');
+            var panel = invalidField && invalidField.closest('[data-generic-tab-panel]');
+            var tab = panel && tabs && tabs.querySelector('[data-generic-tab-target="' + panel.id + '"]');
+            if (tab) {
+                tab.click();
+            }
+            if (invalidField && technical && technical.contains(invalidField)) {
+                var accordions = [];
+                var accordion = invalidField.closest('[data-generic-accordion]');
+                while (accordion && technical.contains(accordion)) {
+                    accordions.unshift(accordion);
+                    accordion = accordion.parentElement.closest('[data-generic-accordion]');
+                }
+                accordions.forEach(function (node) {
+                    if (node.classList.contains('is-collapsed')) {
+                        node.querySelector('[data-generic-accordion-toggle]').click();
+                    }
+                });
+            }
+            if (invalidField) {
+                invalidField.reportValidity();
+            }
+            return;
+        }
         if (submitButton) {
             submitButton.disabled = true;
         }
@@ -244,6 +313,12 @@ window.commonPageScripts["/omo/api/parameters/server_env_popup.js"] = function (
             form.querySelectorAll('input[type="password"]').forEach(function (input) {
                 input.value = '';
             });
+            if (enableDatabase) {
+                enableDatabase.checked = false;
+                form.querySelectorAll('[data-server-env-database-access]').forEach(function (input) {
+                    input.disabled = true;
+                });
+            }
         })
         .catch(function () {
             setFeedback(feedback, texts.saveFailed || ('Impossible d enregistrer le fichier ' + envTargetLabel + '.'), 'error');

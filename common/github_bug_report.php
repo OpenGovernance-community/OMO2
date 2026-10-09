@@ -211,7 +211,22 @@ if (!function_exists('githubBugReportIsConfigured')) {
 if (!function_exists('githubBugReportUiIsEnabled')) {
     function githubBugReportUiIsEnabled()
     {
-        return githubBugReportIsConfigured() && patreonSupportUiIsEnabled();
+        return githubBugReportIsConfigured() && (
+            (function_exists('commonCurrentUserIsSiteAdminModeEnabled') && commonCurrentUserIsSiteAdminModeEnabled())
+            || patreonSupportUiIsEnabled()
+        );
+    }
+}
+
+if (!function_exists('githubBugReportUserCanSubmit')) {
+    function githubBugReportUserCanSubmit($userId): bool
+    {
+        $userId = (int)$userId;
+        if ($userId <= 0) return false;
+        if (function_exists('commonUserHasSiteAdminOverride') && commonUserHasSiteAdminOverride($userId)) return true;
+        if (!\dbObject\UserPatreon::isStorageAvailable()) return false;
+        $connection = \dbObject\UserPatreon::findByUserId($userId);
+        return $connection !== false && $connection->isConnected();
     }
 }
 

@@ -19,12 +19,10 @@ $destination = githubBugReportGetDestinationSummary();
 $configurationIssues = githubBugReportGetConfigurationIssues();
 $isConfigured = githubBugReportIsConfigured();
 $featureEnabled = githubBugReportUiIsEnabled();
-$patreonConnection = false;
 $patreonConnected = false;
 
 if ($currentUserId > 0 && $featureEnabled) {
-    $patreonConnection = \dbObject\UserPatreon::findByUserId($currentUserId);
-    $patreonConnected = $patreonConnection !== false && $patreonConnection->isConnected();
+    $patreonConnected = githubBugReportUserCanSubmit($currentUserId);
 }
 ?>
 <div class="omo-bug-report-popup generic-stack generic-stack--flush" id="omoBugReportPopup" data-submit-url="/omo/api/bug_report_submit.php">
@@ -69,7 +67,7 @@ if ($currentUserId > 0 && $featureEnabled) {
                     <?php endforeach; ?>
                 </ul>
             <?php endif; ?>
-            <?php if (!patreonSupportUiIsEnabled()): ?>
+            <?php if (!commonCurrentUserIsSiteAdminModeEnabled() && !patreonSupportUiIsEnabled()): ?>
                 <p><?= omoApiEscape(githubBugReportT('patreon_required')) ?></p>
             <?php endif; ?>
         </div>

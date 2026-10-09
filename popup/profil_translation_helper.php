@@ -372,6 +372,14 @@ function profilPopupGetSourceLang(): array
             'text' => 'Nom Patreon',
             'context' => 'Label shown for the Patreon full name summary item.',
         ],
+        'profile.popup.patreon.user_id.label' => [
+            'text' => 'ID utilisateur Patreon',
+            'context' => 'Read-only numeric identity returned by Patreon for the linked account, shown in its own OMO profile.',
+        ],
+        'profile.popup.patreon.user_id.help' => [
+            'text' => 'Ce code numerique est fourni par Patreon lors de la connexion du compte. Ce n est ni votre nom public, ni votre adresse e-mail, ni l ID de campagne. Le createur peut copier cet ID dans les parametres serveur, champ ID utilisateur Patreon du createur, pour activer son acces IA sans contribution.',
+            'context' => 'Help bubble explaining the linked Patreon identity and where the creator can use it.',
+        ],
         'profile.popup.patreon.status.label' => [
             'text' => "Statut d'abonnement",
             'context' => 'Label shown for the Patreon subscription status summary item.',
