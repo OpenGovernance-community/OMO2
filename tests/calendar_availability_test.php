@@ -21,6 +21,7 @@ function availabilityExpect(bool $condition, string $message): void
 function availabilityFixture(string $class, array $values): DbObject
 {
     $object = new $class();
+    if ($class === User::class) { $object->set('active', 1); }
     foreach ($values as $field => $value) { $object->set($field, $value); }
     $result = $object->save();
     availabilityExpect(is_array($result) && !empty($result['status']), 'Fixture save failed: ' . $class . ' ' . json_encode($result));
@@ -204,6 +205,7 @@ try {
     if (in_array($argv[1] ?? '', ['--render', '--form', '--post-warning', '--preview'], true)) {
         $busy->set('active', 1); $busy->set('is_all_day', 0); $busy->save();
         $_SESSION['currentUser'] = (int)$guest->getId();
+        $_SESSION['auth_security_version'] = (int)$guest->get('security_version');
         $_SESSION['currentOrganization'] = (int)$org->getId();
         $_SERVER['HTTP_HOST'] = 'localtest.me';
         $_SERVER['REQUEST_METHOD'] = in_array($argv[1], ['--render', '--form'], true) ? 'GET' : 'POST';
@@ -224,7 +226,8 @@ try {
         } elseif ($argv[1] === '--render') {
             $bufferedEvent = availabilityFixture(Event::class, ['IDorganization' => $org->getId(), 'IDuser' => $guest->getId(),
                 'title' => 'Buffered fixture', 'start_at' => $day->setTime(10, 0), 'end_at' => $day->setTime(11, 0),
-                'active' => 1, 'status' => Event::STATUS_CONFIRMED, 'preparation_minutes' => 15, 'closing_minutes' => 20]);
+                'active' => 1, 'status' => Event::STATUS_CONFIRMED]);
+            availabilityExpect($bufferedEvent->saveTimeBuffers((int)$guest->getId(), 15, 20), 'Save viewer personal times.');
             ob_start();
             (static function (): void {
                 global $lang, $sourceLang;

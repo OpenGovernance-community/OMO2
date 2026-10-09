@@ -6,14 +6,16 @@ class ArrayEvent extends ArrayDbObject
     public function loadBusyForUserDateRange(int $userId, \DateTimeInterface $start, \DateTimeInterface $end): void
     {
         $this->exchangeArray([]);
-        $rows = Event::fetchAll('SELECT e.id FROM `event` e WHERE e.active = 1 AND e.status <> :cancelled
+        $rows = Event::fetchAll('SELECT e.id FROM `event` e
+            LEFT JOIN event_time_buffer b ON b.IDevent = e.id AND b.IDuser = :buffer_user
+            WHERE e.active = 1 AND e.status <> :cancelled
             AND DATE_SUB(CASE WHEN e.is_all_day = 1 THEN DATE(e.start_at) ELSE e.start_at END,
-                INTERVAL e.preparation_minutes MINUTE) < :end AND DATE_ADD((CASE WHEN e.is_all_day = 1
+                INTERVAL COALESCE(b.preparation_minutes, 0) MINUTE) < :end AND DATE_ADD((CASE WHEN e.is_all_day = 1
                 THEN DATE_ADD(DATE(COALESCE(e.end_at, e.start_at)), INTERVAL 1 DAY)
-                ELSE COALESCE(e.end_at, DATE_ADD(e.start_at, INTERVAL 1 HOUR)) END), INTERVAL e.closing_minutes MINUTE) > :start
+                ELSE COALESCE(e.end_at, DATE_ADD(e.start_at, INTERVAL 1 HOUR)) END), INTERVAL COALESCE(b.closing_minutes, 0) MINUTE) > :start
             AND (e.IDuser = :owner OR EXISTS (SELECT 1 FROM user_organization uo
                 WHERE uo.IDorganization = e.IDorganization AND uo.IDuser = :member AND uo.active = 1))',
-            ['cancelled' => Event::STATUS_CANCELLED, 'start' => $start, 'end' => $end, 'owner' => $userId, 'member' => $userId]);
+            ['buffer_user' => $userId, 'cancelled' => Event::STATUS_CANCELLED, 'start' => $start, 'end' => $end, 'owner' => $userId, 'member' => $userId]);
         if (!is_array($rows)) { throw new \RuntimeException('storage'); }
         foreach ($rows as $row) {
             $event = new Event();
@@ -44,7 +46,7 @@ class ArrayEvent extends ArrayDbObject
                 $organization = new Organization();
                 $labels[$otherId] = $organization->load($otherId) ? (string)$organization->get('name') : '';
             }
-            $interval = $event->getBusyInterval();
+            $interval = $event->getBusyInterval($userId);
             if ($interval === null || $labels[$otherId] === '') { continue; }
             $blocks[] = ['title' => $labels[$otherId], 'start' => $interval[0], 'end' => $interval[1], 'allDay' => (bool)$event->get('is_all_day')];
         }

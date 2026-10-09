@@ -261,6 +261,7 @@ $canDelete = $currentUserId > 0
             : commonCurrentUserHasOrganizationAccess($organizationId)
     );
 $canEdit = omoCalendarCanEditEvent($event, $organizationId, $currentUserId, $rootHolon, false);
+$canOpenEditor = $canEdit || $event->canEditTimeBuffers($currentUserId);
 $editContextHolonId = $currentHolonId > 0 ? $currentHolonId : $eventHolonId;
 $editUrl = '/omo/api/calendar/create.php?oid=' . rawurlencode((string)$organizationId);
 if ($editContextHolonId > 0) {
@@ -342,8 +343,8 @@ $invitationContext = [
         data-omo-calendar-drawer-description=""
     >
         <?php require_once dirname(__DIR__, 3) . '/common/object_mail/ui.php'; omoObjectMailButton($organizationId, 'event', (int)$event->getId(), 'data-omo-calendar-drawer-action'); ?>
-        <?php if ($canEdit || $canDelete): ?>
-            <?php if ($canEdit): ?>
+        <?php if ($canOpenEditor || $canDelete): ?>
+            <?php if ($canOpenEditor): ?>
                 <button
                     type="button"
                     class="generic-action-button generic-action-button--main"
