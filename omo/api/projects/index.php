@@ -820,20 +820,12 @@ $projectTexts = [
     'historyError' => omoProjectsT('projects.history.error'),
     'documentsAdd' => omoProjectsT('projects.detail.documents.add'),
     'documentsPickerTitle' => omoProjectsT('projects.detail.documents.picker_title'),
-    'documentsPickerTabs' => omoProjectsT('projects.detail.documents.picker_tabs'),
-    'documentsPickerExisting' => omoProjectsT('projects.detail.documents.picker_existing'),
-    'documentsPickerNew' => omoProjectsT('projects.detail.documents.picker_new'),
     'documentsPickerSearch' => omoProjectsT('projects.detail.documents.picker_search'),
     'documentsPickerVisible' => omoProjectsT('projects.detail.documents.picker_visible'),
     'documentsPickerNone' => omoProjectsT('projects.detail.documents.picker_none'),
     'documentsPickerAttach' => omoProjectsT('projects.detail.documents.picker_attach'),
-    'documentsPickerSelectRequired' => omoProjectsT('projects.detail.documents.picker_select_required'),
     'documentsPickerError' => omoProjectsT('projects.detail.documents.picker_error'),
     'documentsPickerAttachError' => omoProjectsT('projects.detail.documents.picker_attach_error'),
-    'documentsPickerCreateError' => omoProjectsT('projects.detail.documents.picker_create_error'),
-    'documentsPickerTemplateHint' => omoProjectsT('projects.detail.documents.picker_template_hint'),
-    'documentsPickerBlank' => omoProjectsT('projects.detail.documents.picker_blank'),
-    'documentsPickerTemplateError' => omoProjectsT('projects.detail.documents.picker_template_error'),
     'documentsRemoveError' => omoProjectsT('projects.detail.documents.remove_error'),
     'taskDeleteConfirm' => omoProjectsT('projects.detail.task.delete_confirm'),
     'archivesTitle' => omoProjectsT('projects.archives.title'),
@@ -1309,3 +1301,4 @@ $projectTexts = [
 <script src="<?= commonAssetUrl('/common/choice/change-details.js') ?>"></script>
 <script src="/common/chat/thread.js?v=20260910-project-chat"></script>
 <script src="<?= commonAssetUrl('/omo/api/projects/projects.js') ?>"></script>
+<script src="<?= commonAssetUrl('/common/document/embed-picker.js') ?>"></script>

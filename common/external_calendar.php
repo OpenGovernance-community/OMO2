@@ -647,6 +647,8 @@ function commonExternalCalendarParseEvents($calendarData, $etag = '', $strict = 
         }
         $parsed[$sourceKey] = [
             'source_key' => $sourceKey,
+            'single_source_prefix' => !isset($properties['RRULE']) && !isset($properties['RDATE'])
+                && !isset($properties['RECURRENCE-ID']) ? $uid . '|' : null,
             'source_etag' => trim((string)$etag),
             'title' => trim((string)commonExternalCalendarUnescapeText($properties['SUMMARY']['value'] ?? '')) ?: 'Evenement externe',
             'description' => trim((string)commonExternalCalendarUnescapeText($properties['DESCRIPTION']['value'] ?? '')),
@@ -762,7 +764,7 @@ function commonExternalCalendarSynchronize(ExternalCalendar $calendar, $rangeSta
             throw new \RuntimeException('Impossible de preparer les evenements importes.');
         }
         foreach ((array)$parsed['events'] as $values) {
-            $event = ExternalCalendarEvent::findForCalendarSourceKey($calendarId, (string)$values['source_key']);
+            $event = ExternalCalendarEvent::findForImportedValues($calendarId, $values);
             if (!$event instanceof ExternalCalendarEvent) {
                 $event = new ExternalCalendarEvent();
                 $event->set('IDexternalcalendar', $calendarId);
@@ -777,6 +779,7 @@ function commonExternalCalendarSynchronize(ExternalCalendar $calendar, $rangeSta
                 throw new \RuntimeException('Impossible d enregistrer les evenements importes.');
             }
         }
+        \dbObject\ProjectExternalEvent::synchronizeForCalendar($calendarId, $rangeStart, $rangeEnd);
         $pdo->commit();
     } catch (\Throwable $exception) {
         if ($pdo->inTransaction()) {

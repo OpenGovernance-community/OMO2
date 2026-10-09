@@ -540,11 +540,6 @@
 		echo '<script src="/shared_functions.js"></script>';
 		echo commonStylesheetTags('/shared_css.css');
 		
-		//<!-- Script Paypal -->
-		if (!empty($GLOBALS["paypalClientId"])) {
-			echo '<script src="https://www.paypal.com/sdk/js?client-id='.rawurlencode($GLOBALS["paypalClientId"]).'&vault=true&intent=subscription" data-sdk-integration-source="button-factory" data-namespace="paypal_sdk"></script>';
-			echo '<script src="https://www.paypalobjects.com/donate/sdk/donate-sdk.js" charset="UTF-8"></script>';
-		}
 	}
 	
 	// Fonction de vérification de login, permettant d'une part d'initialiser 
@@ -723,38 +718,29 @@
 		
 			
 			// Demande à l'IA une traduction du texte
-			$openAiApiKey = trim((string)($GLOBALS["OpenAI"] ?? ""));
-			if ($openAiApiKey === "") {
-				return $text;
-			}
-			$open_ai = null;
-			$translationModel = (!empty($GLOBALS["openAiTranslationModel"]) ? $GLOBALS["openAiTranslationModel"] : MODEL);
-			try {
-			$result = $open_ai->chat([
-				'model' => $translationModel,
-				'messages' => $context,
-				'temperature' => 0.2,
-			   'max_tokens' => 2000,
-			]);
-			
-			$ret = json_decode($result, true);
-			if (isset($ret['error'])) {
-				return $text;
-			}
-			if (! isset($ret['choices'][0]['message']['content'])) {
-				return $text;
-			}
-			
+            require_once __DIR__ . '/common/ai_client.php';
+            $apiKey = commonAiGetApiKey();
+            if ($apiKey === '') return $text;
+            try {
+                $result = commonAiRequestText($apiKey, [
+                    'model' => commonAiGetModel(true),
+                    'messages' => $context,
+                    'temperature' => 0.2,
+                    'max_tokens' => 2000,
+                ]);
+                if (empty($result['status'])) return $text;
+                $translatedText = (string)$result['content'];
+
 			// Si la traduction a l'air correct (à peu près le même nombre de caractères)
-			if (strlen($ret['choices'][0]['message']['content'])<strlen($text)*2 && strlen($ret['choices'][0]['message']['content'])>strlen($text)/2) {
+			if (strlen($translatedText)<strlen($text)*2 && strlen($translatedText)>strlen($text)/2) {
 				// Enregistre les infos dans l'objet
-				$translation->set("value",$ret['choices'][0]['message']['content']);
+				$translation->set("value",$translatedText);
 				$translation->set("original",$text);
 				$translation->set("uid",$language."-".$id);			
 				$translation->save();
-				$_SESSION[$language."-".$id]=$ret['choices'][0]['message']['content'];
+				$_SESSION[$language."-".$id]=$translatedText;
 			}
-			return $ret['choices'][0]['message']['content'];
+			return $translatedText;
 			} catch (\Throwable $exception) {
 				return $text;
 			}

@@ -46,16 +46,25 @@ if (
 $documents = omoProjectsGetVisibleDocuments($project, $organizationId, $projectHolon);
 $currentUserId = (int)commonGetCurrentUserId();
 $canCreateDocument = !$isArchivedProject && omoProjectsCanCreateDocument($project, $currentUserId);
-$createDocumentUrl = '/omo/api/projects/document_picker.php?oid=' . rawurlencode((string)$organizationId)
+$importDocumentUrl = '/omo/api/projects/document_picker.php?oid=' . rawurlencode((string)$organizationId)
     . '&id=' . rawurlencode((string)$projectId);
+$createDocumentUrl = '/omo/api/documents/create.php?oid=' . rawurlencode((string)$organizationId)
+    . '&project_id=' . rawurlencode((string)$projectId) . '&editor_host=project';
 if ($projectHolon instanceof Holon) {
     $createDocumentUrl .= '&cid=' . rawurlencode((string)(int)$projectHolon->getId());
+    $importDocumentUrl .= '&cid=' . rawurlencode((string)(int)$projectHolon->getId());
 }
 $createDocumentButton = '<button type="button" class="generic-action-button generic-action-button--main"'
     . ' data-omo-project-detail-add-document'
     . ' data-omo-project-detail-add-document-url="' . omoApiEscape($createDocumentUrl) . '">'
     . omoApiEscape(omoProjectsT('projects.detail.documents.new'))
     . '</button>';
+$createDocumentButton = '<div class="generic-menu generic-menu--split" data-omo-project-detail-document-menu>' . $createDocumentButton
+    . '<button type="button" class="generic-menu-toggle" data-omo-project-detail-document-menu-toggle aria-expanded="false"'
+    . ' aria-label="' . omoApiEscape(omoProjectsT('projects.detail.documents.menu')) . '">&#9662;</button>'
+    . '<div class="generic-menu-panel" data-omo-project-detail-document-menu-panel hidden>'
+    . '<button type="button" class="generic-menu-item" data-omo-project-import-document-url="' . omoApiEscape($importDocumentUrl) . '">'
+    . omoApiEscape(omoProjectsT('projects.detail.documents.picker_title')) . '</button></div></div>';
 if (count($documents) === 0) {
     echo '<div class="omo-project-detail__documents-empty">'
         . '<h3 class="generic-card-title generic-card-title--medium">' . omoApiEscape(omoProjectsT('projects.detail.documents.empty')) . '</h3>';

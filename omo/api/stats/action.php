@@ -284,6 +284,15 @@ $context['pvMeetingPermission'] = commonResolvePvMeetingPermissionContext($organ
 $action = trim((string)($_POST['stats_action'] ?? $_POST['action'] ?? ''));
 
 if ($action === 'save_indicator') {
+    $projectId = max(0, (int)($_POST['project_id'] ?? 0));
+    $project = null;
+    if ($projectId > 0) {
+        require_once dirname(__DIR__) . '/projects/shared.php';
+        $project = omoProjectsLoadManagedResourceProject($organizationId, $projectId);
+        if (!$project) {
+            omoStatsActionRespond(false, omoStatsT('stats.error.forbidden'), [], 403);
+        }
+    }
     $indicatorId = isset($_POST['id']) && is_numeric($_POST['id']) ? (int)$_POST['id'] : 0;
     $indicator = $indicatorId > 0 ? omoStatsLoadIndicator($indicatorId, $organizationId) : new StatIndicator();
 
@@ -508,6 +517,10 @@ if ($action === 'save_indicator') {
     $indicator->set('measurement_schedule', $measurementSchedule);
     $indicator->set('chart_min_value', $chartMinValue);
     $indicator->set('show_cumulative', !empty($_POST['show_cumulative']) ? 1 : 0);
+    if (($project || $indicator->hasProjectAssociation())
+        && ($indicatorId <= 0 || !empty($_POST['project_visibility_present']) || array_key_exists('project_visible_in_holon', $_POST))) {
+        $indicator->set('project_visible_in_holon', !empty($_POST['project_visible_in_holon']) ? 1 : 0);
+    }
 
     $pdo = \dbObject\DbObject::getPdo();
     $startedTransaction = false;
@@ -639,6 +652,19 @@ if ($action === 'save_indicator') {
                 $name,
                 array_merge([$indicator], $ethercalcAdditionalGroupIndicators)
             );
+        }
+
+        if ($project) {
+            $link = new \dbObject\ProjectIndicator();
+            if (!$link->load([['IDproject', $projectId], ['IDstatindicator', (int)$indicator->getId()]])) {
+                $link->set('IDproject', $projectId);
+                $link->set('IDstatindicator', (int)$indicator->getId());
+                $linkResult = $link->save();
+                if (!is_array($linkResult) || empty($linkResult['status'])) {
+                    throw new \RuntimeException(omoStatsT('stats.error.save'));
+                }
+                $project->recordAssociationHistory('indicator', (int)$indicator->getId(), $name, 'added', $currentUserId);
+            }
         }
 
         if ($startedTransaction && $pdo && $pdo->inTransaction()) {

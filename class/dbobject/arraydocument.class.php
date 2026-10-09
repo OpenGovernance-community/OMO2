@@ -326,7 +326,7 @@
 			}
 
 			$rows = \dbObject\DbObject::fetchAll(
-				'SELECT DISTINCT `IDdocument` FROM `project_document` WHERE `IDdocument` IN (' . implode(', ', $placeholders) . ')',
+				'SELECT `IDdocument` FROM `project_document` WHERE `IDdocument` IN (' . implode(', ', $placeholders) . ') GROUP BY `IDdocument` HAVING COUNT(DISTINCT `IDproject`) = 1',
 				$params
 			);
 			if (!is_array($rows) || count($rows) === 0) {
@@ -350,7 +350,7 @@
 
 					$documentId = (int)$document->getId();
 					return !isset($projectDocumentIds[$documentId])
-						|| $document->isVisibleInHolonWhenProjectDocument();
+						|| (int)$document->get('project_visible_in_holon') === 1;
 				}
 			)));
 		}

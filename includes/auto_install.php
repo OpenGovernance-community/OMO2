@@ -2,6 +2,7 @@
 
 require_once dirname(__DIR__) . '/db/migrations.php';
 require_once dirname(__DIR__) . '/common/auth.php';
+require_once __DIR__ . '/server_env_admin.php';
 
 function autoInstallBootstrap($envPath)
 {
@@ -108,105 +109,22 @@ function autoInstallHandleRequest($envPath)
 function autoInstallGetFieldDefinitions()
 {
     static $definitions = null;
-
     if ($definitions !== null) {
         return $definitions;
     }
 
     $exampleDefaults = autoInstallReadEnvDefaults(dirname(__DIR__) . '/.env.example');
-
+    $fields = serverEnvAdminGetFieldMap();
     $definitions = [
         'general' => [
-            'title' => 'Parametres generaux',
-            'intro' => 'Ces valeurs servent a initialiser le site. Les valeurs proposees viennent du fichier .env.example quand il existe.',
-            'fields' => [
-                [
-                    'key' => 'SITE_TITLE',
-                    'label' => 'Titre du site',
-                    'type' => 'text',
-                    'required' => false,
-                ],
-                [
-                    'key' => 'HOME_TITLE',
-                    'label' => 'Titre de la page d accueil',
-                    'type' => 'text',
-                    'required' => false,
-                ],
-                [
-                    'key' => 'APP_LANG',
-                    'label' => 'Langue par defaut',
-                    'type' => 'select',
-                    'required' => false,
-                    'options' => [
-                        'FR' => 'FR',
-                        'EN' => 'EN',
-                    ],
-                ],
-                [
-                    'key' => 'ORGANIZATION_SUBDOMAIN_ROUTING',
-                    'label' => 'Sous-domaines par organisation',
-                    'type' => 'select',
-                    'required' => false,
-                    'options' => [
-                        'true' => 'Oui',
-                        'false' => 'Non',
-                    ],
-                    'help' => 'Active les URL du type orgname.domaine.com. Cela demande une configuration speciale de l hebergement, avec DNS wildcard et serveur web capable d accepter les sous-domaines.',
-                ],
-                [
-                    'key' => 'COOKIE_SCOPE_MODE',
-                    'label' => 'Portee des cookies',
-                    'type' => 'select',
-                    'required' => false,
-                    'options' => [
-                        'auto' => 'Auto',
-                        'host' => 'Host',
-                        'environment' => 'Environment',
-                        'parent' => 'Parent',
-                    ],
-                    'help' => 'Auto isole par defaut dev, beta et deploy en host-only. Environment partage dans *.dev.domaine.tld. Parent partage dans *.domaine.tld. Host force un cookie limite au host courant.',
-                ],
-                [
-                    'key' => 'COOKIE_ROOT_HOST',
-                    'label' => 'Racine cookies',
-                    'type' => 'text',
-                    'required' => false,
-                    'placeholder' => 'dev.opengov.tools',
-                    'help' => 'Optionnel. Si renseigne, force le partage des cookies a cette racine exacte, par exemple dev.opengov.tools pour partager entre dev.opengov.tools et *.dev.opengov.tools sans toucher a la prod.',
-                ],
-            ],
+            'title' => 'Le site',
+            'intro' => 'L adresse publique sert aux liens de connexion. Les autres reglages pourront etre completes apres l installation.',
+            'fields' => [],
         ],
         'database' => [
             'title' => 'Base de donnees',
-            'intro' => 'Ces champs sont obligatoires. L installation verifie la connexion avant d enregistrer le fichier .env.',
-            'fields' => [
-                [
-                    'key' => 'DB_HOST',
-                    'label' => 'Serveur MySQL',
-                    'type' => 'text',
-                    'required' => true,
-                    'placeholder' => 'localhost ou db',
-                ],
-                [
-                    'key' => 'DB_NAME',
-                    'label' => 'Nom de la base',
-                    'type' => 'text',
-                    'required' => true,
-                ],
-                [
-                    'key' => 'DB_USER',
-                    'label' => 'Utilisateur MySQL',
-                    'type' => 'text',
-                    'required' => true,
-                ],
-                [
-                    'key' => 'DB_PASS',
-                    'label' => 'Mot de passe MySQL',
-                    'type' => 'password',
-                    'required' => true,
-                    'placeholder' => 'Mot de passe MySQL',
-                ],
-            ],
+            'intro' => 'Acces MySQL fournis par votre hebergeur. La connexion est verifiee avant la creation du fichier .env.',
+            'fields' => [],
         ],
         'admin' => [
             'title' => 'Compte administrateur',
@@ -234,15 +152,6 @@ function autoInstallGetFieldDefinitions()
                     'persist' => false,
                 ],
                 [
-                    'key' => 'INSTALL_ADMIN_USERNAME',
-                    'label' => "Nom d'utilisateur",
-                    'type' => 'text',
-                    'required' => false,
-                    'persist' => false,
-                    'placeholder' => 'Optionnel',
-                    'help' => "Si vide, le nom d'utilisateur sera derive de l adresse e-mail.",
-                ],
-                [
                     'key' => 'INSTALL_ADMIN_PASSWORD',
                     'label' => 'Mot de passe',
                     'type' => 'password',
@@ -262,191 +171,31 @@ function autoInstallGetFieldDefinitions()
             ],
         ],
         'mail' => [
-            'title' => 'E-mail',
-            'intro' => 'Optionnel mais recommande si le serveur doit envoyer des liens ou des notifications.',
-            'fields' => [
-                [
-                    'key' => 'MAIL_HOST',
-                    'label' => 'Serveur SMTP',
-                    'type' => 'text',
-                    'required' => false,
-                ],
-                [
-                    'key' => 'MAIL_PORT',
-                    'label' => 'Port SMTP',
-                    'type' => 'number',
-                    'required' => false,
-                ],
-                [
-                    'key' => 'MAIL_SECURE',
-                    'label' => 'Securite SMTP',
-                    'type' => 'text',
-                    'required' => false,
-                    'placeholder' => 'STARTTLS/TLS, SSL ou vide',
-                ],
-                [
-                    'key' => 'MAIL_AUTH',
-                    'label' => 'Authentification SMTP',
-                    'type' => 'select',
-                    'required' => false,
-                    'options' => [
-                        'true' => 'Oui',
-                        'false' => 'Non',
-                    ],
-                ],
-                [
-                    'key' => 'MAIL_CHARSET',
-                    'label' => 'Jeu de caracteres e-mail',
-                    'type' => 'text',
-                    'required' => false,
-                ],
-                [
-                    'key' => 'MAIL_USER',
-                    'label' => 'Utilisateur SMTP',
-                    'type' => 'text',
-                    'required' => false,
-                ],
-                [
-                    'key' => 'MAIL_PASS',
-                    'label' => 'Mot de passe SMTP',
-                    'type' => 'password',
-                    'required' => false,
-                ],
-            ],
-        ],
-        'ai' => [
-            'title' => 'IA',
-            'intro' => 'Optionnel. Sans ces cles, les fonctions liees a OpenAI resteront indisponibles.',
-            'fields' => [
-                [
-                    'key' => 'OPENAI_API_KEY',
-                    'label' => 'Cle OpenAI',
-                    'type' => 'text',
-                    'required' => false,
-                ],
-                [
-                    'key' => 'OPENAI_UPLOAD_API_KEY',
-                    'label' => 'Cle OpenAI upload',
-                    'type' => 'text',
-                    'required' => false,
-                    'help' => 'Si vide, le site reutilisera OPENAI_API_KEY.',
-                ],
-                [
-                    'key' => 'OPENAI_MODEL',
-                    'label' => 'Modele OpenAI',
-                    'type' => 'text',
-                    'required' => false,
-                ],
-                [
-                    'key' => 'OPENAI_TRANSLATION_MODEL',
-                    'label' => 'Modele de traduction OpenAI',
-                    'type' => 'text',
-                    'required' => false,
-                ],
-                [
-                    'key' => 'STADIA_MAPS_API_KEY',
-                    'label' => 'Cle Stadia Maps',
-                    'type' => 'text',
-                    'required' => false,
-                    'help' => 'Optionnel. Utile pour les cartes Leaflet hors localhost, par exemple sur localtest.me.',
-                ],
-            ],
-        ],
-        'integrations' => [
-            'title' => 'Integrations optionnelles',
-            'intro' => 'Vous pouvez laisser ces champs vides. Les fonctions associees seront simplement limitees tant que les cles ne sont pas renseignees.',
-            'fields' => [
-                [
-                    'key' => 'PAYPAL_CLIENT_ID',
-                    'label' => 'Client ID PayPal',
-                    'type' => 'text',
-                    'required' => false,
-                ],
-                [
-                    'key' => 'TELEGRAM_BOT_TOKEN',
-                    'label' => 'Token Telegram',
-                    'type' => 'text',
-                    'required' => false,
-                ],
-                [
-                    'key' => 'PATREON_CLIENT_ID',
-                    'label' => 'Client ID Patreon',
-                    'type' => 'text',
-                    'required' => false,
-                ],
-                [
-                    'key' => 'PATREON_CLIENT_SECRET',
-                    'label' => 'Client secret Patreon',
-                    'type' => 'password',
-                    'required' => false,
-                ],
-                [
-                    'key' => 'PATREON_CONNECT_URL',
-                    'label' => 'URL centrale de connexion Patreon',
-                    'type' => 'text',
-                    'required' => false,
-                ],
-                [
-                    'key' => 'PATREON_CONNECT_ALLOWED_ORIGINS',
-                    'label' => 'Domaines de retour Patreon autorisés',
-                    'type' => 'text',
-                    'required' => false,
-                ],
-                [
-                    'key' => 'PATREON_REDIRECT_URI',
-                    'label' => 'Redirect URI Patreon',
-                    'type' => 'text',
-                    'required' => false,
-                ],
-                [
-                    'key' => 'PATREON_CREATOR_CAMPAIGN_ID',
-                    'label' => 'Campaign ID Patreon',
-                    'type' => 'text',
-                    'required' => false,
-                ],
-                [
-                    'key' => 'PATREON_USER_AGENT',
-                    'label' => 'User-Agent Patreon',
-                    'type' => 'text',
-                    'required' => false,
-                ],
-                [
-                    'key' => 'GITHUB_BUGREPORT_TOKEN',
-                    'label' => 'Token GitHub bug report',
-                    'type' => 'text',
-                    'required' => false,
-                ],
-                [
-                    'key' => 'GITHUB_BUGREPORT_REPO_OWNER',
-                    'label' => 'Repository owner GitHub',
-                    'type' => 'text',
-                    'required' => false,
-                ],
-                [
-                    'key' => 'GITHUB_BUGREPORT_REPO_NAME',
-                    'label' => 'Repository name GitHub',
-                    'type' => 'text',
-                    'required' => false,
-                ],
-                [
-                    'key' => 'GITHUB_BUGREPORT_LABELS',
-                    'label' => 'Labels GitHub',
-                    'type' => 'text',
-                    'required' => false,
-                    'placeholder' => 'bug,triage',
-                ],
-                [
-                    'key' => 'GITHUB_BUGREPORT_USER_AGENT',
-                    'label' => 'User-Agent GitHub',
-                    'type' => 'text',
-                    'required' => false,
-                ],
-            ],
+            'title' => 'Verification e-mail',
+            'intro' => 'SMTP necessaire pour verifier l adresse de l administrateur. Les identifiants ne sont requis que si le serveur demande une authentification.',
+            'fields' => [],
         ],
     ];
-
+    $setupKeys = [
+        'general' => ['SITE_TITLE', 'APP_LANG', 'AUTH_PUBLIC_URL'],
+        'database' => ['DB_HOST', 'DB_NAME', 'DB_USER', 'DB_PASS'],
+        'mail' => ['MAIL_HOST', 'MAIL_PORT', 'MAIL_SECURE', 'MAIL_AUTH', 'MAIL_USER', 'MAIL_PASS'],
+    ];
+    foreach ($setupKeys as $sectionKey => $keys) {
+        foreach ($keys as $key) {
+            $field = $fields[$key];
+            $field['required'] = in_array($key, ['AUTH_PUBLIC_URL', 'DB_HOST', 'DB_NAME', 'DB_USER', 'DB_PASS', 'MAIL_HOST', 'MAIL_PORT', 'MAIL_AUTH'], true);
+            if (!empty($field['secret'])) {
+                unset($field['help']);
+            }
+            if ($key === 'AUTH_PUBLIC_URL') {
+                $field['help'] = 'Origine HTTPS de ce site, par exemple https://exemple.org, sans chemin ni parametre. Elle sert aux e-mails de connexion et de recuperation. HTTP est accepte uniquement pour localhost et 127.0.0.1.';
+            }
+            $field['initial'] = ['SITE_TITLE' => $exampleDefaults['SITE_TITLE'] ?? 'OMO', 'APP_LANG' => 'FR', 'MAIL_PORT' => '587', 'MAIL_SECURE' => 'tls', 'MAIL_AUTH' => 'true'][$key] ?? '';
+            $definitions[$sectionKey]['fields'][] = $field;
+        }
+    }
     $definitions = autoInstallApplyExampleValues($definitions, $exampleDefaults);
-
     return $definitions;
 }
 
@@ -592,6 +341,10 @@ function autoInstallValidateValues(array $definitions, array $values, $envPath)
         $errors[] = 'Le dossier cible n est pas accessible en ecriture pour creer le fichier .env.';
     }
 
+    if (!serverEnvAdminIsValidPublicOrigin((string)($values['AUTH_PUBLIC_URL'] ?? ''))) {
+        $errors[] = 'L adresse publique doit etre une origine HTTPS sans chemin ni parametre. HTTP est reserve a localhost et 127.0.0.1.';
+    }
+
     if (!filter_var((string)($values['INSTALL_ADMIN_EMAIL'] ?? ''), FILTER_VALIDATE_EMAIL)) {
         $errors[] = 'L adresse e-mail de l administrateur est invalide.';
     }
@@ -628,7 +381,7 @@ function autoInstallValidateMailConfiguration(array $values)
         $errors[] = 'Le serveur SMTP est obligatoire pour verifier l envoi d e-mail.';
     }
 
-    if ($mailPort === '' || !ctype_digit($mailPort) || (int)$mailPort <= 0) {
+    if ($mailPort === '' || !ctype_digit($mailPort) || (int)$mailPort <= 0 || (int)$mailPort > 65535) {
         $errors[] = 'Le port SMTP doit etre renseigne avec une valeur numerique valide.';
     }
 
@@ -1145,49 +898,52 @@ function autoInstallEnsureAdminMemberships($userId, $email)
     }
 }
 
-function autoInstallWriteEnvFile($envPath, array $definitions, array $values)
+function autoInstallBuildEnvValues(array $definitions, array $values)
 {
-    $lines = [];
-
+    $envValues = autoInstallReadEnvDefaults(dirname(__DIR__) . '/.env.example');
+    // Example endpoints and contacts must not become active installation settings.
+    $envValues['ETHERPAD_URL'] = '';
+    $envValues['WEB_PUSH_VAPID_SUBJECT'] = '';
     foreach ($definitions as $section) {
-        $persistedFields = [];
-
         foreach ($section['fields'] as $field) {
             if (array_key_exists('persist', $field) && !$field['persist']) {
                 continue;
             }
-
             $key = (string)$field['key'];
             $value = (string)($values[$key] ?? '');
-            $isRequired = !empty($field['required']);
-
-            if (!$isRequired && $value === '') {
-                continue;
-            }
-
-            $persistedFields[] = $field;
-        }
-
-        if ($persistedFields === []) {
-            continue;
-        }
-
-        $lines[] = '# ' . $section['title'];
-
-        foreach ($persistedFields as $field) {
-            $key = (string)$field['key'];
-            $lines[] = $key . '=' . autoInstallEncodeEnvValue((string)($values[$key] ?? ''));
-        }
-
-        if ($lines[count($lines) - 1] !== '') {
-            $lines[] = '';
+            $envValues[$key] = $value === '' && empty($field['required']) && ($field['type'] ?? '') !== 'password'
+                ? (string)($envValues[$key] ?? '')
+                : $value;
         }
     }
+    foreach (['AUTH_RATE_LIMIT_SECRET', 'AUTH_TOTP_ENCRYPTION_KEY', 'EXTERNAL_CALENDAR_ENCRYPTION_KEY'] as $key) {
+        $envValues[$key] = bin2hex(random_bytes(32));
+    }
+    return $envValues;
+}
 
+function autoInstallWriteEnvFile($envPath, array $definitions, array $values)
+{
+    $envValues = autoInstallBuildEnvValues($definitions, $values);
+    $lines = file(dirname(__DIR__) . '/.env.example', FILE_IGNORE_NEW_LINES);
+    if ($lines === false) {
+        throw new RuntimeException('Impossible de lire le modele .env.example.');
+    }
+    $written = [];
+    foreach ($lines as &$line) {
+        $parsed = serverEnvAdminParseAssignmentLine($line);
+        if ($parsed !== null && array_key_exists($parsed['key'], $envValues)) {
+            $key = $parsed['key'];
+            $line = $key . '=' . autoInstallEncodeEnvValue($envValues[$key]);
+            $written[$key] = true;
+        }
+    }
+    unset($line);
+    foreach (array_diff_key($envValues, $written) as $key => $value) {
+        $lines[] = $key . '=' . autoInstallEncodeEnvValue($value);
+    }
     $content = rtrim(implode("\n", $lines)) . "\n";
-
-    $bytes = @file_put_contents($envPath, $content, LOCK_EX);
-    if ($bytes === false) {
+    if (@file_put_contents($envPath, $content, LOCK_EX) === false) {
         throw new RuntimeException('Impossible d ecrire le fichier .env.');
     }
 }
@@ -1601,6 +1357,7 @@ function autoInstallRenderPage(array $definitions, array $values, array $errors,
                                             class="generic-form-control"
                                             name="<?= htmlspecialchars($key, ENT_QUOTES, 'UTF-8') ?>"
                                             id="<?= htmlspecialchars($key, ENT_QUOTES, 'UTF-8') ?>"
+                                            <?= !empty($field['required']) ? 'required' : '' ?>
                                         >
                                             <?php if (empty($field['required'])): ?>
                                                 <option value=""<?= $fieldValue === '' ? ' selected' : '' ?>>Choisir si necessaire</option>
@@ -1713,7 +1470,7 @@ function autoInstallRenderPage(array $definitions, array $values, array $errors,
 
                 <section class="generic-section generic-section--stack">
                     <p class="generic-card-title generic-card-title--small">A savoir</p>
-                    <p class="auto-install-note">Les champs Patreon, Telegram, PayPal, OpenAI ou GitHub sont facultatifs. Les fonctions associees resteront simplement inactives tant que les cles ne sont pas definies.</p>
+                    <p class="auto-install-note">Apres connexion, ouvrez Parametres > Administration du serveur pour completer les services et les reglages avances. Les integrations sont optionnelles et les secrets techniques de base sont generes automatiquement.</p>
                     <p class="auto-install-note">La base cible doit etre vide ou deja correspondre au seed de demo. Sinon, l installation s arrete pour eviter d ecraser des donnees existantes.</p>
                 </section>
             </aside>
