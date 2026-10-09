@@ -159,6 +159,42 @@ class ControlActivity extends ControlTask
         ]);
     }
 
+    /** Deadline of an outstanding occurrence; a task completed late needs no reminder. */
+    public function getOverdueAt(\DateTimeImmutable $now): ?\DateTimeImmutable
+    {
+        $state = $this->getOccurrenceState($now);
+        if (($state['state'] ?? '') === 'missed' && ($state['missedOccurrenceAt'] ?? null) instanceof \DateTimeImmutable) {
+            $deadline = $this->getDeadlineAt($state['missedOccurrenceAt']);
+            return $now > $deadline ? $deadline : null;
+        }
+        $deadline = $state['deadlineAt'] ?? null;
+        return ($state['state'] ?? '') === 'due' && $deadline instanceof \DateTimeImmutable && $now > $deadline
+            ? $deadline : null;
+    }
+
+    public static function getOverdueForUser(int $organizationId, int $userId, ?\DateTimeImmutable $now = null): array
+    {
+        if ($organizationId <= 0 || $userId <= 0) return [];
+        $now = $now ?? new \DateTimeImmutable('now');
+        $activities = new ArrayControlActivity();
+        $activities->load(['where' => [
+            ['field' => 'IDorganization', 'value' => $organizationId],
+            ['field' => 'IDuser_responsible', 'value' => $userId],
+            ['field' => 'active', 'value' => 1],
+            ['field' => 'archived_at', 'op' => 'is null'],
+        ]]);
+        $overdue = [];
+        foreach ($activities as $activity) {
+            $overdueAt = $activity->getOverdueAt($now);
+            if ($overdueAt !== null) $overdue[] = ['activity' => $activity, 'overdueAt' => $overdueAt];
+        }
+        usort($overdue, static function (array $left, array $right): int {
+            return ($left['overdueAt'] <=> $right['overdueAt'])
+                ?: ((int)$left['activity']->getId() <=> (int)$right['activity']->getId());
+        });
+        return $overdue;
+    }
+
     public function getRegularity($limit = 12, $reference = null)
     {
         $now = $reference instanceof \DateTimeImmutable ? $reference : new \DateTimeImmutable('now');

@@ -204,6 +204,7 @@ if (!function_exists('omoProjectsSourceLang')) {
             'projects.detail.events.section.next_week' => ['text' => 'La semaine prochaine', 'context' => 'Project events section for events happening next week.'],
             'projects.detail.events.section.this_month' => ['text' => 'Ce mois', 'context' => 'Project events section for events happening later this month.'],
             'projects.detail.events.section.next_month' => ['text' => 'Le mois prochain', 'context' => 'Project events section for events happening next month.'],
+            'projects.detail.events.section.past' => ['text' => 'Evenements passes', 'context' => 'Project events section for past events, displayed after upcoming events.'],
             'projects.detail.events.month.1' => ['text' => 'Janvier', 'context' => 'Project events section label for January.'],
             'projects.detail.events.month.2' => ['text' => 'Février', 'context' => 'Project events section label for February.'],
             'projects.detail.events.month.3' => ['text' => 'Mars', 'context' => 'Project events section label for March.'],

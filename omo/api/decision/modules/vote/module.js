@@ -965,6 +965,7 @@ window.commonPageScripts["/omo/api/decision/modules/vote/module.js"] = function 
                                     }
 
                                     setFeedback(response.message || (payload.texts && payload.texts.success ? payload.texts.success : ''), false);
+                                    window.dispatchEvent(new CustomEvent('omo-decision-response-saved'));
 
                                     if (response.redirectUrl) {
                                         window.setTimeout(function () {
