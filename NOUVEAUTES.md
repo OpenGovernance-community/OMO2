@@ -1,5 +1,13 @@
 # Journal Des Nouveautes
 
+- Editeurs HTML / dictee (2026-10-09) : le placeholder disparait immediatement apres l insertion d une transcription ou de HTML, sans frappe supplementaire. Les insertions directes signalent aussi leur changement a la sauvegarde, une seule fois.
+
+- Memos / audio OpenAI (2026-10-09) : retrait du vidage anticipe de MediaRecorder avant son arret, qui laissait les fichiers WebM sans taille ni duree finales et provoquait le refus Audio file might be corrupted or unsupported. Validation avec un vrai enregistrement navigateur et le service OpenAI. Detection du format compatible PHP 8.5 sans finfo_close deprecie.
+
+- Super admin (2026-10-09) : le mode super admin actif leve les restrictions Patreon pour l IA, les domaines d organisation et le signalement de bugs, meme sans configuration Patreon locale. La desactivation du mode retablit les controles habituels ; les services IA et GitHub doivent toujours etre configures.
+
+- Memos / dictee IA (2026-10-09) : les actions IA conservent le focus dans Summernote lorsque leurs boutons se desactivent ; leurs infobulles ne bloquent plus les clics. Les erreurs de transcription affichent le message precis du serveur, meme sur une reponse HTTP en erreur. Progression conservee dans le formulaire, resultat dans les notifications partagees.
+
 - IA (2026-10-09) : Mistral rejoint les fournisseurs de texte ; Groq et Mistral rejoignent la transcription audio avec leurs propres adresses, modeles par defaut et format de requete adapte. Le choix Desactive pour le texte retire les outils correspondants et suspend les nouvelles traductions automatiques, en conservant les reglages et les traductions existantes. La transcription conserve son interrupteur independant. Un changement de service exige de saisir explicitement sa cle API.
 
 - IA (2026-10-09) : ajout du choix API compatible avec OpenRouter par defaut et une adresse de base HTTPS modifiable. Le champ apparait uniquement pour ce choix. Les requetes texte et traduction conservent le format Chat Completions et leurs modeles distincts ; une nouvelle destination demande de remplacer explicitement la cle API, sans reutiliser cette cle pour la transcription audio.

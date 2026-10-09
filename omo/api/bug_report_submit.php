@@ -271,9 +271,7 @@ if (!githubBugReportUiIsEnabled()) {
     exit;
 }
 
-$patreonConnection = \dbObject\UserPatreon::findByUserId($currentUserId);
-$patreonConnected = $patreonConnection !== false && $patreonConnection->isConnected();
-if (!$patreonConnected) {
+if (!githubBugReportUserCanSubmit($currentUserId)) {
     http_response_code(403);
     echo json_encode([
         'status' => false,

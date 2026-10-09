@@ -22,14 +22,11 @@ function commonOpenAiGetDefaultTranscriptionPrompt()
 function commonOpenAiDetectUploadedAudioMimeType(array $uploadedFile)
 {
     $tmpName = trim((string)($uploadedFile['tmp_name'] ?? ''));
-    if ($tmpName !== '' && is_file($tmpName) && function_exists('finfo_open')) {
-        $finfo = finfo_open(FILEINFO_MIME_TYPE);
-        if ($finfo) {
-            $mimeType = trim((string)finfo_file($finfo, $tmpName));
-            finfo_close($finfo);
-            if ($mimeType !== '') {
-                return strtolower($mimeType);
-            }
+    if ($tmpName !== '' && is_file($tmpName) && class_exists('finfo')) {
+        $finfo = new \finfo(FILEINFO_MIME_TYPE);
+        $mimeType = trim((string)$finfo->file($tmpName));
+        if ($mimeType !== '') {
+            return strtolower($mimeType);
         }
     }
 

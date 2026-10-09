@@ -1,7 +1,7 @@
 (function (window, document) {
     'use strict';
 
-    const OMO_SIMPLE_HTML_FIELD_VERSION = '20261008-html-editor-embed-links';
+    const OMO_SIMPLE_HTML_FIELD_VERSION = '20261009-html-editor-placeholder';
 
     if (
         window.omoSimpleHtmlField
@@ -1284,6 +1284,9 @@
         }
 
         function emitChange() {
+            if (initialized && $editor && state.placeholder) {
+                $editor.summernote('placeholder.update');
+            }
             const value = getValue();
             if (value === lastNotifiedValue) return;
             lastNotifiedValue = value;
@@ -1851,6 +1854,7 @@
                     saveRange();
                 }
 
+                emitChange();
                 return safeHtml;
             }
 

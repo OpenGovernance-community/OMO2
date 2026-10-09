@@ -429,7 +429,7 @@ $omoHolonTemplateTexts = [
 
 <?php if ($editorData !== null): ?>
 <script src="/omo/assets/js/sized-image-field.js"></script>
-<script src="/omo/assets/js/simple-html-field.js?v=20261008-html-editor-embed-links"></script>
+<script src="/omo/assets/js/simple-html-field.js?v=20261009-html-editor-placeholder"></script>
 <script src="/common/assets/multiline-list-paste.js"></script>
 <script src="/common/assets/property-list-conversion.js"></script>
 <script src="/common/assets/property-types.js"></script>

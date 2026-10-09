@@ -557,12 +557,21 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
     }
 
     function setDictationStatus(message, type) {
-        if (!dictationStatusNode) {
+        const text = String(message || '').trim();
+        const statusType = String(type || '').trim().toLowerCase();
+        if (text && (statusType === 'success' || statusType === 'error') && typeof window.commonNotify === 'function') {
+            if (dictationStatusNode) {
+                dictationStatusNode.hidden = true;
+                dictationStatusNode.textContent = '';
+                dictationStatusNode.classList.remove('is-live', 'is-error', 'is-success');
+            }
+            window.commonNotify(text, statusType);
             return;
         }
 
-        const text = String(message || '').trim();
-        const statusType = String(type || '').trim().toLowerCase();
+        if (!dictationStatusNode) {
+            return;
+        }
 
         dictationStatusNode.hidden = text === '';
         dictationStatusNode.textContent = text;
@@ -788,10 +797,8 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
             recorder.addEventListener('error', handleError, { once: true });
 
             try {
-                if (typeof recorder.requestData === 'function' && recorder.state === 'recording') {
-                    recorder.requestData();
-                }
-
+                // stop() emits the final data before "stop". A prior requestData()
+                // flush prevents Chromium from finalizing the WebM size/duration.
                 if (recorder.state !== 'inactive') {
                     recorder.stop();
                     return;
@@ -924,6 +931,8 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
                 label: 'Dicter',
                 title: 'Démarrer une dictée',
                 className: 'note-btn-light',
+                // These actions disable/hide their button: keep focus in the editor.
+                focusForInsertion: true,
                 hidden: true,
                 onClick: function () {
                     startDictation();
@@ -935,6 +944,7 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
                 label: 'Transcrire',
                 title: 'Arrêter l’enregistrement et transcrire',
                 className: 'note-btn-light',
+                focusForInsertion: true,
                 disabled: true,
                 hidden: true,
                 onClick: function () {
@@ -947,6 +957,7 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
                 label: 'Annuler',
                 title: 'Annuler la dictée en cours',
                 className: 'note-btn-light',
+                focusForInsertion: true,
                 hidden: true,
                 disabled: true,
                 onClick: function () {
@@ -960,6 +971,7 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
                 label: 'Rewrite',
                 title: 'Réécrire la sélection',
                 className: 'note-btn-light',
+                focusForInsertion: true,
                 hidden: true,
                 onClick: function () {
                     rewriteSelectedPassage();
@@ -971,6 +983,7 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
                 label: 'Résumer',
                 title: 'Résumer la sélection',
                 className: 'note-btn-light',
+                focusForInsertion: true,
                 hidden: true,
                 onClick: function () {
                     summarizeSelectedPassage();
@@ -1034,7 +1047,7 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
             return;
         }
 
-        const htmlFieldVersion = '20261008-html-editor-embed-links';
+        const htmlFieldVersion = '20261009-html-editor-placeholder';
         if (
             window.omoSimpleHtmlField
             && typeof window.omoSimpleHtmlField.mount === 'function'
@@ -1147,12 +1160,9 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
                 cache: 'no-store'
             });
 
-            if (!response.ok) {
-                throw new Error('Impossible de transcrire cet enregistrement.');
-            }
-
-            const payload = await response.json();
-            if (!payload || payload.status !== true) {
+            // The endpoint sends its useful error message with a non-2xx status.
+            const payload = await response.json().catch(function () { return null; });
+            if (!response.ok || !payload || payload.status !== true) {
                 throw new Error(payload && payload.message ? payload.message : 'Impossible de transcrire cet enregistrement.');
             }
 
