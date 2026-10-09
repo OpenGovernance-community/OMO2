@@ -824,7 +824,7 @@ if (!function_exists('commonCalDavBuildCalendarSyncToken')) {
         $changeId = CalDavSyncChange::getLatestChangeId($organizationId);
 
         // Changed export contents require existing clients to fetch every event again.
-        return 'data:,omo-caldav-sync-v2-'
+        return 'data:,omo-caldav-sync-v3-'
             . $organizationId
             . '-'
             . $calendarKey
@@ -904,7 +904,7 @@ if (!function_exists('commonCalDavLoadScopedCalendarForViewer')) {
         $eventResources = array();
 
         foreach ($events as $event) {
-            if (!($event instanceof Event) || !$event->isVisibleToInvitationViewer($viewerUserId, $organizationId, $viewerScopedEmail)) {
+            if (!($event instanceof Event) || !$event->isInvitedToEvent($viewerUserId, $organizationId, $viewerScopedEmail)) {
                 continue;
             }
 
@@ -1105,7 +1105,7 @@ if (!function_exists('commonCalDavLoadCalendarsForViewer')) {
                     continue;
                 }
 
-                if (!$event->isVisibleToInvitationViewer($viewerUserId, $organizationId, $viewerScopedEmail)) {
+                if (!$event->isInvitedToEvent($viewerUserId, $organizationId, $viewerScopedEmail)) {
                     continue;
                 }
 
@@ -1861,7 +1861,7 @@ if (!function_exists('commonCalDavParseSyncCollectionToken')) {
             return null;
         }
 
-        $pattern = '#^data:,omo-caldav-sync-v2-'
+        $pattern = '#^data:,omo-caldav-sync-v3-'
             . preg_quote((string)$organizationId, '#')
             . '-'
             . preg_quote($calendarKey, '#')

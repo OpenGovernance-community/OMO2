@@ -53,6 +53,7 @@ try {
         $event = shareFixture(Event::class, ['IDuser' => $uid, 'IDorganization' => $org->getId(), 'title' => 'SECRET ' . $name,
             'description' => "SECRET description\r\nATTENDEE:injected@example.invalid", 'start_at' => $day->setTime(9, 0),
             'end_at' => $day->setTime(11, 0), 'active' => 1, 'status' => Event::STATUS_CONFIRMED]);
+        shareFixture(\dbObject\EventInvitation::class, ['IDevent' => $event->getId(), 'invitation_type' => 'user', 'IDuser' => $uid]);
         shareExpect($event->saveTimeBuffers($uid, $name === 'One' ? 120 : 0, 45), 'Save personal preparation for export fixtures.');
     }
     // An invitation-only meeting for someone else in an organization the owner belongs to.
@@ -80,6 +81,7 @@ try {
     [, $horizonEnd] = $busy->visibilityRange($today);
     $horizonEvent = shareFixture(Event::class, ['IDuser' => $uid, 'IDorganization' => $orgs[0]->getId(), 'title' => 'OUTSIDE horizon',
         'start_at' => $horizonEnd->modify('+30 minutes'), 'end_at' => $horizonEnd->modify('+1 hour'), 'active' => 1, 'status' => Event::STATUS_CONFIRMED]);
+    shareFixture(\dbObject\EventInvitation::class, ['IDevent' => $horizonEvent->getId(), 'invitation_type' => 'user', 'IDuser' => $uid]);
     shareExpect($horizonEvent->saveTimeBuffers($uid, 120, 0), 'Horizon fixture overlaps only through preparation.');
     shareExpect(count(CalendarShare::forUser($uid)) === 2 && CalendarShare::forUser((int)$other->getId()) === [], 'Shares are owner scoped');
     shareExpect($busy->get('token') !== $clear->get('token') && strlen($busy->get('token')) === 64, 'Independent strong tokens');

@@ -4,6 +4,8 @@ require_once dirname(__DIR__) . '/shared_functions.php';
 require_once dirname(__DIR__) . '/common/user_availability.php';
 require_once dirname(__DIR__) . '/common/caldav.php';
 require_once dirname(__DIR__) . '/omo/api/calendar/permissions_shared.php';
+require_once dirname(__DIR__) . '/common/calendar/share-feed.php';
+require_once dirname(__DIR__) . '/meeting/service.php';
 
 use dbObject\DbObject;
 use dbObject\Event;
@@ -78,6 +80,8 @@ try {
     personalBufferExpect(!omoCalendarCanEditEvent($event, $organizationId, $firstId, $holon, false), 'Invitee has no event edit permission.');
     personalBufferExpect($event->canEditTimeBuffers($firstId) && $event->canEditTimeBuffers($secondId), 'Group members can edit personal times.');
     personalBufferExpect(!$event->canEditTimeBuffers((int)$people['outsider']->getId()), 'Membership alone does not grant personal event access.');
+    personalBufferExpect(!$event->canEditTimeBuffers($ownerId), 'An uninvited creator has no personal attendance times.');
+    $fixture(EventInvitation::class, ['IDevent' => $event->getId(), 'IDuser' => $ownerId, 'invitation_type' => 'user', 'active' => 1]);
     personalBufferExpect($event->saveTimeBuffers($ownerId, 30, 45) && $event->saveTimeBuffers($secondId, 15, 0), 'Independent owner/second settings.');
     $request = ['session' => ['currentUser' => $firstId, 'currentOrganization' => $organizationId,
         'auth_security_version' => (int)$people['first']->get('security_version'), 'omo_event_time_buffers_csrf' => 'test-token'],
@@ -107,7 +111,7 @@ try {
     personalBufferExpect($event->getTimeBuffers($firstId) === [120, 20] && $event->getTimeBuffers($secondId) === [15, 0]
         && $event->getTimeBuffers($ownerId) === [30, 45], 'Saving one participant does not alter another.');
     personalBufferExpect($event->get('title') === 'Original title' && $event->get('status') === Event::STATUS_CONFIRMED
-        && $event->get('start_at')->format('H:i') === '10:00' && count($event->getInvitations(true)) === 1, 'Forged fields cannot modify the event or invitations.');
+        && $event->get('start_at')->format('H:i') === '10:00' && count($event->getInvitations(true)) === 2, 'Forged fields cannot modify the event or invitations.');
     [$firstStart, $firstEnd] = $event->getBusyInterval($firstId);
     [$secondStart, $secondEnd] = $event->getBusyInterval($secondId);
     personalBufferExpect($firstStart->format('H:i') === '08:00' && $firstEnd->format('H:i') === '11:20'
@@ -143,8 +147,6 @@ try {
     personalBufferExpect(json_decode(personalBufferRequest($request), true)['status'] === true
         && $event->getTimeBuffers($firstId) === [0, 0] && $event->getTimeBuffers($secondId) === [15, 0], 'Disabling resets only own times.');
     $groupInvitation->set('status', 'revoked'); $groupInvitation->save();
-    // Keep explicit invitation scope so revocation cannot fall back to the whole holon.
-    $fixture(EventInvitation::class, ['IDevent' => $event->getId(), 'IDuser' => $ownerId, 'invitation_type' => 'user', 'active' => 1]);
     personalBufferExpect(json_decode(personalBufferRequest($request), true)['status'] === false, 'Revoked invitation loses edit access.');
     foreach (['user' => ['IDuser' => $firstId], 'email' => ['email' => $people['first']->get('email')]] as $type => $target) {
         $invite = $fixture(EventInvitation::class, $target + ['IDevent' => $event->getId(), 'invitation_type' => $type, 'active' => 1]);
@@ -164,6 +166,95 @@ try {
     $event->load((int)$event->getId(), true);
     personalBufferExpect($event->get('title') === 'Edited with permission' && $event->getTimeBuffers($firstId) === [60, 30]
         && $event->getTimeBuffers($ownerId) === [30, 45] && $event->getTimeBuffers($secondId) === [15, 0], 'Full event editor does not overwrite other participants times.');
+
+    // A creator manages events in their context without becoming a participant.
+    $managed = $fixture(Event::class, ['IDorganization' => $organizationId, 'IDholon' => $holon->getId(), 'IDuser' => $firstId,
+        'title' => 'UNINVITED managed appointment', 'status' => Event::STATUS_CONFIRMED, 'active' => 1,
+        'start_at' => $day->setTime(14, 0), 'end_at' => $day->setTime(15, 0)]);
+    $fixture(EventInvitation::class, ['IDevent' => $managed->getId(), 'invitation_type' => 'user', 'IDuser' => $secondId]);
+    $fixture(\dbObject\EventTimeBuffer::class, ['IDevent' => $managed->getId(), 'IDuser' => $firstId, 'preparation_minutes' => 120]);
+    $contextOnly = $fixture(Event::class, ['IDorganization' => $organizationId, 'IDholon' => $holon->getId(), 'IDuser' => $firstId,
+        'title' => 'UNINVITED context appointment', 'status' => Event::STATUS_CONFIRMED, 'active' => 1,
+        'start_at' => $day->setTime(14, 0), 'end_at' => $day->setTime(15, 0)]);
+    personalBufferExpect(!$managed->isInvitedToEvent($firstId) && !$contextOnly->isInvitedToEvent($firstId)
+        && !$contextOnly->isInvitedToEvent($secondId), 'Creation and context membership alone are not invitations.');
+    personalBufferExpect(!$managed->canEditTimeBuffers($firstId) && !$managed->saveTimeBuffers($firstId, 60, 0),
+        'A stale personal buffer does not grant attendance access.');
+    personalBufferExpect(commonUserAvailabilityLoadBusyIntervals($firstId, $day->setTime(14, 0), $day->setTime(15, 0)) === []
+        && count(commonUserAvailabilityLoadBusyIntervals($secondId, $day->setTime(14, 0), $day->setTime(15, 0))) === 1,
+        'Only the invited participant is busy.');
+    $bookingCalendar = $fixture(\dbObject\ExternalCalendar::class, ['IDuser' => $firstId, 'provider' => 'caldav',
+        'title' => 'Local regression cache', 'calendar_url' => 'https://example.invalid/calendar', 'username' => 'fixture',
+        'password_encrypted' => 'unused', 'active' => 1, 'last_sync_at' => $day]);
+    $profile = new \dbObject\MeetingProfile(); $profile->set('IDuser', $firstId); $profile->set('IDexternalcalendar', $bookingCalendar->getId());
+    personalBufferExpect(meetingBusy($profile, $day->setTime(14, 0), $day->setTime(15, 0)) === [],
+        'Uninvited events leave public booking availability free.');
+    $proposed = new Event();
+    foreach (['IDorganization' => $organizationId, 'IDuser' => $secondId, 'start_at' => $day->setTime(14, 0),
+        'end_at' => $day->setTime(15, 0)] as $field => $value) { $proposed->set($field, $value); }
+    $firstInvite = new EventInvitation(); $firstInvite->set('invitation_type', 'user'); $firstInvite->set('IDuser', $firstId);
+    personalBufferExpect($proposed->checkInvitationAvailability([$firstInvite])['conflicts'] === [],
+        'Availability checks exclude both uninvited existing events and the uninvited proposed creator.');
+    $calendarRequest = $request;
+    $calendarRequest['method'] = 'GET'; $calendarRequest['post'] = []; $calendarRequest['endpoint'] = 'index.php';
+    $calendarRequest['get'] = ['oid' => $organizationId, 'cid' => $holon->getId(), 'view' => 'week', 'date' => $day->format('Y-m-d')];
+    $calendarHtml = personalBufferRequest($calendarRequest);
+    preg_match('/<script[^>]*data-omo-calendar-data[^>]*>(.*?)<\/script>/s', $calendarHtml, $matches);
+    $data = json_decode($matches[1] ?? '', true, 512, JSON_THROW_ON_ERROR);
+    foreach ([$managed, $contextOnly] as $uninvited) {
+        $items = array_values(array_filter($data['items'], static fn($item) => (int)$item['id'] === (int)$uninvited->getId()));
+        personalBufferExpect($items !== [] && count(array_filter($items, static fn($item) => !empty($item['isFaded']))) === count($items)
+            && count(array_filter($items, static fn($item) => !empty($item['canEdit']))) > 0
+            && count(array_filter($items, static fn($item) => !empty($item['bufferKind']) || !empty($item['hasTimeBuffers']))) === 0,
+            'Managed events remain faded and editable in their circle, without personal buffer bands.');
+    }
+    $manageRequest = $calendarRequest; $manageRequest['endpoint'] = 'create.php'; $manageRequest['get']['id'] = $managed->getId();
+    $manageHtml = personalBufferRequest($manageRequest);
+    personalBufferExpect(str_contains($manageHtml, 'name="title"') && !str_contains($manageHtml, 'name="preparation_minutes"'),
+        'The uninvited creator can use event edit rights without personal time controls.');
+    $otherOrg = $fixture(\dbObject\Organization::class, ['name' => 'Other invitation scope', 'shortname' => 'scope-' . $nonce]);
+    $otherId = (int)$otherOrg->getId();
+    $calendarApp = new \dbObject\Application(); $calendarApp->load([['hash', 'calendar']]);
+    $fixture(\dbObject\OrganizationApplication::class, ['IDapplication' => $calendarApp->getId(), 'IDorganization' => $otherId, 'active' => 1]);
+    foreach ([$firstId, $secondId] as $memberId) {
+        $fixture(\dbObject\UserOrganization::class, ['IDuser' => $memberId, 'IDorganization' => $otherId, 'active' => 1]);
+    }
+    $cross = $fixture(Event::class, ['IDorganization' => $otherId, 'IDuser' => $firstId, 'title' => 'UNINVITED cross organization',
+        'status' => Event::STATUS_CONFIRMED, 'active' => 1, 'start_at' => $day->setTime(14, 0), 'end_at' => $day->setTime(15, 0)]);
+    $fixture(EventInvitation::class, ['IDevent' => $cross->getId(), 'invitation_type' => 'user', 'IDuser' => $secondId]);
+    personalBufferExpect(\dbObject\ArrayEvent::otherOrganizationBusyBlocks($firstId, $organizationId, $day, $day->modify('+1 day')) === [],
+        'Other organizations do not import uninvited creator appointments.');
+    personalBufferExpect(count(\dbObject\ArrayEvent::otherOrganizationBusyBlocks($secondId, $organizationId, $day, $day->modify('+1 day'))) === 1,
+        'Invited participants still receive other-organization busy blocks.');
+    $calendarHtml = personalBufferRequest($calendarRequest);
+    preg_match('/<script[^>]*data-omo-calendar-data[^>]*>(.*?)<\/script>/s', $calendarHtml, $matches);
+    $data = json_decode($matches[1] ?? '', true, 512, JSON_THROW_ON_ERROR);
+    personalBufferExpect(count(array_filter($data['items'], static fn($item) => !empty($item['isOtherOrganization']))) === 0,
+        'The rendered calendar imports no uninvited events from other organizations.');
+    $group = $fixture(EventInvitation::class, ['IDevent' => $contextOnly->getId(), 'invitation_type' => 'holon', 'IDholon' => $holon->getId()]);
+    personalBufferExpect($contextOnly->isInvitedToEvent($firstId), 'An explicit circle invitation counts as attendance.');
+    $group->set('status', 'revoked'); $group->save();
+    personalBufferExpect(!$contextOnly->isInvitedToEvent($firstId), 'Revoking the last invitation cannot fall back to circle membership.');
+    $email = $fixture(EventInvitation::class, ['IDevent' => $contextOnly->getId(), 'invitation_type' => 'email', 'email' => $people['first']->get('email')]);
+    personalBufferExpect($contextOnly->isInvitedToEvent($firstId), 'An explicit scoped email invitation counts as attendance.');
+    $email->set('status', 'revoked'); $email->save();
+    $calendars = commonCalDavLoadCalendarsForViewer($people['first']);
+    personalBufferExpect(isset($calendars['organization-' . $otherId]) && $calendars['organization-' . $otherId]['events'] === [],
+        'The other organization CalDAV calendar is empty for its uninvited creator.');
+    $scoped = commonCalDavLoadScopedCalendarForViewer($people['first'], $organizationId, (int)$holon->getId(), 'contextual', 'blue');
+    personalBufferExpect(is_array($scoped) && count($scoped['events']) === 1, 'Scoped CalDAV includes only the invited group event.');
+    $calendarJson = json_encode($calendars) . json_encode($scoped);
+    personalBufferExpect(!str_contains($calendarJson, 'UNINVITED') && str_contains($calendarJson, 'Edited with permission'),
+        'Both organization and scoped CalDAV exclude uninvited management events.');
+    $share = $fixture(\dbObject\CalendarShare::class, ['IDuser' => $firstId, 'label' => 'Invitation regression', 'months' => 3,
+        'token' => bin2hex(random_bytes(32)), 'details' => 1, 'active' => 1]);
+    $feed = calendarShareBuildFeed($share, $day);
+    personalBufferExpect(!str_contains($feed, 'UNINVITED') && str_contains($feed, 'SUMMARY:Edited with permission'),
+        'Personal ICS exports exclude all uninvited events.');
+    $share->set('scope_key', \dbObject\CalendarShare::buildScopedCalendarKey($organizationId, (int)$holon->getId(), 'contextual'));
+    $feed = calendarShareBuildFeed($share, $day);
+    personalBufferExpect(!str_contains($feed, 'UNINVITED') && str_contains($feed, 'SUMMARY:Edited with permission'),
+        'Scoped ICS exports also exclude uninvited circle events.');
     echo "calendar_personal_time_buffers_test: OK\n";
 } finally {
     foreach (array_reverse($fixtures) as $object) { $object->delete(); }
