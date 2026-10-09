@@ -466,8 +466,8 @@ class Event extends DbObject
         return $displayNameCache[$cacheKey];
     }
 
-    /** Validate supplied invitations in the current organization. Fresh bypasses caches; activeOnly limits holon members. */
-    public function getEffectiveInvitationTargets($organizationId, ?array $proposedInvitations = null, bool $fresh = false, bool $activeOnly = false): array
+    /** Fresh bypasses membership caches; explicitOnly excludes implicit organization/context recipients. */
+    public function getEffectiveInvitationTargets($organizationId, ?array $proposedInvitations = null, bool $fresh = false, bool $activeOnly = false, bool $explicitOnly = false): array
     {
         $organizationId = (int)$organizationId;
         if ($organizationId <= 0) {
@@ -519,7 +519,7 @@ class Event extends DbObject
         }
 
         // Public registrations supplement the invitation scope; they never replace its defaults.
-        if (!$targets['hasExplicitInvitations']) {
+        if (!$explicitOnly && !$targets['hasExplicitInvitations']) {
             $eventHolonId = (int)$this->get('IDholon');
             if ($eventHolonId > 0) {
                 foreach ($this->getInvitationMembershipUserIds($eventHolonId, $organizationId, $fresh, $activeOnly) as $userId) {
@@ -612,10 +612,9 @@ class Event extends DbObject
     {
         if ($userId <= 0 || (int)$this->getId() <= 0 || !$this->get('active')
             || self::normalizeStatus($this->get('status')) === self::STATUS_CANCELLED) { return false; }
-        if ((int)$this->get('IDuser') === $userId) { return true; }
         $member = new UserOrganization();
         return $member->load([['IDorganization', (int)$this->get('IDorganization')], ['IDuser', $userId], ['active', 1]])
-            && $this->isVisibleToInvitationViewer($userId, (int)$this->get('IDorganization'));
+            && $this->isInvitedToEvent($userId);
     }
 
     public function saveTimeBuffers(int $userId, $preparation, $closing): bool
@@ -651,10 +650,10 @@ class Event extends DbObject
     public function checkInvitationAvailability(array $proposedInvitations, ?callable $refreshUserCalendars = null): array
     {
         $organizationId = (int)$this->get('IDorganization');
-        $targets = $this->getEffectiveInvitationTargets($organizationId, $proposedInvitations);
+        $targets = $this->getEffectiveInvitationTargets($organizationId, $proposedInvitations, explicitOnly: true);
         $report = ['conflicts' => [], 'unverified' => [], 'externalCache' => false];
         // Email-only invitations have no calendar to check.
-        $userIds = array_unique(array_merge($targets['userIds'], [(int)$this->get('IDuser')]));
+        $userIds = $targets['userIds'];
         $organizationLabels = [];
         $holonLabels = [];
         foreach ($userIds as $userId) {
@@ -1070,54 +1069,7 @@ class Event extends DbObject
 
     public function isPersonallyRelevantToViewer($userId, $organizationId = 0): bool
     {
-        if ((int)$this->get('IDdecision_proposal') > 0) return $this->isVisibleToInvitationViewer($userId, $organizationId);
-        static $memberMatchCache = [];
-
-        $userId = (int)$userId;
-        $organizationId = (int)$organizationId;
-        if ($userId <= 0) {
-            return true;
-        }
-
-        if ($organizationId <= 0) {
-            $organizationId = (int)$this->get('IDorganization');
-        }
-
-        if ($organizationId <= 0 || (int)$this->get('IDorganization') !== $organizationId) {
-            return false;
-        }
-
-        $eventHolonId = (int)$this->get('IDholon');
-        if ((int)$this->get('IDproject') > 0) {
-            return ($this->hasExplicitInvitations() || $eventHolonId > 0)
-                && $this->isVisibleToInvitationViewer($userId, $organizationId);
-        }
-
-        if ($eventHolonId <= 0) {
-            return true;
-        }
-
-        $cacheKey = $organizationId . ':' . $userId . ':' . $eventHolonId;
-        if (!array_key_exists($cacheKey, $memberMatchCache)) {
-            $memberMatchCache[$cacheKey] = false;
-            $eventHolon = new \dbObject\Holon();
-            if (
-                $eventHolon->load($eventHolonId)
-                && (bool)$eventHolon->get('active')
-                && (bool)$eventHolon->get('visible')
-            ) {
-                $memberMatchCache[$cacheKey] = in_array(
-                    $userId,
-                    $eventHolon->getAssociatedMemberUserIds([
-                        'organizationId' => $organizationId,
-                        'skipPermissionFilter' => true,
-                    ]),
-                    true
-                );
-            }
-        }
-
-        return $memberMatchCache[$cacheKey];
+        return $this->isInvitedToEvent($userId, $organizationId);
     }
 
     public function isDraftVisibleToViewer($userId): bool
@@ -1131,6 +1083,17 @@ class Event extends DbObject
     }
 
     public function isVisibleToInvitationViewer($userId, $organizationId = 0, $viewerEmail = ''): bool
+    {
+        return $this->matchesInvitationViewer($userId, $organizationId, $viewerEmail, false);
+    }
+
+    /** Attendance requires an invitation or registration, independently of management visibility. */
+    public function isInvitedToEvent($userId, $organizationId = 0, $viewerEmail = ''): bool
+    {
+        return $this->matchesInvitationViewer($userId, $organizationId, $viewerEmail, true);
+    }
+
+    private function matchesInvitationViewer($userId, $organizationId, $viewerEmail, bool $explicitOnly): bool
     {
         $userId = (int)$userId;
         $organizationId = (int)$organizationId;
@@ -1156,8 +1119,8 @@ class Event extends DbObject
             return false;
         }
 
-        $targets = $this->getEffectiveInvitationTargets($organizationId);
-        if (!$targets['hasExplicitInvitations'] && (int)$this->get('IDholon') <= 0) {
+        $targets = $this->getEffectiveInvitationTargets($organizationId, explicitOnly: $explicitOnly);
+        if (!$explicitOnly && !$targets['hasExplicitInvitations'] && (int)$this->get('IDholon') <= 0) {
             return true;
         }
 
