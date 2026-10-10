@@ -14,7 +14,7 @@ function omoCreateCalendarViews(root, config) {
         css += ' is-status-' + event.status;
         [['isExternal', 'is-external-calendar'], ['isFaded', 'is-faded'], ['isRouteTarget', 'is-route-target'],
             ['isOtherOrganization', 'is-other-organization'], ['isOutsideScope', 'is-outside-scope']].forEach(([key, cls]) => { if (event[key]) css += ' ' + cls; });
-        attributes = Object.assign(attr('event-id', event.id), attr('search-item'), attributes);
+        attributes = Object.assign(attr('event-id', event.id), attr('search-item'), attr('source', event.sourceKey || 'organization'), attributes);
         if (event.bufferKind) {
             css += ' is-time-buffer';
             Object.assign(attributes, attr('time-buffer', event.bufferKind), {
@@ -50,7 +50,16 @@ function omoCreateCalendarViews(root, config) {
     function badge(count, label) {
         return tag('span', 'omo-calendar__timeline-count-badge', {'aria-label': label, title: label}, escape(count));
     }
-    function toolbar(view, timeline) {
+    function sourceFilters(mode) {
+        return tag('div', 'omo-calendar__source-filters generic-filter-chips generic-filter-chips--unconstrained',
+            {role: 'group', 'aria-label': config.labels['calendar.sources.aria']}, (config.sources || []).map(source => {
+                const available = !source.views || source.views.includes(mode);
+                return tag('label', 'generic-filter-chip generic-filter-chip--checkbox', {},
+                    tag('input', '', Object.assign({type: 'checkbox'}, attr('source-toggle', source.key), available ? {checked: ''} : {disabled: ''}), '')
+                    + span('', source.label));
+            }).join(''));
+    }
+    function toolbar(view, mode) {
         function button(direction, path) {
             const label = config.labels['calendar.navigation.' + direction];
             return tag('button', 'generic-action-button generic-action-button--icon-only generic-action-button--quiet-icon',
@@ -58,24 +67,30 @@ function omoCreateCalendarViews(root, config) {
                 '<svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"><path d="' + path + '"></path></svg>');
         }
         return tag('div', 'omo-calendar__toolbar', {}, button('previous', 'm14 6-6 6 6 6')
-            + tag('div', 'omo-calendar__period-title' + (timeline ? ' omo-calendar__period-title--compact' : ''), {},
-                tag('strong', '', {}, escape(view.title)) + (timeline ? badge(view.count, view.subtitle) : span('', view.subtitle)))
-            + button('next', 'm10 6 6 6-6 6'));
+            + tag('div', 'omo-calendar__period-title omo-calendar__period-title--compact', {},
+                tag('strong', '', {}, escape(view.title)) + badge(view.count, view.subtitle))
+            + button('next', 'm10 6 6 6-6 6') + sourceFilters(mode));
     }
     function month(view) {
         const days = view.days.map(day => {
             const events = day.items.map((id, index) => {
                 const event = item(id);
-                return eventTag('div', 'omo-calendar__event-chip', event, index >= 3 ? Object.assign({hidden: ''}, attr('overflow-event')) : {},
+                const attributes = Object.assign(attr('end-timestamp', event.endTimestamp || ''),
+                    attr('overflow-label', [event.timeLabel, event.title].filter(Boolean).join(' - ')),
+                    index >= 3 ? Object.assign({hidden: ''}, attr('overflow-event')) : {});
+                return eventTag('div', 'omo-calendar__event-chip', event, attributes,
                     timeRow(event, 'omo-calendar__event-time') + span('omo-calendar__event-title', event.title)
                     + (event.holonLabel ? span('omo-calendar__event-holon', event.holonLabel) : ''));
             }).join('');
-            const more = day.more ? tag('button', 'omo-calendar__more', Object.assign({type: 'button', 'aria-expanded': 'false'}, attr('more')), escape(day.more)) : '';
+            const more = day.items.length ? tag('details', 'generic-context-help generic-context-help--text',
+                Object.assign({'data-generic-context-help-hover': '', hidden: ''}, attr('overflow-help')),
+                tag('summary', '', attr('more'), escape(day.more))
+                + tag('div', 'generic-context-help__content', {}, tag('ul', '', attr('overflow-list'), ''))) : '';
             return tag('div', 'omo-calendar__cell' + (day.outside ? ' is-outside' : '') + (day.isToday ? ' is-today' : ''), attr('day', day.dayKey),
                 tag('div', 'omo-calendar__cell-head', {}, span('omo-calendar__cell-day', day.label)) + tag('div', 'omo-calendar__cell-items', {}, events + more));
         }).join('');
         return tag('div', 'omo-calendar__month-scroll', {},
-            tag('div', 'omo-calendar__month-sticky', {}, toolbar(view, false) + tag('div', 'omo-calendar__weekday-row', {},
+            tag('div', 'omo-calendar__month-sticky', {}, toolbar(view, 'month') + tag('div', 'omo-calendar__weekday-row', {},
                 config.weekdays.map(day => tag('div', 'omo-calendar__weekday', {}, escape(day))).join('')))
             + tag('div', 'omo-calendar__grid', {}, days));
     }
@@ -101,7 +116,7 @@ function omoCreateCalendarViews(root, config) {
                     event.bufferKind ? '' : tag('strong', 'omo-calendar__time-event-title', {}, escape(event.title)) + timeRow(event, 'omo-calendar__time-event-time')
                     + (event.holonLabel ? span('omo-calendar__time-event-context', event.holonLabel) : ''));
             }).join(''))).join('');
-        return toolbar(view, true) + tag('div', 'omo-calendar__time-view', Object.assign({style: '--omo-calendar-time-columns:' + view.columnCount + ';'}, attr('time-view', mode)),
+        return toolbar(view, mode) + tag('div', 'omo-calendar__time-view', Object.assign({style: '--omo-calendar-time-columns:' + view.columnCount + ';'}, attr('time-view', mode)),
             tag('div', 'omo-calendar__time-sticky', attr('time-sticky'),
                 tag('div', 'omo-calendar__time-head', {}, tag('div', 'omo-calendar__time-axis-spacer', {}, '') + head)
                 + tag('div', 'omo-calendar__time-all-day', {}, tag('div', 'omo-calendar__time-axis-label', {}, text('axis.all_day')) + allDay))
@@ -161,7 +176,7 @@ function omoCreateCalendarViews(root, config) {
         panel.setAttribute('data-omo-calendar-view-panel', mode);
         panel.setAttribute('data-omo-calendar-view-scope', scope);
         if (mode === 'week' || mode === 'day') panel.setAttribute('data-omo-calendar-timeline-panel', mode);
-        panel.innerHTML = mode === 'month' ? month(view) : mode === 'list' ? list(view) : timeline(view, mode);
+        panel.innerHTML = mode === 'month' ? month(view) : mode === 'list' ? sourceFilters(mode) + list(view) : timeline(view, mode);
         host.appendChild(panel);
         built.add(key);
         if (typeof window.initGenericComponents === 'function') window.initGenericComponents(panel);
@@ -208,6 +223,9 @@ window.omoInitCalendar = function (root) {
         var calendarSessionViewsStorageKey = 'omo.calendar.session-views.v1';
         var calendarSessionPositionStorageKey = 'omo.calendar.session-position.v1';
         var calendarSearchStorageKey = 'omo.calendar.quick-search.v1';
+        var calendarSourcesStorageKey = 'omo.calendar.hidden-sources.v1';
+        var storedCalendarSources = readCalendarStoredValue(window.sessionStorage, calendarSourcesStorageKey);
+        var hiddenCalendarSources = new Set(Array.isArray(storedCalendarSources) ? storedCalendarSources : []);
         var currentSearch = '';
         var pendingDisplayFilters = null;
         var filterPanelOpen = false;
@@ -1769,21 +1787,43 @@ window.omoInitCalendar = function (root) {
 
         function applyCalendarQuickSearch() {
             var query = normalizeCalendarSearch(currentSearch);
+            var calendarNow = getCalendarNow();
+            var nowTimestamp = Date.now() / 1000;
+            root.querySelectorAll('[data-omo-calendar-source-toggle]').forEach(function (checkbox) {
+                checkbox.checked = !checkbox.disabled && !hiddenCalendarSources.has(checkbox.getAttribute('data-omo-calendar-source-toggle'));
+            });
             root.classList.toggle('is-quick-searching', query !== '');
             root.querySelectorAll('[data-omo-calendar-search-item]').forEach(function (item) {
-                var isOverflow = item.hasAttribute('data-omo-calendar-overflow-event');
-                var overflowCell = item.closest('[data-omo-calendar-day]');
-                var isOverflowExpanded = !!overflowCell && overflowCell.hasAttribute('data-omo-calendar-overflow-expanded');
-                item.hidden = query === ''
-                    ? isOverflow && !isOverflowExpanded
-                    : normalizeCalendarSearch(item.getAttribute('data-omo-calendar-search-text') || item.textContent || '').indexOf(query) === -1;
+                item.hidden = hiddenCalendarSources.has(item.getAttribute('data-omo-calendar-source'))
+                    || (query !== '' && normalizeCalendarSearch(item.getAttribute('data-omo-calendar-search-text') || item.textContent || '').indexOf(query) === -1);
             });
             root.querySelectorAll('[data-omo-calendar-more]').forEach(function (more) {
                 var overflowCell = more.closest('[data-omo-calendar-day]');
-                more.hidden = query !== '' || (!!overflowCell && overflowCell.hasAttribute('data-omo-calendar-overflow-expanded'));
+                var items = overflowCell ? Array.from(overflowCell.querySelectorAll('[data-omo-calendar-search-item]:not([hidden])')) : [];
+                var collapsed = query === '' && !!overflowCell && !overflowCell.hasAttribute('data-omo-calendar-overflow-expanded');
+                var isToday = !!overflowCell && overflowCell.getAttribute('data-omo-calendar-day') === calendarNow.day;
+                var nextItems = isToday ? items.filter(function (item) {
+                    var endTimestamp = Number(item.getAttribute('data-omo-calendar-end-timestamp'));
+                    return !endTimestamp || endTimestamp > nowTimestamp;
+                }) : items;
+                var selectedItems = new Set(nextItems.slice(0, 3));
+                var overflowItems = items.filter(function (item) { return !selectedItems.has(item); });
+                var overflowCount = overflowItems.length;
+                var help = more.closest('[data-omo-calendar-overflow-help]');
+                help.hidden = !collapsed || overflowCount === 0;
+                if (help.hidden) help.open = false;
+                more.textContent = (config.moreLabels || {})[overflowCount] || '+' + overflowCount;
+                var list = help.querySelector('[data-omo-calendar-overflow-list]');
+                list.replaceChildren();
+                overflowItems.forEach(function (item) {
+                    var row = root.ownerDocument.createElement('li');
+                    row.textContent = item.getAttribute('data-omo-calendar-overflow-label') || item.textContent;
+                    list.appendChild(row);
+                });
+                if (collapsed) overflowItems.forEach(function (item) { item.hidden = true; });
             });
             root.querySelectorAll('[data-omo-calendar-search-group]').forEach(function (group) {
-                group.hidden = query !== '' && !group.querySelector('[data-omo-calendar-search-item]:not([hidden])');
+                group.hidden = !group.querySelector('[data-omo-calendar-search-item]:not([hidden])');
             });
             root.querySelectorAll('[data-omo-calendar-default-empty]').forEach(function (empty) {
                 empty.hidden = query !== '';
@@ -2507,7 +2547,29 @@ window.omoInitCalendar = function (root) {
         }
 
         function bindCalendarView(panel) {
+            panel.querySelectorAll('[data-omo-calendar-source-toggle]').forEach(function (checkbox) {
+                checkbox.addEventListener('change', function () {
+                    var source = checkbox.getAttribute('data-omo-calendar-source-toggle');
+                    if (checkbox.checked) hiddenCalendarSources.delete(source);
+                    else hiddenCalendarSources.add(source);
+                    try {
+                        var values = JSON.parse(window.sessionStorage.getItem(calendarSourcesStorageKey) || '{}');
+                        if (!values || typeof values !== 'object' || Array.isArray(values)) values = {};
+                        values[getCalendarPreferencesContextKey()] = Array.from(hiddenCalendarSources);
+                        window.sessionStorage.setItem(calendarSourcesStorageKey, JSON.stringify(values));
+                    } catch (error) {
+                    }
+                    closeCalendarMenus();
+                    applyCalendarQuickSearch();
+                });
+            });
             panel.querySelectorAll('[data-omo-calendar-more]').forEach(function (more) {
+                more.addEventListener('focus', function () {
+                    more.closest('[data-omo-calendar-overflow-help]').open = true;
+                });
+                more.addEventListener('blur', function () {
+                    more.closest('[data-omo-calendar-overflow-help]').open = false;
+                });
                 more.addEventListener('click', function (event) {
                     event.preventDefault();
                     event.stopPropagation();
@@ -2516,7 +2578,6 @@ window.omoInitCalendar = function (root) {
                         return;
                     }
                     overflowCell.setAttribute('data-omo-calendar-overflow-expanded', '1');
-                    more.setAttribute('aria-expanded', 'true');
                     applyCalendarQuickSearch();
                 });
             });
@@ -2803,6 +2864,7 @@ window.omoInitCalendar = function (root) {
                 return;
             }
             updateCurrentTimeIndicators();
+            if (currentView === 'month') applyCalendarQuickSearch();
         }, 30000);
 
         if (!root.__omoCalendarRouteHandler) {

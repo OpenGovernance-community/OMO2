@@ -1139,6 +1139,10 @@ a.generic-correspondence-list__row:focus-visible {
     flex: 0 0 auto;
 }
 
+.generic-context-help[hidden] {
+    display: none !important;
+}
+
 .generic-context-help > summary {
     display: inline-flex;
     align-items: center;
@@ -1166,6 +1170,13 @@ a.generic-correspondence-list__row:focus-visible {
     width: 20px;
     height: 20px;
     font-size: 11px;
+}
+
+.generic-context-help--text > summary {
+    width: auto;
+    height: auto;
+    min-height: 26px;
+    padding: 4px 8px;
 }
 
 .generic-context-help > summary:hover,
@@ -1881,6 +1892,7 @@ textarea.generic-form-control--compact {
 
 .generic-filter-chip:hover,
 .generic-filter-chip:focus-visible,
+.generic-filter-chip--checkbox:focus-within,
 .omo-view-filter__chip:hover,
 .omo-view-filter__chip:focus-visible,
 .omo-projects__filter-chip:hover,
@@ -1893,6 +1905,7 @@ textarea.generic-form-control--compact {
 
 .generic-filter-chip[aria-pressed='true'],
 .generic-filter-chip[aria-selected='true'],
+.generic-filter-chip--checkbox:has(> input:checked),
 .omo-view-filter__chip[aria-pressed='true'],
 .omo-view-filter__chip[aria-selected='true'],
 .omo-projects__filter-chip[aria-pressed='true'],
@@ -1900,6 +1913,21 @@ textarea.generic-form-control--compact {
     border-color: color-mix(in srgb, var(--color-primary, #2563eb) 74%, var(--color-border, #d1d5db));
     background: color-mix(in srgb, var(--color-primary, #2563eb) 13%, var(--color-surface, #fff));
     color: color-mix(in srgb, var(--color-primary, #2563eb) 82%, var(--color-text, #1f2937));
+}
+
+.generic-filter-chip--checkbox {
+    gap: 6px;
+}
+
+.generic-filter-chip--checkbox > input {
+    margin: 0;
+    accent-color: var(--color-primary, #2563eb);
+    cursor: inherit;
+}
+
+.generic-filter-chip--checkbox:has(> input:disabled) {
+    opacity: .5;
+    cursor: not-allowed;
 }
 
 .generic-filter-chip-picker {

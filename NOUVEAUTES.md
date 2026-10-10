@@ -1,5 +1,13 @@
 # Journal Des Nouveautes
 
+- Calendrier / compteur mensuel (2026-10-10) : nombre d evenements affiche dans une bulle a cote du nom du mois, comme en vue semaine, a la place du sous-titre. Le libelle complet reste disponible au survol et pour les lecteurs d ecran.
+
+- Calendrier / densite mensuelle (2026-10-10) : marges interieures des jours et des evenements legerement reduites, ainsi que les espacements entre les blocs et leurs informations, pour laisser davantage de place au contenu sur ordinateur et mobile.
+
+- Calendrier / apercu mensuel (2026-10-10) : evenements tries par horaire, avec au maximum les trois premiers en cours ou a venir pour aujourd hui et actualisation automatique. Les autres restent accessibles au clic sur le compteur ; leur horaire et leur titre sont listes au survol ou au focus clavier, en tenant compte des calendriers masques.
+
+- Calendrier / sources affichees (2026-10-10) : capsules avec cases a cocher sous la periode pour afficher ou masquer l organisation courante, les autres organisations et chaque agenda externe sans rechargement dans les quatre vues, y compris mois et liste. Choix conserves pendant la navigation de la session, recherche et evenements replies compatibles. Les autres organisations conservent leurs libelles sans exposer de details supplementaires.
+
 - Deploiement / migrations (2026-10-10) : une variable DB_MIGRATION_DATABASES vide utilise correctement DB_NAME, comme une variable absente. Les listes de bases et les options CLI explicites restent prioritaires.
 
 - Disponibilités / thème sombre (2026-10-10) : les couleurs des jours, créneaux, légendes et avertissements suivent la palette active dans le profil, la création d’événements, le choix de la prochaine réunion et la prise de rendez-vous publique. Sélections et contrastes harmonisés en thèmes clair et sombre.

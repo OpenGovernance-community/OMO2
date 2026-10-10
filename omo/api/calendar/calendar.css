@@ -269,6 +269,15 @@
     text-align: center;
 }
 
+.omo-calendar__source-filters {
+    grid-column: 1 / -1;
+    justify-content: safe center;
+}
+
+.omo-calendar__view-panel--list > .omo-calendar__source-filters {
+    margin-block: 8px;
+}
+
 .omo-calendar__period-title strong,
 .omo-calendar__month-title strong {
     font-size: 1.15rem;
@@ -338,13 +347,13 @@
 
 .omo-calendar__cell {
     min-height: 138px;
-    padding: 10px;
+    padding: 8px;
     border-right: 1px solid var(--color-border, #dbe2ea);
     border-bottom: 1px solid var(--color-border, #dbe2ea);
     border-radius: 0;
     background: var(--color-surface, #ffffff);
     display: grid;
-    gap: 10px;
+    gap: 8px;
     align-content: start;
 }
 
@@ -390,7 +399,7 @@
 
 .omo-calendar__cell-items {
     display: grid;
-    gap: 8px;
+    gap: 6px;
 }
 
 .omo-calendar__cell,
@@ -402,9 +411,9 @@
 
 .omo-calendar__event-chip {
     display: grid;
-    gap: 4px;
+    gap: 3px;
     overflow-wrap: anywhere;
-    padding: 8px 9px;
+    padding: 6px 7px;
     border-radius: var(--radius-md);
     background: color-mix(in srgb, var(--color-primary, #2563eb) 9%, var(--color-surface, #ffffff));
     border: 1px solid color-mix(in srgb, var(--color-primary, #2563eb) 16%, var(--color-border, #dbe2ea));
@@ -1015,7 +1024,7 @@
 
     .omo-calendar__cell {
         min-height: 122px;
-        padding: 8px;
+        padding: 6px;
     }
 
     .omo-calendar__time-view {
