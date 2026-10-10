@@ -54,6 +54,8 @@ foreach (['free', 'partial', 'full', 'closed', 'day_availability', 'select_day',
 <html lang="fr">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex,nofollow">
+    <script src="<?= meetingEscape(commonAssetUrl('/shared_functions.js')) ?>"></script>
+    <script>sharedApplyDocumentTheme();</script>
     <title><?= meetingEscape($shareTitle) ?> - OMO</title>
     <meta name="description" content="<?= meetingEscape($shareDescription) ?>">
     <link rel="canonical" href="<?= meetingEscape($shareUrl) ?>">

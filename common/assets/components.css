@@ -166,9 +166,8 @@ body .panel.panel-left.generic-panel-fullscreen-host,
     display: none !important;
 }
 
-/* Shared light backdrop for standalone public flows, including meeting pages. */
-body.generic-public-page,
-body.meeting-page {
+/* Public flows keep their light palette and inherit the active palette in dark mode. */
+html:not([data-theme="dark"]) :is(body.generic-public-page, body.meeting-page) {
     --color-primary: #005b7a;
     --color-text: #17364a;
     --color-text-light: #587387;
@@ -177,12 +176,16 @@ body.meeting-page {
     --color-surface: #ffffff;
     --color-surface-alt: #f4f9fd;
     --color-border: #d4e4ef;
+}
+
+body.generic-public-page,
+body.meeting-page {
     --radius-md: 10px;
-    --shadow-md: 0 6px 16px rgb(0 91 122 / 12%);
+    --shadow-md: 0 6px 16px color-mix(in srgb, var(--color-primary) 12%, transparent);
     margin: 0;
     min-height: 100vh;
     color: var(--color-text);
-    background: linear-gradient(140deg, transparent 72%, #dfedf8 72%), linear-gradient(35deg, #d7eaf6 16%, transparent 16%), #edf5fb;
+    background: linear-gradient(140deg, transparent 72%, color-mix(in srgb, var(--color-primary) 6%, var(--color-bg)) 72%), linear-gradient(35deg, color-mix(in srgb, var(--color-primary) 9%, var(--color-bg)) 16%, transparent 16%), var(--color-bg);
     background-attachment: fixed;
     font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     font-size: 15px;

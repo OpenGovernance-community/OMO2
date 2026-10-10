@@ -3,6 +3,7 @@ require_once dirname(__DIR__) . '/bootstrap.php';
 require_once dirname(__DIR__, 3) . '/common/calendar/upcoming_sections.php';
 require_once dirname(__DIR__, 3) . '/common/external_calendar.php';
 require_once __DIR__ . '/permissions_shared.php';
+require_once dirname(__DIR__, 3) . '/common/calendar/recurrence.php';
 
 use dbObject\ArrayEvent;
 use dbObject\ArrayExternalCalendarEvent;
@@ -343,7 +344,9 @@ $sourceLang = [
     ],
 ];
 
+$sourceLang = array_merge($sourceLang, commonMeetingRecurrenceSourceLang());
 $lang = omoLoadTranslationBundle('omo_calendar_index', $sourceLang);
+$_SESSION['omo_event_recurrence_csrf'] ??= bin2hex(random_bytes(32));
 
 function omoCalendarT($key, array $replace = [])
 {
@@ -922,6 +925,9 @@ if ($eventIds !== []) {
         }
     }
 }
+foreach (\dbObject\EventSharedDocument::documentsByEvent($eventIds, $organizationId) as $sharedEventId => $sharedDocuments) {
+    $associatedDocumentsByEventId[$sharedEventId] = array_merge($associatedDocumentsByEventId[$sharedEventId] ?? [], $sharedDocuments);
+}
 $openEventTargetId = $openedEvent instanceof Event ? (int)$openedEvent->getId() : 0;
 
 $holonLabelsById = [];
@@ -1133,6 +1139,8 @@ foreach ($events as $event) {
                 'editUrl' => $eventEditUrl,
                 'canDelete' => $canDeleteEvent,
                 'deleteUrl' => $eventDeleteUrl,
+                'isRecurring' => !$isExternalEvent && (int)$event->get('IDeventrecurrence') > 0,
+                'hasFollowing' => !$isExternalEvent && ($event->getRecurrence()?->hasFollowing($event) ?? false),
                 'hasAssociatedDocuments' => $eventHasAssociatedDocuments,
                 'documentUrl' => $associatedDocumentOpenData['url'],
                 'documentTitle' => $associatedDocumentOpenData['title'],
@@ -1550,6 +1558,8 @@ foreach ([
     $calendarClientLabels[$key] = omoCalendarT($key);
 }
 $calendarClientData = [
+    'meetingRecurrenceUi' => commonMeetingRecurrenceUi('omoCalendarT'),
+    'meetingRecurrenceCsrf' => $_SESSION['omo_event_recurrence_csrf'],
     'views' => $calendarClientViews, 'items' => $calendarClientItems, 'labels' => $calendarClientLabels,
     'weekdays' => array_map('omoCalendarT', $weekdayKeys), 'hours' => $timelineHours,
     'connectUrl' => $connectUrl,
@@ -1774,6 +1784,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
     </div>
     <link rel="stylesheet" href="/common/calendar/availability.css?v=20260916-conflict">
     <script src="<?= commonAssetUrl('/common/calendar/availability-model.js') ?>"></script>
+    <script src="<?= commonAssetUrl('/common/calendar/recurrence.js') ?>"></script>
     <script src="<?= commonAssetUrl('/common/calendar/availability-view.js') ?>"></script>
     <script src="<?= commonAssetUrl('/common/calendar/availability.js') ?>"></script>
     <script src="/common/calendar/share.js?v=20260916"></script>

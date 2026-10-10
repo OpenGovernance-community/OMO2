@@ -1,8 +1,9 @@
 <?php
+require_once dirname(__DIR__, 4) . '/common/calendar/recurrence.php';
 
 function omoDocumentsPvEditorSourceLang(): array
 {
-    return [
+    return commonMeetingRecurrenceSourceLang() + [
         'documents.pv_editor.notice.review_readonly' => ['text' => 'Ce point est verrouillé pendant la relecture. Utilisez la discussion pour signaler une correction.', 'context' => 'Helper text shown on PV points while the document is in review.'],
         'documents.pv_editor.error.operation_failed' => ['text' => 'L’opération n’a pas pu être effectuée.', 'context' => 'Generic fallback error returned by a PV editor action.'],
         'documents.pv_editor.error.generic' => ['text' => 'Une erreur est survenue.', 'context' => 'Generic fallback error shown in the PV editor.'],

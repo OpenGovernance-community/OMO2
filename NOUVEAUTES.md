@@ -1,5 +1,55 @@
 # Journal Des Nouveautes
 
+- Disponibilités / thème sombre (2026-10-10) : les couleurs des jours, créneaux, légendes et avertissements suivent la palette active dans le profil, la création d’événements, le choix de la prochaine réunion et la prise de rendez-vous publique. Sélections et contrastes harmonisés en thèmes clair et sombre.
+
+- Calendrier / textes de récurrence (2026-10-10) : français corrigé dans les formulaires, aides, résumés, confirmations, navigation et notifications, avec accents, apostrophes et ponctuation. Textes centralisés dans les blocs de traduction ; jours de la grille traduisibles et dates affichées dans la langue choisie.
+
+- Calendrier / planification a la cloture (2026-10-10) : la grille se positionne sur l horaire propose apres affichage, meme si le creneau est occupe. Apres creation de la prochaine reunion depuis un PV, l agenda deja ouvert est actualise automatiquement.
+
+- Calendrier / prochaine date (2026-10-10) : suppression de la ligne affichant la duree du modele et la fin prevue. Le calcul du creneau conserve la duree du modele.
+
+- Calendrier / prochaine date indicative (2026-10-10) : le mode de planification a la cloture propose un delai indicatif en jours, stocke dans le champ interval_days existant. La date suggeree suit ce delai depuis la reunion concernee (7 jours par defaut), reste modifiable et conserve la duree du modele. Delai affiche dans le resume de recurrence et explique dans une capsule d aide.
+
+- Calendrier / choix de la prochaine date (2026-10-10) : explications regroupees dans les capsules d aide, espace interieur ajoute et bouton d actualisation retire. Choisir un autre jour conserve l heure saisie et la duree du modele, et reselectionne les creneaux correspondants en les rendant visibles dans la liste. Lisibilite des horaires corrigee en theme sombre.
+
+- Documents / ouverture successive des PAD (2026-10-10) : correction d un appel de fonction inexistant lors du chargement d un document absent de la liste en cache. Apres fermeture d un PAD et retour au calendrier, un autre PAD ouvre maintenant son sous-panneau sans recharger la page. Test de regression sur plusieurs documents absents de la liste.
+
+- Calendrier / horizon des recurrences (2026-10-10) : une serie commencant dans le futur est planifiee pour la duree choisie a partir de son depart, puis l horizon avance avec la date courante. Cela evite les series limitees a quelques occurrences, parfois juste avant un week-end. Les reports au vendredi ou au lundi conservent leur cadence et le cron complete les series existantes sans doublons. Explication ajoutee au formulaire.
+
+- Documents / navigation depuis le calendrier (2026-10-10) : les liens vers un document ciblent le panneau principal, meme apres ouverture et fermeture d un PV contenant un onglet Documents. Les panneaux conserves dans un PV ferme ou replie ne captent plus ces ouvertures ; la navigation locale dans un PV reste independante. Test navigateur couvrant les reouvertures, les liens globaux et l edition.
+
+- Calendrier / prochaine reunion (2026-10-10) : la planification a la cloture du PV et depuis la fiche affiche la meme grille de disponibilites que la creation d evenements. Les membres actuels des espaces invites, agendas OMO, agendas externes et pauses sont pris en compte. Le choix du creneau ou la saisie manuelle fixe le debut ; la duree du modele reste constante, meme avec Maj + clic, et la fin calculee est affichee. Navigation mensuelle, filtre des participants et actualisation disponibles ; affichage et calcul mutualises avec le formulaire existant.
+
+- Calendrier / documents recurrents (2026-10-10) : choix entre de nouveaux documents par occurrence et la reutilisation des memes documents, applique aux prochaines creations. Les PV restent obligatoirement individuels. Les documents partages gardent leur nom, leurs dates et survivent a la suppression des reunions. La recurrence a la cloture exige un PV ; la prochaine date est demandee en relecture et, si elle a ete reportee, a la validation. Controles serveur avec message explicite et migration des liens partages inclus.
+
+- Calendrier / titres dates (2026-10-10) : les dates numeriques correspondant a la reunion source dans son titre et les noms de ses documents sont adaptees a chaque occurrence, y compris a la cloture et lors des deplacements. Formats europeens avec points, barres ou tirets et ISO, annees a deux ou quatre chiffres et heures associees. Les autres dates restent intactes ; un titre de reunion explicitement modifie reste prioritaire.
+
+- Calendrier / navigation recurrente (2026-10-10) : boutons precedent et suivant avant le libelle de recurrence pour parcourir les reunions existantes de la serie par date, y compris les occurrences personnalisees. Les reunions supprimees, annulees ou non accessibles sont ignorees ; les boutons sont desactives aux extremites.
+
+- Calendrier / notifications recurrentes (2026-10-10) : le createur invite recoit aussi les notifications des nouvelles occurrences selon ses preferences, meme si la creation indique explicitement son identite. L exclusion de l auteur reste appliquee aux invitations classiques.
+
+- Calendrier / notifications recurrentes (2026-10-10) : preference par organisation pour les nouvelles occurrences, avec les canaux OMO, notification navigateur, Telegram et e-mail, desactives par defaut. Les invitations indiquent la recurrence. Les creations automatiques et les prochaines dates choisies a la cloture mettent leurs invitations en attente ; le cron les traite selon les preferences, apres validation de la creation et sans doublon lors des passages suivants. Les occurrences creees lors de l enregistrement initial sont traitees apres la sauvegarde.
+
+- Calendrier / enregistrement (2026-10-10) : suppression du doublon Enregistrer cette reunion dans le menu de la fleche. Le bouton principal assure la sauvegarde individuelle ; le menu propose uniquement l action collective.
+
+- Calendrier / occurrences personnalisees (2026-10-10) : libelle clarifie en Occurrence personnalisee de la serie. Enregistrer une reunion seule sans changer son contenu, ses horaires, ses invitations ou ses documents ne la marque plus comme personnalisee et conserve sa reference dans la serie. Les temps personnels de preparation et de cloture ne declenchent pas cette personnalisation.
+
+- Calendrier / recurrence (2026-10-10) : regle affichee en texte dans l edition, avec un bouton Modifier et quatre strategies : replanifier les suivantes, appliquer apres la derniere date planifiee, arreter en conservant les dates ou arreter et supprimer les suivantes en gardant la reunion ouverte. L option collective d enregistrement applique la strategie ; enregistrer cette reunion seule demande confirmation que les changements de recurrence seront ignores. Report du week-end disponible pour tous les X jours, sans doublons en cas de report sur le meme jour. Derniere occurrence : action Supprimer et mettre fin a la recurrence.
+
+- Calendrier / suppression (2026-10-10) : la suppression de cette reunion et des suivantes utilise aussi une confirmation classique du navigateur, avec le rappel de sa portee. La question sur les documents utilise le meme format : OK les supprime aussi, Annuler les conserve.
+
+- Calendrier / detail (2026-10-10) : resume de la recurrence sur une ligne pleine largeur sous l horaire, avec la cadence, les reports de week-end et les indications de reunion personnalisee ou de generation arretee.
+
+- Calendrier / recurrence (2026-10-10) : boutons Enregistrer et Supprimer avec une fleche proposant l action sur cette reunion et les suivantes et expliquant son effet. Une nouvelle cadence replanifie les suivantes deja creees en conservant les precedentes et les exceptions. Decocher la recurrence propose d arreter la generation en conservant les rendez-vous existants. La suppression individuelle utilise une confirmation standard ; la suppression collective inclut les suivantes personnalisees, propose de conserver ou supprimer leurs documents et arrete la generation. Annuler une confirmation ne supprime rien. Le choix de sauvegarde reste conserve apres une alerte de disponibilite.
+
+- Calendrier / recurrence (2026-10-09) : les occurrences et leurs documents sont crees dans l horizon choisi des la premiere sauvegarde ou activation de la recurrence. Plus besoin d une seconde edition ni d attendre le prochain cron ; les passages suivants conservent la protection contre les doublons.
+
+- Calendrier / documents recurrents (2026-10-09) : les noms automatiques des PV utilisent la date et l heure de leur propre reunion, y compris apres un deplacement. Correction des anciens noms encore identiques a celui de la reference, sans modifier les noms personnalises ni le contenu des documents. La planification a la cloture suit la meme regle.
+
+- Calendrier / recurrence (2026-10-09) : correction des horaires d une reunion encore modifiable, meme si sa nouvelle heure de fin est passee. Le lien de recurrence est enregistre sans sauvegarder une seconde fois les horaires ; la protection des reunions deja passees avant la modification reste active.
+
+- Calendrier / reunions recurrentes (2026-10-09) : case de recurrence dans la reunion, cadences hebdomadaire, tous les X jours ou mensuelle avec report du week-end, et creation progressive selon l horizon choisi. Chaque seance dispose de ses propres documents et PV, issus du cadre de reference, avec invitations adaptees aux membres des espaces. Les modifications individuelles restent des exceptions ; une modification collective actualise les suivantes sans ecraser leurs documents prepares. Historique des participants conserve et reunions passees protegees. Autre pratique : demander la prochaine date a la cloture du PV, ou la planifier depuis la reunion. Generation et cloture protegees contre les doublons ; migration et seed Docker inclus.
+
 - Organisations (2026-10-09) : correction du depart d un membre bloque par la mise a jour des references DeferredProposal, meme lorsqu un autre admin reste present. Parametres SQL distincts pour conserver les auteurs, validateurs et executants dans l historique ; protection du dernier admin conservee.
 
 - Calendrier / disponibilites (2026-10-09) : seuls les evenements auxquels la personne est invitee directement, par e-mail, par cercle invite ou inscrite occupent sa disponibilite. Creer un evenement ou appartenir a son cercle de classement ne suffit plus. Les autres evenements restent visibles en plus clair dans leurs cercles, sans remonter dans les autres organisations ni dans les exports personnels ICS / CalDAV. Les agendas CalDAV existants sont resynchronises pour retirer les anciens elements non invites.

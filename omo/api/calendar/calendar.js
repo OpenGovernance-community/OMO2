@@ -113,9 +113,18 @@ function omoCreateCalendarViews(root, config) {
         let actions = event.canEdit ? tag('button', 'generic-menu-item', Object.assign({type: 'button', role: 'menuitem'}, attr('open-edit-url', event.editUrl)), text('action.edit')) : '';
         if (event.canDelete) {
             const attributes = Object.assign({type: 'button', role: 'menuitem'}, attr('delete-url', event.deleteUrl), attr('delete-has-documents', event.hasAssociatedDocuments ? '1' : '0'));
+            if (event.isRecurring) {
+                attributes['data-meeting-delete-scope'] = JSON.stringify(config.meetingRecurrenceUi);
+                attributes['data-meeting-delete-csrf'] = config.meetingRecurrenceCsrf;
+            }
             [['confirm', 'confirm.delete'], ['error', 'error.delete'], ['documents-title', 'delete.documents.title'], ['documents-question', 'delete.documents.question'],
                 ['documents-yes', 'delete.documents.yes'], ['documents-no', 'delete.documents.no']].forEach(([key, label]) => Object.assign(attributes, attr('delete-' + key, config.labels['calendar.' + label])));
-            actions += tag('button', 'generic-menu-item generic-menu-item--danger', attributes, text('action.delete'));
+            actions += tag('button', 'generic-menu-item generic-menu-item--danger', attributes,
+                event.isRecurring ? escape(config.meetingRecurrenceUi.delete_single) : text('action.delete'));
+            if (event.isRecurring) {
+                actions += tag('button', 'generic-menu-item generic-menu-item--danger',
+                    Object.assign({}, attributes, {'data-meeting-delete-selection': 'following'}), escape(event.hasFollowing ? config.meetingRecurrenceUi.delete_following : config.meetingRecurrenceUi.delete_last));
+            }
         }
         return tag('div', 'omo-calendar__event-menu generic-menu generic-file-list__menu', attr('event-menu'),
             tag('button', 'generic-menu-toggle generic-file-list__menu-toggle', Object.assign({type: 'button', 'aria-haspopup': 'menu', 'aria-expanded': 'false', 'aria-label': config.labels['calendar.action.more']}, attr('event-menu-toggle')), '\u22ee')
@@ -1555,92 +1564,40 @@ window.omoInitCalendar = function (root) {
             });
         }
 
-        function askDeleteAssociatedDocuments(button) {
-            if (button.getAttribute('data-omo-calendar-delete-has-documents') !== '1') {
+        function askDeleteAssociatedDocuments(button, followingQuestion) {
+            if (!followingQuestion && button.getAttribute('data-omo-calendar-delete-has-documents') !== '1') {
                 return Promise.resolve(false);
             }
 
-            var title = button.getAttribute('data-omo-calendar-delete-documents-title') || 'Documents associés';
-            var question = button.getAttribute('data-omo-calendar-delete-documents-question') || 'Voulez-vous supprimer les documents associés ?';
-            var yesLabel = button.getAttribute('data-omo-calendar-delete-documents-yes') || 'Oui';
-            var noLabel = button.getAttribute('data-omo-calendar-delete-documents-no') || 'Non';
-
-            if (typeof window.commonTopbarOpenModal !== 'function') {
-                return Promise.resolve(window.confirm(question));
-            }
-
-            return new Promise(function (resolve) {
-                var settled = false;
-                var modalCloseHandler;
-
-                function settle(value) {
-                    if (settled) {
-                        return;
-                    }
-
-                    settled = true;
-                    if (modalCloseHandler) {
-                        window.removeEventListener('common-topbar-modal-close', modalCloseHandler);
-                    }
-                    if (typeof window.commonTopbarCloseModal === 'function') {
-                        window.commonTopbarCloseModal();
-                    }
-                    resolve(value === true);
-                }
-
-                window.commonTopbarOpenModal(
-                    title,
-                    '<div class="omo-calendar__delete-documents-dialog generic-drawer-content">'
-                        + '<p data-omo-calendar-delete-documents-question></p>'
-                        + '<div class="omo-calendar__delete-documents-actions">'
-                        + '<button type="button" class="generic-action-button generic-action-button--main" data-omo-calendar-delete-documents-choice="yes">' + escapeCalendarHtml(yesLabel) + '</button>'
-                        + '<button type="button" class="generic-action-button generic-action-button--secondary" data-omo-calendar-delete-documents-choice="no">' + escapeCalendarHtml(noLabel) + '</button>'
-                        + '</div>'
-                        + '</div>',
-                    'html'
-                );
-
-                var modalBody = document.getElementById('commonTopbarModalBody');
-                if (!modalBody) {
-                    settle(false);
-                    return;
-                }
-
-                var questionNode = modalBody.querySelector('[data-omo-calendar-delete-documents-question]');
-                if (questionNode) {
-                    questionNode.textContent = question;
-                }
-
-                modalCloseHandler = function () {
-                    settle(false);
-                };
-                window.addEventListener('common-topbar-modal-close', modalCloseHandler);
-                modalBody.querySelectorAll('[data-omo-calendar-delete-documents-choice]').forEach(function (choiceButton) {
-                    choiceButton.addEventListener('click', function () {
-                        settle(choiceButton.getAttribute('data-omo-calendar-delete-documents-choice') === 'yes');
-                    });
-                });
-            });
+            var question = followingQuestion || button.getAttribute('data-omo-calendar-delete-documents-question') || 'Voulez-vous supprimer les documents associés ?';
+            return Promise.resolve(window.confirm(question));
         }
 
-        function deleteCalendarEvent(deleteButton) {
-            if (!(deleteButton instanceof Element)) {
+        async function deleteCalendarEvent(deleteButton) {
+            if (!(deleteButton instanceof Element) || deleteButton.disabled) {
                 return;
             }
 
             var deleteUrl = deleteButton.getAttribute('data-omo-calendar-delete-url') || '';
             var confirmationMessage = deleteButton.getAttribute('data-omo-calendar-delete-confirm') || '';
             var fallbackError = deleteButton.getAttribute('data-omo-calendar-delete-error') || 'Impossible de supprimer cet événement.';
-            if (!deleteUrl || (confirmationMessage !== '' && !window.confirm(confirmationMessage))) {
-                return;
-            }
-
+            if (!deleteUrl) { return; }
             deleteButton.disabled = true;
-            askDeleteAssociatedDocuments(deleteButton).then(function (deleteDocuments) {
+            try {
+                var scopeUi = deleteButton.hasAttribute('data-meeting-delete-scope')
+                    ? JSON.parse(deleteButton.getAttribute('data-meeting-delete-scope')) : null;
+                var scope = deleteButton.getAttribute('data-meeting-delete-selection') === 'following' ? 'following' : 'single';
+                if (scopeUi) {
+                    if (!window.omoMeetingRecurrence) { throw new Error(fallbackError); }
+                    if (!await window.omoMeetingRecurrence.confirmDeletion(scopeUi, scope)) { return; }
+                } else if (confirmationMessage !== '' && !window.confirm(confirmationMessage)) { return; }
+                var deleteDocuments = await askDeleteAssociatedDocuments(deleteButton, scope === 'following' ? scopeUi.scope_documents : '');
                 var requestBody = new URLSearchParams();
                 requestBody.set('delete_documents', deleteDocuments ? '1' : '0');
+                requestBody.set('recurrence_scope', scope);
+                requestBody.set('recurrence_csrf', deleteButton.getAttribute('data-meeting-delete-csrf') || '');
 
-                return fetch(resolveUrl(deleteUrl), {
+                var response = await fetch(resolveUrl(deleteUrl), {
                     method: 'POST',
                     credentials: 'same-origin',
                     headers: {
@@ -1649,9 +1606,7 @@ window.omoInitCalendar = function (root) {
                     },
                     body: requestBody.toString()
                 });
-            }).then(function (response) {
-                return response.json();
-            }).then(function (payload) {
+                var payload = await response.json();
                 if (!payload || payload.status !== true) {
                     throw new Error(payload && payload.message ? payload.message : fallbackError);
                 }
@@ -1662,10 +1617,11 @@ window.omoInitCalendar = function (root) {
 
                 closeDrawer();
                 refreshCalendar(currentUrl);
-            }).catch(function (error) {
+            } catch (error) {
                 window.omoNotify(error && error.message ? error.message : fallbackError, 'error');
+            } finally {
                 deleteButton.disabled = false;
-            });
+            }
         }
 
         function deleteAssociatedDocument(deleteButton) {
@@ -1721,8 +1677,8 @@ window.omoInitCalendar = function (root) {
             openDrawerWithUrl(url);
         };
 
-        window.omoCalendarRefreshCurrentView = function () {
-            if (drawer && !drawer.hidden && drawer.classList.contains('is-open')) {
+        window.omoCalendarRefreshCurrentView = function (force) {
+            if (force !== true && drawer && !drawer.hidden && drawer.classList.contains('is-open')) {
                 return;
             }
 

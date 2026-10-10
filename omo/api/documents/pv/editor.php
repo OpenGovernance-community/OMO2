@@ -662,7 +662,11 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
 <script src="<?= commonAssetUrl('/common/chat/thread.js') ?>"></script>
 <?php endif; ?>
 
+<?php commonMeetingAvailabilityAssets(); ?>
+<script src="<?= commonAssetUrl('/common/calendar/recurrence.js') ?>"></script>
 <?= commonPageScriptTags('/omo/api/documents/pv/editor.js', [
+    'meetingRecurrenceUi' => commonMeetingRecurrenceUi('omoDocumentsPvEditorT'),
+    'meetingAvailability' => $event instanceof \dbObject\Event ? commonMeetingNextDateConfig($event) : null,
     'initialApplicationCatalog' => $pvApplicationCatalog,
     'initialApplicationTabs' => $pvApplicationTabsPayload,
     'applicationTabsUi' => [
@@ -675,6 +679,9 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     ],
     'initialPointPayloads' => $pointPayloads,
     'initialDocumentPayload' => [
+        'asksNextMeetingDate' => $event instanceof \dbObject\Event && !$event->get('recurrence_exception') && ($event->getRecurrence()?->get('active'))
+            && $event->getRecurrence()->get('frequency') === 'on_close' && !$event->getParameter('next_meeting_id')
+            && $event->getRecurrence()->canManage($organizationId, $currentUserId),
         'pvStage' => $pvStage,
         'unhandledPointsHtml' => $unhandledPointsHtml,
         'pvStageLabel' => (string)($pvStageOptions[$pvStage] ?? ''),

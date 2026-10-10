@@ -171,7 +171,7 @@ async function testEditor() {
     'https://localtest.me/omo/', async () => { requests++; return {ok: true, text: async () => html}; });
     // linkedom does not implement HTMLFormElement.elements; production browsers do.
     app.document.querySelector('form').elements = {};
-    app.window.commonNotify = (message, options) => messages.push({message, type: options.type});
+    app.window.commonNotify = (message, type) => messages.push({message, type});
     app.run('common/calendar/availability.js');
     app.click(app.document.querySelector('[data-omo-calendar-preview-tab]'));
     await settle();

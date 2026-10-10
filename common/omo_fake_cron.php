@@ -32,6 +32,9 @@ if (!function_exists('omo_run_fake_cron_maintenance')) {
             'spreadsheetIndicatorsSynced' => 0,
             'decisionNotificationsProcessed' => 0,
             'eventNotificationsProcessed' => 0,
+            'meetingParticipantsFrozen' => 0,
+            'meetingOccurrencesCreated' => 0,
+            'meetingDocumentTitlesRepaired' => 0,
             'projectsReactivated' => 0,
         ];
 
@@ -109,12 +112,28 @@ if (!function_exists('omo_run_fake_cron_maintenance')) {
                 return notificationCenterMaybeProcessDecisionLifecycle(200, $force);
             }
         );
+        $result['meetingDocumentTitlesRepaired'] = $runTask(
+            'meeting_document_titles', 'OMO meeting document title repair failed: ',
+            static fn () => \dbObject\EventRecurrence::repairLegacyDocumentTitlesBatch(20)
+        );
+        $result['meetingParticipantsFrozen'] = $runTask(
+            'meeting_participants', 'OMO meeting participant snapshot failed: ',
+            static fn () => \dbObject\Event::freezePastMeetingParticipantsBatch(200)
+        );
+        $result['meetingOccurrencesCreated'] = $runTask(
+            'meeting_recurrence', 'OMO meeting recurrence maintenance failed: ',
+            static fn () => \dbObject\EventRecurrence::generateDueBatch(100)
+        );
         $result['eventNotificationsProcessed'] = $runTask(
             'event_notifications',
             'OMO fake cron event notification maintenance failed: ',
             static function () use ($force) {
                 return notificationCenterMaybeProcessEventLifecycle(200, $force);
             }
+        );
+        $result['meetingInvitationsProcessed'] = $runTask(
+            'meeting_invitations', 'OMO recurring invitation maintenance failed: ',
+            static fn () => notificationCenterProcessRecurringInvitations(200)
         );
         $result['projectsReactivated'] = $runTask(
             'project_blocked_reactivation',

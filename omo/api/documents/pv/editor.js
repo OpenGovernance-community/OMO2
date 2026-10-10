@@ -6060,12 +6060,19 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
                 }
             }
 
-            stageButtons.forEach(function (button) {
-                button.disabled = true;
-            });
-
-            postPointAction('update_stage', 0, { pv_stage: nextStage })
+            const dateChoice = ['review', 'validated'].includes(nextStage) && currentDocumentPayload.asksNextMeetingDate
+                ? window.omoMeetingRecurrence.chooseDate(pageConfig.meetingRecurrenceUi, true, null, pageConfig.meetingAvailability)
+                : Promise.resolve('');
+            dateChoice.then(function (date) {
+                if (date === null) { return null; }
+                stageButtons.forEach(function (button) { button.disabled = true; });
+                return postPointAction('update_stage', 0, { pv_stage: nextStage, next_meeting_start: date }).then(function (payload) {
+                    if (payload && date) { window.omoMeetingRecurrence.refreshAfterPlanning(); }
+                    return payload;
+                });
+            })
                 .then(function (payload) {
+                    if (!payload) { return; }
                     const nextDocumentPayload = payload && payload.document ? payload.document : { pvStage: nextStage };
                     mergeCurrentDocumentPayload(nextDocumentPayload);
                     if (nextStage === 'review') {
