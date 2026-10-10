@@ -108,21 +108,32 @@ namespace {
     notificationCenterDispatchEventInvitation($event, 2);
     $notification = lastNotificationActor();
     assertNotificationActor(str_contains($notification['body'], 'Bob vous invite'), 'The inviter must use the scoped actor name.');
-    assertNotificationActor(str_contains($notification['body'], 'organise par Alice'), 'A different organizer must also be named.');
+    assertNotificationActor(str_contains($notification['body'], 'organisé par Alice'), 'A different organizer must also be named.');
     assertNotificationActor($notification['excludedUserId'] === 2 && $notification['url'] === '/omo/o/12#calendar-e10', 'Actor exclusion and event links must remain intact.');
     notificationCenterDispatchEventInvitation($event);
     assertNotificationActor(str_contains(lastNotificationActor()['body'], 'Alice vous invite'), 'Without an explicit inviter, use the event creator.');
-    assertNotificationActor(!str_contains(lastNotificationActor()['body'], 'organise par'), 'Do not repeat the organizer when they sent the invitation.');
+    assertNotificationActor(!str_contains(lastNotificationActor()['body'], 'organisé par'), 'Do not repeat the organizer when they sent the invitation.');
+
+    $event->values['IDeventrecurrence'] = 7;
+    $event->values['recurrence_position'] = 0;
+    notificationCenterDispatchEventInvitation($event, 2);
+    assertNotificationActor(lastNotificationActor()['eventKey'] === 'calendar_event_invited' && str_contains(lastNotificationActor()['body'], 'série récurrente'), 'First invitation identifies the recurring series while keeping the normal invitation preference.');
+    $event->values['recurrence_position'] = 1;
+    notificationCenterDispatchEventInvitation($event);
+    assertNotificationActor(lastNotificationActor()['eventKey'] === 'calendar_recurring_occurrence_created' && lastNotificationActor()['excludedUserId'] === 0, 'Automatic occurrences use their own preference and can notify their invited organizer.');
+    notificationCenterDispatchEventInvitation($event, 1);
+    assertNotificationActor(lastNotificationActor()['excludedUserId'] === 0, 'A recurring occurrence also notifies its invited creator when an explicit actor is supplied.');
+    unset($event->values['IDeventrecurrence'], $event->values['recurrence_position']);
 
     notificationCenterDispatchEventChange($event, 'schedule', 2);
     $body = lastNotificationActor()['body'];
-    assertNotificationActor(str_contains($body, 'Bob a modifie l horaire'), 'The editor, rather than the creator, must be named.');
+    assertNotificationActor(str_contains($body, 'Bob a modifié l’horaire'), 'The editor, rather than the creator, must be named.');
     assertNotificationActor(str_contains($body, '10.10.2026 09:00') && str_contains($body, '10.10.2026 11:00'), 'Show both new dates, including changes to the end alone.');
     notificationCenterDispatchEventChange($event, 'location', 2);
     $body = lastNotificationActor()['body'];
-    assertNotificationActor(str_contains($body, 'Bob a modifie le lieu') && str_contains($body, 'Salle A') && str_contains($body, 'https://example.org/meeting'), 'A location change must include the editor and new location details.');
+    assertNotificationActor(str_contains($body, 'Bob a modifié le lieu') && str_contains($body, 'Salle A') && str_contains($body, 'https://example.org/meeting'), 'A location change must include the editor and new location details.');
     notificationCenterDispatchEventChange($event, 'schedule', 999);
-    assertNotificationActor(str_starts_with(lastNotificationActor()['body'], 'Un membre a modifie'), 'Never attribute an unknown editor to the event creator.');
+    assertNotificationActor(str_starts_with(lastNotificationActor()['body'], 'Un membre a modifié'), 'Never attribute an unknown editor to the event creator.');
     assertNotificationActor(notificationCenterActorName(3, 12) === 'Un membre', 'Empty display names need a readable fallback.');
 
     $proposal = new \dbObject\DecisionProposal(['id' => 30, 'title' => 'Materiel', 'IDuser_author' => 2]);

@@ -52,6 +52,9 @@ if (!empty($enabledAppHashes['calendar'])) {
             }
         }
     }
+    foreach (\dbObject\EventSharedDocument::documentsByEvent($eventIds, $currentOrganizationId) as $sharedEventId => $sharedDocuments) {
+        $associatedDocumentsByEventId[$sharedEventId] = array_merge($associatedDocumentsByEventId[$sharedEventId] ?? [], $sharedDocuments);
+    }
     $holonNameCache = array();
     $organizationContextLabel = t('personal_space.calendar.context.organization', [], $lang, $sourceLang);
     $calendarScopeHolonIdMap = $dashboardModuleScope === 'contextual'

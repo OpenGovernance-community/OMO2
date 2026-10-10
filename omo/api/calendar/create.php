@@ -7,8 +7,9 @@ require_once dirname(__DIR__, 3) . '/common/ethercalc.php';
 require_once dirname(__DIR__, 3) . '/common/notification_center.php';
 require_once dirname(__DIR__, 3) . '/common/external_calendar.php';
 require_once dirname(__DIR__, 3) . '/common/user_availability.php';
-require_once dirname(__DIR__, 3) . '/common/calendar/availability-grid.php';
+require_once dirname(__DIR__, 3) . '/common/calendar/availability-preview.php';
 require_once dirname(__DIR__, 3) . '/common/calendar/time-buffers.php';
+require_once dirname(__DIR__, 3) . '/common/calendar/recurrence.php';
 
 use dbObject\ArrayHolon;
 use dbObject\Document;
@@ -17,7 +18,7 @@ use dbObject\Holon;
 use dbObject\Organization;
 use dbObject\Project;
 
-$sourceLang = array_merge([
+$sourceLang = array_merge(commonMeetingRecurrenceSourceLang(), commonCalendarAvailabilityPreviewSourceLang(), [
     'calendar.create.holon.choose' => ['text' => 'Choisir un espace', 'context' => 'Open the event assignment picker.'],
     'calendar.create.holon.hint' => ['text' => 'Choisissez un espace dans lequel vous pouvez creer des evenements.', 'context' => 'Permission-filtered event assignment picker.'],
     'calendar.create.holon.confirm' => ['text' => 'Choisir cet espace', 'context' => 'Confirm event assignment.'],
@@ -140,37 +141,6 @@ $sourceLang = array_merge([
         'context' => 'Second tab label in the event creation form for invitation settings.',
     ],
     'calendar.create.tab.availability' => ['text' => 'Disponibilités', 'context' => 'Third tab showing shared availability of event participants.'],
-    'calendar.create.preview.heading' => ['text' => 'Disponibilités communes', 'context' => 'Heading of the combined invitee calendar.'],
-    'calendar.create.preview.people_count' => ['one' => '{count} personne prise en compte', 'other' => '{count} personnes prises en compte', 'context' => 'Count of OMO people whose calendars are included in the combined preview.'],
-    'calendar.create.preview.organizer' => ['text' => 'Organisateur', 'context' => 'Role of the event owner in the people list above combined availability.'],
-    'calendar.create.preview.member' => ['text' => 'Membre', 'context' => 'Fallback label when a selected member has no display name.'],
-    'calendar.create.preview.filter_hint' => ['text' => 'Cochez les personnes à prendre en compte pour rechercher une date. Cela ne modifie pas les invitations.', 'context' => 'Local participant filters in the availability preview.'],
-    'calendar.create.preview.busy_names' => ['text' => 'Occupé: {names}', 'context' => 'Tooltip listing busy people in a half-hour slot.'],
-    'calendar.create.preview.day_availability' => ['text' => '{free} / {total} créneaux libres en commun', 'context' => 'Daily count of common free half-hours, excluding breaks and outside working hours.'],
-    'calendar.create.preview.occupation_scale' => ['text' => 'Plus disponible → Moins disponible', 'context' => 'Yellow-to-red gradient legend for common daily availability.'],
-    'calendar.create.preview.selected_count' => ['text' => '{selected} / {total} personnes prises en compte', 'context' => 'Number of checked people in the availability preview.'],
-    'calendar.create.preview.busy_count' => ['text' => '{busy} / {total} occupés', 'context' => 'Number of busy people in a half-hour slot.'],
-    'calendar.create.preview.no_people' => ['text' => 'Cochez au moins une personne pour afficher les disponibilités.', 'context' => 'Empty availability preview after excluding every person.'],
-    'calendar.create.preview.hint' => ['text' => 'Créneaux communs aux invités et à l’organisateur, selon leurs agendas OMO et externes.', 'context' => 'Explanation of the combined availability preview.'],
-    'calendar.create.preview.email_warning' => ['text' => 'Les invitations par e-mail ne peuvent pas être vérifiées.', 'context' => 'Caution when the preview includes guests without an OMO account.'],
-    'calendar.create.preview.cache_warning' => ['text' => 'Certains agendas externes ne sont pas à jour ou ne couvrent pas cette période.', 'context' => 'Caution when external calendar cache is incomplete.'],
-    'calendar.create.preview.error' => ['text' => 'Impossible de calculer les disponibilités pour le moment.', 'context' => 'Combined availability preview failure.'],
-    'calendar.create.preview.loading' => ['text' => 'Calcul des disponibilités…', 'context' => 'Loading state of the combined availability tab.'],
-    'calendar.create.preview.select_day' => ['text' => 'Choisissez un jour', 'context' => 'Prompt to choose a day in the invitee availability preview.'],
-    'calendar.create.preview.select_day_hint' => ['text' => 'Sélectionnez une date pour afficher les créneaux communs.', 'context' => 'Explanation before a day is selected.'],
-    'calendar.create.preview.no_hours' => ['text' => 'Aucun créneau commun pour cette journée.', 'context' => 'Combined availability when participants have no overlapping working hours.'],
-    'calendar.create.preview.free' => ['text' => 'Libre', 'context' => 'All participants are free.'],
-    'calendar.create.preview.partial' => ['text' => 'Partiellement occupé', 'context' => 'Some common slots are occupied.'],
-    'calendar.create.preview.full' => ['text' => 'Occupé', 'context' => 'All common slots are occupied.'],
-    'calendar.create.preview.closed' => ['text' => 'Indisponible', 'context' => 'No shared working hours.'],
-    'calendar.create.preview.busy' => ['text' => 'Occupé', 'context' => 'A half-hour slot is occupied.'],
-    'calendar.create.preview.pause' => ['text' => 'Pause', 'context' => 'A participant has a configured break.'],
-    'calendar.create.preview.previous_month' => ['text' => 'Mois précédent', 'context' => 'Navigate combined availability calendar backward.'],
-    'calendar.create.preview.next_month' => ['text' => 'Mois suivant', 'context' => 'Navigate combined availability calendar forward.'],
-    'calendar.create.preview.select_slot' => ['text' => 'Sélectionner ce créneau', 'context' => 'Accessible label for a free half-hour slot used to set event times.'],
-    'calendar.create.preview.selection_hint' => ['text' => 'Un clic sélectionne la durée de l’événement par créneaux de 30 minutes, vers l’avant ou vers l’arrière si nécessaire. Maj + clic permet d’ajuster la plage.', 'context' => 'Instructions for selecting event start and end from shared availability.'],
-    'calendar.create.preview.range_blocked' => ['text' => 'Aucune plage libre consécutive ne permet cette sélection sans traverser une pause ou un créneau occupé.', 'context' => 'Invalid duration or shift-click range in shared availability.'],
-    'calendar.create.preview.range_selected' => ['text' => 'Début et fin de l’événement mis à jour.', 'context' => 'Confirmation after choosing a time range from shared availability.'],
     'calendar.create.tabs_aria' => [
         'text' => "Configuration de l'événement",
         'context' => 'Accessible label of the tabs used in the event creation form.',
@@ -360,14 +330,22 @@ function omoCalendarBuildDefaultLinkedDocumentValues(string $eventTitle, string 
 {
     $normalizedEventTitle = trim($eventTitle);
     $normalizedTitle = trim($documentTitle);
+    $titleDatePattern = null;
 
     if ($normalizedTitle === '') {
         if ($documentType === Document::TYPE_PV) {
+            $defaultEventTitle = $normalizedEventTitle !== '' ? $normalizedEventTitle : 'Événement';
             $normalizedTitle = omoCalendarCreateT('calendar.create.document.default_pv_title', [
                 'pvLabel' => omoCalendarCreateT('calendar.create.document.keyword_pv'),
-                'eventTitle' => $normalizedEventTitle !== '' ? $normalizedEventTitle : 'Événement',
+                'eventTitle' => $defaultEventTitle,
                 'eventDate' => $startAt->format('d.m.Y H:i'),
             ]);
+            $patternParts = explode('__OMO_EVENT_DATE__', omoCalendarCreateT('calendar.create.document.default_pv_title', [
+                'pvLabel' => omoCalendarCreateT('calendar.create.document.keyword_pv'),
+                'eventTitle' => $defaultEventTitle,
+                'eventDate' => '__OMO_EVENT_DATE__',
+            ]));
+            if (count($patternParts) === 2) { $titleDatePattern = ['before' => $patternParts[0], 'after' => $patternParts[1]]; }
         } elseif ($normalizedEventTitle !== '') {
             $normalizedTitle = $normalizedEventTitle;
         } else {
@@ -392,6 +370,7 @@ function omoCalendarBuildDefaultLinkedDocumentValues(string $eventTitle, string 
         'title' => $normalizedTitle,
         'description' => $description,
         'keywords' => $keywords,
+        'title_date_pattern' => $titleDatePattern,
     ];
 }
 
@@ -520,6 +499,8 @@ if ($eventId > 0) {
 }
 
 $canEditPersonalTimeBuffers = !$isEditMode || $event->canEditTimeBuffers($currentUserId);
+$meetingRecurrence = $isEditMode ? $event->getRecurrence() : null;
+$_SESSION['omo_event_recurrence_csrf'] ??= bin2hex(random_bytes(32));
 
 $isDuplicateMode = !$isEditMode && $duplicateEventId > 0;
 if ($isDuplicateMode) {
@@ -626,19 +607,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['availability_preview
         exit;
     }
 
-    $zone = new DateTimeZone('Europe/Zurich');
-    $today = new DateTimeImmutable('today', $zone);
-    $monthValue = trim((string)($_POST['month'] ?? $today->format('Y-m')));
-    $month = DateTimeImmutable::createFromFormat('!Y-m-d', $monthValue . '-01', $zone);
-    if (!$month || $month->format('Y-m') !== $monthValue) {
-        $month = $today->modify('first day of this month');
-    }
-    $selectedValue = trim((string)($_POST['date'] ?? ''));
-    $selectedDay = $selectedValue !== '' ? DateTimeImmutable::createFromFormat('!Y-m-d', $selectedValue, $zone) : null;
-    if (!$selectedDay || $selectedDay->format('Y-m-d') !== $selectedValue || $selectedDay->format('Y-m') !== $month->format('Y-m')) {
-        $selectedDay = null;
-    }
-
     $previewEvent = $isEditMode ? $event : new Event();
     $previewEvent->set('IDorganization', $organizationId);
     if (!$isEditMode) {
@@ -657,87 +625,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['availability_preview
         $proposedInvitations[] = $invitation;
     }
     $targets = $previewEvent->getEffectiveInvitationTargets($organizationId, $proposedInvitations, explicitOnly: true);
-    $userIds = $targets['userIds'];
-    $rangeStart = $month->setTime(0, 0);
-    $rangeEnd = $month->modify('+1 month')->setTime(0, 0);
-    $participants = [];
-    $participantNames = [];
-    $participantData = [];
-    $incomplete = false;
-    $refreshDeadline = microtime(true) + 18;
-    try {
-        foreach ($userIds as $userId) {
-            $participantUser = new \dbObject\User();
-            $participantNames[$userId] = $participantUser->load((int)$userId)
-                ? trim((string)$participantUser->getScopedDisplayName($organizationId))
-                : '';
-            if ($participantNames[$userId] === '') {
-                $participantNames[$userId] = omoCalendarCreateT('calendar.create.preview.member');
-            }
-            commonExternalCalendarRefreshForAvailability((int)$userId, $refreshDeadline);
-            $hours = \dbObject\MeetingProfile::isStorageAvailable()
-                ? \dbObject\MeetingProfile::forUser((int)$userId)->availabilityHours()
-                : \dbObject\MeetingProfile::defaultHours();
-            $calendarIncomplete = false;
-            $busy = commonUserAvailabilityLoadBusyIntervals((int)$userId, $rangeStart, $rangeEnd, $calendarIncomplete, $isEditMode ? $eventId : 0);
-            $incomplete = $incomplete || $calendarIncomplete;
-            $participants[] = ['hours' => $hours, 'busy' => $busy];
-            $personDays = [];
-            for ($personDay = $rangeStart; $personDay < $rangeEnd; $personDay = $personDay->modify('+1 day')) {
-                $personDays[$personDay->format('Y-m-d')] = commonUserAvailabilityEncodeDay(commonUserAvailabilityBuildDay($personDay, $hours, $busy));
-            }
-            $participantData[] = ['id' => (string)$userId, 'name' => $participantNames[$userId], 'days' => $personDays, 'incomplete' => $calendarIncomplete];
-        }
-    } catch (Throwable $exception) {
-        error_log('Combined calendar availability preview failed: ' . get_class($exception));
-        http_response_code(503);
-        echo '<div class="omo-calendar-create__preview-feedback is-error">' . omoApiEscape(omoCalendarCreateT('calendar.create.preview.error')) . '</div>';
-        exit;
-    }
-
-    $days = [];
-    $dateLabels = [];
-    for ($day = $rangeStart; $day < $rangeEnd; $day = $day->modify('+1 day')) {
-        $days[$day->format('Y-m-d')] = commonUserAvailabilityBuildCombinedDay($day, $participants);
-        $dateLabels[$day->format('Y-m-d')] = commonUserAvailabilityFormatDate($day, true);
-    }
-    $labelKeys = ['heading', 'previous_month', 'next_month', 'free', 'partial', 'full', 'closed', 'select_day', 'select_day_hint', 'no_hours', 'pause', 'busy', 'select_slot', 'selection_hint', 'range_blocked', 'range_selected', 'selected_count', 'busy_count', 'busy_names', 'no_people', 'day_availability', 'occupation_scale'];
-    $labels = [];
-    foreach ($labelKeys as $key) {
-        $labels[$key] = omoCalendarCreateT('calendar.create.preview.' . $key);
-    }
-    $labels['available'] = $labels['free'];
-    ?>
-    <div class="omo-calendar-create__preview-people" aria-label="<?= omoApiEscape(omoCalendarCreateT('calendar.create.preview.people_count', ['count' => (string)count($userIds)])) ?>">
-        <div class="generic-heading-with-help">
-            <strong data-omo-calendar-preview-people-count><?= omoApiEscape(omoCalendarCreateT('calendar.create.preview.people_count', ['count' => (string)count($userIds)])) ?></strong>
-            <details class="generic-context-help generic-context-help--compact" data-generic-context-help-hover>
-                <summary aria-label="<?= omoApiEscape(omoCalendarCreateT('calendar.create.preview.filter_hint')) ?>">?</summary>
-                <div class="generic-context-help__content"><?= omoApiEscape(omoCalendarCreateT('calendar.create.preview.filter_hint')) ?></div>
-            </details>
-        </div>
-        <ul>
-            <?php foreach ($participantNames as $userId => $name): ?>
-                <li><label><input type="checkbox" data-omo-calendar-preview-person="<?= (int)$userId ?>" checked> <?= omoApiEscape($name) ?><?php if ((int)$userId === (int)$previewEvent->get('IDuser')): ?> <span><?= omoApiEscape(omoCalendarCreateT('calendar.create.preview.organizer')) ?></span><?php endif; ?></label></li>
-            <?php endforeach; ?>
-        </ul>
-    </div>
-    <?php
-    if ($targets['emails']) {
-        echo '<p class="omo-calendar-create__preview-warning">' . omoApiEscape(omoCalendarCreateT('calendar.create.preview.email_warning')) . '</p>';
-    }
-    echo '<p class="omo-calendar-create__preview-warning" data-omo-calendar-preview-cache-warning' . ($incomplete ? '' : ' hidden') . '>' . omoApiEscape(omoCalendarCreateT('calendar.create.preview.cache_warning')) . '</p>';
-    $makeControlValue = static function (DateTimeImmutable $targetMonth, ?DateTimeImmutable $targetDay = null): string {
-        return 'month=' . rawurlencode($targetMonth->format('Y-m'))
-            . ($targetDay ? '&date=' . rawurlencode($targetDay->format('Y-m-d')) : '');
-    };
-    commonCalendarRenderAvailabilityGrid($month, $selectedDay, $days, $labels, 'data-omo-calendar-preview-target', $makeControlValue, '', true);
-    ?>
-    <p class="generic-description generic-description--small"><?= omoApiEscape(omoCalendarCreateT('calendar.create.preview.hint')) ?></p>
-    <script type="application/json" data-omo-calendar-preview-data><?= json_encode([
-        'month' => $month->format('Y-m'), 'people' => $participantData, 'dates' => $dateLabels, 'labels' => $labels,
-    ], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR) ?></script>
-    <?php
+    commonCalendarRenderInviteeAvailability($previewEvent, $targets, 'omoCalendarCreateT', $isEditMode ? $eventId : 0);
     exit;
 }
 
@@ -864,6 +752,36 @@ $editableEventStatuses = [
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Content-Type: application/json; charset=UTF-8');
+
+    $recurrenceEnabled = !empty($_POST['recurrence_enabled']);
+    $recurrenceApplyFollowing = !empty($_POST['recurrence_apply_following']);
+    $recurrenceEditing = $meetingRecurrence && !empty($_POST['recurrence_edit']) && $recurrenceApplyFollowing;
+    $recurrenceStrategy = $recurrenceEditing ? (string)($_POST['recurrence_strategy'] ?? '') : ($meetingRecurrence ? 'content' : 'replan');
+    if ($meetingRecurrence) {
+        // The read-only rule is never changed by an ordinary meeting save.
+        $recurrenceEnabled = true;
+    }
+    $recurrenceSettings = [];
+    if ($recurrenceEnabled || $meetingRecurrence) {
+        if (!hash_equals($_SESSION['omo_event_recurrence_csrf'], (string)($_POST['recurrence_csrf'] ?? ''))) {
+            http_response_code(403);
+            echo json_encode(['status' => false, 'message' => omoCalendarCreateT('calendar.recurrence.csrf')]); exit;
+        }
+        if ($meetingRecurrence && $recurrenceApplyFollowing && !$meetingRecurrence->canManage($organizationId, $currentUserId)) {
+            http_response_code(403);
+            echo json_encode(['status' => false, 'message' => omoCalendarCreateT('calendar.edit.error.forbidden')]); exit;
+        }
+        try {
+            if (!in_array($recurrenceStrategy, ['replan', 'after_last', 'stop_keep', 'stop_delete', 'content'], true)) {
+                throw new \InvalidArgumentException('Strategie invalide.');
+            }
+            $needsSettings = !$meetingRecurrence || ($recurrenceEditing && in_array($recurrenceStrategy, ['replan', 'after_last'], true));
+            $recurrenceSettings = \dbObject\EventRecurrence::normalizeSettings($needsSettings && is_array($_POST['recurrence'] ?? null) ? $_POST['recurrence'] : []);
+        } catch (\InvalidArgumentException $exception) {
+            http_response_code(422);
+            echo json_encode(['status' => false, 'message' => omoCalendarCreateT('calendar.recurrence.invalid')]); exit;
+        }
+    }
 
     $previousLocation = $isEditMode ? [
         'mode' => trim((string)$event->get('locationmode')),
@@ -1054,6 +972,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    if (($recurrenceEnabled || $meetingRecurrence) && !in_array($recurrenceStrategy, ['stop_keep', 'stop_delete'], true)) {
+        $keepDocumentSettings = $meetingRecurrence && (!$recurrenceApplyFollowing || $recurrenceStrategy === 'content');
+        $documentTypes = $isEditMode ? array_map(static fn($document) => $document->getDocumentType(),
+            array_filter($event->getAssociatedDocuments(), static fn($document) => !$document->isArchived())) : [];
+        if ($willCreateDocument) { $documentTypes[] = $resolvedDocumentType; }
+        try {
+            \dbObject\EventRecurrence::validateDocumentTypes($documentTypes,
+                $keepDocumentSettings ? $meetingRecurrence->get('frequency') : $recurrenceSettings['frequency'],
+                $keepDocumentSettings ? $meetingRecurrence->getDocumentMode() : $recurrenceSettings['document_mode']);
+        } catch (\InvalidArgumentException $exception) {
+            echo json_encode(['status' => false, 'message' => omoCalendarCreateT($exception->getMessage())]); exit;
+        }
+    }
+
     $selectedDocumentTemplate = null;
     if ($willCreateDocument && $documentTemplateId > 0) {
         $selectedDocumentTemplate = new Document();
@@ -1183,6 +1115,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo->beginTransaction();
         }
 
+        $previousMeetingState = null;
+        if ($meetingRecurrence) {
+            $meetingRecurrence->lock();
+            if (!$recurrenceApplyFollowing) {
+                $persistedEvent = new Event();
+                if (!$persistedEvent->load((int)$event->getId(), true)) { throw new RuntimeException('event_no_longer_exists'); }
+                $previousMeetingState = \dbObject\EventRecurrence::captureMeetingEditState($persistedEvent);
+            }
+        }
+
         $saveResult = $event->save();
         if (!is_array($saveResult) || empty($saveResult['status'])) {
             if ($startedTransaction && $pdo instanceof \PDO && $pdo->inTransaction()) {
@@ -1245,6 +1187,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($linkedDocument->isEtherpadDocument()) {
                 $createdEtherpadPadId = trim((string)($documentCreateResult['etherpadPadId'] ?? $linkedDocument->getEtherpadPadId()));
             }
+            if ($defaultDocumentValues['title_date_pattern'] !== null
+                && !$event->registerDefaultDocumentTitle($linkedDocument, $defaultDocumentValues['title_date_pattern'])) {
+                throw new RuntimeException('Impossible de conserver le nom automatique du document.');
+            }
             $syncDocumentDateResult = $event->syncAssociatedDocumentEventDate();
             if (!is_array($syncDocumentDateResult) || empty($syncDocumentDateResult['status'])) {
                 if ($startedTransaction && $pdo instanceof \PDO && $pdo->inTransaction()) {
@@ -1305,6 +1251,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new RuntimeException('personal_time_buffers_save');
         }
 
+        if ($recurrenceEnabled || $meetingRecurrence) {
+            if ($meetingRecurrence && $recurrenceStrategy === 'stop_delete') {
+                if (!$meetingRecurrence->canManage($organizationId, $currentUserId, 'CAN_DELETE_EVENT')) {
+                    throw new \RuntimeException('recurrence_delete_forbidden');
+                }
+                $followingEvents = array_values(array_filter($meetingRecurrence->getDeletionEventsFrom($event),
+                    static fn($target) => (int)$target->getId() !== (int)$event->getId()));
+                $recurrenceDeletedEvents = omoCalendarDeleteEvents($followingEvents, !empty($_POST['recurrence_delete_documents']), $organizationId, $currentUserId, $rootHolon);
+            }
+            \dbObject\EventRecurrence::configure($event, $recurrenceSettings, $recurrenceApplyFollowing, $recurrenceEnabled, $recurrenceStrategy, $previousMeetingState);
+            if ($recurrenceEnabled && $event->getRecurrence()?->get('frequency') !== 'on_close') {
+                // Fill the initial horizon in this save, including its documents.
+                // Cron then extends it with the same locked, idempotent cursor.
+                \dbObject\EventRecurrence::generateDueBatch(400, null, (int)$event->get('IDeventrecurrence'));
+            }
+        }
+
         if ($startedTransaction && $pdo instanceof \PDO && $pdo->inTransaction()) {
             $pdo->commit();
         }
@@ -1316,21 +1279,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $cleanupCreatedEtherpadPad();
 
+        error_log('OMO calendar event save failed: ' . $exception->getMessage());
         echo json_encode([
             'status' => false,
-            'message' => omoCalendarCreateT('calendar.create.error.save'),
+            'message' => omoCalendarCreateT(in_array($exception->getMessage(), ['calendar.recurrence.shared_pv', 'calendar.recurrence.requires_pv'], true)
+                ? $exception->getMessage() : 'calendar.create.error.save'),
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         exit;
     }
 
+    foreach ($recurrenceDeletedEvents ?? [] as $deletedEvent) {
+        if ($deletedEvent['project'] <= 0) { continue; }
+        $deletedProject = new Project();
+        if ($deletedProject->load($deletedEvent['project']) && (int)$deletedProject->get('IDorganization') === $organizationId) {
+            $deletedProject->recordAssociationHistory('event', $deletedEvent['id'], $deletedEvent['title'], 'deleted', $currentUserId);
+        }
+    }
     if (!$isEditMode && $project instanceof Project) {
         $project->recordAssociationHistory('event', (int)$event->getId(), (string)$event->get('title'), 'added', $currentUserId);
     }
 
     try {
         $notificationEvent = new Event();
+        if ((int)$event->get('IDeventrecurrence') > 0) {
+            notificationCenterProcessRecurringInvitations(400, (int)$event->get('IDeventrecurrence'));
+        }
         if (
-            $notificationEvent->load((int)$event->getId())
+            $notificationEvent->load((int)$event->getId(), true)
             && Event::normalizeStatus($notificationEvent->get('status')) !== Event::STATUS_DRAFT
         ) {
             if (!$isEditMode) {
@@ -1470,6 +1445,9 @@ if ($isEditMode) {
                 data-omo-calendar-open-detail-url="<?= omoApiEscape($cancelDetailUrl) ?>"
             ><?= omoApiEscape(omoCalendarCreateT('calendar.edit.cancel')) ?></button>
         <?php endif; ?>
+        <?php if ($meetingRecurrence): ?>
+            <?php commonRenderMeetingSaveActions($calendarFormId, $meetingRecurrence->get('active') && !$event->get('recurrence_exception'), 'omoCalendarCreateT'); ?>
+        <?php else: ?>
         <button
             type="submit"
             form="<?= omoApiEscape($calendarFormId) ?>"
@@ -1478,6 +1456,7 @@ if ($isEditMode) {
             data-omo-subdrawer-action
             data-omo-calendar-create-submit
         ><?= omoApiEscape($drawerSubmitLabel) ?></button>
+        <?php endif; ?>
     </div>
 
     <div class="omo-calendar-create__shell generic-form-stack generic-form-stack--compact">
@@ -1489,6 +1468,7 @@ if ($isEditMode) {
             data-omo-calendar-create-form
             data-omo-calendar-editor-host="<?= omoApiEscape($editorHost) ?>"
         >
+            <input type="hidden" name="recurrence_csrf" value="<?= omoApiEscape($_SESSION['omo_event_recurrence_csrf']) ?>">
             <?php if ($isEditMode): ?>
                 <input type="hidden" name="id" value="<?= (int)$event->getId() ?>">
             <?php endif; ?>
@@ -1581,6 +1561,17 @@ if ($isEditMode) {
                             ><?= omoApiEscape($descriptionDefault) ?></textarea>
                         </label>
 
+                        <?php
+                        $recurrenceDefaults = ['weekday' => (int)($startDefault instanceof \DateTimeInterface ? $startDefault->format('N') : date('N')),
+                            'month_day' => (int)($startDefault instanceof \DateTimeInterface ? $startDefault->format('j') : date('j'))];
+                        if ($meetingRecurrence) {
+                            $recurrenceDefaults['document_mode'] = $meetingRecurrence->getDocumentMode();
+                            foreach (['frequency', 'interval_days', 'month_day', 'weekday', 'ordinal', 'weekend_shift', 'horizon_months'] as $field) {
+                                $recurrenceDefaults[$field] = $meetingRecurrence->get($field);
+                            }
+                        }
+                        commonRenderMeetingRecurrenceFields($recurrenceDefaults, $meetingRecurrence && $meetingRecurrence->get('active') && !$event->get('recurrence_exception'), $meetingRecurrence !== null, 'omoCalendarCreateT', commonMeetingRecurrenceSummary($event, 'omoCalendarCreateT'));
+                        ?>
                         <?php if ($canEditPersonalTimeBuffers): ?>
                         <section class="generic-form-stack">
                             <label class="generic-checkbox">
@@ -1743,3 +1734,4 @@ if ($isEditMode) {
 <link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/calendar/invitations.css') ?>">
 <link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/calendar/editor.css') ?>">
 <link rel="stylesheet" href="<?= commonAssetUrl('/common/calendar/availability-grid.css') ?>">
+<script src="<?= commonAssetUrl('/common/calendar/recurrence.js') ?>"></script>

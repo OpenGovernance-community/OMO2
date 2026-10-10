@@ -42,6 +42,7 @@ class NotificationPreference extends DbObject
     public static function getChannelsFor($userId, $organizationId, $eventKey)
     {
         $defaults = ['in_app' => true, 'push' => false, 'telegram' => false, 'email' => false, 'days' => [], 'lead_time' => ''];
+        if (trim((string)$eventKey) === 'calendar_recurring_occurrence_created') { $defaults['in_app'] = false; }
         if (!self::isStorageAvailable()) {
             return $defaults;
         }

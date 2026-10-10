@@ -21,12 +21,12 @@ class Event extends DbObject
     {
         return [
             [['IDuser', 'title', 'status', 'start_at', 'end_at'], 'required'],
-            [['id'], 'integer'],
-            [['IDorganization', 'IDholon', 'IDproject', 'IDuser', 'IDdecision_proposal'], 'fk'],
+            [['id', 'recurrence_position'], 'integer'],
+            [['IDorganization', 'IDholon', 'IDproject', 'IDuser', 'IDdecision_proposal', 'IDeventrecurrence'], 'fk'],
             [['title', 'status', 'timezone', 'locationmode', 'locationaddress', 'videomeetingurl'], 'string'],
             [['description'], 'text'],
             [['parameters'], 'parameters'],
-            [['is_all_day', 'active'], 'boolean'],
+            [['is_all_day', 'active', 'recurrence_exception'], 'boolean'],
             [['start_at', 'end_at', 'created_at', 'updated_at'], 'datetime'],
             [['id'], 'safe'],
         ];
@@ -40,6 +40,9 @@ class Event extends DbObject
             'IDholon' => 'Espace associé',
             'IDproject' => 'Projet',
             'IDdecision_proposal' => 'Proposition de date',
+            'IDeventrecurrence' => 'Serie de reunions',
+            'recurrence_position' => 'Position dans la serie',
+            'recurrence_exception' => 'Occurrence personnalisee',
             'IDuser' => 'Créateur',
             'title' => 'Titre',
             'description' => 'Description',
@@ -89,6 +92,44 @@ class Event extends DbObject
     public static function getOrder()
     {
         return 'start_at ASC, id ASC';
+    }
+
+    public function getRecurrence(): ?EventRecurrence
+    {
+        $series = new EventRecurrence();
+        return (int)$this->get('IDeventrecurrence') > 0 && $series->load((int)$this->get('IDeventrecurrence')) ? $series : null;
+    }
+
+    public function isPastRecurringMeeting(): bool
+    {
+        return (int)$this->get('IDeventrecurrence') > 0 && $this->get('end_at') instanceof \DateTimeInterface
+            && $this->get('end_at') < new \DateTimeImmutable();
+    }
+
+    /** Snapshot identities separately from presence, which remains editable during the meeting. */
+    public function freezeInvitationParticipants(): bool
+    {
+        if ($this->getParameter('meeting_participants') !== null) { return true; }
+        $snapshot = ['targets' => $this->getEffectiveInvitationTargets((int)$this->get('IDorganization'), fresh: true, activeOnly: true),
+            'entries' => $this->getAttendanceEntries((int)$this->get('IDorganization'))];
+        // Preserve concurrent metadata; only install the snapshot once.
+        $saved = self::execute("UPDATE event SET parameters = JSON_SET(COALESCE(NULLIF(parameters, ''), '{}'), '$.meeting_participants', JSON_EXTRACT(:snapshot, '$'))
+            WHERE id = :id AND JSON_EXTRACT(COALESCE(NULLIF(parameters, ''), '{}'), '$.meeting_participants') IS NULL",
+            ['id' => $this->getId(), 'snapshot' => json_encode($snapshot, JSON_THROW_ON_ERROR)]);
+        if ($saved) { $this->load((int)$this->getId(), true); }
+        return (bool)$saved;
+    }
+
+    public static function freezePastMeetingParticipantsBatch(int $limit = 200): int
+    {
+        $count = 0;
+        foreach (self::fetchAll("SELECT * FROM event WHERE IDeventrecurrence IS NOT NULL AND active = 1 AND end_at <= :now
+            AND JSON_EXTRACT(COALESCE(NULLIF(parameters, ''), '{}'), '$.meeting_participants') IS NULL ORDER BY start_at DESC LIMIT " . max(1, $limit),
+            ['now' => new \DateTimeImmutable()]) ?: [] as $row) {
+            $event = new self(); $event->hydrateFromDatabaseRow($row, true);
+            if ($event->freezeInvitationParticipants()) { $count++; }
+        }
+        return $count;
     }
 
     public static function findByDecisionProposal(int $proposalId): ?self
@@ -271,9 +312,11 @@ class Event extends DbObject
             ),
         ));
 
-        return array_values(array_filter($documents->getArrayCopy(), static function ($document) {
+        $owned = array_values(array_filter($documents->getArrayCopy(), static function ($document) {
             return $document instanceof \dbObject\Document && (int)$document->getId() > 0;
         }));
+        $shared = EventSharedDocument::documentsByEvent([(int)$this->getId()], (int)$this->get('IDorganization'));
+        return array_merge($owned, $shared[(int)$this->getId()] ?? []);
     }
 
     public function getProject()
@@ -357,13 +400,17 @@ class Event extends DbObject
             return $membershipCache[$cacheKey];
         }
 
-        $userIds = $holon->getAssociatedMemberUserIds([
-            'organizationId' => $organizationId,
-            'skipPermissionFilter' => true,
-            'activeOnly' => $activeOnly,
-        ]);
+        if ($activeOnly && $holon->isOrganizationHolon()) {
+            $memberships = new ArrayUserOrganization(); $memberships->loadActiveForOrganization($organizationId);
+            $userIds = array_map(static fn($membership) => (int)$membership->get('IDuser'), $memberships->getArrayCopy());
+        } else {
+            $userIds = $holon->getAssociatedMemberUserIds([
+                'organizationId' => $organizationId,
+                'skipPermissionFilter' => true,
+                'activeOnly' => $activeOnly,
+            ]);
+        }
 
-        if ($fresh) return array_values(array_unique(array_map('intval', is_array($userIds) ? $userIds : [])));
         $membershipCache[$cacheKey] = array_values(array_unique(array_map('intval', is_array($userIds) ? $userIds : [])));
         return $membershipCache[$cacheKey];
     }
@@ -469,6 +516,14 @@ class Event extends DbObject
     /** Fresh bypasses membership caches; explicitOnly excludes implicit organization/context recipients. */
     public function getEffectiveInvitationTargets($organizationId, ?array $proposedInvitations = null, bool $fresh = false, bool $activeOnly = false, bool $explicitOnly = false): array
     {
+        $snapshot = $this->getParameter('meeting_participants');
+        if ($proposedInvitations === null && is_array($snapshot)) {
+            $targets = $snapshot['targets'];
+            if (!$explicitOnly || !empty($targets['hasExplicitInvitations'])) { return $targets; }
+            return ['hasExplicitInvitations' => false, 'userIds' => [], 'emails' => [], 'registeredEmails' => []];
+        }
+        // Upcoming occurrences follow current memberships; closed ones use their snapshot above.
+        $activeOnly = $activeOnly || (int)$this->get('IDeventrecurrence') > 0;
         $organizationId = (int)$organizationId;
         if ($organizationId <= 0) {
             $organizationId = (int)$this->get('IDorganization');
@@ -909,6 +964,14 @@ class Event extends DbObject
 
     public function getAttendanceEntries($organizationId = 0): array
     {
+        $snapshot = $this->getParameter('meeting_participants');
+        if (is_array($snapshot)) {
+            $entries = $snapshot['entries']; $rows = $this->getAttendanceRowsByIdentity();
+            foreach ($entries as &$entry) {
+                if (isset($rows[$entry['identityKey']])) { $entry['isPresent'] = !empty($rows[$entry['identityKey']]['is_present']); }
+            }
+            unset($entry); return $entries;
+        }
         $organizationId = (int)$organizationId > 0 ? (int)$organizationId : (int)$this->get('IDorganization');
         if ((int)$this->getId() <= 0 || $organizationId <= 0) {
             return [];
@@ -1225,7 +1288,54 @@ class Event extends DbObject
         return $this->isVisibleToInvitationViewer($userId, $organizationId, $viewerEmail);
     }
 
-    public function syncAssociatedDocumentEventDate()
+    /** Numeric European/ISO dates only; never replace dates unrelated to the source meeting. */
+    public static function replaceMeetingDateInTitle(string $title, \DateTimeInterface $from, \DateTimeInterface $to): string
+    {
+        $pattern = '~(?<![\pL\pN./-])(?<a>\d{4}|\d{1,2})(?<sep>[./-])(?<b>\d{1,2})\k<sep>(?<c>\d{4}|\d{1,2})(?!\d|[./-]\d)
+            (?:(?<join>T|[ ,]+(?:(?:a|\x{00e0}|de)[ ]+)?)
+                (?<hour>[01]?\d|2[0-3])(?:(?<colon>:)(?<minute>[0-5]\d)(?::(?<second>[0-5]\d))?|(?<hsep>[hH])(?<hminute>[0-5]\d)?)(?!\d))?~ux';
+        return preg_replace_callback($pattern, static function (array $match) use ($from, $to): string {
+            $iso = strlen($match['a']) === 4;
+            $year = $iso ? $match['a'] : $match['c'];
+            $day = $iso ? $match['c'] : $match['a'];
+            if (!in_array(strlen($year), [2, 4], true) || strlen($day) > 2
+                || (int)$day !== (int)$from->format('j') || (int)$match['b'] !== (int)$from->format('n')
+                || $year !== $from->format(strlen($year) === 4 ? 'Y' : 'y')) { return $match[0]; }
+            $nextDay = $to->format(strlen($day) === 2 ? 'd' : 'j');
+            $nextMonth = $to->format(strlen($match['b']) === 2 ? 'm' : 'n');
+            $nextYear = $to->format(strlen($year) === 4 ? 'Y' : 'y');
+            $date = implode($match['sep'], $iso ? [$nextYear, $nextMonth, $nextDay] : [$nextDay, $nextMonth, $nextYear]);
+            $oldDate = $match['a'] . $match['sep'] . $match['b'] . $match['sep'] . $match['c'];
+            $suffix = substr($match[0], strlen($oldDate));
+            if (isset($match['hour']) && $match['hour'] !== '') {
+                $minute = $match['minute'] ?? ''; $hminute = $match['hminute'] ?? '';
+                $second = $match['second'] ?? '';
+                if ((int)$match['hour'] === (int)$from->format('G') && (int)($minute ?: $hminute) === (int)$from->format('i')
+                    && ($second === '' || (int)$second === (int)$from->format('s'))) {
+                    $suffix = $match['join'] . $to->format(strlen($match['hour']) === 2 ? 'H' : 'G');
+                    $suffix .= !empty($match['colon']) ? ':' . $to->format('i') . ($second !== '' ? ':' . $to->format('s') : '')
+                        : $match['hsep'] . ($hminute !== '' || $to->format('i') !== '00' ? $to->format('i') : '');
+                }
+            }
+            return $date . $suffix;
+        }, $title) ?? $title;
+    }
+
+    /** Track generated names separately from manual renames. */
+    public function registerDefaultDocumentTitle(Document $document, array $pattern): bool
+    {
+        if ((int)$document->get('IDevent') !== (int)$this->getId() || (int)$this->getId() <= 0
+            || (int)$document->get('IDorganization') !== (int)$this->get('IDorganization')
+            || !isset($pattern['before'], $pattern['after'])) { return false; }
+        $entry = ['pattern' => $pattern, 'last_title' => (string)$document->get('title')];
+        $saved = self::execute("UPDATE event SET parameters = JSON_SET(COALESCE(NULLIF(parameters, ''), '{}'),
+            '$.default_document_titles', JSON_SET(COALESCE(JSON_EXTRACT(COALESCE(NULLIF(parameters, ''), '{}'), '$.default_document_titles'), '{}'),
+                :document_path, JSON_EXTRACT(:entry, '$'))) WHERE id = :id",
+            ['document_path' => '$."' . (int)$document->getId() . '"', 'entry' => json_encode($entry, JSON_THROW_ON_ERROR), 'id' => $this->getId()]);
+        return $saved && $this->load((int)$this->getId(), true);
+    }
+
+    public function syncAssociatedDocumentEventDate(?\DateTimeInterface $previousStart = null)
     {
         $documents = $this->getAssociatedDocuments();
         if (count($documents) === 0) {
@@ -1243,6 +1353,9 @@ class Event extends DbObject
         }
 
         foreach ($documents as $document) {
+            if ((int)$document->get('IDevent') !== (int)$this->getId()) { continue; }
+            $titleResult = $document->syncDefaultEventTitle($this, $previousStart);
+            if (empty($titleResult['status'])) { return $titleResult; }
             $currentCreatedAt = $document->get('datecreation');
             $nextComparable = $endAt->format('Y-m-d H:i:s');
             $currentComparable = $currentCreatedAt instanceof \DateTimeInterface
@@ -1314,6 +1427,12 @@ class Event extends DbObject
 
     public function save()
     {
+        $original = (int)$this->getId() > 0 ? self::fetchRow('SELECT title, start_at, end_at FROM event WHERE id = :id', ['id' => $this->getId()]) : null;
+        if ((int)$this->getId() > 0 && (int)$this->get('IDeventrecurrence') > 0) {
+            if ($original && new \DateTimeImmutable($original['end_at']) < new \DateTimeImmutable()) {
+                return ['status' => false, 'text' => 'Les reunions recurrentes passees ne peuvent plus etre modifiees.'];
+            }
+        }
         $this->set('status', self::normalizeStatus($this->get('status')));
 
         $timezone = trim((string)$this->get('timezone'));
@@ -1385,6 +1504,10 @@ class Event extends DbObject
             ];
         }
 
+        $previousStart = $original && !empty($original['start_at']) ? new \DateTimeImmutable($original['start_at']) : null;
+        if ($previousStart && $startAt instanceof \DateTimeInterface && (string)$this->get('title') === (string)$original['title']) {
+            $this->set('title', self::replaceMeetingDateInTitle((string)$this->get('title'), $previousStart, $startAt));
+        }
         $saveResult = parent::save();
         if (!is_array($saveResult) || ($saveResult['status'] ?? false) !== true) {
             return $saveResult;
@@ -1393,7 +1516,7 @@ class Event extends DbObject
         CalDavCache::invalidateOrganization((int)$this->get('IDorganization'));
         CalDavSyncChange::recordEventChange((int)$this->get('IDorganization'), (int)$this->getId(), 'updated');
 
-        $syncResult = $this->syncAssociatedDocumentEventDate();
+        $syncResult = $this->syncAssociatedDocumentEventDate($previousStart);
         if (!is_array($syncResult) || ($syncResult['status'] ?? false) !== true) {
             return $syncResult;
         }
@@ -1423,15 +1546,26 @@ class Event extends DbObject
 
     public function delete()
     {
+        if ($this->isPastRecurringMeeting()) { return false; }
+        $pdo = self::getPdo(); $ownsTransaction = !$pdo->inTransaction();
         $organizationId = (int)$this->get('IDorganization');
         $eventId = (int)$this->getId();
-        $deleted = parent::delete();
-        if ($deleted) {
-            CalDavCache::invalidateOrganization($organizationId);
-            CalDavSyncChange::recordEventChange($organizationId, $eventId, 'deleted');
+        try {
+            if ($ownsTransaction) { $pdo->beginTransaction(); }
+            EventRecurrence::transferReference($this);
+            $deleted = parent::delete();
+            if ($deleted) {
+                CalDavCache::invalidateOrganization($organizationId);
+                CalDavSyncChange::recordEventChange($organizationId, $eventId, 'deleted');
+            }
+            if ($ownsTransaction) {
+                if ($deleted) { $pdo->commit(); } else { $pdo->rollBack(); }
+            }
+            return $deleted;
+        } catch (\Throwable $exception) {
+            if ($ownsTransaction && $pdo->inTransaction()) { $pdo->rollBack(); }
+            throw $exception;
         }
-
-        return $deleted;
     }
 }
 

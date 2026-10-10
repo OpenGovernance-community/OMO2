@@ -1,5 +1,6 @@
 <?php
 require_once dirname(__DIR__) . '/bootstrap.php';
+require_once __DIR__ . '/permissions_shared.php';
 
 use dbObject\Event;
 use dbObject\Holon;
@@ -28,6 +29,7 @@ $eventId = isset($_POST['id']) && is_numeric($_POST['id'])
     ? (int)$_POST['id']
     : (isset($_GET['id']) && is_numeric($_GET['id']) ? (int)$_GET['id'] : 0);
 $deleteDocuments = !empty($_POST['delete_documents']);
+$recurrenceScope = (string)($_POST['recurrence_scope'] ?? 'single');
 $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
 
 if ($organizationId <= 0 || $eventId <= 0 || $currentUserId <= 0) {
@@ -80,51 +82,39 @@ if ($eventHolonId > 0) {
 $canDelete = $permissionHolon instanceof Holon
     ? $permissionHolon->isAllowed('CAN_DELETE_EVENT', false, $currentUserId)
     : commonCurrentUserHasOrganizationAccess($organizationId);
-if (!$canDelete) {
+if (!$canDelete || $event->isPastRecurringMeeting()) {
     omoCalendarDeleteResponse([
         'status' => false,
         'message' => "Vous n'avez pas le droit de supprimer cet événement.",
     ], 403);
 }
 
-$associatedDocuments = $event->getAssociatedDocuments();
-if ($deleteDocuments) {
-    foreach ($associatedDocuments as $associatedDocument) {
-        if (
-            !($associatedDocument instanceof \dbObject\Document)
-            || !$associatedDocument->canDeleteInOrganizationContext($organizationId, $currentUserId)
-            || !$associatedDocument->canDeleteDocument(true)
-        ) {
-            omoCalendarDeleteResponse([
-                'status' => false,
-                'message' => 'Vous ne pouvez pas supprimer un des documents associés.',
-            ], 403);
-        }
-    }
+$series = $event->getRecurrence();
+if (!in_array($recurrenceScope, ['single', 'following'], true)
+    || ($recurrenceScope === 'following' && (!$series || !$series->canManage($organizationId, $currentUserId, 'CAN_DELETE_EVENT')))
+    || ($series && (empty($_SESSION['omo_event_recurrence_csrf'])
+        || !hash_equals((string)$_SESSION['omo_event_recurrence_csrf'], (string)($_POST['recurrence_csrf'] ?? ''))))) {
+    omoCalendarDeleteResponse(['status' => false, 'message' => 'Accès refusé.'], 403);
 }
 
 $pdo = \dbObject\DbObject::getPdo();
 $startedTransaction = $pdo instanceof \PDO && !$pdo->inTransaction();
-$deleted = false;
-$projectId = (int)$event->get('IDproject');
-$eventTitle = (string)$event->get('title');
+$deletedEvents = [];
 try {
     if ($startedTransaction) {
         $pdo->beginTransaction();
     }
 
-    if ($deleteDocuments) {
-        foreach ($associatedDocuments as $associatedDocument) {
-            if (!$associatedDocument->delete()) {
-                throw new \RuntimeException('document_delete_failed');
-            }
-        }
+    if ($series) { $series->lock(); }
+    if (!$event->load($eventId, true) || !$event->get('active') || $event->isPastRecurringMeeting()) {
+        throw new \RuntimeException('event_no_longer_editable');
     }
-
-    $deleted = $event->delete();
-    if (!$deleted) {
-        throw new \RuntimeException('event_delete_failed');
+    $events = $recurrenceScope === 'following' ? $series->getDeletionEventsFrom($event) : [$event];
+    if ($recurrenceScope === 'following') {
+        $series->set('active', 0);
+        if (empty($series->save()['status'])) { throw new \RuntimeException('recurrence_stop_failed'); }
     }
+    $deletedEvents = omoCalendarDeleteEvents($events, $deleteDocuments, $organizationId, $currentUserId, $rootHolon);
 
     if ($startedTransaction && $pdo->inTransaction()) {
         $pdo->commit();
@@ -141,14 +131,17 @@ try {
     ], 422);
 }
 
-if ($projectId > 0) {
+foreach ($deletedEvents as $deletedEvent) {
+    $projectId = $deletedEvent['project'];
+    if ($projectId <= 0) { continue; }
     $project = new Project();
     if ($project->load($projectId) && (int)$project->get('IDorganization') === $organizationId) {
-        $project->recordAssociationHistory('event', $eventId, $eventTitle, 'deleted', $currentUserId);
+        $project->recordAssociationHistory('event', $deletedEvent['id'], $deletedEvent['title'], 'deleted', $currentUserId);
     }
 }
 
 omoCalendarDeleteResponse([
     'status' => true,
+    'deletedCount' => count($deletedEvents),
     'message' => 'Événement supprimé.',
 ]);

@@ -42,7 +42,7 @@ if (!function_exists('omoCalendarCanEditEvent')) {
     {
         $organizationId = (int)$organizationId;
         $userId = (int)$userId;
-        if ($organizationId <= 0 || $userId <= 0 || (int)$event->get('IDorganization') !== $organizationId) {
+        if ($organizationId <= 0 || $userId <= 0 || (int)$event->get('IDorganization') !== $organizationId || $event->isPastRecurringMeeting()) {
             return false;
         }
 
@@ -70,7 +70,7 @@ if (!function_exists('omoCalendarCanDeleteEvent')) {
     {
         $organizationId = (int)$organizationId;
         $userId = (int)$userId;
-        if ($organizationId <= 0 || $userId <= 0 || (int)$event->get('IDorganization') !== $organizationId) {
+        if ($organizationId <= 0 || $userId <= 0 || (int)$event->get('IDorganization') !== $organizationId || $event->isPastRecurringMeeting()) {
             return false;
         }
 
@@ -151,4 +151,34 @@ if (!function_exists('omoCalendarBuildAssociatedDocumentOpenData')) {
 
         return $emptyData;
     }
+}
+
+/** The caller owns the transaction and series lock. All targets are validated before deletion. */
+function omoCalendarDeleteEvents(array $events, bool $deleteDocuments, int $organizationId, int $currentUserId, $rootHolon): array
+{
+    $deletedEvents = [];
+    $documentsByEvent = [];
+    // Validate every target before deleting any document or stopping generation.
+    foreach ($events as $target) {
+        if (!$target->isDraftVisibleToViewer($currentUserId)
+            || !omoCalendarCanDeleteEvent($target, $organizationId, $currentUserId, $rootHolon, false)) {
+            throw new \RuntimeException('event_delete_forbidden');
+        }
+        // Shared documents belong to every occurrence and survive meeting deletion.
+        $documentsByEvent[$target->getId()] = $deleteDocuments ? array_values(array_filter($target->getAssociatedDocuments(),
+            static fn($document) => (int)$document->get('IDevent') === (int)$target->getId())) : [];
+        foreach ($documentsByEvent[$target->getId()] as $document) {
+            if (!$document->canDeleteInOrganizationContext($organizationId, $currentUserId) || !$document->canDeleteDocument(true)) {
+                throw new \RuntimeException('document_delete_forbidden');
+            }
+        }
+    }
+    foreach ($events as $target) {
+        foreach ($documentsByEvent[$target->getId()] as $document) {
+            if (!$document->delete()) { throw new \RuntimeException('document_delete_failed'); }
+        }
+        $deletedEvents[] = ['id' => (int)$target->getId(), 'project' => (int)$target->get('IDproject'), 'title' => (string)$target->get('title')];
+        if (!$target->delete()) { throw new \RuntimeException('event_delete_failed'); }
+    }
+    return $deletedEvents;
 }

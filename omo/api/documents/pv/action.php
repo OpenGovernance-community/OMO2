@@ -276,6 +276,11 @@ function omoDocumentsPvEditorBuildDocumentPayload(\dbObject\Document $document, 
         'canManagePvTemplate' => $document->canUserManagePvStructure($organizationId, $currentUserId)
             && $document->getPvStage() !== \dbObject\Document::PV_STAGE_REVIEW,
         'associatedEvent' => omoDocumentsPvEditorBuildAssociatedEventPayload($document->getAssociatedEvent()),
+        'asksNextMeetingDate' => ($meetingEvent = $document->getAssociatedEvent()) instanceof \dbObject\Event
+            && !$meetingEvent->get('recurrence_exception')
+            && ($meetingEvent->getRecurrence()?->get('active')) && $meetingEvent->getRecurrence()->get('frequency') === 'on_close'
+            && !$meetingEvent->getParameter('next_meeting_id')
+            && $meetingEvent->getRecurrence()->canManage($organizationId, $currentUserId),
     ];
 }
 
@@ -1463,11 +1468,36 @@ if ($action === 'update_stage') {
             'message' => omoDocumentsPvEditorActionT('documents.pv_editor.error.forbidden'),
         ], 403);
     }
-    $stageResult = $document->updatePvStageInOrganizationContext(
-        $organizationId,
-        $isPublicParticipation ? $publicParticipationUserId : $currentUserId,
-        trim((string)($_POST['pv_stage'] ?? ''))
-    );
+    $pdo = \dbObject\DbObject::getPdo(); $ownsTransaction = !$pdo->inTransaction();
+    $stageResult = null;
+    try {
+        if ($ownsTransaction) { $pdo->beginTransaction(); }
+        $meetingEvent = $document->getAssociatedEvent();
+        $meetingSeries = $meetingEvent instanceof \dbObject\Event ? $meetingEvent->getRecurrence() : null;
+        if ($meetingSeries) { $meetingSeries->lock(); }
+        $nextDate = trim((string)($_POST['next_meeting_start'] ?? ''));
+        $nextStage = trim((string)($_POST['pv_stage'] ?? ''));
+        $stageResult = $document->updatePvStageInOrganizationContext(
+            $organizationId, $isPublicParticipation ? $publicParticipationUserId : $currentUserId, $nextStage
+        );
+        if (empty($stageResult['status'])) { throw new \RuntimeException((string)($stageResult['text'] ?? 'stage')); }
+        if (in_array($nextStage, [\dbObject\Document::PV_STAGE_REVIEW, \dbObject\Document::PV_STAGE_VALIDATED], true) && $nextDate !== '') {
+            if (!$meetingSeries || !$meetingSeries->canManage($organizationId, $isPublicParticipation ? $publicParticipationUserId : $currentUserId)) {
+                throw new \InvalidArgumentException('Recurrence inaccessible.');
+            }
+            $start = \DateTimeImmutable::createFromFormat('!Y-m-d\TH:i', $nextDate, new \DateTimeZone($meetingSeries->get('timezone')));
+            if (!$start || $start->format('Y-m-d\TH:i') !== $nextDate) { throw new \InvalidArgumentException('Date invalide.'); }
+            $meetingSeries->scheduleNext($meetingEvent, $start);
+        }
+        if ($ownsTransaction) { $pdo->commit(); }
+    } catch (\Throwable $exception) {
+        if ($ownsTransaction && $pdo->inTransaction()) { $pdo->rollBack(); }
+        error_log('OMO PV meeting close failed: ' . $exception->getMessage());
+        $document->load((int)$document->getId(), true);
+        if (!is_array($stageResult) || !empty($stageResult['status'])) {
+            $stageResult = ['status' => false, 'text' => omoDocumentsPvEditorActionT($exception instanceof \InvalidArgumentException ? 'calendar.recurrence.invalid' : 'calendar.recurrence.error')];
+        }
+    }
     if (!is_array($stageResult) || ($stageResult['status'] ?? false) !== true) {
         omoDocumentsPvEditorJsonResponse([
             'status' => false,

@@ -31,9 +31,11 @@ inviteAvailabilityExpect(strlen($encoded) === 48 && $encoded[19] === '0' && $enc
 inviteAvailabilityExpect(commonUserAvailabilityBuildCombinedDay($day, [['hours' => $firstHours, 'busy' => []], ['hours' => [1 => ['open' => false]], 'busy' => []]])['state'] === 'closed', 'A closed participant closes the shared day.');
 
 $labels = array_fill_keys(['heading', 'previous_month', 'next_month', 'free', 'partial', 'full', 'closed', 'select_day', 'select_day_hint', 'no_hours', 'pause', 'busy', 'available'], 'Test');
+$labels['weekdays'] = ['Mo.', 'Di.', 'Mi.', 'Do.', 'Fr.', 'Sa.', 'So.'];
 ob_start();
 commonCalendarRenderAvailabilityGrid($day->modify('first day of this month'), $day, [$day->format('Y-m-d') => $combined], $labels, 'data-omo-calendar-preview-target', static fn() => 'month=2030-01&date=2030-01-07');
 $html = (string)ob_get_clean();
+inviteAvailabilityExpect(str_contains($html, '<span>Mo.</span>') && !str_contains($html, '<span>Lun'), 'Weekday headings use the translated labels supplied by the caller.');
 inviteAvailabilityExpect(str_contains($html, '10:30 - 11:00') && str_contains($html, 'data-state="busy"'), 'The shared grid renders occupied half-hour slots.');
 inviteAvailabilityExpect(!str_contains($html, '09:00 - 09:30') && !str_contains($html, '12:00 - 12:30'), 'Hours outside the overlap are hidden.');
 

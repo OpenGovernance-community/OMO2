@@ -29,6 +29,12 @@
     gap: 0;
 }
 
+.omo-calendar-detail__recurrence {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    padding-block: 12px;
+}
+
 .omo-calendar-detail__meta-card {
     display: flex;
     align-items: center;
@@ -174,7 +180,7 @@
         gap: 12px 0;
     }
 
-    .omo-calendar-detail__meta-card:nth-child(odd) {
+    .omo-calendar-detail__meta-card:nth-of-type(odd) {
         padding-left: 0;
         border-left: 0;
     }
@@ -191,7 +197,7 @@
     }
 
     .omo-calendar-detail__meta-card,
-    .omo-calendar-detail__meta-card:nth-child(odd) {
+    .omo-calendar-detail__meta-card:nth-of-type(odd) {
         padding: 12px 0;
         border-top: 1px solid var(--color-border, #e5e7eb);
         border-left: 0;

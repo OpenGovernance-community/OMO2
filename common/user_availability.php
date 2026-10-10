@@ -3,17 +3,19 @@
 function commonUserAvailabilityFormatDate(DateTimeInterface $date, bool $withWeekday = false): string
 {
     if (class_exists('IntlDateFormatter')) {
-        $formatter = new IntlDateFormatter('fr_CH', $withWeekday ? IntlDateFormatter::FULL : IntlDateFormatter::LONG, IntlDateFormatter::NONE);
+        $locale = function_exists('translationBundleResolveRequestLocale')
+            ? translationBundleResolveRequestLocale('lang', translationBundleGetSupportedLocales(), 'fr') : 'fr';
+        $formatter = new IntlDateFormatter($locale, $withWeekday ? IntlDateFormatter::FULL : IntlDateFormatter::LONG, IntlDateFormatter::NONE);
         if (!$withWeekday) {
             $formatter->setPattern('LLLL y');
         }
         $formatted = $formatter->format($date);
         if (is_string($formatted) && $formatted !== '') {
-            return $withWeekday ? $formatted : ucfirst($formatted);
+            return $withWeekday ? $formatted : mb_strtoupper(mb_substr($formatted, 0, 1)) . mb_substr($formatted, 1);
         }
     }
 
-    return $date->format($withWeekday ? 'l j F Y' : 'F Y');
+    return $date->format($withWeekday ? 'd.m.Y' : 'm.Y');
 }
 
 /**

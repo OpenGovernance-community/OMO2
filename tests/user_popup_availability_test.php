@@ -52,6 +52,7 @@ $labels['occupation_scale'] = 'Plus disponible → Moins disponible';
 $free = commonUserAvailabilityBuildDay($day, $hours, []);
 foreach ([$partial, $full, $free] as $dayData) {
     ob_start();
+    $labels['weekdays'] = array_column(commonCalendarAvailabilityGridSourceLang(), 'text');
     commonCalendarRenderAvailabilityGrid($day->modify('first day of this month'), $day, [$day->format('Y-m-d') => $dayData], $labels, 'data-user-availability-url', static fn() => '/popup/user.php');
     $html = (string)ob_get_clean();
     userAvailabilityExpect(str_contains($html, 'title="' . (14 - $dayData['busySlotCount']) . ' / 14 créneaux libres"'), 'Profile day tooltip reports free half-hours.');

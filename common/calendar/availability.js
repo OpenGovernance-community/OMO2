@@ -1,6 +1,10 @@
 (function (window, document) {
     'use strict';
     if (window.omoCalendarShowAvailability) { return; }
+    var saveSubmitters = new WeakMap();
+    document.addEventListener('submit', function (event) {
+        if (event.target.matches('[data-omo-calendar-create-form]')) { saveSubmitters.set(event.target, event.submitter); }
+    }, true);
 
     // Readonly keeps the selected dates in FormData when the event lasts all day.
     document.addEventListener('change', function (event) {
@@ -119,7 +123,9 @@
         var form = button.closest('form');
         if (!form || form.dataset.omoCalendarSubmitPending === '1') { return; }
         form.elements.availability_ack.value = button.closest('[data-calendar-availability]').dataset.acknowledgement || '';
-        form.requestSubmit();
+        // Preserve the chosen action (for example this meeting and its successors).
+        var submitter = saveSubmitters.get(form);
+        form.requestSubmit(submitter && submitter.form === form ? submitter : undefined);
     });
 
     function invalidate(event) {
@@ -149,7 +155,7 @@
     }
 
     function markPreviewDirty(event) {
-        var form = event.target.closest('[data-omo-calendar-create-form]');
+        var form = event.target.closest('[data-omo-calendar-create-form], [data-omo-calendar-availability-form]');
         if (!form || !previewHost(form)) { return; }
         var field = event.target;
         if (!field.closest('[data-omo-calendar-invitations-editor]')
@@ -222,7 +228,7 @@
         var header = previewElement('div', 'calendar-freebusy-day-head');
         header.appendChild(previewElement('strong', 'generic-card-title generic-card-title--small', heading));
         panel.appendChild(header);
-        panel.appendChild(previewElement('p', 'calendar-freebusy-selection-hint', labels.selection_hint));
+        if (labels.selection_hint) { panel.appendChild(previewElement('p', 'calendar-freebusy-selection-hint', labels.selection_hint)); }
         var feedback = previewElement('p', 'calendar-freebusy-selection-feedback');
         feedback.setAttribute('data-omo-calendar-preview-selection-feedback', '');
         feedback.dataset.rangeBlocked = labels.range_blocked;
@@ -244,16 +250,19 @@
             }
             var start = previewSlotTime(slot.index);
             var end = previewSlotTime(slot.index + 1);
-            var row = previewElement(slot.busy ? 'div' : 'button', 'calendar-freebusy-slot');
-            row.dataset.state = slot.busy ? 'busy' : 'free';
+            var tooEarly = form.dataset.calendarMinimum && state.date + 'T' + start < form.dataset.calendarMinimum;
+            var row = previewElement(slot.busy || tooEarly ? 'div' : 'button', 'calendar-freebusy-slot');
+            row.dataset.state = tooEarly ? 'closed' : (slot.busy ? 'busy' : 'free');
             row.dataset.omoCalendarPreviewSlotStart = state.date + 'T' + start;
             row.dataset.omoCalendarPreviewSlotEnd = state.date + 'T' + end;
-            var slotLabel = slot.busy ? previewText(labels, 'busy_count', {busy: slot.busyCount, total: slot.participantCount}) : labels.select_slot;
+            var slotLabel = tooEarly ? labels.closed : (slot.busy ? previewText(labels, 'busy_count', {busy: slot.busyCount, total: slot.participantCount}) : labels.select_slot);
             row.setAttribute('aria-label', start + ' - ' + end + ' : ' + slotLabel);
             var time = previewElement('time', '', start + ' - ' + end);
             time.setAttribute('datetime', state.date + 'T' + start);
             row.appendChild(time);
-            if (slot.busy) {
+            if (tooEarly) {
+                row.appendChild(previewElement('span', '', labels.closed));
+            } else if (slot.busy) {
                 row.title = previewText(labels, 'busy_names', {names: slot.busyNames.join(', ')});
                 row.setAttribute('aria-label', row.getAttribute('aria-label') + ' : ' + row.title);
                 row.tabIndex = 0;
@@ -273,6 +282,19 @@
             return slot.dataset.omoCalendarPreviewSlotStart === anchor;
         }) ? anchor : '';
         syncPreviewSelectedSlots(form, state);
+        if (form.hasAttribute('data-calendar-fixed-duration')) {
+            window.requestAnimationFrame(function () {
+                if (!list.isConnected) { return; }
+                var start = startField ? startField.value : '';
+                // Also reveal the proposed time when it is busy or between two slot boundaries.
+                var selected = Array.from(list.querySelectorAll('[data-omo-calendar-preview-slot-start]')).find(function (slot) {
+                    return slot.dataset.omoCalendarPreviewSlotStart <= start && slot.dataset.omoCalendarPreviewSlotEnd > start;
+                }) || list.querySelector('[aria-pressed="true"]');
+                if (selected) {
+                    list.scrollTop += selected.getBoundingClientRect().top - list.getBoundingClientRect().top - list.clientHeight / 3;
+                }
+            });
+        }
     }
 
     function installPreview(form, html) {
@@ -314,6 +336,7 @@
     }
 
     function choosePreviewSlot(form, slot, extend) {
+        if (form.hasAttribute('data-calendar-fixed-duration')) { extend = false; }
         var host = previewHost(form);
         var state = previewState(form);
         var slots = Array.from(host.querySelectorAll('[data-omo-calendar-preview-slot-start]'));
@@ -352,12 +375,15 @@
             var message = feedback ? feedback.dataset.rangeBlocked || '' : '';
             if (typeof window.commonNotify === 'function') {
                 setPreviewSelectionFeedback(host, '', false);
-                window.commonNotify(message, {type: 'error', duration: 5000});
+                window.commonNotify(message, 'error', {duration: 5000});
             } else { setPreviewSelectionFeedback(host, message, true); }
             return;
         }
         var startValue = slots[first].dataset.omoCalendarPreviewSlotStart;
         var endValue = slots[last].dataset.omoCalendarPreviewSlotEnd;
+        if (form.hasAttribute('data-calendar-fixed-duration')) {
+            endValue = new Date(Date.parse(startValue + 'Z') + Number(form.dataset.calendarFixedDuration) * 1000).toISOString().slice(0, 16);
+        }
         startField.value = startValue;
         endField.value = endValue;
         var allDay = form.querySelector('[name="is_all_day"]');
@@ -377,7 +403,7 @@
         var success = host.querySelector('[data-omo-calendar-preview-selection-feedback]');
         setPreviewSelectionFeedback(host, '', false);
         if (success && typeof window.commonNotify === 'function') {
-            window.commonNotify(success.dataset.rangeSelected || '', {type: 'success', duration: 3000});
+            window.commonNotify(success.dataset.rangeSelected || '', 'success', {duration: 3000});
         }
     }
 
@@ -459,7 +485,7 @@
     document.addEventListener('change', markPreviewDirty);
     document.addEventListener('change', function (event) {
         var checkbox = event.target.closest('[data-omo-calendar-preview-person]');
-        var form = checkbox && checkbox.closest('[data-omo-calendar-create-form]');
+        var form = checkbox && checkbox.closest('[data-omo-calendar-create-form], [data-omo-calendar-availability-form]');
         if (!form) { return; }
         var state = previewState(form);
         var id = checkbox.getAttribute('data-omo-calendar-preview-person');
@@ -470,25 +496,44 @@
     document.addEventListener('click', function (event) {
         var slot = event.target.closest('button[data-omo-calendar-preview-slot-start]');
         if (slot) {
-            var slotForm = slot.closest('[data-omo-calendar-create-form]');
+            var slotForm = slot.closest('[data-omo-calendar-create-form], [data-omo-calendar-availability-form]');
             if (slotForm) { choosePreviewSlot(slotForm, slot, event.shiftKey); }
             return;
         }
         var tab = event.target.closest('[data-omo-calendar-preview-tab]');
         if (tab) {
-            var form = tab.closest('[data-omo-calendar-create-form]');
+            var form = tab.closest('[data-omo-calendar-create-form], [data-omo-calendar-availability-form]');
             if (form) { loadPreview(form, false); }
             return;
         }
         var control = event.target.closest('[data-omo-calendar-preview-target]');
         if (!control) { return; }
-        var editor = control.closest('[data-omo-calendar-create-form]');
+        var editor = control.closest('[data-omo-calendar-create-form], [data-omo-calendar-availability-form]');
         if (!editor) { return; }
         event.preventDefault();
         var target = new URLSearchParams(control.getAttribute('data-omo-calendar-preview-target') || '');
         var state = previewState(editor);
         state.month = target.get('month') || state.month;
         state.date = target.get('date') || '';
+        if (state.date && editor.hasAttribute('data-calendar-fixed-duration')) {
+            var start = editor.querySelector('[name="start_at"]');
+            var end = editor.querySelector('[name="end_at"]');
+            if (start && end && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(start.value)) {
+                start.value = state.date + start.value.slice(10);
+                end.value = new Date(Date.parse(start.value + 'Z') + Number(editor.dataset.calendarFixedDuration) * 1000).toISOString().slice(0, 16);
+                start.dispatchEvent(new Event('input', {bubbles: true}));
+                end.dispatchEvent(new Event('input', {bubbles: true}));
+            }
+        }
         loadPreview(editor, false);
     });
+    window.omoCalendarAvailabilityPreview = {
+        load: loadPreview,
+        dispose: function (form) {
+            var state = previewStates.get(form);
+            if (state && state.controller) { state.controller.abort(); }
+            if (state) { state.request++; }
+            previewStates.delete(form);
+        }
+    };
 })(window, document);

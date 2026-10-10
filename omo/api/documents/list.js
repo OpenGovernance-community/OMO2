@@ -2,9 +2,9 @@ window.commonPageScripts = window.commonPageScripts || {};
 window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, pageScript) {
             
             (function () {
-                window.omoDocumentsFindRoot = function () {
+                window.omoDocumentsFindRoot = function (globalRoute = false) {
                     return typeof window.omoFindApplicationRoot === 'function'
-                        ? window.omoFindApplicationRoot('omo-documents-root')
+                        ? window.omoFindApplicationRoot('omo-documents-root', {globalRoute: globalRoute})
                         : document.getElementById('omo-documents-root');
                 };
                 const omoDocumentsSavedViewsStorageKey = 'omo.documents.saved-views.v2';
@@ -2709,8 +2709,8 @@ window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, p
                                 const holonId = Number(panel.getAttribute('data-omo-document-cid') || 0);
                                 const requestedScope = String(scopeOverride || '').trim().toLowerCase();
                                 const normalizedScope = requestedScope !== ''
-                                    ? normalizeDocumentScope(requestedScope)
-                                    : normalizeDocumentScope(panel.getAttribute('data-omo-document-scope') || 'contextual');
+                                    ? omoDocumentsNormalizeScope(requestedScope)
+                                    : omoDocumentsNormalizeScope(panel.getAttribute('data-omo-document-scope') || 'contextual');
                                 const query = [];
 
                                 if (organizationId > 0) {
@@ -3387,7 +3387,7 @@ window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, p
                                     const previousMode = normalizeDocumentOpenMode(routeDetail.previousMode || 'detail');
                                     const rawForcedScope = String(routeDetail.forcedScope || '').trim().toLowerCase();
                                     const forcedScope = rawForcedScope !== ''
-                                        ? normalizeDocumentScope(rawForcedScope)
+                                        ? omoDocumentsNormalizeScope(rawForcedScope)
                                         : '';
                                     const fallbackDocumentScope = forcedScope !== ''
                                         ? forcedScope
@@ -3419,7 +3419,7 @@ window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, p
                                                     window.omoCloseDocumentPvPreparationDrawer({ force: true });
                                                 }
                                             }
-                                            if (typeof window.omoOpenDocumentEditorFromDocumentId === 'function' && window.omoOpenDocumentEditorFromDocumentId(targetDocumentId)) {
+                                            if (typeof window.omoOpenDocumentEditorFromDocumentId === 'function' && window.omoOpenDocumentEditorFromDocumentId(targetDocumentId, panel)) {
                                                 return true;
                                             }
                                             if (refreshPanelForDocumentRoute(targetDocumentId, targetMode, fallbackDocumentScope)) {
@@ -3432,7 +3432,7 @@ window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, p
                                         }
 
                                         if (targetMode !== 'edit' && documentItem && typeof window.omoOpenDocumentDetailByPayload === 'function') {
-                                            window.omoCloseDocumentEditorDrawer({ force: true, preserveDrawer: true });
+                                            window.omoCloseDocumentEditorDrawer({ force: true, preserveDrawer: true, root: panel });
                                             if (window.omoOpenDocumentDetailByPayload(documentItem, panel) === true) {
                                                 if (documentItem === requestedDocument) {
                                                     payload.openDocumentId = 0;
@@ -3444,7 +3444,7 @@ window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, p
                                         }
 
                                         if (targetMode !== 'edit') {
-                                            window.omoCloseDocumentEditorDrawer({ force: true, preserveDrawer: true });
+                                            window.omoCloseDocumentEditorDrawer({ force: true, preserveDrawer: true, root: panel });
                                             if (refreshPanelForDocumentRoute(targetDocumentId, targetMode, fallbackDocumentScope)) {
                                                 return true;
                                             }
@@ -3470,7 +3470,7 @@ window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, p
                                         });
                                     }
 
-                                    window.omoCloseDocumentEditorDrawer({ force: true });
+                                    window.omoCloseDocumentEditorDrawer({ force: true, root: panel });
                                     if (
                                         !isPvApplicationTab
                                         && (
@@ -3488,7 +3488,7 @@ window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, p
                             }
 
                             window.omoHandleDocumentsRouteChange = function (detail) {
-                                const activePanel = window.omoDocumentsFindRoot();
+                                const activePanel = window.omoDocumentsFindRoot(true);
                                 if (!(activePanel instanceof Element) || !document.body.contains(activePanel)) {
                                     return false;
                                 }
@@ -3502,6 +3502,9 @@ window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, p
 
                             if (!panel.__omoDocumentsRouteHandler) {
                                 panel.__omoDocumentsRouteHandler = function (routeEvent) {
+                                    if (panel !== window.omoDocumentsFindRoot(true)) {
+                                        return;
+                                    }
                                     const detail = routeEvent && routeEvent.detail ? routeEvent.detail : {};
                                     if (typeof panel.__omoDocumentsApplyRouteChange === 'function') {
                                         panel.__omoDocumentsApplyRouteChange(detail);

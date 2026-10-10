@@ -9,19 +9,22 @@ if (!function_exists('notificationCenterT')) {
         static $sourceLang = [
             'notification.member' => ['text' => 'Un membre', 'context' => 'Fallback when a notification actor cannot be identified.'],
             'notification.participant' => ['text' => 'Un participant', 'context' => 'Anonymous or unidentified decision participant.'],
-            'notification.event.invitation_title' => ['text' => 'Nouvel evenement - {title}', 'context' => 'Event invitation notification title.'],
-            'notification.event.invitation' => ['text' => '{actor} vous invite a l evenement "{title}".', 'context' => 'Event invitation with the person who sent it.'],
-            'notification.event.organizer' => ['text' => ' Evenement organise par {organizer}.', 'context' => 'Event creator when someone else sends the invitation.'],
-            'notification.event.start' => ['text' => ' Il est prevu le {date}.', 'context' => 'Start date appended to an event invitation.'],
-            'notification.event.schedule_title' => ['text' => 'Modification de l horaire - {title}', 'context' => 'Event schedule change notification title.'],
-            'notification.event.location_title' => ['text' => 'Modification du lieu - {title}', 'context' => 'Event location change notification title.'],
-            'notification.event.schedule' => ['text' => '{actor} a modifie l horaire de l evenement "{title}".', 'context' => 'Event schedule change with the actual editor.'],
-            'notification.event.location' => ['text' => '{actor} a modifie le lieu de l evenement "{title}".', 'context' => 'Event location change with the actual editor.'],
-            'notification.event.new_start' => ['text' => ' Nouveau debut : {date}.', 'context' => 'Updated event start date.'],
+            'notification.event.invitation_title' => ['text' => 'Nouvel événement — {title}', 'context' => 'Event invitation notification title.'],
+            'notification.event.invitation' => ['text' => '{actor} vous invite à l’événement « {title} ».', 'context' => 'Event invitation with the person who sent it.'],
+            'notification.event.recurring' => ['text' => ' Cette réunion fait partie d’une série récurrente.', 'context' => 'Recurring series information appended to meeting invitations.'],
+            'notification.event.occurrence_title' => ['text' => 'Nouvelle occurrence — {title}', 'context' => 'Invitation to a new recurring meeting occurrence.'],
+            'notification.event.occurrence_preference' => ['text' => 'Nouvelle occurrence d’une réunion récurrente', 'context' => 'Fallback notification preference label for newly generated recurring meeting occurrences.'],
+            'notification.event.organizer' => ['text' => ' Événement organisé par {organizer}.', 'context' => 'Event creator when someone else sends the invitation.'],
+            'notification.event.start' => ['text' => ' Il est prévu le {date}.', 'context' => 'Start date appended to an event invitation.'],
+            'notification.event.schedule_title' => ['text' => 'Modification de l’horaire — {title}', 'context' => 'Event schedule change notification title.'],
+            'notification.event.location_title' => ['text' => 'Modification du lieu — {title}', 'context' => 'Event location change notification title.'],
+            'notification.event.schedule' => ['text' => '{actor} a modifié l’horaire de l’événement « {title} ».', 'context' => 'Event schedule change with the actual editor.'],
+            'notification.event.location' => ['text' => '{actor} a modifié le lieu de l’événement « {title} ».', 'context' => 'Event location change with the actual editor.'],
+            'notification.event.new_start' => ['text' => ' Nouveau début : {date}.', 'context' => 'Updated event start date.'],
             'notification.event.new_end' => ['text' => ' Nouvelle fin : {date}.', 'context' => 'Updated event end date.'],
             'notification.event.new_address' => ['text' => ' Nouveau lieu : {address}.', 'context' => 'Updated event physical location.'],
-            'notification.event.new_video' => ['text' => ' Visioconference : {url}.', 'context' => 'Updated event video meeting link.'],
-            'notification.event.updated' => ['text' => ' Mise a jour le {date}.', 'context' => 'Date of an event change.'],
+            'notification.event.new_video' => ['text' => ' Visioconférence : {url}.', 'context' => 'Updated event video meeting link.'],
+            'notification.event.updated' => ['text' => ' Mise à jour le {date}.', 'context' => 'Date of an event change.'],
             'notification.proposal.title' => ['text' => 'Nouvelle proposition - {title}', 'context' => 'Decision proposal notification title.'],
             'notification.proposal.added' => ['text' => '{actor} a ajoute la proposition "{proposal}" au scrutin "{title}".', 'context' => 'New decision proposal with its author.'],
             'notification.proposal.added_untitled' => ['text' => '{actor} a ajoute une nouvelle proposition au scrutin "{title}".', 'context' => 'New untitled decision proposal with its author.'],
@@ -76,6 +79,7 @@ if (!function_exists('notificationCenterEventCatalog')) {
             'decision_consultation_finished' => 'Fin de la consultation de mes scrutins',
             'decision_evaluation_finished' => 'Fin du vote de mes scrutins',
             'calendar_event_invited' => 'Invitation a un nouvel evenement',
+            'calendar_recurring_occurrence_created' => notificationCenterT('notification.event.occurrence_preference'),
             'calendar_event_location_changed' => 'Modification du lieu d un evenement',
             'calendar_event_schedule_changed' => 'Modification de l horaire d un evenement',
             'calendar_event_starting' => 'Debut prochain d un evenement',
@@ -110,6 +114,7 @@ if (!function_exists('notificationCenterEventGroupCatalog')) {
                 'applicationHash' => 'calendar',
                 'eventKeys' => [
                     'calendar_event_invited',
+                    'calendar_recurring_occurrence_created',
                     'calendar_event_location_changed',
                     'calendar_event_schedule_changed',
                     'calendar_event_starting',
@@ -349,18 +354,42 @@ if (!function_exists('notificationCenterDispatchEventInvitation')) {
         if ($startAt !== '') {
             $body .= notificationCenterT('notification.event.start', ['date' => $startAt]);
         }
+        $recurring = (int)$event->get('IDeventrecurrence') > 0;
+        $occurrence = $recurring && (int)$event->get('recurrence_position') > 0;
+        if ($recurring) { $body .= notificationCenterT('notification.event.recurring'); }
         notificationCenterCreateForUsers(
             $organizationId,
-            'calendar_event_invited',
+            $occurrence ? 'calendar_recurring_occurrence_created' : 'calendar_event_invited',
             $event->getNotificationRecipientUserIds(),
             'calendar-event-invited-' . $eventId,
-            notificationCenterT('notification.event.invitation_title', ['title' => $eventTitle]),
+            notificationCenterT($occurrence ? 'notification.event.occurrence_title' : 'notification.event.invitation_title', ['title' => $eventTitle]),
             $body,
             notificationCenterBuildEventUrl($organizationId, $eventId),
             '',
-            (int)$actorUserId
+            $occurrence ? 0 : (int)$actorUserId
         );
         return 1;
+    }
+}
+
+if (!function_exists('notificationCenterProcessRecurringInvitations')) {
+    function notificationCenterProcessRecurringInvitations(int $limit = 200, ?int $seriesId = null): int
+    {
+        // No delivery for uncommitted meetings. Pending work survives a failed request/worker.
+        if (\dbObject\DbObject::getPdo()->inTransaction() || !\dbObject\Notification::isStorageAvailable()) { return 0; }
+        $processed = 0;
+        foreach (\dbObject\EventRecurrence::getPendingInvitationEvents($limit, $seriesId) as $event) {
+            try {
+                if ($event->get('start_at') > new \DateTimeImmutable()) {
+                    notificationCenterDispatchEventInvitation($event);
+                }
+                \dbObject\EventRecurrence::finishPendingInvitation($event);
+                $processed++;
+            } catch (\Throwable $exception) {
+                error_log('OMO recurring invitation ' . (int)$event->getId() . ' failed: ' . $exception->getMessage());
+            }
+        }
+        return $processed;
     }
 }
 

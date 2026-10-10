@@ -5882,7 +5882,7 @@ function omoOpenSearchChecklistResult(checklistId, holonId) {
     return true;
 }
 
-function omoFindApplicationRoot(rootId) {
+function omoFindApplicationRoot(rootId, options = {}) {
     const normalizedRootId = String(rootId || '').trim();
     if (normalizedRootId === '') {
         return null;
@@ -5892,7 +5892,7 @@ function omoFindApplicationRoot(rootId) {
     const loadTarget = currentScript && currentScript.__omoLoadTarget instanceof Element
         ? currentScript.__omoLoadTarget
         : null;
-    if (loadTarget) {
+    if (loadTarget && options.globalRoute !== true) {
         if (loadTarget.id === normalizedRootId) {
             return loadTarget;
         }
@@ -5902,9 +5902,13 @@ function omoFindApplicationRoot(rootId) {
         }
     }
 
-    const activePvApplicationPanel = document.querySelector(
+    // A retained PV keeps its selected tab unhidden even when the whole PV is
+    // closed. Only a visible workspace may take precedence over the main app.
+    const activePvApplicationPanel = options.globalRoute === true ? null : Array.from(document.querySelectorAll(
         '[data-omo-pv-application-panel]:not([hidden])'
-    );
+    )).find(function (panel) {
+        return !panel.closest('[hidden], .drawer:not(.open), .omo-overlay-drawer:not(.is-open), .is-peek');
+    });
     if (activePvApplicationPanel) {
         const pvRoot = activePvApplicationPanel.querySelector('[id="' + CSS.escape(normalizedRootId) + '"]');
         if (pvRoot) {
@@ -5912,7 +5916,9 @@ function omoFindApplicationRoot(rootId) {
         }
     }
 
-    return document.getElementById(normalizedRootId);
+    return Array.from(document.querySelectorAll('[id="' + CSS.escape(normalizedRootId) + '"]')).find(function (root) {
+        return !root.closest('[data-omo-pv-application-panel]');
+    }) || null;
 }
 
 function omoIsPvApplicationTabContext(element = null) {

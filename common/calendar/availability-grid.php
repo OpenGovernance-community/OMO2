@@ -1,5 +1,14 @@
 <?php
 
+function commonCalendarAvailabilityGridSourceLang(): array
+{
+    $sourceLang = [];
+    foreach (['monday' => 'Lun.', 'tuesday' => 'Mar.', 'wednesday' => 'Mer.', 'thursday' => 'Jeu.', 'friday' => 'Ven.', 'saturday' => 'Sam.', 'sunday' => 'Dim.'] as $day => $label) {
+        $sourceLang['calendar.availability.weekday.' . $day] = ['text' => $label, 'context' => 'Abbreviated weekday heading in the shared availability calendar.'];
+    }
+    return $sourceLang;
+}
+
 /** Shared, title-free monthly and half-hour availability view. */
 function commonCalendarRenderAvailabilityGrid(
     DateTimeImmutable $month,
@@ -29,7 +38,7 @@ function commonCalendarRenderAvailabilityGrid(
                     </nav>
                 </div>
                 <div class="calendar-freebusy-weekdays" aria-hidden="true">
-                    <?php foreach (['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'] as $label): ?><span><?= $escape($label) ?></span><?php endforeach; ?>
+                    <?php foreach ($labels['weekdays'] as $label): ?><span><?= $escape($label) ?></span><?php endforeach; ?>
                 </div>
                 <div class="calendar-freebusy-calendar">
                     <?php for ($empty = 1; $empty < (int)$month->format('N'); $empty++): ?><span aria-hidden="true"></span><?php endfor; ?>
@@ -61,7 +70,7 @@ function commonCalendarRenderAvailabilityGrid(
                 <?php else: ?>
                     <div class="calendar-freebusy-day-head"><strong class="generic-card-title generic-card-title--small"><?= $escape(commonUserAvailabilityFormatDate($selectedDay, true)) ?></strong></div>
                     <?php if ($selectableSlots): ?>
-                        <p class="calendar-freebusy-selection-hint"><?= $escape($labels['selection_hint']) ?></p>
+                        <?php if (!empty($labels['selection_hint'])): ?><p class="calendar-freebusy-selection-hint"><?= $escape($labels['selection_hint']) ?></p><?php endif; ?>
                         <p class="calendar-freebusy-selection-feedback" data-omo-calendar-preview-selection-feedback data-range-blocked="<?= $escape($labels['range_blocked']) ?>" data-range-selected="<?= $escape($labels['range_selected']) ?>" role="status" aria-live="polite"></p>
                     <?php endif; ?>
                     <div class="calendar-freebusy-slots">

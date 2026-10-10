@@ -38,6 +38,7 @@ $sourceLang = [
     'notifications.preferences.event.project_chat_owner' => ['text' => 'Commentaire sur mes projets ou propositions de projet', 'context' => 'Preference label for comments on projects the viewer is responsible for or proposed.'],
     'notifications.preferences.event.project_chat_participant' => ['text' => 'Commentaire dans une discussion de projet à laquelle je participe', 'context' => 'Preference label for comments in project chats where the viewer has posted.'],
     'notifications.preferences.event.calendar_event_invited' => ['text' => 'Invitation à un nouvel événement', 'context' => 'Preference label for event creation or first invitation.'],
+    'notifications.preferences.event.calendar_recurring_occurrence_created' => ['text' => 'Nouvelle occurrence d’une réunion récurrente', 'context' => 'Separate notification channels for newly generated recurring meeting occurrences, disabled by default.'],
     'notifications.preferences.event.calendar_event_location_changed' => ['text' => 'Modification du lieu d’un événement auquel je suis invité', 'context' => 'Preference label for event location changes.'],
     'notifications.preferences.event.calendar_event_schedule_changed' => ['text' => 'Modification de l’horaire d’un événement auquel je suis invité', 'context' => 'Preference label for event schedule changes.'],
     'notifications.preferences.event.calendar_event_starting' => ['text' => 'Début prochain d’un événement auquel je suis invité', 'context' => 'Preference label for event start reminders.'],

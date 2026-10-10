@@ -84,8 +84,8 @@ window.commonPageScripts["/omo/api/documents/drawers.js"] = function (pageConfig
         return window.commonExecuteFragmentScripts(container);
     }
 
-            function openEditorDrawer(url, title, description) {
-                const root = getDocumentsRoot();
+            function openEditorDrawer(url, title, description, rootOverride) {
+                const root = rootOverride instanceof Element ? rootOverride : getDocumentsRoot();
                 const drawer = root ? root.querySelector('[data-omo-document-detail-drawer]') : null;
                 const body = drawer ? drawer.querySelector('[data-omo-document-detail-body]') : null;
                 const titleNode = drawer ? drawer.querySelector('[data-omo-document-detail-title]') : null;
@@ -350,7 +350,7 @@ window.commonPageScripts["/omo/api/documents/drawers.js"] = function (pageConfig
                 const settings = options && typeof options === 'object'
                     ? options
                     : {};
-                const root = getDocumentsRoot();
+                const root = settings.root instanceof Element ? settings.root : getDocumentsRoot();
                 const drawer = root ? root.querySelector('[data-omo-document-detail-drawer]') : null;
                 const documentId = Number(drawer && drawer.dataset.omoDocumentDrawerDocumentId || 0);
                 const hashState = typeof window.omoParsePopupHashState === 'function'
@@ -387,7 +387,7 @@ window.commonPageScripts["/omo/api/documents/drawers.js"] = function (pageConfig
                     window.omoOpenDrawerHashState('documents');
                 }
 
-                window.omoCloseDocumentDetailDrawer({ force: true });
+                window.omoCloseDocumentDetailDrawer({ force: true, root: root });
             };
 
             window.omoRefreshDocumentsPanel = function () {
@@ -435,15 +435,15 @@ window.commonPageScripts["/omo/api/documents/drawers.js"] = function (pageConfig
                 const settings = options && typeof options === 'object'
                     ? options
                     : {};
+                const root = settings.root instanceof Element ? settings.root : getDocumentsRoot();
                 const hashState = typeof window.omoParsePopupHashState === 'function'
                     ? window.omoParsePopupHashState()
                     : null;
                 const routeToken = hashState && hashState.routeToken ? String(hashState.routeToken) : '';
-                if (!useLocalDrawerNavigation() && settings.force !== true && /^(?:documents|document)-(?:d(?:e)?)?\d+$/i.test(routeToken) && typeof window.omoOpenDrawerHashState === 'function') {
+                if (!useLocalDrawerNavigation(root) && settings.force !== true && /^(?:documents|document)-(?:d(?:e)?)?\d+$/i.test(routeToken) && typeof window.omoOpenDrawerHashState === 'function') {
                     window.omoOpenDrawerHashState('documents');
                 }
 
-                const root = getDocumentsRoot();
                 const drawer = root ? root.querySelector('[data-omo-document-detail-drawer]') : null;
                 const body = drawer ? drawer.querySelector('[data-omo-document-detail-body]') : null;
 
@@ -677,7 +677,8 @@ window.commonPageScripts["/omo/api/documents/drawers.js"] = function (pageConfig
                 openEditorDrawer(
                     String(documentItem.editUrl || '').trim(),
                     pageConfig.text,
-                    pageConfig.text2
+                    pageConfig.text2,
+                    root
                 );
                 return true;
             };
@@ -744,13 +745,13 @@ window.commonPageScripts["/omo/api/documents/drawers.js"] = function (pageConfig
                 return false;
             };
 
-            window.omoOpenDocumentEditorFromDocumentId = function (documentId) {
+            window.omoOpenDocumentEditorFromDocumentId = function (documentId, rootOverride) {
                 const resolvedDocumentId = Number(documentId || 0);
                 if (!Number.isInteger(resolvedDocumentId) || resolvedDocumentId <= 0) {
                     return false;
                 }
 
-                const root = getDocumentsRoot();
+                const root = rootOverride instanceof Element ? rootOverride : getDocumentsRoot();
                 const documentItem = findDocumentPayloadItemById(resolvedDocumentId, root);
                 if (documentItem && isPvDocumentBlockedInLocalNavigation(documentItem, root)) {
                     return false;
@@ -786,7 +787,8 @@ window.commonPageScripts["/omo/api/documents/drawers.js"] = function (pageConfig
                 openEditorDrawer(
                     editUrl,
                     pageConfig.text,
-                    pageConfig.text2
+                    pageConfig.text2,
+                    root
                 );
                 return true;
             };

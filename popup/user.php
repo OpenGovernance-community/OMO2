@@ -42,7 +42,7 @@ function omoUserContextT(string $key, array $replace = []): string
             'unavailable' => 'Les disponibilités ne peuvent pas être affichées pour le moment.',
             'take_identity' => 'Prendre l\'identité',
         ];
-        $sourceLang = [];
+        $sourceLang = commonCalendarAvailabilityGridSourceLang();
         foreach ($texts as $id => $text) {
             $sourceLang[$id] = ['text' => $text, 'context' => 'User profile availability: ' . $id];
         }
@@ -107,6 +107,7 @@ function omoUserContextAvailabilityRenderFragment(int $userId, int $organization
     foreach (['availability_heading', 'previous_month', 'next_month', 'free', 'partial', 'full', 'closed', 'select_day', 'select_day_hint', 'no_hours', 'pause', 'busy', 'available', 'day_availability', 'occupation_scale'] as $key) {
         $labels[$key === 'availability_heading' ? 'heading' : $key] = omoUserContextT($key);
     }
+    $labels['weekdays'] = array_map('omoUserContextT', array_keys(commonCalendarAvailabilityGridSourceLang()));
     commonCalendarRenderAvailabilityGrid($month, $selectedDay, $days, $labels, 'data-user-availability-url', $makeUrl, omoUserContextT('availability_hint'));
     echo '<script type="application/json" data-user-availability-data>' . json_encode([
         'month' => $month->format('Y-m'), 'date' => $selectedDay?->format('Y-m-d') ?? '',

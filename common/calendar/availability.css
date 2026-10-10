@@ -14,8 +14,8 @@
     flex: 0 0 40px;
     height: 40px;
     border-radius: 12px;
-    color: #946019;
-    background: color-mix(in srgb, #d99b35 14%, var(--color-surface, white));
+    color: color-mix(in srgb, var(--color-warning, #f59e0b) 45%, var(--color-text, #1f2937));
+    background: color-mix(in srgb, var(--color-warning, #f59e0b) 14%, var(--color-surface, white));
 }
 .calendar-availability__symbol svg { width: 24px; height: 24px; }
 .calendar-availability__list {
@@ -42,7 +42,7 @@
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    color: #946019;
+    color: color-mix(in srgb, var(--color-warning, #f59e0b) 45%, var(--color-text, #1f2937));
     font-size: 0.8rem;
     font-weight: 600;
 }

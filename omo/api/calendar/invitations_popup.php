@@ -103,6 +103,7 @@ if ($documentId > 0) {
         $pvDocumentId = (int)$associatedDocument->getId();
         break;
     }
+    if ($event->isPastRecurringMeeting()) { $canEditInvitations = false; }
 }
 
 if ($resource === null) {
@@ -203,6 +204,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $pdo->beginTransaction();
 
+        $meetingSeries = $resource instanceof Event ? $resource->getRecurrence() : null;
+        if ($meetingSeries) { $meetingSeries->lock(); }
+
         $applyResult = omoCalendarApplyInvitationSelections(
             $resource,
             $organization,
@@ -215,6 +219,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         );
         if (empty($applyResult['status'])) {
             throw new InvalidArgumentException(trim((string)($applyResult['message'] ?? omoCalendarInvitationsPopupT('calendar.invitations.save_error'))));
+        }
+        if ($meetingSeries) {
+            \dbObject\EventRecurrence::transferReference($resource);
+            $resource->set('recurrence_exception', 1);
+            $saved = $resource->save();
+            if (empty($saved['status'])) { throw new RuntimeException('Impossible de conserver cette exception.'); }
         }
         if ($resource instanceof Event && !EventPublicLink::setForEvent($eventId, !empty($_POST['public_registration']))) {
             throw new RuntimeException('Public event link could not be saved');
