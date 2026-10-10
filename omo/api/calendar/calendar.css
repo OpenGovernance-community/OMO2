@@ -1273,14 +1273,18 @@
 }
 
 .omo-calendar__time-event.is-other-organization,
-.omo-calendar__time-all-day-chip.is-other-organization {
+.omo-calendar__time-all-day-chip.is-other-organization,
+.omo-calendar__event-chip.is-other-organization,
+.omo-calendar__item-shell.is-other-organization .omo-calendar__list-item {
     background: var(--color-surface-muted, #edf0f3);
     border-color: var(--color-border, #cbd2da);
     color: var(--color-text-muted, #667085);
     cursor: default;
     box-shadow: none;
 }
-.omo-calendar__time-event.is-other-organization .omo-calendar__time-event-title {
+.omo-calendar__time-event.is-other-organization .omo-calendar__time-event-title,
+.omo-calendar__event-chip.is-other-organization .omo-calendar__event-title,
+.omo-calendar__item-shell.is-other-organization .omo-calendar__list-title {
     color: inherit;
     font-style: italic;
     font-weight: 500;
