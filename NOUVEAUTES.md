@@ -1,5 +1,7 @@
 # Journal Des Nouveautes
 
+- Deploiement / migrations (2026-10-10) : une variable DB_MIGRATION_DATABASES vide utilise correctement DB_NAME, comme une variable absente. Les listes de bases et les options CLI explicites restent prioritaires.
+
 - Disponibilités / thème sombre (2026-10-10) : les couleurs des jours, créneaux, légendes et avertissements suivent la palette active dans le profil, la création d’événements, le choix de la prochaine réunion et la prise de rendez-vous publique. Sélections et contrastes harmonisés en thèmes clair et sombre.
 
 - Calendrier / textes de récurrence (2026-10-10) : français corrigé dans les formulaires, aides, résumés, confirmations, navigation et notifications, avec accents, apostrophes et ponctuation. Textes centralisés dans les blocs de traduction ; jours de la grille traduisibles et dates affichées dans la langue choisie.
