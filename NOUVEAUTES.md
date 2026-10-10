@@ -1,5 +1,7 @@
 # Journal Des Nouveautes
 
+- Calendrier / autres organisations (2026-10-10) : blocs affiches en gris dans les vues mois et liste, avec le meme style discret que dans les vues semaine et jour.
+
 - Calendrier / compteur mensuel (2026-10-10) : nombre d evenements affiche dans une bulle a cote du nom du mois, comme en vue semaine, a la place du sous-titre. Le libelle complet reste disponible au survol et pour les lecteurs d ecran.
 
 - Calendrier / densite mensuelle (2026-10-10) : marges interieures des jours et des evenements legerement reduites, ainsi que les espacements entre les blocs et leurs informations, pour laisser davantage de place au contenu sur ordinateur et mobile.
