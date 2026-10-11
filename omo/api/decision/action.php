@@ -39,18 +39,11 @@ if (!($decision instanceof DecisionProcess) || (int)$decision->getId() <= 0) {
     ]);
 }
 
-$requiresDelete = $requestedAction === 'delete'
-    || (!in_array($requestedAction, ['archive', 'delete'], true) && $decision->resolveManagerCloseAction() === 'delete');
-if ($requiresDelete ? empty($context['canDelete']) : empty($context['canManage'])) {
+if (empty($context['canDelete'])) {
     omoDecisionActionJsonResponse(403, [
         'status' => false,
         'message' => 'Accès refusé à cette prise de décision.',
     ]);
-}
-
-$requestedAction = trim((string)($_POST['decision_action'] ?? ''));
-if ($requestedAction === '') {
-    $requestedAction = 'close';
 }
 
 if ($requestedAction === 'archive') {

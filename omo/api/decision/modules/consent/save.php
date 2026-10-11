@@ -19,7 +19,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
     ]);
 }
 
-$context = omoDecisionResolveEditorContext($_POST);
+$context = omoDecisionResolveManagementContext($_POST);
 if (empty($context['status'])) {
     omoDecisionModuleJsonResponse((int)($context['code'] ?? 400), [
         'status' => false,
@@ -341,12 +341,13 @@ try {
         }
     }
 
-    $ownerParticipant = DecisionParticipant::findByDecisionAndUser($decisionId, $currentUserId);
+    $ownerUserId = (int)$decision->get('IDuser');
+    $ownerParticipant = DecisionParticipant::findByDecisionAndUser($decisionId, $ownerUserId);
     if (!$ownerParticipant) {
         $ownerParticipant = new DecisionParticipant();
     }
     $ownerParticipant->set('IDdecision_process', $decisionId);
-    $ownerParticipant->set('IDuser', $currentUserId);
+    $ownerParticipant->set('IDuser', $ownerUserId);
     $ownerParticipant->set('role', DecisionParticipant::ROLE_OWNER);
     $ownerParticipant->set('status', DecisionParticipant::STATUS_ACTIVE);
     $ownerParticipant->set('active', 1);

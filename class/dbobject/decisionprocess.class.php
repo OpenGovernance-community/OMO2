@@ -236,6 +236,9 @@ class DecisionProcess extends DbObject
         if ($holonId > 0 && (!$holon->load($holonId) || !$organization->containsHolon($holon))) {
             return false;
         }
+        if ((int)$this->get('IDuser') === $userId) {
+            return true;
+        }
         return $holon instanceof Holon
             ? $holon->isAllowed($permissionKey, false, $userId)
             : Permission::userCanInOrganization($permissionKey, $organizationId, $userId);

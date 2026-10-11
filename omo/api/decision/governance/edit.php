@@ -19,9 +19,9 @@ $currentUserId = (int)($context['currentUserId'] ?? 0);
 $targetHolonId = (int)($context['targetHolonId'] ?? 0);
 $targetHolon = ($context['effectiveHolon'] ?? null) instanceof \dbObject\Holon ? $context['effectiveHolon'] : null;
 $isEditing = $decision instanceof DecisionProcess;
-$isOwner = !$isEditing || (int)$decision->get('IDuser') === $currentUserId;
+$canManage = !empty($context['canManage']);
 $isLocked = $isEditing && $decision->hasConsultationEnded();
-$canEdit = $isOwner && !$isLocked;
+$canEdit = $canManage && !$isLocked;
 $canUseAi = $canEdit && commonAiUserCanUse($currentUserId, commonOpenAiGetRewriteModel());
 $processDescription = $isEditing ? (string)$decision->get('description') : '';
 $decisionSettings = omoDecisionParamsGetConfig($context['organization'] ?? null);
@@ -41,9 +41,9 @@ if ($targetHolonId <= 0 || !$targetHolon instanceof \dbObject\Holon || !in_array
     ?><div class="omo-empty-state"><?= omoApiEscape(omoDecisionGovernanceT('governance.error.holon')) ?></div><?php
     return;
 }
-if (!$isOwner) {
+if (!$canManage) {
     http_response_code(403);
-    ?><div class="omo-empty-state"><?= omoApiEscape(omoDecisionGovernanceT('governance.error.owner')) ?></div><?php
+    ?><div class="omo-empty-state"><?= omoApiEscape(omoDecisionGovernanceT('governance.error.permission')) ?></div><?php
     return;
 }
 if (!$isEditing && empty($governanceSettings['enabled'])) {

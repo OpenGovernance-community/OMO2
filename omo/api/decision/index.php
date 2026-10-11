@@ -1169,7 +1169,7 @@ foreach ($decisionRows as $row) {
         }
     }
 
-    if (($canManage || $canDelete) && $actionUrl !== '') {
+    if ($canDelete && $actionUrl !== '') {
         $canDeleteDecision = !$hasSubmittedResponses
             && $status !== DecisionProcess::STATUS_RESULTS
             && $status !== DecisionProcess::STATUS_ARCHIVED;
@@ -1189,7 +1189,7 @@ foreach ($decisionRows as $row) {
                 ],
                 'confirmMessage' => t('decisions.index.action.confirm_delete', [], $lang, $sourceLang),
             ];
-        } elseif (!$canDeleteDecision && $canManage) {
+        } elseif (!$canDeleteDecision && $canDelete) {
             $menuActions[] = [
                 'label' => t('decisions.index.action.archive', [], $lang, $sourceLang),
                 'behavior' => 'mutation',
