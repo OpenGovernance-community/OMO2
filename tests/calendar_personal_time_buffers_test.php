@@ -22,7 +22,18 @@ if (($argv[1] ?? '') === '--request') {
     $_SERVER['REQUEST_URI'] = '/omo/api/calendar/' . $endpoint;
     $_SERVER['REQUEST_METHOD'] = $request['method'];
     $_SERVER['HTTP_X_REQUESTED_WITH'] = 'XMLHttpRequest';
+    if (!empty($request['verify_session_cache'])) { ob_start(); }
     require dirname(__DIR__) . '/omo/api/calendar/' . $endpoint;
+    if (!empty($request['verify_session_cache'])) {
+        $html = ob_get_clean();
+        personalBufferExpect(session_status() !== PHP_SESSION_ACTIVE, 'Detail rendering releases its session lock.');
+        $_SESSION = [];
+        session_start();
+        personalBufferExpect(!empty($_SESSION['applicationCatalogs']) && !empty($_SESSION['permissionCacheByOrganization'])
+            && !empty($_SESSION['omo_event_recurrence_csrf']), 'Application/permission caches and action token are persisted before release.');
+        session_write_close();
+        echo $html;
+    }
     exit;
 }
 function personalBufferExpect(bool $ok, string $message): void
@@ -157,7 +168,29 @@ try {
     $fixture(\dbObject\HolonPermission::class, ['IDholon' => $holon->getId(),
         'IDpermission' => \dbObject\Permission::findByKey('CAN_EDIT_EVENT')->getId(), 'member_type' => 'member', 'range' => 'self']);
     $full = $request; $full['method'] = 'GET'; $full['post'] = [];
-    personalBufferExpect(str_contains(personalBufferRequest($full), 'name="title"'), 'Event permission restores the full editor.');
+    $fullHtml = personalBufferRequest($full);
+    personalBufferExpect(str_contains($fullHtml, 'name="title"'), 'Event permission restores the full editor.');
+    personalBufferExpect(str_contains($fullHtml, 'data-omo-calendar-invitations-placeholder')
+        && !str_contains($fullHtml, 'data-omo-calendar-holon-list'), 'The initial editor keeps selections without building invitation choices.');
+    preg_match_all('/<input type="checkbox" name="invitation_(holon|user)_ids\[\]" value="(\d+)" checked>/', $fullHtml, $selectionFields, PREG_SET_ORDER);
+    $initialSelections = ['holon' => [], 'user' => []];
+    foreach ($selectionFields as $field) { $initialSelections[$field[1]][] = (int)$field[2]; }
+    personalBufferExpect($initialSelections['holon'] === [(int)$holon->getId()] && $initialSelections['user'] === [$ownerId],
+        'Unopened invitation tab submits the original group and individual selections.');
+    $fragment = $full; $fragment['get']['invitation_editor'] = 1;
+    $fragmentHtml = personalBufferRequest($fragment);
+    personalBufferExpect(str_contains($fragmentHtml, 'data-omo-calendar-holon-list') && !str_contains($fragmentHtml, 'name="title"'),
+        'The invitation fragment contains just the authorized editor choices.');
+    $detail = $full; $detail['endpoint'] = 'detail.php'; $detail['verify_session_cache'] = true;
+    $detailHtml = personalBufferRequest($detail);
+    personalBufferExpect(str_contains($detailHtml, 'data-calendar-invitations-lazy') && !str_contains($detailHtml, 'omo-calendar-detail__summary-head'),
+        'Event detail defers the invitation summary.');
+    $detail['get']['invitation_summary'] = 1;
+    unset($detail['verify_session_cache']);
+    personalBufferExpect(str_contains(personalBufferRequest($detail), 'omo-calendar-detail__summary-head'), 'Opening the invitation section renders its summary.');
+    $nonMember = $fixture(User::class, ['email' => 'non-member-' . $nonce . '@example.invalid', 'active' => 1]);
+    $deniedFragment = $fragment; $deniedFragment['session']['currentUser'] = (int)$nonMember->getId();
+    personalBufferExpect(!str_contains(personalBufferRequest($deniedFragment), 'data-omo-calendar-holon-list'), 'The fragment keeps the editor permission checks.');
     $full['method'] = 'POST';
     $full['post'] = ['title' => 'Edited with permission', 'status' => Event::STATUS_CONFIRMED, 'IDholon' => $holon->getId(),
         'start_at' => '2030-01-07T10:00', 'end_at' => '2030-01-07T11:00',

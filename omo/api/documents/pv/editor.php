@@ -117,7 +117,7 @@ if (!$isPublicParticipation) {
     }
     $pvApplicationTabsCsrf = (string)$_SESSION['omo_pv_application_tabs_csrf'];
 }
-\dbObject\DbObject::enableReadOnlyMemoization();
+commonEnableReadOnlyCaches();
 $isPvReview = $document->getPvStage() === \dbObject\Document::PV_STAGE_REVIEW;
 $canEditPvDocumentHeader = $canManagePvStructure && !$isPvReview;
 $canExtendAssociatedEvent = !$isPublicParticipation

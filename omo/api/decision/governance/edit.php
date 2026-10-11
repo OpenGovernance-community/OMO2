@@ -12,7 +12,7 @@ require_once dirname(__DIR__, 4) . '/common/patreon.php';
 require_once dirname(__DIR__, 4) . '/common/openai_text.php';
 require_once dirname(__DIR__) . '/params/shared.php';
 
-\dbObject\DbObject::enableReadOnlyMemoization();
+commonEnableReadOnlyCaches();
 
 $decision = ($context['decision'] ?? null) instanceof DecisionProcess ? $context['decision'] : null;
 $currentUserId = (int)($context['currentUserId'] ?? 0);

@@ -28,6 +28,7 @@ if (!$organization->load($organizationId) || !$holon->load($holonId) || !$organi
     $renderError(404, omoTeamT('team.popup.context_not_found', [], $lang, $sourceLang));
 }
 
+commonEnableReadOnlyCaches();
 $canEditAssignment = $holon->isAllowed('CAN_EDIT_MEMBER_ASSIGNMENT', false);
 $canEditAdmin = $holon->isAllowed('CAN_ADD_ADMIN', false);
 if (!$holon->canViewDetail() || (!$canEditAssignment && !$canEditAdmin && !$holon->isAllowed('CAN_EDIT_AFFECTATION_BUDGET', false))) {

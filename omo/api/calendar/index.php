@@ -790,7 +790,6 @@ if (!($currentHolon instanceof Holon) && $rootHolon instanceof Holon) {
 
 $applicationViewPreferences = omoApplicationViewPreferencesGetContext('calendar', $organization, $currentHolon, $currentUserId);
 commonReleaseReadOnlySession();
-\dbObject\DbObject::enableReadOnlyMemoization();
 $browserRestore = omoApplicationViewPreferencesGetBrowserRestore($applicationViewPreferences);
 if ($openEventId === 0 && !isset($_GET['date']) && !isset($_GET['month'])) {
     $restoredDate = omoCalendarParseDate($browserRestore['position']['date'] ?? '');

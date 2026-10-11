@@ -119,6 +119,11 @@
 			self::$readMemo = [];
 		}
 
+		public static function isReadOnlyMemoizationEnabled(): bool
+		{
+			return self::$readMemoEnabled;
+		}
+
 		protected static function memoizeRead(array $key, callable $load)
 		{
 			if (!self::$readMemoEnabled) {
@@ -143,6 +148,11 @@
 
 		public static function invalidateReadMemoForSql($query): void
 		{
+			// Clear application configuration snapshots on writes, including bulk SQL.
+			if (preg_match('/^\s*(?:INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|TRUNCATE)\b/i', (string)$query)
+				&& preg_match('/\b(?:application|organization_application)\b/i', (string)$query)) {
+				Application::clearOrganizationCatalogCache();
+			}
 			if (!self::$readMemoEnabled) {
 				return;
 			}

@@ -214,6 +214,10 @@ if ($organizationId <= 0 || $eventId <= 0) {
     exit;
 }
 
+// Persist action tokens before releasing the session lock for this read-only view.
+$_SESSION['omo_event_recurrence_csrf'] ??= bin2hex(random_bytes(32));
+commonEnableReadOnlyCaches();
+
 $organization = new Organization();
 if (!$organization->load($organizationId) || !$organization->canViewDetail()) {
     http_response_code(403);
@@ -235,6 +239,7 @@ if (
 }
 
 $rootHolon = $organization->getEnabledStructuralRootHolon();
+commonReleaseReadOnlySession();
 $eventHolonId = (int)$event->get('IDholon');
 $contextLabel = trim((string)$organization->get('name'));
 
@@ -260,11 +265,19 @@ $deletePermissionHolon = $eventHolonId > 0 && isset($eventHolon) && $eventHolon 
 $canDelete = $currentUserId > 0
     && (
         $deletePermissionHolon instanceof Holon
-            ? $deletePermissionHolon->isAllowed('CAN_DELETE_EVENT', false, $currentUserId)
+            ? $deletePermissionHolon->isAllowed('CAN_DELETE_EVENT', true, $currentUserId)
             : commonCurrentUserHasOrganizationAccess($organizationId)
     );
 $canDelete = $canDelete && !$event->isPastRecurringMeeting();
-$canEdit = omoCalendarCanEditEvent($event, $organizationId, $currentUserId, $rootHolon, false);
+$canEdit = omoCalendarCanEditEvent($event, $organizationId, $currentUserId, $rootHolon, true);
+if (!empty($_GET['invitation_summary'])) {
+    header('Content-Type: text/html; charset=UTF-8');
+    echo omoCalendarRenderInvitationSummarySection($event, [
+        'organizationId' => $organizationId, 'targetHolonId' => $currentHolonId > 0 ? $currentHolonId : $eventHolonId,
+        'effectiveHolon' => $eventHolon ?? null, 'canEditInvitations' => $canEdit,
+    ], $lang, $sourceLang, 'omoApiEscape');
+    exit;
+}
 $series = $event->getRecurrence();
 $recurrenceSummary = commonMeetingRecurrenceSummary($event, 'omoCalendarDetailT');
 $recurrenceNeighbours = $series ? $series->getAdjacentEvents($event, static function (Event $candidate) use ($rootHolon, $currentUserId): bool {
@@ -273,7 +286,6 @@ $recurrenceNeighbours = $series ? $series->getAdjacentEvents($event, static func
     $holon = omoCalendarResolveEventPermissionHolon($candidate, $rootHolon);
     return $holon instanceof Holon && $holon->canViewDetail();
 }) : [];
-$_SESSION['omo_event_recurrence_csrf'] ??= bin2hex(random_bytes(32));
 $canPlanNext = $series && $series->get('active') && $series->get('frequency') === 'on_close'
     && !$event->get('recurrence_exception') && !$event->getParameter('next_meeting_id') && $series->canManage($organizationId, $currentUserId);
 $canOpenEditor = $canEdit || $event->canEditTimeBuffers($currentUserId);
@@ -343,12 +355,6 @@ $detailRefreshUrl = '/omo/api/calendar/detail.php?oid=' . rawurlencode((string)$
 if ($editContextHolonId > 0) {
     $detailRefreshUrl .= '&cid=' . rawurlencode((string)$editContextHolonId);
 }
-$invitationContext = [
-    'organizationId' => $organizationId,
-    'targetHolonId' => $editContextHolonId,
-    'effectiveHolon' => isset($eventHolon) && $eventHolon instanceof Holon ? $eventHolon : null,
-    'canEditInvitations' => $canEdit,
-];
 ?>
 <div class="omo-calendar-detail">
     <div
@@ -357,7 +363,7 @@ $invitationContext = [
         data-omo-calendar-drawer-title="<?= omoApiEscape(omoCalendarDetailT('calendar.detail.badge')) ?>"
         data-omo-calendar-drawer-description=""
     >
-        <?php require_once dirname(__DIR__, 3) . '/common/object_mail/ui.php'; omoObjectMailButton($organizationId, 'event', (int)$event->getId(), 'data-omo-calendar-drawer-action'); ?>
+        <?php require_once dirname(__DIR__, 3) . '/common/object_mail/ui.php'; omoObjectMailButton($organizationId, 'event', (int)$event->getId(), 'data-omo-calendar-drawer-action', deferAudience: true); ?>
         <?php if ($canPlanNext): ?>
         <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-calendar-drawer-action
             data-meeting-plan-next="<?= omoApiEscape(json_encode(['id' => (int)$event->getId(), 'csrf' => $_SESSION['omo_event_recurrence_csrf'],
@@ -565,7 +571,12 @@ $invitationContext = [
                     <?php endif; ?>
                 </section>
 
-                <?= omoCalendarRenderInvitationSummarySection($event, $invitationContext, $lang, $sourceLang, 'omoApiEscape') ?>
+                <details class="generic-accordion">
+                    <summary><?= omoApiEscape(omoCalendarDetailT('calendar.detail.section.invites')) ?></summary>
+                    <div class="generic-accordion__content" data-calendar-invitations-lazy="<?= omoApiEscape($detailRefreshUrl . '&invitation_summary=1') ?>" data-loading-label="<?= omoApiEscape(omoCalendarDetailT('calendar.invitations.loading')) ?>" data-error-label="<?= omoApiEscape(omoCalendarDetailT('calendar.invitations.load_error')) ?>">
+                        <div data-calendar-invitations-feedback aria-live="polite"></div>
+                    </div>
+                </details>
             </aside>
         </div>
         <?php if ($referenceDates !== []): ?>
@@ -576,4 +587,5 @@ $invitationContext = [
     <link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/calendar/detail.css') ?>">
     <?php if ($canPlanNext) { commonMeetingAvailabilityAssets(); } ?>
     <script src="<?= commonAssetUrl('/common/calendar/recurrence.js') ?>"></script>
+    <script src="<?= commonAssetUrl('/common/calendar/invitations.js') ?>"></script>
 </div>

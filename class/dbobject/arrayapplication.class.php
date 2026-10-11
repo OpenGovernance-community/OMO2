@@ -9,95 +9,29 @@
 
 		public function loadAvailableForOrganization($organizationId, $userId = 0)
 		{
-			$organizationId = (int)$organizationId;
-			$userId = (int)$userId;
+			$this->loadOrganizationCatalog((int)$organizationId, (int)$userId, false, false);
+		}
 
+		public function loadEnabledForOrganization($organizationId, $userId = 0, bool $ignoreLoginRequirement = false)
+		{
+			$this->loadOrganizationCatalog((int)$organizationId, (int)$userId, true, $ignoreLoginRequirement);
+		}
+
+		private function loadOrganizationCatalog(int $organizationId, int $userId, bool $enabledOnly, bool $ignoreLoginRequirement): void
+		{
 			$this->exchangeArray([]);
-
-			if ($organizationId <= 0) {
-				return;
-			}
-
-			$query = "
-				SELECT a.id, a.url, a.directory
-				FROM application a
-				LEFT JOIN organization_application oa
-					ON oa.IDapplication = a.id
-					AND oa.IDorganization = :organization_id
-				WHERE a.active = 1
-				  AND a.navigationmode <> 'panel'
-				  AND (a.requires_login = 0 OR :user_id > 0)
-				ORDER BY COALESCE(oa.position, a.position, 999999) ASC, a.label ASC, a.id ASC
-			";
-
-			$rows = \dbObject\DbObject::fetchAll($query, [
-				'organization_id' => $organizationId,
-				'user_id' => $userId,
-			]);
-
-			if ($rows === false) {
-				return;
-			}
-
-			foreach ($rows as $row) {
-				$probeApplication = new Application();
-				$probeApplication->set('url', $row['url'] ?? null);
-				$probeApplication->set('directory', $row['directory'] ?? null);
-				if (!$probeApplication->hasResolvedEntryPoint()) {
-					continue;
-				}
-
+			if ($organizationId <= 0) { return; }
+			foreach (Application::loadOrganizationCatalog($organizationId) as $row) {
+				if ((int)$row['active'] !== 1 || ($enabledOnly && (int)$row['organization_active'] !== 1)
+					|| $row['navigationmode'] === null || strtolower(rtrim((string)$row['navigationmode'])) === 'panel'
+					|| (($row['requires_login'] === null || (int)$row['requires_login'] !== 0) && $userId <= 0 && !$ignoreLoginRequirement)) { continue; }
 				$application = new Application();
-				$application->setId((int)$row['id']);
-				$this[] = $application;
+				unset($row['organization_active'], $row['organization_position']);
+				$application->hydrateFromDatabaseRow($row, true);
+				if ($application->hasResolvedEntryPoint()) { $this[] = $application; }
 			}
 		}
 
-		public function loadEnabledForOrganization($organizationId, $userId = 0, bool $ignoreLoginRequirement = false) {
-			$organizationId = (int)$organizationId;
-			$userId = (int)$userId;
-
-			$this->exchangeArray([]);
-
-			if ($organizationId <= 0) {
-				return;
-			}
-
-			$query = "
-				SELECT a.id, a.url, a.directory
-				FROM organization_application oa
-				INNER JOIN application a ON a.id = oa.IDapplication
-				WHERE oa.IDorganization = :organization_id
-				  AND oa.active = 1
-				  AND a.active = 1
-				  AND a.navigationmode <> 'panel'
-				  AND (a.requires_login = 0 OR :user_id > 0 OR :ignore_login_requirement = 1)
-				ORDER BY COALESCE(oa.position, a.position, 999999) ASC, a.label ASC
-			";
-
-			$rows = \dbObject\DbObject::fetchAll($query, [
-				'organization_id' => $organizationId,
-				'user_id' => $userId,
-				'ignore_login_requirement' => $ignoreLoginRequirement ? 1 : 0,
-			]);
-
-			if ($rows === false) {
-				return;
-			}
-
-			foreach ($rows as $row) {
-				$probeApplication = new Application();
-				$probeApplication->set('url', $row['url'] ?? null);
-				$probeApplication->set('directory', $row['directory'] ?? null);
-				if (!$probeApplication->hasResolvedEntryPoint()) {
-					continue;
-				}
-
-				$application = new Application();
-				$application->setId((int)$row['id']);
-				$this[] = $application;
-			}
-		}
 	}
 
 ?>

@@ -454,7 +454,6 @@ $applicationViewPreferences = omoApplicationViewPreferencesGetContext(
 );
 $isPvApplicationTab = !empty($applicationViewPreferences['isPvApplicationTab']);
 commonReleaseReadOnlySession();
-\dbObject\DbObject::enableReadOnlyMemoization();
 $browserRestore = omoApplicationViewPreferencesGetBrowserRestore($applicationViewPreferences);
 $documentScope = omoApiNormalizeContextScope(
     $_GET['document_scope'] ?? $browserRestore['view']['scope']
