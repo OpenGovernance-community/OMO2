@@ -3,6 +3,8 @@ namespace dbObject;
 
 class DecisionProcess extends DbObject
 {
+    private bool $participantRefreshLocked = false;
+
     /** Synchronize through native events so ICS and CalDAV keep stable event identities. */
     public function syncProposalCalendarEvents(bool $cancelAll = false): array
     {
@@ -794,6 +796,12 @@ class DecisionProcess extends DbObject
 
         $nextStatus = $this->resolveAutomaticStatus($referenceDateTime);
         $currentStatus = self::normalizeStatus($this->get('status'));
+        if (!in_array($nextStatus, [self::STATUS_RESULTS, self::STATUS_ARCHIVED], true)) {
+            $syncResult = $this->syncParticipantsFromInvitations(true);
+            if (empty($syncResult['status'])) {
+                error_log('decision_membership_sync_failed: ' . (int)$this->getId());
+            }
+        }
         if ($nextStatus === $currentStatus) {
             if ($currentStatus === self::STATUS_RESULTS) {
                 $this->applyAcceptedGovernanceActions();
@@ -2117,19 +2125,19 @@ class DecisionProcess extends DbObject
                 continue;
             }
 
-            if ($holon->isOrganizationHolon()) {
-                $memberships = new \dbObject\ArrayUserOrganization();
-                $memberships->loadActiveForOrganization($organizationId);
-                $memberIds = array_map(static fn($membership) => (int)$membership->get('IDuser'), $memberships->getArrayCopy());
-            } else {
-                // Match the effective circle membership used by calendar invitations,
-                // including descendant roles and calculated link-role membership.
-                $memberIds = $holon->getAssociatedMemberUserIds([
+            $memberIds = self::memoizeRead(['invitation_members', $organizationId, $holonId], static function () use ($holon, $organizationId) {
+                if ($holon->isOrganizationHolon()) {
+                    $memberships = new \dbObject\ArrayUserOrganization();
+                    $memberships->loadActiveForOrganization($organizationId);
+                    return array_map(static fn($membership) => (int)$membership->get('IDuser'), $memberships->getArrayCopy());
+                }
+                // Includes descendant roles and calculated link-role membership.
+                return $holon->getAssociatedMemberUserIds([
                     'organizationId' => $organizationId,
                     'skipPermissionFilter' => true,
                     'activeOnly' => true,
                 ]);
-            }
+            });
             foreach ($memberIds as $userId) {
                 if ((int)$userId > 0) $userIds[(int)$userId] = (int)$userId;
             }
@@ -2137,8 +2145,23 @@ class DecisionProcess extends DbObject
         return array_values($userIds);
     }
 
+    public function getInvitationRecipientParticipants(bool $includeOwner = false): array
+    {
+        $participants = [];
+        foreach ($this->getParticipants(true) as $participant) {
+            $parameters = DecisionGovernanceAction::normalizeState($participant->get('parameters'));
+            if (($parameters['sync_source'] ?? '') === 'public_opt_in') continue;
+            if (!$includeOwner && (int)$this->get('IDuser') > 0 && (int)$participant->get('IDuser') === (int)$this->get('IDuser')) continue;
+            $participants[] = $participant;
+        }
+        return $participants;
+    }
+
     public function getInvitationRecipientCount($includeOwner = false)
     {
+        if (in_array($this->resolveAutomaticStatus(), [self::STATUS_RESULTS, self::STATUS_ARCHIVED], true)) {
+            return count($this->getInvitationRecipientParticipants((bool)$includeOwner));
+        }
         $organizationId = (int)$this->get('IDorganization');
         $ownerUserId = (int)$this->get('IDuser');
         $userIds = [];
@@ -2512,7 +2535,7 @@ class DecisionProcess extends DbObject
             return null;
         }
 
-        $syncResult = $this->syncParticipantsFromInvitations();
+        $syncResult = $this->syncParticipantsFromInvitations(true);
         if (!is_array($syncResult) || empty($syncResult['status'])) {
             return null;
         }
@@ -2553,7 +2576,7 @@ class DecisionProcess extends DbObject
             ];
         }
 
-        $syncResult = $this->syncParticipantsFromInvitations();
+        $syncResult = $this->syncParticipantsFromInvitations(true);
         if (!is_array($syncResult) || empty($syncResult['status'])) {
             return [
                 'status' => false,
@@ -2774,7 +2797,7 @@ class DecisionProcess extends DbObject
         return implode("\n", $messageLines);
     }
 
-    public function syncParticipantsFromInvitations()
+    public function syncParticipantsFromInvitations(bool $automatic = false)
     {
         $decisionId = (int)$this->getId();
         $organizationId = (int)$this->get('IDorganization');
@@ -2783,6 +2806,10 @@ class DecisionProcess extends DbObject
                 'status' => false,
                 'message' => 'Decision process must be saved before syncing participants.',
             ];
+        }
+        // Membership remains dynamic until the effective end, including between cron runs.
+        if ($automatic && in_array($this->resolveAutomaticStatus(), [self::STATUS_RESULTS, self::STATUS_ARCHIVED], true)) {
+            return ['status' => true];
         }
 
         $desiredParticipants = [];
@@ -2873,6 +2900,8 @@ class DecisionProcess extends DbObject
             return $holonId > 0;
         })));
 
+        if ($automatic && $activeInvitations && !$holonIds) return ['status' => true];
+
         $appendOrganizationMembers = function ($syncSource) use (&$desiredParticipants, $ownerUserId, $organizationId) {
             if ($organizationId <= 0) {
                 return;
@@ -2950,34 +2979,48 @@ class DecisionProcess extends DbObject
             }
         }
 
+        $pendingParticipants = [];
+        $membershipSources = ['implicit_holon', 'invited_holon', 'implicit_organization'];
         foreach ($desiredParticipants as $key => $participantData) {
-            $participant = $existingByKey[$key] ?? new \dbObject\DecisionParticipant();
+            $participant = isset($existingByKey[$key]) ? clone $existingByKey[$key] : new \dbObject\DecisionParticipant();
             $existingParameters = $participant->get('parameters');
             if (!is_array($existingParameters)) {
                 $existingParameters = json_decode(trim((string)$existingParameters), true);
             }
             $existingParameters = is_array($existingParameters) ? $existingParameters : [];
+            if ($automatic && (int)$participant->getId() > 0) {
+                // Direct invitations, voluntary participation and personal refusals keep their state.
+                if (!in_array($participantData['parameters']['sync_source'] ?? '', $membershipSources, true)
+                    || ($existingParameters['sync_source'] ?? '') === 'public_opt_in'
+                    || $participant->get('role') === DecisionParticipant::ROLE_OBSERVER
+                    || $participant->get('status') === DecisionParticipant::STATUS_DECLINED
+                    || (!in_array($existingParameters['sync_source'] ?? '', $membershipSources, true)
+                        && (!(bool)$participant->get('active') || $participant->get('status') === DecisionParticipant::STATUS_REVOKED))) {
+                    continue;
+                }
+            }
             $mergedParameters = is_array($participantData['parameters']) ? $participantData['parameters'] : [];
+            if ($automatic) $mergedParameters = array_replace($existingParameters, $mergedParameters);
             if (isset($existingParameters['public_access_code']) && !isset($mergedParameters['public_access_code'])) {
                 $mergedParameters['public_access_code'] = $existingParameters['public_access_code'];
             }
 
-            $participant->set('IDdecision_process', $decisionId);
-            $participant->set('IDuser', (int)$participantData['IDuser'] > 0 ? (int)$participantData['IDuser'] : null);
-            $participant->set('email', trim((string)$participantData['email']) !== '' ? trim((string)$participantData['email']) : null);
-            $participant->set('display_name', trim((string)$participantData['display_name']) !== '' ? trim((string)$participantData['display_name']) : null);
-            $participant->set('role', (string)$participantData['role']);
-            $participant->set('status', (string)$participantData['status']);
-            $participant->set('active', (int)$participantData['active']);
-            $participant->set('parameters', $mergedParameters);
-
-            $saveResult = $participant->save();
-            if (!is_array($saveResult) || empty($saveResult['status'])) {
-                return [
-                    'status' => false,
-                    'message' => 'Unable to sync decision participants.',
-                ];
+            $values = [
+                'IDdecision_process' => $decisionId,
+                'IDuser' => (int)$participantData['IDuser'] > 0 ? (int)$participantData['IDuser'] : null,
+                'email' => trim((string)$participantData['email']) !== '' ? trim((string)$participantData['email']) : null,
+                'display_name' => trim((string)$participantData['display_name']) !== '' ? trim((string)$participantData['display_name']) : null,
+                'role' => (string)$participantData['role'],
+                'status' => (string)$participantData['status'],
+                'active' => (int)$participantData['active'],
+            ];
+            $changed = (int)$participant->getId() <= 0 || $existingParameters != $mergedParameters;
+            foreach ($values as $field => $value) {
+                if ((string)$participant->get($field) !== (string)$value) $changed = true;
+                $participant->set($field, $value);
             }
+            $participant->set('parameters', $mergedParameters);
+            if ($changed) $pendingParticipants[] = $participant;
         }
 
         foreach ($existingByKey as $key => $participant) {
@@ -2997,23 +3040,49 @@ class DecisionProcess extends DbObject
             if (trim((string)($participantParameters['sync_source'] ?? '')) === 'public_opt_in') {
                 continue;
             }
+            if ($automatic && !in_array($participantParameters['sync_source'] ?? '', $membershipSources, true)) continue;
+            if (!(int)$participant->get('active') && $participant->get('status') === DecisionParticipant::STATUS_REVOKED) continue;
 
+            $participant = clone $participant;
             $participant->set('active', 0);
             $participant->set('status', \dbObject\DecisionParticipant::STATUS_REVOKED);
-            $saveResult = $participant->save();
-            if (!is_array($saveResult) || empty($saveResult['status'])) {
-                return [
-                    'status' => false,
-                    'message' => 'Unable to deactivate obsolete decision participants.',
-                ];
-            }
+            $pendingParticipants[] = $participant;
         }
 
-        $calendarResult = $this->syncProposalCalendarEvents();
-        return empty($calendarResult['status']) ? $calendarResult : [
-            'status' => true,
-            'count' => count($desiredParticipants),
-        ];
+        // Ordinary reads do not rewrite every participant or touch the proposal agendas.
+        if ($automatic && !$pendingParticipants) return ['status' => true, 'count' => count($desiredParticipants)];
+        $pdo = self::getPdo();
+        $ownsTransaction = !$pdo->inTransaction();
+        try {
+            if ($ownsTransaction) $pdo->beginTransaction();
+            if ($automatic && !$this->participantRefreshLocked) {
+                $row = self::fetchRow('SELECT * FROM decision_process WHERE id = :id FOR UPDATE', ['id' => $decisionId]);
+                if (!$row) throw new \RuntimeException('Decision process not found.');
+                $current = new self();
+                $current->hydrateFromDatabaseRow($row, true);
+                if (in_array($current->resolveAutomaticStatus(), [self::STATUS_RESULTS, self::STATUS_ARCHIVED], true)) {
+                    if ($ownsTransaction) $pdo->commit();
+                    return ['status' => true];
+                }
+                // Recompute after the lock: a concurrent refresh or invitation edit may have won.
+                $current->participantRefreshLocked = true;
+                $result = $current->syncParticipantsFromInvitations(true);
+                if (empty($result['status'])) throw new \RuntimeException('Unable to refresh decision participants.');
+                if ($ownsTransaction) $pdo->commit();
+                return $result;
+            }
+            foreach ($pendingParticipants as $participant) {
+                if (empty($participant->save()['status'])) throw new \RuntimeException('Unable to sync decision participants.');
+            }
+            $calendarResult = $this->syncProposalCalendarEvents();
+            if (empty($calendarResult['status'])) throw new \RuntimeException('Unable to sync proposal calendars.');
+            if ($ownsTransaction) $pdo->commit();
+            return ['status' => true, 'count' => count($desiredParticipants)];
+        } catch (\Throwable $exception) {
+            if ($ownsTransaction && $pdo->inTransaction()) $pdo->rollBack();
+            error_log('decision_participant_sync_failed: ' . $exception->getMessage());
+            return ['status' => false, 'message' => 'Unable to sync decision participants.'];
+        }
     }
 
     public function hasConsultationStarted($referenceDateTime = null)
@@ -3251,6 +3320,14 @@ class DecisionProcess extends DbObject
 
         if ($userId <= 0 && $userEmail === '') {
             return [];
+        }
+        // Refresh before filtering by participation, otherwise newly eligible members are invisible.
+        if ($userId > 0) {
+            $memberships = new ArrayUserOrganization();
+            $memberships->loadActiveForUser($userId);
+            foreach ($memberships as $membership) {
+                self::syncLifecycleStatusesForOrganization((int)$membership->get('IDorganization'));
+            }
         }
 
         $rows = self::fetchAll(

@@ -3340,6 +3340,8 @@ if (!function_exists('omoDecisionBuildInvitationSummaryData')) {
         $additionalUserIds = [];
         $guestEmails = [];
         $membersByUserId = [];
+        $historicalInvitations = in_array($decision->resolveAutomaticStatus(), [DecisionProcess::STATUS_RESULTS, DecisionProcess::STATUS_ARCHIVED], true);
+        $historicalNames = [];
 
         $organizationMembers = new \dbObject\ArrayUserOrganization();
         if ($organizationId > 0) {
@@ -3365,7 +3367,7 @@ if (!function_exists('omoDecisionBuildInvitationSummaryData')) {
                             . ' '
                             . trim((string)$holon->getDisplayName())
                         );
-                        foreach ($holon->getAssociatedMemberUserIds([
+                        foreach ($historicalInvitations ? [] : $holon->getAssociatedMemberUserIds([
                             'organizationId' => $organizationId,
                             'skipPermissionFilter' => true,
                         ]) as $userId) {
@@ -3400,6 +3402,22 @@ if (!function_exists('omoDecisionBuildInvitationSummaryData')) {
             unset($additionalUserIds[$userId]);
         }
 
+        if ($historicalInvitations) {
+            $holonUserIds = $additionalUserIds = $guestEmails = [];
+            foreach ($decision->getInvitationRecipientParticipants() as $participant) {
+                $userId = (int)$participant->get('IDuser');
+                $parameters = \dbObject\DecisionGovernanceAction::normalizeState($participant->get('parameters'));
+                if ($userId > 0) {
+                    if (in_array($parameters['sync_source'] ?? '', ['implicit_holon', 'invited_holon', 'implicit_organization'], true)) $holonUserIds[$userId] = $userId;
+                    else $additionalUserIds[$userId] = $userId;
+                    $historicalNames[$userId] = trim((string)$participant->get('display_name'));
+                } else {
+                    $email = trim(mb_strtolower((string)$participant->get('email'), 'UTF-8'));
+                    if ($email !== '') $guestEmails[$email] = $email;
+                }
+            }
+        }
+
         $recipientUserIds = $holonUserIds + $additionalUserIds;
         $recipientEmails = [];
         foreach ($guestEmails as $email) {
@@ -3421,6 +3439,10 @@ if (!function_exists('omoDecisionBuildInvitationSummaryData')) {
 
         $recipientLabels = [];
         foreach ($recipientUserIds as $userId) {
+            if (!empty($historicalNames[$userId])) {
+                $recipientLabels[] = $historicalNames[$userId];
+                continue;
+            }
             $membership = $membersByUserId[(int)$userId] ?? null;
             if (!($membership instanceof \dbObject\UserOrganization)) {
                 continue;
