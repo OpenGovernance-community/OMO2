@@ -6,15 +6,16 @@ require_once __DIR__ . '/notification_center.php';
 require_once __DIR__ . '/omo_cron_log.php';
 require_once __DIR__ . '/omo_maintenance_lock.php';
 require_once __DIR__ . '/organization_backup.php';
+require_once __DIR__ . '/performance_monitor.php';
 
 if (!function_exists('omo_run_fake_cron_maintenance')) {
     function omo_run_fake_cron_maintenance($checklistLimit = 50, $force = false, $source = 'unknown')
     {
-        return omoRunMaintenanceLocked(
+        return commonPerformanceCron('cron', (string)$source, static fn () => omoRunMaintenanceLocked(
             static fn (): array => omo_run_fake_cron_maintenance_tasks($checklistLimit, $force, $source),
             (string)$source,
             (bool)$force || $source === 'organization_import'
-        );
+        ));
     }
 
     function omo_run_fake_cron_maintenance_tasks($checklistLimit, $force, $source)
@@ -40,13 +41,18 @@ if (!function_exists('omo_run_fake_cron_maintenance')) {
 
         $runTask = static function ($name, $errorPrefix, callable $callback) use (&$failedTasks) {
             try {
-                return (int)$callback();
+                return (int)commonPerformanceCron('task', (string)$name, $callback);
             } catch (\Throwable $exception) {
                 $failedTasks[] = (string)$name;
                 error_log((string)$errorPrefix . $exception->getMessage());
                 return 0;
             }
         };
+
+        $result['performanceSamplesAggregated'] = $runTask(
+            'performance_aggregation', 'OMO performance aggregation failed: ',
+            static fn () => \dbObject\PerformanceRequest::aggregate()
+        );
 
         $result['organizationBackupsSent'] = $runTask(
             'organization_backups',
@@ -148,6 +154,7 @@ if (!function_exists('omo_run_fake_cron_maintenance')) {
             static fn () => \dbObject\ObjectMail::processBatch(20)
         );
         omoCronFinishMaintenanceLog($logContext, $failedTasks);
+        $result['performanceFailedTasks'] = $failedTasks;
 
         return $result;
     }

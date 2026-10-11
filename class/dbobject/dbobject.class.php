@@ -487,7 +487,8 @@
 		public static function beginSqlPerformanceProfile($query, $params = array()) {
 			$config = self::getSqlPerformanceConfig();
 			if (!$config["enabled"]) {
-				return null;
+				return function_exists('commonPerformanceEnabled') && \commonPerformanceEnabled()
+					? ['startedAtNs' => hrtime(true)] : null;
 			}
 
 			if (!self::$_sqlPerformanceShutdownRegistered) {
@@ -520,6 +521,7 @@
 			}
 
 			$config = self::getSqlPerformanceConfig();
+			if (!$config['enabled']) { return; }
 			if ($success && $durationMs < $config["minimumDurationMs"]) {
 				return;
 			}
@@ -583,6 +585,12 @@
 				"current_user" => (int)($_SESSION["currentUser"] ?? 0),
 				"current_organization" => (int)($_SESSION["currentOrganization"] ?? 0),
 			));
+		}
+
+		public static function getPerformanceCounters(): array {
+			return ['queries' => (int)self::$_sqlPerformanceStats['queryCount'],
+				'ms' => (float)self::$_sqlPerformanceStats['totalDurationMs'],
+				'errors' => (int)self::$_sqlPerformanceStats['errorCount']];
 		}
 
 		protected static function rememberLastDbError($query, $params = array(), $exception = null) {
@@ -694,10 +702,6 @@
 		}
 
 		protected static function finishSqlPerformanceStatement($statement, $operation, $success, $rowCount = null, $exception = null) {
-			if (!self::getSqlPerformanceConfig()["enabled"]) {
-				return;
-			}
-
 			$statementId = spl_object_id($statement);
 			$profile = self::$_sqlPerformanceProfiles[$statementId] ?? null;
 			unset(self::$_sqlPerformanceProfiles[$statementId]);
