@@ -3,7 +3,7 @@ namespace dbObject;
 
 class HolonPermission extends DbObject
 {
-    const PERMISSION_CACHE_VERSION = 28;
+    const PERMISSION_CACHE_VERSION = 29;
     const MEMBER_TYPE_MEMBER = 'member';
     const MEMBER_TYPE_ADMIN = 'admin';
     const MEMBER_TYPE_COLLECTIVE = 'collective';

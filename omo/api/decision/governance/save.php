@@ -32,7 +32,7 @@ if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
     $respond(405, ['status' => false, 'message' => 'Methode non autorisee.']);
 }
 
-$context = omoDecisionResolveEditorContext($_POST);
+$context = omoDecisionResolveManagementContext($_POST);
 if (empty($context['status'])) {
     $respond((int)($context['code'] ?? 400), [
         'status' => false,
@@ -92,9 +92,6 @@ if (!$targetHolon->load($targetHolonId)
 if ($wasExistingDecision) {
     if (!$decision->isGovernanceWorkflow()) {
         $respond(400, ['status' => false, 'message' => 'Cette prise de decision n est pas un processus hors reorg.']);
-    }
-    if ((int)$decision->get('IDuser') !== $currentUserId) {
-        $respond(403, ['status' => false, 'message' => omoDecisionGovernanceT('governance.error.owner')]);
     }
     if ($decision->hasConsultationEnded()) {
         $respond(409, ['status' => false, 'message' => omoDecisionGovernanceT('governance.error.locked')]);
@@ -177,9 +174,6 @@ foreach (array_values($blueprint) as $proposalIndex => $proposalInput) {
     $proposalId = (int)($proposalInput['id'] ?? 0);
     if ($proposalId > 0 && !isset($existingProposals[$proposalId])) {
         $respond(422, ['status' => false, 'message' => 'Une proposition ne correspond pas a ce scrutin.']);
-    }
-    if ($proposalId > 0 && !$existingProposals[$proposalId]->canBeEditedByUser($currentUserId)) {
-        $respond(403, ['status' => false, 'message' => omoDecisionGovernanceT('governance.error.owner')]);
     }
     $actionInputs = is_array($proposalInput['actions'] ?? null) ? array_values($proposalInput['actions']) : [];
     if (count($actionInputs) < 1 || count($actionInputs) > 50) {
@@ -693,12 +687,13 @@ try {
         }
     }
 
-    $owner = DecisionParticipant::findByDecisionAndUser($decisionId, $currentUserId);
+    $ownerUserId = (int)$decision->get('IDuser');
+    $owner = DecisionParticipant::findByDecisionAndUser($decisionId, $ownerUserId);
     if (!$owner) {
         $owner = new DecisionParticipant();
     }
     $owner->set('IDdecision_process', $decisionId);
-    $owner->set('IDuser', $currentUserId);
+    $owner->set('IDuser', $ownerUserId);
     $owner->set('role', DecisionParticipant::ROLE_OWNER);
     $owner->set('status', DecisionParticipant::STATUS_ACTIVE);
     $owner->set('active', 1);
