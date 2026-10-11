@@ -16,7 +16,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
     omoDecisionModuleJsonResponse(405, ['status' => false, 'message' => 'Methode non autorisee.']);
 }
 
-$context = omoDecisionResolveEditorContext($_POST);
+$context = omoDecisionResolveManagementContext($_POST);
 if (empty($context['status'])) {
     omoDecisionModuleJsonResponse((int)($context['code'] ?? 400), ['status' => false, 'message' => 'Contexte de consultation invalide.']);
 }

@@ -89,7 +89,7 @@ if (!function_exists('omoDecisionGovernanceGetSourceLang')) {
             'governance.error.rule_content' => ['text' => 'Le contenu de la règle est obligatoire.', 'context' => 'Governance rule editor empty HTML content error.'],
             'governance.error.holon' => ['text' => 'Une décision hors réorg doit être créée dans un espace.', 'context' => 'Governance editor invalid space error.'],
             'governance.error.disabled' => ['text' => 'Les décisions hors réorg ne sont pas activées dans les paramètres de cette organisation.', 'context' => 'Governance workflow disabled error.'],
-            'governance.error.owner' => ['text' => 'Seul le créateur peut modifier les propositions de cette prise de décision.', 'context' => 'Governance editor owner error.'],
+            'governance.error.permission' => ['text' => 'Vous ne pouvez pas modifier les propositions de ce scrutin.', 'context' => 'Governance editor management permission error.'],
             'governance.error.locked' => ['text' => 'Les propositions sont verrouillées depuis la fin de la consultation.', 'context' => 'Governance editor locked error.'],
             'governance.empty.rules' => ['text' => 'Aucune règle n’est définie directement dans ce contexte.', 'context' => 'Governance editor no rules message.'],
             'governance.status.pending' => ['text' => 'En attente', 'context' => 'Governance action pending status.'],
