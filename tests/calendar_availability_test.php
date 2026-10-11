@@ -297,7 +297,8 @@ try {
                 'availability_preview' => '1',
                 'month' => $day->format('Y-m'),
                 'date' => $day->format('Y-m-d'),
-                'invitation_user_ids' => [(int)$organizer->getId()],
+                // Availability follows explicit invitations; the owner is not added implicitly.
+                'invitation_user_ids' => [(int)$organizer->getId(), (int)$guest->getId()],
             ];
             ob_start();
             register_shutdown_function(static function () use ($day): void {

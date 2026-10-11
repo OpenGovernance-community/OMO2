@@ -297,23 +297,30 @@ if (!function_exists('omoCalendarExtractInvitationSelections')) {
 }
 
 if (!function_exists('omoCalendarBuildInvitationHolonTreeData')) {
-    function omoCalendarBuildInvitationHolonTreeData(Holon $holon, Organization $organization, array $selectedHolonIds, $currentHolonId)
+    function omoCalendarBuildInvitationHolonTreeData(Holon $holon, Organization $organization, array $selectedHolonIds, $currentHolonId, ?array $childrenByParentId = null)
     {
         if (!$organization->containsHolon($holon) || !$holon->canViewDetail()) {
             return null;
+        }
+
+        if ($childrenByParentId === null) {
+            $tree = new \dbObject\ArrayHolon();
+            $tree->loadSubtreeHydrated((int)$holon->getId());
+            $childrenByParentId = $tree->getChildrenByParentId();
         }
 
         $holonId = (int)$holon->getId();
         $children = [];
         $hasSelectedDescendant = in_array($holonId, $selectedHolonIds, true);
         $hasCurrentDescendant = $holonId === (int)$currentHolonId;
+        $isExpanded = false;
 
-        foreach ($holon->getChildren() as $child) {
+        foreach ($childrenByParentId[$holonId] ?? [] as $child) {
             if (!$child instanceof Holon) {
                 continue;
             }
 
-            $childNode = omoCalendarBuildInvitationHolonTreeData($child, $organization, $selectedHolonIds, $currentHolonId);
+            $childNode = omoCalendarBuildInvitationHolonTreeData($child, $organization, $selectedHolonIds, $currentHolonId, $childrenByParentId);
             if (!is_array($childNode)) {
                 continue;
             }
@@ -321,9 +328,13 @@ if (!function_exists('omoCalendarBuildInvitationHolonTreeData')) {
             $children[] = $childNode;
             if (!empty($childNode['hasSelectedDescendant'])) {
                 $hasSelectedDescendant = true;
+                $isExpanded = true;
             }
             if (!empty($childNode['hasCurrentDescendant'])) {
                 $hasCurrentDescendant = true;
+                if (!$selectedHolonIds) {
+                    $isExpanded = true;
+                }
             }
         }
 
@@ -337,7 +348,7 @@ if (!function_exists('omoCalendarBuildInvitationHolonTreeData')) {
             'hasChildren' => count($children) > 0,
             'hasSelectedDescendant' => $hasSelectedDescendant,
             'hasCurrentDescendant' => $hasCurrentDescendant,
-            'isExpanded' => $holonId === (int)$currentHolonId || $hasSelectedDescendant || $hasCurrentDescendant,
+            'isExpanded' => $isExpanded,
         ];
     }
 }
@@ -407,16 +418,20 @@ if (!function_exists('omoCalendarBuildInvitationEditorState')) {
 
         $memberships = new ArrayUserOrganization();
         if ($organizationId > 0) {
-            $memberships->loadActiveForOrganization($organizationId);
+            $memberships->loadActiveForOrganization($organizationId, true);
         }
 
         $activeMemberUserIds = [];
+        $membershipsByUserId = [];
         foreach ($memberships as $membership) {
             $memberUserId = (int)$membership->get('IDuser');
             if ($memberUserId > 0) {
                 $activeMemberUserIds[$memberUserId] = true;
+                $membershipsByUserId[$memberUserId] = $membership;
             }
         }
+
+        UserOrganization::loadTeamMemberContext($organizationId, array_keys($activeMemberUserIds), $membershipsByUserId);
 
         $selectedHolonIds = $hasStructureApplication ? $selectionState['holon_ids'] : [];
         if (
@@ -784,6 +799,7 @@ if (!function_exists('omoCalendarRenderInvitationEditor')) {
             'userFieldName' => 'invitation_user_ids[]',
             'emailFieldName' => 'invitation_emails',
             'showFooterHint' => true,
+            'fillHeight' => false,
             'publicRegistration' => null,
         ], $options);
 
@@ -805,21 +821,32 @@ if (!function_exists('omoCalendarRenderInvitationEditor')) {
         $membersTabId = $instanceId . 'Members';
         $guestsTabId = $instanceId . 'Guests';
         $publicTabId = $instanceId . 'PublicRegistrations';
+        $renderHelp = static function (string $labelKey, array $helpKeys) use ($lang, $sourceLang, $escape, $options): void {
+            if (!empty($options['showFooterHint'])) {
+                $helpKeys[] = 'calendar.invitations.summary_intro';
+            }
+            ?>
+            <details class="generic-context-help generic-context-help--compact" data-generic-context-help-hover>
+                <summary aria-label="<?= $escape(t($labelKey, [], $lang, $sourceLang)) ?>">?</summary>
+                <div class="generic-context-help__content">
+                    <?php foreach ($helpKeys as $helpKey): ?>
+                    <p><?= $escape(t($helpKey, [], $lang, $sourceLang)) ?></p>
+                    <?php endforeach; ?>
+                </div>
+            </details>
+            <?php
+        };
 
         ob_start();
         ?>
         <div
-            class="omo-calendar-invitations-editor"
+            class="omo-calendar-invitations-editor<?= !empty($options['fillHeight']) ? ' omo-calendar-invitations-editor--fill' : '' ?>"
             data-omo-calendar-invitations-editor
             data-omo-calendar-default-holon-id="<?= (int)$defaultHolonId ?>"
             data-omo-calendar-default-user-id="<?= (int)$defaultUserId ?>"
             data-omo-calendar-uses-default-selection="<?= !empty($editorState['usesDefaultHolonSelection']) ? '1' : '0' ?>"
         >
-            <?php if (!$hasHolonStructure): ?>
-            <p class="omo-calendar-invitations-editor__hint"><?= $escape(t('calendar.invitations.no_structure', [], $lang, $sourceLang)) ?></p>
-            <?php endif; ?>
-
-            <div class="generic-tabs omo-calendar-invitations-editor__tabs" data-generic-tabs>
+            <div class="generic-tabs generic-tabs--padded<?= !empty($options['fillHeight']) ? ' generic-tabs--fill' : '' ?> omo-calendar-invitations-editor__tabs" data-generic-tabs>
                 <div class="generic-tabs__list" aria-label="<?= $escape(t('calendar.invitations.tabs_aria', [], $lang, $sourceLang)) ?>">
                     <?php if ($hasHolonStructure): ?>
                     <button type="button" class="generic-tabs__tab<?= $membersTabIsActive ? '' : ' is-active' ?>" data-generic-tab data-generic-tab-target="<?= $escape($holonsTabId) ?>"><?= $escape(t('calendar.invitations.tab.holons', [], $lang, $sourceLang)) ?></button>
@@ -836,8 +863,10 @@ if (!function_exists('omoCalendarRenderInvitationEditor')) {
                 <div class="generic-tabs__panels">
                     <?php if ($hasHolonStructure): ?>
                     <div id="<?= $escape($holonsTabId) ?>" class="generic-tabs__panel omo-calendar-invitations-editor__tab-panel" data-generic-tab-panel<?= $membersTabIsActive ? ' hidden' : '' ?>>
-                        <strong><?= $escape(t('calendar.invitations.holons_title', [], $lang, $sourceLang)) ?></strong>
-                        <p class="omo-calendar-invitations-editor__hint"><?= $escape(t('calendar.invitations.holons_hint', [], $lang, $sourceLang)) ?></p>
+                        <div class="generic-heading-with-help">
+                            <strong><?= $escape(t('calendar.invitations.holons_title', [], $lang, $sourceLang)) ?></strong>
+                            <?php $renderHelp('calendar.invitations.holons_title', ['calendar.invitations.holons_hint']); ?>
+                        </div>
                         <input
                             type="search"
                             class="omo-calendar-invitations-editor__filter generic-form-control"
@@ -854,7 +883,12 @@ if (!function_exists('omoCalendarRenderInvitationEditor')) {
                     <?php endif; ?>
 
                     <div id="<?= $escape($membersTabId) ?>" class="generic-tabs__panel omo-calendar-invitations-editor__tab-panel" data-generic-tab-panel<?= $membersTabIsActive ? '' : ' hidden' ?>>
-                        <strong><?= $escape(t('calendar.invitations.members_title', [], $lang, $sourceLang)) ?></strong>
+                        <div class="generic-heading-with-help">
+                            <strong><?= $escape(t('calendar.invitations.members_title', [], $lang, $sourceLang)) ?></strong>
+                            <?php $renderHelp('calendar.invitations.members_title', $hasHolonStructure
+                                ? ['calendar.invitations.members_hint_structure']
+                                : ['calendar.invitations.no_structure', 'calendar.invitations.members_hint_flat']); ?>
+                        </div>
                         <input
                             type="search"
                             class="omo-calendar-invitations-editor__filter generic-form-control"
@@ -892,33 +926,32 @@ if (!function_exists('omoCalendarRenderInvitationEditor')) {
                             <?php endforeach; ?>
                         </div>
                         <p class="omo-calendar-invitations-editor__empty generic-description generic-description--small" data-omo-calendar-member-empty hidden><?= $escape(t('calendar.invitations.filter_empty', [], $lang, $sourceLang)) ?></p>
-                        <p class="omo-calendar-invitations-editor__hint">
-                            <?= $escape($hasHolonStructure
-                                ? t('calendar.invitations.members_hint_structure', [], $lang, $sourceLang)
-                                : t('calendar.invitations.members_hint_flat', [], $lang, $sourceLang)) ?>
-                        </p>
                     </div>
 
                     <div id="<?= $escape($guestsTabId) ?>" class="generic-tabs__panel omo-calendar-invitations-editor__tab-panel" data-generic-tab-panel hidden>
-                        <label for="<?= $escape($instanceId) ?>Emails"><strong><?= $escape(t('calendar.invitations.guests_title', [], $lang, $sourceLang)) ?></strong></label>
+                        <div class="generic-heading-with-help">
+                            <label for="<?= $escape($instanceId) ?>Emails"><strong><?= $escape(t('calendar.invitations.guests_title', [], $lang, $sourceLang)) ?></strong></label>
+                            <?php $renderHelp('calendar.invitations.guests_title', ['calendar.invitations.guests_hint']); ?>
+                        </div>
                         <textarea
                             id="<?= $escape($instanceId) ?>Emails"
                             name="<?= $escape((string)$options['emailFieldName']) ?>"
                             class="omo-calendar-invitations-editor__textarea generic-form-control"
                             placeholder="<?= $escape(t('calendar.invitations.guests_placeholder', [], $lang, $sourceLang)) ?>"
                         ><?= $escape(implode("\n", $selectedEmails)) ?></textarea>
-                        <p class="omo-calendar-invitations-editor__hint"><?= $escape(t('calendar.invitations.guests_hint', [], $lang, $sourceLang)) ?></p>
                     </div>
 
                     <?php if (is_array($options['publicRegistration'])): ?>
                     <div id="<?= $escape($publicTabId) ?>" class="generic-tabs__panel omo-calendar-invitations-editor__tab-panel" data-generic-tab-panel hidden>
-                        <label class="omo-calendar-invitations-editor__check">
-                            <input type="checkbox" name="public_registration" value="1" data-omo-public-registration-toggle<?= !empty($options['publicRegistration']['enabled']) ? ' checked' : '' ?>>
-                            <span class="omo-calendar-invitations-editor__check-meta">
-                                <strong><?= $escape(t('calendar.invitations.public_enable', [], $lang, $sourceLang)) ?></strong>
-                                <span class="omo-calendar-invitations-editor__member-email"><?= $escape(t('calendar.invitations.public_hint', [], $lang, $sourceLang)) ?></span>
-                            </span>
-                        </label>
+                        <div class="generic-heading-with-help">
+                            <label class="omo-calendar-invitations-editor__check">
+                                <input type="checkbox" name="public_registration" value="1" data-omo-public-registration-toggle<?= !empty($options['publicRegistration']['enabled']) ? ' checked' : '' ?>>
+                                <span class="omo-calendar-invitations-editor__check-meta">
+                                    <strong><?= $escape(t('calendar.invitations.public_enable', [], $lang, $sourceLang)) ?></strong>
+                                </span>
+                            </label>
+                            <?php $renderHelp('calendar.invitations.public_enable', ['calendar.invitations.public_hint']); ?>
+                        </div>
                         <label class="generic-form-field" data-omo-public-registration-link<?= empty($options['publicRegistration']['url']) ? ' hidden' : '' ?>>
                             <span><?= $escape(t('calendar.invitations.public_link', [], $lang, $sourceLang)) ?></span>
                             <input class="generic-form-control" type="url" readonly value="<?= $escape((string)($options['publicRegistration']['url'] ?? '')) ?>" data-omo-public-registration-url>
@@ -943,10 +976,6 @@ if (!function_exists('omoCalendarRenderInvitationEditor')) {
                     <?php endif; ?>
                 </div>
             </div>
-
-            <?php if (!empty($options['showFooterHint'])): ?>
-            <p class="omo-calendar-invitations-editor__hint"><?= $escape(t('calendar.invitations.summary_intro', [], $lang, $sourceLang)) ?></p>
-            <?php endif; ?>
         </div>
         <?php
 

@@ -132,9 +132,9 @@ function commonCalendarRenderInviteeAvailability(\dbObject\Event $previewEvent, 
         return 'month=' . rawurlencode($targetMonth->format('Y-m'))
             . ($targetDay ? '&date=' . rawurlencode($targetDay->format('Y-m-d')) : '');
     };
-    commonCalendarRenderAvailabilityGrid($month, $selectedDay, $days, $labels, 'data-omo-calendar-preview-target', $makeControlValue, '', true);
+    commonCalendarRenderAvailabilityGrid($month, $selectedDay, $days, $labels, 'data-omo-calendar-preview-target', $makeControlValue,
+        $compactHelp ? '' : $translate('calendar.create.preview.hint'), true);
     ?>
-    <?php if (!$compactHelp): ?><p class="generic-description generic-description--small"><?= omoApiEscape($translate('calendar.create.preview.hint')) ?></p><?php endif; ?>
     <script type="application/json" data-omo-calendar-preview-data><?= json_encode([
         'month' => $month->format('Y-m'), 'people' => $participantData, 'dates' => $dateLabels, 'labels' => $labels,
     ], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR) ?></script>

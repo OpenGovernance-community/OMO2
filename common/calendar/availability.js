@@ -24,6 +24,8 @@
         var form = toggle && toggle.closest('[data-omo-calendar-create-form]');
         var fields = form && form.querySelector('[data-omo-calendar-buffers-fields]');
         if (!fields) { return; }
+        var label = form.querySelector('[data-omo-calendar-buffers-label]');
+        if (label) { label.hidden = toggle.checked; }
         fields.hidden = !toggle.checked;
         fields.querySelectorAll('input, select').forEach(function (input) { input.disabled = !toggle.checked; });
     });
@@ -282,19 +284,10 @@
             return slot.dataset.omoCalendarPreviewSlotStart === anchor;
         }) ? anchor : '';
         syncPreviewSelectedSlots(form, state);
-        if (form.hasAttribute('data-calendar-fixed-duration')) {
-            window.requestAnimationFrame(function () {
-                if (!list.isConnected) { return; }
-                var start = startField ? startField.value : '';
-                // Also reveal the proposed time when it is busy or between two slot boundaries.
-                var selected = Array.from(list.querySelectorAll('[data-omo-calendar-preview-slot-start]')).find(function (slot) {
-                    return slot.dataset.omoCalendarPreviewSlotStart <= start && slot.dataset.omoCalendarPreviewSlotEnd > start;
-                }) || list.querySelector('[aria-pressed="true"]');
-                if (selected) {
-                    list.scrollTop += selected.getBoundingClientRect().top - list.getBoundingClientRect().top - list.clientHeight / 3;
-                }
-            });
-        }
+        var allDay = form.querySelector('[name="is_all_day"]');
+        var start = startField ? startField.value : '';
+        window.omoCalendarAvailabilityView.scrollSlots(list,
+            start.slice(0, 10) === state.date && !(allDay && allDay.checked) ? start : '');
     }
 
     function installPreview(form, html) {
