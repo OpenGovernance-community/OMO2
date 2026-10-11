@@ -308,6 +308,9 @@ if (!function_exists('omoDecisionResolveEditorContext')) {
 
             $decision->syncLifecycleStatus();
 
+            // The membership refresh can revoke or reactivate this token's participant.
+            $participant->load((int)$participant->getId(), true);
+
             $organizationId = (int)$decision->get('IDorganization');
             $organization = new Organization();
             if ($organizationId <= 0 || !$organization->load($organizationId)) {
