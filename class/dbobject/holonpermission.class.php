@@ -1707,6 +1707,11 @@ class HolonPermission extends DbObject
             return false;
         }
 
+        // Rendering may reuse the validated session set. Writes and prospective child checks stay fresh.
+        if (!$creatingHolon && self::isReadOnlyMemoizationEnabled() && function_exists('commonCurrentUserHasPermission')
+            && $userId === (int)\commonGetCurrentUserId()) {
+            return \commonCurrentUserHasPermission($permissionKey, $contextHolonId > 0 ? $contextHolonId : null, $organizationId);
+        }
         $permissionSet = self::buildUserPermissionSetForOrganization($userId, $organizationId, [$permissionKey], $creatingHolon ? $contextHolonId : 0);
         if (empty($permissionSet['definedPermissionKeys'][$permissionKey])) {
             $fallback = Permission::getUnconfiguredFallbackPermissionKey($permissionKey, $creatingHolon);
@@ -1723,17 +1728,20 @@ class HolonPermission extends DbObject
         return self::userPermissionSetAllowsContext($permissionSet, $organizationId, $permissionKey, $contextHolonId, $creatingHolon);
     }
 
-    /** Evaluate a whole picker against one fresh permission set, without session caching. */
-    public static function filterUserAllowedHolonIds(int $userId, int $organizationId, string $permissionKey, array $holonIds): array
+    /** Read-only pickers may reuse the current user's validated session snapshot. */
+    public static function filterUserAllowedHolonIds(int $userId, int $organizationId, string $permissionKey, array $holonIds, bool $useSessionCache = false): array
     {
         $permissionKey = trim($permissionKey);
         $holonIds = array_values(array_unique(array_filter(array_map('intval', $holonIds), static fn(int $id): bool => $id > 0)));
         if ($userId <= 0 || $organizationId <= 0 || $permissionKey === '' || !$holonIds) { return []; }
-        $permissionSet = self::buildUserPermissionSetForOrganization($userId, $organizationId, [$permissionKey]);
+        $permissionSet = $useSessionCache && function_exists('commonGetCurrentUserOrganizationPermissionSet')
+            && $userId === (int)\commonGetCurrentUserId()
+            ? \commonGetCurrentUserOrganizationPermissionSet($organizationId)
+            : self::buildUserPermissionSetForOrganization($userId, $organizationId, [$permissionKey]);
         if (empty($permissionSet['definedPermissionKeys'][$permissionKey])) {
             $fallback = Permission::getUnconfiguredFallbackPermissionKey($permissionKey);
             if ($fallback !== null) {
-                return self::filterUserAllowedHolonIds($userId, $organizationId, $fallback, $holonIds);
+                return self::filterUserAllowedHolonIds($userId, $organizationId, $fallback, $holonIds, $useSessionCache);
             }
             return !Permission::requiresExplicitAssignment($permissionKey) && self::hasActiveUserOrganizationMembership($userId, $organizationId)
                 ? $holonIds : [];

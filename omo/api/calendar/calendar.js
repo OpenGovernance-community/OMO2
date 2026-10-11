@@ -1100,6 +1100,10 @@ window.omoInitCalendar = function (root) {
                 holonId = 0;
             }
 
+            if (editor.hasAttribute('data-omo-calendar-invitations-placeholder')) {
+                var defaultField = editor.querySelector('input[name="invitation_holon_ids[]"]');
+                if (defaultField) { defaultField.value = String(holonId); }
+            }
             Array.prototype.forEach.call(editor.querySelectorAll('input[name="invitation_holon_ids[]"]'), function (field) {
                 field.checked = holonId > 0 && Number(field.value || '0') === holonId;
             });

@@ -14494,66 +14494,19 @@
 
 		public function isApplicationEnabled($hash, $userId = null)
 		{
-			static $cache = array();
-
-			$organizationId = (int)$this->getId();
 			$hash = trim(mb_strtolower((string)$hash, 'UTF-8'));
-			$userId = $userId !== null
-				? (int)$userId
-				: (function_exists('commonGetCurrentUserId')
-					? (int)\commonGetCurrentUserId()
-					: (int)($_SESSION['currentUser'] ?? 0));
-
-			$cacheKey = $organizationId . ':' . $userId . ':' . $hash;
-			if (array_key_exists($cacheKey, $cache)) {
-				return $cache[$cacheKey];
-			}
-
-			if ($organizationId <= 0 || $hash === '') {
-				$cache[$cacheKey] = false;
-				return false;
-			}
-
-			$rows = self::fetchAll(
-				"SELECT
-					a.id,
-					a.directory,
-					a.url,
-					a.active AS app_active,
-					a.navigationmode,
-					a.requires_login,
-					oa.active AS organization_active
-				FROM application a
-				LEFT JOIN organization_application oa
-					ON oa.IDapplication = a.id
-					AND oa.IDorganization = :organization_id
-				WHERE LOWER(a.hash) = :hash
-				ORDER BY a.id ASC
-				LIMIT 1",
-				array(
-					'organization_id' => $organizationId,
-					'hash' => $hash,
-				)
-			);
-
-			if ($rows === false || count($rows) === 0) {
-				$cache[$cacheKey] = true;
-				return true;
-			}
-
-			$row = $rows[0];
-			$probeApplication = new \dbObject\Application();
-			$probeApplication->set('url', $row['url'] ?? null);
-			$probeApplication->set('directory', $row['directory'] ?? null);
-			$cache[$cacheKey] = (
-				(int)($row['app_active'] ?? 0) === 1
-				&& trim((string)($row['navigationmode'] ?? '')) !== 'panel'
-				&& ((int)($row['requires_login'] ?? 0) === 0 || $userId > 0)
-				&& array_key_exists('organization_active', $row)
-				&& (int)$row['organization_active'] === 1
-				&& $probeApplication->hasResolvedEntryPoint()
-			);
-			return $cache[$cacheKey];
+			if ((int)$this->getId() <= 0 || $hash === '') { return false; }
+			$userId = $userId !== null ? (int)$userId : (int)(function_exists('commonGetCurrentUserId') ? \commonGetCurrentUserId() : ($_SESSION['currentUser'] ?? 0));
+			$matches = array_values(array_filter(Application::loadOrganizationCatalog((int)$this->getId()),
+				static fn(array $row): bool => rtrim(mb_strtolower((string)$row['hash'], 'UTF-8')) === $hash));
+			if (!$matches) { return true; } // Preserve support for modules absent from the catalog.
+			usort($matches, static fn(array $a, array $b): int => (int)$a['id'] <=> (int)$b['id']);
+			$row = $matches[0];
+			$application = new Application();
+			$application->hydrateFromDatabaseRow($row, true);
+			return (int)$row['active'] === 1 && trim((string)$row['navigationmode']) !== 'panel'
+				&& (!(int)$row['requires_login'] || $userId > 0) && (int)$row['organization_active'] === 1
+				&& $application->hasResolvedEntryPoint();
 		}
 
 		public function isStructureApplicationEnabled($userId = null)

@@ -12,6 +12,8 @@ if (!function_exists('omoCalendarInvitationSourceLang')) {
     function omoCalendarInvitationSourceLang()
     {
         return [
+            'calendar.invitations.loading' => ['text' => 'Chargement des invites...', 'context' => 'Invitation section loading state.'],
+            'calendar.invitations.load_error' => ['text' => 'Chargement impossible. Reessayer', 'context' => 'Retry loading event invitations.'],
             'calendar.invitations.title' => [
                 'text' => 'Invités',
                 'context' => 'Shared title used for event invitation settings.',
@@ -408,7 +410,8 @@ if (!function_exists('omoCalendarBuildInvitationEditorState')) {
         int $targetHolonId,
         int $defaultHolonId = 0,
         bool $preferDefaultHolonSelection = true,
-        int $defaultUserId = 0
+        int $defaultUserId = 0,
+        bool $loadChoices = true
     ) {
         $selectionState = is_object($event) && method_exists($event, 'getInvitations')
             ? omoCalendarExtractInvitationSelections($event)
@@ -417,7 +420,7 @@ if (!function_exists('omoCalendarBuildInvitationEditorState')) {
         $hasStructureApplication = $organization->isStructureApplicationEnabled();
 
         $memberships = new ArrayUserOrganization();
-        if ($organizationId > 0) {
+        if ($organizationId > 0 && ($loadChoices || ($selectionState['count'] === 0 && (!$hasStructureApplication || $defaultUserId > 0)))) {
             $memberships->loadActiveForOrganization($organizationId, true);
         }
 
@@ -431,7 +434,7 @@ if (!function_exists('omoCalendarBuildInvitationEditorState')) {
             }
         }
 
-        UserOrganization::loadTeamMemberContext($organizationId, array_keys($activeMemberUserIds), $membershipsByUserId);
+        if ($loadChoices) { UserOrganization::loadTeamMemberContext($organizationId, array_keys($activeMemberUserIds), $membershipsByUserId); }
 
         $selectedHolonIds = $hasStructureApplication ? $selectionState['holon_ids'] : [];
         if (
@@ -461,7 +464,7 @@ if (!function_exists('omoCalendarBuildInvitationEditorState')) {
             }
         }
 
-        $rootHolon = $hasStructureApplication ? $organization->getEnabledStructuralRootHolon() : null;
+        $rootHolon = $loadChoices && $hasStructureApplication ? $organization->getEnabledStructuralRootHolon() : null;
         $holonTree = $rootHolon instanceof Holon
             ? omoCalendarBuildInvitationHolonTreeData($rootHolon, $organization, $selectedHolonIds, $targetHolonId)
             : null;

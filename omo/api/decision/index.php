@@ -771,6 +771,7 @@ if (!$organization->canViewDetail()) {
     exit;
 }
 
+commonEnableReadOnlyCaches();
 $holonContext = omoDecisionResolveOrganizationHolonContext($organization, $currentHolonId);
 if (empty($holonContext['status'])) {
     http_response_code((int)($holonContext['code'] ?? 404));

@@ -34,6 +34,7 @@ $adminLabelLower = function_exists('mb_strtolower')
 	? mb_strtolower($adminLabel, 'UTF-8')
 	: strtolower($adminLabel);
 
+commonEnableReadOnlyCaches();
 $canAddMember = $_SERVER['REQUEST_METHOD'] === 'POST'
     ? $holon->isAllowed('CAN_ADD_MEMBER', false)
     : $holon->isAllowed('CAN_ADD_MEMBER');

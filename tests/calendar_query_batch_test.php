@@ -38,6 +38,28 @@ $pdo->beginTransaction();
 $session = $_SESSION;
 try {
     $nonce = bin2hex(random_bytes(8));
+    $contextual = calendarBatchFixture(\dbObject\Permission::class, ['permission_key' => 'TEST_CONTEXT_' . $nonce,
+        'title' => 'Context fixture', 'description' => 'Context fixture', 'iscontextual' => true]);
+    $global = calendarBatchFixture(\dbObject\Permission::class, ['permission_key' => 'TEST_GLOBAL_' . $nonce,
+        'title' => 'Global fixture', 'description' => 'Global fixture', 'iscontextual' => false]);
+    $permissionKeys = [$contextual->get('permission_key'), $global->get('permission_key'), 'CAN_EDIT_EVENT'];
+    $expectedFlags = [];
+    foreach ($permissionKeys as $key) { $expectedFlags[$key] = \dbObject\Permission::isPermissionContextual($key); }
+    [$flags, $flagQueries] = $countQueries(static fn() => \dbObject\Permission::getContextualMap($permissionKeys));
+    calendarBatchExpect($flags === $expectedFlags && $flagQueries === 1, 'Contextual and global flags load in one query.');
+    [$emptyFlags, $emptyQueries] = $countQueries(static fn() => \dbObject\Permission::getContextualMap(['', ' ']));
+    calendarBatchExpect($emptyFlags === [] && $emptyQueries === 0, 'Empty permission maps do not query.');
+    $fallbackKeys = [' ' . $permissionKeys[0] . ' ', strtolower($permissionKeys[1]), 'UNKNOWN_' . $nonce];
+    foreach ($fallbackKeys as $key) {
+        calendarBatchExpect(\dbObject\Permission::getContextualMap([$key])[$key] === \dbObject\Permission::isPermissionContextual($key),
+            'Batch preserves whitespace, database collation and unknown-key defaults.');
+    }
+    DbObject::enableReadOnlyMemoization();
+    \dbObject\Permission::getContextualMap($permissionKeys);
+    $global->set('iscontextual', true); $global->save();
+    calendarBatchExpect(\dbObject\Permission::getContextualMap($permissionKeys)[$permissionKeys[1]] === true,
+        'Contextual flag changes are immediately visible after a write.');
+    DbObject::enableReadOnlyMemoization(false);
     $org = calendarBatchFixture(\dbObject\Organization::class, ['name' => 'Batch fixture', 'shortname' => $nonce]);
     $oid = (int)$org->getId();
     $people = [];
@@ -77,6 +99,28 @@ try {
         HolonPermission::userHasPermissionForHolonContext($uid, $oid, 'CAN_CREATE_EVENT', $id))));
     [$batch, $batchQueries] = $countQueries(static fn() => HolonPermission::filterUserAllowedHolonIds($uid, $oid, 'CAN_CREATE_EVENT', $holonIds));
     calendarBatchExpect($scalar === $batch && $batchQueries < $scalarQueries / 2, 'Permission reads are shared across the picker.');
+
+    commonGetCurrentUserOrganizationPermissionSet($oid, true);
+    DbObject::enableReadOnlyMemoization();
+    [$cached, $cachedQueries] = $countQueries(static fn() => HolonPermission::filterUserAllowedHolonIds($uid, $oid, 'CAN_CREATE_EVENT', $holonIds, true));
+    calendarBatchExpect($cached === $batch && $cachedQueries < $batchQueries, 'Read-only pickers reuse the session permission set.');
+    foreach (['CAN_CREATE_EVENT', 'CAN_EDIT_EVENT', 'CAN_DELETE_EVENT'] as $key) {
+        $cachedIds = HolonPermission::filterUserAllowedHolonIds($uid, $oid, $key, $holonIds, true);
+        $scalarIds = array_values(array_filter($holonIds, static fn(int $id): bool => HolonPermission::userHasPermissionForHolonContext($uid, $oid, $key, $id)));
+        calendarBatchExpect($cachedIds === $scalarIds, 'Session and scalar permissions keep identical scopes.');
+    }
+    calendarBatchExpect(HolonPermission::filterUserAllowedHolonIds((int)$people['outsider']->getId(), $oid, 'CAN_EDIT_EVENT', $holonIds, true) === [],
+        'Another user cannot borrow the current session permission set.');
+    DbObject::enableReadOnlyMemoization(false);
+    $editGrant = HolonPermission::findByHolonAndPermission((int)$root->getId(), (int)\dbObject\Permission::findByKey('CAN_EDIT_EVENT')->getId(), 'self', 'member');
+    $editGrant->set('range', HolonPermission::RANGE_DESCENDANTS); $editGrant->save();
+    calendarBatchExpect(!HolonPermission::userHasPermissionForHolonContext($uid, $oid, 'CAN_EDIT_EVENT', (int)$root->getId()),
+        'Write-time permission checks ignore a previously granted session scope after revocation.');
+    $_SESSION['permissionCacheByOrganization'][$oid]['cachedAtHistoryId'] = -1;
+    DbObject::enableReadOnlyMemoization();
+    calendarBatchExpect(!HolonPermission::userHasPermissionForHolonContext($uid, $oid, 'CAN_EDIT_EVENT', (int)$root->getId()),
+        'An invalidated session snapshot is rebuilt before rendering.');
+    DbObject::enableReadOnlyMemoization(false);
 
     $events = [];
     $direct = [];

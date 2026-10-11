@@ -454,6 +454,9 @@ if ($requestedProjectId > 0) {
 $etherpadDocumentsAvailable = omoEtherpadCanUseEditingSessions($organization);
 $ethercalcDocumentsAvailable = omoEthercalcHasConfig();
 
+$usePermissionSessionCache = $_SERVER['REQUEST_METHOD'] !== 'POST';
+$isInvitationFragment = $usePermissionSessionCache && !empty($_GET['invitation_editor']);
+if ($usePermissionSessionCache) { commonEnableReadOnlyCaches(); }
 $event = new Event();
 $isEditMode = false;
 $duplicateEvent = null;
@@ -477,7 +480,7 @@ if ($eventId > 0) {
         exit;
     }
 
-    if (!omoCalendarCanEditEvent($event, $organizationId, $currentUserId, $rootHolon, false)) {
+    if (!omoCalendarCanEditEvent($event, $organizationId, $currentUserId, $rootHolon, $usePermissionSessionCache)) {
         if ($event->canEditTimeBuffers($currentUserId)) {
             require __DIR__ . '/personal_time_buffers.php';
             exit;
@@ -558,11 +561,11 @@ foreach (['circle', 'role'] as $typeKey) {
 }
 
 $selectableHolonIds = \dbObject\HolonPermission::filterUserAllowedHolonIds(
-    $currentUserId, $organizationId, 'CAN_CREATE_EVENT', $selectableHolonIds
+    $currentUserId, $organizationId, 'CAN_CREATE_EVENT', $selectableHolonIds, $usePermissionSessionCache
 );
 if ($isEditMode) {
     $selectableHolonIds = \dbObject\HolonPermission::filterUserAllowedHolonIds(
-        $currentUserId, $organizationId, 'CAN_EDIT_EVENT', $selectableHolonIds
+        $currentUserId, $organizationId, 'CAN_EDIT_EVENT', $selectableHolonIds, $usePermissionSessionCache
     );
 }
 
@@ -574,7 +577,6 @@ if ($currentHolonId > 0 && isset($allowedHolonIds[$currentHolonId])) {
     }
 }
 
-$usePermissionSessionCache = $_SERVER['REQUEST_METHOD'] !== 'POST';
 $createPermissionHolon = $currentContextHolon instanceof Holon ? $currentContextHolon : $rootHolon;
 $canCreateEvent = $currentUserId > 0
     && (
@@ -649,8 +651,8 @@ if ($isEditMode) {
     }
 }
 
-$canChooseOrganization = $rootHolon instanceof Holon && $rootHolon->isAllowed('CAN_CREATE_EVENT', false, $currentUserId)
-    && (!$isEditMode || omoCalendarCanUseEditEventPermission($rootHolon, $organizationId, $currentUserId, false));
+$canChooseOrganization = $rootHolon instanceof Holon && $rootHolon->isAllowed('CAN_CREATE_EVENT', $usePermissionSessionCache, $currentUserId)
+    && (!$isEditMode || omoCalendarCanUseEditEventPermission($rootHolon, $organizationId, $currentUserId, $usePermissionSessionCache));
 // Keeping an existing association needs edit rights, not permission to create a new event there.
 if ($isEditMode) {
     if ($defaultHolonId > 0) { $selectableHolonIds[] = $defaultHolonId; }
@@ -664,6 +666,30 @@ $holonSelectorConfig = [
         'confirm' => omoCalendarCreateT('calendar.create.holon.confirm'), 'cancel' => omoCalendarCreateT('calendar.edit.cancel'),
         'none' => omoCalendarCreateT('calendar.create.field.none')],
 ];
+
+$prefillEvent = $isEditMode ? $event : $duplicateEvent;
+$defaultInvitationHolonId = $project instanceof Project ? 0 : $defaultHolonId;
+$defaultInvitationUserId = !$isEditMode && $project instanceof Project ? (int)$project->get('IDuser') : 0;
+$invitationEditorState = $usePermissionSessionCache ? omoCalendarBuildInvitationEditorState(
+    $prefillEvent,
+    $organization,
+    $organizationId,
+    $currentContextHolon,
+    $defaultHolonId > 0 ? $defaultHolonId : $currentHolonId,
+    $defaultInvitationHolonId,
+    true,
+    $defaultInvitationUserId,
+    $isInvitationFragment
+) : null;
+if ($isInvitationFragment) {
+    commonReleaseReadOnlySession();
+    header('Content-Type: text/html; charset=UTF-8');
+    echo omoCalendarRenderInvitationEditor($invitationEditorState, $lang, $sourceLang, 'omoApiEscape', [
+        'instanceId' => 'omoCalendarCreateInvitations', 'fillHeight' => true, 'showFooterHint' => true,
+    ]);
+    exit;
+}
+$invitationEditorUrl = '/omo/api/calendar/create.php?' . http_build_query(array_merge($_GET, ['invitation_editor' => 1]));
 
 $documentTemplatesPayload = [];
 if (!$isEditMode || !($associatedDocument instanceof Document)) {
@@ -725,20 +751,6 @@ foreach ($documentTemplateGroups as &$documentTemplateGroup) {
     });
 }
 unset($documentTemplateGroup);
-
-$prefillEvent = $isEditMode ? $event : $duplicateEvent;
-$defaultInvitationHolonId = $project instanceof Project ? 0 : $defaultHolonId;
-$defaultInvitationUserId = !$isEditMode && $project instanceof Project ? (int)$project->get('IDuser') : 0;
-$invitationEditorState = omoCalendarBuildInvitationEditorState(
-    $prefillEvent,
-    $organization,
-    $organizationId,
-    $currentContextHolon,
-    $defaultHolonId > 0 ? $defaultHolonId : $currentHolonId,
-    $defaultInvitationHolonId,
-    true,
-    $defaultInvitationUserId
-);
 
 $documentCreationHolonId = $defaultHolonId > 0
     ? $defaultHolonId
@@ -1735,15 +1747,16 @@ if ($isEditMode) {
                         </section>
                     </div>
 
-                    <div id="omoCalendarCreateTabInvites" class="generic-tabs__panel omo-calendar-create__tab-panel omo-calendar-create__tab-panel--invites" data-generic-tab-panel hidden>
-                        <?= omoCalendarRenderInvitationEditor($invitationEditorState, $lang, $sourceLang, 'omoApiEscape', [
-                            'instanceId' => 'omoCalendarCreateInvitations',
-                            'fillHeight' => true,
-                            'holonFieldName' => 'invitation_holon_ids[]',
-                            'userFieldName' => 'invitation_user_ids[]',
-                            'emailFieldName' => 'invitation_emails',
-                            'showFooterHint' => true,
-                        ]) ?>
+                    <div id="omoCalendarCreateTabInvites" class="generic-tabs__panel omo-calendar-create__tab-panel omo-calendar-create__tab-panel--invites" data-generic-tab-panel hidden data-calendar-invitations-lazy="<?= omoApiEscape($invitationEditorUrl) ?>" data-loading-label="<?= omoApiEscape(omoCalendarCreateT('calendar.invitations.loading')) ?>" data-error-label="<?= omoApiEscape(omoCalendarCreateT('calendar.invitations.load_error')) ?>">
+                        <div data-omo-calendar-invitations-editor data-omo-calendar-invitations-placeholder data-omo-calendar-uses-default-selection="<?= !empty($invitationEditorState['usesDefaultHolonSelection']) ? '1' : '0' ?>" data-omo-calendar-default-holon-id="<?= (int)$defaultInvitationHolonId ?>" hidden>
+                            <?php foreach (['selectedHolonIds' => 'invitation_holon_ids[]', 'selectedUserIds' => 'invitation_user_ids[]'] as $selectionKey => $fieldName): ?>
+                                <?php foreach ($invitationEditorState[$selectionKey] as $selectedId): ?>
+                                    <input type="checkbox" name="<?= omoApiEscape($fieldName) ?>" value="<?= (int)$selectedId ?>" checked>
+                                <?php endforeach; ?>
+                            <?php endforeach; ?>
+                            <textarea name="invitation_emails"><?= omoApiEscape(implode("\n", $invitationEditorState['selectedEmails'])) ?></textarea>
+                        </div>
+                            <div data-calendar-invitations-feedback aria-live="polite"></div>
                     </div>
                     <div id="omoCalendarCreateTabAvailability" class="generic-tabs__panel omo-calendar-create__tab-panel omo-calendar-create__tab-panel--availability" data-generic-tab-panel hidden>
                         <div data-omo-calendar-preview-host aria-live="polite" data-loading-label="<?= omoApiEscape(omoCalendarCreateT('calendar.create.preview.loading')) ?>" data-error-label="<?= omoApiEscape(omoCalendarCreateT('calendar.create.preview.error')) ?>"></div>

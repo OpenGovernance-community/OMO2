@@ -10,7 +10,7 @@ const settle = () => new Promise(resolve => setImmediate(resolve));
 function setup(html, href, fetch) {
     const {document, Event} = parseHTML('<html><body>' + html + '</body></html>');
     const location = {href, reload() { throw new Error('Unexpected reload'); }};
-    const window = {document, location, setTimeout, addEventListener() {}};
+    const window = {document, location, setTimeout, requestAnimationFrame() {}, addEventListener() {}};
     const context = vm.createContext({window, document, location, URL, URLSearchParams, Event, DOMParser, fetch,
         history: {pushState(_state, _title, url) { location.href = String(url); }, replaceState(_state, _title, url) { location.href = String(url); }}, FormData, AbortController, console});
     function run(file) { vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context); }
@@ -173,8 +173,17 @@ async function testEditor() {
     app.document.querySelector('form').elements = {};
     app.window.commonNotify = (message, type) => messages.push({message, type});
     app.run('common/calendar/availability.js');
+    await settle();
+    assert.equal(requests, 0, 'Opening the editor does not load availability.');
+    app.document.querySelector('[name="start_at"]').dispatchEvent(new app.document.defaultView.Event('change', {bubbles: true}));
+    await settle();
+    assert.equal(requests, 0, 'Changing dates before opening the availability tab does not fetch.');
     app.click(app.document.querySelector('[data-omo-calendar-preview-tab]'));
     await settle();
+    assert.equal(requests, 1, 'The first availability tab visit loads its data.');
+    app.click(app.document.querySelector('[data-omo-calendar-preview-tab]'));
+    await settle();
+    assert.equal(requests, 1, 'Reopening the unchanged availability tab reuses its data.');
     app.click(app.document.querySelector('[data-omo-calendar-preview-slot-start="' + date + 'T10:00"]'));
     assert.equal(app.document.querySelectorAll('[aria-pressed="true"]').length, 3);
     assert.equal(app.document.querySelector('[name="start_at"]').value, date + 'T09:00');

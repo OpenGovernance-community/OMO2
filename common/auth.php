@@ -1129,14 +1129,31 @@ function commonGetCurrentUserId()
     return (int)($_SESSION['currentUser'] ?? 0);
 }
 
+/** Explicit opt-in for read screens, including GET branches of mixed editor endpoints. */
+function commonEnableReadOnlyCaches(): void
+{
+    if (!in_array(strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? '')), ['GET', 'HEAD'], true)) {
+        \dbObject\DbObject::enableReadOnlyMemoization(false);
+        return;
+    }
+    if (!\dbObject\DbObject::isReadOnlyMemoizationEnabled()) {
+        \dbObject\DbObject::enableReadOnlyMemoization();
+    }
+}
+
 /** Call after the last session write, including form tokens, on read-only endpoints. */
 function commonReleaseReadOnlySession(): void
 {
+    commonEnableReadOnlyCaches();
     if (session_status() === PHP_SESSION_ACTIVE) commonCsrfToken();
     if (session_status() === PHP_SESSION_ACTIVE) {
         // Persist the current permission cache before rendering can refresh it lazily.
         if (commonGetCurrentUserId() > 0) {
             commonGetCurrentUserOrganizationPermissionSet();
+        }
+        // Renderers such as the sidebar first read applications after closing the session.
+        if (\dbObject\DbObject::isReadOnlyMemoizationEnabled()) {
+            \dbObject\Application::loadOrganizationCatalog((int)($_SESSION['currentOrganization'] ?? 0));
         }
         session_write_close();
     }
