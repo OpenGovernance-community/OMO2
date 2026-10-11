@@ -2098,6 +2098,42 @@ class DecisionProcess extends DbObject
         return $organization->load($organizationId) ? $organization : null;
     }
 
+    protected function getInvitationHolonMemberUserIds(array $holonIds): array
+    {
+        $organizationId = (int)$this->get('IDorganization');
+        $organization = $this->getOrganizationObject();
+        if ($organizationId <= 0 || !$organization) {
+            return [];
+        }
+
+        $userIds = [];
+        foreach (array_unique(array_map('intval', $holonIds)) as $holonId) {
+            $holon = new \dbObject\Holon();
+            if ($holonId <= 0 || !$holon->load($holonId) || !$organization->containsHolon($holon)
+                || !(bool)$holon->get('active') || !(bool)$holon->get('visible')) {
+                continue;
+            }
+
+            if ($holon->isOrganizationHolon()) {
+                $memberships = new \dbObject\ArrayUserOrganization();
+                $memberships->loadActiveForOrganization($organizationId);
+                $memberIds = array_map(static fn($membership) => (int)$membership->get('IDuser'), $memberships->getArrayCopy());
+            } else {
+                // Match the effective circle membership used by calendar invitations,
+                // including descendant roles and calculated link-role membership.
+                $memberIds = $holon->getAssociatedMemberUserIds([
+                    'organizationId' => $organizationId,
+                    'skipPermissionFilter' => true,
+                    'activeOnly' => true,
+                ]);
+            }
+            foreach ($memberIds as $userId) {
+                if ((int)$userId > 0) $userIds[(int)$userId] = (int)$userId;
+            }
+        }
+        return array_values($userIds);
+    }
+
     public function getInvitationRecipientCount($includeOwner = false)
     {
         $organizationId = (int)$this->get('IDorganization');
@@ -2155,27 +2191,8 @@ class DecisionProcess extends DbObject
         })));
 
         if (count($holonIds) > 0) {
-            $holonMembers = new \dbObject\ArrayUserHolon();
-            $holonMembers->loadActiveForHolonIds($holonIds);
-            foreach ($holonMembers as $membership) {
-                $userId = (int)$membership->get('IDuser');
-                if ($userId > 0) {
-                    $userIds[$userId] = true;
-                }
-            }
-
-            $organization = $this->getOrganizationObject();
-            $rootHolon = $organization ? $organization->getEnabledStructuralRootHolon() : null;
-            $rootHolonId = $rootHolon instanceof \dbObject\Holon ? (int)$rootHolon->getId() : 0;
-            if ($rootHolonId > 0 && in_array($rootHolonId, $holonIds, true)) {
-                $organizationMembers = new \dbObject\ArrayUserOrganization();
-                $organizationMembers->loadActiveForOrganization($organizationId);
-                foreach ($organizationMembers as $membership) {
-                    $userId = (int)$membership->get('IDuser');
-                    if ($userId > 0) {
-                        $userIds[$userId] = true;
-                    }
-                }
+            foreach ($this->getInvitationHolonMemberUserIds($holonIds) as $userId) {
+                $userIds[$userId] = true;
             }
         } elseif (count($activeInvitations) === 0 && $organizationId > 0) {
             $organizationMembers = new \dbObject\ArrayUserOrganization();
@@ -2853,13 +2870,6 @@ class DecisionProcess extends DbObject
             return $holonId > 0;
         })));
 
-        $organizationRootHolonId = 0;
-        if ($organizationId > 0) {
-            $organization = $this->getOrganizationObject();
-            $rootHolon = $organization ? $organization->getEnabledStructuralRootHolon() : null;
-            $organizationRootHolonId = $rootHolon instanceof \dbObject\Holon ? (int)$rootHolon->getId() : 0;
-        }
-
         $appendOrganizationMembers = function ($syncSource) use (&$desiredParticipants, $ownerUserId, $organizationId) {
             if ($organizationId <= 0) {
                 return;
@@ -2893,23 +2903,17 @@ class DecisionProcess extends DbObject
         };
 
         if (count($holonIds) > 0) {
-            $holonMembers = new \dbObject\ArrayUserHolon();
-            $holonMembers->loadActiveForHolonIds($holonIds);
-            foreach ($holonMembers as $membership) {
-                $userId = (int)$membership->get('IDuser');
-                if ($userId <= 0) {
-                    continue;
-                }
-
+            foreach ($this->getInvitationHolonMemberUserIds($holonIds) as $userId) {
                 $key = 'user:' . $userId;
                 if (isset($desiredParticipants[$key]) && $desiredParticipants[$key]['role'] === \dbObject\DecisionParticipant::ROLE_OWNER) {
                     continue;
                 }
 
+                $user = new \dbObject\User();
                 $desiredParticipants[$key] = [
                     'IDuser' => $userId,
                     'email' => '',
-                    'display_name' => trim((string)$membership->getUserDisplayName((int)$this->get('IDorganization'))),
+                    'display_name' => $user->load($userId) ? trim((string)$user->getScopedDisplayName($organizationId)) : '',
                     'role' => \dbObject\DecisionParticipant::ROLE_PARTICIPANT,
                     'status' => \dbObject\DecisionParticipant::STATUS_ACTIVE,
                     'active' => 1,
@@ -2918,9 +2922,6 @@ class DecisionProcess extends DbObject
                         'holon_ids' => $holonIds,
                     ],
                 ];
-            }
-            if ($organizationRootHolonId > 0 && in_array($organizationRootHolonId, $holonIds, true)) {
-                $appendOrganizationMembers(count($activeInvitations) === 0 ? 'implicit_organization' : 'invited_organization');
             }
         } elseif (count($activeInvitations) === 0 && $organizationId > 0) {
             $appendOrganizationMembers('implicit_organization');
