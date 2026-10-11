@@ -19,6 +19,12 @@ if (!function_exists('omoDecisionResolvePublicParticipantByToken')) {
             return null;
         }
 
+        $decision = $participant->getDecisionProcess();
+        if (!$decision instanceof DecisionProcess || empty($decision->syncParticipantsFromInvitations(true)['status'])
+            || !$participant->load((int)$participant->getId(), true)) {
+            return null;
+        }
+
         if ((int)$participant->get('active') !== 1) {
             return null;
         }
