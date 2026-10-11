@@ -6,15 +6,16 @@ require_once __DIR__ . '/notification_center.php';
 require_once __DIR__ . '/omo_cron_log.php';
 require_once __DIR__ . '/omo_maintenance_lock.php';
 require_once __DIR__ . '/organization_backup.php';
+require_once __DIR__ . '/performance_monitor.php';
 
 if (!function_exists('omo_run_fake_cron_maintenance')) {
     function omo_run_fake_cron_maintenance($checklistLimit = 50, $force = false, $source = 'unknown')
     {
-        return omoRunMaintenanceLocked(
+        return commonPerformanceCron('cron', (string)$source, static fn () => omoRunMaintenanceLocked(
             static fn (): array => omo_run_fake_cron_maintenance_tasks($checklistLimit, $force, $source),
             (string)$source,
             (bool)$force || $source === 'organization_import'
-        );
+        ));
     }
 
     function omo_run_fake_cron_maintenance_tasks($checklistLimit, $force, $source)
@@ -32,18 +33,26 @@ if (!function_exists('omo_run_fake_cron_maintenance')) {
             'spreadsheetIndicatorsSynced' => 0,
             'decisionNotificationsProcessed' => 0,
             'eventNotificationsProcessed' => 0,
+            'meetingParticipantsFrozen' => 0,
+            'meetingOccurrencesCreated' => 0,
+            'meetingDocumentTitlesRepaired' => 0,
             'projectsReactivated' => 0,
         ];
 
         $runTask = static function ($name, $errorPrefix, callable $callback) use (&$failedTasks) {
             try {
-                return (int)$callback();
+                return (int)commonPerformanceCron('task', (string)$name, $callback);
             } catch (\Throwable $exception) {
                 $failedTasks[] = (string)$name;
                 error_log((string)$errorPrefix . $exception->getMessage());
                 return 0;
             }
         };
+
+        $result['performanceSamplesAggregated'] = $runTask(
+            'performance_aggregation', 'OMO performance aggregation failed: ',
+            static fn () => \dbObject\PerformanceRequest::aggregate()
+        );
 
         $result['organizationBackupsSent'] = $runTask(
             'organization_backups',
@@ -109,12 +118,28 @@ if (!function_exists('omo_run_fake_cron_maintenance')) {
                 return notificationCenterMaybeProcessDecisionLifecycle(200, $force);
             }
         );
+        $result['meetingDocumentTitlesRepaired'] = $runTask(
+            'meeting_document_titles', 'OMO meeting document title repair failed: ',
+            static fn () => \dbObject\EventRecurrence::repairLegacyDocumentTitlesBatch(20)
+        );
+        $result['meetingParticipantsFrozen'] = $runTask(
+            'meeting_participants', 'OMO meeting participant snapshot failed: ',
+            static fn () => \dbObject\Event::freezePastMeetingParticipantsBatch(200)
+        );
+        $result['meetingOccurrencesCreated'] = $runTask(
+            'meeting_recurrence', 'OMO meeting recurrence maintenance failed: ',
+            static fn () => \dbObject\EventRecurrence::generateDueBatch(100)
+        );
         $result['eventNotificationsProcessed'] = $runTask(
             'event_notifications',
             'OMO fake cron event notification maintenance failed: ',
             static function () use ($force) {
                 return notificationCenterMaybeProcessEventLifecycle(200, $force);
             }
+        );
+        $result['meetingInvitationsProcessed'] = $runTask(
+            'meeting_invitations', 'OMO recurring invitation maintenance failed: ',
+            static fn () => notificationCenterProcessRecurringInvitations(200)
         );
         $result['projectsReactivated'] = $runTask(
             'project_blocked_reactivation',
@@ -129,6 +154,7 @@ if (!function_exists('omo_run_fake_cron_maintenance')) {
             static fn () => \dbObject\ObjectMail::processBatch(20)
         );
         omoCronFinishMaintenanceLog($logContext, $failedTasks);
+        $result['performanceFailedTasks'] = $failedTasks;
 
         return $result;
     }

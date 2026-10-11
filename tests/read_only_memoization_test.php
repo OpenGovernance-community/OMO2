@@ -3,8 +3,10 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/class/dbobject/dbobject.class.php';
 require_once dirname(__DIR__) . '/class/dbobject/objectvisibility.class.php';
+require_once dirname(__DIR__) . '/class/dbobject/calendartimebuffer.class.php';
 require_once dirname(__DIR__) . '/class/dbobject/event.class.php';
 require_once dirname(__DIR__) . '/class/dbobject/propertyformat.class.php';
+require_once dirname(__DIR__) . '/common/auth.php';
 
 final class ReadMemoPdo extends PDO
 {
@@ -68,6 +70,22 @@ $saved->save(); // The real DbObject write path must disable the read memo.
 ReadMemoProbe::read(['user', 1, 7], $load);
 ReadMemoProbe::read(['user', 1, 7], $load);
 assertReadMemo($calls === 7, 'Writes clear and disable memoization.');
+
+$_SERVER['REQUEST_METHOD'] = 'GET';
+commonEnableReadOnlyCaches();
+ReadMemoProbe::read(['shared-reader'], $load);
+commonEnableReadOnlyCaches();
+ReadMemoProbe::read(['shared-reader'], $load);
+assertReadMemo($calls === 8, 'Repeated shared opt-in retains already memoized reads.');
+foreach (['POST', 'PUT', 'PATCH', 'DELETE', ''] as $method) {
+    ReadMemoProbe::enableReadOnlyMemoization();
+    $_SERVER['REQUEST_METHOD'] = $method;
+    commonEnableReadOnlyCaches();
+    assertReadMemo(!ReadMemoProbe::isReadOnlyMemoizationEnabled(), 'Mutation and unspecified methods never reuse read caches.');
+}
+$_SERVER['REQUEST_METHOD'] = 'HEAD';
+commonEnableReadOnlyCaches();
+assertReadMemo(ReadMemoProbe::isReadOnlyMemoizationEnabled(), 'HEAD supports shared read caches.');
 
 foreach ([
     'WITH nodes AS (SELECT id FROM probe) SELECT id FROM nodes' => true,

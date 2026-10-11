@@ -275,6 +275,9 @@
             return;
         }
         form.dataset.omoCalendarStandaloneReady = '1';
+        form.addEventListener('omo-calendar-invitations-loaded', function () {
+            Array.prototype.forEach.call(form.querySelectorAll('[data-omo-calendar-invitations-editor]'), initInvitationEditor);
+        });
         syncLocationFields(form);
         syncDocumentFields(form);
         rememberScheduleState(form);

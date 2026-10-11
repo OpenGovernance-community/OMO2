@@ -166,6 +166,30 @@ try {
     $calendar->load((int)$calendar->getId(), true);
     confirmationExpect($event->get('title') === 'Changed' && $event->get('start_at')->format('H:i') === '10:30', 'Event edit must be persisted.');
     confirmationExpect($calendar->get('last_sync_at')->format('c') === $oldSync->format('c') && !$calendar->get('last_sync_error'), 'Confirmation must not synchronize again.');
+    // Personal time changes trigger review even when the event dates stay identical.
+    $fixture(\dbObject\EventInvitation::class, ['IDevent' => $event->getId(), 'IDuser' => $user->getId(),
+        'invitation_type' => 'user', 'status' => 'invited', 'active' => 1]);
+    $personal = $request;
+    unset($personal['post']['availability_ack']);
+    $personal['post']['invitation_user_ids'][] = (int)$user->getId();
+    $personal['post']['time_buffers_enabled'] = '1';
+    $personal['post']['closing_minutes'] = '45';
+    $personalResult = confirmationRequest($personal);
+    confirmationExpect(!$personalResult['status'] && !empty($personalResult['availability']['acknowledgement']),
+        'Changing personal time with unchanged dates still reviews conflicts.');
+    confirmationExpect($event->getTimeBuffers((int)$user->getId()) === [0, 0], 'Unconfirmed personal time is not saved.');
+    $personal['post']['availability_ack'] = $personalResult['availability']['acknowledgement'];
+    confirmationExpect(confirmationRequest($personal)['status'], 'Confirmed personal time changes save.');
+    confirmationExpect($event->getTimeBuffers((int)$user->getId()) === [0, 45], 'Personal time is persisted for the invited organizer.');
+    $calendar->set('last_sync_at', $oldSync); $calendar->set('last_sync_error', null); $calendar->save();
+    unset($personal['post']['availability_ack']);
+    $personal['post']['title'] = 'Metadata after personal time';
+    $personalUnchanged = confirmationRequest($personal);
+    confirmationExpect($personalUnchanged['status'] && empty($personalUnchanged['warning']),
+        'Unchanged dates and personal times skip conflict review.');
+    $calendar->load((int)$calendar->getId(), true);
+    confirmationExpect($calendar->get('last_sync_at')->format('c') === $oldSync->format('c') && !$calendar->get('last_sync_error'),
+        'Unchanged dates and personal times do not synchronize calendars.');
     echo "calendar_availability_confirmation_test: OK\n";
 } finally {
     foreach (array_reverse($fixtures) as $object) { $object->delete(); }

@@ -98,6 +98,7 @@
 			}
 
 			$this->load([
+				'hydrate' => true,
 				'where' => [
 					['field' => 'IDholon_org', 'value' => (int)$rootHolon->getId()],
 					['field' => 'active', 'value' => 1],

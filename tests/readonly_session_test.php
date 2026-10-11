@@ -4,7 +4,8 @@ declare(strict_types=1);
 $testDirectory = sys_get_temp_dir() . '/omo-session-test-' . bin2hex(random_bytes(8));
 putenv('RUNTIME_LOG_DIR=' . $testDirectory);
 require_once dirname(__DIR__) . '/common/auth.php';
-// Keep authentication/session behavior real and isolate only permission data access.
+require_once dirname(__DIR__) . '/class/dbobject/dbobject.class.php';
+// Keep authentication/session behavior real and isolate database access.
 final class SessionTestPermissionSet
 {
     public const PERMISSION_CACHE_VERSION = 1;
@@ -21,7 +22,17 @@ final class SessionTestHistory
 }
 class_alias(SessionTestPermissionSet::class, 'dbObject\\HolonPermission');
 class_alias(SessionTestHistory::class, 'dbObject\\History');
+final class SessionTestApplication
+{
+    public static function loadOrganizationCatalog(int $organizationId): array
+    {
+        if ($organizationId > 0) { $_SESSION['applicationCatalogs'][$organizationId] = ['test-catalog']; }
+        return [];
+    }
+}
+class_alias(SessionTestApplication::class, 'dbObject\\Application');
 $_SERVER['HTTP_HOST'] = 'org1.localtest.me';
+$_SERVER['REQUEST_METHOD'] = 'GET';
 session_save_path($testDirectory);
 session_id('test-' . bin2hex(random_bytes(8)));
 
@@ -57,9 +68,10 @@ try {
     $_SESSION = [];
     session_start();
     assertReadOnlySession($_SESSION['permissionCacheByOrganization'][3]['cachedAtHistoryId'] === 123, 'Permission metadata persisted.');
+    assertReadOnlySession($_SESSION['applicationCatalogs'][3] === ['test-catalog'], 'Application catalog persisted before rendering.');
     commonReleaseReadOnlySession();
     assertReadOnlySession(SessionTestPermissionSet::$builds === 1, 'Fresh permission cache reused.');
-    echo "OK: session unlock, token and permission cache persistence, repeated release.\n";
+    echo "OK: session unlock, token, permission and application cache persistence, repeated release.\n";
 } finally {
     if (session_status() === PHP_SESSION_ACTIVE) {
         session_write_close();
