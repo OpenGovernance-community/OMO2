@@ -7,6 +7,34 @@ require_once dirname(__DIR__, 2) . '/omo/topbar.php';
 
 function siteStatsSourceLang(): array
 {
+    $monitoring = [
+        'monitor.title' => 'Performance et charge', 'monitor.intro' => 'Temps de reponse, consommation et activite de la plateforme.',
+        'monitor.range' => 'Periode', 'monitor.organization' => 'Organisation', 'monitor.all' => 'Toutes',
+        'monitor.kind' => 'Mesures', 'monitor.web' => 'Pages HTTP', 'monitor.cron' => 'Executions du cron', 'monitor.task' => 'Taches du cron',
+        'monitor.cron_filter' => 'Execution du cron', 'monitor.any' => 'Tous les cas', 'monitor.none' => 'Sans appel au cron',
+        'monitor.called' => 'Cron sollicite', 'monitor.ran' => 'Cron execute', 'monitor.skipped' => 'Cron ignore (verrou ou delai)',
+        'monitor.sort' => 'Classement des pages / taches', 'monitor.slow' => 'Duree moyenne', 'monitor.cpu' => 'CPU PHP cumule',
+        'monitor.total' => 'Duree cumulee', 'monitor.volume' => 'Nombre d appels', 'monitor.apply' => 'Afficher',
+        'monitor.requests' => 'Appels', 'monitor.users' => 'Utilisateurs actifs', 'monitor.p95' => 'p95 estime', 'monitor.median' => 'Mediane estimee',
+        'monitor.errors' => 'Erreurs serveur', 'monitor.sql' => 'Temps SQL', 'monitor.memory' => 'Pic memoire PHP',
+        'monitor.daily_requests' => 'Appels par jour', 'monitor.daily_users' => 'Utilisateurs actifs par jour',
+        'monitor.daily_cpu' => 'CPU PHP par jour (secondes)', 'monitor.daily_per_user' => 'CPU PHP par utilisateur actif (secondes / jour)',
+        'monitor.daily_latency' => 'Reponse moyenne et p95 estime (ms)', 'monitor.hourly' => 'Duree et CPU par heure UTC (secondes)',
+        'monitor.daily_errors' => 'Erreurs serveur par jour', 'monitor.daily_cron' => 'Temps du cron inclus dans les pages (secondes / jour)',
+        'monitor.mean' => 'Moyenne', 'monitor.routes' => 'Pages et traitements', 'monitor.orgs' => 'Charge par organisation',
+        'monitor.name' => 'Page / traitement', 'monitor.per_user' => 'Duree / utilisateur actif', 'monitor.cron_calls' => 'Appels cron',
+        'monitor.cron_time' => 'Temps cron inclus', 'monitor.unassigned' => 'Sans organisation', 'monitor.unknown_org' => 'Organisation #{id}',
+        'monitor.notes' => 'Heures et jours en UTC. Le p95 est la borne haute d une tranche de duree, pas une mesure exacte. Les utilisateurs actifs sont les comptes connectes distincts ; les visiteurs anonymes restent inclus dans les appels.',
+        'monitor.cost_note' => 'La duree des pages inclut les attentes et le cron appele pendant la requete. La maintenance du navigateur passe par runtime_maintenance.php : son temps est attribue a cet appel distinct. CPU PHP et temps SQL sont des mesures differentes. Les vues Pages, Cron et Taches se recouvrent : ne pas additionner leurs totaux. Le pic memoire concerne le processus PHP, y compris pour les taches. Le cron global reste sans organisation.',
+        'monitor.retention' => 'Details : 30 jours. Agregats horaires : 13 mois. Les mesures en attente sont incluses dans les graphiques.',
+        'monitor.pending' => '{count} mesures en attente d agregation. Plus ancienne : {date}.',
+        'monitor.ready' => 'Toutes les mesures ont ete agregees.', 'monitor.cpu_coverage' => 'CPU disponible pour {count} appels sur {total}.',
+        'monitor.missing' => 'Les tables de suivi ne sont pas encore installees. Appliquer les migrations du site.',
+        'monitor.disabled' => 'La collecte des performances est desactivee dans la configuration.',
+        'monitor.growth' => 'Croissance globale du site', 'monitor.unavailable' => 'Indisponible',
+        'monitor.days' => '{count} jours', 'monitor.error_rate' => 'Taux d erreurs serveur',
+        'monitor.sql_queries' => 'Requetes SQL', 'monitor.client_errors' => 'Erreurs HTTP 4xx',
+    ];
     return [
         'stats.page.title' => ['text' => 'Statistiques du site', 'context' => 'Page title for the global site statistics dashboard.'],
         'stats.page.eyebrow' => ['text' => 'Vue globale', 'context' => 'Small eyebrow above the global site statistics title.'],
@@ -25,7 +53,7 @@ function siteStatsSourceLang(): array
         'stats.users.total' => ['text' => 'Total d utilisateurs', 'context' => 'Metric label for the total number of users.'],
         'stats.users.active_30' => ['text' => 'Connectés ces 30 derniers jours', 'context' => 'Metric label for users with a recent connection.'],
         'stats.users.chart' => ['text' => 'Connexions par date', 'context' => 'Chart title for user connection activity.'],
-        'stats.users.chart_note' => ['text' => 'Le graphique repose sur la dernière connexion connue de chaque utilisateur. L historique détaillé de chaque connexion sera ajouté plus tard.', 'context' => 'Note explaining the current limitation of the user activity chart.'],
+        'stats.users.chart_note' => ['text' => 'Ce graphique repose sur la derniere connexion connue. L activite HTTP figure dans les graphiques de performance.', 'context' => 'Note explaining the current limitation of the user activity chart.'],
 		'stats.holons.title' => ['text' => 'Espaces', 'context' => 'Title of the spaces statistics block.'],
         'stats.holons.total' => ['text' => 'Total d’espaces', 'context' => 'Metric label for the total number of active spaces.'],
         'stats.holons.modified_30' => ['text' => 'Modifiés ces 30 derniers jours', 'context' => 'Metric label for holons modified during the last thirty days.'],
@@ -36,9 +64,9 @@ function siteStatsSourceLang(): array
         'stats.chart.empty' => ['text' => 'Aucune donnée sur cette période.', 'context' => 'Empty state for a statistics bar chart.'],
         'stats.chart.value' => ['one' => '{count} élément', 'other' => '{count} éléments', 'context' => 'Accessible chart bar value label.'],
         'stats.access.title' => ['text' => 'Accès réservé', 'context' => 'Title shown when global site statistics are not available.'],
-        'stats.access.message' => ['text' => 'Activez le mode super admin depuis le menu de profil pour consulter ces statistiques.', 'context' => 'Message shown when site admin mode is not active.'],
+        'stats.access.message' => ['text' => 'Cette page est reservee aux super administrateurs du site.', 'context' => 'Message shown to users without the site administrator role.'],
         'stats.access.back' => ['text' => 'Retour à OMO', 'context' => 'Back link shown on the statistics access page.'],
-    ];
+    ] + array_map(static fn($text) => ['text' => $text, 'context' => 'Site performance dashboard.'], $monitoring);
 }
 
 function siteStatsLoadBundle(): array
@@ -107,9 +135,9 @@ function siteStatsBuildSeries(array $rows, DateTimeImmutable $startDate, DateTim
 
 function siteStatsRenderBarChart(string $chartId, array $seriesList, string $ariaLabel, string $mode): string
 {
-    $width = 1000;
-    $height = 300;
-    $paddingLeft = 44;
+    $width = 640;
+    $height = 230;
+    $paddingLeft = 60;
     $paddingRight = 18;
     $paddingTop = 20;
     $paddingBottom = 48;
@@ -119,7 +147,7 @@ function siteStatsRenderBarChart(string $chartId, array $seriesList, string $ari
     $seriesCount = count($seriesList);
     foreach ($seriesList as $seriesItem) {
         foreach (($seriesItem['series'] ?? []) as $point) {
-            $maxValue = max($maxValue, (int)$point['value']);
+            $maxValue = max($maxValue, (float)$point['value']);
         }
     }
 
@@ -131,34 +159,34 @@ function siteStatsRenderBarChart(string $chartId, array $seriesList, string $ari
     $count = count($series);
     $slotWidth = $plotWidth / max(1, $count);
     $barGroupWidth = $slotWidth * 0.72;
-    $barWidth = max(2, ($barGroupWidth - (($seriesCount - 1) * 3)) / max(1, $seriesCount));
-    $labelStep = max(1, (int)ceil($count / 12));
+    $barWidth = max(0.5, ($barGroupWidth - (($seriesCount - 1) * 3)) / max(1, $seriesCount));
+    $labelStep = max(1, (int)ceil($count / 6));
     $svg = '<svg class="site-stats-chart" viewBox="0 0 ' . $width . ' ' . $height . '" role="img" aria-labelledby="' . siteStatsEscape($chartId) . '-title ' . siteStatsEscape($chartId) . '-description">';
     $svg .= '<title id="' . siteStatsEscape($chartId) . '-title">' . siteStatsEscape($ariaLabel) . '</title>';
     $svg .= '<desc id="' . siteStatsEscape($chartId) . '-description">' . siteStatsEscape(siteStatsT('stats.period.' . ($mode === 'weekly' ? 'weekly' : 'daily'))) . '</desc>';
     $svg .= '<line class="site-stats-chart__grid" x1="' . $paddingLeft . '" y1="' . $paddingTop . '" x2="' . ($width - $paddingRight) . '" y2="' . $paddingTop . '" />';
     $svg .= '<line class="site-stats-chart__grid" x1="' . $paddingLeft . '" y1="' . ($paddingTop + $plotHeight / 2) . '" x2="' . ($width - $paddingRight) . '" y2="' . ($paddingTop + $plotHeight / 2) . '" />';
     $svg .= '<line class="site-stats-chart__axis" x1="' . $paddingLeft . '" y1="' . ($paddingTop + $plotHeight) . '" x2="' . ($width - $paddingRight) . '" y2="' . ($paddingTop + $plotHeight) . '" />';
-    $svg .= '<text class="site-stats-chart__scale" x="' . ($paddingLeft - 8) . '" y="' . ($paddingTop + 4) . '" text-anchor="end">' . siteStatsEscape($maxValue) . '</text>';
+    $svg .= '<text class="site-stats-chart__scale" x="' . ($paddingLeft - 8) . '" y="' . ($paddingTop + 4) . '" text-anchor="end">' . siteStatsEscape(number_format($maxValue, $maxValue < 10 ? 1 : 0, ',', ' ')) . '</text>';
 
     foreach ($series as $index => $point) {
-        $dateLabel = $mode === 'weekly'
+        $dateLabel = isset($point['label']) ? (string)$point['label'] : ($mode === 'weekly'
             ? 'Semaine du ' . $point['date']->format('d.m.Y')
-            : $point['date']->format('d.m.Y');
+            : $point['date']->format('d.m.Y'));
         foreach ($seriesList as $seriesIndex => $seriesItem) {
             $secondaryPoint = ($seriesItem['series'] ?? [])[$index] ?? ['value' => 0];
-            $value = (int)($secondaryPoint['value'] ?? 0);
+            $value = (float)($secondaryPoint['value'] ?? 0);
             $barHeight = $value > 0 ? max(2, ($value / $maxValue) * $plotHeight) : 1;
             $x = $paddingLeft + ($index * $slotWidth) + (($slotWidth - $barGroupWidth) / 2) + ($seriesIndex * ($barWidth + 3));
             $y = $paddingTop + $plotHeight - $barHeight;
             $seriesLabel = trim((string)($seriesItem['label'] ?? ''));
-            $barLabel = ($seriesLabel !== '' ? $seriesLabel . ' - ' : '') . $dateLabel . ' : ' . siteStatsT('stats.chart.value', ['count' => $value]);
+            $barLabel = ($seriesLabel !== '' ? $seriesLabel . ' - ' : '') . $dateLabel . ' : ' . number_format($value, $value < 10 ? 2 : 0, ',', ' ') . ' ' . ($seriesItem['unit'] ?? '');
             $barClass = trim((string)($seriesItem['class'] ?? ''));
-            $svg .= '<rect class="site-stats-chart__bar ' . siteStatsEscape($barClass) . ($value === 0 ? ' site-stats-chart__bar--empty' : '') . '" x="' . round($x, 2) . '" y="' . round($y, 2) . '" width="' . round($barWidth, 2) . '" height="' . round($barHeight, 2) . '" tabindex="0"><title>' . siteStatsEscape($barLabel) . '</title></rect>';
+            $svg .= '<rect class="site-stats-chart__bar ' . siteStatsEscape($barClass) . ($value == 0 ? ' site-stats-chart__bar--empty' : '') . '" x="' . round($x, 2) . '" y="' . round($y, 2) . '" width="' . round($barWidth, 2) . '" height="' . round($barHeight, 2) . '" tabindex="0"><title>' . siteStatsEscape($barLabel) . '</title></rect>';
         }
         if ($index % $labelStep === 0 || $index === $count - 1) {
             $labelX = $paddingLeft + ($index * $slotWidth) + ($slotWidth / 2);
-            $svg .= '<text class="site-stats-chart__label" x="' . round($labelX, 2) . '" y="' . ($height - 15) . '" text-anchor="middle">' . siteStatsEscape($point['date']->format('d.m')) . '</text>';
+            $svg .= '<text class="site-stats-chart__label" x="' . round($labelX, 2) . '" y="' . ($height - 15) . '" text-anchor="middle">' . siteStatsEscape(($point['label'] ?? $point['date']->format('d.m'))) . '</text>';
         }
     }
 
@@ -203,265 +231,201 @@ function siteStatsRenderDualChart(string $chartId, array $primarySeries, array $
     ], $ariaLabel, $mode);
 }
 
-$currentUserId = (int)commonGetCurrentUserId();
-$siteAdminModeActive = $currentUserId > 0 && commonCurrentUserIsSiteAdminModeEnabled();
-$organizationContext = commonResolveOrganizationContext(1);
-if (!is_array($organizationContext) || empty($organizationContext['isValid'])) {
-    $organizationContext = [
-        'id' => 1,
-        'name' => 'OpenMyOrganization',
-        'host' => commonGetRequestHost(),
-        'logo' => '/img/logo-OGC.png',
-        'isValid' => true,
-    ];
-}
-$chartRange = (int)($_GET['range'] ?? 365);
-if (!in_array($chartRange, [30, 90, 365], true)) {
-    $chartRange = 365;
+function siteStatsNumber($value, int $decimals = 0): string
+{
+    return number_format((float)$value, $decimals, ',', ' ');
 }
 
-$chartEndDate = new DateTimeImmutable('today');
+function siteStatsPerformanceTable(array $rows, bool $organizations, array $names): void
+{
+    if (!$rows) { echo '<p>' . siteStatsEscape(siteStatsT('stats.chart.empty')) . '</p>'; return; }
+    echo '<div class="site-stats-table-scroll" tabindex="0"><table class="site-stats-table"><thead><tr>';
+    foreach ([$organizations ? 'monitor.organization' : 'monitor.name', 'monitor.requests', 'monitor.users', 'monitor.mean',
+        'monitor.p95', 'monitor.total', 'monitor.cpu', 'monitor.sql', 'monitor.errors', 'monitor.cron_calls', 'monitor.cron_time', 'monitor.per_user'] as $key) {
+        echo '<th scope="col">' . siteStatsEscape(siteStatsT($key)) . '</th>';
+    }
+    echo '</tr></thead><tbody>';
+    foreach ($rows as $row) {
+        $count = max(1, (int)$row['requests']);
+        $name = $organizations ? ((int)$row['organization_id'] === 0 ? siteStatsT('monitor.unassigned')
+            : ($names[(int)$row['organization_id']] ?? siteStatsT('monitor.unknown_org', ['id' => $row['organization_id']])))
+            : $row['method'] . ' ' . $row['label'];
+        $values = [siteStatsNumber($row['requests']), siteStatsNumber($row['active_users']),
+            siteStatsNumber($row['duration_ms'] / $count, 1) . ' ms',
+            siteStatsNumber(\dbObject\PerformanceHourly::percentile($row)) . ' ms',
+            siteStatsNumber($row['duration_ms'] / 1000, 2) . ' s',
+            $row['cpu_samples'] > 0 ? siteStatsNumber($row['cpu_ms'] / 1000, 2) . ' s' : siteStatsT('monitor.unavailable'),
+            siteStatsNumber($row['sql_ms'] / 1000, 2) . ' s', siteStatsNumber($row['errors']),
+            siteStatsNumber($row['cron_calls']), siteStatsNumber($row['cron_ms'] / 1000, 2) . ' s',
+            $row['active_users'] > 0 ? siteStatsNumber($row['duration_ms'] / $row['active_users'] / 1000, 2) . ' s' : '-'];
+        echo '<tr><th scope="row">' . siteStatsEscape($name) . '</th>';
+        foreach ($values as $value) { echo '<td>' . siteStatsEscape($value) . '</td>'; }
+        echo '</tr>';
+    }
+    echo '</tbody></table></div>';
+}
+
+$allowed = commonGetCurrentUserId() > 0 && commonCurrentUserIsSiteAdmin();
+header('Cache-Control: no-store');
+if (!$allowed) { http_response_code(403); }
+$chartRange = (int)($_GET['range'] ?? 30);
+if (!in_array($chartRange, [7, 30, 90, 365], true)) { $chartRange = 30; }
+$organizationId = max(0, (int)($_GET['organization'] ?? 0));
+$kind = in_array($_GET['kind'] ?? '', ['web', 'cron', 'task'], true) ? $_GET['kind'] : 'web';
+if ($kind !== 'web') { $organizationId = 0; } // Global maintenance is not owned by the invoking organization.
+$cron = in_array($_GET['cron'] ?? '', ['none', 'called', 'ran', 'skipped'], true) ? $_GET['cron'] : 'all';
+$sort = in_array($_GET['sort'] ?? '', ['cpu', 'total', 'volume'], true) ? $_GET['sort'] : 'slow';
+$chartEndDate = new DateTimeImmutable('today', new DateTimeZone('UTC'));
 $chartStartDate = $chartEndDate->modify('-' . ($chartRange - 1) . ' days');
-$chartEndExclusive = $chartEndDate->modify('+1 day');
 $chartMode = $chartRange > 90 ? 'weekly' : 'daily';
-$chartStartSql = $chartStartDate->format('Y-m-d H:i:s');
-$chartEndSql = $chartEndExclusive->format('Y-m-d H:i:s');
-$monthStartSql = $chartEndDate->modify('first day of this month')->format('Y-m-d 00:00:00');
-
-$totalOrganizations = (int)\dbObject\DbObject::fetchValue('SELECT COUNT(*) FROM organization');
-$newOrganizationsThisMonth = (int)\dbObject\DbObject::fetchValue(
-    'SELECT COUNT(*) FROM organization WHERE datecreation >= :month_start AND datecreation < :period_end',
-    ['month_start' => $monthStartSql, 'period_end' => $chartEndSql]
-);
-$totalUsers = (int)\dbObject\DbObject::fetchValue('SELECT COUNT(*) FROM `user`');
-$connectedUsers30 = (int)\dbObject\DbObject::fetchValue(
-    'SELECT COUNT(*) FROM `user` WHERE dateconnexion >= :recent_start AND dateconnexion < :period_end',
-    ['recent_start' => $chartEndDate->modify('-29 days')->format('Y-m-d 00:00:00'), 'period_end' => $chartEndSql]
-);
-$totalHolons = (int)\dbObject\DbObject::fetchValue('SELECT COUNT(*) FROM holon WHERE active = 1');
-$modifiedHolons30 = (int)\dbObject\DbObject::fetchValue(
-    "SELECT COUNT(DISTINCT CAST(JSON_UNQUOTE(JSON_EXTRACT(h.parameters, '$.IDholon')) AS UNSIGNED))
-     FROM history h
-     WHERE h.active = 1
-       AND h.action = 'holon_updated'
-       AND h.datecreation >= :recent_start
-       AND h.datecreation < :period_end
-       AND JSON_VALID(h.parameters) = 1
-       AND CAST(JSON_UNQUOTE(JSON_EXTRACT(h.parameters, '$.IDholon')) AS UNSIGNED) > 0",
-    ['recent_start' => $chartEndDate->modify('-29 days')->format('Y-m-d 00:00:00'), 'period_end' => $chartEndSql]
-);
-$organizationRows = \dbObject\DbObject::fetchAll(
-    'SELECT DATE(datecreation) AS period_date, COUNT(*) AS total
-     FROM organization
-     WHERE datecreation >= :period_start AND datecreation < :period_end
-     GROUP BY DATE(datecreation)
-     ORDER BY period_date ASC',
-    ['period_start' => $chartStartSql, 'period_end' => $chartEndSql]
-);
-$userRows = \dbObject\DbObject::fetchAll(
-    'SELECT DATE(dateconnexion) AS period_date, COUNT(*) AS total
-     FROM `user`
-     WHERE dateconnexion IS NOT NULL
-       AND dateconnexion >= :period_start
-       AND dateconnexion < :period_end
-     GROUP BY DATE(dateconnexion)
-     ORDER BY period_date ASC',
-    ['period_start' => $chartStartSql, 'period_end' => $chartEndSql]
-);
-$holonCreationRows = \dbObject\DbObject::fetchAll(
-    'SELECT DATE(datecreation) AS period_date, COUNT(*) AS total
-     FROM holon
-     WHERE datecreation >= :period_start AND datecreation < :period_end
-     GROUP BY DATE(datecreation)
-     ORDER BY period_date ASC',
-    ['period_start' => $chartStartSql, 'period_end' => $chartEndSql]
-);
-$holonModificationRows = \dbObject\DbObject::fetchAll(
-    "SELECT DATE(h.datecreation) AS period_date,
-            COUNT(DISTINCT CAST(JSON_UNQUOTE(JSON_EXTRACT(h.parameters, '$.IDholon')) AS UNSIGNED)) AS total
-     FROM history h
-     WHERE h.active = 1
-       AND h.action = 'holon_updated'
-       AND h.datecreation >= :period_start
-       AND h.datecreation < :period_end
-       AND JSON_VALID(h.parameters) = 1
-       AND CAST(JSON_UNQUOTE(JSON_EXTRACT(h.parameters, '$.IDholon')) AS UNSIGNED) > 0
-     GROUP BY DATE(h.datecreation)
-     ORDER BY period_date ASC",
-    ['period_start' => $chartStartSql, 'period_end' => $chartEndSql]
-);
-$organizationSeries = siteStatsBuildSeries(is_array($organizationRows) ? $organizationRows : [], $chartStartDate, $chartEndDate, $chartMode);
-$userSeries = siteStatsBuildSeries(is_array($userRows) ? $userRows : [], $chartStartDate, $chartEndDate, $chartMode);
-$holonCreationSeries = siteStatsBuildSeries(is_array($holonCreationRows) ? $holonCreationRows : [], $chartStartDate, $chartEndDate, $chartMode);
-$holonModificationSeries = siteStatsBuildSeries(is_array($holonModificationRows) ? $holonModificationRows : [], $chartStartDate, $chartEndDate, $chartMode);
 $pageTitle = siteStatsT('stats.page.title');
+$performance = ['available' => false];
+$organizationNames = [];
+if ($allowed) {
+    $organizationContext = commonResolveOrganizationContext(1);
+    if (!is_array($organizationContext) || empty($organizationContext['isValid'])) {
+        $organizationContext = ['id' => 1, 'name' => 'OpenMyOrganization', 'host' => commonGetRequestHost(), 'logo' => '/img/logo-OGC.png', 'isValid' => true];
+    }
+    commonReleaseReadOnlySession();
+    $growth = \dbObject\SiteStatistics::growth($chartStartDate, $chartEndDate);
+    $performance = \dbObject\PerformanceHourly::dashboard($chartStartDate->format('Y-m-d H:i:s'),
+        $chartEndDate->modify('+1 day')->format('Y-m-d H:i:s'), $organizationId, $kind, $cron, $sort);
+    foreach ($performance['organizationNames'] ?? [] as $organization) { $organizationNames[(int)$organization['id']] = $organization['name']; }
+}
 ?>
 <!DOCTYPE html>
-<html lang="fr" data-omo-organization-accent>
+<html lang="<?= siteStatsEscape(translationBundleResolveRequestLocale('lang')) ?>" data-omo-organization-accent>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= siteStatsEscape($pageTitle) ?></title>
     <?= commonStylesheetTags('/shared_css.css') ?>
-    <link rel="stylesheet" href="/common/assets/components.css">
-    <style>
-        .site-stats-body {
-            min-height: 100vh;
-            margin: 0;
-            background: var(--color-background, #f4f7f8);
-            color: var(--color-text, #1f2937);
-        }
-        .site-stats-page {
-            display: grid;
-            gap: 20px;
-            max-width: 1440px;
-            margin: 0 auto;
-            padding: 28px clamp(16px, 4vw, 48px) 48px;
-        }
-        .site-stats-hero {
-            display: flex;
-            align-items: flex-end;
-            justify-content: space-between;
-            gap: 24px;
-            background: linear-gradient(135deg, color-mix(in srgb, var(--color-primary, #2563eb) 10%, var(--color-surface, #fff)), var(--color-surface, #fff));
-        }
-        .site-stats-hero h1 { margin: 6px 0 8px; }
-        .site-stats-hero p { max-width: 620px; margin: 0; color: var(--color-text-light, #64748b); }
-        .site-stats-period { display: grid; gap: 8px; justify-items: end; }
-        .site-stats-period__options { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
-        .site-stats-period__options .generic-action-button { min-height: 34px; padding: 7px 10px; font-size: 0.82rem; }
-        .site-stats-period__options .generic-action-button.is-active { border-color: var(--color-primary, #2563eb); background: color-mix(in srgb, var(--color-primary, #2563eb) 12%, var(--color-surface, #fff)); color: var(--color-primary, #2563eb); }
-        .site-stats-period__mode { color: var(--color-text-light, #64748b); font-size: 0.8rem; }
-        .site-stats-block { display: grid; gap: 16px; }
-        .site-stats-block__heading h2 { margin: 0; }
-        .site-stats-row { display: grid; grid-template-columns: minmax(190px, 0.28fr) minmax(0, 1fr); gap: 16px; align-items: stretch; }
-        .site-stats-metric { display: grid; align-content: center; gap: 12px; min-height: 220px; box-sizing: border-box; aspect-ratio: 1 / 1; background: linear-gradient(160deg, color-mix(in srgb, var(--color-primary, #2563eb) 11%, var(--color-surface-alt, #f8fafc)), var(--color-surface-alt, #f8fafc)); }
-        .site-stats-metric strong { color: var(--color-primary, #2563eb); font-size: clamp(2.2rem, 5vw, 4.3rem); line-height: 0.95; }
-        .site-stats-metric > span:last-child { color: var(--color-text-light, #64748b); font-size: 0.88rem; }
-        .site-stats-metric b { color: var(--color-text, #1f2937); }
-        .site-stats-chart-panel { display: grid; gap: 8px; min-width: 0; margin: 0; padding: 14px; }
-        .site-stats-chart-panel figcaption { color: var(--color-text, #1f2937); font-size: 1rem; font-weight: 700; }
-        .site-stats-chart-shell { display: grid; gap: 4px; min-width: 0; }
-        .site-stats-chart { display: block; width: 100%; min-height: 220px; overflow: visible; }
-        .site-stats-chart__grid { stroke: color-mix(in srgb, var(--color-border, #dbe3e8) 65%, transparent); stroke-dasharray: 4 6; stroke-width: 1; }
-        .site-stats-chart__axis { stroke: var(--color-border, #dbe3e8); stroke-width: 1; }
-        .site-stats-chart__scale, .site-stats-chart__label { fill: var(--color-text-light, #64748b); font-family: inherit; font-size: 12px; }
-        .site-stats-chart__bar { fill: var(--color-primary, #2563eb); opacity: 0.78; outline: none; transition: opacity 140ms ease, fill 140ms ease; }
-        .site-stats-chart__bar--primary { fill: var(--color-primary, #2563eb); }
-        .site-stats-chart__bar--secondary { fill: #d97706; }
-        .site-stats-chart__bar:hover, .site-stats-chart__bar:focus-visible { fill: var(--color-primary-dark, #1d4ed8); opacity: 1; }
-        .site-stats-chart__bar--secondary:hover, .site-stats-chart__bar--secondary:focus-visible { fill: #b45309; }
-        .site-stats-chart__bar--empty { opacity: 0.12; }
-        .site-stats-chart__legend { display: flex; flex-wrap: wrap; gap: 12px 18px; color: var(--color-text-light, #64748b); font-size: 0.78rem; }
-        .site-stats-chart__legend span { display: inline-flex; align-items: center; gap: 6px; }
-        .site-stats-chart__legend-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: var(--color-primary, #2563eb); }
-        .site-stats-chart__legend-swatch.site-stats-chart__bar--secondary { background: #d97706; }
-        .site-stats-chart-empty { display: grid; min-height: 220px; place-items: center; color: var(--color-text-light, #64748b); font-size: 0.9rem; }
-        .site-stats-chart-panel__note { margin: 0; color: var(--color-text-light, #64748b); font-size: 0.78rem; line-height: 1.45; }
-        .site-stats-access { display: grid; gap: 14px; max-width: 520px; margin: 14vh auto; }
-        .site-stats-access h1, .site-stats-access p { margin: 0; }
-        @media (max-width: 760px) {
-            .site-stats-hero { align-items: stretch; flex-direction: column; }
-            .site-stats-period { justify-items: start; }
-            .site-stats-period__options { justify-content: flex-start; }
-            .site-stats-row { grid-template-columns: 1fr; }
-            .site-stats-metric { min-height: 0; aspect-ratio: auto; }
-            .site-stats-chart { min-height: 190px; }
-        }
-    </style>
+    <?= commonStylesheetTags('/common/assets/components.css') ?>
+    <?= commonStylesheetTags('/common/admin/stats.css') ?>
 </head>
 <body class="site-stats-body">
-<?php if ($siteAdminModeActive): ?>
-    <?php commonRenderTopbar(omoBuildTopbarOptions($organizationContext, [
-        'variant' => 'hub',
-        'isDemoGuest' => false,
-        'logoutReturnTo' => '/common/admin/stats.php',
-    ])); ?>
-    <main class="site-stats-page">
-        <header class="site-stats-hero generic-hero-panel">
-            <div>
-                <span class="generic-card-title generic-card-title--eyebrow"><?= siteStatsEscape(siteStatsT('stats.page.eyebrow')) ?></span>
-                <h1 class="generic-card-title generic-card-title--large"><?= siteStatsEscape($pageTitle) ?></h1>
-                <p><?= siteStatsEscape(siteStatsT('stats.page.intro')) ?></p>
-            </div>
-            <div class="site-stats-period">
-                <span class="generic-card-title generic-card-title--small"><?= siteStatsEscape(siteStatsT('stats.period.label')) ?></span>
-                <div class="site-stats-period__options" role="group" aria-label="<?= siteStatsEscape(siteStatsT('stats.period.label')) ?>">
-                    <?php foreach ([30, 90, 365] as $period): ?>
-                        <a class="generic-action-button generic-action-button--secondary<?= $period === $chartRange ? ' is-active' : '' ?>" href="/common/admin/stats.php?range=<?= $period ?>"><?= siteStatsEscape(siteStatsT('stats.period.days_' . $period)) ?></a>
-                    <?php endforeach; ?>
-                </div>
-                <span class="site-stats-period__mode"><?= siteStatsEscape(siteStatsT('stats.period.' . ($chartMode === 'weekly' ? 'weekly' : 'daily'))) ?></span>
-            </div>
-        </header>
-
-        <section class="site-stats-block generic-section" aria-labelledby="site-stats-organizations-title">
-            <div class="site-stats-block__heading">
-                <h2 id="site-stats-organizations-title" class="generic-card-title generic-card-title--section"><?= siteStatsEscape(siteStatsT('stats.organizations.title')) ?></h2>
-            </div>
-            <div class="site-stats-row">
-                <div class="site-stats-metric generic-soft-panel-square">
-                    <span class="generic-card-title generic-card-title--small"><?= siteStatsEscape(siteStatsT('stats.organizations.total')) ?></span>
-                    <strong><?= number_format($totalOrganizations, 0, ',', ' ') ?></strong>
-                    <span><?= siteStatsEscape(siteStatsT('stats.organizations.new_month')) ?> : <b><?= number_format($newOrganizationsThisMonth, 0, ',', ' ') ?></b></span>
-                </div>
-                <figure class="site-stats-chart-panel generic-soft-panel">
-                    <figcaption><?= siteStatsEscape(siteStatsT('stats.organizations.chart')) ?></figcaption>
-                    <?= siteStatsRenderChart('site-stats-organizations-chart', $organizationSeries, siteStatsT('stats.organizations.chart'), $chartMode) ?>
-                </figure>
-            </div>
-        </section>
-
-        <section class="site-stats-block generic-section" aria-labelledby="site-stats-users-title">
-            <div class="site-stats-block__heading">
-                <h2 id="site-stats-users-title" class="generic-card-title generic-card-title--section"><?= siteStatsEscape(siteStatsT('stats.users.title')) ?></h2>
-            </div>
-            <div class="site-stats-row">
-                <div class="site-stats-metric generic-soft-panel-square">
-                    <span class="generic-card-title generic-card-title--small"><?= siteStatsEscape(siteStatsT('stats.users.total')) ?></span>
-                    <strong><?= number_format($totalUsers, 0, ',', ' ') ?></strong>
-                    <span><?= siteStatsEscape(siteStatsT('stats.users.active_30')) ?> : <b><?= number_format($connectedUsers30, 0, ',', ' ') ?></b></span>
-                </div>
-                <figure class="site-stats-chart-panel generic-soft-panel">
-                    <figcaption><?= siteStatsEscape(siteStatsT('stats.users.chart')) ?></figcaption>
-                    <?= siteStatsRenderChart('site-stats-users-chart', $userSeries, siteStatsT('stats.users.chart'), $chartMode) ?>
-                    <p class="site-stats-chart-panel__note"><?= siteStatsEscape(siteStatsT('stats.users.chart_note')) ?></p>
-                </figure>
-            </div>
-        </section>
-
-        <section class="site-stats-block generic-section" aria-labelledby="site-stats-holons-title">
-            <div class="site-stats-block__heading">
-                <h2 id="site-stats-holons-title" class="generic-card-title generic-card-title--section"><?= siteStatsEscape(siteStatsT('stats.holons.title')) ?></h2>
-            </div>
-            <div class="site-stats-row">
-                <div class="site-stats-metric generic-soft-panel-square">
-                    <span class="generic-card-title generic-card-title--small"><?= siteStatsEscape(siteStatsT('stats.holons.total')) ?></span>
-                    <strong><?= number_format($totalHolons, 0, ',', ' ') ?></strong>
-                    <span><?= siteStatsEscape(siteStatsT('stats.holons.modified_30')) ?> : <b><?= number_format($modifiedHolons30, 0, ',', ' ') ?></b></span>
-                </div>
-                <figure class="site-stats-chart-panel generic-soft-panel">
-                    <figcaption><?= siteStatsEscape(siteStatsT('stats.holons.chart')) ?></figcaption>
-                    <?= siteStatsRenderDualChart(
-                        'site-stats-holons-chart',
-                        $holonCreationSeries,
-                        $holonModificationSeries,
-                        siteStatsT('stats.holons.chart'),
-                        $chartMode,
-                        siteStatsT('stats.holons.created'),
-                        siteStatsT('stats.holons.modified')
-                    ) ?>
-                    <p class="site-stats-chart-panel__note"><?= siteStatsEscape(siteStatsT('stats.holons.chart_note')) ?></p>
-                </figure>
-            </div>
-        </section>
+<?php if (!$allowed): ?>
+    <main class="site-stats-access generic-section">
+        <h1 class="generic-card-title"><?= siteStatsEscape(siteStatsT('stats.access.title')) ?></h1>
+        <p><?= siteStatsEscape(siteStatsT('stats.access.message')) ?></p>
+        <a class="generic-action-button" href="/omo/"><?= siteStatsEscape(siteStatsT('stats.access.back')) ?></a>
     </main>
 <?php else: ?>
-    <main class="site-stats-access generic-section">
-        <span class="generic-card-title generic-card-title--eyebrow"><?= siteStatsEscape(siteStatsT('stats.page.eyebrow')) ?></span>
-        <h1 class="generic-card-title generic-card-title--large"><?= siteStatsEscape(siteStatsT('stats.access.title')) ?></h1>
-        <p><?= siteStatsEscape(siteStatsT('stats.access.message')) ?></p>
-        <a class="generic-action-button generic-action-button--main" href="/omo/"><?= siteStatsEscape(siteStatsT('stats.access.back')) ?></a>
+    <?php commonRenderTopbar(omoBuildTopbarOptions($organizationContext, ['variant' => 'hub', 'isDemoGuest' => false, 'logoutReturnTo' => '/common/admin/stats.php'])); ?>
+    <main class="site-stats-page">
+        <header class="generic-hero-panel">
+            <span class="generic-card-title generic-card-title--eyebrow"><?= siteStatsEscape(siteStatsT('stats.page.eyebrow')) ?></span>
+            <h1 class="generic-card-title generic-card-title--large"><?= siteStatsEscape($pageTitle) ?></h1>
+            <p><?= siteStatsEscape(siteStatsT('monitor.intro')) ?></p>
+        </header>
+        <section class="generic-section"><form class="site-stats-filters" method="get">
+            <?php $filters = [
+                'range' => ['monitor.range', array_combine([7, 30, 90, 365], array_map(static fn($days) => siteStatsT('monitor.days', ['count' => $days]), [7, 30, 90, 365])), $chartRange],
+                'organization' => ['monitor.organization', [0 => siteStatsT('monitor.all')] + $organizationNames, $organizationId],
+                'kind' => ['monitor.kind', ['web' => siteStatsT('monitor.web'), 'cron' => siteStatsT('monitor.cron'), 'task' => siteStatsT('monitor.task')], $kind],
+                'cron' => ['monitor.cron_filter', array_combine(['all', 'none', 'called', 'ran', 'skipped'], array_map('siteStatsT', ['monitor.any', 'monitor.none', 'monitor.called', 'monitor.ran', 'monitor.skipped'])), $cron],
+                'sort' => ['monitor.sort', array_combine(['slow', 'cpu', 'total', 'volume'], array_map('siteStatsT', ['monitor.slow', 'monitor.cpu', 'monitor.total', 'monitor.volume'])), $sort],
+            ]; foreach ($filters as $field => [$label, $options, $selected]): ?>
+                <label><?= siteStatsEscape(siteStatsT($label)) ?>
+                    <select class="generic-form-control" name="<?= siteStatsEscape($field) ?>">
+                        <?php foreach ($options as $value => $text): ?><option value="<?= siteStatsEscape($value) ?>"<?= (string)$value === (string)$selected ? ' selected' : '' ?>><?= siteStatsEscape($text) ?></option><?php endforeach; ?>
+                    </select>
+                </label>
+            <?php endforeach; ?>
+            <button class="generic-action-button generic-action-button--main" type="submit"><?= siteStatsEscape(siteStatsT('monitor.apply')) ?></button>
+        </form></section>
+        <h2 class="generic-card-title generic-card-title--section"><?= siteStatsEscape(siteStatsT('monitor.title')) ?> — <?= siteStatsEscape(siteStatsT('monitor.' . $kind)) ?></h2>
+        <?php if (!commonPerformanceEnabled()): ?><p class="generic-soft-panel"><?= siteStatsEscape(siteStatsT('monitor.disabled')) ?></p><?php endif; ?>
+        <?php if (!$performance['available']): ?><p class="generic-soft-panel"><?= siteStatsEscape(siteStatsT('monitor.missing')) ?></p>
+        <?php else:
+            $totals = $performance['totals'];
+            $metrics = [
+                'monitor.requests' => siteStatsNumber($totals['requests']),
+                'monitor.users' => siteStatsNumber($totals['active_users']),
+                'monitor.p95' => siteStatsNumber(\dbObject\PerformanceHourly::percentile($totals)) . ' ms',
+                'monitor.median' => siteStatsNumber(\dbObject\PerformanceHourly::percentile($totals, 0.5)) . ' ms',
+                'monitor.cpu' => $totals['cpu_samples'] > 0 ? siteStatsNumber($totals['cpu_ms'] / 1000, 2) . ' s' : siteStatsT('monitor.unavailable'),
+                'monitor.sql' => siteStatsNumber($totals['sql_ms'] / 1000, 2) . ' s',
+                'monitor.sql_queries' => siteStatsNumber($totals['query_count']),
+                'monitor.ran' => siteStatsNumber($totals['cron_runs']),
+                'monitor.skipped' => siteStatsNumber($totals['cron_skips']),
+                'monitor.client_errors' => siteStatsNumber($totals['client_errors']),
+                'monitor.error_rate' => siteStatsNumber(100 * $totals['errors'] / max(1, $totals['requests']), 1) . ' %',
+                'monitor.memory' => siteStatsNumber($totals['peak_memory'] / 1048576, 1) . ' MiB',
+            ]; ?>
+            <div class="site-stats-metrics">
+                <?php foreach ($metrics as $label => $value): ?><div class="site-stats-metric generic-soft-panel generic-soft-panel--stack"><span><?= siteStatsEscape(siteStatsT($label)) ?></span><strong><?= siteStatsEscape($value) ?></strong></div><?php endforeach; ?>
+            </div>
+            <?php
+            $daily = array_column($performance['daily'], null, 'label');
+            $dailyPoints = [];
+            for ($date = $chartStartDate; $date <= $chartEndDate; $date = $date->modify('+1 day')) {
+                $row = $daily[$date->format('Y-m-d')] ?? [];
+                $requests = (int)($row['requests'] ?? 0);
+                $dailyPoints[] = ['date' => $date, 'requests' => $requests, 'users' => (int)($row['active_users'] ?? 0),
+                    'cpu' => ($row['cpu_ms'] ?? 0) / 1000, 'per_user' => ($row['active_users'] ?? 0) > 0 ? ($row['cpu_ms'] ?? 0) / $row['active_users'] / 1000 : 0,
+                    'mean' => $requests ? ($row['duration_ms'] ?? 0) / $requests : 0, 'p95' => \dbObject\PerformanceHourly::percentile($row),
+                    'errors' => (int)($row['errors'] ?? 0), 'cron' => ($row['cron_ms'] ?? 0) / 1000];
+            }
+            $series = static fn($field) => array_map(static fn($row) => ['date' => $row['date'], 'value' => $row[$field]], $dailyPoints);
+            $hours = array_column($performance['hours'], null, 'label');
+            $hourSeries = [];
+            $hourCpuSeries = [];
+            for ($hour = 0; $hour < 24; $hour++) {
+                $hourSeries[] = ['label' => sprintf('%02dh', $hour), 'value' => ($hours[$hour]['duration_ms'] ?? 0) / 1000];
+                $hourCpuSeries[] = ['label' => sprintf('%02dh', $hour), 'value' => ($hours[$hour]['cpu_ms'] ?? 0) / 1000];
+            }
+            $charts = [
+                'daily_requests' => [['series' => $series('requests')]], 'daily_users' => [['series' => $series('users')]],
+                'daily_cpu' => [['series' => $series('cpu'), 'unit' => 's']], 'daily_per_user' => [['series' => $series('per_user'), 'unit' => 's']],
+                'daily_latency' => [['series' => $series('mean'), 'unit' => 'ms', 'label' => siteStatsT('monitor.mean')], ['series' => $series('p95'), 'unit' => 'ms', 'label' => siteStatsT('monitor.p95'), 'class' => 'site-stats-chart__bar--secondary']],
+                'hourly' => [['series' => $hourSeries, 'unit' => 's', 'label' => siteStatsT('monitor.total')],
+                    ['series' => $hourCpuSeries, 'unit' => 's', 'label' => siteStatsT('monitor.cpu'), 'class' => 'site-stats-chart__bar--secondary']],
+                'daily_errors' => [['series' => $series('errors')]],
+            ];
+            if ($kind === 'web') { $charts['daily_cron'] = [['series' => $series('cron'), 'unit' => 's']]; }
+            ?>
+            <div class="site-stats-grid">
+                <?php foreach ($charts as $id => $chart): ?><figure class="site-stats-chart-panel generic-section generic-section--stack"><figcaption class="generic-card-title"><?= siteStatsEscape(siteStatsT('monitor.' . $id)) ?></figcaption><?= siteStatsRenderBarChart('perf-' . $id, $chart, siteStatsT('monitor.' . $id), 'daily') ?></figure><?php endforeach; ?>
+            </div>
+            <section class="generic-section">
+                <h3 class="generic-card-title"><?= siteStatsEscape(siteStatsT('monitor.routes')) ?></h3>
+                <?php siteStatsPerformanceTable($performance['routes'], false, $organizationNames); ?>
+            </section>
+            <section class="generic-section">
+                <h3 class="generic-card-title"><?= siteStatsEscape(siteStatsT('monitor.orgs')) ?></h3>
+                <?php siteStatsPerformanceTable($performance['organizations'], true, $organizationNames); ?>
+            </section>
+            <div class="generic-soft-panel site-stats-notes">
+                <p><?= siteStatsEscape(siteStatsT('monitor.notes')) ?></p><p><?= siteStatsEscape(siteStatsT('monitor.cost_note')) ?></p>
+                <p><?= siteStatsEscape(siteStatsT('monitor.cpu_coverage', ['count' => siteStatsNumber($totals['cpu_samples']), 'total' => siteStatsNumber($totals['requests'])])) ?></p>
+                <p><?= siteStatsEscape(siteStatsT('monitor.retention')) ?></p>
+                <p><?= siteStatsEscape($performance['collection']['pending'] > 0 ? siteStatsT('monitor.pending', ['count' => siteStatsNumber($performance['collection']['pending']), 'date' => $performance['collection']['oldest'] . ' UTC']) : siteStatsT('monitor.ready')) ?></p>
+            </div>
+        <?php endif; ?>
+        <h2 class="generic-card-title generic-card-title--section"><?= siteStatsEscape(siteStatsT('monitor.growth')) ?></h2>
+        <div class="site-stats-grid">
+            <?php foreach ([
+                ['organizations', 'totalOrganizations', 'newOrganizationsThisMonth', 'new_month', 'organizationRows'],
+                ['users', 'totalUsers', 'connectedUsers30', 'active_30', 'userRows'],
+                ['holons', 'totalHolons', 'modifiedHolons30', 'modified_30', 'holonCreationRows'],
+            ] as [$section, $totalKey, $recentKey, $recentLabel, $rowsKey]): ?>
+                <section class="generic-section generic-section--stack site-stats-growth">
+                    <h3 class="generic-card-title"><?= siteStatsEscape(siteStatsT('stats.' . $section . '.title')) ?></h3>
+                    <strong><?= siteStatsNumber($growth[$totalKey]) ?></strong>
+                    <p><?= siteStatsEscape(siteStatsT('stats.' . $section . '.' . $recentLabel)) ?> : <?= siteStatsNumber($growth[$recentKey]) ?></p>
+                    <figure class="site-stats-chart-panel">
+                        <figcaption><?= siteStatsEscape(siteStatsT('stats.' . $section . '.chart')) ?></figcaption>
+                        <?php $points = siteStatsBuildSeries($growth[$rowsKey] ?: [], $chartStartDate, $chartEndDate, $chartMode);
+                        echo $section === 'holons' ? siteStatsRenderDualChart('growth-' . $section, $points,
+                            siteStatsBuildSeries($growth['holonModificationRows'] ?: [], $chartStartDate, $chartEndDate, $chartMode),
+                            siteStatsT('stats.holons.chart'), $chartMode, siteStatsT('stats.holons.created'), siteStatsT('stats.holons.modified'))
+                            : siteStatsRenderChart('growth-' . $section, $points, siteStatsT('stats.' . $section . '.chart'), $chartMode); ?>
+                        <?php if ($section !== 'organizations'): ?><p class="site-stats-notes"><?= siteStatsEscape(siteStatsT('stats.' . $section . '.chart_note')) ?></p><?php endif; ?>
+                    </figure>
+                </section>
+            <?php endforeach; ?>
+        </div>
     </main>
 <?php endif; ?>
 </body>
