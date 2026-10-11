@@ -90,6 +90,26 @@ class ArrayStatIndicator extends ArrayDbObject
                 $this[] = $indicator;
             }
         }
+        $this->filterProjectOnlyIndicators();
+    }
+
+    protected function filterProjectOnlyIndicators(): void
+    {
+        $candidates = [];
+        foreach ($this as $indicator) {
+            if ((int)$indicator->get('project_visible_in_holon') !== 1) $candidates[] = (int)$indicator->getId();
+        }
+        if (!$candidates) return;
+        $links = new ArrayProjectIndicator();
+        $links->load(['where' => [['field' => 'IDstatindicator', 'op' => 'in', 'value' => $candidates]], 'hydrate' => ['IDstatindicator']]);
+        $linkCounts = [];
+        foreach ($links as $link) {
+            $id = (int)$link->get('IDstatindicator');
+            $linkCounts[$id] = ($linkCounts[$id] ?? 0) + 1;
+        }
+        $this->exchangeArray(array_values(array_filter($this->getArrayCopy(), static function ($indicator) use ($linkCounts) {
+            return ($linkCounts[(int)$indicator->getId()] ?? 0) !== 1;
+        })));
     }
 
     public function loadForOrganization($organizationId)

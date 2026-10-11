@@ -3,9 +3,11 @@ require_once dirname(__DIR__) . '/bootstrap.php';
 require_once dirname(__DIR__, 3) . '/common/calendar/upcoming_sections.php';
 require_once dirname(__DIR__, 3) . '/common/external_calendar.php';
 require_once __DIR__ . '/permissions_shared.php';
+require_once dirname(__DIR__, 3) . '/common/calendar/recurrence.php';
 
 use dbObject\ArrayEvent;
 use dbObject\ArrayExternalCalendarEvent;
+use dbObject\ArrayExternalCalendar;
 use dbObject\ExternalCalendar;
 use dbObject\ExternalCalendarEvent;
 use dbObject\ArrayDocument;
@@ -131,6 +133,8 @@ $sourceLang = [
         'text' => 'Filtres du calendrier',
         'context' => 'Accessible label for the compact calendar filters control.',
     ],
+    'calendar.sources.aria' => ['text' => 'Calendriers affiches', 'context' => 'Accessible label for calendar source visibility checkboxes.'],
+    'calendar.sources.other_organizations' => ['text' => 'Autres organisations', 'context' => 'Visibility checkbox for personal busy blocks from other organizations in all calendar views.'],
     'calendar.filters.scope' => [
         'text' => 'Contexte',
         'context' => 'Heading for calendar scope choices in the filters panel.',
@@ -343,7 +347,9 @@ $sourceLang = [
     ],
 ];
 
+$sourceLang = array_merge($sourceLang, commonMeetingRecurrenceSourceLang());
 $lang = omoLoadTranslationBundle('omo_calendar_index', $sourceLang);
+$_SESSION['omo_event_recurrence_csrf'] ??= bin2hex(random_bytes(32));
 
 function omoCalendarT($key, array $replace = [])
 {
@@ -784,7 +790,6 @@ if (!($currentHolon instanceof Holon) && $rootHolon instanceof Holon) {
 
 $applicationViewPreferences = omoApplicationViewPreferencesGetContext('calendar', $organization, $currentHolon, $currentUserId);
 commonReleaseReadOnlySession();
-\dbObject\DbObject::enableReadOnlyMemoization();
 $browserRestore = omoApplicationViewPreferencesGetBrowserRestore($applicationViewPreferences);
 if ($openEventId === 0 && !isset($_GET['date']) && !isset($_GET['month'])) {
     $restoredDate = omoCalendarParseDate($browserRestore['position']['date'] ?? '');
@@ -854,8 +859,22 @@ $events = new ArrayEvent();
 $calendarEarliestEventEndAt = $gridStart <= $todayStart ? $gridStart : $todayStart;
 $events->loadForOrganizationDateRange($organizationId, $calendarEarliestEventEndAt, null, false, true);
 $externalEventMetaByVirtualId = [];
+$calendarSources = [
+    ['key' => 'organization', 'label' => trim((string)$organization->get('name'))],
+    ['key' => 'other-organizations', 'label' => omoCalendarT('calendar.sources.other_organizations')],
+];
 if (ExternalCalendar::isStorageAvailable()) {
     commonExternalCalendarRefreshForDisplay($currentUserId);
+    $externalCalendars = new ArrayExternalCalendar();
+    $externalCalendars->loadForUser($currentUserId, true);
+    $externalCalendarsById = [];
+    foreach ($externalCalendars as $externalCalendar) {
+        $externalCalendarsById[(int)$externalCalendar->getId()] = $externalCalendar;
+        $calendarSources[] = [
+            'key' => 'external-' . (int)$externalCalendar->getId(),
+            'label' => trim((string)$externalCalendar->get('title')) . ($externalCalendar->get('availability_only') ? ' · ' . omoCalendarT('calendar.external.availability') : ''),
+        ];
+    }
     $externalEvents = new ArrayExternalCalendarEvent();
     [, $externalRangeEnd] = ExternalCalendar::synchronizationRange();
     $externalEvents->loadActiveForUserDateRange($currentUserId, $calendarEarliestEventEndAt, $externalRangeEnd);
@@ -864,22 +883,24 @@ if (ExternalCalendar::isStorageAvailable()) {
         if (!($externalEvent instanceof ExternalCalendarEvent)) {
             continue;
         }
-        $externalCalendar = new ExternalCalendar();
-        if (!$externalCalendar->load((int)$externalEvent->get('IDexternalcalendar'))) {
+        $externalCalendar = $externalCalendarsById[(int)$externalEvent->get('IDexternalcalendar')] ?? null;
+        if (!($externalCalendar instanceof ExternalCalendar)) {
             continue;
         }
         $virtualEvent = new Event();
         // This display-only event has no database row to load lazily.
         $virtualEvent->hydrateFromDatabaseRow(['id' => $virtualEventId], true);
         unset(\dbObject\DbObject::$preload[Event::tableName() . '_' . $virtualEventId]);
-        foreach (['title', 'description', 'start_at', 'end_at', 'is_all_day', 'preparation_minutes', 'closing_minutes'] as $field) {
+        foreach (['title', 'description', 'start_at', 'end_at', 'is_all_day'] as $field) {
             $virtualEvent->set($field, $externalEvent->get($field));
         }
+        $virtualEvent->setTimeBuffers($currentUserId, (int)$externalEvent->get('preparation_minutes'), (int)$externalEvent->get('closing_minutes'));
         $virtualEvent->set('IDorganization', $organizationId);
         $virtualEvent->set('IDuser', $currentUserId);
         $virtualEvent->set('status', Event::STATUS_CONFIRMED);
         $virtualEvent->set('active', 1);
         $externalEventMetaByVirtualId[$virtualEventId] = [
+            'sourceKey' => 'external-' . (int)$externalCalendar->getId(),
             'title' => trim((string)$externalCalendar->get('title')) . ($externalCalendar->get('availability_only') ? ' · ' . omoCalendarT('calendar.external.availability') : ''),
             'color' => ExternalCalendar::normalizeColor($externalCalendar->get('color')),
             'isFree' => !$externalEvent->get('is_busy') || (bool)$externalCalendar->get('availability_only'),
@@ -920,6 +941,9 @@ if ($eventIds !== []) {
             $associatedDocumentsByEventId[$documentEventId][] = $document;
         }
     }
+}
+foreach (\dbObject\EventSharedDocument::documentsByEvent($eventIds, $organizationId) as $sharedEventId => $sharedDocuments) {
+    $associatedDocumentsByEventId[$sharedEventId] = array_merge($associatedDocumentsByEventId[$sharedEventId] ?? [], $sharedDocuments);
 }
 $openEventTargetId = $openedEvent instanceof Event ? (int)$openedEvent->getId() : 0;
 
@@ -971,6 +995,22 @@ $buildTimelineDays = static function (\DateTimeImmutable $rangeStart, int $dayCo
     return $days;
 };
 
+$appendUpcomingItem = static function (string $scopeKey, array $item, \DateTimeInterface $startAt) use (&$upcomingSectionsByScope, &$viewCountsByScope, $todayStart): void {
+    $anchor = max(\DateTimeImmutable::createFromInterface($startAt), $todayStart);
+    $section = omoCalendarResolveUpcomingSection($anchor, $todayStart);
+    $key = (string)$section['key'];
+    if (!isset($upcomingSectionsByScope[$scopeKey][$key])) {
+        $upcomingSectionsByScope[$scopeKey][$key] = [
+            'key' => $key, 'label' => (string)$section['label'], 'sort' => (int)$section['sort'], 'items' => [],
+        ];
+    }
+    $item['weekdayLabel'] = omoCalendarFormatWeekdayLabel($anchor);
+    $item['dateLabel'] = omoCalendarFormatDayMonthLabel($anchor);
+    $item['sort'] = (int)$startAt->format('U');
+    $upcomingSectionsByScope[$scopeKey][$key]['items'][] = $item;
+    $viewCountsByScope[$scopeKey]['list']++;
+};
+
 foreach ($calendarScopes as $scopeKey) {
     $dayBucketsByScope[$scopeKey] = [];
     $viewCountsByScope[$scopeKey] = [
@@ -1020,16 +1060,14 @@ foreach ($events as $event) {
         'editUrl' => (string)($externalMeta['editUrl'] ?? ''),
     ] : [];
     $isAllDay = (bool)$event->get('is_all_day');
-    [$occupiedStart, $occupiedEnd] = $event->getBusyInterval() ?? [$startAt, $endAt];
+    $isPersonallyRelevant = $isExternalEvent || $event->isPersonallyRelevantToViewer($currentUserId, $organizationId);
+    [$preparationMinutes, $closingMinutes] = $isPersonallyRelevant ? $event->getTimeBuffers($currentUserId) : [0, 0];
+    [$occupiedStart, $occupiedEnd] = $event->getBusyInterval($isPersonallyRelevant ? $currentUserId : 0) ?? [$startAt, $endAt];
     $isInCurrentContext = !$canToggleScope || $eventHolonId === 0 || $eventHolonId === $currentHolonId;
     $isInDirectChildContext = $isInCurrentContext || ($eventHolonId > 0 && isset($directChildHolonIdMap[$eventHolonId]));
     $isInDescendantContext = $isInCurrentContext || ($eventHolonId > 0 && isset($descendantHolonIdMap[$eventHolonId]));
-    $isPersonallyRelevant = $isExternalEvent || $event->isPersonallyRelevantToViewer($currentUserId, $organizationId);
-    $isInvitedOrOwner = $currentUserId > 0 && !$isExternalEvent && (
-        (int)$event->get('IDuser') === $currentUserId
-        || $event->isVisibleToInvitationViewer($currentUserId, $organizationId)
-    );
-    $canEditEvent = !$isExternalEvent && omoCalendarCanEditEvent($event, $organizationId, $currentUserId, $rootHolon, false);
+    $canEditEvent = !$isExternalEvent && (omoCalendarCanEditEvent($event, $organizationId, $currentUserId, $rootHolon, false)
+        || $event->canEditTimeBuffers($currentUserId));
     $deletePermissionHolon = $rootHolon;
     if ($eventHolonId > 0) {
         $eventPermissionHolon = new Holon();
@@ -1063,7 +1101,7 @@ foreach ($events as $event) {
         $includeEvent = $scopeKey === 'children'
             ? $isInDirectChildContext
             : ($scopeKey === 'descendants' ? $isInDescendantContext : $isInCurrentContext);
-        $isTimelineOnlyInvitation = !$includeEvent && $isInvitedOrOwner;
+        $isTimelineOnlyInvitation = !$includeEvent && $isPersonallyRelevant && !$isExternalEvent;
         if (!$includeEvent && !$isTimelineOnlyInvitation) {
             continue;
         }
@@ -1085,6 +1123,10 @@ foreach ($events as $event) {
 
             $dayBucketsByScope[$scopeKey][$dayKey][] = [
                 'id' => $eventId,
+                'startTimestamp' => $startAt->getTimestamp(),
+                'endTimestamp' => $isAllDay
+                    ? \DateTimeImmutable::createFromInterface($endAt)->setTime(0, 0)->modify('+1 day')->getTimestamp()
+                    : $endAt->getTimestamp(),
                 'title' => $eventTitle,
                 'timeLabel' => omoCalendarFormatTimeLabel($event, $cursor),
                 'status' => $eventStatus,
@@ -1102,30 +1144,11 @@ foreach ($events as $event) {
             $cursor = $cursor->modify('+1 day');
         }
 
-        if (!$isTimelineOnlyInvitation && !$isExternalEvent && $endAt >= $todayStart) {
-            $upcomingAnchorDate = \DateTimeImmutable::createFromInterface($startAt);
-            if ($upcomingAnchorDate < $todayStart && $endAt >= $todayStart) {
-                $upcomingAnchorDate = $todayStart;
-            }
-
-            $sectionDefinition = omoCalendarResolveUpcomingSection($upcomingAnchorDate, $todayStart);
-            $sectionKey = (string)$sectionDefinition['key'];
-
-            if (!isset($upcomingSectionsByScope[$scopeKey][$sectionKey])) {
-                $upcomingSectionsByScope[$scopeKey][$sectionKey] = [
-                    'key' => $sectionKey,
-                    'label' => (string)$sectionDefinition['label'],
-                    'sort' => (int)$sectionDefinition['sort'],
-                    'items' => [],
-                ];
-            }
-
-            $upcomingSectionsByScope[$scopeKey][$sectionKey]['items'][] = [
+        if (!$isTimelineOnlyInvitation && $endAt >= $todayStart) {
+            $appendUpcomingItem($scopeKey, [
                 'id' => $eventId,
                 'title' => $eventTitle,
                 'description' => $eventDescription,
-                'weekdayLabel' => omoCalendarFormatWeekdayLabel($upcomingAnchorDate),
-                'dateLabel' => omoCalendarFormatDayMonthLabel($upcomingAnchorDate),
                 'timeLabel' => omoCalendarFormatUpcomingRangeLabel($event),
                 'status' => $eventStatus,
                 'statusLabel' => $eventStatusLabel,
@@ -1134,6 +1157,8 @@ foreach ($events as $event) {
                 'editUrl' => $eventEditUrl,
                 'canDelete' => $canDeleteEvent,
                 'deleteUrl' => $eventDeleteUrl,
+                'isRecurring' => !$isExternalEvent && (int)$event->get('IDeventrecurrence') > 0,
+                'hasFollowing' => !$isExternalEvent && ($event->getRecurrence()?->hasFollowing($event) ?? false),
                 'hasAssociatedDocuments' => $eventHasAssociatedDocuments,
                 'documentUrl' => $associatedDocumentOpenData['url'],
                 'documentTitle' => $associatedDocumentOpenData['title'],
@@ -1144,9 +1169,7 @@ foreach ($events as $event) {
                 'isExternal' => $isExternalEvent,
                 'externalDrawerData' => $externalDrawerData,
                 'externalColor' => (string)($externalMeta['color'] ?? ''),
-            ];
-
-            $viewCountsByScope[$scopeKey]['list'] += 1;
+            ], $startAt);
         }
 
         if ($occupiedStart <= $weekEnd && $occupiedEnd > $weekStart) {
@@ -1194,7 +1217,7 @@ foreach ($events as $event) {
 
             $startMinute = max(0, (int)floor(($segmentStartTimestamp - $timelineDayStart->getTimestamp()) / 60));
             $endMinute = min(1440, (int)ceil(($segmentEndTimestamp - $timelineDayStart->getTimestamp()) / 60));
-            $hasTimeBuffers = (int)$event->get('preparation_minutes') > 0 || (int)$event->get('closing_minutes') > 0;
+            $hasTimeBuffers = $preparationMinutes > 0 || $closingMinutes > 0;
             $displayEndMinute = max($startMinute + ($hasTimeBuffers ? 0 : 30), $endMinute);
 
             $timelineDay['timed'][] = [
@@ -1258,7 +1281,7 @@ foreach ($events as $event) {
 
             $startMinute = max(0, (int)floor(($segmentStartTimestamp - $timelineDayStart->getTimestamp()) / 60));
             $endMinute = min(1440, (int)ceil(($segmentEndTimestamp - $timelineDayStart->getTimestamp()) / 60));
-            $hasTimeBuffers = (int)$event->get('preparation_minutes') > 0 || (int)$event->get('closing_minutes') > 0;
+            $hasTimeBuffers = $preparationMinutes > 0 || $closingMinutes > 0;
             $displayEndMinute = max($startMinute + ($hasTimeBuffers ? 0 : 30), $endMinute);
 
             $timelineDay['timed'][] = [
@@ -1317,10 +1340,36 @@ foreach ($events as $event) {
     }
 }
 
-// Personal cross-organization availability belongs only in the week/day timelines.
-$otherOrganizationBlocks = ArrayEvent::otherOrganizationBusyBlocks($currentUserId, $organizationId, $weekStart, $weekEnd->modify('+1 second'));
+// Use the same unbounded upcoming range as the local list, keeping sanitized organization labels.
+$otherOrganizationBlocks = ArrayEvent::otherOrganizationBusyBlocks($currentUserId, $organizationId, $calendarEarliestEventEndAt);
 foreach ($otherOrganizationBlocks as $blockIndex => $block) {
+    $blockEvent = new Event();
+    $blockEvent->set('start_at', $block['start']);
+    $blockEvent->set('end_at', $block['allDay'] ? $block['end']->modify('-1 second') : $block['end']);
+    $blockEvent->set('is_all_day', $block['allDay']);
+    $blockItem = [
+        'id' => 2000000000 + $blockIndex, 'title' => $block['title'],
+        'description' => '', 'timeLabel' => omoCalendarFormatUpcomingRangeLabel($blockEvent), 'status' => Event::STATUS_CONFIRMED,
+        'statusLabel' => '', 'holonLabel' => $block['title'], 'isFaded' => false, 'isRouteTarget' => false,
+        'documentUrl' => '', 'documentTitle' => '', 'documentPvEditorUrl' => '',
+        'isExternal' => false, 'externalColor' => '', 'isOtherOrganization' => true,
+        'startTimestamp' => $block['start']->getTimestamp(), 'endTimestamp' => $block['end']->getTimestamp(),
+    ];
     foreach ($calendarScopes as $scopeKey) {
+        if ($block['start'] <= $monthEnd && $block['end'] > $monthStart) {
+            $viewCountsByScope[$scopeKey]['month']++;
+        }
+        $cursor = max(\DateTimeImmutable::createFromInterface($block['start'])->setTime(0, 0), $gridStart);
+        $lastDay = min(\DateTimeImmutable::createFromInterface($block['end'])->modify('-1 second')->setTime(0, 0), $gridEnd);
+        while ($cursor <= $lastDay) {
+            $monthItem = $blockItem;
+            $monthItem['timeLabel'] = omoCalendarFormatTimeLabel($blockEvent, $cursor);
+            $dayBucketsByScope[$scopeKey][$cursor->format('Y-m-d')][] = $monthItem;
+            $cursor = $cursor->modify('+1 day');
+        }
+        if ($block['end'] > $todayStart) {
+            $appendUpcomingItem($scopeKey, $blockItem, $block['start']);
+        }
         foreach (['week', 'day'] as $timelineKey) {
             $hasBlock = false;
             foreach ($timelineViewsByScope[$scopeKey][$timelineKey] as &$timelineDay) {
@@ -1330,13 +1379,7 @@ foreach ($otherOrganizationBlocks as $blockIndex => $block) {
                 $segmentEnd = min($block['end'], $dayEndExclusive);
                 if ($segmentEnd <= $segmentStart) { continue; }
                 $hasBlock = true;
-                $item = [
-                    'id' => 2000000000 + $blockIndex, 'title' => $block['title'],
-                    'description' => '', 'timeLabel' => '', 'status' => Event::STATUS_CONFIRMED,
-                    'statusLabel' => '', 'holonLabel' => '', 'isFaded' => false, 'isRouteTarget' => false,
-                    'documentUrl' => '', 'documentTitle' => '', 'documentPvEditorUrl' => '',
-                    'isExternal' => false, 'externalColor' => '', 'isOtherOrganization' => true,
-                ];
+                $item = $blockItem;
                 if ($block['allDay']) {
                     $timelineDay['allDay'][] = $item;
                 } else {
@@ -1353,6 +1396,11 @@ foreach ($otherOrganizationBlocks as $blockIndex => $block) {
 
 foreach ($calendarScopes as $scopeKey) {
     ksort($dayBucketsByScope[$scopeKey]);
+    foreach ($dayBucketsByScope[$scopeKey] as &$monthItems) {
+        usort($monthItems, static fn (array $left, array $right): int =>
+            ($left['startTimestamp'] <=> $right['startTimestamp']) ?: ($left['id'] <=> $right['id']));
+    }
+    unset($monthItems);
 
     if (count($upcomingSectionsByScope[$scopeKey]) > 0) {
         foreach ($upcomingSectionsByScope[$scopeKey] as &$section) {
@@ -1488,8 +1536,11 @@ foreach ($calendarScopes as $scopeKey) {
 $calendarClientViews = [];
 $calendarClientItems = [];
 $calendarClientItemIds = [];
+$maxMonthItems = 0;
 $packCalendarItems = static function (array $items) use (&$calendarClientItems, &$calendarClientItemIds, $externalEventMetaByVirtualId): array {
     return array_map(static function (array $item) use (&$calendarClientItems, &$calendarClientItemIds, $externalEventMetaByVirtualId): int {
+        $item['sourceKey'] = !empty($item['isOtherOrganization']) ? 'other-organizations'
+            : ($externalEventMetaByVirtualId[$item['id']]['sourceKey'] ?? 'organization');
         $item['isFree'] = !empty($item['isExternal']) && !empty($externalEventMetaByVirtualId[$item['id']]['isFree']);
         $key = json_encode($item, JSON_INVALID_UTF8_SUBSTITUTE);
         if (!isset($calendarClientItemIds[$key])) {
@@ -1504,6 +1555,7 @@ foreach ($calendarScopes as $scopeKey) {
     foreach ($days as $day) {
         $dayKey = $day->format('Y-m-d');
         $items = $dayBucketsByScope[$scopeKey][$dayKey] ?? [];
+        $maxMonthItems = max($maxMonthItems, count($items));
         $monthDays[] = [
             'dayKey' => $dayKey, 'label' => $day->format('j'),
             'outside' => $day->format('Y-m') !== $monthStart->format('Y-m'),
@@ -1515,6 +1567,7 @@ foreach ($calendarScopes as $scopeKey) {
     $calendarClientViews[$scopeKey]['month'] = [
         'title' => omoCalendarFormatMonthLabel($monthStart),
         'subtitle' => $viewSummariesByScope[$scopeKey]['month'],
+        'count' => (int)$viewCountsByScope[$scopeKey]['month'],
         'prevUrl' => omoCalendarBuildUrl($organizationId, $currentHolonId, $prevMonth, 'month', $prevMonth, $scopeKey),
         'nextUrl' => omoCalendarBuildUrl($organizationId, $currentHolonId, $nextMonth, 'month', $nextMonth, $scopeKey),
         'days' => $monthDays,
@@ -1542,7 +1595,7 @@ $calendarClientLabels = [];
 foreach ([
     'calendar.navigation.previous', 'calendar.navigation.next', 'calendar.action.open_document',
     'calendar.axis.all_day', 'calendar.axis.now', 'calendar.empty.list', 'calendar.context.organization',
-    'calendar.external.free_hint',
+    'calendar.external.free_hint', 'calendar.sources.aria',
     'calendar.list.column.date', 'calendar.list.column.event', 'calendar.list.column.schedule', 'calendar.list.column.context',
     'calendar.action.more', 'calendar.action.edit', 'calendar.action.delete', 'calendar.confirm.delete', 'calendar.error.delete',
     'calendar.delete.documents.title', 'calendar.delete.documents.question', 'calendar.delete.documents.yes', 'calendar.delete.documents.no',
@@ -1551,6 +1604,10 @@ foreach ([
     $calendarClientLabels[$key] = omoCalendarT($key);
 }
 $calendarClientData = [
+    'sources' => $calendarSources,
+    'moreLabels' => [],
+    'meetingRecurrenceUi' => commonMeetingRecurrenceUi('omoCalendarT'),
+    'meetingRecurrenceCsrf' => $_SESSION['omo_event_recurrence_csrf'],
     'views' => $calendarClientViews, 'items' => $calendarClientItems, 'labels' => $calendarClientLabels,
     'weekdays' => array_map('omoCalendarT', $weekdayKeys), 'hours' => $timelineHours,
     'connectUrl' => $connectUrl,
@@ -1563,6 +1620,10 @@ $calendarClientData = [
             'descriptionLabel' => omoCalendarT('calendar.external_drawer.description_label'),
     ],
 ];
+// Pretranslate the possible overflow counts, using the same plural rules as PHP.
+for ($count = 1; $count <= $maxMonthItems; $count++) {
+    $calendarClientData['moreLabels'][$count] = omoCalendarT('calendar.day.more', ['count' => (string)$count]);
+}
 $headerCount = (int)($viewCountsByScope[$calendarScope][$viewMode] ?? 0);
 $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? '');
 ?>
@@ -1775,6 +1836,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
     </div>
     <link rel="stylesheet" href="/common/calendar/availability.css?v=20260916-conflict">
     <script src="<?= commonAssetUrl('/common/calendar/availability-model.js') ?>"></script>
+    <script src="<?= commonAssetUrl('/common/calendar/recurrence.js') ?>"></script>
     <script src="<?= commonAssetUrl('/common/calendar/availability-view.js') ?>"></script>
     <script src="<?= commonAssetUrl('/common/calendar/availability.js') ?>"></script>
     <script src="/common/calendar/share.js?v=20260916"></script>

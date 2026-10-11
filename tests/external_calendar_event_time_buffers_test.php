@@ -42,8 +42,8 @@ $fixture = static function (string $class, array $fields) use (&$fixtures): DbOb
 };
 try {
     $nonce = bin2hex(random_bytes(8));
-    $owner = $fixture(\dbObject\User::class, ['email' => 'external-buffer-' . $nonce . '@example.invalid']);
-    $other = $fixture(\dbObject\User::class, ['email' => 'external-buffer-other-' . $nonce . '@example.invalid']);
+    $owner = $fixture(\dbObject\User::class, ['email' => 'external-buffer-' . $nonce . '@example.invalid', 'active' => 1]);
+    $other = $fixture(\dbObject\User::class, ['email' => 'external-buffer-other-' . $nonce . '@example.invalid', 'active' => 1]);
     $org = $fixture(\dbObject\Organization::class, ['name' => 'External buffers', 'shortname' => $nonce]);
     foreach ([$owner, $other] as $member) {
         $fixture(\dbObject\UserOrganization::class, ['IDuser' => $member->getId(), 'IDorganization' => $org->getId(), 'active' => 1]);

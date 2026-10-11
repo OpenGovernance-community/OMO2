@@ -26,7 +26,6 @@ if ($userId <= 0 || commonGetPublicPvParticipationLink() instanceof \dbObject\Do
     $respond(403, ['status' => false]);
 }
 commonReleaseReadOnlySession();
-\dbObject\DbObject::enableReadOnlyMemoization();
 if ($type === 'indicators') require_once dirname(__DIR__, 2) . '/stats/shared.php';
 if ($type === 'projects') require_once dirname(__DIR__, 2) . '/projects/shared.php';
 $sourceLang = omoDocumentsPvEditorSourceLang();

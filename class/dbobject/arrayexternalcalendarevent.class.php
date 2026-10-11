@@ -3,6 +3,20 @@ namespace dbObject;
 
 class ArrayExternalCalendarEvent extends ArrayDbObject
 {
+    public function loadImportableForUser(int $userId): void
+    {
+        $this->exchangeArray([]);
+        if ($userId <= 0 || !ExternalCalendar::isStorageAvailable()) { return; }
+        $rows = ExternalCalendarEvent::fetchAll('SELECT e.* FROM external_calendar_event e
+            JOIN external_calendar c ON c.id = e.IDexternalcalendar
+            WHERE c.IDuser = :user AND c.active = 1 AND c.availability_only = 0 AND e.active = 1
+            ORDER BY e.start_at DESC, e.id ASC', ['user' => $userId]);
+        foreach (is_array($rows) ? $rows : [] as $row) {
+            $event = new ExternalCalendarEvent();
+            if ($event->hydrateFromDatabaseRow($row, true)) { $this[] = $event; }
+        }
+    }
+
     /** Read the local cache; an optional refresh is orchestrated by the caller before this read. */
     public static function busyIntervalsForUser(int $userId, \DateTimeInterface $start, \DateTimeInterface $end): array
     {

@@ -21,12 +21,12 @@ class Event extends DbObject
     {
         return [
             [['IDuser', 'title', 'status', 'start_at', 'end_at'], 'required'],
-            [['id', 'preparation_minutes', 'closing_minutes'], 'integer'],
-            [['IDorganization', 'IDholon', 'IDproject', 'IDuser', 'IDdecision_proposal'], 'fk'],
+            [['id', 'recurrence_position'], 'integer'],
+            [['IDorganization', 'IDholon', 'IDproject', 'IDuser', 'IDdecision_proposal', 'IDeventrecurrence'], 'fk'],
             [['title', 'status', 'timezone', 'locationmode', 'locationaddress', 'videomeetingurl'], 'string'],
             [['description'], 'text'],
             [['parameters'], 'parameters'],
-            [['is_all_day', 'active'], 'boolean'],
+            [['is_all_day', 'active', 'recurrence_exception'], 'boolean'],
             [['start_at', 'end_at', 'created_at', 'updated_at'], 'datetime'],
             [['id'], 'safe'],
         ];
@@ -40,6 +40,9 @@ class Event extends DbObject
             'IDholon' => 'Espace associé',
             'IDproject' => 'Projet',
             'IDdecision_proposal' => 'Proposition de date',
+            'IDeventrecurrence' => 'Serie de reunions',
+            'recurrence_position' => 'Position dans la serie',
+            'recurrence_exception' => 'Occurrence personnalisee',
             'IDuser' => 'Créateur',
             'title' => 'Titre',
             'description' => 'Description',
@@ -48,7 +51,6 @@ class Event extends DbObject
             'locationmode' => 'Format du lieu',
             'locationaddress' => 'Adresse',
             'videomeetingurl' => 'Lien de visio',
-            'preparation_minutes' => 'Preparation (minutes)', 'closing_minutes' => 'Cloture (minutes)',
             'start_at' => 'Début',
             'end_at' => 'Fin',
             'is_all_day' => 'Journée entière',
@@ -90,6 +92,44 @@ class Event extends DbObject
     public static function getOrder()
     {
         return 'start_at ASC, id ASC';
+    }
+
+    public function getRecurrence(): ?EventRecurrence
+    {
+        $series = new EventRecurrence();
+        return (int)$this->get('IDeventrecurrence') > 0 && $series->load((int)$this->get('IDeventrecurrence')) ? $series : null;
+    }
+
+    public function isPastRecurringMeeting(): bool
+    {
+        return (int)$this->get('IDeventrecurrence') > 0 && $this->get('end_at') instanceof \DateTimeInterface
+            && $this->get('end_at') < new \DateTimeImmutable();
+    }
+
+    /** Snapshot identities separately from presence, which remains editable during the meeting. */
+    public function freezeInvitationParticipants(): bool
+    {
+        if ($this->getParameter('meeting_participants') !== null) { return true; }
+        $snapshot = ['targets' => $this->getEffectiveInvitationTargets((int)$this->get('IDorganization'), fresh: true, activeOnly: true),
+            'entries' => $this->getAttendanceEntries((int)$this->get('IDorganization'))];
+        // Preserve concurrent metadata; only install the snapshot once.
+        $saved = self::execute("UPDATE event SET parameters = JSON_SET(COALESCE(NULLIF(parameters, ''), '{}'), '$.meeting_participants', JSON_EXTRACT(:snapshot, '$'))
+            WHERE id = :id AND JSON_EXTRACT(COALESCE(NULLIF(parameters, ''), '{}'), '$.meeting_participants') IS NULL",
+            ['id' => $this->getId(), 'snapshot' => json_encode($snapshot, JSON_THROW_ON_ERROR)]);
+        if ($saved) { $this->load((int)$this->getId(), true); }
+        return (bool)$saved;
+    }
+
+    public static function freezePastMeetingParticipantsBatch(int $limit = 200): int
+    {
+        $count = 0;
+        foreach (self::fetchAll("SELECT * FROM event WHERE IDeventrecurrence IS NOT NULL AND active = 1 AND end_at <= :now
+            AND JSON_EXTRACT(COALESCE(NULLIF(parameters, ''), '{}'), '$.meeting_participants') IS NULL ORDER BY start_at DESC LIMIT " . max(1, $limit),
+            ['now' => new \DateTimeImmutable()]) ?: [] as $row) {
+            $event = new self(); $event->hydrateFromDatabaseRow($row, true);
+            if ($event->freezeInvitationParticipants()) { $count++; }
+        }
+        return $count;
     }
 
     public static function findByDecisionProposal(int $proposalId): ?self
@@ -272,9 +312,11 @@ class Event extends DbObject
             ),
         ));
 
-        return array_values(array_filter($documents->getArrayCopy(), static function ($document) {
+        $owned = array_values(array_filter($documents->getArrayCopy(), static function ($document) {
             return $document instanceof \dbObject\Document && (int)$document->getId() > 0;
         }));
+        $shared = EventSharedDocument::documentsByEvent([(int)$this->getId()], (int)$this->get('IDorganization'));
+        return array_merge($owned, $shared[(int)$this->getId()] ?? []);
     }
 
     public function getProject()
@@ -358,13 +400,17 @@ class Event extends DbObject
             return $membershipCache[$cacheKey];
         }
 
-        $userIds = $holon->getAssociatedMemberUserIds([
-            'organizationId' => $organizationId,
-            'skipPermissionFilter' => true,
-            'activeOnly' => $activeOnly,
-        ]);
+        if ($activeOnly && $holon->isOrganizationHolon()) {
+            $memberships = new ArrayUserOrganization(); $memberships->loadActiveForOrganization($organizationId);
+            $userIds = array_map(static fn($membership) => (int)$membership->get('IDuser'), $memberships->getArrayCopy());
+        } else {
+            $userIds = $holon->getAssociatedMemberUserIds([
+                'organizationId' => $organizationId,
+                'skipPermissionFilter' => true,
+                'activeOnly' => $activeOnly,
+            ]);
+        }
 
-        if ($fresh) return array_values(array_unique(array_map('intval', is_array($userIds) ? $userIds : [])));
         $membershipCache[$cacheKey] = array_values(array_unique(array_map('intval', is_array($userIds) ? $userIds : [])));
         return $membershipCache[$cacheKey];
     }
@@ -467,9 +513,17 @@ class Event extends DbObject
         return $displayNameCache[$cacheKey];
     }
 
-    /** Validate supplied invitations in the current organization. Fresh bypasses caches; activeOnly limits holon members. */
-    public function getEffectiveInvitationTargets($organizationId, ?array $proposedInvitations = null, bool $fresh = false, bool $activeOnly = false): array
+    /** Fresh bypasses membership caches; explicitOnly excludes implicit organization/context recipients. */
+    public function getEffectiveInvitationTargets($organizationId, ?array $proposedInvitations = null, bool $fresh = false, bool $activeOnly = false, bool $explicitOnly = false, ?array $loadedRelations = null): array
     {
+        $snapshot = $this->getParameter('meeting_participants');
+        if ($proposedInvitations === null && is_array($snapshot)) {
+            $targets = $snapshot['targets'];
+            if (!$explicitOnly || !empty($targets['hasExplicitInvitations'])) { return $targets; }
+            return ['hasExplicitInvitations' => false, 'userIds' => [], 'emails' => [], 'registeredEmails' => []];
+        }
+        // Upcoming occurrences follow current memberships; closed ones use their snapshot above.
+        $activeOnly = $activeOnly || (int)$this->get('IDeventrecurrence') > 0;
         $organizationId = (int)$organizationId;
         if ($organizationId <= 0) {
             $organizationId = (int)$this->get('IDorganization');
@@ -482,7 +536,7 @@ class Event extends DbObject
             'registeredEmails' => [],
         ];
 
-        foreach ($proposedInvitations ?? $this->getInvitations(true) as $invitation) {
+        foreach ($proposedInvitations ?? $loadedRelations['invitations'] ?? $this->getInvitations(true) as $invitation) {
             if (!($invitation instanceof \dbObject\EventInvitation)) {
                 continue;
             }
@@ -520,7 +574,7 @@ class Event extends DbObject
         }
 
         // Public registrations supplement the invitation scope; they never replace its defaults.
-        if (!$targets['hasExplicitInvitations']) {
+        if (!$explicitOnly && !$targets['hasExplicitInvitations']) {
             $eventHolonId = (int)$this->get('IDholon');
             if ($eventHolonId > 0) {
                 foreach ($this->getInvitationMembershipUserIds($eventHolonId, $organizationId, $fresh, $activeOnly) as $userId) {
@@ -533,7 +587,7 @@ class Event extends DbObject
             }
         }
 
-        foreach (EventPublicRegistration::forEvent((int)$this->getId(), true) as $registration) {
+        foreach ($loadedRelations['registrations'] ?? EventPublicRegistration::forEvent((int)$this->getId(), true) as $registration) {
             $email = self::normalizeInvitationEmail($registration->get('email'));
             if ($email !== '') {
                 $targets['emails'][$email] = $email;
@@ -586,8 +640,52 @@ class Event extends DbObject
         ];
     }
 
-    /** Calendar intervals have an exclusive end; OMO all-day dates are inclusive. */
-    public function getBusyInterval(): ?array
+    /** Unsaved personal choices used while reviewing a proposed schedule. */
+    private array $proposedTimeBuffers = [];
+
+    public function getTimeBuffers(int $userId): array
+    {
+        if (isset($this->proposedTimeBuffers[$userId])) { return $this->proposedTimeBuffers[$userId]; }
+        if ($userId <= 0 || (int)$this->getId() <= 0) { return [0, 0]; }
+        $item = EventTimeBuffer::forUser((int)$this->getId(), $userId);
+        return [(int)$item->get('preparation_minutes'), (int)$item->get('closing_minutes')];
+    }
+
+    public function setTimeBuffers(int $userId, $preparation, $closing): void
+    {
+        $this->proposedTimeBuffers[$userId] = [self::validateBufferMinutes($preparation), self::validateBufferMinutes($closing)];
+    }
+
+    public function withTimeBuffers(\DateTimeInterface $start, \DateTimeInterface $end, int $userId = 0): array
+    {
+        [$preparation, $closing] = $this->getTimeBuffers($userId);
+        return [\DateTimeImmutable::createFromInterface($start)->modify('-' . $preparation . ' minutes'),
+            \DateTimeImmutable::createFromInterface($end)->modify('+' . $closing . ' minutes')];
+    }
+
+    public function canEditTimeBuffers(int $userId): bool
+    {
+        if ($userId <= 0 || (int)$this->getId() <= 0 || !$this->get('active')
+            || self::normalizeStatus($this->get('status')) === self::STATUS_CANCELLED) { return false; }
+        $member = new UserOrganization();
+        return $member->load([['IDorganization', (int)$this->get('IDorganization')], ['IDuser', $userId], ['active', 1]])
+            && $this->isInvitedToEvent($userId);
+    }
+
+    public function saveTimeBuffers(int $userId, $preparation, $closing): bool
+    {
+        if (!$this->canEditTimeBuffers($userId)) { return false; }
+        $item = EventTimeBuffer::forUser((int)$this->getId(), $userId);
+        $item->set('preparation_minutes', self::validateBufferMinutes($preparation));
+        $item->set('closing_minutes', self::validateBufferMinutes($closing));
+        $result = $item->save();
+        if (!is_array($result) || empty($result['status'])) { return false; }
+        unset($this->proposedTimeBuffers[$userId]);
+        return true;
+    }
+
+    /** Calendar intervals have an exclusive end; no personal time without a viewer. */
+    public function getBusyInterval(int $userId = 0): ?array
     {
         $start = $this->get('start_at');
         $end = $this->get('end_at');
@@ -599,7 +697,7 @@ class Event extends DbObject
             $end = $end->setTime(0, 0)->modify('+1 day');
         }
         if ($end < $start) { return null; }
-        [$start, $end] = $this->withTimeBuffers($start, $end);
+        [$start, $end] = $this->withTimeBuffers($start, $end, $userId);
         return $end > $start ? [$start, $end] : null;
     }
 
@@ -607,17 +705,17 @@ class Event extends DbObject
     public function checkInvitationAvailability(array $proposedInvitations, ?callable $refreshUserCalendars = null): array
     {
         $organizationId = (int)$this->get('IDorganization');
-        $targets = $this->getEffectiveInvitationTargets($organizationId, $proposedInvitations);
+        $targets = $this->getEffectiveInvitationTargets($organizationId, $proposedInvitations, explicitOnly: true);
         $report = ['conflicts' => [], 'unverified' => [], 'externalCache' => false];
         // Email-only invitations have no calendar to check.
-        $interval = $this->getBusyInterval();
-        if ($interval === null) { return $report; }
-        [$start, $end] = $interval;
-        $userIds = array_unique(array_merge($targets['userIds'], [(int)$this->get('IDuser')]));
+        $userIds = $targets['userIds'];
         $organizationLabels = [];
         $holonLabels = [];
         foreach ($userIds as $userId) {
             if ($userId <= 0) { continue; }
+            $interval = $this->getBusyInterval($userId);
+            if ($interval === null) { continue; }
+            [$start, $end] = $interval;
             $name = $this->getViewerDisplayName($userId, $organizationId);
             $intervals = [];
             try {
@@ -625,7 +723,7 @@ class Event extends DbObject
                 $events->loadBusyForUserDateRange($userId, $start, $end);
                 foreach ($events as $event) {
                     if ((int)$this->getId() > 0 && (int)$event->getId() === (int)$this->getId()) { continue; }
-                    $busy = $event->getBusyInterval();
+                    $busy = $event->getBusyInterval($userId);
                     if ($busy === null || $busy[0] >= $end || $busy[1] <= $start) { continue; }
                     $eventOrganizationId = (int)$event->get('IDorganization');
                     $holonId = (int)$event->get('IDholon');
@@ -866,6 +964,14 @@ class Event extends DbObject
 
     public function getAttendanceEntries($organizationId = 0): array
     {
+        $snapshot = $this->getParameter('meeting_participants');
+        if (is_array($snapshot)) {
+            $entries = $snapshot['entries']; $rows = $this->getAttendanceRowsByIdentity();
+            foreach ($entries as &$entry) {
+                if (isset($rows[$entry['identityKey']])) { $entry['isPresent'] = !empty($rows[$entry['identityKey']]['is_present']); }
+            }
+            unset($entry); return $entries;
+        }
         $organizationId = (int)$organizationId > 0 ? (int)$organizationId : (int)$this->get('IDorganization');
         if ((int)$this->getId() <= 0 || $organizationId <= 0) {
             return [];
@@ -1026,54 +1132,7 @@ class Event extends DbObject
 
     public function isPersonallyRelevantToViewer($userId, $organizationId = 0): bool
     {
-        if ((int)$this->get('IDdecision_proposal') > 0) return $this->isVisibleToInvitationViewer($userId, $organizationId);
-        static $memberMatchCache = [];
-
-        $userId = (int)$userId;
-        $organizationId = (int)$organizationId;
-        if ($userId <= 0) {
-            return true;
-        }
-
-        if ($organizationId <= 0) {
-            $organizationId = (int)$this->get('IDorganization');
-        }
-
-        if ($organizationId <= 0 || (int)$this->get('IDorganization') !== $organizationId) {
-            return false;
-        }
-
-        $eventHolonId = (int)$this->get('IDholon');
-        if ((int)$this->get('IDproject') > 0) {
-            return ($this->hasExplicitInvitations() || $eventHolonId > 0)
-                && $this->isVisibleToInvitationViewer($userId, $organizationId);
-        }
-
-        if ($eventHolonId <= 0) {
-            return true;
-        }
-
-        $cacheKey = $organizationId . ':' . $userId . ':' . $eventHolonId;
-        if (!array_key_exists($cacheKey, $memberMatchCache)) {
-            $memberMatchCache[$cacheKey] = false;
-            $eventHolon = new \dbObject\Holon();
-            if (
-                $eventHolon->load($eventHolonId)
-                && (bool)$eventHolon->get('active')
-                && (bool)$eventHolon->get('visible')
-            ) {
-                $memberMatchCache[$cacheKey] = in_array(
-                    $userId,
-                    $eventHolon->getAssociatedMemberUserIds([
-                        'organizationId' => $organizationId,
-                        'skipPermissionFilter' => true,
-                    ]),
-                    true
-                );
-            }
-        }
-
-        return $memberMatchCache[$cacheKey];
+        return $this->isInvitedToEvent($userId, $organizationId);
     }
 
     public function isDraftVisibleToViewer($userId): bool
@@ -1087,6 +1146,57 @@ class Event extends DbObject
     }
 
     public function isVisibleToInvitationViewer($userId, $organizationId = 0, $viewerEmail = ''): bool
+    {
+        return $this->matchesInvitationViewer($userId, $organizationId, $viewerEmail, false);
+    }
+
+    /** Attendance requires an invitation or registration, independently of management visibility. */
+    public function isInvitedToEvent($userId, $organizationId = 0, $viewerEmail = ''): bool
+    {
+        return $this->matchesInvitationViewer($userId, $organizationId, $viewerEmail, true);
+    }
+
+    /** Batch relations only for this read; never attach a stale invitation cache to an event. */
+    public static function filterInvitedForUser(array $events, int $userId): array
+    {
+        if ($userId <= 0 || !$events) { return []; }
+        $result = [];
+        foreach (array_chunk($events, 500) as $chunk) {
+            $relations = [];
+            foreach ($chunk as $event) {
+                $relations[(int)$event->getId()] = ['invitations' => [], 'registrations' => []];
+            }
+            $bindings = [];
+            foreach (array_keys($relations) as $index => $eventId) { $bindings['event_' . $index] = $eventId; }
+            $idsSql = implode(', ', array_map(static fn(string $key): string => ':' . $key, array_keys($bindings)));
+            $invitations = self::fetchAll('SELECT * FROM resource_invitation
+                WHERE resource_type = :resource_type AND resource_id IN (' . $idsSql . ') AND active = 1
+                ORDER BY created_at ASC, id ASC', ['resource_type' => EventInvitation::resourceType()] + $bindings);
+            if (!is_array($invitations)) { throw new \RuntimeException('storage'); }
+            foreach ($invitations as $row) {
+                $invitation = new EventInvitation();
+                $invitation->hydrateFromDatabaseRow($row, true);
+                $relations[(int)$invitation->get('IDevent')]['invitations'][] = $invitation;
+            }
+            $registrations = self::fetchAll('SELECT * FROM event_public_registration
+                WHERE IDevent IN (' . $idsSql . ') AND confirmed_at IS NOT NULL
+                ORDER BY name ASC, email ASC', $bindings);
+            if (!is_array($registrations)) { throw new \RuntimeException('storage'); }
+            foreach ($registrations as $row) {
+                $registration = new EventPublicRegistration();
+                $registration->hydrateFromDatabaseRow($row, true);
+                $relations[(int)$registration->get('IDevent')]['registrations'][] = $registration;
+            }
+            foreach ($chunk as $event) {
+                if ($event->matchesInvitationViewer($userId, 0, '', true, $relations[(int)$event->getId()])) {
+                    $result[] = $event;
+                }
+            }
+        }
+        return $result;
+    }
+
+    private function matchesInvitationViewer($userId, $organizationId, $viewerEmail, bool $explicitOnly, ?array $loadedRelations = null): bool
     {
         $userId = (int)$userId;
         $organizationId = (int)$organizationId;
@@ -1112,8 +1222,8 @@ class Event extends DbObject
             return false;
         }
 
-        $targets = $this->getEffectiveInvitationTargets($organizationId);
-        if (!$targets['hasExplicitInvitations'] && (int)$this->get('IDholon') <= 0) {
+        $targets = $this->getEffectiveInvitationTargets($organizationId, explicitOnly: $explicitOnly, loadedRelations: $loadedRelations);
+        if (!$explicitOnly && !$targets['hasExplicitInvitations'] && (int)$this->get('IDholon') <= 0) {
             return true;
         }
 
@@ -1218,7 +1328,54 @@ class Event extends DbObject
         return $this->isVisibleToInvitationViewer($userId, $organizationId, $viewerEmail);
     }
 
-    public function syncAssociatedDocumentEventDate()
+    /** Numeric European/ISO dates only; never replace dates unrelated to the source meeting. */
+    public static function replaceMeetingDateInTitle(string $title, \DateTimeInterface $from, \DateTimeInterface $to): string
+    {
+        $pattern = '~(?<![\pL\pN./-])(?<a>\d{4}|\d{1,2})(?<sep>[./-])(?<b>\d{1,2})\k<sep>(?<c>\d{4}|\d{1,2})(?!\d|[./-]\d)
+            (?:(?<join>T|[ ,]+(?:(?:a|\x{00e0}|de)[ ]+)?)
+                (?<hour>[01]?\d|2[0-3])(?:(?<colon>:)(?<minute>[0-5]\d)(?::(?<second>[0-5]\d))?|(?<hsep>[hH])(?<hminute>[0-5]\d)?)(?!\d))?~ux';
+        return preg_replace_callback($pattern, static function (array $match) use ($from, $to): string {
+            $iso = strlen($match['a']) === 4;
+            $year = $iso ? $match['a'] : $match['c'];
+            $day = $iso ? $match['c'] : $match['a'];
+            if (!in_array(strlen($year), [2, 4], true) || strlen($day) > 2
+                || (int)$day !== (int)$from->format('j') || (int)$match['b'] !== (int)$from->format('n')
+                || $year !== $from->format(strlen($year) === 4 ? 'Y' : 'y')) { return $match[0]; }
+            $nextDay = $to->format(strlen($day) === 2 ? 'd' : 'j');
+            $nextMonth = $to->format(strlen($match['b']) === 2 ? 'm' : 'n');
+            $nextYear = $to->format(strlen($year) === 4 ? 'Y' : 'y');
+            $date = implode($match['sep'], $iso ? [$nextYear, $nextMonth, $nextDay] : [$nextDay, $nextMonth, $nextYear]);
+            $oldDate = $match['a'] . $match['sep'] . $match['b'] . $match['sep'] . $match['c'];
+            $suffix = substr($match[0], strlen($oldDate));
+            if (isset($match['hour']) && $match['hour'] !== '') {
+                $minute = $match['minute'] ?? ''; $hminute = $match['hminute'] ?? '';
+                $second = $match['second'] ?? '';
+                if ((int)$match['hour'] === (int)$from->format('G') && (int)($minute ?: $hminute) === (int)$from->format('i')
+                    && ($second === '' || (int)$second === (int)$from->format('s'))) {
+                    $suffix = $match['join'] . $to->format(strlen($match['hour']) === 2 ? 'H' : 'G');
+                    $suffix .= !empty($match['colon']) ? ':' . $to->format('i') . ($second !== '' ? ':' . $to->format('s') : '')
+                        : $match['hsep'] . ($hminute !== '' || $to->format('i') !== '00' ? $to->format('i') : '');
+                }
+            }
+            return $date . $suffix;
+        }, $title) ?? $title;
+    }
+
+    /** Track generated names separately from manual renames. */
+    public function registerDefaultDocumentTitle(Document $document, array $pattern): bool
+    {
+        if ((int)$document->get('IDevent') !== (int)$this->getId() || (int)$this->getId() <= 0
+            || (int)$document->get('IDorganization') !== (int)$this->get('IDorganization')
+            || !isset($pattern['before'], $pattern['after'])) { return false; }
+        $entry = ['pattern' => $pattern, 'last_title' => (string)$document->get('title')];
+        $saved = self::execute("UPDATE event SET parameters = JSON_SET(COALESCE(NULLIF(parameters, ''), '{}'),
+            '$.default_document_titles', JSON_SET(COALESCE(JSON_EXTRACT(COALESCE(NULLIF(parameters, ''), '{}'), '$.default_document_titles'), '{}'),
+                :document_path, JSON_EXTRACT(:entry, '$'))) WHERE id = :id",
+            ['document_path' => '$."' . (int)$document->getId() . '"', 'entry' => json_encode($entry, JSON_THROW_ON_ERROR), 'id' => $this->getId()]);
+        return $saved && $this->load((int)$this->getId(), true);
+    }
+
+    public function syncAssociatedDocumentEventDate(?\DateTimeInterface $previousStart = null)
     {
         $documents = $this->getAssociatedDocuments();
         if (count($documents) === 0) {
@@ -1236,6 +1393,9 @@ class Event extends DbObject
         }
 
         foreach ($documents as $document) {
+            if ((int)$document->get('IDevent') !== (int)$this->getId()) { continue; }
+            $titleResult = $document->syncDefaultEventTitle($this, $previousStart);
+            if (empty($titleResult['status'])) { return $titleResult; }
             $currentCreatedAt = $document->get('datecreation');
             $nextComparable = $endAt->format('Y-m-d H:i:s');
             $currentComparable = $currentCreatedAt instanceof \DateTimeInterface
@@ -1307,9 +1467,10 @@ class Event extends DbObject
 
     public function save()
     {
-        foreach (['preparation_minutes', 'closing_minutes'] as $field) {
-            if ((int)$this->get($field) < 0 || (int)$this->get($field) > self::MAX_BUFFER_MINUTES) {
-                return ['status' => false, 'text' => 'Invalid preparation/closing duration.'];
+        $original = (int)$this->getId() > 0 ? self::fetchRow('SELECT title, start_at, end_at FROM event WHERE id = :id', ['id' => $this->getId()]) : null;
+        if ((int)$this->getId() > 0 && (int)$this->get('IDeventrecurrence') > 0) {
+            if ($original && new \DateTimeImmutable($original['end_at']) < new \DateTimeImmutable()) {
+                return ['status' => false, 'text' => 'Les reunions recurrentes passees ne peuvent plus etre modifiees.'];
             }
         }
         $this->set('status', self::normalizeStatus($this->get('status')));
@@ -1383,6 +1544,10 @@ class Event extends DbObject
             ];
         }
 
+        $previousStart = $original && !empty($original['start_at']) ? new \DateTimeImmutable($original['start_at']) : null;
+        if ($previousStart && $startAt instanceof \DateTimeInterface && (string)$this->get('title') === (string)$original['title']) {
+            $this->set('title', self::replaceMeetingDateInTitle((string)$this->get('title'), $previousStart, $startAt));
+        }
         $saveResult = parent::save();
         if (!is_array($saveResult) || ($saveResult['status'] ?? false) !== true) {
             return $saveResult;
@@ -1391,7 +1556,7 @@ class Event extends DbObject
         CalDavCache::invalidateOrganization((int)$this->get('IDorganization'));
         CalDavSyncChange::recordEventChange((int)$this->get('IDorganization'), (int)$this->getId(), 'updated');
 
-        $syncResult = $this->syncAssociatedDocumentEventDate();
+        $syncResult = $this->syncAssociatedDocumentEventDate($previousStart);
         if (!is_array($syncResult) || ($syncResult['status'] ?? false) !== true) {
             return $syncResult;
         }
@@ -1399,17 +1564,48 @@ class Event extends DbObject
         return $saveResult;
     }
 
+    /** Conditional linking avoids silently moving an event already assigned to another project. */
+    public function attachToProject(Project $project): bool
+    {
+        $projectId = (int)$project->getId();
+        if ($projectId <= 0 || !$project->get('active') || $project->isPendingProposal()
+            || (int)$project->get('IDorganization') !== (int)$this->get('IDorganization')) { return false; }
+        $saved = self::execute('UPDATE event SET IDproject = :project, updated_at = NOW()
+            WHERE id = :id AND IDorganization = :organization AND active = 1 AND status <> :cancelled
+                AND (IDproject IS NULL OR IDproject = 0 OR IDproject = :current_project)',
+            ['project' => $projectId, 'id' => (int)$this->getId(), 'organization' => (int)$project->get('IDorganization'),
+                'cancelled' => self::STATUS_CANCELLED, 'current_project' => $projectId]);
+        return $saved && $this->load((int)$this->getId(), true) && (int)$this->get('IDproject') === $projectId;
+    }
+
+    public function detachFromProject(int $projectId): bool
+    {
+        return $projectId > 0 && self::execute('UPDATE event SET IDproject = NULL, updated_at = NOW()
+            WHERE id = :id AND IDproject = :project', ['id' => (int)$this->getId(), 'project' => $projectId]);
+    }
+
     public function delete()
     {
+        if ($this->isPastRecurringMeeting()) { return false; }
+        $pdo = self::getPdo(); $ownsTransaction = !$pdo->inTransaction();
         $organizationId = (int)$this->get('IDorganization');
         $eventId = (int)$this->getId();
-        $deleted = parent::delete();
-        if ($deleted) {
-            CalDavCache::invalidateOrganization($organizationId);
-            CalDavSyncChange::recordEventChange($organizationId, $eventId, 'deleted');
+        try {
+            if ($ownsTransaction) { $pdo->beginTransaction(); }
+            EventRecurrence::transferReference($this);
+            $deleted = parent::delete();
+            if ($deleted) {
+                CalDavCache::invalidateOrganization($organizationId);
+                CalDavSyncChange::recordEventChange($organizationId, $eventId, 'deleted');
+            }
+            if ($ownsTransaction) {
+                if ($deleted) { $pdo->commit(); } else { $pdo->rollBack(); }
+            }
+            return $deleted;
+        } catch (\Throwable $exception) {
+            if ($ownsTransaction && $pdo->inTransaction()) { $pdo->rollBack(); }
+            throw $exception;
         }
-
-        return $deleted;
     }
 }
 

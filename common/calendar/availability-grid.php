@@ -1,5 +1,14 @@
 <?php
 
+function commonCalendarAvailabilityGridSourceLang(): array
+{
+    $sourceLang = [];
+    foreach (['monday' => 'Lun.', 'tuesday' => 'Mar.', 'wednesday' => 'Mer.', 'thursday' => 'Jeu.', 'friday' => 'Ven.', 'saturday' => 'Sam.', 'sunday' => 'Dim.'] as $day => $label) {
+        $sourceLang['calendar.availability.weekday.' . $day] = ['text' => $label, 'context' => 'Abbreviated weekday heading in the shared availability calendar.'];
+    }
+    return $sourceLang;
+}
+
 /** Shared, title-free monthly and half-hour availability view. */
 function commonCalendarRenderAvailabilityGrid(
     DateTimeImmutable $month,
@@ -18,41 +27,43 @@ function commonCalendarRenderAvailabilityGrid(
     $selectedData = $selectedDay ? ($days[$selectedDay->format('Y-m-d')] ?? null) : null;
     ?>
     <section class="calendar-freebusy" aria-label="<?= $escape($labels['heading']) ?>">
-        <?php if ($hint !== ''): ?><div class="generic-description generic-description--relaxed"><?= $escape($hint) ?></div><?php endif; ?>
         <div class="calendar-freebusy-layout">
-            <section class="calendar-freebusy-month generic-soft-panel">
-                <div class="calendar-freebusy-month-head">
-                    <h3 class="generic-card-title generic-card-title--medium"><?= $escape(commonUserAvailabilityFormatDate($month)) ?></h3>
-                    <nav class="calendar-freebusy-nav" aria-label="<?= $escape($labels['heading']) ?>">
-                        <button type="button" class="generic-action-button generic-action-button--secondary generic-action-button--icon-only" <?= $control($month->modify('-1 month')) ?> aria-label="<?= $escape($labels['previous_month']) ?>">&larr;</button>
-                        <button type="button" class="generic-action-button generic-action-button--secondary generic-action-button--icon-only" <?= $control($month->modify('+1 month')) ?> aria-label="<?= $escape($labels['next_month']) ?>">&rarr;</button>
-                    </nav>
-                </div>
-                <div class="calendar-freebusy-weekdays" aria-hidden="true">
-                    <?php foreach (['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'] as $label): ?><span><?= $escape($label) ?></span><?php endforeach; ?>
-                </div>
-                <div class="calendar-freebusy-calendar">
-                    <?php for ($empty = 1; $empty < (int)$month->format('N'); $empty++): ?><span aria-hidden="true"></span><?php endfor; ?>
-                    <?php foreach ($days as $date => $data): $day = new DateTimeImmutable($date, $month->getTimezone()); $state = (string)$data['state']; ?>
-                        <?php
-                        $dayLabel = $labels[$state];
-                        $dayOccupationAttributes = '';
-                        if (isset($labels['day_availability']) && !empty($data['workingCount'])) {
-                            $dayLabel = strtr($labels['day_availability'], ['{free}' => (string)($data['workingCount'] - $data['busySlotCount']), '{total}' => (string)$data['workingCount']]);
-                            if ($data['busySlotCount'] > 0) {
-                                $dayHue = 48 * (1 - $data['busySlotCount'] / $data['workingCount']);
-                                $dayOccupationAttributes = ' data-busy-slots="' . (int)$data['busySlotCount'] . '" style="--param-freebusy-busy-hue:' . $escape((string)$dayHue) . '"';
+            <div class="generic-stack generic-stack--compact">
+                <section class="calendar-freebusy-month generic-soft-panel">
+                    <div class="calendar-freebusy-month-head">
+                        <h3 class="generic-card-title generic-card-title--medium"><?= $escape(commonUserAvailabilityFormatDate($month)) ?></h3>
+                        <nav class="calendar-freebusy-nav" aria-label="<?= $escape($labels['heading']) ?>">
+                            <button type="button" class="generic-action-button generic-action-button--secondary generic-action-button--icon-only" <?= $control($month->modify('-1 month')) ?> aria-label="<?= $escape($labels['previous_month']) ?>">&larr;</button>
+                            <button type="button" class="generic-action-button generic-action-button--secondary generic-action-button--icon-only" <?= $control($month->modify('+1 month')) ?> aria-label="<?= $escape($labels['next_month']) ?>">&rarr;</button>
+                        </nav>
+                    </div>
+                    <div class="calendar-freebusy-weekdays" aria-hidden="true">
+                        <?php foreach ($labels['weekdays'] as $label): ?><span><?= $escape($label) ?></span><?php endforeach; ?>
+                    </div>
+                    <div class="calendar-freebusy-calendar">
+                        <?php for ($empty = 1; $empty < (int)$month->format('N'); $empty++): ?><span aria-hidden="true"></span><?php endfor; ?>
+                        <?php foreach ($days as $date => $data): $day = new DateTimeImmutable($date, $month->getTimezone()); $state = (string)$data['state']; ?>
+                            <?php
+                            $dayLabel = $labels[$state];
+                            $dayOccupationAttributes = '';
+                            if (isset($labels['day_availability']) && !empty($data['workingCount'])) {
+                                $dayLabel = strtr($labels['day_availability'], ['{free}' => (string)($data['workingCount'] - $data['busySlotCount']), '{total}' => (string)$data['workingCount']]);
+                                if ($data['busySlotCount'] > 0) {
+                                    $dayHue = 48 * (1 - $data['busySlotCount'] / $data['workingCount']);
+                                    $dayOccupationAttributes = ' data-busy-slots="' . (int)$data['busySlotCount'] . '" style="--param-freebusy-busy-hue:' . $escape((string)$dayHue) . '"';
+                                }
                             }
-                        }
-                        ?>
-                        <button type="button" class="calendar-freebusy-day" data-state="<?= $escape($state) ?>"<?= $dayOccupationAttributes ?><?= $selectedDay && $selectedDay->format('Y-m-d') === $date ? ' aria-current="date"' : '' ?> <?= $control($month, $day) ?> title="<?= $escape($dayLabel) ?>" aria-label="<?= $escape(commonUserAvailabilityFormatDate($day, true) . ' : ' . $dayLabel) ?>"><?= (int)$day->format('j') ?></button>
-                    <?php endforeach; ?>
-                </div>
-                <ul class="calendar-freebusy-legend" aria-label="<?= $escape($labels['heading']) ?>">
-                    <?php foreach (isset($labels['occupation_scale']) ? ['free'] : ['free', 'partial', 'full'] as $state): ?><li data-state="<?= $escape($state) ?>"><span aria-hidden="true"></span><?= $escape($labels[$state]) ?></li><?php endforeach; ?>
-                    <?php if (isset($labels['occupation_scale'])): ?><li data-state="occupation"><span aria-hidden="true"></span><?= $escape($labels['occupation_scale']) ?></li><?php endif; ?>
-                </ul>
-            </section>
+                            ?>
+                            <button type="button" class="calendar-freebusy-day" data-state="<?= $escape($state) ?>"<?= $dayOccupationAttributes ?><?= $selectedDay && $selectedDay->format('Y-m-d') === $date ? ' aria-current="date"' : '' ?> <?= $control($month, $day) ?> title="<?= $escape($dayLabel) ?>" aria-label="<?= $escape(commonUserAvailabilityFormatDate($day, true) . ' : ' . $dayLabel) ?>"><?= (int)$day->format('j') ?></button>
+                        <?php endforeach; ?>
+                    </div>
+                    <ul class="calendar-freebusy-legend" aria-label="<?= $escape($labels['heading']) ?>">
+                        <?php foreach (isset($labels['occupation_scale']) ? ['free'] : ['free', 'partial', 'full'] as $state): ?><li data-state="<?= $escape($state) ?>"><span aria-hidden="true"></span><?= $escape($labels[$state]) ?></li><?php endforeach; ?>
+                        <?php if (isset($labels['occupation_scale'])): ?><li data-state="occupation"><span aria-hidden="true"></span><?= $escape($labels['occupation_scale']) ?></li><?php endif; ?>
+                    </ul>
+                </section>
+                <?php if ($hint !== ''): ?><p class="generic-description generic-description--small"><?= $escape($hint) ?></p><?php endif; ?>
+            </div>
             <aside class="calendar-freebusy-day-panel generic-soft-panel" aria-live="polite">
                 <?php if (!$selectedDay || !is_array($selectedData)): ?>
                     <div class="calendar-freebusy-empty"><strong class="generic-card-title generic-card-title--small"><?= $escape($labels['select_day']) ?></strong><span><?= $escape($labels['select_day_hint']) ?></span></div>
@@ -61,7 +72,7 @@ function commonCalendarRenderAvailabilityGrid(
                 <?php else: ?>
                     <div class="calendar-freebusy-day-head"><strong class="generic-card-title generic-card-title--small"><?= $escape(commonUserAvailabilityFormatDate($selectedDay, true)) ?></strong></div>
                     <?php if ($selectableSlots): ?>
-                        <p class="calendar-freebusy-selection-hint"><?= $escape($labels['selection_hint']) ?></p>
+                        <?php if (!empty($labels['selection_hint'])): ?><p class="calendar-freebusy-selection-hint"><?= $escape($labels['selection_hint']) ?></p><?php endif; ?>
                         <p class="calendar-freebusy-selection-feedback" data-omo-calendar-preview-selection-feedback data-range-blocked="<?= $escape($labels['range_blocked']) ?>" data-range-selected="<?= $escape($labels['range_selected']) ?>" role="status" aria-live="polite"></p>
                     <?php endif; ?>
                     <div class="calendar-freebusy-slots">

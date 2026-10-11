@@ -35,6 +35,7 @@ if (
     exit;
 }
 
+commonEnableReadOnlyCaches();
 $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
 if (!omoProjectsCanViewProject($project, $context)) {
     http_response_code(404);

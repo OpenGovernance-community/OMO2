@@ -21,9 +21,10 @@ $GLOBALS['dbServer'] = envValue('DB_HOST', '');
 $GLOBALS['dbUser'] = envValue('DB_USER', '');
 $GLOBALS['dbPassword'] = envValue('DB_PASS', '');
 
-// Config OpenAI
+require_once __DIR__ . '/common/ai_config.php';
+
+// Legacy keys remain available for existing installations and audio fallback.
 $GLOBALS['OpenAI'] = envValue('OPENAI_API_KEY', '');
-$GLOBALS['openAiUploadApiKey'] = envValue('OPENAI_UPLOAD_API_KEY', $GLOBALS['OpenAI']);
 $GLOBALS['openAiTranslationModel'] = envValue('OPENAI_TRANSLATION_MODEL', envValue('OPENAI_MODEL', 'gpt-4o'));
 $GLOBALS['stadiaMapsApiKey'] = envValue('STADIA_MAPS_API_KEY', '');
 
@@ -55,7 +56,6 @@ $GLOBALS['mailPassword'] = envValue('MAIL_PASS', '');
 $GLOBALS['mailTimeout'] = max(3, envInt('MAIL_TIMEOUT', 10));
 
 // Autres acces / integrations
-$GLOBALS['paypalClientId'] = envValue('PAYPAL_CLIENT_ID', '');
 $GLOBALS['telegramToken'] = envValue('TELEGRAM_BOT_TOKEN', '');
 $GLOBALS['patreonClientId'] = envValue('PATREON_CLIENT_ID', '');
 $GLOBALS['patreonClientSecret'] = envValue('PATREON_CLIENT_SECRET', '');
@@ -63,6 +63,7 @@ $GLOBALS['patreonConnectUrl'] = envValue('PATREON_CONNECT_URL', '');
 $GLOBALS['patreonRedirectUri'] = envValue('PATREON_REDIRECT_URI', '');
 $GLOBALS['patreonConnectAllowedOrigins'] = envValue('PATREON_CONNECT_ALLOWED_ORIGINS', '');
 $GLOBALS['patreonCreatorCampaignId'] = envValue('PATREON_CREATOR_CAMPAIGN_ID', '');
+$GLOBALS['patreonCreatorUserId'] = envValue('PATREON_CREATOR_USER_ID', '');
 $GLOBALS['patreonUserAgent'] = envValue('PATREON_USER_AGENT', 'EasyPV Patreon Sync');
 $GLOBALS['githubBugReportToken'] = envValue('GITHUB_BUGREPORT_TOKEN', '');
 $GLOBALS['githubBugReportRepoOwner'] = envValue('GITHUB_BUGREPORT_REPO_OWNER', 'OpenGovernance-community');
@@ -76,7 +77,7 @@ if (!defined('TOKEN')) {
 }
 
 if (!defined('MODEL')) {
-    define('MODEL', envValue('OPENAI_MODEL', 'gpt-4o'));
+    define('MODEL', commonAiGetModel());
 }
 
 if (!defined('OpenAI')) {

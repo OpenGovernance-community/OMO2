@@ -930,6 +930,8 @@ CREATE TABLE `document_pv_point` (
   `actual_duration_minutes` int(11) DEFAULT NULL,
   `pointtype` varchar(20) NOT NULL DEFAULT 'information',
   `is_handled` tinyint(1) NOT NULL DEFAULT 0,
+  `IDpoint_moved_to` int(11) DEFAULT NULL,
+  `date_moved` datetime DEFAULT NULL,
   `is_confidential` tinyint(1) NOT NULL DEFAULT 0,
   `active` tinyint(1) NOT NULL DEFAULT 1,
   `datecreation` datetime NOT NULL DEFAULT current_timestamp(),
@@ -951,12 +953,15 @@ CREATE TABLE `document_pv_point` (
   KEY `idx_document_pv_point_dateedition` (`dateedition`),
   KEY `idx_document_pv_point_takeover_user` (`IDuser_edit_takeover_request`),
   KEY `idx_document_pv_point_takeover_date` (`date_edit_takeover_request`),
+  KEY `idx_pv_point_import` (`active`,`is_handled`,`IDpoint_moved_to`,`IDdocument`),
+  KEY `fk_pv_point_moved_to` (`IDpoint_moved_to`),
   CONSTRAINT `fk_document_pv_point_document` FOREIGN KEY (`IDdocument`) REFERENCES `document` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_document_pv_point_editing_user` FOREIGN KEY (`IDuser_editing`) REFERENCES `user` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_document_pv_point_holon_concerned` FOREIGN KEY (`IDholon_concerned`) REFERENCES `holon` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_document_pv_point_modification_user` FOREIGN KEY (`IDuser_modification`) REFERENCES `user` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_document_pv_point_parent` FOREIGN KEY (`IDparent`) REFERENCES `document_pv_point` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `fk_document_pv_point_takeover_user` FOREIGN KEY (`IDuser_edit_takeover_request`) REFERENCES `user` (`id`) ON DELETE SET NULL
+  CONSTRAINT `fk_document_pv_point_takeover_user` FOREIGN KEY (`IDuser_edit_takeover_request`) REFERENCES `user` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_pv_point_moved_to` FOREIGN KEY (`IDpoint_moved_to`) REFERENCES `document_pv_point` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB AUTO_INCREMENT=62651 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -1101,10 +1106,12 @@ CREATE TABLE `event` (
   `active` tinyint(1) NOT NULL DEFAULT 1,
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  `preparation_minutes` smallint(5) unsigned NOT NULL DEFAULT 0,
-  `closing_minutes` smallint(5) unsigned NOT NULL DEFAULT 0,
+  `IDeventrecurrence` int(11) DEFAULT NULL,
+  `recurrence_position` int(10) unsigned DEFAULT NULL,
+  `recurrence_exception` tinyint(1) NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_event_decision_proposal` (`IDdecision_proposal`),
+  UNIQUE KEY `uq_event_recurrence_position` (`IDeventrecurrence`,`recurrence_position`),
   KEY `idx_event_org` (`IDorganization`),
   KEY `idx_event_holon` (`IDholon`),
   KEY `idx_event_user` (`IDuser`),
@@ -1117,7 +1124,8 @@ CREATE TABLE `event` (
   CONSTRAINT `fk_event_decision_proposal` FOREIGN KEY (`IDdecision_proposal`) REFERENCES `decision_proposal` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_event_holon` FOREIGN KEY (`IDholon`) REFERENCES `holon` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_event_org` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_event_project` FOREIGN KEY (`IDproject`) REFERENCES `project` (`id`) ON DELETE SET NULL
+  CONSTRAINT `fk_event_project` FOREIGN KEY (`IDproject`) REFERENCES `project` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_event_recurrence` FOREIGN KEY (`IDeventrecurrence`) REFERENCES `event_recurrence` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB AUTO_INCREMENT=14221 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -1213,6 +1221,166 @@ CREATE TABLE `event_invitation` (
 LOCK TABLES `event_invitation` WRITE;
 /*!40000 ALTER TABLE `event_invitation` DISABLE KEYS */;
 /*!40000 ALTER TABLE `event_invitation` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `event_public_link`
+--
+
+DROP TABLE IF EXISTS `event_public_link`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `event_public_link` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDevent` int(11) NOT NULL,
+  `token` char(64) NOT NULL,
+  `enabled` tinyint(1) NOT NULL DEFAULT 0,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `event_public_link_event` (`IDevent`),
+  UNIQUE KEY `event_public_link_token` (`token`),
+  CONSTRAINT `fk_event_public_link_event` FOREIGN KEY (`IDevent`) REFERENCES `event` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `event_public_link`
+--
+
+LOCK TABLES `event_public_link` WRITE;
+/*!40000 ALTER TABLE `event_public_link` DISABLE KEYS */;
+/*!40000 ALTER TABLE `event_public_link` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `event_public_registration`
+--
+
+DROP TABLE IF EXISTS `event_public_registration`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `event_public_registration` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDevent` int(11) NOT NULL,
+  `name` varchar(190) NOT NULL,
+  `email` varchar(254) NOT NULL,
+  `token` char(64) NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `confirmed_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `event_public_registration_email` (`IDevent`,`email`),
+  UNIQUE KEY `event_public_registration_token` (`token`),
+  KEY `event_public_registration_confirmed` (`IDevent`,`confirmed_at`),
+  CONSTRAINT `fk_event_public_registration_event` FOREIGN KEY (`IDevent`) REFERENCES `event` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `event_public_registration`
+--
+
+LOCK TABLES `event_public_registration` WRITE;
+/*!40000 ALTER TABLE `event_public_registration` DISABLE KEYS */;
+/*!40000 ALTER TABLE `event_public_registration` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `event_recurrence`
+--
+
+DROP TABLE IF EXISTS `event_recurrence`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `event_recurrence` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDorganization` int(11) NOT NULL,
+  `IDreference_event` int(11) DEFAULT NULL,
+  `frequency` varchar(24) NOT NULL,
+  `interval_days` smallint(5) unsigned NOT NULL DEFAULT 7,
+  `month_day` tinyint(3) unsigned NOT NULL DEFAULT 1,
+  `weekday` tinyint(3) unsigned NOT NULL DEFAULT 1,
+  `ordinal` tinyint(3) unsigned NOT NULL DEFAULT 1,
+  `weekend_shift` varchar(16) NOT NULL DEFAULT 'none',
+  `horizon_months` tinyint(3) unsigned NOT NULL DEFAULT 3,
+  `timezone` varchar(64) NOT NULL DEFAULT 'Europe/Zurich',
+  `anchor_date` date NOT NULL,
+  `anchor_position` int(10) unsigned NOT NULL DEFAULT 0,
+  `next_position` int(10) unsigned NOT NULL DEFAULT 1,
+  `parameters` longtext DEFAULT NULL,
+  `active` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_event_recurrence_active` (`active`,`id`),
+  KEY `idx_event_recurrence_organization` (`IDorganization`),
+  KEY `fk_event_recurrence_reference` (`IDreference_event`),
+  CONSTRAINT `fk_event_recurrence_organization` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_event_recurrence_reference` FOREIGN KEY (`IDreference_event`) REFERENCES `event` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `event_recurrence`
+--
+
+LOCK TABLES `event_recurrence` WRITE;
+/*!40000 ALTER TABLE `event_recurrence` DISABLE KEYS */;
+/*!40000 ALTER TABLE `event_recurrence` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `event_shared_document`
+--
+
+DROP TABLE IF EXISTS `event_shared_document`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `event_shared_document` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDevent` int(11) NOT NULL,
+  `IDdocument` int(11) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_event_shared_document` (`IDevent`,`IDdocument`),
+  KEY `fk_event_shared_document_document` (`IDdocument`),
+  CONSTRAINT `fk_event_shared_document_document` FOREIGN KEY (`IDdocument`) REFERENCES `document` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_event_shared_document_event` FOREIGN KEY (`IDevent`) REFERENCES `event` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+LOCK TABLES `event_shared_document` WRITE;
+/*!40000 ALTER TABLE `event_shared_document` DISABLE KEYS */;
+/*!40000 ALTER TABLE `event_shared_document` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `event_time_buffer`
+--
+
+DROP TABLE IF EXISTS `event_time_buffer`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `event_time_buffer` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDevent` int(11) NOT NULL,
+  `IDuser` int(11) NOT NULL,
+  `preparation_minutes` smallint(5) unsigned NOT NULL DEFAULT 0,
+  `closing_minutes` smallint(5) unsigned NOT NULL DEFAULT 0,
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_event_time_buffer_user` (`IDevent`,`IDuser`),
+  KEY `idx_event_time_buffer_user` (`IDuser`),
+  CONSTRAINT `fk_event_time_buffer_event` FOREIGN KEY (`IDevent`) REFERENCES `event` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_event_time_buffer_user` FOREIGN KEY (`IDuser`) REFERENCES `user` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `event_time_buffer`
+--
+
+LOCK TABLES `event_time_buffer` WRITE;
+/*!40000 ALTER TABLE `event_time_buffer` DISABLE KEYS */;
+/*!40000 ALTER TABLE `event_time_buffer` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -1715,6 +1883,222 @@ LOCK TABLES `invitation` WRITE;
 UNLOCK TABLES;
 
 --
+-- Table structure for table `mcp_decision_creation`
+--
+
+DROP TABLE IF EXISTS `mcp_decision_creation`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `mcp_decision_creation` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDuser` int(11) NOT NULL,
+  `IDorganization` int(11) NOT NULL,
+  `IDdecision_process` int(11) DEFAULT NULL,
+  `key_hash` char(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `payload_hash` char(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `completed` tinyint(4) NOT NULL DEFAULT 0,
+  `created_at` bigint(20) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `mcp_decision_request` (`IDuser`,`IDorganization`,`key_hash`),
+  KEY `mcp_decision_org_fk` (`IDorganization`),
+  KEY `mcp_decision_result_fk` (`IDdecision_process`),
+  CONSTRAINT `mcp_decision_org_fk` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `mcp_decision_result_fk` FOREIGN KEY (`IDdecision_process`) REFERENCES `decision_process` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `mcp_decision_user_fk` FOREIGN KEY (`IDuser`) REFERENCES `user` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `mcp_decision_creation`
+--
+
+LOCK TABLES `mcp_decision_creation` WRITE;
+/*!40000 ALTER TABLE `mcp_decision_creation` DISABLE KEYS */;
+/*!40000 ALTER TABLE `mcp_decision_creation` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `mcp_document_creation`
+--
+
+DROP TABLE IF EXISTS `mcp_document_creation`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `mcp_document_creation` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDuser` int(11) NOT NULL,
+  `IDorganization` int(11) NOT NULL,
+  `IDdocument` int(11) DEFAULT NULL,
+  `key_hash` char(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `payload_hash` char(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `completed` tinyint(4) NOT NULL DEFAULT 0,
+  `created_at` bigint(20) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `mcp_document_request` (`IDuser`,`IDorganization`,`key_hash`),
+  KEY `mcp_document_org_fk` (`IDorganization`),
+  KEY `mcp_document_result_fk` (`IDdocument`),
+  CONSTRAINT `mcp_document_org_fk` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `mcp_document_result_fk` FOREIGN KEY (`IDdocument`) REFERENCES `document` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `mcp_document_user_fk` FOREIGN KEY (`IDuser`) REFERENCES `user` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `mcp_document_creation`
+--
+
+LOCK TABLES `mcp_document_creation` WRITE;
+/*!40000 ALTER TABLE `mcp_document_creation` DISABLE KEYS */;
+/*!40000 ALTER TABLE `mcp_document_creation` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `mcp_event_creation`
+--
+
+DROP TABLE IF EXISTS `mcp_event_creation`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `mcp_event_creation` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDuser` int(11) NOT NULL,
+  `IDorganization` int(11) NOT NULL,
+  `IDevent` int(11) DEFAULT NULL,
+  `key_hash` char(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `payload_hash` char(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `completed` tinyint(4) NOT NULL DEFAULT 0,
+  `created_at` bigint(20) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `mcp_event_request` (`IDuser`,`IDorganization`,`key_hash`),
+  KEY `mcp_event_org_fk` (`IDorganization`),
+  KEY `mcp_event_result_fk` (`IDevent`),
+  CONSTRAINT `mcp_event_org_fk` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `mcp_event_result_fk` FOREIGN KEY (`IDevent`) REFERENCES `event` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `mcp_event_user_fk` FOREIGN KEY (`IDuser`) REFERENCES `user` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `mcp_event_creation`
+--
+
+LOCK TABLES `mcp_event_creation` WRITE;
+/*!40000 ALTER TABLE `mcp_event_creation` DISABLE KEYS */;
+/*!40000 ALTER TABLE `mcp_event_creation` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `mcp_oauth_client`
+--
+
+DROP TABLE IF EXISTS `mcp_oauth_client`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `mcp_oauth_client` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `client_id` varchar(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `name` varchar(150) NOT NULL,
+  `redirect_uris` text NOT NULL,
+  `created_at` bigint(20) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `mcp_client_identifier` (`client_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `mcp_oauth_client`
+--
+
+LOCK TABLES `mcp_oauth_client` WRITE;
+/*!40000 ALTER TABLE `mcp_oauth_client` DISABLE KEYS */;
+/*!40000 ALTER TABLE `mcp_oauth_client` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `mcp_oauth_grant`
+--
+
+DROP TABLE IF EXISTS `mcp_oauth_grant`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `mcp_oauth_grant` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDclient` int(11) NOT NULL,
+  `IDuser` int(11) NOT NULL,
+  `IDorganization` int(11) NOT NULL,
+  `resource` varchar(512) NOT NULL,
+  `scope` varchar(100) NOT NULL,
+  `redirect_uri` varchar(2048) NOT NULL,
+  `code_hash` char(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `code_challenge` varchar(43) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `code_expires_at` bigint(20) NOT NULL,
+  `code_used_at` bigint(20) DEFAULT NULL,
+  `access_hash` char(64) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL,
+  `access_expires_at` bigint(20) DEFAULT NULL,
+  `refresh_hash` char(64) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL,
+  `refresh_expires_at` bigint(20) DEFAULT NULL,
+  `revoked_at` bigint(20) DEFAULT NULL,
+  `created_at` bigint(20) NOT NULL,
+  `used_refresh_hashes` mediumtext DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `mcp_grant_code` (`code_hash`),
+  UNIQUE KEY `mcp_grant_access` (`access_hash`),
+  UNIQUE KEY `mcp_grant_refresh` (`refresh_hash`),
+  KEY `mcp_grant_owner` (`IDuser`,`created_at`),
+  KEY `mcp_grant_client_fk` (`IDclient`),
+  KEY `mcp_grant_organization_fk` (`IDorganization`),
+  CONSTRAINT `mcp_grant_client_fk` FOREIGN KEY (`IDclient`) REFERENCES `mcp_oauth_client` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `mcp_grant_organization_fk` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `mcp_grant_user_fk` FOREIGN KEY (`IDuser`) REFERENCES `user` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `mcp_oauth_grant`
+--
+
+LOCK TABLES `mcp_oauth_grant` WRITE;
+/*!40000 ALTER TABLE `mcp_oauth_grant` DISABLE KEYS */;
+/*!40000 ALTER TABLE `mcp_oauth_grant` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `mcp_project_write`
+--
+
+DROP TABLE IF EXISTS `mcp_project_write`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `mcp_project_write` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDuser` int(11) NOT NULL,
+  `IDorganization` int(11) NOT NULL,
+  `IDproject` int(11) DEFAULT NULL,
+  `operation` varchar(10) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `key_hash` char(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `payload_hash` char(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `completed` tinyint(4) NOT NULL DEFAULT 0,
+  `created_at` bigint(20) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `mcp_project_request` (`IDuser`,`IDorganization`,`key_hash`),
+  KEY `mcp_project_org_fk` (`IDorganization`),
+  KEY `mcp_project_result_fk` (`IDproject`),
+  CONSTRAINT `mcp_project_org_fk` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `mcp_project_result_fk` FOREIGN KEY (`IDproject`) REFERENCES `project` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `mcp_project_user_fk` FOREIGN KEY (`IDuser`) REFERENCES `user` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `mcp_project_write`
+--
+
+LOCK TABLES `mcp_project_write` WRITE;
+/*!40000 ALTER TABLE `mcp_project_write` DISABLE KEYS */;
+/*!40000 ALTER TABLE `mcp_project_write` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `media`
 --
 
@@ -2076,6 +2460,75 @@ LOCK TABLES `notification_push_subscription` WRITE;
 UNLOCK TABLES;
 
 --
+-- Table structure for table `object_mail`
+--
+
+DROP TABLE IF EXISTS `object_mail`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `object_mail` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDuser` int(11) NOT NULL,
+  `IDorganization` int(11) NOT NULL,
+  `IDmcp_oauth_grant` int(11) DEFAULT NULL,
+  `object_type` varchar(20) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `object_id` int(11) NOT NULL,
+  `request_hash` char(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `payload_hash` char(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `subject` varchar(250) NOT NULL,
+  `message` mediumtext NOT NULL,
+  `message_format` varchar(5) NOT NULL DEFAULT 'plain',
+  `recipient_count` int(11) NOT NULL,
+  `created_at` bigint(20) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `object_mail_request` (`IDuser`,`IDorganization`,`request_hash`),
+  KEY `object_mail_quota` (`IDorganization`,`created_at`),
+  KEY `object_mail_grant_fk` (`IDmcp_oauth_grant`),
+  CONSTRAINT `object_mail_org_fk` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `object_mail_user_fk` FOREIGN KEY (`IDuser`) REFERENCES `user` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `object_mail`
+--
+
+LOCK TABLES `object_mail` WRITE;
+/*!40000 ALTER TABLE `object_mail` DISABLE KEYS */;
+/*!40000 ALTER TABLE `object_mail` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `object_mail_recipient`
+--
+
+DROP TABLE IF EXISTS `object_mail_recipient`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `object_mail_recipient` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDobject_mail` int(11) NOT NULL,
+  `member_id` varchar(80) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,
+  `email` varchar(254) NOT NULL,
+  `status` varchar(20) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL DEFAULT 'queued',
+  `updated_at` bigint(20) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `object_mail_address` (`IDobject_mail`,`email`),
+  KEY `object_mail_pending` (`status`,`id`),
+  CONSTRAINT `object_mail_recipient_fk` FOREIGN KEY (`IDobject_mail`) REFERENCES `object_mail` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `object_mail_recipient`
+--
+
+LOCK TABLES `object_mail_recipient` WRITE;
+/*!40000 ALTER TABLE `object_mail_recipient` DISABLE KEYS */;
+/*!40000 ALTER TABLE `object_mail_recipient` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `object_visibility`
 --
 
@@ -2200,6 +2653,36 @@ INSERT INTO `organization_application` VALUES
 (964,2,10,45,1,NULL),
 (965,2,12,55,1,NULL);
 /*!40000 ALTER TABLE `organization_application` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `organization_backup`
+--
+
+DROP TABLE IF EXISTS `organization_backup`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `organization_backup` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDorganization` int(11) NOT NULL,
+  `enabled` tinyint(1) NOT NULL DEFAULT 0,
+  `email` varchar(254) DEFAULT NULL,
+  `frequency` varchar(3) NOT NULL DEFAULT '1m',
+  `last_sent_at` datetime DEFAULT NULL,
+  `last_attempt_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `organization_backup_organization` (`IDorganization`),
+  CONSTRAINT `organization_backup_organization_fk` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `organization_backup`
+--
+
+LOCK TABLES `organization_backup` WRITE;
+/*!40000 ALTER TABLE `organization_backup` DISABLE KEYS */;
+/*!40000 ALTER TABLE `organization_backup` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -3031,6 +3514,44 @@ LOCK TABLES `project_document` WRITE;
 UNLOCK TABLES;
 
 --
+-- Table structure for table `project_external_event`
+--
+
+DROP TABLE IF EXISTS `project_external_event`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `project_external_event` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDproject` int(11) NOT NULL,
+  `IDexternalcalendarevent` int(11) DEFAULT NULL,
+  `calendar_title` varchar(190) NOT NULL,
+  `title` varchar(1000) NOT NULL,
+  `description` mediumtext DEFAULT NULL,
+  `location` varchar(1000) DEFAULT NULL,
+  `start_at` datetime NOT NULL,
+  `end_at` datetime NOT NULL,
+  `is_all_day` tinyint(1) NOT NULL DEFAULT 0,
+  `source_missing` tinyint(1) NOT NULL DEFAULT 0,
+  `last_seen_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `datecreation` datetime NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_project_external_event` (`IDproject`,`IDexternalcalendarevent`),
+  KEY `idx_project_external_event_source` (`IDexternalcalendarevent`),
+  CONSTRAINT `fk_project_external_event_project` FOREIGN KEY (`IDproject`) REFERENCES `project` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_project_external_event_source` FOREIGN KEY (`IDexternalcalendarevent`) REFERENCES `external_calendar_event` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `project_external_event`
+--
+
+LOCK TABLES `project_external_event` WRITE;
+/*!40000 ALTER TABLE `project_external_event` DISABLE KEYS */;
+/*!40000 ALTER TABLE `project_external_event` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `project_follower`
 --
 
@@ -3060,6 +3581,64 @@ CREATE TABLE `project_follower` (
 LOCK TABLES `project_follower` WRITE;
 /*!40000 ALTER TABLE `project_follower` DISABLE KEYS */;
 /*!40000 ALTER TABLE `project_follower` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `project_indicator`
+--
+
+DROP TABLE IF EXISTS `project_indicator`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `project_indicator` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDproject` int(11) NOT NULL,
+  `IDstatindicator` int(11) NOT NULL,
+  `datecreation` datetime NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_project_indicator` (`IDproject`,`IDstatindicator`),
+  KEY `idx_project_indicator_indicator` (`IDstatindicator`),
+  CONSTRAINT `fk_project_indicator_indicator` FOREIGN KEY (`IDstatindicator`) REFERENCES `stat_indicator` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_project_indicator_project` FOREIGN KEY (`IDproject`) REFERENCES `project` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `project_indicator`
+--
+
+LOCK TABLES `project_indicator` WRITE;
+/*!40000 ALTER TABLE `project_indicator` DISABLE KEYS */;
+/*!40000 ALTER TABLE `project_indicator` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `project_recurring_task`
+--
+
+DROP TABLE IF EXISTS `project_recurring_task`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `project_recurring_task` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDproject` int(11) NOT NULL,
+  `IDrecurringtask` int(11) NOT NULL,
+  `datecreation` datetime NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_project_recurring_task` (`IDproject`,`IDrecurringtask`),
+  KEY `idx_project_recurring_task_task` (`IDrecurringtask`),
+  CONSTRAINT `fk_project_recurring_task_project` FOREIGN KEY (`IDproject`) REFERENCES `project` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_project_recurring_task_task` FOREIGN KEY (`IDrecurringtask`) REFERENCES `recurring_task` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `project_recurring_task`
+--
+
+LOCK TABLES `project_recurring_task` WRITE;
+/*!40000 ALTER TABLE `project_recurring_task` DISABLE KEYS */;
+/*!40000 ALTER TABLE `project_recurring_task` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -3296,13 +3875,16 @@ CREATE TABLE `recurring_task` (
   `execution_duration_unit` varchar(20) NOT NULL DEFAULT 'day',
   `position` int(11) NOT NULL DEFAULT 0,
   `active` tinyint(1) NOT NULL DEFAULT 1,
+  `archived_at` datetime DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `project_visible_in_holon` tinyint(1) NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   KEY `idx_control_task_active` (`active`),
   KEY `idx_control_task_context` (`IDorganization`,`IDholon`),
   KEY `fk_control_task_holon` (`IDholon`),
   KEY `idx_recurring_task_responsible` (`IDuser_responsible`),
+  KEY `idx_recurring_task_archived_at` (`archived_at`),
   CONSTRAINT `fk_control_task_holon` FOREIGN KEY (`IDholon`) REFERENCES `holon` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_control_task_organization` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_recurring_task_responsible` FOREIGN KEY (`IDuser_responsible`) REFERENCES `user` (`id`) ON DELETE SET NULL
@@ -3800,14 +4382,38 @@ INSERT INTO `sql_migration` VALUES
 ('2026-09-28-03-restore-parcours-permissions.sql','37e3d92db86b7124687579601484f88b2242278229757cd121cda79eeb698112','2026-09-28 16:40:05'),
 ('2026-09-28-04-parcours-delete-permission-and-archive.sql','00a06e2c1e50030546ff3fd086f3bb5033b0b7550e0eda9b0d08318d053bd927','2026-09-28 16:40:05'),
 ('2026-09-28-05-property-type-activation.sql','81dd743356f3e3423f20b76441102a132825e47a6c5cd0e4538a8220df4063c7','2026-09-28 16:40:05'),
+('2026-09-29-01-project-resources.sql','d9fed5e043d73d08854e4f2d2ee572b1d6c3760648f2c3a56eb2615a14110948','2026-10-09 18:36:06'),
+('2026-09-29-02-indicator-recurring-task-archives.sql','e10d4bf3f2a95837ee59ebdb8d615898fadba4a0b8fde90c6c9d55b7d75c6435','2026-10-09 18:36:06'),
+('2026-09-30-01-meeting-max-duration.sql','3589b9105a86ec231b3014d24b3609e67f5ff1392e84d11dfe0da6da90bec603','2026-10-09 18:36:06'),
+('2026-09-30-02-meeting-methods.sql','80f30e56e9230808ec304a208ee52475445d924a97c3b277c4bdbe8804cea5ae','2026-10-09 18:36:06'),
+('2026-09-30-03-event-public-registration.sql','96228df1f362213fe14d12f92d6ede3a4c08f75d52ed7e925541fd74ee575eed','2026-10-09 18:36:06'),
+('2026-10-02-01-external-calendar-availability.sql','6af3428876c1997f11a9dcc4077d8b9aa253fe2fd522dfcba48042d9300983e2','2026-10-09 18:36:06'),
+('2026-10-02-01-pv-point-transfer.sql','f3d72896949c9a5baa1e1a02703a99f0a48eb8975d107f6e1d7e5df1fbdf71f3','2026-10-09 18:36:06'),
+('2026-10-02-02-organization-backup.sql','ecb42d4527f0f415b86de90b1d2fb3d6ee761b6a7d401fd9b185550d60458751','2026-10-09 18:36:06'),
+('2026-10-02-03-organization-backup-optional-email.sql','272f059f61e0f4087f736bcb7ee3c8ae0d45d8dfa1110c3a0fbd000e443801d6','2026-10-09 18:36:06'),
 ('2026-10-02-04-mcp-structure-oauth.sql','a5586cfa5440235dda71c9be8692fd9b43916c8a19fd44f3481d7a875eb189f3','2026-10-02 00:00:00'),
 ('2026-10-02-05-mcp-refresh-replay.sql','359181229c14562ce7533c1d06d379f34df567ff13c1ed2a5eaf5417ffb16438','2026-10-02 00:00:00'),
+('2026-10-03-01-mcp-document-creation.sql','9eda3adf0f9ec3fee2c2e1ba36e91d49a32fd1a7cdd47802ecf248c5e8025049','2026-10-09 18:36:06'),
+('2026-10-03-02-object-mail.sql','645cca9b0fe6adde388473a1d701257491855d5ae7d5e73b3dc6f49048032f4e','2026-10-09 18:36:06'),
+('2026-10-03-03-object-mail-grant-reference.sql','20c29eea0186089befa826fe20d8a45c4b513f7afc5e31800360a6893d42b668','2026-10-09 18:36:06'),
 ('2026-10-03-04-mcp-event-creation.sql','79e97cfcad2abcb3dcc9d9eaf71d2c68142001f3417847c0152ace9ca539c467','2026-10-03 00:00:00'),
 ('2026-10-03-05-decision-proposal-dates.sql','a24a2680d09ce624448bd71ccd2e7c9897c18e289d9a85a3fe3f942cf51b5a63','2026-10-03 00:00:00'),
+('2026-10-05-01-api-decision-creation.sql','250857ff97bb80bbdf6312db180183b2e1b7bd6f56bdf2ced7f1cf64da018b9e','2026-10-09 18:36:06'),
 ('2026-10-05-01-calendar-time-buffers.sql','834935ebe4e26bc1e704ac06cd72220236ab09b73d0bc77013dd8c1098fb1f3c','2026-10-05 19:37:19'),
-('2026-10-05-02-external-event-local-time-buffers.sql','bd3611453665cd290a4e4cdebe232690e88f00bbe0d96d4f5490e606ec1d6200','2026-10-05 19:58:07');
+('2026-10-05-02-api-project-writes.sql','498aa7927cd84273478510f800420436752aa89f4c11d72ead23b5c336dee08e','2026-10-09 18:36:06'),
+('2026-10-05-02-external-event-local-time-buffers.sql','bd3611453665cd290a4e4cdebe232690e88f00bbe0d96d4f5490e606ec1d6200','2026-10-05 19:58:07'),
+('2026-10-06-01-auth-security.sql','c3f4e7a38453c04bdd3d0f0be421f0db2c8fa4e209ec2802d3ffead37bca39c0','2026-10-09 18:36:06'),
+('2026-10-06-02-auth-pending-activation.sql','7d9debdf3eb56e561de86d09612378955fb691e94d07ac2968e564714ec9604b','2026-10-09 18:36:06'),
+('2026-10-07-01-object-mail-html.sql','a1388465bfbed12b8e19f24808409b90868835024b57d38f220a5d54ed7a48a7','2026-10-09 18:36:06'),
+('2026-10-09-01-project-external-events.sql','15e3d8767fba4ae29f4b072aa718b42d1b17f7f54217d1b6f2d89124b96b2a3f','2026-10-09 18:36:06'),
+('2026-10-09-02-event-personal-time-buffers.sql','2b866f825e84ee14e2e9c4d02f15841d2ea8ebf9f49997f51581fbd5ebb1911d','2026-10-09 11:02:20'),
+('2026-10-09-02-project-resource-holon-visibility.sql','bf8eef249afe8b37dc48b9c517425d42a81bf86b7d80345adac724aebe3c1bd3','2026-10-09 18:36:06'),
+('2026-10-09-02-remove-paypal-configuration.sql','95c586a6f072e7a73e7563fde2120c4028619ea0786fb21ed92da6e697f2a7eb','2026-10-09 18:36:06'),
+('2026-10-09-03-event-recurrence.sql','3bc31ee2c9171f7e32116aebf02851bf30c9cb617b5b67d87d08875283879bb7','2026-10-09 18:36:07'),
+('2026-10-10-01-event-shared-document.sql','ee894c95b2d64c7f1da62180be93d5014c6f313f99ebd46cee3942b7dca6d29f','2026-10-10 08:11:19');
 /*!40000 ALTER TABLE `sql_migration` ENABLE KEYS */;
 UNLOCK TABLES;
+
 --
 -- Table structure for table `stat_indicator`
 --
@@ -3847,8 +4453,10 @@ CREATE TABLE `stat_indicator` (
   `show_cumulative` tinyint(1) NOT NULL DEFAULT 0,
   `hide_from_catalog` tinyint(1) NOT NULL DEFAULT 0,
   `active` tinyint(1) NOT NULL DEFAULT 1,
+  `archived_at` datetime DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `project_visible_in_holon` tinyint(1) NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   KEY `idx_stat_indicator_organization` (`IDorganization`),
   KEY `idx_stat_indicator_holon` (`IDholon`),
@@ -3860,6 +4468,7 @@ CREATE TABLE `stat_indicator` (
   KEY `idx_stat_indicator_catalog_visibility` (`active`,`hide_from_catalog`),
   KEY `idx_stat_indicator_spreadsheet_sync` (`source_type`,`active`,`spreadsheet_last_sync_at`),
   KEY `idx_stat_indicator_responsible` (`IDuser_responsible`),
+  KEY `idx_stat_indicator_archived_at` (`archived_at`),
   CONSTRAINT `fk_stat_indicator_document` FOREIGN KEY (`IDdocument`) REFERENCES `document` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_stat_indicator_holon` FOREIGN KEY (`IDholon`) REFERENCES `holon` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_stat_indicator_organization` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE,
@@ -4227,7 +4836,7 @@ INSERT INTO `translation_bundles` VALUES
 (9,'omo_documents_index','en','c0d0b752d905747423a299a5e4cfd1f379fc2757e3541bc77ed4ff308db3257a','{\"documents.action.loading\":{\"text\":\"Loading...\"},\"documents.action.new\":{\"text\":\"New\"},\"documents.controls.density.aria\":{\"text\":\"Document display density\"},\"documents.controls.density.compact\":{\"text\":\"Compact\"},\"documents.controls.density.detail\":{\"text\":\"Detail\"},\"documents.controls.sort.alpha\":{\"text\":\"Alphabetical\"},\"documents.controls.sort.aria\":{\"text\":\"Document sorting\"},\"documents.controls.sort.date\":{\"text\":\"Date\"},\"documents.date_column.created\":{\"text\":\"Created on\"},\"documents.date_column.updated\":{\"text\":\"Updated on\"},\"documents.drawer.close\":{\"text\":\"Close\"},\"documents.drawer.detail_description\":{\"text\":\"Reading the document in OMO.\"},\"documents.drawer.detail_title\":{\"text\":\"Document Detail\"},\"documents.drawer.editor_description\":{\"text\":\"Creating a document in the current context.\"},\"documents.drawer.editor_title\":{\"text\":\"New Document\"},\"documents.empty.available_children\":{\"text\":\"No documents available for this context or its direct children.\"},\"documents.empty.available_contextual\":{\"text\":\"No documents available for this context.\"},\"documents.empty.available_descendants\":{\"text\":\"No documents available for this context and its descendants.\"},\"documents.empty.visible_children\":{\"one\":\"No visible documents for this context or its direct children. {count} file is hidden.\",\"other\":\"No visible documents for this context or its direct children. {count} files are hidden.\"},\"documents.empty.visible_contextual\":{\"one\":\"No visible documents for this context. {count} file is hidden.\",\"other\":\"No visible documents for this context. {count} files are hidden.\"},\"documents.empty.visible_descendants\":{\"one\":\"No visible documents for this context and its descendants. {count} file is hidden.\",\"other\":\"No visible documents for this context and its descendants. {count} files are hidden.\"},\"documents.error.load_document\":{\"text\":\"Unable to load this document.\"},\"documents.error.load_editor\":{\"text\":\"Unable to load the document editor.\"},\"documents.group.earlier\":{\"text\":\"Older\"},\"documents.group.last_month\":{\"text\":\"Last month\"},\"documents.group.last_week\":{\"text\":\"Last week\"},\"documents.group.this_month\":{\"text\":\"This month\"},\"documents.group.this_week\":{\"text\":\"This week\"},\"documents.group.this_year\":{\"text\":\"This year\"},\"documents.group.today\":{\"text\":\"Today\"},\"documents.group.too_far\":{\"text\":\"Unknown date\"},\"documents.group.yesterday\":{\"text\":\"Yesterday\"},\"documents.menu.action_error\":{\"text\":\"Action not possible.\"},\"documents.menu.archive\":{\"text\":\"Archive\"},\"documents.menu.confirm_archive\":{\"text\":\"Archive this document? It will no longer be visible in the list.\"},\"documents.menu.confirm_delete\":{\"text\":\"Permanently delete this document?\"},\"documents.menu.delete\":{\"text\":\"Delete\"},\"documents.menu.export_pdf\":{\"text\":\"Export as PDF\"},\"documents.page.title\":{\"text\":\"Documents\"},\"documents.scope.children\":{\"text\":\"Direct children\"},\"documents.scope.contextual\":{\"text\":\"Contextual\"},\"documents.scope.descendants\":{\"text\":\"Descendants\"},\"documents.scope.edit\":{\"text\":\"Edit\"},\"documents.scope.toggle_aria\":{\"text\":\"Document scope\"},\"documents.scope.view\":{\"text\":\"View\"},\"documents.sort.alpha_aria\":{\"text\":\"Alphabetical\"},\"documents.sort.created\":{\"text\":\"Creation\"},\"documents.sort.created_aria\":{\"text\":\"Creation date\"},\"documents.sort.updated\":{\"text\":\"Modification\"},\"documents.sort.updated_aria\":{\"text\":\"Modification date\"},\"documents.upload_missing.badge\":{\"text\":\"File missing\"}}','machine_translated','2026-07-25 11:14:06','2026-07-25 11:14:13'),
 (15,'omo_get_structure_panel','en','542d102221f255e01f98cbcc450c9164056b4d03f2a94fc2ccbdba944505fd4c','{\"structure.actions.export\":{\"text\":\"Export\"},\"structure.actions.export.download\":{\"text\":\"Download\"},\"structure.actions.export.format.csv\":{\"text\":\"CSV\"},\"structure.actions.export.format.csv_description\":{\"text\":\"Flat view of holons. Rights are listed in a cell with their code and scope.\"},\"structure.actions.export.format.json\":{\"text\":\"JSON\"},\"structure.actions.export.format.json_description\":{\"text\":\"Complete format to re-import the structure. It also includes the rights of holons and templates.\"},\"structure.actions.export.format.xml\":{\"text\":\"XML\"},\"structure.actions.export.format.xml_description\":{\"text\":\"Structured and readable format, with the same rights codes as JSON.\"},\"structure.actions.export.modal_intro\":{\"text\":\"Choose the export format for this structure.\"},\"structure.actions.export.modal_title\":{\"text\":\"Export Structure\"},\"structure.actions.menu_aria\":{\"text\":\"Actions\"},\"structure.actions.print\":{\"text\":\"Print\"},\"structure.actions.share\":{\"text\":\"Share\"},\"structure.browser.generic_name\":{\"text\":\"this browser\"},\"structure.error.organization_access_denied\":{\"text\":\"Access denied to this organization.\"},\"structure.list.empty_search\":{\"text\":\"No nodes match this search.\"},\"structure.list.properties.hide_aria\":{\"text\":\"Hide properties\"},\"structure.list.properties.show_aria\":{\"text\":\"Show properties\"},\"structure.list.search.placeholder\":{\"text\":\"Quick filter\"},\"structure.message.disabled\":{\"text\":\"The Structure app is disabled for this organization.\"},\"structure.message.invalid\":{\"text\":\"Invalid structure.\"},\"structure.message.load_error\":{\"text\":\"Unable to load the structure.\"},\"structure.message.no_structure\":{\"text\":\"No structure available for this organization.\"},\"structure.placeholder.action\":{\"text\":\"Open the Structure app\"},\"structure.placeholder.text\":{\"text\":\"No structure is yet defined for this organization. Open the Structure app in the leftbar to create an empty structure, import an export, or start from a template.\"},\"structure.placeholder.title\":{\"text\":\"No Structure\"},\"structure.share.modal_title\":{\"text\":\"Share Structure\"},\"structure.view.toggle_label\":{\"text\":\"G   L\"},\"structure.warning.brave\":{\"text\":\"Brave seems to block the canvas reading used for graphical navigation, probably due to the anti-fingerprint shield. The list view has been activated to continue navigating. You can also relax the shield for this site.\"},\"structure.warning.dismiss_aria\":{\"text\":\"Reduce this message\"},\"structure.warning.pixel_mismatch\":{\"text\":\"{browserName} blocks or alters the canvas reading used for graphical navigation. The list view has been activated to continue navigating.\"},\"structure.warning.restore\":{\"text\":\"Browser info\"},\"structure.warning.unavailable\":{\"text\":\"The canvas reading used for graphical navigation is not available in {browserName}. The list view has been activated to continue navigating.\"}}','machine_translated','2026-07-25 11:14:27','2026-07-25 11:14:32'),
 (17,'omo_parameters_index','en','6b0cd91accb5c1957173774d20c5fc1a18b401cb94dde95f45a5e7bad31ca604','{\"parameters.index.action.close\":{\"text\":\"Close\"},\"parameters.index.card.application.description\":{\"text\":\"Configure the options and integrations of {applicationName} for {organizationName}.\"},\"parameters.index.card.application.eyebrow\":{\"text\":\"Application\"},\"parameters.index.card.application.forbidden\":{\"text\":\"Enable the {adminLabel} mode of the organization to modify the settings of {applicationName}.\"},\"parameters.index.card.export.description\":{\"text\":\"Export the chosen structure and data of {organizationName} into a reusable JSON file.\"},\"parameters.index.card.export.eyebrow\":{\"text\":\"Data\"},\"parameters.index.card.export.forbidden\":{\"text\":\"You must be {adminLabel} of the organization to export its data.\"},\"parameters.index.card.export.title\":{\"text\":\"Export\"},\"parameters.index.card.holon_templates.admin_mode_cta\":{\"text\":\"{adminLabel} mode required\"},\"parameters.index.card.holon_templates.admin_mode_required\":{\"text\":\"Enable {adminLabel} mode in your profile to open this editor.\"},\"parameters.index.card.holon_templates.description\":{\"text\":\"Configure the node types and their properties for your organization.\"},\"parameters.index.card.holon_templates.eyebrow\":{\"text\":\"Architecture\"},\"parameters.index.card.holon_templates.title\":{\"text\":\"Holon Templates\"},\"parameters.index.card.lexicon.description\":{\"text\":\"Adapt the terms used in the interface of this organization.\"},\"parameters.index.card.lexicon.eyebrow\":{\"text\":\"Vocabulary\"},\"parameters.index.card.lexicon.title\":{\"text\":\"Lexicon\"},\"parameters.index.card.organization.description\":{\"text\":\"Modify the name, short name, geographical position, illustrations, and color of {organizationName}.\"},\"parameters.index.card.organization.eyebrow\":{\"text\":\"Your structure\"},\"parameters.index.card.organization.fallback_name\":{\"text\":\"this organization\"},\"parameters.index.card.organization.forbidden\":{\"text\":\"You must be {adminLabel} of the organization to modify these settings.\"},\"parameters.index.card.organization.title\":{\"text\":\"Organization\"},\"parameters.index.card.profile.description\":{\"text\":\"Open your profile editor.\"},\"parameters.index.card.profile.eyebrow\":{\"text\":\"My account\"},\"parameters.index.card.profile.title\":{\"text\":\"Profile\"},\"parameters.index.card.server_admin.description\":{\"text\":\"Open the sensitive global settings of the .env file, excluding database configuration.\"},\"parameters.index.card.server_admin.eyebrow\":{\"text\":\"Maintenance\"},\"parameters.index.card.server_admin.title\":{\"text\":\"Server Admin\"},\"parameters.index.description\":{\"text\":\"Find your personal settings here as well as the available configuration screens for the organization.\"},\"parameters.index.drawer.error\":{\"text\":\"Unable to load this module.\"},\"parameters.index.drawer.loading\":{\"text\":\"Loading...\"},\"parameters.index.empty.login\":{\"text\":\"Log in to access your user settings.\"},\"parameters.index.title\":{\"text\":\"Settings\"}}','machine_translated','2026-07-25 11:14:51','2026-07-30 07:52:52'),
-(19,'omo_parameters_server_env','en','53f1e52aa3ba401a5f5971f323bdf1e702282e5ac309e63a500ff365e0dd0a1f','{\"parameters.server_env.action.close\":{\"text\":\"Close\"},\"parameters.server_env.action.save\":{\"text\":\"Save {target}\"},\"parameters.server_env.auth.forbidden_message\":{\"text\":\"This panel is reserved for the server admin.\"},\"parameters.server_env.auth.forbidden_title\":{\"text\":\"Access Denied\"},\"parameters.server_env.auth.required_message\":{\"text\":\"Log in to access this panel.\"},\"parameters.server_env.auth.required_title\":{\"text\":\"Login Required\"},\"parameters.server_env.edit.secret_hint\":{\"text\":\"Secret fields remain hidden. If you leave a secret field empty, the current value is retained.\"},\"parameters.server_env.edit.title\":{\"text\":\"Edit {target}\"},\"parameters.server_env.error.forbidden\":{\"text\":\"Access reserved for the server admin.\"},\"parameters.server_env.error.invalid_field_value\":{\"text\":\"The chosen value for {label} is invalid.\"},\"parameters.server_env.error.password_invalid\":{\"text\":\"Invalid password.\"},\"parameters.server_env.error.password_required\":{\"text\":\"Please enter your password.\"},\"parameters.server_env.error.password_unavailable\":{\"text\":\"This account does not have a verifiable local password.\"},\"parameters.server_env.error.read_failed\":{\"text\":\"Unable to read the file {target}.\"},\"parameters.server_env.error.required\":{\"text\":\"Login required.\"},\"parameters.server_env.error.unlock_required\":{\"text\":\"Password confirmation required.\"},\"parameters.server_env.error.write_failed\":{\"text\":\"Unable to write the file {target}. Check permissions or a read-only Docker mount.\"},\"parameters.server_env.feedback.invalid_response\":{\"text\":\"Invalid response.\"},\"parameters.server_env.feedback.operation_done\":{\"text\":\"Operation completed.\"},\"parameters.server_env.feedback.save_failed\":{\"text\":\"Unable to save the file {target}.\"},\"parameters.server_env.feedback.unlock_failed\":{\"text\":\"Verification failed.\"},\"parameters.server_env.feedback.unlock_success\":{\"text\":\"Verification successful.\"},\"parameters.server_env.field.APP_LANG.label\":{\"text\":\"Default Language\"},\"parameters.server_env.field.COOKIE_ROOT_HOST.help\":{\"text\":\"Optional. If provided, forces cookie sharing to this exact root, e.g., dev.opengov.tools to share between dev.opengov.tools and *.dev.opengov.tools without affecting prod.\"},\"parameters.server_env.field.COOKIE_ROOT_HOST.label\":{\"text\":\"Cookie Root\"},\"parameters.server_env.field.COOKIE_SCOPE_MODE.help\":{\"text\":\"Auto isolates dev, beta, and deploy by default in host-only. Environment shares in *.dev.domain.tld. Parent shares in *.domain.tld. Host forces a cookie limited to the current host.\"},\"parameters.server_env.field.COOKIE_SCOPE_MODE.label\":{\"text\":\"Cookie Scope\"},\"parameters.server_env.field.GITHUB_BUGREPORT_LABELS.label\":{\"text\":\"GitHub Labels\"},\"parameters.server_env.field.GITHUB_BUGREPORT_REPO_NAME.label\":{\"text\":\"GitHub Repository Name\"},\"parameters.server_env.field.GITHUB_BUGREPORT_REPO_OWNER.label\":{\"text\":\"GitHub Repository Owner\"},\"parameters.server_env.field.GITHUB_BUGREPORT_TOKEN.label\":{\"text\":\"GitHub Bug Report Token\"},\"parameters.server_env.field.GITHUB_BUGREPORT_USER_AGENT.label\":{\"text\":\"GitHub User-Agent\"},\"parameters.server_env.field.HOME_TITLE.label\":{\"text\":\"Home Page Title\"},\"parameters.server_env.field.MAIL_AUTH.label\":{\"text\":\"SMTP Authentication\"},\"parameters.server_env.field.MAIL_CHARSET.label\":{\"text\":\"Email Charset\"},\"parameters.server_env.field.MAIL_HOST.label\":{\"text\":\"SMTP Server\"},\"parameters.server_env.field.MAIL_PASS.label\":{\"text\":\"SMTP Password\"},\"parameters.server_env.field.MAIL_PORT.label\":{\"text\":\"SMTP Port\"},\"parameters.server_env.field.MAIL_SECURE.label\":{\"text\":\"SMTP Security\"},\"parameters.server_env.field.MAIL_SECURE.placeholder\":{\"text\":\"SSL, tls or empty\"},\"parameters.server_env.field.MAIL_USER.label\":{\"text\":\"SMTP User\"},\"parameters.server_env.field.OPENAI_API_KEY.label\":{\"text\":\"OpenAI Key\"},\"parameters.server_env.field.OPENAI_MODEL.label\":{\"text\":\"OpenAI Model\"},\"parameters.server_env.field.OPENAI_TRANSLATION_MODEL.label\":{\"text\":\"OpenAI Translation Model\"},\"parameters.server_env.field.OPENAI_UPLOAD_API_KEY.label\":{\"text\":\"OpenAI Upload Key\"},\"parameters.server_env.field.ORGANIZATION_SUBDOMAIN_ROUTING.help\":{\"text\":\"Enables URLs like orgname.domain.com. This requires special hosting configuration, with wildcard DNS and a web server capable of accepting subdomains.\"},\"parameters.server_env.field.ORGANIZATION_SUBDOMAIN_ROUTING.label\":{\"text\":\"Organization Subdomains\"},\"parameters.server_env.field.PATREON_CLIENT_ID.label\":{\"text\":\"Patreon Client ID\"},\"parameters.server_env.field.PATREON_CLIENT_SECRET.label\":{\"text\":\"Patreon Client Secret\"},\"parameters.server_env.field.PATREON_CREATOR_CAMPAIGN_ID.label\":{\"text\":\"Patreon Campaign ID\"},\"parameters.server_env.field.PATREON_REDIRECT_URI.label\":{\"text\":\"Patreon Redirect URI\"},\"parameters.server_env.field.PATREON_USER_AGENT.label\":{\"text\":\"Patreon User-Agent\"},\"parameters.server_env.field.PAYPAL_CLIENT_ID.label\":{\"text\":\"PayPal Client ID\"},\"parameters.server_env.field.SITE_TITLE.label\":{\"text\":\"Site Title\"},\"parameters.server_env.field.STADIA_MAPS_API_KEY.label\":{\"text\":\"Stadia Maps Key\"},\"parameters.server_env.field.TELEGRAM_BOT_TOKEN.label\":{\"text\":\"Telegram Token\"},\"parameters.server_env.field.secret_keep.help\":{\"text\":\"Leave empty to keep the current value.\"},\"parameters.server_env.hero.description\":{\"text\":\"This panel allows you to complete global environment file variables outside the database, such as Telegram, Patreon, OpenAI, SMTP, or GitHub.\"},\"parameters.server_env.hero.eyebrow\":{\"text\":\"Sensitive Configuration\"},\"parameters.server_env.hero.target\":{\"text\":\"Target file: {target}\"},\"parameters.server_env.hero.title\":{\"text\":\"Server Admin\"},\"parameters.server_env.hero.unlock_ttl\":{\"text\":\"Verification valid for {minutes} min\"},\"parameters.server_env.option.boolean.false\":{\"text\":\"No\"},\"parameters.server_env.option.boolean.true\":{\"text\":\"Yes\"},\"parameters.server_env.password.unavailable_message\":{\"text\":\"This account does not have a verifiable local password. Editing {target} via this panel is currently blocked.\"},\"parameters.server_env.password.unavailable_title\":{\"text\":\"Password Unavailable\"},\"parameters.server_env.secret.configured\":{\"text\":\"Already Configured\"},\"parameters.server_env.secret.empty\":{\"text\":\"Not Provided\"},\"parameters.server_env.section.ai.intro\":{\"text\":\"Keys and models used by OpenAI functions.\"},\"parameters.server_env.section.ai.title\":{\"text\":\"AI\"},\"parameters.server_env.section.general.intro\":{\"text\":\"Global site settings visible on multiple pages.\"},\"parameters.server_env.section.general.title\":{\"text\":\"General Settings\"},\"parameters.server_env.section.integrations.intro\":{\"text\":\"Optional external server services.\"},\"parameters.server_env.section.integrations.title\":{\"text\":\"Integrations\"},\"parameters.server_env.section.mail.intro\":{\"text\":\"General SMTP server configuration.\"},\"parameters.server_env.section.mail.title\":{\"text\":\"Email\"},\"parameters.server_env.status.saved\":{\"text\":\"The file {target} has been updated.\"},\"parameters.server_env.status.unlocked\":{\"text\":\"Verification successful.\"},\"parameters.server_env.unlock.description\":{\"text\":\"Before displaying the form, enter the password of the connected account. This temporarily unlocks editing of this panel.\"},\"parameters.server_env.unlock.password_label\":{\"text\":\"Current Password\"},\"parameters.server_env.unlock.submit\":{\"text\":\"Open Form\"},\"parameters.server_env.unlock.title\":{\"text\":\"Verify Your Identity\"}}','machine_translated','2026-07-25 11:14:57','2026-07-25 11:15:10'),
+(19,'omo_parameters_server_env','en','53f1e52aa3ba401a5f5971f323bdf1e702282e5ac309e63a500ff365e0dd0a1f','{\"parameters.server_env.action.close\":{\"text\":\"Close\"},\"parameters.server_env.action.save\":{\"text\":\"Save {target}\"},\"parameters.server_env.auth.forbidden_message\":{\"text\":\"This panel is reserved for the server admin.\"},\"parameters.server_env.auth.forbidden_title\":{\"text\":\"Access Denied\"},\"parameters.server_env.auth.required_message\":{\"text\":\"Log in to access this panel.\"},\"parameters.server_env.auth.required_title\":{\"text\":\"Login Required\"},\"parameters.server_env.edit.secret_hint\":{\"text\":\"Secret fields remain hidden. If you leave a secret field empty, the current value is retained.\"},\"parameters.server_env.edit.title\":{\"text\":\"Edit {target}\"},\"parameters.server_env.error.forbidden\":{\"text\":\"Access reserved for the server admin.\"},\"parameters.server_env.error.invalid_field_value\":{\"text\":\"The chosen value for {label} is invalid.\"},\"parameters.server_env.error.password_invalid\":{\"text\":\"Invalid password.\"},\"parameters.server_env.error.password_required\":{\"text\":\"Please enter your password.\"},\"parameters.server_env.error.password_unavailable\":{\"text\":\"This account does not have a verifiable local password.\"},\"parameters.server_env.error.read_failed\":{\"text\":\"Unable to read the file {target}.\"},\"parameters.server_env.error.required\":{\"text\":\"Login required.\"},\"parameters.server_env.error.unlock_required\":{\"text\":\"Password confirmation required.\"},\"parameters.server_env.error.write_failed\":{\"text\":\"Unable to write the file {target}. Check permissions or a read-only Docker mount.\"},\"parameters.server_env.feedback.invalid_response\":{\"text\":\"Invalid response.\"},\"parameters.server_env.feedback.operation_done\":{\"text\":\"Operation completed.\"},\"parameters.server_env.feedback.save_failed\":{\"text\":\"Unable to save the file {target}.\"},\"parameters.server_env.feedback.unlock_failed\":{\"text\":\"Verification failed.\"},\"parameters.server_env.feedback.unlock_success\":{\"text\":\"Verification successful.\"},\"parameters.server_env.field.APP_LANG.label\":{\"text\":\"Default Language\"},\"parameters.server_env.field.COOKIE_ROOT_HOST.help\":{\"text\":\"Optional. If provided, forces cookie sharing to this exact root, e.g., dev.opengov.tools to share between dev.opengov.tools and *.dev.opengov.tools without affecting prod.\"},\"parameters.server_env.field.COOKIE_ROOT_HOST.label\":{\"text\":\"Cookie Root\"},\"parameters.server_env.field.COOKIE_SCOPE_MODE.help\":{\"text\":\"Auto isolates dev, beta, and deploy by default in host-only. Environment shares in *.dev.domain.tld. Parent shares in *.domain.tld. Host forces a cookie limited to the current host.\"},\"parameters.server_env.field.COOKIE_SCOPE_MODE.label\":{\"text\":\"Cookie Scope\"},\"parameters.server_env.field.GITHUB_BUGREPORT_LABELS.label\":{\"text\":\"GitHub Labels\"},\"parameters.server_env.field.GITHUB_BUGREPORT_REPO_NAME.label\":{\"text\":\"GitHub Repository Name\"},\"parameters.server_env.field.GITHUB_BUGREPORT_REPO_OWNER.label\":{\"text\":\"GitHub Repository Owner\"},\"parameters.server_env.field.GITHUB_BUGREPORT_TOKEN.label\":{\"text\":\"GitHub Bug Report Token\"},\"parameters.server_env.field.GITHUB_BUGREPORT_USER_AGENT.label\":{\"text\":\"GitHub User-Agent\"},\"parameters.server_env.field.HOME_TITLE.label\":{\"text\":\"Home Page Title\"},\"parameters.server_env.field.MAIL_AUTH.label\":{\"text\":\"SMTP Authentication\"},\"parameters.server_env.field.MAIL_CHARSET.label\":{\"text\":\"Email Charset\"},\"parameters.server_env.field.MAIL_HOST.label\":{\"text\":\"SMTP Server\"},\"parameters.server_env.field.MAIL_PASS.label\":{\"text\":\"SMTP Password\"},\"parameters.server_env.field.MAIL_PORT.label\":{\"text\":\"SMTP Port\"},\"parameters.server_env.field.MAIL_SECURE.label\":{\"text\":\"SMTP Security\"},\"parameters.server_env.field.MAIL_SECURE.placeholder\":{\"text\":\"SSL, tls or empty\"},\"parameters.server_env.field.MAIL_USER.label\":{\"text\":\"SMTP User\"},\"parameters.server_env.field.OPENAI_API_KEY.label\":{\"text\":\"OpenAI Key\"},\"parameters.server_env.field.OPENAI_MODEL.label\":{\"text\":\"OpenAI Model\"},\"parameters.server_env.field.OPENAI_TRANSLATION_MODEL.label\":{\"text\":\"OpenAI Translation Model\"},\"parameters.server_env.field.OPENAI_UPLOAD_API_KEY.label\":{\"text\":\"OpenAI Upload Key\"},\"parameters.server_env.field.ORGANIZATION_SUBDOMAIN_ROUTING.help\":{\"text\":\"Enables URLs like orgname.domain.com. This requires special hosting configuration, with wildcard DNS and a web server capable of accepting subdomains.\"},\"parameters.server_env.field.ORGANIZATION_SUBDOMAIN_ROUTING.label\":{\"text\":\"Organization Subdomains\"},\"parameters.server_env.field.PATREON_CLIENT_ID.label\":{\"text\":\"Patreon Client ID\"},\"parameters.server_env.field.PATREON_CLIENT_SECRET.label\":{\"text\":\"Patreon Client Secret\"},\"parameters.server_env.field.PATREON_CREATOR_CAMPAIGN_ID.label\":{\"text\":\"Patreon Campaign ID\"},\"parameters.server_env.field.PATREON_REDIRECT_URI.label\":{\"text\":\"Patreon Redirect URI\"},\"parameters.server_env.field.PATREON_USER_AGENT.label\":{\"text\":\"Patreon User-Agent\"},\"parameters.server_env.field.SITE_TITLE.label\":{\"text\":\"Site Title\"},\"parameters.server_env.field.STADIA_MAPS_API_KEY.label\":{\"text\":\"Stadia Maps Key\"},\"parameters.server_env.field.TELEGRAM_BOT_TOKEN.label\":{\"text\":\"Telegram Token\"},\"parameters.server_env.field.secret_keep.help\":{\"text\":\"Leave empty to keep the current value.\"},\"parameters.server_env.hero.description\":{\"text\":\"This panel allows you to complete global environment file variables outside the database, such as Telegram, Patreon, OpenAI, SMTP, or GitHub.\"},\"parameters.server_env.hero.eyebrow\":{\"text\":\"Sensitive Configuration\"},\"parameters.server_env.hero.target\":{\"text\":\"Target file: {target}\"},\"parameters.server_env.hero.title\":{\"text\":\"Server Admin\"},\"parameters.server_env.hero.unlock_ttl\":{\"text\":\"Verification valid for {minutes} min\"},\"parameters.server_env.option.boolean.false\":{\"text\":\"No\"},\"parameters.server_env.option.boolean.true\":{\"text\":\"Yes\"},\"parameters.server_env.password.unavailable_message\":{\"text\":\"This account does not have a verifiable local password. Editing {target} via this panel is currently blocked.\"},\"parameters.server_env.password.unavailable_title\":{\"text\":\"Password Unavailable\"},\"parameters.server_env.secret.configured\":{\"text\":\"Already Configured\"},\"parameters.server_env.secret.empty\":{\"text\":\"Not Provided\"},\"parameters.server_env.section.ai.intro\":{\"text\":\"Keys and models used by OpenAI functions.\"},\"parameters.server_env.section.ai.title\":{\"text\":\"AI\"},\"parameters.server_env.section.general.intro\":{\"text\":\"Global site settings visible on multiple pages.\"},\"parameters.server_env.section.general.title\":{\"text\":\"General Settings\"},\"parameters.server_env.section.integrations.intro\":{\"text\":\"Optional external server services.\"},\"parameters.server_env.section.integrations.title\":{\"text\":\"Integrations\"},\"parameters.server_env.section.mail.intro\":{\"text\":\"General SMTP server configuration.\"},\"parameters.server_env.section.mail.title\":{\"text\":\"Email\"},\"parameters.server_env.status.saved\":{\"text\":\"The file {target} has been updated.\"},\"parameters.server_env.status.unlocked\":{\"text\":\"Verification successful.\"},\"parameters.server_env.unlock.description\":{\"text\":\"Before displaying the form, enter the password of the connected account. This temporarily unlocks editing of this panel.\"},\"parameters.server_env.unlock.password_label\":{\"text\":\"Current Password\"},\"parameters.server_env.unlock.submit\":{\"text\":\"Open Form\"},\"parameters.server_env.unlock.title\":{\"text\":\"Verify Your Identity\"}}','machine_translated','2026-07-25 11:14:57','2026-07-25 11:15:10'),
 (23,'omo_projects','en','ffcce9ebb2bec5eb75efb65337c720625c463ded7016ae23e4bfb3d84e785e04','{\"projects.action.archive\":{\"text\":\"Archive\"},\"projects.action.attach\":{\"text\":\"Attach a project\"},\"projects.action.cancel\":{\"text\":\"Cancel\"},\"projects.action.close\":{\"text\":\"Close\"},\"projects.action.delete\":{\"text\":\"Delete\"},\"projects.action.edit\":{\"text\":\"Edit\"},\"projects.action.move\":{\"text\":\"Move\"},\"projects.action.new\":{\"text\":\"New project\"},\"projects.action.save\":{\"text\":\"Save\"},\"projects.action_error\":{\"text\":\"Unable to update the project.\"},\"projects.archive.confirm\":{\"text\":\"This project is not finished. Archive it anyway?\"},\"projects.attach.empty\":{\"text\":\"No orphan project matches the search.\"},\"projects.attach.hint\":{\"text\":\"Choose an orphan project in the structure.\"},\"projects.attach.search\":{\"text\":\"Search for a project\"},\"projects.attach.select_required\":{\"text\":\"Choose a project to attach.\"},\"projects.attach.submit\":{\"text\":\"Attach\"},\"projects.attach.title\":{\"text\":\"Attach a project\"},\"projects.column.next\":{\"text\":\"Next column\"},\"projects.column.previous\":{\"text\":\"Previous column\"},\"projects.delete.confirm\":{\"text\":\"Permanently delete this project and its {count} subprojects? This action is irreversible.\"},\"projects.detail.badge\":{\"text\":\"Project\"},\"projects.detail.breadcrumb\":{\"text\":\"Parent projects\"},\"projects.detail.breadcrumb.expand\":{\"text\":\"Show all parent projects\"},\"projects.detail.calculated_importance\":{\"text\":\"Calculated strategic importance\"},\"projects.detail.calculated_importance_help\":{\"text\":\"Calculated from declared strategic importance, project chain, and holarchic position.\"},\"projects.detail.context\":{\"text\":\"Context\"},\"projects.detail.created\":{\"text\":\"Created on\"},\"projects.detail.date_end\":{\"text\":\"End\"},\"projects.detail.date_start\":{\"text\":\"Start\"},\"projects.detail.description\":{\"text\":\"Description\"},\"projects.detail.empty_description\":{\"text\":\"No description for this project.\"},\"projects.detail.importance\":{\"text\":\"Strategic importance\"},\"projects.detail.importance_level\":{\"one\":\"{count}/5\",\"other\":\"{count}/5\"},\"projects.detail.none\":{\"text\":\"Not provided\"},\"projects.detail.organisation\":{\"text\":\"Organization\"},\"projects.detail.parent\":{\"text\":\"Parent project\"},\"projects.detail.priority\":{\"text\":\"Priority\"},\"projects.detail.priority_level\":{\"one\":\"P{count}\",\"other\":\"P{count}\"},\"projects.detail.responsible\":{\"text\":\"Responsible\"},\"projects.detail.schedule\":{\"text\":\"Planned dates\"},\"projects.detail.size\":{\"text\":\"Size\"},\"projects.detail.status\":{\"text\":\"Status\"},\"projects.detail.subprojects\":{\"text\":\"Subprojects\"},\"projects.detail.subprojects_empty\":{\"text\":\"No subproject at the moment.\"},\"projects.detail.subprojects_new\":{\"text\":\"New\"},\"projects.drawer.description\":{\"text\":\"Project details and information.\"},\"projects.drawer.title\":{\"text\":\"Project\"},\"projects.empty.children\":{\"text\":\"No project in this context or its direct children.\"},\"projects.empty.column\":{\"text\":\"No project in this column.\"},\"projects.empty.contextual\":{\"text\":\"No project in this context.\"},\"projects.empty.descendants\":{\"text\":\"No project in this context or its descendants.\"},\"projects.error.action\":{\"text\":\"Unknown action.\"},\"projects.error.context\":{\"text\":\"Invalid or inaccessible context.\"},\"projects.error.dates\":{\"text\":\"The end date must be later than or equal to the start date.\"},\"projects.error.forbidden\":{\"text\":\"You cannot modify this project.\"},\"projects.error.holon\":{\"text\":\"The destination holon is invalid or inaccessible.\"},\"projects.error.method\":{\"text\":\"This action must be sent via POST.\"},\"projects.error.not_found\":{\"text\":\"Project not found.\"},\"projects.error.organization\":{\"text\":\"Invalid or inaccessible organization.\"},\"projects.error.save\":{\"text\":\"Unable to save the project.\"},\"projects.error.status\":{\"text\":\"The project status is invalid.\"},\"projects.error.title\":{\"text\":\"The title is required.\"},\"projects.field.capture_mode\":{\"text\":\"Telegram capture mode\"},\"projects.field.description\":{\"text\":\"Description\"},\"projects.field.description_placeholder\":{\"text\":\"What result do you want to achieve?\"},\"projects.field.end_date\":{\"text\":\"Planned end\"},\"projects.field.holon\":{\"text\":\"Associated circle or role\"},\"projects.field.importance\":{\"text\":\"Strategic importance\"},\"projects.field.parent\":{\"text\":\"Parent project\"},\"projects.field.priority\":{\"text\":\"Priority\"},\"projects.field.responsible\":{\"text\":\"Responsible\"},\"projects.field.size\":{\"text\":\"Size\"},\"projects.field.start_date\":{\"text\":\"Planned start\"},\"projects.field.status\":{\"text\":\"Initial status\"},\"projects.field.title\":{\"text\":\"Project title\"},\"projects.form.assignment\":{\"text\":\"Responsibility and hierarchy\"},\"projects.form.attention\":{\"text\":\"Attention level\"},\"projects.form.description\":{\"text\":\"Define the goal, dates, and attention level of the project.\"},\"projects.form.description_field\":{\"text\":\"Simple HTML description\"},\"projects.form.edit_description\":{\"text\":\"Update the goal, dates, and settings of the project.\"},\"projects.form.edit_submit\":{\"text\":\"Save changes\"},\"projects.form.edit_title\":{\"text\":\"Edit project\"},\"projects.form.more_options\":{\"text\":\"Additional options\"},\"projects.form.more_options_toggle\":{\"text\":\"Show or hide additional options\"},\"projects.form.planning\":{\"text\":\"Planning\"},\"projects.form.submit\":{\"text\":\"Create project\"},\"projects.form.title\":{\"text\":\"New project\"},\"projects.holon.choose\":{\"text\":\"Choose a circle or role\"},\"projects.holon_picker.confirm\":{\"text\":\"Use this context\"},\"projects.holon_picker.hint\":{\"text\":\"Choose the circle or role to assign this project.\"},\"projects.holon_picker.title\":{\"text\":\"Choose the circle or role\"},\"projects.importance.none\":{\"text\":\"Not defined\"},\"projects.level.none\":{\"text\":\"Not defined\"},\"projects.list.planned.after_tomorrow\":{\"text\":\"Day after tomorrow\"},\"projects.list.planned.in_progress\":{\"text\":\"In progress\"},\"projects.list.planned.later\":{\"text\":\"Later\"},\"projects.list.planned.next_week\":{\"text\":\"Next week\"},\"projects.list.planned.none\":{\"text\":\"No planning\"},\"projects.list.planned.overdue\":{\"text\":\"Overdue\"},\"projects.list.planned.this_week\":{\"text\":\"This week\"},\"projects.list.planned.tomorrow\":{\"text\":\"Tomorrow\"},\"projects.list.priority.none\":{\"text\":\"No priority\"},\"projects.loading\":{\"text\":\"Loading project...\"},\"projects.loading_error\":{\"text\":\"Unable to load this project.\"},\"projects.move.hint\":{\"text\":\"Choose the destination holon in the structure.\"},\"projects.move.select_required\":{\"text\":\"Choose a destination holon.\"},\"projects.move.submit\":{\"text\":\"Move here\"},\"projects.move.title\":{\"text\":\"Move project\"},\"projects.parent.choose\":{\"text\":\"Choose a project\"},\"projects.parent.none\":{\"text\":\"No parent project\"},\"projects.parent_picker.choose\":{\"text\":\"Use this project\"},\"projects.parent_picker.empty\":{\"text\":\"No project matches the search.\"},\"projects.parent_picker.none\":{\"text\":\"No parent project\"},\"projects.parent_picker.scope_children\":{\"text\":\"Direct children\"},\"projects.parent_picker.scope_descendants\":{\"text\":\"Descendants\"},\"projects.parent_picker.scope_local\":{\"text\":\"Local\"},\"projects.parent_picker.search\":{\"text\":\"Search for a project\"},\"projects.parent_picker.title\":{\"text\":\"Choose the parent project\"},\"projects.priority.none\":{\"text\":\"Not defined\"},\"projects.responsible.help\":{\"text\":\"Only active people from this organization are suggested.\"},\"projects.responsible.none\":{\"text\":\"No responsible\"},\"projects.scope.children\":{\"text\":\"Direct children\"},\"projects.scope.contextual\":{\"text\":\"Local\"},\"projects.scope.descendants\":{\"text\":\"Descendants\"},\"projects.sort.aria\":{\"text\":\"Sort projects\"},\"projects.sort.holon\":{\"text\":\"Holon\"},\"projects.sort.importance\":{\"text\":\"Strategic importance\"},\"projects.sort.planned\":{\"text\":\"Planning\"},\"projects.sort.priority\":{\"text\":\"Priority\"},\"projects.status.blocked\":{\"text\":\"Blocked\"},\"projects.status.done\":{\"text\":\"Done\"},\"projects.status.in_progress\":{\"text\":\"In progress\"},\"projects.status.ready\":{\"text\":\"Ready\"},\"projects.status.review\":{\"text\":\"To review\"},\"projects.status.someday\":{\"text\":\"Someday\"},\"projects.status_move\":{\"text\":\"Change status\"},\"projects.status_update_error\":{\"text\":\"Unable to change status.\"},\"projects.subprojects.label\":{\"text\":\"Subproject status\"},\"projects.success.save\":{\"text\":\"Project saved.\"},\"projects.success.status\":{\"text\":\"Status updated.\"},\"projects.title\":{\"text\":\"Projects\"},\"projects.view.aria\":{\"text\":\"Display mode\"},\"projects.view.kanban\":{\"text\":\"Kanban\"},\"projects.view.list\":{\"text\":\"List\"}}','machine_translated','2026-07-25 11:15:20','2026-07-25 11:15:40'),
 (24,'omo_decisions_index','en','5185290b694c46963ce1b3cce5ac0cf6f985b6957738bd6c2511dcd6d70abc95','{\"decisions.index.action.archive\":{\"text\":\"Archive\"},\"decisions.index.action.confirm_archive\":{\"text\":\"Archive this decision?\"},\"decisions.index.action.confirm_delete\":{\"text\":\"Permanently delete this decision and its related items?\"},\"decisions.index.action.consult\":{\"text\":\"Consult\"},\"decisions.index.action.delete\":{\"text\":\"Delete\"},\"decisions.index.action.edit_continue\":{\"text\":\"Continue editing\"},\"decisions.index.action.error_update\":{\"text\":\"Unable to update this decision at the moment.\"},\"decisions.index.action.export\":{\"text\":\"Export\"},\"decisions.index.action.manage\":{\"text\":\"Manage\"},\"decisions.index.action.more\":{\"text\":\"...\"},\"decisions.index.action.more_aria\":{\"text\":\"More actions for this decision\"},\"decisions.index.action.open\":{\"text\":\"Open\"},\"decisions.index.action.open_editor_title\":{\"text\":\"Decisions\"},\"decisions.index.action.participant_qr_codes\":{\"text\":\"Print QR codes\"},\"decisions.index.action.participate\":{\"text\":\"Participate\"},\"decisions.index.action.view\":{\"text\":\"View\"},\"decisions.index.action.view_edit\":{\"text\":\"View / edit\"},\"decisions.index.action.view_results\":{\"text\":\"View results\"},\"decisions.index.card.invited_email\":{\"text\":\"Email invitation\"},\"decisions.index.card.manage\":{\"text\":\"Management\"},\"decisions.index.card.owner\":{\"text\":\"Created by you\"},\"decisions.index.compact.header.activity\":{\"text\":\"Activity\"},\"decisions.index.compact.header.name\":{\"text\":\"Decision\"},\"decisions.index.compact.header.scope\":{\"text\":\"Structure\"},\"decisions.index.compact.header.status\":{\"text\":\"Status\"},\"decisions.index.context.holon_denied\":{\"text\":\"Access denied to this holon.\"},\"decisions.index.context.holon_not_found\":{\"text\":\"Holon not found for this organization.\"},\"decisions.index.context.organization_denied\":{\"text\":\"Access denied to this organization.\"},\"decisions.index.context.organization_invalid\":{\"text\":\"Invalid organization.\"},\"decisions.index.context.organization_not_found\":{\"text\":\"Organization not found.\"},\"decisions.index.controls.density.aria\":{\"text\":\"Display density of decisions\"},\"decisions.index.controls.density.compact\":{\"text\":\"Compact\"},\"decisions.index.controls.density.detail\":{\"text\":\"Detail\"},\"decisions.index.controls.sort.alpha\":{\"text\":\"Alphabetical\"},\"decisions.index.controls.sort.aria\":{\"text\":\"Sort decisions\"},\"decisions.index.controls.sort.time\":{\"text\":\"Time-based\"},\"decisions.index.deadline_label\":{\"text\":\"Deadline\"},\"decisions.index.description\":{\"text\":\"Centralize consultations and decision-making accessible in your organization here, then open the right flow according to their status.\"},\"decisions.index.empty.cta\":{\"text\":\"Create the first decision\"},\"decisions.index.empty.text\":{\"text\":\"Create your first decision to prepare a vote, majority judgment, consent, or consultation.\"},\"decisions.index.empty.title\":{\"text\":\"No decisions at the moment\"},\"decisions.index.error\":{\"text\":\"Unable to load the list at the moment.\"},\"decisions.index.export.format.coming_soon\":{\"text\":\"Coming soon\"},\"decisions.index.export.format.csv\":{\"text\":\"CSV\"},\"decisions.index.export.format.csv_description\":{\"text\":\"Enriched table with type, block, question, details, and results.\"},\"decisions.index.export.format.json\":{\"text\":\"JSON\"},\"decisions.index.export.format.json_description\":{\"text\":\"Ballot blueprint and structured results, without full dump.\"},\"decisions.index.export.format.pdf\":{\"text\":\"PDF\"},\"decisions.index.export.format.pdf_description\":{\"text\":\"Presentation version prepared for later.\"},\"decisions.index.export.format.xml\":{\"text\":\"XML\"},\"decisions.index.export.format.xml_description\":{\"text\":\"Same structured content as JSON, in XML format.\"},\"decisions.index.export.modal_intro\":{\"text\":\"Choose the export format suitable for this decision-making mode.\"},\"decisions.index.export.modal_title\":{\"text\":\"Export this ballot\"},\"decisions.index.export.open\":{\"text\":\"Download\"},\"decisions.index.filters.holon.all\":{\"text\":\"All structures\"},\"decisions.index.filters.holon.label\":{\"text\":\"Structure\"},\"decisions.index.filters.holon.none\":{\"text\":\"Without structure\"},\"decisions.index.filters.method.all\":{\"text\":\"All methods\"},\"decisions.index.filters.method.consent\":{\"text\":\"Consent\"},\"decisions.index.filters.method.label\":{\"text\":\"Method\"},\"decisions.index.filters.method.majority_judgment\":{\"text\":\"Majority judgment\"},\"decisions.index.filters.method.simple_vote\":{\"text\":\"Simple vote\"},\"decisions.index.filters.reset\":{\"text\":\"Reset\"},\"decisions.index.filters.search.label\":{\"text\":\"Search by title\"},\"decisions.index.filters.search.placeholder\":{\"text\":\"Search for a decision\"},\"decisions.index.filters.status.active\":{\"text\":\"Active\"},\"decisions.index.filters.status.all\":{\"text\":\"All\"},\"decisions.index.filters.status.archived\":{\"text\":\"Archived\"},\"decisions.index.filters.status.consultation\":{\"text\":\"In consultation\"},\"decisions.index.filters.status.draft\":{\"text\":\"In preparation\"},\"decisions.index.filters.status.evaluation\":{\"text\":\"In evaluation\"},\"decisions.index.filters.status.results\":{\"text\":\"Results\"},\"decisions.index.filters.status.scheduled\":{\"text\":\"Scheduled\"},\"decisions.index.filters.toggle.hide\":{\"text\":\"Hide filters\"},\"decisions.index.filters.toggle.show\":{\"text\":\"Show filters\"},\"decisions.index.filters.type.all\":{\"text\":\"All types\"},\"decisions.index.filters.type.consultation\":{\"text\":\"Consultative\"},\"decisions.index.filters.type.decision\":{\"text\":\"Decision-making\"},\"decisions.index.filters.type.label\":{\"text\":\"Type\"},\"decisions.index.group.earlier\":{\"text\":\"Earlier\"},\"decisions.index.group.last_month\":{\"text\":\"Last month\"},\"decisions.index.group.last_week\":{\"text\":\"Last week\"},\"decisions.index.group.last_year\":{\"text\":\"Last year\"},\"decisions.index.group.this_month\":{\"text\":\"This month\"},\"decisions.index.group.this_week\":{\"text\":\"This week\"},\"decisions.index.group.this_year\":{\"text\":\"This year\"},\"decisions.index.group.today\":{\"text\":\"Today\"},\"decisions.index.group.too_far\":{\"text\":\"Too far\"},\"decisions.index.group.yesterday\":{\"text\":\"Yesterday\"},\"decisions.index.last_activity_label\":{\"text\":\"Last activity\"},\"decisions.index.loading\":{\"text\":\"Loading decisions…\"},\"decisions.index.method_label\":{\"text\":\"Method\"},\"decisions.index.new\":{\"text\":\"New decision\"},\"decisions.index.no_holon\":{\"text\":\"No linked structure\"},\"decisions.index.no_results.text\":{\"text\":\"Try another status, broaden the search, or reset the filters.\"},\"decisions.index.no_results.title\":{\"text\":\"No results with these filters\"},\"decisions.index.owner_label\":{\"text\":\"In charge\"},\"decisions.index.participants_label\":{\"text\":\"Participants\"},\"decisions.index.proposals_label\":{\"text\":\"Proposals\"},\"decisions.index.responses_label\":{\"text\":\"Responses\"},\"decisions.index.scope.children\":{\"text\":\"Direct children\"},\"decisions.index.scope.contextual\":{\"text\":\"Contextual\"},\"decisions.index.scope.descendants\":{\"text\":\"Descendants\"},\"decisions.index.scope_label\":{\"text\":\"Structure\"},\"decisions.index.title\":{\"text\":\"Decisions\"},\"decisions.index.type_label\":{\"text\":\"Type\"}}','machine_translated','2026-07-25 11:15:26','2026-07-25 11:15:40'),
 (27,'omo_policy','en','f8552f359ef3640d166c6644fc54771ee825759d8085d611bf7567fde4012d66','{\"policy.close\":{\"text\":\"Close\"},\"policy.description\":{\"text\":\"Rules applicable to the current context.\"},\"policy.description_label\":{\"text\":\"Rule\"},\"policy.drawer.description\":{\"text\":\"This rule will be linked to the current context.\"},\"policy.drawer.title\":{\"text\":\"New local rule\"},\"policy.empty\":{\"text\":\"No rules in this context.\"},\"policy.error.context\":{\"text\":\"Invalid or inaccessible context.\"},\"policy.error.forbidden\":{\"text\":\"You cannot create a rule in this context.\"},\"policy.error.load\":{\"text\":\"Unable to load the form.\"},\"policy.error.method\":{\"text\":\"This action must be sent via POST.\"},\"policy.error.save\":{\"text\":\"Unable to save the rule.\"},\"policy.expiration\":{\"text\":\"Expires on {date}\"},\"policy.field.description\":{\"text\":\"Rule\"},\"policy.field.expiration_date\":{\"text\":\"Expiration date\"},\"policy.field.intention\":{\"text\":\"Intention\"},\"policy.field.review_date\":{\"text\":\"Review date\"},\"policy.field.title\":{\"text\":\"Title\"},\"policy.intention\":{\"text\":\"Intention\"},\"policy.new\":{\"text\":\"New rule\"},\"policy.review\":{\"text\":\"To be reviewed on {date}\"},\"policy.save\":{\"text\":\"Save\"},\"policy.success.save\":{\"text\":\"Rule saved.\"},\"policy.title\":{\"text\":\"Regulation\"}}','machine_translated','2026-07-25 11:15:46','2026-07-25 11:15:50'),
@@ -4341,13 +4950,15 @@ CREATE TABLE `user` (
   `dateconnexion` datetime DEFAULT NULL,
   `active` tinyint(1) NOT NULL DEFAULT 0,
   `siteadmin` tinyint(1) NOT NULL DEFAULT 0,
-  `code` varchar(30) DEFAULT NULL,
+  `code` varchar(64) DEFAULT NULL,
   `codeexpiration` datetime DEFAULT NULL,
   `parameters` mediumtext DEFAULT NULL,
   `param_easypv` mediumtext DEFAULT NULL,
   `param_easymemo` mediumtext DEFAULT NULL,
   `param_easycircle` mediumtext DEFAULT NULL,
   `telegramID` varchar(100) DEFAULT NULL,
+  `security_version` int(10) unsigned NOT NULL DEFAULT 0,
+  `activation_pending` tinyint(1) NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=244 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -4359,9 +4970,9 @@ CREATE TABLE `user` (
 LOCK TABLES `user` WRITE;
 /*!40000 ALTER TABLE `user` DISABLE KEYS */;
 INSERT INTO `user` VALUES
-(1,'admin@org1.opengov.tools',NULL,'Org1',NULL,NULL,NULL,'Admin','Admin Org1',NULL,NULL,0,0,NULL,'2026-09-28 19:22:04',NULL,1,1,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(2,'member1@org1.opengov.tools',NULL,'Org1',NULL,NULL,NULL,'Membre','Membre Org1',NULL,NULL,0,0,NULL,'2026-09-28 19:22:04',NULL,1,0,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
-(3,'admin@org2.opengov.tools',NULL,'Org2',NULL,NULL,NULL,'Admin','Admin Org2',NULL,NULL,0,0,NULL,'2026-09-28 19:22:04',NULL,1,1,NULL,NULL,NULL,NULL,NULL,NULL,NULL);
+(1,'admin@org1.opengov.tools',NULL,'Org1',NULL,NULL,NULL,'Admin','Admin Org1',NULL,NULL,0,0,NULL,'2026-09-28 19:22:04',NULL,1,1,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0,0),
+(2,'member1@org1.opengov.tools',NULL,'Org1',NULL,NULL,NULL,'Membre','Membre Org1',NULL,NULL,0,0,NULL,'2026-09-28 19:22:04',NULL,1,0,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0,0),
+(3,'admin@org2.opengov.tools',NULL,'Org2',NULL,NULL,NULL,'Admin','Admin Org2',NULL,NULL,0,0,NULL,'2026-09-28 19:22:04',NULL,1,1,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0,0);
 /*!40000 ALTER TABLE `user` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -4777,52 +5388,6 @@ LOCK TABLES `work_time` WRITE;
 /*!40000 ALTER TABLE `work_time` DISABLE KEYS */;
 /*!40000 ALTER TABLE `work_time` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Dumping events for database 'omodev'
---
-
---
--- Dumping routines for database 'omodev'
---
-CREATE TABLE IF NOT EXISTS `project_indicator` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `IDproject` int(11) NOT NULL,
-  `IDstatindicator` int(11) NOT NULL,
-  `datecreation` datetime NOT NULL DEFAULT current_timestamp(),
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uniq_project_indicator` (`IDproject`, `IDstatindicator`),
-  KEY `idx_project_indicator_indicator` (`IDstatindicator`),
-  CONSTRAINT `fk_project_indicator_project` FOREIGN KEY (`IDproject`) REFERENCES `project` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_project_indicator_indicator` FOREIGN KEY (`IDstatindicator`) REFERENCES `stat_indicator` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE IF NOT EXISTS `project_recurring_task` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `IDproject` int(11) NOT NULL,
-  `IDrecurringtask` int(11) NOT NULL,
-  `datecreation` datetime NOT NULL DEFAULT current_timestamp(),
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uniq_project_recurring_task` (`IDproject`, `IDrecurringtask`),
-  KEY `idx_project_recurring_task_task` (`IDrecurringtask`),
-  CONSTRAINT `fk_project_recurring_task_project` FOREIGN KEY (`IDproject`) REFERENCES `project` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_project_recurring_task_task` FOREIGN KEY (`IDrecurringtask`) REFERENCES `recurring_task` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Automatic backups start disabled; delivery state is specific to each installation.
-CREATE TABLE IF NOT EXISTS `organization_backup` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `IDorganization` int NOT NULL,
-  `enabled` tinyint(1) NOT NULL DEFAULT 0,
-  `email` varchar(254) DEFAULT NULL,
-  `frequency` varchar(3) NOT NULL DEFAULT '1m',
-  `last_sent_at` datetime DEFAULT NULL,
-  `last_attempt_at` datetime DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `organization_backup_organization` (`IDorganization`),
-  CONSTRAINT `organization_backup_organization_fk` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
@@ -4833,90 +5398,4 @@ CREATE TABLE IF NOT EXISTS `organization_backup` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*M!100616 SET NOTE_VERBOSITY=@OLD_NOTE_VERBOSITY */;
 
--- Dump completed on 2026-09-28 19:23:49
-
--- Empty MCP OAuth schema exported from a fresh seed database after its migrations.
-/*M!999999\- enable the sandbox mode */
-
-/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
-/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
-/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
-/*!40101 SET NAMES utf8mb4 */;
-/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
-/*!40103 SET TIME_ZONE='+00:00' */;
-/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
-/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
-/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
-/*M!100616 SET @OLD_NOTE_VERBOSITY=@@NOTE_VERBOSITY, NOTE_VERBOSITY=0 */;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE `mcp_oauth_client` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `client_id` varchar(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
-  `name` varchar(150) NOT NULL,
-  `redirect_uris` text NOT NULL,
-  `created_at` bigint(20) NOT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `mcp_client_identifier` (`client_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE `mcp_oauth_grant` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `IDclient` int(11) NOT NULL,
-  `IDuser` int(11) NOT NULL,
-  `IDorganization` int(11) NOT NULL,
-  `resource` varchar(512) NOT NULL,
-  `scope` varchar(100) NOT NULL,
-  `redirect_uri` varchar(2048) NOT NULL,
-  `code_hash` char(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
-  `code_challenge` varchar(43) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
-  `code_expires_at` bigint(20) NOT NULL,
-  `code_used_at` bigint(20) DEFAULT NULL,
-  `access_hash` char(64) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL,
-  `access_expires_at` bigint(20) DEFAULT NULL,
-  `refresh_hash` char(64) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL,
-  `refresh_expires_at` bigint(20) DEFAULT NULL,
-  `revoked_at` bigint(20) DEFAULT NULL,
-  `created_at` bigint(20) NOT NULL,
-  `used_refresh_hashes` mediumtext DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `mcp_grant_code` (`code_hash`),
-  UNIQUE KEY `mcp_grant_access` (`access_hash`),
-  UNIQUE KEY `mcp_grant_refresh` (`refresh_hash`),
-  KEY `mcp_grant_owner` (`IDuser`,`created_at`),
-  KEY `mcp_grant_client_fk` (`IDclient`),
-  KEY `mcp_grant_organization_fk` (`IDorganization`),
-  CONSTRAINT `mcp_grant_client_fk` FOREIGN KEY (`IDclient`) REFERENCES `mcp_oauth_client` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `mcp_grant_organization_fk` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `mcp_grant_user_fk` FOREIGN KEY (`IDuser`) REFERENCES `user` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
--- @migration
--- Atomic creation and replay of MCP calendar requests; no private agenda data stored.
-CREATE TABLE IF NOT EXISTS `mcp_event_creation` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `IDuser` int NOT NULL,
-  `IDorganization` int NOT NULL,
-  `IDevent` int DEFAULT NULL,
-  `key_hash` char(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
-  `payload_hash` char(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
-  `completed` tinyint NOT NULL DEFAULT 0,
-  `created_at` bigint NOT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `mcp_event_request` (`IDuser`, `IDorganization`, `key_hash`),
-  CONSTRAINT `mcp_event_user_fk` FOREIGN KEY (`IDuser`) REFERENCES `user` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `mcp_event_org_fk` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `mcp_event_result_fk` FOREIGN KEY (`IDevent`) REFERENCES `event` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
-
-/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
-/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
-/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
-/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
-/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
-/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
-/*M!100616 SET NOTE_VERBOSITY=@OLD_NOTE_VERBOSITY */;
+-- Dump completed

@@ -87,12 +87,17 @@ function omoObjectMailIcon(string $name = 'mail'): string
     ];
     return '<svg class="object-mail-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' . ($paths[$name] ?? $paths['mail']) . '</svg>';
 }
-function omoObjectMailButton(int $oid, string $type, int $id, string $attribute = '', bool $menuItem = false): void
+function omoObjectMailButton(int $oid, string $type, int $id, string $attribute = '', bool $menuItem = false, bool $deferAudience = false): void
 {
     if (!in_array($attribute, ['', 'data-omo-subdrawer-action', 'data-omo-calendar-drawer-action'], true)) return;
-    try { $audience = \dbObject\ObjectAudience::resolve($oid, $type, $id); }
-    catch (DomainException $error) { return; }
-    if (!$audience['can_send'] || !$audience['recipients']) return;
+    // The caller has already authorized the object; the composer validates recipients on opening/sending.
+    if ($deferAudience) {
+        if (commonGetCurrentUserId() <= 0 || commonGetCurrentShareLink()) return;
+    } else {
+        try { $audience = \dbObject\ObjectAudience::resolve($oid, $type, $id); }
+        catch (DomainException $error) { return; }
+        if (!$audience['can_send'] || !$audience['recipients']) return;
+    }
     $url = '/omo/api/object_mail/index.php?' . http_build_query(['oid' => $oid, 'object_type' => $type, 'object_id' => $id]);
     echo '<button type="button" class="' . ($menuItem ? 'generic-menu-item' : 'generic-action-button generic-action-button--secondary') . '" ' . ($menuItem ? 'role="menuitem" ' : '') . $attribute
         . ' data-object-mail-open="' . omoObjectMailEscape($url) . '" data-object-mail-error="' . omoObjectMailEscape(omoObjectMailT('popup_unavailable'))

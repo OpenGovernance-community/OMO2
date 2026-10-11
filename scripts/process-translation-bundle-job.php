@@ -218,6 +218,12 @@ if ($isCli) {
     $verbose = translationWorkerParseBoolFlag($_GET['verbose'] ?? ($_POST['verbose'] ?? '0'));
 }
 
+// Leave queued translations pending until the administrator enables text AI again.
+if (commonAiGetProvider() === 'disabled') {
+    if ($verbose) translationWorkerWriteInfo('[translation-worker] Text AI is disabled.' . PHP_EOL);
+    exit(0);
+}
+
 if ($jobId > 0) {
     $job = \dbObject\TranslationBundleRefreshJob::claimPendingById($jobId);
 

@@ -83,32 +83,33 @@
     transform: translateY(-1px);
 }
 
-.calendar-freebusy-day[aria-current="date"] {
+button.calendar-freebusy-day[aria-current="date"] {
     border-color: var(--color-primary, #2563eb);
     box-shadow: inset 0 0 0 1px var(--color-primary, #2563eb);
 }
 
-.calendar-freebusy-day[data-state="free"] {
-    border-color: #bfe4d0;
-    background: #f0fbf5;
-    color: #166534;
+:is(.calendar-freebusy-day, .calendar-freebusy-slot)[data-state="free"] {
+    --availability-status-color: var(--color-success, #16a34a);
 }
 
 .calendar-freebusy-day[data-state="partial"] {
-    border-color: #f0d89c;
-    background: #fff9ea;
-    color: #8a5a08;
+    --availability-status-color: var(--color-warning, #f59e0b);
 }
 
-.calendar-freebusy-day[data-state="full"] {
-    border-color: #e4c8c4;
-    background: #fff5f3;
-    color: #9f3024;
+:is(.calendar-freebusy-day, .calendar-freebusy-slot):is([data-state="full"], [data-state="busy"]) {
+    --availability-status-color: var(--color-danger, #dc2626);
+}
+
+/* Status tints follow the surface and text palette in every color style and theme. */
+:is(.calendar-freebusy-day, .calendar-freebusy-slot):is([data-state="free"], [data-state="partial"], [data-state="full"], [data-state="busy"]) {
+    border-color: color-mix(in srgb, var(--availability-status-color) 35%, var(--color-border, #dbe4ee));
+    background: color-mix(in srgb, var(--availability-status-color) 10%, var(--color-surface, #fff));
+    color: color-mix(in srgb, var(--availability-status-color) 45%, var(--color-text, #1f2937));
 }
 
 .calendar-freebusy-day[data-state="closed"] {
     background: var(--color-surface-alt, #f1f5f9);
-    color: var(--color-text-light, #94a3b8);
+    color: color-mix(in srgb, var(--color-text-light, #64748b) 85%, var(--color-text, #1f2937));
 }
 
 .calendar-freebusy-legend {
@@ -135,9 +136,9 @@
     background: var(--color-surface-alt, #e2e8f0);
 }
 
-.calendar-freebusy-legend li[data-state="free"] span { background: #35b779; }
-.calendar-freebusy-legend li[data-state="partial"] span { background: #d99a1b; }
-.calendar-freebusy-legend li[data-state="full"] span { background: #c65b50; }
+.calendar-freebusy-legend li[data-state="free"] span { background: var(--color-success, #16a34a); }
+.calendar-freebusy-legend li[data-state="partial"] span { background: var(--color-warning, #f59e0b); }
+.calendar-freebusy-legend li[data-state="full"] span { background: var(--color-danger, #dc2626); }
 
 .calendar-freebusy-empty {
     display: grid;
@@ -216,33 +217,19 @@ button.calendar-freebusy-slot.is-anchor {
 }
 
 .calendar-freebusy-slot time {
-    color: var(--color-text, #1f2937);
+    color: inherit;
     font-weight: 700;
-}
-
-.calendar-freebusy-slot[data-state="busy"] {
-    border-color: #e4c8c4;
-    background: #fff7f5;
-    color: #9f3024;
 }
 
 /* The event preview supplies a hue derived from busy people / considered people. */
 .calendar-freebusy-slot[data-state="busy"][data-busy-count],
 .calendar-freebusy-day[data-busy-slots] {
-    border-color: hsl(var(--param-freebusy-busy-hue, 0) 65% 77%);
-    background: hsl(var(--param-freebusy-busy-hue, 0) 85% 93%);
-    color: hsl(var(--param-freebusy-busy-hue, 0) 65% 30%);
+    --availability-status-color: hsl(var(--param-freebusy-busy-hue, 0) 75% 50%);
 }
 
 .calendar-freebusy-legend li[data-state="occupation"] span {
     width: 48px;
     background: linear-gradient(to right, hsl(48 75% 60%), hsl(0 65% 60%));
-}
-
-.calendar-freebusy-slot[data-state="free"] {
-    border-color: #c7e6d5;
-    background: #f6fcf8;
-    color: #27724a;
 }
 
 .calendar-freebusy-pause {
@@ -280,4 +267,82 @@ button.calendar-freebusy-slot.is-anchor {
     .calendar-freebusy-day {
         min-height: 34px;
     }
+}
+
+.omo-calendar-create__preview-feedback {
+    color: var(--color-text-light, #64748b);
+}
+
+.omo-calendar-create__preview-feedback.is-error {
+    color: var(--color-danger, #b42318);
+}
+
+.omo-calendar-create__preview-loading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--color-text-light, #64748b);
+}
+
+.omo-calendar-create__preview-loading::before {
+    width: 16px;
+    height: 16px;
+    border: 2px solid color-mix(in srgb, var(--color-primary, #2563eb) 22%, transparent);
+    border-top-color: var(--color-primary, #2563eb);
+    border-radius: 50%;
+    content: "";
+    animation: omo-calendar-preview-spin 0.8s linear infinite;
+}
+
+.omo-calendar-create__preview-warning {
+    margin: 0 0 10px;
+    color: color-mix(in srgb, var(--color-warning, #f59e0b) 45%, var(--color-text, #1f2937));
+    font-size: 0.85rem;
+}
+
+.omo-calendar-create__preview-people {
+    display: grid;
+    gap: 8px;
+    margin-bottom: 14px;
+    color: var(--color-text, #1f2937);
+    font-size: 0.86rem;
+}
+
+.omo-calendar-create__preview-people ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.omo-calendar-create__preview-people li {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 9px;
+    border: 1px solid var(--color-border, #dbe4ee);
+    border-radius: 999px;
+    background: var(--color-surface, #fff);
+}
+
+.omo-calendar-create__preview-people li span {
+    color: var(--color-text-light, #64748b);
+    font-size: 0.75rem;
+}
+
+.omo-calendar-create__preview-people label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+}
+
+.omo-calendar-create__preview-people li:has(input:not(:checked)) {
+    opacity: 0.6;
+}
+
+@keyframes omo-calendar-preview-spin {
+    to { transform: rotate(360deg); }
 }

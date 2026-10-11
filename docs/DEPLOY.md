@@ -31,10 +31,14 @@ Si aucun fichier `.env` n'est present, le site redirige automatiquement vers `in
 L'assistant permet de :
 
 - renseigner les acces MySQL
+- renseigner l origine HTTPS du site pour les liens de connexion (sans chemin, par exemple `https://exemple.org`)
 - verifier l'envoi d'e-mail avec un code recu par mail
-- choisir le mode d'acces aux organisations
 - creer automatiquement le fichier `.env`
 - initialiser la base de donnees de depart
+
+L assistant demande seulement les informations du site, les acces MySQL, le compte administrateur et le SMTP necessaire a la verification e-mail. Les cles Patreon, Telegram, IA et autres integrations ne sont pas demandees a cette etape. Le fichier cree reprend les variables de `.env.example` ; les secrets de limitation des connexions et de chiffrement sont generes automatiquement pour cette installation.
+
+Apres connexion avec l administrateur, activer le mode administrateur du site puis ouvrir **Parametres > Administration du serveur**. Les reglages generaux restent visibles ; les onglets des services permettent de completer les integrations optionnelles. Sous les onglets, l accordeon **Reglages techniques**, ferme au depart, propose six rubriques repliees : adresse et hebergement, MySQL, connexions et alertes, cles de protection, maintenance, journaux et diagnostic. Les aides **?** expliquent leur role, les valeurs automatiques et les cas qui demandent une intervention. Son avertissement rappelle les risques de coupure du site ou de perte d acces aux donnees chiffrees ; les acces MySQL demandent en plus de cocher explicitement leur modification. **Push** et **MCP** ont leurs onglets ; le chemin PHP des notifications se trouve dans Push. Les variables inconnues ne sont pas ajoutees au formulaire, mais restent conservees dans le fichier. Les anciens parametres GitHub Projects inutilises sont retires au prochain enregistrement. Les valeurs deja configurees restent conservees lorsqu un secret ou un acces MySQL est laisse vide. Les cles de chiffrement doivent etre sauvegardees et conservees pour pouvoir relire les donnees existantes.
 
 Le parcours le plus simple pour une premiere installation est donc :
 
@@ -126,6 +130,28 @@ Ou via l'environnement :
 ```env
 DB_MIGRATION_DATABASES=base1,base2
 ```
+
+### Acces IA du createur Patreon
+
+Le createur peut utiliser les fonctions IA sans contribuer a sa propre campagne.
+Renseigner dans le `.env` de chaque serveur concerne, ou dans les parametres
+serveur / Integrations, l identifiant numerique de son compte Patreon :
+
+```env
+PATREON_CREATOR_USER_ID=123456789
+```
+
+Remplacer cet exemple par l ID utilisateur Patreon reel, affiche en lecture seule
+dans Mon profil > Patreon, sous ID utilisateur Patreon, apres connexion et
+synchronisation du compte. Ce n est ni l ID de campagne, ni l ID utilisateur OMO,
+ni le nom public Patreon. Garder la valeur vide pour desactiver cette exception.
+
+Le compte OMO doit rester relie a ce compte Patreon. La comparaison porte sur
+l identite obtenue par OAuth, pas sur une valeur fournie dans le profil utilisateur.
+Les autorisations Patreon demandees restent limitees a `identity`. La configuration
+OpenAI et la configuration Patreon habituelles restent necessaires. Les autres
+comptes conservent la regle de contribution active strictement positive ; les
+autres avantages Patreon ne sont pas modifies par cette exception IA.
 
 ## 5. Mettre le site a jour plus tard
 
@@ -251,6 +277,22 @@ Le cron HTTP existant reste disponible avec son jeton habituel. Aucun planificat
 CLI, cron HTTP, import et secours navigateur partagent un verrou non bloquant par serveur/base de donnees dans `RUNTIME_LOG_DIR/omo-cron/maintenance-<empreinte>.lock` (par defaut `../log/omo-cron/`). Le navigateur evite aussi une nouvelle execution pendant 60 secondes apres une execution terminee ; les crons forces et la maintenance suivant un import ignorent ce delai, jamais le verrou. Le fichier est conserve apres execution : ne pas le supprimer pendant un traitement.
 
 Le compte CLI et le serveur web doivent pouvoir ouvrir les memes fichiers de verrou en lecture/ecriture. Le verrou est local au systeme de fichiers : pour plusieurs serveurs applicatifs, un repertoire partage supportant `flock` ou une coordination distribuee sera necessaire. Conserver ce repertoire hors de la racine publique, comme les journaux.
+
+## Configuration IA : texte, traduction et transcription
+
+Dans l administration du serveur, l onglet IA contient deux rubriques :
+
+- Texte et traduction : `AI_PROVIDER` (`openai`, `anthropic`, `mistral`, `openai_compatible` ou `disabled`), `AI_API_KEY`, `AI_MODEL` et `AI_TRANSLATION_MODEL`. Les deux modeles appartiennent au meme fournisseur ; un modele plus simple peut servir uniquement aux traductions. Avec Claude, Mistral ou une API compatible, renseigner explicitement le modele principal (par exemple `mistral-small-latest`). Mistral utilise directement `https://api.mistral.ai/v1/chat/completions`. Un changement de fournisseur ou de destination API exige de saisir explicitement la cle du service choisi.
+- Avec `openai_compatible`, `AI_BASE_URL` designe une adresse de base HTTPS sans `/chat/completions`, sans identifiants ni parametres. OpenRouter est preconfigure : `https://openrouter.ai/api/v1`. Une autre API au meme format peut etre saisie, par exemple Mistral (`https://api.mistral.ai/v1`) ou Groq (`https://api.groq.com/openai/v1`). Utiliser la cle et les identifiants complets de modeles de ce service ; choisir des modeles qui prennent en charge les reponses JSON pour les outils qui les demandent. Le client ajoute `/chat/completions` et ne suit pas les redirections HTTP. Cette adresse est ignoree pour les choix OpenAI, Claude et Mistral, et ne modifie pas le service audio.
+- Transcription audio : `TRANSCRIPTION_PROVIDER` (`openai`, `groq`, `mistral` ou `disabled`), `TRANSCRIPTION_API_KEY` et `TRANSCRIPTION_MODEL`. Cette configuration s applique aux dictees dans les documents et aux memos vocaux Telegram. Elle reste independante lorsque le texte utilise un autre fournisseur ou est desactive. Vide, le modele utilise la configuration historique OpenAI ou `gpt-4o-mini-transcribe` pour OpenAI, `whisper-large-v3-turbo` pour Groq, `voxtral-mini-latest` pour Mistral. Le formulaire adapte les modeles par defaut lors du changement de service, en conservant les modeles personnalises. Mistral recoit le fichier en multipart sans les champs OpenAI `prompt` et `response_format`. Une cle texte ne sert de repli audio que si les deux fournisseurs sont OpenAI ou Mistral ; Groq demande une cle dediee. Changer de service exige de saisir sa cle pour eviter de transmettre la precedente a un autre fournisseur.
+
+`AI_PROVIDER=disabled` masque les outils texte, bloque les appels directs et suspend la creation et le traitement des traductions automatiques. Les traductions deja enregistrees restent disponibles ; les travaux en attente sont conserves. Les cles et modeles sont conserves lors de la desactivation, et la transcription conserve son propre interrupteur. Pour tout desactiver, choisir `disabled` pour les deux services.
+
+Les anciennes variables `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_TRANSLATION_MODEL` et les variables de modele audio restent lues si leur equivalent generique n est pas renseigne. L interface affiche les valeurs effectives et les enregistre ensuite sous les nouveaux noms. Une cle texte Claude n est jamais utilisee comme cle de transcription. Les anciennes variables propres a l hebergement restent conservees dans le fichier.
+
+Les fonctions texte, les traductions de l interface et les anciennes traductions a la demande partagent le meme client HTTP. Les outils utilisateur conservent leurs controles Patreon ; la generation des traductions de l interface reste un traitement serveur. Les modeles selectionnes sont utilises tels quels, sans repli automatique vers un autre modele.
+
+References des API : [Mistral texte](https://docs.mistral.ai/resources/migration-guides), [Mistral audio](https://docs.mistral.ai/api/endpoint/audio/transcriptions), [Groq audio](https://console.groq.com/docs/speech-to-text), [Messages Anthropic](https://platform.claude.com/docs/en/api/messages/create), [Chat Completions](https://developers.openai.com/api/reference/resources/chat/subresources/completions/methods/create) et [transcription audio](https://developers.openai.com/api/docs/guides/speech-to-text).
 
 ## 9. Reduire les anciennes images de profil
 

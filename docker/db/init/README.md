@@ -47,14 +47,30 @@ Les annotations locales sur les evenements importes sont conservees grace a
 `external_calendar_event.time_buffers_local`
 (`2026-10-05-02-external-event-local-time-buffers.sql`).
 
+Les evenements OMO utilisent des durees individuelles dans `event_time_buffer`
+(`2026-10-09-02-event-personal-time-buffers.sql`). Les anciennes colonnes de
+`event` sont retirees. Le schema et l historique correspondants du seed ont
+ete regeneres depuis une base temporaire vide, importee puis migree.
+
 Pour une base existante, verifier l'historique `sql_migration` et appliquer les
 migrations manquantes avec `php scripts/run-migrations.php`. Un dump peut contenir
 des changements deja integres sans entree correspondante dans cet historique ;
 il faut reconciler ces entrees avant de relancer les migrations concernees.
 
+Le seed inclut les series de reunions (`event_recurrence`) et les liens des
+occurrences, y compris la protection contre les doublons
+(`2026-10-09-03-event-recurrence.sql`). Il a ete regenere depuis une base
+temporaire vide, importee depuis le seed versionne puis migree ; aucune donnee
+de travail locale n a ete exportee.
+
 Lorsqu une migration est ajoutee a `sql/`, le seed doit etre regenere depuis
 une base locale vide sur laquelle cette migration a ete appliquee. Ainsi, une
 nouvelle instance Docker ne depend d aucun rejeu de migrations.
+
+Les liens vers les documents reutilises entre occurrences sont inclus dans
+`event_shared_document` (`2026-10-10-01-event-shared-document.sql`). La table
+vide et l historique de migration ont ete regeneres depuis une copie vide
+importee du seed, sans exporter les donnees locales de travail.
 
 Le seed inclut les tables vides `mcp_oauth_client` et `mcp_oauth_grant`
 des migrations `2026-10-02-04-mcp-structure-oauth.sql` et

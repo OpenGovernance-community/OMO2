@@ -21,6 +21,7 @@ function availabilityExpect(bool $condition, string $message): void
 function availabilityFixture(string $class, array $values): DbObject
 {
     $object = new $class();
+    if ($class === User::class) { $object->set('active', 1); }
     foreach ($values as $field => $value) { $object->set($field, $value); }
     $result = $object->save();
     availabilityExpect(is_array($result) && !empty($result['status']), 'Fixture save failed: ' . $class . ' ' . json_encode($result));
@@ -53,12 +54,14 @@ try {
         availabilityFixture(UserOrganization::class, ['IDorganization' => $org->getId(), 'IDuser' => $member->getId(), 'active' => 1]);
     }
     $day = new DateTimeImmutable('tomorrow 00:00');
+    availabilityFixture(UserOrganization::class, ['IDorganization' => $other->getId(), 'IDuser' => $guest->getId(), 'active' => 1]);
     $otherHolon = availabilityFixture(\dbObject\Holon::class, ['id' => 0, 'name' => 'Cercle Ancrage',
         'IDorganization' => $other->getId(), 'IDtypeholon' => 2, 'IDuser' => $guest->getId(), 'active' => 1, 'visible' => 1]);
     $busy = availabilityFixture(Event::class, ['IDuser' => $guest->getId(), 'IDorganization' => $other->getId(),
         'IDholon' => $otherHolon->getId(),
         'title' => 'SECRET title', 'description' => 'SECRET details', 'start_at' => $day->setTime(10, 0),
         'end_at' => $day->setTime(11, 0), 'active' => 1, 'status' => Event::STATUS_CONFIRMED]);
+    availabilityFixture(EventInvitation::class, ['IDevent' => $busy->getId(), 'invitation_type' => 'user', 'IDuser' => $guest->getId()]);
     $blocks = ArrayEvent::otherOrganizationBusyBlocks((int)$guest->getId(), (int)$org->getId(), $day, $day->modify('+1 day'));
     availabilityExpect(count($blocks) === 1 && $blocks[0]['title'] === $other->get('name'), 'Other organization shown by name');
     availabilityExpect(!str_contains(json_encode($blocks), 'SECRET') && !isset($blocks[0]['id']), 'No event details or source ID disclosed');
@@ -80,6 +83,7 @@ try {
     $longBusy = availabilityFixture(Event::class, ['IDuser' => $guest->getId(), 'IDorganization' => $other->getId(),
         'title' => 'SECRET long meeting', 'start_at' => $day->setTime(9, 0), 'end_at' => $day->setTime(12, 0),
         'active' => 1, 'status' => Event::STATUS_CONFIRMED]);
+    availabilityFixture(EventInvitation::class, ['IDevent' => $longBusy->getId(), 'invitation_type' => 'user', 'IDuser' => $guest->getId()]);
     $separateReport = $proposed->checkInvitationAvailability([$invite]);
     availabilityExpect(count($separateReport['conflicts']) === 2, 'Overlapping appointments remain separate');
     availabilityExpect($separateReport['conflicts'][0]['start'] === $day->format('Y-m-d') . ' 09:00'
@@ -94,7 +98,7 @@ try {
     $holonInvite->set('invitation_type', 'holon'); $holonInvite->set('IDholon', $holon->getId());
     availabilityExpect(count($proposed->checkInvitationAvailability([$holonInvite])['conflicts']) === 1, 'Holon invite expands to its members');
     $proposed->set('IDholon', $holon->getId());
-    availabilityExpect(count($proposed->checkInvitationAvailability([])['conflicts']) === 1, 'Default holon invitations use the same recipients');
+    availabilityExpect($proposed->checkInvitationAvailability([])['conflicts'] === [], 'The context holon alone does not invite its members');
     $proposed->set('IDholon', null);
     $proposed->set('start_at', $day->setTime(11, 0));
     availabilityExpect($proposed->checkInvitationAvailability([$invite])['conflicts'] === [], 'Touching end/start is not a conflict');
@@ -204,6 +208,7 @@ try {
     if (in_array($argv[1] ?? '', ['--render', '--form', '--post-warning', '--preview'], true)) {
         $busy->set('active', 1); $busy->set('is_all_day', 0); $busy->save();
         $_SESSION['currentUser'] = (int)$guest->getId();
+        $_SESSION['auth_security_version'] = (int)$guest->get('security_version');
         $_SESSION['currentOrganization'] = (int)$org->getId();
         $_SERVER['HTTP_HOST'] = 'localtest.me';
         $_SERVER['REQUEST_METHOD'] = in_array($argv[1], ['--render', '--form'], true) ? 'GET' : 'POST';
@@ -224,7 +229,9 @@ try {
         } elseif ($argv[1] === '--render') {
             $bufferedEvent = availabilityFixture(Event::class, ['IDorganization' => $org->getId(), 'IDuser' => $guest->getId(),
                 'title' => 'Buffered fixture', 'start_at' => $day->setTime(10, 0), 'end_at' => $day->setTime(11, 0),
-                'active' => 1, 'status' => Event::STATUS_CONFIRMED, 'preparation_minutes' => 15, 'closing_minutes' => 20]);
+                'active' => 1, 'status' => Event::STATUS_CONFIRMED]);
+            availabilityFixture(EventInvitation::class, ['IDevent' => $bufferedEvent->getId(), 'invitation_type' => 'user', 'IDuser' => $guest->getId()]);
+            availabilityExpect($bufferedEvent->saveTimeBuffers((int)$guest->getId(), 15, 20), 'Save viewer personal times.');
             ob_start();
             (static function (): void {
                 global $lang, $sourceLang;
@@ -290,7 +297,8 @@ try {
                 'availability_preview' => '1',
                 'month' => $day->format('Y-m'),
                 'date' => $day->format('Y-m-d'),
-                'invitation_user_ids' => [(int)$organizer->getId()],
+                // Availability follows explicit invitations; the owner is not added implicitly.
+                'invitation_user_ids' => [(int)$organizer->getId(), (int)$guest->getId()],
             ];
             ob_start();
             register_shutdown_function(static function () use ($day): void {

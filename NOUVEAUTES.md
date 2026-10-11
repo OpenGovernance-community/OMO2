@@ -1,5 +1,159 @@
 # Journal Des Nouveautes
 
+- Integration (2026-10-11) : fusion de Dev dans Sprint, avec conservation du module Scrum et des nouveautes des deux branches.
+
+- Performances / caches partages (2026-10-11) : activation commune des caches de lecture et de permissions pour les ecrans de consultation, notamment equipe, projets, politiques, activites, checklists, decisions et espace personnel. Catalogue des applications reutilise aussi pour la liste des applications disponibles et conserve avant la fermeture de session. Les requetes de modification restent hors du cache de lecture. Sur huit ecrans locaux, rendu identique et moins de SQL : politiques 694 -> 178, activites 126 -> 52, equipe 105 -> 74, projets 71 -> 44. Tests de persistance, isolation et invalidation des caches ; SQL dans dbObject, sans migration.
+
+- Calendrier / chargement a la demande et caches (2026-10-11) : reutilisation du cache de permissions en session pour les lectures, invitations chargees a l ouverture de leur onglet ou section, destinataires du mail prepares a l ouverture du formulaire. Les selections restent presentes lors des sauvegardes et apercus de disponibilites sans ouvrir l onglet. Catalogue des applications partage en session, controle de version groupe par requete et invalidation des modifications, y compris depuis une autre session. Mesure locale : detail 117 -> 40 requetes a froid, 26 avec cache de session ; formulaire de creation 203 -> 31 a froid, 17 avec cache. SQL dans dbObject, sans migration.
+
+- Calendrier / detail et disponibilites (2026-10-11) : session liberee avant le rendu du detail, lectures de permissions reutilisees pendant la requete et proprietes des permissions chargees par lot dans dbObject. Mesure locale : detail de 176 a 117 requetes SQL. Tests du chargement des disponibilites au premier clic sur leur onglet et de la sauvegarde : controle des conflits en cas de changement des dates, horaires, journee entiere ou temps personnels, sans recalcul pour une modification du titre seul.
+
+- Calendrier / performances SQL (2026-10-11) : permissions du selecteur d espaces calculees par lot, arborescence et membres charges en groupe. Disponibilites : lecture complete des evenements et regroupement des invitations et inscriptions confirmees, en conservant les droits, les participants historiques et les temps personnels. Mesure locale : formulaire de 1193 a 203 requetes, occupations de 55 a 40 avec les memes resultats. SQL centralise dans dbObject, sans migration ; tests de regression sur les permissions, les invitations et les disponibilites.
+
+- Calendrier / hauteur des invites (2026-10-11) : les sous-onglets occupent toute la hauteur disponible du formulaire. Chaque sous-onglet possede une seule zone de defilement pour son contenu, sans barre verticale supplementaire autour de l arbre ou de la liste.
+
+- Calendrier / disponibilites (2026-10-11) : explication des creneaux communs placee sous le cadre des jours, a l exterieur de celui-ci dans la meme colonne. Les horaires defilent vers le creneau preselectionne, y compris occupe ou entre deux demi-heures, ou vers 8h00 par defaut.
+
+- Calendrier / onglet invites (2026-10-11) : espacement reduit entre les deux niveaux d onglets, sans cumul des styles du premier niveau sur le second. Marge interieure ajoutee aux sous-onglets et explications placees dans des capsules ?. L arbre ouvre les branches menant aux choix sans deplier les roles du cercle selectionne ; a la premiere ouverture, il defile jusqu au premier espace coche.
+
+- Calendrier / document associe (2026-10-11) : type et modele places sur la meme ligne, avec retour en colonne sur mobile. Les explications sur la copie du modele et la creation du document sont regroupees dans une capsule ?.
+
+- Calendrier / aide a la recurrence (2026-10-10) : textes explicatifs regroupes dans des capsules ? pres des reglages concernes, accessibles au survol et au clic. Les explications suivent la frequence et la strategie choisies.
+
+- Calendrier / activation de la recurrence (2026-10-10) : case Reunion recurrente placee sous Journee entiere, avec un espacement vertical resserre entre les deux cases. Elle affiche ou masque le cadre de reglage a son emplacement habituel, au-dessus des temps personnels et de la description.
+
+- Calendrier / formulaire d evenement (2026-10-10) : reunions recurrentes et temps personnels de preparation/cloture places au-dessus de la description. Les temps personnels utilisent le meme cadre partage que la recurrence, avec leur explication dans une capsule d aide ? a cote de la case a cocher. Cocher remplace le libelle par les deux champs a cote de la case ; decocher retablit le libelle, en conservant les durees saisies. La case reste alignee en haut pour ne pas bouger lors du changement.
+
+- Calendrier / autres organisations (2026-10-10) : blocs affiches en gris dans les vues mois et liste, avec le meme style discret que dans les vues semaine et jour.
+
+- Calendrier / compteur mensuel (2026-10-10) : nombre d evenements affiche dans une bulle a cote du nom du mois, comme en vue semaine, a la place du sous-titre. Le libelle complet reste disponible au survol et pour les lecteurs d ecran.
+
+- Calendrier / densite mensuelle (2026-10-10) : marges interieures des jours et des evenements legerement reduites, ainsi que les espacements entre les blocs et leurs informations, pour laisser davantage de place au contenu sur ordinateur et mobile.
+
+- Calendrier / apercu mensuel (2026-10-10) : evenements tries par horaire, avec au maximum les trois premiers en cours ou a venir pour aujourd hui et actualisation automatique. Les autres restent accessibles au clic sur le compteur ; leur horaire et leur titre sont listes au survol ou au focus clavier, en tenant compte des calendriers masques.
+
+- Calendrier / sources affichees (2026-10-10) : capsules avec cases a cocher sous la periode pour afficher ou masquer l organisation courante, les autres organisations et chaque agenda externe sans rechargement dans les quatre vues, y compris mois et liste. Choix conserves pendant la navigation de la session, recherche et evenements replies compatibles. Les autres organisations conservent leurs libelles sans exposer de details supplementaires.
+
+- Deploiement / migrations (2026-10-10) : une variable DB_MIGRATION_DATABASES vide utilise correctement DB_NAME, comme une variable absente. Les listes de bases et les options CLI explicites restent prioritaires.
+
+- Disponibilités / thème sombre (2026-10-10) : les couleurs des jours, créneaux, légendes et avertissements suivent la palette active dans le profil, la création d’événements, le choix de la prochaine réunion et la prise de rendez-vous publique. Sélections et contrastes harmonisés en thèmes clair et sombre.
+
+- Calendrier / textes de récurrence (2026-10-10) : français corrigé dans les formulaires, aides, résumés, confirmations, navigation et notifications, avec accents, apostrophes et ponctuation. Textes centralisés dans les blocs de traduction ; jours de la grille traduisibles et dates affichées dans la langue choisie.
+
+- Calendrier / planification a la cloture (2026-10-10) : la grille se positionne sur l horaire propose apres affichage, meme si le creneau est occupe. Apres creation de la prochaine reunion depuis un PV, l agenda deja ouvert est actualise automatiquement.
+
+- Calendrier / prochaine date (2026-10-10) : suppression de la ligne affichant la duree du modele et la fin prevue. Le calcul du creneau conserve la duree du modele.
+
+- Calendrier / prochaine date indicative (2026-10-10) : le mode de planification a la cloture propose un delai indicatif en jours, stocke dans le champ interval_days existant. La date suggeree suit ce delai depuis la reunion concernee (7 jours par defaut), reste modifiable et conserve la duree du modele. Delai affiche dans le resume de recurrence et explique dans une capsule d aide.
+
+- Calendrier / choix de la prochaine date (2026-10-10) : explications regroupees dans les capsules d aide, espace interieur ajoute et bouton d actualisation retire. Choisir un autre jour conserve l heure saisie et la duree du modele, et reselectionne les creneaux correspondants en les rendant visibles dans la liste. Lisibilite des horaires corrigee en theme sombre.
+
+- Documents / ouverture successive des PAD (2026-10-10) : correction d un appel de fonction inexistant lors du chargement d un document absent de la liste en cache. Apres fermeture d un PAD et retour au calendrier, un autre PAD ouvre maintenant son sous-panneau sans recharger la page. Test de regression sur plusieurs documents absents de la liste.
+
+- Calendrier / horizon des recurrences (2026-10-10) : une serie commencant dans le futur est planifiee pour la duree choisie a partir de son depart, puis l horizon avance avec la date courante. Cela evite les series limitees a quelques occurrences, parfois juste avant un week-end. Les reports au vendredi ou au lundi conservent leur cadence et le cron complete les series existantes sans doublons. Explication ajoutee au formulaire.
+
+- Documents / navigation depuis le calendrier (2026-10-10) : les liens vers un document ciblent le panneau principal, meme apres ouverture et fermeture d un PV contenant un onglet Documents. Les panneaux conserves dans un PV ferme ou replie ne captent plus ces ouvertures ; la navigation locale dans un PV reste independante. Test navigateur couvrant les reouvertures, les liens globaux et l edition.
+
+- Calendrier / prochaine reunion (2026-10-10) : la planification a la cloture du PV et depuis la fiche affiche la meme grille de disponibilites que la creation d evenements. Les membres actuels des espaces invites, agendas OMO, agendas externes et pauses sont pris en compte. Le choix du creneau ou la saisie manuelle fixe le debut ; la duree du modele reste constante, meme avec Maj + clic, et la fin calculee est affichee. Navigation mensuelle, filtre des participants et actualisation disponibles ; affichage et calcul mutualises avec le formulaire existant.
+
+- Calendrier / documents recurrents (2026-10-10) : choix entre de nouveaux documents par occurrence et la reutilisation des memes documents, applique aux prochaines creations. Les PV restent obligatoirement individuels. Les documents partages gardent leur nom, leurs dates et survivent a la suppression des reunions. La recurrence a la cloture exige un PV ; la prochaine date est demandee en relecture et, si elle a ete reportee, a la validation. Controles serveur avec message explicite et migration des liens partages inclus.
+
+- Calendrier / titres dates (2026-10-10) : les dates numeriques correspondant a la reunion source dans son titre et les noms de ses documents sont adaptees a chaque occurrence, y compris a la cloture et lors des deplacements. Formats europeens avec points, barres ou tirets et ISO, annees a deux ou quatre chiffres et heures associees. Les autres dates restent intactes ; un titre de reunion explicitement modifie reste prioritaire.
+
+- Calendrier / navigation recurrente (2026-10-10) : boutons precedent et suivant avant le libelle de recurrence pour parcourir les reunions existantes de la serie par date, y compris les occurrences personnalisees. Les reunions supprimees, annulees ou non accessibles sont ignorees ; les boutons sont desactives aux extremites.
+
+- Calendrier / notifications recurrentes (2026-10-10) : le createur invite recoit aussi les notifications des nouvelles occurrences selon ses preferences, meme si la creation indique explicitement son identite. L exclusion de l auteur reste appliquee aux invitations classiques.
+
+- Calendrier / notifications recurrentes (2026-10-10) : preference par organisation pour les nouvelles occurrences, avec les canaux OMO, notification navigateur, Telegram et e-mail, desactives par defaut. Les invitations indiquent la recurrence. Les creations automatiques et les prochaines dates choisies a la cloture mettent leurs invitations en attente ; le cron les traite selon les preferences, apres validation de la creation et sans doublon lors des passages suivants. Les occurrences creees lors de l enregistrement initial sont traitees apres la sauvegarde.
+
+- Calendrier / enregistrement (2026-10-10) : suppression du doublon Enregistrer cette reunion dans le menu de la fleche. Le bouton principal assure la sauvegarde individuelle ; le menu propose uniquement l action collective.
+
+- Calendrier / occurrences personnalisees (2026-10-10) : libelle clarifie en Occurrence personnalisee de la serie. Enregistrer une reunion seule sans changer son contenu, ses horaires, ses invitations ou ses documents ne la marque plus comme personnalisee et conserve sa reference dans la serie. Les temps personnels de preparation et de cloture ne declenchent pas cette personnalisation.
+
+- Calendrier / recurrence (2026-10-10) : regle affichee en texte dans l edition, avec un bouton Modifier et quatre strategies : replanifier les suivantes, appliquer apres la derniere date planifiee, arreter en conservant les dates ou arreter et supprimer les suivantes en gardant la reunion ouverte. L option collective d enregistrement applique la strategie ; enregistrer cette reunion seule demande confirmation que les changements de recurrence seront ignores. Report du week-end disponible pour tous les X jours, sans doublons en cas de report sur le meme jour. Derniere occurrence : action Supprimer et mettre fin a la recurrence.
+
+- Calendrier / suppression (2026-10-10) : la suppression de cette reunion et des suivantes utilise aussi une confirmation classique du navigateur, avec le rappel de sa portee. La question sur les documents utilise le meme format : OK les supprime aussi, Annuler les conserve.
+
+- Calendrier / detail (2026-10-10) : resume de la recurrence sur une ligne pleine largeur sous l horaire, avec la cadence, les reports de week-end et les indications de reunion personnalisee ou de generation arretee.
+
+- Calendrier / recurrence (2026-10-10) : boutons Enregistrer et Supprimer avec une fleche proposant l action sur cette reunion et les suivantes et expliquant son effet. Une nouvelle cadence replanifie les suivantes deja creees en conservant les precedentes et les exceptions. Decocher la recurrence propose d arreter la generation en conservant les rendez-vous existants. La suppression individuelle utilise une confirmation standard ; la suppression collective inclut les suivantes personnalisees, propose de conserver ou supprimer leurs documents et arrete la generation. Annuler une confirmation ne supprime rien. Le choix de sauvegarde reste conserve apres une alerte de disponibilite.
+
+- Calendrier / recurrence (2026-10-09) : les occurrences et leurs documents sont crees dans l horizon choisi des la premiere sauvegarde ou activation de la recurrence. Plus besoin d une seconde edition ni d attendre le prochain cron ; les passages suivants conservent la protection contre les doublons.
+
+- Calendrier / documents recurrents (2026-10-09) : les noms automatiques des PV utilisent la date et l heure de leur propre reunion, y compris apres un deplacement. Correction des anciens noms encore identiques a celui de la reference, sans modifier les noms personnalises ni le contenu des documents. La planification a la cloture suit la meme regle.
+
+- Calendrier / recurrence (2026-10-09) : correction des horaires d une reunion encore modifiable, meme si sa nouvelle heure de fin est passee. Le lien de recurrence est enregistre sans sauvegarder une seconde fois les horaires ; la protection des reunions deja passees avant la modification reste active.
+
+- Calendrier / reunions recurrentes (2026-10-09) : case de recurrence dans la reunion, cadences hebdomadaire, tous les X jours ou mensuelle avec report du week-end, et creation progressive selon l horizon choisi. Chaque seance dispose de ses propres documents et PV, issus du cadre de reference, avec invitations adaptees aux membres des espaces. Les modifications individuelles restent des exceptions ; une modification collective actualise les suivantes sans ecraser leurs documents prepares. Historique des participants conserve et reunions passees protegees. Autre pratique : demander la prochaine date a la cloture du PV, ou la planifier depuis la reunion. Generation et cloture protegees contre les doublons ; migration et seed Docker inclus.
+
+- Organisations (2026-10-09) : correction du depart d un membre bloque par la mise a jour des references DeferredProposal, meme lorsqu un autre admin reste present. Parametres SQL distincts pour conserver les auteurs, validateurs et executants dans l historique ; protection du dernier admin conservee.
+
+- Calendrier / disponibilites (2026-10-09) : seuls les evenements auxquels la personne est invitee directement, par e-mail, par cercle invite ou inscrite occupent sa disponibilite. Creer un evenement ou appartenir a son cercle de classement ne suffit plus. Les autres evenements restent visibles en plus clair dans leurs cercles, sans remonter dans les autres organisations ni dans les exports personnels ICS / CalDAV. Les agendas CalDAV existants sont resynchronises pour retirer les anciens elements non invites.
+
+- Calendrier / exports (2026-10-09) : CalDAV, abonnements ICS et reservations exportent les horaires reels des rendez-vous, sans etendre leur duree aux temps avant/apres. Rappels personnels au debut de la preparation puis 5 minutes avant ; un seul rappel a 5 minutes si la preparation est absente ou plus courte. Les fichiers remis aux visiteurs ont un rappel a 5 minutes, sans les temps personnels de l organisateur. Les plages de disponibilite ne declenchent pas de rappel. Le cache et les jetons CalDAV sont renouveles pour actualiser les agendas deja synchronises.
+
+- Calendrier (2026-10-09) : les temps de preparation et de cloture sont propres a chaque personne et evenement, y compris les invitations par espace. Les invites sans droit de modification disposent d un formulaire limite a leurs temps personnels, avec un recapitulatif en lecture seule. Disponibilites, reservations publiques et exports personnels utilisent ces durees individuelles. Migration des anciennes durees vers le createur de l evenement ; les invites choisissent leurs propres temps.
+
+- Editeurs HTML / dictee (2026-10-09) : le placeholder disparait immediatement apres l insertion d une transcription ou de HTML, sans frappe supplementaire. Les insertions directes signalent aussi leur changement a la sauvegarde, une seule fois.
+
+- Memos / audio OpenAI (2026-10-09) : retrait du vidage anticipe de MediaRecorder avant son arret, qui laissait les fichiers WebM sans taille ni duree finales et provoquait le refus Audio file might be corrupted or unsupported. Validation avec un vrai enregistrement navigateur et le service OpenAI. Detection du format compatible PHP 8.5 sans finfo_close deprecie.
+
+- Super admin (2026-10-09) : le mode super admin actif leve les restrictions Patreon pour l IA, les domaines d organisation et le signalement de bugs, meme sans configuration Patreon locale. La desactivation du mode retablit les controles habituels ; les services IA et GitHub doivent toujours etre configures.
+
+- Memos / dictee IA (2026-10-09) : les actions IA conservent le focus dans Summernote lorsque leurs boutons se desactivent ; leurs infobulles ne bloquent plus les clics. Les erreurs de transcription affichent le message precis du serveur, meme sur une reponse HTTP en erreur. Progression conservee dans le formulaire, resultat dans les notifications partagees.
+
+- IA (2026-10-09) : Mistral rejoint les fournisseurs de texte ; Groq et Mistral rejoignent la transcription audio avec leurs propres adresses, modeles par defaut et format de requete adapte. Le choix Desactive pour le texte retire les outils correspondants et suspend les nouvelles traductions automatiques, en conservant les reglages et les traductions existantes. La transcription conserve son interrupteur independant. Un changement de service exige de saisir explicitement sa cle API.
+
+- IA (2026-10-09) : ajout du choix API compatible avec OpenRouter par defaut et une adresse de base HTTPS modifiable. Le champ apparait uniquement pour ce choix. Les requetes texte et traduction conservent le format Chat Completions et leurs modeles distincts ; une nouvelle destination demande de remplacer explicitement la cle API, sans reutiliser cette cle pour la transcription audio.
+
+- IA (2026-10-09) : onglet separe en Texte et traduction, puis Transcription audio, avec aides ? sur tous les champs. Choix du fournisseur de texte OpenAI ou Claude (Anthropic), modele principal et modele de traduction distincts. La dictee et les memos Telegram utilisent leur propre cle et modele de transcription, avec possibilite de desactivation. Compatibilite avec les anciennes cles conservee, remplacement explicite de la cle lors d un changement de fournisseur, et respect du modele choisi sans substitution automatique.
+
+- Configuration Push (2026-10-09) : retrait du chemin PHP des notifications de l interface. Ce reglage avance reste documente dans .env.example, avec detection automatique par defaut et conservation des valeurs existantes lors des sauvegardes.
+
+- Configuration MCP (2026-10-09) : seule l adresse publique reste dans l interface, avec une aide precisant que la laisser vide desactive MCP et l API REST associee. Les options HTTP local et origines navigateur restent documentees dans .env.example pour les usages avances ; les valeurs configurees sont conservees lors des sauvegardes.
+
+- Configuration serveur (2026-10-09) : SpaceDeck rejoint EtherCalc et Etherpad dans l onglet Documents. Accordeon technique principal encadre avec toute la barre de titre cliquable. Dans les rubriques, fleche avant le titre et aide ? juste apres, avec ouverture au clavier conservee.
+
+- Configuration technique (2026-10-09) : rangement en six rubriques repliees (hebergement, MySQL, connexions et alertes, cles de protection, maintenance, journaux), avec aides ? pour chaque rubrique et chaque champ. Retrait de l import automatique des variables inconnues et des anciens parametres GitHub Projects inutilises ; conservation des autres variables propres a l hebergement. Le chemin PHP des notifications rejoint Push. Les acces MySQL restent verrouilles par defaut.
+
+- Projets (2026-10-09) : un document, indicateur ou tache recurrente lie a plusieurs projets reste obligatoirement visible dans l espace. La case est cochee et verrouillee avec une explication ; les sauvegardes et les listes appliquent aussi cette regle, y compris pour les liaisons existantes. Avec un seul projet, la visibilite redevient modifiable.
+
+- Installation / configuration (2026-10-09) : assistant limite a l adresse publique du site, aux acces MySQL, au compte administrateur et au SMTP de verification. Les integrations se completent ensuite dans l administration du serveur. Le .env initial reprend tous les champs du modele, avec generation des secrets de protection et de chiffrement. Sous les onglets, un accordeon Reglages techniques ferme au depart signale les risques de coupure et de perte d acces aux donnees chiffrees ; les acces MySQL demandent une activation explicite avant modification. Reglages de securite, journaux, push, MCP et variables propres a l hebergement accessibles ensuite, sans exposer les secrets.
+
+- Projets (2026-10-09) : la case Afficher dans l espace utilise le meme affichage en haut a droite des formulaires Documents, Indicateurs et Taches recurrentes, avec une aide partagee et une ligne de separation uniquement quand la case est presente. Le formulaire des indicateurs reprend les sous-titres d identite et de Recurrence des taches recurrentes. Les champs caches ne creent plus de separateur avant la premiere section visible d un formulaire.
+
+- Projets (2026-10-09) : indicateurs et taches recurrentes reprennent la case Afficher dans l espace des documents. Un element lie a un projet est masque dans les listes de l espace par defaut, y compris apres import ; la case reste modifiable dans son formulaire pour l afficher aux deux endroits. Les alertes et les acces depuis le projet sont conserves.
+
+- Parametres serveur (2026-10-09) : reglages generaux toujours visibles au-dessus des onglets GitHub, Patreon, Telegram, Documents (EtherCalc et Etherpad), SpaceDeck, E-mail, IA et Cartographie. Retrait des cadres imbriques et de leur marge. Bulles d aide conservees, secret du webhook Telegram editable sans exposer sa valeur, tests de connexion conserves. Nextcloud et Collabora restent dans les reglages d organisation.
+
+- Soutien (2026-10-09) : retrait de l integration PayPal, des boutons d abonnement et de don, des scripts charges sur chaque page et des champs de configuration et d installation. Le soutien passe par Patreon ; les anciennes cles d environnement sont retirees lors du prochain enregistrement de la configuration serveur.
+
+- IA / Patreon (2026-10-09) : exception pour le createur via PATREON_CREATOR_USER_ID dans la configuration serveur. Un compte Patreon relie dont l identite OAuth correspond exactement peut utiliser l IA sans contribution. Aucun droit Patreon supplementaire demande ; restrictions des autres comptes et des autres avantages conservees.
+
+- Parametres serveur / Patreon (2026-10-09) : aides dans des bulles ? partagees, avec les indications pour retrouver les identifiants et les liens de documentation. L ID utilisateur Patreon du compte relie est affiche en lecture seule dans Mon profil > Patreon pour faciliter la configuration de l acces IA du createur.
+
+- Projets (2026-10-09) : les taches recurrentes utilisent aussi le bouton Creer avec formulaire complet dans un drawer, et la fleche Importer pour le selecteur partage. La creation enregistre la liaison au projet ; la recurrence et la description reutilisent les memes controles que l application Taches recurrentes.
+
+- Projets (2026-10-09) : l onglet Indicateurs propose Creer un indicateur dans le drawer du formulaire complet, et Importer un indicateur via la fleche accolee. L import utilise le selecteur partage sans formulaire reduit ; la creation enregistre aussi la liaison au projet.
+
+- Projets (2026-10-09) : l onglet Documents reprend les actions des evenements. Creer un document ouvre le formulaire complet dans un drawer ; la fleche accolee propose Importer un document dans le selecteur partage, avec recherche et navigation dans la structure, sans onglet de creation.
+
+- Popups (2026-10-09) : aide optionnelle dans une pastille a cote du titre. L explication du selecteur d import d evenements est deplacee dans cette aide pour liberer de la place. Les deux onglets de sources sont conserves et utilisent le style generique des onglets, avec un petit espace au-dessus. Le selecteur espace aussi la liste, l apercu et les boutons avec les composants generiques de formulaire.
+
+- Projets (2026-10-09) : menu Importer un evenement a cote de Creer un evenement. Selection des evenements OMO dans la structure ou des rendez-vous des calendriers externes synchronises, liaison et retrait du projet. Les modifications externes sont suivies ; les rendez-vous a venir disparus sont retires apres une synchronisation reussie. Les evenements deja passes restent documentes localement, meme si le flux ICS ne les fournit plus.
+
+- Decisions (2026-10-09) : revenir au contexte organisation recharge ses decisions locales, sans reprendre le dernier cercle selectionne dans la vue Structure.
+
+- Taches recurrentes (2026-10-09) : fermer la fiche ouverte via la pastille conserve le drawer de l application et revient a la liste, sans rechargement du panneau principal.
+
+- OMO (2026-10-09) : verification periodique des pastilles espacee a 15 minutes pour limiter les requetes serveur. Rafraichissements immediats conserves apres les actions et au retour sur un onglet masque.
+
+- OMO (2026-10-09) : pastille rouge sur Taches recurrentes pour les taches encore non faites en retard et nommement attribuees a la personne connectee. Premiere echeance en retard prioritaire, titre et espace dans l infobulle, decompte des autres taches et de leurs espaces, lien direct vers la premiere fiche. Calcul asynchrone commun aux decisions, actualise apres validation, modification ou archivage.
+
+- Projets (2026-10-09) : les evenements passes restent consultables dans la fiche du projet, sous les evenements planifies, du plus recent au plus ancien, avec les liens et actions habituels.
+
+- OMO (2026-10-09) : calcul asynchrone des decisions invitees encore sans reponse soumise dans tous les espaces de l organisation. Pastille rouge animee directement sur le bouton de l application Decision, y compris dans le menu mobile et apres rechargement de la barre. Infobulle avec le contexte et le nombre d autres decisions, acces direct a la participation. Actualisation apres un vote et en arriere-plan, sans calcul dans le chargement initial ni verrouillage de la session pendant la recherche.
+
 - Scrum (2026-10-08) : charge multipliee par quatre entre chaque taille (S=1, M=4, L=16, XL=64, XXL=256), dans le calcul et l apercu d import. Les charges deja figees au demarrage restent conservees jusqu a une relance.
 
 - Scrum (2026-10-08) : nouvelle application de sprints par espace, import des projets avec tous leurs descendants et estimation de charge sans double comptage. Kanban partage avec Projets, demarrage date, arret et relance, burndown aux changements de statut et quotidien, bilan fige, archives et suppression du sprint sans supprimer les projets.
