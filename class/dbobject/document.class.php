@@ -2567,6 +2567,12 @@
 			}
 
 			$nextStage = self::normalizePvStage($stage);
+			if (in_array($nextStage, [self::PV_STAGE_REVIEW, self::PV_STAGE_VALIDATED], true)) {
+				$event = $this->getAssociatedEvent();
+				if ($event instanceof Event && (int)$event->get('IDeventrecurrence') > 0 && !$event->freezeInvitationParticipants()) {
+					return ['status' => false, 'text' => 'Impossible de conserver les participants de la reunion.'];
+				}
+			}
 			if ($nextStage === self::PV_STAGE_REVIEW) {
 				$reviewEditorUserId = $this->getPvReviewEditorUserId();
 				if ($reviewEditorUserId > 0) {
@@ -6238,6 +6244,170 @@
 					'text' => 'Impossible de creer ce document.',
 				);
 			}
+		}
+
+		public function syncDefaultEventTitle(Event $event, ?\DateTimeInterface $previousStart = null): array
+		{
+			$entry = $event->getParameter('default_document_titles')[(int)$this->getId()] ?? null;
+			$currentTitle = (string)$this->get('title');
+			if ($previousStart) {
+				$nextTitle = Event::replaceMeetingDateInTitle($currentTitle, $previousStart, $event->get('start_at'));
+				if ($nextTitle !== $currentTitle) {
+					$saved = self::execute('UPDATE document SET title = :next_title WHERE id = :id AND IDevent = :event AND title = :previous_title',
+						['next_title' => $nextTitle, 'id' => $this->getId(), 'event' => $event->getId(), 'previous_title' => $currentTitle]);
+					if (!$saved || !$this->load((int)$this->getId(), true)) { return ['status' => false]; }
+					if ((string)$this->get('title') === $nextTitle && is_array($entry) && $currentTitle === $entry['last_title']) {
+						$pattern = $entry['pattern'];
+						foreach (['before', 'after'] as $part) { $pattern[$part] = Event::replaceMeetingDateInTitle($pattern[$part], $previousStart, $event->get('start_at')); }
+						return ['status' => $event->registerDefaultDocumentTitle($this, $pattern)];
+					}
+					return ['status' => true];
+				}
+			}
+			if (!is_array($entry) || (string)$this->get('title') !== $entry['last_title']) { return ['status' => true]; }
+			$pattern = $entry['pattern'];
+			$title = $pattern['before'] . $event->get('start_at')->format('d.m.Y H:i') . $pattern['after'];
+			if ($title === (string)$this->get('title')) { return ['status' => true]; }
+			// Update only the generated title, preserving concurrent PV edits and renames.
+			$saved = self::execute('UPDATE document SET title = :next_title WHERE id = :id AND IDevent = :event AND title = :previous_title',
+				['next_title' => $title, 'id' => $this->getId(), 'event' => $event->getId(), 'previous_title' => $entry['last_title']]);
+			if (!$saved || !$this->load((int)$this->getId(), true)) { return ['status' => false]; }
+			if ((string)$this->get('title') !== $title) { return ['status' => true]; }
+			return ['status' => $event->registerDefaultDocumentTitle($this, $pattern)];
+		}
+
+		/** Capture the preparation framework once; generated PVs never inherit attendance or decisions. */
+		public function exportEventRecurrenceBlueprint(?Event $event = null): array
+		{
+			$blueprint = ['source_id' => (int)$this->getId(), 'values' => [
+				'title' => (string)$this->get('title'), 'description' => (string)$this->get('description'),
+				'keywords' => (string)$this->get('keywords'), 'document_type' => $this->getDocumentType(),
+				'content' => (string)$this->get('content'), 'external_url' => $this->getExternalUrl(),
+				'open_in_new_window' => $this->shouldOpenExternalLinkInNewWindow(), 'allow_empty_type_payload' => 1,
+				'visibility_type' => $this->getPrimaryVisibilityRuleRow()['visibility_type'] ?? self::getDefaultVisibilityTypeForOrganization((int)$this->get('IDorganization')),
+				'edit_visibility_type' => $this->getPrimaryEditVisibilityRuleRow()['visibility_type'] ?? self::getDefaultEditVisibilityTypeForOrganization((int)$this->get('IDorganization')),
+			], 'points' => [], 'tabs' => []];
+			$entry = $event?->getParameter('default_document_titles')[(int)$this->getId()] ?? null;
+			if ($event) { $blueprint['source_start'] = $event->get('start_at')->format('c'); }
+			if (is_array($entry) && (string)$this->get('title') === $entry['last_title']) {
+				$blueprint['title_date_pattern'] = $entry['pattern'];
+			}
+			$organization = new Organization();
+			if ($this->isUploadedFile() && $this->hasStoredFile()) {
+				if (!$organization->load((int)$this->get('IDorganization'))) { throw new \RuntimeException('Organisation introuvable.'); }
+				$result = $organization->downloadDocumentFileFromStorage((string)$this->get('storedfilepath'));
+				if (empty($result['status'])) { throw new \RuntimeException('Impossible de conserver le fichier de reference.'); }
+				$blueprint['file'] = ['body' => base64_encode((string)$result['body']), 'name' => $this->getStoredFileDownloadName(), 'type' => $this->getStoredFileMimeType()];
+			} elseif ($this->isEtherpadDocument() && $this->getEtherpadPadId() !== '') {
+				require_once dirname(__DIR__, 2) . '/common/etherpad.php';
+				$organization->load((int)$this->get('IDorganization'));
+				$result = omoEtherpadApiRequest($organization, 'getHTML', ['padID' => $this->getEtherpadPadId()]);
+				if (empty($result['status'])) { throw new \RuntimeException('Impossible de conserver le pad de reference.'); }
+				$blueprint['etherpad_html'] = (string)($result['data']['html'] ?? '');
+			} elseif ($this->isEthercalcDocument() && $this->getEthercalcRoomId() !== '') {
+				require_once dirname(__DIR__, 2) . '/common/ethercalc.php';
+				$result = omoEthercalcRequest('GET', '/_/' . rawurlencode($this->getEthercalcRoomId()));
+				if (empty($result['status'])) { throw new \RuntimeException('Impossible de conserver le tableur de reference.'); }
+				$blueprint['ethercalc_snapshot'] = (string)($result['body'] ?? '');
+			}
+			if ($this->isPvDocument()) {
+				foreach ($this->getPvPoints(true) as $point) {
+					$data = [];
+					foreach (['id', 'IDparent', 'IDholon_concerned', 'item_type', 'title', 'content', 'position', 'desired_duration_minutes', 'pointtype', 'is_confidential'] as $field) {
+						$data[$field] = $point->get($field);
+					}
+					$blueprint['points'][] = $data;
+				}
+				foreach ($this->getPvApplicationTabs(true) as $tab) {
+					$blueprint['tabs'][] = ['IDapplication' => (int)$tab->get('IDapplication'),
+						'position' => (int)$tab->get('position'), 'view_parameters' => $tab->getViewParametersArray()];
+				}
+			}
+			return $blueprint;
+		}
+
+		public function createFromEventRecurrenceBlueprint(Event $event, array $blueprint): array
+		{
+			$organizationId = (int)$event->get('IDorganization');
+			$holonId = (int)$event->get('IDholon') ?: null;
+			$userId = (int)$event->get('IDuser');
+			$values = $blueprint['values']; $values['event_id'] = (int)$event->getId();
+			if (!empty($blueprint['source_start'])) {
+				$sourceStart = new \DateTimeImmutable($blueprint['source_start']);
+				$values['title'] = Event::replaceMeetingDateInTitle((string)$values['title'], $sourceStart, $event->get('start_at'));
+				if (isset($blueprint['title_date_pattern'])) {
+					foreach (['before', 'after'] as $part) {
+						$blueprint['title_date_pattern'][$part] = Event::replaceMeetingDateInTitle($blueprint['title_date_pattern'][$part], $sourceStart, $event->get('start_at'));
+					}
+				}
+			}
+			if (isset($blueprint['title_date_pattern'])) {
+				$pattern = $blueprint['title_date_pattern'];
+				$values['title'] = $pattern['before'] . $event->get('start_at')->format('d.m.Y H:i') . $pattern['after'];
+			}
+			if (!in_array($values['document_type'], [self::TYPE_PV, self::TYPE_HTML, self::TYPE_EXTERNAL_LINK, self::TYPE_UPLOADED_FILE, self::TYPE_ETHERPAD, self::TYPE_ETHERCALC], true)) {
+				$source = new self();
+				if (!$source->load((int)$blueprint['source_id']) || (int)$source->get('IDorganization') !== $organizationId) {
+					return ['status' => false, 'text' => 'Document de reference indisponible.'];
+				}
+				$visited = [];
+				return $this->copyDocumentTemplateInOrganizationContext($source, $organizationId, $holonId, $userId, $values, $visited);
+			}
+			$temporaryFile = '';
+			if (isset($blueprint['file'])) {
+				$body = base64_decode($blueprint['file']['body'], true);
+				$temporaryFile = tempnam(sys_get_temp_dir(), 'omo-recurrence-');
+				if ($body === false || $temporaryFile === false || file_put_contents($temporaryFile, $body) !== strlen($body)) {
+					if ($temporaryFile) { @unlink($temporaryFile); }
+					return ['status' => false, 'text' => 'Impossible de preparer le fichier de la reunion.'];
+				}
+				$values['uploaded_file'] = ['error' => UPLOAD_ERR_OK, 'tmp_name' => $temporaryFile,
+					'name' => $blueprint['file']['name'], 'type' => $blueprint['file']['type'], 'size' => strlen($body)];
+			}
+			try { $result = $this->createInOrganizationContext($organizationId, $holonId, $userId, $values); }
+			finally { if ($temporaryFile !== '') { @unlink($temporaryFile); } }
+			if (empty($result['status'])) { return $result; }
+			if (isset($blueprint['etherpad_html'])) {
+				$organization = new Organization(); $organization->load($organizationId);
+				require_once dirname(__DIR__, 2) . '/common/etherpad.php';
+				$copied = omoEtherpadApiRequest($organization, 'setHTML', ['padID' => $this->getEtherpadPadId(), 'html' => $blueprint['etherpad_html']]);
+				if (empty($copied['status'])) { $this->delete(); return $copied; }
+			}
+			if (isset($blueprint['ethercalc_snapshot'])) {
+				require_once dirname(__DIR__, 2) . '/common/ethercalc.php';
+				$copied = omoEthercalcRequest('PUT', '/_/' . rawurlencode($this->getEthercalcRoomId()), [], json_encode(['snapshot' => $blueprint['ethercalc_snapshot']], JSON_THROW_ON_ERROR));
+				if (empty($copied['status'])) { $this->delete(); return $copied; }
+			}
+			$copied = [];
+			$pending = $blueprint['points'];
+			while ($pending) {
+				$progress = false;
+				foreach ($pending as $index => $data) {
+					$parentId = (int)$data['IDparent'];
+					if ($parentId > 0 && !isset($copied[$parentId])) { continue; }
+					$point = new DocumentPvPoint();
+					foreach ($data as $field => $value) {
+						if ($field !== 'id' && $field !== 'IDparent') { $point->set($field, $value); }
+					}
+					$point->set('IDdocument', $this->getId()); $point->set('IDparent', $copied[$parentId] ?? null);
+					$point->set('IDuser_modification', $userId); $point->set('is_handled', 0); $point->set('active', 1);
+					$saved = $point->save(); if (empty($saved['status'])) { return $saved; }
+					$copied[(int)$data['id']] = (int)$point->getId(); unset($pending[$index]); $progress = true;
+				}
+				if (!$progress) { return ['status' => false, 'text' => 'Structure du PV de reference invalide.']; }
+			}
+			foreach ($blueprint['tabs'] as $data) {
+				$tab = new DocumentApplicationTab(); $tab->set('IDdocument', $this->getId());
+				$tab->set('IDapplication', $data['IDapplication']); $tab->set('position', $data['position']);
+				$tab->setViewParametersArray($data['view_parameters']); $tab->set('datecreation', new \DateTimeImmutable());
+				$saved = $tab->save(); if (empty($saved['status'])) { return $saved; }
+			}
+			if (isset($blueprint['title_date_pattern']) && !$event->registerDefaultDocumentTitle($this, $blueprint['title_date_pattern'])) {
+				return ['status' => false, 'text' => 'Impossible de conserver le nom automatique du document.'];
+			}
+			$synced = $event->syncAssociatedDocumentEventDate();
+			if (empty($synced['status'])) { return $synced; }
+			return $result;
 		}
 
 		public function createFromDocumentTemplateInOrganizationContext(
