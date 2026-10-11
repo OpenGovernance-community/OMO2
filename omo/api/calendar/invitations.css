@@ -14,9 +14,33 @@
     display: none !important;
 }
 
-.omo-calendar-invitations-editor__tabs {
-    --generic-tabs-panel-padding-block: 14px;
-    --generic-tabs-panel-padding-inline: 14px;
+.omo-calendar-invitations-editor--fill {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.omo-calendar-invitations-editor--fill .omo-calendar-invitations-editor__tab-panel {
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
+    overscroll-behavior: contain;
+}
+
+.omo-calendar-invitations-editor--fill .omo-calendar-invitations-editor__checklist,
+.omo-calendar-invitations-editor--fill .omo-calendar-invitations-editor__member-list {
+    flex: 0 0 auto;
+    min-height: 0;
+    max-height: none;
+    align-content: start;
+    overflow: visible;
+}
+
+.omo-calendar-invitations-editor__checklist {
+    max-height: min(50vh, 360px);
+    overflow: auto;
+    overscroll-behavior: contain;
 }
 
 .omo-calendar-invitations-editor__filter {

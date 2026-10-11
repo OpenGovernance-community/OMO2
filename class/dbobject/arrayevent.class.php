@@ -13,7 +13,7 @@ class ArrayEvent extends ArrayDbObject
                 INTERVAL COALESCE(b.preparation_minutes, 0) MINUTE) < :end';
             $params['end'] = $end;
         }
-        $rows = Event::fetchAll('SELECT e.id FROM `event` e
+        $rows = Event::fetchAll('SELECT e.* FROM `event` e
             LEFT JOIN event_time_buffer b ON b.IDevent = e.id AND b.IDuser = :buffer_user
             WHERE e.active = 1 AND e.status <> :cancelled
             ' . $endCondition . ' AND DATE_ADD((CASE WHEN e.is_all_day = 1
@@ -23,12 +23,13 @@ class ArrayEvent extends ArrayDbObject
                 WHERE uo.IDorganization = e.IDorganization AND uo.IDuser = :member AND uo.active = 1)',
             $params);
         if (!is_array($rows)) { throw new \RuntimeException('storage'); }
+        $events = [];
         foreach ($rows as $row) {
             $event = new Event();
-            if ($event->load((int)$row['id']) && $event->isInvitedToEvent($userId)) {
-                $this[] = $event;
-            }
+            $event->hydrateFromDatabaseRow($row, true);
+            $events[] = $event;
         }
+        $this->exchangeArray(Event::filterInvitedForUser($events, $userId));
     }
 
     public static function objectName()

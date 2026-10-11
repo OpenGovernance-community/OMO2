@@ -1245,6 +1245,10 @@ a.generic-correspondence-list__row:focus-visible {
     min-width: 0;
 }
 
+.generic-heading-with-help--top {
+    align-items: flex-start;
+}
+
 .generic-inline-help {
     display: inline-flex;
     align-items: center;
@@ -2210,6 +2214,36 @@ html[data-theme="dark"] .generic-tabs__tab:focus-visible .generic-monochrome-ico
     border-radius: 0 0 var(--param-tabs-panel-radius) var(--param-tabs-panel-radius);
     background: var(--param-tabs-panel-background);
     box-shadow: var(--param-tabs-panel-shadow);
+}
+
+.generic-tabs--padded > .generic-tabs__panels {
+    padding: var(--generic-space-4);
+}
+
+/* Stretch nested tabs within a bounded parent; the active screen owns scrolling. */
+.generic-tabs--fill {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.generic-tabs--fill > .generic-tabs__list,
+.generic-tabs--fill > .generic-tabs__mobile {
+    flex: 0 0 auto;
+}
+
+.generic-tabs--fill > .generic-tabs__panels {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.generic-tabs--fill > .generic-tabs__panels > .generic-tabs__panel {
+    flex: 1 1 auto;
+    min-height: 0;
 }
 
 .generic-tabs--equal > .generic-tabs__list {

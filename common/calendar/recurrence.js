@@ -2,7 +2,9 @@
     'use strict';
     if (window.omoMeetingRecurrence) { window.omoMeetingRecurrence.init(document); return; }
     function sync(section) {
-        var enabled = section.querySelector('[data-meeting-recurrence-enabled]');
+        var form = section.closest('form');
+        var enabled = section.querySelector('[data-meeting-recurrence-enabled]')
+            || (form && form.querySelector('[data-meeting-recurrence-enabled]'));
         var frequency = section.querySelector('[data-meeting-recurrence-frequency]');
         var editing = section.querySelector('[data-meeting-recurrence-editing]');
         var strategy = section.querySelector('[data-meeting-recurrence-strategy]');
@@ -14,6 +16,7 @@
             });
         }
         var stopped = strategy && strategy.value.indexOf('stop_') === 0;
+        if (section.hasAttribute('data-meeting-recurrence-external-toggle')) { section.hidden = !enabled.checked; }
         section.querySelector('[data-meeting-recurrence-fields]').hidden = editing ? stopped : !enabled.checked;
         section.querySelectorAll('[data-meeting-recurrence-fields] input, [data-meeting-recurrence-fields] select').forEach(function (input) {
             input.disabled = editing ? editing.value !== '1' || stopped : !enabled.checked;
@@ -23,7 +26,6 @@
         });
         var intervalLabel = section.querySelector('[data-meeting-interval-label]');
         if (intervalLabel) { intervalLabel.textContent = frequency.value === 'on_close' ? intervalLabel.dataset.onClose : intervalLabel.dataset.days; }
-        var form = section.closest('form');
         document.querySelectorAll('[data-meeting-save-menu]').forEach(function (menu) {
             if (menu.querySelector('[data-meeting-save-scope]').form === form) { syncSaveMenu(menu); }
         });
@@ -190,6 +192,10 @@
     }
     document.addEventListener('change', function (event) {
         var section = event.target.closest('[data-meeting-recurrence]');
+        if (!section && event.target.matches('[data-meeting-recurrence-enabled]')) {
+            var form = event.target.closest('form');
+            section = form && form.querySelector('[data-meeting-recurrence]');
+        }
         if (!section) { return; }
         delete section.closest('form').dataset.meetingStopConfirmed;
         delete section.closest('form').dataset.meetingIgnoreRuleConfirmed;

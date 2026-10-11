@@ -8,7 +8,7 @@
 .omo-calendar-create__shell,
 .omo-calendar-create__form,
 .omo-calendar-create__tabs,
-.omo-calendar-create__tabs .generic-tabs__panels {
+.omo-calendar-create__tabs > .generic-tabs__panels {
     display: flex;
     flex: 1 1 auto;
     flex-direction: column;
@@ -20,12 +20,12 @@
     gap: 0;
 }
 
-.omo-calendar-create__tabs .generic-tabs__list {
+.omo-calendar-create__tabs > .generic-tabs__list {
     flex: 0 0 auto;
     padding-top: var(--generic-space-4);
 }
 
-.omo-calendar-create__tabs .generic-tabs__panels {
+.omo-calendar-create__tabs > .generic-tabs__panels {
     overflow: hidden;
 }
 
@@ -41,6 +41,12 @@
 
 .omo-calendar-create__tab-panel--availability > [data-omo-calendar-preview-host] {
     min-width: 0;
+}
+
+.omo-calendar-create__tab-panel--invites {
+    display: flex;
+    overflow: hidden;
+    padding-block-start: var(--generic-space-2);
 }
 
 .omo-calendar-create__pill {

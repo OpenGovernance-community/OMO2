@@ -1,5 +1,21 @@
 # Journal Des Nouveautes
 
+- Calendrier / performances SQL (2026-10-11) : permissions du selecteur d espaces calculees par lot, arborescence et membres charges en groupe. Disponibilites : lecture complete des evenements et regroupement des invitations et inscriptions confirmees, en conservant les droits, les participants historiques et les temps personnels. Mesure locale : formulaire de 1193 a 203 requetes, occupations de 55 a 40 avec les memes resultats. SQL centralise dans dbObject, sans migration ; tests de regression sur les permissions, les invitations et les disponibilites.
+
+- Calendrier / hauteur des invites (2026-10-11) : les sous-onglets occupent toute la hauteur disponible du formulaire. Chaque sous-onglet possede une seule zone de defilement pour son contenu, sans barre verticale supplementaire autour de l arbre ou de la liste.
+
+- Calendrier / disponibilites (2026-10-11) : explication des creneaux communs placee sous le cadre des jours, a l exterieur de celui-ci dans la meme colonne. Les horaires defilent vers le creneau preselectionne, y compris occupe ou entre deux demi-heures, ou vers 8h00 par defaut.
+
+- Calendrier / onglet invites (2026-10-11) : espacement reduit entre les deux niveaux d onglets, sans cumul des styles du premier niveau sur le second. Marge interieure ajoutee aux sous-onglets et explications placees dans des capsules ?. L arbre ouvre les branches menant aux choix sans deplier les roles du cercle selectionne ; a la premiere ouverture, il defile jusqu au premier espace coche.
+
+- Calendrier / document associe (2026-10-11) : type et modele places sur la meme ligne, avec retour en colonne sur mobile. Les explications sur la copie du modele et la creation du document sont regroupees dans une capsule ?.
+
+- Calendrier / aide a la recurrence (2026-10-10) : textes explicatifs regroupes dans des capsules ? pres des reglages concernes, accessibles au survol et au clic. Les explications suivent la frequence et la strategie choisies.
+
+- Calendrier / activation de la recurrence (2026-10-10) : case Reunion recurrente placee sous Journee entiere, avec un espacement vertical resserre entre les deux cases. Elle affiche ou masque le cadre de reglage a son emplacement habituel, au-dessus des temps personnels et de la description.
+
+- Calendrier / formulaire d evenement (2026-10-10) : reunions recurrentes et temps personnels de preparation/cloture places au-dessus de la description. Les temps personnels utilisent le meme cadre partage que la recurrence, avec leur explication dans une capsule d aide ? a cote de la case a cocher. Cocher remplace le libelle par les deux champs a cote de la case ; decocher retablit le libelle, en conservant les durees saisies. La case reste alignee en haut pour ne pas bouger lors du changement.
+
 - Calendrier / autres organisations (2026-10-10) : blocs affiches en gris dans les vues mois et liste, avec le meme style discret que dans les vues semaine et jour.
 
 - Calendrier / compteur mensuel (2026-10-10) : nombre d evenements affiche dans une bulle a cote du nom du mois, comme en vue semaine, a la place du sous-titre. Le libelle complet reste disponible au survol et pour les lecteurs d ecran.

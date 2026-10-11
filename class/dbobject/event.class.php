@@ -514,7 +514,7 @@ class Event extends DbObject
     }
 
     /** Fresh bypasses membership caches; explicitOnly excludes implicit organization/context recipients. */
-    public function getEffectiveInvitationTargets($organizationId, ?array $proposedInvitations = null, bool $fresh = false, bool $activeOnly = false, bool $explicitOnly = false): array
+    public function getEffectiveInvitationTargets($organizationId, ?array $proposedInvitations = null, bool $fresh = false, bool $activeOnly = false, bool $explicitOnly = false, ?array $loadedRelations = null): array
     {
         $snapshot = $this->getParameter('meeting_participants');
         if ($proposedInvitations === null && is_array($snapshot)) {
@@ -536,7 +536,7 @@ class Event extends DbObject
             'registeredEmails' => [],
         ];
 
-        foreach ($proposedInvitations ?? $this->getInvitations(true) as $invitation) {
+        foreach ($proposedInvitations ?? $loadedRelations['invitations'] ?? $this->getInvitations(true) as $invitation) {
             if (!($invitation instanceof \dbObject\EventInvitation)) {
                 continue;
             }
@@ -587,7 +587,7 @@ class Event extends DbObject
             }
         }
 
-        foreach (EventPublicRegistration::forEvent((int)$this->getId(), true) as $registration) {
+        foreach ($loadedRelations['registrations'] ?? EventPublicRegistration::forEvent((int)$this->getId(), true) as $registration) {
             $email = self::normalizeInvitationEmail($registration->get('email'));
             if ($email !== '') {
                 $targets['emails'][$email] = $email;
@@ -1156,7 +1156,47 @@ class Event extends DbObject
         return $this->matchesInvitationViewer($userId, $organizationId, $viewerEmail, true);
     }
 
-    private function matchesInvitationViewer($userId, $organizationId, $viewerEmail, bool $explicitOnly): bool
+    /** Batch relations only for this read; never attach a stale invitation cache to an event. */
+    public static function filterInvitedForUser(array $events, int $userId): array
+    {
+        if ($userId <= 0 || !$events) { return []; }
+        $result = [];
+        foreach (array_chunk($events, 500) as $chunk) {
+            $relations = [];
+            foreach ($chunk as $event) {
+                $relations[(int)$event->getId()] = ['invitations' => [], 'registrations' => []];
+            }
+            $bindings = [];
+            foreach (array_keys($relations) as $index => $eventId) { $bindings['event_' . $index] = $eventId; }
+            $idsSql = implode(', ', array_map(static fn(string $key): string => ':' . $key, array_keys($bindings)));
+            $invitations = self::fetchAll('SELECT * FROM resource_invitation
+                WHERE resource_type = :resource_type AND resource_id IN (' . $idsSql . ') AND active = 1
+                ORDER BY created_at ASC, id ASC', ['resource_type' => EventInvitation::resourceType()] + $bindings);
+            if (!is_array($invitations)) { throw new \RuntimeException('storage'); }
+            foreach ($invitations as $row) {
+                $invitation = new EventInvitation();
+                $invitation->hydrateFromDatabaseRow($row, true);
+                $relations[(int)$invitation->get('IDevent')]['invitations'][] = $invitation;
+            }
+            $registrations = self::fetchAll('SELECT * FROM event_public_registration
+                WHERE IDevent IN (' . $idsSql . ') AND confirmed_at IS NOT NULL
+                ORDER BY name ASC, email ASC', $bindings);
+            if (!is_array($registrations)) { throw new \RuntimeException('storage'); }
+            foreach ($registrations as $row) {
+                $registration = new EventPublicRegistration();
+                $registration->hydrateFromDatabaseRow($row, true);
+                $relations[(int)$registration->get('IDevent')]['registrations'][] = $registration;
+            }
+            foreach ($chunk as $event) {
+                if ($event->matchesInvitationViewer($userId, 0, '', true, $relations[(int)$event->getId()])) {
+                    $result[] = $event;
+                }
+            }
+        }
+        return $result;
+    }
+
+    private function matchesInvitationViewer($userId, $organizationId, $viewerEmail, bool $explicitOnly, ?array $loadedRelations = null): bool
     {
         $userId = (int)$userId;
         $organizationId = (int)$organizationId;
@@ -1182,7 +1222,7 @@ class Event extends DbObject
             return false;
         }
 
-        $targets = $this->getEffectiveInvitationTargets($organizationId, explicitOnly: $explicitOnly);
+        $targets = $this->getEffectiveInvitationTargets($organizationId, explicitOnly: $explicitOnly, loadedRelations: $loadedRelations);
         if (!$explicitOnly && !$targets['hasExplicitInvitations'] && (int)$this->get('IDholon') <= 0) {
             return true;
         }

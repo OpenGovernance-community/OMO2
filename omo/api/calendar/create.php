@@ -549,15 +549,21 @@ foreach (['circle', 'role'] as $typeKey) {
         $allowedHolonIds[$holonId] = $option;
         $holon = new Holon();
         if ($holonId > 0 && $holon->load($holonId)) {
-            if ($holon->isAllowed('CAN_CREATE_EVENT', false, $currentUserId)
-                && (!$isEditMode || omoCalendarCanUseEditEventPermission($holon, $organizationId, $currentUserId, false))) {
-                $selectableHolonIds[] = $holonId;
-            }
+            $selectableHolonIds[] = $holonId;
             $holonContextPaths[$holonId] = implode(',', array_map(static function ($pathHolon): int {
                 return (int)$pathHolon->getId();
             }, $holon->getPathHolons(true)));
         }
     }
+}
+
+$selectableHolonIds = \dbObject\HolonPermission::filterUserAllowedHolonIds(
+    $currentUserId, $organizationId, 'CAN_CREATE_EVENT', $selectableHolonIds
+);
+if ($isEditMode) {
+    $selectableHolonIds = \dbObject\HolonPermission::filterUserAllowedHolonIds(
+        $currentUserId, $organizationId, 'CAN_EDIT_EVENT', $selectableHolonIds
+    );
 }
 
 $currentContextHolon = null;
@@ -1547,19 +1553,19 @@ if ($isEditMode) {
                                     required
                                 >
                             </label>
-                            <label class="generic-checkbox generic-checkbox--control">
-                                <input type="checkbox" name="is_all_day" value="1"<?= $isAllDayDefault ? ' checked' : '' ?>>
-                                <span><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.all_day')) ?></span>
-                            </label>
+                            <div class="generic-stack generic-stack--compact">
+                                <label class="generic-checkbox">
+                                    <input type="checkbox" name="is_all_day" value="1"<?= $isAllDayDefault ? ' checked' : '' ?>>
+                                    <span><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.all_day')) ?></span>
+                                </label>
+                                <?php if (!$meetingRecurrence): ?>
+                                <label class="generic-checkbox">
+                                    <input type="checkbox" name="recurrence_enabled" value="1" data-meeting-recurrence-enabled>
+                                    <span><?= omoApiEscape(omoCalendarCreateT('calendar.recurrence.enabled')) ?></span>
+                                </label>
+                                <?php endif; ?>
+                            </div>
                         </div>
-
-                        <label class="omo-calendar-create__field generic-form-field">
-                            <span class="generic-form-label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.description')) ?></span>
-                            <textarea
-                                name="description"
-                                class="generic-form-control"
-                            ><?= omoApiEscape($descriptionDefault) ?></textarea>
-                        </label>
 
                         <?php
                         $recurrenceDefaults = ['weekday' => (int)($startDefault instanceof \DateTimeInterface ? $startDefault->format('N') : date('N')),
@@ -1570,27 +1576,38 @@ if ($isEditMode) {
                                 $recurrenceDefaults[$field] = $meetingRecurrence->get($field);
                             }
                         }
-                        commonRenderMeetingRecurrenceFields($recurrenceDefaults, $meetingRecurrence && $meetingRecurrence->get('active') && !$event->get('recurrence_exception'), $meetingRecurrence !== null, 'omoCalendarCreateT', commonMeetingRecurrenceSummary($event, 'omoCalendarCreateT'));
+                        commonRenderMeetingRecurrenceFields($recurrenceDefaults, $meetingRecurrence && $meetingRecurrence->get('active') && !$event->get('recurrence_exception'), $meetingRecurrence !== null, 'omoCalendarCreateT', commonMeetingRecurrenceSummary($event, 'omoCalendarCreateT'), separateToggle: true);
                         ?>
                         <?php if ($canEditPersonalTimeBuffers): ?>
-                        <section class="generic-form-stack">
-                            <label class="generic-checkbox">
-                                <input type="checkbox" name="time_buffers_enabled" value="1" data-omo-calendar-buffers-toggle<?= $timeBuffersEnabled ? ' checked' : '' ?>>
-                                <?= omoApiEscape(omoCalendarCreateT('calendar.create.buffers.enable')) ?>
-                            </label>
-                            <div class="generic-form-stack" data-omo-calendar-buffers-fields<?= $timeBuffersEnabled ? '' : ' hidden' ?>>
-                                <div class="generic-form-grid generic-form-grid--pair">
+                        <section class="generic-section generic-form-stack generic-form-stack--compact">
+                            <div class="generic-heading-with-help generic-heading-with-help--top">
+                                <label class="generic-checkbox">
+                                    <input type="checkbox" name="time_buffers_enabled" value="1" aria-label="<?= omoApiEscape(omoCalendarCreateT('calendar.create.buffers.enable')) ?>" data-omo-calendar-buffers-toggle<?= $timeBuffersEnabled ? ' checked' : '' ?>>
+                                    <span data-omo-calendar-buffers-label<?= $timeBuffersEnabled ? ' hidden' : '' ?>><?= omoApiEscape(omoCalendarCreateT('calendar.create.buffers.enable')) ?></span>
+                                </label>
+                                <div class="generic-form-grid generic-form-grid--pair generic-form-grid--inline" data-omo-calendar-buffers-fields<?= $timeBuffersEnabled ? '' : ' hidden' ?>>
                                     <?php foreach (['preparation_minutes' => ['before', $preparationMinutesDefault], 'closing_minutes' => ['after', $closingMinutesDefault]] as $field => [$label, $value]): ?>
                                         <label class="generic-form-field"><span class="generic-form-label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.buffers.' . $label)) ?></span>
                                             <?php commonCalendarRenderTimeBufferSelect($field, $value, $timeBuffersEnabled); ?>
                                         </label>
                                     <?php endforeach; ?>
                                 </div>
-                                <p class="generic-help-text"><?= omoApiEscape(omoCalendarCreateT('calendar.create.buffers.hint')) ?></p>
+                                <details class="generic-context-help generic-context-help--compact" data-generic-context-help-hover>
+                                    <summary aria-label="<?= omoApiEscape(omoCalendarCreateT('calendar.create.buffers.hint')) ?>">?</summary>
+                                    <div class="generic-context-help__content"><?= omoApiEscape(omoCalendarCreateT('calendar.create.buffers.hint')) ?></div>
+                                </details>
                             </div>
                         </section>
 
                         <?php endif; ?>
+                        <label class="omo-calendar-create__field generic-form-field">
+                            <span class="generic-form-label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.description')) ?></span>
+                            <textarea
+                                name="description"
+                                class="generic-form-control"
+                            ><?= omoApiEscape($descriptionDefault) ?></textarea>
+                        </label>
+
                         <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided generic-form-section--compact omo-calendar-create__block">
                             <div class="omo-calendar-create__block-head generic-form-section__heading">
                                 <h3 class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.location_mode')) ?></h3>
@@ -1634,7 +1651,19 @@ if ($isEditMode) {
 
                         <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided generic-form-section--compact omo-calendar-create__block" data-omo-calendar-document-block>
                             <div class="omo-calendar-create__block-head generic-form-section__heading">
-                                <h3 class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.document_type')) ?></h3>
+                                <div class="generic-heading-with-help">
+                                    <h3 class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.document_type')) ?></h3>
+                                    <?php if (!($associatedDocument instanceof Document) && $canCreateLinkedDocument): ?>
+                                        <details class="generic-context-help generic-context-help--compact" data-generic-context-help-hover>
+                                            <summary aria-label="<?= omoApiEscape(omoCalendarCreateT('calendar.create.field.document_type')) ?>">?</summary>
+                                            <div class="generic-context-help__content">
+                                                <p><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.document_template_hint')) ?></p>
+                                                <p><?= omoApiEscape(omoCalendarCreateT('calendar.create.document.help_create')) ?></p>
+                                                <p><?= omoApiEscape(omoCalendarCreateT('calendar.create.document.created_notice')) ?></p>
+                                            </div>
+                                        </details>
+                                    <?php endif; ?>
+                                </div>
                                 <?php if ($associatedDocument instanceof Document): ?>
                                     <span class="omo-calendar-create__pill"><?= omoApiEscape($associatedDocument->getDocumentTypeLabel()) ?></span>
                                 <?php endif; ?>
@@ -1664,26 +1693,16 @@ if ($isEditMode) {
                                         <?= omoApiEscape(omoCalendarCreateT('calendar.create.document.no_permission')) ?>
                                     </p>
                                 <?php else: ?>
-                                    <label class="omo-calendar-create__field generic-form-field">
-                                        <span class="omo-calendar-create__label generic-form-label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.document_type')) ?></span>
-                                        <select name="document_type" class="generic-form-control" data-omo-calendar-document-type>
-                                            <?php foreach ($documentTypeOptions as $optionValue => $optionLabel): ?>
-                                                <option value="<?= omoApiEscape((string)$optionValue) ?>"<?= (string)$optionValue === $documentTypeDefault ? ' selected' : '' ?>>
-                                                    <?= omoApiEscape((string)$optionLabel) ?>
-                                                </option>
-                                            <?php endforeach; ?>
-                                        </select>
-                                    </label>
-                                    <div data-omo-calendar-document-fields<?= $documentTypeDefault !== '' ? '' : ' hidden' ?>>
+                                    <div class="generic-form-grid generic-form-grid--pair">
                                         <label class="omo-calendar-create__field generic-form-field">
-                                            <span class="omo-calendar-create__label generic-form-label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.document_title')) ?></span>
-                                            <input
-                                                type="text"
-                                                name="document_title"
-                                                class="generic-form-control"
-                                                value="<?= omoApiEscape($documentTitleDefault) ?>"
-                                                maxlength="255"
-                                            >
+                                            <span class="omo-calendar-create__label generic-form-label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.document_type')) ?></span>
+                                            <select name="document_type" class="generic-form-control" data-omo-calendar-document-type>
+                                                <?php foreach ($documentTypeOptions as $optionValue => $optionLabel): ?>
+                                                    <option value="<?= omoApiEscape((string)$optionValue) ?>"<?= (string)$optionValue === $documentTypeDefault ? ' selected' : '' ?>>
+                                                        <?= omoApiEscape((string)$optionLabel) ?>
+                                                    </option>
+                                                <?php endforeach; ?>
+                                            </select>
                                         </label>
                                         <label class="omo-calendar-create__field generic-form-field" data-omo-calendar-document-template-field<?= $documentTypeDefault !== '' ? '' : ' hidden' ?>>
                                             <span class="omo-calendar-create__label generic-form-label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.document_template')) ?></span>
@@ -1697,19 +1716,29 @@ if ($isEditMode) {
                                                     </optgroup>
                                                 <?php endforeach; ?>
                                             </select>
-                                            <span class="omo-calendar-create__hint generic-description generic-description--relaxed"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.document_template_hint')) ?></span>
                                         </label>
-                                        <p class="omo-calendar-create__hint generic-description generic-description--relaxed"><?= omoApiEscape(omoCalendarCreateT('calendar.create.document.help_create')) ?></p>
-                                        <p class="omo-calendar-create__notice"><?= omoApiEscape(omoCalendarCreateT('calendar.create.document.created_notice')) ?></p>
+                                    </div>
+                                    <div data-omo-calendar-document-fields<?= $documentTypeDefault !== '' ? '' : ' hidden' ?>>
+                                        <label class="omo-calendar-create__field generic-form-field">
+                                            <span class="omo-calendar-create__label generic-form-label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.document_title')) ?></span>
+                                            <input
+                                                type="text"
+                                                name="document_title"
+                                                class="generic-form-control"
+                                                value="<?= omoApiEscape($documentTitleDefault) ?>"
+                                                maxlength="255"
+                                            >
+                                        </label>
                                     </div>
                                 <?php endif; ?>
                             <?php endif; ?>
                         </section>
                     </div>
 
-                    <div id="omoCalendarCreateTabInvites" class="generic-tabs__panel omo-calendar-create__tab-panel" data-generic-tab-panel hidden>
+                    <div id="omoCalendarCreateTabInvites" class="generic-tabs__panel omo-calendar-create__tab-panel omo-calendar-create__tab-panel--invites" data-generic-tab-panel hidden>
                         <?= omoCalendarRenderInvitationEditor($invitationEditorState, $lang, $sourceLang, 'omoApiEscape', [
                             'instanceId' => 'omoCalendarCreateInvitations',
+                            'fillHeight' => true,
                             'holonFieldName' => 'invitation_holon_ids[]',
                             'userFieldName' => 'invitation_user_ids[]',
                             'emailFieldName' => 'invitation_emails',
@@ -1735,3 +1764,4 @@ if ($isEditMode) {
 <link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/calendar/editor.css') ?>">
 <link rel="stylesheet" href="<?= commonAssetUrl('/common/calendar/availability-grid.css') ?>">
 <script src="<?= commonAssetUrl('/common/calendar/recurrence.js') ?>"></script>
+<script src="<?= commonAssetUrl('/common/calendar/invitations.js') ?>"></script>

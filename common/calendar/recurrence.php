@@ -110,13 +110,14 @@ function commonMeetingAvailabilityAssets(): void
     <?php
 }
 
-function commonRenderMeetingRecurrenceFields(array $settings, bool $enabled, bool $existing, callable $translate, string $summary = ''): void
+function commonRenderMeetingRecurrenceFields(array $settings, bool $enabled, bool $existing, callable $translate, string $summary = '', bool $separateToggle = false): void
 {
     $t = static fn(string $key): string => htmlspecialchars($translate('calendar.recurrence.' . $key), ENT_QUOTES, 'UTF-8');
     $frequency = $settings['frequency'] ?? 'weekly';
-    $intervalId = uniqid('meeting-recurrence-interval-');
+    $fieldId = uniqid('meeting-recurrence-');
+    $intervalId = $fieldId . '-interval';
     ?>
-    <section class="generic-section generic-form-stack generic-form-stack--compact" data-meeting-recurrence>
+    <section class="generic-section generic-form-stack generic-form-stack--compact" data-meeting-recurrence<?= $separateToggle && !$existing ? ' data-meeting-recurrence-external-toggle' . ($enabled ? '' : ' hidden') : '' ?>>
         <?php if ($existing): ?>
         <div data-meeting-recurrence-readonly>
             <p class="generic-description"><?= htmlspecialchars($summary, ENT_QUOTES, 'UTF-8') ?></p>
@@ -126,29 +127,48 @@ function commonRenderMeetingRecurrenceFields(array $settings, bool $enabled, boo
         <input type="hidden" name="recurrence_edit" value="0" data-meeting-recurrence-editing>
         <input type="hidden" name="recurrence_delete_documents" value="0" data-meeting-recurrence-delete-documents>
         <div class="generic-form-stack generic-form-stack--compact" data-meeting-recurrence-editor hidden>
-            <label class="generic-form-field"><span class="generic-form-label"><?= $t('strategy') ?></span>
-                <select class="generic-form-control" name="recurrence_strategy" data-meeting-recurrence-strategy>
+            <div class="generic-form-field">
+                <div class="generic-heading-with-help">
+                    <label class="generic-form-label" for="<?= $fieldId ?>-strategy"><?= $t('strategy') ?></label>
+                    <details class="generic-context-help generic-context-help--compact" data-generic-context-help-hover>
+                        <summary aria-label="<?= $t('strategy') ?>">?</summary>
+                        <div class="generic-context-help__content">
+                            <?php foreach (['replan', 'after_last', 'stop_keep', 'stop_delete'] as $strategy): ?>
+                            <p data-meeting-strategy-help="<?= $strategy ?>"<?= $strategy === 'replan' ? '' : ' hidden' ?>><?= $t($strategy . '_help') ?></p>
+                            <?php endforeach; ?>
+                        </div>
+                    </details>
+                </div>
+                <select id="<?= $fieldId ?>-strategy" class="generic-form-control" name="recurrence_strategy" data-meeting-recurrence-strategy>
                     <?php foreach (['replan', 'after_last', 'stop_keep', 'stop_delete'] as $strategy): ?>
                     <option value="<?= $strategy ?>"><?= $t($strategy) ?></option>
                     <?php endforeach; ?>
                 </select>
-            </label>
-            <?php foreach (['replan', 'after_last', 'stop_keep', 'stop_delete'] as $strategy): ?>
-            <p class="generic-description" data-meeting-strategy-help="<?= $strategy ?>"<?= $strategy === 'replan' ? '' : ' hidden' ?>><?= $t($strategy . '_help') ?></p>
-            <?php endforeach; ?>
+            </div>
             <input type="hidden" name="recurrence_enabled" value="1" data-meeting-recurrence-enabled>
-        <?php else: ?>
+        <?php elseif (!$separateToggle): ?>
         <label class="generic-checkbox"><input type="checkbox" name="recurrence_enabled" value="1" data-meeting-recurrence-enabled<?= $enabled ? ' checked' : '' ?>> <?= $t('enabled') ?></label>
         <?php endif; ?>
         <div class="generic-form-stack generic-form-stack--compact" data-meeting-recurrence-fields<?= $enabled ? '' : ' hidden' ?>>
             <div class="generic-form-grid">
-                <label class="generic-form-field"><span class="generic-form-label"><?= $t('frequency') ?></span>
-                    <select class="generic-form-control" name="recurrence[frequency]" data-meeting-recurrence-frequency>
+                <div class="generic-form-field">
+                    <div class="generic-heading-with-help">
+                        <label class="generic-form-label" for="<?= $fieldId ?>-frequency"><?= $t('frequency') ?></label>
+                        <details class="generic-context-help generic-context-help--compact" data-generic-context-help-hover>
+                            <summary aria-label="<?= $t('frequency') ?>">?</summary>
+                            <div class="generic-context-help__content">
+                                <p><?= $t('help') ?></p>
+                                <p data-meeting-recurrence-for="days"><?= $t('days_help') ?></p>
+                                <p data-meeting-recurrence-for="on_close"><?= $t('on_close_help') ?></p>
+                            </div>
+                        </details>
+                    </div>
+                    <select id="<?= $fieldId ?>-frequency" class="generic-form-control" name="recurrence[frequency]" data-meeting-recurrence-frequency>
                         <?php foreach (['weekly', 'days', 'monthly_day', 'monthly_weekday', 'on_close'] as $value): ?>
                         <option value="<?= $value ?>"<?= $value === $frequency ? ' selected' : '' ?>><?= $t($value) ?></option>
                         <?php endforeach; ?>
                     </select>
-                </label>
+                </div>
                 <div class="generic-form-field" data-meeting-recurrence-for="days on_close">
                     <div class="generic-heading-with-help">
                         <label class="generic-form-label" for="<?= $intervalId ?>" data-meeting-interval-label data-days="<?= $t('interval') ?>" data-on-close="<?= $t('approximate_interval') ?>"><?= $t($frequency === 'on_close' ? 'approximate_interval' : 'interval') ?></label>
@@ -183,25 +203,34 @@ function commonRenderMeetingRecurrenceFields(array $settings, bool $enabled, boo
                         <?php endforeach; ?>
                     </select>
                 </label>
-                <label class="generic-form-field" data-meeting-recurrence-for="weekly days monthly_day monthly_weekday"><span class="generic-form-label"><?= $t('horizon') ?></span>
-                    <select class="generic-form-control" name="recurrence[horizon_months]">
+                <div class="generic-form-field" data-meeting-recurrence-for="weekly days monthly_day monthly_weekday">
+                    <div class="generic-heading-with-help">
+                        <label class="generic-form-label" for="<?= $fieldId ?>-horizon"><?= $t('horizon') ?></label>
+                        <details class="generic-context-help generic-context-help--compact" data-generic-context-help-hover>
+                            <summary aria-label="<?= $t('horizon') ?>">?</summary>
+                            <div class="generic-context-help__content"><?= $t('horizon_help') ?></div>
+                        </details>
+                    </div>
+                    <select id="<?= $fieldId ?>-horizon" class="generic-form-control" name="recurrence[horizon_months]">
                         <?php foreach (range(1, 12) as $months): ?>
                         <option value="<?= $months ?>"<?= $months === (int)($settings['horizon_months'] ?? 3) ? ' selected' : '' ?>><?= $months ?></option>
                         <?php endforeach; ?>
                     </select>
-                    <span class="generic-description"><?= $t('horizon_help') ?></span>
-                </label>
+                </div>
             </div>
-            <label class="generic-form-field"><span class="generic-form-label"><?= $t('document_mode') ?></span>
-                <select class="generic-form-control" name="recurrence[document_mode]">
+            <div class="generic-form-field">
+                <div class="generic-heading-with-help">
+                    <label class="generic-form-label" for="<?= $fieldId ?>-documents"><?= $t('document_mode') ?></label>
+                    <details class="generic-context-help generic-context-help--compact" data-generic-context-help-hover>
+                        <summary aria-label="<?= $t('document_mode') ?>">?</summary>
+                        <div class="generic-context-help__content"><?= $t('document_help') ?></div>
+                    </details>
+                </div>
+                <select id="<?= $fieldId ?>-documents" class="generic-form-control" name="recurrence[document_mode]">
                     <option value="copy"<?= ($settings['document_mode'] ?? 'copy') === 'copy' ? ' selected' : '' ?>><?= $t('document_copy') ?></option>
                     <option value="reuse"<?= ($settings['document_mode'] ?? 'copy') === 'reuse' ? ' selected' : '' ?>><?= $t('document_reuse') ?></option>
                 </select>
-            </label>
-            <p class="generic-description"><?= $t('document_help') ?></p>
-            <p class="generic-description"><?= $t('help') ?></p>
-            <p class="generic-description" data-meeting-recurrence-for="days"><?= $t('days_help') ?></p>
-            <p class="generic-description" data-meeting-recurrence-for="on_close"><?= $t('on_close_help') ?></p>
+            </div>
         </div>
         <?php if ($existing): ?>
             <button type="button" class="generic-action-button generic-action-button--secondary" data-meeting-recurrence-cancel><?= $t('edit_cancel') ?></button>
@@ -210,7 +239,10 @@ function commonRenderMeetingRecurrenceFields(array $settings, bool $enabled, boo
         <span hidden data-meeting-documents-confirm><?= $t('scope_documents') ?></span>
         <span hidden data-meeting-ignore-rule-confirm><?= $t('save_without_rule') ?></span>
         <input type="hidden" name="recurrence_apply_following" value="0" data-meeting-edit-scope>
-        <p class="generic-description"><?= $t('apply_help') ?></p>
+        <details class="generic-context-help generic-context-help--compact" data-generic-context-help-hover>
+            <summary aria-label="<?= $t('save_options') ?>">?</summary>
+            <div class="generic-context-help__content"><?= $t('apply_help') ?></div>
+        </details>
         <?php endif; ?>
     </section>
     <?php

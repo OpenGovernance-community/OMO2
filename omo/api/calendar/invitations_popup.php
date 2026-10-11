@@ -324,6 +324,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 </form>
 
+<script src="<?= commonAssetUrl('/common/calendar/invitations.js') ?>"></script>
 <?= commonPageScriptTags('/omo/api/calendar/invitations_popup.js', [
     'message' => omoCalendarInvitationsPopupT('calendar.invitations.js_error'),
     'calendarInvitationsUpdated' => omoCalendarInvitationsPopupT('calendar.invitations.updated'),
