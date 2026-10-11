@@ -23,7 +23,7 @@ $respond = static function (int $code, array $payload): void {
     exit;
 };
 
-$context = omoDecisionResolveEditorContext($_GET);
+$context = omoDecisionResolveManagementContext($_GET);
 if (empty($context['status'])) $respond((int)($context['code'] ?? 403), ['status' => false, 'message' => 'Accès refusé.']);
 $decision = ($context['decision'] ?? null) instanceof DecisionProcess ? $context['decision'] : null;
 $currentUserId = (int)($context['currentUserId'] ?? 0);
@@ -31,7 +31,7 @@ $organizationId = (int)($context['organizationId'] ?? 0);
 $collectiveHolonId = (int)($context['targetHolonId'] ?? 0);
 $settings = omoDecisionParamsGetConfig($context['organization'] ?? null);
 if ($organizationId <= 0 || $collectiveHolonId <= 0
-    || ($decision instanceof DecisionProcess && (!$decision->isGovernanceWorkflow() || (int)$decision->get('IDuser') !== $currentUserId || $decision->hasConsultationEnded()))
+    || ($decision instanceof DecisionProcess && (!$decision->isGovernanceWorkflow() || empty($context['canManage']) || $decision->hasConsultationEnded()))
     || (!($decision instanceof DecisionProcess) && (empty($context['canCreate']) || empty($settings['governance']['enabled'])))) {
     $respond(403, ['status' => false, 'message' => 'Accès refusé.']);
 }

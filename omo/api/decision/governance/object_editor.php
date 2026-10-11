@@ -9,7 +9,7 @@ use dbObject\DeferredProposal;
 use dbObject\StatIndicator;
 
 $request = $_SERVER['REQUEST_METHOD'] === 'POST' ? $_POST : $_GET;
-$context = omoDecisionResolveEditorContext($request);
+$context = omoDecisionResolveManagementContext($request);
 $decision = ($context['decision'] ?? null) instanceof DecisionProcess ? $context['decision'] : null;
 $organizationId = (int)($context['organizationId'] ?? 0);
 $collectiveHolonId = (int)($context['targetHolonId'] ?? 0);
@@ -24,7 +24,7 @@ $allowed = !empty($context['status'])
     && in_array($targetType, [DeferredProposal::TARGET_RECURRING_TASK, DeferredProposal::TARGET_INDICATOR], true)
     && in_array($operation, [DeferredProposal::OPERATION_CREATE, DeferredProposal::OPERATION_UPDATE], true)
     && ($decision instanceof DecisionProcess
-        ? $decision->isGovernanceWorkflow() && (int)$decision->get('IDuser') === $currentUserId && !$decision->hasConsultationEnded()
+        ? $decision->isGovernanceWorkflow() && !empty($context['canManage']) && !$decision->hasConsultationEnded()
         : !empty($context['canCreate']) && !empty($settings['governance']['enabled']))
     && DeferredProposal::loadAllowedObjectTargetHolon($organizationId, $holonId, $operation, $collectiveHolonId, $targetType);
 $object = $targetType === DeferredProposal::TARGET_RECURRING_TASK ? new ControlActivity() : new StatIndicator();
