@@ -1,5 +1,9 @@
 # Journal des nouveautés
 
+- CalDAV / PROPPATCH (2026-10-12) : nom, couleur et ordre des calendriers conserves par utilisateur dans les parametres de son adhesion a l organisation, y compris pour les calendriers d evenements en lecture seule. Reponses 207 par propriete, refus des proprietes techniques et sauvegarde atomique avec verrou ; suppression des preferences et invalidation du cache de decouverte. Privileges annonces ajustes. Tests HTTP PHP 8.5 de persistance, isolation, erreurs et cache ; sans migration SQL.
+
+- FAQ / requetes de lecture (2026-10-12) : chargement groupe des questions et reutilisation des caches de lecture et de permissions existants pour la liste et le detail. Liste locale de 401 a 23 requetes SQL ; ajouter 20 questions dans le meme contexte ne multiplie plus les lectures. Tests de conservation du contenu et des droits pour membres et administrateurs ; affichage de 0 ou 10 000 votes sans requete supplementaire. Sans migration SQL.
+
 - FAQ / ouverture directe (2026-10-12) : les liens En savoir plus des tooltips et astuces ouvrent uniquement la question demandee. La liste et le formulaire de creation sont charges au retour a la FAQ ; edition et navigation entre questions restent disponibles sans chargement du catalogue. Tests navigateur du retour, de l edition et des erreurs reseau ; rendu PHP 8.5 mesure a 6 requetes pour la popup directe contre 401 pour la liste, avant le chargement du detail.
 
 - Diagnostic des logs / PHP 8.5 (2026-10-12) : expiration des astuces sans constante obsolete DATE_RFC7231. Journal SQL redirige vers le fichier quotidien commun si un dossier est configure a la place d un fichier ; aide des parametres precisee. Statut HTTP ajoute aux resumes pour distinguer les reponses 4xx/5xx des erreurs SQL.
