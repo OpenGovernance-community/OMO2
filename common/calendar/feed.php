@@ -13,11 +13,12 @@ if (!in_array($method, ['GET', 'HEAD'], true)) {
 }
 // This endpoint authenticates only with the capability, never with the visitor's session.
 if (session_status() === PHP_SESSION_ACTIVE) { session_write_close(); }
+commonEnableReadOnlyCaches();
 try {
     if (!\dbObject\CalendarShare::isStorageAvailable()) { http_response_code(503); exit; }
     $share = \dbObject\CalendarShare::resolveToken((string)($_GET['token'] ?? ''));
     if (!$share) { http_response_code(404); exit; }
-    $content = calendarShareBuildFeed($share);
+    $content = calendarShareReadFeed($share);
     $etag = '"' . hash('sha256', $content) . '"';
     header('ETag: ' . $etag);
     if (trim((string)($_SERVER['HTTP_IF_NONE_MATCH'] ?? '')) === $etag) { http_response_code(304); exit; }

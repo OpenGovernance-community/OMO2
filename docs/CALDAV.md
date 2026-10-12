@@ -1,5 +1,36 @@
 # CalDAV
 
+## Lectures et frequence de synchronisation
+
+Le cache de reponses couvre les routes `scoped/...` et
+`calendars/{utilisateur}/organization-{organisation}/`, y compris leurs
+evenements. Les droits sont controles avant chaque reutilisation. Une lecture
+de calendrier charge uniquement l organisation demandee. Les modifications
+invalident les reponses via les revisions deja utilisees par CalDAV.
+
+Les abonnements ICS lies a une organisation utilisent le meme stockage de
+cache : un ETag inchange peut produire une reponse 304 sans reconstruire les
+evenements. Le jeton de partage, son expiration et son proprietaire restent
+verifies a chaque appel. Les flux personnels regroupant plusieurs organisations
+et des calendriers externes conservent leur construction dynamique.
+
+Les entetes `X-OMO-CalDAV-Cache` et `X-OMO-ICS-Cache` indiquent `MISS`, `HIT`
+ou `BYPASS`. Le repertoire `CALDAV_CACHE_PATH` (ou son emplacement temporaire
+par defaut) doit etre accessible en ecriture au processus PHP. Le cache reduit
+le cout des appels, pas leur nombre. Les nouvelles statistiques rattachent les
+lectures d une organisation validee a celle-ci ; l historique reste inchange.
+
+Pour reduire les appels, regler le compte CalDAV sur une actualisation toutes
+les 15 ou 30 minutes et les abonnements ICS sur une heure, selon le delai
+acceptable. Verifier aussi les abonnements doubles ICS/CalDAV et les appareils
+qui synchronisent le meme compte. Sur Mac : Calendrier > Reglages > Comptes
+pour CalDAV ; Informations du calendrier > Actualisation automatique pour ICS
+([documentation Apple](https://support.apple.com/en-mt/guide/calendar/icl1024/mac)).
+Les flux ICS annoncent deja un intervalle d une heure ; le client decide de le
+respecter. Aucun blocage de frequence n est ajoute aux synchronisations.
+
+Test local : `docker compose exec -u www-data -T app php tests/calendar_cache_http_test.php`.
+
 Le point d entree est `/omo/api/caldav/`. L authentification et les droits de
 consultation habituels restent requis pour acceder a chaque calendrier.
 
