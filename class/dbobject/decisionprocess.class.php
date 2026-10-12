@@ -845,11 +845,13 @@ class DecisionProcess extends DbObject
     protected function applyAcceptedGovernanceActions()
     {
         if (!$this->isGovernanceWorkflow()) {
+            History::recordDecisionCompletion($this);
             return;
         }
         try {
             \dbObject\DecisionGovernanceAction::applyAcceptedForDecision($this);
             \dbObject\DeferredProposal::applyAcceptedForDecision($this);
+            History::recordDecisionCompletion($this);
         } catch (\Throwable $exception) {
             error_log('decision_governance_application_failed: ' . $exception->getMessage());
         }

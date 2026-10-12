@@ -209,8 +209,8 @@
 }
 
 .omo-decision-consent__result-card.is-selected {
-    border-color: color-mix(in srgb, var(--color-primary, #2563eb) 32%, white);
-    background: color-mix(in srgb, var(--color-primary, #2563eb) 7%, white);
+    border-color: color-mix(in srgb, var(--color-primary, #2563eb) 32%, var(--color-border, #dbe3ec));
+    background: color-mix(in srgb, var(--color-primary, #2563eb) 7%, var(--color-surface, #fff));
 }
 
 .omo-decision-consent__summary-badge {
@@ -219,24 +219,24 @@
     gap: 6px;
     padding: 6px 10px;
     border-radius: 999px;
-    background: color-mix(in srgb, var(--color-primary, #2563eb) 10%, white);
+    background: color-mix(in srgb, var(--color-primary, #2563eb) 10%, var(--color-surface, #fff));
     color: var(--color-text-dark, #0f172a);
     font-size: 13px;
 }
 
 .omo-decision-consent__summary-badge--objection {
-    background: #fff0ef;
-    color: #8a1c14;
+    background: color-mix(in srgb, var(--color-danger, #b42318) 12%, var(--color-surface, #fff));
+    color: var(--color-text);
 }
 
 .omo-decision-consent__summary-badge--no_objection {
-    background: #fff6df;
-    color: #8a5a00;
+    background: color-mix(in srgb, var(--color-warning, #d19710) 12%, var(--color-surface, #fff));
+    color: var(--color-text);
 }
 
 .omo-decision-consent__summary-badge--favor {
-    background: #edf9ef;
-    color: #166534;
+    background: color-mix(in srgb, var(--color-success, #166534) 12%, var(--color-surface, #fff));
+    color: var(--color-text);
 }
 
 .omo-decision-consent__result-meta {
@@ -259,7 +259,7 @@
     min-height: 18px;
     padding: 4px;
     border-radius: 999px;
-    background: color-mix(in srgb, var(--color-text-light, #64748b) 8%, white);
+    background: color-mix(in srgb, var(--color-text-light, #64748b) 8%, var(--color-surface, #fff));
     overflow: hidden;
 }
 
@@ -296,15 +296,15 @@
 }
 
 .omo-decision-consent__distribution-label--objection {
-    color: #8a1c14;
+    color: color-mix(in srgb, var(--color-danger, #dc2626) 55%, var(--color-text, #1f2937));
 }
 
 .omo-decision-consent__distribution-label--no_objection {
-    color: #8a5a00;
+    color: color-mix(in srgb, var(--color-warning, #d19710) 55%, var(--color-text, #1f2937));
 }
 
 .omo-decision-consent__distribution-label--favor {
-    color: #166534;
+    color: color-mix(in srgb, var(--color-success, #166534) 55%, var(--color-text, #1f2937));
 }
 
 .omo-decision-consent__modal {

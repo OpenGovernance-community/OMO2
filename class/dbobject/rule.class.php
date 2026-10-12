@@ -26,6 +26,7 @@ class Rule extends DbObject
             [['intention', 'description'], 'html'],
             [['review_date', 'expiration_date'], 'date'],
             [['created_at', 'updated_at'], 'datetime'],
+            [['creation_context'], 'parameters'],
             [['id'], 'safe'],
         ];
     }
@@ -47,6 +48,7 @@ class Rule extends DbObject
             'updated_at' => 'Date de modification',
             'IDuser_creation' => 'Creee par',
             'IDuser_modification' => 'Modifiee par',
+            'creation_context' => 'Contexte de creation',
         ];
     }
 
@@ -320,6 +322,44 @@ class Rule extends DbObject
         } finally {
             $this->auditUserIdOverride = null;
         }
+    }
+
+    public static function buildDecisionCreationContext(DecisionProcess $decision): array
+    {
+        return ['type' => 'decision', 'id' => (int)$decision->getId(),
+            'label' => (string)$decision->get('title'), 'holon_id' => (int)$decision->get('IDholon')];
+    }
+
+    public function getCreationContext(): array
+    {
+        $value = $this->get('creation_context');
+        if (is_array($value)) return $value;
+        $decoded = json_decode((string)$value, true);
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    public static function buildProposalCreationContext(DeferredProposal $proposal): array
+    {
+        $decisionProposal = new DecisionProposal();
+        if ((int)$proposal->get('IDdecision_proposal') > 0
+            && $decisionProposal->load((int)$proposal->get('IDdecision_proposal'))) {
+            $decision = $decisionProposal->getDecisionProcess();
+            if ($decision instanceof DecisionProcess) return self::buildDecisionCreationContext($decision);
+        }
+        $point = new DocumentPvPoint();
+        $document = new Document();
+        if (!$point->load((int)$proposal->get('IDdocument_pv_point'))
+            || !$document->load((int)$point->get('IDdocument'))) return [];
+        $context = ['type' => 'document', 'id' => (int)$document->getId(),
+            'label' => (string)$document->get('title'), 'holon_id' => (int)$document->getPvContextHolonId()];
+        $event = $document->getAssociatedEvent();
+        if ($event instanceof Event) {
+            $date = $event->get('start_at');
+            $context = ['type' => 'event', 'id' => (int)$event->getId(),
+                'label' => (string)$event->get('title') . ($date instanceof \DateTimeInterface ? ' du ' . $date->format('d.m.Y') : ''),
+                'holon_id' => (int)$event->get('IDholon'), 'document_id' => (int)$document->getId()];
+        }
+        return $context;
     }
 
     public static function findDefinedInHolon($holonId)

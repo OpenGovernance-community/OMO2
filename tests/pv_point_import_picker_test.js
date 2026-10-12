@@ -20,13 +20,15 @@ class Node {
         this.classList = {toggle: () => {}};
     }
     get innerHTML() { return String(this.textContent || '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;'); }
+    set innerHTML(value) { this.html = value; }
     get scrollHeight() { return this.children.length * 90; }
-    append(...children) { this.children.push(...children); }
+    append(...children) { children.forEach(child => { child.parent = this; this.children.push(child); }); }
+    remove() { this.parent.children = this.parent.children.filter(child => child !== this); }
     replaceChildren() { this.children = []; }
     addEventListener(name, handler) { this.handlers[name] = handler; }
     fire(name) { if (this.handlers[name]) this.handlers[name](); }
     focus() { this.focused = true; }
-    querySelectorAll() { return this.children; }
+    querySelectorAll(selector) { return this.children.flatMap(child => [...(child.tag === selector ? [child] : []), ...child.querySelectorAll(selector)]); }
     setAttribute(name, value) { this.attributes[name] = value; }
     getAttribute(name) { return this.attributes[name]; }
 }
@@ -53,7 +55,10 @@ const picker = {
     querySelector(selector) { return nodes[selector.match(/data-import-(\w+)/)[1]]; },
     querySelectorAll(selector) { return selector.includes('period') ? periodButtons : (selector.includes('members') ? memberButtons : scopeButtons); }
 };
-const requests = [], replaced = [], events = {};
+const requests = [], replaced = [], events = {}, notifications = [];
+let confirmed = true;
+const rowAt = index => nodes.list.children[index].children[0];
+const abandonAt = index => nodes.list.children[index].children[1];
 let syncs = 0, closes = 0, modalHtml = '';
 const context = {
     addMenuToggle: null, addMenuPanel: null,
@@ -62,15 +67,18 @@ const context = {
         retry: 'Retry', loading: 'Loading', empty: 'Empty', saving: 'Saving', add: 'Add ({count})', locked: 'Locked',
         members: 'Authors', mine: 'Me', all: 'All members', canImportAllMembers: true,
         period: 'Meeting dates', before: 'Before', after: 'After',
+        abandon: 'Close follow-up', abandonConfirm: 'Close {title}?', abandonSaving: 'Closing', abandonSuccess: 'Closed',
         types: {decision: 'Decision'}, icons: {decision: '/decision.png', information: '/information.png'}
     }}},
     document: {createElement: tag => new Node(tag), querySelector: () => picker},
     window: {
         commonTopbarOpenModal(title, html) { modalHtml = html; nodes.list.replaceChildren(); },
         commonTopbarCloseModal() { closes++; if (events['common-topbar-modal-close']) events['common-topbar-modal-close'](); },
-        addEventListener(name, handler) { events[name] = handler; }
+        addEventListener(name, handler) { events[name] = handler; },
+        confirm: () => confirmed,
+        omoNotify: (message, type) => notifications.push({message, type})
     },
-    postPointAction(action, id, fields) { return new Promise((resolve, reject) => requests.push({action, fields, resolve, reject})); },
+    postPointAction(action, id, fields) { return new Promise((resolve, reject) => requests.push({action, id, fields, resolve, reject})); },
     replacePointHtml: point => replaced.push(point), syncEditorFromServer: () => syncs++
 };
 vm.createContext(context);
@@ -95,10 +103,10 @@ const point = id => ({id, title: 'Point ' + id, meetingDate: '01.09.2026', meeti
     await settle();
     assert.equal(requests.length, 1, 'Do not load another page before scrolling a filled list.');
     assert.equal(nodes.list.children.length, 8);
-    assert.equal(nodes.list.children[7].disabled, true, 'Locked points are not selectable.');
-    assert.equal(nodes.list.children[0].tag, 'button', 'Cards are keyboard accessible buttons without checkboxes.');
-    assert.match(nodes.list.children[0].className, /generic-choice-card/);
-    const firstRow = nodes.list.children[0];
+    assert.equal(rowAt(7).disabled, true, 'Locked points are not selectable.');
+    assert.equal(rowAt(0).tag, 'button', 'Cards are keyboard accessible buttons without checkboxes.');
+    assert.match(rowAt(0).className, /generic-choice-card/);
+    const firstRow = rowAt(0);
     assert.match(firstRow.className, /omo-pv-editor__nav-row--priority-p1/);
     assert.equal(firstRow.children[0].children[0].children[0].src, '/decision.png');
     assert.equal(firstRow.children[0].children[0].children[0].alt, 'Decision');
@@ -106,16 +114,16 @@ const point = id => ({id, title: 'Point ' + id, meetingDate: '01.09.2026', meeti
     assert.equal(firstRow.children[0].children[3].textContent, '<safe> first line', 'Preview stays plain text.');
     assert.equal(firstRow.children[0].children[3].className, 'omo-pv-import__preview');
     for (const index of [0, 1]) {
-        nodes.list.children[index].fire('click');
-        assert.equal(nodes.list.children[index].getAttribute('aria-pressed'), 'true');
+        rowAt(index).fire('click');
+        assert.equal(rowAt(index).getAttribute('aria-pressed'), 'true');
     }
     assert.equal(nodes.add.textContent, 'Add (2)');
-    nodes.list.children[7].fire('click');
+    rowAt(7).fire('click');
     assert.equal(nodes.add.textContent, 'Add (2)', 'A locked card cannot join the selection.');
-    nodes.list.children[0].fire('click');
-    assert.equal(nodes.list.children[0].getAttribute('aria-pressed'), 'false');
+    rowAt(0).fire('click');
+    assert.equal(rowAt(0).getAttribute('aria-pressed'), 'false');
     assert.equal(nodes.add.textContent, 'Add (1)');
-    nodes.list.children[0].fire('click');
+    rowAt(0).fire('click');
     scopeButtons[0].fire('click');
     assert.equal(requests.length, 1, 'Choosing the active scope must preserve selections and avoid a reload.');
     nodes.list.scrollTop = 300;
@@ -141,7 +149,7 @@ const point = id => ({id, title: 'Point ' + id, meetingDate: '01.09.2026', meeti
     assert.equal(nodes.list.children.length, 0, 'An old author-filter response must be ignored.');
     requests[3].resolve({items: [point(20), point(21)], hasMore: false});
     await settle();
-    for (const row of nodes.list.children) row.fire('click');
+    for (const item of nodes.list.children) item.children[0].fire('click');
     memberButtons[1].fire('click');
     assert.equal(requests.length, 4, 'Choosing the active author filter preserves selections without reloading.');
     assert.equal(nodes.add.textContent, 'Add (2)');
@@ -155,7 +163,7 @@ const point = id => ({id, title: 'Point ' + id, meetingDate: '01.09.2026', meeti
     assert.equal(memberButtons[1].disabled, true);
     memberButtons[0].fire('click');
     assert.equal(requests.length, 5, 'Author changes are blocked while the transfer is in progress.');
-    assert.equal(nodes.list.children[0].disabled, true);
+    assert.equal(rowAt(0).disabled, true);
     requests[4].reject({message: 'Point changed'});
     await settle();
     assert.equal(nodes.status.textContent, 'Point changed');
@@ -164,7 +172,7 @@ const point = id => ({id, title: 'Point ' + id, meetingDate: '01.09.2026', meeti
     nodes.retry.fire('click');
     requests[5].resolve({items: [point(21)], hasMore: false});
     await settle();
-    nodes.list.children[0].fire('click');
+    rowAt(0).fire('click');
     nodes.add.fire('click');
     requests[6].resolve({points: [{id: 100}]});
     await settle();
@@ -182,7 +190,7 @@ const point = id => ({id, title: 'Point ' + id, meetingDate: '01.09.2026', meeti
     assert.equal(requests.length, 8, 'A non-editor cannot activate the all-members filter.');
     requests[7].resolve({items: [point(30)], hasMore: false});
     await settle();
-    nodes.list.children[0].fire('click');
+    rowAt(0).fire('click');
     nodes.add.fire('click');
     requests[8].reject({message: 'Point changed'});
     await settle();
@@ -199,13 +207,13 @@ const point = id => ({id, title: 'Point ' + id, meetingDate: '01.09.2026', meeti
     assert.equal(nodes.list.children.length, 0, 'A stale future-meeting response must be ignored after switching back.');
     requests[10].resolve({items: [point(40)], hasMore: false});
     await settle();
-    nodes.list.children[0].fire('click');
+    rowAt(0).fire('click');
     periodButtons[1].fire('click');
     assert.equal(nodes.add.disabled, true, 'Period changes clear the old selection.');
     assert.equal(requests[11].fields.cursor, 'null');
     requests[11].resolve({items: [point(41)], hasMore: false});
     await settle();
-    nodes.list.children[0].fire('click');
+    rowAt(0).fire('click');
     nodes.add.fire('click');
     assert.equal(requests[12].fields.period, 'after', 'The transfer includes the chosen period.');
     assert.equal(requests[12].fields.point_ids, '41');
@@ -216,5 +224,48 @@ const point = id => ({id, title: 'Point ' + id, meetingDate: '01.09.2026', meeti
     await settle();
     assert.equal(periodButtons[0].disabled, false);
     assert.equal(periodButtons[1].disabled, false);
+    vm.runInContext('openPointImport();', context);
+    requests[13].resolve({items: [point(50), point(51), point(8)], hasMore: false});
+    await settle();
+    assert.equal(abandonAt(0).tag, 'button');
+    assert.equal(rowAt(0).children.some(child => child.tag === 'button'), false, 'The trash control is a sibling, never nested in the selection button.');
+    assert.equal(abandonAt(0).getAttribute('aria-label'), 'Close follow-up : Point 50');
+    assert.match(abandonAt(0).html, /<svg.*aria-hidden="true"/);
+    assert.equal(abandonAt(2).disabled, true, 'Locked points cannot be closed.');
+    rowAt(0).fire('click');
+    rowAt(1).fire('click');
+    confirmed = false;
+    abandonAt(0).fire('click');
+    assert.equal(requests.length, 14, 'Cancelling confirmation changes neither selection nor data.');
+    assert.equal(nodes.add.textContent, 'Add (2)');
+    confirmed = true;
+    abandonAt(0).fire('click');
+    assert.equal(requests[14].action, 'abandon_importable_point');
+    assert.equal(requests[14].id, 50);
+    assert.equal(requests[14].fields.scope, 'local');
+    assert.equal(requests[14].fields.members, 'mine');
+    assert.equal(requests[14].fields.period, 'before');
+    assert.equal(nodes.status.textContent, 'Closing');
+    abandonAt(1).fire('click');
+    scopeButtons[1].fire('click');
+    assert.equal(requests.length, 15, 'Closing blocks overlapping mutations and filter changes.');
+    requests[14].resolve({status: true});
+    await settle();
+    assert.equal(nodes.list.children.length, 2);
+    assert.equal(nodes.add.textContent, 'Add (1)', 'Only the closed point leaves the selection.');
+    assert.equal(rowAt(0).getAttribute('aria-pressed'), 'true');
+    assert.equal(rowAt(1).disabled, true, 'Locked rows stay locked after closing another point.');
+    assert.equal(abandonAt(1).disabled, true);
+    assert.equal(nodes.status.textContent, '');
+    assert.equal(notifications[0].type, 'success');
+    abandonAt(0).fire('click');
+    requests[15].reject({message: 'Point now locked'});
+    await settle();
+    assert.equal(nodes.list.children.length, 2, 'Failed closure leaves the point visible and selected.');
+    assert.equal(nodes.add.textContent, 'Add (1)');
+    assert.equal(requests.length, 16, 'Failed closure is never retried automatically.');
+    assert.equal(notifications[1].message, 'Point now locked');
+    assert.equal(notifications[1].type, 'error');
+    assert.equal(memberButtons[1].disabled, true, 'The author restriction survives closure errors.');
     console.log('pv_point_import_picker_test: OK');
 })().catch(error => { console.error(error); process.exitCode = 1; });

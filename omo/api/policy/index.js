@@ -393,7 +393,7 @@
             || serverDefault
             || (canUseLegacyPersonal ? getStoredPreference() : null)
             || (canUseLegacyPersonal ? getDefaultPreference() : null);
-        if (preferredView && !viewsMatch(normalizeView(preferredView), currentView())) {
+        if (!root.querySelector('[data-policy-rule-card]:not(.is-collapsed)') && preferredView && !viewsMatch(normalizeView(preferredView), currentView())) {
             refreshRoot(policyViewUrl(normalizeView(preferredView)));
         }
     }
@@ -408,6 +408,8 @@
         });
     }
     window.requestAnimationFrame(syncPolicyGroupStickyOffsets);
+    var linkedRule = root.querySelector('[data-policy-rule-card]:not(.is-collapsed)');
+    if (linkedRule) window.requestAnimationFrame(function () { linkedRule.scrollIntoView({block: 'center'}); });
     if (typeof window.initGenericComponents === 'function') window.initGenericComponents(root);
     window.addEventListener('resize', syncPolicyGroupStickyOffsets);
     var closeRuleMenus = function (exceptMenu) {
