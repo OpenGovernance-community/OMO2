@@ -352,6 +352,10 @@
 			if ($logPath !== "" && !self::isAbsoluteSqlPerformancePath($logPath)) {
 				$logPath = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . str_replace(array("/", "\\"), DIRECTORY_SEPARATOR, $logPath);
 			}
+			// A directory cannot be appended to as a file. Keep diagnostics in the default runtime log.
+			if ($logPath !== "" && (is_dir($logPath) || in_array(substr($logPath, -1), array("/", "\\"), true))) {
+				$logPath = "";
+			}
 
 			self::$_sqlPerformanceConfig = array(
 				"enabled" => $enabled,
@@ -567,10 +571,13 @@
 			$requestStartedAt = isset($_SERVER["REQUEST_TIME_FLOAT"])
 				? (float)$_SERVER["REQUEST_TIME_FLOAT"]
 				: microtime(true);
+			$lastError = error_get_last();
+			$fatal = $lastError && in_array($lastError['type'], array(E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR), true);
 			self::writeSqlPerformanceLog(array(
 				"event" => "request_summary",
 				"time" => date("c"),
 				"request_id" => self::getSqlPerformanceRequestId(),
+				"status_code" => $fatal ? 500 : (http_response_code() ?: 200),
 				"request_duration_ms" => round(max(0.0, (microtime(true) - $requestStartedAt) * 1000), 3),
 				"query_count" => (int)self::$_sqlPerformanceStats["queryCount"],
 				"logged_query_count" => (int)self::$_sqlPerformanceStats["loggedQueryCount"],

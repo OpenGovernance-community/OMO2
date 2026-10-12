@@ -16,5 +16,5 @@ $currentId = is_array($cookie) && ($cookie['day'] ?? '') === $today->format('Y-m
 $next = ($_GET['next'] ?? '') === '1';
 $tip = \dbObject\Tip::pick($currentId, $next);
 echo json_encode(['tip' => $tip?->toPayload(), 'cookieName' => $cookieName,
-    'day' => $today->format('Y-m-d'), 'expires' => $today->modify('+1 day')->setTimezone(new DateTimeZone('UTC'))->format(DATE_RFC7231)],
+    'day' => $today->format('Y-m-d'), 'expires' => $today->modify('+1 day')->setTimezone(new DateTimeZone('UTC'))->format('D, d M Y H:i:s \\G\\M\\T')],
     JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
