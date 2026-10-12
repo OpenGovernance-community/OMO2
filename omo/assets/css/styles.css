@@ -1645,10 +1645,20 @@ body {
 }
 
 .menu-secondary {
+    position: relative;
     flex-shrink: 0;
     margin-top: auto;
     padding-top: 8px;
+}
+
+.menu-secondary::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
     border-top: 1px solid rgba(255,255,255,0.14);
+    pointer-events: none;
 }
 
 .menu-primary {
@@ -1668,7 +1678,7 @@ body {
     margin: 2px;
 }
 
-:root[data-theme="dark"] .menu-secondary {
+:root[data-theme="dark"] .menu-secondary::before {
     border-top-color: rgba(159,176,195,0.2);
 }
 

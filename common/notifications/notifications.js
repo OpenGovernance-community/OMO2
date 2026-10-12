@@ -47,6 +47,8 @@
             return 'warning';
         }
 
+        if (normalized === 'info') return 'info';
+
         return 'error';
     }
 
@@ -121,6 +123,9 @@
         window.setTimeout(function () {
             notification.dataset.commonNotificationState = 'removed';
             notification.remove();
+            if (typeof notification.__commonNotificationOnDismiss === 'function') {
+                notification.__commonNotificationOnDismiss();
+            }
         }, immediately ? 0 : removeAnimationDuration);
     }
 
@@ -135,11 +140,11 @@
         var closeButton;
         var id;
 
-        if (messageText.trim() === '') {
+        if (messageText.trim() === '' && !(normalizedOptions.content instanceof Element)) {
             return '';
         }
 
-        region = getRegion();
+        region = normalizedOptions.container instanceof Element ? normalizedOptions.container : getRegion();
         notificationCounter += 1;
         id = 'common-notification-' + notificationCounter;
 
@@ -153,18 +158,26 @@
         notification.__commonNotificationStartedAt = 0;
         notification.__commonNotificationTimer = null;
         notification.__commonNotificationPaused = false;
+        notification.__commonNotificationOnDismiss = normalizedOptions.onDismiss;
+        function syncPause() {
+            var paused = notification.matches(':hover') || notification.contains(document.activeElement);
+            if (paused) pauseDismissal(notification);
+            else resumeDismissal(notification);
+            notification.classList.toggle('is-paused', paused);
+        }
         notification.addEventListener('mouseenter', function () {
-            pauseDismissal(notification);
-            notification.classList.add('is-paused');
+            syncPause();
         });
         notification.addEventListener('mouseleave', function () {
-            resumeDismissal(notification);
-            notification.classList.remove('is-paused');
+            syncPause();
         });
+        notification.addEventListener('focusin', syncPause);
+        notification.addEventListener('focusout', function () { window.setTimeout(syncPause, 0); });
 
         messageNode = document.createElement('div');
         messageNode.className = 'common-notification__message';
         messageNode.textContent = messageText;
+        if (normalizedOptions.content instanceof Element) messageNode.replaceChildren(normalizedOptions.content);
 
         var progressNode = document.createElement('div');
         progressNode.className = 'common-notification__progress';
@@ -173,7 +186,7 @@
         closeButton = document.createElement('button');
         closeButton.type = 'button';
         closeButton.className = 'common-notification__close';
-        closeButton.setAttribute('aria-label', 'Fermer');
+        closeButton.setAttribute('aria-label', normalizedOptions.closeLabel || 'Fermer');
         closeButton.textContent = '\u00d7';
         closeButton.addEventListener('click', function () {
             dismissNotification(notification, false);
@@ -191,6 +204,7 @@
         });
 
         scheduleDismissal(notification);
+        syncPause();
 
         return id;
     }
