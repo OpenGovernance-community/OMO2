@@ -1,5 +1,9 @@
 # Journal Des Nouveautes
 
+- PV / correction de la poubelle d import (2026-10-12) : le controle general des points du PV ouvert ne bloque plus la cloture du suivi d un point provenant d un autre PV. Les droits, le jeton de session et les verrous du point source restent verifies. Test HTTP du parcours reel depuis la popup, notamment avec un PV source deja valide.
+
+- Reglement / liens directs (2026-10-12) : les liens vers une regle deplacent aussi la vue lorsque le panneau est deja ouvert ou en cache. La regle est depliee, ses details ouverts et la recherche effacee ; chargement du perimetre global si elle manque dans la vue courante. Test de regression de navigation.
+
 - PV / fin du suivi des anciens points (2026-10-12) : icone poubelle dans la popup d import pour signaler qu un point ne necessite plus de traitement supplementaire, apres confirmation. Le point reste actif et non traite dans son PV d origine, avec son contenu conserve et une mention d abandon ou de resolution par une autre voie, y compris dans les PV valides et les exports. Exclusion des imports suivants, controle des droits et verrous, protection contre les anciennes sessions. Migration SQL et tests PHP 8.5 / JavaScript.
 
 - Decisions / provenance des regles et historique (2026-10-12) : correction du fond clair des resultats de consentement et des details en theme sombre. Les regles conservent leur contexte de creation (decision collective, evenement ou PV), avec lien et auteur de la proposition ; la derniere modification n est affichee que pour un auteur different. Migration pour les creations collectives existantes. Historique de fin de decision sans doublon, resultat des propositions et modifications appliquees, refusees ou en conflit, avec liens vers les regles creees ou modifiees. Acces direct a une regle depuis un lien, tests PHP 8.5 et integration Docker.

@@ -408,6 +408,39 @@
         });
     }
     window.requestAnimationFrame(syncPolicyGroupStickyOffsets);
+    var focusRule = function (ruleId) {
+        var card = root.querySelector('[data-policy-rule-card][data-policy-rule-id="' + ruleId + '"]');
+        if (!card) {
+            var view = currentView();
+            view.scope = 'global';
+            refreshRoot(policyViewUrl(view) + '&open_rule_id=' + encodeURIComponent(ruleId));
+            return;
+        }
+        closeFilterPanel(false, false);
+        currentQuickSearch = '';
+        if (quickSearchInput) quickSearchInput.value = '';
+        applyQuickSearch();
+        if (drawer && drawer.classList.contains('is-open')) close();
+        card.classList.remove('is-collapsed');
+        var toggle = card.querySelector('[data-generic-accordion-toggle]');
+        if (toggle) toggle.setAttribute('aria-expanded', 'true');
+        var details = card.querySelector('.omo-policy__rule-details');
+        if (details) details.open = true;
+        window.requestAnimationFrame(function () {
+            if (!card.isConnected) return;
+            card.scrollIntoView({block: 'center'});
+            if (toggle) toggle.focus({preventScroll: true});
+        });
+    };
+    var handlePolicyRouteChange = function (event) {
+        if (!root.isConnected) {
+            window.removeEventListener('omo-policy-route-change', handlePolicyRouteChange);
+            return;
+        }
+        var ruleId = Number(event.detail && event.detail.ruleId);
+        if (Number.isInteger(ruleId) && ruleId > 0) focusRule(ruleId);
+    };
+    window.addEventListener('omo-policy-route-change', handlePolicyRouteChange);
     var linkedRule = root.querySelector('[data-policy-rule-card]:not(.is-collapsed)');
     if (linkedRule) window.requestAnimationFrame(function () { linkedRule.scrollIntoView({block: 'center'}); });
     if (typeof window.initGenericComponents === 'function') window.initGenericComponents(root);

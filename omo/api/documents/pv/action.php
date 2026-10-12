@@ -585,7 +585,8 @@ $hasCalendarApplication = $isLightweightLockAction
     : omoDocumentsPvEditorOrganizationHasApplication($organizationId, $currentUserId, 'calendar');
 
 $requestedPointId = isset($_POST['point_id']) ? (int)$_POST['point_id'] : 0;
-if ($requestedPointId > 0 && !$isLightweightLockAction) {
+// Import follow-up targets a source PV; its own handler checks source access and eligibility.
+if ($requestedPointId > 0 && !$isLightweightLockAction && $action !== 'abandon_importable_point') {
     $requestedPoint = new \dbObject\DocumentPvPoint();
     if (
         !$requestedPoint->load($requestedPointId)
