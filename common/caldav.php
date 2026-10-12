@@ -1069,7 +1069,7 @@ if (!function_exists('commonCalDavLoadScopedCalendarGroupsForViewer')) {
 }
 
 if (!function_exists('commonCalDavLoadCalendarsForViewer')) {
-    function commonCalDavLoadCalendarsForViewer(User $viewer)
+    function commonCalDavLoadCalendarsForViewer(User $viewer, int $onlyOrganizationId = 0)
     {
         static $cache = array();
 
@@ -1078,12 +1078,18 @@ if (!function_exists('commonCalDavLoadCalendarsForViewer')) {
             return array();
         }
 
-        if (isset($cache[$viewerUserId])) {
-            return $cache[$viewerUserId];
+        $cacheKey = $viewerUserId . ':' . $onlyOrganizationId;
+        if (isset($cache[$cacheKey])) {
+            return $cache[$cacheKey];
         }
 
         $memberships = new ArrayUserOrganization();
-        $memberships->loadActiveForUser($viewerUserId);
+        if ($onlyOrganizationId > 0) {
+            $memberships->loadHydrated(['where' => [
+                ['field' => 'IDuser', 'value' => $viewerUserId], ['field' => 'IDorganization', 'value' => $onlyOrganizationId],
+                ['field' => 'active', 'value' => 1],
+            ]]);
+        } else $memberships->loadActiveForUser($viewerUserId);
 
         $calendarMap = array();
         $seenOrganizationIds = array();
@@ -1094,6 +1100,7 @@ if (!function_exists('commonCalDavLoadCalendarsForViewer')) {
             }
 
             $organizationId = (int)$membership->get('IDorganization');
+            if ($onlyOrganizationId > 0 && $organizationId !== $onlyOrganizationId) continue;
             if ($organizationId <= 0 || isset($seenOrganizationIds[$organizationId])) {
                 continue;
             }
@@ -1141,8 +1148,8 @@ if (!function_exists('commonCalDavLoadCalendarsForViewer')) {
             );
         }
 
-        $cache[$viewerUserId] = $calendarMap;
-        return $cache[$viewerUserId];
+        $cache[$cacheKey] = $calendarMap;
+        return $cache[$cacheKey];
     }
 }
 
@@ -1253,16 +1260,16 @@ if (!function_exists('commonCalDavResolveRouteResource')) {
             return is_array($calendar) && isset($calendar['eventMap'][$fileName]) ? $calendar['eventMap'][$fileName] : null;
         }
 
-        $calendarMap = commonCalDavLoadCalendarsForViewer($viewer);
-
         if (preg_match('#^/calendars/' . preg_quote((string)$viewerUserId, '#') . '/(organization-\d+)$#', $routePath, $matches)) {
             $calendarSlug = (string)$matches[1];
+            $calendarMap = commonCalDavLoadCalendarsForViewer($viewer, (int)substr($calendarSlug, strlen('organization-')));
             return isset($calendarMap[$calendarSlug]) ? $calendarMap[$calendarSlug] : null;
         }
 
         if (preg_match('#^/calendars/' . preg_quote((string)$viewerUserId, '#') . '/(organization-\d+)/(event-\d+\.ics)$#', $routePath, $matches)) {
             $calendarSlug = (string)$matches[1];
             $fileName = (string)$matches[2];
+            $calendarMap = commonCalDavLoadCalendarsForViewer($viewer, (int)substr($calendarSlug, strlen('organization-')));
 
             if (!isset($calendarMap[$calendarSlug]['eventMap'][$fileName])) {
                 return null;
