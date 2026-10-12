@@ -949,6 +949,7 @@ if (!function_exists('omoDecisionRenderGovernanceChanges')) {
         static $sourceLang = [
             'pending' => ['text' => 'Cette modification sera appliquée si la proposition est retenue.', 'context' => 'Decision modification awaiting a vote'],
             'move' => ['text' => 'Deplacer', 'context' => 'Deferred holon move action'],
+            'impact' => ['text' => 'Voir le resultat de cette modification', 'context' => 'Link to an object created or updated by an accepted proposal.'],
             'validated' => ['text' => 'Cette modification a été validée et reste en attente d’application.', 'context' => 'Decision modification approved but not applied'],
             'applied' => ['text' => 'Cette modification a été appliquée.', 'context' => 'Decision modification successfully applied'],
             'rejected' => ['text' => 'Cette modification n’a pas été appliquée : la proposition n’a pas été retenue.', 'context' => 'Decision modification rejected by the vote'],
@@ -1014,6 +1015,8 @@ if (!function_exists('omoDecisionRenderGovernanceChanges')) {
             $items[] = '<section class="omo-governance-proposal-changes__item">'
                 . '<strong>' . $escape($heading) . '</strong>'
                 . '<p class="omo-governance-proposal-changes__summary">' . $escape($summary) . '</p>'
+                . ((string)$action->get('status') === 'applied' && !$isDelete && (int)$action->get('target_id') > 0
+                    ? \dbObject\History::renderReferenceHtml(\dbObject\History::buildReferenceToken((string)$action->get('target_type'), (int)$action->get('target_id'), t('impact', [], $lang, $sourceLang)), (int)($proposal->getDecisionProcess()?->get('IDorganization') ?? 0)) : '')
                 . '<details class="omo-change-details" data-omo-change-details-payload="' . $escape($payload) . '">'
                 . '<summary>Détail</summary><div data-omo-change-details-container></div></details>'
                 . '</section>';
@@ -1045,6 +1048,8 @@ if (!function_exists('omoDecisionRenderGovernanceChanges')) {
             $items[] = '<section class="omo-governance-proposal-changes__item">'
                 . '<strong>' . $escape($operationLabel . ' ' . mb_strtolower($heading) . ($target !== '' ? ' : ' . $target : '')) . '</strong>'
                 . '<p class="omo-governance-proposal-changes__summary">' . $escape($summary) . '</p>'
+                . ($status === 'applied' && (string)$deferredProposal->get('operation') !== 'delete' && (int)$deferredProposal->get('target_id') > 0
+                    ? \dbObject\History::renderReferenceHtml(\dbObject\History::buildReferenceToken((string)$deferredProposal->get('target_type'), (int)$deferredProposal->get('target_id'), t('impact', [], $lang, $sourceLang)), (int)$deferredProposal->get('IDorganization')) : '')
                 . '<details class="omo-change-details" data-omo-change-details-payload="' . $escape($payload) . '">'
                 . '<summary>Détail</summary><div data-omo-change-details-container></div></details>'
                 . '</section>';

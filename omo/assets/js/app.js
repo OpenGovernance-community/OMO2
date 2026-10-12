@@ -2488,6 +2488,10 @@ function omoGetMenuHashForRouteToken(routeToken = null) {
         return 'processus';
     }
 
+    if (/^policy-r\d+$/i.test(normalizedRouteToken)) {
+        return 'policy';
+    }
+
     if (omoParseDecisionRouteToken(normalizedRouteToken)) {
         return 'decision';
     }
@@ -2697,6 +2701,15 @@ function omoResolveSpecialDrawerRoute(routeToken, oid = null, cid = null, option
         return {
             drawer: 'drawer_decisions',
             url: url,
+            navigationMode: 'drawer'
+        };
+    }
+
+    const policyRuleMatch = normalizedRouteToken.match(/^policy-r(\d+)$/i);
+    if (policyRuleMatch) {
+        return {
+            drawer: 'drawer_policy',
+            url: `api/policy/index.php?open_rule_id=${encodeURIComponent(policyRuleMatch[1])}&policy_scope=global`,
             navigationMode: 'drawer'
         };
     }

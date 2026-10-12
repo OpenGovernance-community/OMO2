@@ -1466,6 +1466,7 @@
 						COALESCE(is_handled, 0),
 						COALESCE(IDpoint_moved_to, 0),
 						COALESCE(date_moved, ''),
+						COALESCE(date_abandoned, ''),
 						COALESCE((SELECT CONCAT_WS(CHAR(30), target.IDdocument, destination.title, COALESCE(meeting.start_at, destination.datecreation))
 							FROM document_pv_point target
 							INNER JOIN document destination ON destination.id = target.IDdocument
@@ -1978,7 +1979,7 @@
 
 		public function canUserEditPvPoint(\dbObject\DocumentPvPoint $point, int $userId): bool
 		{
-			if ($point->isMoved()) return false;
+			if ($point->isMoved() || $point->isAbandoned()) return false;
 			if (!$this->isPvDocument() || $this->isPvValidated() || (int)$point->get('IDdocument') !== (int)$this->getId()) {
 				return false;
 			}
@@ -2010,7 +2011,7 @@
 
 		public function canUserReorderPvItem(\dbObject\DocumentPvPoint $item, int $userId): bool
 		{
-			if ($item->isMoved()) return false;
+			if ($item->isMoved() || $item->isAbandoned()) return false;
 			if (!$this->canUserReorderPvPoints($userId) || (int)$item->get('IDdocument') !== (int)$this->getId()) {
 				return false;
 			}
@@ -4695,6 +4696,7 @@
 					'title' => (string)$point->get('title'),
 					'url' => $movementDestination['url'] ?? '',
 					'movementDestinationLabel' => $movementDestination['label'] ?? '',
+					'isAbandoned' => $point->isAbandoned(),
 					'authorLabel' => $point->getAuthorDisplayName($organizationId),
 					'desiredDurationMinutes' => $point->getDurationMinutesValue('desired_duration_minutes'),
 					'priority' => \dbObject\DocumentPvPoint::normalizePriority($point->get('priority')),
