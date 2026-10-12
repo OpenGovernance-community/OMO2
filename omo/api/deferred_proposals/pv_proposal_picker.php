@@ -1,6 +1,8 @@
 <?php
 require_once dirname(__DIR__) . '/bootstrap.php';
 
+commonReleaseReadOnlySession();
+
 use dbObject\DeferredProposal;
 use dbObject\Document;
 use dbObject\DocumentPvPoint;

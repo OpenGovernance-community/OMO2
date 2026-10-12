@@ -14,6 +14,23 @@
     function slotTime(index) {
         return String(Math.floor(index / 2)).padStart(2, '0') + ':' + (index % 2 ? '30' : '00');
     }
+    function scrollSlots(list, preferredTime) {
+        window.requestAnimationFrame(function () {
+            if (!list.isConnected) { return; }
+            var match = String(preferredTime || '').match(/(?:^|T)(\d{2}):(\d{2})/);
+            var target = match ? Number(match[1]) * 60 + Number(match[2]) : 8 * 60;
+            var times = Array.from(list.querySelectorAll('.calendar-freebusy-slot time'));
+            // A pause or a shorter working day may omit the target: use the next slot, or the last one.
+            var time = times.find(function (item) {
+                var value = item.dateTime.slice(11, 16).split(':');
+                return Number(value[0]) * 60 + Number(value[1]) + 30 > target;
+            }) || times[times.length - 1];
+            if (!time) { return; }
+            var row = time.closest('.calendar-freebusy-slot');
+            list.scrollTop += row.getBoundingClientRect().top - list.getBoundingClientRect().top
+                - (match ? list.clientHeight / 3 : 0);
+        });
+    }
     function paintDay(button, day, dateLabel, labels, selected) {
         var label = day.workingCount ? text(labels.day_availability, {
             free: day.workingCount - day.busySlotCount, total: day.workingCount
@@ -91,7 +108,8 @@
             list.appendChild(row);
         });
         panel.appendChild(list);
+        scrollSlots(list);
     }
     window.omoCalendarAvailabilityView = {element: element, text: text, slotTime: slotTime,
-        paintDay: paintDay, monthCache: monthCache, renderProfile: renderProfile};
+        paintDay: paintDay, monthCache: monthCache, renderProfile: renderProfile, scrollSlots: scrollSlots};
 })(window);

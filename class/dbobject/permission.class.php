@@ -5,7 +5,7 @@ class Permission extends DbObject
 {
     public static function requiresExplicitAssignment(string $permissionKey): bool
     {
-        return $permissionKey === 'CAN_DELETE_PARCOURS'
+        return in_array($permissionKey, ['CAN_DELETE_PARCOURS', 'CAN_EDIT_DECISION', 'CAN_DELETE_DECISION'], true)
             || (bool)preg_match('/^CAN_(CREATE|DELETE)_TYPE[1-9][0-9]*_PROPERTIES$/', $permissionKey);
     }
 
@@ -507,8 +507,23 @@ class Permission extends DbObject
             return trim((string)$value) !== '';
         })));
 
+        // Read catalog flags together instead of one round trip per assigned permission.
+        $contextualByKey = [];
+        if ($normalizedKeys && self::hasIsContextualColumn()) {
+            foreach (array_chunk(array_values(array_unique(array_map('trim', $normalizedKeys))), 500) as $chunk) {
+                $params = [];
+                foreach ($chunk as $index => $key) { $params['key_' . $index] = $key; }
+                $rows = self::fetchAll('SELECT `permission_key`, `iscontextual` FROM `permission` WHERE `permission_key` IN ('
+                    . implode(', ', array_map(static fn($key) => ':' . $key, array_keys($params))) . ')', $params);
+                foreach ($rows as $row) {
+                    $contextualByKey[(string)$row['permission_key']] = (bool)$row['iscontextual'];
+                }
+            }
+        }
+
         foreach ($normalizedKeys as $permissionKey) {
-            $map[$permissionKey] = self::isPermissionContextual($permissionKey, true);
+            // Preserve built-in/missing-key fallbacks and database collation for alternate spellings.
+            $map[$permissionKey] = $contextualByKey[trim($permissionKey)] ?? self::isPermissionContextual($permissionKey, true);
         }
 
         return $map;
@@ -555,7 +570,7 @@ class Permission extends DbObject
     public static function getEditorCatalog(array $lexicon = [], ?array $enabledApplicationHashes = null)
     {
         $permissions = new \dbObject\ArrayPermission();
-        $permissions->load([
+        $permissions->loadHydrated([
             'orderBy' => [
                 ['field' => 'title', 'dir' => 'ASC'],
                 ['field' => 'permission_key', 'dir' => 'ASC'],

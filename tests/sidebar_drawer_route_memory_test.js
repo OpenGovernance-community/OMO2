@@ -43,6 +43,10 @@ const context = {
 };
 
 vm.createContext(context);
+const documentParserStart = source.indexOf('function omoParseDocumentRouteToken(');
+const documentParserEnd = source.indexOf('\nfunction ', documentParserStart + 1);
+assert(documentParserStart >= 0 && documentParserEnd > documentParserStart, 'Unable to locate the document route parser.');
+vm.runInContext(source.slice(documentParserStart, documentParserEnd), context);
 vm.runInContext(source.slice(cacheStart, cacheEnd), context);
 vm.runInContext(source.slice(restoreStart, restoreEnd), context);
 vm.runInContext(source.slice(reopenStart, reopenEnd), context);

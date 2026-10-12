@@ -3,26 +3,33 @@ namespace dbObject;
 
 class ArrayEvent extends ArrayDbObject
 {
-    public function loadBusyForUserDateRange(int $userId, \DateTimeInterface $start, \DateTimeInterface $end): void
+    public function loadBusyForUserDateRange(int $userId, \DateTimeInterface $start, ?\DateTimeInterface $end = null): void
     {
         $this->exchangeArray([]);
-        $rows = Event::fetchAll('SELECT e.id FROM `event` e
+        $params = ['buffer_user' => $userId, 'cancelled' => Event::STATUS_CANCELLED, 'start' => $start, 'member' => $userId];
+        $endCondition = '';
+        if ($end !== null) {
+            $endCondition = 'AND DATE_SUB(CASE WHEN e.is_all_day = 1 THEN DATE(e.start_at) ELSE e.start_at END,
+                INTERVAL COALESCE(b.preparation_minutes, 0) MINUTE) < :end';
+            $params['end'] = $end;
+        }
+        $rows = Event::fetchAll('SELECT e.* FROM `event` e
             LEFT JOIN event_time_buffer b ON b.IDevent = e.id AND b.IDuser = :buffer_user
             WHERE e.active = 1 AND e.status <> :cancelled
-            AND DATE_SUB(CASE WHEN e.is_all_day = 1 THEN DATE(e.start_at) ELSE e.start_at END,
-                INTERVAL COALESCE(b.preparation_minutes, 0) MINUTE) < :end AND DATE_ADD((CASE WHEN e.is_all_day = 1
+            ' . $endCondition . ' AND DATE_ADD((CASE WHEN e.is_all_day = 1
                 THEN DATE_ADD(DATE(COALESCE(e.end_at, e.start_at)), INTERVAL 1 DAY)
                 ELSE COALESCE(e.end_at, DATE_ADD(e.start_at, INTERVAL 1 HOUR)) END), INTERVAL COALESCE(b.closing_minutes, 0) MINUTE) > :start
             AND EXISTS (SELECT 1 FROM user_organization uo
                 WHERE uo.IDorganization = e.IDorganization AND uo.IDuser = :member AND uo.active = 1)',
-            ['buffer_user' => $userId, 'cancelled' => Event::STATUS_CANCELLED, 'start' => $start, 'end' => $end, 'member' => $userId]);
+            $params);
         if (!is_array($rows)) { throw new \RuntimeException('storage'); }
+        $events = [];
         foreach ($rows as $row) {
             $event = new Event();
-            if ($event->load((int)$row['id']) && $event->isInvitedToEvent($userId)) {
-                $this[] = $event;
-            }
+            $event->hydrateFromDatabaseRow($row, true);
+            $events[] = $event;
         }
+        $this->exchangeArray(Event::filterInvitedForUser($events, $userId));
     }
 
     public static function objectName()
@@ -31,7 +38,7 @@ class ArrayEvent extends ArrayDbObject
     }
 
     /** Sanitized personal busy blocks: never expose another organization's event details. */
-    public static function otherOrganizationBusyBlocks(int $userId, int $organizationId, \DateTimeInterface $start, \DateTimeInterface $end): array
+    public static function otherOrganizationBusyBlocks(int $userId, int $organizationId, \DateTimeInterface $start, ?\DateTimeInterface $end = null): array
     {
         if ($userId <= 0) { return []; }
         $events = new self();

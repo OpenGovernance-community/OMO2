@@ -27,6 +27,7 @@ $organization = $context['organization'];
 $rootHolon = $context['rootHolon'];
 $currentHolon = $context['currentHolon'];
 $projectDisplayConfig = omoProjectsGetDisplayConfig($organizationId);
+$blockingConfig = Project::getOrganizationBlockingConfig($organizationId);
 $enabledColumns = $projectDisplayConfig['enabledStatuses'];
 $usesPriority = !empty($projectDisplayConfig['usePriority']);
 $usesImportance = !empty($projectDisplayConfig['useImportance']);
@@ -841,6 +842,8 @@ $projectTexts = [
     class="omo-projects omo-panel-view"
     id="omo-projects-root"
     data-omo-projects-oid="<?= (int)$organizationId ?>"
+    data-omo-projects-require-blocked-reason="<?= $blockingConfig['requireReason'] ? '1' : '0' ?>"
+    data-omo-projects-require-blocked-review-date="<?= $blockingConfig['requireReviewDate'] ? '1' : '0' ?>"
     data-omo-projects-cid="<?= $currentHolon instanceof Holon ? (int)$currentHolon->getId() : 0 ?>"
     data-omo-app-view-preferences="<?= omoApiEscape(json_encode($applicationViewPreferences, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>"
     data-omo-projects-scope="<?= omoApiEscape($projectScope) ?>"

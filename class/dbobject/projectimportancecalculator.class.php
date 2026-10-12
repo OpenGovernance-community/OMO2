@@ -6,7 +6,7 @@ class ProjectImportanceCalculator
     public const PARAMETERS_KEY = 'importanceCalculation';
     public const DEFAULT_PARENT_WEIGHT = 0.7;
     public const DEFAULT_DEPTH_PENALTY = 0.15;
-    public const CALCULATION_VERSION = 3;
+    public const CALCULATION_VERSION = 4;
 
     public static function getDefaultConfig(): array
     {
@@ -187,7 +187,7 @@ class ProjectImportanceCalculator
         $rootHolon = $organization->load($organizationId) ? $organization->getStructuralRootHolon() : null;
         $rootHolonId = $rootHolon instanceof Holon ? (int)$rootHolon->getId() : 0;
         $holonRows = DbObject::fetchAll(
-            'SELECT id, IDholon_parent
+            'SELECT id, IDholon_parent, IDtypeholon
              FROM holon
              WHERE IDorganization = :organization_id
                 OR (:root_holon_id > 0 AND IDholon_org = :root_holon_id_match)',
@@ -198,16 +198,18 @@ class ProjectImportanceCalculator
             ]
         );
         $holonParents = [];
+        $holonTypes = [];
         if (is_array($holonRows)) {
             foreach ($holonRows as $holonRow) {
                 $holonId = (int)($holonRow['id'] ?? 0);
                 if ($holonId > 0) {
                     $holonParents[$holonId] = (int)($holonRow['IDholon_parent'] ?? 0);
+                    $holonTypes[$holonId] = (int)($holonRow['IDtypeholon'] ?? 0);
                 }
             }
         }
         $depthCache = [];
-        $getHolonDepth = static function ($holonId) use (&$getHolonDepth, &$depthCache, $holonParents, $rootHolonId): int {
+        $getHolonDepth = static function ($holonId) use (&$getHolonDepth, &$depthCache, $holonParents, $holonTypes, $rootHolonId): int {
             $holonId = (int)$holonId;
             if ($holonId <= 0 || $rootHolonId <= 0 || !isset($holonParents[$holonId])) {
                 return 0;
@@ -221,7 +223,7 @@ class ProjectImportanceCalculator
                 if ($currentId === $rootHolonId) {
                     $depth = 0;
                     foreach (array_reverse(array_keys($path)) as $pathId) {
-                        $depth++;
+                        if (($holonTypes[$pathId] ?? 0) !== 3) $depth++;
                         $depthCache[$pathId] = $depth;
                     }
                     return $depthCache[$holonId] ?? 0;

@@ -340,6 +340,48 @@ try {
     $pointInB->load($pointInBId, true);
     importExpect(str_contains($closedBPoint->getRenderedContentForViewer($organizationId), '#documents-d' . $chainB->getId())
         && str_contains($pointInB->getRenderedContentForViewer($organizationId), '#documents-d' . $chainD->getId()), 'A stays linked to B whenever B retains its own movement notice.');
+    // Closing follow-up retains the source, including validated minutes and their draft content.
+    $abandonSource = $makeDocument('2026-09-20 12:00:00');
+    $abandonPoint = $makePoint($abandonSource);
+    $staleAbandonPoint = clone $abandonPoint;
+    $abandonSource->set('pvstage', 'validated');
+    importSave($abandonSource);
+    $originalContent = $abandonPoint->get('content');
+    $abandonRevision = $abandonSource->getPvEditorPollingRevision($organizationId);
+    $abandonVersion = $abandonPoint->buildViewerData($organizationId, $userId)['syncVersion'];
+    $destinationCount = count($destination->getPvPoints());
+    importExpect(empty(DocumentPvPoint::abandonFromImport($destination, (int)$abandonPoint->getId(), 0)['status']), 'Anonymous follow-up closure is refused.');
+    importExpect(empty(DocumentPvPoint::abandonFromImport($destination, (int)$abandonPoint->getId(), $userId, 'local', 'mine', 'after')['status']), 'The period filter also fences follow-up closure.');
+    $result = DocumentPvPoint::abandonFromImport($destination, (int)$abandonPoint->getId(), $userId);
+    importExpect(!empty($result['status']), 'The author can close follow-up in validated minutes: ' . json_encode($result));
+    $abandonPoint->load($abandonPoint->getId(), true);
+    importExpect($abandonPoint->isAbandoned() && !$abandonPoint->isHandled() && !$abandonPoint->isMoved()
+        && !empty($abandonPoint->get('active')) && $abandonPoint->get('content') === $originalContent
+        && (int)$abandonPoint->get('IDdocument') === (int)$abandonSource->getId(), 'Closure preserves the original unhandled point and all its content.');
+    importExpect(count($destination->getPvPoints()) === $destinationCount, 'Closure does not create a destination point.');
+    importExpect(!in_array((int)$abandonPoint->getId(), array_column(DocumentPvPoint::getImportablePage($destination, $userId)['items'], 'id'), true), 'Closed points leave the import list.');
+    importExpect(empty(DocumentPvPoint::importIntoDocument($destination, [(int)$abandonPoint->getId()], $userId, 'local', $notice)['status']), 'A stale selection cannot import a closed point.');
+    importExpect(empty(DocumentPvPoint::abandonFromImport($destination, (int)$abandonPoint->getId(), $userId)['status']), 'A repeated closure cannot rewrite the audit date.');
+    $renderedAbandoned = $abandonPoint->getRenderedContentForViewer($organizationId);
+    importExpect(str_contains($renderedAbandoned, 'Original content') && str_contains($renderedAbandoned, 'ne nécessite plus de traitement supplémentaire'), 'The point viewer preserves the content and explains closure.');
+    importExpect(str_contains($abandonSource->getRenderedContentForCurrentViewer(), 'ne nécessite plus de traitement supplémentaire')
+        && str_contains($abandonSource->renderPvUnhandledPointsForViewer(), 'Fixture point'), 'Original report and exports display closure in the non-treated list.');
+    importExpect($abandonRevision !== $abandonSource->getPvEditorPollingRevision($organizationId)
+        && $abandonVersion !== $abandonPoint->buildViewerData($organizationId, $userId)['syncVersion'], 'Other open viewers detect closure even within the same second.');
+    importExpect(empty($staleAbandonPoint->save()['status']) && !$abandonSource->canUserEditPvPoint($abandonPoint, $userId), 'Stale editors cannot overwrite closure.');
+    $staleAbandonPoint->delete();
+    importExpect($abandonPoint->load($abandonPoint->getId(), true) && $abandonPoint->isAbandoned(), 'A stale delete cannot erase the original point.');
+    $lockedAbandonPoint = $makePoint($abandonSource, ['IDuser_editing' => $userId, 'edit_lock_token' => 'abandon-lock', 'dateedition' => new DateTimeImmutable()]);
+    importExpect(empty(DocumentPvPoint::abandonFromImport($destination, (int)$lockedAbandonPoint->getId(), $userId)['status']), 'An active editing lock prevents follow-up closure.');
+    $lockedAbandonPoint->load($lockedAbandonPoint->getId(), true);
+    importExpect(!$lockedAbandonPoint->isAbandoned(), 'Refused closure rolls back without altering the point.');
+    $foreignAbandonPoint = $makePoint($abandonSource, ['IDuser_author' => $memberId]);
+    importExpect(empty(DocumentPvPoint::abandonFromImport($destination, (int)$foreignAbandonPoint->getId(), $userId)['status']), 'The mine filter rejects another author even for the editor.');
+    importExpect(!empty(DocumentPvPoint::abandonFromImport($destination, (int)$foreignAbandonPoint->getId(), $userId, 'local', 'all')['status']), 'The authorized editor may close a listed point from another author.');
+    $openAbandonPoint = $makePoint($recent);
+    importExpect(!empty(DocumentPvPoint::abandonFromImport($destination, (int)$openAbandonPoint->getId(), $userId)['status']), 'Open meeting points can also close follow-up.');
+    $recent->load($recent->getId(), true);
+    importExpect(str_contains($recent->getRenderedContentForCurrentViewer(), 'ne nécessite plus de traitement supplémentaire'), 'Open minutes show the closure notice beside the retained point.');
     $destination->set('pvstage', 'review');
     importSave($destination);
     importExpect(!DocumentPvPoint::canImportIntoDocument($destination, $userId), 'Review destination must reject import.');

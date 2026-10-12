@@ -8,7 +8,7 @@
 			return "\dbObject\UserOrganization";
 		}
 
-		public function loadActiveForOrganization($organizationId)
+		public function loadActiveForOrganization($organizationId, bool $hydrate = false)
 		{
 			$organizationId = (int)$organizationId;
 
@@ -19,7 +19,7 @@
 			}
 
 			$query = "
-				SELECT uo.id
+				SELECT " . ($hydrate ? 'uo.*' : 'uo.id') . "
 				FROM user_organization uo
 				INNER JOIN `user` u ON u.id = uo.IDuser
 				WHERE uo.IDorganization = :organization_id
@@ -40,7 +40,8 @@
 
 			foreach ($rows as $row) {
 				$item = new UserOrganization();
-				$item->setId((int)$row['id']);
+				if ($hydrate) { $item->hydrateFromDatabaseRow($row, true); }
+				else { $item->setId((int)$row['id']); }
 				$this[] = $item;
 			}
 		}

@@ -8724,7 +8724,8 @@
 			}
 
 			return array_values(array_filter($this->getAllTemplateDefinitionHolons(), function ($template) use ($pathIds) {
-				return in_array((int)$template->get('IDholon_parent'), $pathIds, true);
+				$parent = $template->getParentHolonThroughGroups();
+				return $parent instanceof Holon && in_array((int)$parent->getId(), $pathIds, true);
 			}));
 		}
 
@@ -8856,7 +8857,9 @@
 			}
 
 			foreach ($templateById as $templateId => $template) {
-				if (isset($eligibleTemplateContextIds[(int)$template->get('IDholon_parent')])) {
+				$parent = $template->getParentHolonThroughGroups();
+				if (isset($eligibleTemplateContextIds[(int)$template->get('IDholon_parent')])
+					|| ($parent instanceof Holon && isset($eligibleTemplateContextIds[(int)$parent->getId()]))) {
 					$appendTemplateChain($templateId);
 				}
 			}
@@ -9121,7 +9124,8 @@
 				return (int)$holon->getId();
 			}, $this->getTemplateContextPathHolons($contextHolonId));
 
-			return in_array((int)$template->get('IDholon_parent'), $pathIds, true);
+			$parent = $template->getParentHolonThroughGroups();
+			return $parent instanceof Holon && in_array((int)$parent->getId(), $pathIds, true);
 		}
 
 		protected function holonUsesTemplateDefinition(\dbObject\Holon $holon, $templateId)
@@ -9439,7 +9443,10 @@
 				? array_fill_keys(array_map('intval', $scopeContextHolonIds), true)
 				: array();
 			$templateTreeSource = array_values(array_filter($this->getAllTemplateDefinitionHolons(), function ($template) use ($scopeContextHolonIdMap) {
-				return isset($scopeContextHolonIdMap[(int)$template->get('IDholon_parent')]);
+				foreach (array_keys($scopeContextHolonIdMap) as $contextId) {
+					if ($template->isChildOfThroughGroups($contextId)) return true;
+				}
+				return false;
 			}));
 			$definitionHolonMetaCache = array();
 
@@ -9912,7 +9919,8 @@
 				$holon instanceof \dbObject\Holon ? (int)$holon->getId() : 0,
 				'contextual',
 				[],
-				$includeOrganizationProjects
+				$includeOrganizationProjects,
+				true
 			);
 			return $this->formatProjectListEditorCatalog($projects);
 		}
@@ -10018,13 +10026,13 @@
 				};
 				$appendDescendantScopeHolonIds($holon);
 
-				$projects->loadForContext((int)$this->getId(), $holonId, 'children', $directChildIds, $includeOrganizationProjects);
+				$projects->loadForContext((int)$this->getId(), $holonId, 'children', $directChildIds, $includeOrganizationProjects, true);
 				$catalogs['children'] = $this->formatProjectListEditorCatalog($projects);
-				$projects->loadForContext((int)$this->getId(), $holonId, 'descendants', $descendantIds, $includeOrganizationProjects);
+				$projects->loadForContext((int)$this->getId(), $holonId, 'descendants', $descendantIds, $includeOrganizationProjects, true);
 				$catalogs['descendants'] = $this->formatProjectListEditorCatalog($projects);
 			}
 
-			$projects->loadForOrganization((int)$this->getId());
+			$projects->loadForOrganization((int)$this->getId(), true, Project::KIND_STANDARD, true);
 			$catalogs['global'] = $this->formatProjectListEditorCatalog($projects);
 
 			return $catalogs;
@@ -10742,7 +10750,7 @@
 				return false;
 			}
 
-			foreach ($parentHolon->getChildren(true) as $child) {
+			foreach ($parentHolon->getChildrenThroughGroups(true, true) as $child) {
 				if (trim((string)$child->get('templatename')) === ''
 					&& (int)$child->get('IDholon_template') === $templateId) {
 					return true;
@@ -10868,8 +10876,8 @@
 				'canAddHolonProperties' => $editingHolon
 					? Property::canCreateAnyType($editingHolon)
 					: ($contextHolon ? Property::canCreateAnyType($contextHolon) : false),
-				'permissionCatalog' => $this->canManageHolonPermissionAssignments($isTemplateEditing) ? $this->getPermissionEditorCatalog() : array(),
-				'permissionRanges' => $this->canManageHolonPermissionAssignments($isTemplateEditing) ? \dbObject\HolonPermission::getEditorRangeCatalog() : array(),
+				'permissionCatalog' => $includeCatalogs && $this->canManageHolonPermissionAssignments($isTemplateEditing) ? $this->getPermissionEditorCatalog() : array(),
+				'permissionRanges' => $includeCatalogs && $this->canManageHolonPermissionAssignments($isTemplateEditing) ? \dbObject\HolonPermission::getEditorRangeCatalog() : array(),
 				'templateCatalog' => array(),
 				'holonCatalog' => array(),
 				'projectCatalog' => array(),
@@ -13678,7 +13686,8 @@
 				);
 			}
 
-			if (!$collectiveGovernance && (!$holon->isAllowed('CAN_DELETE_HOLON') || !$holon->canDelete())) {
+			if (!$holon->canDeletePreservingMandatoryTemplates()
+				|| (!$collectiveGovernance && (!$holon->isAllowed('CAN_DELETE_HOLON') || !$holon->canDelete()))) {
 				return array(
 					'status' => false,
 'message' => "Vous n’avez pas les droits pour supprimer cet espace.",
@@ -13797,8 +13806,10 @@
 				);
 			}
 
-			if ((int)$currentParent->get('IDtypeholon') === 2) {
-				$this->createMandatoryChildrenForCircle($currentParent, (int)$rootHolon->getId(), $userId);
+			$previousScope = (int)$currentParent->get('IDtypeholon') === 3
+				? $currentParent->getParentHolonThroughGroups() : $currentParent;
+			if ($previousScope instanceof Holon && (int)$previousScope->get('IDtypeholon') === 2) {
+				$this->createMandatoryChildrenForCircle($previousScope, (int)$rootHolon->getId(), $userId);
 			}
 
 			if ((int)$holon->get('IDtypeholon') === 2) {
@@ -14494,66 +14505,19 @@
 
 		public function isApplicationEnabled($hash, $userId = null)
 		{
-			static $cache = array();
-
-			$organizationId = (int)$this->getId();
 			$hash = trim(mb_strtolower((string)$hash, 'UTF-8'));
-			$userId = $userId !== null
-				? (int)$userId
-				: (function_exists('commonGetCurrentUserId')
-					? (int)\commonGetCurrentUserId()
-					: (int)($_SESSION['currentUser'] ?? 0));
-
-			$cacheKey = $organizationId . ':' . $userId . ':' . $hash;
-			if (array_key_exists($cacheKey, $cache)) {
-				return $cache[$cacheKey];
-			}
-
-			if ($organizationId <= 0 || $hash === '') {
-				$cache[$cacheKey] = false;
-				return false;
-			}
-
-			$rows = self::fetchAll(
-				"SELECT
-					a.id,
-					a.directory,
-					a.url,
-					a.active AS app_active,
-					a.navigationmode,
-					a.requires_login,
-					oa.active AS organization_active
-				FROM application a
-				LEFT JOIN organization_application oa
-					ON oa.IDapplication = a.id
-					AND oa.IDorganization = :organization_id
-				WHERE LOWER(a.hash) = :hash
-				ORDER BY a.id ASC
-				LIMIT 1",
-				array(
-					'organization_id' => $organizationId,
-					'hash' => $hash,
-				)
-			);
-
-			if ($rows === false || count($rows) === 0) {
-				$cache[$cacheKey] = true;
-				return true;
-			}
-
-			$row = $rows[0];
-			$probeApplication = new \dbObject\Application();
-			$probeApplication->set('url', $row['url'] ?? null);
-			$probeApplication->set('directory', $row['directory'] ?? null);
-			$cache[$cacheKey] = (
-				(int)($row['app_active'] ?? 0) === 1
-				&& trim((string)($row['navigationmode'] ?? '')) !== 'panel'
-				&& ((int)($row['requires_login'] ?? 0) === 0 || $userId > 0)
-				&& array_key_exists('organization_active', $row)
-				&& (int)$row['organization_active'] === 1
-				&& $probeApplication->hasResolvedEntryPoint()
-			);
-			return $cache[$cacheKey];
+			if ((int)$this->getId() <= 0 || $hash === '') { return false; }
+			$userId = $userId !== null ? (int)$userId : (int)(function_exists('commonGetCurrentUserId') ? \commonGetCurrentUserId() : ($_SESSION['currentUser'] ?? 0));
+			$matches = array_values(array_filter(Application::loadOrganizationCatalog((int)$this->getId()),
+				static fn(array $row): bool => rtrim(mb_strtolower((string)$row['hash'], 'UTF-8')) === $hash));
+			if (!$matches) { return true; } // Preserve support for modules absent from the catalog.
+			usort($matches, static fn(array $a, array $b): int => (int)$a['id'] <=> (int)$b['id']);
+			$row = $matches[0];
+			$application = new Application();
+			$application->hydrateFromDatabaseRow($row, true);
+			return (int)$row['active'] === 1 && trim((string)$row['navigationmode']) !== 'panel'
+				&& (!(int)$row['requires_login'] || $userId > 0) && (int)$row['organization_active'] === 1
+				&& $application->hasResolvedEntryPoint();
 		}
 
 		public function isStructureApplicationEnabled($userId = null)

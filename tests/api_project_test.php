@@ -86,6 +86,23 @@ try {
     $unblocked = McpProjectWrite::write($grant, ['project_id' => $id, 'expected_version' => $saved['project']['version'], 'status' => 'ready', 'request_key' => 'api-native-project-unblock'], false);
     mcpCheck($unblocked['project']['blocked_reason'] === null && $unblocked['project']['blocked_until'] === null, 'Leaving blocked clears native details');
     mcpCheck(McpProjectWrite::write($grant, $blocked, false)['project']['status'] === 'ready', 'Old retry never reapplies blocked status');
+    $projectApp = $items['app_projects'];
+    $projectApp->setParametersArray(['blocking' => ['requireReason' => false, 'requireReviewDate' => false]]);
+    mcpCheck(!empty($projectApp->save()['status']), 'Disable both blocking requirements');
+    mcpCheck(McpProjectWrite::spaces($grant, [])['blocking'] === ['requireReason' => false, 'requireReviewDate' => false], 'Discovery exposes organization blocking settings');
+    foreach ([null, ''] as $index => $empty) {
+        $version = McpProjectWrite::read($grant, $id)['project']['version'];
+        $optional = projectApiHttp($tokens['access_token'], 'PATCH', '/api/v1/projects/' . $id,
+            ['expected_version' => $version, 'status' => 'blocked', 'blocked_reason' => $empty,
+                'blocked_until' => $empty, 'blocked_auto_reactivate' => true, 'request_key' => 'api-optional-block-' . $index]);
+        mcpCheck($optional['status'] === 200 && $optional['data']['project']['blocked_reason'] === null
+            && $optional['data']['project']['blocked_until'] === null && !$optional['data']['project']['blocked_auto_reactivate']
+            && !$optional['data']['project']['blocked_reason_required'] && !$optional['data']['project']['blocked_until_required'], 'REST accepts optional empty/null blocking details and exposes requirements');
+    }
+    $unblocked = McpProjectWrite::write($grant, ['project_id' => $id, 'expected_version' => $optional['data']['project']['version'],
+        'status' => 'ready', 'request_key' => 'api-optional-unblock'], false);
+    $projectApp->setParametersArray([]);
+    mcpCheck(!empty($projectApp->save()['status']), 'Restore default blocking requirements');
     $replay = McpProjectWrite::write($grant, array_reverse($base, true), true);
     mcpCheck($replay['replayed'] && $replay['project']['project_id'] === $id && $replay['project']['status'] === 'ready', 'Creation retry returns current project without duplicates');
     projectApiRejected(fn() => McpProjectWrite::write($grant, array_replace($base, ['title' => 'Changed']), true), 'Changed payload cannot reuse request key');

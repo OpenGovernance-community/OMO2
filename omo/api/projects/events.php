@@ -31,6 +31,7 @@ if (
     exit;
 }
 
+commonEnableReadOnlyCaches();
 $isArchivedProject = (int)$project->get('active') !== 1;
 
 $projectHolon = $project->getHolon();

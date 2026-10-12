@@ -47,8 +47,8 @@ if (!function_exists('omoDecisionGovernanceGetSourceLang')) {
             'governance.action.rule_delete' => ['text' => 'Supprimer une règle', 'context' => 'Rule deletion governance action label.'],
             'governance.action.role_update' => ['text' => 'Modifier un rôle', 'context' => 'Role update governance action label.'],
             'governance.action.role_create' => ['text' => 'Créer un rôle', 'context' => 'Role creation governance action label.'],
-            'governance.action.role_move' => ['text' => 'Deplacer un role ou cercle', 'context' => 'Deferred holon move action'],
-            'governance.action.move' => ['text' => 'Deplacement', 'context' => 'Deferred holon move operation'],
+            'governance.action.role_move' => ['text' => 'Déplacer un rôle ou un cercle', 'context' => 'Deferred holon move action'],
+            'governance.action.move' => ['text' => 'Déplacement', 'context' => 'Deferred holon move operation'],
             'governance.action.role_delete' => ['text' => 'Supprimer un rôle', 'context' => 'Role deletion governance action label.'],
             'governance.action.project_update' => ['text' => 'Modifier un projet', 'context' => 'Project update deferred proposal label.'],
             'governance.action.project_create' => ['text' => 'Créer un projet', 'context' => 'Project creation deferred proposal label.'],
@@ -89,7 +89,7 @@ if (!function_exists('omoDecisionGovernanceGetSourceLang')) {
             'governance.error.rule_content' => ['text' => 'Le contenu de la règle est obligatoire.', 'context' => 'Governance rule editor empty HTML content error.'],
             'governance.error.holon' => ['text' => 'Une décision hors réorg doit être créée dans un espace.', 'context' => 'Governance editor invalid space error.'],
             'governance.error.disabled' => ['text' => 'Les décisions hors réorg ne sont pas activées dans les paramètres de cette organisation.', 'context' => 'Governance workflow disabled error.'],
-            'governance.error.owner' => ['text' => 'Seul le créateur peut modifier les propositions de cette prise de décision.', 'context' => 'Governance editor owner error.'],
+            'governance.error.permission' => ['text' => 'Vous ne pouvez pas modifier les propositions de ce scrutin.', 'context' => 'Governance editor management permission error.'],
             'governance.error.locked' => ['text' => 'Les propositions sont verrouillées depuis la fin de la consultation.', 'context' => 'Governance editor locked error.'],
             'governance.empty.rules' => ['text' => 'Aucune règle n’est définie directement dans ce contexte.', 'context' => 'Governance editor no rules message.'],
             'governance.status.pending' => ['text' => 'En attente', 'context' => 'Governance action pending status.'],
@@ -137,31 +137,7 @@ if (!function_exists('omoDecisionGovernanceBuildRuleClientData')) {
 if (!function_exists('omoDecisionGovernanceDecorateRoleProperties')) {
     function omoDecisionGovernanceDecorateRoleProperties(array $properties)
     {
-        foreach ($properties as &$property) {
-            if (!is_array($property) || (string)($property['listItemType'] ?? '') !== 'authority') continue;
-            $decodedValue = json_decode((string)($property['value'] ?? ''), true);
-            $items = is_array($decodedValue['items'] ?? null)
-                ? array_values($decodedValue['items'])
-                : (is_array($decodedValue) ? array_values($decodedValue) : []);
-            $authorityIds = [];
-            foreach ($items as $item) {
-                if (is_array($item) && !empty($item['delete'])) continue;
-                $authorityId = is_array($item) ? (int)($item['id'] ?? 0) : (int)$item;
-                if ($authorityId > 0) $authorityIds[] = $authorityId;
-            }
-            $labelsById = \dbObject\Authority::getLabelsByIds($authorityIds);
-            $displayItems = [];
-            foreach ($items as $item) {
-                if (is_array($item) && !empty($item['delete'])) continue;
-                $authorityId = is_array($item) ? (int)($item['id'] ?? 0) : (int)$item;
-                $label = is_array($item) ? trim((string)($item['label'] ?? '')) : '';
-                if ($label === '' && $authorityId > 0) $label = trim((string)($labelsById[$authorityId] ?? ''));
-                if ($label !== '') $displayItems[] = $label;
-            }
-            $property['displayValue'] = implode('; ', $displayItems);
-        }
-        unset($property);
-        return array_values($properties);
+        return DecisionGovernanceAction::decorateRoleProperties($properties);
     }
 }
 

@@ -61,7 +61,7 @@ try {
     include dirname(__DIR__) . '/omo/api/dashboard/modules/data/decisions.php';
     dashboardIntegrationCheck($dashboardDecisionCounts === array('active' => 1, 'elaboration' => 0, 'pending' => 1), 'An owner must be reminded before the voting form creates a participant record, without counting evaluation as elaboration.');
 
-    $participant = new DecisionParticipant();
+    $participant = DecisionParticipant::findByDecisionAndUser($decisionId, $currentUserId) ?: new DecisionParticipant();
     foreach (array('IDdecision_process' => $decisionId, 'IDuser' => $currentUserId, 'role' => DecisionParticipant::ROLE_OWNER, 'status' => DecisionParticipant::STATUS_ACTIVE, 'active' => 1) as $field => $value) {
         $participant->set($field, $value);
     }

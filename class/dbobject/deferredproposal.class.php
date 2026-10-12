@@ -49,9 +49,9 @@ class DeferredProposal extends DbObject
     public static function attributeLabels()
     {
         return [
-            'target_type' => 'Objet', 'operation' => 'Operation', 'target_id' => 'Cible',
-            'before_state' => 'Etat avant', 'after_state' => 'Etat propose',
-            'IDdecision_proposal' => 'Alternative de decision', 'IDdocument_pv_point' => 'Point de PV',
+            'target_type' => 'Objet', 'operation' => 'Opération', 'target_id' => 'Cible',
+            'before_state' => 'État avant', 'after_state' => 'État proposé',
+            'IDdecision_proposal' => 'Alternative de décision', 'IDdocument_pv_point' => 'Point de PV',
             'status' => 'Statut', 'validation_context' => 'Contexte de validation',
         ];
     }
@@ -343,23 +343,11 @@ class DeferredProposal extends DbObject
     public static function getHolonTargetsForContext(Holon $contextHolon, string $operation, array $catalog): array
     {
         $targets = [];
-        $visited = [];
-        $collect = static function (Holon $parent) use (&$collect, &$targets, &$visited, $operation, $catalog): void {
-            foreach ($parent->getChildren() as $child) {
-                if (!$child instanceof Holon) continue;
-                $childId = (int)$child->getId();
-                if ($childId <= 0 || isset($visited[$childId])) continue;
-                $visited[$childId] = true;
-
-                if (!empty($catalog[$childId]['permissions'][$operation])) {
-                    $targets[] = $child;
-                }
-                if ((int)$child->get('IDtypeholon') === 3) {
-                    $collect($child);
-                }
+        foreach ($contextHolon->getChildrenThroughGroups(false, true) as $child) {
+            if (!empty($catalog[(int)$child->getId()]['permissions'][$operation])) {
+                $targets[] = $child;
             }
-        };
-        $collect($contextHolon);
+        }
         usort($targets, static function (Holon $left, Holon $right): int {
             $leftIsRole = (int)$left->get('IDtypeholon') === 1;
             $rightIsRole = (int)$right->get('IDtypeholon') === 1;
@@ -437,7 +425,7 @@ class DeferredProposal extends DbObject
         if ($collectiveHolonId <= 0 || !$destination->load($destinationId)
             || $destinationId === (int)$holon->get('IDholon_parent')
             || !$organization->canMoveHolonToParent($holon, $destination, null, $collectiveHolonId)) {
-            return ['status' => false, 'message' => 'Le deplacement est incompatible ou hors du perimetre autorise au collectif.'];
+            return ['status' => false, 'message' => 'Le déplacement est incompatible ou hors du périmètre autorisé au collectif.'];
         }
         $state = self::captureHolonMoveState($holon);
         $state['parent_id'] = $destinationId;
@@ -455,7 +443,7 @@ class DeferredProposal extends DbObject
             || !$holon->load((int)$proposal->get('target_id'))
             || (int)$holon->get('IDholon_parent') !== (int)($before['parent_id'] ?? 0)
             || (int)$holon->get('IDholon_template') !== (int)($before['template_id'] ?? 0)) {
-            return ['status' => false, 'conflict' => true, 'message' => \dbObject\Organization::formatLexiconText('Le holon a ete deplace, supprime ou son modele a change depuis la proposition.')];
+            return ['status' => false, 'conflict' => true, 'message' => \dbObject\Organization::formatLexiconText('Le holon a été déplacé, supprimé ou son modèle a changé depuis la proposition.')];
         }
         $validation = self::validateHolonMove($organization, $holon, (int)($after['parent_id'] ?? 0), $collectiveHolonId);
         if (empty($validation['status'])) return $validation;
@@ -1046,7 +1034,7 @@ class DeferredProposal extends DbObject
     {
         if (!$proposals) return ['status' => true, 'applied' => 0];
         $pdo = self::getPdo();
-        if (!$pdo) return ['status' => false, 'message' => 'Connexion a la base impossible.'];
+        if (!$pdo) return ['status' => false, 'message' => 'Connexion à la base impossible.'];
         try {
             $ownsTransaction = !$pdo->inTransaction();
             if ($ownsTransaction) $pdo->beginTransaction();
