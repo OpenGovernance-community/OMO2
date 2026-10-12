@@ -317,7 +317,7 @@ class Authority extends DbObject
         $authorityId = (int)$this->getId();
         $sourceHolonId = (int)$this->get('IDholon');
         $targetHolonId = (int)$targetHolon->getId();
-        $targetParent = $targetHolon->getParentHolon();
+        $targetParent = $targetHolon->getParentHolonThroughGroups();
         if ($authorityId <= 0 || $sourceHolonId <= 0 || $targetHolonId <= 0) {
             return ['status' => false, 'text' => 'The authority delegation is incomplete.'];
         }
@@ -698,7 +698,7 @@ class Authority extends DbObject
         $rulesDisposition = self::DELETION_REASSIGN;
 
         $ownerHolon = $this->getHolon();
-        $parentHolon = $ownerHolon instanceof Holon ? $ownerHolon->getParentHolon() : null;
+        $parentHolon = $ownerHolon instanceof Holon ? $ownerHolon->getParentHolonThroughGroups() : null;
         $parentHolonId = $parentHolon instanceof Holon ? (int)$parentHolon->getId() : 0;
         $parentAuthorityId = (int)$this->get('IDauthority_parent');
         $parentAuthority = $this->getParent();

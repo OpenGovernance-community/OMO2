@@ -38,6 +38,8 @@ if (!is_array(\dbObject\NotificationPushSubscription::normalizeSubscription($sub
     omoPushSubscriptionRespond(422, ['status' => false, 'message' => 'Souscription navigateur invalide.']);
 }
 
+if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
+
 if ($requestMethod === 'DELETE') {
     $saved = \dbObject\NotificationPushSubscription::deactivateForUser($userId, $subscription);
     omoPushSubscriptionRespond($saved ? 200 : 500, [

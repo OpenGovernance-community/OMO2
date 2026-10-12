@@ -420,12 +420,17 @@ de modification. Le corps REST ne doit pas repeter `project_id` du chemin.
 }
 ```
 
-Le passage a `blocked` exige explicitement raison et date de reexamen ; l agent
-les demande si elles manquent. La date de reexamen n est pas le delai du projet.
-`blocked_auto_reactivate` reste false sauf demande explicite ; si active, le
-mecanisme natif de relance utilise `blocked_reactivate_status` (`ready` ou
-`in_progress`). Quitter le statut bloque efface les details du blocage. Les autres
-champs omis d un PATCH sont conserves ; null efface les valeurs nullables.
+Le passage à `blocked` respecte les options de l’organisation : raison et date
+de réexamen sont obligatoires par défaut, chacune pouvant devenir facultative.
+Les espaces exposent `blocking.requireReason` et `blocking.requireReviewDate` ;
+la lecture du projet expose `blocked_reason_required` et `blocked_until_required`.
+L’agent demande les informations obligatoires manquantes. Les champs facultatifs
+acceptent une chaîne vide ou `null`. La date de réexamen n’est pas le délai du projet.
+`blocked_auto_reactivate` reste `false` sauf demande explicite ; si la réactivation
+automatique est activée, le mécanisme natif de relance utilise
+`blocked_reactivate_status` (`ready` ou `in_progress`). Sans date, la réactivation
+automatique est désactivée. Quitter le statut bloqué efface les détails du blocage.
+Les autres champs omis d’un PATCH sont conservés ; `null` efface les valeurs nullables.
 
 Les six statuts sont `someday`, `ready`, `in_progress`, `blocked`, `review`, `done`.
 Les regles natives restent actives : `someday` efface la planification,

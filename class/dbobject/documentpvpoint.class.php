@@ -92,7 +92,7 @@ class DocumentPvPoint extends DbObject
             'is_handled' => 'Indique si le point a deja ete traite en reunion.',
             'IDpoint_moved_to' => 'Point copie dans une reunion suivante ; le point source reste non traite et ne peut plus etre importe.',
             'date_moved' => 'Conserve le deplacement meme si le point de destination est supprime.',
-            'date_abandoned' => 'Point conserve dans son PV, sans traitement supplementaire attendu.',
+            'date_abandoned' => 'Point conservé dans son PV, sans traitement supplémentaire attendu.',
             'is_confidential' => 'Reserve ce point aux personnes presentes a la reunion, a l editeur du PV et a la personne qui le porte.',
         ];
     }
@@ -885,7 +885,7 @@ class DocumentPvPoint extends DbObject
         $pdo = self::getPdo();
         if (!$pdo || $pointId <= 0 || !self::canImportIntoDocument($destination, $userId)
             || ($members === 'all' && !$destination->isPvEditor($userId))) {
-            return ['status' => false, 'text' => 'Fin du suivi refusee.'];
+            return ['status' => false, 'text' => 'Fin du suivi refusée.'];
         }
         $ownsTransaction = !$pdo->inTransaction();
         try {
@@ -893,10 +893,10 @@ class DocumentPvPoint extends DbObject
             else $pdo->exec('SAVEPOINT pv_point_abandon');
             // Use the same lock order and eligibility checks as imports.
             $destinationRow = self::fetchRow('SELECT * FROM document WHERE id = :id FOR UPDATE', ['id' => (int)$destination->getId()]);
-            if (!$destinationRow) throw new \RuntimeException('Reunion destination indisponible.');
+            if (!$destinationRow) throw new \RuntimeException('Réunion de destination indisponible.');
             $destination->hydrateFromDatabaseRow($destinationRow, true);
             if (!self::canImportIntoDocument($destination, $userId)
-                || ($members === 'all' && !$destination->isPvEditor($userId))) throw new \RuntimeException('Fin du suivi refusee.');
+                || ($members === 'all' && !$destination->isPvEditor($userId))) throw new \RuntimeException('Fin du suivi refusée.');
             $row = self::fetchRow('SELECT * FROM document_pv_point WHERE id = :id FOR UPDATE', ['id' => $pointId]);
             $point = new self();
             if (!$row || !$point->hydrateFromDatabaseRow($row, true)) throw new \RuntimeException('Point indisponible.');
@@ -904,9 +904,9 @@ class DocumentPvPoint extends DbObject
             $sourceRow = self::fetchRow('SELECT * FROM document WHERE id = :id FOR UPDATE', ['id' => (int)$point->get('IDdocument')]);
             if (!$sourceRow || !$source->hydrateFromDatabaseRow($sourceRow, true)
                 || !$point->canMoveToDocument($source, $destination, $userId, $scope, $members, $period)) {
-                throw new \RuntimeException('Ce point a change ou ne peut plus etre cloture.');
+                throw new \RuntimeException('Ce point a changé ou ne peut plus être clôturé.');
             }
-            if ($point->isEditLockActive()) throw new \RuntimeException('Ce point est en cours d edition.');
+            if ($point->isEditLockActive()) throw new \RuntimeException('Ce point est en cours d’édition.');
             $point->set('date_abandoned', new \DateTimeImmutable());
             $point->set('IDuser_modification', $userId);
             if (empty($point->save()['status'])) throw new \RuntimeException('Impossible de terminer le suivi du point.');
@@ -1910,7 +1910,7 @@ class DocumentPvPoint extends DbObject
             $row = self::fetchRow('SELECT IDdocument, IDpoint_moved_to, date_moved, date_abandoned FROM document_pv_point WHERE id = :id FOR UPDATE', ['id' => (int)$this->getId()]);
             if (!$row || (int)$row['IDdocument'] !== (int)$this->get('IDdocument') || !empty($row['IDpoint_moved_to']) || !empty($row['date_moved']) || !empty($row['date_abandoned'])) {
                 if ($ownsTransaction) $pdo->rollBack();
-                return ['status' => false, 'text' => 'Ce point est indisponible, deplace ou sans suivi supplementaire.'];
+                return ['status' => false, 'text' => 'Ce point est indisponible, déplacé ou sans suivi supplémentaire.'];
             }
             $result = $this->savePointValues();
             if ($ownsTransaction) {

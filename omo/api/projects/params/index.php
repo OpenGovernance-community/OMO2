@@ -10,6 +10,7 @@ $applicationLink = $organizationLoaded ? omoProjectsParamsGetApplicationLink($or
 $canManage = $organizationLoaded && omoProjectsParamsCanManage($organizationId, $userId);
 $config = $organizationLoaded ? omoProjectsParamsGetConfig($organization) : \dbObject\ProjectImportanceCalculator::getDefaultConfig();
 $displayConfig = $organizationLoaded ? omoProjectsParamsGetDisplayConfig($organization) : omoProjectsDefaultDisplayConfig();
+$blockingConfig = \dbObject\Project::getOrganizationBlockingConfig($organizationId);
 ?>
 <div class="omo-projects-params" data-omo-projects-params-root>
     <section class="generic-section generic-section--plain generic-form-stack">
@@ -32,6 +33,7 @@ $displayConfig = $organizationLoaded ? omoProjectsParamsGetDisplayConfig($organi
                 <form class="generic-form-stack" action="/omo/api/projects/params/save.php" method="post" data-omo-projects-params-form data-omo-projects-params-saving-label="<?= htmlspecialchars(omoProjectsParamsT('projects.params.saving'), ENT_QUOTES, 'UTF-8') ?>" data-omo-projects-params-error="<?= htmlspecialchars(omoProjectsParamsT('projects.params.error.save'), ENT_QUOTES, 'UTF-8') ?>">
                     <input type="hidden" name="oid" value="<?= (int)$organizationId ?>">
                     <input type="hidden" name="save_display" value="1">
+                    <input type="hidden" name="save_blocking" value="1">
                     <input type="hidden" name="parent_weight" value="<?= htmlspecialchars((string)$config['parentWeight'], ENT_QUOTES, 'UTF-8') ?>">
                     <input type="hidden" name="depth_penalty" value="<?= htmlspecialchars((string)$config['depthPenalty'], ENT_QUOTES, 'UTF-8') ?>">
                     <div class="omo-projects-params__grid generic-form-grid">
@@ -57,6 +59,13 @@ $displayConfig = $organizationLoaded ? omoProjectsParamsGetDisplayConfig($organi
                             </div>
                         </fieldset>
                     </div>
+                    <fieldset class="generic-fieldset">
+                        <legend class="generic-card-title generic-card-title--medium"><?= htmlspecialchars(omoProjectsParamsT('projects.params.blocking'), ENT_QUOTES, 'UTF-8') ?></legend>
+                        <div class="generic-fieldset__body">
+                            <label class="generic-checkbox"><input type="checkbox" name="require_blocked_reason" value="1"<?= $blockingConfig['requireReason'] ? ' checked' : '' ?>> <span><?= htmlspecialchars(omoProjectsParamsT('projects.params.require_reason'), ENT_QUOTES, 'UTF-8') ?></span></label>
+                            <label class="generic-checkbox"><input type="checkbox" name="require_blocked_review_date" value="1"<?= $blockingConfig['requireReviewDate'] ? ' checked' : '' ?>> <span><?= htmlspecialchars(omoProjectsParamsT('projects.params.require_review_date'), ENT_QUOTES, 'UTF-8') ?></span></label>
+                        </div>
+                    </fieldset>
                     <div class="omo-projects-params__actions generic-form-actions">
                         <button class="generic-action-button generic-action-button--main" type="submit" data-omo-projects-params-submit><?= htmlspecialchars(omoProjectsParamsT('projects.params.save'), ENT_QUOTES, 'UTF-8') ?></button>
                     </div>

@@ -196,6 +196,7 @@ function omoApiResponseSchemas(): array
     ]);
     $schemas['ProjectSpaces'] = $object([
         'organization_id' => $i, 'items' => $list($object(['holon_id' => $i, 'name' => $s])),
+        'blocking' => $object(['requireReason' => $b, 'requireReviewDate' => $b]),
         'next_after_id' => $nextId, 'complete' => $complete, 'write_authorized' => $b, 'required_scope' => $s,
         'statuses' => $list($object(['value' => $s, 'label' => $s, 'displayed' => $b + ['description' => 'Whether this status is displayed in native project views.']]))]);
     $dateNull = ['type' => ['string', 'null'], 'format' => 'date'];
@@ -206,6 +207,7 @@ function omoApiResponseSchemas(): array
         'priority' => $idNull, 'importance' => $idNull, 'calculated_importance' => ['type' => 'number', 'description' => 'Native calculated score, read-only.'],
         'planned_start_date' => $dateNull, 'planned_end_date' => $dateNull, 'project_size' => $s,
         'blocked_reason' => $textNull, 'blocked_until' => $dateNull, 'blocked_auto_reactivate' => $b, 'blocked_reactivate_status' => $s,
+        'blocked_reason_required' => $b, 'blocked_until_required' => $b,
         'version' => $s + ['description' => 'Opaque revision to copy into expected_version. Replay returns current fields and version, not a historical snapshot.'],
         'can_edit' => $b + ['description' => 'Native permission only; projects:write OAuth consent is also required to write.'], 'url' => $url]);
     $schemas['ProjectRead'] = $object(['project' => $ref('Project')]);

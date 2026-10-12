@@ -8724,7 +8724,8 @@
 			}
 
 			return array_values(array_filter($this->getAllTemplateDefinitionHolons(), function ($template) use ($pathIds) {
-				return in_array((int)$template->get('IDholon_parent'), $pathIds, true);
+				$parent = $template->getParentHolonThroughGroups();
+				return $parent instanceof Holon && in_array((int)$parent->getId(), $pathIds, true);
 			}));
 		}
 
@@ -8856,7 +8857,9 @@
 			}
 
 			foreach ($templateById as $templateId => $template) {
-				if (isset($eligibleTemplateContextIds[(int)$template->get('IDholon_parent')])) {
+				$parent = $template->getParentHolonThroughGroups();
+				if (isset($eligibleTemplateContextIds[(int)$template->get('IDholon_parent')])
+					|| ($parent instanceof Holon && isset($eligibleTemplateContextIds[(int)$parent->getId()]))) {
 					$appendTemplateChain($templateId);
 				}
 			}
@@ -9121,7 +9124,8 @@
 				return (int)$holon->getId();
 			}, $this->getTemplateContextPathHolons($contextHolonId));
 
-			return in_array((int)$template->get('IDholon_parent'), $pathIds, true);
+			$parent = $template->getParentHolonThroughGroups();
+			return $parent instanceof Holon && in_array((int)$parent->getId(), $pathIds, true);
 		}
 
 		protected function holonUsesTemplateDefinition(\dbObject\Holon $holon, $templateId)
@@ -9439,7 +9443,10 @@
 				? array_fill_keys(array_map('intval', $scopeContextHolonIds), true)
 				: array();
 			$templateTreeSource = array_values(array_filter($this->getAllTemplateDefinitionHolons(), function ($template) use ($scopeContextHolonIdMap) {
-				return isset($scopeContextHolonIdMap[(int)$template->get('IDholon_parent')]);
+				foreach (array_keys($scopeContextHolonIdMap) as $contextId) {
+					if ($template->isChildOfThroughGroups($contextId)) return true;
+				}
+				return false;
 			}));
 			$definitionHolonMetaCache = array();
 
@@ -9912,7 +9919,8 @@
 				$holon instanceof \dbObject\Holon ? (int)$holon->getId() : 0,
 				'contextual',
 				[],
-				$includeOrganizationProjects
+				$includeOrganizationProjects,
+				true
 			);
 			return $this->formatProjectListEditorCatalog($projects);
 		}
@@ -10018,13 +10026,13 @@
 				};
 				$appendDescendantScopeHolonIds($holon);
 
-				$projects->loadForContext((int)$this->getId(), $holonId, 'children', $directChildIds, $includeOrganizationProjects);
+				$projects->loadForContext((int)$this->getId(), $holonId, 'children', $directChildIds, $includeOrganizationProjects, true);
 				$catalogs['children'] = $this->formatProjectListEditorCatalog($projects);
-				$projects->loadForContext((int)$this->getId(), $holonId, 'descendants', $descendantIds, $includeOrganizationProjects);
+				$projects->loadForContext((int)$this->getId(), $holonId, 'descendants', $descendantIds, $includeOrganizationProjects, true);
 				$catalogs['descendants'] = $this->formatProjectListEditorCatalog($projects);
 			}
 
-			$projects->loadForOrganization((int)$this->getId());
+			$projects->loadForOrganization((int)$this->getId(), true, Project::KIND_STANDARD, true);
 			$catalogs['global'] = $this->formatProjectListEditorCatalog($projects);
 
 			return $catalogs;
@@ -10742,7 +10750,7 @@
 				return false;
 			}
 
-			foreach ($parentHolon->getChildren(true) as $child) {
+			foreach ($parentHolon->getChildrenThroughGroups(true, true) as $child) {
 				if (trim((string)$child->get('templatename')) === ''
 					&& (int)$child->get('IDholon_template') === $templateId) {
 					return true;
@@ -10868,8 +10876,8 @@
 				'canAddHolonProperties' => $editingHolon
 					? Property::canCreateAnyType($editingHolon)
 					: ($contextHolon ? Property::canCreateAnyType($contextHolon) : false),
-				'permissionCatalog' => $this->canManageHolonPermissionAssignments($isTemplateEditing) ? $this->getPermissionEditorCatalog() : array(),
-				'permissionRanges' => $this->canManageHolonPermissionAssignments($isTemplateEditing) ? \dbObject\HolonPermission::getEditorRangeCatalog() : array(),
+				'permissionCatalog' => $includeCatalogs && $this->canManageHolonPermissionAssignments($isTemplateEditing) ? $this->getPermissionEditorCatalog() : array(),
+				'permissionRanges' => $includeCatalogs && $this->canManageHolonPermissionAssignments($isTemplateEditing) ? \dbObject\HolonPermission::getEditorRangeCatalog() : array(),
 				'templateCatalog' => array(),
 				'holonCatalog' => array(),
 				'projectCatalog' => array(),
@@ -13678,7 +13686,8 @@
 				);
 			}
 
-			if (!$collectiveGovernance && (!$holon->isAllowed('CAN_DELETE_HOLON') || !$holon->canDelete())) {
+			if (!$holon->canDeletePreservingMandatoryTemplates()
+				|| (!$collectiveGovernance && (!$holon->isAllowed('CAN_DELETE_HOLON') || !$holon->canDelete()))) {
 				return array(
 					'status' => false,
 'message' => "Vous n’avez pas les droits pour supprimer cet espace.",
@@ -13797,8 +13806,10 @@
 				);
 			}
 
-			if ((int)$currentParent->get('IDtypeholon') === 2) {
-				$this->createMandatoryChildrenForCircle($currentParent, (int)$rootHolon->getId(), $userId);
+			$previousScope = (int)$currentParent->get('IDtypeholon') === 3
+				? $currentParent->getParentHolonThroughGroups() : $currentParent;
+			if ($previousScope instanceof Holon && (int)$previousScope->get('IDtypeholon') === 2) {
+				$this->createMandatoryChildrenForCircle($previousScope, (int)$rootHolon->getId(), $userId);
 			}
 
 			if ((int)$holon->get('IDtypeholon') === 2) {

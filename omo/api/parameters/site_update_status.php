@@ -23,6 +23,9 @@ if (!commonCurrentUserIsSiteAdminModeEnabled()) {
     exit;
 }
 
+// Git and remote checks must not block concurrent requests from this session.
+if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
+
 try {
     echo json_encode(siteUpdateAdminCheckVersionStatus(), JSON_UNESCAPED_SLASHES);
     exit;

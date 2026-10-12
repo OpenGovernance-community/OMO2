@@ -2,6 +2,8 @@
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/shared.php';
 
+commonEnableReadOnlyCaches();
+
 use dbObject\ArrayStatIndicator;
 use dbObject\ArrayStatIndicatorGroup;
 use dbObject\ArrayStatIndicatorImport;
@@ -37,6 +39,7 @@ $rootHolon = $context['rootHolon'];
 $currentHolon = $context['currentHolon'];
 $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
 $applicationViewPreferences = omoApplicationViewPreferencesGetContext('stats', $organization, $currentHolon, $currentUserId);
+commonReleaseReadOnlySession();
 $canToggleScope = $currentHolon instanceof Holon;
 $availableScopes = omoApiGetAvailableContextScopes($canToggleScope, $currentHolon, $rootHolon);
 $statsScope = omoApiNormalizeContextScope(

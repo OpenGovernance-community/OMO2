@@ -426,6 +426,33 @@ class Project extends DbObject
             : null;
     }
 
+    public static function normalizeBlockingConfig($value): array
+    {
+        $value = is_array($value) ? $value : [];
+        return [
+            'requireReason' => (bool)($value['requireReason'] ?? true),
+            'requireReviewDate' => (bool)($value['requireReviewDate'] ?? true),
+        ];
+    }
+
+    public static function getOrganizationBlockingConfig(int $organizationId): array
+    {
+        $application = $organizationId > 0
+            ? OrganizationApplication::loadByOrganizationAndDirectory($organizationId, 'projects', false)
+            : null;
+        $parameters = $application instanceof OrganizationApplication ? $application->getParametersArray() : [];
+        return self::normalizeBlockingConfig($parameters['blocking'] ?? null);
+    }
+
+    public static function hasValidBlockedDetails(int $organizationId, $reason, $until): bool
+    {
+        $config = self::getOrganizationBlockingConfig($organizationId);
+        $hasDate = self::normalizeBlockedUntil($until) instanceof \DateTimeInterface;
+        return (!$config['requireReason'] || trim((string)$reason) !== '')
+            && (!$config['requireReviewDate'] || $hasDate)
+            && ($hasDate || trim((string)$until) === '');
+    }
+
     public static function kinds()
     {
         return [self::KIND_STANDARD, self::KIND_CHECKLIST_TEMPLATE];
@@ -956,12 +983,12 @@ class Project extends DbObject
         if ($status === self::STATUS_BLOCKED) {
             $blockedReason = trim((string)$this->get('blocked_reason'));
             $blockedUntil = self::normalizeBlockedUntil($this->get('blocked_until'));
-            if ($blockedReason === '' || !($blockedUntil instanceof \DateTimeInterface)) {
+            if (!self::hasValidBlockedDetails((int)$this->get('IDorganization'), $blockedReason, $this->get('blocked_until'))) {
                 return ['status' => false, 'errorCode' => self::SAVE_ERROR_BLOCKED_DETAILS];
             }
-            $this->set('blocked_reason', mb_substr($blockedReason, 0, 4000, 'UTF-8'));
+            $this->set('blocked_reason', $blockedReason !== '' ? mb_substr($blockedReason, 0, 4000, 'UTF-8') : null);
             $this->set('blocked_until', $blockedUntil);
-            $this->set('blocked_auto_reactivate', (int)(bool)$this->get('blocked_auto_reactivate'));
+            $this->set('blocked_auto_reactivate', $blockedUntil instanceof \DateTimeInterface ? (int)(bool)$this->get('blocked_auto_reactivate') : 0);
             $this->set('blocked_reactivate_status', self::normalizeBlockedReactivateStatus($this->get('blocked_reactivate_status')));
         } else {
             $this->set('blocked_reason', null);

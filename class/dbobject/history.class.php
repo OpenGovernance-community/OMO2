@@ -645,14 +645,14 @@
                     }
                     $acceptedCount = count(array_filter($outcomes, static fn ($outcome) => $outcome['accepted']));
                     $outcome = !$outcomes ? 'completed' : ($acceptedCount === count($outcomes) ? 'success' : ($acceptedCount === 0 ? 'rejected' : 'partial'));
-                    $labels = ['completed' => 'terminee', 'success' => 'terminee avec succes', 'rejected' => 'terminee sans proposition retenue', 'partial' => 'terminee avec des propositions acceptees et refusees'];
-                    $content = 'La decision ' . self::buildReferenceToken('decision', $decision->getId(), $decision->get('title')) . ' est ' . $labels[$outcome] . '.';
+                    $labels = ['completed' => 'terminée', 'success' => 'terminée avec succès', 'rejected' => 'terminée sans proposition retenue', 'partial' => 'terminée avec des propositions acceptées et refusées'];
+                    $content = 'La décision ' . self::buildReferenceToken('decision', $decision->getId(), $decision->get('title')) . ' est ' . $labels[$outcome] . '.';
                     $holonId = (int)$decision->get('IDholon');
                     foreach ($modifications as $modification) {
                         $state = $modification['operation'] === 'delete' ? $modification['before'] : $modification['after'];
                         $title = (string)($state['title'] ?? $state['name'] ?? $modification['type']);
-                        $status = ['applied' => 'appliquee', 'rejected' => 'non retenue', 'conflict' => 'en conflit', 'failed' => 'en echec', 'pending' => 'en attente', 'validated' => 'validee, en attente d application'][$modification['status']] ?? $modification['status'];
-                        $operation = ['create' => 'Creation', 'update' => 'Modification', 'delete' => 'Suppression', 'move' => 'Deplacement'][$modification['operation']] ?? 'Modification';
+                        $status = ['applied' => 'appliquée', 'rejected' => 'non retenue', 'conflict' => 'en conflit', 'failed' => 'en échec', 'pending' => 'en attente', 'validated' => 'validée, en attente d’application'][$modification['status']] ?? $modification['status'];
+                        $operation = ['create' => 'Création', 'update' => 'Modification', 'delete' => 'Suppression', 'move' => 'Déplacement'][$modification['operation']] ?? 'Modification';
                         $reference = $modification['status'] === 'applied' && $modification['operation'] !== 'delete'
                             ? self::buildReferenceToken($modification['type'], $modification['id'], $title) : self::sanitizeReferenceLabel($title);
                         $lines[] = $operation . ' : ' . $reference . ' - ' . $status . '.';
@@ -725,16 +725,16 @@
 			}
 
 			$labels = array(
-				'decision_completed' => 'Fin de decision collective',
-				'holon_created' => 'Creation',
+				'decision_completed' => 'Fin de décision collective',
+				'holon_created' => 'Création',
 				'holon_updated' => 'Modification',
 				'holon_member_added' => 'Ajout de membre',
 				'holon_member_removed' => 'Retrait de membre',
 				'identity_taken' => 'Prise d’identité',
-				'authority_updated' => 'Modification d autorite',
-				'authority_deleted' => 'Suppression d autorite',
-				'authority_reassigned' => 'Remontee d autorite',
-				'authority_complete_delegated' => 'Delegation complete d autorite',
+				'authority_updated' => 'Modification d’autorité',
+				'authority_deleted' => 'Suppression d’autorité',
+				'authority_reassigned' => 'Remontée d’autorité',
+				'authority_complete_delegated' => 'Délégation complète d’autorité',
 				'project_created' => 'Creation du projet',
 				'project_updated' => 'Modification du projet',
 				'project_status_updated' => 'Changement de statut',

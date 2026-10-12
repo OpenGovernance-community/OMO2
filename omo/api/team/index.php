@@ -212,7 +212,7 @@ if ($hasStructureContext) {
                 $memberCardsByUserId[$memberUserId] = $currentHolonMemberCard;
             }
         }
-        foreach ($currentHolon->getChildren() as $directChildHolon) {
+        foreach ($currentHolon->getChildrenThroughGroups() as $directChildHolon) {
             if (!omoApiIsStructuralScopeHolon($directChildHolon, $currentHolon)) {
                 continue;
             }
