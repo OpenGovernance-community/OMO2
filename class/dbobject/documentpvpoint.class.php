@@ -26,7 +26,7 @@ class DocumentPvPoint extends DbObject
             [['title', 'item_type', 'author_email', 'pointtype', 'edit_lock_token', 'edit_takeover_request_token', 'edit_takeover_target_token'], 'string'],
             [['content'], 'html'],
             [['active', 'is_handled', 'is_confidential'], 'boolean'],
-            [['datecreation', 'datemodification', 'dateedition', 'date_edit_takeover_request', 'date_moved'], 'datetime'],
+            [['datecreation', 'datemodification', 'dateedition', 'date_edit_takeover_request', 'date_moved', 'date_abandoned'], 'datetime'],
             [['id'], 'safe'],
         ];
     }
@@ -58,6 +58,7 @@ class DocumentPvPoint extends DbObject
             'is_handled' => 'Traite',
             'IDpoint_moved_to' => 'Point de destination',
             'date_moved' => 'Date de deplacement',
+            'date_abandoned' => 'Fin du suivi',
             'is_confidential' => 'Confidentiel',
             'active' => 'Actif',
             'dateedition' => 'Date edition',
@@ -91,6 +92,7 @@ class DocumentPvPoint extends DbObject
             'is_handled' => 'Indique si le point a deja ete traite en reunion.',
             'IDpoint_moved_to' => 'Point copie dans une reunion suivante ; le point source reste non traite et ne peut plus etre importe.',
             'date_moved' => 'Conserve le deplacement meme si le point de destination est supprime.',
+            'date_abandoned' => 'Point conserve dans son PV, sans traitement supplementaire attendu.',
             'is_confidential' => 'Reserve ce point aux personnes presentes a la reunion, a l editeur du PV et a la personne qui le porte.',
         ];
     }
@@ -586,6 +588,11 @@ class DocumentPvPoint extends DbObject
         return (int)$this->get('IDpoint_moved_to') > 0 || !empty($this->get('date_moved'));
     }
 
+    public function isAbandoned(): bool
+    {
+        return !empty($this->get('date_abandoned'));
+    }
+
     public static function canImportIntoDocument(Document $destination, int $userId): bool
     {
         return $userId > 0 && !empty($destination->get('active')) && !$destination->isPvTemplate()
@@ -652,7 +659,7 @@ class DocumentPvPoint extends DbObject
     {
         $organizationId = (int)$destination->get('IDorganization');
         if (($members === 'all' ? !$destination->isPvEditor($userId) : !$this->isEditableByUser($userId))
-            || $this->isGroup() || $this->isHandled() || $this->isMoved() || empty($this->get('active'))
+            || $this->isGroup() || $this->isHandled() || $this->isMoved() || $this->isAbandoned() || empty($this->get('active'))
             || empty($source->get('active')) || $source->isPvTemplate()
             || (int)$source->getId() === (int)$destination->getId()
             || (int)$source->get('IDorganization') !== $organizationId
@@ -681,7 +688,7 @@ class DocumentPvPoint extends DbObject
         $where = "d.IDorganization = :organization_id AND d.id <> :destination_id
             AND d.documenttype = 'pv' AND d.active = 1 AND COALESCE(d.is_template, 0) = 0
             AND p.active = 1 AND COALESCE(p.item_type, 'point') = 'point'
-            AND p.is_handled = 0 AND p.IDpoint_moved_to IS NULL AND p.date_moved IS NULL
+            AND p.is_handled = 0 AND p.IDpoint_moved_to IS NULL AND p.date_moved IS NULL AND p.date_abandoned IS NULL
             AND $dateSql $dateComparison :destination_date";
         $params = ['organization_id' => (int)$destination->get('IDorganization'),
             'destination_id' => (int)$destination->getId(), 'destination_date' => self::meetingDate($destination)->format('Y-m-d H:i:s')];
@@ -708,7 +715,7 @@ class DocumentPvPoint extends DbObject
                 $queryParams += ['cursor_date' => (string)$cursor['date'], 'cursor_tie_date' => (string)$cursor['date'], 'cursor_id' => (int)$cursor['id']];
             }
             $rows = self::fetchAll("SELECT p.id, p.IDdocument, p.title, LEFT(p.content, 4096) AS content_preview, p.item_type, p.active, p.is_handled,
-                p.IDpoint_moved_to, p.date_moved, p.IDuser_author, p.author_email, p.is_confidential, p.priority,
+                p.IDpoint_moved_to, p.date_moved, p.date_abandoned, p.IDuser_author, p.author_email, p.is_confidential, p.priority,
                 p.pointtype, p.desired_duration_minutes, p.IDuser_editing, p.edit_lock_token, p.dateedition,
                 $dateSql AS meeting_date FROM document_pv_point p
                 INNER JOIN document d ON d.id = p.IDdocument LEFT JOIN event e ON e.id = d.IDevent
@@ -867,6 +874,49 @@ class DocumentPvPoint extends DbObject
             if ($pdo->inTransaction()) {
                 if ($ownsTransaction) $pdo->rollBack();
                 else $pdo->exec('ROLLBACK TO SAVEPOINT pv_point_import');
+            }
+            return ['status' => false, 'text' => $exception->getMessage()];
+        }
+    }
+
+    /** Close follow-up without deleting the source or marking it as handled in a meeting. */
+    public static function abandonFromImport(Document $destination, int $pointId, int $userId, string $scope = 'local', string $members = 'mine', string $period = 'before'): array
+    {
+        $pdo = self::getPdo();
+        if (!$pdo || $pointId <= 0 || !self::canImportIntoDocument($destination, $userId)
+            || ($members === 'all' && !$destination->isPvEditor($userId))) {
+            return ['status' => false, 'text' => 'Fin du suivi refusee.'];
+        }
+        $ownsTransaction = !$pdo->inTransaction();
+        try {
+            if ($ownsTransaction) $pdo->beginTransaction();
+            else $pdo->exec('SAVEPOINT pv_point_abandon');
+            // Use the same lock order and eligibility checks as imports.
+            $destinationRow = self::fetchRow('SELECT * FROM document WHERE id = :id FOR UPDATE', ['id' => (int)$destination->getId()]);
+            if (!$destinationRow) throw new \RuntimeException('Reunion destination indisponible.');
+            $destination->hydrateFromDatabaseRow($destinationRow, true);
+            if (!self::canImportIntoDocument($destination, $userId)
+                || ($members === 'all' && !$destination->isPvEditor($userId))) throw new \RuntimeException('Fin du suivi refusee.');
+            $row = self::fetchRow('SELECT * FROM document_pv_point WHERE id = :id FOR UPDATE', ['id' => $pointId]);
+            $point = new self();
+            if (!$row || !$point->hydrateFromDatabaseRow($row, true)) throw new \RuntimeException('Point indisponible.');
+            $source = new Document();
+            $sourceRow = self::fetchRow('SELECT * FROM document WHERE id = :id FOR UPDATE', ['id' => (int)$point->get('IDdocument')]);
+            if (!$sourceRow || !$source->hydrateFromDatabaseRow($sourceRow, true)
+                || !$point->canMoveToDocument($source, $destination, $userId, $scope, $members, $period)) {
+                throw new \RuntimeException('Ce point a change ou ne peut plus etre cloture.');
+            }
+            if ($point->isEditLockActive()) throw new \RuntimeException('Ce point est en cours d edition.');
+            $point->set('date_abandoned', new \DateTimeImmutable());
+            $point->set('IDuser_modification', $userId);
+            if (empty($point->save()['status'])) throw new \RuntimeException('Impossible de terminer le suivi du point.');
+            if ($ownsTransaction) $pdo->commit();
+            else $pdo->exec('RELEASE SAVEPOINT pv_point_abandon');
+            return ['status' => true];
+        } catch (\Throwable $exception) {
+            if ($pdo->inTransaction()) {
+                if ($ownsTransaction) $pdo->rollBack();
+                else $pdo->exec('ROLLBACK TO SAVEPOINT pv_point_abandon');
             }
             return ['status' => false, 'text' => $exception->getMessage()];
         }
@@ -1721,6 +1771,10 @@ class DocumentPvPoint extends DbObject
     public function getRenderedContentForViewer(int $organizationId = 0): string
     {
         $content = trim((string)$this->get('content'));
+        if ($this->isAbandoned()) {
+            require_once dirname(__DIR__, 2) . '/common/document/pv-report.php';
+            $content .= '<p>' . htmlspecialchars(\commonPvReportT('pv.report.abandoned'), ENT_QUOTES, 'UTF-8') . '</p>';
+        }
         if ($content === '') {
             return '';
         }
@@ -1763,6 +1817,7 @@ class DocumentPvPoint extends DbObject
             'is_handled' => $this->isHandled(),
             'moved_to_point_id' => (int)$this->get('IDpoint_moved_to'),
             'is_moved' => $this->isMoved(),
+            'is_abandoned' => $this->isAbandoned(),
             'movement_notice' => $this->isMoved() ? $contentHtml : '',
             'is_confidential' => $this->isConfidential(),
             'active' => !empty($this->get('active')),
@@ -1790,6 +1845,7 @@ class DocumentPvPoint extends DbObject
             'actualDurationMinutes' => $this->getDurationMinutesValue('actual_duration_minutes'),
             'isHandled' => $this->isHandled(),
             'isMoved' => $this->isMoved(),
+            'isAbandoned' => $this->isAbandoned(),
             'movedToPointId' => (int)$this->get('IDpoint_moved_to'),
             'isConfidential' => $this->isConfidential(),
             'lastModifiedByUserId' => $this->getModificationUserId(),
@@ -1827,7 +1883,7 @@ class DocumentPvPoint extends DbObject
             ? 'user:' . (int)$this->get('IDuser_author')
             : (trim((string)$this->get('author_email')) !== '' ? 'email:' . trim((string)$this->get('author_email')) : '');
         $data['contentRaw'] = trim((string)$this->get('content'));
-        $data['isEditable'] = $this->isEditableByUser($currentUserId);
+        $data['isEditable'] = !$this->isMoved() && !$this->isAbandoned() && $this->isEditableByUser($currentUserId);
         $data['isLockedByOther'] = !empty($data['lock']['isLockedByOther']);
         $data['canEditNow'] = $data['isEditable'] && !$data['isLockedByOther'];
 
@@ -1838,7 +1894,7 @@ class DocumentPvPoint extends DbObject
     {
         // A stale source editor must not delete a point now owned by another meeting.
         return self::execute('DELETE FROM document_pv_point WHERE id = :id AND IDdocument = :document_id
-            AND IDpoint_moved_to IS NULL AND date_moved IS NULL',
+            AND IDpoint_moved_to IS NULL AND date_moved IS NULL AND date_abandoned IS NULL',
             ['id' => (int)$this->getId(), 'document_id' => (int)$this->get('IDdocument')]);
     }
 
@@ -1851,10 +1907,10 @@ class DocumentPvPoint extends DbObject
         try {
             if ($ownsTransaction) $pdo->beginTransaction();
             // Fence every write, including status changes, against a concurrent transfer.
-            $row = self::fetchRow('SELECT IDdocument, IDpoint_moved_to, date_moved FROM document_pv_point WHERE id = :id FOR UPDATE', ['id' => (int)$this->getId()]);
-            if (!$row || (int)$row['IDdocument'] !== (int)$this->get('IDdocument') || !empty($row['IDpoint_moved_to']) || !empty($row['date_moved'])) {
+            $row = self::fetchRow('SELECT IDdocument, IDpoint_moved_to, date_moved, date_abandoned FROM document_pv_point WHERE id = :id FOR UPDATE', ['id' => (int)$this->getId()]);
+            if (!$row || (int)$row['IDdocument'] !== (int)$this->get('IDdocument') || !empty($row['IDpoint_moved_to']) || !empty($row['date_moved']) || !empty($row['date_abandoned'])) {
                 if ($ownsTransaction) $pdo->rollBack();
-                return ['status' => false, 'text' => 'Ce point est indisponible ou a ete deplace vers une autre reunion.'];
+                return ['status' => false, 'text' => 'Ce point est indisponible, deplace ou sans suivi supplementaire.'];
             }
             $result = $this->savePointValues();
             if ($ownsTransaction) {

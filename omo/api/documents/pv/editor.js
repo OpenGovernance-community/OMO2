@@ -3085,7 +3085,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
     function collectTimingPointState() {
         return Object.keys(currentPointPayloads).filter(function (pointId) {
             const payload = currentPointPayloads[pointId] || {};
-            return payload.isGroup !== true && payload.isMoved !== true;
+            return payload.isGroup !== true && payload.isMoved !== true && payload.isAbandoned !== true;
         }).map(function (pointId) {
             const payload = currentPointPayloads[pointId] || {};
             const numericPointId = Number(pointId || 0);
@@ -5639,6 +5639,15 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
             submit.disabled = saving || selected.size === 0;
             submit.textContent = saving ? ui.saving : ui.add.replace('{count}', String(selected.size));
         };
+        const setSaving = function (value) {
+            saving = value;
+            scopeButtons.forEach(function (button) { button.disabled = value; });
+            memberButtons.forEach(function (button) { button.disabled = value || (button.getAttribute('data-import-members-choice') === 'all' && !ui.canImportAllMembers); });
+            periodButtons.forEach(function (button) { button.disabled = value; });
+            cancel.disabled = value;
+            list.querySelectorAll('button').forEach(function (button) { button.disabled = value || button.getAttribute('data-import-locked') === 'true'; });
+            updateSubmit();
+        };
         const load = function () {
             if (closed || loading || saving || !hasMore) return;
             const requestGeneration = generation;
@@ -5661,6 +5670,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
                         const priority = Math.max(1, Math.min(5, Number(point.priority) || 3));
                         row.className = 'generic-choice-card generic-choice-card--text omo-pv-import__row omo-pv-editor__nav-row--priority-p' + priority;
                         row.disabled = point.isLocked === true;
+                        row.setAttribute('data-import-locked', point.isLocked === true ? 'true' : 'false');
                         row.setAttribute('aria-pressed', selected.has(point.id) ? 'true' : 'false');
                         const copy = document.createElement('span');
                         copy.className = 'omo-pv-import__copy';
@@ -5696,7 +5706,44 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
                             row.setAttribute('aria-pressed', selected.has(point.id) ? 'true' : 'false');
                             updateSubmit();
                         });
-                        list.append(row);
+                        const item = document.createElement('div');
+                        item.className = 'omo-pv-import__item';
+                        const abandon = document.createElement('button');
+                        abandon.type = 'button';
+                        abandon.className = 'generic-action-button generic-action-button--icon-only generic-action-button--inline-icon generic-action-button--quiet-icon omo-pv-import__abandon';
+                        abandon.title = ui.abandon;
+                        abandon.setAttribute('aria-label', ui.abandon + ' : ' + point.title);
+                        abandon.setAttribute('data-import-locked', point.isLocked === true ? 'true' : 'false');
+                        abandon.disabled = point.isLocked === true;
+                        abandon.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M9 6V4h6v2M5 6l1 14h12l1-14M10 10v6m4-6v6"/></svg>';
+                        abandon.addEventListener('click', function () {
+                            if (closed || saving || abandon.disabled || !window.confirm(ui.abandonConfirm.replace('{title}', point.title))) return;
+                            // Ignore any listing response already in flight; its cursor can be requested again.
+                            generation++;
+                            loading = false;
+                            retry.hidden = true;
+                            status.textContent = ui.abandonSaving;
+                            setSaving(true);
+                            postPointAction('abandon_importable_point', point.id, {scope: currentScope, members: currentMembers, period: currentPeriod})
+                                .then(function () {
+                                    selected.delete(point.id);
+                                    rendered.delete(point.id);
+                                    item.remove();
+                                    window.omoNotify(ui.abandonSuccess, 'success');
+                                })
+                                .catch(function (error) {
+                                    window.omoNotify(error.message || pageConfig.editorClientUi.genericError, 'error');
+                                })
+                                .finally(function () {
+                                    if (closed) return;
+                                    status.textContent = rendered.size === 0 && !hasMore ? ui.empty : '';
+                                    retry.hidden = !loadFailed;
+                                    setSaving(false);
+                                    if (!loadFailed && hasMore && list.scrollHeight <= list.clientHeight) load();
+                                });
+                        });
+                        item.append(row, abandon);
+                        list.append(item);
                     });
                     status.textContent = rendered.size === 0 && !hasMore ? ui.empty : '';
                 })
@@ -5749,13 +5796,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         cancel.addEventListener('click', function () { window.commonTopbarCloseModal(); });
         submit.addEventListener('click', function () {
             if (saving || !selected.size) return;
-            saving = true;
-            scopeButtons.forEach(function (button) { button.disabled = true; });
-            memberButtons.forEach(function (button) { button.disabled = true; });
-            periodButtons.forEach(function (button) { button.disabled = true; });
-            cancel.disabled = true;
-            list.querySelectorAll('button').forEach(function (button) { button.disabled = true; });
-            updateSubmit();
+            setSaving(true);
             postPointAction('import_points', 0, {scope: currentScope, members: currentMembers, period: currentPeriod, point_ids: Array.from(selected).join(',')})
                 .then(function (payload) {
                     (payload.points || []).forEach(function (point) { replacePointHtml(point); });
@@ -5776,12 +5817,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
                     retry.hidden = false;
                 })
                 .finally(function () {
-                    saving = false;
-                    scopeButtons.forEach(function (button) { button.disabled = false; });
-                    memberButtons.forEach(function (button) { button.disabled = button.getAttribute('data-import-members-choice') === 'all' && !ui.canImportAllMembers; });
-                    periodButtons.forEach(function (button) { button.disabled = false; });
-                    cancel.disabled = false;
-                    updateSubmit();
+                    setSaving(false);
                 });
         });
         updateSubmit();

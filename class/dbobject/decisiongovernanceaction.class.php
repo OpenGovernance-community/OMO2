@@ -3,6 +3,8 @@ namespace dbObject;
 
 class DecisionGovernanceAction extends DbObject
 {
+    protected $ruleAuditUserId = 0;
+    protected $ruleCreationContext = [];
     public const TYPE_RULE_CREATE = 'rule.create';
     public const TYPE_RULE_UPDATE = 'rule.update';
     public const TYPE_RULE_DELETE = 'rule.delete';
@@ -626,6 +628,8 @@ class DecisionGovernanceAction extends DbObject
                 return ['status' => true, 'applied' => 0];
             }
             foreach ($actions as $action) {
+                $action->ruleAuditUserId = (int)$proposal->get('IDuser_author');
+                $action->ruleCreationContext = Rule::buildDecisionCreationContext($decision);
                 $result = $action->applyOne($decision);
                 if (empty($result['status'])) {
                     throw new \RuntimeException((!empty($result['conflict']) ? 'conflict:' : 'failure:') . (string)($result['message'] ?? 'Application impossible.'));
@@ -696,6 +700,8 @@ class DecisionGovernanceAction extends DbObject
             return ['status' => false, 'message' => 'Type de modification invalide.'];
         }
         $action = new self();
+        $action->ruleAuditUserId = (int)$proposal->get('IDuser_author');
+        $action->ruleCreationContext = Rule::buildProposalCreationContext($proposal);
         $action->set('action_type', $actionType);
         $action->set('target_type', $targetType);
         $action->set('target_id', (int)$proposal->get('target_id'));
@@ -736,7 +742,8 @@ class DecisionGovernanceAction extends DbObject
                 return ['status' => false, 'conflict' => true, 'message' => 'La creation de la regle est dans un etat incoherent.'];
             }
             $rule = new Rule();
-            $saveResult = $rule->applyGovernanceState((array)$validation['state'], 0);
+            $rule->set('creation_context', $this->ruleCreationContext ?: null);
+            $saveResult = $rule->applyGovernanceState((array)$validation['state'], $this->ruleAuditUserId);
             if (!is_array($saveResult) || empty($saveResult['status']) || (int)$rule->getId() <= 0) {
                 return [
                     'status' => false,
@@ -780,7 +787,7 @@ class DecisionGovernanceAction extends DbObject
         if (empty($validation['status'])) {
             return $validation;
         }
-        return $rule->applyGovernanceState((array)$validation['state'], 0);
+        return $rule->applyGovernanceState((array)$validation['state'], $this->ruleAuditUserId);
     }
 
     protected function applyHolonAction(DecisionProcess $decision, $actionType, int $collectiveHolonId)

@@ -82,7 +82,7 @@
 			return '[' . $type . '|' . $id . '|' . $label . ']';
 		}
 
-		public static function createEntry($organizationId, $authorUserId, $action, $content, array $parameters = array(), $targetType = '', $targetId = 0)
+		public static function createEntry($organizationId, $authorUserId, $action, $content, array $parameters = array(), $targetType = '', $targetId = 0, ?\DateTimeInterface $occurredAt = null)
 		{
 			$targetType = trim(mb_strtolower((string)$targetType, 'UTF-8'));
 			$targetId = (int)$targetId;
@@ -94,7 +94,9 @@
 			$entry->set('action', trim((string)$action));
 			$entry->set('content', trim((string)$content));
 			$entry->set('parameters', count($parameters) > 0 ? $parameters : null);
-			$entry->set('datecreation', new \DateTimeImmutable('now', new \DateTimeZone('UTC')));
+			$entry->set('datecreation', $occurredAt instanceof \DateTimeInterface
+				? \DateTimeImmutable::createFromInterface($occurredAt)->setTimezone(new \DateTimeZone('UTC'))
+				: new \DateTimeImmutable('now', new \DateTimeZone('UTC')));
 			$entry->set('active', true);
 
 			$result = $entry->save();
@@ -281,6 +283,12 @@
 				$referenceText = htmlspecialchars((string)($resolved['text'] ?? ''), ENT_QUOTES, 'UTF-8');
 				$referenceType = (string)($resolved['type'] ?? '');
 				$referenceId = (int)($resolved['id'] ?? 0);
+
+				if (!empty($resolved['url'])) {
+					$htmlParts[] = '<a class="omo-history-reference omo-history-reference--link" href="'
+						. htmlspecialchars($resolved['url'], ENT_QUOTES, 'UTF-8') . '">' . $referenceText . '</a>';
+					continue;
+				}
 
 				if (
 					$referenceType === 'holon'
@@ -506,6 +514,7 @@
 				'text' => $fallbackLabel,
 				'isLinkable' => false,
 			);
+			$result['url'] = self::getResourceReferenceUrl($type, $id, $organizationId);
 
 			if ($type === 'holon' && $id > 0) {
 				$storedHolonReference = self::parseHolonReferenceLabel($fallbackLabel);
@@ -559,6 +568,108 @@
 
 			return $cache[$cacheKey];
 		}
+
+        public static function getResourceReferenceUrl(string $type, int $id, int $organizationId): string
+        {
+            $classes = ['decision' => DecisionProcess::class, 'rule' => Rule::class,
+                'document' => Document::class, 'event' => Event::class];
+            if ($id <= 0 || $organizationId <= 0 || !isset($classes[$type])) return '';
+            $object = new $classes[$type]();
+            if (!$object->load($id)) return '';
+            $objectOrganizationId = $type === 'rule' ? $object->getOrganizationId() : (int)$object->get('IDorganization');
+            if ($objectOrganizationId !== $organizationId) return '';
+            if ($type === 'document' && !$object->canViewInOrganizationContext($organizationId)) return '';
+            if ($type === 'event' && (int)$object->get('IDholon') > 0) {
+                $eventHolon = new Holon();
+                if (!$eventHolon->load((int)$object->get('IDholon')) || !$eventHolon->canViewDetail()) return '';
+            }
+            if ($type === 'decision') {
+                $userId = function_exists('commonGetCurrentUserId') ? (int)\commonGetCurrentUserId() : (int)($_SESSION['currentUser'] ?? 0);
+                $canView = $userId > 0 && (int)$object->get('IDuser') === $userId;
+                $canView = $canView || $object->currentViewerCanAccessVisibility($organizationId);
+                if (!$canView) {
+                    foreach ($object->getParticipants(true) as $participant) {
+                        if ($userId > 0 && (int)$participant->get('IDuser') === $userId) { $canView = true; break; }
+                    }
+                }
+                if (!$canView) return '';
+            }
+            $holon = $type === 'rule' ? $object->getHolon() : null;
+            if ($holon instanceof Holon && !$holon->canViewDetail()) return '';
+            $holonId = $holon instanceof Holon ? (int)$holon->getId() : (int)$object->get('IDholon');
+            $route = ['decision' => 'decision-v', 'rule' => 'policy-r', 'document' => 'documents-d', 'event' => 'calendar-e'][$type];
+            return '/omo/o/' . $organizationId . ($holonId > 0 ? '/c/' . $holonId : '') . '#' . $route . $id;
+        }
+
+        public static function recordDecisionCompletion(DecisionProcess $decision): void
+        {
+            if ((int)$decision->getId() <= 0 || DecisionProcess::normalizeStatus($decision->get('status')) !== DecisionProcess::STATUS_RESULTS) return;
+            $pdo = self::getPdo();
+            $ownsTransaction = !$pdo->inTransaction();
+            try {
+                if ($ownsTransaction) $pdo->beginTransaction();
+                // Serialize completion logs from cron and simultaneous readers.
+                self::fetchValue('SELECT id FROM decision_process WHERE id = :id FOR UPDATE', ['id' => (int)$decision->getId()]);
+                $exists = self::fetchValue("SELECT id FROM history WHERE action = 'decision_completed'
+                    AND IDorganization = :organization AND JSON_UNQUOTE(JSON_EXTRACT(parameters, '$.decision_id')) = :decision LIMIT 1",
+                    ['organization' => (int)$decision->get('IDorganization'), 'decision' => (string)$decision->getId()]);
+                if (!$exists) {
+                    $lines = [];
+                    $outcomes = [];
+                    $modifications = [];
+                    foreach ($decision->getDecisionGroups(true) as $group) {
+                        $method = DecisionProcess::normalizeEvaluationMethod($group->get('evaluation_method'));
+                        if (!in_array($method, [DecisionProcess::METHOD_CONSENT, DecisionProcess::METHOD_SIMPLE_VOTE], true)) continue;
+                        $responses = iterator_to_array($group->getResponses(DecisionResponse::STATUS_SUBMITTED));
+                        $winners = $method === DecisionProcess::METHOD_SIMPLE_VOTE ? DecisionGovernanceAction::getSimpleVoteWinningProposalIds($responses) : [];
+                        foreach ($group->getProposals(true) as $proposal) {
+                            $accepted = $method === DecisionProcess::METHOD_CONSENT
+                                ? !DecisionGovernanceAction::proposalHasObjection($proposal, $responses)
+                                : in_array((int)$proposal->getId(), $winners, true);
+                            $outcomes[] = ['proposal_id' => (int)$proposal->getId(), 'accepted' => $accepted];
+                            $lines[] = ($accepted ? 'Proposition acceptee : ' : 'Proposition non retenue : ') . self::sanitizeReferenceLabel($proposal->get('title')) . '.';
+                            foreach ($proposal->getGovernanceActions() as $action) {
+                                if ((string)$action->get('status') === DecisionGovernanceAction::STATUS_REMOVED) continue;
+                                $modifications[] = ['type' => (string)$action->get('target_type'), 'id' => (int)$action->get('target_id'),
+                                    'operation' => substr((string)$action->get('action_type'), strpos((string)$action->get('action_type'), '.') + 1),
+                                    'status' => (string)$action->get('status'), 'before' => DecisionGovernanceAction::normalizeState($action->get('before_state')),
+                                    'after' => DecisionGovernanceAction::normalizeState($action->get('after_state'))];
+                            }
+                            foreach ($proposal->getDeferredProposals() as $action) {
+                                if ((string)$action->get('status') === DeferredProposal::STATUS_REMOVED) continue;
+                                $modifications[] = ['type' => (string)$action->get('target_type'), 'id' => (int)$action->get('target_id'),
+                                    'operation' => (string)$action->get('operation'), 'status' => (string)$action->get('status'),
+                                    'before' => DeferredProposal::normalizeState($action->get('before_state')), 'after' => DeferredProposal::normalizeState($action->get('after_state'))];
+                            }
+                        }
+                    }
+                    $acceptedCount = count(array_filter($outcomes, static fn ($outcome) => $outcome['accepted']));
+                    $outcome = !$outcomes ? 'completed' : ($acceptedCount === count($outcomes) ? 'success' : ($acceptedCount === 0 ? 'rejected' : 'partial'));
+                    $labels = ['completed' => 'terminee', 'success' => 'terminee avec succes', 'rejected' => 'terminee sans proposition retenue', 'partial' => 'terminee avec des propositions acceptees et refusees'];
+                    $content = 'La decision ' . self::buildReferenceToken('decision', $decision->getId(), $decision->get('title')) . ' est ' . $labels[$outcome] . '.';
+                    $holonId = (int)$decision->get('IDholon');
+                    foreach ($modifications as $modification) {
+                        $state = $modification['operation'] === 'delete' ? $modification['before'] : $modification['after'];
+                        $title = (string)($state['title'] ?? $state['name'] ?? $modification['type']);
+                        $status = ['applied' => 'appliquee', 'rejected' => 'non retenue', 'conflict' => 'en conflit', 'failed' => 'en echec', 'pending' => 'en attente', 'validated' => 'validee, en attente d application'][$modification['status']] ?? $modification['status'];
+                        $operation = ['create' => 'Creation', 'update' => 'Modification', 'delete' => 'Suppression', 'move' => 'Deplacement'][$modification['operation']] ?? 'Modification';
+                        $reference = $modification['status'] === 'applied' && $modification['operation'] !== 'delete'
+                            ? self::buildReferenceToken($modification['type'], $modification['id'], $title) : self::sanitizeReferenceLabel($title);
+                        $lines[] = $operation . ' : ' . $reference . ' - ' . $status . '.';
+                    }
+                    $result = self::createEntry((int)$decision->get('IDorganization'), 0, 'decision_completed',
+                        $content . ($lines ? "\n" . implode("\n", $lines) : ''),
+                        ['decision_id' => (int)$decision->getId(), 'outcome' => $outcome, 'proposals' => $outcomes, 'modifications' => $modifications],
+                        $holonId > 0 ? 'holon_resource' : 'decision', $holonId > 0 ? $holonId : (int)$decision->getId(),
+                        $decision->get('results_published_at') instanceof \DateTimeInterface ? $decision->get('results_published_at') : null);
+                    if (empty($result['status'])) throw new \RuntimeException('Completion history save failed.');
+                }
+                if ($ownsTransaction) $pdo->commit();
+            } catch (\Throwable $exception) {
+                if ($ownsTransaction && $pdo->inTransaction()) $pdo->rollBack();
+                error_log('decision_completion_history_failed: ' . $exception->getMessage());
+            }
+        }
 
 		protected static function resolveAuthorDisplayName($userId, $organizationId = 0)
 		{
@@ -614,6 +725,7 @@
 			}
 
 			$labels = array(
+				'decision_completed' => 'Fin de decision collective',
 				'holon_created' => 'Creation',
 				'holon_updated' => 'Modification',
 				'holon_member_added' => 'Ajout de membre',
