@@ -18,14 +18,35 @@ if ($logPath === false) {
 }
 
 file_put_contents($logPath, '');
+$pathMode = $argv[1] ?? 'file';
+$runtimeDirectory = $logPath . '-runtime';
+$configuredPath = $logPath;
+if ($pathMode !== 'file') {
+    assertSqlPerformanceTest(in_array($pathMode, ['default', 'directory', 'missing-directory', 'backslash-directory', 'relative-directory'], true), 'Unknown path mode.');
+    unlink($logPath);
+    mkdir($runtimeDirectory, 0770);
+    putenv('RUNTIME_LOG_DIR=' . $runtimeDirectory);
+    $configuredPath = match ($pathMode) {
+        'default' => '',
+        'directory' => $runtimeDirectory,
+        'missing-directory' => $runtimeDirectory . '/missing/',
+        'backslash-directory' => $runtimeDirectory . '/missing\\',
+        'relative-directory' => 'sql',
+    };
+    $logPath = commonRuntimeLogPath('sql-performance/sql-performance-' . date('Y-m-d') . '.jsonl');
+}
 putenv('DB_QUERY_LOG_ENABLED=true');
 putenv('DB_QUERY_LOG_MIN_MS=0');
-putenv('DB_QUERY_LOG_PATH=' . $logPath);
+putenv('DB_QUERY_LOG_PATH=' . $configuredPath);
 
 $_SERVER['REQUEST_TIME_FLOAT'] = microtime(true);
 $_SERVER['REQUEST_URI'] = '/tests/sql-performance?token=request-secret-value';
 $_SERVER['REQUEST_METHOD'] = 'GET';
 $_SERVER['SCRIPT_NAME'] = '/tests/dbobject_sql_performance_log_test.php';
+$statusCode = (int)($argv[2] ?? 404);
+if ($statusCode > 0) {
+    http_response_code($statusCode);
+}
 
 $literalSecret = 'literal-secret-value';
 $doubleQuotedSecret = 'double-quoted-secret-value';
@@ -59,14 +80,21 @@ assertSqlPerformanceTest(strpos($contents, 'request-secret-value') === false, 'Q
 assertSqlPerformanceTest(strpos($queryEvent['sql'], '12345') === false, 'Numeric literals must not be logged.');
 
 assertSqlPerformanceTest($summaryEvent['event'] === 'request_summary', 'The second event must summarize the request.');
+assertSqlPerformanceTest($summaryEvent['status_code'] === ($statusCode ?: 200), 'The summary must preserve the HTTP status independently of SQL errors.');
+assertSqlPerformanceTest($summaryEvent['error_count'] === 0, 'An HTTP error is not an SQL error.');
 assertSqlPerformanceTest($summaryEvent['query_count'] === 1, 'The summary must count the query.');
 assertSqlPerformanceTest($summaryEvent['logged_query_count'] === 1, 'The summary must count the logged query.');
 assertSqlPerformanceTest($summaryEvent['database_duration_ms'] > 0, 'The summary must include database time.');
 assertSqlPerformanceTest($summaryEvent['request_id'] === $queryEvent['request_id'], 'Events must share a request identifier.');
 
 unlink($logPath);
+if ($pathMode !== 'file') {
+    rmdir(dirname($logPath));
+    rmdir($runtimeDirectory);
+    putenv('RUNTIME_LOG_DIR');
+}
 putenv('DB_QUERY_LOG_ENABLED');
 putenv('DB_QUERY_LOG_MIN_MS');
 putenv('DB_QUERY_LOG_PATH');
 
-echo "dbobject_sql_performance_log_test: OK\n";
+echo "dbobject_sql_performance_log_test ($pathMode): OK\n";

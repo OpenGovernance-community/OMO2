@@ -245,9 +245,9 @@ DB_QUERY_LOG_PATH=
 RUNTIME_LOG_DIR=
 ```
 
-Sans chemin explicite, les evenements JSONL sont ecrits dans `../log/sql-performance/sql-performance-AAAA-MM-JJ.jsonl`, hors de la racine publique. Un chemin relatif est resolu depuis la racine du projet. `RUNTIME_LOG_DIR` permet de changer le repertoire commun utilise par les journaux qui n ont pas de chemin specifique.
+Sans chemin explicite, les evenements JSONL sont ecrits dans `../log/sql-performance/sql-performance-AAAA-MM-JJ.jsonl`, hors de la racine publique. `DB_QUERY_LOG_PATH` attend un fichier : un dossier existant ou un chemin termine par `/` ou `\` fait reprendre ce chemin quotidien par defaut. Un chemin relatif est resolu depuis la racine du projet. `RUNTIME_LOG_DIR` permet de changer le repertoire commun utilise par les journaux qui n ont pas de chemin specifique.
 
-Chaque requete conserve sa duree, son type, son empreinte, son appelant et son nombre de lignes. Le journal ajoute aussi un resume par requete HTTP avec le temps SQL cumule. Les valeurs liees, les litteraux SQL, les messages d erreur et les parametres de l URL ne sont pas enregistres.
+Chaque requete conserve sa duree, son type, son empreinte, son appelant et son nombre de lignes. Le journal ajoute aussi un resume par requete HTTP avec le temps SQL cumule et le statut HTTP (`status_code`), en distinguant les erreurs HTTP des erreurs SQL (`error_count`). Les valeurs liees, les litteraux SQL, les messages d erreur et les parametres de l URL ne sont pas enregistres.
 
 ## 8. Mesurer les appels de maintenance OMO
 

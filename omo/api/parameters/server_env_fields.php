@@ -67,7 +67,7 @@ function omoServerEnvAdditionalSections(): array
                 'OMO_CRON_LOG_ENABLED' => ['label' => 'Journal des taches planifiees', 'type' => 'boolean', 'help' => 'Conserve le resultat des taches automatiques du cron. Gardez actif pour pouvoir diagnostiquer un traitement manquant.'],
                 'DB_QUERY_LOG_ENABLED' => ['label' => 'Journal des requetes SQL', 'type' => 'boolean', 'help' => 'Diagnostic des requetes MySQL lentes. Desactive par defaut ; a activer ponctuellement pour chercher un probleme de performance.'],
                 'DB_QUERY_LOG_MIN_MS' => ['label' => 'Duree minimale des requetes (ms)', 'type' => 'number', 'min' => 0, 'help' => 'Ne journalise que les requetes depassant ce nombre de millisecondes, si le diagnostic SQL est actif. Valeur habituelle : 50 ms.'],
-                'DB_QUERY_LOG_PATH' => ['label' => 'Fichier du journal SQL', 'help' => 'Exception au dossier commun pour le diagnostic SQL. Vide : fichiers quotidiens dans le sous-dossier sql-performance du dossier commun.'],
+                'DB_QUERY_LOG_PATH' => ['label' => 'Fichier du journal SQL', 'help' => 'Chemin complet d un fichier, pas d un dossier. Vide ou dossier : fichiers quotidiens dans le sous-dossier sql-performance du dossier commun.'],
                 'OMO_CRON_LOG_PATH' => ['label' => 'Fichier du journal des taches planifiees', 'help' => 'Exception au dossier commun pour le cron. Vide : fichier omo-cron/omo-cron.jsonl dans le dossier commun.'],
                 'NOTIFICATION_PUSH_WORKER_LOG' => ['label' => 'Journal des notifications push', 'help' => 'Exception au dossier commun pour les erreurs d envoi push. Vide : fichier notification-push-worker.log dans le dossier commun.'],
             ],
