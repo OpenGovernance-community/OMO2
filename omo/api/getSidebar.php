@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/organization_applications_access.php';
+require_once dirname(__DIR__, 2) . '/common/tips/translations.php';
 commonReleaseReadOnlySession();
 
 $sourceLang = [
@@ -107,6 +108,14 @@ $renderMenuItem = static function (array $item) use ($escape) {
 </div>
 
 <div class="menu-secondary">
+<?php if ($currentUserId > 0 && !$isStructuralShare): ?>
+    <div class="omo-tips-slot" data-omo-tips-slot>
+        <button type="button" class="omo-tips-button" aria-controls="omo-tips-region" aria-expanded="false" aria-label="<?= $escape(commonTipsT('title')) ?>">
+            <span class="icon" aria-hidden="true"><img src="/common/tips/ampoule.png" class="icon-img black-icon" alt=""></span>
+            <span class="label"><?= $escape(commonTipsT('title')) ?></span>
+        </button>
+    </div>
+<?php endif; ?>
 <?php
 $renderMenuItem([
     'label' => t('sidebar.parameters.label', [], $lang, $sourceLang),
