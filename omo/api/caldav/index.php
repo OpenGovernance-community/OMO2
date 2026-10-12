@@ -17,12 +17,20 @@ if (in_array($method, ['PROPFIND', 'REPORT', 'GET', 'HEAD'], true)) {
     \dbObject\DbObject::enableReadOnlyMemoization();
 }
 $scope = commonCalDavParseScopedRoute($routePath);
+$cacheAllowed = is_array($scope) && commonCalDavCanUseScopedResponseCache($viewer, $scope);
+if ($scope === null && preg_match('#^/calendars/' . (int)$viewer->getId() . '/organization-(\d+)(?:/event-\d+\.ics)?/?$#', '/' . trim($routePath, '/'), $match)) {
+    $organization = new \dbObject\Organization();
+    $scope = ['organizationId' => (int)$match[1]];
+    $cacheAllowed = \dbObject\UserOrganization::hasActiveMembership((int)$viewer->getId(), (int)$match[1])
+        && $organization->load((int)$match[1]) && $organization->isApplicationEnabled('calendar', (int)$viewer->getId());
+}
 $cacheHandle = null;
+if ($cacheAllowed) $GLOBALS['commonPerformanceOrganizationId'] = (int)$scope['organizationId'];
 
 if (
     is_array($scope)
     && in_array($method, array('PROPFIND', 'REPORT', 'GET'), true)
-    && commonCalDavCanUseScopedResponseCache($viewer, $scope)
+    && $cacheAllowed
 ) {
     $rawInput = file_get_contents('php://input');
     $rawInput = is_string($rawInput) ? $rawInput : '';
@@ -31,7 +39,7 @@ if (
     $organizationId = (int)$scope['organizationId'];
     $revision = \dbObject\CalDavCache::getOrganizationRevision($organizationId);
     $cacheKey = \dbObject\CalDavCache::buildResponseKey(array(
-        'schema' => 4,
+        'schema' => 5,
         'viewer' => (int)$viewer->getId(),
         'organization' => $organizationId,
         'revision' => $revision,
