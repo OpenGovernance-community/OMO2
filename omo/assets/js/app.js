@@ -2345,7 +2345,11 @@ function omoDispatchSpecialDrawerRouteChange(routeToken, previousRouteToken = nu
     let eventName = '';
     let detail = null;
 
-    if (menuHash === 'decision') {
+    if (menuHash === 'policy') {
+        const match = normalizedRouteToken.match(/^policy-r(\d+)$/i);
+        eventName = 'omo-policy-route-change';
+        detail = {ruleId: match ? Number(match[1]) : 0};
+    } else if (menuHash === 'decision') {
         const current = omoParseDecisionRouteToken(normalizedRouteToken);
         const previous = omoParseDecisionRouteToken(normalizedPreviousRouteToken);
         eventName = 'omo-decisions-route-change';
@@ -2441,8 +2445,8 @@ function omoRestoreCachedDrawerRoute(routeToken = null, previousRouteToken = nul
 
     // A cached Documents panel may keep a detail drawer marked as open while its
     // body has already been cleared or while another application is displayed.
-    // Always replay the document route so the visible detail matches the hash.
-    if (omoGetMenuHashForRouteToken(normalizedRouteToken) === 'documents') {
+    // Always replay document and policy routes so the visible detail matches the hash.
+    if (['documents', 'policy'].includes(omoGetMenuHashForRouteToken(normalizedRouteToken))) {
         return omoDispatchSpecialDrawerRouteChange(normalizedRouteToken, normalizedPreviousRouteToken);
     }
 
@@ -5093,6 +5097,7 @@ function handleRoute() {
         && activeMenuHash === previousMenuHash
         && (
             activeMenuHash === 'decision'
+            || activeMenuHash === 'policy'
             || activeMenuHash === 'calendar'
             || activeMenuHash === 'stats'
             || activeMenuHash === 'processus'
@@ -6224,6 +6229,19 @@ window.omoParsePopupHashState = function () {
 };
 window.omoNavigate = navigate;
 window.omoSetDrawerHashState = omoSetDrawerHashState;
+function omoHandlePolicyRuleLink(event) {
+    if (event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    const link = event.target instanceof Element ? event.target.closest('a[href]') : null;
+    if (!link || link.hasAttribute('download') || (link.target && link.target !== '_self')) return;
+    const url = new URL(link.href, window.location.href);
+    if (url.origin !== window.location.origin || url.pathname !== window.location.pathname || url.search !== window.location.search) return;
+    if (!/^#policy-r[1-9]\d*$/i.test(url.hash)) return;
+    event.preventDefault();
+    if (omoConfirmDiscardChanges()) window.omoOpenDrawerHashState(url.hash.slice(1));
+}
+
+document.addEventListener('click', omoHandlePolicyRuleLink);
+
 window.omoOpenDrawerHashState = function (routeToken, options = {}) {
     const normalizedRouteToken = omoNormalizeHashToken(routeToken);
     const forcedScope = omoNormalizeDrawerForcedScope(options.forcedScope);
