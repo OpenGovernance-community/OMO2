@@ -1,5 +1,9 @@
 # Journal des nouveautés
 
+- Trucs et astuces / separateur (2026-10-12) : le trait au-dessus des parametres accompagne maintenant l apparition et le retrait de l ampoule, sur ordinateur et mobile.
+
+- Trucs et astuces (2026-10-12) : ampoule au-dessus des parametres, apparition quotidienne d une astuce aleatoire avec lien et image facultative. Fenetre de 10 secondes, decompte suspendu au survol et au clavier, fermeture progressive, rappel par survol et bouton Suivant. Cookie journalier propre au compte pour retrouver l astuce apres rechargement. Catalogue commun editable via adminEdit dans les parametres en mode super administrateur ; migration SQL et premieres astuces incluses.
+
 - Performances / editeurs et concurrence (2026-10-12) : caches de lecture actives dans les modeles de holons, propositions differees, formulaires structurels, indicateurs et lectures CalDAV. Sessions liberees avant les rendus et les attentes Git ou push ; traductions des actions de vue reutilisables cinq minutes par langue explicite. Projets et permissions des catalogues charges par lot dans dbObject, y compris apres sauvegarde. Mesures Docker : modeles 1643 -> 241 requetes SQL, formulaire holon 441 -> 182, rendus identiques. Tests PHP 8.5 de droits, sauvegarde, sessions, isolation et hydratation ; sans migration SQL.
 
 - Projets / blocage configurable (2026-10-12) : deux cases cochées par défaut dans les paramètres de l’application permettent de rendre le motif et la date de réexamen obligatoires indépendamment. Validation alignée dans la popup, les formulaires, les propositions et l’API ; valeurs facultatives vides stockées en `NULL` et affichées explicitement dans les vues. Réactivation automatique désactivée sans date. Textes relus avec accents, apostrophes et ponctuation. Tests des quatre combinaisons et de l’isolation entre organisations, sans migration SQL.

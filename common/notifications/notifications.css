@@ -86,6 +86,13 @@
     --common-notification-text: #166534;
 }
 
+.common-notification--info {
+    --common-notification-accent: var(--color-primary, #0b6e7a);
+    --common-notification-background: var(--color-surface, #fff);
+    --common-notification-border: var(--color-border, #cbd5e1);
+    --common-notification-text: var(--color-text, #1f2937);
+}
+
 .common-notification__message {
     min-width: 0;
     flex: 1 1 auto;
