@@ -10,6 +10,37 @@ use dbObject\Holon;
 use dbObject\Organization;
 use dbObject\UserOrganization;
 
+/** Reuse the DAV revision cache for organization-scoped subscriptions. */
+function calendarShareReadFeed(CalendarShare $share): string
+{
+    $scope = $share->getScopedCalendarConfig();
+    $viewer = new \dbObject\User();
+    if (!is_array($scope) || !$viewer->load((int)$share->get('IDuser'))
+        || !commonCalDavCanUseScopedResponseCache($viewer, $scope)) {
+        header('X-OMO-ICS-Cache: BYPASS');
+        return calendarShareBuildFeed($share);
+    }
+    $organizationId = (int)$scope['organizationId'];
+    $GLOBALS['commonPerformanceOrganizationId'] = $organizationId;
+    $revision = \dbObject\CalDavCache::getOrganizationRevision($organizationId);
+    $key = \dbObject\CalDavCache::buildResponseKey(['schema' => 'ics-1', 'share' => (int)$share->getId(),
+        'token' => hash('sha256', (string)$share->get('token')), 'user' => (int)$viewer->getId(),
+        'scope' => $scope, 'months' => (int)$share->get('months'), 'details' => (bool)$share->get('details'),
+        'day' => (new DateTimeImmutable('today'))->format('Y-m-d')]);
+    $cached = \dbObject\CalDavCache::readResponse($organizationId, $revision, $key);
+    if (is_array($cached)) { header('X-OMO-ICS-Cache: HIT'); return $cached['body']; }
+    $lock = \dbObject\CalDavCache::acquireBuildLock($organizationId, $revision, $key);
+    try {
+        $cached = \dbObject\CalDavCache::readResponse($organizationId, $revision, $key);
+        if (is_array($cached)) { header('X-OMO-ICS-Cache: HIT'); return $cached['body']; }
+        $content = calendarShareBuildFeed($share);
+        $saved = is_resource($lock) && \dbObject\CalDavCache::writeResponse($organizationId, $revision, $key,
+            ['status' => 200, 'headers' => [], 'body' => $content]);
+        header('X-OMO-ICS-Cache: ' . ($saved ? 'MISS' : 'BYPASS'));
+        return $content;
+    } finally { \dbObject\CalDavCache::releaseBuildLock($lock); }
+}
+
 function calendarShareLoadScopedOmoEvents(CalendarShare $share, array $scope): array
 {
     $userId = (int)$share->get('IDuser');
