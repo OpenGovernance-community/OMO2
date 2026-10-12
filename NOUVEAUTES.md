@@ -1,5 +1,7 @@
 # Journal des nouveautés
 
+- Diagnostic des logs / PHP 8.5 (2026-10-12) : expiration des astuces sans constante obsolete DATE_RFC7231. Journal SQL redirige vers le fichier quotidien commun si un dossier est configure a la place d un fichier ; aide des parametres precisee. Statut HTTP ajoute aux resumes pour distinguer les reponses 4xx/5xx des erreurs SQL.
+
 - Trucs et astuces / contenu utilisateur (2026-10-12) : 143 accroches courtes issues des usages ajoutes de juin a octobre, notamment les gestes moins connus et les raccourcis utiles. Chaque astuce conduit vers une FAQ avec resume et explications ; les marches a suivre restent dans la FAQ. Migration par titre de question et portee generique, sans ID predefini, avec creation des reponses manquantes et conservation des contenus et publications existants. Relance sans doublons ; tests des liens, des titres homonymes, des FAQ masquees et de la preservation des contenus.
 
 - Trucs et astuces / separateur (2026-10-12) : le trait au-dessus des parametres accompagne maintenant l apparition et le retrait de l ampoule, sur ordinateur et mobile.
