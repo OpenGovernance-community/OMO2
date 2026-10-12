@@ -31,7 +31,7 @@ if (
     $organizationId = (int)$scope['organizationId'];
     $revision = \dbObject\CalDavCache::getOrganizationRevision($organizationId);
     $cacheKey = \dbObject\CalDavCache::buildResponseKey(array(
-        'schema' => 3,
+        'schema' => 4,
         'viewer' => (int)$viewer->getId(),
         'organization' => $organizationId,
         'revision' => $revision,
@@ -100,6 +100,7 @@ $resourceType = (string)$resource['type'];
 $allowedMethods = array('OPTIONS', 'PROPFIND');
 
 if ($resourceType === 'calendar') {
+    $allowedMethods[] = 'PROPPATCH';
     $allowedMethods[] = 'REPORT';
     $allowedMethods[] = 'GET';
     $allowedMethods[] = 'HEAD';
@@ -131,6 +132,10 @@ if (!in_array($method, $allowedMethods, true)) {
 
 if ($method === 'PROPFIND') {
     commonCalDavHandlePropfind($viewer, $resource);
+}
+
+if ($method === 'PROPPATCH') {
+    commonCalDavHandleProppatch($viewer, $resource);
 }
 
 if ($method === 'REPORT') {

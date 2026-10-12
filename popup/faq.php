@@ -1,6 +1,7 @@
 <?php
 require_once("../config.php");
 require_once("../shared_functions.php");
+commonEnableReadOnlyCaches();
 require_once("../omo/api/lms/inc/access.php");
 require_once("../common/faq_popup_helper.php");
 require_once("../common/faq_ai.php");
