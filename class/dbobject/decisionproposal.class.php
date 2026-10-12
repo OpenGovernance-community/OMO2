@@ -164,6 +164,15 @@ class DecisionProposal extends DbObject
         }
     }
 
+    public static function descriptionToPlainText(string $html): string
+    {
+        $html = PropertyFormat::sanitizeHtml($html);
+        $html = preg_replace('/<(?:br\b[^>]*|\/?(?:p|div|li|ul|ol|h[1-6]|tr)\b[^>]*)>/i', "\n", $html) ?? $html;
+        $text = html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = preg_replace('/[^\S\n]+/u', ' ', $text) ?? $text;
+        return trim(preg_replace('/ *\n(?: *\n)* */u', "\n", $text) ?? $text);
+    }
+
     protected function saveProposalContent()
     {
         $this->set('description', \dbObject\PropertyFormat::sanitizeHtml((string)$this->get('description')));

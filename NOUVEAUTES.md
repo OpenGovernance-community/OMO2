@@ -1,5 +1,9 @@
 # Journal Des Nouveautes
 
+- Decisions / descriptions de propositions (2026-10-12) : editeur HTML partage dans les decisions hors reorg, libelles des domaines d autorite dans les resumes et mention vide en italique pour les valeurs absentes. Conversion lisible des descriptions dans les exports CSV, notifications et evenements associes ; HTML conserve dans les vues et exports JSON.
+
+- Decisions hors reorg / roles dans les groupes (2026-10-12) : validation de sauvegarde et preparation des deplacements alignees sur le selecteur structurel partage. Les roles places dans des groupes, y compris imbriques, sont acceptes dans leur cercle ; les droits collectifs et les limites entre cercles restent controles.
+
 - PV / correction de la poubelle d import (2026-10-12) : le controle general des points du PV ouvert ne bloque plus la cloture du suivi d un point provenant d un autre PV. Les droits, le jeton de session et les verrous du point source restent verifies. Test HTTP du parcours reel depuis la popup, notamment avec un PV source deja valide.
 
 - Reglement / liens directs (2026-10-12) : les liens vers une regle deplacent aussi la vue lorsque le panneau est deja ouvert ou en cache. La regle est depliee, ses details ouverts et la recherche effacee ; chargement du perimetre global si elle manque dans la vue courante. Test de regression de navigation.

@@ -71,16 +71,18 @@
                 request.set('modifications', JSON.stringify(summaryInput(proposal)));
                 button.disabled = true;
                 button.textContent = texts.summaryLoading || 'Rédaction du résumé…';
-                field.readOnly = true;
+                field.inert = true;
+                field.setAttribute('aria-busy', 'true');
                 message.hidden = true;
                 fetch('/omo/api/decision/governance/summarize.php', {method:'POST',credentials:'same-origin',headers:{'X-Requested-With':'XMLHttpRequest'},body:request})
                     .then(function (response) { return response.json().then(function (data) { if (!response.ok || !data.status) throw new Error(data.message || texts.summaryFailed); return data; }); })
                     .then(function (data) {
                         if (!card.isConnected) return;
-                        proposal.description = String(data.text || '').trim();
-                        field.value = proposal.description;
-                        sync();
-                        notifySummary(texts.summaryReady || 'Résumé ajouté à la description. Vous pouvez le modifier.', 'success');
+                        proposal.description = escapeHtml(String(data.text || '').trim()).replace(/\r?\n/g, '<br>');
+                        return window.omoProposalHtml.setValue(field, proposal.description).then(function () {
+                            sync();
+                            notifySummary(texts.summaryReady || 'Résumé ajouté à la description. Vous pouvez le modifier.', 'success');
+                        });
                     })
                     .catch(function (error) {
                         if (!card.isConnected) return;
@@ -90,7 +92,8 @@
                         if (!card.isConnected) return;
                         button.disabled = false;
                         button.textContent = texts.summaryGenerate || 'Rédiger un résumé avec l’IA';
-                        field.readOnly = false;
+                        field.inert = false;
+                        field.removeAttribute('aria-busy');
                     });
             }
             function modal(title, content) { if (typeof window.commonTopbarOpenModal === 'function') window.commonTopbarOpenModal(title, content, 'html'); }
@@ -99,6 +102,9 @@
             function optionHtml(items, selected) { var separatorAdded = false; return (items || []).map(function (item) { var separator = ''; if (Number(item.holonType) === 1 && !separatorAdded) { separator = '<option disabled>────────────</option>'; separatorAdded = true; } return separator + '<option value="' + Number(item.id || 0) + '"' + (Number(item.id) === Number(selected) ? ' selected' : '') + '>' + escapeHtml(item.label || '') + (item.typeLabel ? ' — ' + escapeHtml(item.typeLabel) : '') + '</option>'; }).join(''); }
 
             function render() {
+                list.querySelectorAll('[data-description]').forEach(function (host) {
+                    if (typeof host.__omoSimpleHtmlFieldDestroy === 'function') host.__omoSimpleHtmlFieldDestroy();
+                });
                 list.innerHTML = '';
                 blueprint.forEach(function (proposal, pi) {
                     var card = document.createElement('article');
@@ -108,11 +114,10 @@
                         + (editable ? '<div><button type="button" class="generic-action-button generic-action-button--choice generic-action-button--compact" data-add-action><span aria-hidden="true">+</span> ' + escapeHtml(texts.actionAdd || 'Ajouter une modification') + '</button></div>' : '') + '</div>'
                         + '<div class="generic-form-field"><div class="omo-governance-proposal__description-head"><label class="generic-form-label" for="omo-governance-description-' + pi + '">' + escapeHtml(texts.proposalDescription || 'Description de la proposition') + '</label>'
                         + (editable && payload.aiEnabled ? '<button type="button" class="generic-action-button generic-action-button--secondary generic-action-button--compact" data-generate-summary' + ((proposal.actions || []).length ? '' : ' disabled') + '>' + escapeHtml(texts.summaryGenerate || 'Rédiger un résumé avec l’IA') + '</button>' : '')
-                        + '</div><textarea id="omo-governance-description-' + pi + '" class="generic-form-control generic-form-control--compact" data-description rows="3" maxlength="10000"' + (editable ? '' : ' readonly') + '>' + escapeHtml(proposal.description || '') + '</textarea><p class="generic-feedback" data-summary-feedback hidden aria-live="polite"></p></div>'
+                        + '</div><div id="omo-governance-description-' + pi + '" class="omo-proposal-html-editor" data-description></div><p class="generic-feedback" data-summary-feedback hidden aria-live="polite"></p></div>'
                         + (editable ? '<div class="generic-action-row"><button type="button" class="generic-action-button generic-action-button--danger generic-action-button--compact" data-remove-proposal>' + escapeHtml(texts.proposalRemove || 'Retirer') + '</button></div>' : '');
                     if (editable) {
                         card.querySelector('[data-title]').addEventListener('input', function (event) { proposal.title = event.target.value; sync(); });
-                        card.querySelector('[data-description]').addEventListener('input', function (event) { proposal.description = event.target.value; sync(); });
                         card.querySelector('[data-remove-proposal]').addEventListener('click', function () { blueprint.splice(pi, 1); render(); });
                         card.querySelector('[data-add-action]').addEventListener('click', function () { openChooser(pi, -1); });
                         var summaryButton = card.querySelector('[data-generate-summary]');
@@ -133,6 +138,19 @@
                         card.querySelector('[data-actions]').appendChild(item);
                     });
                     list.appendChild(card);
+                });
+                list.querySelectorAll('[data-description]').forEach(function (host, pi) {
+                    window.omoProposalHtml.mount(host, {
+                        value: blueprint[pi].description || '',
+                        disabled: !editable,
+                        onChange: function (value) {
+                            if (!host.isConnected) return;
+                            blueprint[pi].description = value;
+                            sync();
+                        }
+                    }).catch(function () {
+                        host.textContent = strip(blueprint[pi].description || '');
+                    });
                 });
                 sync();
                 if (window.omoChoiceChangeDetails) window.omoChoiceChangeDetails.hydrate(list);

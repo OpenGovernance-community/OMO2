@@ -49,7 +49,12 @@ $ruleScopeContext = null;
 $contextHolon = null;
 if ($targetType === DeferredProposal::TARGET_HOLON && $operation === DeferredProposal::OPERATION_MOVE && (int)($_GET['moving_holon_id'] ?? 0) > 0) {
     $movingHolon = DeferredProposal::loadAllowedHolonTargetHolon($organizationId, (int)$_GET['moving_holon_id'], $operation, $collectiveHolonId);
-    if (!$movingHolon || (int)$movingHolon->get('IDholon_parent') !== $contextHolonId) $respond(403, ['status' => false, 'message' => 'Deplacement non autorise.']);
+    $contextHolon = new Holon();
+    $catalog = DeferredProposal::getHolonTargetHolonCatalog($organizationId, $collectiveHolonId);
+    if (!$movingHolon || !$contextHolon->load($contextHolonId) || !array_any(
+        DeferredProposal::getHolonTargetsForContext($contextHolon, $operation, $catalog),
+        static fn (Holon $target): bool => (int)$target->getId() === (int)$movingHolon->getId()
+    )) $respond(403, ['status' => false, 'message' => 'Deplacement non autorise.']);
     $moveData = $context['organization']->getHolonMoveEditorData((int)$movingHolon->getId(), $collectiveHolonId);
     $respond(200, ['status' => true, 'destinations' => $moveData['destinations'], 'before' => DeferredProposal::captureHolonMoveState($movingHolon)]);
 }
