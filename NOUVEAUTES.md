@@ -1,5 +1,7 @@
 # Journal des nouveautés
 
+- Calendriers / lectures repetees (2026-10-12) : cache de reponses CalDAV etendu aux routes par organisation, avec controle des droits avant reutilisation. Chargement limite au calendrier demande. Les abonnements ICS lies a une organisation reutilisent aussi le contenu et son ETag ; changements et revocations verifies par tests HTTP. Mesure locale avec 12 evenements : 70 requetes SQL a froid, 7 en cache. Attribution des lectures validees a leur organisation dans les nouvelles statistiques, sans migration SQL.
+
 - CalDAV / PROPPATCH (2026-10-12) : nom, couleur et ordre des calendriers conserves par utilisateur dans les parametres de son adhesion a l organisation, y compris pour les calendriers d evenements en lecture seule. Reponses 207 par propriete, refus des proprietes techniques et sauvegarde atomique avec verrou ; suppression des preferences et invalidation du cache de decouverte. Privileges annonces ajustes. Tests HTTP PHP 8.5 de persistance, isolation, erreurs et cache ; sans migration SQL.
 
 - FAQ / requetes de lecture (2026-10-12) : chargement groupe des questions et reutilisation des caches de lecture et de permissions existants pour la liste et le detail. Liste locale de 401 a 23 requetes SQL ; ajouter 20 questions dans le meme contexte ne multiplie plus les lectures. Tests de conservation du contenu et des droits pour membres et administrateurs ; affichage de 0 ou 10 000 votes sans requete supplementaire. Sans migration SQL.
