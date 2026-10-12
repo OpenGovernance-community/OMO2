@@ -18,11 +18,14 @@ function checkNotificationService() {
             this.classList = {
                 add: (name) => { this.className += ' ' + name; },
                 remove: (name) => { this.className = this.className.split(' ').filter((item) => item !== name).join(' '); },
-                contains: (name) => this.className.split(' ').includes(name)
+                contains: (name) => this.className.split(' ').includes(name),
+                toggle: (name, enabled) => enabled ? this.classList.add(name) : this.classList.remove(name)
             };
         }
         setAttribute(name, value) { this.attributes[name] = value; }
         addEventListener() {}
+        matches() { return false; }
+        contains() { return false; }
         appendChild(child) { child.parent = this; this.children.push(child); }
         remove() { this.parent.children = this.parent.children.filter((child) => child !== this); }
     }
@@ -36,6 +39,7 @@ function checkNotificationService() {
         return null;
     }
     const context = {
+        Element,
         window: {
             setTimeout(callback, delay) { timers.push({ callback, delay }); return timers.length; },
             clearTimeout() {},

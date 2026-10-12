@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../bootstrap.php';
 require_once __DIR__ . '/translation.php';
 require_once dirname(__DIR__, 3) . '/includes/server_env_admin.php';
+require_once dirname(__DIR__, 3) . '/common/tips/translations.php';
 
 $currentUserId = commonGetCurrentUserId();
 $currentOrganizationId = (int)($_SESSION['currentOrganization'] ?? 0);
@@ -316,6 +317,16 @@ $holonTemplateCardIconUrl = '/img/omo-parameters/holon-template.png';
             <?php endif; ?>
 
             <?php if ($isSiteAdmin): ?>
+            <button type="button" class="omo-settings__card omo-card omo-card--interactive"
+                data-omo-settings-drawer-title="<?= htmlspecialchars(commonTipsT('manage'), ENT_QUOTES, 'UTF-8') ?>"
+                data-omo-settings-drawer-url="/omo/api/parameters/tips/index.php"
+                data-omo-settings-drawer-mode="fetch">
+                <span class="omo-settings__card-head">
+                    <span class="omo-settings__card-icon-shell"><img class="omo-settings__card-icon black-icon" src="/common/tips/ampoule.png" alt="" loading="lazy"></span>
+                    <strong class="generic-card-title generic-card-title--big"><?= htmlspecialchars(commonTipsT('title'), ENT_QUOTES, 'UTF-8') ?></strong>
+                </span>
+                <span class="omo-settings__card-description generic-description"><?= htmlspecialchars(commonTipsT('description'), ENT_QUOTES, 'UTF-8') ?></span>
+            </button>
             <button
                 type="button"
                 class="omo-settings__card omo-card omo-card--interactive"
