@@ -58,6 +58,10 @@ function omoDocumentsPvEditorSourceLang(): array
         'documents.pv_editor.import.add' => ['text' => 'Ajouter ({count})', 'context' => 'Import confirmation with selected point count.'],
         'documents.pv_editor.import.saving' => ['text' => 'Transfert en cours...', 'context' => 'Agenda import in progress.'],
         'documents.pv_editor.import.retry' => ['text' => 'Reessayer', 'context' => 'Retry loading previous agenda points.'],
+        'documents.pv_editor.import.abandon' => ['text' => 'Ne plus suivre ce point', 'context' => 'Accessible label and tooltip for the trash icon in the agenda import picker.'],
+        'documents.pv_editor.import.abandonConfirm' => ['text' => 'Ne plus suivre le point "{title}" ? Il restera dans son PV d\'origine avec la mention qu\'il ne necessite plus de traitement supplementaire.', 'context' => 'Confirmation before closing follow-up, without deleting an agenda point.'],
+        'documents.pv_editor.import.abandonSaving' => ['text' => 'Cloture du suivi...', 'context' => 'Progress while closing an agenda point follow-up.'],
+        'documents.pv_editor.import.abandonSuccess' => ['text' => 'Ce point ne necessite plus de suivi. Son PV d\'origine est conserve.', 'context' => 'Topbar success notification after closing follow-up.'],
         'documents.pv_editor.import.moved_notice' => ['text' => 'Ce point n\'a pas ete traite ici. Il a ete deplace vers la reunion {meeting}.', 'context' => 'Source PV transfer notice; the meeting link follows direct moves of its immediate target, stopping at each retained source notice.'],
         'documents.pv_editor.import.readonly' => ['text' => 'Ce point a ete deplace vers une autre reunion.', 'context' => 'Read only notice of a transferred agenda point.'],
         'documents.pv_editor.action.add_proposal' => ['text' => 'Ajouter une modification', 'context' => 'Button used to attach a deferred proposal to a PV point.'],
@@ -574,6 +578,10 @@ function omoDocumentsPvEditorEscape($value): string
 
 function omoDocumentsPvEditorReadonlyNotice(array $pointData, array $uiText): string
 {
+    if (!empty($pointData['isAbandoned'])) {
+        require_once dirname(__DIR__, 4) . '/common/document/pv-report.php';
+        return commonPvReportT('pv.report.abandoned');
+    }
     if (!empty($pointData['isMoved'])) {
         return (string)$uiText['movedReadonly'];
     }
@@ -760,10 +768,10 @@ function omoDocumentsPvEditorBuildContextualPointPayload(
     $pointData['canTakeOverLock'] = $pointData['isPvEditor']
         && $document->canUserManagePvDocument($currentUserId)
         && !empty($pointData['lock']['isLockedByOther']);
-    $pointData['canToggleHandled'] = !$point->isMoved() && !$pointData['isReview']
+    $pointData['canToggleHandled'] = !$point->isMoved() && !$point->isAbandoned() && !$pointData['isReview']
         && $document->canUserManagePvDocument($currentUserId)
         && empty($pointData['lock']['isLockedByOther']);
-    $pointData['canAssignAuthor'] = !$point->isMoved() && !$pointData['isHandled']
+    $pointData['canAssignAuthor'] = !$point->isMoved() && !$point->isAbandoned() && !$pointData['isHandled']
         && $document->canUserManagePvStructure($organizationId, $currentUserId);
     $pointData['hasStructureApplication'] = $hasStructureApplication;
     $pointData['deferredProposals'] = [];

@@ -917,8 +917,8 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     ],
     'editorClientUi' => [
         'pointImport' => array_combine(
-            ['title', 'scope', 'local', 'global', 'members', 'mine', 'all', 'period', 'before', 'after', 'help', 'empty', 'loading', 'add', 'saving', 'retry'],
-            array_map(static fn($key) => omoDocumentsPvEditorT('documents.pv_editor.import.' . $key), ['title', 'scope', 'local', 'global', 'members', 'mine', 'all', 'period', 'before', 'after', 'help', 'empty', 'loading', 'add', 'saving', 'retry'])
+            ['title', 'scope', 'local', 'global', 'members', 'mine', 'all', 'period', 'before', 'after', 'help', 'empty', 'loading', 'add', 'saving', 'retry', 'abandon', 'abandonConfirm', 'abandonSaving', 'abandonSuccess'],
+            array_map(static fn($key) => omoDocumentsPvEditorT('documents.pv_editor.import.' . $key), ['title', 'scope', 'local', 'global', 'members', 'mine', 'all', 'period', 'before', 'after', 'help', 'empty', 'loading', 'add', 'saving', 'retry', 'abandon', 'abandonConfirm', 'abandonSaving', 'abandonSuccess'])
         ) + ['cancel' => omoDocumentsPvEditorT('documents.pv_editor.action.cancel'), 'locked' => omoDocumentsPvEditorT('documents.pv_editor.state.locked'),
             'types' => ['information' => $uiText['information'], 'consultation' => $uiText['consultation'], 'decision' => $uiText['decision']],
             'icons' => omoDocumentsPvEditorPointTypeIcons(), 'canImportAllMembers' => $document->isPvEditor($currentUserId)],

@@ -910,7 +910,7 @@ if ($action === 'add_indicator_value') {
     ]);
 }
 
-if ($action === 'list_importable_points' || $action === 'import_points') {
+if (in_array($action, ['list_importable_points', 'import_points', 'abandon_importable_point'], true)) {
     if ($isPublicParticipation
         || !\dbObject\DocumentPvPoint::canImportIntoDocument($document, $currentUserId)
         || !omoDocumentsPvEditorHasValidSessionToken($organizationId, $documentId, $currentUserId, $editorToken)) {
@@ -930,6 +930,13 @@ if ($action === 'list_importable_points' || $action === 'import_points') {
         } catch (\Throwable $exception) {
             omoDocumentsPvEditorJsonResponse(['status' => false, 'message' => omoDocumentsPvEditorActionT('documents.pv_editor.error.operation_failed')], 500);
         }
+    }
+    if ($action === 'abandon_importable_point') {
+        $result = \dbObject\DocumentPvPoint::abandonFromImport($document, (int)($_POST['point_id'] ?? 0), $currentUserId, $scope, $members, $period);
+        if (empty($result['status'])) {
+            omoDocumentsPvEditorJsonResponse(['status' => false, 'message' => $result['text'] ?? omoDocumentsPvEditorActionT('documents.pv_editor.error.operation_failed')], 409);
+        }
+        omoDocumentsPvEditorJsonResponse(['status' => true]);
     }
     $result = \dbObject\DocumentPvPoint::importIntoDocument($document,
         omoDocumentsPvEditorParsePointIds($_POST['point_ids'] ?? '', 201), $currentUserId, $scope,
@@ -1339,6 +1346,7 @@ if ($action === 'toggle_handled') {
         $pointId <= 0
         || !$point->load($pointId)
         || $point->isMoved()
+        || $point->isAbandoned()
         || (int)$point->get('IDdocument') !== (int)$document->getId()
         || !$document->canUserManagePvDocument($currentUserId)
     ) {
