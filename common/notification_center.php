@@ -193,11 +193,7 @@ if (!function_exists('notificationCenterBuildDecisionProposalLabel')) {
             return mb_substr($title, 0, 150, 'UTF-8');
         }
 
-        $description = html_entity_decode(
-            strip_tags((string)$proposal->get('description')),
-            ENT_QUOTES | ENT_HTML5,
-            'UTF-8'
-        );
+        $description = \dbObject\DecisionProposal::descriptionToPlainText((string)$proposal->get('description'));
         $description = preg_replace('/\s+/u', ' ', trim($description));
         if (!is_string($description) || $description === '') {
             return '';
