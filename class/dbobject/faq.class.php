@@ -723,7 +723,7 @@ class FAQ extends DbObject
 
 		$scope = self::normalizePopupScope($scope, $context);
 		$allFaq = new \dbObject\ArrayFAQ();
-		$allFaq->load(self::buildPopupLoadParams($context, $scope));
+		$allFaq->loadHydrated(self::buildPopupLoadParams($context, $scope));
 
 		$filteredFaq = new \dbObject\ArrayFAQ();
 		foreach ($allFaq as $faq) {
