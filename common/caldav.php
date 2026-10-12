@@ -456,7 +456,7 @@ if (!function_exists('commonCalDavAppendPropertyValue')) {
 }
 
 if (!function_exists('commonCalDavRenderPropstat')) {
-    function commonCalDavRenderPropstat(DOMDocument $document, DOMElement $responseElement, array $properties, $statusLine, $propnameMode = false)
+    function commonCalDavRenderPropstat(DOMDocument $document, DOMElement $responseElement, array $properties, $statusLine, $propnameMode = false, ?string $errorName = null)
     {
         if (count($properties) === 0) {
             return;
@@ -491,6 +491,11 @@ if (!function_exists('commonCalDavRenderPropstat')) {
         $statusElement = $document->createElementNS('DAV:', 'd:status');
         $statusElement->appendChild($document->createTextNode((string)$statusLine));
         $propstatElement->appendChild($statusElement);
+        if ($errorName !== null) {
+            $errorElement = $document->createElementNS('DAV:', 'd:error');
+            $errorElement->appendChild($document->createElementNS('DAV:', 'd:' . $errorName));
+            $propstatElement->appendChild($errorElement);
+        }
         $responseElement->appendChild($propstatElement);
     }
 }
@@ -526,6 +531,10 @@ if (!function_exists('commonCalDavSendMultistatus')) {
                 'HTTP/1.1 404 Not Found',
                 $propnameMode
             );
+            foreach ((array)($response['propstats'] ?? []) as $propstat) {
+                commonCalDavRenderPropstat($document, $responseElement, $propstat['properties'], $propstat['status'],
+                    false, $propstat['error'] ?? null);
+            }
 
             $root->appendChild($responseElement);
         }
@@ -1537,11 +1546,10 @@ if (!function_exists('commonCalDavBuildPropertyMap')) {
                 $calendarPrivileges = array(
                     array('namespace' => 'DAV:', 'prefix' => 'd', 'localName' => 'read'),
                     array('namespace' => 'DAV:', 'prefix' => 'd', 'localName' => 'read-current-user-privilege-set'),
+                    array('namespace' => 'DAV:', 'prefix' => 'd', 'localName' => 'write-properties'),
                 );
                 if (empty($resource['readOnly'])) {
-                    $calendarPrivileges[] = array('namespace' => 'DAV:', 'prefix' => 'd', 'localName' => 'write');
                     $calendarPrivileges[] = array('namespace' => 'DAV:', 'prefix' => 'd', 'localName' => 'write-content');
-                    $calendarPrivileges[] = array('namespace' => 'DAV:', 'prefix' => 'd', 'localName' => 'bind');
                 }
                 if ($calendarCanDeleteEvents) {
                     $calendarPrivileges[] = array('namespace' => 'DAV:', 'prefix' => 'd', 'localName' => 'unbind');
@@ -1583,6 +1591,14 @@ if (!function_exists('commonCalDavBuildPropertyMap')) {
                 $calendarColor = trim((string)($resource['color'] ?? ''));
                 if ($calendarColor !== '') {
                     $properties['{http://apple.com/ns/ical/}calendar-color'] = array('type' => 'text', 'value' => $calendarColor);
+                }
+                $personalProperties = UserOrganization::loadCalDavCalendarProperties((int)$viewer->getId(),
+                    (int)($resource['organizationId'] ?? 0), (string)($resource['calendarSlug'] ?? ''));
+                foreach ($personalProperties as $name => $value) {
+                    if (in_array($name, ['{DAV:}displayname', '{http://apple.com/ns/ical/}calendar-color', '{http://apple.com/ns/ical/}calendar-order'], true)
+                        && is_string($value)) {
+                        $properties[$name] = ['type' => 'text', 'value' => $value];
+                    }
                 }
 
                 return $properties;
@@ -1743,6 +1759,93 @@ if (!function_exists('commonCalDavEventMatchesTimeRange')) {
 
         return true;
     }
+}
+
+/** Preserve instruction order; null denotes a malformed propertyupdate document. */
+function commonCalDavParsePropertyUpdate(?DOMDocument $document): ?array
+{
+    $root = $document ? $document->documentElement : null;
+    if (!$root || $document->doctype || commonCardDavClarkName($root) !== '{DAV:}propertyupdate') return null;
+    $operations = [];
+    foreach ($root->childNodes as $instruction) {
+        if (!($instruction instanceof DOMElement)) continue;
+        if (!in_array(commonCardDavClarkName($instruction), ['{DAV:}set', '{DAV:}remove'], true)) return null;
+        $props = [];
+        foreach ($instruction->childNodes as $child) {
+            if ($child instanceof DOMElement) $props[] = $child;
+        }
+        if (count($props) !== 1 || commonCardDavClarkName($props[0]) !== '{DAV:}prop') return null;
+        $count = 0;
+        foreach ($props[0]->childNodes as $property) {
+            if (!($property instanceof DOMElement)) continue;
+            if (!$property->namespaceURI) return null;
+            $name = commonCardDavClarkName($property);
+            $value = $instruction->localName === 'remove' ? null : $property->textContent;
+            $status = 'HTTP/1.1 200 OK';
+            $error = null;
+            if (!in_array($name, ['{DAV:}displayname', '{http://apple.com/ns/ical/}calendar-color', '{http://apple.com/ns/ical/}calendar-order'], true)) {
+                $status = 'HTTP/1.1 403 Forbidden';
+                if (str_starts_with($name, '{DAV:}')) $error = 'cannot-modify-protected-property';
+            } elseif ($value !== null) {
+                foreach ($property->childNodes as $child) {
+                    if ($child instanceof DOMElement || $child->nodeType === XML_ENTITY_REF_NODE) $status = 'HTTP/1.1 409 Conflict';
+                }
+                if ($name === '{DAV:}displayname') {
+                    if (mb_strlen($value, 'UTF-8') > 255) $status = 'HTTP/1.1 409 Conflict';
+                } elseif ($name === '{http://apple.com/ns/ical/}calendar-color') {
+                    $value = strtoupper(trim($value));
+                    if (!preg_match('/^#[0-9A-F]{6}(?:[0-9A-F]{2})?$/D', $value)) $status = 'HTTP/1.1 409 Conflict';
+                } else {
+                    $value = trim($value);
+                    if (!preg_match('/^-?[0-9]{1,10}$/D', $value) || (float)$value < -2147483648 || (float)$value > 2147483647) {
+                        $status = 'HTTP/1.1 409 Conflict';
+                    } else $value = (string)(int)$value;
+                }
+            }
+            $operations[] = ['name' => $name, 'value' => $value, 'status' => $status, 'error' => $error];
+            if (count($operations) > 128) return null;
+            $count++;
+        }
+        if (!$count) return null;
+    }
+    return $operations ?: null;
+}
+
+/** Validate the entire request before a single atomic preferences merge. */
+function commonCalDavApplyPropertyUpdate(User $viewer, array $resource, array $operations): array
+{
+    $failures = [];
+    $changes = [];
+    foreach ($operations as $operation) {
+        if ($operation['status'] !== 'HTTP/1.1 200 OK') $failures[$operation['name']] = $operation;
+        $changes[$operation['name']] = $operation['value'];
+    }
+    $saved = false;
+    if (!$failures) {
+        $result = UserOrganization::patchCalDavCalendarProperties((int)$viewer->getId(),
+            (int)($resource['organizationId'] ?? 0), (string)($resource['calendarSlug'] ?? ''), $changes);
+        $saved = $result !== false;
+        if (!empty($result['changed'])) \dbObject\CalDavCache::invalidateOrganization((int)$resource['organizationId']);
+    }
+    $groups = [];
+    foreach (array_keys($changes) as $name) {
+        $failure = $failures[$name] ?? null;
+        $status = $failure ? $failure['status'] : ($failures ? 'HTTP/1.1 424 Failed Dependency'
+            : ($saved ? 'HTTP/1.1 200 OK' : 'HTTP/1.1 500 Internal Server Error'));
+        $error = $failure['error'] ?? null;
+        $key = $status . ':' . $error;
+        if (!isset($groups[$key])) $groups[$key] = ['status' => $status, 'error' => $error, 'properties' => []];
+        $groups[$key]['properties'][$name] = [];
+    }
+    return ['href' => (string)$resource['href'], 'propstats' => array_values($groups)];
+}
+
+function commonCalDavHandleProppatch(User $viewer, array $resource): void
+{
+    $body = commonCardDavReadXmlBody();
+    $operations = strlen((string)$body['raw']) <= 131072 ? commonCalDavParsePropertyUpdate($body['xml']) : null;
+    if ($operations === null) commonCalDavSendStatusText(400, 'Invalid DAV propertyupdate document.');
+    commonCalDavSendMultistatus([commonCalDavApplyPropertyUpdate($viewer, $resource, $operations)]);
 }
 
 if (!function_exists('commonCalDavHandlePropfind')) {

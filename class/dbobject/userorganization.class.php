@@ -3,6 +3,63 @@
 
 	class UserOrganization extends DbObject
 	{
+		/** Personal DAV metadata, loaded once per organization during read-only rendering. */
+		public static function loadCalDavCalendarProperties(int $userId, int $organizationId, string $identity): array
+		{
+			$preferences = self::memoizeRead([__FUNCTION__, $userId, $organizationId], static function () use ($userId, $organizationId) {
+				$row = self::fetchRow('SELECT parameters FROM user_organization WHERE IDuser = :user_id AND IDorganization = :organization_id AND active = 1 LIMIT 1',
+					['user_id' => $userId, 'organization_id' => $organizationId]);
+				$parameters = json_decode((string)($row['parameters'] ?? ''), true);
+				return is_array($parameters['caldavCalendars'] ?? null) ? $parameters['caldavCalendars'] : [];
+			});
+			return is_array($preferences[$identity] ?? null) ? $preferences[$identity] : [];
+		}
+
+		/** Merge a complete PROPPATCH under a row lock without replacing other preferences. */
+		public static function patchCalDavCalendarProperties(int $userId, int $organizationId, string $identity, array $changes): array|false
+		{
+			if ($userId <= 0 || $organizationId <= 0 || $identity === '' || !$changes) return false;
+			$allowed = ['{DAV:}displayname', '{http://apple.com/ns/ical/}calendar-color', '{http://apple.com/ns/ical/}calendar-order'];
+			foreach ($changes as $name => $value) {
+				if (!in_array($name, $allowed, true) || ($value !== null && !is_string($value))) return false;
+			}
+			$pdo = self::getPdo();
+			if (!($pdo instanceof \PDO)) return false;
+			$ownsTransaction = !$pdo->inTransaction();
+			try {
+				if ($ownsTransaction) $pdo->beginTransaction();
+				$row = self::fetchRow('SELECT id, parameters FROM user_organization WHERE IDuser = :user_id AND IDorganization = :organization_id AND active = 1 LIMIT 1 FOR UPDATE',
+					['user_id' => $userId, 'organization_id' => $organizationId]);
+				if (!$row) throw new \RuntimeException('caldav_membership_missing');
+				$parameters = json_decode((string)($row['parameters'] ?? ''), true);
+				if (!is_array($parameters)) $parameters = [];
+				if (!is_array($parameters['caldavCalendars'] ?? null)) $parameters['caldavCalendars'] = [];
+				$properties = $parameters['caldavCalendars'][$identity] ?? [];
+				if (!is_array($properties)) $properties = [];
+				foreach ($changes as $name => $value) {
+					if ($value === null) unset($properties[$name]);
+					else $properties[$name] = $value;
+				}
+				if ($properties) $parameters['caldavCalendars'][$identity] = $properties;
+				else unset($parameters['caldavCalendars'][$identity]);
+				if (!$parameters['caldavCalendars']) unset($parameters['caldavCalendars']);
+				$encoded = json_encode($parameters, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+				$changed = $encoded !== (string)$row['parameters'];
+				if ($changed && !self::execute('UPDATE user_organization SET parameters = :parameters WHERE id = :id',
+					['parameters' => $encoded, 'id' => (int)$row['id']])) {
+					throw new \RuntimeException('caldav_preferences_write_failed');
+				}
+				// Do not leave an earlier membership object with obsolete personal settings.
+				unset(self::$preload[self::tableName() . '_' . (int)$row['id']]);
+				if ($ownsTransaction) $pdo->commit();
+				return ['changed' => $changed];
+			} catch (\Throwable $exception) {
+				if ($ownsTransaction && $pdo->inTransaction()) $pdo->rollBack();
+				error_log('CalDAV preferences update failed: ' . $exception->getMessage());
+				return false;
+			}
+		}
+
 		/** Batch the data needed by team cards; visibility remains checked by the caller. */
 		public static function loadTeamMemberContext($organizationId, array $userIds, array $membershipsByUserId = array()): array
 		{

@@ -477,7 +477,7 @@ if (!function_exists('commonCardDavReadXmlBody')) {
 
         $previousUseErrors = libxml_use_internal_errors(true);
         $document = new DOMDocument('1.0', 'UTF-8');
-        $loaded = $document->loadXML($trimmed);
+        $loaded = $document->loadXML($trimmed, LIBXML_NONET);
         libxml_clear_errors();
         libxml_use_internal_errors($previousUseErrors);
 
