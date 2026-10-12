@@ -108,6 +108,19 @@ try {
     scopeCheck(in_array((int)$roleRule->getId(), $viewIds($childCircle, 'contextual'), true), 'Child circles retain the rules covering them from their parent circle');
     foreach ([$circle, $role, $sibling, $childCircle] as $target) scopeCheck($roleRule->appliesToHolon($target), 'Role circle scope includes its parent and siblings');
     scopeCheck(!$roleRule->appliesToHolon($grandchild) && !$roleRule->appliesToHolon($outside), 'Role circle scope stops at direct children');
+    $group = $makeHolon('Scope test group', $circle, 3);
+    $nestedGroup = $makeHolon('Scope test nested group', $group, 3);
+    $groupedRole = $makeHolon('Scope test grouped role', $nestedGroup, 1);
+    $groupedCircle = $makeHolon('Scope test grouped circle', $nestedGroup);
+    $deepGroupedRole = $makeHolon('Scope test deep grouped role', $groupedCircle, 1);
+    $groupedRule = $makeRule($groupedRole, 'circle');
+    scopeSave($groupedRule);
+    foreach ([$circle, $role, $groupedRole, $groupedCircle] as $target) {
+        scopeCheck($roleRule->appliesToHolon($target), 'Circle rules must reach roles and circles through groups');
+        scopeCheck($groupedRule->appliesToHolon($target), 'A grouped role rule must reach the same circle and siblings');
+    }
+    scopeCheck(!$groupedRule->appliesToHolon($deepGroupedRole) && !$roleRule->appliesToHolon($deepGroupedRole), 'Groups must not allow rules to cross another circle');
+    scopeCheck(in_array((int)$groupedRule->getId(), $viewIds($role, 'contextual'), true), 'Policy collection must include applicable rules proposed by grouped roles');
     $proposal = DecisionGovernanceAction::validateRuleCreate($base + ['scope' => 'global'], $role->getId());
     scopeCheck(!empty($proposal['status']) && $proposal['state']['scope'] === 'global', 'Deferred creation retains scope without authorities');
 

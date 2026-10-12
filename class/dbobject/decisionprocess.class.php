@@ -133,7 +133,7 @@ class DecisionProcess extends DbObject
         } catch (\Throwable $exception) {
             if ($ownsTransaction && $pdo->inTransaction()) $pdo->rollBack();
             error_log('decision_calendar_sync_failed: ' . $exception->getMessage());
-            return ['status' => false, 'text' => 'Impossible de synchroniser les dates dans l agenda.'];
+            return ['status' => false, 'text' => 'Impossible de synchroniser les dates dans l’agenda.'];
         }
     }
 
@@ -191,7 +191,7 @@ class DecisionProcess extends DbObject
         if ((int)$proposal->get('IDdecision_process') !== (int)$this->getId() || !(int)$proposal->get('active') || !$proposal->get('start_at')
             || !in_array($this->get('status'), [DecisionProcess::STATUS_RESULTS, DecisionProcess::STATUS_ARCHIVED], true)
             || !in_array($status, [Event::STATUS_CONFIRMED, Event::STATUS_CANCELLED], true)) {
-            return ['status' => false, 'message' => 'Cette date ne peut pas etre confirmee ou annulee.'];
+            return ['status' => false, 'message' => 'Cette date ne peut pas être confirmée ou annulée.'];
         }
         $pdo = self::getPdo();
         $ownsTransaction = !$pdo->inTransaction();
@@ -210,11 +210,11 @@ class DecisionProcess extends DbObject
             $group->set('parameters', $parameters);
             if (empty($group->save()['status']) || empty($this->syncProposalCalendarEvents()['status'])) throw new \RuntimeException('calendar_status_save_failed');
             if ($ownsTransaction) $pdo->commit();
-            return ['status' => true, 'message' => $status === Event::STATUS_CONFIRMED ? 'Date confirmee dans les agendas.' : 'Date annulee dans les agendas.'];
+            return ['status' => true, 'message' => $status === Event::STATUS_CONFIRMED ? 'Date confirmée dans les agendas.' : 'Date annulée dans les agendas.'];
         } catch (\Throwable $exception) {
             if ($ownsTransaction && $pdo->inTransaction()) $pdo->rollBack();
             error_log('decision_calendar_status_failed: ' . $exception->getMessage());
-            return ['status' => false, 'message' => 'Impossible de mettre a jour les agendas.'];
+            return ['status' => false, 'message' => 'Impossible de mettre à jour les agendas.'];
         }
     }
 
@@ -375,33 +375,33 @@ class DecisionProcess extends DbObject
             'id' => 'ID',
             'IDorganization' => 'Organisation',
             'IDholon' => 'Holon',
-            'IDuser' => 'Createur',
+            'IDuser' => 'Créateur',
             'title' => 'Titre',
             'description' => 'Description',
             'decision_type' => 'Type',
             'status' => 'Statut',
-            'evaluation_method' => 'Methode',
-            'visibility_type' => 'Portee de visibilite',
-            'parameters' => 'Parametres',
-            'consultation_start_at' => 'Debut consultation',
-            'consultation_end_at' => 'Fin consultation',
-            'evaluation_start_at' => 'Debut evaluation',
-            'evaluation_end_at' => 'Fin evaluation',
-            'results_published_at' => 'Publication des resultats',
+            'evaluation_method' => 'Méthode',
+            'visibility_type' => 'Portée de visibilité',
+            'parameters' => 'Paramètres',
+            'consultation_start_at' => 'Début de consultation',
+            'consultation_end_at' => 'Fin de consultation',
+            'evaluation_start_at' => 'Début d’évaluation',
+            'evaluation_end_at' => 'Fin d’évaluation',
+            'results_published_at' => 'Publication des résultats',
             'archived_at' => 'Archivage',
-            'created_at' => 'Creation',
-            'updated_at' => 'Mise a jour',
+            'created_at' => 'Création',
+            'updated_at' => 'Mise à jour',
         ];
     }
 
     public static function attributeDescriptions()
     {
         return [
-            'decision_type' => 'Distingue une prise de decision engageante d une consultation.',
-            'status' => 'Cycle de vie commun independant de la methode d evaluation.',
-            'evaluation_method' => 'Cle technique de la methode modulaire utilisee.',
-            'visibility_type' => 'Controle qui peut voir la decision hors participants et proprietaires.',
-            'parameters' => 'Configuration method-specific et options complementaires.',
+            'decision_type' => 'Distingue une prise de décision engageante d’une consultation.',
+            'status' => 'Cycle de vie commun indépendant de la méthode d’évaluation.',
+            'evaluation_method' => 'Clé technique de la méthode modulaire utilisée.',
+            'visibility_type' => 'Contrôle qui peut voir la décision hors participants et propriétaires.',
+            'parameters' => 'Configuration propre à la méthode et options complémentaires.',
             'IDholon' => 'Contexte espace optionnel si la prise de décision est rattachée à un groupe.',
         ];
     }
@@ -426,12 +426,12 @@ class DecisionProcess extends DbObject
     {
         return [
             self::TYPE_DECISION => [
-                'label' => 'Decision',
-                'description' => 'Le resultat produit une decision.',
+                'label' => 'Décision',
+                'description' => 'Le résultat produit une décision.',
             ],
             self::TYPE_CONSULTATION => [
                 'label' => 'Consultation',
-                'description' => 'Le resultat sert de base de consultation.',
+                'description' => 'Le résultat sert de base de consultation.',
             ],
         ];
     }
@@ -440,28 +440,28 @@ class DecisionProcess extends DbObject
     {
         return [
             self::STATUS_DRAFT => [
-                'label' => 'Preparation',
-                'description' => 'La prise de decision est encore en brouillon.',
+                'label' => 'Préparation',
+                'description' => 'La prise de décision est encore en brouillon.',
             ],
             self::STATUS_SCHEDULED => [
-                'label' => 'Planifiee',
-                'description' => 'La prise de decision est preparee et planifiee pour plus tard.',
+                'label' => 'Planifiée',
+                'description' => 'La prise de décision est préparée et planifiée pour plus tard.',
             ],
             self::STATUS_CONSULTATION => [
                 'label' => 'Consultation',
-                'description' => 'Les participants peuvent consulter et preparer leurs reponses.',
+                'description' => 'Les participants peuvent consulter et préparer leurs réponses.',
             ],
             self::STATUS_EVALUATION => [
-                'label' => 'Evaluation',
-                'description' => 'Les reponses sont en cours de saisie ou de consolidation.',
+                'label' => 'Évaluation',
+                'description' => 'Les réponses sont en cours de saisie ou de consolidation.',
             ],
             self::STATUS_RESULTS => [
-                'label' => 'Resultats',
-                'description' => 'Les resultats sont disponibles.',
+                'label' => 'Résultats',
+                'description' => 'Les résultats sont disponibles.',
             ],
             self::STATUS_ARCHIVED => [
-                'label' => 'Archive',
-                'description' => 'La prise de decision est cloturee et archivee.',
+                'label' => 'Archivé',
+                'description' => 'La prise de décision est clôturée et archivée.',
             ],
         ];
     }
@@ -477,13 +477,13 @@ class DecisionProcess extends DbObject
             ],
             self::METHOD_MAJORITY_JUDGMENT => [
                 'label' => 'Jugement majoritaire',
-                'description' => 'Chaque proposition recoit une mention ou une valeur.',
+                'description' => 'Chaque proposition reçoit une mention ou une valeur.',
                 'response_shape' => 'per_proposal_scale',
                 'supports_multiple_proposals' => true,
             ],
             self::METHOD_CONSENT => [
                 'label' => 'Consentement',
-                'description' => 'Une proposition est acceptee sauf objections bloquantes.',
+                'description' => 'Une proposition est acceptée sauf objections bloquantes.',
                 'response_shape' => 'consent_objection',
                 'supports_multiple_proposals' => true,
             ],
@@ -574,7 +574,7 @@ class DecisionProcess extends DbObject
         } catch (\Throwable $exception) {
             if ($ownsTransaction && $pdo->inTransaction()) $pdo->rollBack();
             error_log('decision_process_save_failed: ' . $exception->getMessage());
-            return ['status' => false, 'text' => 'Impossible de sauvegarder la decision et son agenda.'];
+            return ['status' => false, 'text' => 'Impossible de sauvegarder la décision et son agenda.'];
         }
     }
 
@@ -952,7 +952,7 @@ class DecisionProcess extends DbObject
                     \dbObject\ObjectVisibility::TYPE_CIRCLE => true,
                     \dbObject\ObjectVisibility::TYPE_ROLE => true,
                 ),
-                'helpText' => 'Contexte d organisation manquant. Les portees d organisation, cercle et role ne sont pas disponibles.',
+                'helpText' => 'Contexte d’organisation manquant. Les portées d’organisation, cercle et rôle ne sont pas disponibles.',
             );
         }
 
@@ -1006,8 +1006,8 @@ class DecisionProcess extends DbObject
             return array(
                 'status' => false,
                 'text' => $visibilityType === \dbObject\ObjectVisibility::TYPE_ROLE
-                    ? 'La visibilite role demande une decision liee a un role.'
-                    : 'La visibilite cercle demande une decision liee a un cercle ou a un role.',
+                    ? 'La visibilité « rôle » demande une décision liée à un rôle.'
+                    : 'La visibilité « cercle » demande une décision liée à un cercle ou à un rôle.',
             );
         }
 
@@ -1027,7 +1027,7 @@ class DecisionProcess extends DbObject
             if ((int)$holon->get('IDtypeholon') !== 1) {
                 return array(
                     'status' => false,
-                    'text' => 'La visibilite role demande une decision liee a un role.',
+                    'text' => 'La visibilité « rôle » demande une décision liée à un rôle.',
                 );
             }
 
@@ -1048,7 +1048,7 @@ class DecisionProcess extends DbObject
         if ($circleId <= 0) {
             return array(
                 'status' => false,
-                'text' => 'La visibilite cercle demande une decision placee dans un cercle ou dans un role de cercle.',
+                'text' => 'La visibilité « cercle » demande une décision placée dans un cercle ou dans un rôle de cercle.',
             );
         }
 
@@ -1070,7 +1070,7 @@ class DecisionProcess extends DbObject
         if (!empty($disabledTypes[$visibilityType])) {
             return array(
                 'status' => false,
-                'text' => trim((string)($editorConfig['helpText'] ?? 'Visibilite indisponible dans ce contexte.')),
+                'text' => trim((string)($editorConfig['helpText'] ?? 'Visibilité indisponible dans ce contexte.')),
             );
         }
 
@@ -1770,7 +1770,7 @@ class DecisionProcess extends DbObject
             return [
                 'status' => false,
                 'action' => 'archive',
-                'message' => 'Prise de decision introuvable.',
+                'message' => 'Prise de décision introuvable.',
             ];
         }
 
@@ -1784,7 +1784,7 @@ class DecisionProcess extends DbObject
             return [
                 'status' => false,
                 'action' => 'archive',
-                'message' => 'Connexion a la base impossible.',
+                'message' => 'Connexion à la base impossible.',
             ];
         }
 
@@ -1823,7 +1823,7 @@ class DecisionProcess extends DbObject
             return [
                 'status' => true,
                 'action' => 'archive',
-                'message' => 'Prise de decision archivee.',
+                'message' => 'Prise de décision archivée.',
             ];
         } catch (\Throwable $exception) {
             if ($pdo->inTransaction()) {
@@ -1833,7 +1833,7 @@ class DecisionProcess extends DbObject
             return [
                 'status' => false,
                 'action' => 'archive',
-                'message' => 'Impossible d archiver cette prise de decision pour le moment.',
+                'message' => 'Impossible d’archiver cette prise de décision pour le moment.',
             ];
         }
     }
@@ -1844,7 +1844,7 @@ class DecisionProcess extends DbObject
             return [
                 'status' => false,
                 'action' => 'delete',
-                'message' => 'Prise de decision introuvable.',
+                'message' => 'Prise de décision introuvable.',
             ];
         }
 
@@ -1853,7 +1853,7 @@ class DecisionProcess extends DbObject
             return [
                 'status' => false,
                 'action' => 'delete',
-                'message' => 'Connexion a la base impossible.',
+                'message' => 'Connexion à la base impossible.',
             ];
         }
 
@@ -1897,7 +1897,7 @@ class DecisionProcess extends DbObject
             return [
                 'status' => true,
                 'action' => 'delete',
-                'message' => 'Prise de decision supprimee.',
+                'message' => 'Prise de décision supprimée.',
             ];
         } catch (\Throwable $exception) {
             if ($pdo->inTransaction()) {
@@ -1907,7 +1907,7 @@ class DecisionProcess extends DbObject
             return [
                 'status' => false,
                 'action' => 'delete',
-                'message' => 'Impossible de supprimer cette prise de decision pour le moment.',
+                'message' => 'Impossible de supprimer cette prise de décision pour le moment.',
             ];
         }
     }
@@ -2806,7 +2806,7 @@ class DecisionProcess extends DbObject
         if ($decisionId <= 0) {
             return [
                 'status' => false,
-                'message' => 'Decision process must be saved before syncing participants.',
+                'message' => 'La prise de décision doit être enregistrée avant de synchroniser les participants.',
             ];
         }
         // Membership remains dynamic until the effective end, including between cron runs.
@@ -3083,7 +3083,7 @@ class DecisionProcess extends DbObject
         } catch (\Throwable $exception) {
             if ($ownsTransaction && $pdo->inTransaction()) $pdo->rollBack();
             error_log('decision_participant_sync_failed: ' . $exception->getMessage());
-            return ['status' => false, 'message' => 'Unable to sync decision participants.'];
+            return ['status' => false, 'message' => 'Impossible de synchroniser les participants à la prise de décision.'];
         }
     }
 

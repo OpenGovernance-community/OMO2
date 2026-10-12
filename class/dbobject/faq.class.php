@@ -1240,7 +1240,7 @@ class FAQ extends DbObject
 
 				if ($scope === 'children') {
 					$matchesScope = $faqHolonId === $currentHolonId
-						|| (int)$holon->get('IDholon_parent') === $currentHolonId;
+						|| $holon->isChildOfThroughGroups($currentHolonId);
 				} elseif ($scope === 'descendants') {
 					$matchesScope = $holon->isDescendantOf($currentHolonId, true);
 				} else {

@@ -141,13 +141,19 @@ window.commonPageScripts["/omo/api/projects/create.js"] = function (pageConfig, 
     var syncBlockedFields = function () {
         var isBlocked = statusControl && String(statusControl.value || '') === 'blocked';
         if (blockedSection) blockedSection.hidden = !isBlocked;
-        if (blockedReason) blockedReason.required = isBlocked;
-        if (blockedUntil) blockedUntil.required = isBlocked;
+        if (blockedReason) blockedReason.required = isBlocked && form.getAttribute('data-require-blocked-reason') !== '0';
+        if (blockedUntil) blockedUntil.required = isBlocked && form.getAttribute('data-require-blocked-review-date') !== '0';
+        if (blockedAuto) {
+            blockedAuto.disabled = !isBlocked || !(blockedUntil && blockedUntil.value);
+            if (blockedAuto.disabled) blockedAuto.checked = false;
+        }
         if (blockedTargetField) blockedTargetField.hidden = !isBlocked || !(blockedAuto && blockedAuto.checked);
         if (blockedTarget) blockedTarget.disabled = !isBlocked || !(blockedAuto && blockedAuto.checked);
     };
     if (statusControl) statusControl.addEventListener('change', syncBlockedFields);
     if (blockedAuto) blockedAuto.addEventListener('change', syncBlockedFields);
+    if (blockedUntil) blockedUntil.addEventListener('input', syncBlockedFields);
+    if (blockedUntil) blockedUntil.addEventListener('change', syncBlockedFields);
     syncBlockedFields();
 
     form.addEventListener('submit', function (event) {

@@ -2,6 +2,8 @@
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/shared.php';
 
+commonReleaseReadOnlySession();
+
 use dbObject\ArrayProject;
 use dbObject\Holon;
 use dbObject\Project;
@@ -49,7 +51,7 @@ if (
 }
 
 $projects = new ArrayProject();
-$projects->loadForOrganization($organizationId);
+$projects->loadForOrganization($organizationId, true, Project::KIND_STANDARD, true);
 $childrenByParent = array();
 foreach ($projects as $candidate) {
     if (!($candidate instanceof Project) || (int)$candidate->getId() <= 0 || !omoProjectsCanViewProject($candidate, $context)) {

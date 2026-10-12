@@ -16,11 +16,14 @@ function authorityDeletionSave($object): void {
 }
 
 $organizations = new ArrayOrganization();
-$organizations->load(['limit' => 1]);
+$organizations->load();
 $organization = null;
-foreach ($organizations as $candidate) { $organization = $candidate; break; }
+$root = null;
+foreach ($organizations as $candidate) {
+    $candidateRoot = $candidate->getStructuralRootHolon();
+    if ($candidateRoot instanceof Holon) { $organization = $candidate; $root = $candidateRoot; break; }
+}
 authorityDeletionCheck($organization !== null, 'A local organization is required');
-$root = $organization->getStructuralRootHolon();
 authorityDeletionCheck($root instanceof Holon, 'A structural root is required');
 
 $_SESSION['currentUser'] = 0;
@@ -32,6 +35,11 @@ try {
     $owner->set('IDholon_org', $root->getId());
     $owner->set('IDholon_parent', $root->getId());
     $owner->set('IDtypeholon', 1);
+    authorityDeletionSave($owner);
+    $group = new Holon();
+    foreach (['name' => 'Deletion test group', 'IDholon_org' => $root->getId(), 'IDholon_parent' => $root->getId(), 'IDtypeholon' => 3] as $field => $value) $group->set($field, $value);
+    authorityDeletionSave($group);
+    $owner->set('IDholon_parent', $group->getId());
     authorityDeletionSave($owner);
 
     $parent = new Authority();
@@ -224,6 +232,18 @@ try {
     authorityDeletionCheck($rootList->load($rootList->getId(), true), 'The root list disappeared after delegated copy removal');
     authorityDeletionCheck(Property::listConversionParts($rootList->get('value'), PropertyFormat::FORMAT_LIST)['items'] === [$child->getId(), $shell->getId()], 'The root list kept the deleted copy ID');
     authorityDeletionCheck($sourceList->load($sourceList->getId(), true) && empty($sourceList->get('active')), 'The source list kept the deleted copy ID');
+
+    $groupedHolon = new Holon();
+    foreach (['name' => 'Deletion test grouped holon', 'IDholon_org' => $root->getId(), 'IDholon_parent' => $group->getId(), 'IDtypeholon' => 1] as $field => $value) $groupedHolon->set($field, $value);
+    authorityDeletionSave($groupedHolon);
+    $groupedAuthority = new Authority();
+    $groupedAuthority->set('IDholon', $groupedHolon->getId());
+    $groupedAuthority->set('label', 'Deletion test grouped authority');
+    $groupedAuthority->set('is_local', true);
+    authorityDeletionSave($groupedAuthority);
+    authorityDeletionCheck($groupedHolon->delete(), 'A grouped holon must be deletable');
+    authorityDeletionCheck($groupedAuthority->load($groupedAuthority->getId(), true)
+        && (int)$groupedAuthority->get('IDholon') === (int)$root->getId(), 'Holon deletion must transfer authorities through groups');
 
     echo "authority_deletion_integrity_test: OK\n";
 } finally {

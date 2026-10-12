@@ -32,6 +32,9 @@ if (!function_exists('omoProjectsParamsSourceLang')) {
             'projects.params.rules_depth' => ['text' => 'La réduction liée à la profondeur est appliquée une seule fois, au projet sans parent. Elle est ensuite transmise aux sous-projets.', 'context' => 'Explanation that the depth penalty is not repeated.'],
             'projects.params.calculation_save' => ['text' => 'Enregistrer et recalculer', 'context' => 'Save action for importance calculation settings.'],
             'projects.params.classification' => ['text' => 'Classifications', 'context' => 'Projects application settings label for enabled project classifications.'],
+            'projects.params.blocking' => ['text' => 'Blocage des projets', 'context' => 'Organization project blocking settings section.'],
+            'projects.params.require_reason' => ['text' => 'Rendre le motif du blocage obligatoire', 'context' => 'Checkbox requiring a reason for blocked projects.'],
+            'projects.params.require_review_date' => ['text' => 'Rendre la date de réexamen obligatoire', 'context' => 'Checkbox requiring a review date for blocked projects.'],
             'projects.params.use_priority' => ['text' => 'Utiliser la priorité', 'context' => 'Projects application setting toggling priority.'],
             'projects.params.use_importance' => ['text' => "Utiliser l'importance stratégique", 'context' => 'Projects application setting toggling strategic importance.'],
             'projects.params.use_size' => ['text' => 'Utiliser la taille des projets', 'context' => 'Projects application setting toggling project size.'],
@@ -174,7 +177,16 @@ if (!function_exists('omoProjectsParamsStoreConfig')) {
             }
         }
         $displayChanged = $currentDisplay !== $nextDisplay;
-        if (!$calculationChanged && !$displayChanged) {
+        $currentBlocking = \dbObject\Project::normalizeBlockingConfig($storedParameters['blocking'] ?? null);
+        $nextBlocking = $currentBlocking;
+        if ($saveDisplay && !empty($values['save_blocking'])) {
+            $nextBlocking = \dbObject\Project::normalizeBlockingConfig([
+                'requireReason' => isset($values['require_blocked_reason']),
+                'requireReviewDate' => isset($values['require_blocked_review_date']),
+            ]);
+        }
+        $blockingChanged = $currentBlocking !== $nextBlocking;
+        if (!$calculationChanged && !$displayChanged && !$blockingChanged) {
             return ['status' => true, 'message' => omoProjectsParamsT('projects.params.unchanged'), 'changed' => false];
         }
 
@@ -184,6 +196,7 @@ if (!function_exists('omoProjectsParamsStoreConfig')) {
             $parameters['importanceCalculationVersion'] = ProjectImportanceCalculator::CALCULATION_VERSION;
         }
         $parameters['display'] = $nextDisplay;
+        $parameters['blocking'] = $nextBlocking;
         $pdo = \dbObject\DbObject::getPdo();
         $startedTransaction = false;
         try {

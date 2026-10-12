@@ -629,10 +629,10 @@
 		}
 
 		// Compte instances soeurs
-		public function countSiblingTemplateInstances()
+		public function countSiblingTemplateInstances($excludedSubtreeId = 0)
 		{
 			$templateId = (int)$this->get('IDholon_template');
-			$parentHolon = $this->getParentHolon();
+			$parentHolon = $this->getParentHolonThroughGroups();
 			if ($templateId <= 0 || !$parentHolon) {
 				return 0;
 			}
@@ -640,8 +640,11 @@
 			$mandatoryTemplateIds = $this->getMandatoryTemplateAncestorIds();
 			$mandatoryTemplateIdMap = array_fill_keys(array_map('intval', $mandatoryTemplateIds), true);
 			$count = 0;
-			foreach ($parentHolon->getChildren() as $child) {
+			foreach ($parentHolon->getChildrenThroughGroups(false, true) as $child) {
 				if ((int)$child->getId() === (int)$this->getId()) {
+					continue;
+				}
+				if ((int)$excludedSubtreeId > 0 && $child->isDescendantOf((int)$excludedSubtreeId)) {
 					continue;
 				}
 
@@ -687,12 +690,13 @@
 		// Controle suppression noeud
 		public function canDelete()
 		{
-			if (!$this->canEdit()) {
-				return false;
-			}
+			return $this->canEdit() && $this->canDeletePreservingMandatoryTemplates();
+		}
 
+		public function canDeletePreservingMandatoryTemplates(): bool
+		{
 			if ($this->isLastMandatoryTemplateInstance()) {
-				$parentHolon = $this->getParentHolon();
+				$parentHolon = $this->getParentHolonThroughGroups();
 				if ($parentHolon instanceof self && (int)$parentHolon->get('IDtypeholon') === 2) {
 					return false;
 				}
@@ -700,6 +704,18 @@
 
 			if ($this->isMandatoryVisibleTemplateOriginal()) {
 				return false;
+			}
+			// Removing a group also removes its contents, including sibling copies.
+			if ((int)$this->get('IDtypeholon') === 3) {
+				foreach ($this->getChildrenThroughGroups(false, true) as $child) {
+					if ($child->isMandatoryVisibleTemplateOriginal()) return false;
+					$parent = $child->getParentHolonThroughGroups();
+					if ($child->isMandatoryTemplateInstance() && $parent instanceof self
+						&& (int)$parent->get('IDtypeholon') === 2
+						&& $child->countSiblingTemplateInstances((int)$this->getId()) === 0) {
+						return false;
+					}
+				}
 			}
 
 			return true;
@@ -1410,6 +1426,7 @@
 			return json_encode($this->toRepresentationArray($options), $jsonFlags);
 		}
 
+		/** Physical parent, including groups: tree layout, editing and moves. */
 		public function getParentHolon() {
 			$parentId = (int)$this->get('IDholon_parent');
 			if ($parentId <= 0) {
@@ -1418,6 +1435,57 @@
 
 			$parent = new self();
 			return $parent->load($parentId) ? $parent : null;
+		}
+
+		/** Nearest parent that is not a display group; roles/circles remain boundaries. */
+		public function getParentHolonThroughGroups(): ?self
+		{
+			$parent = $this->getParentHolon();
+			$visited = [];
+			while ($parent instanceof self && (int)$parent->get('IDtypeholon') === 3) {
+				$id = (int)$parent->getId();
+				if (isset($visited[$id])) return null;
+				$visited[$id] = true;
+				$parent = $parent->getParentHolon();
+			}
+			return $parent;
+		}
+
+		/** Match a parent across groups without crossing another role or circle. */
+		public function isChildOfThroughGroups($parent): bool
+		{
+			$parentId = $parent instanceof self ? (int)$parent->getId() : (int)$parent;
+			if ($parentId <= 0) return false;
+			$current = $this->getParentHolon();
+			$visited = [];
+			while ($current instanceof self) {
+				$id = (int)$current->getId();
+				if (isset($visited[$id])) return false;
+				$visited[$id] = true;
+				if ($id === $parentId) return true;
+				if ((int)$current->get('IDtypeholon') !== 3) return false;
+				$current = $current->getParentHolon();
+			}
+			return false;
+		}
+
+		/** Next semantic level; optionally retain the traversed group nodes too. */
+		public function getChildrenThroughGroups($includeHidden = false, $includeGroups = false): array
+		{
+			$children = [];
+			$visited = [];
+			$append = static function (self $parent) use (&$append, &$children, &$visited, $includeHidden, $includeGroups): void {
+				foreach ($parent->getChildren($includeHidden) as $child) {
+					$id = (int)$child->getId();
+					if ($id <= 0 || isset($visited[$id])) continue;
+					$visited[$id] = true;
+					$isGroup = (int)$child->get('IDtypeholon') === 3;
+					if (!$isGroup || $includeGroups) $children[] = $child;
+					if ($isGroup) $append($child);
+				}
+			};
+			$append($this);
+			return $children;
 		}
 
 		public function getContainingCircle($includeSelf = false)
@@ -2660,7 +2728,7 @@
 			$visitedHolonIds = array();
 			$this->collectRoleScopeHolonIds((bool)$options['includeDescendants'], $scopeHolonIds, $visitedHolonIds);
 			if (!(bool)$options['includeDescendants'] && (int)$this->get('IDtypeholon') !== 1) {
-				foreach ($this->getChildren() as $child) {
+				foreach ($this->getChildrenThroughGroups() as $child) {
 					if ((int)$child->get('IDtypeholon') === 1) {
 						$scopeHolonIds[(int)$child->getId()] = (int)$child->getId();
 					}
@@ -2823,7 +2891,7 @@
 		{
 			$userIds = array();
 			if ((int)$this->get('IDtypeholon') === 2) {
-				foreach ($this->getChildren() as $child) {
+				foreach ($this->getChildrenThroughGroups() as $child) {
 					if (!$child->isParentAdminRole()) {
 						continue;
 					}
@@ -4764,7 +4832,7 @@
 			}
 		}
 
-		// Retourne tous les enfants (uniquement pour les orga
+		// Physical children. Use getChildrenThroughGroups() for semantic scopes.
 		public function getChildren($includeHidden = false) {
 			$parentId = (int)$this->getId();
 			$includeHidden = (bool)$includeHidden;
@@ -4835,7 +4903,7 @@
 				}
 			}
 
-			$parentHolon = $this->getParentHolon();
+			$parentHolon = $this->getParentHolonThroughGroups();
 			if ($parentHolon instanceof self) {
 				$authorityTransfer = Authority::reassignForHolonDeletion($this, $parentHolon);
 				if (empty($authorityTransfer['status'])) {

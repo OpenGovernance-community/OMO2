@@ -145,6 +145,10 @@ try {
     groupPermissionSave($role);
     groupPermissionCheck($can('CAN_DELETE_DOCUMENT', $circle), 'Explicit parent admin role must cross transparent groups');
     groupPermissionCheck(!$can('CAN_DELETE_DOCUMENT', $outer), 'Parent administration must stop at the containing circle');
+    groupPermissionCheck(in_array($userId, $circle->getInheritedContextAdminUserIds(), true), 'Admin constraint helpers must agree with permissions across groups');
+    groupPermissionCheck(!in_array($userId, $outer->getInheritedContextAdminUserIds(), true), 'Inherited admin lists must stop at a nested circle');
+    $assignments = $circle->getVisibleRoleAssignmentsForUser($userId, ['organizationId' => $orgId, 'includeDescendants' => false]);
+    groupPermissionCheck(in_array((int)$role->getId(), array_column($assignments, 'holonId'), true), 'Direct circle assignments must include roles within groups');
     $rootGroup = $makeHolon('Root group', 3, $root);
     $role->set('IDholon_parent', $rootGroup->getId());
     groupPermissionSave($role);
