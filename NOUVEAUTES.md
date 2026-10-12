@@ -1,5 +1,7 @@
 # Journal des nouveautés
 
+- Trucs et astuces / contenu utilisateur (2026-10-12) : 143 accroches courtes issues des usages ajoutes de juin a octobre, notamment les gestes moins connus et les raccourcis utiles. Chaque astuce conduit vers une FAQ avec resume et explications ; les marches a suivre restent dans la FAQ. Migration par titre de question et portee generique, sans ID predefini, avec creation des reponses manquantes et conservation des contenus et publications existants. Relance sans doublons ; tests des liens, des titres homonymes, des FAQ masquees et de la preservation des contenus.
+
 - Trucs et astuces / separateur (2026-10-12) : le trait au-dessus des parametres accompagne maintenant l apparition et le retrait de l ampoule, sur ordinateur et mobile.
 
 - Trucs et astuces (2026-10-12) : ampoule au-dessus des parametres, apparition quotidienne d une astuce aleatoire avec lien et image facultative. Fenetre de 10 secondes, decompte suspendu au survol et au clavier, fermeture progressive, rappel par survol et bouton Suivant. Cookie journalier propre au compte pour retrouver l astuce apres rechargement. Catalogue commun editable via adminEdit dans les parametres en mode super administrateur ; migration SQL et premieres astuces incluses.
