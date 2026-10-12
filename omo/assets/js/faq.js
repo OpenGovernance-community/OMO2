@@ -30,6 +30,9 @@
 	const currentCid = Number(root.getAttribute('data-faq-cid') || 0);
 	const currentScope = normalizeFaqScope(root.getAttribute('data-faq-scope') || 'contextual');
 	const reloadUrl = root.getAttribute('data-faq-reload-url') || '/popup/faq.php';
+	const listLoaded = root.getAttribute('data-faq-list-loaded') !== '0';
+	const initialFaqId = Number(root.getAttribute('data-faq-initial-id') || 0);
+	let listRequestPending = false;
 	let currentViewToken = null;
 	let refreshRequestId = 0;
 	let detailRequestId = 0;
@@ -293,10 +296,20 @@
 	}
 
 	function showList(options) {
-		syncFaqTitle(null);
 		const config = options || {};
-		detailRequestId++;
 		currentViewToken = 'faq';
+		if (!listLoaded) {
+			if (config.updateHash !== false && typeof window.omoOpenPopupHashState === 'function') {
+				window.omoOpenPopupHashState('faq', null);
+			}
+			if (!listRequestPending) {
+				listRequestPending = true;
+				refreshPopupContent(reloadUrl).finally(function () { listRequestPending = false; });
+			}
+			return;
+		}
+		detailRequestId++;
+		syncFaqTitle(null);
 		root.classList.remove('faq-popup--detail-open');
 		if (detailView) {
 			detailView.hidden = true;
@@ -392,6 +405,8 @@
 					return;
 				}
 				detailView.innerHTML = '<div class="faq-popup__no-result">Impossible de charger cette FAQ pour le moment.</div>';
+				const backTemplate = root.querySelector('[data-faq-detail-back]');
+				if (backTemplate) detailView.prepend(backTemplate.content.cloneNode(true));
 			});
 	}
 
@@ -749,7 +764,9 @@
 			}
 		}
 
-		if (payload.reloadUrl) {
+		if (!listLoaded && payload.focusId) {
+			showDetail(Number(payload.focusId), { updateHash: false });
+		} else if (payload.reloadUrl) {
 			refreshPopupContent(payload.reloadUrl);
 		} else if (payload.script) {
 			eval(payload.script);
@@ -1206,7 +1223,11 @@
 
 	syncFromHash();
 	if (!currentViewToken) {
-		showList({ updateHash: false });
+		if (initialFaqId > 0) {
+			showDetail(initialFaqId, { updateHash: false, edit: 'auto' });
+		} else {
+			showList({ updateHash: false });
+		}
 	}
 	syncScopeSelectors(editorView);
 	refreshCompactVoteStars();
