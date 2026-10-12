@@ -4,6 +4,8 @@ require_once dirname(__DIR__) . '/modules/context.php';
 require_once dirname(__DIR__) . '/params/shared.php';
 require_once __DIR__ . '/shared.php';
 
+commonEnableReadOnlyCaches();
+
 use dbObject\ArrayProject;
 use dbObject\DecisionGovernanceAction;
 use dbObject\DecisionProcess;
@@ -36,6 +38,9 @@ if ($organizationId <= 0 || $collectiveHolonId <= 0
     $respond(403, ['status' => false, 'message' => 'Accès refusé.']);
 }
 
+// Lifecycle synchronization in the context can write and invalidate read caches.
+commonReleaseReadOnlySession();
+
 $targetType = trim((string)($_GET['target_type'] ?? ''));
 $operation = trim((string)($_GET['operation'] ?? ''));
 $contextHolonId = (int)($_GET['context_holon_id'] ?? 0);
@@ -54,7 +59,7 @@ if ($targetType === DeferredProposal::TARGET_HOLON && $operation === DeferredPro
     if (!$movingHolon || !$contextHolon->load($contextHolonId) || !array_any(
         DeferredProposal::getHolonTargetsForContext($contextHolon, $operation, $catalog),
         static fn (Holon $target): bool => (int)$target->getId() === (int)$movingHolon->getId()
-    )) $respond(403, ['status' => false, 'message' => 'Deplacement non autorise.']);
+    )) $respond(403, ['status' => false, 'message' => 'Déplacement non autorisé.']);
     $moveData = $context['organization']->getHolonMoveEditorData((int)$movingHolon->getId(), $collectiveHolonId);
     $respond(200, ['status' => true, 'destinations' => $moveData['destinations'], 'before' => DeferredProposal::captureHolonMoveState($movingHolon)]);
 }
@@ -90,7 +95,7 @@ if ($targetType === DeferredProposal::TARGET_RULE) {
     if (!($contextHolon instanceof Holon)) $respond(403, ['status' => false, 'message' => 'Le collectif ne dispose pas du droit nécessaire dans cet espace.']);
     if ($operation !== DeferredProposal::OPERATION_CREATE) {
         $projects = new ArrayProject();
-        $projects->loadForContext($organizationId, $contextHolonId, 'contextual');
+        $projects->loadForContext($organizationId, $contextHolonId, 'contextual', [], false, true);
         foreach ($projects as $project) {
             if (!$project instanceof Project || (int)$project->getId() <= 0) continue;
             $objects[] = ['id' => (int)$project->getId(), 'label' => trim((string)$project->get('title')), 'state' => DeferredProposal::captureProjectState($project)];

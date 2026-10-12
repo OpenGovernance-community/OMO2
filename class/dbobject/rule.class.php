@@ -35,33 +35,33 @@ class Rule extends DbObject
     {
         return [
             'id' => 'ID',
-            'IDauthority' => 'Domaine d autorite',
+            'IDauthority' => 'Domaine d’autorité',
             'IDholon' => 'Espace de rattachement',
             'IDorganization' => 'Organisation',
             'title' => 'Titre',
             'intention' => 'Intention',
             'description' => 'Descriptif',
-            'scope' => 'Portee',
+            'scope' => 'Portée',
             'review_date' => 'Date de requestionnement',
-            'expiration_date' => 'Date d echeance',
-            'created_at' => 'Date de creation',
+            'expiration_date' => 'Date d’échéance',
+            'created_at' => 'Date de création',
             'updated_at' => 'Date de modification',
-            'IDuser_creation' => 'Creee par',
-            'IDuser_modification' => 'Modifiee par',
-            'creation_context' => 'Contexte de creation',
+            'IDuser_creation' => 'Créée par',
+            'IDuser_modification' => 'Modifiée par',
+            'creation_context' => 'Contexte de création',
         ];
     }
 
     public static function attributeDescriptions()
     {
         return [
-            'IDauthority' => 'Autorite precise dans laquelle cette regle est definie.',
-            'IDholon' => 'Holon auquel la regle est directement rattachee.',
-            'intention' => 'Pourquoi cette regle a ete creee.',
-            'description' => 'Contenu HTML simple de la regle: texte, mise en forme, listes et liens.',
-            'scope' => 'Contexte local, cercle et enfants directs, descendants ou organisation entiere.',
-            'review_date' => 'Date a laquelle la regle doit etre requestionnee.',
-            'expiration_date' => 'Apres cette date, la regle n est plus valide.',
+            'IDauthority' => 'Autorité précise dans laquelle cette règle est définie.',
+            'IDholon' => 'Holon auquel la règle est directement rattachée.',
+            'intention' => 'Pourquoi cette règle a été créée.',
+            'description' => 'Contenu HTML simple de la règle : texte, mise en forme, listes et liens.',
+            'scope' => 'Contexte local, cercle et enfants directs, descendants ou organisation entière.',
+            'review_date' => 'Date à laquelle la règle doit être requestionnée.',
+            'expiration_date' => 'Après cette date, la règle n’est plus valide.',
         ];
     }
 
@@ -163,16 +163,16 @@ class Rule extends DbObject
     public static function validateScopeAttachment($scope, ?Holon $holon, $authorityId = 0): array
     {
         if (!in_array($scope, self::scopes(), true)) {
-            return ['status' => false, 'text' => 'La portee de la regle est invalide.'];
+            return ['status' => false, 'text' => 'La portée de la règle est invalide.'];
         }
         $context = self::getScopeContext($holon);
         if ((int)$authorityId > 0) {
             if (!in_array((int)$authorityId, array_column($context['authorities'], 'id'), true)) {
-                return ['status' => false, 'text' => 'Le domaine d autorite doit etre actif et rattache a cet espace.'];
+                return ['status' => false, 'text' => 'Le domaine d’autorité doit être actif et rattaché à cet espace.'];
             }
         } elseif ($context['usesAuthorities'] && ($scope === self::SCOPE_GLOBAL || $scope === self::SCOPE_DESCENDANTS
             || ($scope === self::SCOPE_CIRCLE && $context['isRole']))) {
-            return ['status' => false, 'text' => 'Un domaine d autorite est obligatoire pour cette portee.'];
+            return ['status' => false, 'text' => 'Un domaine d’autorité est obligatoire pour cette portée.'];
         }
         return ['status' => true];
     }
@@ -191,7 +191,7 @@ class Rule extends DbObject
         if ($scope === self::SCOPE_CIRCLE) {
             $circle = $contextHolon->getContainingCircle(true);
             if ($circle instanceof Holon && ((int)$source->getId() === (int)$circle->getId()
-                || (int)$source->get('IDholon_parent') === (int)$circle->getId())) {
+                || $source->isChildOfThroughGroups($circle))) {
                 return true;
             }
         }
@@ -200,7 +200,7 @@ class Rule extends DbObject
         }
         $sourceId = (int)$source->getId();
         if ($sourceId === (int)$contextHolon->getId()) return true;
-        if ($scope === self::SCOPE_CIRCLE) return (int)$contextHolon->get('IDholon_parent') === $sourceId;
+        if ($scope === self::SCOPE_CIRCLE) return $contextHolon->isChildOfThroughGroups($sourceId);
         return $scope === self::SCOPE_DESCENDANTS && $contextHolon->isDescendantOf($sourceId, true);
     }
 

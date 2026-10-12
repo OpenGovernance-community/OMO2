@@ -363,8 +363,8 @@ try {
     importExpect(empty(DocumentPvPoint::importIntoDocument($destination, [(int)$abandonPoint->getId()], $userId, 'local', $notice)['status']), 'A stale selection cannot import a closed point.');
     importExpect(empty(DocumentPvPoint::abandonFromImport($destination, (int)$abandonPoint->getId(), $userId)['status']), 'A repeated closure cannot rewrite the audit date.');
     $renderedAbandoned = $abandonPoint->getRenderedContentForViewer($organizationId);
-    importExpect(str_contains($renderedAbandoned, 'Original content') && str_contains($renderedAbandoned, 'ne necessite plus de traitement supplementaire'), 'The point viewer preserves the content and explains closure.');
-    importExpect(str_contains($abandonSource->getRenderedContentForCurrentViewer(), 'ne necessite plus de traitement supplementaire')
+    importExpect(str_contains($renderedAbandoned, 'Original content') && str_contains($renderedAbandoned, 'ne nécessite plus de traitement supplémentaire'), 'The point viewer preserves the content and explains closure.');
+    importExpect(str_contains($abandonSource->getRenderedContentForCurrentViewer(), 'ne nécessite plus de traitement supplémentaire')
         && str_contains($abandonSource->renderPvUnhandledPointsForViewer(), 'Fixture point'), 'Original report and exports display closure in the non-treated list.');
     importExpect($abandonRevision !== $abandonSource->getPvEditorPollingRevision($organizationId)
         && $abandonVersion !== $abandonPoint->buildViewerData($organizationId, $userId)['syncVersion'], 'Other open viewers detect closure even within the same second.');
@@ -381,7 +381,7 @@ try {
     $openAbandonPoint = $makePoint($recent);
     importExpect(!empty(DocumentPvPoint::abandonFromImport($destination, (int)$openAbandonPoint->getId(), $userId)['status']), 'Open meeting points can also close follow-up.');
     $recent->load($recent->getId(), true);
-    importExpect(str_contains($recent->getRenderedContentForCurrentViewer(), 'ne necessite plus de traitement supplementaire'), 'Open minutes show the closure notice beside the retained point.');
+    importExpect(str_contains($recent->getRenderedContentForCurrentViewer(), 'ne nécessite plus de traitement supplémentaire'), 'Open minutes show the closure notice beside the retained point.');
     $destination->set('pvstage', 'review');
     importSave($destination);
     importExpect(!DocumentPvPoint::canImportIntoDocument($destination, $userId), 'Review destination must reject import.');

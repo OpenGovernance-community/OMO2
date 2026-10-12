@@ -46,27 +46,27 @@ class DecisionGovernanceAction extends DbObject
         return [
             'id' => 'ID',
             'IDdecision_proposal' => 'Proposition',
-            'action_type' => 'Type d action',
+            'action_type' => 'Type d’action',
             'target_type' => 'Type de cible',
             'target_id' => 'Cible',
-            'before_state' => 'Etat avant',
-            'after_state' => 'Etat apres',
-            'parameters' => 'Parametres',
+            'before_state' => 'État avant',
+            'after_state' => 'État après',
+            'parameters' => 'Paramètres',
             'position' => 'Ordre',
             'status' => 'Statut',
             'status_message' => 'Message de statut',
             'applied_at' => 'Application',
-            'created_at' => 'Creation',
-            'updated_at' => 'Mise a jour',
+            'created_at' => 'Création',
+            'updated_at' => 'Mise à jour',
         ];
     }
 
     public static function attributeDescriptions()
     {
         return [
-            'before_state' => 'Instantane utilise pour detecter un conflit avant application.',
-            'after_state' => 'Etat a appliquer si la proposition est acceptee.',
-            'parameters' => 'Metadonnees versionnees propres au type d action.',
+            'before_state' => 'Instantané utilisé pour détecter un conflit avant application.',
+            'after_state' => 'État à appliquer si la proposition est acceptée.',
+            'parameters' => 'Métadonnées versionnées propres au type d’action.',
         ];
     }
 
@@ -194,7 +194,7 @@ class DecisionGovernanceAction extends DbObject
     {
         $ruleHolon = $rule->getHolon();
         if (!$ruleHolon instanceof Holon || (int)$ruleHolon->getId() !== (int)$expectedHolonId) {
-            return ['status' => false, 'message' => 'La regle doit etre definie dans le contexte de la decision.'];
+            return ['status' => false, 'message' => 'La règle doit être définie dans le contexte de la décision.'];
         }
         $state = self::normalizeRuleState($afterState, $rule);
         $scopeValidation = Rule::validateScopeAttachment($afterState['scope'] ?? $state['scope'], $ruleHolon, $state['IDauthority']);
@@ -202,16 +202,16 @@ class DecisionGovernanceAction extends DbObject
         if ((int)$state['IDauthority'] > 0) {
             $authority = new Authority();
             if (!$authority->load((int)$state['IDauthority']) || (int)$authority->get('IDholon') !== (int)$expectedHolonId) {
-                return ['status' => false, 'message' => 'Le domaine d autorite choisi n appartient pas au contexte de la decision.'];
+                return ['status' => false, 'message' => 'Le domaine d’autorité choisi n’appartient pas au contexte de la décision.'];
             }
         } else {
             $state['IDholon'] = (int)$expectedHolonId;
         }
         if ($state['title'] === '' || !Rule::hasContentText($state['description']) || $state['review_date'] === '' || $state['expiration_date'] === '') {
-            return ['status' => false, 'message' => 'Le titre, la regle et les deux dates sont obligatoires.'];
+            return ['status' => false, 'message' => 'Le titre, la règle et les deux dates sont obligatoires.'];
         }
         if ($state['review_date'] > $state['expiration_date']) {
-            return ['status' => false, 'message' => 'La date de requestionnement ne peut pas suivre la date d echeance.'];
+            return ['status' => false, 'message' => 'La date de requestionnement ne peut pas suivre la date d’échéance.'];
         }
         return ['status' => true, 'state' => $state];
     }
@@ -226,7 +226,7 @@ class DecisionGovernanceAction extends DbObject
         if ((int)$state['IDauthority'] > 0) {
             $authority = new Authority();
             if (!$authority->load((int)$state['IDauthority']) || (int)$authority->get('IDholon') !== (int)$expectedHolonId) {
-                return ['status' => false, 'message' => 'Le domaine d autorite choisi n appartient pas au contexte de la decision.'];
+                return ['status' => false, 'message' => 'Le domaine d’autorité choisi n’appartient pas au contexte de la décision.'];
             }
             $state['IDholon'] = null;
         } else {
@@ -234,10 +234,10 @@ class DecisionGovernanceAction extends DbObject
             $state['IDholon'] = (int)$expectedHolonId;
         }
         if ($state['title'] === '' || !Rule::hasContentText($state['description']) || $state['review_date'] === '' || $state['expiration_date'] === '') {
-            return ['status' => false, 'message' => 'Le titre, la regle et les deux dates sont obligatoires.'];
+            return ['status' => false, 'message' => 'Le titre, la règle et les deux dates sont obligatoires.'];
         }
         if ($state['review_date'] > $state['expiration_date']) {
-            return ['status' => false, 'message' => 'La date de requestionnement ne peut pas suivre la date d echeance.'];
+            return ['status' => false, 'message' => 'La date de requestionnement ne peut pas suivre la date d’échéance.'];
         }
         return ['status' => true, 'state' => $state];
     }
@@ -246,7 +246,7 @@ class DecisionGovernanceAction extends DbObject
     {
         $ruleHolon = $rule->getHolon();
         if (!$ruleHolon instanceof Holon || (int)$ruleHolon->getId() !== (int)$expectedHolonId) {
-            return ['status' => false, 'message' => 'La regle doit etre definie dans le contexte de la decision.'];
+            return ['status' => false, 'message' => 'La règle doit être définie dans le contexte de la décision.'];
         }
         return ['status' => true, 'state' => self::captureRuleState($rule)];
     }
@@ -308,34 +308,17 @@ class DecisionGovernanceAction extends DbObject
     public static function findRolesInGovernanceContext(Holon $contextHolon)
     {
         $roles = [];
-        $visit = static function (Holon $parent) use (&$visit, &$roles) {
-            foreach ($parent->getChildren() as $child) {
-                if (!$child instanceof Holon) continue;
-                $typeId = (int)$child->get('IDtypeholon');
-                if ($typeId === 1) {
-                    $roles[(int)$child->getId()] = $child;
-                } elseif ($typeId === 3) {
-                    $visit($child);
-                }
+        foreach ($contextHolon->getChildrenThroughGroups() as $child) {
+            if ((int)$child->get('IDtypeholon') === 1) {
+                $roles[(int)$child->getId()] = $child;
             }
-        };
-        $visit($contextHolon);
+        }
         return array_values($roles);
     }
 
     public static function roleBelongsToGovernanceContext(Holon $role, Holon $contextHolon)
     {
-        if ((int)$role->get('IDtypeholon') !== 1) return false;
-        $parentId = (int)$role->get('IDholon_parent');
-        $guard = 0;
-        while ($parentId > 0 && $guard < 100) {
-            if ($parentId === (int)$contextHolon->getId()) return true;
-            $parent = new Holon();
-            if (!$parent->load($parentId) || (int)$parent->get('IDtypeholon') !== 3) return false;
-            $parentId = (int)$parent->get('IDholon_parent');
-            $guard++;
-        }
-        return false;
+        return (int)$role->get('IDtypeholon') === 1 && $role->isChildOfThroughGroups($contextHolon);
     }
 
     public static function normalizeRoleState(array $state, ?Holon $baseRole = null)
@@ -367,18 +350,18 @@ class DecisionGovernanceAction extends DbObject
     {
         $state = self::normalizeRoleState($state, $role);
         if ($state['name'] === '') {
-            return ['status' => false, 'message' => 'Le nom du role est obligatoire.'];
+            return ['status' => false, 'message' => 'Le nom du rôle est obligatoire.'];
         }
         if (mb_strlen($state['name'], 'UTF-8') > 255 || mb_strlen($state['full_name'], 'UTF-8') > 255) {
-            return ['status' => false, 'message' => 'Le nom du role est trop long.'];
+            return ['status' => false, 'message' => 'Le nom du rôle est trop long.'];
         }
         if ($role === null && $state['template_id'] <= 0) {
-            return ['status' => false, 'message' => 'Le modèle de l espace est obligatoire.'];
+            return ['status' => false, 'message' => 'Le modèle de l’espace est obligatoire.'];
         }
         if ($state['template_id'] > 0) {
             $template = new Holon();
             if (!$template->load($state['template_id']) || !in_array((int)$template->get('IDtypeholon'), [1, 2, 3], true)) {
-                return ['status' => false, 'message' => 'Le modèle d espace choisi est invalide.'];
+                return ['status' => false, 'message' => 'Le modèle d’espace choisi est invalide.'];
             }
         }
         return ['status' => true, 'state' => $state];
@@ -404,7 +387,7 @@ class DecisionGovernanceAction extends DbObject
             }
         }
         if (is_array($state['editor_payload']['properties'] ?? null)) {
-            $items[] = '<li><strong>Proprietes</strong> : ' . count($state['editor_payload']['properties']) . ' propriete(s) configuree(s)</li>';
+            $items[] = '<li><strong>Propriétés</strong> : ' . count($state['editor_payload']['properties']) . ' propriété(s) configurée(s)</li>';
         }
         return count($items) ? '<ul>' . implode('', $items) . '</ul>' : '';
     }
@@ -425,12 +408,12 @@ class DecisionGovernanceAction extends DbObject
             $beforeValue = self::formatRolePropertyValue($beforeProperties[$key] ?? []);
             $afterValue = self::formatRolePropertyValue($afterProperties[$key] ?? []);
             if ($beforeValue === $afterValue) continue;
-            $label = trim((string)($property['name'] ?? $property['shortname'] ?? 'Propriete')) ?: 'Propriete';
-            $changes[] = '<li><strong>' . htmlspecialchars('Propriete - ' . $label, ENT_QUOTES, 'UTF-8') . '</strong> : '
+            $label = trim((string)($property['name'] ?? $property['shortname'] ?? 'Propriété')) ?: 'Propriété';
+            $changes[] = '<li><strong>' . htmlspecialchars('Propriété - ' . $label, ENT_QUOTES, 'UTF-8') . '</strong> : '
                 . self::formatDescriptionValue($beforeValue) . ' &rarr; '
                 . self::formatDescriptionValue($afterValue) . '</li>';
         }
-        return count($changes) ? '<p>Modifications proposees :</p><ul>' . implode('', $changes) . '</ul>' : '<p>Aucune difference de contenu.</p>';
+        return count($changes) ? '<p>Modifications proposées :</p><ul>' . implode('', $changes) . '</ul>' : '<p>Aucune différence de contenu.</p>';
     }
 
     protected static function indexRoleProperties($properties)
@@ -500,13 +483,13 @@ class DecisionGovernanceAction extends DbObject
     public static function buildRuleUpdateDescription(array $beforeState, array $afterState)
     {
         $labels = [
-            'IDauthority' => 'Domaine d autorite',
-            'scope' => 'Portee',
+            'IDauthority' => 'Domaine d’autorité',
+            'scope' => 'Portée',
             'title' => 'Titre',
             'intention' => 'Intention',
-            'description' => 'Regle',
+            'description' => 'Règle',
             'review_date' => 'Date de requestionnement',
-            'expiration_date' => 'Date d echeance',
+            'expiration_date' => 'Date d’échéance',
         ];
         $changes = [];
         foreach ($labels as $field => $label) {
@@ -530,20 +513,20 @@ class DecisionGovernanceAction extends DbObject
                 . self::formatDescriptionValue($after) . '</li>';
         }
         return count($changes) > 0
-            ? '<p>Modifications proposees :</p><ul>' . implode('', $changes) . '</ul>'
-            : '<p>Aucune difference de contenu.</p>';
+            ? '<p>Modifications proposées :</p><ul>' . implode('', $changes) . '</ul>'
+            : '<p>Aucune différence de contenu.</p>';
     }
 
     public static function buildRuleStateDescription(array $state)
     {
         $items = [];
         foreach ([
-            'scope' => 'Portee',
+            'scope' => 'Portée',
             'title' => 'Titre',
             'intention' => 'Intention',
-            'description' => 'Regle',
+            'description' => 'Règle',
             'review_date' => 'Date de requestionnement',
-            'expiration_date' => 'Date d echeance',
+            'expiration_date' => 'Date d’échéance',
         ] as $field => $label) {
             $value = trim(strip_tags((string)($state[$field] ?? '')));
             if ($field === 'scope') $value = array_column(Rule::attributeValues()['scope'], 1, 0)[Rule::normalizeScope($value)];
@@ -632,7 +615,7 @@ class DecisionGovernanceAction extends DbObject
                     continue;
                 }
                 if ($method === DecisionProcess::METHOD_CONSENT && self::proposalHasObjection($proposal, $responses)) {
-                    self::setProposalActionStatus($proposal, self::STATUS_REJECTED, 'Proposition non acceptee.');
+                    self::setProposalActionStatus($proposal, self::STATUS_REJECTED, 'Proposition non acceptée.');
                     continue;
                 }
                 if ($method === DecisionProcess::METHOD_SIMPLE_VOTE && !isset($winningProposalIds[(int)$proposal->getId()])) {
@@ -652,7 +635,7 @@ class DecisionGovernanceAction extends DbObject
     {
         $pdo = self::getPdo();
         if (!$pdo) {
-            return ['status' => false, 'failed' => true, 'message' => 'Connexion a la base impossible.'];
+            return ['status' => false, 'failed' => true, 'message' => 'Connexion à la base impossible.'];
         }
 
         try {
@@ -675,7 +658,7 @@ class DecisionGovernanceAction extends DbObject
                 $action->set('updated_at', new \DateTimeImmutable('now'));
                 $saved = $action->save();
                 if (!is_array($saved) || empty($saved['status'])) {
-                    throw new \RuntimeException('failure:Impossible d enregistrer le statut de l action.');
+                    throw new \RuntimeException('failure:Impossible d’enregistrer le statut de l’action.');
                 }
             }
             $pdo->commit();
@@ -759,7 +742,7 @@ class DecisionGovernanceAction extends DbObject
             return $this->applyHolonAction($decision, $actionType, $collectiveHolonId ?? (int)$decision->get('IDholon'));
         }
         if (!in_array($actionType, [self::TYPE_RULE_CREATE, self::TYPE_RULE_UPDATE, self::TYPE_RULE_DELETE], true)) {
-            return ['status' => false, 'message' => 'Ce type d action n est pas encore executable.'];
+            return ['status' => false, 'message' => 'Ce type d’action n’est pas encore exécutable.'];
         }
 
         if ($actionType === self::TYPE_RULE_CREATE) {
@@ -774,7 +757,7 @@ class DecisionGovernanceAction extends DbObject
                 if ($existingRule instanceof Rule && self::captureRuleState($existingRule) === (array)$validation['state']) {
                     return ['status' => true, 'already_applied' => true];
                 }
-                return ['status' => false, 'conflict' => true, 'message' => 'La creation de la regle est dans un etat incoherent.'];
+                return ['status' => false, 'conflict' => true, 'message' => 'La création de la règle est dans un état incohérent.'];
             }
             $rule = new Rule();
             $rule->set('creation_context', $this->ruleCreationContext ?: null);
@@ -782,7 +765,7 @@ class DecisionGovernanceAction extends DbObject
             if (!is_array($saveResult) || empty($saveResult['status']) || (int)$rule->getId() <= 0) {
                 return [
                     'status' => false,
-                    'message' => trim((string)($saveResult['text'] ?? 'La regle ne peut pas etre creee.')),
+                    'message' => trim((string)($saveResult['text'] ?? 'La règle ne peut pas être créée.')),
                 ];
             }
             $this->set('target_id', (int)$rule->getId());
@@ -791,11 +774,11 @@ class DecisionGovernanceAction extends DbObject
 
         $rule = Rule::loadForGovernanceApplication((int)$this->get('target_id'));
         if (!$rule instanceof Rule) {
-            return ['status' => false, 'conflict' => true, 'message' => 'La regle cible n existe plus.'];
+            return ['status' => false, 'conflict' => true, 'message' => 'La règle cible n’existe plus.'];
         }
         $ruleHolon = $rule->getHolon();
         if (!$ruleHolon instanceof Holon || (int)$ruleHolon->getId() !== (int)$decision->get('IDholon')) {
-            return ['status' => false, 'conflict' => true, 'message' => 'La regle cible a change de contexte.'];
+            return ['status' => false, 'conflict' => true, 'message' => 'La règle cible a changé de contexte.'];
         }
 
         $before = self::normalizeRuleState(self::normalizeState($this->get('before_state')));
@@ -805,7 +788,7 @@ class DecisionGovernanceAction extends DbObject
                 return ['status' => false, 'conflict' => true, 'message' => 'La règle a été modifiée depuis la préparation de cette modification.'];
             }
             if (!$rule->delete()) {
-                return ['status' => false, 'message' => 'La regle ne peut pas etre supprimee.'];
+                return ['status' => false, 'message' => 'La règle ne peut pas être supprimée.'];
             }
             return ['status' => true, 'deleted_id' => (int)$rule->getId()];
         }
@@ -846,7 +829,7 @@ class DecisionGovernanceAction extends DbObject
                     && self::captureHolonState($existingHolon) === array_diff_key((array)$validation['state'], ['editor_payload' => true])) {
                     return ['status' => true, 'already_applied' => true];
                 }
-                return ['status' => false, 'conflict' => true, 'message' => 'La création de l espace est dans un état incohérent.'];
+                return ['status' => false, 'conflict' => true, 'message' => 'La création de l’espace est dans un état incohérent.'];
             }
             $holon = new Holon();
             $state = $validation['state'];
@@ -854,7 +837,7 @@ class DecisionGovernanceAction extends DbObject
                 $result = $organization->saveHolonEditorDefinition($state['editor_payload'], 0, (int)$context->getId(), 0, true, $collectiveHolonId);
                 if (empty($result['status'])) return $result;
                 $createdId = (int)($result['holon']['id'] ?? 0);
-                if ($createdId <= 0) return ['status' => false, 'message' => 'L espace ne peut pas être créé.'];
+                if ($createdId <= 0) return ['status' => false, 'message' => 'L’espace ne peut pas être créé.'];
                 $this->set('target_id', $createdId);
                 return ['status' => true, 'created_id' => $createdId];
             }
@@ -883,13 +866,13 @@ class DecisionGovernanceAction extends DbObject
             || !$holon->isDescendantOf($rootHolon, true)
             || $holon->isTemplateNode((int)$rootHolon->getId())
             || !in_array((int)$holon->get('IDtypeholon'), [1, 2, 3], true)) {
-            return ['status' => false, 'conflict' => true, 'message' => 'L espace cible n appartient plus a cette organisation.'];
+            return ['status' => false, 'conflict' => true, 'message' => 'L’espace cible n’appartient plus à cette organisation.'];
         }
         // A persisted hors-reorg decision retains its historic role-only
         // boundary. DeferredProposal builds an unsaved decision adapter and
         // deliberately permits any structural holon selected by the PV.
         if ((int)$decision->getId() > 0 && !self::roleBelongsToGovernanceContext($holon, $context)) {
-            return ['status' => false, 'conflict' => true, 'message' => 'Le rôle cible n appartient plus à ce cercle.'];
+            return ['status' => false, 'conflict' => true, 'message' => 'Le rôle cible n’appartient plus à ce cercle.'];
         }
         $before = self::normalizeRoleState(self::normalizeState($this->get('before_state')));
         $current = self::captureHolonState($holon);
@@ -899,13 +882,13 @@ class DecisionGovernanceAction extends DbObject
             $result = $organization->deleteHolonDefinition((int)$holon->getId(), 0, true);
             return !empty($result['status'])
                 ? ['status' => true, 'deleted_id' => (int)$holon->getId()]
-                : ['status' => false, 'message' => (string)($result['message'] ?? 'L espace ne peut pas être supprimé.')];
+                : ['status' => false, 'message' => (string)($result['message'] ?? 'L’espace ne peut pas être supprimé.')];
         }
         $after = self::normalizeHolonState(self::normalizeState($this->get('after_state')), $holon);
         if ($current === $after) return ['status' => true, 'already_applied' => true];
         if ($current !== $beforeComparable) return ['status' => false, 'conflict' => true, 'message' => 'L’espace a été modifié depuis la préparation de cette modification.'];
         $parentHolon = $holon->getParentHolon();
-        if (!$parentHolon instanceof Holon) return ['status' => false, 'conflict' => true, 'message' => 'Le parent de l espace cible est introuvable.'];
+        if (!$parentHolon instanceof Holon) return ['status' => false, 'conflict' => true, 'message' => 'Le parent de l’espace cible est introuvable.'];
         $validation = self::validateHolonState($after, $parentHolon, $holon);
         if (empty($validation['status'])) return $validation;
         if (is_array($validation['state']['editor_payload'] ?? null)) {

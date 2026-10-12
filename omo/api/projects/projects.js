@@ -1705,10 +1705,12 @@
             }
 
             var initial = getBlockedStatusFields(projectNode);
+            var requireReason = root.getAttribute('data-omo-projects-require-blocked-reason') !== '0';
+            var requireReviewDate = root.getAttribute('data-omo-projects-require-blocked-review-date') !== '0';
             var html = '<form class="omo-project-blocked-dialog generic-drawer-content" data-omo-project-blocked-dialog>'
                 + '<p class="omo-project-blocked-dialog__hint generic-help-text">' + escapeHtml(texts.blockedDialogHint) + '</p>'
-                + '<label class="generic-form-field"><span class="generic-form-label">' + escapeHtml(texts.blockedReason) + '</span><textarea class="generic-form-control" rows="4" maxlength="4000" required data-omo-project-blocked-reason>' + escapeHtml(initial.reason) + '</textarea></label>'
-                + '<label class="generic-form-field"><span class="generic-form-label">' + escapeHtml(texts.blockedUntil) + '</span><input class="generic-form-control" type="date" required value="' + escapeHtml(initial.until) + '" data-omo-project-blocked-until></label>'
+                + '<label class="generic-form-field"><span class="generic-form-label">' + escapeHtml(texts.blockedReason) + (requireReason ? ' *' : '') + '</span><textarea class="generic-form-control" rows="4" maxlength="4000"' + (requireReason ? ' required' : '') + ' data-omo-project-blocked-reason>' + escapeHtml(initial.reason) + '</textarea></label>'
+                + '<label class="generic-form-field"><span class="generic-form-label">' + escapeHtml(texts.blockedUntil) + (requireReviewDate ? ' *' : '') + '</span><input class="generic-form-control" type="date"' + (requireReviewDate ? ' required' : '') + ' value="' + escapeHtml(initial.until) + '" data-omo-project-blocked-until></label>'
                 + '<label class="generic-form-checkbox"><input type="checkbox" data-omo-project-blocked-auto' + (initial.autoReactivate ? ' checked' : '') + '><span>' + escapeHtml(texts.blockedAutoReactivate) + '</span></label>'
                 + '<label class="generic-form-field" data-omo-project-blocked-target-field><span class="generic-form-label">' + escapeHtml(texts.blockedReactivateStatus) + '</span><select class="generic-form-control" data-omo-project-blocked-target><option value="ready"' + (initial.reactivateStatus === 'ready' ? ' selected' : '') + '>' + escapeHtml(texts.blockedReady) + '</option><option value="in_progress"' + (initial.reactivateStatus === 'in_progress' ? ' selected' : '') + '>' + escapeHtml(texts.blockedInProgress) + '</option></select></label>'
                 + '<p class="omo-project-blocked-dialog__error" data-omo-project-blocked-error hidden></p>'
@@ -1740,12 +1742,18 @@
                 };
                 var onClose = function () { finish(null, true); };
                 var syncTarget = function () {
+                    if (autoReactivate) {
+                        autoReactivate.disabled = !(until && until.value);
+                        if (autoReactivate.disabled) autoReactivate.checked = false;
+                    }
                     var visible = !!(autoReactivate && autoReactivate.checked);
                     if (targetField) targetField.hidden = !visible;
                     if (target) target.disabled = !visible;
                 };
                 window.addEventListener('common-topbar-modal-close', onClose);
                 if (autoReactivate) autoReactivate.addEventListener('change', syncTarget);
+                if (until) until.addEventListener('input', syncTarget);
+                if (until) until.addEventListener('change', syncTarget);
                 dialog.addEventListener('click', function (event) {
                     if (event.target.closest('[data-omo-project-blocked-cancel]')) finish(null, true);
                 });
