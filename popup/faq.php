@@ -19,8 +19,41 @@ $contextHolon = $faqContext['currentHolon'] ?? null;
 $rootHolon = $faqContext['rootHolon'] ?? null;
 $contextHolonId = $contextHolon ? (int)$contextHolon->getId() : 0;
 $contextOrganizationId = (int)($faqContext['organizationId'] ?? 0);
-$faqAvailableScopes = \dbObject\FAQ::getAvailablePopupScopes($faqContext ?: array());
 $faqScope = \dbObject\FAQ::normalizePopupScope($_GET['faq_scope'] ?? null, $faqContext ?: array());
+$popupReloadQuery = array();
+if ($contextOrganizationId > 0) {
+	$popupReloadQuery['oid'] = $contextOrganizationId;
+}
+if ($contextHolonId > 0) {
+	$popupReloadQuery['cid'] = $contextHolonId;
+}
+if ($faqScope !== 'contextual') {
+	$popupReloadQuery['faq_scope'] = $faqScope;
+}
+$popupReloadUrl = '/popup/faq.php' . ($popupReloadQuery ? '?' . http_build_query($popupReloadQuery) : '');
+
+// Direct question links do not need the collection or the creation form.
+$initialFaqId = (int)($_GET['id'] ?? 0);
+if ($initialFaqId > 0) {
+	?>
+	<link rel="stylesheet" href="<?= commonAssetUrl('/common/assets/components.css') ?>">
+	<link rel="stylesheet" href="<?= commonAssetUrl('/omo/assets/css/faq.css') ?>">
+	<div class="faq-popup faq-popup--detail-open" id="faqPopupRoot"
+		data-faq-oid="<?= $contextOrganizationId ?>"
+		data-faq-cid="<?= $contextHolonId ?>"
+		data-faq-scope="<?= htmlspecialchars($faqScope, ENT_QUOTES, 'UTF-8') ?>"
+		data-faq-reload-url="<?= htmlspecialchars($popupReloadUrl, ENT_QUOTES, 'UTF-8') ?>"
+		data-faq-initial-id="<?= $initialFaqId ?>"
+		data-faq-list-loaded="0">
+		<div class="faq-popup__detail" data-faq-detail-view></div>
+		<template data-faq-detail-back><?php faqPopupRenderBackButton(); ?></template>
+	</div>
+	<script src="<?= commonAssetUrl('/omo/assets/js/faq.js') ?>"></script>
+	<?php
+	return;
+}
+
+$faqAvailableScopes = \dbObject\FAQ::getAvailablePopupScopes($faqContext ?: array());
 $faqScopeLabels = array(
 	'contextual' => 'Local',
 	'children' => 'Enfants directs',
@@ -65,21 +98,6 @@ $newFaq->set('IDholon', $contextHolonId > 0 ? $contextHolonId : null);
 $newFaq->set('IDparcours', null);
 $newFaq->set('IDapplication', null);
 $newFaq->set('isactive', true);
-
-$popupReloadUrl = '/popup/faq.php';
-$popupReloadQuery = array();
-if ($contextOrganizationId > 0) {
-	$popupReloadQuery[] = 'oid=' . rawurlencode((string)$contextOrganizationId);
-}
-if ($contextHolonId > 0) {
-	$popupReloadQuery[] = 'cid=' . rawurlencode((string)$contextHolonId);
-}
-if ($faqScope !== 'contextual') {
-	$popupReloadQuery[] = 'faq_scope=' . rawurlencode($faqScope);
-}
-if (count($popupReloadQuery) > 0) {
-	$popupReloadUrl .= '?' . implode('&', $popupReloadQuery);
-}
 
 $editorTitle = 'Nouvelle FAQ locale';
 $editorStatus = $contextHolon
