@@ -570,7 +570,7 @@ class Permission extends DbObject
     public static function getEditorCatalog(array $lexicon = [], ?array $enabledApplicationHashes = null)
     {
         $permissions = new \dbObject\ArrayPermission();
-        $permissions->load([
+        $permissions->loadHydrated([
             'orderBy' => [
                 ['field' => 'title', 'dir' => 'ASC'],
                 ['field' => 'permission_key', 'dir' => 'ASC'],

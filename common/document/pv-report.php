@@ -15,7 +15,7 @@ function commonPvReportT(string $key): string
         'pv.report.type.consultation' => ['text' => 'Consultation', 'context' => 'Accessible label and tooltip of the consultation agenda point icon.'],
         'pv.report.type.decision' => ['text' => 'Decision', 'context' => 'Accessible label and tooltip of the decision agenda point icon.'],
         'pv.report.moved_to' => ['text' => 'Deplace vers', 'context' => 'Label before the linked destination minutes name of an unfinished moved agenda point.'],
-        'pv.report.abandoned' => ['text' => 'Ce point ne necessite plus de traitement supplementaire : il a ete abandonne ou a trouve une autre voie de resolution.', 'context' => 'Notice in original minutes for an unhandled agenda point whose follow-up was explicitly closed.'],
+        'pv.report.abandoned' => ['text' => 'Ce point ne nécessite plus de traitement supplémentaire : il a été abandonné ou a trouvé une autre voie de résolution.', 'context' => 'Notice in original minutes for an unhandled agenda point whose follow-up was explicitly closed.'],
     ];
     if ($lang === null) {
         $locale = translationBundleResolveRequestLocale('lang', translationBundleGetSupportedLocales(), 'fr');

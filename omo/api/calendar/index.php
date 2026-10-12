@@ -683,6 +683,7 @@ function omoCalendarAssignTimelineColumns(array $segments)
     return $enriched;
 }
 
+commonEnableReadOnlyCaches();
 $organizationId = (int)($_SESSION['currentOrganization'] ?? ($_GET['oid'] ?? 0));
 $currentHolonId = isset($_GET['cid']) && is_numeric($_GET['cid']) ? (int)$_GET['cid'] : 0;
 $openEventId = isset($_GET['open_event_id']) && is_numeric($_GET['open_event_id']) ? (int)$_GET['open_event_id'] : 0;

@@ -565,7 +565,7 @@
             if (!input) return;
             window.omoSimpleHtmlField.mount(host, {
                 value: input.value || '',
-                placeholder: 'Saisissez le contenu de la regle...',
+                placeholder: 'Saisissez le contenu de la règle…',
                 simpleOnly: true,
                 onChange: function (value) { input.value = String(value || ''); }
             });

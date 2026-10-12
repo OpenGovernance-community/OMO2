@@ -16,11 +16,14 @@ function delegationGuardSave($object): void {
 }
 
 $organizations = new ArrayOrganization();
-$organizations->load(['limit' => 1]);
+$organizations->load();
 $organization = null;
-foreach ($organizations as $candidate) { $organization = $candidate; break; }
+$root = null;
+foreach ($organizations as $candidate) {
+    $candidateRoot = $candidate->getStructuralRootHolon();
+    if ($candidateRoot instanceof Holon) { $organization = $candidate; $root = $candidateRoot; break; }
+}
 delegationGuardCheck($organization !== null, 'A local organization is required');
-$root = $organization->getStructuralRootHolon();
 delegationGuardCheck($root instanceof Holon, 'A structural root is required');
 
 $_SESSION['currentUser'] = 0;
@@ -38,6 +41,14 @@ try {
     $target->set('IDholon_org', $root->getId());
     $target->set('IDholon_parent', $source->getId());
     $target->set('IDtypeholon', 1);
+    delegationGuardSave($target);
+    $group = new Holon();
+    foreach (['name' => 'Delegation guard group', 'IDholon_org' => $root->getId(), 'IDholon_parent' => $source->getId(), 'IDtypeholon' => 3] as $field => $value) $group->set($field, $value);
+    delegationGuardSave($group);
+    $nestedGroup = new Holon();
+    foreach (['name' => 'Delegation guard nested group', 'IDholon_org' => $root->getId(), 'IDholon_parent' => $group->getId(), 'IDtypeholon' => 3] as $field => $value) $nestedGroup->set($field, $value);
+    delegationGuardSave($nestedGroup);
+    $target->set('IDholon_parent', $nestedGroup->getId());
     delegationGuardSave($target);
     $other = new Holon();
     $other->set('name', 'Delegation guard other');
@@ -80,6 +91,12 @@ try {
     delegationGuardCheck(!empty($allowed['status']), (string)($allowed['text'] ?? 'Complete delegation without external branches failed'));
     delegationGuardCheck($localChild->load($localChild->getId(), true) && (int)$localChild->get('IDholon') === (int)$target->getId(), 'The local child was not delegated');
     delegationGuardCheck($remoteGrandchild->load($remoteGrandchild->getId(), true) && (int)$remoteGrandchild->get('IDholon') === (int)$target->getId(), 'The local grandchild was not delegated');
+
+    $delegatedRoot = new Authority();
+    delegationGuardCheck($delegatedRoot->load((int)$allowed['authorityId']), 'The delegated authority must exist');
+    $reversed = $delegatedRoot->applyDeletionPlan(['authority' => 'delete']);
+    delegationGuardCheck(!empty($reversed['status']), 'Reversing a delegation must cross nested groups');
+    delegationGuardCheck($authority->load($authority->getId(), true) && !$authority->isShell(), 'Reversal must restore the source shell');
 
     echo "authority_complete_delegation_guard_test: OK\n";
 } finally {

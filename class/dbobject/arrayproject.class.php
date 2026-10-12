@@ -153,7 +153,7 @@ class ArrayProject extends ArrayDbObject
 
     }
 
-    public function loadForContext($organizationId, $holonId = 0, $scope = 'contextual', array $descendantHolonIds = [], $includeOrganizationProjects = false)
+    public function loadForContext($organizationId, $holonId = 0, $scope = 'contextual', array $descendantHolonIds = [], $includeOrganizationProjects = false, $hydrate = false)
     {
         $this->exchangeArray([]);
         $organizationId = (int)$organizationId;
@@ -219,6 +219,7 @@ class ArrayProject extends ArrayDbObject
         }
 
         $this->load($params + [
+            'hydrate' => $hydrate,
             'orderBy' => [
                 ['field' => 'calculated_importance', 'dir' => 'DESC'],
                 ['field' => 'created_at', 'dir' => 'DESC'],
