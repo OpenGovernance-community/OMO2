@@ -137,31 +137,7 @@ if (!function_exists('omoDecisionGovernanceBuildRuleClientData')) {
 if (!function_exists('omoDecisionGovernanceDecorateRoleProperties')) {
     function omoDecisionGovernanceDecorateRoleProperties(array $properties)
     {
-        foreach ($properties as &$property) {
-            if (!is_array($property) || (string)($property['listItemType'] ?? '') !== 'authority') continue;
-            $decodedValue = json_decode((string)($property['value'] ?? ''), true);
-            $items = is_array($decodedValue['items'] ?? null)
-                ? array_values($decodedValue['items'])
-                : (is_array($decodedValue) ? array_values($decodedValue) : []);
-            $authorityIds = [];
-            foreach ($items as $item) {
-                if (is_array($item) && !empty($item['delete'])) continue;
-                $authorityId = is_array($item) ? (int)($item['id'] ?? 0) : (int)$item;
-                if ($authorityId > 0) $authorityIds[] = $authorityId;
-            }
-            $labelsById = \dbObject\Authority::getLabelsByIds($authorityIds);
-            $displayItems = [];
-            foreach ($items as $item) {
-                if (is_array($item) && !empty($item['delete'])) continue;
-                $authorityId = is_array($item) ? (int)($item['id'] ?? 0) : (int)$item;
-                $label = is_array($item) ? trim((string)($item['label'] ?? '')) : '';
-                if ($label === '' && $authorityId > 0) $label = trim((string)($labelsById[$authorityId] ?? ''));
-                if ($label !== '') $displayItems[] = $label;
-            }
-            $property['displayValue'] = implode('; ', $displayItems);
-        }
-        unset($property);
-        return array_values($properties);
+        return DecisionGovernanceAction::decorateRoleProperties($properties);
     }
 }
 
