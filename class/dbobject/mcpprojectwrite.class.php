@@ -101,7 +101,7 @@ class McpProjectWrite extends DbObject
             'label' => Project::getOrganizationStatusLabel((int)$org->getId(), $status), 'displayed' => in_array($status, $config['enabledStatuses'], true)];
         return ['organization_id' => (int)$org->getId(), 'items' => $items, 'next_after_id' => $complete ? null : $cursor,
             'complete' => $complete, 'write_authorized' => \omoMcpCanWriteProjects($grant), 'required_scope' => \OMO_MCP_PROJECT_SCOPE,
-            'statuses' => $statuses];
+            'statuses' => $statuses, 'blocking' => Project::getOrganizationBlockingConfig((int)$org->getId())];
     }
 
     public static function read(array $grant, int $id): array
@@ -131,6 +131,9 @@ class McpProjectWrite extends DbObject
         }
         $data['version'] = hash('sha256', json_encode($revision, JSON_THROW_ON_ERROR));
         $data['can_edit'] = self::editable($project, $org);
+        $blocking = Project::getOrganizationBlockingConfig((int)$org->getId());
+        $data['blocked_reason_required'] = $blocking['requireReason'];
+        $data['blocked_until_required'] = $blocking['requireReviewDate'];
         $data['status_label'] = Project::getOrganizationStatusLabel((int)$org->getId(), $data['status']);
         $data['calculated_importance'] = (float)$project->get('calculated_importance');
         $data['url'] = McpContent::sourceUrl((int)$org->getId(), 'projects', (int)$project->getId(), (int)$project->get('IDholon'));

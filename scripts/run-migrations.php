@@ -85,7 +85,10 @@ function parseMigrationCliOptions(array $argv): array
     }
 
     if ($databaseNames === []) {
-        $databaseNames = explode(',', (string)envValue('DB_MIGRATION_DATABASES', (string)$GLOBALS['dbName']));
+        $configuredDatabases = trim((string)envValue('DB_MIGRATION_DATABASES', ''));
+        $databaseNames = $configuredDatabases === ''
+            ? [(string)$GLOBALS['dbName']]
+            : explode(',', $configuredDatabases);
     }
 
     $databaseNames = array_values(array_unique(array_filter(array_map(

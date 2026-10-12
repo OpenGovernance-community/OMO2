@@ -13,10 +13,10 @@ use dbObject\DecisionProposal;
 header('Content-Type: application/json; charset=UTF-8');
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
-    omoDecisionModuleJsonResponse(405, ['status' => false, 'message' => 'Methode non autorisee.']);
+    omoDecisionModuleJsonResponse(405, ['status' => false, 'message' => 'Méthode non autorisée.']);
 }
 
-$context = omoDecisionResolveEditorContext($_POST);
+$context = omoDecisionResolveManagementContext($_POST);
 if (empty($context['status'])) {
     omoDecisionModuleJsonResponse((int)($context['code'] ?? 400), ['status' => false, 'message' => 'Contexte de consultation invalide.']);
 }
@@ -27,7 +27,7 @@ if (!$decision instanceof DecisionProcess || !$decisionGroup instanceof Decision
     omoDecisionModuleJsonResponse(404, ['status' => false, 'message' => 'Consultation introuvable.']);
 }
 if (DecisionProcess::normalizeEvaluationMethod($decisionGroup->get('evaluation_method')) !== DecisionProcess::METHOD_CONSULTATION_ONLY) {
-    omoDecisionModuleJsonResponse(409, ['status' => false, 'message' => 'Cette prise de decision ne peut pas etre transformee depuis une consultation seule.']);
+    omoDecisionModuleJsonResponse(409, ['status' => false, 'message' => 'Cette prise de décision ne peut pas être transformée depuis une consultation seule.']);
 }
 if (!$decision->hasConsultationEnded() || $decision->hasEvaluationStarted()) {
     omoDecisionModuleJsonResponse(409, ['status' => false, 'message' => 'La consultation doit être terminée avant de choisir un mode de vote.']);
@@ -39,7 +39,7 @@ if (!in_array($targetMethod, [DecisionProcess::METHOD_SIMPLE_VOTE, DecisionProce
 }
 $definition = omoDecisionGetModuleDefinition($targetMethod, (int)$context['organizationId']);
 if (empty($definition['available']) || empty($definition['shared_file']) || !is_file((string)$definition['shared_file'])) {
-    omoDecisionModuleJsonResponse(403, ['status' => false, 'message' => 'Ce mode de vote nest pas disponible dans cette organisation.']);
+    omoDecisionModuleJsonResponse(403, ['status' => false, 'message' => 'Ce mode de vote n’est pas disponible dans cette organisation.']);
 }
 require_once $definition['shared_file'];
 
@@ -70,7 +70,7 @@ if ($targetMethod === DecisionProcess::METHOD_SIMPLE_VOTE) {
 
 $pdo = DbObject::getPdo();
 if (!$pdo) {
-    omoDecisionModuleJsonResponse(500, ['status' => false, 'message' => 'Connexion a la base impossible.']);
+    omoDecisionModuleJsonResponse(500, ['status' => false, 'message' => 'Connexion à la base impossible.']);
 }
 
 $ownsTransaction = !$pdo->inTransaction();
@@ -119,7 +119,7 @@ try {
 
 omoDecisionModuleJsonResponse(200, [
     'status' => true,
-    'drawerTitle' => 'Prises de decision',
+    'drawerTitle' => 'Prises de décision',
     'redirectUrl' => omoDecisionBuildEditorUrl(
         (int)$context['organizationId'],
         (int)$context['targetHolonId'],

@@ -98,7 +98,7 @@ if (!function_exists('omoProjectsSourceLang')) {
             'projects.retry_loading' => ['text' => 'Actualiser', 'context' => 'Button to retry loading the current project drawer after an error.'],
             'projects.status_update_error' => ['text' => 'Impossible de changer le statut.', 'context' => 'Fallback error shown when a project status cannot be changed.'],
             'projects.blocked.dialog.title' => ['text' => 'Projet bloqué', 'context' => 'Title of the dialog shown when a project is moved to the blocked status.'],
-            'projects.blocked.dialog.hint' => ['text' => 'Indiquez ce qui bloque le projet et la date à laquelle il devra être réexaminé.', 'context' => 'Instruction shown in the blocked project dialog.'],
+            'projects.blocked.dialog.hint' => ['text' => 'Renseignez les informations de blocage. Les champs obligatoires sont marqués par un astérisque (*). Une date est nécessaire pour la réactivation automatique.', 'context' => 'Instruction shown in the blocked project dialog.'],
             'projects.blocked.reason' => ['text' => 'Sur quoi est-ce que j’attends ?', 'context' => 'Blocked project reason field label.'],
             'projects.blocked.until' => ['text' => 'Réexaminer à partir du', 'context' => 'Blocked project review date field label.'],
             'projects.blocked.auto_reactivate' => ['text' => 'Réactiver automatiquement après cette date', 'context' => 'Checkbox enabling automatic blocked project reactivation.'],
@@ -111,7 +111,8 @@ if (!function_exists('omoProjectsSourceLang')) {
             'projects.blocked.display_until' => ['text' => 'Réexamen le {date}', 'context' => 'Date shown on a blocked project.'],
             'projects.blocked.display_due' => ['text' => 'Blocage en retard depuis le {date}', 'context' => 'Past blocked review date shown on a project that is not set to reactivate automatically.'],
             'projects.blocked.display_auto' => ['text' => 'Réactivation automatique le {date} à {status}', 'context' => 'Automatic reactivation information shown on a blocked project.'],
-            'projects.blocked.display_manual' => ['text' => 'À réexaminer', 'context' => 'Manual review information shown on a blocked project.'],
+            'projects.blocked.display_manual' => ['text' => 'Sans date de réexamen', 'context' => 'Manual review information shown on a blocked project without a review date.'],
+            'projects.blocked.display_no_reason' => ['text' => 'Motif non renseigné', 'context' => 'Placeholder for a blocked project without a reason.'],
             'projects.action_error' => ['text' => 'Impossible de mettre à jour le projet.', 'context' => 'Fallback error shown for a project context action.'],
             'projects.delete.confirm' => ['text' => 'Supprimer définitivement ce projet et ses {count} sous-projets ? Cette action est irréversible.', 'context' => 'Confirmation before permanent project deletion.'],
             'projects.archive.confirm' => ['text' => "Ce projet n'est pas terminé. L'archiver quand même ?", 'context' => 'Confirmation before archiving an unfinished project.'],
@@ -131,7 +132,7 @@ if (!function_exists('omoProjectsSourceLang')) {
             'projects.error.action' => ['text' => 'Action inconnue.', 'context' => 'Error for an unsupported project action.'],
             'projects.error.title' => ['text' => 'Le titre est obligatoire.', 'context' => 'Validation error for a missing project title.'],
             'projects.error.status' => ['text' => 'Le statut du projet est invalide.', 'context' => 'Validation error for an invalid project status.'],
-            'projects.error.blocked_details' => ['text' => 'Le motif et la date de réexamen sont obligatoires pour un projet bloqué.', 'context' => 'Validation error for missing blocked project details.'],
+            'projects.error.blocked_details' => ['text' => 'Renseignez les champs de blocage obligatoires selon les paramètres de votre organisation et utilisez une date de réexamen valide.', 'context' => 'Validation error for missing required or invalid blocked project details.'],
             'projects.error.dates' => ['text' => 'La date de fin doit être postérieure ou égale à la date de début.', 'context' => 'Validation error when the planned end date precedes the planned start date.'],
             'projects.error.parent_someday' => ['text' => 'Un sous-projet dont le parent a une date de fin ne peut pas être placé dans « Un jour peut-être ».', 'context' => 'Validation error when a dated parent project has a someday subproject.'],
             'projects.error.parent_end_date' => ['text' => 'La date de fin du sous-projet ne peut pas dépasser celle du projet parent.', 'context' => 'Validation error when a subproject end date exceeds its parent end date.'],
@@ -1078,7 +1079,7 @@ if (!function_exists('omoProjectsRenderBlockedInfo')) {
         $html = '<div class="' . omoApiEscape($className) . '">';
         $html .= '<span class="omo-project-blocked-info__reason"><strong>'
             . omoApiEscape(omoProjectsT($detailLegend ? 'projects.blocked.display_reason_detail' : 'projects.blocked.display_reason'))
-            . '</strong> ' . omoApiEscape($reason !== '' ? $reason : omoProjectsT('projects.detail.none')) . '</span>';
+            . '</strong> ' . omoApiEscape($reason !== '' ? $reason : omoProjectsT('projects.blocked.display_no_reason')) . '</span>';
         $html .= '<span class="omo-project-blocked-info__meta">' . omoApiEscape($metaLabel) . '</span>';
         return $html . '</div>';
     }

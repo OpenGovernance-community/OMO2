@@ -492,7 +492,7 @@ if (!function_exists('omoDecisionExportFlattenCsvRow')) {
             (string)($metadata['detail_bloc'] ?? ''),
             (string)($metadata['position_bloc'] ?? ''),
             (string)($metadata['question'] ?? ''),
-            (string)($metadata['detail_question'] ?? ''),
+            DecisionProposal::descriptionToPlainText((string)($metadata['detail_question'] ?? '')),
             (string)($metadata['info_question'] ?? ''),
             (string)($metadata['position_question'] ?? ''),
             (string)$result,

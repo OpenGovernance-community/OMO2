@@ -4,6 +4,8 @@ require_once dirname(__DIR__) . '/modules/context.php';
 require_once dirname(__DIR__) . '/params/shared.php';
 require_once __DIR__ . '/shared.php';
 
+commonEnableReadOnlyCaches();
+
 use dbObject\ArrayProject;
 use dbObject\DecisionGovernanceAction;
 use dbObject\DecisionProcess;
@@ -23,7 +25,7 @@ $respond = static function (int $code, array $payload): void {
     exit;
 };
 
-$context = omoDecisionResolveEditorContext($_GET);
+$context = omoDecisionResolveManagementContext($_GET);
 if (empty($context['status'])) $respond((int)($context['code'] ?? 403), ['status' => false, 'message' => 'Accès refusé.']);
 $decision = ($context['decision'] ?? null) instanceof DecisionProcess ? $context['decision'] : null;
 $currentUserId = (int)($context['currentUserId'] ?? 0);
@@ -31,10 +33,13 @@ $organizationId = (int)($context['organizationId'] ?? 0);
 $collectiveHolonId = (int)($context['targetHolonId'] ?? 0);
 $settings = omoDecisionParamsGetConfig($context['organization'] ?? null);
 if ($organizationId <= 0 || $collectiveHolonId <= 0
-    || ($decision instanceof DecisionProcess && (!$decision->isGovernanceWorkflow() || (int)$decision->get('IDuser') !== $currentUserId || $decision->hasConsultationEnded()))
+    || ($decision instanceof DecisionProcess && (!$decision->isGovernanceWorkflow() || empty($context['canManage']) || $decision->hasConsultationEnded()))
     || (!($decision instanceof DecisionProcess) && (empty($context['canCreate']) || empty($settings['governance']['enabled'])))) {
     $respond(403, ['status' => false, 'message' => 'Accès refusé.']);
 }
+
+// Lifecycle synchronization in the context can write and invalidate read caches.
+commonReleaseReadOnlySession();
 
 $targetType = trim((string)($_GET['target_type'] ?? ''));
 $operation = trim((string)($_GET['operation'] ?? ''));
@@ -49,7 +54,12 @@ $ruleScopeContext = null;
 $contextHolon = null;
 if ($targetType === DeferredProposal::TARGET_HOLON && $operation === DeferredProposal::OPERATION_MOVE && (int)($_GET['moving_holon_id'] ?? 0) > 0) {
     $movingHolon = DeferredProposal::loadAllowedHolonTargetHolon($organizationId, (int)$_GET['moving_holon_id'], $operation, $collectiveHolonId);
-    if (!$movingHolon || (int)$movingHolon->get('IDholon_parent') !== $contextHolonId) $respond(403, ['status' => false, 'message' => 'Deplacement non autorise.']);
+    $contextHolon = new Holon();
+    $catalog = DeferredProposal::getHolonTargetHolonCatalog($organizationId, $collectiveHolonId);
+    if (!$movingHolon || !$contextHolon->load($contextHolonId) || !array_any(
+        DeferredProposal::getHolonTargetsForContext($contextHolon, $operation, $catalog),
+        static fn (Holon $target): bool => (int)$target->getId() === (int)$movingHolon->getId()
+    )) $respond(403, ['status' => false, 'message' => 'Déplacement non autorisé.']);
     $moveData = $context['organization']->getHolonMoveEditorData((int)$movingHolon->getId(), $collectiveHolonId);
     $respond(200, ['status' => true, 'destinations' => $moveData['destinations'], 'before' => DeferredProposal::captureHolonMoveState($movingHolon)]);
 }
@@ -85,7 +95,7 @@ if ($targetType === DeferredProposal::TARGET_RULE) {
     if (!($contextHolon instanceof Holon)) $respond(403, ['status' => false, 'message' => 'Le collectif ne dispose pas du droit nécessaire dans cet espace.']);
     if ($operation !== DeferredProposal::OPERATION_CREATE) {
         $projects = new ArrayProject();
-        $projects->loadForContext($organizationId, $contextHolonId, 'contextual');
+        $projects->loadForContext($organizationId, $contextHolonId, 'contextual', [], false, true);
         foreach ($projects as $project) {
             if (!$project instanceof Project || (int)$project->getId() <= 0) continue;
             $objects[] = ['id' => (int)$project->getId(), 'label' => trim((string)$project->get('title')), 'state' => DeferredProposal::captureProjectState($project)];

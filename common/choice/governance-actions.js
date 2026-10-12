@@ -71,16 +71,18 @@
                 request.set('modifications', JSON.stringify(summaryInput(proposal)));
                 button.disabled = true;
                 button.textContent = texts.summaryLoading || 'Rédaction du résumé…';
-                field.readOnly = true;
+                field.inert = true;
+                field.setAttribute('aria-busy', 'true');
                 message.hidden = true;
                 fetch('/omo/api/decision/governance/summarize.php', {method:'POST',credentials:'same-origin',headers:{'X-Requested-With':'XMLHttpRequest'},body:request})
                     .then(function (response) { return response.json().then(function (data) { if (!response.ok || !data.status) throw new Error(data.message || texts.summaryFailed); return data; }); })
                     .then(function (data) {
                         if (!card.isConnected) return;
-                        proposal.description = String(data.text || '').trim();
-                        field.value = proposal.description;
-                        sync();
-                        notifySummary(texts.summaryReady || 'Résumé ajouté à la description. Vous pouvez le modifier.', 'success');
+                        proposal.description = escapeHtml(String(data.text || '').trim()).replace(/\r?\n/g, '<br>');
+                        return window.omoProposalHtml.setValue(field, proposal.description).then(function () {
+                            sync();
+                            notifySummary(texts.summaryReady || 'Résumé ajouté à la description. Vous pouvez le modifier.', 'success');
+                        });
                     })
                     .catch(function (error) {
                         if (!card.isConnected) return;
@@ -90,7 +92,8 @@
                         if (!card.isConnected) return;
                         button.disabled = false;
                         button.textContent = texts.summaryGenerate || 'Rédiger un résumé avec l’IA';
-                        field.readOnly = false;
+                        field.inert = false;
+                        field.removeAttribute('aria-busy');
                     });
             }
             function modal(title, content) { if (typeof window.commonTopbarOpenModal === 'function') window.commonTopbarOpenModal(title, content, 'html'); }
@@ -99,6 +102,9 @@
             function optionHtml(items, selected) { var separatorAdded = false; return (items || []).map(function (item) { var separator = ''; if (Number(item.holonType) === 1 && !separatorAdded) { separator = '<option disabled>────────────</option>'; separatorAdded = true; } return separator + '<option value="' + Number(item.id || 0) + '"' + (Number(item.id) === Number(selected) ? ' selected' : '') + '>' + escapeHtml(item.label || '') + (item.typeLabel ? ' — ' + escapeHtml(item.typeLabel) : '') + '</option>'; }).join(''); }
 
             function render() {
+                list.querySelectorAll('[data-description]').forEach(function (host) {
+                    if (typeof host.__omoSimpleHtmlFieldDestroy === 'function') host.__omoSimpleHtmlFieldDestroy();
+                });
                 list.innerHTML = '';
                 blueprint.forEach(function (proposal, pi) {
                     var card = document.createElement('article');
@@ -108,11 +114,10 @@
                         + (editable ? '<div><button type="button" class="generic-action-button generic-action-button--choice generic-action-button--compact" data-add-action><span aria-hidden="true">+</span> ' + escapeHtml(texts.actionAdd || 'Ajouter une modification') + '</button></div>' : '') + '</div>'
                         + '<div class="generic-form-field"><div class="omo-governance-proposal__description-head"><label class="generic-form-label" for="omo-governance-description-' + pi + '">' + escapeHtml(texts.proposalDescription || 'Description de la proposition') + '</label>'
                         + (editable && payload.aiEnabled ? '<button type="button" class="generic-action-button generic-action-button--secondary generic-action-button--compact" data-generate-summary' + ((proposal.actions || []).length ? '' : ' disabled') + '>' + escapeHtml(texts.summaryGenerate || 'Rédiger un résumé avec l’IA') + '</button>' : '')
-                        + '</div><textarea id="omo-governance-description-' + pi + '" class="generic-form-control generic-form-control--compact" data-description rows="3" maxlength="10000"' + (editable ? '' : ' readonly') + '>' + escapeHtml(proposal.description || '') + '</textarea><p class="generic-feedback" data-summary-feedback hidden aria-live="polite"></p></div>'
+                        + '</div><div id="omo-governance-description-' + pi + '" class="omo-proposal-html-editor" data-description></div><p class="generic-feedback" data-summary-feedback hidden aria-live="polite"></p></div>'
                         + (editable ? '<div class="generic-action-row"><button type="button" class="generic-action-button generic-action-button--danger generic-action-button--compact" data-remove-proposal>' + escapeHtml(texts.proposalRemove || 'Retirer') + '</button></div>' : '');
                     if (editable) {
                         card.querySelector('[data-title]').addEventListener('input', function (event) { proposal.title = event.target.value; sync(); });
-                        card.querySelector('[data-description]').addEventListener('input', function (event) { proposal.description = event.target.value; sync(); });
                         card.querySelector('[data-remove-proposal]').addEventListener('click', function () { blueprint.splice(pi, 1); render(); });
                         card.querySelector('[data-add-action]').addEventListener('click', function () { openChooser(pi, -1); });
                         var summaryButton = card.querySelector('[data-generate-summary]');
@@ -134,6 +139,19 @@
                     });
                     list.appendChild(card);
                 });
+                list.querySelectorAll('[data-description]').forEach(function (host, pi) {
+                    window.omoProposalHtml.mount(host, {
+                        value: blueprint[pi].description || '',
+                        disabled: !editable,
+                        onChange: function (value) {
+                            if (!host.isConnected) return;
+                            blueprint[pi].description = value;
+                            sync();
+                        }
+                    }).catch(function () {
+                        host.textContent = strip(blueprint[pi].description || '');
+                    });
+                });
                 sync();
                 if (window.omoChoiceChangeDetails) window.omoChoiceChangeDetails.hydrate(list);
             }
@@ -146,7 +164,7 @@
             function openChooser(pi, ai) {
                 var previous = ai >= 0 ? blueprint[pi].actions[ai] : null, parts = previous ? actionParts(previous) : {targetType:'rule',operation:'create'};
                 var type = parts.targetType, operation = parts.operation, contextId = chooseContext(type, operation, previous ? previous.holonId : payload.contextHolonId), objects = [], picker = null, candidateId = contextId;
-                modal(texts.actionAdd || 'Ajouter une modification', '<section class="generic-section generic-section--stack generic-section--roomy omo-deferred-workflow"><div class="generic-form-field"><span class="generic-form-label">' + escapeHtml(texts.objectType || 'Objet') + '</span><div class="omo-deferred-workflow__types"><button type="button" class="generic-soft-panel omo-deferred-workflow__type" data-type="rule"><strong>Règle</strong><span>Règles et politiques de l’espace</span></button><button type="button" class="generic-soft-panel omo-deferred-workflow__type" data-type="holon"><strong>Rôle ou cercle</strong><span>Éléments de la structure</span></button><button type="button" class="generic-soft-panel omo-deferred-workflow__type" data-type="project"><strong>Projet</strong><span>Projets de l’espace</span></button><button type="button" class="generic-soft-panel omo-deferred-workflow__type" data-type="recurring_task"><strong>Tâche récurrente</strong><span>Tâches planifiées de l’espace</span></button><button type="button" class="generic-soft-panel omo-deferred-workflow__type" data-type="indicator"><strong>Indicateur</strong><span>Indicateurs et mesures de l’espace</span></button></div></div><div class="generic-form-grid"><label class="generic-form-field"><span class="generic-form-label">Action</span><select class="generic-form-control" data-operation><option value="create">Création</option><option value="update">Modification</option><option value="delete">Suppression</option><option value="move">' + escapeHtml(texts.move || 'Deplacement') + '</option></select></label><label class="generic-form-field"><span class="generic-form-label">' + escapeHtml(texts.context || 'Contexte') + '</span><span class="omo-deferred-workflow__context-control"><input class="generic-form-control" readonly data-context-label><button type="button" class="generic-action-button generic-action-button--secondary generic-action-button--icon-only" data-context-open title="' + escapeHtml(texts.openContext || '') + '"><img src="/omo/images/tools/connection.png" alt=""></button></span></label></div><div class="generic-form-grid" data-object-row hidden><label class="generic-form-field"><span class="generic-form-label">' + escapeHtml(texts.object || 'Élément concerné') + '</span><select class="generic-form-control" data-object></select></label><div class="generic-form-field omo-deferred-workflow__launch-field"><span class="generic-form-label">&nbsp;</span><button type="button" class="generic-action-button generic-action-button--main" data-open-editor></button></div></div><div class="generic-action-row" data-create-row><button type="button" class="generic-action-button generic-action-button--main" data-open-editor></button></div><p class="generic-feedback" data-picker-feedback hidden></p><div class="omo-deferred-workflow__picker-layer" data-context-layer hidden><div class="generic-soft-panel generic-soft-panel--elevated generic-soft-panel--stack omo-deferred-workflow__picker-panel"><div data-context-map></div><div class="omo-deferred-workflow__picker-selection"><strong data-candidate-label></strong><span data-candidate-status></span></div><div class="generic-action-row"><button type="button" class="generic-action-button generic-action-button--main" data-context-choose>Choisir ce contexte</button><button type="button" class="generic-action-button generic-action-button--secondary" data-context-close>Annuler</button></div></div></div></section>');
+                modal(texts.actionAdd || 'Ajouter une modification', '<section class="generic-section generic-section--stack generic-section--roomy omo-deferred-workflow"><div class="generic-form-field"><span class="generic-form-label">' + escapeHtml(texts.objectType || 'Objet') + '</span><div class="omo-deferred-workflow__types"><button type="button" class="generic-soft-panel omo-deferred-workflow__type" data-type="rule"><strong>Règle</strong><span>Règles et politiques de l’espace</span></button><button type="button" class="generic-soft-panel omo-deferred-workflow__type" data-type="holon"><strong>Rôle ou cercle</strong><span>Éléments de la structure</span></button><button type="button" class="generic-soft-panel omo-deferred-workflow__type" data-type="project"><strong>Projet</strong><span>Projets de l’espace</span></button><button type="button" class="generic-soft-panel omo-deferred-workflow__type" data-type="recurring_task"><strong>Tâche récurrente</strong><span>Tâches planifiées de l’espace</span></button><button type="button" class="generic-soft-panel omo-deferred-workflow__type" data-type="indicator"><strong>Indicateur</strong><span>Indicateurs et mesures de l’espace</span></button></div></div><div class="generic-form-grid"><label class="generic-form-field"><span class="generic-form-label">Action</span><select class="generic-form-control" data-operation><option value="create">Création</option><option value="update">Modification</option><option value="delete">Suppression</option><option value="move">' + escapeHtml(texts.move || 'Déplacement') + '</option></select></label><label class="generic-form-field"><span class="generic-form-label">' + escapeHtml(texts.context || 'Contexte') + '</span><span class="omo-deferred-workflow__context-control"><input class="generic-form-control" readonly data-context-label><button type="button" class="generic-action-button generic-action-button--secondary generic-action-button--icon-only" data-context-open title="' + escapeHtml(texts.openContext || '') + '"><img src="/omo/images/tools/connection.png" alt=""></button></span></label></div><div class="generic-form-grid" data-object-row hidden><label class="generic-form-field"><span class="generic-form-label">' + escapeHtml(texts.object || 'Élément concerné') + '</span><select class="generic-form-control" data-object></select></label><div class="generic-form-field omo-deferred-workflow__launch-field"><span class="generic-form-label">&nbsp;</span><button type="button" class="generic-action-button generic-action-button--main" data-open-editor></button></div></div><div class="generic-action-row" data-create-row><button type="button" class="generic-action-button generic-action-button--main" data-open-editor></button></div><p class="generic-feedback" data-picker-feedback hidden></p><div class="omo-deferred-workflow__picker-layer" data-context-layer hidden><div class="generic-soft-panel generic-soft-panel--elevated generic-soft-panel--stack omo-deferred-workflow__picker-panel"><div data-context-map></div><div class="omo-deferred-workflow__picker-selection"><strong data-candidate-label></strong><span data-candidate-status></span></div><div class="generic-action-row"><button type="button" class="generic-action-button generic-action-button--main" data-context-choose>Choisir ce contexte</button><button type="button" class="generic-action-button generic-action-button--secondary" data-context-close>Annuler</button></div></div></div></section>');
                 var body = modalBody(), operationSelect = body.querySelector('[data-operation]'), objectSelect = body.querySelector('[data-object]'), objectRow = body.querySelector('[data-object-row]'), createRow = body.querySelector('[data-create-row]'), contextLabel = body.querySelector('[data-context-label]'), pickerFeedback = body.querySelector('[data-picker-feedback]');
                 operationSelect.value = operation;
                 function showFeedback(message) { if (message && typeof window.commonNotify === 'function') { pickerFeedback.hidden = true; pickerFeedback.textContent = ''; window.commonNotify(String(message), 'error'); return; } pickerFeedback.hidden = !message; pickerFeedback.textContent = message || ''; }

@@ -3,7 +3,37 @@
 
 	class Application extends DbObject
 	{
-		protected static $enabledByOrganizationCache = array();
+		private static array $organizationCatalogs = [];
+
+		public static function clearOrganizationCatalogCache(): void
+		{
+			self::$organizationCatalogs = [];
+			unset($_SESSION['applicationCatalogs']);
+		}
+
+		/** One version check per request; shared configuration is kept in the session. */
+		public static function loadOrganizationCatalog(int $organizationId): array
+		{
+			if ($organizationId <= 0) { return []; }
+			$key = hash('sha256', serialize([$GLOBALS['dbServer'] ?? '', $GLOBALS['dbName'] ?? '', $organizationId]));
+			if (isset(self::$organizationCatalogs[$key])) { return self::$organizationCatalogs[$key]; }
+			// Row digests avoid aggregate truncation and detect edits/deletes from other sessions too.
+			$versions = self::fetchAll("SELECT CONCAT('a', id) AS item, SHA2(JSON_ARRAY(id, label, hash, directory, icon, drawer, url, navigationmode, position, requires_login, active), 256) AS revision FROM application
+				UNION ALL SELECT CONCAT('o', id), SHA2(JSON_ARRAY(id, IDapplication, position, active), 256)
+				FROM organization_application WHERE IDorganization = :organization ORDER BY item", ['organization' => $organizationId]);
+			if ($versions === false) { return []; }
+			$version = hash('sha256', json_encode($versions, JSON_THROW_ON_ERROR));
+			$cached = $_SESSION['applicationCatalogs'][$key] ?? null;
+			if (is_array($cached) && ($cached['version'] ?? '') === $version && is_array($cached['rows'] ?? null)) {
+				return self::$organizationCatalogs[$key] = $cached['rows'];
+			}
+			$rows = self::fetchAll('SELECT a.*, oa.active AS organization_active, oa.position AS organization_position
+				FROM application a LEFT JOIN organization_application oa ON oa.IDapplication = a.id AND oa.IDorganization = :organization
+				ORDER BY COALESCE(oa.position, a.position, 999999), a.label, a.id', ['organization' => $organizationId]);
+			if ($rows === false) { return []; }
+			$_SESSION['applicationCatalogs'][$key] = ['version' => $version, 'rows' => $rows];
+			return self::$organizationCatalogs[$key] = $rows;
+		}
 
 	    public static function tableName()
 		{
@@ -208,56 +238,15 @@
 
 		public static function isEnabledForOrganization($applicationId, $organizationId)
 		{
-			$applicationId = (int)$applicationId;
-			$organizationId = (int)$organizationId;
-			$cacheKey = $applicationId . ':' . $organizationId;
-
-			if (array_key_exists($cacheKey, self::$enabledByOrganizationCache)) {
-				return self::$enabledByOrganizationCache[$cacheKey];
+			if ((int)$applicationId <= 0 || (int)$organizationId <= 0) { return false; }
+			foreach (self::loadOrganizationCatalog((int)$organizationId) as $row) {
+				if ((int)$row['id'] !== (int)$applicationId) { continue; }
+				$probe = new self();
+				$probe->set('url', $row['url']); $probe->set('directory', $row['directory']);
+				return (int)$row['active'] === 1 && (int)$row['organization_active'] === 1
+					&& trim((string)$row['navigationmode']) !== 'panel' && $probe->hasResolvedEntryPoint();
 			}
-
-			if ($applicationId <= 0 || $organizationId <= 0) {
-				self::$enabledByOrganizationCache[$cacheKey] = false;
-				return false;
-			}
-
-			$row = self::fetchRow(
-				"SELECT
-					a.id,
-					a.url,
-					a.directory,
-					a.navigationmode,
-					a.active AS app_active,
-					oa.active AS organization_active
-				FROM application a
-				LEFT JOIN organization_application oa
-					ON oa.IDapplication = a.id
-					AND oa.IDorganization = :organization_id
-				WHERE a.id = :application_id
-				LIMIT 1",
-				array(
-					'application_id' => $applicationId,
-					'organization_id' => $organizationId,
-				)
-			);
-
-			if (!is_array($row) || count($row) === 0) {
-				self::$enabledByOrganizationCache[$cacheKey] = false;
-				return false;
-			}
-
-			$probeApplication = new self();
-			$probeApplication->set('url', $row['url'] ?? null);
-			$probeApplication->set('directory', $row['directory'] ?? null);
-
-			self::$enabledByOrganizationCache[$cacheKey] = (
-				(int)($row['app_active'] ?? 0) === 1
-				&& (int)($row['organization_active'] ?? 0) === 1
-				&& trim((string)($row['navigationmode'] ?? '')) !== 'panel'
-				&& $probeApplication->hasResolvedEntryPoint()
-			);
-
-			return self::$enabledByOrganizationCache[$cacheKey];
+			return false;
 		}
 
 		public static function fetchFaqAttachmentOptions()

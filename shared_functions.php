@@ -483,6 +483,8 @@
 	}
 
 	require_once("config.php");
+	require_once __DIR__ . '/common/performance_monitor.php';
+	commonPerformanceInit();
 	if (session_status() === PHP_SESSION_NONE) {
 		session_name(appGetSessionCookieName());
 		session_set_cookie_params(appBuildSessionCookieOptions());

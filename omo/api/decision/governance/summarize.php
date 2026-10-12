@@ -19,7 +19,7 @@ $respond = static function (int $code, array $payload): void {
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
     $respond(405, ['status' => false, 'message' => 'Méthode non autorisée.']);
 }
-$context = omoDecisionResolveEditorContext($_POST);
+$context = omoDecisionResolveManagementContext($_POST);
 if (empty($context['status'])) {
     $respond((int)($context['code'] ?? 403), ['status' => false, 'message' => 'Accès refusé.']);
 }
@@ -29,7 +29,7 @@ $settings = omoDecisionParamsGetConfig($context['organization'] ?? null);
 if ((int)($context['targetHolonId'] ?? 0) <= 0
     || ($decision instanceof DecisionProcess
         ? (!$decision->isGovernanceWorkflow()
-            || (int)$decision->get('IDuser') !== $currentUserId
+            || empty($context['canManage'])
             || $decision->hasConsultationEnded())
         : (empty($context['canCreate']) || empty($settings['governance']['enabled'])))) {
     $respond(403, ['status' => false, 'message' => 'Accès refusé.']);

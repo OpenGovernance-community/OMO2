@@ -38,7 +38,7 @@ namespace {
     });
 
     final class CrudTestHolon extends \dbObject\Holon {
-        protected function resolveOrganizationId() { return 42; }
+        public function resolveOrganizationId() { return 42; }
         public function getId() { return 100; }
     }
     final class CrudTestRule extends \dbObject\Rule {
@@ -58,7 +58,7 @@ namespace {
     $catalog = \dbObject\Permission::getBuiltInCatalog();
     $expected = [
         'PROJECT' => 'projects', 'RULE' => 'policy', 'INDICATOR' => 'stats',
-        'DOCUMENT' => 'documents', 'DECISION' => 'decisions', 'FAQ' => 'faq',
+        'DOCUMENT' => 'documents', 'DECISION' => 'decisions', 'FAQ' => 'help',
         'EVENT' => 'calendar', 'PROCESS' => 'processes', 'RECURRING_TASK' => 'recurring_tasks',
     ];
     foreach ($expected as $object => $group) {

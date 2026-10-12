@@ -42,12 +42,26 @@ namespace dbObject {
             $parent = new self();
             return $parent->load($this->get('IDholon_parent')) ? $parent : null;
         }
+        public function getParentHolonThroughGroups() {
+            $parent = $this->getParentHolon();
+            while ($parent && (int)$parent->get('IDtypeholon') === 3) $parent = $parent->getParentHolon();
+            return $parent;
+        }
         public function getPathHolons() { return [$this]; }
         public function getChildren($includeHidden = false) {
             $children = [];
             foreach (self::$rows as $id => $row) if (($row['IDholon_parent'] ?? 0) === $this->id
                 && ($includeHidden || !array_key_exists('visible', $row) || !empty($row['visible']))) {
                 $child = new self(); $child->load($id); $children[] = $child;
+            }
+            return $children;
+        }
+        public function getChildrenThroughGroups($includeHidden = false, $includeGroups = false) {
+            $children = [];
+            foreach ($this->getChildren($includeHidden) as $child) {
+                $isGroup = (int)$child->get('IDtypeholon') === 3;
+                if (!$isGroup || $includeGroups) $children[] = $child;
+                if ($isGroup) $children = array_merge($children, $child->getChildrenThroughGroups($includeHidden, $includeGroups));
             }
             return $children;
         }
@@ -171,7 +185,8 @@ namespace {
     $organization->mandatoryCalls = [];
     Holon::$personal[7] = [5 => true, 4 => true, 3 => true];
     moveAssert(!empty($organization->moveHolonDefinition(5, 4, 7)['status']), 'Role must be movable out of a group.');
-    moveAssert($organization->mandatoryCalls === [], 'Moving a role out of a group must not add mandatory children to the group.');
+    moveAssert($organization->mandatoryCalls === [2], 'Moving a role out of a group must maintain mandatory children in its previous circle.');
+    $organization->mandatoryCalls = [];
     Holon::$personal[7][2] = true;
     moveAssert(!empty($organization->moveHolonDefinition(3, 4, 7)['status']), 'Group must be movable out of a circle.');
     moveAssert($organization->mandatoryCalls === [2], 'Moving a group must update the old circle only, never the group.');

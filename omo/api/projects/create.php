@@ -21,6 +21,7 @@ if (empty($context['status'])) {
 }
 
 $projectDisplayConfig = omoProjectsGetDisplayConfig($organizationId);
+$blockingConfig = Project::getOrganizationBlockingConfig($organizationId);
 $enabledStatuses = $projectDisplayConfig['enabledStatuses'];
 $usesPriority = !empty($projectDisplayConfig['usePriority']);
 $usesImportance = !empty($projectDisplayConfig['useImportance']);
@@ -218,7 +219,7 @@ $holonSelectorConfig = [
         <button type="button" form="<?= $formId ?>" class="generic-action-button generic-action-button--secondary" data-omo-subdrawer-action data-omo-subdrawer-cancel data-omo-projects-cancel-create><?= omoApiEscape(omoProjectsT('projects.action.cancel')) ?></button>
     </div>
 
-    <form id="<?= $formId ?>" class="omo-project-form__fields generic-form-stack generic-form-stack--compact" action="/omo/api/projects/action.php" method="post" novalidate>
+    <form id="<?= $formId ?>" class="omo-project-form__fields generic-form-stack generic-form-stack--compact" action="/omo/api/projects/action.php" method="post" novalidate data-require-blocked-reason="<?= $blockingConfig['requireReason'] ? '1' : '0' ?>" data-require-blocked-review-date="<?= $blockingConfig['requireReviewDate'] ? '1' : '0' ?>">
         <input type="hidden" name="project_action" value="save_project">
         <?php if (omoProjectsPvMeetingQuery($organizationId) !== ''): ?>
             <input type="hidden" name="pv_meeting_document_id" value="<?= (int)($_GET['pv_meeting_document_id'] ?? 0) ?>">
@@ -316,11 +317,11 @@ $holonSelectorConfig = [
             <h3 class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoProjectsT('projects.form.blocked')) ?></h3>
             <div class="omo-project-form__grid generic-form-grid">
                 <div class="omo-project-form__field generic-form-field">
-                    <label class="generic-form-label" for="omo-project-blocked-reason"><?= omoApiEscape(omoProjectsT('projects.blocked.reason')) ?></label>
+                    <label class="generic-form-label" for="omo-project-blocked-reason"><?= omoApiEscape(omoProjectsT('projects.blocked.reason')) ?><?= $blockingConfig['requireReason'] ? ' *' : '' ?></label>
                     <textarea id="omo-project-blocked-reason" class="generic-form-control" name="blocked_reason" rows="3" maxlength="4000" data-omo-project-blocked-reason><?= omoApiEscape((string)$project->get('blocked_reason')) ?></textarea>
                 </div>
                 <div class="omo-project-form__field generic-form-field">
-                    <label class="generic-form-label" for="omo-project-blocked-until"><?= omoApiEscape(omoProjectsT('projects.blocked.until')) ?></label>
+                    <label class="generic-form-label" for="omo-project-blocked-until"><?= omoApiEscape(omoProjectsT('projects.blocked.until')) ?><?= $blockingConfig['requireReviewDate'] ? ' *' : '' ?></label>
                     <input id="omo-project-blocked-until" class="generic-form-control" type="date" name="blocked_until" value="<?= omoApiEscape($selectedBlockedUntil) ?>" data-omo-project-blocked-until>
                 </div>
                 <div class="omo-project-form__field generic-form-field omo-project-form__blocked-auto-field">

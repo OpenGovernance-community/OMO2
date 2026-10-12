@@ -25,6 +25,7 @@ if (empty($context['status'])) {
     exit;
 }
 
+commonEnableReadOnlyCaches();
 $rootHolon = $context['rootHolon'];
 $currentHolon = $context['currentHolon'];
 $organization = $context['organization'];

@@ -12,6 +12,10 @@ if (!$viewer) {
 
 $routePath = commonCalDavGetRoutePath();
 $method = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET'));
+// DAV read verbs bypass the browser helper's GET/HEAD-only opt-in.
+if (in_array($method, ['PROPFIND', 'REPORT', 'GET', 'HEAD'], true)) {
+    \dbObject\DbObject::enableReadOnlyMemoization();
+}
 $scope = commonCalDavParseScopedRoute($routePath);
 $cacheHandle = null;
 

@@ -119,6 +119,11 @@
 			self::$readMemo = [];
 		}
 
+		public static function isReadOnlyMemoizationEnabled(): bool
+		{
+			return self::$readMemoEnabled;
+		}
+
 		protected static function memoizeRead(array $key, callable $load)
 		{
 			if (!self::$readMemoEnabled) {
@@ -143,6 +148,11 @@
 
 		public static function invalidateReadMemoForSql($query): void
 		{
+			// Clear application configuration snapshots on writes, including bulk SQL.
+			if (preg_match('/^\s*(?:INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|TRUNCATE)\b/i', (string)$query)
+				&& preg_match('/\b(?:application|organization_application)\b/i', (string)$query)) {
+				Application::clearOrganizationCatalogCache();
+			}
 			if (!self::$readMemoEnabled) {
 				return;
 			}
@@ -477,7 +487,8 @@
 		public static function beginSqlPerformanceProfile($query, $params = array()) {
 			$config = self::getSqlPerformanceConfig();
 			if (!$config["enabled"]) {
-				return null;
+				return function_exists('commonPerformanceEnabled') && \commonPerformanceEnabled()
+					? ['startedAtNs' => hrtime(true)] : null;
 			}
 
 			if (!self::$_sqlPerformanceShutdownRegistered) {
@@ -510,6 +521,7 @@
 			}
 
 			$config = self::getSqlPerformanceConfig();
+			if (!$config['enabled']) { return; }
 			if ($success && $durationMs < $config["minimumDurationMs"]) {
 				return;
 			}
@@ -573,6 +585,12 @@
 				"current_user" => (int)($_SESSION["currentUser"] ?? 0),
 				"current_organization" => (int)($_SESSION["currentOrganization"] ?? 0),
 			));
+		}
+
+		public static function getPerformanceCounters(): array {
+			return ['queries' => (int)self::$_sqlPerformanceStats['queryCount'],
+				'ms' => (float)self::$_sqlPerformanceStats['totalDurationMs'],
+				'errors' => (int)self::$_sqlPerformanceStats['errorCount']];
 		}
 
 		protected static function rememberLastDbError($query, $params = array(), $exception = null) {
@@ -684,10 +702,6 @@
 		}
 
 		protected static function finishSqlPerformanceStatement($statement, $operation, $success, $rowCount = null, $exception = null) {
-			if (!self::getSqlPerformanceConfig()["enabled"]) {
-				return;
-			}
-
 			$statementId = spl_object_id($statement);
 			$profile = self::$_sqlPerformanceProfiles[$statementId] ?? null;
 			unset(self::$_sqlPerformanceProfiles[$statementId]);

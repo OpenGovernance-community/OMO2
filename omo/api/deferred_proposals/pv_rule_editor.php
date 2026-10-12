@@ -1,5 +1,7 @@
 <?php
 require_once dirname(__DIR__) . '/bootstrap.php';
+
+commonReleaseReadOnlySession();
 require_once dirname(__DIR__, 3) . '/common/choice/deferred-editor-fields.php';
 
 use dbObject\Document;

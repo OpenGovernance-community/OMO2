@@ -6,6 +6,7 @@ namespace dbObject {
     class DbObject {
         public static array $holons = [], $grants = [], $memo = [];
         protected array $fields = [];
+        public static function isReadOnlyMemoizationEnabled(): bool { return false; }
         protected static function memoizeRead(array $key, callable $load) { $key = serialize($key); return self::$memo[$key] ??= $load(); }
         public static function fetchValue($sql, $params = []) {
             if (str_contains($sql, 'FROM `holon`')) return ($params['organization_id'] ?? 0) === 42 ? 1 : 0;

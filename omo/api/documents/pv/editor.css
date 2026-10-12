@@ -1384,6 +1384,16 @@
     overscroll-behavior: contain;
 }
 
+.omo-pv-import__item {
+    position: relative;
+}
+
+.omo-pv-import__abandon {
+    position: absolute;
+    inset-block-start: 9px;
+    inset-inline-end: 8px;
+}
+
 .omo-pv-import__row {
     /* Match the compact agenda cards while keeping the selection glow. */
     --param-choice-card-padding-block: 9px;
@@ -1400,6 +1410,7 @@
     gap: 4px;
     min-width: 0;
     overflow-wrap: anywhere;
+    padding-inline-end: 32px;
 }
 
 .omo-pv-import__preview {

@@ -266,6 +266,23 @@ if (!function_exists('omoDecisionCanCreateAtOrganizationLevel')) {
     }
 }
 
+if (!function_exists('omoDecisionResolveManagementContext')) {
+    function omoDecisionResolveManagementContext(array $input)
+    {
+        // A write must check management rights regardless of the client intent.
+        $input['intent'] = 'manage';
+        $context = omoDecisionResolveEditorContext($input);
+        if (!empty($context['status']) && empty($context['canManage'])) {
+            return [
+                'status' => false,
+                'code' => 403,
+                'error_key' => 'decisions.edit.context.decision_denied',
+            ];
+        }
+        return $context;
+    }
+}
+
 if (!function_exists('omoDecisionResolveEditorContext')) {
     function omoDecisionResolveEditorContext(array $input)
     {
@@ -290,6 +307,9 @@ if (!function_exists('omoDecisionResolveEditorContext')) {
             }
 
             $decision->syncLifecycleStatus();
+
+            // The membership refresh can revoke or reactivate this token's participant.
+            $participant->load((int)$participant->getId(), true);
 
             $organizationId = (int)$decision->get('IDorganization');
             $organization = new Organization();

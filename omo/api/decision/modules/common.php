@@ -948,7 +948,8 @@ if (!function_exists('omoDecisionRenderGovernanceChanges')) {
         }
         static $sourceLang = [
             'pending' => ['text' => 'Cette modification sera appliquée si la proposition est retenue.', 'context' => 'Decision modification awaiting a vote'],
-            'move' => ['text' => 'Deplacer', 'context' => 'Deferred holon move action'],
+            'move' => ['text' => 'Déplacer', 'context' => 'Deferred holon move action'],
+            'impact' => ['text' => 'Voir le résultat de cette modification', 'context' => 'Link to an object created or updated by an accepted proposal.'],
             'validated' => ['text' => 'Cette modification a été validée et reste en attente d’application.', 'context' => 'Decision modification approved but not applied'],
             'applied' => ['text' => 'Cette modification a été appliquée.', 'context' => 'Decision modification successfully applied'],
             'rejected' => ['text' => 'Cette modification n’a pas été appliquée : la proposition n’a pas été retenue.', 'context' => 'Decision modification rejected by the vote'],
@@ -1014,6 +1015,8 @@ if (!function_exists('omoDecisionRenderGovernanceChanges')) {
             $items[] = '<section class="omo-governance-proposal-changes__item">'
                 . '<strong>' . $escape($heading) . '</strong>'
                 . '<p class="omo-governance-proposal-changes__summary">' . $escape($summary) . '</p>'
+                . ((string)$action->get('status') === 'applied' && !$isDelete && (int)$action->get('target_id') > 0
+                    ? \dbObject\History::renderReferenceHtml(\dbObject\History::buildReferenceToken((string)$action->get('target_type'), (int)$action->get('target_id'), t('impact', [], $lang, $sourceLang)), (int)($proposal->getDecisionProcess()?->get('IDorganization') ?? 0)) : '')
                 . '<details class="omo-change-details" data-omo-change-details-payload="' . $escape($payload) . '">'
                 . '<summary>Détail</summary><div data-omo-change-details-container></div></details>'
                 . '</section>';
@@ -1045,6 +1048,8 @@ if (!function_exists('omoDecisionRenderGovernanceChanges')) {
             $items[] = '<section class="omo-governance-proposal-changes__item">'
                 . '<strong>' . $escape($operationLabel . ' ' . mb_strtolower($heading) . ($target !== '' ? ' : ' . $target : '')) . '</strong>'
                 . '<p class="omo-governance-proposal-changes__summary">' . $escape($summary) . '</p>'
+                . ($status === 'applied' && (string)$deferredProposal->get('operation') !== 'delete' && (int)$deferredProposal->get('target_id') > 0
+                    ? \dbObject\History::renderReferenceHtml(\dbObject\History::buildReferenceToken((string)$deferredProposal->get('target_type'), (int)$deferredProposal->get('target_id'), t('impact', [], $lang, $sourceLang)), (int)$deferredProposal->get('IDorganization')) : '')
                 . '<details class="omo-change-details" data-omo-change-details-payload="' . $escape($payload) . '">'
                 . '<summary>Détail</summary><div data-omo-change-details-container></div></details>'
                 . '</section>';
@@ -1615,19 +1620,19 @@ if (!function_exists('omoDecisionProposalGetSourceLang')) {
         return [
             'decisions.proposals.dates.range' => ['text' => 'Date et horaire', 'context' => 'Optional proposal date range fields.'],
             'decisions.proposals.dates.day' => ['text' => 'Date', 'context' => 'Day of a proposal taking place on a single day.'],
-            'decisions.proposals.dates.start_time' => ['text' => 'Heure de debut', 'context' => 'Start time on the selected proposal day.'],
+            'decisions.proposals.dates.start_time' => ['text' => 'Heure de début', 'context' => 'Start time on the selected proposal day.'],
             'decisions.proposals.dates.end_time' => ['text' => 'Heure de fin', 'context' => 'End time on the selected proposal day.'],
             'decisions.proposals.dates.multiple' => ['text' => 'Sur plusieurs jours', 'context' => 'Switch to separate start and end dates and times.'],
-            'decisions.proposals.dates.from' => ['text' => 'Du {date} a {time}', 'context' => 'Start of a proposal spanning several days.'],
-            'decisions.proposals.dates.until' => ['text' => 'Au {date} a {time}', 'context' => 'End of a proposal spanning several days.'],
-            'decisions.proposals.dates.start' => ['text' => 'Debut', 'context' => 'Optional proposal date range start.'],
+            'decisions.proposals.dates.from' => ['text' => 'Du {date} à {time}', 'context' => 'Start of a proposal spanning several days.'],
+            'decisions.proposals.dates.until' => ['text' => 'Au {date} à {time}', 'context' => 'End of a proposal spanning several days.'],
+            'decisions.proposals.dates.start' => ['text' => 'Début', 'context' => 'Optional proposal date range start.'],
             'decisions.proposals.dates.clear' => ['text' => 'Retirer la date', 'context' => 'Clear the optional date range.'],
             'decisions.proposals.dates.end' => ['text' => 'Fin', 'context' => 'Proposal date range end.'],
             'decisions.proposals.dates.timezone' => ['text' => 'Fuseau horaire', 'context' => 'IANA timezone of a proposed date.'],
-            'decisions.proposals.dates.hint' => ['text' => 'Une plage horaire reserve une option dans les agendas des invites de la decision.', 'context' => 'Explanation of proposal calendar reservations.'],
+            'decisions.proposals.dates.hint' => ['text' => 'Une plage horaire réserve une option dans les agendas des invités de la décision.', 'context' => 'Explanation of proposal calendar reservations.'],
             'decisions.proposals.dates.option' => ['text' => 'En option', 'context' => 'Tentative proposal event status.'],
-            'decisions.proposals.dates.confirmed' => ['text' => 'Confirmee', 'context' => 'Confirmed proposal event status.'],
-            'decisions.proposals.dates.cancelled' => ['text' => 'Annulee', 'context' => 'Cancelled proposal event status.'],
+            'decisions.proposals.dates.confirmed' => ['text' => 'Confirmée', 'context' => 'Confirmed proposal event status.'],
+            'decisions.proposals.dates.cancelled' => ['text' => 'Annulée', 'context' => 'Cancelled proposal event status.'],
             'decisions.proposals.dates.confirm' => ['text' => 'Confirmer', 'context' => 'Confirm a proposal date after the ballot.'],
             'decisions.proposals.dates.cancel' => ['text' => 'Annuler', 'context' => 'Cancel a proposal date after the ballot.'],
             'decisions.proposals.add_title' => [
@@ -2717,7 +2722,7 @@ if (!function_exists('omoDecisionApplyInvitationSelections')) {
         if ((int)$decision->getId() <= 0 || $organizationId <= 0) {
             return [
                 'status' => false,
-                'message' => 'Contexte d invitations invalide.',
+                'message' => 'Contexte d’invitations invalide.',
             ];
         }
 
@@ -2809,7 +2814,7 @@ if (!function_exists('omoDecisionApplyInvitationSelections')) {
             if (!is_array($saveResult) || empty($saveResult['status'])) {
                 return [
                     'status' => false,
-                    'message' => 'Impossible d enregistrer les invitations pour le moment.',
+                    'message' => 'Impossible d’enregistrer les invitations pour le moment.',
                 ];
             }
         }
@@ -2836,7 +2841,7 @@ if (!function_exists('omoDecisionApplyInvitationSelections')) {
         ) {
             return [
                 'status' => false,
-                'message' => 'Impossible d enregistrer le mode de participation publique.',
+                'message' => 'Impossible d’enregistrer le mode de participation publique.',
             ];
         }
 
@@ -3340,6 +3345,8 @@ if (!function_exists('omoDecisionBuildInvitationSummaryData')) {
         $additionalUserIds = [];
         $guestEmails = [];
         $membersByUserId = [];
+        $historicalInvitations = in_array($decision->resolveAutomaticStatus(), [DecisionProcess::STATUS_RESULTS, DecisionProcess::STATUS_ARCHIVED], true);
+        $historicalNames = [];
 
         $organizationMembers = new \dbObject\ArrayUserOrganization();
         if ($organizationId > 0) {
@@ -3365,7 +3372,7 @@ if (!function_exists('omoDecisionBuildInvitationSummaryData')) {
                             . ' '
                             . trim((string)$holon->getDisplayName())
                         );
-                        foreach ($holon->getAssociatedMemberUserIds([
+                        foreach ($historicalInvitations ? [] : $holon->getAssociatedMemberUserIds([
                             'organizationId' => $organizationId,
                             'skipPermissionFilter' => true,
                         ]) as $userId) {
@@ -3400,6 +3407,22 @@ if (!function_exists('omoDecisionBuildInvitationSummaryData')) {
             unset($additionalUserIds[$userId]);
         }
 
+        if ($historicalInvitations) {
+            $holonUserIds = $additionalUserIds = $guestEmails = [];
+            foreach ($decision->getInvitationRecipientParticipants() as $participant) {
+                $userId = (int)$participant->get('IDuser');
+                $parameters = \dbObject\DecisionGovernanceAction::normalizeState($participant->get('parameters'));
+                if ($userId > 0) {
+                    if (in_array($parameters['sync_source'] ?? '', ['implicit_holon', 'invited_holon', 'implicit_organization'], true)) $holonUserIds[$userId] = $userId;
+                    else $additionalUserIds[$userId] = $userId;
+                    $historicalNames[$userId] = trim((string)$participant->get('display_name'));
+                } else {
+                    $email = trim(mb_strtolower((string)$participant->get('email'), 'UTF-8'));
+                    if ($email !== '') $guestEmails[$email] = $email;
+                }
+            }
+        }
+
         $recipientUserIds = $holonUserIds + $additionalUserIds;
         $recipientEmails = [];
         foreach ($guestEmails as $email) {
@@ -3421,6 +3444,10 @@ if (!function_exists('omoDecisionBuildInvitationSummaryData')) {
 
         $recipientLabels = [];
         foreach ($recipientUserIds as $userId) {
+            if (!empty($historicalNames[$userId])) {
+                $recipientLabels[] = $historicalNames[$userId];
+                continue;
+            }
             $membership = $membersByUserId[(int)$userId] ?? null;
             if (!($membership instanceof \dbObject\UserOrganization)) {
                 continue;

@@ -13,7 +13,7 @@ final class MandatoryGroupDeleteTestHolon extends \dbObject\Holon
     public function getParentHolon() { return $this->parent; }
     public function canEdit() { return $this->editable; }
     public function isMandatoryTemplateInstance() { return true; }
-    public function countSiblingTemplateInstances() { return $this->siblingCount; }
+    public function countSiblingTemplateInstances($excludedSubtreeId = 0) { return $this->siblingCount; }
 }
 
 function mandatoryDeleteAssert(bool $condition, string $message): void
@@ -23,16 +23,17 @@ function mandatoryDeleteAssert(bool $condition, string $message): void
     }
 }
 
-$group = new \dbObject\Holon();
+$group = new MandatoryGroupDeleteTestHolon();
 $group->set('IDtypeholon', 3);
 $circle = new \dbObject\Holon();
 $circle->set('IDtypeholon', 2);
+$group->parent = $circle;
 $role = new MandatoryGroupDeleteTestHolon();
 $role->parent = $group;
 $role->set('visible', true);
 
-mandatoryDeleteAssert($role->isLastMandatoryTemplateInstance(), 'The role is still the last instance under its direct parent.');
-mandatoryDeleteAssert($role->canDelete(), 'A mandatory template instance in a group must be deletable.');
+mandatoryDeleteAssert($role->isLastMandatoryTemplateInstance(), 'The role is the last instance in its circle.');
+mandatoryDeleteAssert(!$role->canDelete(), 'Groups must not allow deletion of the last mandatory instance.');
 $role->parent = $circle;
 mandatoryDeleteAssert(!$role->canDelete(), 'The last mandatory template instance in a circle must remain protected.');
 $role->siblingCount = 1;

@@ -2345,7 +2345,11 @@ function omoDispatchSpecialDrawerRouteChange(routeToken, previousRouteToken = nu
     let eventName = '';
     let detail = null;
 
-    if (menuHash === 'decision') {
+    if (menuHash === 'policy') {
+        const match = normalizedRouteToken.match(/^policy-r(\d+)$/i);
+        eventName = 'omo-policy-route-change';
+        detail = {ruleId: match ? Number(match[1]) : 0};
+    } else if (menuHash === 'decision') {
         const current = omoParseDecisionRouteToken(normalizedRouteToken);
         const previous = omoParseDecisionRouteToken(normalizedPreviousRouteToken);
         eventName = 'omo-decisions-route-change';
@@ -2441,8 +2445,8 @@ function omoRestoreCachedDrawerRoute(routeToken = null, previousRouteToken = nul
 
     // A cached Documents panel may keep a detail drawer marked as open while its
     // body has already been cleared or while another application is displayed.
-    // Always replay the document route so the visible detail matches the hash.
-    if (omoGetMenuHashForRouteToken(normalizedRouteToken) === 'documents') {
+    // Always replay document and policy routes so the visible detail matches the hash.
+    if (['documents', 'policy'].includes(omoGetMenuHashForRouteToken(normalizedRouteToken))) {
         return omoDispatchSpecialDrawerRouteChange(normalizedRouteToken, normalizedPreviousRouteToken);
     }
 
@@ -2486,6 +2490,10 @@ function omoGetMenuHashForRouteToken(routeToken = null) {
 
     if (normalizedRouteToken === 'checklist') {
         return 'processus';
+    }
+
+    if (/^policy-r\d+$/i.test(normalizedRouteToken)) {
+        return 'policy';
     }
 
     if (omoParseDecisionRouteToken(normalizedRouteToken)) {
@@ -2697,6 +2705,15 @@ function omoResolveSpecialDrawerRoute(routeToken, oid = null, cid = null, option
         return {
             drawer: 'drawer_decisions',
             url: url,
+            navigationMode: 'drawer'
+        };
+    }
+
+    const policyRuleMatch = normalizedRouteToken.match(/^policy-r(\d+)$/i);
+    if (policyRuleMatch) {
+        return {
+            drawer: 'drawer_policy',
+            url: `api/policy/index.php?open_rule_id=${encodeURIComponent(policyRuleMatch[1])}&policy_scope=global`,
             navigationMode: 'drawer'
         };
     }
@@ -5080,6 +5097,7 @@ function handleRoute() {
         && activeMenuHash === previousMenuHash
         && (
             activeMenuHash === 'decision'
+            || activeMenuHash === 'policy'
             || activeMenuHash === 'calendar'
             || activeMenuHash === 'stats'
             || activeMenuHash === 'processus'
@@ -5882,7 +5900,7 @@ function omoOpenSearchChecklistResult(checklistId, holonId) {
     return true;
 }
 
-function omoFindApplicationRoot(rootId) {
+function omoFindApplicationRoot(rootId, options = {}) {
     const normalizedRootId = String(rootId || '').trim();
     if (normalizedRootId === '') {
         return null;
@@ -5892,7 +5910,7 @@ function omoFindApplicationRoot(rootId) {
     const loadTarget = currentScript && currentScript.__omoLoadTarget instanceof Element
         ? currentScript.__omoLoadTarget
         : null;
-    if (loadTarget) {
+    if (loadTarget && options.globalRoute !== true) {
         if (loadTarget.id === normalizedRootId) {
             return loadTarget;
         }
@@ -5902,9 +5920,13 @@ function omoFindApplicationRoot(rootId) {
         }
     }
 
-    const activePvApplicationPanel = document.querySelector(
+    // A retained PV keeps its selected tab unhidden even when the whole PV is
+    // closed. Only a visible workspace may take precedence over the main app.
+    const activePvApplicationPanel = options.globalRoute === true ? null : Array.from(document.querySelectorAll(
         '[data-omo-pv-application-panel]:not([hidden])'
-    );
+    )).find(function (panel) {
+        return !panel.closest('[hidden], .drawer:not(.open), .omo-overlay-drawer:not(.is-open), .is-peek');
+    });
     if (activePvApplicationPanel) {
         const pvRoot = activePvApplicationPanel.querySelector('[id="' + CSS.escape(normalizedRootId) + '"]');
         if (pvRoot) {
@@ -5912,7 +5934,9 @@ function omoFindApplicationRoot(rootId) {
         }
     }
 
-    return document.getElementById(normalizedRootId);
+    return Array.from(document.querySelectorAll('[id="' + CSS.escape(normalizedRootId) + '"]')).find(function (root) {
+        return !root.closest('[data-omo-pv-application-panel]');
+    }) || null;
 }
 
 function omoIsPvApplicationTabContext(element = null) {
@@ -6205,6 +6229,19 @@ window.omoParsePopupHashState = function () {
 };
 window.omoNavigate = navigate;
 window.omoSetDrawerHashState = omoSetDrawerHashState;
+function omoHandlePolicyRuleLink(event) {
+    if (event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    const link = event.target instanceof Element ? event.target.closest('a[href]') : null;
+    if (!link || link.hasAttribute('download') || (link.target && link.target !== '_self')) return;
+    const url = new URL(link.href, window.location.href);
+    if (url.origin !== window.location.origin || url.pathname !== window.location.pathname || url.search !== window.location.search) return;
+    if (!/^#policy-r[1-9]\d*$/i.test(url.hash)) return;
+    event.preventDefault();
+    if (omoConfirmDiscardChanges()) window.omoOpenDrawerHashState(url.hash.slice(1));
+}
+
+document.addEventListener('click', omoHandlePolicyRuleLink);
+
 window.omoOpenDrawerHashState = function (routeToken, options = {}) {
     const normalizedRouteToken = omoNormalizeHashToken(routeToken);
     const forcedScope = omoNormalizeDrawerForcedScope(options.forcedScope);
