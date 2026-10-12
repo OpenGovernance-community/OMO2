@@ -416,32 +416,19 @@ class DecisionGovernanceAction extends DbObject
             $before = trim((string)($beforeState[$field] ?? ''));
             $after = trim((string)($afterState[$field] ?? ''));
             if ($before !== $after) {
-                $changes[] = '<li><strong>' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '</strong> : ' . htmlspecialchars($before, ENT_QUOTES, 'UTF-8') . ' &rarr; ' . htmlspecialchars($after, ENT_QUOTES, 'UTF-8') . '</li>';
+                $changes[] = '<li><strong>' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '</strong> : ' . self::formatDescriptionValue($before) . ' &rarr; ' . self::formatDescriptionValue($after) . '</li>';
             }
         }
-        $beforeProperties = self::indexRoleProperties($beforeState['editor_payload']['properties'] ?? []);
-        $afterProperties = self::indexRoleProperties($afterState['editor_payload']['properties'] ?? []);
-        foreach ($afterProperties as $key => $property) {
-            $beforeValue = self::formatRolePropertyValue(
-                (string)($beforeProperties[$key]['listItemType'] ?? '') === 'authority'
-                    ? ($beforeProperties[$key]['displayValue'] ?? $beforeProperties[$key]['value'] ?? '')
-                    : ($beforeProperties[$key]['value'] ?? '')
-            );
-            $afterValue = self::formatRolePropertyValue(
-                (string)($property['listItemType'] ?? '') === 'authority'
-                    ? ($property['displayValue'] ?? $property['value'] ?? '')
-                    : ($property['value'] ?? '')
-            );
+        $beforeProperties = self::indexRoleProperties(self::decorateRoleProperties($beforeState['editor_payload']['properties'] ?? []));
+        $afterProperties = self::indexRoleProperties(self::decorateRoleProperties($afterState['editor_payload']['properties'] ?? []));
+        foreach ($afterProperties + $beforeProperties as $key => $property) {
+            $beforeValue = self::formatRolePropertyValue($beforeProperties[$key] ?? []);
+            $afterValue = self::formatRolePropertyValue($afterProperties[$key] ?? []);
             if ($beforeValue === $afterValue) continue;
             $label = trim((string)($property['name'] ?? $property['shortname'] ?? 'Propriete')) ?: 'Propriete';
             $changes[] = '<li><strong>' . htmlspecialchars('Propriete - ' . $label, ENT_QUOTES, 'UTF-8') . '</strong> : '
-                . htmlspecialchars($beforeValue, ENT_QUOTES, 'UTF-8') . ' &rarr; '
-                . htmlspecialchars($afterValue, ENT_QUOTES, 'UTF-8') . '</li>';
-        }
-        foreach ($beforeProperties as $key => $property) {
-            if (isset($afterProperties[$key])) continue;
-            $label = trim((string)($property['name'] ?? $property['shortname'] ?? 'Propriete')) ?: 'Propriete';
-            $changes[] = '<li><strong>' . htmlspecialchars('Propriete - ' . $label, ENT_QUOTES, 'UTF-8') . '</strong> : supprimee</li>';
+                . self::formatDescriptionValue($beforeValue) . ' &rarr; '
+                . self::formatDescriptionValue($afterValue) . '</li>';
         }
         return count($changes) ? '<p>Modifications proposees :</p><ul>' . implode('', $changes) . '</ul>' : '<p>Aucune difference de contenu.</p>';
     }
@@ -458,13 +445,56 @@ class DecisionGovernanceAction extends DbObject
         return $indexed;
     }
 
-    protected static function formatRolePropertyValue($value)
+    protected static function formatDescriptionValue(string $value): string
     {
+        return trim($value) === '' ? '<em>vide</em>' : htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
+    }
+
+    protected static function formatRolePropertyValue(array $property)
+    {
+        $value = $property['value'] ?? '';
+        if ((string)($property['listItemType'] ?? '') === 'authority') {
+            $value = $property['displayValue'] ?? '';
+        }
         if (is_array($value) || is_object($value)) {
             $value = json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         }
-        $value = trim(strip_tags((string)$value));
+        $value = trim(str_replace("\xc2\xa0", ' ', html_entity_decode(strip_tags((string)$value), ENT_QUOTES | ENT_HTML5, 'UTF-8')));
         return mb_strlen($value, 'UTF-8') > 240 ? mb_substr($value, 0, 237, 'UTF-8') . '...' : $value;
+    }
+
+    public static function decorateRoleProperties(array $properties): array
+    {
+        foreach ($properties as &$property) {
+            if (!is_array($property) || (string)($property['listItemType'] ?? '') !== 'authority') continue;
+            $value = $property['value'] ?? '';
+            $decoded = is_array($value) ? $value : json_decode((string)$value, true);
+            $items = is_array($decoded['items'] ?? null) ? $decoded['items'] : (is_array($decoded) ? $decoded : []);
+            $ids = [];
+            foreach ($items as $item) {
+                if (is_array($item) && !empty($item['delete'])) continue;
+                $ids[] = is_array($item) ? (int)($item['id'] ?? 0) : (int)$item;
+                if (is_array($item) && ($item['delegationMode'] ?? '') === 'complete') $ids[] = (int)($item['parentId'] ?? 0);
+            }
+            $labels = Authority::getLabelsByIds($ids);
+            foreach ($property['displayItems'] ?? [] as $snapshot) {
+                if (is_array($snapshot) && (int)($snapshot['id'] ?? 0) > 0) {
+                    $labels[(int)$snapshot['id']] ??= (string)($snapshot['label'] ?? '');
+                }
+            }
+            $display = [];
+            foreach ($items as $item) {
+                if (is_array($item) && !empty($item['delete'])) continue;
+                $id = is_array($item) ? (int)($item['id'] ?? 0) : (int)$item;
+                $label = is_array($item) ? trim((string)($item['label'] ?? '')) : '';
+                if ($id <= 0 && is_array($item) && ($item['delegationMode'] ?? '') === 'complete') $id = (int)($item['parentId'] ?? 0);
+                if ($label === '') $label = trim((string)($labels[$id] ?? ''));
+                if ($label !== '') $display[] = $label;
+            }
+            $property['displayValue'] = implode('; ', $display);
+        }
+        unset($property);
+        return array_values($properties);
     }
 
     public static function buildRuleUpdateDescription(array $beforeState, array $afterState)
@@ -487,12 +517,17 @@ class DecisionGovernanceAction extends DbObject
                 $before = $scopeLabels[Rule::normalizeScope($before)] ?? $before;
                 $after = $scopeLabels[Rule::normalizeScope($after)] ?? $after;
             }
+            if ($field === 'IDauthority' && $before !== $after) {
+                $labelsById = Authority::getLabelsByIds(array_filter([(int)$before, (int)$after]));
+                $before = (int)$before > 0 ? (string)($labelsById[(int)$before] ?? $before) : '';
+                $after = (int)$after > 0 ? (string)($labelsById[(int)$after] ?? $after) : '';
+            }
             if ($before === $after) {
                 continue;
             }
             $changes[] = '<li><strong>' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '</strong> : '
-                . htmlspecialchars($before, ENT_QUOTES, 'UTF-8') . ' &rarr; '
-                . htmlspecialchars($after, ENT_QUOTES, 'UTF-8') . '</li>';
+                . self::formatDescriptionValue($before) . ' &rarr; '
+                . self::formatDescriptionValue($after) . '</li>';
         }
         return count($changes) > 0
             ? '<p>Modifications proposees :</p><ul>' . implode('', $changes) . '</ul>'

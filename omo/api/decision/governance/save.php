@@ -167,6 +167,7 @@ if ($wasExistingDecision) {
 
 $normalizedProposals = [];
 $usedTargetIds = [];
+$holonTargetCatalog = null;
 foreach (array_values($blueprint) as $proposalIndex => $proposalInput) {
     if (!is_array($proposalInput)) {
         $respond(422, ['status' => false, 'message' => 'Une proposition est invalide.']);
@@ -221,13 +222,16 @@ foreach (array_values($blueprint) as $proposalIndex => $proposalInput) {
                 $operation,
                 $targetHolonId
             );
-            $role = new Holon();
-            $roleParent = !$isCreate && $role->load($targetId) ? $role->getParentHolon() : null;
+            $role = $allowedHolon;
             $roleContext = new Holon();
+            $holonTargetCatalog ??= DeferredProposal::getHolonTargetHolonCatalog($organizationId, $targetHolonId);
             if (($isCreate && $targetId !== 0)
                 || !($allowedHolon instanceof Holon)
                 || !$roleContext->load($actionContextHolonId)
-                || (!$isCreate && (!($roleParent instanceof Holon) || (int)$roleParent->getId() !== $actionContextHolonId))) {
+                || (!$isCreate && !array_any(
+                    DeferredProposal::getHolonTargetsForContext($roleContext, $operation, $holonTargetCatalog),
+                    static fn (Holon $target): bool => (int)$target->getId() === $targetId
+                ))) {
                 $respond(422, ['status' => false, 'message' => 'Le role choisi n appartient pas a ce cercle.']);
             }
             if (!$isCreate && isset($usedTargetIds['role:' . $targetId])) {
@@ -482,7 +486,7 @@ foreach (array_values($blueprint) as $proposalIndex => $proposalInput) {
     if (mb_strlen($proposalDescription, 'UTF-8') > 10000) {
         $respond(422, ['status' => false, 'message' => 'La description d une proposition est trop longue.']);
     }
-    if (trim($proposalDescription) === '') {
+    if (!Rule::hasContentText($proposalDescription)) {
         $proposalDescription = implode('', $actionDescriptions);
     }
     $normalizedProposals[] = [

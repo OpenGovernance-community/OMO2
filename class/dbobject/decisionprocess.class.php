@@ -65,7 +65,7 @@ class DecisionProcess extends DbObject
                     'IDholon' => $this->get('IDholon') ?: null,
                     'IDuser' => (int)$this->get('IDuser'),
                     'title' => trim((string)$proposal->get('title')) ?: (string)$this->get('title'),
-                    'description' => trim(strip_tags((string)$proposal->get('description')) . "\n" . (string)$proposal->get('info_url')),
+                    'description' => trim(DecisionProposal::descriptionToPlainText((string)$proposal->get('description')) . "\n" . (string)$proposal->get('info_url')),
                     'status' => $status,
                     'active' => 1,
                 ];
