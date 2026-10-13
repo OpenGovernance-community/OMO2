@@ -62,7 +62,7 @@ function commonPerformanceInit(): void
         commonPerformanceRecord($start, ($GLOBALS['commonPerformanceCron'] ?? []) + [
             'route' => $route, 'method' => substr((string)($_SERVER['REQUEST_METHOD'] ?? 'GET'), 0, 8), 'kind' => 'web',
             'IDorganization' => (int)($GLOBALS['commonPerformanceOrganizationId'] ?? ($_SESSION['currentOrganization'] ?? 0)),
-            'IDuser' => (int)($_SESSION['currentUser'] ?? 0),
+            'IDuser' => (int)($GLOBALS['commonPerformanceUserId'] ?? ($_SESSION['currentUser'] ?? 0)),
             'status_code' => $fatal ? 500 : (http_response_code() ?: 200),
             // Include time before the shared bootstrap, notably session lock waiting.
             'duration_ms' => max(0, (microtime(true) - (float)($_SERVER['REQUEST_TIME_FLOAT'] ?? $start['time'])) * 1000),

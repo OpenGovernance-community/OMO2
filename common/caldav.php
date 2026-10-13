@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/carddav.php';
+require_once __DIR__ . '/caldav_rate_limit.php';
 require_once __DIR__ . '/omo_context_scope.php';
 require_once dirname(__DIR__) . '/omo/api/calendar/permissions_shared.php';
 require_once __DIR__ . '/calendar/icalendar.php';
