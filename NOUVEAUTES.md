@@ -1,5 +1,9 @@
 # Journal des nouveautés
 
+- Decisions / lien de lecture (2026-10-13) : Afficher la suite et Afficher moins adoptent un controle plus petit et discret, avec fond leger arrondi et chevron qui accompagne le depliage. Style partage, focus clavier conserve ; verification navigateur ordinateur/mobile.
+
+- Decisions / resumes de regles (2026-10-13) : les descriptions generees automatiquement renvoient au detail complet lorsque le texte d une regle depasse 600 caracteres, ou lorsque l ancien et le nouveau texte reunis depassent ce seuil. Metadonnees et textes courts conserves, paragraphes courts mieux separes ; descriptions saisies manuellement conservees. Contenu integral des modifications preserve. Tests PHP 8.5 du seuil, des entites HTML et de la sauvegarde HTTP. Sans migration SQL.
+
 - Decisions / descriptions longues (2026-10-13) : apercu des descriptions de propositions limite a cinq lignes, avec Afficher la suite puis Afficher moins. Contenu HTML integral conserve, quelle que soit son origine ; descriptions courtes affichees directement. Affichage partage entre les modes de scrutin, adapte a la largeur et aux mises a jour sans rechargement. Contenu complet a l impression ; tests navigateur ordinateur/mobile et PHP 8.5. Sans migration SQL.
 
 - Decisions / notifications a la creation (2026-10-13) : les propositions initiales ne declenchent plus de notifications individuelles. Une notification du scrutin est envoyee aux invites a l ouverture de l elaboration, des la premiere sauvegarde si elle demarre immediatement. Traitement apres validation complete des questions et des invitations, sans doublon ; ajouts ulterieurs toujours notifies. Modes de scrutin, questions multiples, gouvernance et creation API couverts par les tests PHP 8.5. Correction de l ajout de questions multiples. Sans migration SQL.
