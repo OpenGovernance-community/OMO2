@@ -14,6 +14,38 @@ use dbObject\Organization;
 use dbObject\User;
 use dbObject\UserOrganization;
 
+/** Temporary diagnostics use the existing PHP error log and exclude property values. */
+function commonCalDavStartDiagnostics(): bool
+{
+    if (!envBool('CALDAV_DIAGNOSTICS_ENABLED', false)) {
+        return false;
+    }
+    $GLOBALS['commonCalDavDiagnostics'] = [
+        'event' => 'caldav_request',
+        'request_id' => bin2hex(random_bytes(8)),
+        'method' => substr((string)($_SERVER['REQUEST_METHOD'] ?? ''), 0, 16),
+        'route' => substr(commonCalDavGetRoutePath(), 0, 512),
+        'client' => substr((string)($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 320),
+        'depth' => substr((string)($_SERVER['HTTP_DEPTH'] ?? ''), 0, 16),
+        'cache' => 'NOT_ELIGIBLE',
+    ];
+    register_shutdown_function(static function () {
+        $trace = $GLOBALS['commonCalDavDiagnostics'];
+        foreach (headers_list() as $header) {
+            if (stripos($header, 'X-OMO-CalDAV-Cache:') === 0) $trace['cache'] = trim(substr($header, 19));
+        }
+        $lastError = error_get_last();
+        $fatal = $lastError && in_array($lastError['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR], true);
+        $trace['time'] = date('c');
+        $trace['status'] = $fatal ? 500 : (http_response_code() ?: 200);
+        $trace['organization_id'] = (int)($GLOBALS['commonPerformanceOrganizationId'] ?? 0);
+        $trace['duration_ms'] = round((microtime(true) - (float)($_SERVER['REQUEST_TIME_FLOAT'] ?? microtime(true))) * 1000, 3);
+        $trace['sql'] = \dbObject\DbObject::getPerformanceCounters();
+        error_log('CALDAV_DIAGNOSTIC ' . json_encode($trace, JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_SLASHES));
+    });
+    return true;
+}
+
 if (!function_exists('commonCalDavServicePath')) {
     function commonCalDavServicePath()
     {
@@ -843,7 +875,7 @@ if (!function_exists('commonCalDavBuildCalendarSyncToken')) {
 }
 
 if (!function_exists('commonCalDavLoadScopedCalendarForViewer')) {
-    function commonCalDavLoadScopedCalendarForViewer(User $viewer, $organizationId, $holonId, $range, $color)
+    function commonCalDavLoadScopedCalendarForViewer(User $viewer, $organizationId, $holonId, $range, $color, bool $metadataOnly = false)
     {
         static $cache = array();
 
@@ -852,7 +884,7 @@ if (!function_exists('commonCalDavLoadScopedCalendarForViewer')) {
         $holonId = (int)$holonId;
         $range = commonCalDavNormalizeScopedRange($range);
         $color = commonCalDavNormalizeScopedColor($color);
-        $cacheKey = implode(':', array($viewerUserId, $organizationId, $holonId, $range, $color));
+        $cacheKey = implode(':', array($viewerUserId, $organizationId, $holonId, $range, $color, (int)$metadataOnly));
 
         if (array_key_exists($cacheKey, $cache)) {
             return $cache[$cacheKey];
@@ -894,6 +926,19 @@ if (!function_exists('commonCalDavLoadScopedCalendarForViewer')) {
         $availableRanges = omoApiGetAvailableContextScopes(true, $holon, $rootHolon);
         if (!in_array($range, $availableRanges, true)) {
             return $cache[$cacheKey] = null;
+        }
+
+        // Property writes need the validated calendar identity, never its events.
+        if ($metadataOnly) {
+            return $cache[$cacheKey] = [
+                'type' => 'calendar',
+                'href' => commonCalDavBuildScopedCalendarHref($organizationId, $holonId, $range, $color),
+                'calendarSlug' => 'scoped-' . $organizationId . '-' . $holonId . '-' . $range . '-' . $color,
+                'organizationId' => $organizationId,
+                'holonId' => $holonId,
+                'range' => $range,
+                'organization' => $organization,
+            ];
         }
 
         $visibleHolonIds = array((int)$holon->getId() => true);
@@ -963,7 +1008,7 @@ if (!function_exists('commonCalDavLoadScopedCalendarForViewer')) {
 }
 
 if (!function_exists('commonCalDavLoadScopedCalendarGroupsForViewer')) {
-    function commonCalDavLoadScopedCalendarGroupsForViewer(User $viewer, $organizationId, $holonId, $range, $color)
+    function commonCalDavLoadScopedCalendarGroupsForViewer(User $viewer, $organizationId, $holonId, $range, $color, bool $metadataOnly = false)
     {
         static $cache = array();
 
@@ -973,12 +1018,13 @@ if (!function_exists('commonCalDavLoadScopedCalendarGroupsForViewer')) {
             (int)$holonId,
             commonCalDavNormalizeScopedRange($range),
             commonCalDavNormalizeScopedColor($color),
+            (int)$metadataOnly,
         ));
         if (array_key_exists($cacheKey, $cache)) {
             return $cache[$cacheKey];
         }
 
-        $baseCalendar = commonCalDavLoadScopedCalendarForViewer($viewer, $organizationId, $holonId, $range, $color);
+        $baseCalendar = commonCalDavLoadScopedCalendarForViewer($viewer, $organizationId, $holonId, $range, $color, $metadataOnly);
         if (!is_array($baseCalendar)) {
             return $cache[$cacheKey] = array();
         }
@@ -1048,6 +1094,14 @@ if (!function_exists('commonCalDavLoadScopedCalendarGroupsForViewer')) {
         $groupMap = array();
         foreach ($groupDefinitions as $group => $definition) {
             $groupSlug = (string)$baseCalendar['calendarSlug'] . '-' . $group;
+            if ($metadataOnly) {
+                $groupMap[$group] = array_merge($baseCalendar, [
+                    'href' => commonCalDavBuildScopedCalendarGroupHref($organizationId, $holonId, $range, $color, $group),
+                    'calendarSlug' => $groupSlug,
+                    'readOnly' => !empty($definition['readOnly']),
+                ]);
+                continue;
+            }
             $events = $groupEvents[$group];
             $syncToken = commonCalDavBuildCalendarSyncToken($organizationId, $events, $groupSlug);
             $groupMap[$group] = array_merge($baseCalendar, array(
@@ -1069,7 +1123,7 @@ if (!function_exists('commonCalDavLoadScopedCalendarGroupsForViewer')) {
 }
 
 if (!function_exists('commonCalDavLoadCalendarsForViewer')) {
-    function commonCalDavLoadCalendarsForViewer(User $viewer, int $onlyOrganizationId = 0)
+    function commonCalDavLoadCalendarsForViewer(User $viewer, int $onlyOrganizationId = 0, bool $metadataOnly = false)
     {
         static $cache = array();
 
@@ -1078,7 +1132,7 @@ if (!function_exists('commonCalDavLoadCalendarsForViewer')) {
             return array();
         }
 
-        $cacheKey = $viewerUserId . ':' . $onlyOrganizationId;
+        $cacheKey = $viewerUserId . ':' . $onlyOrganizationId . ':' . (int)$metadataOnly;
         if (isset($cache[$cacheKey])) {
             return $cache[$cacheKey];
         }
@@ -1108,6 +1162,17 @@ if (!function_exists('commonCalDavLoadCalendarsForViewer')) {
             $seenOrganizationIds[$organizationId] = true;
             $organization = new Organization();
             if (!$organization->load($organizationId) || !$organization->isApplicationEnabled('calendar', $viewerUserId)) {
+                continue;
+            }
+
+            if ($metadataOnly) {
+                $calendarSlug = 'organization-' . $organizationId;
+                $calendarMap[$calendarSlug] = [
+                    'type' => 'calendar',
+                    'href' => commonCalDavBuildHref('calendars/' . $viewerUserId . '/' . $calendarSlug . '/'),
+                    'calendarSlug' => $calendarSlug,
+                    'organizationId' => $organizationId,
+                ];
                 continue;
             }
 
@@ -1154,7 +1219,7 @@ if (!function_exists('commonCalDavLoadCalendarsForViewer')) {
 }
 
 if (!function_exists('commonCalDavResolveRouteResource')) {
-    function commonCalDavResolveRouteResource(User $viewer, $routePath)
+    function commonCalDavResolveRouteResource(User $viewer, $routePath, bool $metadataOnly = false)
     {
         $viewerUserId = (int)$viewer->getId();
         $routePath = '/' . trim((string)$routePath, '/');
@@ -1211,7 +1276,7 @@ if (!function_exists('commonCalDavResolveRouteResource')) {
         }
 
         if (preg_match('#^/scoped/(\d+)/(\d+)/(contextual|children|descendants)/([0-9a-fA-F]{6})/(editable|readonly)$#', $routePath, $matches)) {
-            $calendarGroups = commonCalDavLoadScopedCalendarGroupsForViewer($viewer, (int)$matches[1], (int)$matches[2], (string)$matches[3], (string)$matches[4]);
+            $calendarGroups = commonCalDavLoadScopedCalendarGroupsForViewer($viewer, (int)$matches[1], (int)$matches[2], (string)$matches[3], (string)$matches[4], $metadataOnly);
             $group = commonCalDavNormalizeScopedCalendarGroup($matches[5]);
             return $calendarGroups[$group] ?? null;
         }
@@ -1262,7 +1327,7 @@ if (!function_exists('commonCalDavResolveRouteResource')) {
 
         if (preg_match('#^/calendars/' . preg_quote((string)$viewerUserId, '#') . '/(organization-\d+)$#', $routePath, $matches)) {
             $calendarSlug = (string)$matches[1];
-            $calendarMap = commonCalDavLoadCalendarsForViewer($viewer, (int)substr($calendarSlug, strlen('organization-')));
+            $calendarMap = commonCalDavLoadCalendarsForViewer($viewer, (int)substr($calendarSlug, strlen('organization-')), $metadataOnly);
             return isset($calendarMap[$calendarSlug]) ? $calendarMap[$calendarSlug] : null;
         }
 
@@ -1832,6 +1897,7 @@ function commonCalDavApplyPropertyUpdate(User $viewer, array $resource, array $o
         $result = UserOrganization::patchCalDavCalendarProperties((int)$viewer->getId(),
             (int)($resource['organizationId'] ?? 0), (string)($resource['calendarSlug'] ?? ''), $changes);
         $saved = $result !== false;
+        if (isset($GLOBALS['commonCalDavDiagnostics'])) $GLOBALS['commonCalDavDiagnostics']['preferences_changed'] = !empty($result['changed']);
         if (!empty($result['changed'])) \dbObject\CalDavCache::invalidateOrganization((int)$resource['organizationId']);
     }
     $groups = [];
@@ -1850,9 +1916,17 @@ function commonCalDavApplyPropertyUpdate(User $viewer, array $resource, array $o
 function commonCalDavHandleProppatch(User $viewer, array $resource): void
 {
     $body = commonCardDavReadXmlBody();
+    if (isset($GLOBALS['commonCalDavDiagnostics'])) $GLOBALS['commonCalDavDiagnostics']['body_sha256'] = hash('sha256', (string)$body['raw']);
     $operations = strlen((string)$body['raw']) <= 131072 ? commonCalDavParsePropertyUpdate($body['xml']) : null;
     if ($operations === null) commonCalDavSendStatusText(400, 'Invalid DAV propertyupdate document.');
-    commonCalDavSendMultistatus([commonCalDavApplyPropertyUpdate($viewer, $resource, $operations)]);
+    $response = commonCalDavApplyPropertyUpdate($viewer, $resource, $operations);
+    if (isset($GLOBALS['commonCalDavDiagnostics'])) {
+        $GLOBALS['commonCalDavDiagnostics']['properties'] = array_map(static fn($group) => [
+            'status' => $group['status'],
+            'names' => array_map(static fn($name) => substr($name, 0, 256), array_keys($group['properties'])),
+        ], $response['propstats']);
+    }
+    commonCalDavSendMultistatus([$response]);
 }
 
 if (!function_exists('commonCalDavHandlePropfind')) {
