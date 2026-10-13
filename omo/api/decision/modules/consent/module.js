@@ -797,6 +797,7 @@
                                 if (!result || !result.status) {
                                     throw new Error(result && result.message ? result.message : (payload.texts && payload.texts.error ? payload.texts.error : 'Erreur'));
                                 }
+                                if (typeof window.commonDrawerMarkSaved === 'function') window.commonDrawerMarkSaved(form);
                                 setFeedback(result.message || (payload.texts && payload.texts.success ? payload.texts.success : ''), false);
                                 if (result.redirectUrl) {
                                     if (typeof window.omoDecisionOpenNestedDrawer === 'function') {
@@ -919,6 +920,7 @@
                                 if (!result || !result.status) {
                                     throw new Error(result && result.message ? result.message : (payload.texts && payload.texts.error ? payload.texts.error : 'Erreur'));
                                 }
+                                if (typeof window.commonDrawerMarkSaved === 'function') window.commonDrawerMarkSaved(form);
                                 setFeedback(result.message || (payload.texts && payload.texts.success ? payload.texts.success : ''), false);
                                 window.dispatchEvent(new CustomEvent('omo-decision-response-saved'));
                                 if (result.redirectUrl) {

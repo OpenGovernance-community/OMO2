@@ -2421,6 +2421,7 @@ function saveHolon(event) {
             if (!result.ok || !result.data || result.data.status !== 'ok') {
         throw new Error(result.data && result.data.message ? result.data.message : (getMode() === 'edit' ? "Impossible d’enregistrer l’élément." : "Impossible de créer l’élément."));
             }
+            if (typeof window.commonDrawerMarkSaved === 'function') window.commonDrawerMarkSaved(elements.form);
 
             const hashManagedEditorDrawer = isHashManagedHolonEditorDrawer();
             const hashManagedCreateDrawer = getMode() !== 'edit' && isHashManagedCreateDrawer();

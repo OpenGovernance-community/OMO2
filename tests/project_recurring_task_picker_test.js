@@ -20,7 +20,7 @@ const root = path.join(__dirname, '..');
                     <button data-omo-project-detail-document-menu-toggle aria-expanded="false">&#9662;</button>
                     <div data-omo-project-detail-document-menu-panel hidden><button data-omo-project-resource-add data-resource-url="/omo/api/projects/resources.php?type=recurring_task&id=42&picker=1">Import recurring task</button></div>
                 </div>
-                <div data-omo-projects-document-drawer hidden><header>
+                <div class="omo-overlay-drawer" data-omo-projects-document-drawer hidden><header>
                     <h3 data-omo-subdrawer-title>Documents</h3><p data-omo-subdrawer-description></p>
                     <div data-omo-subdrawer-actions></div><button data-omo-projects-document-drawer-close>Close</button>
                 </header><div data-omo-projects-document-drawer-body></div></div>
@@ -81,6 +81,13 @@ const root = path.join(__dirname, '..');
         await openEditor();
         assert.equal(await page.locator('header [data-omo-subdrawer-title]').innerText(), 'Create recurring task');
         assert.equal(await page.locator('#commonTopbarModal').isVisible(), false);
+        await page.locator('[name="title"]').focus();
+        await page.locator('[data-activity-html-editor]').evaluate(el => el.__omoSimpleHtmlField.setValue('<p>Unsaved description</p>'));
+        await page.evaluate(() => { window.confirm = () => false; });
+        await page.locator('header [data-activity-editor-cancel]').click();
+        assert.equal(await page.locator('[data-activity-html-editor]').evaluate(el => el.__omoSimpleHtmlField.getValue()), '<p>Unsaved description</p>');
+        assert.equal(await page.locator('[data-omo-projects-document-drawer]').isVisible(), true);
+        await page.evaluate(() => { window.confirm = () => true; });
         await page.locator('header [data-activity-editor-cancel]').click();
         await page.locator('[data-omo-projects-document-drawer]').waitFor({state: 'hidden'});
         assert.equal(await page.evaluate(() => window.posts.length), 0, 'Cancel creates nothing.');

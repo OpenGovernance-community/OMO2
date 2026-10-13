@@ -21,7 +21,7 @@ const root = path.join(__dirname, '..');
                     <button data-omo-project-import-document-url="/omo/api/projects/document_picker.php?oid=7&cid=10&id=42">Import document</button>
                 </div>
             </div>
-            <div data-omo-projects-document-drawer hidden><header>
+            <div class="omo-overlay-drawer" data-omo-projects-document-drawer hidden><header>
                 <h3 data-omo-subdrawer-title>Documents</h3><p data-omo-subdrawer-description></p>
                 <div data-omo-subdrawer-actions></div><button data-omo-projects-document-drawer-close>Close</button>
             </header><div data-omo-projects-document-drawer-body></div></div>
@@ -57,6 +57,7 @@ const root = path.join(__dirname, '..');
                     {id: 4, title: 'Organization memo', contextHolonId: 0}],
                 scopeLabels: {local: 'Local', children: 'Children', descendants: 'Descendants'}};
             window.fetch = async (url, options = {}) => {
+                if (String(url).includes('/common/jstranslation/drawer.php')) return {ok: true, json: async () => ({})};
                 window.requests.push(String(url));
                 if (options.method === 'POST') {
                     const post = Object.fromEntries(options.body.entries()); window.posts.push(post);

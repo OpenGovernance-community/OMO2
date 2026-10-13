@@ -60,6 +60,7 @@ function eventForm(contextField) {
                 window.requests = [];
                 window.eventsSaved = [];
                 window.fetch = async (url, options) => {
+                    if (String(url).includes('/common/jstranslation/drawer.php')) return {ok: true, json: async () => ({})};
                     window.requests.push({url, method: options.method || 'GET'});
                     if (options.method !== 'POST') {
                         await new Promise(resolve => {window.finishLoading = resolve;});

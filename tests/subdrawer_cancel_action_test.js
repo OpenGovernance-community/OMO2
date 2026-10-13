@@ -55,7 +55,7 @@ const {chromium} = require(process.argv[2] || 'playwright');
         await documentsPage.goto('http://documents.test/');
         await documentsPage.setContent(`<div id="omo-documents-root" class="omo-documents" data-omo-document-oid="1">
             <button data-omo-documents-new data-omo-documents-new-url="/omo/api/documents/create.php?oid=1">New</button>
-            <div data-omo-document-detail-drawer hidden><header class="generic-drawer-header">
+            <div class="omo-overlay-drawer" data-omo-document-detail-drawer hidden><header class="generic-drawer-header">
                 <span data-omo-subdrawer-title data-omo-document-detail-title>Document</span>
                 <span data-omo-subdrawer-description data-omo-document-detail-description></span>
                 <div class="generic-drawer-header__actions"><div data-omo-subdrawer-actions></div>
@@ -98,8 +98,20 @@ const {chromium} = require(process.argv[2] || 'playwright');
         await documentsPage.evaluate(() => window.releaseDocumentLoading());
         await documentsPage.locator('header [data-omo-subdrawer-cancel]').waitFor({state: 'visible'});
         assert.deepEqual(await documentsPage.locator('header button:visible').allTextContents(), ['Creer le document', 'Annuler']);
+        await documentsPage.evaluate(() => {
+            window.confirm = () => false;
+            window.editorCleanupCalls = 0;
+            window.addEventListener('omo-document-editor-drawer-close', () => window.editorCleanupCalls++);
+        });
+        await documentsPage.locator('#document-editor [name="title"]').fill('Unsaved document');
+        await documentsPage.locator('header [data-omo-subdrawer-cancel]').click();
+        assert.equal(await documentsPage.locator('#document-editor [name="title"]').inputValue(), 'Unsaved document');
+        assert.equal(await documentsPage.evaluate(() => window.editorCleanupCalls), 0, 'Declining must preserve document locks and editor services.');
+        assert.equal(await documentsPage.locator('[data-omo-document-detail-drawer]').isVisible(), true);
+        await documentsPage.evaluate(() => { window.confirm = () => true; });
         await documentsPage.locator('header [data-omo-subdrawer-cancel]').click();
         await documentsPage.locator('[data-omo-document-detail-drawer]').waitFor({state: 'hidden'});
+        assert.equal(await documentsPage.evaluate(() => window.editorCleanupCalls), 1, 'Confirmed closure cleans up the document exactly once.');
         await documentsPage.evaluate(() => window.omoOpenDocumentDetailByPayload({id: 12, contextUrl: '/detail', title: 'Document'}));
         await documentsPage.locator('[data-document-detail]').waitFor({state: 'visible'});
         assert.deepEqual(await documentsPage.locator('header button:visible').allTextContents(), ['Modifier', 'Fermer']);

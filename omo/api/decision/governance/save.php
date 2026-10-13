@@ -504,6 +504,7 @@ if (!$pdo) {
 }
 
 $newProposalIds = [];
+$previousStatus = $wasExistingDecision ? DecisionProcess::normalizeStatus($decision->get('status')) : null;
 try {
     $pdo->beginTransaction();
 
@@ -719,16 +720,7 @@ try {
     $respond(500, ['status' => false, 'message' => omoDecisionGovernanceT('governance.error.generic')]);
 }
 
-foreach ($newProposalIds as $newProposalId) {
-    $proposal = new DecisionProposal();
-    if ($proposal->load($newProposalId)) {
-        try {
-            notificationCenterDispatchDecisionProposal($proposal);
-        } catch (Throwable $exception) {
-            error_log('decision_governance_notification_failed: ' . $exception->getMessage());
-        }
-    }
-}
+notificationCenterDispatchDecisionSaved($decision, $previousStatus, $newProposalIds);
 
 $respond(200, [
     'status' => true,
