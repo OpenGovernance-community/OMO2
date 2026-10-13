@@ -5,13 +5,30 @@ require_once dirname(__DIR__, 3) . '/common/caldav.php';
 header('Vary: Authorization');
 header('X-Robots-Tag: noindex, nofollow');
 
+$diagnostics = commonCalDavStartDiagnostics();
+$phaseStartedAt = microtime(true);
 $viewer = commonCalDavAuthenticateRequest();
+if ($diagnostics) {
+    $GLOBALS['commonCalDavDiagnostics']['auth_ms'] = round((microtime(true) - $phaseStartedAt) * 1000, 3);
+    $GLOBALS['commonCalDavDiagnostics']['user_id'] = $viewer ? (int)$viewer->getId() : 0;
+}
 if (!$viewer) {
     commonCalDavSendUnauthorized();
 }
 
 $routePath = commonCalDavGetRoutePath();
 $method = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET'));
+if ($diagnostics && $method === 'PROPFIND') {
+    $rawInput = (string)file_get_contents('php://input');
+    $GLOBALS['commonCardDavRawInput'] = $rawInput;
+    $GLOBALS['commonCalDavDiagnostics']['body_sha256'] = hash('sha256', $rawInput);
+    if (strlen($rawInput) <= 131072) {
+        $request = commonCardDavParsePropRequest(commonCardDavReadXmlBody()['xml']);
+        $GLOBALS['commonCalDavDiagnostics']['property_mode'] = $request['mode'];
+        $GLOBALS['commonCalDavDiagnostics']['requested_properties'] = array_map(
+            static fn($name) => substr($name, 0, 256), array_slice($request['properties'], 0, 128));
+    }
+}
 // DAV read verbs bypass the browser helper's GET/HEAD-only opt-in.
 if (in_array($method, ['PROPFIND', 'REPORT', 'GET', 'HEAD'], true)) {
     \dbObject\DbObject::enableReadOnlyMemoization();
@@ -38,6 +55,7 @@ if (
 
     $organizationId = (int)$scope['organizationId'];
     $revision = \dbObject\CalDavCache::getOrganizationRevision($organizationId);
+    if ($diagnostics) $GLOBALS['commonCalDavDiagnostics']['revision'] = $revision;
     $cacheKey = \dbObject\CalDavCache::buildResponseKey(array(
         'schema' => 5,
         'viewer' => (int)$viewer->getId(),
@@ -99,7 +117,9 @@ if (
     }
 }
 
-$resource = commonCalDavResolveRouteResource($viewer, $routePath);
+$phaseStartedAt = microtime(true);
+$resource = commonCalDavResolveRouteResource($viewer, $routePath, $method === 'PROPPATCH');
+if ($diagnostics) $GLOBALS['commonCalDavDiagnostics']['resolve_ms'] = round((microtime(true) - $phaseStartedAt) * 1000, 3);
 if (!is_array($resource) || empty($resource['type'])) {
     commonCalDavSendStatusText(404, 'CalDAV resource not found.');
 }

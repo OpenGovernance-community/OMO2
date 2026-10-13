@@ -4,13 +4,23 @@ $_SERVER['HTTP_HOST'] = 'localtest.me';
 $_SERVER['HTTPS'] = 'on';
 require_once __DIR__ . '/mcp_test_helpers.php';
 require_once dirname(__DIR__) . '/common/caldav.php';
-use dbObject\{ArrayApplication, DbObject, OrganizationApplication, UserOrganization};
+use dbObject\{ArrayApplication, ArrayDbObject, DbObject, Event, EventInvitation, OrganizationApplication, PerformanceRequest, UserOrganization};
+
+function caldavPatchQueryCount(int $userId): int
+{
+    $rows = new class extends ArrayDbObject { public static function objectName() { return PerformanceRequest::class; } };
+    $rows->loadHydrated(['where' => [['field' => 'IDuser', 'value' => $userId], ['field' => 'method', 'value' => 'PROPPATC']],
+        'orderBy' => [['field' => 'id', 'dir' => 'DESC']], 'limit' => 1]);
+    mcpCheck(count($rows) === 1, 'Performance sample must exist.');
+    return (int)$rows[0]->get('query_count');
+}
 
 function caldavPatchHttp(array $items, string $path, string $method, string $body = ''): array
 {
     $headers = [];
     $curl = curl_init('https://localtest.me/omo/api/caldav' . $path);
     curl_setopt_array($curl, [CURLOPT_RETURNTRANSFER => true, CURLOPT_CUSTOMREQUEST => $method,
+        CURLOPT_USERAGENT => 'OMO-CalDAV-regression-test',
         CURLOPT_USERPWD => $items['user']->get('email') . ':' . $items['password'], CURLOPT_HTTPAUTH => CURLAUTH_BASIC,
         CURLOPT_RESOLVE => ['localtest.me:443:127.0.0.1'], CURLOPT_SSL_VERIFYPEER => false, CURLOPT_SSL_VERIFYHOST => 0,
         CURLOPT_TIMEOUT => 20, CURLOPT_HTTPHEADER => ['Content-Type: application/xml; charset=UTF-8', 'Depth: 0'],
@@ -52,6 +62,29 @@ try {
     $items['membership']->set('parameters', ['keep' => 'existing preference']);
     mcpCheck(!empty($items['membership']->save()['status']), 'Save unrelated personal settings.');
     $path = '/calendars/' . $items['user']->getId() . '/organization-' . $items['org']->getId() . '/';
+    $scopedBase = '/scoped/' . $items['org']->getId() . '/' . $items['root']->getId() . '/contextual/2563eb/';
+    $patchPaths = [$path, $scopedBase . 'editable/', $scopedBase . 'readonly/'];
+    $probe = caldavPatchBody('<d:set><d:prop><i:calendar-color>#123456</i:calendar-color></d:prop></d:set>');
+    $baseline = [];
+    foreach ($patchPaths as $patchPath) {
+        caldavPatchHttp($items, $patchPath, 'PROPPATCH', $probe);
+        caldavPatchHttp($items, $patchPath, 'PROPPATCH', $probe);
+        $baseline[$patchPath] = caldavPatchQueryCount((int)$items['user']->getId());
+    }
+    for ($i = 0; $i < 12; $i++) {
+        $items['event_' . $i] = mcpFixture(Event::class, ['IDuser' => $items['user']->getId(), 'IDorganization' => $items['org']->getId(),
+            'IDholon' => $items['root']->getId(), 'title' => 'Metadata performance event ' . $i, 'active' => 1, 'status' => Event::STATUS_CONFIRMED,
+            'start_at' => new DateTimeImmutable('tomorrow 09:00'), 'end_at' => new DateTimeImmutable('tomorrow 10:00')]);
+        $items['invitation_' . $i] = mcpFixture(EventInvitation::class, ['IDevent' => $items['event_' . $i]->getId(),
+            'invitation_type' => 'user', 'IDuser' => $items['user']->getId()]);
+    }
+    foreach ($patchPaths as $patchPath) {
+        $result = caldavPatchHttp($items, $patchPath, 'PROPPATCH', $probe);
+        $queries = caldavPatchQueryCount((int)$items['user']->getId());
+        mcpCheck($result['status'] === 207 && str_contains($result['body'], '200 OK'), 'Metadata updates still succeed with events.');
+        mcpCheck($queries === $baseline[$patchPath], 'PROPPATCH queries must not scale with event count.');
+        echo 'PROPPATCH ' . (str_contains($patchPath, 'scoped') ? basename($patchPath) : 'organization') . ': ' . $queries . " SQL for 0 or 12 events\n";
+    }
     $options = caldavPatchHttp($items, $path, 'OPTIONS');
     mcpCheck($options['status'] === 204 && str_contains($options['headers']['allow'] ?? '', 'PROPPATCH'), 'OPTIONS must advertise PROPPATCH.');
     $set = caldavPatchHttp($items, $path, 'PROPPATCH', caldavPatchBody('<d:set><d:prop><d:displayname>My &amp; calendar</d:displayname>'
@@ -116,7 +149,12 @@ try {
     mcpCheck($items['membership']->getParameter('keep') === 'existing preference', 'Unrelated personal settings remain intact.');
     mcpCheck(UserOrganization::loadCalDavCalendarProperties((int)$items['user']->getId(), (int)$items['other_org']->getId(),
         'organization-' . $items['org']->getId()) === [], 'Preferences stay isolated by organization.');
-    echo "caldav_proppatch_test: OK (HTTP, persistence, atomic failures, removal, read-only metadata and cache invalidation)\n";
+    $items['membership']->set('active', 0);
+    mcpCheck(!empty($items['membership']->save()['status']), 'Revoke fixture membership.');
+    foreach ($patchPaths as $patchPath) {
+        mcpCheck(caldavPatchHttp($items, $patchPath, 'PROPPATCH', $probe)['status'] === 404, 'Metadata writes must check current membership.');
+    }
+    echo "caldav_proppatch_test: OK (HTTP, constant queries, persistence, atomic failures, removal, read-only metadata, cache and revocation)\n";
 } finally {
     DbObject::enableReadOnlyMemoization(false);
     mcpCleanup($items);

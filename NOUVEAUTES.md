@@ -1,5 +1,7 @@
 # Journal des nouveautés
 
+- CalDAV / cout des preferences et diagnostic (2026-10-13) : PROPPATCH ne charge plus les evenements des calendriers par organisation ou des groupes scoped. Tests HTTP de cout SQL constant avec 0 ou 12 evenements, persistance, cache et revocation. Trace temporaire CALDAV_DIAGNOSTICS_ENABLED dans le journal PHP : logiciel client, compte, route, cache, temps d authentification, SQL et refus par propriete, sans valeurs ni contenu des evenements. Sans migration SQL.
+
 - Calendriers / lectures repetees (2026-10-12) : cache de reponses CalDAV etendu aux routes par organisation, avec controle des droits avant reutilisation. Chargement limite au calendrier demande. Les abonnements ICS lies a une organisation reutilisent aussi le contenu et son ETag ; changements et revocations verifies par tests HTTP. Mesure locale avec 12 evenements : 70 requetes SQL a froid, 7 en cache. Attribution des lectures validees a leur organisation dans les nouvelles statistiques, sans migration SQL.
 
 - CalDAV / PROPPATCH (2026-10-12) : nom, couleur et ordre des calendriers conserves par utilisateur dans les parametres de son adhesion a l organisation, y compris pour les calendriers d evenements en lecture seule. Reponses 207 par propriete, refus des proprietes techniques et sauvegarde atomique avec verrou ; suppression des preferences et invalidation du cache de decouverte. Privileges annonces ajustes. Tests HTTP PHP 8.5 de persistance, isolation, erreurs et cache ; sans migration SQL.

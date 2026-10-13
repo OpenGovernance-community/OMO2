@@ -68,6 +68,50 @@ Cette gestion suit les instructions atomiques de la
 
 ## Publication et verification
 
+Les PROPPATCH sur les calendriers par organisation et les groupes scoped ne
+chargent plus les evenements ni leur contenu ICS. Les controles de membre actif,
+application et perimetre restent executes. Test HTTP PHP 8.5 : 9 requetes SQL
+pour un calendrier par organisation, 17 pour un groupe scoped, aussi bien avec
+0 qu avec 12 evenements. Ces nombres locaux ne prejugent pas du temps en production.
+
+### Diagnostic temporaire des clients
+
+Apres publication, activer dans le `.env` de production :
+
+```dotenv
+CALDAV_DIAGNOSTICS_ENABLED=true
+```
+
+Laisser passer 15 a 30 minutes avec les clients habituels puis remettre `false`.
+Extraire les lignes contenant `CALDAV_DIAGNOSTIC` du fichier `php-errors.log`
+dans `RUNTIME_LOG_DIR`, ou par defaut dans le dossier `log` voisin du repertoire
+du site. Pas besoin d activer le journal de toutes les requetes SQL.
+Les lignes JSON donnent l heure, le compte, l organisation, le User-Agent, la
+route sans query string, Depth, le statut HTTP, le cache (HIT, MISS, BYPASS ou
+NOT_ELIGIBLE), la revision, les temps total/authentification/resolution et les
+compteurs SQL. Sur un HIT, la resolution est sautee et son temps est absent.
+PROPFIND ajoute les noms des proprietes demandees ; PROPPATCH ajoute les noms
+et statuts par propriete ainsi que preferences_changed pour les sauvegardes.
+Une empreinte SHA-256 du XML permet de reperer les requetes identiques sans
+enregistrer leurs valeurs. Les mots de passe, Authorization, cookies, valeurs
+des preferences et contenu des evenements ne sont pas collectes.
+
+Le User-Agent identifie le logiciel declare, pas un appareil unique ; plusieurs
+appareils peuvent utiliser le meme compte et la meme signature. Comparer des
+plages horaires apres publication, sans effacer l historique du tableau de bord.
+Un 207 peut contenir des 403/409/424 ; zero erreur serveur ne suffit donc pas.
+La colonne PROPPATC vient de la limite actuelle de huit caracteres des methodes
+dans les statistiques, sans modification de la methode HTTP recue.
+
+Analyser d abord les PROPPATCH identiques repetes et leurs refus, puis le taux
+de HIT des PROPFIND et les revisions qui changent. Un NOT_ELIGIBLE sur PROPPATCH
+est normal : une ecriture ne reutilise pas une reponse de lecture en cache.
+L authentification reste executee meme sur un HIT ; auth_ms mesure ce cout.
+Une limitation de frequence doit etre decidee apres cette collecte et testee
+avec les clients concernes, sans bloquer aveuglement un cycle de synchronisation.
+
+### Deploiement
+
 Publier les fichiers PHP modifies suffit : aucune migration SQL ni regle Apache
 supplementaire n est necessaire. Le client peut ensuite relancer sa
 synchronisation. `OPTIONS` annonce `PROPPATCH` sur les calendriers.
