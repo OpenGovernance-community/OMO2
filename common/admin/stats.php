@@ -34,6 +34,15 @@ function siteStatsSourceLang(): array
         'monitor.growth' => 'Croissance globale du site', 'monitor.unavailable' => 'Indisponible',
         'monitor.days' => '{count} jours', 'monitor.error_rate' => 'Taux d erreurs serveur',
         'monitor.sql_queries' => 'Requetes SQL', 'monitor.client_errors' => 'Erreurs HTTP 4xx',
+        'caldav.title' => 'Suivi CalDAV', 'caldav.sort' => 'Classement CalDAV',
+        'caldav.requests' => 'Appels CalDAV', 'caldav.cpu' => 'CPU PHP CalDAV (secondes)',
+        'caldav.users' => 'Utilisateurs les plus consommateurs de CalDAV',
+        'caldav.contact' => 'Utilisateur / e-mail', 'caldav.unknown' => 'Compte #{id}',
+        'caldav.anonymous' => 'Non identifie', 'caldav.no_email' => 'E-mail indisponible',
+        'caldav.notes' => 'Periode et organisation selectionnees ; tous les appels HTTP CalDAV, independamment des filtres Mesures et Cron. Classement limite a 25 comptes, e-mails actuels. Les appels non identifies restent inclus.',
+        'caldav.scope_note' => 'Choisir Toutes les organisations pour inclure la decouverte des calendriers et les appels historiquement sans organisation. Les flux ICS sont exclus. Les erreurs 4xx et 5xx ne comprennent pas les refus par propriete dans un HTTP 207.',
+        'caldav.period_note' => 'Aujourd hui : detail par heure UTC ; autres periodes : par jour UTC. La derniere tranche est en cours. Le nombre d appels ne donne pas directement le nombre de synchronisations.',
+        'caldav.today' => 'Aujourd hui (UTC)', 'caldav.propfind' => 'PROPFIND', 'caldav.proppatch' => 'PROPPATCH',
     ];
     return [
         'stats.page.title' => ['text' => 'Statistiques du site', 'context' => 'Page title for the global site statistics dashboard.'],
@@ -44,6 +53,7 @@ function siteStatsSourceLang(): array
         'stats.period.days_90' => ['text' => '90 jours', 'context' => 'Ninety-day chart period option.'],
         'stats.period.days_365' => ['text' => '1 an', 'context' => 'One-year chart period option.'],
         'stats.period.daily' => ['text' => 'par jour', 'context' => 'Chart aggregation label when bars represent days.'],
+        'stats.period.hourly' => ['text' => 'par heure UTC', 'context' => 'Chart aggregation label for hourly CalDAV activity.'],
         'stats.period.weekly' => ['text' => 'par semaine', 'context' => 'Chart aggregation label when bars represent weeks.'],
         'stats.organizations.title' => ['text' => 'Organisations', 'context' => 'Title of the organizations statistics block.'],
         'stats.organizations.total' => ['text' => 'Total d’organisations', 'context' => 'Metric label for the total number of organizations.'],
@@ -163,7 +173,7 @@ function siteStatsRenderBarChart(string $chartId, array $seriesList, string $ari
     $labelStep = max(1, (int)ceil($count / 6));
     $svg = '<svg class="site-stats-chart" viewBox="0 0 ' . $width . ' ' . $height . '" role="img" aria-labelledby="' . siteStatsEscape($chartId) . '-title ' . siteStatsEscape($chartId) . '-description">';
     $svg .= '<title id="' . siteStatsEscape($chartId) . '-title">' . siteStatsEscape($ariaLabel) . '</title>';
-    $svg .= '<desc id="' . siteStatsEscape($chartId) . '-description">' . siteStatsEscape(siteStatsT('stats.period.' . ($mode === 'weekly' ? 'weekly' : 'daily'))) . '</desc>';
+    $svg .= '<desc id="' . siteStatsEscape($chartId) . '-description">' . siteStatsEscape(siteStatsT('stats.period.' . (in_array($mode, ['weekly', 'hourly'], true) ? $mode : 'daily'))) . '</desc>';
     $svg .= '<line class="site-stats-chart__grid" x1="' . $paddingLeft . '" y1="' . $paddingTop . '" x2="' . ($width - $paddingRight) . '" y2="' . $paddingTop . '" />';
     $svg .= '<line class="site-stats-chart__grid" x1="' . $paddingLeft . '" y1="' . ($paddingTop + $plotHeight / 2) . '" x2="' . ($width - $paddingRight) . '" y2="' . ($paddingTop + $plotHeight / 2) . '" />';
     $svg .= '<line class="site-stats-chart__axis" x1="' . $paddingLeft . '" y1="' . ($paddingTop + $plotHeight) . '" x2="' . ($width - $paddingRight) . '" y2="' . ($paddingTop + $plotHeight) . '" />';
@@ -265,16 +275,50 @@ function siteStatsPerformanceTable(array $rows, bool $organizations, array $name
     echo '</tbody></table></div>';
 }
 
+function siteStatsCalDavUsers(array $rows): void
+{
+    if (!$rows) {
+        echo '<p>' . siteStatsEscape(siteStatsT('stats.chart.empty')) . '</p>';
+        return;
+    }
+    echo '<div class="site-stats-table-scroll"><table class="site-stats-table" id="caldav-users"><thead><tr>';
+    foreach (['caldav.contact', 'monitor.requests', 'caldav.propfind', 'caldav.proppatch', 'monitor.total', 'monitor.cpu',
+        'monitor.mean', 'monitor.sql', 'monitor.sql_queries', 'monitor.client_errors', 'monitor.errors'] as $label) {
+        echo '<th scope="col">' . siteStatsEscape(siteStatsT($label)) . '</th>';
+    }
+    echo '</tr></thead><tbody>';
+    foreach ($rows as $row) {
+        $userId = (int)$row['user_id'];
+        $name = $userId > 0 ? (trim((string)$row['name']) ?: siteStatsT('caldav.unknown', ['id' => $userId])) : siteStatsT('caldav.anonymous');
+        $email = trim((string)($row['email'] ?? ''));
+        echo '<tr><th scope="row">' . siteStatsEscape($name) . ($userId > 0 && trim((string)$row['name']) !== '' ? ' (#' . $userId . ')' : '') . '<br>';
+        echo $email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL)
+            ? '<a href="mailto:' . siteStatsEscape(rawurlencode($email)) . '">' . siteStatsEscape($email) . '</a>'
+            : siteStatsEscape(siteStatsT('caldav.no_email'));
+        echo '</th>';
+        $values = [siteStatsNumber($row['requests']), siteStatsNumber($row['propfind']), siteStatsNumber($row['proppatch']),
+            siteStatsNumber($row['duration_ms'] / 1000, 2) . ' s',
+            $row['cpu_samples'] > 0 ? siteStatsNumber($row['cpu_ms'] / 1000, 2) . ' s' : siteStatsT('monitor.unavailable'),
+            siteStatsNumber($row['duration_ms'] / max(1, $row['requests']), 1) . ' ms',
+            siteStatsNumber($row['sql_ms'] / 1000, 2) . ' s', siteStatsNumber($row['query_count']),
+            siteStatsNumber($row['client_errors']), siteStatsNumber($row['errors'])];
+        foreach ($values as $value) echo '<td>' . siteStatsEscape($value) . '</td>';
+        echo '</tr>';
+    }
+    echo '</tbody></table></div>';
+}
+
 $allowed = commonGetCurrentUserId() > 0 && commonCurrentUserIsSiteAdmin();
 header('Cache-Control: no-store');
 if (!$allowed) { http_response_code(403); }
 $chartRange = (int)($_GET['range'] ?? 30);
-if (!in_array($chartRange, [7, 30, 90, 365], true)) { $chartRange = 30; }
+if (!in_array($chartRange, [1, 7, 30, 90, 365], true)) { $chartRange = 30; }
 $organizationId = max(0, (int)($_GET['organization'] ?? 0));
 $kind = in_array($_GET['kind'] ?? '', ['web', 'cron', 'task'], true) ? $_GET['kind'] : 'web';
 if ($kind !== 'web') { $organizationId = 0; } // Global maintenance is not owned by the invoking organization.
 $cron = in_array($_GET['cron'] ?? '', ['none', 'called', 'ran', 'skipped'], true) ? $_GET['cron'] : 'all';
 $sort = in_array($_GET['sort'] ?? '', ['cpu', 'total', 'volume'], true) ? $_GET['sort'] : 'slow';
+$calDavSort = in_array($_GET['caldav_sort'] ?? '', ['cpu', 'total', 'volume'], true) ? $_GET['caldav_sort'] : 'total';
 $chartEndDate = new DateTimeImmutable('today', new DateTimeZone('UTC'));
 $chartStartDate = $chartEndDate->modify('-' . ($chartRange - 1) . ' days');
 $chartMode = $chartRange > 90 ? 'weekly' : 'daily';
@@ -290,6 +334,8 @@ if ($allowed) {
     $growth = \dbObject\SiteStatistics::growth($chartStartDate, $chartEndDate);
     $performance = \dbObject\PerformanceHourly::dashboard($chartStartDate->format('Y-m-d H:i:s'),
         $chartEndDate->modify('+1 day')->format('Y-m-d H:i:s'), $organizationId, $kind, $cron, $sort);
+    $calDav = \dbObject\PerformanceHourly::calDavDashboard($chartStartDate->format('Y-m-d H:i:s'),
+        $chartEndDate->modify('+1 day')->format('Y-m-d H:i:s'), $organizationId, $calDavSort, $chartRange === 1);
     foreach ($performance['organizationNames'] ?? [] as $organization) { $organizationNames[(int)$organization['id']] = $organization['name']; }
 }
 ?>
@@ -320,11 +366,12 @@ if ($allowed) {
         </header>
         <section class="generic-section"><form class="site-stats-filters" method="get">
             <?php $filters = [
-                'range' => ['monitor.range', array_combine([7, 30, 90, 365], array_map(static fn($days) => siteStatsT('monitor.days', ['count' => $days]), [7, 30, 90, 365])), $chartRange],
+                'range' => ['monitor.range', [1 => siteStatsT('caldav.today')] + array_combine([7, 30, 90, 365], array_map(static fn($days) => siteStatsT('monitor.days', ['count' => $days]), [7, 30, 90, 365])), $chartRange],
                 'organization' => ['monitor.organization', [0 => siteStatsT('monitor.all')] + $organizationNames, $organizationId],
                 'kind' => ['monitor.kind', ['web' => siteStatsT('monitor.web'), 'cron' => siteStatsT('monitor.cron'), 'task' => siteStatsT('monitor.task')], $kind],
                 'cron' => ['monitor.cron_filter', array_combine(['all', 'none', 'called', 'ran', 'skipped'], array_map('siteStatsT', ['monitor.any', 'monitor.none', 'monitor.called', 'monitor.ran', 'monitor.skipped'])), $cron],
                 'sort' => ['monitor.sort', array_combine(['slow', 'cpu', 'total', 'volume'], array_map('siteStatsT', ['monitor.slow', 'monitor.cpu', 'monitor.total', 'monitor.volume'])), $sort],
+                'caldav_sort' => ['caldav.sort', array_combine(['total', 'volume', 'cpu'], array_map('siteStatsT', ['monitor.total', 'monitor.volume', 'monitor.cpu'])), $calDavSort],
             ]; foreach ($filters as $field => [$label, $options, $selected]): ?>
                 <label><?= siteStatsEscape(siteStatsT($label)) ?>
                     <select class="generic-form-control" name="<?= siteStatsEscape($field) ?>">
@@ -402,6 +449,42 @@ if ($allowed) {
                 <p><?= siteStatsEscape(siteStatsT('monitor.retention')) ?></p>
                 <p><?= siteStatsEscape($performance['collection']['pending'] > 0 ? siteStatsT('monitor.pending', ['count' => siteStatsNumber($performance['collection']['pending']), 'date' => $performance['collection']['oldest'] . ' UTC']) : siteStatsT('monitor.ready')) ?></p>
             </div>
+        <?php endif; ?>
+        <?php if ($calDav['available']): ?>
+            <h2 id="caldav-monitoring" class="generic-card-title generic-card-title--section"><?= siteStatsEscape(siteStatsT('caldav.title')) ?></h2>
+            <div class="generic-soft-panel site-stats-notes">
+                <?php foreach (['caldav.notes', 'caldav.scope_note', 'caldav.period_note'] as $note): ?><p><?= siteStatsEscape(siteStatsT($note)) ?></p><?php endforeach; ?>
+            </div>
+            <?php $calDavTotals = $calDav['totals']; ?>
+            <div class="site-stats-metrics">
+                <?php foreach (['monitor.requests' => siteStatsNumber($calDavTotals['requests']),
+                    'monitor.users' => siteStatsNumber($calDavTotals['active_users']),
+                    'monitor.total' => siteStatsNumber($calDavTotals['duration_ms'] / 1000, 2) . ' s',
+                    'monitor.cpu' => $calDavTotals['cpu_samples'] > 0 ? siteStatsNumber($calDavTotals['cpu_ms'] / 1000, 2) . ' s' : siteStatsT('monitor.unavailable')] as $label => $value): ?>
+                    <div class="site-stats-metric generic-soft-panel generic-soft-panel--stack"><span><?= siteStatsEscape(siteStatsT($label)) ?></span><strong><?= siteStatsEscape($value) ?></strong></div>
+                <?php endforeach; ?>
+            </div>
+            <?php
+            $calDavTimeline = array_column($calDav['timeline'], null, 'label');
+            $calDavRequests = $calDavCpu = [];
+            $calDavHourly = $chartRange === 1;
+            $calDavLast = $calDavHourly ? new DateTimeImmutable('now', new DateTimeZone('UTC')) : $chartEndDate;
+            foreach (new DatePeriod($chartStartDate, new DateInterval($calDavHourly ? 'PT1H' : 'P1D'), $calDavLast, DatePeriod::INCLUDE_END_DATE) as $date) {
+                $row = $calDavTimeline[$date->format($calDavHourly ? 'Y-m-d H:00:00' : 'Y-m-d')] ?? [];
+                $point = ['label' => $date->format($calDavHourly ? 'H\h' : 'd.m')];
+                $calDavRequests[] = $point + ['value' => (int)($row['requests'] ?? 0)];
+                $calDavCpu[] = $point + ['value' => ($row['cpu_ms'] ?? 0) / 1000];
+            }
+            ?>
+            <div class="site-stats-grid">
+                <?php foreach (['requests' => [$calDavRequests, ''], 'cpu' => [$calDavCpu, 's']] as $id => [$points, $unit]): ?>
+                    <figure class="site-stats-chart-panel generic-section generic-section--stack"><figcaption class="generic-card-title"><?= siteStatsEscape(siteStatsT('caldav.' . $id)) ?></figcaption><?= siteStatsRenderBarChart('caldav-' . $id, [['series' => $points, 'unit' => $unit]], siteStatsT('caldav.' . $id), $calDavHourly ? 'hourly' : 'daily') ?></figure>
+                <?php endforeach; ?>
+            </div>
+            <section class="generic-section">
+                <h3 class="generic-card-title"><?= siteStatsEscape(siteStatsT('caldav.users')) ?></h3>
+                <?php siteStatsCalDavUsers($calDav['users']); ?>
+            </section>
         <?php endif; ?>
         <h2 class="generic-card-title generic-card-title--section"><?= siteStatsEscape(siteStatsT('monitor.growth')) ?></h2>
         <div class="site-stats-grid">

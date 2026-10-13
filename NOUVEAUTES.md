@@ -1,5 +1,9 @@
 # Journal des nouveautés
 
+- Statistiques / suivi CalDAV (2026-10-13) : graphiques dedies aux appels et au CPU, detail horaire avec la periode Aujourd hui, classement des 25 comptes par duree, volume ou CPU avec nom, ID et e-mail de contact. Detail PROPFIND/PROPPATCH, SQL et erreurs HTTP ; donnees live et historiques existantes, acces super administrateur conserve. Tests PHP 8.5 de comptage, agregation, tris, contacts et rendu ; controle ordinateur/mobile. Sans migration SQL.
+
+- CalDAV / decouverte des calendriers (2026-10-13) : cache ajoute a PROPFIND /calendars/{utilisateur}/, route repetee par macOS et jusque-la hors cache. Adhesions et applications revalidees avant lecture, cle dependante de toutes les organisations visibles et chargement groupe des adhesions. Test HTTP : liste de 70 a 7 requetes SQL avec 12 evenements, invalidation multi-organisation, retraits d acces et Depth verifies. Sans migration SQL.
+
 - CalDAV / cout des preferences et diagnostic (2026-10-13) : PROPPATCH ne charge plus les evenements des calendriers par organisation ou des groupes scoped. Tests HTTP de cout SQL constant avec 0 ou 12 evenements, persistance, cache et revocation. Trace temporaire CALDAV_DIAGNOSTICS_ENABLED dans le journal PHP : logiciel client, compte, route, cache, temps d authentification, SQL et refus par propriete, sans valeurs ni contenu des evenements. Sans migration SQL.
 
 - Calendriers / lectures repetees (2026-10-12) : cache de reponses CalDAV etendu aux routes par organisation, avec controle des droits avant reutilisation. Chargement limite au calendrier demande. Les abonnements ICS lies a une organisation reutilisent aussi le contenu et son ETag ; changements et revocations verifies par tests HTTP. Mesure locale avec 12 evenements : 70 requetes SQL a froid, 7 en cache. Attribution des lectures validees a leur organisation dans les nouvelles statistiques, sans migration SQL.
