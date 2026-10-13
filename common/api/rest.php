@@ -50,6 +50,12 @@ function omoRestMatchRoute(string $path, ?string $requestedMethod = null): ?arra
 function omoRestQueryValue(string $value, array $schema): mixed
 {
     if (!mb_check_encoding($value, 'UTF-8')) throw new InvalidArgumentException('Query parameters must use UTF-8.');
+    if ($schema['type'] === 'boolean') {
+        return match ($value) {
+            'true', '1' => true, 'false', '0' => false,
+            default => throw new InvalidArgumentException('Expected true, false, 1 or 0.'),
+        };
+    }
     if ($schema['type'] === 'integer') {
         if (!preg_match('/^(?:0|[1-9][0-9]*)$/D', $value) || filter_var($value, FILTER_VALIDATE_INT) === false) {
             throw new InvalidArgumentException('Expected a decimal integer.');

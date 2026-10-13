@@ -49,6 +49,7 @@ const router = extract('function handleRoute()', 'function activateMenu(')
                 function omoNormalizeHashToken(token) { return token || null; }
                 function omoGetMenuHashForRouteToken(token) { return token && token.split('-')[0]; }
                 function omoConfirmDiscardChanges() { return true; }
+                function omoConfirmRouteChange() { return true; }
                 function getSidebarMenuConfig() { return {drawer:'drawer_activities', resolvedUrl:'/omo/api/activities/index.php'}; }
                 function omoNormalizeDrawerId(id) { return id; }
                 function omoNormalizeDrawerForcedScope() { return ''; }

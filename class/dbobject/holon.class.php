@@ -26,7 +26,7 @@
 				[['name','nomcomplet','templatename','accesskey','time_budget_recurrence','money_budget_recurrence'], 'string'],			// Texte libre
 				[['time_budget_hours','money_budget'], 'float'],
 				[['icon'], 'sizedimage'],			// Images illustratives
-				[['datecreation','datemodification'], 'datetime'],	// Date avec precision des heures
+				[['datecreation','datemodification','archived_at'], 'datetime'],	// Date avec precision des heures
 				[['IDuser','IDtypeholon','IDholon_parent','IDholon_template','IDorganization','IDholon_org'], 'fk'],				// Cle etrangeres
 				[['lockedname','lockedicon','lockedadminmin','lockedadminmax','adminminoverride','adminmaxoverride','active','visible','mandatory','unique','link','adminparent'], 'boolean'],				// Cle etrangeres
 				[['color', 'color_unassigned'], 'color'],				// Couleur au format hexadecimal
@@ -47,6 +47,7 @@
 				'datecreation' => 'Date de creation',
 				'datemodification' => 'Date de modification',
 				'active' => 'Actif ?',
+				'archived_at' => 'Date d archivage',
 				'visible' => 'Visible ?',
 				'color' => 'Couleur',
 				'color_unassigned' => 'Couleur non attribuee',
@@ -378,6 +379,7 @@
 
 		public function canViewDetail()
 		{
+			if ($this->get('archived_at') instanceof \DateTimeInterface) return false;
 			$organizationId = $this->resolveOrganizationId();
 			if ($organizationId <= 0) {
 				return false;
@@ -399,6 +401,7 @@
 		}
 
 		public function canEdit() {
+			if ($this->get('archived_at') instanceof \DateTimeInterface) return false;
 			$currentUserId = (int)\commonGetCurrentUserId();
 			if ($currentUserId <= 0) {
 				return false;
@@ -4855,6 +4858,7 @@
 		{
 			$children = new \dbObject\ArrayHolon();
 			$children->load([
+				'includeArchived' => true,
 				"where" => [
 					["field" => "IDholon_parent", "value" => $this->get("id")],
 				],
@@ -4864,6 +4868,151 @@
 			]);
 
 			return $children;
+		}
+
+		/** Only archive roots with a live parent can be restored independently. */
+		/** SQL predicate shared by normal catalogs and the archive search. */
+		public static function archivedContextSql(string $holonColumn): string
+		{
+			if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*\.[a-zA-Z_][a-zA-Z0-9_]*$/D', $holonColumn)) {
+				throw new \InvalidArgumentException('Invalid holon column');
+			}
+			return 'EXISTS (SELECT 1 FROM holon archive_context WHERE archive_context.id = ' . $holonColumn . ' AND archive_context.archived_at IS NOT NULL)';
+		}
+
+		public function canViewArchive(): bool
+		{
+			$archive = $this->getParametersArray()['holon_archive'] ?? [];
+			$parent = $this->getParentHolon();
+			return !(bool)$this->get('active') && $this->get('archived_at') instanceof \DateTimeInterface
+				&& in_array((int)$this->get('IDtypeholon'), [1, 2], true) && (bool)$this->get('visible')
+				&& (int)($archive['root_id'] ?? 0) === (int)$this->getId() && !empty($archive['batch'])
+				&& $parent && (bool)$parent->get('active') && $parent->canViewDetail()
+				&& \commonUserHasOrganizationMembership((int)\commonGetCurrentUserId(), $this->resolveOrganizationId());
+		}
+
+		public function canManageArchive(bool $restore = false): bool
+		{
+			$parent = $this->getParentHolon();
+			if (!in_array((int)$this->get('IDtypeholon'), [1, 2], true)
+				|| !$this->get('visible') || trim((string)$this->get('templatename')) !== ''
+				|| !$parent || !(bool)$parent->get('active') || !$parent->canViewDetail()) return false;
+			if (!$restore) return (bool)$this->get('active') && $this->canDelete() && $this->isAllowed('CAN_DELETE_HOLON', false);
+			// Resolve the original location as a prospective child: archived IDs are
+			// deliberately absent from active direct-child/descendant permission sets.
+			if (!HolonPermission::userHasPermissionForHolonContext((int)\commonGetCurrentUserId(),
+				$this->resolveOrganizationId(), 'CAN_DELETE_HOLON', (int)$parent->getId(), true)) return false;
+			return $this->canViewArchive();
+		}
+
+		/** Physical descendants, including hidden templates and older archives. */
+		public function getArchiveSubtree(): array
+		{
+			$nodes = [$this];
+			$seen = [(int)$this->getId() => true];
+			for ($i = 0; $i < count($nodes); $i++) {
+				foreach ($nodes[$i]->getDeletionChildren() as $child) {
+					$id = (int)$child->getId();
+					if (isset($seen[$id])) throw new \RuntimeException('Invalid holon tree');
+					$seen[$id] = true;
+					$nodes[] = $child;
+				}
+			}
+			return $nodes;
+		}
+
+		/** Archive the branch after applying the explicitly selected authority disposition. */
+		public function changeArchiveState(int $organizationId, bool $restore = false, string $authorityChoice = ''): array
+		{
+			$pdo = self::getPdo();
+			$ownsTransaction = !$pdo->inTransaction();
+			$savepoint = 'holon_archive_' . bin2hex(random_bytes(6));
+			try {
+				if ($ownsTransaction) $pdo->beginTransaction();
+				else $pdo->exec('SAVEPOINT ' . $savepoint);
+				// Serialize lifecycle operations and lock descendants before taking the snapshot.
+				$organization = new Organization();
+				if (!$organization->load($organizationId) || !($root = $organization->getEnabledStructuralRootHolon())) {
+					throw new \DomainException('unavailable');
+				}
+				$rows = self::fetchAll('SELECT * FROM holon WHERE id = :root OR IDholon_org = :organization_root ORDER BY id FOR UPDATE',
+					['root' => (int)$root->getId(), 'organization_root' => (int)$root->getId()]);
+				if ($rows === false) throw new \RuntimeException('Unable to lock holons');
+				$byId = [];
+				$children = [];
+				foreach ($rows as $row) {
+					$loaded = new self(); $loaded->hydrateFromDatabaseRow($row, true);
+					$byId[(int)$row['id']] = $loaded;
+					$children[(int)($row['IDholon_parent'] ?? 0)][] = $loaded;
+				}
+				if (!isset($byId[(int)$this->getId()]) || !$this->load((int)$this->getId()) || $this->resolveOrganizationId() !== $organizationId
+					|| !$this->isDescendantOf($root, false) || !$this->canManageArchive($restore)) {
+					throw new \DomainException('forbidden');
+				}
+				$nodes = [$this];
+				$visited = [(int)$this->getId() => true];
+				for ($i = 0; $i < count($nodes); $i++) {
+					foreach ($children[(int)$nodes[$i]->getId()] ?? [] as $child) {
+						if (isset($visited[(int)$child->getId()])) throw new \RuntimeException('Invalid holon tree');
+						$visited[(int)$child->getId()] = true;
+						$nodes[] = $child;
+					}
+				}
+				$ids = array_fill_keys(array_map(static fn(self $node): int => (int)$node->getId(), $nodes), true);
+				if (!$restore) {
+					foreach ($rows as $row) {
+						if (!empty($row['active']) && !isset($ids[(int)$row['id']]) && isset($ids[(int)($row['IDholon_template'] ?? 0)])) {
+							throw new \DomainException('template_in_use');
+						}
+					}
+				}
+				$authorityResult = $restore ? [] : Authority::applyHolonRemovalChoice($nodes, $authorityChoice, true);
+				$batch = $restore ? $this->getParametersArray()['holon_archive']['batch'] : bin2hex(random_bytes(16));
+				$now = new \DateTimeImmutable();
+				$count = 0;
+				foreach ($nodes as $node) {
+					$parameters = $node->getParametersArray();
+					if ($restore) {
+						if (($parameters['holon_archive']['batch'] ?? '') !== $batch) continue;
+						unset($parameters['holon_archive']);
+					} else {
+						// A previously inactive or independently archived child stays that way on restore.
+						if (!(bool)$node->get('active')) continue;
+						$parameters['holon_archive'] = ['root_id' => (int)$this->getId(), 'batch' => $batch];
+					}
+					$node->set('active', $restore);
+					$node->set('archived_at', $restore ? null : $now);
+					$node->set('datemodification', $now);
+					$node->setParametersArray($parameters);
+					if (empty($node->save()['status'])) throw new \RuntimeException('Unable to save holon archive');
+					$count++;
+				}
+				if ($restore) {
+					foreach ($nodes as $node) {
+						if ($node->get('active') && $node->get('visible') && !$organization->isHolonTemplateAvailableForRestore($node)) {
+							throw new \DomainException('template_conflict');
+						}
+					}
+				}
+				$parent = $this->getParentHolon();
+				$result = History::createEntry($organizationId, (int)\commonGetCurrentUserId(), $restore ? 'holon_restored' : 'holon_archived',
+					($restore ? 'Restauration de ' : 'Archivage de ') . History::buildReferenceToken('holon', (int)$this->getId(), $this->getDisplayName()),
+					['IDholon' => (int)$this->getId(), 'parentId' => (int)$parent->getId(), 'count' => $count, 'authorities' => $authorityResult], 'holon', (int)$this->getId());
+				if (empty($result['status'])) throw new \RuntimeException('Unable to record holon archive history');
+				if ($ownsTransaction) $pdo->commit();
+				else $pdo->exec('RELEASE SAVEPOINT ' . $savepoint);
+				if (function_exists('commonClearCurrentUserPermissionCache')) \commonClearCurrentUserPermissionCache();
+				return ['status' => true, 'count' => $count, 'targetId' => $restore ? (int)$this->getId() : (int)$parent->getId()];
+			} catch (\Throwable $exception) {
+				if ($pdo->inTransaction()) {
+					if ($ownsTransaction) $pdo->rollBack();
+					else { $pdo->exec('ROLLBACK TO SAVEPOINT ' . $savepoint); $pdo->exec('RELEASE SAVEPOINT ' . $savepoint); }
+				}
+				self::$preload = [];
+				if ((int)$this->getId() > 0) $this->load((int)$this->getId(), true);
+				if (!($exception instanceof \DomainException)) error_log('Holon archive failed: ' . $exception->getMessage());
+				return ['status' => false, 'reason' => $exception instanceof \DomainException ? $exception->getMessage() : 'failed'];
+			}
 		}
 
 		// Compte enfants visibles

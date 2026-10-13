@@ -100,6 +100,7 @@ class ArrayProject extends ArrayDbObject
             $params['hydrate'] = $hydrate;
         }
 
+        if ($activeOnly) $params['filter'] = 'NOT ' . Holon::archivedContextSql('project.IDholon');
         $this->load($params);
     }
 
@@ -218,6 +219,7 @@ class ArrayProject extends ArrayDbObject
             $params = ['where' => $where];
         }
 
+        $params['filter'] = 'NOT ' . Holon::archivedContextSql('project.IDholon');
         $this->load($params + [
             'hydrate' => $hydrate,
             'orderBy' => [

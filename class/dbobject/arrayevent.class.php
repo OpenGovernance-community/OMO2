@@ -15,7 +15,7 @@ class ArrayEvent extends ArrayDbObject
         }
         $rows = Event::fetchAll('SELECT e.* FROM `event` e
             LEFT JOIN event_time_buffer b ON b.IDevent = e.id AND b.IDuser = :buffer_user
-            WHERE e.active = 1 AND e.status <> :cancelled
+            WHERE e.active = 1 AND NOT ' . Holon::archivedContextSql('e.IDholon') . ' AND e.status <> :cancelled
             ' . $endCondition . ' AND DATE_ADD((CASE WHEN e.is_all_day = 1
                 THEN DATE_ADD(DATE(COALESCE(e.end_at, e.start_at)), INTERVAL 1 DAY)
                 ELSE COALESCE(e.end_at, DATE_ADD(e.start_at, INTERVAL 1 HOUR)) END), INTERVAL COALESCE(b.closing_minutes, 0) MINUTE) > :start
@@ -86,6 +86,7 @@ class ArrayEvent extends ArrayDbObject
             $params['hydrate'] = $hydrate;
         }
 
+        $params['filter'] = 'NOT ' . Holon::archivedContextSql('event.IDholon');
         $this->load($params);
     }
 
@@ -134,7 +135,7 @@ class ArrayEvent extends ArrayDbObject
 
         if (!$includeInactive) {
             $query .= "
-              AND e.active = 1
+              AND e.active = 1 AND NOT " . Holon::archivedContextSql('e.IDholon') . "
             ";
         }
 
@@ -186,7 +187,7 @@ class ArrayEvent extends ArrayDbObject
 
         if (!$includeInactive) {
             $query .= "
-              AND e.active = 1
+              AND e.active = 1 AND NOT " . Holon::archivedContextSql('e.IDholon') . "
             ";
         }
 
@@ -231,6 +232,7 @@ class ArrayEvent extends ArrayDbObject
             $params['where'][] = ['field' => 'status', 'op' => '<>', 'value' => \dbObject\Event::STATUS_CANCELLED];
         }
 
+        $params['filter'] = 'NOT ' . Holon::archivedContextSql('event.IDholon');
         $this->load($params);
     }
 
@@ -271,7 +273,7 @@ class ArrayEvent extends ArrayDbObject
 
         if (!$includeInactive) {
             $query .= "
-              AND e.active = 1
+              AND e.active = 1 AND NOT " . Holon::archivedContextSql('e.IDholon') . "
               AND e.status <> :cancelled_status
             ";
             $params['cancelled_status'] = \dbObject\Event::STATUS_CANCELLED;
@@ -322,7 +324,7 @@ class ArrayEvent extends ArrayDbObject
 
         if (!$includeInactive) {
             $query .= "
-              AND e.active = 1
+              AND e.active = 1 AND NOT " . Holon::archivedContextSql('e.IDholon') . "
               AND e.status <> :cancelled_status
             ";
             $params['cancelled_status'] = \dbObject\Event::STATUS_CANCELLED;
@@ -393,6 +395,7 @@ class ArrayEvent extends ArrayDbObject
             $params['hydrate'] = $hydrate;
         }
 
+        $params['filter'] = 'NOT ' . Holon::archivedContextSql('event.IDholon');
         $this->load($params);
     }
 
@@ -427,7 +430,7 @@ class ArrayEvent extends ArrayDbObject
 
         if (!$includeInactive) {
             $query .= "
-              AND e.active = 1
+              AND e.active = 1 AND NOT " . Holon::archivedContextSql('e.IDholon') . "
               AND e.status <> :cancelled_status
             ";
             $params['cancelled_status'] = \dbObject\Event::STATUS_CANCELLED;

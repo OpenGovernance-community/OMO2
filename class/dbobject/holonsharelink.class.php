@@ -341,7 +341,7 @@
 		public function getScopeHolon()
 		{
 			if ($this->_scopeHolon instanceof Holon) {
-				return $this->_scopeHolon;
+				return $this->_scopeHolon->get('archived_at') instanceof \DateTimeInterface ? null : $this->_scopeHolon;
 			}
 
 			$holonId = (int)$this->get('IDholon');
@@ -350,7 +350,7 @@
 			}
 
 			$holon = new Holon();
-			if (!$holon->load($holonId)) {
+			if (!$holon->load($holonId) || $holon->get('archived_at') instanceof \DateTimeInterface) {
 				return null;
 			}
 
@@ -365,7 +365,7 @@
 				return false;
 			}
 
-			return (int)$this->get('IDorganization') === $organizationId;
+			return (int)$this->get('IDorganization') === $organizationId && $this->getScopeHolon() !== null;
 		}
 
 		public function canViewHolon(Holon $holon)
@@ -399,6 +399,7 @@
 
 		public function containsHolon(Holon $holon)
 		{
+			if ($holon->get('archived_at') instanceof \DateTimeInterface) return false;
 			if ((int)$holon->getId() <= 0) {
 				return false;
 			}

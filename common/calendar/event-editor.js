@@ -338,6 +338,7 @@
                 });
             }).then(function (payload) {
                 if (!payload) { return; }
+                if (typeof window.commonDrawerMarkSaved === 'function') window.commonDrawerMarkSaved(form);
                 if (payload.warning && typeof window.commonNotify === 'function') {
                     setFeedback(form, '', false);
                     window.commonNotify(payload.warning, 'warning', {duration: 8000});

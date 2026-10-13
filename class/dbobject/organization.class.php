@@ -10680,6 +10680,13 @@
 		}
 
 		// Filtre template unique
+		public function isHolonTemplateAvailableForRestore(\dbObject\Holon $holon): bool
+		{
+			$template = $holon->getTemplateHolon();
+			$parent = $holon->getParentHolon();
+			return !$template || ($parent && $this->isTemplateAvailableForHolonCreation($template, $parent, (int)$holon->getId()));
+		}
+
 		protected function isTemplateAvailableForHolonCreation(\dbObject\Holon $template, \dbObject\Holon $contextHolon, $excludedHolonId = 0)
 		{
 			if ((int)$template->get('IDtypeholon') === 2
@@ -13661,7 +13668,7 @@
 		}
 
 		// Supprime holon cible
-		public function deleteHolonDefinition($holonId = 0, $userId = 0, $collectiveGovernance = false)
+		public function deleteHolonDefinition($holonId = 0, $userId = 0, $collectiveGovernance = false, string $authorityChoice = '')
 		{
 			$rootHolon = $this->getStructuralRootHolon();
 			$holonId = (int)$holonId;
@@ -13702,15 +13709,33 @@
 				);
 			}
 
+			if (!Authority::validateHolonRemovalChoice($authorityChoice)) {
+				return ['status' => false, 'message' => 'Choisissez le traitement des autorites.'];
+			}
 			$descendantCount = $holon->countVisibleDescendants();
 			$holonName = $holon->getDisplayName();
 			$holonTypeId = (int)$holon->get('IDtypeholon');
-
-			if (!$holon->delete()) {
-				return array(
-					'status' => false,
-'message' => "L’espace n’a pas pu être supprimé.",
-				);
+			$pdo = self::getPdo();
+			$ownsTransaction = !$pdo->inTransaction();
+			$savepoint = 'holon_delete_' . bin2hex(random_bytes(6));
+			try {
+				if ($ownsTransaction) $pdo->beginTransaction();
+				else $pdo->exec('SAVEPOINT ' . $savepoint);
+				$locked = self::fetchAll('SELECT id FROM holon WHERE id = :root OR IDholon_org = :org_root ORDER BY id FOR UPDATE',
+					['root' => (int)$rootHolon->getId(), 'org_root' => (int)$rootHolon->getId()]);
+				if (!is_array($locked)) throw new \RuntimeException('Unable to lock holon branch');
+				$authorityResult = Authority::applyHolonRemovalChoice($holon->getArchiveSubtree(), $authorityChoice, false);
+				if (!$holon->delete()) throw new \RuntimeException('Unable to delete holon');
+				$history = History::createEntry((int)$this->getId(), (int)$userId, 'holon_deleted', 'Suppression de ' . $holonName,
+					['IDholon' => $holonId, 'parentId' => (int)$parentHolon->getId(), 'authorities' => $authorityResult], 'holon', $holonId);
+				if (empty($history['status'])) throw new \RuntimeException('Unable to record holon deletion');
+				if ($ownsTransaction) $pdo->commit();
+				else $pdo->exec('RELEASE SAVEPOINT ' . $savepoint);
+			} catch (\Throwable $exception) {
+				if ($ownsTransaction) $pdo->rollBack();
+				else { $pdo->exec('ROLLBACK TO SAVEPOINT ' . $savepoint); $pdo->exec('RELEASE SAVEPOINT ' . $savepoint); }
+				self::registerDbError('holon_delete_authorities', ['holon_id' => $holonId], $exception);
+				return ['status' => false, 'message' => 'L espace et ses autorites n ont pas pu etre supprimes.'];
 			}
 
 			return array(
@@ -14882,8 +14907,29 @@
 			return $type === 'user';
 		}
 
+		/** Partition before LIMIT, so hidden archive rows cannot crowd out active results. */
+		protected static function topbarSearchArchiveCondition(string $module, bool $archived): string
+		{
+			if ($module === 'structure') return $archived ? 'h.archived_at IS NOT NULL' : '(h.active = 1 AND h.archived_at IS NULL)';
+			$definitions = [
+				'documents' => ['d.IDholon', 'd.active = 0', '1 = 1'],
+				'projects' => ['p.IDholon', 'p.active = 0 AND p.archived_at IS NOT NULL', '(p.active = 1 OR p.archived_at IS NOT NULL)'],
+				'processus' => ['p.IDholon', 'p.active = 0 AND p.archived_at IS NOT NULL', 'pr.active = 1 AND (p.active = 1 OR p.archived_at IS NOT NULL)'],
+				'activities' => ['rt.IDholon', 'rt.active = 0 AND rt.archived_at IS NOT NULL', '(rt.active = 1 OR rt.archived_at IS NOT NULL)'],
+				'stats' => ['si.IDholon', 'si.active = 0 AND si.archived_at IS NOT NULL', '(si.active = 1 OR si.archived_at IS NOT NULL)'],
+				'decision' => ['dp.IDholon', "dp.status = 'archived'", '1 = 1'],
+				'calendar' => ['e.IDholon', '1 = 0', 'e.active = 1'],
+			];
+			if (!isset($definitions[$module])) return $archived ? '1 = 0' : '1 = 1';
+			[$holonColumn, $ownArchive, $eligible] = $definitions[$module];
+			$predicate = '((' . $ownArchive . ') OR ' . Holon::archivedContextSql($holonColumn) . ')';
+			return '(' . $eligible . ' AND ' . ($archived ? '' : 'NOT ') . $predicate . ')';
+		}
+
 		protected static function topbarSearchViewerCanViewHolon(\dbObject\Holon $holon, array &$viewerContext)
 		{
+			if ($holon->get('archived_at') instanceof \DateTimeInterface
+				&& (empty($viewerContext['archived']) || ($viewerContext['type'] ?? '') !== 'user')) return false;
 			$type = (string)($viewerContext['type'] ?? '');
 			if ($type === 'share') {
 				$shareLink = self::getTopbarSearchViewerShareLink($viewerContext);
@@ -14929,6 +14975,17 @@
 			}
 
 			$viewerContext['organizationId'] = $organizationId;
+			if ((int)$document->get('IDholon') > 0) {
+				$holon = new Holon();
+				if (!$holon->load((int)$document->get('IDholon')) || !self::topbarSearchViewerCanViewHolon($holon, $viewerContext)) return false;
+			}
+			if (!$document->canUserPassPvMeetingVisibilityGate((int)($viewerContext['userId'] ?? 0), $organizationId)) return false;
+			foreach ($document->getParentFolderChain() as $folder) {
+				$folderRule = ObjectVisibility::loadActiveRuleRow(Document::getVisibilityObjectType(), (int)$folder->getId(), $organizationId);
+				if (!ObjectVisibility::viewerCanAccessRule($folderRule, $viewerContext, [
+					'organizationId' => $organizationId, 'ownerUserId' => (int)$folder->get('IDuser'),
+				])) return false;
+			}
 
 			$ruleRow = \dbObject\ObjectVisibility::loadActiveRuleRow(
 				\dbObject\Document::getVisibilityObjectType(),
@@ -15184,6 +15241,12 @@
 			if (!$faq->isLinkedApplicationVisibleInOrganization($organizationId)) {
 				return false;
 			}
+			if (!empty($viewerContext['archived'])) {
+				$holon = $faq->getContextHolon();
+				return $faq->getResolvedOrganizationId() === $organizationId
+					&& $holon && $holon->get('archived_at') instanceof \DateTimeInterface
+					&& self::topbarSearchViewerCanViewHolon($holon, $viewerContext);
+			}
 
 			if ($faq->isGeneric()) {
 				return true;
@@ -15222,6 +15285,8 @@
 		/** Load a search preview with current permissions, independently of cached search results. */
 		public function loadTopbarSearchPreviewObject(string $module, int $id, array $viewerContext)
 		{
+			$archived = !empty($viewerContext['archived']);
+			if ($archived && ($viewerContext['type'] ?? '') !== 'user') return null;
 			$organizationId = (int)$this->getId();
 			$classes = [
 				'structure' => Holon::class, 'team' => User::class, 'calendar' => Event::class,
@@ -15241,6 +15306,22 @@
 			if (!$object->load($id)) {
 				return null;
 			}
+			$searchModule = $module === 'pv' ? 'documents' : $module;
+			$sources = [
+				'structure' => ['holon h', 'h'], 'documents' => ['document d', 'd'],
+				'projects' => ['project p', 'p'], 'activities' => ['recurring_task rt', 'rt'],
+				'stats' => ['stat_indicator si', 'si'], 'calendar' => ['event e', 'e'],
+				'decision' => ['decision_process dp', 'dp'],
+				'processus' => ['process pr INNER JOIN project p ON p.id = pr.IDproject_template_root AND p.IDorganization = pr.IDorganization', 'pr'],
+			];
+			if (isset($sources[$searchModule])) {
+				[$source, $alias] = $sources[$searchModule];
+				$matches = self::fetchAll('SELECT ' . $alias . '.id FROM ' . $source . ' WHERE ' . $alias . '.id = :id AND '
+					. self::topbarSearchArchiveCondition($searchModule, $archived), ['id' => $id]);
+				if (!$matches) return null;
+			} elseif ($archived && in_array($module, ['team', 'tutorials'], true)) {
+				return null;
+			}
 			if ($module === 'faq') {
 				return self::topbarSearchViewerCanViewFaq($object, $this, $viewerContext) ? $object : null;
 			}
@@ -15257,7 +15338,7 @@
 					return null;
 				}
 				$rules = new ArrayRule();
-				$rules->loadForPolicyContexts($organizationId, [(int)$currentHolon->getId()]);
+				$rules->loadForPolicyContexts($organizationId, [(int)$currentHolon->getId()], false, $archived ? 'global' : 'contextual', null, $archived);
 				foreach ($rules as $rule) {
 					$holon = $rule->getHolon();
 					if ((int)$rule->getId() === $id && $holon && self::topbarSearchViewerCanViewHolon($holon, $viewerContext)) {
@@ -15268,9 +15349,9 @@
 			}
 			if ($module === 'structure') {
 				$root = $this->getStructuralRootHolon();
-				return $root && (int)$object->get('active') === 1 && (int)$object->get('visible') === 1
+				return $root && (int)$object->get('visible') === 1
 					&& $object->isDescendantOf((int)$root->getId(), true)
-					&& $object->canViewDetail() && self::topbarSearchViewerCanViewHolon($object, $viewerContext) ? $object : null;
+					&& ($archived || $object->canViewDetail()) && self::topbarSearchViewerCanViewHolon($object, $viewerContext) ? $object : null;
 			}
 			if ((int)$object->get('IDorganization') !== $organizationId) {
 				return null;
@@ -15286,7 +15367,7 @@
 			if ($module === 'decision') {
 				return self::topbarSearchResolveDecisionAccess($object, $viewerContext, $organizationId) ? $object : null;
 			}
-			if ((int)$object->get('active') !== 1) {
+			if (!$archived && (int)$object->get('active') !== 1) {
 				return null;
 			}
 			if ($module === 'calendar') {
@@ -15296,11 +15377,11 @@
 			if ($holon) {
 				$root = $this->getStructuralRootHolon();
 				if (!$root || !$holon->isDescendantOf((int)$root->getId(), true)
-					|| !$holon->canViewDetail() || !self::topbarSearchViewerCanViewHolon($holon, $viewerContext)) {
+					|| (!$archived && !$holon->canViewDetail()) || !self::topbarSearchViewerCanViewHolon($holon, $viewerContext)) {
 					return null;
 				}
 			}
-			if ($module === 'stats' && !$object->canView()) {
+			if ($module === 'stats' && !$archived && !$object->canView()) {
 				return null;
 			}
 			return $object;
@@ -15578,7 +15659,7 @@
 			}
 
 			$rules = new \dbObject\ArrayRule();
-			$rules->loadForPolicyContexts($organizationId, array((int)$currentHolon->getId()));
+			$rules->loadForPolicyContexts($organizationId, [(int)$currentHolon->getId()], false, !empty($viewerContext['archived']) ? 'global' : 'contextual', null, !empty($viewerContext['archived']));
 			$results = array();
 
 			foreach ($rules as $rule) {
@@ -15693,6 +15774,7 @@
 
 		protected function searchTopbarTutorialResults($query, array $terms, $limit = 12, array $viewerContext = array())
 		{
+			if (!empty($viewerContext['archived'])) return [];
 			$organizationId = (int)$this->getId();
 			if (
 				$organizationId <= 0
@@ -15897,7 +15979,7 @@
 					h.datemodification
 				FROM holon h
 				WHERE h.IDholon_org = :root_holon_id
-				  AND h.active = 1
+				  AND " . self::topbarSearchArchiveCondition('structure', !empty($viewerContext['archived'])) . "
 				  AND h.visible = 1
 				  AND h.IDtypeholon IN (1, 2, 3)
 				ORDER BY h.datemodification DESC, h.id DESC",
@@ -16041,6 +16123,7 @@
 
 		protected function searchTopbarTeamResults($query, array $terms, $limit = 10, array $viewerContext = array())
 		{
+			if (!empty($viewerContext['archived'])) return [];
 			if ((int)$this->getId() <= 0 || count($terms) === 0) {
 				return array();
 			}
@@ -16293,6 +16376,7 @@
 				FROM document d
 				" . $pvJoinSql . "
 				WHERE d.IDorganization = :organization_id
+				  AND " . self::topbarSearchArchiveCondition('documents', !empty($viewerContext['archived'])) . "
 				  " . $documentTypeSql . "
 				  AND " . $preFilterSql . "
 				HAVING relevance > 0
@@ -16439,6 +16523,7 @@
 						ON proposal.`IDdecision_process` = dp.`id`
 					   AND proposal.`active` = 1
 					WHERE dp.`IDorganization` = :organization_id
+				  AND " . self::topbarSearchArchiveCondition('decision', !empty($viewerContext['archived'])) . "
 					GROUP BY
 						dp.`id`,
 						dp.`title`,
@@ -16648,7 +16733,7 @@
 					(" . $titleScoreSql . " + " . $descriptionScoreSql . ") AS relevance
 				FROM project p
 				WHERE p.IDorganization = :organization_id
-				  AND p.active = 1
+				  AND " . self::topbarSearchArchiveCondition('projects', !empty($viewerContext['archived'])) . "
 				  AND p.project_kind = :project_kind
 				  AND " . $preFilterSql . "
 				HAVING relevance > 0
@@ -16723,8 +16808,7 @@
 				FROM process pr
 				INNER JOIN project p ON p.id = pr.IDproject_template_root AND p.IDorganization = pr.IDorganization
 				WHERE pr.IDorganization = :organization_id
-				  AND pr.active = 1
-				  AND p.active = 1
+				  AND " . self::topbarSearchArchiveCondition('processus', !empty($viewerContext['archived'])) . "
 				  AND " . $preFilterSql . "
 				HAVING relevance > 0
 				ORDER BY relevance DESC, pr.created_at DESC, pr.id DESC
@@ -16786,7 +16870,7 @@
 					(" . $titleScoreSql . " + " . $descriptionScoreSql . ") AS relevance
 				FROM recurring_task rt
 				WHERE rt.IDorganization = :organization_id
-				  AND rt.active = 1
+				  AND " . self::topbarSearchArchiveCondition('activities', !empty($viewerContext['archived'])) . "
 				  AND " . $preFilterSql . "
 				HAVING relevance > 0
 				ORDER BY relevance DESC, rt.created_at DESC, rt.id DESC
@@ -16852,7 +16936,7 @@
 					(" . $nameScoreSql . " + " . $descriptionScoreSql . " + " . $sourceScoreSql . ") AS relevance
 				FROM stat_indicator si
 				WHERE si.IDorganization = :organization_id
-				  AND si.active = 1
+				  AND " . self::topbarSearchArchiveCondition('stats', !empty($viewerContext['archived'])) . "
 				  AND " . $preFilterSql . "
 				HAVING relevance > 0
 				ORDER BY relevance DESC, si.created_at DESC, si.id DESC
@@ -16965,7 +17049,7 @@
 					LEFT JOIN `holon` h
 						ON h.`id` = e.`IDholon`
 					WHERE e.`IDorganization` = :organization_id
-					  AND e.`active` = 1
+					  AND " . self::topbarSearchArchiveCondition('calendar', !empty($viewerContext['archived'])) . "
 					  AND e.`status` <> :cancelled_status
 				) search_rows
 				WHERE " . $preFilterSql . "
@@ -17091,6 +17175,11 @@
 					: array(),
 				'organizationId' => (int)$this->getId(),
 			));
+
+			$viewerContext['archived'] = !empty($options['archived']) || !empty($options['viewerContext']['archived']);
+			if ($viewerContext['archived'] && ($viewerContext['type'] ?? '') !== 'user') {
+				return ['results' => [], 'counts' => array_fill_keys($enabledScopes, 0)];
+			}
 
 			$terms = self::buildTopbarSearchTerms($query);
 			$limit = isset($options['limit']) ? max(1, (int)$options['limit']) : 30;
