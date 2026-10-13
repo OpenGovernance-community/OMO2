@@ -8,6 +8,16 @@ evenements. Les droits sont controles avant chaque reutilisation. Une lecture
 de calendrier charge uniquement l organisation demandee. Les modifications
 invalident les reponses via les revisions deja utilisees par CalDAV.
 
+La decouverte `PROPFIND /calendars/{utilisateur}/` utilise aussi le cache.
+La liste des adhesions actives et des applications autorisees est rechargee
+avant chaque lecture du cache, sans charger les evenements. La cle inclut
+l utilisateur, Depth, le XML demande et les revisions de toutes les organisations
+visibles ; une modification dans n importe laquelle invalide la liste.
+Cette requete multi-organisation reste classee sans organisation dans les statistiques.
+Les traces donnent `home_revisions` pour suivre les organisations impliquees.
+Test HTTP local avec 12 evenements : 70 requetes SQL a froid, 7 sur un HIT.
+Les routes principal restent dynamiques (3 requetes SQL dans la trace analysee).
+
 Les abonnements ICS lies a une organisation utilisent le meme stockage de
 cache : un ETag inchange peut produire une reponse 304 sans reconstruire les
 evenements. Le jeton de partage, son expiration et son proprietaire restent
@@ -30,6 +40,15 @@ Les flux ICS annoncent deja un intervalle d une heure ; le client decide de le
 respecter. Aucun blocage de frequence n est ajoute aux synchronisations.
 
 Test local : `docker compose exec -u www-data -T app php tests/calendar_cache_http_test.php`.
+
+Diagnostic du 13 octobre 2026, 07:08:02-07:59:04 Europe/Zurich : 483 appels
+du compte 18 avec la signature `macOS/26.4 (25E246) dataaccessd/1.0`.
+44 lectures de la liste des calendriers consommaient chacune 1457 requetes SQL
+et 967 ms en moyenne, hors du cache avant le correctif de decouverte.
+Les 439 autres appels au principal coutaient chacun 3 requetes SQL ;
+l authentification representait 95,3 s sur 143,4 s de duree cumulee.
+Aucun PROPPATCH dans cette plage. La signature ne permet pas de compter les
+appareils physiques ; la cause exacte de la frequence reste a verifier cote client.
 
 Le point d entree est `/omo/api/caldav/`. L authentification et les droits de
 consultation habituels restent requis pour acceder a chaque calendrier.
