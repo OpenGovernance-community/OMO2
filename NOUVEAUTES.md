@@ -1,5 +1,7 @@
 # Journal des nouveautés
 
+- CalDAV / limitation des lectures (2026-10-13) : refus 429 avec Retry-After des OPTIONS et PROPFIND identiques deja verifies, avant verification du mot de passe. Fenetre initiale de 30 secondes puis delai jusqu a 15 minutes apres le premier succes, configurable et desactivable ; ecritures et transferts d evenements inchanges. Empreintes HMAC, stockage prive sans SQL, echeance non prolongee par les refus et reouverture des lectures de calendrier apres changement de revision. Attribution des 429 au suivi CalDAV, nettoyage par le cron et tests HTTP PHP 8.5. Sans migration SQL.
+
 - Statistiques / suivi CalDAV (2026-10-13) : graphiques dedies aux appels et au CPU, detail horaire avec la periode Aujourd hui, classement des 25 comptes par duree, volume ou CPU avec nom, ID et e-mail de contact. Detail PROPFIND/PROPPATCH, SQL et erreurs HTTP ; donnees live et historiques existantes, acces super administrateur conserve. Tests PHP 8.5 de comptage, agregation, tris, contacts et rendu ; controle ordinateur/mobile. Sans migration SQL.
 
 - CalDAV / decouverte des calendriers (2026-10-13) : cache ajoute a PROPFIND /calendars/{utilisateur}/, route repetee par macOS et jusque-la hors cache. Adhesions et applications revalidees avant lecture, cle dependante de toutes les organisations visibles et chargement groupe des adhesions. Test HTTP : liste de 70 a 7 requetes SQL avec 12 evenements, invalidation multi-organisation, retraits d acces et Depth verifies. Sans migration SQL.
