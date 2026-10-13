@@ -328,6 +328,11 @@ window.commonPageScripts["/omo/api/decision/edit_shared.js"] = function (pageCon
         });
         root.dataset.multiInitialSignature = getMultiEditorSignature(root);
 
+        root.setAttribute('data-common-drawer-editor', '');
+        root.commonDrawerHasUnsavedChanges = function () {
+            return root.dataset.multiInitialSignature !== getMultiEditorSignature(root);
+        };
+
         root.addEventListener('click', function (event) {
             const questionLink = event.target.closest('[data-omo-decision-question-link]');
             if (questionLink && root.contains(questionLink)) {
@@ -456,6 +461,7 @@ window.commonPageScripts["/omo/api/decision/edit_shared.js"] = function (pageCon
         }, true);
 
         document.addEventListener('click', function (event) {
+            if (event.commonDrawerDiscardChecked) return;
             if (!document.contains(root) || !event.target.closest('[data-topbar-drawer-close]')) {
                 return;
             }

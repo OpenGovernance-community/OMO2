@@ -289,7 +289,7 @@ $drawerTitle = (($editorData['mode'] ?? 'create') === 'edit') ? 'Modifier l’é
                         <div class="omo-holon-create__footer generic-section">
                             <div class="omo-holon-create__hint generic-help-text" id="omo-holon-create-hint"></div>
                             <div class="omo-holon-create__actions generic-form-actions generic-form-actions--stack-mobile">
-                                <button type="button" class="generic-action-button generic-action-button--secondary" id="omo-holon-create-cancel">Fermer</button>
+                                <button type="button" class="generic-action-button generic-action-button--secondary" id="omo-holon-create-cancel" data-common-drawer-dismiss>Fermer</button>
                                 <button type="submit" class="generic-action-button generic-action-button--main"><?= omoApiEscape((($editorData['mode'] ?? 'create') === 'edit') ? 'Enregistrer' : 'Créer un élément') ?></button>
                             </div>
                         </div>

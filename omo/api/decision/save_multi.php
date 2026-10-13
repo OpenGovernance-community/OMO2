@@ -7,7 +7,6 @@ require_once dirname(__DIR__, 3) . '/common/notification_center.php';
 
 use dbObject\DbObject;
 use dbObject\DecisionProcess;
-use dbObject\DecisionProposal;
 
 header('Content-Type: application/json; charset=UTF-8');
 
@@ -174,19 +173,8 @@ unset(
     $GLOBALS['omoDecisionDeferredProposalIds']
 );
 
-foreach ($proposalIds as $proposalId) {
-    if ($proposalId <= 0) {
-        continue;
-    }
-    $proposal = new DecisionProposal();
-    if (!$proposal->load($proposalId)) {
-        continue;
-    }
-    try {
-        notificationCenterDispatchDecisionProposal($proposal);
-    } catch (Throwable $exception) {
-        error_log('decision_proposal_notification_failed: ' . $exception->getMessage());
-    }
+if ($batchDecision->load($decisionId, true)) {
+    notificationCenterDispatchDecisionSaved($batchDecision, $isCreatingDecision ? null : $originalStatus, $proposalIds);
 }
 
 omoDecisionMultiSaveRespond(200, [

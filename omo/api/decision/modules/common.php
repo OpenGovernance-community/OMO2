@@ -906,6 +906,23 @@ if (!function_exists('omoDecisionResponseIsAnonymous')) {
     }
 }
 
+if (!function_exists('omoDecisionRenderProposalDescription')) {
+    function omoDecisionRenderProposalDescription($description, $escape, $descriptionClass = '')
+    {
+        $descriptionHtml = \dbObject\PropertyFormat::sanitizeHtml(trim((string)$description));
+        if ($descriptionHtml !== '' && !preg_match('/<[^>]+>/', $descriptionHtml)) {
+            $descriptionHtml = nl2br($descriptionHtml);
+        }
+        $classes = trim((string)$descriptionClass . ' omo-proposal-html-render');
+        return '<div data-omo-proposal-description>'
+            . '<div class="' . $escape($classes) . '" data-omo-proposal-description-content>' . $descriptionHtml . '</div>'
+            . '<button type="button" class="generic-action-button generic-action-button--link generic-action-button--no-lift" data-omo-proposal-description-toggle aria-expanded="false" hidden>'
+            . '<span data-omo-proposal-description-more>' . $escape(omoDecisionProposalT('decisions.proposals.description_more')) . '</span>'
+            . '<span data-omo-proposal-description-less hidden>' . $escape(omoDecisionProposalT('decisions.proposals.description_less')) . '</span>'
+            . '</button></div>';
+    }
+}
+
 if (!function_exists('omoDecisionRenderProposalSupplementHtml')) {
     function omoDecisionRenderProposalSupplementHtml($description, $infoUrl, $escape, $descriptionClass = '', $linkClass = '')
     {
@@ -921,14 +938,7 @@ if (!function_exists('omoDecisionRenderProposalSupplementHtml')) {
 
         $html = '';
         if ($description !== '') {
-            $descriptionClasses = trim((string)$descriptionClass);
-            $descriptionClasses = trim($descriptionClasses . ' omo-proposal-html-render');
-            $classAttribute = $descriptionClasses !== '' ? ' class="' . $escape($descriptionClasses) . '"' : '';
-            $descriptionHtml = \dbObject\PropertyFormat::sanitizeHtml($description);
-            if ($descriptionHtml !== '' && !preg_match('/<[^>]+>/', $descriptionHtml)) {
-                $descriptionHtml = nl2br($descriptionHtml);
-            }
-            $html .= '<div' . $classAttribute . '>' . $descriptionHtml . '</div>';
+            $html .= omoDecisionRenderProposalDescription($description, $escape, $descriptionClass);
         }
 
         if ($infoUrl !== null) {
@@ -1431,10 +1441,12 @@ if (!function_exists('omoDecisionRenderProposalDiscussionAssets')) {
         $alreadyRendered = true;
         $escape = static fn($value) => htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
         return '<template data-omo-proposal-dates-template>' . omoDecisionRenderProposalDates([], $escape) . '</template>'
+            . '<template data-omo-proposal-description-template>' . omoDecisionRenderProposalDescription('', $escape, 'omo-proposal-live-description') . '</template>'
             . '<link rel="stylesheet" href="' . commonAssetUrl('/common/choice/proposal-dates.css') . '">'
             . '<script src="' . commonAssetUrl('/common/choice/proposal-dates.js') . '" defer></script>'
             . '<link rel="stylesheet" href="/common/chat/thread.css?v=20260821-unified-chat-errors">'
-            . '<link rel="stylesheet" href="/common/choice/proposal-discussion.css?v=20260923-compact-editor">'
+            . '<link rel="stylesheet" href="' . commonAssetUrl('/common/choice/proposal-discussion.css') . '">'
+            . '<script src="' . commonAssetUrl('/common/choice/proposal-description.js') . '" defer></script>'
             . '<link rel="stylesheet" href="/common/choice/change-details.css?v=20260923-lifecycle-details">'
             . '<script src="/common/choice/word-diff.js?v=20260815" defer></script>'
             . '<script src="' . commonAssetUrl('/common/choice/change-details.js') . '" defer></script>'
@@ -1618,6 +1630,8 @@ if (!function_exists('omoDecisionProposalGetSourceLang')) {
     function omoDecisionProposalGetSourceLang()
     {
         return [
+            'decisions.proposals.description_more' => ['text' => 'Afficher la suite', 'context' => 'Expand a proposal description longer than five lines.'],
+            'decisions.proposals.description_less' => ['text' => 'Afficher moins', 'context' => 'Collapse a proposal description back to five lines.'],
             'decisions.proposals.dates.range' => ['text' => 'Date et horaire', 'context' => 'Optional proposal date range fields.'],
             'decisions.proposals.dates.day' => ['text' => 'Date', 'context' => 'Day of a proposal taking place on a single day.'],
             'decisions.proposals.dates.start_time' => ['text' => 'Heure de début', 'context' => 'Start time on the selected proposal day.'],
