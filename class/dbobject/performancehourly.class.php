@@ -73,11 +73,7 @@ class PerformanceHourly extends DbObject
         if (!self::available() || !PerformanceRequest::available()) { return ['available' => false]; }
         $kind = in_array($kind, ['web', 'cron', 'task'], true) ? $kind : 'web';
         $params = ['start_raw' => $start, 'end_raw' => $end, 'start_hour' => $start, 'end_hour' => $end, 'kind' => $kind];
-        $fields = 'bucket, route, method, kind, IDorganization, IDuser, cron_state, ' . implode(', ', self::SUMS) . ', max_ms, peak_memory';
-        // Read raw pending samples and aggregates in one statement snapshot: never double count.
-        $source = '(SELECT ' . $fields . ' FROM performance_hourly WHERE bucket >= :start_hour AND bucket < :end_hour
-            UNION ALL SELECT ' . $fields . ' FROM (SELECT ' . self::sampleProjection() . ' FROM performance_request
-                WHERE aggregated = 0 AND started_at >= :start_raw AND started_at < :end_raw) live) p';
+        $source = self::dashboardSource();
         $where = 'kind = :kind';
         if ($organizationId > 0) { $where .= ' AND IDorganization = :organization'; $params['organization'] = $organizationId; }
         $where .= match ($cron) { 'none' => ' AND cron_state = 0', 'called' => ' AND cron_state > 0',
@@ -98,6 +94,47 @@ class PerformanceHourly extends DbObject
             'organizations' => $query('SELECT IDorganization AS organization_id, ' . $totals . $base . ' GROUP BY IDorganization ORDER BY duration_ms DESC LIMIT 25', $params),
             'organizationNames' => $query('SELECT id, name FROM organization ORDER BY name', []),
             'collection' => $query('SELECT COUNT(*) AS pending, MIN(started_at) AS oldest FROM performance_request WHERE aggregated = 0', [])[0],
+        ];
+    }
+
+    /** One statement snapshot includes pending samples without counting aggregated ones twice. */
+    private static function dashboardSource(): string
+    {
+        $fields = 'bucket, route, method, kind, IDorganization, IDuser, cron_state, ' . implode(', ', self::SUMS) . ', max_ms, peak_memory';
+        return '(SELECT ' . $fields . ' FROM performance_hourly WHERE bucket >= :start_hour AND bucket < :end_hour
+            UNION ALL SELECT ' . $fields . ' FROM (SELECT ' . self::sampleProjection() . ' FROM performance_request
+                WHERE aggregated = 0 AND started_at >= :start_raw AND started_at < :end_raw) live) p';
+    }
+
+    public static function calDavDashboard(string $start, string $end, int $organizationId = 0, string $sort = 'total', bool $hourly = false): array
+    {
+        if (!self::available() || !PerformanceRequest::available()) return ['available' => false];
+        $params = ['start_raw' => $start, 'end_raw' => $end, 'start_hour' => $start, 'end_hour' => $end,
+            'caldav_route' => '/omo/api/caldav/index.php'];
+        $base = ' FROM ' . self::dashboardSource() . " WHERE kind = 'web' AND route = :caldav_route";
+        if ($organizationId > 0) {
+            $base .= ' AND IDorganization = :organization';
+            $params['organization'] = $organizationId;
+        }
+        $totals = self::totalsSql()
+            . ", COALESCE(SUM(CASE WHEN method = 'PROPFIND' THEN requests ELSE 0 END), 0) AS propfind"
+            . ", COALESCE(SUM(CASE WHEN method IN ('PROPPATC', 'PROPPATCH') THEN requests ELSE 0 END), 0) AS proppatch";
+        $query = static function (string $sql) use ($params): array {
+            $rows = self::fetchAll($sql, $params);
+            if ($rows === false) throw new \RuntimeException('Unable to read CalDAV monitoring.');
+            return $rows;
+        };
+        $bucket = $hourly ? 'bucket' : 'DATE(bucket)';
+        $order = match ($sort) { 'volume' => 'requests', 'cpu' => 'cpu_ms', default => 'duration_ms' };
+        return ['available' => true,
+            'totals' => $query('SELECT ' . $totals . $base)[0],
+            'timeline' => $query("SELECT $bucket AS label, $totals $base GROUP BY $bucket ORDER BY label"),
+            // Resolve current contact details after aggregation, without multiplying samples by memberships.
+            'users' => $query("SELECT ranked.*, TRIM(CONCAT_WS(' ', NULLIF(u.firstname, ''), NULLIF(u.lastname, ''))) AS name,
+                u.email FROM (SELECT IDuser AS user_id, $totals $base GROUP BY IDuser
+                    ORDER BY $order DESC, requests DESC, IDuser ASC LIMIT 25) ranked
+                LEFT JOIN `user` u ON u.id = ranked.user_id
+                ORDER BY ranked.$order DESC, ranked.requests DESC, ranked.user_id ASC"),
         ];
     }
 }

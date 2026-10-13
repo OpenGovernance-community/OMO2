@@ -1138,12 +1138,10 @@ if (!function_exists('commonCalDavLoadCalendarsForViewer')) {
         }
 
         $memberships = new ArrayUserOrganization();
-        if ($onlyOrganizationId > 0) {
-            $memberships->loadHydrated(['where' => [
-                ['field' => 'IDuser', 'value' => $viewerUserId], ['field' => 'IDorganization', 'value' => $onlyOrganizationId],
-                ['field' => 'active', 'value' => 1],
-            ]]);
-        } else $memberships->loadActiveForUser($viewerUserId);
+        $membershipFilters = [['field' => 'IDuser', 'value' => $viewerUserId], ['field' => 'active', 'value' => 1]];
+        if ($onlyOrganizationId > 0) $membershipFilters[] = ['field' => 'IDorganization', 'value' => $onlyOrganizationId];
+        $memberships->loadHydrated(['where' => $membershipFilters,
+            'orderBy' => [['field' => 'IDorganization', 'dir' => 'ASC'], ['field' => 'id', 'dir' => 'ASC']]]);
 
         $calendarMap = array();
         $seenOrganizationIds = array();

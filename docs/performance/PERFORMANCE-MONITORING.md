@@ -36,7 +36,34 @@ Les medianes et p95 sont des estimations par histogramme additif : bornes 50, 10
 
 Ce suivi mesure le travail applicatif, pas le pourcentage de saturation du serveur. CPU global, files de workers et pression memoire systeme demandent une collecte d infrastructure distincte.
 
+## Suivi CalDAV
+
+Le bloc CalDAV utilise les mesures existantes de `/omo/api/caldav/index.php`,
+sans migration ni activation de `CALDAV_DIAGNOSTICS_ENABLED`. Il affiche le
+volume et le CPU par jour, ou par heure UTC avec la periode Aujourd hui.
+Les totaux comprennent les appels non identifies ; le nombre de comptes
+actifs les exclut. Les flux ICS et CardDAV restent hors de ce bloc.
+
+Le classement des 25 premiers comptes peut etre trie par duree cumulee,
+nombre d appels ou CPU PHP. Il contient le nom, l ID et l e-mail actuel du
+compte avec un lien mailto, les appels PROPFIND/PROPPATCH, la duree moyenne,
+le SQL et les erreurs HTTP 4xx/5xx. Les anciens PROPPATC tronques sont inclus
+dans PROPPATCH. Les refus internes a une reponse 207 ne sont pas disponibles
+dans ces agregats. Les contacts restent reserves au role super administrateur.
+
+Ce bloc respecte la periode et l organisation selectionnees ; les filtres
+Mesures et Cron du suivi general ne lui sont pas appliques. Pour couvrir
+la decouverte multi-organisation et l historique sans organisation, garder
+Toutes les organisations. Les details non agreges sont inclus sans doublons.
+Le suivi montre les appels HTTP, pas le nombre de cycles de synchronisation
+ni la frequence configuree dans les logiciels clients.
+
 ## Validation locale
+
+`tests/caldav_monitoring_test.php` verifie les filtres, les methodes historiques,
+les totaux live/agreges, les tris, les contacts, les appels anonymes et le rendu
+des graphiques avec echappement des noms. Le test d acces verifie aussi que
+le bloc CalDAV reste inaccessible aux visiteurs et aux membres ordinaires.
 
 `tests/performance_monitoring_test.php` verifie les compteurs SQL sans log detaille, les donnees live, l equivalence apres agregation, les relances, les arrivees tardives, la retention, les utilisateurs distincts, les valeurs CPU absentes, l isolation des organisations et les statuts cron/taches.
 
