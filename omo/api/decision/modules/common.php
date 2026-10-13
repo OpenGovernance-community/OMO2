@@ -916,7 +916,7 @@ if (!function_exists('omoDecisionRenderProposalDescription')) {
         $classes = trim((string)$descriptionClass . ' omo-proposal-html-render');
         return '<div data-omo-proposal-description>'
             . '<div class="' . $escape($classes) . '" data-omo-proposal-description-content>' . $descriptionHtml . '</div>'
-            . '<button type="button" class="generic-action-button generic-action-button--link generic-action-button--no-lift" data-omo-proposal-description-toggle aria-expanded="false" hidden>'
+            . '<button type="button" class="generic-action-button generic-action-button--disclosure generic-action-button--no-lift" data-omo-proposal-description-toggle aria-expanded="false" hidden>'
             . '<span data-omo-proposal-description-more>' . $escape(omoDecisionProposalT('decisions.proposals.description_more')) . '</span>'
             . '<span data-omo-proposal-description-less hidden>' . $escape(omoDecisionProposalT('decisions.proposals.description_less')) . '</span>'
             . '</button></div>';
