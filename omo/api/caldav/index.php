@@ -35,14 +35,31 @@ if (in_array($method, ['PROPFIND', 'REPORT', 'GET', 'HEAD'], true)) {
 }
 $scope = commonCalDavParseScopedRoute($routePath);
 $cacheAllowed = is_array($scope) && commonCalDavCanUseScopedResponseCache($viewer, $scope);
+$homeRevisions = [];
+$isCalendarHome = $method === 'PROPFIND' && '/' . trim($routePath, '/') === '/calendars/' . (int)$viewer->getId();
 if ($scope === null && preg_match('#^/calendars/' . (int)$viewer->getId() . '/organization-(\d+)(?:/event-\d+\.ics)?/?$#', '/' . trim($routePath, '/'), $match)) {
     $organization = new \dbObject\Organization();
     $scope = ['organizationId' => (int)$match[1]];
     $cacheAllowed = \dbObject\UserOrganization::hasActiveMembership((int)$viewer->getId(), (int)$match[1])
         && $organization->load((int)$match[1]) && $organization->isApplicationEnabled('calendar', (int)$viewer->getId());
 }
+if ($isCalendarHome) {
+    // Revalidate the full membership/application set before reusing discovery.
+    // Metadata-only loading deliberately avoids events and their ICS payloads.
+    foreach (commonCalDavLoadCalendarsForViewer($viewer, 0, true) as $calendar) {
+        $calendarOrganizationId = (int)$calendar['organizationId'];
+        $homeRevisions[$calendarOrganizationId] = \dbObject\CalDavCache::getOrganizationRevision($calendarOrganizationId);
+    }
+    ksort($homeRevisions, SORT_NUMERIC);
+    if ($homeRevisions && min($homeRevisions) > 0) {
+        // Storage belongs to one organization; the key depends on every one.
+        $scope = ['organizationId' => (int)array_key_first($homeRevisions)];
+        $cacheAllowed = true;
+    }
+    if ($diagnostics) $GLOBALS['commonCalDavDiagnostics']['home_revisions'] = $homeRevisions;
+}
 $cacheHandle = null;
-if ($cacheAllowed) $GLOBALS['commonPerformanceOrganizationId'] = (int)$scope['organizationId'];
+if ($cacheAllowed && !$isCalendarHome) $GLOBALS['commonPerformanceOrganizationId'] = (int)$scope['organizationId'];
 
 if (
     is_array($scope)
@@ -54,13 +71,14 @@ if (
     $GLOBALS['commonCardDavRawInput'] = $rawInput;
 
     $organizationId = (int)$scope['organizationId'];
-    $revision = \dbObject\CalDavCache::getOrganizationRevision($organizationId);
+    $revision = $homeRevisions[$organizationId] ?? \dbObject\CalDavCache::getOrganizationRevision($organizationId);
     if ($diagnostics) $GLOBALS['commonCalDavDiagnostics']['revision'] = $revision;
     $cacheKey = \dbObject\CalDavCache::buildResponseKey(array(
-        'schema' => 5,
+        'schema' => 6,
         'viewer' => (int)$viewer->getId(),
         'organization' => $organizationId,
         'revision' => $revision,
+        'home_revisions' => $homeRevisions,
         'method' => $method,
         'route' => '/' . trim((string)$routePath, '/'),
         'depth' => trim((string)($_SERVER['HTTP_DEPTH'] ?? '')),
