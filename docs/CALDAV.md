@@ -37,7 +37,7 @@ qui synchronisent le meme compte. Sur Mac : Calendrier > Reglages > Comptes
 pour CalDAV ; Informations du calendrier > Actualisation automatique pour ICS
 ([documentation Apple](https://support.apple.com/en-mt/guide/calendar/icl1024/mac)).
 Les flux ICS annoncent deja un intervalle d une heure ; le client decide de le
-respecter. Aucun blocage de frequence n est ajoute aux synchronisations.
+respecter. La limitation des lectures de decouverte CalDAV est decrite ci-dessous.
 
 Test local : `docker compose exec -u www-data -T app php tests/calendar_cache_http_test.php`.
 
@@ -126,8 +126,68 @@ Analyser d abord les PROPPATCH identiques repetes et leurs refus, puis le taux
 de HIT des PROPFIND et les revisions qui changent. Un NOT_ELIGIBLE sur PROPPATCH
 est normal : une ecriture ne reutilise pas une reponse de lecture en cache.
 L authentification reste executee meme sur un HIT ; auth_ms mesure ce cout.
-Une limitation de frequence doit etre decidee apres cette collecte et testee
-avec les clients concernes, sans bloquer aveuglement un cycle de synchronisation.
+La reaction des clients aux refus de frequence doit etre suivie dans ces traces.
+
+### Limitation des lectures de decouverte
+
+La limitation est active par defaut avec ces valeurs :
+
+```dotenv
+CALDAV_READ_LIMIT_ENABLED=true
+CALDAV_READ_LIMIT_SECONDS=900
+CALDAV_READ_LIMIT_BURST_SECONDS=30
+```
+
+Elle concerne uniquement OPTIONS et PROPFIND avec une authentification Basic.
+La premiere requete passe l authentification et les controles habituels.
+Seule une reponse HTTP 2xx sans erreur fatale cree un enregistrement de limitation.
+Les repetitions restent autorisees pendant 30 secondes pour laisser un cycle
+de synchronisation se terminer. Ensuite, la meme requete recoit HTTP 429
+Too Many Requests et Retry-After, jusqu a 900 secondes apres le premier succes.
+Les repetitions autorisees ou refusees ne repoussent jamais cette echeance.
+
+La cle est une empreinte HMAC avec le secret existant AUTH_RATE_LIMIT_SECRET
+(ou son repli existant), couvrant les identifiants Basic exacts, l hote, la
+methode, l URI, Depth, le contenu XML et la politique. Aucun identifiant Basic
+ni contenu XML n est conserve dans les fichiers. Le numero utilisateur dans
+l URL ne permet pas de creer un blocage pour un autre compte. Un changement
+de mot de passe presente produit une nouvelle cle et repasse par l authentification.
+Les appareils partageant les memes identifiants et la meme requete partagent
+la limite ; le User-Agent et l IP ne constituent pas une identite fiable.
+
+Le refus intervient avant la verification du mot de passe et n autorise aucun
+acces aux donnees. Il ne renvoie jamais de calendrier en cache. Une lecture
+limitee reste refusee meme si les identifiants ont ete revoques depuis le
+premier succes ; a expiration, l authentification normale les rejettera.
+Les lectures sans Basic, les corps de plus de 128 Kio, GET, HEAD, REPORT et
+toutes les ecritures (dont PROPPATCH) gardent leur traitement habituel.
+Cela limite les repetitions observees, sans constituer une protection generale
+contre des requetes volontairement differentes ou des tentatives de connexion.
+
+Les PROPFIND de calendriers et de listes deja couverts par le cache de reponses
+memorisent aussi leurs revisions d organisation : un changement de revision
+reouvre la lecture concernee. Les requetes de principal et OPTIONS restent
+soumises a leur delai ; la reaction du logiciel client au 429 reste a verifier.
+La limitation peut donc retarder la prochaine synchronisation du client.
+
+Stockage prive dans le sous-dossier read-limits de CALDAV_CACHE_PATH, sans SQL.
+Les verrous locaux protegent les acces concurrents ; un stockage indisponible,
+occupe ou invalide laisse passer vers l authentification normale. Le cron
+de nettoyage CalDAV supprime les vieux enregistrements expires. Sur plusieurs
+serveurs PHP, un stockage partage avec verrous fiables est necessaire pour
+appliquer une limite commune. Le refus economise l authentification et le
+traitement CalDAV, mais PHP et son bootstrap restent executes.
+
+Les 429 comptent dans les erreurs HTTP 4xx du suivi CalDAV, avec le compte
+precedemment verifie ; cela ne cree aucune session authentifiee. La trace
+temporaire indique rate_limit=blocked, auth_ms=0 et retry_after.
+X-OMO-CalDAV-Rate-Limit: blocked identifie aussi ces reponses HTTP.
+Pour desactiver immediatement la limitation : CALDAV_READ_LIMIT_ENABLED=false.
+Modifier le delai ou la fenetre initiale cree une nouvelle cle de politique.
+
+Test : `docker compose exec -u www-data -T app php tests/caldav_rate_limit_test.php`.
+Mesure locale : lecture repetee authentifiee 225 ms, refus anticipe 30 ms,
+zero requete SQL sur le refus (hors ecriture de la mesure de performance).
 
 ### Deploiement
 
