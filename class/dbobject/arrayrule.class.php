@@ -51,7 +51,7 @@ class ArrayRule extends ArrayDbObject
      * global: all rules of this organization. Each rule is included once.
      * An optional collection retains all loaded rules before context filtering.
      */
-    public function loadForPolicyContexts($organizationId, array $contextHolonIds, $includeOrganizationRules = false, $viewScope = 'contextual', ?ArrayRule $organizationRules = null)
+    public function loadForPolicyContexts($organizationId, array $contextHolonIds, $includeOrganizationRules = false, $viewScope = 'contextual', ?ArrayRule $organizationRules = null, bool $archivedOnly = false)
     {
         $this->exchangeArray([]);
         if ($organizationRules !== null) {
@@ -82,6 +82,7 @@ class ArrayRule extends ArrayDbObject
              LEFT JOIN `holon` h ON h.`id` = COALESCE(r.`IDholon`, a.`IDholon`)
              LEFT JOIN `holon` root ON root.`id` = h.`IDholon_org`
              WHERE COALESCE(r.`IDorganization`, NULLIF(h.`IDorganization`, 0), root.`IDorganization`, 0) = :organization_id
+               AND h.`archived_at` IS ' . ($archivedOnly ? 'NOT ' : '') . 'NULL
              ORDER BY r.`expiration_date` ASC, r.`review_date` ASC, r.`id` ASC',
             ['organization_id' => $organizationId]
         );

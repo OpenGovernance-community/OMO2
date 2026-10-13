@@ -49,7 +49,8 @@ if ($holonId <= 0) {
     exit;
 }
 
-$result = $organization->deleteHolonDefinition($holonId, (int)commonGetCurrentUserId());
+$choice = $_POST['authority_choice'] ?? ($payload['authority_choice'] ?? '');
+$result = $organization->deleteHolonDefinition($holonId, (int)commonGetCurrentUserId(), false, is_string($choice) ? $choice : '');
 if (!($result['status'] ?? false)) {
     http_response_code(422);
     echo json_encode(

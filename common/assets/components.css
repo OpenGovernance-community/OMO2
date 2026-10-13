@@ -895,6 +895,45 @@ a.generic-correspondence-list__row:focus-visible {
     min-height: var(--param-checkbox-min-height, 38px);
 }
 
+.generic-checkbox--inline {
+    display: inline-flex;
+    align-items: center;
+}
+
+.generic-checkbox--inline > input {
+    margin: 0;
+}
+
+input.generic-switch {
+    appearance: none;
+    width: 2.5em;
+    height: 1.4em;
+    border: 1px solid currentColor;
+    border-radius: 1em;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+}
+
+input.generic-switch::before {
+    content: '';
+    display: block;
+    width: 1em;
+    height: 1em;
+    margin: .13em;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+input.generic-switch:checked::before {
+    transform: translateX(1.1em);
+}
+
+input.generic-switch:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 3px;
+}
+
 .generic-checkbox > .generic-help-text {
     display: block;
 }
@@ -1385,6 +1424,51 @@ html[data-theme="dark"] .black-icon,
     padding: 6px 10px;
     font-size: 0.82rem;
     line-height: 1.2;
+}
+
+/* Inline disclosure actions displayed as links, with native button interaction. */
+.generic-action-button--link {
+    min-height: auto;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--color-primary, #2563eb);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+/* Compact disclosure control for expandable text, with a directional chevron. */
+.generic-action-button--disclosure {
+    min-height: 26px;
+    padding: 4px 9px;
+    gap: 7px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-primary, #2563eb) 5%, transparent);
+    color: var(--color-text-light, #64748b);
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+.generic-action-button--disclosure::after {
+    content: "";
+    width: 5px;
+    height: 5px;
+    border-right: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+    transform: translateY(-2px) rotate(45deg);
+    transition: transform 0.15s ease;
+}
+
+.generic-action-button--disclosure[aria-expanded="true"]::after {
+    transform: translateY(1px) rotate(225deg);
+}
+
+.generic-action-button.generic-action-button--disclosure:not(:disabled):hover {
+    background: color-mix(in srgb, var(--color-primary, #2563eb) 10%, transparent);
+    color: var(--color-primary, #2563eb);
+    box-shadow: none;
 }
 
 /* Clickable summary counts inside dashboard cards. */

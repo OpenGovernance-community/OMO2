@@ -2811,6 +2811,7 @@ window.omoInitCalendar = function (root) {
                         throw payload || new Error('save_failed');
                     }
 
+                    if (typeof window.commonDrawerMarkSaved === 'function') window.commonDrawerMarkSaved(form);
                     if (typeof window.omoInvalidateMainRightPanel === 'function') {
                         window.omoInvalidateMainRightPanel();
                     }

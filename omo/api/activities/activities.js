@@ -739,6 +739,7 @@
                 notify(result.message || texts.actionError, 'error');
                 return;
             }
+            if (typeof window.commonDrawerMarkSaved === 'function') window.commonDrawerMarkSaved(form);
             notify(result.message, 'success');
             window.dispatchEvent(new CustomEvent('omo-activities-changed'));
             if (result.status && result.detailUrl) {

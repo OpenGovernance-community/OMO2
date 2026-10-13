@@ -1,5 +1,6 @@
 <?php
 require_once dirname(__DIR__) . '/bootstrap.php';
+require_once dirname(__DIR__, 3) . '/common/choice/holon-removal-fields.php';
 
 commonReleaseReadOnlySession();
 
@@ -130,6 +131,7 @@ if ($stage === 'capture') {
         ?>
         <section class="generic-section generic-section--stack" data-deferred-holon-delete>
             <p><?= omoApiEscape($tr('delete_intro')) ?></p>
+            <?php omoRenderHolonRemovalFields($proposal instanceof DeferredProposal ? (string)(DeferredProposal::normalizeState($proposal->get('after_state'))['authority_choice'] ?? '') : ''); ?>
             <?php if ($descendantCount > 0): ?><p class="generic-feedback"><?= omoApiEscape($tr('delete_descendants', ['count' => $descendantCount])) ?></p><?php endif; ?>
             <p class="generic-feedback" data-deferred-feedback hidden></p>
             <div class="generic-action-row">
@@ -143,7 +145,7 @@ if ($stage === 'capture') {
             const submit = root.querySelector('[data-deferred-delete-submit]'), feedback = root.querySelector('[data-deferred-feedback]');
             function show(message) { if (message && typeof window.commonNotify === 'function') { feedback.hidden = true; feedback.textContent = ''; window.commonNotify(String(message), 'error'); return; } feedback.hidden = !message; feedback.textContent = message || ''; }
             root.querySelector('[data-deferred-cancel]').addEventListener('click', function () { if (<?= $workflow ? 'true' : 'false' ?>) { window.dispatchEvent(new CustomEvent('omo-deferred-proposal-editor-back')); return; } if (window.commonTopbarCloseModal) window.commonTopbarCloseModal(); });
-            submit.addEventListener('click', function () { submit.disabled = true; show(''); const data = new FormData(); data.append('oid', '<?= $organizationId ?>'); data.append('point_id', '<?= $pointId ?>'); data.append('proposal_id', '<?= $proposalId ?>'); data.append('operation', 'delete'); data.append('holon_id', '<?= $targetHolonId ?>'); data.append('payload', '{}'); fetch('/omo/api/deferred_proposals/pv_holon_save.php', {method:'POST', body:data, credentials:'same-origin'}).then(function (response) { return response.json().then(function (payload) { return {ok:response.ok,payload:payload}; }); }).then(function (result) { if (!result.ok || !result.payload.status) throw new Error(result.payload.message || <?= json_encode($tr('save_error')) ?>); window.dispatchEvent(new CustomEvent('omo-deferred-proposal-saved', {detail:{pointId:Number(result.payload.pointId || <?= $pointId ?>),proposalId:Number(result.payload.id || 0)}})); if (window.commonTopbarCloseModal) window.commonTopbarCloseModal(); }).catch(function (error) { show(error.message || <?= json_encode($tr('save_error')) ?>); submit.disabled = false; }); });
+            submit.addEventListener('click', function () { const choice = root.querySelector('[name=authority_choice]'); if (!choice.reportValidity()) return; submit.disabled = true; show(''); const data = new FormData(); data.append('oid', '<?= $organizationId ?>'); data.append('point_id', '<?= $pointId ?>'); data.append('proposal_id', '<?= $proposalId ?>'); data.append('operation', 'delete'); data.append('holon_id', '<?= $targetHolonId ?>'); data.append('payload', JSON.stringify({authority_choice: choice.value})); fetch('/omo/api/deferred_proposals/pv_holon_save.php', {method:'POST', body:data, credentials:'same-origin'}).then(function (response) { return response.json().then(function (payload) { return {ok:response.ok,payload:payload}; }); }).then(function (result) { if (!result.ok || !result.payload.status) throw new Error(result.payload.message || <?= json_encode($tr('save_error')) ?>); window.dispatchEvent(new CustomEvent('omo-deferred-proposal-saved', {detail:{pointId:Number(result.payload.pointId || <?= $pointId ?>),proposalId:Number(result.payload.id || 0)}})); if (window.commonTopbarCloseModal) window.commonTopbarCloseModal(); }).catch(function (error) { show(error.message || <?= json_encode($tr('save_error')) ?>); submit.disabled = false; }); });
         }());
         </script>
         <?php

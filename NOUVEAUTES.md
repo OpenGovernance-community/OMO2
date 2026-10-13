@@ -1,5 +1,39 @@
 # Journal des nouveautés
 
+- Structure / menu des holons (2026-10-13) : actions regroupees avec des separateurs ; Archiver et Supprimer places avant Historique et Voir les archives, en fin de menu.
+
+- Structure / apercu des archives (2026-10-13) : attendus affiches en listes avec titres et details, valeurs heritees conservees ; autorites presentees par leur nom, description et autorite parente, avec indication des autorites locales et delegations completes. Meme rendu a la confirmation et a la consultation des archives, sans afficher les identifiants bruts.
+
+- Structure / sort des autorites (2026-10-13) : choix obligatoire sans valeur par defaut a la suppression ou a l archivage : supprimer autorites et regles, supprimer les autorites en remontant les regles, ou remonter les autorites au holon de leur parente. Autorites locales archivees ou supprimees avec leur espace, sans destination artificielle. Choix conserve et affiche dans les propositions des PV et decisions, applique uniquement a leur validation. Traitement transactionnel de toute la branche, references et delegations completes ; restauration sans annuler les transferts ou suppressions. Tests PHP 8.5, HTTP et navigateur.
+
+- Recherche / choix des archives (2026-10-13) : le switch Archive prepare le mode de la prochaine recherche sans la relancer. Validation par le bouton de recherche ou la touche Entree ; resultats courants conserves jusque-la.
+
+- Structure / archivage depuis le navigateur (2026-10-13) : correction de l adresse d envoi du formulaire, masquee par le champ action. Archivage et restauration envoient leur requete au bon endpoint ; les reponses non JSON affichent le message d erreur traduit. Test navigateur du formulaire et des erreurs serveur.
+
+- Recherche / switch Archive (2026-10-13) : controle contraste sur le fond du menu, place a cote du titre Chercher dans pour reduire la hauteur du formulaire, y compris dans la fenetre de recherche.
+
+- API REST / MCP / archives (2026-10-13) : parametre archived sur la recherche et la lecture des fiches, actif uniquement par defaut, archives uniquement avec true. Mode conserve dans les resultats, la pagination et les liens sources ; droits de lecture inchanges. Contrats MCP, OpenAPI et documentation actualises. Tests cibles PHP 8.5 et HTTP REST/MCP (isolation, confidentialite, pagination et lecture).
+
+- Sous-drawers / position au retour sur une edition (2026-10-13) : defilement vers le formulaire limite au sous-drawer pour conserver la position des colonnes pendant l animation de reouverture. Sur mobile, retour dans la vue des applications avant le calcul de position. Test navigateur avec les styles reels, sur ordinateur et mobile, sans recharger le formulaire.
+
+- Recherche / Archive (2026-10-13) : switch exclusif entre contenus actifs et archives, conserve dans les recherches memorisees et les traitements en arriere-plan. Les archives comprennent les objets archives individuellement et les contenus des cercles ou roles archives. Apercus en lecture seule avec verification des droits ; exclusion des espaces archives dans les catalogues courants et personnels. La restauration du cercle rend ses contenus visibles sans reactiver leurs anciennes archives individuelles. Tests PHP 8.5, HTTP et navigateur.
+
+- Sous-drawers / retrouver l edition bloquante (2026-10-13) : apres refus d abandonner des donnees non enregistrees, retour automatique vers l app et le sous-drawer concernes, avec focus et defilement vers le formulaire. Contenu conserve sans rechargement, autres editions gardees en cache ; retour egalement visible apres annulation de l avertissement de rechargement du navigateur.
+
+- Structure / archives (2026-10-13) : archivage et restauration des cercles et roles avec le droit de suppression existant. La branche disparait des vues courantes, des selecteurs et des liens partages ; consultation en lecture seule depuis le menu des archives. Donnees et affectations conservees, anciennes archives independantes preservees a la restauration, suppression definitive avec le parent. Controles des modeles utilises et uniques, historique et invalidation des caches. Migration archived_at ; tests PHP 8.5, HTTP et JavaScript.
+
+- Sous-drawers / navigation et rechargement (2026-10-13) : changement d app et masquage des drawers sans alerte lorsque leur contenu est conserve. Les editions masquees restent detectees au changement de holon, au remplacement ou a la suppression du contenu et au rechargement ou a la fermeture de page. Refuser conserve la route et les formulaires ; une seule confirmation par navigation. Le nettoyage des caches conserve les editions en cours.
+
+- Decisions / lien de lecture (2026-10-13) : Afficher la suite et Afficher moins adoptent un controle plus petit et discret, avec fond leger arrondi et chevron qui accompagne le depliage. Style partage, focus clavier conserve ; verification navigateur ordinateur/mobile.
+
+- Decisions / resumes de regles (2026-10-13) : les descriptions generees automatiquement renvoient au detail complet lorsque le texte d une regle depasse 600 caracteres, ou lorsque l ancien et le nouveau texte reunis depassent ce seuil. Metadonnees et textes courts conserves, paragraphes courts mieux separes ; descriptions saisies manuellement conservees. Contenu integral des modifications preserve. Tests PHP 8.5 du seuil, des entites HTML et de la sauvegarde HTTP. Sans migration SQL.
+
+- Decisions / descriptions longues (2026-10-13) : apercu des descriptions de propositions limite a cinq lignes, avec Afficher la suite puis Afficher moins. Contenu HTML integral conserve, quelle que soit son origine ; descriptions courtes affichees directement. Affichage partage entre les modes de scrutin, adapte a la largeur et aux mises a jour sans rechargement. Contenu complet a l impression ; tests navigateur ordinateur/mobile et PHP 8.5. Sans migration SQL.
+
+- Decisions / notifications a la creation (2026-10-13) : les propositions initiales ne declenchent plus de notifications individuelles. Une notification du scrutin est envoyee aux invites a l ouverture de l elaboration, des la premiere sauvegarde si elle demarre immediatement. Traitement apres validation complete des questions et des invitations, sans doublon ; ajouts ulterieurs toujours notifies. Modes de scrutin, questions multiples, gouvernance et creation API couverts par les tests PHP 8.5. Correction de l ajout de questions multiples. Sans migration SQL.
+
+- Sous-drawers / protection des saisies (2026-10-13) : confirmation commune avant Fermer, Annuler ou un clic sur le fond si un formulaire contient des donnees non enregistrees. Annuler la confirmation conserve le contenu et les verrous d edition. Controle des champs HTML, fichiers et formulaires imbriques, y compris les decisions a plusieurs questions ; fermeture automatique apres sauvegarde conservee.
+
 - CalDAV / limitation des lectures (2026-10-13) : refus 429 avec Retry-After des OPTIONS et PROPFIND identiques deja verifies, avant verification du mot de passe. Fenetre initiale de 30 secondes puis delai jusqu a 15 minutes apres le premier succes, configurable et desactivable ; ecritures et transferts d evenements inchanges. Empreintes HMAC, stockage prive sans SQL, echeance non prolongee par les refus et reouverture des lectures de calendrier apres changement de revision. Attribution des 429 au suivi CalDAV, nettoyage par le cron et tests HTTP PHP 8.5. Sans migration SQL.
 
 - Statistiques / suivi CalDAV (2026-10-13) : graphiques dedies aux appels et au CPU, detail horaire avec la periode Aujourd hui, classement des 25 comptes par duree, volume ou CPU avec nom, ID et e-mail de contact. Detail PROPFIND/PROPPATCH, SQL et erreurs HTTP ; donnees live et historiques existantes, acces super administrateur conserve. Tests PHP 8.5 de comptage, agregation, tris, contacts et rendu ; controle ordinateur/mobile. Sans migration SQL.

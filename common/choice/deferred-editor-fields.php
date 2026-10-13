@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/rule-scope-fields.php';
 require_once __DIR__ . '/rule-date-fields.php';
+require_once __DIR__ . '/holon-removal-fields.php';
 
 // Shared form fields for deferred proposals in meeting minutes and ballots.
 function omoDeferredEditorT(string $key): string
@@ -33,6 +34,11 @@ function omoDeferredEditorT(string $key): string
 
 function omoDeferredEditorRenderFields(string $targetType, array $state): void
 {
+    if ($targetType === 'holon_delete') {
+        echo '<p>' . htmlspecialchars(omoHolonRemovalT('deferred'), ENT_QUOTES, 'UTF-8') . '</p>';
+        omoRenderHolonRemovalFields((string)($state['authority_choice'] ?? ''));
+        return;
+    }
     $escape = static fn ($value): string => htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
     $value = static fn (string $name): string => $escape(($state[$name] ?? '') instanceof DateTimeInterface ? $state[$name]->format('Y-m-d') : ($state[$name] ?? ''));
     $label = static fn (string $key): string => $escape(omoDeferredEditorT($key));

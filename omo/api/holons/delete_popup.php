@@ -1,5 +1,6 @@
 <?php
 require_once dirname(__DIR__) . '/bootstrap.php';
+require_once dirname(__DIR__, 3) . '/common/choice/holon-removal-fields.php';
 
 use dbObject\Holon;
 use dbObject\Organization;
@@ -30,7 +31,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    $result = $organization->deleteHolonDefinition($holonId, (int)commonGetCurrentUserId());
+    $choice = $_POST['authority_choice'] ?? '';
+    if (!\dbObject\Authority::validateHolonRemovalChoice($choice)) {
+        http_response_code(422);
+        echo json_encode(['status' => false, 'message' => omoHolonRemovalT('required')]);
+        exit;
+    }
+    $result = $organization->deleteHolonDefinition($holonId, (int)commonGetCurrentUserId(), false, $choice);
     if (!($result['status'] ?? false)) {
         http_response_code(422);
         echo json_encode(array(
@@ -86,9 +93,7 @@ $typeLabel = strtolower((string)$holon->getTemplateLabel(true));
             </div>
         <?php endif; ?>
 
-        <div class="omo-holon-delete__hint generic-description generic-description--compact">
-            Cette fenetre pourra ensuite accueillir des options complementaires pour gerer le contenu rattache.
-        </div>
+        <?php omoRenderHolonRemovalFields(); ?>
 
         <div id="omoHolonDeletePopupFeedback" class="omo-holon-delete__feedback generic-feedback"></div>
 
