@@ -1,6 +1,251 @@
 (function (window) {
     'use strict';
 
+    // Fragments can load this script again. Keep one guard and one set of snapshots.
+    if (!window.commonDrawerConfirmDiscard) {
+        var formStates = new WeakMap();
+        var navigationApprovals = new WeakSet();
+        var pendingReveal = 0;
+        var nativeRevealSync = null;
+        var hostSelector = '.omo-overlay-drawer, #commonTopbarDrawer, #commonTopbarModal';
+        var dismissSelector = [
+            '.omo-overlay-drawer__backdrop', '.omo-overlay-drawer__close',
+            '.generic-action-button--close', '[data-topbar-drawer-close]', '[data-topbar-modal-close]',
+            '[data-common-drawer-dismiss]',
+            '[data-omo-subdrawer-cancel]', '[data-omo-document-editor-cancel]',
+            '[data-omo-projects-cancel-create]', '[data-omo-stats-cancel-editor]',
+            '[data-activity-editor-cancel]', '[data-activity-close]',
+            '[data-checklist-editor-cancel]', '[data-checklist-back-detail]',
+            '[data-deferred-object-cancel]', '[data-deferred-cancel]', '[data-deferred-project-cancel]',
+            '[data-cancel]'
+        ].join(', ');
+        var discardMessage = "Terminer l'edition en cours ? Les donnees non enregistrees seront perdues.";
+
+        function guardedForms(container) {
+            var forms = Array.prototype.slice.call(container.querySelectorAll('form'));
+            if (container.matches && container.matches('form')) forms.unshift(container);
+            return forms.filter(function (form) {
+                var host = form.closest(hostSelector);
+                var meeting = form.closest('[data-omo-pv-editor-root]');
+                if (host && host.id === 'commonTopbarModal' && typeof window.commonTopbarModalCanClose === 'function') return false;
+                // The meeting and template editors already own their save/close lifecycle.
+                return host && !form.closest('[data-omo-unsaved-changes], [data-common-drawer-editor]')
+                    && (!meeting || meeting.closest(hostSelector) !== host);
+            });
+        }
+
+        function isOpenHost(host) {
+            // A main app drawer can be hidden while retaining an active editor.
+            // Explicitly closed subdrawers and their descendants no longer count.
+            return host && !host.hidden
+                && (!host.classList.contains('omo-overlay-drawer') || host.classList.contains('is-open'))
+                && !host.parentElement.closest('.omo-overlay-drawer[hidden], .omo-overlay-drawer:not(.is-open), #commonTopbarDrawer[hidden], #commonTopbarModal[hidden]');
+        }
+
+        function formSignature(form) {
+            var values = Array.prototype.filter.call(form.elements, function (field) {
+                return field.name && !/^(submit|button|reset|image)$/i.test(field.type);
+            }).map(function (field) {
+                var value = field.value;
+                if (field.type === 'checkbox' || field.type === 'radio') value = field.checked;
+                else if (field.type === 'file') {
+                    value = Array.prototype.map.call(field.files || [], function (file) {
+                        return [file.name, file.size, file.lastModified];
+                    });
+                } else if (field.multiple && field.options) {
+                    value = Array.prototype.filter.call(field.options, function (option) { return option.selected; })
+                        .map(function (option) { return option.value; });
+                }
+                return [field.name, value];
+            });
+            // Read rich fields through their stable host, even while Summernote has focus.
+            Array.prototype.forEach.call(form.querySelectorAll('*'), function (node) {
+                if (node.__omoSimpleHtmlField && typeof node.__omoSimpleHtmlField.getValue === 'function') {
+                    values.push(['html', node.__omoSimpleHtmlField.getValue()]);
+                } else if (node.isContentEditable && !node.parentElement.isContentEditable
+                    && !node.closest('.generic-html-editor')) {
+                    values.push(['contenteditable', node.innerHTML]);
+                }
+            });
+            return JSON.stringify(values);
+        }
+
+        function rememberInteraction(event) {
+            var target = event.target instanceof Element ? event.target : null;
+            var host = target ? target.closest(hostSelector) : null;
+            if (!host) return;
+            guardedForms(host).forEach(function (form) {
+                // Do not mark another nested drawer when interacting with its parent.
+                if (form.closest(hostSelector) !== host) return;
+                var state = formStates.get(form);
+                if (!state) {
+                    state = {initial: formSignature(form), touched: false};
+                    formStates.set(form, state);
+                }
+                if (!state.touched && !event.isTrusted && (event.type === 'input' || event.type === 'change')) return;
+                if (!state.touched && event.type !== 'input' && event.type !== 'change') {
+                    // Async selects and HTML adapters may have initialized since insertion.
+                    state.initial = formSignature(form);
+                }
+                state.touched = true;
+            });
+        }
+
+        function customEditors(container) {
+            var editors = Array.prototype.slice.call(container.querySelectorAll('[data-common-drawer-editor]'));
+            if (container.matches && container.matches('[data-common-drawer-editor]')) editors.unshift(container);
+            return editors;
+        }
+
+        function dirtyEditors(container) {
+            return guardedForms(container).filter(function (form) {
+                var state = formStates.get(form);
+                return isOpenHost(form.closest(hostSelector)) && state && state.touched && state.initial !== formSignature(form);
+            }).concat(customEditors(container).filter(function (editor) {
+                return isOpenHost(editor.closest(hostSelector))
+                    && typeof editor.commonDrawerHasUnsavedChanges === 'function' && editor.commonDrawerHasUnsavedChanges();
+            }));
+        }
+        window.commonDrawerHasUnsavedChanges = function (container) {
+            return dirtyEditors(container).length > 0;
+        };
+        window.commonDrawerMarkSaved = function (container) {
+            var forms = container.matches && container.matches('form') ? [container] : guardedForms(container);
+            forms.forEach(function (form) {
+                formStates.set(form, {initial: formSignature(form), touched: false});
+            });
+        };
+        window.commonDrawerCancelReveal = function () {
+            window.cancelAnimationFrame(pendingReveal);
+            pendingReveal = 0;
+            if (nativeRevealSync) {
+                document.removeEventListener('pointerdown', nativeRevealSync, true);
+                document.removeEventListener('keydown', nativeRevealSync, true);
+                nativeRevealSync = null;
+            }
+        };
+        window.commonDrawerRevealEditor = function (editor, options) {
+            window.commonDrawerCancelReveal();
+            // Let the blocked caller finish restoring its previous URL first.
+            pendingReveal = window.requestAnimationFrame(function () {
+                pendingReveal = 0;
+                if (!(editor instanceof Element) || !editor.isConnected) return;
+                var owner = editor.closest(hostSelector);
+                if (owner && !isOpenHost(owner)) return;
+                var state = formStates.get(editor);
+                if (state && (!state.touched || state.initial === formSignature(editor))) return;
+                if (typeof editor.commonDrawerHasUnsavedChanges === 'function' && !editor.commonDrawerHasUnsavedChanges()) return;
+                if (typeof editor.omoHasUnsavedChanges === 'function' && !editor.omoHasUnsavedChanges()) return;
+                if (typeof window.omoRevealUnsavedEditor === 'function') window.omoRevealUnsavedEditor(editor, options || {});
+                var hosts = [];
+                for (var node = editor; node; node = node.parentElement) {
+                    if (node.matches(hostSelector)) hosts.unshift(node);
+                }
+                hosts.forEach(function (host) {
+                    host.hidden = false;
+                    if (host.classList.contains('omo-overlay-drawer')) host.classList.add('is-open');
+                });
+                var panel = editor.closest('[data-omo-pv-application-panel]');
+                var meeting = panel ? panel.closest('[data-omo-pv-editor-root]') : null;
+                if (meeting && panel.hidden && panel.getAttribute('data-omo-pv-application-loaded') === '1') {
+                    var tab = Array.prototype.find.call(meeting.querySelectorAll('[data-omo-pv-application-tab]'), function (button) {
+                        return button.getAttribute('data-omo-pv-application-tab') === panel.getAttribute('data-omo-pv-application-panel');
+                    });
+                    if (tab) tab.click();
+                }
+                var host = editor.closest(hostSelector) || editor;
+                if (!host.hasAttribute('tabindex')) host.setAttribute('tabindex', '-1');
+                var outerScroll = [];
+                for (var ancestor = host.parentElement; ancestor; ancestor = ancestor.parentElement) {
+                    outerScroll.push({element: ancestor, left: ancestor.scrollLeft, top: ancestor.scrollTop});
+                }
+                host.focus({preventScroll: true});
+                editor.scrollIntoView({block: 'nearest', inline: 'nearest', behavior: 'instant'});
+                // During the drawer's slide-in, scrollIntoView can pan even overflow:hidden
+                // ancestors. Keep the shell fixed and scroll only inside the subdrawer.
+                outerScroll.forEach(function (position) {
+                    position.element.scrollTo({left: position.left, top: position.top, behavior: 'instant'});
+                });
+                if (options && options.syncRoute === false && typeof window.omoRevealUnsavedEditor === 'function') {
+                    // Native unload gives no cancellation callback. A subsequent user
+                    // interaction means the editor is being resumed, so history is safe to sync.
+                    nativeRevealSync = function (event) {
+                        if (!event.isTrusted) return;
+                        window.commonDrawerCancelReveal();
+                        if (editor.isConnected) window.omoRevealUnsavedEditor(editor, {syncRoute: true});
+                    };
+                    document.addEventListener('pointerdown', nativeRevealSync, true);
+                    document.addEventListener('keydown', nativeRevealSync, true);
+                }
+            });
+        };
+        window.commonDrawerConfirmDiscard = function (container, options) {
+            var dirty = dirtyEditors(container).filter(function (editor) { return !navigationApprovals.has(editor); });
+            if (dirty.length && !window.confirm(discardMessage)) {
+                window.commonDrawerRevealEditor(dirty[0], {syncRoute: true});
+                return false;
+            }
+            if (dirty.length && options && options.navigation === true) {
+                // A route can check the document, drawer and fragment in the same turn.
+                // Approve that chain once, without treating discarded data as saved.
+                dirty.forEach(function (editor) { navigationApprovals.add(editor); });
+                window.setTimeout(function () {
+                    dirty.forEach(function (editor) { navigationApprovals.delete(editor); });
+                }, 0);
+            }
+            return true;
+        };
+
+        window.addEventListener('beforeunload', function (event) {
+            var dirty = dirtyEditors(document);
+            if (dirty.length) {
+                event.preventDefault();
+                event.returnValue = '';
+                // A surviving document gets a frame after cancelling the native warning.
+                // Do not change history while the browser is navigating away.
+                window.commonDrawerRevealEditor(dirty[0], {syncRoute: false});
+            }
+        });
+
+        // Capture before module handlers can clear the fragment, release locks or change routes.
+        document.addEventListener('click', function (event) {
+            var target = event.target instanceof Element ? event.target : null;
+            var dismiss = target ? target.closest(dismissSelector) : null;
+            var host = dismiss ? dismiss.closest(hostSelector) : null;
+            if (!host) return;
+            if (host.id === 'commonTopbarModal' && typeof window.commonTopbarModalCanClose === 'function') return;
+            event.commonDrawerDiscardChecked = true;
+            if (!window.commonDrawerConfirmDiscard(host, {navigation: true})) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+            }
+        }, true);
+        ['pointerdown', 'focusin', 'input', 'change'].forEach(function (name) {
+            document.addEventListener(name, rememberInteraction, true);
+        });
+
+        // Also retain a baseline for file drops and controls changed without receiving focus.
+        function rememberForms(container) {
+            guardedForms(container).forEach(function (form) {
+                if (!formStates.has(form)) formStates.set(form, {initial: formSignature(form), touched: false});
+            });
+        }
+        rememberForms(document);
+        new MutationObserver(function (records) {
+            records.forEach(function (record) {
+                Array.prototype.forEach.call(record.addedNodes, function (node) {
+                    if (node instanceof Element) rememberForms(node);
+                });
+            });
+        }).observe(document.documentElement, {childList: true, subtree: true});
+
+        var locale = document.documentElement.lang || 'fr';
+        window.fetch('/common/jstranslation/drawer.php?lang=' + encodeURIComponent(locale), {credentials: 'same-origin'})
+            .then(function (response) { return response.ok ? response.json() : null; })
+            .then(function (texts) { if (texts && texts.discard) discardMessage = texts.discard; })
+            .catch(function () { /* Keep the local fallback when translations cannot load. */ });
+    }
+
     function asElement(value) {
         return value instanceof Element ? value : null;
     }
@@ -19,6 +264,7 @@
         var description = getElement(drawer, settings.description || '[data-omo-subdrawer-description]');
         var actions = getElement(drawer, settings.actions || '[data-omo-subdrawer-actions]');
         var dismissAction = getElement(drawer, settings.dismissAction);
+        if (dismissAction) dismissAction.setAttribute('data-common-drawer-dismiss', '');
         var cancelAction = null;
         var help = getElement(drawer, settings.help || '[data-omo-subdrawer-help-panel]');
         var defaultTitle = title ? title.textContent : '';

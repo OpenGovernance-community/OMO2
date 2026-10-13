@@ -152,7 +152,7 @@ if (!function_exists('omoSearchPopupRenderStats')) {
 }
 
 if (!function_exists('omoSearchPopupRenderSearchForm')) {
-    function omoSearchPopupRenderSearchForm($query, array $selectedScopes, array $scopeLabels, array $dateRange, $escape)
+    function omoSearchPopupRenderSearchForm($query, array $selectedScopes, array $scopeLabels, array $dateRange, $escape, bool $archived = false)
     {
         $ui = omoSearchPopupGetUiStrings();
         ?>
@@ -171,6 +171,7 @@ if (!function_exists('omoSearchPopupRenderSearchForm')) {
                 </div>
 
                 <div class="common-topbar__search-scopes">
+                    <?php commonRenderTopbarSearchScopeHeading(omoTopbarTranslate('topbar.search.scope'), omoTopbarTranslate('topbar.search.archive'), $archived); ?>
                     <div class="common-topbar__search-scope-list">
                         <?php foreach ($scopeLabels as $scopeId => $scopeLabel): ?>
                             <label class="common-topbar__search-scope">
@@ -470,6 +471,8 @@ $scopeLabels = omoSearchPopupGetScopeLabels($organization);
 $selectedScopes = omoSearchPopupResolveScopes($_GET['scopes'] ?? array(), $scopeLabels);
 $dateRange = omoSearchPopupResolveDateRange($_GET['date_start'] ?? '', $_GET['date_end'] ?? '', $organization);
 $viewerContext = \dbObject\SearchJob::buildViewerContextFromGlobals($organizationId, $currentHolonId);
+$archived = ($_GET['archive'] ?? '') === '1';
+$viewerContext['archived'] = $archived;
 $restoreJobId = isset($_GET['restore_job_id']) ? (int)$_GET['restore_job_id'] : 0;
 $restoreJobToken = trim((string)($_GET['restore_job_token'] ?? ''));
 $restoredJob = false;
@@ -479,6 +482,8 @@ $clientJobState = null;
 if (!$isPartial && $restoreJobId > 0 && $restoreJobToken !== '') {
     $restoredJob = \dbObject\SearchJob::findByIdAndToken($restoreJobId, $restoreJobToken);
     if ($restoredJob && $restoredJob->matchesViewerContext($viewerContext)) {
+        $archived = !empty($restoredJob->getViewerContext()['archived']);
+        $viewerContext['archived'] = $archived;
         $query = trim((string)$restoredJob->get('query'));
         $selectedScopes = omoSearchPopupResolveScopes($restoredJob->getScopes(), $scopeLabels);
         $dateRange = omoSearchPopupResolveDateRange($restoredJob->getDateRange()['startDate'] ?? '', $restoredJob->getDateRange()['endDate'] ?? '', $organization);
@@ -488,6 +493,7 @@ if (!$isPartial && $restoreJobId > 0 && $restoreJobToken !== '') {
             'jobToken' => (string)$restoredJob->get('requesttoken'),
             'query' => $query,
             'scopes' => array_values($selectedScopes),
+            'archived' => $archived,
             'startDate' => $dateRange['startDate'],
             'endDate' => $dateRange['endDate'],
             'organizationId' => (int)$organizationId,
@@ -531,13 +537,14 @@ omoSearchPopupRenderStyles();
 <div
     class="omo-search-popup"
     data-omo-search-popup-root="1"
+    data-omo-search-popup-archive="<?= $archived ? '1' : '0' ?>"
     data-omo-search-popup-oid="<?= (int)$organizationId ?>"
     data-omo-search-popup-cid="<?= (int)$currentHolonId ?>"
     data-omo-search-preview-loading="<?= $escape(omoSearchPreviewT('loading')) ?>"
     data-omo-search-preview-error="<?= $escape(omoSearchPreviewT('error')) ?>"
     data-omo-search-preview-open-label="<?= $escape(omoSearchPreviewT('open')) ?>"
 >
-    <?php omoSearchPopupRenderSearchForm($query, $selectedScopes, $scopeLabels, $dateRange, $escape); ?>
+    <?php omoSearchPopupRenderSearchForm($query, $selectedScopes, $scopeLabels, $dateRange, $escape, $archived); ?>
     <div data-omo-search-popup-content>
         <?php
         if ($restoredPayload !== null) {
@@ -600,6 +607,7 @@ omoSearchPopupRenderStyles();
                     'jobToken' => (string)$job->get('requesttoken'),
                     'query' => $query,
                     'scopes' => array_values($selectedScopes),
+                    'archived' => $archived,
                     'startDate' => $dateRange['startDate'],
                     'endDate' => $dateRange['endDate'],
                     'organizationId' => (int)$organizationId,

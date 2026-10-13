@@ -654,6 +654,7 @@
                 return payload;
             });
         }).then(function (payload) {
+            if (typeof window.commonDrawerMarkSaved === 'function') window.commonDrawerMarkSaved(form);
             rootNeedsRefresh = true;
             navigateChecklistDetail(Number(payload.id || 0), payload.detailUrl || '');
             return true;

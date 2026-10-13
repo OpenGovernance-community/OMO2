@@ -1010,18 +1010,82 @@ function omoConfirmDiscardChanges(container = document) {
         editors.unshift(container);
     }
     return editors.every(function (editor) {
-        return typeof editor.omoConfirmDiscardChanges !== 'function'
+        const accepted = typeof editor.omoConfirmDiscardChanges !== 'function'
             || editor.omoConfirmDiscardChanges();
-    });
+        if (!accepted && typeof window.commonDrawerRevealEditor === 'function') window.commonDrawerRevealEditor(editor, {syncRoute: true});
+        return accepted;
+    }) && (typeof window.commonDrawerConfirmDiscard !== 'function'
+        || window.commonDrawerConfirmDiscard(container, {navigation: true}));
+}
+
+function omoRevealUnsavedEditor(editor, options = {}) {
+    const mainDrawer = editor.closest('.drawer');
+    if (window.commonPanelViewActions) window.commonPanelViewActions.exit();
+    if (mainDrawer) {
+        const drawer = $(mainDrawer);
+        // Reveal the retained nodes directly; normal routing may replay or reload them.
+        $('.drawer.open').not(mainDrawer).removeClass('open');
+        clearDrawerRemoval(drawer);
+        if (typeof omoSetAppView === 'function' && omoIsMobileLayout()) omoSetAppView('menu');
+        mainDrawer.hidden = false;
+        drawer.addClass('open');
+        updateDrawerPosition(drawer);
+        const menuItem = Array.from(document.querySelectorAll('#menu_sidebar .menu-item[data-drawer]')).find(function (item) {
+            return omoNormalizeDrawerId(item.getAttribute('data-drawer')) === omoNormalizeDrawerId(mainDrawer.id);
+        });
+        const routeToken = omoNormalizeHashToken(drawer.data('omo-drawer-route-token') || (menuItem ? menuItem.getAttribute('data-hash') : ''));
+        if (routeToken && options.syncRoute === true) {
+            const route = parseUrl();
+            const hash = omoBuildHashFromState(routeToken, omoParseHashState(route.hash).popupToken);
+            history.replaceState({}, '', buildOmoUrl(route.oid, route.cid, hash));
+            currentState = {...currentState, ...route, hash: hash, routeToken: routeToken};
+            omoRememberDrawerRoute(routeToken);
+            updateActiveMenu(hash);
+        }
+    }
+    const externalDrawer = editor.closest('#omoExternalPanelDrawer');
+    if (externalDrawer) omoSetExternalPanelDrawerPeekState(externalDrawer, false);
+}
+
+function omoHasUnsavedChanges(container = document) {
+    const editors = Array.from(container.querySelectorAll('[data-omo-unsaved-changes]'));
+    if (container.matches && container.matches('[data-omo-unsaved-changes]')) editors.unshift(container);
+    return editors.some(function (editor) {
+        return typeof editor.omoHasUnsavedChanges === 'function' && editor.omoHasUnsavedChanges();
+    }) || (typeof window.commonDrawerHasUnsavedChanges === 'function' && window.commonDrawerHasUnsavedChanges(container));
+}
+
+function omoConfirmRouteChange(nextRoute, previousRoute = parseUrl()) {
+    if (String(nextRoute.oid || '') !== String(previousRoute.oid || '')
+        || String(nextRoute.cid || '') !== String(previousRoute.cid || '')) {
+        return omoConfirmDiscardChanges();
+    }
+    const routeToken = omoParseHashState(nextRoute.hash).routeToken;
+    const previousToken = omoParseHashState(previousRoute.hash).routeToken;
+    if (routeToken === previousToken || !routeToken) return true;
+    const menuHash = omoGetMenuHashForRouteToken(routeToken);
+    const menuConfig = getSidebarMenuConfig(routeToken, nextRoute.oid, nextRoute.cid);
+    const drawerId = omoNormalizeDrawerId(menuConfig && menuConfig.drawer ? menuConfig.drawer : `drawer_${routeToken}`);
+    const drawer = omoResolveDrawer(drawerId).drawer;
+    if (!drawer.length) return true;
+    const resolvedUrl = menuConfig && menuConfig.resolvedUrl
+        ? menuConfig.resolvedUrl
+        : buildDrawerUrl(menuConfig && menuConfig.url ? menuConfig.url : `api/${routeToken}/index.php`, nextRoute.oid, nextRoute.cid, menuConfig && menuConfig.routeOptions ? menuConfig.routeOptions : {});
+    const sameApp = menuHash === omoGetMenuHashForRouteToken(previousToken);
+    const changesDetail = routeToken.includes('-') && routeToken !== omoNormalizeHashToken(drawer.data('omo-drawer-route-token'));
+    const reloadsContent = omoDrawerNeedsReload(drawer, omoResolveAppUrl(resolvedUrl), routeToken, `${Number(nextRoute.oid || 0)}:${Number(nextRoute.cid || 0)}`);
+    // Changing applications only hides the source. Guard the target if it will be replaced.
+    return !(sameApp || changesDetail || reloadsContent) || omoConfirmDiscardChanges(drawer.get(0));
 }
 
 window.addEventListener('beforeunload', function (event) {
-    const hasChanges = Array.from(document.querySelectorAll('[data-omo-unsaved-changes]')).some(function (editor) {
-        return typeof editor.omoHasUnsavedChanges === 'function' && editor.omoHasUnsavedChanges();
-    });
-    if (hasChanges) {
+    if (omoHasUnsavedChanges()) {
         event.preventDefault();
         event.returnValue = '';
+        const editor = Array.from(document.querySelectorAll('[data-omo-unsaved-changes]')).find(function (item) {
+            return typeof item.omoHasUnsavedChanges === 'function' && item.omoHasUnsavedChanges();
+        });
+        if (editor && typeof window.commonDrawerRevealEditor === 'function') window.commonDrawerRevealEditor(editor, {syncRoute: false});
     }
 });
 
@@ -1556,7 +1620,23 @@ function omoStoreDrawerContentRoute(drawerId, routeToken = null) {
     return true;
 }
 
+function omoDrawerNeedsReload(drawer, resolvedUrl, requestedRouteToken, requestedContextKey, forceReload = false) {
+    if (!drawer.length || forceReload) return true;
+    const currentUrl = String(drawer.data('omo-drawer-url') || '');
+    const hasLoadedContent = drawer.find('.drawer-content').children().length > 0;
+    const currentRouteToken = omoNormalizeHashToken(drawer.data('omo-drawer-route-token'));
+    const currentDocumentRoute = omoParseDocumentRouteToken(currentRouteToken);
+    const requestedDocumentRoute = omoParseDocumentRouteToken(requestedRouteToken);
+    if (currentDocumentRoute && requestedDocumentRoute && currentDocumentRoute.documentId !== requestedDocumentRoute.documentId) return true;
+    const canReuseCachedDrawer = omoCanReuseStoredDrawerRoute(
+        hasLoadedContent, currentRouteToken, String(drawer.data('omo-drawer-route-context') || ''),
+        requestedRouteToken, requestedContextKey, forceReload
+    ) || omoCanReuseCachedPanelDrawer(drawer, resolvedUrl, currentUrl);
+    return !hasLoadedContent || (!canReuseCachedDrawer && currentUrl !== resolvedUrl);
+}
+
 function openDrawer(id, url, options = {}) {
+    if (typeof window.commonDrawerCancelReveal === 'function') window.commonDrawerCancelReveal();
 
     const drawerReference = omoResolveDrawer(id);
     const drawerId = drawerReference.id;
@@ -1571,31 +1651,7 @@ function openDrawer(id, url, options = {}) {
     const currentRouteToken = drawer.length
         ? omoNormalizeHashToken(drawer.data('omo-drawer-route-token'))
         : null;
-    const currentContextKey = drawer.length
-        ? String(drawer.data('omo-drawer-route-context') || '')
-        : '';
-    const currentDocumentRoute = omoParseDocumentRouteToken(currentRouteToken);
-    const requestedDocumentRoute = omoParseDocumentRouteToken(requestedRouteToken);
-    const mustReloadForDocumentRouteChange = currentDocumentRoute
-        && requestedDocumentRoute
-        && currentDocumentRoute.documentId !== requestedDocumentRoute.documentId;
-    const canReuseCachedRoute = omoCanReuseStoredDrawerRoute(
-        hasLoadedContent,
-        currentRouteToken,
-        currentContextKey,
-        requestedRouteToken,
-        requestedContextKey,
-        options.forceReload === true
-    );
-    const canReuseCachedDrawer = !mustReloadForDocumentRouteChange
-        && (
-            canReuseCachedRoute
-            || omoCanReuseCachedPanelDrawer(drawer, resolvedUrl, currentUrl)
-        );
-    const shouldReloadContent = options.forceReload === true
-        || mustReloadForDocumentRouteChange
-        || !drawer.length
-        || (!canReuseCachedDrawer && currentUrl !== resolvedUrl);
+    const shouldReloadContent = omoDrawerNeedsReload(drawer, resolvedUrl, requestedRouteToken, requestedContextKey, options.forceReload === true);
     const isReopeningCachedStructureDrawer = drawerId === 'drawer_structure'
         && drawer.length
         && !drawer.hasClass('open')
@@ -1613,8 +1669,6 @@ function openDrawer(id, url, options = {}) {
             drawerExists: drawer.length > 0,
             drawerIsOpen: drawer.length ? drawer.hasClass('open') : false,
             hasLoadedContent: hasLoadedContent,
-            canReuseCachedRoute: canReuseCachedRoute,
-            canReuseCachedDrawer: canReuseCachedDrawer,
             shouldReloadContent: shouldReloadContent
         });
     }
@@ -1629,7 +1683,7 @@ function openDrawer(id, url, options = {}) {
         return;
     }
 
-    if (!omoConfirmDiscardChanges()) {
+    if (drawer.length && shouldReloadContent && !omoConfirmDiscardChanges(drawer.get(0))) {
         return;
     }
 
@@ -1791,7 +1845,7 @@ function omoClearClosedDrawers() {
     $('.drawer').each(function () {
         const drawer = $(this);
 
-        if (drawer.hasClass('open')) {
+        if (drawer.hasClass('open') || omoHasUnsavedChanges(drawer.get(0))) {
             return;
         }
 
@@ -1808,7 +1862,7 @@ function omoClearClosedDrawers() {
     });
 
     const externalDrawer = document.getElementById('omoExternalPanelDrawer');
-    if (!externalDrawer || externalDrawer.classList.contains('is-open')) {
+    if (!externalDrawer || externalDrawer.classList.contains('is-open') || omoHasUnsavedChanges(externalDrawer)) {
         return;
     }
 
@@ -1994,7 +2048,7 @@ function closeDrawer(id, removeAfterClose = false) {
         return;
     }
 
-    if (!omoConfirmDiscardChanges(drawer.get(0))) {
+    if (removeAfterClose && !omoConfirmDiscardChanges(drawer.get(0))) {
         return;
     }
 
@@ -2006,11 +2060,12 @@ function closeDrawer(id, removeAfterClose = false) {
 }
 
 function closeAllDrawers(removeAfterClose = false) {
-    if (!omoConfirmDiscardChanges()) {
+    const drawers = $('.drawer.open');
+    if (removeAfterClose && !drawers.toArray().every(function (drawer) { return omoConfirmDiscardChanges(drawer); })) {
         return;
     }
     if (window.commonPanelViewActions) window.commonPanelViewActions.exit();
-    $('.drawer.open').each(function () {
+    drawers.each(function () {
         const drawer = $(this);
 
         drawer.removeClass('open');
@@ -3689,6 +3744,7 @@ function omoNormalizeSearchPopupEntry(entry = null) {
         scopes: scopes,
         startDate: startDate,
         endDate: endDate,
+        archived: rawEntry.archived === true,
         oid: normalizedContext.oid,
         cid: normalizedContext.cid,
         jobId: Number.isInteger(parsedJobId) && parsedJobId > 0 ? parsedJobId : null,
@@ -3817,6 +3873,7 @@ function omoSetSearchPopupPendingState(query, scopes = [], context = null, dateR
         scopes: normalizedScopes,
         startDate: omoNormalizeSearchPopupDate(dateRange.startDate),
         endDate: omoNormalizeSearchPopupDate(dateRange.endDate),
+        archived: dateRange.archived === true,
         oid: normalizedContext.oid,
         cid: normalizedContext.cid,
         jobId: null,
@@ -3893,6 +3950,7 @@ function omoRegisterSearchPopupJobState(options = {}) {
         scopes: rawOptions.scopes,
         startDate: rawOptions.startDate,
         endDate: rawOptions.endDate,
+        archived: rawOptions.archived === true,
         oid: rawOptions.oid || rawOptions.organizationId,
         cid: rawOptions.cid || rawOptions.currentHolonId,
         jobId: rawOptions.jobId,
@@ -4042,7 +4100,7 @@ function omoSetDrawerHashState(options = {}) {
         return;
     }
 
-    if (routeToken !== hashState.routeToken && !omoConfirmDiscardChanges()) {
+    if (routeToken !== hashState.routeToken && !omoConfirmRouteChange({oid: route.oid, cid: route.cid, hash: nextHash}, route)) {
         return;
     }
 
@@ -4230,6 +4288,7 @@ function omoResolveSearchPopupRoute(popupId, currentRoute) {
         resolvedState = pendingState;
     }
 
+    queryParts.push('archive=' + (resolvedState && resolvedState.archived ? '1' : '0'));
     if (resolvedState && resolvedState.jobId && resolvedState.jobToken && (!parsedPopupId || resolvedState.jobId === parsedPopupId)) {
         queryParts.push(`restore_job_id=${encodeURIComponent(resolvedState.jobId)}`);
         queryParts.push(`restore_job_token=${encodeURIComponent(resolvedState.jobToken)}`);
@@ -4442,7 +4501,8 @@ function omoOpenSearchPopupHashState(query, scopes = [], options = {}) {
     const normalizedJobId = Number(rawOptions.jobId || 0);
     const dateRange = {
         startDate: omoNormalizeSearchPopupDate(rawOptions.startDate),
-        endDate: omoNormalizeSearchPopupDate(rawOptions.endDate)
+        endDate: omoNormalizeSearchPopupDate(rawOptions.endDate),
+        archived: rawOptions.archived === true
     };
     const popupId = Number.isInteger(normalizedJobId) && normalizedJobId > 0
         ? normalizedJobId
@@ -4738,13 +4798,11 @@ function updateActiveMenu(hash) {
 }
 
 function navigate(oid, cid = null, hash = null) {
+    if (typeof window.commonDrawerCancelReveal === 'function') window.commonDrawerCancelReveal();
 
     const url = buildOmoUrl(oid, cid, hash);
     const route = parseUrl();
-    const changesEditorContext = String(oid || '') !== String(route.oid || '')
-        || String(cid || '') !== String(route.cid || '')
-        || omoParseHashState(hash).routeToken !== omoParseHashState(route.hash).routeToken;
-    if (changesEditorContext && !omoConfirmDiscardChanges()) {
+    if (!omoConfirmRouteChange({oid, cid, hash}, route)) {
         return;
     }
     history.pushState({}, '', url);
@@ -4981,6 +5039,7 @@ window.omoStructureHandleDrawerOpen = function (options = {}) {
 };
 
 function handleRoute() {
+    if (typeof window.commonDrawerCancelReveal === 'function') window.commonDrawerCancelReveal();
 
     const { oid, cid, hash } = parseUrl();
     const hashState = omoParseHashState(hash);
@@ -4990,8 +5049,7 @@ function handleRoute() {
     const popupId = hashState.popupId;
     const previousState = currentState;
     if (previousState.oid !== null
-        && (oid !== previousState.oid || cid !== previousState.cid || routeToken !== previousState.routeToken)
-        && !omoConfirmDiscardChanges()) {
+        && !omoConfirmRouteChange({oid, cid, hash}, previousState)) {
         history.replaceState({}, '', buildOmoUrl(previousState.oid, previousState.cid, previousState.hash));
         return;
     }
@@ -5612,7 +5670,7 @@ function omoHandleTopbarSearch(query, config, searchState) {
     const dateRange = searchState && searchState.dateRange && typeof searchState.dateRange === 'object'
         ? searchState.dateRange
         : {};
-    return omoOpenSearchPopupHashState(trimmedQuery, selectedScopeIds, dateRange);
+    return omoOpenSearchPopupHashState(trimmedQuery, selectedScopeIds, Object.assign({}, dateRange, { archived: !!(searchState && searchState.archived) }));
 }
 
 function omoOpenSearchStructureResult(holonId) {
@@ -6237,7 +6295,7 @@ function omoHandlePolicyRuleLink(event) {
     if (url.origin !== window.location.origin || url.pathname !== window.location.pathname || url.search !== window.location.search) return;
     if (!/^#policy-r[1-9]\d*$/i.test(url.hash)) return;
     event.preventDefault();
-    if (omoConfirmDiscardChanges()) window.omoOpenDrawerHashState(url.hash.slice(1));
+    window.omoOpenDrawerHashState(url.hash.slice(1));
 }
 
 document.addEventListener('click', omoHandlePolicyRuleLink);

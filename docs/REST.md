@@ -126,6 +126,20 @@ fiches, suivre `next_offset`. La recherche est bornee ; preferer `/records/{modu
 pour les listes exhaustives. Les collections d invites peuvent avoir leur propre
 pagination `next_page`, identique au MCP.
 
+### Recherche dans les archives
+
+`GET /api/v1/search?query=budget&archived=true` porte exclusivement sur les
+archives, y compris les contenus des espaces archives. `archived` vaut `false`
+par defaut : seuls les contenus actifs sont alors recherches.
+Valeurs HTTP acceptees : `true`, `false`, `1`, `0` ; toute autre valeur est rejetee.
+Conserver ce parametre pour les pages suivantes et pour lire une fiche avec
+`GET /api/v1/records/{module}/{record_id}?archived=true`.
+Les outils MCP `omo_search` et `omo_read_record` exposent le meme booleen.
+Les reponses et chaque resultat de recherche indiquent le perimetre selectionne.
+Les droits de consultation restent inchanges ; les listes et les operations
+d ecriture ne sont pas etendues aux archives. Les fiches calendrier archivees
+omettent la liste des invites actuels (`effective_invitees`).
+
 ## Exemples curl
 
 Exemples pour un shell POSIX ; remplacer les identifiants par ceux retournes par

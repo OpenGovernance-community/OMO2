@@ -154,6 +154,7 @@ window.commonPageScripts["/common/assets/admin-edit-form.js"] = function (pageCo
                     }
 
                     if (response.success) {
+                        if (typeof window.commonDrawerMarkSaved === 'function') window.commonDrawerMarkSaved(form);
 
                         if (pageConfig.success !== "") {
 

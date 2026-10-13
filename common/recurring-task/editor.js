@@ -111,6 +111,7 @@
                     headers: {'X-Requested-With': 'XMLHttpRequest'}});
                 var result = await response.json();
                 if (!response.ok || !result.status) throw new Error(result.message || settings.saveError);
+                if (typeof window.commonDrawerMarkSaved === 'function') window.commonDrawerMarkSaved(form);
                 await settings.onSave(result);
                 if (result.message && typeof window.commonNotify === 'function') window.commonNotify(result.message, 'success');
             } catch (error) {

@@ -329,7 +329,7 @@ $payload = [
         <?php endif; ?>
     </form>
 
-    <?php foreach (['rule', 'project', 'holon_move'] as $editorTargetType): ?>
+    <?php foreach (['rule', 'project', 'holon_move', 'holon_delete'] as $editorTargetType): ?>
     <template data-governance-fields="<?= $editorTargetType ?>">
         <section class="generic-section generic-section--stack generic-section--roomy">
             <form class="generic-form-stack" data-editor>

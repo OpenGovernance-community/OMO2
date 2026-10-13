@@ -31,6 +31,7 @@ class ArrayChecklist extends ArrayDbObject
             $params['hydrate'] = $hydrate;
         }
 
+        if ($activeOnly) $params['filter'] = 'NOT EXISTS (SELECT 1 FROM project template_root WHERE template_root.id = process.IDproject_template_root AND ' . Holon::archivedContextSql('template_root.IDholon') . ')';
         $this->load($params);
     }
 

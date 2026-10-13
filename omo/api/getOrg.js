@@ -443,6 +443,15 @@ $(document)
     window.omoOpenPopupHashState('holon-delete', hid);
   });
 
+$(document)
+  .off('click.omoOrgArchiveHolon', '#panel-left [data-holon-archive]')
+  .on('click.omoOrgArchiveHolon', '#panel-left [data-holon-archive]', function () {
+    const hid = Number(this.dataset.holonArchive);
+    if (typeof window.commonTopbarOpenModal !== 'function') return;
+    window.commonTopbarOpenModal(window.omoOrganizationPageConfig.leftbarActionsArchives,
+        '/omo/api/holons/archive.php' + (hid > 0 ? '?hid=' + hid : ''), 'fetch');
+  });
+
 function omoNormalizeSectionKey(value) {
     return String(value || '')
         .trim()

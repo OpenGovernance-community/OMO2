@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once dirname(__DIR__) . '/class/dbobject/dbobject.class.php';
 require_once dirname(__DIR__) . '/class/dbobject/project.class.php';
 require_once dirname(__DIR__) . '/class/dbobject/rule.class.php';
+require_once dirname(__DIR__) . '/class/dbobject/authority.class.php';
 require_once dirname(__DIR__) . '/common/choice/deferred-editor-fields.php';
 
 function omoLoadTranslationBundle(string $domain, array $source): array { return $source; }
@@ -54,4 +55,13 @@ $moveHtml = ob_get_clean();
 assertEditorFields(!str_contains($moveHtml, 'Current parent'), 'Moves cannot select the current parent.');
 assertEditorFields(str_contains($moveHtml, 'value="4" selected>&lt;Destination&gt;'), 'Move destinations must be escaped and retained on reopen.');
 assertEditorFields(!str_contains($moveHtml, 'name="title"'), 'A move must not edit the holon definition.');
+ob_start();
+omoDeferredEditorRenderFields('holon_delete', []);
+$deleteHtml = ob_get_clean();
+assertEditorFields(str_contains($deleteHtml, 'name="authority_choice"') && str_contains($deleteHtml, 'required'), 'Authority choice must be required.');
+assertEditorFields(!str_contains($deleteHtml, ' selected'), 'No authority disposition may be selected by default.');
+foreach (\dbObject\Authority::holonRemovalChoices() as $choice) {
+    ob_start(); omoDeferredEditorRenderFields('holon_delete', ['authority_choice' => $choice]); $html = ob_get_clean();
+    assertEditorFields(str_contains($html, 'value="' . $choice . '" selected'), 'Stored authority choice must reopen.');
+}
 echo "deferred_editor_fields_test: OK\n";

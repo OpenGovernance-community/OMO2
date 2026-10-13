@@ -14,7 +14,7 @@ const {chromium} = require('playwright');
         await page.setContent(`<main class="common-topbar-modal__panel">
           <div data-omo-search-popup-root="1" data-omo-search-popup-oid="1" data-omo-search-popup-cid="2"
                data-omo-search-preview-open-label="Ouvrir" data-omo-search-preview-loading="Chargement">
-            <form data-omo-search-popup-form><input data-omo-search-popup-input value="nouvelle saisie non lancee"></form>
+            <form data-omo-search-popup-form><input data-omo-search-popup-input value="nouvelle saisie non lancee"><input type="checkbox" role="switch" data-topbar-search-archive><input type="checkbox" data-omo-search-popup-scope-input value="documents" checked><button type="submit">Chercher</button></form>
             <div data-omo-search-result-query="validation factures"><article><h4>Validation des factures</h4>
               <button data-omo-search-preview="faq" data-omo-search-preview-id="12" data-omo-search-open-faq="12">Apercu</button>
             </article></div>
@@ -78,6 +78,23 @@ const {chromium} = require('playwright');
         }
         await page.locator('[data-omo-search-popup-stat-filter="projects"]').click();
         assert.equal(await page.locator('[data-omo-search-popup-result-module]:not([hidden])').count(), 42);
+        await page.evaluate(() => {
+            window.omoOpenSearchPopupHashState = (query, scopes, options) => {
+                window.launchedSearch = { query, scopes, options }; return true;
+            };
+        });
+        await page.locator('[data-topbar-search-archive]').check();
+        assert.equal(await page.evaluate(() => window.launchedSearch), undefined, 'Changing archive mode must wait for submission');
+        await page.locator('[data-omo-search-popup-form] button[type="submit"]').click();
+        assert.equal((await page.evaluate(() => window.launchedSearch)).options.archived, true);
+        await page.locator('[data-topbar-search-archive]').uncheck();
+        assert.equal((await page.evaluate(() => window.launchedSearch)).options.archived, true, 'Switching back must also wait for submission');
+        await page.locator('[data-omo-search-popup-input]').press('Enter');
+        assert.equal((await page.evaluate(() => window.launchedSearch)).options.archived, false);
+        await page.evaluate(() => { document.querySelector('[data-omo-search-popup-root]').dataset.omoSearchPopupArchive = '1'; });
+        await page.locator('[data-omo-search-preview]').click();
+        await page.waitForFunction(() => new URL(window.lastPreviewRequest, 'http://localhost').searchParams.get('archive') === '1');
+        assert.equal(await page.locator('[data-omo-search-preview-action] button').count(), 0, 'Archive preview must not navigate to an unavailable active space');
         assert.deepEqual(errors, []);
         console.log('search_preview_dom_test: OK');
     } finally { await browser.close(); }

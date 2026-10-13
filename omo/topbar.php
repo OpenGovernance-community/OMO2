@@ -261,6 +261,10 @@ function omoGetTopbarSourceLang(): array
             'text' => 'Période',
             'context' => 'Label shown above the date range filter in the OMO topbar search panel.',
         ],
+        'topbar.search.archive' => [
+            'text' => 'Archive',
+            'context' => 'Switch: search archived items only instead of active items.',
+        ],
         'topbar.search.period_start' => [
             'text' => 'Du',
             'context' => 'Label for the start date of the OMO topbar search period.',
@@ -583,6 +587,7 @@ function omoBuildTopbarOptions(array $organizationContext, array $options = []):
             'callback' => 'omoHandleTopbarSearch',
             'scopeProvider' => 'omoGetTopbarSearchScopes',
             'scopeLabel' => omoTopbarTranslate('topbar.search.scope'),
+            'archiveLabel' => omoTopbarTranslate('topbar.search.archive'),
             'periodLabel' => omoTopbarTranslate('topbar.search.period'),
             'periodStartLabel' => omoTopbarTranslate('topbar.search.period_start'),
             'periodEndLabel' => omoTopbarTranslate('topbar.search.period_end'),

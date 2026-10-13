@@ -7,6 +7,30 @@
 			return "\dbObject\Holon";
 		}
 
+		/** Archives are opt-in, including for hydrated lists and selectors. */
+		public function load($params = null) {
+			$params ??= [];
+			if (empty($params['includeArchived'])) {
+				$params['where'][] = ['field' => 'archived_at', 'op' => 'is null'];
+			}
+			unset($params['includeArchived']);
+			parent::load($params);
+		}
+
+		public function loadArchivesForOrganization(int $rootId): void {
+			$this->exchangeArray([]);
+			$this->loadHydrated([
+				'includeArchived' => true,
+				'where' => [
+					['field' => 'IDholon_org', 'value' => $rootId],
+					['field' => 'active', 'value' => 0],
+					['field' => 'archived_at', 'op' => 'is not null'],
+					['field' => 'IDtypeholon', 'op' => 'in', 'value' => [1, 2]],
+				],
+				'orderBy' => [['field' => 'archived_at', 'dir' => 'DESC'], ['field' => 'id', 'dir' => 'DESC']],
+			]);
+		}
+
 		/**
 		 * Fully loaded snapshot of a subtree. One collection read per level,
 		 * instead of one child query and one object load per node.
@@ -16,7 +40,7 @@
 		{
 			$this->exchangeArray([]);
 			$root = new Holon();
-			if ($rootId <= 0 || !$root->load($rootId)) return;
+			if ($rootId <= 0 || !$root->load($rootId) || $root->get('archived_at') instanceof \DateTimeInterface) return;
 			$this[] = $root;
 			$visited = [$rootId => true];
 			$frontier = [$rootId];
@@ -62,8 +86,8 @@
 			$rows = \dbObject\DbObject::fetchAll(
 				"SELECT h.*
 				FROM holon h
-				WHERE h.id = :root_holon_id
-				   OR h.IDholon_org = :organization_root_holon_id
+				WHERE h.archived_at IS NULL
+				  AND (h.id = :root_holon_id OR h.IDholon_org = :organization_root_holon_id)
 				ORDER BY h.name ASC, h.id ASC",
 				array(
 					'root_holon_id' => $organizationRootHolonId,

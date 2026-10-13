@@ -15,6 +15,7 @@ try {
         throw new RuntimeException('Preview unavailable');
     }
     $viewerContext = \dbObject\SearchJob::buildViewerContextFromGlobals($organizationId, $currentHolonId);
+    $viewerContext['archived'] = ($_GET['archive'] ?? '') === '1';
     $object = $organization->loadTopbarSearchPreviewObject($module, $id, $viewerContext);
     if (!$object) {
         throw new RuntimeException('Preview unavailable');
