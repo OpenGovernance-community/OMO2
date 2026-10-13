@@ -855,6 +855,7 @@ window.commonPageScripts["/omo/api/decision/modules/vote/module.js"] = function 
                                         return;
                                     }
 
+                                    if (typeof window.commonDrawerMarkSaved === 'function') window.commonDrawerMarkSaved(form);
                                     setFeedback(response.message || (payload.texts && payload.texts.success ? payload.texts.success : ''), false);
 
                                     if (response.redirectUrl) {
@@ -964,6 +965,7 @@ window.commonPageScripts["/omo/api/decision/modules/vote/module.js"] = function 
                                         return;
                                     }
 
+                                    if (typeof window.commonDrawerMarkSaved === 'function') window.commonDrawerMarkSaved(form);
                                     setFeedback(response.message || (payload.texts && payload.texts.success ? payload.texts.success : ''), false);
                                     window.dispatchEvent(new CustomEvent('omo-decision-response-saved'));
 

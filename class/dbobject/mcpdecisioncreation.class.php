@@ -203,7 +203,11 @@ class McpDecisionCreation extends DbObject
             if (empty($decision->syncProposalCalendarEvents()['status'])) throw new \RuntimeException('Decision calendar synchronization failed.');
             if (!self::execute('UPDATE mcp_decision_creation SET IDdecision_process = :decision, completed = 1 WHERE id = :id',
                 ['decision' => (int)$decision->getId(), 'id' => (int)$row['id']])) throw new \RuntimeException('Decision request completion failed.');
-            $result = self::response($org, $grant, (int)$decision->getId(), false); $pdo->commit(); return $result;
+            $result = self::response($org, $grant, (int)$decision->getId(), false);
+            $pdo->commit();
+            require_once dirname(__DIR__, 2) . '/common/notification_center.php';
+            \notificationCenterDispatchDecisionSaved($decision, null);
+            return $result;
         } catch (\Throwable $error) { if ($pdo->inTransaction()) $pdo->rollBack(); throw $error; }
     }
 

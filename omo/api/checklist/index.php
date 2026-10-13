@@ -292,7 +292,7 @@ $texts = [
         </div>
     </div>
 </div>
-<script src="/common/drawer/subdrawer.js?v=20260906-slide-right"></script>
+<script src="<?= commonAssetUrl('/common/drawer/subdrawer.js') ?>"></script>
 <script src="/omo/assets/js/simple-html-field.js?v=20261009-html-editor-placeholder"></script>
 <script src="/omo/assets/js/application-view-preferences.js?v=20260917-filter-hierarchy"></script>
 <script src="<?= commonAssetUrl('/omo/api/checklist/checklist.js') ?>"></script>

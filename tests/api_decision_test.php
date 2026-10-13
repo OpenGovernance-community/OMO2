@@ -78,6 +78,10 @@ try {
             && $rpc['data']['result']['structuredContent']['decision_id'] === $created['decision_id'], 'REST creation replayed through MCP without duplication');
         $replayed = decisionApiHttp($tokens['access_token'], '/api/v1/decisions', array_reverse($args, true));
         mcpCheck($replayed['status'] === 200 && $replayed['data']['decision_id'] === $created['decision_id'], 'Equivalent JSON key order replays safely');
+        $openings = array_filter(\dbObject\Notification::getInboxForUser($mid, $oid, 100),
+            static fn($notification) => $notification->get('event_key') === 'decision_consultation_started'
+                && $notification->get('source_key') === 'decision-phase-consultation-' . $created['decision_id']);
+        mcpCheck(count($openings) === 1, 'API creation immediately notifies elaboration once, including after REST/MCP retries');
         decisionApiRejected(fn() => McpDecisionCreation::create($grant, array_replace($args, ['title' => 'Changed'])), 'Changed payload cannot reuse key');
         $audience = ObjectAudience::page($oid, ['object_type' => 'decision', 'object_id' => $created['decision_id']]);
         mcpCheck($audience['can_send'] && $audience['recipient_count'] === 2 && strlen($audience['audience_token']) === 64, 'Existing mail preview accepts newly created decision audience');

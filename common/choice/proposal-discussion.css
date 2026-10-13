@@ -93,6 +93,30 @@
     line-height: 1.55;
 }
 
+[data-omo-proposal-description-content] {
+    display: flow-root;
+    overflow-wrap: anywhere;
+}
+
+[data-omo-proposal-description-content][data-collapsed="true"] {
+    max-block-size: 5lh;
+    overflow: hidden;
+}
+
+[data-omo-proposal-description-toggle] {
+    margin-top: 6px;
+}
+
+@media print {
+    [data-omo-proposal-description-content][data-collapsed="true"] {
+        max-block-size: none;
+        overflow: visible;
+    }
+    [data-omo-proposal-description-toggle] {
+        display: none;
+    }
+}
+
 .omo-proposal-live-description p,
 .omo-proposal-live-description h1,
 .omo-proposal-live-description h2,

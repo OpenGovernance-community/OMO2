@@ -678,15 +678,18 @@
         }
 
         var actions = card.querySelector('[data-omo-proposal-discussion-actions]');
-        var knownDescription = card.querySelector('.omo-decision-vote__text, .omo-decision-majority-judgment__text, .omo-decision-consent__text, .omo-proposal-live-description');
+        var knownDescription = card.querySelector('[data-omo-proposal-description-content], .omo-decision-vote__text, .omo-decision-majority-judgment__text, .omo-decision-consent__text, .omo-proposal-live-description');
         if (!knownDescription && proposal.description && actions) {
-            knownDescription = document.createElement('div');
-            knownDescription.className = 'omo-proposal-live-description';
-            actions.parentNode.insertBefore(knownDescription, actions);
+            var descriptionWrapper = window.omoProposalDescription && window.omoProposalDescription.create();
+            knownDescription = descriptionWrapper ? descriptionWrapper.querySelector('[data-omo-proposal-description-content]') : document.createElement('div');
+            if (!descriptionWrapper) knownDescription.className = 'omo-proposal-live-description';
+            actions.parentNode.insertBefore(descriptionWrapper || knownDescription, actions);
         }
         if (knownDescription) {
             knownDescription.innerHTML = sanitizeProposalHtml(proposal.description || '');
             knownDescription.hidden = !proposal.description;
+            var wrapper = knownDescription.closest('[data-omo-proposal-description]');
+            if (wrapper) wrapper.hidden = !proposal.description;
         }
         var knownLink = card.querySelector('.omo-decision-vote__link, .omo-decision-majority-judgment__link, .omo-decision-consent__link, .omo-proposal-live-link');
         if (!knownLink && proposal.infoUrl && actions) {

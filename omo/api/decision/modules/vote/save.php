@@ -38,6 +38,7 @@ $currentUserId = (int)$context['currentUserId'];
 $organizationId = (int)$context['organizationId'];
 $targetHolonId = (int)$context['targetHolonId'];
 $decisionId = $decision instanceof DecisionProcess ? (int)$decision->getId() : 0;
+$previousStatus = $decisionId > 0 ? DecisionProcess::normalizeStatus($decision->get('status')) : null;
 $coreLocked = $decision instanceof DecisionProcess ? $decision->hasEvaluationStarted() : false;
 $startDatesLocked = $coreLocked || ($decision instanceof DecisionProcess && $decision->hasSubmittedResponses());
 $evaluationMethod = DecisionProcess::normalizeEvaluationMethod((string)($_POST['evaluation_method'] ?? DecisionProcess::METHOD_SIMPLE_VOTE));
@@ -276,7 +277,7 @@ try {
     $decisionGroup = $selectedGroup instanceof DecisionGroup ? $selectedGroup : null;
     $primaryGroup = $decision instanceof DecisionProcess ? $decision->getPrimaryGroup(false) : null;
     $createAdditionalGroup = $createGroupRequested && $primaryGroup instanceof DecisionGroup;
-    $isPrimaryGroup = (!$decisionGroup && !$createAdditionalGroup) || ($primaryGroup instanceof DecisionGroup && (int)$primaryGroup->getId() === (int)$decisionGroup->getId());
+    $isPrimaryGroup = (!$decisionGroup && !$createAdditionalGroup) || ($primaryGroup instanceof DecisionGroup && $decisionGroup instanceof DecisionGroup && (int)$primaryGroup->getId() === (int)$decisionGroup->getId());
     $existingVoteParameters = omoDecisionModuleGetMethodParameters(
         $decisionGroup instanceof DecisionGroup ? $decisionGroup->get('parameters') : $decision->get('parameters'),
         $methodKey
@@ -482,16 +483,7 @@ if (!empty($GLOBALS['omoDecisionDeferProposalNotifications'])) {
         $newProposalIds
     )));
 } else {
-    foreach ($newProposalIds as $newProposalId) {
-        $newProposal = new DecisionProposal();
-        if ($newProposal->load($newProposalId)) {
-            try {
-                notificationCenterDispatchDecisionProposal($newProposal);
-            } catch (Throwable $exception) {
-                error_log('decision_proposal_notification_failed: ' . $exception->getMessage());
-            }
-        }
-    }
+    notificationCenterDispatchDecisionSaved($decision, $previousStatus, $newProposalIds);
 }
 
 omoDecisionModuleJsonResponse(200, [
