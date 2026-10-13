@@ -4,6 +4,7 @@ require_once dirname(__DIR__) . '/modules/context.php';
 require_once dirname(__DIR__) . '/modules/consent/shared.php';
 require_once dirname(__DIR__) . '/modules/vote/shared.php';
 require_once __DIR__ . '/shared.php';
+require_once dirname(__DIR__, 4) . '/common/choice/holon-removal-fields.php';
 require_once dirname(__DIR__) . '/params/shared.php';
 require_once dirname(__DIR__, 4) . '/common/notification_center.php';
 
@@ -270,8 +271,13 @@ foreach (array_values($blueprint) as $proposalIndex => $proposalInput) {
                         . htmlspecialchars((string)$beforeState['parent_label'], ENT_QUOTES, 'UTF-8') . ' &rarr; '
                         . htmlspecialchars((string)$afterState['parent_label'], ENT_QUOTES, 'UTF-8') . '</p>';
                 } elseif ($actionType === DecisionGovernanceAction::TYPE_HOLON_DELETE) {
+                    if (!\dbObject\Authority::validateHolonRemovalChoice($actionInput['after']['authority_choice'] ?? null)) {
+                        $respond(422, ['status' => false, 'message' => omoHolonRemovalT('required')]);
+                    }
+                    $afterState = ['authority_choice' => $actionInput['after']['authority_choice']];
                     $suggestedTitles[] = 'Supprimer le rôle ' . $roleName;
                     $actionDescriptions[] = '<h4>Supprimer le rôle ' . htmlspecialchars($roleName, ENT_QUOTES, 'UTF-8') . '</h4>' . DecisionGovernanceAction::buildRoleStateDescription($beforeState);
+                    $actionDescriptions[] = '<p>' . htmlspecialchars(omoHolonRemovalT($afterState['authority_choice']), ENT_QUOTES, 'UTF-8') . '</p>';
                 } else {
                     $validation = DecisionGovernanceAction::validateRoleState((array)($actionInput['after'] ?? []), $roleContext, $role);
                     if (empty($validation['status'])) $respond(422, ['status' => false, 'message' => (string)$validation['message']]);

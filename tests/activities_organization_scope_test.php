@@ -16,7 +16,7 @@ namespace dbObject {
         public function get($field): string { return $field === 'name' ? 'Test organization' : ''; }
     }
 
-    class Holon {}
+    class Holon { public static function archivedContextSql(string $column): string { return 'archive_context_predicate'; } }
 
     class ControlActivity
     {

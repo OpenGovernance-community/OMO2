@@ -116,6 +116,7 @@ window.commonPageScripts["/omo/api/stats/edit.js"] = function (pageConfig, pageS
                 throw new Error(result.message || saveError);
             }
             editorForm.elements.namedItem('id').value = String(result.id);
+            if (typeof window.commonDrawerMarkSaved === 'function') window.commonDrawerMarkSaved(editorForm);
             if (projectId > 0) {
                 window.dispatchEvent(new CustomEvent('omo-project-resource-saved', {
                     detail: {projectId: projectId, resourceType: 'indicator', resourceId: Number(result.id)}

@@ -91,12 +91,12 @@ async function main() {
     let routed = 0;
     window.handleRoute = () => { routed++; };
     window.eval(app.slice(app.indexOf('function navigate('), app.indexOf('function parseUrl(')));
-    window.navigate(1, null, 'structure');
+    window.navigate(1, 2, 'structure');
     assert.equal(routed, 0);
     assert.equal(window.location.hash, '#parameters');
     assert.equal(name.value, 'Unsaved');
     accept = true;
-    window.navigate(1, null, 'structure');
+    window.navigate(1, 2, 'structure');
     assert.equal(routed, 1);
     assert.equal(window.location.hash, '#structure');
     assert.equal(root.omoHasUnsavedChanges(), false);
@@ -148,7 +148,7 @@ async function main() {
     name.value = 'Back navigation draft';
     accept = false;
     window.currentState = { oid: 1, cid: null, hash: 'parameters', routeToken: 'parameters' };
-    window.parseUrl = () => ({ oid: 1, cid: null, hash: 'structure' });
+    window.parseUrl = () => ({ oid: 1, cid: 2, hash: 'structure' });
     window.eval(app.slice(app.indexOf('function handleRoute('), app.indexOf('function activateMenu(')));
     window.handleRoute();
     assert.equal(window.location.hash, '#parameters', 'Cancelled browser navigation restores the editor URL');

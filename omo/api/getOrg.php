@@ -26,6 +26,8 @@ function omoGetOrgPanelSourceLang(): array
             'text' => 'Supprimer',
             'context' => 'Action menu label to delete the current holon in the left panel.',
         ],
+        'leftbar.actions.archive' => ['text' => 'Archiver', 'context' => 'Archive the current circle or role and its descendants.'],
+        'leftbar.actions.archives' => ['text' => 'Voir les archives', 'context' => 'Browse and restore archived structure branches.'],
         'leftbar.actions.edit' => [
             'text' => 'Modifier',
             'context' => 'Action menu label to edit the current holon in the left panel.',
@@ -1243,6 +1245,9 @@ $deleteParentIsRoot = $parentHolonForDelete ? ((int)$parentHolonForDelete->get('
                     >&#8942;</button>
                     <div id="holon-actions-menu" class="generic-menu-panel generic-menu-panel--wide generic-menu-panel--anchored" data-holon-menu-panel="1" role="menu" hidden>
                         <button type="button" class="generic-menu-item" role="menuitem" data-common-panel-fullscreen><?= omoApiEscape(t('leftbar.detail.fullscreen')) ?></button>
+                        <?php if ($canManageOrganizationModel || $canCreateChildHolon || $canEditHolon || $canMoveHolon): ?>
+                            <div class="generic-menu-separator" role="separator"></div>
+                        <?php endif; ?>
                         <?php if ($canManageOrganizationModel): ?>
                             <button
                                 type="button"
@@ -1278,15 +1283,11 @@ $deleteParentIsRoot = $parentHolonForDelete ? ((int)$parentHolonForDelete->get('
                                 data-hid="<?= (int)$currentHolon->getId() ?>"
                             ><?= omoApiEscape(t('leftbar.actions.move')) ?></button>
                         <?php endif; ?>
-                        <?php if ($canViewHolonHistory): ?>
-                            <button
-                                type="button"
-                                class="generic-menu-item" role="menuitem"
-                                data-open-holon-history="1"
-                                data-hid="<?= (int)$currentHolon->getId() ?>"
-                            ><?= omoApiEscape(t('leftbar.actions.history')) ?></button>
-                        <?php endif; ?>
                         <?php if ($canDeleteHolon): ?>
+                            <div class="generic-menu-separator" role="separator"></div>
+                            <?php if ($currentHolon->canManageArchive()): ?>
+                                <button type="button" class="generic-menu-item" role="menuitem" data-holon-archive="<?= (int)$currentHolon->getId() ?>"><?= omoApiEscape(t('leftbar.actions.archive')) ?></button>
+                            <?php endif; ?>
                             <button
                                 type="button"
                                 class="generic-menu-item generic-menu-item--danger" role="menuitem"
@@ -1298,6 +1299,18 @@ $deleteParentIsRoot = $parentHolonForDelete ? ((int)$parentHolonForDelete->get('
                                 data-parent-id="<?= (int)$deleteParentId ?>"
                                 data-parent-is-root="<?= $deleteParentIsRoot ? '1' : '0' ?>"
                             ><?= omoApiEscape(t('leftbar.actions.delete')) ?></button>
+                        <?php endif; ?>
+                        <?php if ($canViewHolonHistory): ?>
+                            <div class="generic-menu-separator" role="separator"></div>
+                            <button
+                                type="button"
+                                class="generic-menu-item" role="menuitem"
+                                data-open-holon-history="1"
+                                data-hid="<?= (int)$currentHolon->getId() ?>"
+                            ><?= omoApiEscape(t('leftbar.actions.history')) ?></button>
+                        <?php endif; ?>
+                        <?php if ($canViewHolonHistory && (int)commonGetCurrentUserId() > 0): ?>
+                            <button type="button" class="generic-menu-item" role="menuitem" data-holon-archive="0"><?= omoApiEscape(t('leftbar.actions.archives')) ?></button>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -1495,6 +1508,7 @@ $deleteParentIsRoot = $parentHolonForDelete ? ((int)$parentHolonForDelete->get('
 <?= commonPageScriptTags('/omo/api/getOrg.js', [
     'leftbarMembersAdd' => t('leftbar.members.add'),
     'leftbarActionsHistory' => t('leftbar.actions.history'),
+    'leftbarActionsArchives' => t('leftbar.actions.archives'),
     'rootId' => (int)$navigationRoot->getId(),
     'oid' => (int)$organizationId,
     'leftbarCopyLinkSuccess' => t('leftbar.copy_link.success'),

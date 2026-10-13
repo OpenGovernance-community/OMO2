@@ -177,6 +177,7 @@ window.commonPageScripts["/omo/api/projects/create.js"] = function (pageConfig, 
             })
             .then(function (result) {
                 if (!result.ok || !result.payload || !result.payload.success) throw new Error(result.payload && result.payload.message ? result.payload.message : texts.saveError);
+                if (typeof window.commonDrawerMarkSaved === 'function') window.commonDrawerMarkSaved(form);
                 return typeof window.omoProjectsAfterSave === 'function' ? window.omoProjectsAfterSave() : null;
             })
             .catch(function (error) {

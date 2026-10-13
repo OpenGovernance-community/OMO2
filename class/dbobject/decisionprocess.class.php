@@ -3252,7 +3252,7 @@ class DecisionProcess extends DbObject
                 ) AS `responses_submitted_at`
             FROM `decision_process` dp
             LEFT JOIN `holon` h ON h.`id` = dp.`IDholon`
-            WHERE dp.`IDorganization` = :organization_id
+            WHERE dp.`IDorganization` = :organization_id AND h.archived_at IS NULL
             ORDER BY dp.`updated_at` DESC, dp.`id` DESC',
             [
                 'organization_id' => $organizationId,
@@ -3421,7 +3421,7 @@ class DecisionProcess extends DbObject
             FROM `decision_process` dp
             LEFT JOIN `organization` o ON o.`id` = dp.`IDorganization`
             LEFT JOIN `holon` h ON h.`id` = dp.`IDholon`
-            WHERE dp.`IDuser` = :user_id_owner
+            WHERE h.archived_at IS NULL AND (dp.`IDuser` = :user_id_owner
                OR EXISTS(
                     SELECT 1
                     FROM `decision_participant` participant_user
@@ -3437,7 +3437,7 @@ class DecisionProcess extends DbObject
                       AND participant_email.`active` = 1
                       AND participant_email.`email` = :user_email_access
                       AND participant_email.`status` NOT IN (:declined_status_email_access, :revoked_status_email_access)
-                )
+                ))
             ORDER BY dp.`updated_at` DESC, dp.`id` DESC',
             [
                 'user_id_participant_match' => $userId,

@@ -895,6 +895,45 @@ a.generic-correspondence-list__row:focus-visible {
     min-height: var(--param-checkbox-min-height, 38px);
 }
 
+.generic-checkbox--inline {
+    display: inline-flex;
+    align-items: center;
+}
+
+.generic-checkbox--inline > input {
+    margin: 0;
+}
+
+input.generic-switch {
+    appearance: none;
+    width: 2.5em;
+    height: 1.4em;
+    border: 1px solid currentColor;
+    border-radius: 1em;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+}
+
+input.generic-switch::before {
+    content: '';
+    display: block;
+    width: 1em;
+    height: 1em;
+    margin: .13em;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+input.generic-switch:checked::before {
+    transform: translateX(1.1em);
+}
+
+input.generic-switch:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 3px;
+}
+
 .generic-checkbox > .generic-help-text {
     display: block;
 }
