@@ -1,6 +1,151 @@
 (function (window) {
     'use strict';
 
+    // Fragments can load this script again. Keep one guard and one set of snapshots.
+    if (!window.commonDrawerConfirmDiscard) {
+        var formStates = new WeakMap();
+        var hostSelector = '.omo-overlay-drawer, #commonTopbarDrawer, #commonTopbarModal';
+        var dismissSelector = [
+            '.omo-overlay-drawer__backdrop', '.omo-overlay-drawer__close',
+            '.generic-action-button--close', '[data-topbar-drawer-close]', '[data-topbar-modal-close]',
+            '[data-common-drawer-dismiss]',
+            '[data-omo-subdrawer-cancel]', '[data-omo-document-editor-cancel]',
+            '[data-omo-projects-cancel-create]', '[data-omo-stats-cancel-editor]',
+            '[data-activity-editor-cancel]', '[data-activity-close]',
+            '[data-checklist-editor-cancel]', '[data-checklist-back-detail]',
+            '[data-deferred-object-cancel]', '[data-deferred-cancel]', '[data-deferred-project-cancel]',
+            '[data-cancel]'
+        ].join(', ');
+        var discardMessage = "Terminer l'edition en cours ? Les donnees non enregistrees seront perdues.";
+
+        function guardedForms(container) {
+            var forms = Array.prototype.slice.call(container.querySelectorAll('form'));
+            if (container.matches && container.matches('form')) forms.unshift(container);
+            return forms.filter(function (form) {
+                var host = form.closest(hostSelector);
+                var meeting = form.closest('[data-omo-pv-editor-root]');
+                // The meeting and template editors already own their save/close lifecycle.
+                return host && !form.closest('[data-omo-unsaved-changes], [data-common-drawer-editor]')
+                    && (!meeting || meeting.closest(hostSelector) !== host);
+            });
+        }
+
+        function isOpenHost(host) {
+            return host && !host.closest('[hidden]')
+                && (!host.classList.contains('omo-overlay-drawer') || host.classList.contains('is-open'));
+        }
+
+        function formSignature(form) {
+            var values = Array.prototype.filter.call(form.elements, function (field) {
+                return field.name && !/^(submit|button|reset|image)$/i.test(field.type);
+            }).map(function (field) {
+                var value = field.value;
+                if (field.type === 'checkbox' || field.type === 'radio') value = field.checked;
+                else if (field.type === 'file') {
+                    value = Array.prototype.map.call(field.files || [], function (file) {
+                        return [file.name, file.size, file.lastModified];
+                    });
+                } else if (field.multiple && field.options) {
+                    value = Array.prototype.filter.call(field.options, function (option) { return option.selected; })
+                        .map(function (option) { return option.value; });
+                }
+                return [field.name, value];
+            });
+            // Read rich fields through their stable host, even while Summernote has focus.
+            Array.prototype.forEach.call(form.querySelectorAll('*'), function (node) {
+                if (node.__omoSimpleHtmlField && typeof node.__omoSimpleHtmlField.getValue === 'function') {
+                    values.push(['html', node.__omoSimpleHtmlField.getValue()]);
+                } else if (node.isContentEditable && !node.parentElement.isContentEditable
+                    && !node.closest('.generic-html-editor')) {
+                    values.push(['contenteditable', node.innerHTML]);
+                }
+            });
+            return JSON.stringify(values);
+        }
+
+        function rememberInteraction(event) {
+            var target = event.target instanceof Element ? event.target : null;
+            var host = target ? target.closest(hostSelector) : null;
+            if (!host) return;
+            guardedForms(host).forEach(function (form) {
+                // Do not mark another nested drawer when interacting with its parent.
+                if (form.closest(hostSelector) !== host) return;
+                var state = formStates.get(form);
+                if (!state) {
+                    state = {initial: formSignature(form), touched: false};
+                    formStates.set(form, state);
+                }
+                if (!state.touched && !event.isTrusted && (event.type === 'input' || event.type === 'change')) return;
+                if (!state.touched && event.type !== 'input' && event.type !== 'change') {
+                    // Async selects and HTML adapters may have initialized since insertion.
+                    state.initial = formSignature(form);
+                }
+                state.touched = true;
+            });
+        }
+
+        function customEditors(container) {
+            return Array.prototype.slice.call(container.querySelectorAll('[data-common-drawer-editor]'));
+        }
+
+        window.commonDrawerHasUnsavedChanges = function (container) {
+            return guardedForms(container).some(function (form) {
+                var state = formStates.get(form);
+                return isOpenHost(form.closest(hostSelector)) && state && state.touched && state.initial !== formSignature(form);
+            }) || customEditors(container).some(function (editor) {
+                return isOpenHost(editor.closest(hostSelector))
+                    && typeof editor.commonDrawerHasUnsavedChanges === 'function' && editor.commonDrawerHasUnsavedChanges();
+            });
+        };
+        window.commonDrawerMarkSaved = function (container) {
+            var forms = container.matches && container.matches('form') ? [container] : guardedForms(container);
+            forms.forEach(function (form) {
+                formStates.set(form, {initial: formSignature(form), touched: false});
+            });
+        };
+        window.commonDrawerConfirmDiscard = function (container) {
+            return !window.commonDrawerHasUnsavedChanges(container) || window.confirm(discardMessage);
+        };
+
+        // Capture before module handlers can clear the fragment, release locks or change routes.
+        document.addEventListener('click', function (event) {
+            var target = event.target instanceof Element ? event.target : null;
+            var dismiss = target ? target.closest(dismissSelector) : null;
+            var host = dismiss ? dismiss.closest(hostSelector) : null;
+            if (!host) return;
+            if (host.id === 'commonTopbarModal' && typeof window.commonTopbarModalCanClose === 'function') return;
+            event.commonDrawerDiscardChecked = true;
+            if (!window.commonDrawerConfirmDiscard(host)) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+            }
+        }, true);
+        ['pointerdown', 'focusin', 'input', 'change'].forEach(function (name) {
+            document.addEventListener(name, rememberInteraction, true);
+        });
+
+        // Also retain a baseline for file drops and controls changed without receiving focus.
+        function rememberForms(container) {
+            guardedForms(container).forEach(function (form) {
+                if (!formStates.has(form)) formStates.set(form, {initial: formSignature(form), touched: false});
+            });
+        }
+        rememberForms(document);
+        new MutationObserver(function (records) {
+            records.forEach(function (record) {
+                Array.prototype.forEach.call(record.addedNodes, function (node) {
+                    if (node instanceof Element) rememberForms(node);
+                });
+            });
+        }).observe(document.documentElement, {childList: true, subtree: true});
+
+        var locale = document.documentElement.lang || 'fr';
+        window.fetch('/common/jstranslation/drawer.php?lang=' + encodeURIComponent(locale), {credentials: 'same-origin'})
+            .then(function (response) { return response.ok ? response.json() : null; })
+            .then(function (texts) { if (texts && texts.discard) discardMessage = texts.discard; })
+            .catch(function () { /* Keep the local fallback when translations cannot load. */ });
+    }
+
     function asElement(value) {
         return value instanceof Element ? value : null;
     }
@@ -19,6 +164,7 @@
         var description = getElement(drawer, settings.description || '[data-omo-subdrawer-description]');
         var actions = getElement(drawer, settings.actions || '[data-omo-subdrawer-actions]');
         var dismissAction = getElement(drawer, settings.dismissAction);
+        if (dismissAction) dismissAction.setAttribute('data-common-drawer-dismiss', '');
         var cancelAction = null;
         var help = getElement(drawer, settings.help || '[data-omo-subdrawer-help-panel]');
         var defaultTitle = title ? title.textContent : '';

@@ -759,9 +759,53 @@ if (!function_exists('notificationCenterDispatchProjectStatusChange')) {
     }
 }
 
+if (!function_exists('notificationCenterDispatchDecisionSaved')) {
+    // Call only after the complete save commits, including questions and invitations.
+    // A null previous status identifies the initial creation of the whole ballot.
+    function notificationCenterDispatchDecisionSaved(\dbObject\DecisionProcess $decision, ?string $previousStatus, array $newProposalIds = [])
+    {
+        if (\dbObject\DbObject::getPdo()->inTransaction()) {
+            return;
+        }
+
+        try {
+            $currentStatus = \dbObject\DecisionProcess::normalizeStatus($decision->get('status'));
+            // Automatic transitions dispatch themselves; manual transitions and initial
+            // creations already in an open phase still need their opening notification.
+            if ($decision->resolveAutomaticStatus() !== $currentStatus) {
+                $decision->syncLifecycleStatus();
+            } elseif ($previousStatus === null || $currentStatus !== \dbObject\DecisionProcess::normalizeStatus($previousStatus)) {
+                notificationCenterDispatchDecisionPhase($decision, $currentStatus);
+            }
+        } catch (\Throwable $exception) {
+            error_log('decision_saved_phase_notification_failed: ' . $exception->getMessage());
+        }
+
+        if ($previousStatus === null) {
+            return;
+        }
+        foreach (array_unique(array_map('intval', $newProposalIds)) as $proposalId) {
+            try {
+                $proposal = new \dbObject\DecisionProposal();
+                if ($proposalId > 0 && $proposal->load($proposalId)
+                    && (int)$proposal->get('IDdecision_process') === (int)$decision->getId()) {
+                    notificationCenterDispatchDecisionProposal($proposal);
+                }
+            } catch (\Throwable $exception) {
+                error_log('decision_proposal_notification_failed: ' . $exception->getMessage());
+            }
+        }
+    }
+}
+
 if (!function_exists('notificationCenterDispatchDecisionPhase')) {
     function notificationCenterDispatchDecisionPhase(\dbObject\DecisionProcess $decision, $status)
     {
+        // Batch editor contexts can advance the lifecycle before the last question
+        // and its invitations are saved. The committed save dispatches the opening.
+        if (\dbObject\DbObject::getPdo()->inTransaction()) {
+            return 0;
+        }
         $status = \dbObject\DecisionProcess::normalizeStatus($status);
         $eventKey = $status === \dbObject\DecisionProcess::STATUS_CONSULTATION
             ? 'decision_consultation_started'

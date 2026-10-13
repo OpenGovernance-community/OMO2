@@ -319,7 +319,7 @@ $texts = [
     </div>
 </div>
 <script src="<?= omoApiEscape(commonAssetUrl('/omo/assets/js/resource-archives.js')) ?>"></script>
-<script src="/common/drawer/subdrawer.js?v=20260906-slide-right"></script>
+<script src="<?= commonAssetUrl('/common/drawer/subdrawer.js') ?>"></script>
 <script src="/omo/assets/js/simple-html-field.js?v=20261009-html-editor-placeholder"></script>
 <script src="<?= commonAssetUrl('/common/recurring-task/editor.js') ?>"></script>
 <script src="/omo/assets/js/application-view-preferences.js?v=20260919-activity-assignment"></script>

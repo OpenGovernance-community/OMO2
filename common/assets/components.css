@@ -1387,6 +1387,18 @@ html[data-theme="dark"] .black-icon,
     line-height: 1.2;
 }
 
+/* Inline disclosure actions displayed as links, with native button interaction. */
+.generic-action-button--link {
+    min-height: auto;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--color-primary, #2563eb);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
 /* Clickable summary counts inside dashboard cards. */
 .generic-action-button--metric {
     justify-content: flex-start;
