@@ -6,6 +6,8 @@ header('Vary: Authorization');
 header('X-Robots-Tag: noindex, nofollow');
 
 $diagnostics = commonCalDavStartDiagnostics();
+$readLimitTicket = commonCalDavReadLimitTicket();
+commonCalDavEnforceReadLimit($readLimitTicket);
 $phaseStartedAt = microtime(true);
 $viewer = commonCalDavAuthenticateRequest();
 if ($diagnostics) {
@@ -15,6 +17,7 @@ if ($diagnostics) {
 if (!$viewer) {
     commonCalDavSendUnauthorized();
 }
+commonCalDavRememberReadLimit($readLimitTicket, $viewer);
 
 $routePath = commonCalDavGetRoutePath();
 $method = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET'));
@@ -72,6 +75,7 @@ if (
 
     $organizationId = (int)$scope['organizationId'];
     $revision = $homeRevisions[$organizationId] ?? \dbObject\CalDavCache::getOrganizationRevision($organizationId);
+    $GLOBALS['commonCalDavRateLimitRevisions'] = $homeRevisions ?: [$organizationId => $revision];
     if ($diagnostics) $GLOBALS['commonCalDavDiagnostics']['revision'] = $revision;
     $cacheKey = \dbObject\CalDavCache::buildResponseKey(array(
         'schema' => 6,
