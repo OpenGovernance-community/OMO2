@@ -64,7 +64,7 @@ if (!function_exists('omo_run_fake_cron_maintenance')) {
             'caldav_cache_cleanup',
             'OMO fake cron CalDAV cache cleanup failed: ',
             static function () {
-                return \dbObject\CalDavCache::cleanup();
+                return \dbObject\CalDavCache::cleanup() + \dbObject\CalDavRateLimit::cleanup();
             }
         );
 

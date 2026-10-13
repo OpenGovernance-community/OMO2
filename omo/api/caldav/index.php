@@ -5,27 +5,64 @@ require_once dirname(__DIR__, 3) . '/common/caldav.php';
 header('Vary: Authorization');
 header('X-Robots-Tag: noindex, nofollow');
 
+$diagnostics = commonCalDavStartDiagnostics();
+$readLimitTicket = commonCalDavReadLimitTicket();
+commonCalDavEnforceReadLimit($readLimitTicket);
+$phaseStartedAt = microtime(true);
 $viewer = commonCalDavAuthenticateRequest();
+if ($diagnostics) {
+    $GLOBALS['commonCalDavDiagnostics']['auth_ms'] = round((microtime(true) - $phaseStartedAt) * 1000, 3);
+    $GLOBALS['commonCalDavDiagnostics']['user_id'] = $viewer ? (int)$viewer->getId() : 0;
+}
 if (!$viewer) {
     commonCalDavSendUnauthorized();
 }
+commonCalDavRememberReadLimit($readLimitTicket, $viewer);
 
 $routePath = commonCalDavGetRoutePath();
 $method = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET'));
+if ($diagnostics && $method === 'PROPFIND') {
+    $rawInput = (string)file_get_contents('php://input');
+    $GLOBALS['commonCardDavRawInput'] = $rawInput;
+    $GLOBALS['commonCalDavDiagnostics']['body_sha256'] = hash('sha256', $rawInput);
+    if (strlen($rawInput) <= 131072) {
+        $request = commonCardDavParsePropRequest(commonCardDavReadXmlBody()['xml']);
+        $GLOBALS['commonCalDavDiagnostics']['property_mode'] = $request['mode'];
+        $GLOBALS['commonCalDavDiagnostics']['requested_properties'] = array_map(
+            static fn($name) => substr($name, 0, 256), array_slice($request['properties'], 0, 128));
+    }
+}
 // DAV read verbs bypass the browser helper's GET/HEAD-only opt-in.
 if (in_array($method, ['PROPFIND', 'REPORT', 'GET', 'HEAD'], true)) {
     \dbObject\DbObject::enableReadOnlyMemoization();
 }
 $scope = commonCalDavParseScopedRoute($routePath);
 $cacheAllowed = is_array($scope) && commonCalDavCanUseScopedResponseCache($viewer, $scope);
+$homeRevisions = [];
+$isCalendarHome = $method === 'PROPFIND' && '/' . trim($routePath, '/') === '/calendars/' . (int)$viewer->getId();
 if ($scope === null && preg_match('#^/calendars/' . (int)$viewer->getId() . '/organization-(\d+)(?:/event-\d+\.ics)?/?$#', '/' . trim($routePath, '/'), $match)) {
     $organization = new \dbObject\Organization();
     $scope = ['organizationId' => (int)$match[1]];
     $cacheAllowed = \dbObject\UserOrganization::hasActiveMembership((int)$viewer->getId(), (int)$match[1])
         && $organization->load((int)$match[1]) && $organization->isApplicationEnabled('calendar', (int)$viewer->getId());
 }
+if ($isCalendarHome) {
+    // Revalidate the full membership/application set before reusing discovery.
+    // Metadata-only loading deliberately avoids events and their ICS payloads.
+    foreach (commonCalDavLoadCalendarsForViewer($viewer, 0, true) as $calendar) {
+        $calendarOrganizationId = (int)$calendar['organizationId'];
+        $homeRevisions[$calendarOrganizationId] = \dbObject\CalDavCache::getOrganizationRevision($calendarOrganizationId);
+    }
+    ksort($homeRevisions, SORT_NUMERIC);
+    if ($homeRevisions && min($homeRevisions) > 0) {
+        // Storage belongs to one organization; the key depends on every one.
+        $scope = ['organizationId' => (int)array_key_first($homeRevisions)];
+        $cacheAllowed = true;
+    }
+    if ($diagnostics) $GLOBALS['commonCalDavDiagnostics']['home_revisions'] = $homeRevisions;
+}
 $cacheHandle = null;
-if ($cacheAllowed) $GLOBALS['commonPerformanceOrganizationId'] = (int)$scope['organizationId'];
+if ($cacheAllowed && !$isCalendarHome) $GLOBALS['commonPerformanceOrganizationId'] = (int)$scope['organizationId'];
 
 if (
     is_array($scope)
@@ -37,12 +74,15 @@ if (
     $GLOBALS['commonCardDavRawInput'] = $rawInput;
 
     $organizationId = (int)$scope['organizationId'];
-    $revision = \dbObject\CalDavCache::getOrganizationRevision($organizationId);
+    $revision = $homeRevisions[$organizationId] ?? \dbObject\CalDavCache::getOrganizationRevision($organizationId);
+    $GLOBALS['commonCalDavRateLimitRevisions'] = $homeRevisions ?: [$organizationId => $revision];
+    if ($diagnostics) $GLOBALS['commonCalDavDiagnostics']['revision'] = $revision;
     $cacheKey = \dbObject\CalDavCache::buildResponseKey(array(
-        'schema' => 5,
+        'schema' => 6,
         'viewer' => (int)$viewer->getId(),
         'organization' => $organizationId,
         'revision' => $revision,
+        'home_revisions' => $homeRevisions,
         'method' => $method,
         'route' => '/' . trim((string)$routePath, '/'),
         'depth' => trim((string)($_SERVER['HTTP_DEPTH'] ?? '')),
@@ -99,7 +139,9 @@ if (
     }
 }
 
-$resource = commonCalDavResolveRouteResource($viewer, $routePath);
+$phaseStartedAt = microtime(true);
+$resource = commonCalDavResolveRouteResource($viewer, $routePath, $method === 'PROPPATCH');
+if ($diagnostics) $GLOBALS['commonCalDavDiagnostics']['resolve_ms'] = round((microtime(true) - $phaseStartedAt) * 1000, 3);
 if (!is_array($resource) || empty($resource['type'])) {
     commonCalDavSendStatusText(404, 'CalDAV resource not found.');
 }
