@@ -173,14 +173,34 @@ try {
     mcpCheck(!empty($items['decision_app']->save()['status']), 'Governance creation enabled');
     $items['rule_permission'] = mcpFixture(HolonPermission::class, ['IDholon' => $hid,
         'IDpermission' => Permission::findByKey('CAN_CREATE_RULE')->getId(), 'range' => 'self', 'member_type' => 'collective']);
+    $longRuleBody = '<p>' . str_repeat('Full rule body for detailed review. ', 60) . '</p>';
     $governance = decisionNotificationSave('governance/save.php', ['oid' => $oid, 'cid' => $hid,
         'process_title' => 'Governance notification', 'consent_question' => 'Adopt these rules?',
         'consultation_end_at' => $now->modify('+1 day')->format('Y-m-d H:i:s'),
         'evaluation_end_at' => $now->modify('+2 days')->format('Y-m-d H:i:s'),
-        'governance_blueprint' => json_encode(array_map(static fn($i) => ['title' => 'Rule ' . $i, 'actions' => [
-            ['type' => 'rule.create', 'holonId' => $hid, 'after' => ['title' => 'Rule ' . $i, 'description' => '<p>Rule content</p>',
+        'governance_blueprint' => json_encode(array_map(static fn($i) => ['title' => 'Rule ' . $i,
+            'description' => $i === 7 ? '<p>Custom proposal summary</p>' : '', 'actions' => [
+            ['type' => 'rule.create', 'holonId' => $hid, 'after' => ['title' => 'Rule ' . $i, 'description' => in_array($i, [1, 7], true) ? $longRuleBody : '<p>Rule content</p>',
                 'review_date' => '2027-01-01', 'expiration_date' => '2027-12-31']]]], range(1, 7)))], $decisions);
     mcpCheck(count($governance->getProposals(false)) === 7, 'Seven governance proposals saved');
+    foreach ($governance->getProposals(false) as $proposal) {
+        $position = (int)$proposal->get('position');
+        $summary = (string)$proposal->get('description');
+        if ($position === 1) {
+            mcpCheck(str_contains($summary, 'Consultez le detail ci-dessous') && !str_contains($summary, 'Full rule body'),
+                'Real governance save stores a compact generated summary for a long rule');
+        } elseif ($position === 7) {
+            mcpCheck($summary === '<p>Custom proposal summary</p>', 'A manually supplied description is preserved');
+        } else {
+            mcpCheck(str_contains($summary, 'Rule content'), 'Short rule content remains in generated summaries');
+        }
+        if (in_array($position, [1, 7], true)) {
+            $details = $proposal->getDeferredProposals();
+            mcpCheck(count($details) === 1, 'The full modification is retained');
+            $after = \dbObject\DeferredProposal::normalizeState($details[0]->get('after_state'));
+            mcpCheck($after['description'] === $longRuleBody, 'Detailed modification keeps the complete rule HTML');
+        }
+    }
     mcpCheck(decisionNotificationCount($roleMemberId, $oid, 'decision_consultation_started', $governance->getId()) === 1,
         'Governance creation immediately notifies its native invitees');
     mcpCheck(decisionNotificationCount($roleMemberId, $oid, 'decision_proposal_participant') === 2,

@@ -22,6 +22,9 @@ class DecisionGovernanceAction extends DbObject
     public const STATUS_CONFLICT = 'conflict';
     public const STATUS_FAILED = 'failed';
 
+    // Limit duplicated rule text in generated summaries; action snapshots stay complete.
+    private const RULE_SUMMARY_CONTENT_MAX_LENGTH = 600;
+
     public static function tableName()
     {
         return 'decision_governance_action';
@@ -480,6 +483,24 @@ class DecisionGovernanceAction extends DbObject
         return array_values($properties);
     }
 
+    protected static function buildRuleSummaryContentNotice(): string
+    {
+        static $sourceLang = [
+            'rule_content_details' => [
+                'text' => 'Consultez le detail ci-dessous pour lire le texte complet de la regle.',
+                'context' => 'Generated proposal summary replacing a long rule body; the complete content and changes are available in the modification detail below.',
+            ],
+        ];
+        static $bundle = null;
+        $bundle ??= function_exists('omoLoadTranslationBundle')
+            ? \omoLoadTranslationBundle('omo_decision_rule_summary', $sourceLang)
+            : [];
+        $text = function_exists('t')
+            ? \t('rule_content_details', [], $bundle, $sourceLang)
+            : $sourceLang['rule_content_details']['text'];
+        return htmlspecialchars($text, ENT_QUOTES, 'UTF-8');
+    }
+
     public static function buildRuleUpdateDescription(array $beforeState, array $afterState)
     {
         $labels = [
@@ -493,8 +514,12 @@ class DecisionGovernanceAction extends DbObject
         ];
         $changes = [];
         foreach ($labels as $field => $label) {
-            $before = trim(strip_tags((string)($beforeState[$field] ?? '')));
-            $after = trim(strip_tags((string)($afterState[$field] ?? '')));
+            $before = in_array($field, ['description', 'intention'], true)
+                ? DecisionProposal::descriptionToPlainText((string)($beforeState[$field] ?? ''))
+                : trim(strip_tags((string)($beforeState[$field] ?? '')));
+            $after = in_array($field, ['description', 'intention'], true)
+                ? DecisionProposal::descriptionToPlainText((string)($afterState[$field] ?? ''))
+                : trim(strip_tags((string)($afterState[$field] ?? '')));
             if ($field === 'scope') {
                 $scopeLabels = array_column(Rule::attributeValues()['scope'], 1, 0);
                 $before = $scopeLabels[Rule::normalizeScope($before)] ?? $before;
@@ -508,9 +533,12 @@ class DecisionGovernanceAction extends DbObject
             if ($before === $after) {
                 continue;
             }
+            $valueHtml = $field === 'description'
+                && mb_strlen($before, 'UTF-8') + mb_strlen($after, 'UTF-8') > self::RULE_SUMMARY_CONTENT_MAX_LENGTH
+                ? self::buildRuleSummaryContentNotice()
+                : nl2br(self::formatDescriptionValue($before)) . ' &rarr; ' . nl2br(self::formatDescriptionValue($after));
             $changes[] = '<li><strong>' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '</strong> : '
-                . self::formatDescriptionValue($before) . ' &rarr; '
-                . self::formatDescriptionValue($after) . '</li>';
+                . $valueHtml . '</li>';
         }
         return count($changes) > 0
             ? '<p>Modifications proposées :</p><ul>' . implode('', $changes) . '</ul>'
@@ -528,13 +556,18 @@ class DecisionGovernanceAction extends DbObject
             'review_date' => 'Date de requestionnement',
             'expiration_date' => 'Date d’échéance',
         ] as $field => $label) {
-            $value = trim(strip_tags((string)($state[$field] ?? '')));
+            $value = in_array($field, ['description', 'intention'], true)
+                ? DecisionProposal::descriptionToPlainText((string)($state[$field] ?? ''))
+                : trim(strip_tags((string)($state[$field] ?? '')));
             if ($field === 'scope') $value = array_column(Rule::attributeValues()['scope'], 1, 0)[Rule::normalizeScope($value)];
             if ($value === '') {
                 continue;
             }
+            $valueHtml = $field === 'description' && mb_strlen($value, 'UTF-8') > self::RULE_SUMMARY_CONTENT_MAX_LENGTH
+                ? self::buildRuleSummaryContentNotice()
+                : nl2br(htmlspecialchars($value, ENT_QUOTES, 'UTF-8'));
             $items[] = '<li><strong>' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '</strong> : '
-                . htmlspecialchars($value, ENT_QUOTES, 'UTF-8') . '</li>';
+                . $valueHtml . '</li>';
         }
         return count($items) > 0 ? '<ul>' . implode('', $items) . '</ul>' : '';
     }
