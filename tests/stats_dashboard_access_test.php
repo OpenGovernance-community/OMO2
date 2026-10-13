@@ -16,7 +16,7 @@ if (($argv[1] ?? '') === '--render') {
         $_SESSION['currentOrganization'] = 1;
     }
     // No isSiteAdminModeEnabled flag: role alone must suffice.
-    $_GET = ['range' => 7];
+    $_GET = ['range' => (int)($argv[3] ?? 7), 'organization' => (int)($argv[4] ?? 0)];
     ob_start();
     require dirname(__DIR__) . '/common/admin/stats.php';
     $html = ob_get_clean();
@@ -32,6 +32,9 @@ foreach (['guest', 'member', 'admin'] as $role) {
     if ($result['status'] !== ($role === 'admin' ? 200 : 403)) { throw new RuntimeException('Incorrect access for ' . $role); }
     $hasDashboard = str_contains($result['html'], 'name="kind"');
     if ($hasDashboard !== ($role === 'admin')) { throw new RuntimeException('Dashboard data exposed to incorrect role.'); }
+    if (str_contains($result['html'], 'id="caldav-monitoring"') !== ($role === 'admin')) {
+        throw new RuntimeException('CalDAV contact monitoring exposed to incorrect role.');
+    }
     if (preg_match('/Fatal error|Warning:|Deprecated:/', $result['html'])) { throw new RuntimeException('PHP diagnostics in page.'); }
 }
 echo "stats_dashboard_access_test: OK (guest/member denied; site administrator accepted without elevated mode)\n";
