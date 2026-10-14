@@ -289,7 +289,7 @@
 			return true;
 		}
 
-		public function getDashboardTemplateLayoutKeys(): array
+		public function getDashboardTemplateLayoutKeys(bool $includeBaseType = true): array
 		{
 			$keys = array();
 			foreach ($this->getTemplateLineageHolons() as $template) {
@@ -303,8 +303,10 @@
 				$keys[$key] = $key;
 			}
 
-			$typeKey = UserHolon::makeDashboardTemplateKey((int)$this->get('IDtypeholon'));
-			$keys[$typeKey] = $typeKey;
+			if ($includeBaseType) {
+				$typeKey = UserHolon::makeDashboardTemplateKey((int)$this->get('IDtypeholon'));
+				$keys[$typeKey] = $typeKey;
+			}
 			return array_values($keys);
 		}
 
