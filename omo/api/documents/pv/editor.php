@@ -188,6 +188,7 @@ $pvStageOptions = [
     \dbObject\Document::PV_STAGE_REVIEW => omoDocumentsPvEditorT('documents.pv_editor.field.stage.review'),
     \dbObject\Document::PV_STAGE_VALIDATED => omoDocumentsPvEditorT('documents.pv_editor.field.stage.validated'),
 ];
+$canSendPvInvitations = !$isPublicParticipation && $document->canUserSendPvInvitations($organizationId, $currentUserId);
 $hasPvInvitationEditor = true;
 $canManagePvInvitations = $hasPvInvitationEditor
     && $pvStage === \dbObject\Document::PV_STAGE_PREPARATION
@@ -583,6 +584,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                     <details class="omo-pv-editor__more-actions" data-omo-pv-more-actions>
                         <summary aria-label="<?= $escape((string)$uiText['moreActions']) ?>" title="<?= $escape((string)$uiText['moreActions']) ?>">...</summary>
                         <div class="omo-pv-editor__more-actions-menu">
+                            <button type="button" class="generic-action-button" data-omo-pv-invitations-send-more data-omo-pv-invitations-send-url="<?= $escape($pvInvitationSendPopupUrl) ?>" data-omo-pv-invitations-send-title="<?= $escape((string)$uiText['sendInvitations']) ?>"<?= $canSendPvInvitations && !$canManagePvInvitations ? '' : ' hidden disabled' ?>><?= $escape((string)$uiText['sendInvitations']) ?></button>
                             <a
                                 class="generic-action-button"
                                 href="<?= $escape('/omo/api/documents/pv/export_pdf.php?id=' . rawurlencode((string)(int)$document->getId()) . '&oid=' . rawurlencode((string)$organizationId)) ?>"
@@ -697,6 +699,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         'isPvEditor' => $isPvEditor,
         'canManagePvDocument' => $canManagePvDocument,
         'canManagePvStructure' => $canManagePvStructure,
+        'canSendPvInvitations' => $canSendPvInvitations,
         'canSortPvAgenda' => $canSortPvAgenda,
         'canCreatePvGroups' => $canCreatePvGroups,
         'canClaimPvEditor' => $canClaimPvEditor,

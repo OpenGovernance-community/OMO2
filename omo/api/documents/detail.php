@@ -13,6 +13,7 @@ $sourceLang = [
     'documents.detail.event.location' => ['text' => 'Lieu', 'context' => 'Label for the event location in the document detail summary.'],
     'documents.detail.event.context' => ['text' => 'Contexte', 'context' => 'Label for the event context in the document detail summary.'],
     'documents.detail.event.virtual_fallback' => ['text' => 'Visio', 'context' => 'Fallback location label when only a virtual meeting link exists.'],
+    'documents.detail.action.send_invitations' => ['text' => 'Envoyer les invitations', 'context' => 'Open the email composer for PV guests, including after validation.'],
     'documents.detail.action.more' => ['text' => 'Plus d’actions', 'context' => 'Accessible label for the read-only document action menu.'],
     'documents.detail.action.export_pdf' => ['text' => 'Exporter en PDF', 'context' => 'Action used to download a PV document as a PDF file.'],
     'documents.detail.action.export_pdf_waiting' => ['text' => 'Veuillez patienter', 'context' => 'Temporary label shown while a PV PDF is being generated.'],
@@ -279,6 +280,9 @@ if ($associatedEvent instanceof \dbObject\Event) {
                             title="<?= $escape(omoDocumentsDetailT('documents.detail.action.more')) ?>"
                         >...</summary>
                         <div class="omo-document-detail__more-actions-menu">
+                            <?php if ($document->canUserSendPvInvitations($organizationId, $currentUserId)): ?>
+                                <button type="button" class="generic-action-button" data-omo-pv-detail-send-url="<?= $escape('/omo/api/documents/pv/send_invitations_popup.php?oid=' . $organizationId . '&id=' . (int)$document->getId()) ?>"><?= $escape(omoDocumentsDetailT('documents.detail.action.send_invitations')) ?></button>
+                            <?php endif; ?>
                             <a
                                 class="generic-action-button omo-document-detail__pdf-export"
                                 href="<?= $escape($pdfExportUrl) ?>"

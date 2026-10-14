@@ -3010,6 +3010,12 @@ html[data-theme="dark"] .generic-tabs__tab:focus-visible .generic-monochrome-ico
     display: none !important;
 }
 
+.generic-menu-panel--floating[popover] {
+    margin: 0;
+    right: auto;
+    bottom: auto;
+}
+
 .generic-menu-item {
     display: block;
     width: 100%;

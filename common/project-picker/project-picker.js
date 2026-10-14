@@ -24,10 +24,31 @@
         return root instanceof Element && typeof value === 'string' ? root.querySelector(value) : null;
     }
 
+    // Shared selection surface for PV insertion and multi-project imports.
+    window.commonProjectPickerMarkup = function (options) {
+        var settings = options || {}, labels = settings.labels || {};
+        var prefix = settings.prefix || 'data-common-project-picker';
+        if (!/^data-[a-z0-9-]+$/.test(prefix)) throw new Error('Invalid project picker prefix');
+        var escape = function (value) { return String(value || '').replace(/[&<>"']/g, function (char) { return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[char]; }); };
+        return '<div data-common-project-picker><aside class="omo-resource-picker__navigation" ' + prefix + '-scope></aside>'
+            + '<div class="common-project-picker__content"><div class="omo-segmented" role="group" aria-label="' + escape(labels.assignmentAria) + '">'
+            + [['mine', labels.assignmentMine], ['followed', labels.assignmentFollowed], ['all', labels.assignmentEveryone]].map(function (item) {
+                return '<button type="button" class="omo-segmented__button' + (item[0] === 'all' ? ' is-active' : '') + '" ' + prefix + '-assignment="' + item[0] + '" aria-pressed="' + (item[0] === 'all') + '">' + escape(item[1]) + '</button>';
+            }).join('') + '</div><label class="omo-resource-picker__quick-search"><img src="/common/assets/icon-topbar-search.png" alt="" aria-hidden="true">'
+            + '<input type="search" class="generic-form-control" ' + prefix + '-search placeholder="' + escape(labels.quickSearchPlaceholder) + '" aria-label="' + escape(labels.quickSearchPlaceholder) + '"></label>'
+            + '<div class="omo-document-embed-picker__field"><select class="generic-form-control omo-document-embed-picker__select" ' + prefix + '-select size="10" aria-label="' + escape(labels.quickSearchPlaceholder) + '"' + (settings.multiple ? ' multiple' : '') + '></select></div>'
+            + (settings.preview ? '<div class="omo-document-embed-picker__preview" ' + prefix + '-preview></div>' : '') + '</div></div>';
+    };
+
     window.commonMountProjectPicker = function (options) {
         var settings = options && typeof options === 'object' ? options : {};
         var root = settings.root instanceof Element ? settings.root : document;
         var scopeHost = resolveElement(settings.scopeHost, root);
+        var layoutRoot = resolveElement(settings.layoutRoot, root) || root.querySelector('[data-common-project-picker]');
+        if (layoutRoot && scopeHost) {
+            layoutRoot.classList.add('common-project-picker');
+            layoutRoot.appendChild(scopeHost);
+        }
         var searchInput = resolveElement(settings.searchInput, root);
         var selectElement = resolveElement(settings.selectElement, root);
         var emptyElement = resolveElement(settings.emptyElement, root);
@@ -87,7 +108,7 @@
         function matchesAssignment(project) {
             return typeof settings.matchesAssignment === 'function'
                 ? settings.matchesAssignment(project, assignment)
-                : true;
+                : (assignment === 'mine' ? Boolean(project.isMine) : (assignment === 'followed' ? Boolean(project.isFollowed) : true));
         }
 
         function matchesScope(project) {

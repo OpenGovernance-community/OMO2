@@ -18,17 +18,27 @@ try {
         if ($action === 'save') {
             if ($id && !$sprint->editable()) { throw new RuntimeException('locked'); }
             $title = trim((string)($_POST['title'] ?? ''));
-            $start = DateTimeImmutable::createFromFormat('!Y-m-d', (string)($_POST['start_date'] ?? ''), new DateTimeZone('Europe/Zurich'));
             $end = DateTimeImmutable::createFromFormat('!Y-m-d', (string)($_POST['end_date'] ?? ''), new DateTimeZone('Europe/Zurich'));
-            if ($title === '' || mb_strlen($title) > 255 || !$start || !$end || $start->format('Y-m-d') !== $_POST['start_date']
-                || $end->format('Y-m-d') !== $_POST['end_date'] || $end < $start || $end->format('Y-m-d') < ScrumSprint::now()->format('Y-m-d')) { throw new RuntimeException('dates'); }
-            foreach (['title' => $title, 'start_date' => $start, 'end_date' => $end, 'objective' => trim((string)($_POST['objective'] ?? ''))] as $key => $value) { $sprint->set($key, $value); }
+            if ($title === '' || mb_strlen($title) > 255 || !$end
+                || $end->format('Y-m-d') !== $_POST['end_date'] || $end->format('Y-m-d') < ScrumSprint::now()->format('Y-m-d')) { throw new RuntimeException('dates'); }
+            foreach (['title' => $title, 'end_date' => $end, 'objective' => trim((string)($_POST['objective'] ?? ''))] as $key => $value) { $sprint->set($key, $value); }
             if (!$id) {
                 $sprint->set('IDorganization', $oid); $sprint->set('IDholon', (int)$context['currentHolon']->getId());
-                $sprint->set('state', 'scheduled');
+                $sprint->set('state', 'stopped');
+                $sprint->set('start_date', ScrumSprint::now());
                 $sprint->set('archived', 0); $sprint->set('baseline', 0);
             }
             ScrumSprint::checkedSave($sprint);
+        } elseif ($action === 'estimates') {
+            if (!$sprint->editable()) { throw new RuntimeException('locked'); }
+            $visibleNodes = $sprint->nodes(true, static fn (Project $project) => omoProjectsCanViewProject($project, $context));
+            $removed = array_unique(array_map('intval', (array)($_POST['removed'] ?? [])));
+            foreach ($removed as $projectId) {
+                if (!isset($visibleNodes[$projectId])) { throw new RuntimeException('access'); }
+                $sprint->removeTree($projectId);
+            }
+            $sprint->import([], (array)($_POST['sizes'] ?? []),
+                static fn (Project $p) => omoProjectsCanViewProject($p, $context), static fn (Project $p) => omoProjectsCanManageProject($p, $context));
         } elseif ($action === 'import') {
             $sprint->import(array_map('intval', (array)($_POST['projects'] ?? [])), (array)($_POST['sizes'] ?? []),
                 static fn (Project $p) => omoProjectsCanViewProject($p, $context), static fn (Project $p) => omoProjectsCanManageProject($p, $context));
@@ -44,9 +54,7 @@ try {
             if (!$sprint->editable()) { throw new RuntimeException('locked'); }
             // Revalidate visibility, permissions and the entire hierarchy before restarting.
             $sprint->import([], [], static fn (Project $p) => omoProjectsCanViewProject($p, $context), static fn (Project $p) => omoProjectsCanManageProject($p, $context));
-            if ($sprint->get('start_date')->format('Y-m-d') > ScrumSprint::now()->format('Y-m-d')) {
-                $sprint->set('state', 'scheduled'); ScrumSprint::checkedSave($sprint);
-            } else { $sprint->start(); }
+            $sprint->start();
         } elseif ($action === 'archive' || $action === 'restore') {
             if ($sprint->get('state') !== 'finished') { throw new RuntimeException('locked'); }
             $sprint->set('archived', $action === 'archive' ? 1 : 0); ScrumSprint::checkedSave($sprint);

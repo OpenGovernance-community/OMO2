@@ -741,13 +741,14 @@ class Project extends DbObject
             'blocked_auto_reactivate' => (int)($values['blocked_auto_reactivate'] ?? 0) === 1 ? 'Oui' : 'Non',
             'blocked_reactivate_status' => self::getHistoryStatusLabel($organizationId, $values['blocked_reactivate_status'] ?? self::STATUS_READY),
             '_status' => self::normalizeStatus($values['status'] ?? self::STATUS_SOMEDAY),
+            '_size' => self::normalizeSize($values['project_size'] ?? null),
         ];
     }
 
     private static function getStoredHistoryState($projectId)
     {
         $row = self::fetchRow(
-            'SELECT IDorganization, title, visibility_type, status, proposal_status, planned_start_date, planned_end_date, blocked_reason, blocked_until, blocked_auto_reactivate, blocked_reactivate_status
+            'SELECT IDorganization, title, visibility_type, status, project_size, proposal_status, planned_start_date, planned_end_date, blocked_reason, blocked_until, blocked_auto_reactivate, blocked_reactivate_status
              FROM project
              WHERE id = :id
              LIMIT 1',
@@ -762,6 +763,7 @@ class Project extends DbObject
             'title' => $this->get('title'),
             'visibility_type' => $this->getVisibilityType(),
             'status' => $this->get('status'),
+            'project_size' => $this->get('project_size'),
             'proposal_status' => $this->get('proposal_status'),
             'planned_start_date' => $this->get('planned_start_date'),
             'planned_end_date' => $this->get('planned_end_date'),
@@ -889,7 +891,7 @@ class Project extends DbObject
 
     private static function getHistoryStateWithoutMetadata(array $state)
     {
-        unset($state['_status']);
+        unset($state['_status'], $state['_size']);
         return $state;
     }
 
@@ -1032,8 +1034,9 @@ class Project extends DbObject
                 $error = ScrumSprint::validateProjectChange($this);
                 if ($error !== null) { return ['status' => false, 'errorCode' => $error]; }
                 $result = $this->saveProject();
-                if (!empty($result['status']) && ($before['_status'] ?? '') !== (string)$this->get('status')) {
-                    ScrumSprint::syncProject((int)$this->getId(), true);
+                $sizeChanged = ($before['_size'] ?? '') !== (string)$this->get('project_size');
+                if (!empty($result['status']) && ($sizeChanged || ($before['_status'] ?? '') !== (string)$this->get('status'))) {
+                    ScrumSprint::syncProject((int)$this->getId(), true, $sizeChanged ? 'estimate' : 'status');
                 }
                 return $result;
             });

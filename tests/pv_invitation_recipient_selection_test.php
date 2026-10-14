@@ -11,12 +11,15 @@ namespace dbObject {
     class Document
     {
         public const PV_STAGE_PREPARATION = 'preparation';
+        public const PV_STAGE_REVIEW = 'review';
+        public const PV_STAGE_VALIDATED = 'validated';
         public function load($id): bool { return true; }
         public function get($key) { return $key === 'IDorganization' ? 1 : 'Fixture meeting'; }
         public function getId(): int { return 2; }
         public function isPvDocument(): bool { return true; }
-        public function getPvStage(): string { return self::PV_STAGE_PREPARATION; }
-        public function canUserManagePvStructure($oid, $uid): bool { return $GLOBALS['fixtureCanSend']; }
+        public function getPvStage(): string { return $GLOBALS['fixtureStage']; }
+        public function isPvValidated(): bool { return $this->getPvStage() === self::PV_STAGE_VALIDATED; }
+        public function canUserSendPvInvitations($oid, $uid): bool { return $GLOBALS['fixtureCanSend']; }
         public function getAssociatedEvent() { return $GLOBALS['fixtureWithEvent'] ? new Event() : null; }
         public function getInvitationEmailRecipients(int $oid): array { return $GLOBALS['fixtureRecipients']; }
     }
@@ -36,6 +39,7 @@ namespace dbObject {
             $link->email = $email;
             return $link;
         }
+        public function buildShareUrl(): string { return '/fixture-read/' . rawurlencode($this->email); }
         public function buildPvParticipationUrl(): string { return '/fixture/' . rawurlencode($this->email); }
     }
     class ObjectMail
@@ -77,6 +81,7 @@ namespace {
             ['email' => 'bob@example.invalid', 'display_name' => 'Bob <guest>', 'user_id' => 12],
             ['email' => 'guest@example.invalid', 'display_name' => '', 'user_id' => 0],
         ];
+        $GLOBALS['fixtureStage'] = $scenario['stage'] ?? 'preparation';
         $GLOBALS['fixtureCanSend'] = $scenario['canSend'] ?? true;
         $GLOBALS['fixtureWithEvent'] = $scenario['withEvent'] ?? true;
         $GLOBALS['fixtureHistoryError'] = $scenario['historyError'] ?? false;
@@ -115,21 +120,25 @@ namespace {
         return json_decode($output, true, 512, JSON_THROW_ON_ERROR);
     };
     $emails = ['alice@example.invalid', 'bob@example.invalid', 'guest@example.invalid'];
-    foreach ([true, false] as $withEvent) {
-        foreach ([$emails, [$emails[1]], [$emails[0], $emails[2]], [$emails[1], $emails[1]]] as $selected) {
-            $result = $request(['message' => 'Selected invitation', 'recipient_emails' => $selected], ['withEvent' => $withEvent]);
-            $expected = array_values(array_unique($selected));
-            pvRecipientExpect($result['code'] === 200 && $result['response']['status'], 'Selected invitations should succeed.');
-            pvRecipientExpect(array_column($result['mails'], 'email') === $expected, 'Only selected people receive one email each.');
-            pvRecipientExpect(array_column($result['links'], 'email') === $expected, 'Only selected people receive individual access links.');
-            pvRecipientExpect(array_column($result['history']['recipients'], 'email') === $expected, 'History contains only selected people.');
-            pvRecipientExpect(array_keys($result['history']['delivery']) === $expected && count(array_unique($result['history']['delivery'])) === 1
-                && reset($result['history']['delivery']) === 'sent', 'History records successful individual deliveries.');
-            pvRecipientExpect($result['history']['message'] === 'Selected invitation' && $result['response']['mail_id'] === 101, 'Original message is kept and the send returns its history ID.');
-            foreach ($result['mails'] as $mail) {
-                pvRecipientExpect(str_contains($mail['html'], '/fixture/' . rawurlencode($mail['email'])), 'Each message uses its own participation link.');
+    foreach (['preparation', 'meeting', 'review', 'validated'] as $stage) {
+        foreach ([true, false] as $withEvent) {
+            foreach ([$emails, [$emails[1]], [$emails[0], $emails[2]], [$emails[1], $emails[1]]] as $selected) {
+                $result = $request(['message' => 'Selected invitation', 'recipient_emails' => $selected], ['withEvent' => $withEvent, 'stage' => $stage]);
+                $expected = array_values(array_unique($selected));
+                pvRecipientExpect($result['code'] === 200 && $result['response']['status'], 'Selected invitations should succeed.');
+                pvRecipientExpect(array_column($result['mails'], 'email') === $expected, 'Only selected people receive one email each.');
+                pvRecipientExpect(array_column($result['links'], 'email') === $expected, 'Only selected people receive individual access links.');
+                pvRecipientExpect(array_column($result['history']['recipients'], 'email') === $expected, 'History contains only selected people.');
+                pvRecipientExpect(array_keys($result['history']['delivery']) === $expected && count(array_unique($result['history']['delivery'])) === 1
+                    && reset($result['history']['delivery']) === 'sent', 'History records successful individual deliveries.');
+                pvRecipientExpect($result['history']['message'] === 'Selected invitation' && $result['response']['mail_id'] === 101, 'Original message is kept and the send returns its history ID.');
+                foreach ($result['mails'] as $mail) {
+                    pvRecipientExpect(str_contains($mail['html'], ($stage === 'validated' ? '/fixture-read/' : '/fixture/') . rawurlencode($mail['email'])), 'Each message uses its own participation link.');
+                }
             }
         }
+        $denied = $request(['message' => 'Fixture reminder', 'recipient_emails' => $emails], ['canSend' => false, 'stage' => $stage]);
+        pvRecipientExpect($denied['code'] === 403 && !$denied['mails'] && !$denied['links'], 'Every stage requires management permissions.');
     }
     foreach ([[], ['recipient_emails' => []], ['recipient_emails' => 'alice@example.invalid'],
         ['recipient_emails' => [['alice@example.invalid']]], ['recipient_emails' => [$emails[0], 'outsider@example.invalid']]] as $selection) {

@@ -112,22 +112,29 @@ class ScrumSprint extends DbObject
         return $selected;
     }
     public function nodes(bool $live = true, ?callable $canView = null): array {
-        $nodes = [];
+        $nodes = []; $visible = [];
+        $useLiveEstimates = $live && $this->get('state') !== 'finished';
         foreach (ScrumProject::forSprint((int)$this->getId()) as $link) {
             $node = json_decode((string)$link->get('snapshot'), true);
             if ($canView !== null || ($live && $this->get('state') !== 'finished' && (int)$link->get('IDproject') > 0)) {
                 $project = new Project();
                 $loaded = (int)$link->get('IDproject') > 0 && $project->load((int)$link->get('IDproject'), true);
                 // Archived snapshots still follow current access rights; deleted projects cannot be authorized.
-                if ($canView !== null && (!$loaded || (int)$project->get('IDorganization') !== (int)$this->get('IDorganization') || !$canView($project))) { continue; }
+                $visible[(int)$link->get('project_key')] = $loaded && (int)$project->get('IDorganization') === (int)$this->get('IDorganization') && ($canView === null || $canView($project));
                 if ($loaded && $live && $this->get('state') !== 'finished') { $node = self::projectData($project); }
             }
             $node['parent'] = (int)$link->get('parent_key');
-            $node['points'] = (int)$link->get('points');
-            $node['own'] = (int)$link->get('own_points');
+            $node['points'] = $useLiveEstimates ? self::points($node['size']) : (int)($node['points'] ?? $link->get('points'));
+            $node['own'] = (int)($node['own'] ?? $link->get('own_points'));
             $nodes[(int)$link->get('project_key')] = $node;
         }
-        return $nodes;
+        if ($useLiveEstimates) {
+            $calculation = self::calculate($nodes);
+            foreach ($nodes as $id => &$node) { $node['own'] = $calculation['nodes'][$id]['own']; }
+            unset($node);
+        }
+        // Calculate the full tree before filtering, so hidden descendants are not counted twice.
+        return $canView === null ? $nodes : array_filter($nodes, static fn ($node) => !empty($visible[$node['id']]));
     }
     public function import(array $rootIds, array $sizes, callable $canView, callable $canEdit): array {
         if (!$this->editable()) { throw new \RuntimeException('locked'); }
@@ -182,12 +189,11 @@ class ScrumSprint extends DbObject
         if ($this->get('state') !== 'running') { return; }
         $at ??= self::now();
         if ($source === 'daily' && ScrumSample::hasDaily((int)$this->getId(), $at)) { return; }
-        $remaining = 0;
+        $nodes = $this->nodes();
+        $remaining = self::calculate($nodes)['remaining'];
         foreach (ScrumProject::forSprint((int)$this->getId()) as $link) {
-            $node = json_decode((string)$link->get('snapshot'), true);
-            $project = new Project();
-            if ((int)$link->get('IDproject') > 0 && $project->load((int)$link->get('IDproject'), true)) { $node = self::projectData($project); }
-            if (!in_array($node['status'], [Project::STATUS_REVIEW, Project::STATUS_DONE], true)) { $remaining += (int)$link->get('own_points'); }
+            // Keep the original link weights and sprint baseline; snapshot the revised weights separately.
+            $node = $nodes[(int)$link->get('project_key')];
             $link->set('snapshot', json_encode($node, JSON_UNESCAPED_UNICODE)); self::checkedSave($link);
         }
         $sample = new ScrumSample(); $sample->set('IDsprint', (int)$this->getId()); $sample->set('sampled_at', $at);
@@ -199,25 +205,16 @@ class ScrumSprint extends DbObject
         // Refresh the complete hierarchy and estimates before fixing the baseline.
         $this->import([], [], static fn () => true, static fn () => false);
         ScrumSample::clearSprint((int)$this->getId());
-        $this->set('state', 'running'); $this->set('started_at', $at); self::checkedSave($this);
+        $this->set('state', 'running'); $this->set('start_date', $at); $this->set('started_at', $at); self::checkedSave($this);
         $this->sample('start', $at);
     }
     public function sync(?\DateTimeImmutable $now = null): void {
         $now ??= self::now();
-        if ($this->get('state') === 'finished') { return; }
+        // Preparation only ends through an explicit start action, including legacy scheduled sprints.
+        if ($this->get('state') !== 'running') { return; }
         if ($now > $this->endAt()) {
-            // Also retain the final state if a stopped sprint was never restarted.
-            $this->set('state', 'running');
             $this->sample('finish', $this->endAt());
             $this->set('state', 'finished'); $this->set('finished_at', $this->endAt()); self::checkedSave($this); return;
-        }
-        if ($this->get('state') === 'scheduled' && $this->get('start_date')->format('Y-m-d') <= $now->format('Y-m-d')) {
-            try { $this->start($now); }
-            catch (\RuntimeException $error) {
-                if (!in_array($error->getMessage(), ['estimate', 'conflict', 'missing', 'access'], true)) { throw $error; }
-                $this->set('state', 'stopped'); self::checkedSave($this);
-                error_log('Scrum start requires preparation: sprint ' . $this->getId() . ', ' . $error->getMessage());
-            }
         }
     }
     public static function maintenance(?int $organizationId = null, string $source = 'daily'): int {
@@ -253,12 +250,12 @@ class ScrumSprint extends DbObject
         return null;
     }
 
-    public static function syncProject(int $projectId, bool $sample): void {
+    public static function syncProject(int $projectId, bool $sample, string $source = 'status'): void {
         if ($projectId <= 0) { return; }
         $rows = self::fetchAll("SELECT s.id FROM scrum_sprint s JOIN scrum_project sp ON sp.IDsprint=s.id WHERE sp.IDproject=:id AND s.state<>'finished'", ['id' => $projectId]) ?: [];
         foreach ($rows as $row) {
             $sprint = new self();
-            if ($sprint->load((int)$row['id'], true)) { $sprint->sync(); if ($sample) { $sprint->sample('status'); } }
+            if ($sprint->load((int)$row['id'], true)) { $sprint->sync(); if ($sample) { $sprint->sample($source); } }
         }
     }
 

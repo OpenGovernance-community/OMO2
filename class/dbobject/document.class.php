@@ -1661,7 +1661,12 @@
 
 		public function canUserManagePvDocument(int $userId): bool
 		{
-			if (!$this->isPvDocument() || $this->isPvValidated() || $userId <= 0) {
+			return !$this->isPvValidated() && $this->hasPvDocumentManagementPermission($userId);
+		}
+
+		private function hasPvDocumentManagementPermission(int $userId): bool
+		{
+			if (!$this->isPvDocument() || $userId <= 0) {
 				return false;
 			}
 			if ($this->isPvEditor($userId)) {
@@ -1877,8 +1882,14 @@
 
 		public function canUserManagePvStructure(int $organizationId, int $userId): bool
 		{
+			return !$this->isPvValidated() && $this->canUserSendPvInvitations($organizationId, $userId);
+		}
+
+		public function canUserSendPvInvitations(int $organizationId, int $userId): bool
+		{
+			// Sending messages remains available after validation, without reopening editing.
 			// Older PVs may not have an official editor until their first handover.
-			return $this->canUserManagePvDocument($userId)
+			return $this->hasPvDocumentManagementPermission($userId)
 				&& (!$this->isPvEditor($userId)
 					|| $this->getLastOfficialPvEditorUserId() <= 0
 					|| $userId === $this->getLastOfficialPvEditorUserId()

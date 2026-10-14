@@ -4,11 +4,33 @@
     gap: 1.5rem;
     align-items: center;
 }
-.scrum-chart { width: 100%; max-height: 230px; }
+.scrum-chart { margin: 0; min-width: 0; color: var(--color-primary, #159da4); }
+.scrum-chart svg { display: block; width: 100%; max-height: 270px; }
+.scrum-chart__legend { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 1.25rem; }
+.scrum-chart__legend span { display: inline-flex; align-items: center; gap: .5rem; }
+.scrum-chart__legend span::before { content: ''; width: 1.25rem; border-top: 3px solid var(--color-primary, #159da4); }
+.scrum-chart__legend .scrum-chart__ideal::before { border-top: 2px dashed var(--color-text-light, #64748b); }
+.scrum-chart__axes { fill: var(--color-text-light, #64748b); font: 11px system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+.scrum-chart__grid { stroke: var(--color-border, #e5e7eb); stroke-width: 1; stroke-dasharray: 3 5; }
+.scrum-chart__area { fill: currentColor; opacity: .08; }
+.scrum-chart__target { stroke: var(--color-text-light, #64748b); stroke-width: 1.5; stroke-dasharray: 6 6; fill: none; opacity: .6; }
+.scrum-chart__line { stroke: currentColor; stroke-width: 3; fill: none; stroke-linejoin: round; stroke-linecap: round; }
+.scrum-chart__sample, .scrum-chart__endpoint { fill: currentColor; stroke: var(--color-surface, #fff); stroke-width: 2; }
+.scrum-chart__endpoint--running { animation: scrum-chart-pulse 2s ease-in-out infinite; }
+@keyframes scrum-chart-pulse {
+    0%, 100% { opacity: 1; filter: drop-shadow(0 0 4px currentColor); }
+    50% { opacity: .65; filter: drop-shadow(0 0 0 currentColor); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .scrum-chart__endpoint--running { animation: none; }
+}
+[data-scrum-step][hidden] { display: none; }
 .scrum-objective { white-space: pre-wrap; }
 .scrum-summary[data-scrum-card] { cursor: pointer; }
 .scrum-estimate-row { display: grid; grid-template-columns: minmax(0, 1fr) 8rem; gap: .75rem; align-items: center; margin-block: .5rem; }
 .scrum-estimate-row small { grid-column: 1 / -1; }
+.scrum-estimate-row__title { padding-inline-start: calc(var(--param-scrum-project-depth, 0) * .75rem); }
 @media (max-width: 700px) {
     .scrum-summary { grid-template-columns: minmax(0, 1fr); }
+    .scrum-chart__axes { font-size: 16px; }
 }

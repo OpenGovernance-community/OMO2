@@ -154,6 +154,7 @@
     var pendingCreateStatus = '';
     var pendingCreateUrl = '';
     var draggedProjectCard = null;
+    var scrumMovePending = false;
     var filterControl = root.querySelector('[data-omo-projects-filter-control]');
     var filterPanel = root.querySelector('[data-omo-projects-filter-panel]');
     var quickSearchInput = root.querySelector('[data-omo-projects-quick-search]');
@@ -546,8 +547,8 @@
             return Promise.resolve(null);
         }
         return window.omoReplaceFetchedPanelRoot({
-            rootSelector: scrumMode ? '#omo-scrum-root' : '#omo-projects-root',
-            currentRoot: scrumMode ? root.closest('#omo-scrum-root') : root,
+            rootSelector: scrumMode ? '#omo-scrum-detail' : '#omo-projects-root',
+            currentRoot: scrumMode ? root.closest('#omo-scrum-detail') : root,
             url: resolveUrl(targetUrl),
             setLoadingState: setLoading,
             beforeReplace: function () {
@@ -1547,6 +1548,69 @@
         return {allowed: false, fields: null};
     }
 
+    function revealScrumProject(card) {
+        if (!card || card.hidden) return;
+        var column = card.closest('[data-omo-projects-column]');
+        mobileColumnIndex = Array.prototype.indexOf.call(root.querySelectorAll('[data-omo-projects-column]'), column);
+        updateMobileColumn();
+        window.requestAnimationFrame(function () {
+            if (!card.isConnected) return;
+            var viewport = root.closest('#omo-scrum-detail').querySelector(':scope > .omo-panel-view__body');
+            var bounds = viewport.getBoundingClientRect();
+            var header = column.querySelector('.omo-projects__column-header');
+            var visibleTop = Math.max(0, bounds.top) + (header ? header.offsetHeight : 0) + 8;
+            var visibleBottom = Math.min(window.innerHeight, bounds.bottom) - 12;
+            var rect = card.getBoundingClientRect();
+            var delta = rect.top < visibleTop || rect.height > visibleBottom - visibleTop
+                ? rect.top - visibleTop : (rect.bottom > visibleBottom ? rect.bottom - visibleBottom : 0);
+            if (delta) viewport.scrollTo({top: viewport.scrollTop + delta,
+                behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'});
+        });
+    }
+
+    function refreshScrumMove(card, nextStatus, target) {
+        var detail = root.closest('#omo-scrum-detail');
+        var viewport = detail.querySelector(':scope > .omo-panel-view__body');
+        var scrollTop = viewport.scrollTop;
+        var projectId = card.getAttribute('data-project-id');
+        // The mutation succeeded: keep the saved position even if the subsequent refresh fails.
+        columns.forEach(function (status) { card.classList.remove('omo-project-card--' + status); });
+        card.classList.add('omo-project-card--' + nextStatus);
+        card.classList.remove('is-pending-status');
+        card.setAttribute('data-project-status', nextStatus);
+        var select = card.querySelector('[data-omo-project-status-select]');
+        if (select) select.value = nextStatus;
+        target.appendChild(card);
+        applyQuickSearch();
+        viewport.scrollTop = scrollTop;
+        target.setAttribute('aria-busy', 'true');
+        return fetch(resolveUrl(currentUrl), {credentials: 'same-origin', cache: 'no-store', headers: {'X-Requested-With': 'XMLHttpRequest'}})
+            .then(function (response) {
+                if (!response.ok) throw new Error(texts.loadingError);
+                return response.text();
+            }).then(function (html) {
+                if (!root.isConnected) return;
+                var fragment = new DOMParser().parseFromString(html, 'text/html');
+                var nextDetail = fragment.querySelector('#omo-scrum-detail');
+                var nextCards = nextDetail && nextDetail.querySelector('[data-omo-projects-cards="' + nextStatus + '"]');
+                var summary = detail.querySelector('[data-scrum-summary]');
+                var nextSummary = nextDetail && nextDetail.querySelector('[data-scrum-summary]');
+                if (!nextCards || !summary || !nextSummary) throw new Error(texts.loadingError);
+                var currentScrollTop = viewport.scrollTop;
+                target.replaceChildren.apply(target, Array.from(nextCards.childNodes));
+                summary.replaceChildren.apply(summary, Array.from(nextSummary.childNodes));
+                bindKanbanCards(target);
+                applyQuickSearch();
+                syncProjectSelection();
+                viewport.scrollTop = currentScrollTop;
+            }).catch(function (error) {
+                if (root.isConnected) window.omoNotify(error.message || texts.loadingError, 'error');
+            }).finally(function () {
+                target.removeAttribute('aria-busy');
+                if (root.isConnected) revealScrumProject(target.querySelector('[data-omo-project-card][data-project-id="' + projectId + '"]'));
+            });
+    }
+
     function moveCard(card, nextStatus, targetOverride) {
         var group = card ? card.closest('[data-omo-projects-kanban-row]') : null;
         var target = targetOverride || (group
@@ -1556,6 +1620,11 @@
             return;
         }
         var currentStatus = card.getAttribute('data-project-status') || '';
+        if (scrumMode && scrumMovePending) {
+            var pendingSelect = card.querySelector('[data-omo-project-status-select]');
+            if (pendingSelect) pendingSelect.value = currentStatus;
+            return;
+        }
         var needsBlockedDialog = nextStatus === 'blocked' && currentStatus !== 'blocked';
         var mutation = getKanbanDropMutation(card, target);
         if (!mutation.allowed) {
@@ -1566,6 +1635,7 @@
             return;
         }
         var statusSelect = card.querySelector('[data-omo-project-status-select]');
+        if (scrumMode) scrumMovePending = true;
         card.classList.add('is-pending-status');
         var sendStatus = function (blockedFields) {
             var fields = Object.assign({status: nextStatus}, mutation.fields || {}, blockedFields || {});
@@ -1577,7 +1647,8 @@
             ? openBlockedStatusDialog(card).then(sendStatus)
             : sendStatus(null);
         request.then(function () {
-            refreshRoot(currentUrl, {
+            if (scrumMode) return refreshScrumMove(card, nextStatus, target);
+            return refreshRoot(currentUrl, {
                 preserveScroll: true,
                 revealProjectId: Number(card.getAttribute('data-project-id') || 0)
             });
@@ -1589,7 +1660,7 @@
             if (!error || error.cancelled !== true) {
                 window.omoNotify(error.message || texts.statusUpdateError, 'error');
             }
-        });
+        }).finally(function () { if (scrumMode) scrumMovePending = false; });
     }
 
     function postProjectAction(projectId, action, fields) {
@@ -2954,32 +3025,35 @@
         });
     });
 
-    root.querySelectorAll('[data-omo-project-status-select]').forEach(function (select) {
-        select.addEventListener('click', function (event) {
-            event.stopPropagation();
-        });
-        select.addEventListener('change', function () {
-            var card = select.closest('[data-omo-project-card]');
-            moveCard(card, select.value);
-        });
-    });
-
-    root.querySelectorAll('[data-omo-project-card][draggable="true"]').forEach(function (card) {
-        card.addEventListener('dragstart', function (event) {
-            draggedProjectCard = card;
-            card.classList.add('dragging');
-            event.dataTransfer.effectAllowed = 'move';
-            event.dataTransfer.setData('text/plain', card.getAttribute('data-project-id') || '');
-        });
-        card.addEventListener('dragend', function () {
-            draggedProjectCard = null;
-            card.classList.remove('dragging');
-            root.querySelectorAll('[data-omo-projects-cards].is-drag-over, [data-omo-projects-cards].is-drop-forbidden').forEach(function (container) {
-                container.classList.remove('is-drag-over');
-                container.classList.remove('is-drop-forbidden');
+    function bindKanbanCards(container) {
+        container.querySelectorAll('[data-omo-project-status-select]').forEach(function (select) {
+            select.addEventListener('click', function (event) {
+                event.stopPropagation();
+            });
+            select.addEventListener('change', function () {
+                var card = select.closest('[data-omo-project-card]');
+                moveCard(card, select.value);
             });
         });
-    });
+
+        container.querySelectorAll('[data-omo-project-card][draggable="true"]').forEach(function (card) {
+            card.addEventListener('dragstart', function (event) {
+                draggedProjectCard = card;
+                card.classList.add('dragging');
+                event.dataTransfer.effectAllowed = 'move';
+                event.dataTransfer.setData('text/plain', card.getAttribute('data-project-id') || '');
+            });
+            card.addEventListener('dragend', function () {
+                draggedProjectCard = null;
+                card.classList.remove('dragging');
+                root.querySelectorAll('[data-omo-projects-cards].is-drag-over, [data-omo-projects-cards].is-drop-forbidden').forEach(function (container) {
+                    container.classList.remove('is-drag-over');
+                    container.classList.remove('is-drop-forbidden');
+                });
+            });
+        });
+    }
+    bindKanbanCards(root);
 
     root.querySelectorAll('[data-omo-projects-cards]').forEach(function (container) {
         container.addEventListener('dragover', function (event) {

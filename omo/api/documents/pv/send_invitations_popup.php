@@ -10,7 +10,9 @@ use dbObject\ObjectMail;
 $sourceLang = [
     'documents.pv_invitations.denied' => ['text' => 'Vous ne pouvez pas envoyer les invitations de ce PV.', 'context' => 'Error shown when the current user cannot send PV invitations.'],
     'documents.pv_invitations.title' => ['text' => 'Envoyer les invitations', 'context' => 'Title of the PV invitation sending popup.'],
-    'documents.pv_invitations.intro' => ['text' => 'Le lien ouvre le PV en direct. Chaque invité peut ajouter et modifier ses propres points tant que le PV n’est pas validé.', 'context' => 'Explanation shown above the PV invitation email editor.'],
+    'documents.pv_invitations.message_intro' => ['text' => 'Envoyez un message aux invites selectionnes avec leur lien individuel vers le PV.', 'context' => 'Explanation of PV emails available at every meeting stage.'],
+    'documents.pv_invitations.review_message' => ['text' => "Bonjour,\n\nLe PV de la reunion {title} est disponible pour relecture.\n\nMerci de le relire et de signaler les corrections via le lien ci-dessous.\n\n{organization}", 'context' => 'Default reminder email while a PV is under review.'],
+    'documents.pv_invitations.validated_message' => ['text' => "Bonjour,\n\nLe PV de la reunion {title} est valide. Vous pouvez le consulter via le lien ci-dessous.\n\n{organization}", 'context' => 'Default email for a validated PV.'],
     'documents.pv_invitations.no_recipient' => ['text' => 'Aucun invité ne possède une adresse e-mail valide.', 'context' => 'Empty state when no PV invitation email recipient can be found.'],
     'documents.pv_invitations.recipient_count' => ['one' => '{count} destinataire recevra un lien individuel vers la réunion.', 'other' => '{count} destinataires recevront un lien individuel vers la réunion.', 'context' => 'Recipient count shown in the PV invitation email editor.'],
     'documents.pv_invitations.recipients' => ['text' => 'Destinataires', 'context' => 'Accessible label for the PV invitation recipient selection.'],
@@ -110,8 +112,7 @@ $canSend = $documentId > 0
     && $organization->load($organizationId)
     && (int)$document->get('IDorganization') === $organizationId
     && $document->isPvDocument()
-    && $document->getPvStage() === Document::PV_STAGE_PREPARATION
-    && $document->canUserManagePvStructure($organizationId, $currentUserId);
+    && $document->canUserSendPvInvitations($organizationId, $currentUserId);
 
 if (!$canSend) {
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -135,7 +136,12 @@ $organizationName = trim((string)$organization->get('name'));
 if ($organizationName === '') {
     $organizationName = omoDocumentsPvSendInvitationT('documents.pv_invitations.fallback_organization');
 }
-$defaultMessage = omoDocumentsPvSendInvitationT('documents.pv_invitations.default_message', [
+$defaultMessageKey = match ($document->getPvStage()) {
+    Document::PV_STAGE_REVIEW => 'documents.pv_invitations.review_message',
+    Document::PV_STAGE_VALIDATED => 'documents.pv_invitations.validated_message',
+    default => 'documents.pv_invitations.default_message',
+};
+$defaultMessage = omoDocumentsPvSendInvitationT($defaultMessageKey, [
     'title' => $documentTitle,
     'organization' => $organizationName,
 ]);
@@ -210,7 +216,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             continue;
         }
 
-        $accessUrl = commonBuildUrl($shareLink->buildPvParticipationUrl(), commonGetRequestHost());
+        $accessUrl = commonBuildUrl($document->isPvValidated() ? $shareLink->buildShareUrl() : $shareLink->buildPvParticipationUrl(), commonGetRequestHost());
         try {
             $sendResult = omoDocumentsPvSendInvitationEmail($document, $organization, $recipient, $accessUrl, $message, $subject);
         } catch (\Throwable $error) {
@@ -275,7 +281,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </div>
     <div class="generic-drawer-content generic-stack">
-        <p class="generic-description generic-description--relaxed"><?= omoApiEscape(omoDocumentsPvSendInvitationT('documents.pv_invitations.intro')) ?></p>
+        <p class="generic-description generic-description--relaxed"><?= omoApiEscape(omoDocumentsPvSendInvitationT('documents.pv_invitations.message_intro')) ?></p>
         <?php if (count($recipients) === 0): ?>
             <p class="generic-feedback generic-feedback--warning"><?= omoApiEscape(omoDocumentsPvSendInvitationT('documents.pv_invitations.no_recipient')) ?></p>
         <?php else: ?>

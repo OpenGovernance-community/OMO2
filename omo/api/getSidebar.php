@@ -5,6 +5,10 @@ require_once dirname(__DIR__, 2) . '/common/tips/translations.php';
 commonReleaseReadOnlySession();
 
 $sourceLang = [
+    'sidebar.applications.more' => [
+        'text' => 'Autres applications',
+        'context' => 'Accessible label and tooltip for the sidebar overflow menu.'
+    ],
     'sidebar.applications.manage_label' => [
         'text' => 'Gérer',
         'context' => 'Label of the sidebar item used to open the application management picker.'
@@ -105,7 +109,17 @@ $renderMenuItem = static function (array $item) use ($escape) {
         <span class="label"><?= $escape(t('sidebar.applications.manage_label', [], $lang, $sourceLang)) ?></span>
     </div>
 <?php endif; ?>
+    <button type="button" class="menu-item sidebar-overflow-toggle" hidden
+        aria-haspopup="menu" aria-expanded="false" aria-controls="sidebar-overflow-menu"
+        aria-label="<?= $escape(t('sidebar.applications.more', [], $lang, $sourceLang)) ?>"
+        title="<?= $escape(t('sidebar.applications.more', [], $lang, $sourceLang)) ?>">
+        <span class="icon" aria-hidden="true">&#8942;</span>
+        <span class="label"><?= $escape(t('sidebar.applications.more', [], $lang, $sourceLang)) ?></span>
+    </button>
 </div>
+
+<div id="sidebar-overflow-menu" class="generic-menu-panel generic-menu-panel--floating sidebar-overflow-menu"
+    popover="manual" role="menu" aria-label="<?= $escape(t('sidebar.applications.more', [], $lang, $sourceLang)) ?>" hidden></div>
 
 <div class="menu-secondary">
 <?php if ($currentUserId > 0 && !$isStructuralShare): ?>

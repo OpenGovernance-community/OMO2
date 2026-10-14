@@ -593,7 +593,6 @@ $renderKanbanCard = static function (array $item, string $status) use ($context,
             <span><?= omoProjectsRenderVisibilityIcon($project) ?><?= omoApiEscape($responsibleLabel) ?></span>
             <?php if ($plannedEnd !== ''): ?><time datetime="<?= omoApiEscape((string)$plannedEnd) ?>"><?= omoApiEscape($plannedEnd) ?></time><?php endif; ?>
         </div>
-        <?php if ($scrumMode): $ownPoints = (int)($scrumNodes[(int)$project->getId()]['own'] ?? 0); ?><span class="generic-meta generic-meta--compact"><?= omoApiEscape(omoScrumT('own')) ?> : <?= $ownPoints ?> <?= omoApiEscape(omoScrumT($ownPoints === 1 ? 'point' : 'points')) ?></span><?php endif; ?>
         <?= omoProjectsRenderBlockedInfo($project, 'omo-project-card__blocked-info') ?>
         <?= omoProjectsRenderStatusBar($subprojectSummary, 'omo-project-card__subprojects', 'div', true) ?>
         <?php if ($canManageProject): ?>
@@ -855,7 +854,7 @@ $projectTexts = [
 <?php if ($organization->isApplicationEnabled('activities')): ?><link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/activities/activities.css') ?>"><?php endif; ?>
 <link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/projects/projects.css') ?>">
 <div
-    class="omo-projects omo-panel-view"
+    class="omo-projects omo-panel-view<?= $scrumMode ? ' omo-projects--embedded-board omo-panel-view--content-height' : '' ?>"
     id="omo-projects-root"
     data-omo-projects-scrum="<?= $scrumMode ? '1' : '0' ?>"
     data-omo-projects-oid="<?= (int)$organizationId ?>"

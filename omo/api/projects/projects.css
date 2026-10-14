@@ -13,6 +13,23 @@
     visibility: hidden;
 }
 
+/* Let the sprint own vertical scrolling, including the sticky column headers. */
+.omo-projects--embedded-board {
+    height: auto;
+    min-height: 0;
+    flex: 0 0 auto;
+    overflow: visible;
+}
+.omo-projects--embedded-board .omo-projects__body,
+.omo-projects--embedded-board .omo-projects__board,
+.omo-projects--embedded-board .omo-projects__column,
+.omo-projects--embedded-board .omo-projects__column-cards {
+    height: auto;
+    overflow: visible;
+}
+.omo-projects--embedded-board .omo-projects__board { grid-auto-columns: minmax(0, 1fr); gap: 0; }
+.omo-projects--embedded-board .omo-projects__column-header { flex: 0 0 auto; }
+
 .omo-projects__app-icon {
     color: #2563eb;
 }

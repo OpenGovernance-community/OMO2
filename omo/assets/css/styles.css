@@ -1655,9 +1655,47 @@ body {
 
 .menu-primary {
     min-height: 0;
-    overflow-y: auto;
-    overflow-x: hidden;
-    overscroll-behavior-y: contain;
+    overflow: hidden;
+}
+
+.sidebar-overflow-toggle {
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+}
+
+.sidebar-overflow-toggle[hidden] {
+    display: none;
+}
+
+.sidebar-overflow-toggle .icon {
+    flex-shrink: 0;
+    font-size: 26px;
+}
+
+.sidebar .sidebar-overflow-menu .menu-item {
+    width: 100%;
+    color: var(--color-text);
+}
+
+.sidebar-overflow-menu .menu-item--add::before {
+    max-width: 100%;
+}
+
+.sidebar-overflow-menu .label {
+    opacity: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sidebar-overflow-menu .icon {
+    flex-shrink: 0;
+}
+
+.sidebar-overflow-menu .icon-img {
+    --black-icon-filter-light: none;
 }
 
 .sidebar .menu-item {
@@ -2007,6 +2045,16 @@ body {
     background: var(--color-bg);
     color: var(--color-text);
 }
+
+/* Embedded views scroll with their parent; their drawers cover the parent viewport. */
+.omo-panel-view.omo-panel-view--content-height {
+    position: static;
+    height: auto;
+    min-height: 0;
+    flex: 0 0 auto;
+    overflow: visible;
+}
+.omo-panel-view--content-height > .omo-panel-view__body { overflow: visible; }
 
 .omo-panel-view__header {
     display: flex;
@@ -3900,21 +3948,17 @@ body.view-right .panel-right {
     gap: 10px;
 }
 
-.omo-project-embed-picker,
 .omo-event-embed-picker {
     display: grid;
     grid-template-columns: minmax(250px, 0.72fr) minmax(0, 1fr);
     gap: 18px;
 }
 
-.omo-project-embed-picker > .generic-tabs__list,
-.omo-project-embed-picker > .generic-tabs__panels,
 .omo-event-embed-picker > .generic-tabs__list,
 .omo-event-embed-picker > .generic-tabs__panels {
     grid-column: 2;
 }
 
-.omo-project-embed-picker > .omo-resource-picker__navigation,
 .omo-event-embed-picker > .omo-resource-picker__navigation {
     grid-column: 1;
     grid-row: 1 / span 2;
@@ -3923,7 +3967,6 @@ body.view-right .panel-right {
     border-left: 0;
 }
 
-.omo-project-embed-picker .omo-document-embed-picker__actions,
 .omo-event-embed-picker .omo-document-embed-picker__actions {
     position: sticky;
     bottom: 0;
@@ -3938,12 +3981,10 @@ body.view-right .panel-right {
         grid-template-columns: 1fr;
     }
 
-    .omo-project-embed-picker,
     .omo-event-embed-picker {
         display: block;
     }
 
-    .omo-project-embed-picker > .omo-resource-picker__navigation,
     .omo-event-embed-picker > .omo-resource-picker__navigation {
         display: none;
     }

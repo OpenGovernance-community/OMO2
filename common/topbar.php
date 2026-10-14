@@ -458,7 +458,8 @@ function commonRenderTopbar(array $options = [])
         echo '<link rel="stylesheet" href="' . commonAssetUrl('/common/assets/components.css') . '">' . PHP_EOL;
         echo '<script src="' . commonAssetUrl('/common/assets/components.js') . '" defer></script>' . PHP_EOL;
         echo '<script src="' . commonAssetUrl('/common/holon_scope_picker.js') . '" defer></script>' . PHP_EOL;
-        echo '<script src="/common/project-picker/project-picker.js?v=20260922-shared" defer></script>' . PHP_EOL;
+        echo '<link rel="stylesheet" href="' . commonAssetUrl('/common/project-picker/project-picker.css') . '">' . PHP_EOL;
+        echo '<script src="' . commonAssetUrl('/common/project-picker/project-picker.js') . '" defer></script>' . PHP_EOL;
         echo '<link rel="stylesheet" href="' . commonAssetUrl('/common/assets/topbar.css') . '">' . PHP_EOL;
         echo '<link rel="stylesheet" href="' . commonAssetUrl('/common/notifications/notifications.css') . '">' . PHP_EOL;
         echo '<script src="' . commonAssetUrl('/common/notifications/notifications.js') . '" defer></script>' . PHP_EOL;

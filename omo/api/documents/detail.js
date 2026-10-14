@@ -1,6 +1,16 @@
 (function () {
     'use strict';
 
+    document.querySelectorAll('[data-omo-pv-detail-send-url]').forEach(function (button) {
+        button.addEventListener('click', function () {
+            const menu = button.closest('details');
+            if (menu) menu.open = false;
+            if (typeof window.commonTopbarOpenModal === 'function') {
+                window.commonTopbarOpenModal(button.textContent, button.getAttribute('data-omo-pv-detail-send-url'), 'fetch');
+            }
+        });
+    });
+
     function extractFilename(response) {
         var disposition = response.headers.get('Content-Disposition') || '';
         var encodedMatch = disposition.match(/filename\*=UTF-8''([^;]+)/i);

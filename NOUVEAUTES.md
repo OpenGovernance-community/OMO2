@@ -1,5 +1,27 @@
 # Journal des nouveautés
 
+- Scrum / reevaluation en cours de sprint (2026-10-14) : conservation de la charge de depart comme reference fixe de 100 %. Les changements de taille enregistrent immediatement une nouvelle mesure avec les poids courants, sans double comptage des sous-projets. Le graphique adapte son echelle au-dela de 100 % ; les anciennes mesures et les poids initiaux sont conserves. Aucun changement de schema SQL.
+
+- Scrum / icone (2026-10-14) : remplacement de la fusee par l image de baskets fournie pour identifier les sprints. Catalogue local actualise et migration prevue pour la publication.
+
+- Scrum / edition des projets (2026-10-14) : le drawer de projet se superpose au sprint sur toute la hauteur visible, sans suivre la hauteur ni le defilement des colonnes. Fermeture independante et actions d edition accessibles sur ordinateur et mobile.
+
+- PV / e-mails aux invites (2026-10-14) : envoi disponible en preparation, en reunion, en relecture et apres validation. Acces par le menu ... hors preparation, selection des destinataires et message personnalisable conserves. Apres validation, le lien ouvre la lecture du PV ; droits de gestion et verrouillage du contenu conserves.
+
+- Leftbar / applications (2026-10-14) : remplacement du defilement par un bouton a trois points verticaux ouvrant les applications restantes dans un menu flottant. Recalcul au redimensionnement, au repli de la barre et au rechargement des applications ; ordre, navigation, pastilles et acces du bas conserves. Fermeture au clic exterieur ou avec Echap et navigation clavier. Verification navigateur ordinateur/mobile et PHP 8.5 ; sans migration SQL.
+
+- Scrum / deplacement des projets (2026-10-14) : mise a jour ciblee apres changement de colonne, sans recharger le sprint. Retrait a la source, actualisation de la destination, des compteurs et du graphique avec la charge restante. Affichage de la destination sur mobile et defilement si le projet est hors champ ; conservation du deplacement enregistre si le rafraichissement echoue.
+
+- Scrum / presentation (2026-10-14) : colonnes du tableau jointives et suppression du cadre interieur de la popup des tailles pour eviter une double bordure.
+
+- Scrum / ajustement des projets inclus (2026-10-14) : ouverture directe de la popup des tailles depuis Projets et sous-projets inclus. Liste regroupee par racine, poubelle sur les racines uniquement pour retirer tout leur ensemble du sprint. Tailles et retraits enregistres ensemble, avec possibilite d annuler ; droits de visibilite et verrouillage des sprints en cours conserves.
+
+- Scrum / burndown (2026-10-14) : liste detaillee des mesures masquee ; graphique et collecte des mesures conserves. Point courant agrandi, avec scintillement doux pendant les sprints en cours ; animation desactivee si la reduction des animations est demandee.
+
+- Scrum / selecteur partage avec les PV (2026-10-14) : meme composant de presentation et de filtrage pour la selection des projets, avec carte des cercles et roles, recherche et filtres Moi / Suivi / Tout le monde. Code et styles regroupes dans common/project-picker ; selection multiple et seconde etape des tailles conservees. Colonnes sans hauteur imposee ni defilement interne, entetes sticky sur le defilement du sprint. Verification des PV, des droits et du rendu ordinateur/mobile.
+
+- Scrum / preparation et interface (2026-10-14) : ouverture des sprints dans un sous-drawer avec fermeture, menu commun regroupant les archives, graphique et historique en pourcentages, entetes des colonnes conserves pendant le defilement du tableau. Ajout en popup en deux etapes : selection par cercles et roles, puis tailles des projets et sous-projets. Seule la date de fin est demandee ; demarrage explicite avec Demarrer maintenant, sans depart automatique des anciens sprints planifies. Tests PHP 8.5, parcours d import, visibilite et rendu ordinateur/mobile ; sans migration SQL.
+
 - Scrum / integration dans Dev (2026-10-14) : fusion avec les reglages des tableaux de pilotage et la visibilite des projets. Les projets du sprint restent soumis aux droits actuels dans le kanban, la selection, l equipe et les bilans archives ; retrait direct interdit pour un projet masque. Les mesures globales du sprint restent inchangees.
 
 - Tableaux de pilotage / ouverture des applications (2026-10-14) : reprise de la racine, de la portee et du public configures dans chaque bloc, y compris depuis une application deja ouverte. Les anciennes preferences de filtre ne remplacent plus ce contexte au chargement. Transmission de la portee aux Processus et au Reglement, du public aux Processus, Projets, Indicateurs et Activites. Repli sur Local selon les enfants de la racine choisie. Structure centree sur cette racine. Tests de navigation, preferences, sauvegarde, rendu PHP 8.5 et configuration ordinateur/mobile ; sans migration SQL.

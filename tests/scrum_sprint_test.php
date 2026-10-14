@@ -34,6 +34,12 @@ try {
     $sprintBase = ['IDorganization' => $oid, 'IDholon' => $hid, 'start_date' => ScrumSprint::now(), 'end_date' => ScrumSprint::now()->modify('+10 days'), 'state' => 'stopped', 'baseline' => 0, 'archived' => 0];
     $items['sprint'] = mcpFixture(ScrumSprint::class, ['title' => 'Scrum test sprint'] + $sprintBase);
     $sprint = $items['sprint'];
+    $sprint->sync(ScrumSprint::now());
+    mcpCheck($sprint->get('state') === 'stopped', 'Maintenance cannot start preparation');
+    $sprint->set('state', 'scheduled'); ScrumSprint::checkedSave($sprint);
+    $sprint->sync($sprint->endAt()->modify('+1 second'));
+    mcpCheck($sprint->get('state') === 'scheduled', 'Legacy scheduled sprints remain editable even after their former start or end date');
+    $sprint->set('state', 'stopped'); ScrumSprint::checkedSave($sprint);
     $allow = static fn () => true;
     $items['unestimated'] = mcpFixture(ScrumUnestimatedProject::class, ['title' => 'Unestimated', 'project_size' => '?'] + $base);
     scrumExpectError('estimate', fn () => ScrumSprint::locked($oid, fn () => $sprint->import([(int)$items['unestimated']->getId()], [], $allow, $allow)));
@@ -58,11 +64,24 @@ try {
     $items['child1']->set('title', 'Scrum renamed'); ScrumSprint::checkedSave($items['child1']);
     mcpCheck(count(ScrumSample::forSprint((int)$sprint->getId())) === 2, 'Unrelated edits must not add samples');
     $items['child1']->set('project_size', 'XXL'); ScrumSprint::checkedSave($items['child1']);
-    mcpCheck(ScrumSprint::calculate($sprint->nodes())['total'] === 8, 'Live re-estimation must not rewrite a running baseline');
+    $sprint->load((int)$sprint->getId(), true);
+    $samples = ScrumSample::forSprint((int)$sprint->getId());
+    mcpCheck((int)$sprint->get('baseline') === 8 && ScrumSprint::calculate($sprint->nodes())['total'] === 260, 'Live estimates change the total but preserve the starting reference');
+    mcpCheck(count($samples) === 3 && end($samples)['source'] === 'estimate' && (int)end($samples)['remaining'] === 4, 'Re-estimating a reviewed child records a sample without reopening its work');
+    $items['child1']->set('status', 'ready'); ScrumSprint::checkedSave($items['child1']);
+    $samples = ScrumSample::forSprint((int)$sprint->getId());
+    mcpCheck((int)end($samples)['remaining'] === 260 && (int)$samples[0]['remaining'] === 8, 'Reopened revised work can exceed 100 percent without rewriting history');
+    foreach (ScrumProject::forSprint((int)$sprint->getId()) as $link) {
+        if ((int)$link->get('project_key') === $childId) { mcpCheck((int)$link->get('points') === 4, 'Original individual estimates are retained'); }
+    }
     $items['child1']->set('project_size', 'M'); ScrumSprint::checkedSave($items['child1']);
     $items['child1']->set('status', 'ready'); ScrumSprint::checkedSave($items['child1']);
     $samples = ScrumSample::forSprint((int)$sprint->getId());
     mcpCheck((int)end($samples)['remaining'] === 8, 'Reopening must increase remaining work');
+    $items['parent']->set('project_size', 'L'); ScrumSprint::checkedSave($items['parent']);
+    $samples = ScrumSample::forSprint((int)$sprint->getId());
+    mcpCheck((int)end($samples)['remaining'] === 16 && $sprint->nodes()[$parentId]['own'] === 8, 'Parent re-estimation recalculates its residual without counting children twice');
+    $items['parent']->set('project_size', 'M'); ScrumSprint::checkedSave($items['parent']);
     $newChild = new Project(); foreach (['title' => 'Must fail', 'IDproject_parent' => $parentId] + $base as $key => $value) { $newChild->set($key, $value); }
     mcpCheck(($newChild->save()['errorCode'] ?? '') === 'sprint_tree_locked', 'An active tree cannot gain untracked children');
     $sprint->sample('daily'); $sampleCount = count(ScrumSample::forSprint((int)$sprint->getId())); $sprint->sample('daily');
@@ -70,7 +89,11 @@ try {
     $sprint->set('state', 'stopped'); ScrumSprint::checkedSave($sprint);
     ScrumSprint::locked($oid, fn () => $sprint->start());
     mcpCheck(count(ScrumSample::forSprint((int)$sprint->getId())) === 1, 'Restart replaces previous measurements');
+    $items['child1']->set('project_size', 'L'); ScrumSprint::checkedSave($items['child1']);
     ScrumSprint::locked($oid, fn () => $sprint->sync($sprint->endAt()->modify('+1 second')));
+    $samples = ScrumSample::forSprint((int)$sprint->getId());
+    mcpCheck((int)end($samples)['remaining'] === 20 && (int)$sprint->get('baseline') === 8, 'Final measurement retains re-estimation against the original reference');
+    mcpCheck($sprint->nodes()[$childId]['points'] === 16 && $sprint->nodes()[$childId]['own'] === 16, 'Archived snapshot keeps final revised weights');
     $frozen = $sprint->nodes(); $items['child1']->set('status', 'done'); ScrumSprint::checkedSave($items['child1']);
     mcpCheck($sprint->nodes() === $frozen, 'Finished snapshots cannot change with live projects');
     ScrumSprint::locked($oid, fn () => $items['otherSprint']->import([$parentId], [], $allow, $allow));
