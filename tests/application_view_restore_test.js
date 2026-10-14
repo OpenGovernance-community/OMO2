@@ -57,5 +57,5 @@ assert.equal(prepare(documentsUrl), documentsUrl);
 const app = fs.readFileSync(path.join(__dirname, '../omo/assets/js/app.js'), 'utf8');
 const shell = fs.readFileSync(path.join(__dirname, '../omo/index.php'), 'utf8');
 assert(app.includes('url: requestUrl,'), 'The initial AJAX request uses the restored preferences.');
-assert(shell.indexOf('src="assets/js/application-view-preferences.js') < shell.indexOf('src="assets/js/app.js'), 'Restoration is available synchronously before routing.');
+assert(shell.indexOf("commonAssetUrl('/omo/assets/js/application-view-preferences.js')") < shell.indexOf("commonAssetUrl('/omo/assets/js/app.js')"), 'Restoration is available synchronously before routing.');
 console.log('application_view_restore_test: OK');

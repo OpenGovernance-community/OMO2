@@ -634,7 +634,8 @@ window.commonPageScripts["/omo/api/stats/stats.js"] = function (pageConfig, page
     }
 
     function initializeViewFilter() {
-        currentSearch = readStoredSearch();
+        var fromDashboard = window.omoApplicationViewPreferencesIsDashboardNavigation?.(root);
+        currentSearch = fromDashboard ? '' : readStoredSearch();
         var quickSearch = root.querySelector('[data-omo-stats-quick-search]');
         if (quickSearch) {
             quickSearch.value = currentSearch;
@@ -651,6 +652,7 @@ window.commonPageScripts["/omo/api/stats/stats.js"] = function (pageConfig, page
             ? window.omoApplicationViewPreferencesGetPersonal(root)
             : null;
         var preferences = normalizeFilters(temporary || personalView || serverDefault || saved || defaultFilters || getActiveFilters());
+        if (fromDashboard) preferences = getActiveFilters();
         if ((Number.isInteger(initialIndicatorId) && initialIndicatorId > 0) || (Number.isInteger(initialGroupId) && initialGroupId > 0)) {
             preferences.scope = currentScope;
             preferences.assignment = currentAssignment;

@@ -1173,7 +1173,7 @@ $teamJsTranslations = [
     'mapSummaryOther' => omoTeamT('team.map.summary_other', ['count' => '{count}'], $lang, $sourceLang),
 ];
 ?>
-<script src="/omo/assets/js/application-view-preferences.js?v=20260917-filter-hierarchy"></script>
+<script src="<?= commonAssetUrl('/omo/assets/js/application-view-preferences.js') ?>"></script>
 <?= commonPageScriptTags('/omo/api/team/index.js', [
     'omoTeamMapEnabled' => ($leafletMapsEnabled),
     'omoTeamMapMembers' => $mapMemberPayload,
