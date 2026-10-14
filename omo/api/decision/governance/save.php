@@ -129,19 +129,7 @@ if (!is_array($blueprint) || count($blueprint) < 1 || count($blueprint) > 50) {
     $respond(422, ['status' => false, 'message' => 'Ajoutez au moins une proposition valide.']);
 }
 
-$rulesById = [];
-foreach (Rule::findDefinedInHolon($targetHolonId) as $rule) {
-    if ($rule instanceof Rule) {
-        $rulesById[(int)$rule->getId()] = $rule;
-    }
-}
-$rolesById = [];
-$roleStatesById = [];
 $contextOrganization = ($context['organization'] ?? null) instanceof \dbObject\Organization ? $context['organization'] : null;
-foreach (DecisionGovernanceAction::findRolesInGovernanceContext($targetHolon) as $role) {
-    $rolesById[(int)$role->getId()] = $role;
-    $roleStatesById[(int)$role->getId()] = omoDecisionGovernanceBuildRoleClientData($role, $contextOrganization, $targetHolonId)['state'];
-}
 
 $existingProposals = [];
 $existingActionsByProposal = [];
