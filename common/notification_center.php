@@ -684,10 +684,11 @@ if (!function_exists('notificationCenterDispatchProjectChatMessage')) {
         $url = notificationCenterBuildProjectUrl($organizationId, $projectId);
         $messageId = (int)$message->getId();
         $actorUserId = (int)$message->get('IDuser');
-        $ownerUserIds = [
+        $canSeeProject = static fn($userId): bool => $project->currentViewerCanAccessVisibility((int)$userId);
+        $ownerUserIds = array_values(array_filter([
             (int)$project->get('IDuser'),
             (int)$project->get('IDuser_proposed'),
-        ];
+        ], $canSeeProject));
 
         notificationCenterCreateForUsers(
             $organizationId,
@@ -703,7 +704,7 @@ if (!function_exists('notificationCenterDispatchProjectChatMessage')) {
         notificationCenterCreateForUsers(
             $organizationId,
             'project_chat_participant',
-            \dbObject\ChatMessage::getParticipantUserIdsForThread((int)$thread->getId()),
+            array_values(array_filter(\dbObject\ChatMessage::getParticipantUserIdsForThread((int)$thread->getId()), $canSeeProject)),
             'project-chat-participant-' . $messageId,
             $title,
             $body,
@@ -725,7 +726,8 @@ if (!function_exists('notificationCenterDispatchProjectStatusChange')) {
             return 0;
         }
 
-        $followerUserIds = \dbObject\ProjectFollower::getActiveUserIdsForProject($projectId);
+        $followerUserIds = array_values(array_filter(\dbObject\ProjectFollower::getActiveUserIdsForProject($projectId),
+            static fn($userId): bool => $project->currentViewerCanAccessVisibility((int)$userId)));
         if ($followerUserIds === []) {
             return 0;
         }

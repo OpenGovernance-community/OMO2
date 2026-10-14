@@ -370,36 +370,38 @@ if ((int)($_GET['cid'] ?? 0) > 0) {
             <?php endif; ?>
         </section>
     <?php endif; ?>
-    <?php if ($usesPriority || $usesImportance || $usesSize): ?>
-        <div class="omo-project-detail__indicators" aria-label="<?= omoApiEscape(omoProjectsT('projects.detail.status')) ?>">
-            <?php if ($usesImportance): ?>
-                <span
-                    class="omo-project-detail__indicator omo-project-detail__importance"
-                    role="img"
-                    aria-label="<?= omoApiEscape(omoProjectsT('projects.detail.importance') . ': ' . $calculatedImportanceLabel . ($definedImportance !== null ? '/' . $definedImportance : '')) ?>"
-                    <?= $definedImportance !== null ? 'title="' . omoApiEscape(omoProjectsT('projects.detail.importance_values_help')) . '"' : '' ?>
-                >
-                    <span class="omo-project-detail__indicator-label" aria-hidden="true"><?= omoApiEscape(omoProjectsT('projects.detail.importance')) ?> :</span>
-                    <span class="omo-project-detail__importance-stars" aria-hidden="true">
-                        <?php foreach ([1, 2, 3, 4, 5] as $starLevel): ?><span class="omo-project-detail__importance-star<?= $starLevel <= $calculatedImportanceLevel ? ' is-active' : '' ?>">&#9733;</span><?php endforeach; ?>
-                    </span>
-                    <span class="omo-project-detail__importance-values" aria-hidden="true">(<?= omoApiEscape($calculatedImportanceLabel) ?><?= $definedImportance !== null ? '/' . omoApiEscape((string)$definedImportance) : '' ?>)</span>
+    <div class="omo-project-detail__indicators" aria-label="<?= omoApiEscape(omoProjectsT('projects.detail.status')) ?>">
+        <?php if ($usesImportance): ?>
+            <span
+                class="omo-project-detail__indicator omo-project-detail__importance"
+                role="img"
+                aria-label="<?= omoApiEscape(omoProjectsT('projects.detail.importance') . ': ' . $calculatedImportanceLabel . ($definedImportance !== null ? '/' . $definedImportance : '')) ?>"
+                <?= $definedImportance !== null ? 'title="' . omoApiEscape(omoProjectsT('projects.detail.importance_values_help')) . '"' : '' ?>
+            >
+                <span class="omo-project-detail__indicator-label" aria-hidden="true"><?= omoApiEscape(omoProjectsT('projects.detail.importance')) ?> :</span>
+                <span class="omo-project-detail__importance-stars" aria-hidden="true">
+                    <?php foreach ([1, 2, 3, 4, 5] as $starLevel): ?><span class="omo-project-detail__importance-star<?= $starLevel <= $calculatedImportanceLevel ? ' is-active' : '' ?>">&#9733;</span><?php endforeach; ?>
                 </span>
-            <?php endif; ?>
-            <?php if ($usesPriority && $projectPriority !== null): ?>
-                <span class="omo-project-detail__indicator">
-                    <span class="omo-project-detail__indicator-label"><?= omoApiEscape(omoProjectsT('projects.detail.priority')) ?> :</span>
-                    <span class="generic-project-priority generic-project-priority--p<?= (int)$projectPriority ?>" title="<?= omoApiEscape(omoProjectsT('projects.detail.priority') . ': P' . (int)$projectPriority) ?>">P<?= (int)$projectPriority ?></span>
-                </span>
-            <?php endif; ?>
-            <?php if ($usesSize): ?>
-                <span class="omo-project-detail__indicator">
-                    <span class="omo-project-detail__indicator-label"><?= omoApiEscape(omoProjectsT('projects.detail.size')) ?> :</span>
-                    <span class="omo-project-card__size" title="<?= omoApiEscape(omoProjectsT('projects.detail.size')) ?>"><?= omoApiEscape($projectSize) ?></span>
-                </span>
-            <?php endif; ?>
-        </div>
-    <?php endif; ?>
+                <span class="omo-project-detail__importance-values" aria-hidden="true">(<?= omoApiEscape($calculatedImportanceLabel) ?><?= $definedImportance !== null ? '/' . omoApiEscape((string)$definedImportance) : '' ?>)</span>
+            </span>
+        <?php endif; ?>
+        <?php if ($usesPriority && $projectPriority !== null): ?>
+            <span class="omo-project-detail__indicator">
+                <span class="omo-project-detail__indicator-label"><?= omoApiEscape(omoProjectsT('projects.detail.priority')) ?> :</span>
+                <span class="generic-project-priority generic-project-priority--p<?= (int)$projectPriority ?>" title="<?= omoApiEscape(omoProjectsT('projects.detail.priority') . ': P' . (int)$projectPriority) ?>">P<?= (int)$projectPriority ?></span>
+            </span>
+        <?php endif; ?>
+        <?php if ($usesSize): ?>
+            <span class="omo-project-detail__indicator">
+                <span class="omo-project-detail__indicator-label"><?= omoApiEscape(omoProjectsT('projects.detail.size')) ?> :</span>
+                <span class="omo-project-card__size" title="<?= omoApiEscape(omoProjectsT('projects.detail.size')) ?>"><?= omoApiEscape($projectSize) ?></span>
+            </span>
+        <?php endif; ?>
+        <span class="omo-project-detail__indicator">
+            <?= omoProjectsRenderVisibilityIcon($project) ?>
+            <span class="omo-project-detail__indicator-label" aria-hidden="true"><?= omoApiEscape(omoProjectsT('projects.visibility.' . $project->getVisibilityType())) ?></span>
+        </span>
+    </div>
     <section class="generic-section omo-project-detail__section">
         <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape(omoProjectsT('projects.detail.description')) ?></h3>
         <?php if (count($projectBreadcrumb) > 0): ?>

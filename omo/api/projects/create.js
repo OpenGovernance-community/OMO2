@@ -19,6 +19,21 @@ window.commonPageScripts["/omo/api/projects/create.js"] = function (pageConfig, 
     var blockedAuto = form.querySelector('[data-omo-project-blocked-auto]');
     var blockedTarget = form.querySelector('[data-omo-project-blocked-target]');
     var blockedTargetField = form.querySelector('[data-omo-project-blocked-target-field]');
+    var assignedHolonField = form.querySelector('[data-omo-project-holon-id]');
+    function syncVisibilityScope() {
+        var holonId = Number(assignedHolonField && assignedHolonField.value || 0);
+        form.querySelectorAll('[name="visibility_type"]').forEach(function (input) {
+            input.disabled = (input.value === 'role' && holonId <= 0)
+                || (input.value === 'circle' && !(pageConfig.visibilityHolons || {})[holonId]);
+            var label = form.querySelector('label[for="' + input.id + '"]');
+            if (label) label.classList.toggle('is-disabled', input.disabled);
+        });
+        var selected = form.querySelector('[name="visibility_type"]:checked');
+        if (selected && selected.disabled) form.querySelector('[name="visibility_type"][value="organization"]').checked = true;
+        if (typeof window.omoSyncVisibilityChoices === 'function') window.omoSyncVisibilityChoices(form);
+    }
+    if (assignedHolonField) assignedHolonField.addEventListener('change', syncVisibilityScope);
+    syncVisibilityScope();
 
     function escapeHtml(value) {
         return String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');

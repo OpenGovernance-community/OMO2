@@ -56,7 +56,7 @@ if ($proposalId > 0) {
 $contextHolon = DeferredProposal::loadAllowedProjectTargetHolon($organizationId, $holonId, $operation, $collectiveHolonId);
 if (!$contextHolon instanceof Holon) { http_response_code(403); echo '<div class="omo-empty-state">' . omoApiEscape($tr('denied')) . '</div>'; exit; }
 $project = new Project();
-if ($operation !== DeferredProposal::OPERATION_CREATE && (!$project->load($projectId) || (int)$project->get('IDorganization') !== $organizationId || (int)$project->get('IDholon') !== $holonId)) {
+if ($operation !== DeferredProposal::OPERATION_CREATE && (!$project->load($projectId) || (int)$project->get('IDorganization') !== $organizationId || (int)$project->get('IDholon') !== $holonId || !$project->currentViewerCanAccessVisibility($userId))) {
     http_response_code(404); echo '<div class="omo-empty-state">' . omoApiEscape($tr('unavailable')) . '</div>'; exit;
 }
 $state = $proposal instanceof DeferredProposal && $operation !== DeferredProposal::OPERATION_DELETE

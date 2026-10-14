@@ -97,7 +97,7 @@ if ($targetType === DeferredProposal::TARGET_RULE) {
         $projects = new ArrayProject();
         $projects->loadForContext($organizationId, $contextHolonId, 'contextual', [], false, true);
         foreach ($projects as $project) {
-            if (!$project instanceof Project || (int)$project->getId() <= 0) continue;
+            if (!$project instanceof Project || (int)$project->getId() <= 0 || !$project->currentViewerCanAccessVisibility()) continue;
             $objects[] = ['id' => (int)$project->getId(), 'label' => trim((string)$project->get('title')), 'state' => DeferredProposal::captureProjectState($project)];
         }
         usort($objects, static fn (array $left, array $right): int => strcasecmp((string)$left['label'], (string)$right['label']));

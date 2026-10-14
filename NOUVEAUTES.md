@@ -1,5 +1,17 @@
 # Journal des nouveautés
 
+- Projets / choix du parent (2026-10-14) : bouton fusee accole au champ du projet parent, comme pour l espace associe. Libelle conserve dans l infobulle et pour les lecteurs d ecran ; presentation compacte aussi sur mobile.
+
+- Projets / indicateur de visibilite (2026-10-14) : petite icone avant la personne en charge dans les cartes, listes et Gantt, avec une infobulle explicative. Dans le detail, icone et libelle integres a la ligne des indicateurs strategiques, priorite et taille, y compris lorsque ces indicateurs sont desactives.
+
+- Projets / visibilite (2026-10-14) : selecteur glissant Personnel, Role / holon, Cercle, Organisation et Tout public dans l editeur. Le createur reste soumis a la portee choisie ; apres son depart, un projet personnel devient visible aux membres du holon. La personne en charge conserve l acces ; un admin d organisation avec son mode admin actif voit tous les projets. Filtres appliques aux listes, details, actions, recherche et selecteurs ; portee conservee a l export/import et historisee. Migration pour les projets existants, visibles dans l organisation par defaut.
+
+- Organisations / rechargement apres sauvegarde (2026-10-14) : le formulaire est marque comme enregistre dans la protection commune avant de proposer le rechargement. Suppression du faux avertissement de perte des modifications ; une sauvegarde en erreur conserve la protection.
+
+- Organisations / choix d un modele public (2026-10-14) : fiches selectionnables avec banniere, logo, couleur et description libre en texte simple. La mention Partage par est retiree ; un champ URL facultatif fournit le lien En savoir plus. Champs disponibles a la creation et a l edition, conserves a l export/import ; URL HTTP/HTTPS validee, texte echappe et retours a la ligne preserves. Migration description/url et tests PHP 8.5.
+
+- Structure / bouton de creation (2026-10-14) : le libelle utilise le nom du modele de holon selectionne, par exemple Fonction, plutot que son type de base Role. Mise a jour lors du changement de modele.
+
 - Organisations / panneau initial (2026-10-14) : correction de la reference a la classe Organization dans le panneau sans structure. getOrg.php rend maintenant les informations completes des nouvelles organisations sans modele. Test de regression du endpoint sous PHP 8.5, sans migration SQL.
 
 - Decisions / sauvegarde de gouvernance (2026-10-14) : suppression du chargement inutilise des regles et des editeurs de tous les roles du cercle. Seuls les objets des modifications sont prepares et controles. Test HTTP avec 20 roles non concernes : 2236 a 484 requetes SQL ; controles des cibles hors contexte et des droits retires conserves.
