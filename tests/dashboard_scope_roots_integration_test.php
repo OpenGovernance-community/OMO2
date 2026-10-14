@@ -108,6 +108,8 @@ try {
     dashboardRootCheck(!preg_match('/Warning:|Fatal error:|Deprecated:/', $html), 'PHP diagnostics during dashboard rendering.');
     $dom = new DOMDocument(); @$dom->loadHTML('<?xml encoding="UTF-8">' . $html);
     $xpath = new DOMXPath($dom);
+    $dashboardScript = $xpath->query('//script[contains(@src, "/omo/assets/js/personal-space-dashboard.js")]')->item(0);
+    dashboardRootCheck($dashboardScript !== null && $dashboardScript->getAttribute('src') === commonAssetUrl('/omo/assets/js/personal-space-dashboard.js'), 'The configurator script URL must invalidate cached older versions.');
     $cards = $xpath->query('//section[@data-omo-dashboard-module="documents"]');
     dashboardRootCheck($cards->length === 9, 'The dashboard must render all nine document configurations.');
     $index = 0;
