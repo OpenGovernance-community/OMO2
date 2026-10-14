@@ -1454,6 +1454,20 @@
 			return $parent;
 		}
 
+		/** Resolve a relative dashboard root without leaving the current organization. */
+		public function getDashboardScopeRoot($scopeRoot, ?self $organizationRoot): ?self
+		{
+			if (!$organizationRoot || (int)$organizationRoot->getId() <= 0) return null;
+			$rootId = (int)$organizationRoot->getId();
+			if ((int)$this->getId() !== $rootId && (int)$this->get('IDholon_org') !== $rootId) return null;
+			$scopeRoot = UserHolon::normalizeDashboardModuleScopeRoot($scopeRoot);
+			if ($scopeRoot === 'organization') return $organizationRoot;
+			if ($scopeRoot !== 'parent' || (int)$this->getId() === $rootId) return $this;
+			$parent = $this->getParentHolonThroughGroups();
+			return $parent && ((int)$parent->getId() === $rootId || (int)$parent->get('IDholon_org') === $rootId)
+				? $parent : null;
+		}
+
 		/** Match a parent across groups without crossing another role or circle. */
 		public function isChildOfThroughGroups($parent): bool
 		{
