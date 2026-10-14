@@ -98,6 +98,21 @@ try {
     dashboardRootCheck(!empty($role->save()['status']), 'Cannot save dashboard layout.');
     $reloadedRole = new Holon(); $reloadedRole->load($role->getId());
     dashboardRootCheck($reloadedRole->getDashboardDefaultLayout()[3]['settings']['scopeRoot'] === 'parent', 'Root selection must survive storage.');
+    // Render an instance whose direct template inherits its dashboard from a parent template.
+    $simpleTemplate = $makeHolon('Simple role template', 1, $fixtureRoot);
+    $simpleTemplate->set('visible', false);
+    $simpleTemplate->set('templatename', 'Simple role');
+    dashboardRootCheck(!empty($simpleTemplate->save()['status']), 'Cannot save base template.');
+    $memoryTemplate = $makeHolon('Memory role template', 1, $fixtureRoot);
+    $memoryTemplate->set('visible', false);
+    $memoryTemplate->set('templatename', 'Memory role');
+    $memoryTemplate->set('IDholon_template', $simpleTemplate->getId());
+    dashboardRootCheck(!empty($memoryTemplate->save()['status']), 'Cannot save child template.');
+    $role->clearDashboardDefaultLayout();
+    $role->set('IDholon_template', $memoryTemplate->getId());
+    dashboardRootCheck(!empty($role->save()['status']), 'Cannot attach the inherited template.');
+    $fixtureOrganization->setDashboardTemplateDefaultLayout($memoryTemplate->getDashboardDirectTemplateLayoutKey(), $layouts);
+    dashboardRootCheck(!empty($fixtureOrganization->save()['status']), 'Cannot save parent template dashboard.');
     $_GET = ['oid' => $oid, 'cid' => (int)$role->getId()];
     $_SERVER['HTTP_HOST'] = 'localtest.me';
     $_SERVER['REQUEST_METHOD'] = 'GET';
@@ -124,8 +139,9 @@ try {
     }
     dashboardRootCheck($xpath->query('//section[@data-omo-dashboard-module]')->length === count($layouts), 'Every scoped module must render.');
     dashboardRootCheck($xpath->query('//section[@data-omo-dashboard-module]//*[@data-omo-personal-space-route-token]')->length === count($layouts), 'Every scoped module must be enabled during the test.');
+    dashboardRootCheck($xpath->query('//*[@data-omo-dashboard-editor-reset="organization_template_reset"]')->length === 0, 'An inherited parent dashboard must not offer a reset of the unconfigured direct template.');
     if (($argv[1] ?? '') === '--html') file_put_contents(dirname(__DIR__) . '/tmp/dashboard-scope-roots.html', $html);
-    echo "dashboard_scope_roots_integration_test: OK (nine combinations, persisted settings, all module rendering, history and links)\n";
+    echo "dashboard_scope_roots_integration_test: OK (nine combinations, persisted settings, inherited template rendering, history and links)\n";
 } finally {
     $pdo->rollBack();
 }

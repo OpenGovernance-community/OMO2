@@ -479,7 +479,7 @@ if (!empty($dashboardAccess['canSavePersonal']) && $dashboardPersonalLayout !== 
 if ($canSaveDashboardHolonDefault && $dashboardHolonDefaultLayout !== null) {
     $dashboardResetOptions[] = array('scope' => 'holon_reset', 'textKey' => 'personal_space.editor.reset_holon_default', 'templateKey' => '');
 }
-if ($canSaveDashboardOrganizationTemplateDefault && $dashboardOrganizationTemplateLayout !== null) {
+if ($canSaveDashboardOrganizationTemplateDefault && $organization->getDashboardTemplateDefaultLayout($dashboardTemplateKey) !== null) {
     $dashboardResetOptions[] = array('scope' => 'organization_template_reset', 'textKey' => 'personal_space.editor.reset_organization_template_default', 'templateKey' => $dashboardTemplateKey);
 }
 if ($canSaveDashboardOrganizationModelDefault && $dashboardOrganizationModelLayout !== null) {

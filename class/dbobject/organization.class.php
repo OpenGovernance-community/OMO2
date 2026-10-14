@@ -522,8 +522,14 @@
 
 		public function getDashboardTemplateDefaultLayoutForHolon(\dbObject\Holon $holon): ?array
 		{
-			$templateKey = $holon->getDashboardDirectTemplateLayoutKey();
-			return $templateKey === '' ? null : $this->getDashboardTemplateDefaultLayout($templateKey);
+			// Nearest configured template wins; an explicitly empty layout stops inheritance.
+			foreach ($holon->getDashboardTemplateLayoutKeys(false) as $templateKey) {
+				$layout = $this->getDashboardTemplateDefaultLayout($templateKey);
+				if ($layout !== null) {
+					return $layout;
+				}
+			}
+			return null;
 		}
 
 		public function setDashboardTemplateDefaultLayout($templateKey, array $layout): bool
