@@ -60,6 +60,9 @@ try {
     $actor = (int)iterator_to_array($users, false)[0]->getId();
     $_SESSION['currentUser'] = $actor;
     [$source, $root, $template, $instance] = configFixture('Archive config fixture', $actor);
+    $source->set('description', "Public model description\nSecond line");
+    $source->set('url', 'https://example.org/model');
+    configSave($source);
     [$model, $modelRoot, $modelTemplate] = configFixture('Mapped config fixture', $actor);
     $view = ['scope' => 'descendants', 'view' => 'list'];
     $modelView = ['scope' => 'contextual', 'view' => 'cards'];
@@ -105,6 +108,7 @@ try {
     $selected = array_fill_keys(OrganizationExport::MODULES, false);
     $selected['structure'] = true;
     $payload = json_decode(json_encode(OrganizationExport::build($source, $selected)), true);
+    configCheck($payload['organization']['description'] === $source->get('description') && $payload['organization']['url'] === $source->get('url'), 'Export includes public description and URL');
     configCheck(isset($payload['configuration']), 'Export includes configuration');
     $sourceConfig = $payload['configuration'];
     $modelConfig = OrganizationTransferConfiguration::capture($model);
@@ -117,6 +121,7 @@ try {
             configCheck(!empty($result['status']), 'Import ' . $system . ': ' . ($result['message'] ?? 'failed'));
             $target = $result['organization'];
             $target->load($target->getId(), true);
+            configCheck($target->get('description') === $source->get('description') && $target->get('url') === $source->get('url'), 'Description and URL survive import');
             $expected = $mapped ? $modelConfig : $sourceConfig;
             configCheck(OrganizationTransferConfiguration::capture($target) == $expected, 'Configuration priority ' . $system . ' mapped=' . (int)$mapped);
             configCheck($target->getApplicationViewBaseTypeDefault('projects', 2) === ($mapped ? $modelView : $view), 'Type app default');

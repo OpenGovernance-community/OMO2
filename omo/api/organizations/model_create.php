@@ -11,6 +11,8 @@ $modelId = (int)($_POST['model_id'] ?? 0);
 $organizationName = trim((string)($_POST['name'] ?? ($_POST['organization_name'] ?? '')));
 $definitionOverrides = array_intersect_key($_POST, array_flip(array(
     'name',
+    'description',
+    'url',
     'shortname',
     'domain',
     'color',

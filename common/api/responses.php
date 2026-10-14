@@ -208,7 +208,7 @@ function omoApiResponseSchemas(): array
         'responsible_user_id' => $idNull, 'title' => $s, 'description' => $s + ['description' => 'Safe native HTML.'],
         'status' => $s + ['enum' => ['someday', 'ready', 'in_progress', 'blocked', 'review', 'done']], 'status_label' => $s,
         'priority' => $idNull, 'importance' => $idNull, 'calculated_importance' => ['type' => 'number', 'description' => 'Native calculated score, read-only.'],
-        'planned_start_date' => $dateNull, 'planned_end_date' => $dateNull, 'project_size' => $s,
+        'planned_start_date' => $dateNull, 'planned_end_date' => $dateNull, 'project_size' => $s, 'visibility_type' => $s,
         'blocked_reason' => $textNull, 'blocked_until' => $dateNull, 'blocked_auto_reactivate' => $b, 'blocked_reactivate_status' => $s,
         'blocked_reason_required' => $b, 'blocked_until_required' => $b,
         'version' => $s + ['description' => 'Opaque revision to copy into expected_version. Replay returns current fields and version, not a historical snapshot.'],
