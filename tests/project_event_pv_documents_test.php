@@ -102,8 +102,52 @@ try {
     $pv->set('IDorganization', $foreignOrg->getId()); projectPvSave($pv);
     projectPvCheck(!isset($list($project)[$pv->getId()]), 'Cross-organization PV must not appear');
     $candidates = new ArrayDocument();
-    $candidates->loadPvForProjectEvents((int)$project->getId(), (int)$foreignOrg->getId());
+    $candidates->loadForProjectEvents((int)$project->getId(), (int)$foreignOrg->getId(), $uid);
     projectPvCheck(count($candidates) === 0, 'Loader checks project organization');
+
+    $linkEvent = projectPvFixture(Event::class, ['IDorganization' => $oid, 'IDproject' => $project->getId(),
+        'IDuser' => $owner->getId(), 'title' => 'Meeting with external link', 'status' => Event::STATUS_CONFIRMED,
+        'start_at' => new DateTimeImmutable('+1 day'), 'end_at' => new DateTimeImmutable('+1 day +1 hour'), 'active' => 1]);
+    $attachments = [];
+    foreach (['external_link', 'uploaded_file', 'html'] as $type) {
+        $attachment = projectPvFixture(Document::class, ['IDorganization' => $oid, 'IDuser' => $owner->getId(),
+            'IDevent' => $linkEvent->getId(), 'documenttype' => $type, 'title' => 'Meeting ' . $type,
+            'externalurl' => $type === 'external_link' ? 'https://miro.com/app/board/project-test/' : null, 'active' => 1]);
+        projectPvCheck(!empty($attachment->saveVisibilityRule('organization')['status']), 'Public attachment visibility');
+        $attachments[] = $attachment;
+    }
+    $miro = $attachments[0];
+    $shared = projectPvFixture(Document::class, ['IDorganization' => $oid, 'IDuser' => $owner->getId(),
+        'documenttype' => 'external_link', 'title' => 'Shared reference', 'externalurl' => 'https://example.invalid/shared', 'active' => 1]);
+    projectPvCheck(!empty($shared->saveVisibilityRule('organization')['status']), 'Shared attachment visibility');
+    projectPvCheck(\dbObject\EventSharedDocument::attach($linkEvent, $shared), 'Share document with meeting');
+    projectPvCheck(\dbObject\EventSharedDocument::attach($linkEvent, $miro), 'Duplicate direct/shared meeting association');
+    $attachments[] = $shared;
+    $visible = $list($project);
+    foreach ($attachments as $attachment) {
+        projectPvCheck(isset($visible[$attachment->getId()]) && !$visible[$attachment->getId()]['isDirectAssociation'],
+            'Project lists the event attachment without direct detach: ' . $attachment->get('title') . ' / visible=' . json_encode(array_keys($visible)));
+    }
+    projectPvCheck(count($visible) === 5, 'Memo plus four distinct event documents');
+    $direct = projectPvFixture(ProjectDocument::class, ['IDproject' => $project->getId(), 'IDdocument' => $miro->getId()]);
+    projectPvCheck(count($list($project)) === 5 && $list($project)[$miro->getId()]['isDirectAssociation'], 'Direct project link takes precedence without duplication');
+    $direct->delete();
+    projectPvCheck(!empty($miro->saveVisibilityRule('self')['status']), 'Private link visibility');
+    projectPvCheck(!isset($list($project)[$miro->getId()]), 'Private external link remains hidden');
+    $miro->saveVisibilityRule('organization');
+    $shared->set('active', 0); projectPvSave($shared);
+    projectPvCheck(!isset($list($project)[$shared->getId()]), 'Archived shared document excluded');
+    $shared->set('active', 1); projectPvSave($shared);
+    foreach ([Event::STATUS_CANCELLED, Event::STATUS_DRAFT] as $status) {
+        $linkEvent->set('status', $status); projectPvSave($linkEvent);
+        projectPvCheck(count($list($project)) === 1, 'Cancelled/draft event attachments stay hidden');
+    }
+    $linkEvent->set('status', Event::STATUS_CONFIRMED); $linkEvent->set('active', 0); projectPvSave($linkEvent);
+    projectPvCheck(count($list($project)) === 1, 'Inactive event attachments stay hidden');
+    $linkEvent->set('active', 1); $linkEvent->set('IDproject', $otherProject->getId()); projectPvSave($linkEvent);
+    projectPvCheck(count($list($project)) === 1 && count($list($otherProject)) === 4, 'All event attachments follow a project change');
+    $linkEvent->set('IDorganization', $foreignOrg->getId()); projectPvSave($linkEvent);
+    projectPvCheck($list($otherProject) === [], 'Shared attachments cannot cross organizations');
     echo "project_event_pv_documents_test: OK\n";
 } finally {
     if ($pdo->inTransaction()) { $pdo->rollBack(); }

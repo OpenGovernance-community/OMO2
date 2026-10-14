@@ -242,7 +242,7 @@ if (!function_exists('omoProjectsSourceLang')) {
             'projects.resources.import_recurring_task' => ['text' => 'Importer une tache recurrente', 'context' => 'Open the existing recurring task selector from a project.'],
             'projects.resources.recurring_task_menu' => ['text' => 'Options des taches recurrentes', 'context' => 'Accessible label for the recurring task creation and import menu.'],
             'projects.resources.visible_in_holon' => ['text' => 'Afficher dans l espace', 'context' => 'Checkbox keeping a project resource visible in its space.'],
-            'projects.resources.visible_in_holon_hint' => ['text' => 'Les elements lies a un projet sont masques dans l espace par defaut. Cochez pour les afficher aux deux endroits.', 'context' => 'Help for document, indicator and recurring task space visibility.'],
+            'projects.resources.visible_in_holon_hint' => ['text' => 'Les elements lies a un projet ou un evenement sont masques dans l espace par defaut. Cochez pour les afficher aux deux endroits.', 'context' => 'Help for document, indicator and recurring task space visibility.'],
             'projects.resources.visible_in_holon_required' => ['text' => 'Cet element est lie a plusieurs projets. Il reste visible dans l espace et cette option ne peut pas etre decochee.', 'context' => 'Help explaining why space visibility is mandatory for a resource shared by several projects.'],
             'projects.resources.existing' => ['text' => 'Élément existant', 'context' => 'Existing resource picker tab.'],
             'projects.resources.new' => ['text' => 'Nouvel élément', 'context' => 'New resource picker tab.'],
@@ -1001,9 +1001,9 @@ if (!function_exists('omoProjectsGetVisibleDocuments')) {
                 ];
             }
         }
-        $eventPvs = new \dbObject\ArrayDocument();
-        $eventPvs->loadPvForProjectEvents((int)$project->getId(), (int)$organizationId);
-        foreach ($eventPvs as $document) {
+        $eventDocuments = new \dbObject\ArrayDocument();
+        $eventDocuments->loadForProjectEvents((int)$project->getId(), (int)$organizationId, $currentUserId);
+        foreach ($eventDocuments as $document) {
             $candidates[(int)$document->getId()] ??= [
                 'document' => $document, 'addedAt' => null, 'isDirectAssociation' => false,
             ];

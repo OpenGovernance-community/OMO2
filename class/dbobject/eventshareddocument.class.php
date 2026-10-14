@@ -5,6 +5,7 @@ namespace dbObject;
 class EventSharedDocument extends DbObject
 {
     public static function tableName() { return 'event_shared_document'; }
+    public static function isStorageAvailable(): bool { return self::tableExists(self::tableName()); }
     public static function rules()
     {
         return [[['IDevent', 'IDdocument'], 'required'], [['IDevent', 'IDdocument'], 'fk'], [['id'], 'integer'], [['id'], 'safe']];

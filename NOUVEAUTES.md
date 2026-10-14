@@ -1,5 +1,9 @@
 # Journal des nouveautés
 
+- Projets / documents des evenements (2026-10-14) : l onglet Documents reprend aussi les liens externes, fichiers et autres documents des evenements du projet, en plus des PV. Documents partages inclus, doublons evites et droits conserves ; archives et evenements annules, inactifs ou brouillons inaccessibles exclus. La meme case Afficher dans le holon est disponible pour les documents lies a un evenement : masques par defaut dans la liste du holon, ils restent accessibles depuis la reunion et le projet. Tests PHP 8.5 et verification du cas local ; sans migration SQL.
+
+- Calendrier / documents du detail (2026-10-14) : affichage de tous les documents associes a une reunion, dont les liens externes et fichiers aux cotes du PV, avec un bouton propre a chacun. Documents partages inclus sans doublon ; droits de consultation conserves et archives exclus. Tests PHP 8.5 du rendu, des permissions et du remplacement d un document supprime par un lien ; verification ordinateur/mobile, sans migration SQL.
+
 - Calendrier / invites du detail (2026-10-14) : chargement du script des invitations depuis le calendrier pour activer l accordeon des invites dans les details ouverts dynamiquement. Verification du contenu serveur et de l ouverture sur ordinateur/mobile, avec nouvelle tentative apres erreur ; sans migration SQL.
 
 - Calendrier / pieces jointes (2026-10-14) : activation des champs de lien et de fichier lors de l ouverture du formulaire depuis le calendrier ou un projet. Ajout du selecteur de fichier, transmission au stockage et validation avant creation ; les modeles fournissent leur propre contenu. Tests de sauvegarde HTTP multipart, d echec du stockage et du formulaire dynamique sur ordinateur/mobile ; sans migration SQL.

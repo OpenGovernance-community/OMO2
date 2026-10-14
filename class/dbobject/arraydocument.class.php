@@ -19,23 +19,33 @@
 			return $this->lastVisibilityStats;
 		}
 
-		/** Project event PVs are derived associations; never persist project_document links for them. */
-		public function loadPvForProjectEvents(int $projectId, int $organizationId): void
+		/** Event documents are derived associations; never persist project_document links for them. */
+		public function loadForProjectEvents(int $projectId, int $organizationId, int $userId): void
 		{
 			$this->exchangeArray([]);
 			if ($projectId <= 0 || $organizationId <= 0) {
 				return;
 			}
-			$rows = Document::fetchAll('SELECT d.* FROM document d
-				JOIN event e ON e.id = d.IDevent
+			$sharedJoin = '';
+			$eventJoin = 'e.id = d.IDevent';
+			if (EventSharedDocument::isStorageAvailable()) {
+				$sharedJoin = 'LEFT JOIN event_shared_document shared ON shared.IDdocument = d.id';
+				$eventJoin .= ' OR (e.id = shared.IDevent AND d.documenttype <> :pv)';
+			}
+			$params = ['project' => $projectId, 'organization' => $organizationId,
+				'cancelled' => Event::STATUS_CANCELLED, 'draft' => Event::STATUS_DRAFT, 'viewer' => max(0, $userId)];
+			if ($sharedJoin !== '') { $params['pv'] = Document::TYPE_PV; }
+			$rows = Document::fetchAll('SELECT DISTINCT d.* FROM document d
+				' . $sharedJoin . '
+				JOIN event e ON (' . $eventJoin . ')
 				JOIN project p ON p.id = e.IDproject
 				WHERE p.id = :project AND p.IDorganization = :organization
 				AND e.IDorganization = p.IDorganization AND d.IDorganization = p.IDorganization
-				AND d.active = 1 AND e.active = 1 AND e.status <> :cancelled AND d.documenttype = :pv
+				AND d.active = 1 AND e.active = 1 AND e.status <> :cancelled
+				AND (e.status <> :draft OR e.IDuser = :viewer)
 				AND NOT ' . Holon::archivedContextSql('e.IDholon') . '
 				AND NOT ' . Holon::archivedContextSql('d.IDholon') . '
-				ORDER BY e.start_at ASC, d.id ASC',
-				['project' => $projectId, 'organization' => $organizationId, 'cancelled' => Event::STATUS_CANCELLED, 'pv' => Document::TYPE_PV]);
+				ORDER BY d.id ASC', $params);
 			foreach ($rows ?: [] as $row) {
 				$document = new Document();
 				$document->hydrateFromDatabaseRow($row, true);
@@ -332,11 +342,11 @@
 			}
 
 			$this->load($loadParams);
-			$this->filterProjectDocumentsNotVisibleInHolon();
+			$this->filterAssociatedDocumentsNotVisibleInHolon();
 			return $this->filterVisibleForCurrentViewer($organizationId);
 		}
 
-		protected function filterProjectDocumentsNotVisibleInHolon(): void
+		protected function filterAssociatedDocumentsNotVisibleInHolon(): void
 		{
 			$documentIds = array();
 			foreach ($this as $document) {
@@ -362,27 +372,31 @@
 				'SELECT `IDdocument` FROM `project_document` WHERE `IDdocument` IN (' . implode(', ', $placeholders) . ') GROUP BY `IDdocument` HAVING COUNT(DISTINCT `IDproject`) = 1',
 				$params
 			);
-			if (!is_array($rows) || count($rows) === 0) {
-				return;
+			$rows = is_array($rows) ? $rows : [];
+			if (EventSharedDocument::isStorageAvailable()) {
+				$rows = array_merge($rows, DbObject::fetchAll(
+					'SELECT DISTINCT IDdocument FROM event_shared_document WHERE IDdocument IN (' . implode(', ', $placeholders) . ')',
+					$params
+				) ?: []);
 			}
 
-			$projectDocumentIds = array();
+			$associatedDocumentIds = array();
 			foreach ($rows as $row) {
 				$projectDocumentId = (int)($row['IDdocument'] ?? 0);
 				if ($projectDocumentId > 0) {
-					$projectDocumentIds[$projectDocumentId] = true;
+					$associatedDocumentIds[$projectDocumentId] = true;
 				}
 			}
 
 			$this->exchangeArray(array_values(array_filter(
 				$this->getArrayCopy(),
-				static function ($document) use ($projectDocumentIds): bool {
+				static function ($document) use ($associatedDocumentIds): bool {
 					if (!($document instanceof \dbObject\Document)) {
 						return false;
 					}
 
 					$documentId = (int)$document->getId();
-					return !isset($projectDocumentIds[$documentId])
+					return ((int)$document->get('IDevent') <= 0 && !isset($associatedDocumentIds[$documentId]))
 						|| (int)$document->get('project_visible_in_holon') === 1;
 				}
 			)));

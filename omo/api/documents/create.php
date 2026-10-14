@@ -153,7 +153,7 @@ if ($documentId > 0) {
             && $document->canManageInOrganizationContext($organizationId, $currentUserId, false);
         $canEditDocumentContent = !$document->isPvDocument()
             && $document->canEditInOrganizationContext($organizationId, $currentUserId, false);
-        $isProjectDocument = $document->hasProjectAssociation();
+        $isProjectDocument = $document->hasProjectAssociation() || $document->hasEventAssociation();
     }
     $canUseForm = $isEditing && ($canManageDocument || $canEditDocumentContent);
 

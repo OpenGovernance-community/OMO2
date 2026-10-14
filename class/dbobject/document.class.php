@@ -78,7 +78,7 @@
 				'is_template' => 'Modele de document',
 				'externalurl' => 'URL externe',
 				'openinnewwindow' => 'Ouvrir dans une nouvelle fenetre',
-				'project_visible_in_holon' => 'Afficher dans le holon si le document est lie a un projet',
+				'project_visible_in_holon' => 'Afficher dans le holon si le document est lie a un projet ou evenement',
 				'storedfilepath' => 'Chemin distant du fichier',
 				'storedfilename' => 'Nom original du fichier',
 				'storedfilemime' => 'Type MIME du fichier',
@@ -119,7 +119,7 @@
 				'pv_editor_handover_open' => 'Indique que le secretaire actuel autorise un invite a reprendre son role.',
 				'externalurl' => 'Adresse du site a ouvrir pour un document de type lien externe',
 				'openinnewwindow' => 'Ouvre le lien externe directement dans une autre fenetre',
-				'project_visible_in_holon' => 'Autorise l affichage dans la liste du holon pour un document lie a un projet',
+				'project_visible_in_holon' => 'Autorise l affichage dans la liste du holon pour un document lie a un projet ou evenement',
 				'storedfilepath' => 'Chemin du fichier sur le stockage de documents de l organisation',
 				'storedfilename' => 'Nom du fichier televerse par l utilisateur',
 				'storedfilemime' => 'Type MIME detecte pour le fichier distant',
@@ -265,6 +265,12 @@
 			$projectDocuments = new \dbObject\ArrayProjectDocument();
 			$projectDocuments->loadForDocument((int)$this->getId());
 			return count($projectDocuments) > 0;
+		}
+
+		public function hasEventAssociation(): bool
+		{
+			return (int)$this->get('IDevent') > 0
+				|| EventSharedDocument::eventsForDocument((int)$this->getId(), (int)$this->get('IDorganization')) !== [];
 		}
 
 		public function saveProjectHolonVisibility(bool $visible): array
