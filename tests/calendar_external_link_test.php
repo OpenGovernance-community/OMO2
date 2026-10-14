@@ -16,7 +16,9 @@ if (($argv[1] ?? '') === '--request') {
     $_SERVER['HTTP_HOST'] = 'localtest.me';
     $_SERVER['REQUEST_URI'] = '/omo/api/calendar/create.php';
     $_SERVER['HTTP_X_REQUESTED_WITH'] = 'XMLHttpRequest';
-    require dirname(__DIR__) . '/omo/api/calendar/create.php';
+    $endpoint = $request['endpoint'] ?? 'create.php';
+    mcpCheck(in_array($endpoint, ['create.php', 'detail.php'], true), 'Valid calendar endpoint');
+    require dirname(__DIR__) . '/omo/api/calendar/' . $endpoint;
     exit;
 }
 function calendarLinkRequest(array $request): string
@@ -132,6 +134,19 @@ try {
     mcpCheck(!empty($result['status']) && (int)$result['eventId'] === (int)$event->getId(), 'Add link to existing event: ' . json_encode($result));
     $document->load((int)$result['documentId'], true);
     mcpCheck($document->getExternalUrl() === $url, 'Existing meeting link URL persists');
+
+    // Reproduce deleting a document and adding a single new Miro link to the same event.
+    $deletedId = (int)$document->getId();
+    mcpCheck($document->delete(), 'Delete the previous event document');
+    $edit['post']['document_title'] = 'Replacement Miro link';
+    $edit['post']['document_external_url'] = 'https://miro.com/app/board/replacement-test/';
+    $replacement = json_decode(calendarLinkRequest($edit), true, 512, JSON_THROW_ON_ERROR);
+    mcpCheck(!empty($replacement['status']) && (int)$replacement['documentId'] !== $deletedId, 'Create replacement link');
+    $detail = $edit; $detail['post'] = []; $detail['endpoint'] = 'detail.php';
+    $replacementHtml = calendarLinkRequest($detail);
+    mcpCheck(str_contains($replacementHtml, 'Replacement Miro link')
+        && str_contains($replacementHtml, '/omo/api/documents/detail.php?id=' . $replacement['documentId'] . '&amp;'),
+        'The single recreated link appears and opens the replacement document');
 
     $templateUrl = 'https://example.invalid/template';
     $template = mcpFixture(\dbObject\Document::class, ['IDorganization' => $oid, 'IDholon' => $hid, 'IDuser' => $uid,
