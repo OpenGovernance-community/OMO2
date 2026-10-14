@@ -383,8 +383,15 @@ if ($currentHolonId > 0) {
 $scopeReferenceHolon = $currentContextHolon instanceof Holon
     ? $currentContextHolon
     : $organizationRootHolon;
-// Keep all relative scopes available, including on templates and leaf roles.
+// A leaf root only offers Local; an ancestor root can still offer its children.
 $dashboardAvailableScopes = ['contextual', 'children', 'descendants'];
+$dashboardScopesByRoot = [];
+foreach (['organization', 'parent', 'holon'] as $rootKey) {
+    $rootContext = $scopeReferenceHolon instanceof Holon
+        ? $scopeReferenceHolon->getDashboardScopeRoot($rootKey, $organizationRootHolon)
+        : null;
+    $dashboardScopesByRoot[$rootKey] = omoApiGetAvailableContextScopes(true, $rootContext, $organizationRootHolon);
+}
 $dashboardRootLabels = [
     'organization' => t('personal_space.root.organization', [], $lang, $sourceLang),
     'parent' => t('personal_space.root.parent', [], $lang, $sourceLang),
@@ -560,6 +567,7 @@ $dashboardMetricLabels = array(
     data-omo-dashboard-holon-id="<?= (int)$dashboardHolonId ?>"
     data-omo-dashboard-layout="<?= omoApiEscape(json_encode(array_values($dashboardLayout), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>"
     data-omo-dashboard-available-scopes="<?= omoApiEscape(json_encode(array_values($dashboardAvailableScopes), JSON_UNESCAPED_SLASHES)) ?>"
+    data-omo-dashboard-scopes-by-root="<?= omoApiEscape(json_encode($dashboardScopesByRoot, JSON_UNESCAPED_SLASHES)) ?>"
     data-omo-dashboard-catalog="<?= omoApiEscape(json_encode(array_map(static function (array $catalogItem, $moduleType) use ($dashboardModuleLabels, $enabledAppHashes, $dashboardHolonId): array {
         return array(
             'type' => (string)$moduleType,
@@ -653,7 +661,7 @@ $dashboardMetricLabels = array(
                         && $organizationRootHolon instanceof Holon
                         && $dashboardModuleContextHolonId === (int)$organizationRootHolon->getId();
                     $dashboardModuleScope = $dashboardModuleHasScope
-                        ? omoApiNormalizeContextScope($dashboardModuleSettings['scope'] ?? 'contextual', $dashboardAvailableScopes)
+                        ? omoApiNormalizeContextScope($dashboardModuleSettings['scope'] ?? 'contextual', $dashboardScopesByRoot[$dashboardModuleRoot])
                         : 'contextual';
                     $dashboardModuleAudience = !empty($dashboardModuleCatalog[$dashboardModuleType]['settings']['audience'])
                         ? UserHolon::normalizeDashboardModuleAudience($dashboardModuleSettings['audience'] ?? 'all')
@@ -682,10 +690,10 @@ $dashboardMetricLabels = array(
                     <section class="generic-section generic-section--stack omo-personal-space__card omo-dashboard-module omo-dashboard-module--<?= omoApiEscape($dashboardModuleType) ?><?= $dashboardModuleIsTall ? ' omo-dashboard-module--tall' : '' ?>" style="<?= omoApiEscape($dashboardModuleStyle) ?>" data-omo-dashboard-module="<?= omoApiEscape($dashboardModuleType) ?>">
                         <div class="omo-personal-space__section-head">
                             <span class="generic-card-title generic-card-title--small"><?= omoApiEscape($dashboardModuleLabels[$dashboardModuleType] ?? $dashboardModuleType) ?></span>
-                            <?php if ($dashboardModuleHasScope): ?><span class="omo-personal-space__tag omo-dashboard-module__scope"><?= omoApiEscape($dashboardModuleScopeLabel) ?></span><?php endif; ?>
-                            <?php if ($dashboardModuleAudienceLabel !== ''): ?><span class="omo-personal-space__tag omo-dashboard-module__audience"><?= omoApiEscape($dashboardModuleAudienceLabel) ?></span><?php endif; ?>
+                            <?php if ($dashboardModuleHasScope): ?><span class="generic-badge generic-badge--compact omo-dashboard-module__scope"><?= omoApiEscape($dashboardModuleScopeLabel) ?></span><?php endif; ?>
+                            <?php if ($dashboardModuleAudienceLabel !== ''): ?><span class="generic-badge generic-badge--compact omo-dashboard-module__audience"><?= omoApiEscape($dashboardModuleAudienceLabel) ?></span><?php endif; ?>
                             <?php if ($dashboardModuleEnabled && $dashboardModuleRouteToken !== ''): ?>
-                                <button type="button" class="omo-personal-space__section-action generic-action-button generic-action-button--secondary generic-action-button--compact" data-omo-personal-space-route-token="<?= omoApiEscape($dashboardModuleRouteToken) ?>" data-omo-personal-space-context-holon-id="<?= $dashboardModuleContextHolonId ?>"<?= $dashboardModuleForcedOpenScope !== '' && $dashboardModuleType !== 'structure' ? ' data-omo-personal-space-forced-scope="' . omoApiEscape($dashboardModuleForcedOpenScope) . '"' : '' ?>><?= omoApiEscape(t('personal_space.open_app', [], $lang, $sourceLang)) ?></button>
+                                <button type="button" class="omo-personal-space__section-action generic-action-button generic-action-button--icon-only generic-action-button--inline-icon" title="<?= omoApiEscape(t('personal_space.open_app', [], $lang, $sourceLang)) ?>" aria-label="<?= omoApiEscape(t('personal_space.open_app', [], $lang, $sourceLang)) ?>" data-omo-personal-space-route-token="<?= omoApiEscape($dashboardModuleRouteToken) ?>" data-omo-personal-space-audience="<?= omoApiEscape($dashboardModuleAudience) ?>" data-omo-personal-space-context-holon-id="<?= $dashboardModuleContextHolonId ?>"<?= $dashboardModuleForcedOpenScope !== '' && $dashboardModuleType !== 'structure' ? ' data-omo-personal-space-forced-scope="' . omoApiEscape($dashboardModuleForcedOpenScope) . '"' : '' ?>><img class="black-icon" src="<?= commonAssetUrl('/omo/images/tools/lien-externe.png') ?>" width="20" height="20" alt=""></button>
                             <?php endif; ?>
                         </div>
 

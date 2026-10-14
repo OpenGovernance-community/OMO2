@@ -540,10 +540,12 @@
             ? window.omoApplicationViewPreferencesGetPersonal(root)
             : null;
         var preferences = temporary || personalView || serverDefault || saved || {};
+        var fromDashboard = window.omoApplicationViewPreferencesIsDashboardNavigation?.(root);
+        if (fromDashboard) preferences = {scope: currentScope, assignment: currentAssignment};
         var preferredScope = normalizeScope(preferences.scope || currentScope);
         var preferredAssignment = normalizeAssignment(preferences.assignment || currentAssignment);
         currentState = normalizeState(preferences.state || 'all');
-        currentSearch = String(readStoredValue(window.sessionStorage, searchStorageKey) || '');
+        currentSearch = fromDashboard ? '' : String(readStoredValue(window.sessionStorage, searchStorageKey) || '');
         var search = root.querySelector('[data-activity-quick-search]');
         if (search) {
             search.value = currentSearch;

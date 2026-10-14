@@ -600,6 +600,7 @@ function omoTeamInitializeFilters() {
         view: 'cards'
     });
     const currentScope = omoTeamNormalizeScope(root.getAttribute('data-team-scope') || omoTeamInitialScope);
+    if (window.omoApplicationViewPreferencesIsDashboardNavigation?.(root)) preferences.scope = currentScope;
     omoTeamCurrentSearch = root.getAttribute('data-team-query') || '';
     if (preferences.scope !== currentScope) {
         omoTeamChangeScope(preferences.scope);

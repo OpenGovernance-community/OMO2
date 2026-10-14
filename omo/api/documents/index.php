@@ -1315,7 +1315,7 @@ if (!is_string($documentsPayload)) {
 
             <script type="application/json" data-omo-documents-data><?= $documentsPayload ?></script>
             <script src="<?= commonAssetUrl('/common/drawer/subdrawer.js') ?>"></script>
-            <script src="/omo/assets/js/application-view-preferences.js?v=20260917-filter-hierarchy"></script>
+            <script src="<?= commonAssetUrl('/omo/assets/js/application-view-preferences.js') ?>"></script>
             <script src="<?= commonAssetUrl('/omo/api/documents/progressive-list.js') ?>"></script>
 <?= commonPageScriptTags('/omo/api/documents/list.js', [
     'omoDocumentsMissingUploadedFileLabel' => omoDocumentsScopeT('documents.upload_missing.badge'),

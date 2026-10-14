@@ -51,6 +51,78 @@ try {
     $peer = $makeHolon('Peer', 1, $circle);
     $outside = $makeHolon('Other branch', 2, $fixtureRoot);
     $holons = ['root' => $fixtureRoot, 'circle' => $circle, 'role' => $role, 'child' => $child, 'deep' => $deep, 'peer' => $peer, 'outside' => $outside];
+    if (in_array($argv[1] ?? '', ['--save-leaf', '--save-leaf-local'], true)) {
+        $leafRoot = ($argv[1] ?? '') === '--save-leaf-local' ? 'holon' : 'parent';
+        // Supply the real JSON endpoint input without committing fixtures or starting an HTTP server.
+        $leafLayout = [['id' => 'parent-children', 'type' => 'documents', 'row' => 0, 'column' => 0,
+            'rowSpan' => 1, 'columnSpan' => 1, 'settings' => ['scopeRoot' => $leafRoot, 'scope' => 'children']]];
+        $_SESSION['omo_dashboard_layout_csrf'] = 'dashboard-leaf-test';
+        $_SERVER['HTTP_HOST'] = 'localtest.me';
+        $_SERVER['REQUEST_METHOD'] = 'POST';
+        $_SERVER['REQUEST_URI'] = '/omo/api/personal_space_layout.php';
+        class DashboardJsonInput {
+            public $context;
+            public static string $body;
+            private int $offset = 0;
+            public function stream_open($path, $mode, $options, &$openedPath): bool { return $path === 'php://input'; }
+            public function stream_read($length): string { $part = substr(self::$body, $this->offset, $length); $this->offset += strlen($part); return $part; }
+            public function stream_eof(): bool { return $this->offset >= strlen(self::$body); }
+            public function stream_stat(): array { return []; }
+            public function stream_close(): void { stream_wrapper_restore('php'); }
+        }
+        DashboardJsonInput::$body = json_encode(['oid' => $oid, 'holon_id' => (int)$peer->getId(), 'scope' => 'holon',
+            'csrf_token' => $_SESSION['omo_dashboard_layout_csrf'], 'layout' => $leafLayout], JSON_THROW_ON_ERROR);
+        stream_wrapper_unregister('php');
+        stream_wrapper_register('php', DashboardJsonInput::class);
+        ob_start();
+        register_shutdown_function(static function () use ($pdo, $peer, $leafRoot): void {
+            $response = ob_get_clean();
+            try {
+                $payload = json_decode($response, true, 512, JSON_THROW_ON_ERROR);
+                dashboardRootCheck(!empty($payload['status']), 'Saving a leaf dashboard must succeed: ' . $response);
+                $saved = new Holon(); $saved->load($peer->getId(), true);
+                $settings = $saved->getDashboardDefaultLayout()[0]['settings'];
+                $expectedScope = $leafRoot === 'holon' ? 'contextual' : 'children';
+                dashboardRootCheck($settings['scopeRoot'] === $leafRoot && $settings['scope'] === $expectedScope, 'Scope fallback must depend on the selected root.');
+                echo "dashboard_scope_roots_integration_test: OK (save endpoint: $leafRoot/$expectedScope on a leaf)\n";
+            } finally {
+                if ($pdo->inTransaction()) $pdo->rollBack();
+            }
+        });
+        require dirname(__DIR__) . '/omo/api/personal_space_layout.php';
+        exit;
+    }
+    if (($argv[1] ?? '') === '--policy-range') {
+        $ruleIds = [];
+        foreach ($holons as $key => $holon) {
+            $rule = dashboardRootFixture(\dbObject\Rule::class, ['IDholon' => $holon->getId(),
+                'title' => 'Range fixture ' . $key, 'description' => '<p>Range test</p>', 'scope' => 'local',
+                'review_date' => '2026-10-01', 'expiration_date' => '2027-10-01']);
+            $ruleIds[$key] = (int)$rule->getId();
+        }
+        $_SERVER['HTTP_HOST'] = 'localtest.me';
+        $_SERVER['REQUEST_METHOD'] = 'GET';
+        foreach (['holon', 'parent', 'organization'] as $rootKey) {
+            $selectedRoot = $role->getDashboardScopeRoot($rootKey, $fixtureRoot);
+            foreach (['contextual', 'children', 'descendants'] as $range) {
+                $_GET = ['oid' => $oid, 'cid' => $selectedRoot->getId(), 'policy_range' => $range,
+                    'policy_scope' => 'contextual', 'dashboard_context' => '1'];
+                $html = (static function (): string {
+                    ob_start(); require dirname(__DIR__) . '/omo/api/policy/index.php'; return ob_get_clean();
+                })();
+                dashboardRootCheck(!preg_match('/Warning:|Fatal error:|Deprecated:/', $html), 'Policy rendering diagnostics.');
+                $scopeIds = $range === 'children' ? omoApiGetDirectChildScopeHolonIds($selectedRoot)
+                    : ($range === 'descendants' ? omoApiGetDescendantHolonIds($selectedRoot) : [(int)$selectedRoot->getId()]);
+                foreach ($ruleIds as $key => $id) {
+                    dashboardRootCheck(str_contains($html, 'data-policy-rule-id="' . $id . '"') === in_array((int)$holons[$key]->getId(), $scopeIds, true),
+                        'Policy must reproduce dashboard range: ' . $rootKey . '/' . $range . '/' . $key);
+                }
+                dashboardRootCheck(str_contains($html, '&quot;isDashboardNavigation&quot;:true'), 'Explicit dashboard navigation must reach the browser.');
+            }
+        }
+        echo "dashboard_scope_roots_integration_test: OK (policy renders all nine root/range combinations)\n";
+        return;
+    }
     $documentsByHolon = [];
     foreach ($holons + ['organization' => null] as $key => $holon) {
         $document = dashboardRootFixture(Document::class, ['IDorganization' => $oid, 'IDholon' => $holon?->getId(),

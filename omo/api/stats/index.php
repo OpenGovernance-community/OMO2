@@ -784,7 +784,7 @@ $displayItemCount = count($statsEntries);
 <script src="<?= omoApiEscape(commonAssetUrl('/omo/assets/js/resource-archives.js')) ?>"></script>
 <script src="<?= commonAssetUrl('/common/drawer/subdrawer.js') ?>"></script>
 <script src="/omo/api/stats/reference-editor.js?v=20260724-ceiling"></script>
-<script src="/omo/assets/js/application-view-preferences.js?v=20260917-filter-hierarchy"></script>
+<script src="<?= commonAssetUrl('/omo/assets/js/application-view-preferences.js') ?>"></script>
 <?= commonPageScriptTags('/omo/api/stats/stats.js', [
     'texts' => [
         'archivesTitle' => omoStatsT('stats.archives.title'),

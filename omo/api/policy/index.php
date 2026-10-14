@@ -27,7 +27,13 @@ $availableScopes = ['local', 'contextual', 'global'];
 $policyScope = ArrayRule::normalizeViewScope(
     omoApplicationViewPreferencesGetInitialValue($applicationViewPreferences, 'policy_scope', 'scope', 'contextual')
 );
-$scopeHolonIds = $currentHolon instanceof Holon ? [(int)$currentHolon->getId()] : [];
+$policyRange = omoApiNormalizeContextScope(
+    $_GET['policy_range'] ?? 'contextual',
+    omoApiGetAvailableContextScopes($currentHolon instanceof Holon, $currentHolon, $rootHolon)
+);
+$scopeHolonIds = $policyRange === 'children' ? omoApiGetDirectChildScopeHolonIds($currentHolon)
+    : ($policyRange === 'descendants' ? omoApiGetDescendantHolonIds($currentHolon)
+        : ($currentHolon instanceof Holon ? [(int)$currentHolon->getId()] : []));
 $rules = new ArrayRule();
 $organizationRules = new ArrayRule();
 $includeOrganizationRules = !($currentHolon instanceof Holon)
@@ -73,6 +79,9 @@ $canCreate = omoPolicyCanCreateLocalRule($context);
 $currentContextHolonId = $currentHolon instanceof Holon ? (int)$currentHolon->getId() : 0;
 $createUrl = '/omo/api/policy/edit.php?oid=' . rawurlencode((string)$organizationId) . '&cid=' . $currentContextHolonId;
 $indexUrl = '/omo/api/policy/index.php?oid=' . rawurlencode((string)$organizationId) . '&cid=' . $currentContextHolonId;
+if (isset($_GET['policy_range'])) {
+    $indexUrl .= '&policy_range=' . rawurlencode($policyRange);
+}
 ?>
 <link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260902-save-menu">
 <div class="omo-policy omo-panel-view" id="omo-policy-root" data-policy-oid="<?= (int)$organizationId ?>" data-policy-cid="<?= $currentContextHolonId ?>" data-omo-app-view-preferences="<?= omoApiEscape(json_encode($applicationViewPreferences, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>" data-policy-index-url="<?= omoApiEscape($indexUrl) ?>" data-policy-scope="<?= omoApiEscape($policyScope) ?>" data-policy-sort="<?= omoApiEscape($policySort) ?>" data-policy-group="<?= omoApiEscape($policyGroup) ?>" data-policy-create-url="<?= omoApiEscape($createUrl) ?>" data-policy-load-error="<?= omoApiEscape(omoPolicyT('policy.error.load')) ?>" data-policy-save-error="<?= omoApiEscape(omoPolicyT('policy.error.save')) ?>" data-policy-delete-confirm="<?= omoApiEscape(omoPolicyT('policy.delete.confirm')) ?>" data-policy-delete-error="<?= omoApiEscape(omoPolicyT('policy.error.delete')) ?>">
@@ -90,6 +99,7 @@ $indexUrl = '/omo/api/policy/index.php?oid=' . rawurlencode((string)$organizatio
             <div class="omo-context-filter omo-view-filter" data-policy-filter-control role="group" aria-label="<?= omoApiEscape(omoPolicyT('policy.filters.aria')) ?>">
                 <div class="omo-context-filter__input omo-view-filter__input">
                     <div class="omo-context-filter__chips omo-view-filter__chips">
+                        <?php if (isset($_GET['policy_range'])): ?><span class="omo-view-filter__chip"><?= omoApiEscape(omoPolicyT('policy.range.' . $policyRange)) ?></span><?php endif; ?>
                         <button type="button" class="omo-context-filter__chip omo-view-filter__chip" data-policy-filter-toggle aria-expanded="false" aria-controls="omo-policy-filter-panel"><?= omoApiEscape(omoPolicyT('policy.scope.' . $policyScope)) ?></button>
                         <button type="button" class="omo-context-filter__chip omo-view-filter__chip" data-policy-filter-toggle aria-expanded="false" aria-controls="omo-policy-filter-panel"><?= omoApiEscape(omoPolicyT('policy.sort.' . $policySort)) ?></button>
                         <button type="button" class="omo-context-filter__chip omo-view-filter__chip" data-policy-filter-toggle aria-expanded="false" aria-controls="omo-policy-filter-panel"><?= omoApiEscape(omoPolicyT('policy.group.' . $policyGroup)) ?></button>
@@ -250,7 +260,7 @@ $indexUrl = '/omo/api/policy/index.php?oid=' . rawurlencode((string)$organizatio
         <div class="omo-overlay-drawer__panel"><div class="omo-overlay-drawer__header generic-drawer-header generic-drawer-header--sticky"><div class="generic-drawer-header__copy"><h3 class="omo-overlay-drawer__title"><?= omoApiEscape(omoPolicyT('policy.drawer.title')) ?></h3><p class="omo-overlay-drawer__description"><?= omoApiEscape(omoPolicyT($currentHolon instanceof Holon ? 'policy.drawer.description_local' : 'policy.drawer.description_organization')) ?></p></div><div class="generic-drawer-header__actions"><button type="button" class="generic-action-button generic-action-button--secondary generic-action-button--icon-only generic-action-button--close" data-policy-close title="<?= omoApiEscape(omoPolicyT('policy.close')) ?>" aria-label="<?= omoApiEscape(omoPolicyT('policy.close')) ?>"></button></div></div><div class="omo-overlay-drawer__body" data-policy-drawer-body></div></div>
     </div>
 </div>
-<script src="/omo/assets/js/application-view-preferences.js?v=20260917-filter-hierarchy"></script>
+<script src="<?= commonAssetUrl('/omo/assets/js/application-view-preferences.js') ?>"></script>
 <script src="<?= commonAssetUrl('/common/search_text.js') ?>"></script>
 <script src="<?= commonAssetUrl('/common/choice/rule-scope-fields.js') ?>"></script>
 <script src="<?= commonAssetUrl('/omo/api/policy/index.js') ?>"></script>

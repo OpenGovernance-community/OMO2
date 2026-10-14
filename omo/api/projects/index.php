@@ -1299,7 +1299,7 @@ $projectTexts = [
 <script src="<?= commonAssetUrl('/common/calendar/availability-view.js') ?>"></script>
 <script src="<?= commonAssetUrl('/common/calendar/availability.js') ?>"></script>
 <script src="<?= commonAssetUrl('/common/calendar/event-editor.js') ?>"></script>
-<script src="/omo/assets/js/application-view-preferences.js?v=20260917-filter-hierarchy"></script>
+<script src="<?= commonAssetUrl('/omo/assets/js/application-view-preferences.js') ?>"></script>
 <script src="/common/choice/word-diff.js?v=20260816"></script>
 <script src="<?= commonAssetUrl('/common/choice/change-details.js') ?>"></script>
 <script src="/common/chat/thread.js?v=20260910-project-chat"></script>

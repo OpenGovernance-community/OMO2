@@ -370,6 +370,7 @@ window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, p
                 };
 
                 const omoDocumentsReadSearch = function (panel) {
+                    if (window.omoApplicationViewPreferencesIsDashboardNavigation?.(panel)) return '';
                     const storedSearch = omoDocumentsReadStoredValue(
                         window.sessionStorage,
                         omoDocumentsSearchStorageKey,

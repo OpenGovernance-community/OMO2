@@ -34,7 +34,7 @@ for (const scope of ['contextual', 'children', 'descendants']) {
     assert.equal(navigation[2].forcedScope, scope);
 }
 vm.runInContext(extract('function buildDrawerUrl(', 'function omoParseReusableDrawerUrl('), context);
-for (const [app, parameter] of [['checklist', 'checklist_scope'], ['activities', 'activity_scope'], ['documents', 'document_scope']]) {
+for (const [app, parameter] of [['checklist', 'checklist_scope'], ['processes', 'checklist_scope'], ['activities', 'activity_scope'], ['documents', 'document_scope']]) {
     assert.match(context.buildDrawerUrl('api/' + app + '/index.php', 10, 2, {forcedScope: 'children'}), new RegExp(parameter + '=children'));
 }
 
@@ -48,7 +48,12 @@ for (const [app, parameter] of [['checklist', 'checklist_scope'], ['activities',
             await page.route('http://dashboard.test/**', async route => {
                 const url = new URL(route.request().url());
                 if (url.pathname === '/') {
-                    await route.fulfill({contentType: 'text/html', body: '<!doctype html><meta charset="utf-8"><link rel="stylesheet" href="/common/assets/components.css"><link rel="stylesheet" href="/omo/assets/css/styles.css">' + fs.readFileSync(path.join(root, 'tmp/dashboard-scope-roots.html'), 'utf8')});
+                    let html = fs.readFileSync(path.join(root, 'tmp/dashboard-scope-roots.html'), 'utf8');
+                    if (width === 390) {
+                        const scopes = {holon: ['contextual'], parent: ['contextual', 'children', 'descendants'], organization: ['contextual', 'children', 'descendants']};
+                        html = html.replace(/data-omo-dashboard-scopes-by-root="[^"]*"/, 'data-omo-dashboard-scopes-by-root="' + JSON.stringify(scopes).replaceAll('"', '&quot;') + '"');
+                    }
+                    await route.fulfill({contentType: 'text/html', body: '<!doctype html><meta charset="utf-8"><link rel="stylesheet" href="/common/assets/components.css"><link rel="stylesheet" href="/omo/assets/css/styles.css">' + html});
                 } else if (url.pathname.startsWith('/common/assets/') || url.pathname.startsWith('/omo/assets/')) {
                     const file = path.join(root, url.pathname);
                     if (fs.existsSync(file)) await route.fulfill({path: file});
@@ -68,11 +73,19 @@ for (const [app, parameter] of [['checklist', 'checklist_scope'], ['activities',
             await page.locator('[data-configure-module="holon-contextual"]').click();
             assert.equal(await page.locator('[data-omo-dashboard-configure-root]').count(), 3);
             assert.equal(await page.locator('[data-omo-dashboard-configure-scope]').count(), 3);
+            assert.equal(await page.locator('[data-omo-dashboard-configure-scope]:visible').count(), width === 390 ? 1 : 3);
             await page.locator('[data-omo-dashboard-configure-root="parent"]').click();
             assert.equal(await page.locator('[data-omo-dashboard-configure-scope="contextual"]').getAttribute('aria-pressed'), 'true');
             await page.locator('[data-omo-dashboard-configure-scope="children"]').click();
             assert.equal(await page.locator('[data-omo-dashboard-configure-root="parent"]').getAttribute('aria-pressed'), 'true');
             assert.equal(await page.locator('[data-omo-dashboard-configure-scope="children"]').getAttribute('aria-pressed'), 'true');
+            if (width === 390) {
+                await page.locator('[data-omo-dashboard-configure-root="holon"]').click();
+                assert.equal(await page.locator('[data-omo-dashboard-configure-scope="contextual"]').getAttribute('aria-pressed'), 'true', 'A leaf root falls back to Local.');
+                assert.equal(await page.locator('[data-omo-dashboard-configure-scope]:visible').count(), 1);
+                await page.locator('[data-omo-dashboard-configure-root="parent"]').click();
+                await page.locator('[data-omo-dashboard-configure-scope="children"]').click();
+            }
             const panel = page.locator('[data-omo-dashboard-configurator] [role="dialog"]');
             const bounds = await panel.boundingBox();
             assert(bounds.x >= 0 && bounds.x + bounds.width <= width + 1, 'Configurator must fit the viewport.');

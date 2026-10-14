@@ -1,5 +1,9 @@
 # Journal des nouveautés
 
+- Tableaux de pilotage / ouverture des applications (2026-10-14) : reprise de la racine, de la portee et du public configures dans chaque bloc, y compris depuis une application deja ouverte. Les anciennes preferences de filtre ne remplacent plus ce contexte au chargement. Transmission de la portee aux Processus et au Reglement, du public aux Processus, Projets, Indicateurs et Activites. Repli sur Local selon les enfants de la racine choisie. Structure centree sur cette racine. Tests de navigation, preferences, sauvegarde, rendu PHP 8.5 et configuration ordinateur/mobile ; sans migration SQL.
+
+- Tableaux de pilotage / entetes compacts (2026-10-14) : capsules de racine, portee et public reduites avec le composant partage de badges compacts. Bouton Ouvrir remplace par l icone fournie, avec infobulle, libelle accessible et adaptation au theme sombre.
+
 - Tableaux de pilotage / heritage des modeles (2026-10-14) : recherche du tableau dans le modele direct puis ses modeles parents, du plus proche au plus ancien, avant le repli sur le type de holon et le modele global. Un tableau explicitement vide arrete l heritage ; une reinitialisation du modele direct retrouve celui du parent. Pas de bouton de reinitialisation local pour une configuration uniquement heritee. Tests PHP 8.5 de priorite, chaines, cycles, tableaux vides et rendu avec modeles en base ; sans migration SQL.
 
 - Tableaux de pilotage / selecteur Racine (2026-10-14) : chargement du script avec la version automatique commune pour remplacer les anciennes copies en cache qui laissaient le libelle Racine sans boutons. Verification du chargement normal du script, sans injection dans le test navigateur.
