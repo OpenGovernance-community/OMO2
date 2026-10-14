@@ -14,6 +14,8 @@ if (!function_exists('omoChecklistSourceLang')) {
     {
         return [
             'checklist.title' => ['text' => 'Processus', 'context' => 'Main title of the process application.'],
+            'checklist.assignment.mine' => ['text' => 'Moi', 'context' => 'Audience filter inherited from a dashboard module.'],
+            'checklist.assignment.roles' => ['text' => 'Mes espaces', 'context' => 'Audience filter inherited from a dashboard module.'],
             'checklist.action.new' => ['text' => 'Ajouter', 'context' => 'Button opening checklist creation.'],
             'checklist.action.edit' => ['text' => 'Modifier', 'context' => 'Button opening checklist edition.'],
             'checklist.action.delete' => ['text' => 'Supprimer', 'context' => 'Button deleting a checklist.'],

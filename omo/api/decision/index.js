@@ -253,6 +253,9 @@ function omoDecisionsNormalizeViewPreferences(preferences) {
 }
 
 function omoDecisionsReadViewPreferences() {
+    if (window.omoApplicationViewPreferencesIsDashboardNavigation?.(root)) {
+        return omoDecisionsNormalizeViewPreferences({scope: omoDecisionGetCurrentScope()});
+    }
     const temporary = omoDecisionsReadStoredValue(window.sessionStorage, omoDecisionsSessionViewsStorageKey);
     const canUseLegacyPersonal = typeof window.omoApplicationViewPreferencesCanUseLegacyPersonal === 'function'
         && window.omoApplicationViewPreferencesCanUseLegacyPersonal(root);
@@ -268,6 +271,7 @@ function omoDecisionsReadViewPreferences() {
 }
 
 function omoDecisionsReadSearch() {
+    if (window.omoApplicationViewPreferencesIsDashboardNavigation?.(root)) return '';
     const search = omoDecisionsReadStoredValue(window.sessionStorage, omoDecisionsSearchStorageKey);
     return typeof search === 'string' ? search : '';
 }
@@ -608,7 +612,7 @@ function omoDecisionsOpenFilterPanel() {
 }
 
 function omoDecisionsInitializeViewFilter() {
-    const preferredScope = Number(payload.openDecisionId || 0) > 0
+    const preferredScope = window.omoApplicationViewPreferencesIsDashboardNavigation?.(root) || Number(payload.openDecisionId || 0) > 0
         ? omoDecisionGetCurrentScope()
         : savedPreferences.scope;
     if (preferredScope !== omoDecisionGetCurrentScope()) {

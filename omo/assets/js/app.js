@@ -2631,7 +2631,9 @@ function omoSetPendingDrawerRouteOptions(routeToken, options = {}) {
 
     omoPendingDrawerRouteOptions = {
         routeToken: normalizedRouteToken,
-        forcedScope: forcedScope
+        forcedScope: forcedScope,
+        forcedAudience: ['all', 'mine', 'roles'].includes(options.forcedAudience) ? options.forcedAudience : '',
+        dashboardContext: options.dashboardContext === true
     };
 }
 
@@ -2640,7 +2642,9 @@ function omoResolveDrawerRouteOptions(routeToken = null, options = {}) {
     const explicitForcedScope = omoNormalizeDrawerForcedScope(options && options.forcedScope);
     if (explicitForcedScope !== '') {
         return {
-            forcedScope: explicitForcedScope
+            forcedScope: explicitForcedScope,
+            forcedAudience: options.forcedAudience,
+            dashboardContext: options.dashboardContext === true
         };
     }
 
@@ -2650,7 +2654,9 @@ function omoResolveDrawerRouteOptions(routeToken = null, options = {}) {
         && omoPendingDrawerRouteOptions.routeToken === normalizedRouteToken
     ) {
         return {
-            forcedScope: omoPendingDrawerRouteOptions.forcedScope
+            forcedScope: omoPendingDrawerRouteOptions.forcedScope,
+            forcedAudience: omoPendingDrawerRouteOptions.forcedAudience,
+            dashboardContext: omoPendingDrawerRouteOptions.dashboardContext
         };
     }
 
@@ -2960,10 +2966,28 @@ function buildDrawerUrl(baseUrl, oid, cid = null, options = {}) {
             url += '&project_scope=' + encodeURIComponent(forcedScope);
         } else if (baseUrl.indexOf('api/team/') !== -1) {
             url += `&team_scope=${encodeURIComponent(forcedScope)}`;
-        } else if (baseUrl.indexOf('api/checklist/') !== -1) {
+        } else if (baseUrl.indexOf('api/checklist/') !== -1 || baseUrl.indexOf('api/processes/') !== -1) {
             url += `&checklist_scope=${encodeURIComponent(forcedScope)}`;
         } else if (baseUrl.indexOf('api/activities/') !== -1) {
             url += `&activity_scope=${encodeURIComponent(forcedScope)}`;
+        } else if (baseUrl.indexOf('api/policy/') !== -1) {
+            url += `&policy_range=${encodeURIComponent(forcedScope)}&policy_scope=contextual`;
+        }
+    }
+
+    if (options && options.dashboardContext === true) {
+        url += '&dashboard_context=1';
+    }
+    const audience = options && options.forcedAudience;
+    if (['all', 'mine', 'roles'].includes(audience)) {
+        if (baseUrl.indexOf('api/stats/') !== -1) {
+            url += '&stats_assignment=' + encodeURIComponent(audience);
+        } else if (baseUrl.indexOf('api/projects/') !== -1) {
+            url += '&project_assignment=' + encodeURIComponent(audience === 'roles' ? 'spaces' : audience);
+        } else if (baseUrl.indexOf('api/activities/') !== -1) {
+            url += '&activity_assignment=' + encodeURIComponent(audience === 'roles' ? 'spaces' : audience);
+        } else if (baseUrl.indexOf('api/checklist/') !== -1 || baseUrl.indexOf('api/processes/') !== -1) {
+            url += '&checklist_assignment=' + encodeURIComponent(audience);
         }
     }
 
@@ -4651,6 +4675,11 @@ $(document).on('click', '[data-omo-personal-space-route-token]', function (e) {
     const rawRouteToken = String($(this).attr('data-omo-personal-space-route-token') || '').trim();
     const routeToken = rawRouteToken === 'checklist' ? 'processus' : rawRouteToken;
     const forcedScope = String($(this).attr('data-omo-personal-space-forced-scope') || '').trim().toLowerCase();
+    const routeOptions = {
+        forcedScope: forcedScope,
+        forcedAudience: String($(this).attr('data-omo-personal-space-audience') || ''),
+        dashboardContext: true
+    };
     const contextHolonId = Number($(this).attr('data-omo-personal-space-context-holon-id') || 0);
     if (routeToken === '' || typeof window.omoOpenDrawerHashState !== 'function') {
         return;
@@ -4659,14 +4688,12 @@ $(document).on('click', '[data-omo-personal-space-route-token]', function (e) {
     const route = parseUrl();
     const currentHolonId = Number(route.cid || (window.omoConfig && window.omoConfig.rootHolonId) || 0);
     if (Number.isInteger(contextHolonId) && contextHolonId > 0 && contextHolonId !== currentHolonId) {
-        omoSetPendingDrawerRouteOptions(routeToken, { forcedScope: forcedScope });
+        omoSetPendingDrawerRouteOptions(routeToken, routeOptions);
         navigate(route.oid, contextHolonId, routeToken);
         return;
     }
 
-    window.omoOpenDrawerHashState(routeToken, {
-        forcedScope: forcedScope
-    });
+    window.omoOpenDrawerHashState(routeToken, routeOptions);
 });
 
 $(document).on('click', '[data-omo-personal-space-document-url]', function (e) {
@@ -5163,6 +5190,7 @@ function handleRoute() {
     const isStructureRoute = activeMenuHash === 'structure';
     const drawerHandledByContextChange = organizationChanged || (cidChanged && !isStructureRoute);
     const isInSpecialDrawerOnlyRouteChange = !drawerHandledByContextChange
+        && activeForcedScope === ''
         && routeChanged
         && !popupChanged
         && activeMenuHash !== null
@@ -5205,7 +5233,7 @@ function handleRoute() {
     if (!drawerHandledByContextChange && hashChanged && routeChanged && !isInSpecialDrawerOnlyRouteChange) {
 
         if (routeToken && activeDrawerId && activeDrawerUrl) {
-            openDrawer(activeDrawerId, activeDrawerUrl, {routeToken: routeToken});
+            openDrawer(activeDrawerId, activeDrawerUrl, {routeToken: routeToken, forceReload: activeForcedScope !== ''});
         } else {
             closeAllDrawers();
         }
@@ -6323,9 +6351,7 @@ window.omoOpenDrawerHashState = function (routeToken, options = {}) {
     const hashState = omoParseHashState(route.hash || null);
 
     if (forcedScope !== '' && normalizedRouteToken) {
-        omoSetPendingDrawerRouteOptions(normalizedRouteToken, {
-            forcedScope: forcedScope
-        });
+        omoSetPendingDrawerRouteOptions(normalizedRouteToken, options);
     } else {
         omoClearPendingDrawerRouteOptions(normalizedRouteToken);
     }
@@ -6333,6 +6359,7 @@ window.omoOpenDrawerHashState = function (routeToken, options = {}) {
     if (
         normalizedRouteToken === 'documents'
         && forcedScope !== ''
+        && options.dashboardContext !== true
         && typeof window.omoSetDocumentsScope === 'function'
     ) {
         window.omoSetDocumentsScope(forcedScope);
@@ -6342,15 +6369,14 @@ window.omoOpenDrawerHashState = function (routeToken, options = {}) {
         if (
             normalizedRouteToken === 'documents'
             && forcedScope !== ''
+            && options.dashboardContext !== true
             && typeof window.omoSetDocumentsScope === 'function'
         ) {
             omoClearPendingDrawerRouteOptions(normalizedRouteToken);
             return;
         }
 
-        const menuConfig = getSidebarMenuConfig(normalizedRouteToken, route.oid, route.cid, {
-            forcedScope: forcedScope
-        });
+        const menuConfig = getSidebarMenuConfig(normalizedRouteToken, route.oid, route.cid, options);
         const drawerId = omoNormalizeDrawerId(menuConfig && menuConfig.drawer ? menuConfig.drawer : `drawer_${normalizedRouteToken}`);
         const resolvedUrl = menuConfig && menuConfig.resolvedUrl
             ? menuConfig.resolvedUrl

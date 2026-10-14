@@ -322,5 +322,5 @@ $texts = [
 <script src="<?= commonAssetUrl('/common/drawer/subdrawer.js') ?>"></script>
 <script src="/omo/assets/js/simple-html-field.js?v=20261009-html-editor-placeholder"></script>
 <script src="<?= commonAssetUrl('/common/recurring-task/editor.js') ?>"></script>
-<script src="/omo/assets/js/application-view-preferences.js?v=20260919-activity-assignment"></script>
+<script src="<?= commonAssetUrl('/omo/assets/js/application-view-preferences.js') ?>"></script>
 <script src="<?= omoApiEscape(commonAssetUrl('/omo/api/activities/activities.js')) ?>"></script>

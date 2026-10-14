@@ -393,6 +393,7 @@
             || serverDefault
             || (canUseLegacyPersonal ? getStoredPreference() : null)
             || (canUseLegacyPersonal ? getDefaultPreference() : null);
+        if (window.omoApplicationViewPreferencesIsDashboardNavigation?.(root)) preferredView = currentView();
         if (!root.querySelector('[data-policy-rule-card]:not(.is-collapsed)') && preferredView && !viewsMatch(normalizeView(preferredView), currentView())) {
             refreshRoot(policyViewUrl(normalizeView(preferredView)));
         }
