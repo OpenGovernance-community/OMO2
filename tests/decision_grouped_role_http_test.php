@@ -72,8 +72,26 @@ try {
         'consultation_end_at' => (new DateTimeImmutable('+1 day'))->format('Y-m-d H:i:s'),
         'evaluation_end_at' => (new DateTimeImmutable('+2 days'))->format('Y-m-d H:i:s'),
         'governance_blueprint' => json_encode([['actions' => $actions]])];
+    // Unchanged roles must not require preparing all their editor data on save.
+    for ($i = 0; $i < 20; $i++) {
+        $items['unrelated_role_' . $i] = mcpFixture(McpTestHolon::class, [
+            'IDorganization' => $oid, 'IDholon_org' => $cid, 'IDholon_parent' => $cid,
+            'IDtypeholon' => 1, 'name' => 'Unrelated role ' . $i, 'active' => 1, 'visible' => 1]);
+    }
     $response = groupedRoleHttp('save.php', [], $post);
     mcpCheck($response['status'] === 200 && !empty($response['json']['status']), 'Save direct and grouped roles: ' . $response['body']);
+    $samples = new class extends \dbObject\ArrayDbObject {
+        public static function objectName() { return \dbObject\PerformanceRequest::class; }
+    };
+    $samples->loadHydrated(['where' => [['field' => 'IDuser', 'value' => $uid],
+        ['field' => 'route', 'value' => '/omo/api/decision/governance/save.php']],
+        'orderBy' => [['field' => 'id', 'dir' => 'DESC']], 'limit' => 1]);
+    mcpCheck(count($samples) === 1, 'Governance save performance sample exists.');
+    echo 'Governance save (3 changes, 20 unrelated roles): ' . json_encode([
+        'queries' => (int)$samples[0]->get('query_count'), 'duration_ms' => (float)$samples[0]->get('duration_ms'),
+        'sql_ms' => (float)$samples[0]->get('sql_ms')]) . "\n";
+    // Keep headroom for legitimate permission/history work, but catch full editor preloading (over 2000 queries).
+    mcpCheck((int)$samples[0]->get('query_count') < 800, 'Saving must not preload every unrelated role editor.');
     $proposals = $items['decision']->getProposals(false);
     mcpCheck(count($proposals) === 1, 'One governance proposal saved.');
     $changes = DeferredProposal::getForDecisionProposal((int)$proposals[0]->getId());
