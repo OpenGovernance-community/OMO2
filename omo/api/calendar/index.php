@@ -1841,7 +1841,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
     <script src="<?= commonAssetUrl('/common/calendar/availability-view.js') ?>"></script>
     <script src="<?= commonAssetUrl('/common/calendar/availability.js') ?>"></script>
     <script src="/common/calendar/share.js?v=20260916"></script>
-    <script src="/omo/assets/js/application-view-preferences.js?v=20260917-filter-hierarchy"></script>
+    <script src="<?= commonAssetUrl('/omo/assets/js/application-view-preferences.js') ?>"></script>
     <script type="application/json" data-omo-calendar-data><?= json_encode($calendarClientData, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE) ?></script>
     <script>
     (function () {

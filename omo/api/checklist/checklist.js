@@ -178,6 +178,7 @@
             query.push('cid=' + encodeURIComponent(String(routeCid)));
         }
         query.push('checklist_scope=' + encodeURIComponent(normalizedScope));
+        query.push('checklist_assignment=' + encodeURIComponent(root.getAttribute('data-checklist-assignment') || 'all'));
         return '/omo/api/checklist/index.php?' + query.join('&');
     }
 
@@ -345,7 +346,8 @@
     }
 
     function initializeViewFilter() {
-        currentSearch = String(readStoredValue(window.sessionStorage, checklistSearchStorageKey) || '');
+        var fromDashboard = window.omoApplicationViewPreferencesIsDashboardNavigation?.(root);
+        currentSearch = fromDashboard ? '' : String(readStoredValue(window.sessionStorage, checklistSearchStorageKey) || '');
         var search = root.querySelector('[data-checklist-quick-search]');
         if (search) {
             search.value = currentSearch;
@@ -361,7 +363,7 @@
         var personalView = typeof window.omoApplicationViewPreferencesGetPersonal === 'function'
             ? window.omoApplicationViewPreferencesGetPersonal(root)
             : null;
-        var preferredScope = normalizeScope(initialOpenChecklistId > 0
+        var preferredScope = normalizeScope(fromDashboard || initialOpenChecklistId > 0
             ? currentScope
             : (temporary && temporary.scope) || (personalView && personalView.scope) || (serverDefault && serverDefault.scope) || (saved && saved.scope) || currentScope);
         if (!root.querySelector('[data-checklist-scope-option="' + preferredScope + '"]')) {

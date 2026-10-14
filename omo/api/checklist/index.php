@@ -1,6 +1,7 @@
 <?php
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/shared.php';
+require_once dirname(__DIR__) . '/dashboard/modules/registry.php';
 
 use dbObject\ArrayChecklist;
 use dbObject\ArrayChecklistItemOccurrence;
@@ -37,6 +38,7 @@ $checklistScope = omoApiNormalizeContextScope(
     $availableScopes
 );
 $scopeActiveIndex = omoApiResolveContextScopeIndex($checklistScope, $availableScopes);
+$checklistAssignment = \dbObject\UserHolon::normalizeDashboardModuleAudience($_GET['checklist_assignment'] ?? 'all');
 $scopeHolonIds = $checklistScope === 'children'
     ? omoApiGetDirectChildScopeHolonIds($currentHolon)
     : ($checklistScope === 'descendants' ? omoApiGetDescendantHolonIds($currentHolon) : ($currentHolon instanceof Holon ? [(int)$currentHolon->getId()] : []));
@@ -57,6 +59,9 @@ foreach ($checklists as $checklist) {
     }
     $templateRoot = $checklist->getTemplateRoot();
     if (!($templateRoot instanceof Project)) {
+        continue;
+    }
+    if (!omoDashboardMatchesResponsibleAudience($checklistAssignment, $checklist->get('IDuser_responsible'), $templateRoot->getHolon(), $currentUserId, $organizationId)) {
         continue;
     }
     $itemCount = 0;
@@ -123,6 +128,7 @@ if ($currentHolonId > 0) {
     $currentUrl .= '&cid=' . rawurlencode((string)$currentHolonId);
 }
 $currentUrl .= '&checklist_scope=' . rawurlencode($checklistScope);
+$currentUrl .= '&checklist_assignment=' . rawurlencode($checklistAssignment);
 $createUrl = '/omo/api/checklist/edit.php?oid=' . rawurlencode((string)$organizationId);
 if ($currentHolonId > 0) {
     $createUrl .= '&cid=' . rawurlencode((string)$currentHolonId);
@@ -145,6 +151,7 @@ $texts = [
     data-checklist-oid="<?= (int)$organizationId ?>"
     data-checklist-route-cid="<?= (int)$currentHolonId ?>"
     data-checklist-scope="<?= omoApiEscape($checklistScope) ?>"
+    data-checklist-assignment="<?= omoApiEscape($checklistAssignment) ?>"
     data-checklist-current-url="<?= omoApiEscape($currentUrl) ?>"
     data-checklist-create-url="<?= omoApiEscape($createUrl) ?>"
     data-checklist-detail-url="<?= omoApiEscape($detailUrl) ?>"
@@ -175,6 +182,7 @@ $texts = [
             <div class="omo-checklist__filter-toolbar omo-view-filter" data-checklist-filter-control role="group" aria-label="<?= omoApiEscape(omoChecklistT('checklist.filters.aria')) ?>">
                 <div class="omo-view-filter__input">
                     <div class="omo-view-filter__chips">
+                        <?php if ($checklistAssignment !== 'all'): ?><span class="omo-view-filter__chip"><?= omoApiEscape(omoChecklistT('checklist.assignment.' . $checklistAssignment)) ?></span><?php endif; ?>
                         <button type="button" class="omo-view-filter__chip" data-checklist-filter-toggle data-checklist-scope-chip aria-expanded="false" aria-controls="omo-checklist-filter-panel"><?= omoApiEscape(omoChecklistT('checklist.scope.' . $checklistScope)) ?></button>
                     </div>
                     <label class="omo-view-filter__search">
@@ -294,5 +302,5 @@ $texts = [
 </div>
 <script src="<?= commonAssetUrl('/common/drawer/subdrawer.js') ?>"></script>
 <script src="/omo/assets/js/simple-html-field.js?v=20261009-html-editor-placeholder"></script>
-<script src="/omo/assets/js/application-view-preferences.js?v=20260917-filter-hierarchy"></script>
+<script src="<?= commonAssetUrl('/omo/assets/js/application-view-preferences.js') ?>"></script>
 <script src="<?= commonAssetUrl('/omo/api/checklist/checklist.js') ?>"></script>

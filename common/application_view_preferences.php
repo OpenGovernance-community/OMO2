@@ -364,6 +364,7 @@ if (!function_exists('omoApplicationViewPreferencesGetContext')) {
         $saveScopes = omoApplicationViewPreferencesGetOrderedSaveScopes($access);
         $context = array_merge($access, array(
             'application' => $applicationKey,
+            'isDashboardNavigation' => ($_GET['dashboard_context'] ?? '') === '1',
             'organizationId' => $organizationId,
             'holonId' => $holonId,
             'typeId' => $typeId,

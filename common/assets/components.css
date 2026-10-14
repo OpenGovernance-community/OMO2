@@ -748,6 +748,14 @@ input:focus-visible + .generic-choice-card,
     font-weight: 700;
 }
 
+.generic-badge--compact {
+    min-height: 18px;
+    padding: 1px 6px;
+    font-size: var(--generic-type-size-micro);
+    line-height: 1.25;
+    font-weight: 600;
+}
+
 .generic-badge--success {
     --param-badge-color: var(--color-success, #15803d);
 }

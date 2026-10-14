@@ -191,7 +191,7 @@
                     : null;
                 const hasInitialDocument = Number(activeDocumentsPanel.getAttribute('data-omo-document-open-id') || 0) > 0;
                 let initialScope = normalizeDocumentScope(
-                    hasInitialDocument
+                    hasInitialDocument || window.omoApplicationViewPreferencesIsDashboardNavigation?.(activeDocumentsPanel)
                         ? activeDocumentsPanel.getAttribute('data-omo-document-scope')
                         : initialPreferences && initialPreferences.scope
                             ? initialPreferences.scope

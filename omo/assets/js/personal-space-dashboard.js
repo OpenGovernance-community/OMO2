@@ -27,6 +27,7 @@
     var catalog = parseJson(root.getAttribute('data-omo-dashboard-catalog'), []);
     var texts = parseJson(root.getAttribute('data-omo-dashboard-texts'), {});
     var availableScopes = parseJson(root.getAttribute('data-omo-dashboard-available-scopes'), ['contextual']);
+    var scopesByRoot = parseJson(root.getAttribute('data-omo-dashboard-scopes-by-root'), {});
     var workingLayout = [];
     var selectedCells = [];
     var rowCount = 4;
@@ -84,8 +85,13 @@
         return moduleHasScopeSetting(type) || moduleHasAudienceSetting(type) || moduleHasVideoSetting(type);
     }
 
-    function normalizeScope(scope) {
-        return availableScopes.indexOf(scope) !== -1 ? scope : 'contextual';
+    function rootScopes(scopeRoot) {
+        var scopes = scopesByRoot[normalizeRoot(scopeRoot)];
+        return Array.isArray(scopes) && scopes.length ? scopes : availableScopes;
+    }
+
+    function normalizeScope(scope, scopeRoot) {
+        return rootScopes(scopeRoot).indexOf(scope) !== -1 ? scope : 'contextual';
     }
 
     function normalizeRoot(value) {
@@ -125,7 +131,7 @@
         if (!moduleHasScopeSetting(module.type)) {
             return 'contextual';
         }
-        return normalizeScope(module.settings && module.settings.scope);
+        return normalizeScope(module.settings && module.settings.scope, module.settings && module.settings.scopeRoot);
     }
 
     function moduleAudience(module) {
@@ -344,6 +350,7 @@
                 });
             }
         }
+        selectConfiguratorScope(pendingScope);
         if (configuratorAudienceField) {
             configuratorAudienceField.hidden = !moduleHasAudienceSetting(module.type);
         }
@@ -372,11 +379,12 @@
     }
 
     function selectConfiguratorScope(scope) {
-        pendingScope = normalizeScope(scope);
+        pendingScope = normalizeScope(scope, pendingRoot);
         if (!configuratorScopes) {
             return;
         }
         configuratorScopes.querySelectorAll('[data-omo-dashboard-configure-scope]').forEach(function (button) {
+            button.hidden = rootScopes(pendingRoot).indexOf(button.getAttribute('data-omo-dashboard-configure-scope')) === -1;
             var active = button.getAttribute('data-omo-dashboard-configure-scope') === pendingScope;
             button.classList.toggle('is-active', active);
             button.setAttribute('aria-pressed', active ? 'true' : 'false');
@@ -404,7 +412,7 @@
         module.settings = module.settings && typeof module.settings === 'object' ? module.settings : {};
         if (moduleHasScopeSetting(module.type)) {
             module.settings.scopeRoot = normalizeRoot(pendingRoot);
-            module.settings.scope = normalizeScope(pendingScope);
+            module.settings.scope = normalizeScope(pendingScope, pendingRoot);
         }
         if (moduleHasAudienceSetting(module.type)) {
             module.settings.audience = normalizeAudience(pendingAudience);
@@ -648,6 +656,7 @@
         }
         if (event.target.closest('[data-omo-dashboard-configure-root]')) {
             pendingRoot = normalizeRoot(event.target.closest('[data-omo-dashboard-configure-root]').getAttribute('data-omo-dashboard-configure-root'));
+            selectConfiguratorScope(pendingScope);
             configuratorRoots.querySelectorAll('[data-omo-dashboard-configure-root]').forEach(function (button) {
                 var active = button.getAttribute('data-omo-dashboard-configure-root') === pendingRoot;
                 button.classList.toggle('is-active', active);
