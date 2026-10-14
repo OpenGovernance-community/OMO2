@@ -95,7 +95,7 @@ window.commonPageScripts["/omo/assets/js/organization-create.js"] = function (pa
         }
 
         function getApplicationSnapshot() {
-            var fields = ['name', 'shortname', 'domain', 'color', 'interface_level', 'logo', 'banner'];
+            var fields = ['name', 'description', 'url', 'shortname', 'domain', 'color', 'interface_level', 'logo', 'banner'];
 
             return fields.map(function (fieldName) {
                 var field = form.querySelector('[name="' + fieldName + '"]');

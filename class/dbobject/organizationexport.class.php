@@ -61,6 +61,8 @@ class OrganizationExport
             'organization' => [
                 'sourceId' => $organizationId,
                 'name' => (string)$organization->get('name'),
+                'description' => (string)$organization->get('description'),
+                'url' => (string)$organization->get('url'),
                 'shortname' => (string)$organization->get('shortname'),
                 'color' => (string)$organization->get('color'),
                 'logo' => (string)$organization->get('logo'),
