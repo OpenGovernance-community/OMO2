@@ -2960,6 +2960,10 @@ function buildDrawerUrl(baseUrl, oid, cid = null, options = {}) {
             url += '&project_scope=' + encodeURIComponent(forcedScope);
         } else if (baseUrl.indexOf('api/team/') !== -1) {
             url += `&team_scope=${encodeURIComponent(forcedScope)}`;
+        } else if (baseUrl.indexOf('api/checklist/') !== -1) {
+            url += `&checklist_scope=${encodeURIComponent(forcedScope)}`;
+        } else if (baseUrl.indexOf('api/activities/') !== -1) {
+            url += `&activity_scope=${encodeURIComponent(forcedScope)}`;
         }
     }
 
@@ -4644,9 +4648,19 @@ $(document).on('click', '[data-omo-open-app-picker="1"]', function (e) {
 $(document).on('click', '[data-omo-personal-space-route-token]', function (e) {
     e.preventDefault();
 
-    const routeToken = String($(this).attr('data-omo-personal-space-route-token') || '').trim();
+    const rawRouteToken = String($(this).attr('data-omo-personal-space-route-token') || '').trim();
+    const routeToken = rawRouteToken === 'checklist' ? 'processus' : rawRouteToken;
     const forcedScope = String($(this).attr('data-omo-personal-space-forced-scope') || '').trim().toLowerCase();
+    const contextHolonId = Number($(this).attr('data-omo-personal-space-context-holon-id') || 0);
     if (routeToken === '' || typeof window.omoOpenDrawerHashState !== 'function') {
+        return;
+    }
+
+    const route = parseUrl();
+    const currentHolonId = Number(route.cid || (window.omoConfig && window.omoConfig.rootHolonId) || 0);
+    if (Number.isInteger(contextHolonId) && contextHolonId > 0 && contextHolonId !== currentHolonId) {
+        omoSetPendingDrawerRouteOptions(routeToken, { forcedScope: forcedScope });
+        navigate(route.oid, contextHolonId, routeToken);
         return;
     }
 

@@ -6,11 +6,11 @@ use dbObject\Rule;
 
 $dashboardRuleItems = array();
 $dashboardRuleCounts = array('modified' => 0, 'review' => 0, 'obsolete' => 0);
-if (!empty($enabledAppHashes['policy']) && $scopeReferenceHolon instanceof Holon) {
+if (!empty($enabledAppHashes['policy']) && $dashboardModuleContextHolon instanceof Holon) {
     $ruleContextHolonIds = $dashboardModuleScopeHolonIds;
     $dashboardRules = new ArrayRule();
     $dashboardOrganizationRules = new ArrayRule();
-    $dashboardRules->loadForPolicyContexts($currentOrganizationId, $ruleContextHolonIds, $dashboardIsOrganizationHolon, 'contextual', $dashboardOrganizationRules);
+    $dashboardRules->loadForPolicyContexts($currentOrganizationId, $ruleContextHolonIds, $dashboardModuleIsOrganizationHolon, 'contextual', $dashboardOrganizationRules);
     $dashboardRuleGroups = omoPolicyBuildRuleGroups(
         omoPolicyBuildRuleEntries($dashboardOrganizationRules, $dashboardRules), 'holon', $organization
     );
