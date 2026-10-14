@@ -1919,9 +1919,9 @@ function syncSubmitLabel(template) {
         return;
     }
 
-    const typeLabel = String(template && template.typeLabel ? template.typeLabel : '').trim();
-    elements.submit.textContent = typeLabel !== ''
-        ? 'Créer un élément de type ' + typeLabel
+    const templateName = String(template && template.name ? template.name : '').trim();
+    elements.submit.textContent = templateName !== ''
+        ? 'Créer un élément de type ' + templateName
         : 'Créer un élément';
 }
 

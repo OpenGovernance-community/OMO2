@@ -27,7 +27,8 @@
 				[['name'], 'required'],								// Champs obligatoires
 				[['id'], 'integer'],								// Nombres entiers
 				[['datecreation'], 'datetime'],
-				[['name','shortname','domain'], 'string'],	// Chaines de caractere
+				[['name','shortname','domain','url'], 'string'],	// Chaines de caractere
+				[['description'], 'text'],
 				[['interface_level'], 'integer'],
 				[['isModel'], 'boolean'],
 				[['latlong'], 'latlong'],
@@ -45,6 +46,8 @@
 			return [
 				'id' => 'ID',
 				'name' => 'Nom',
+				'description' => 'Description',
+				'url' => 'URL pour en savoir plus',
 				'shortname' => 'Identifiant URL',
 				'domain' => 'Domaine',
 				'interface_level' => 'Niveau d utilisation',
@@ -60,6 +63,8 @@
 		public static function attributeDescriptions() {
 			return [
 				'name' => 'Nom complet de l\'organisation',
+				'description' => 'Presentation libre en texte simple, affichee dans les fiches de modeles.',
+				'url' => 'Adresse HTTP ou HTTPS du lien En savoir plus dans les fiches de modeles.',
 				'shortname' => 'Identifiant utilise dans l\'URL de l\'organisation',
 				'domain' => 'Nom de domaine principal de l\'organisation',
 				'interface_level' => 'Niveau global de complexite de l interface, utilise pour afficher progressivement les options du logiciel.',
@@ -73,6 +78,8 @@
 		public static function attributeLength() {
 			return [
 				'name' => 100,
+				'description' => 16000,
+				'url' => 2048,
 				'shortname' => 50,
 				'domain' => 100,
 				'interface_level' => 1,
@@ -149,6 +156,8 @@
 				'isModel',
 				'interface_level',
 				'name',
+				'description',
+				'url',
 				'shortname',
 				'domain',
 				'logo',
@@ -1912,6 +1921,9 @@
 
 		public function set($field, $value)
 		{
+			if ($field === 'url') {
+				$value = is_scalar($value) ? trim((string)$value) : '';
+			}
 			if ($field === 'shortname') {
 				$value = $this->normalizeShortname($value);
 			}
@@ -1929,6 +1941,9 @@
 
 		public function save()
 		{
+			if (!self::isValidInformationUrl((string)$this->get('url'))) {
+				return array('status' => false, 'text' => 'L URL doit etre une adresse HTTP ou HTTPS valide (2048 caracteres maximum).');
+			}
 			if ((int)$this->getId() <= 0 && !isset($this->getLexiconParameters()['lexicon'])) {
 				$this->setLexicon(self::getInitialLexicon());
 			}
@@ -1943,6 +1958,13 @@
 			}
 
 			return parent::save();
+		}
+
+		public static function isValidInformationUrl(string $url): bool
+		{
+			return $url === '' || (strlen($url) <= 2048
+				&& preg_match('~^https?://~i', $url) === 1
+				&& filter_var($url, FILTER_VALIDATE_URL) !== false);
 		}
 
 		public function instantiateBasicParcours()
@@ -3198,7 +3220,7 @@
 		public static function getPublicModelCatalog(): array
 		{
 			$rows = self::fetchAll(
-				"SELECT o.id, o.name, o.color, o.logo, o.banner, h.id AS root_holon_id
+				"SELECT o.id, o.name, o.description, o.url, o.color, o.logo, o.banner, h.id AS root_holon_id
 				FROM organization o
 				INNER JOIN holon h ON h.IDorganization = o.id
 					AND h.IDtypeholon = 4
@@ -3216,6 +3238,8 @@
 				return array(
 					'id' => (int)($row['id'] ?? 0),
 					'name' => trim((string)($row['name'] ?? '')),
+					'description' => trim((string)($row['description'] ?? '')),
+					'url' => self::isValidInformationUrl(trim((string)($row['url'] ?? ''))) ? trim((string)($row['url'] ?? '')) : '',
 					'color' => trim((string)($row['color'] ?? '')),
 					'logo' => trim((string)($row['logo'] ?? '')),
 					'banner' => trim((string)($row['banner'] ?? '')),
@@ -6522,6 +6546,9 @@
 				$project->set('IDorganization', (int)$organization->getId());
 				$project->set('IDholon', $targetHolonId);
 				$project->set('IDuser', $targetUserId);
+				$sourceCreatorUserId = (int)($record['sourceCreatorUserId'] ?? 0);
+				$project->set('IDusercreation', $userIdMap[$sourceCreatorUserId] ?? (int)$actorUserId);
+				$project->set('visibility_type', \dbObject\ObjectVisibility::normalizeVisibilityType($record['visibilityType'] ?? null));
 				$sourceProposerUserId = (int)($record['sourceProposerUserId'] ?? 0);
 				$project->set('IDuser_proposed', isset($userIdMap[$sourceProposerUserId]) ? (int)$userIdMap[$sourceProposerUserId] : null);
 				$project->set('title', $title !== '' ? $title : 'Projet OMO 1 #' . $sourceId);
@@ -6785,6 +6812,9 @@
 				$task->set('IDuser', $targetUserId);
 				$sourceProposerUserId = (int)($record['sourceProposerUserId'] ?? 0);
 				$task->set('IDuser_proposed', isset($userIdMap[$sourceProposerUserId]) ? (int)$userIdMap[$sourceProposerUserId] : null);
+				$sourceCreatorUserId = (int)($record['sourceCreatorUserId'] ?? 0);
+				$task->set('IDusercreation', $userIdMap[$sourceCreatorUserId] ?? (int)$actorUserId);
+				$task->set('visibility_type', \dbObject\ObjectVisibility::normalizeVisibilityType($record['visibilityType'] ?? null));
 				$task->set('title', $title !== '' ? $title : 'Tache OMO 1 #' . (int)$record['sourceId']);
 				$task->set('description', $record['description'] ?? null);
 				$task->set('status', array_key_exists('status', $record)
@@ -7923,6 +7953,8 @@
 			self::omo1ImportJournalWrite('organization_creation_started');
 			$organization = new self();
 			$organization->set('name', self::omo1ImportLimitText($name, 100));
+			$organization->set('description', (string)($sourceOrganization['description'] ?? ''));
+			$organization->set('url', (string)($sourceOrganization['url'] ?? ''));
 			$organization->set('interface_level', self::INTERFACE_LEVEL_AUTONOMOUS);
 			$organization->set('color', trim((string)($sourceOrganization['color'] ?? '')) ?: null);
 			$organization->set('logo', $sourceOrganization['logo'] ?? null);
@@ -8209,6 +8241,8 @@
 			$organizationName = trim((string)$organizationName);
 			$definitionOverrides = array_intersect_key($definitionOverrides, array_flip(array(
 				'name',
+				'description',
+				'url',
 				'shortname',
 				'domain',
 				'color',
@@ -8217,6 +8251,9 @@
 				'logo',
 				'banner',
 			)));
+			if (!self::isValidInformationUrl(trim((string)($definitionOverrides['url'] ?? '')))) {
+				return array('status' => false, 'message' => 'L URL doit etre une adresse HTTP ou HTTPS valide (2048 caracteres maximum).');
+			}
 			$model = new self();
 			if ($modelOrganizationId <= 0 || !$model->load($modelOrganizationId) || !$model->isSharedAsTemplate()) {
 				return array('status' => false, 'message' => 'Le modèle public sélectionné est introuvable.');
@@ -9930,6 +9967,7 @@
 			$catalog = array();
 
 			foreach ($projects as $project) {
+				if (!$project->currentViewerCanAccessVisibility()) continue;
 				$projectId = (int)$project->getId();
 				if ($projectId <= 0) {
 					continue;
@@ -15367,6 +15405,9 @@
 			if ($module === 'decision') {
 				return self::topbarSearchResolveDecisionAccess($object, $viewerContext, $organizationId) ? $object : null;
 			}
+			if ($module === 'projects' && !$object->currentViewerCanAccessVisibility((int)($viewerContext['userId'] ?? 0))) {
+				return null;
+			}
 			if (!$archived && (int)$object->get('active') !== 1) {
 				return null;
 			}
@@ -16747,6 +16788,10 @@
 
 			$results = array();
 			foreach ($rows as $row) {
+				$project = new \dbObject\Project();
+				if (!$project->load((int)$row['id']) || !$project->currentViewerCanAccessVisibility((int)($viewerContext['userId'] ?? 0))) {
+					continue;
+				}
 				$holonId = (int)($row['IDholon'] ?? 0);
 				$subtitleParts = array();
 				if ($holonId > 0) {

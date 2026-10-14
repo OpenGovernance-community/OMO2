@@ -212,6 +212,9 @@ if ($projectId > 0) {
     ) {
         omoProjectsActionRespond(false, omoProjectsT('projects.error.not_found'), [], 404);
     }
+    if (!omoProjectsCanViewProject($existingProject, $context)) {
+        omoProjectsActionRespond(false, omoProjectsT('projects.error.forbidden'), [], 403);
+    }
 }
 
 $canManageContext = omoProjectsCanManageContext($context);
@@ -670,6 +673,16 @@ if ($projectId <= 0) {
     $project->set('IDorganization', $organizationId);
 }
 $project->set('IDholon', $targetHolonId > 0 ? $targetHolonId : null);
+if (array_key_exists('visibility_type', $_POST)) {
+    if (!is_string($_POST['visibility_type']) || !array_key_exists($_POST['visibility_type'], \dbObject\ObjectVisibility::getVisibilityTypeOptions())) {
+        omoProjectsActionRespond(false, omoProjectsT('projects.error.visibility'), [], 422);
+    }
+    $project->set('visibility_type', $_POST['visibility_type']);
+}
+if (($project->getVisibilityType() === \dbObject\ObjectVisibility::TYPE_ROLE && $targetHolonId <= 0)
+    || ($project->getVisibilityType() === \dbObject\ObjectVisibility::TYPE_CIRCLE && $project->getVisibilityCircleId() <= 0)) {
+    omoProjectsActionRespond(false, omoProjectsT('projects.error.visibility'), [], 422);
+}
 $project->set('title', mb_substr($title, 0, 255, 'UTF-8'));
 $project->set('description', PropertyFormat::sanitizeHtml((string)($_POST['description'] ?? '')));
 $defaultStatus = $projectId <= 0 ? Project::STATUS_IN_PROGRESS : $project->get('status');

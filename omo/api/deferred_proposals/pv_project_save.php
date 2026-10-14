@@ -25,7 +25,7 @@ if (!$contextHolon instanceof Holon) $respond(403, ['status' => false, 'message'
 $proposal = new DeferredProposal();
 if ($proposalId > 0 && (!$proposal->load($proposalId) || (int)$proposal->get('IDdocument_pv_point') !== $pointId || (int)$proposal->get('IDorganization') !== $organizationId || (string)$proposal->get('target_type') !== DeferredProposal::TARGET_PROJECT || (string)$proposal->get('status') !== DeferredProposal::STATUS_PENDING)) $respond(404, ['status' => false, 'message' => 'Cette modification ne peut plus être modifiée.']);
 $project = new Project();
-if ($operation !== DeferredProposal::OPERATION_CREATE && (!$project->load($projectId) || (int)$project->get('IDorganization') !== $organizationId || (int)$project->get('IDholon') !== $holonId)) $respond(404, ['status' => false, 'message' => 'Le projet sélectionné est introuvable dans cet espace.']);
+if ($operation !== DeferredProposal::OPERATION_CREATE && (!$project->load($projectId) || (int)$project->get('IDorganization') !== $organizationId || (int)$project->get('IDholon') !== $holonId || !$project->currentViewerCanAccessVisibility($userId))) $respond(404, ['status' => false, 'message' => 'Le projet sélectionné est introuvable dans cet espace.']);
 $afterState = [];
 if ($operation !== DeferredProposal::OPERATION_DELETE) {
     $afterState = DeferredProposal::normalizeProjectState($_POST, $operation === DeferredProposal::OPERATION_UPDATE ? $project : null);

@@ -129,6 +129,7 @@ function timerApiRecentEntryData($userId, array $entries)
         if ($projectId > 0) {
             $project = new \dbObject\Project();
             if ($project->load($projectId)
+                && $project->currentViewerCanAccessVisibility($userId)
                 && (int)$project->get('IDorganization') === $organizationId
                 && (int)$project->get('IDholon') === (int)$holon->getId()) {
                 $projectName = trim((string)$project->get('title'));
@@ -180,7 +181,7 @@ timerApiReply(array('error' => true, 'message' => 'L’espace choisi n’est pas
     $projects->loadForWorkTimeHolon($organizationId, $holonId, $status);
     $projectData = array();
     foreach ($projects as $project) {
-        if (!($project instanceof \dbObject\Project)) {
+        if (!($project instanceof \dbObject\Project) || !$project->currentViewerCanAccessVisibility($userId)) {
             continue;
         }
         $projectData[] = array(
