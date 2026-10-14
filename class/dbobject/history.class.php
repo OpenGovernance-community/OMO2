@@ -797,7 +797,7 @@
 			return $items;
 		}
 
-		public static function fetchHolonFeedPage($organizationId, $holonId, $limit = 10, $offset = 0, $includeOrganizationScope = false)
+		public static function fetchHolonFeedPage($organizationId, $holonId, $limit = 10, $offset = 0, $includeOrganizationScope = false, ?array $scopeHolonIds = null)
 		{
 			$organizationId = (int)$organizationId;
 			$holonId = (int)$holonId;
@@ -812,7 +812,21 @@
 				);
 			}
 
-			if ($includeOrganizationScope) {
+			if ($scopeHolonIds !== null) {
+				$targetHolonIds = array_values(array_unique(array_filter(array_map('intval', $scopeHolonIds), static fn($id) => $id > 0)));
+				$scopeFilter = $targetHolonIds !== []
+					? "(target_type IN ('holon', 'holon_resource') AND target_id IN (" . implode(', ', $targetHolonIds) . '))'
+					: '1 = 0';
+				if ($includeOrganizationScope) {
+					$scopeFilter .= " OR (target_type = 'organization' AND target_id = " . $organizationId . ')';
+				}
+				$rows = self::fetchAll(
+					'SELECT id, IDorganization, IDuser, target_type, target_id, action, content, parameters, datecreation, active
+					 FROM history WHERE active = 1 AND IDorganization = :organization_id AND (' . $scopeFilter . ')
+					 ORDER BY datecreation DESC, id DESC LIMIT ' . $offset . ', ' . ($limit + 1),
+					array('organization_id' => $organizationId)
+				);
+			} elseif ($includeOrganizationScope) {
 				$query = "SELECT id, IDorganization, IDuser, target_type, target_id, action, content, parameters, datecreation, active
 					FROM history
 					WHERE active = 1

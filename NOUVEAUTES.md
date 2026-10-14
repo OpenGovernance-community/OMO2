@@ -1,5 +1,7 @@
 # Journal des nouveautés
 
+- Tableaux de pilotage / racine des modules (2026-10-14) : choix independants Organisation, Parent ou espace courant (lexique de l organisation), puis Local, Enfants directs ou Descendants pour tous les modules de donnees. Racine relative conservee dans les modeles et preferences ; configurations existantes rattachees a l espace courant. Ouverture des apps dans la racine choisie, droits conserves. Filtres locaux de l equipe et de l historique corriges, module Processus reconnecte a son nom actuel. Tests PHP 8.5 des neuf combinaisons, sauvegarde, rendu de tous les modules et interface ordinateur/mobile ; sans migration SQL.
+
 - Projets / choix du parent (2026-10-14) : bouton fusee accole au champ du projet parent, comme pour l espace associe. Libelle conserve dans l infobulle et pour les lecteurs d ecran ; presentation compacte aussi sur mobile.
 
 - Projets / indicateur de visibilite (2026-10-14) : petite icone avant la personne en charge dans les cartes, listes et Gantt, avec une infobulle explicative. Dans le detail, icone et libelle integres a la ligne des indicateurs strategiques, priorite et taille, y compris lorsque ces indicateurs sont desactives.

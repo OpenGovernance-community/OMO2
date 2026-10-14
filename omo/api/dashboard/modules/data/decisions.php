@@ -19,7 +19,7 @@ if (!empty($enabledAppHashes['decision'])) {
     }
     foreach ($dashboardDecisionRows as $row) {
         $decisionHolonId = (int)($row['IDholon'] ?? 0);
-        if ($decisionHolonId > 0 ? !isset($dashboardModuleScopeHolonIdMap[$decisionHolonId]) : !$dashboardIsOrganizationHolon) {
+        if ($decisionHolonId > 0 ? !isset($dashboardModuleScopeHolonIdMap[$decisionHolonId]) : !$dashboardModuleIsOrganizationHolon) {
             continue;
         }
         $decision = new DecisionProcess();

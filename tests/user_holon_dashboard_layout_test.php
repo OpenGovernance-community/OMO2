@@ -16,6 +16,11 @@ use dbObject\Holon;
 use dbObject\ApplicationSetting;
 use dbObject\Organization;
 
+class DashboardAudienceHolonFixture extends Holon
+{
+    public function getAssociatedMemberUserIds(array $options = array()) { return []; }
+}
+
 function assertDashboardLayout(bool $condition, string $message): void
 {
     if (!$condition) {
@@ -35,6 +40,17 @@ assertDashboardLayout(count($layout) === 2, 'Only valid, non-overlapping modules
 assertDashboardLayout($layout[0]['id'] === 'wide' && $layout[0]['columnSpan'] === 2, 'A horizontal double module must be preserved.');
 assertDashboardLayout($layout[1]['id'] === 'vertical' && $layout[1]['rowSpan'] === 2, 'A vertical double module must be preserved.');
 assertDashboardLayout($layout[0]['settings']['scope'] === 'contextual', 'Legacy dashboard modules must receive the local scope by default.');
+assertDashboardLayout($layout[0]['settings']['scopeRoot'] === 'holon', 'Legacy modules must retain the current holon as root.');
+foreach (UserHolon::getDashboardModuleCatalog() as $type => $definition) {
+    if (empty($definition['settings']['scope'])) continue;
+    foreach (['organization', 'parent', 'holon'] as $root) {
+        foreach (['contextual', 'children', 'descendants'] as $scope) {
+            $settings = UserHolon::normalizeDashboardModuleSettings($type, ['scopeRoot' => $root, 'scope' => $scope]);
+            assertDashboardLayout($settings['scopeRoot'] === $root && $settings['scope'] === $scope, 'Every scoped module must preserve all nine root/scope combinations: ' . $type);
+        }
+    }
+    assertDashboardLayout(UserHolon::normalizeDashboardModuleSettings($type, ['scopeRoot' => 'invalid'])['scopeRoot'] === 'holon', 'An invalid root must fall back to the current holon.');
+}
 assertDashboardLayout($layout[0]['settings']['audience'] === 'all', 'Legacy audience-aware modules must receive the all-items audience by default.');
 
 $scopedLayout = UserHolon::normalizeDashboardLayout(array(
@@ -51,8 +67,10 @@ assertDashboardLayout(UserHolon::normalizeDashboardModuleSettings('checklist', a
 assertDashboardLayout(UserHolon::normalizeDashboardModuleSettings('stats', array('audience' => 'unsupported'))['audience'] === 'all', 'An invalid module audience must fall back to all items.');
 assertDashboardLayout(!isset(UserHolon::getDashboardModuleCatalog()['event']['settings']['audience']), 'The event module keeps its own filtering without a dashboard audience setting.');
 assertDashboardLayout(omoDashboardMatchesResponsibleAudience('all', 0, null, 0, 0), 'The all audience must not exclude an item.');
-assertDashboardLayout(omoDashboardMatchesResponsibleAudience('mine', 42, null, 42, 1), 'The mine audience must keep directly assigned items.');
-assertDashboardLayout(!omoDashboardMatchesResponsibleAudience('roles', 42, null, 42, 1), 'The spaces audience must require an associated space.');
+$audienceHolon = new DashboardAudienceHolonFixture();
+$audienceHolon->hydrateFromDatabaseRow(['id' => 100], true);
+assertDashboardLayout(omoDashboardMatchesResponsibleAudience('mine', 42, $audienceHolon, 42, 1), 'The mine audience must keep directly assigned items.');
+assertDashboardLayout(!omoDashboardMatchesResponsibleAudience('roles', 42, $audienceHolon, 42, 1), 'The spaces audience must require an associated space.');
 assertDashboardLayout(UserHolon::getDefaultDashboardLayout() === array(), 'The built-in dashboard fallback must be empty.');
 assertDashboardLayout(method_exists(ApplicationSetting::class, 'getDashboardGlobalDefaultLayout'), 'The global dashboard default must be readable from application settings.');
 assertDashboardLayout(method_exists(ApplicationSetting::class, 'saveDashboardGlobalDefaultLayout'), 'The global dashboard default must be writable through application settings.');

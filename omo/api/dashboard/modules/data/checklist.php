@@ -5,7 +5,7 @@ use dbObject\Holon;
 use dbObject\Project;
 
 $dashboardChecklistItems = array();
-if (!empty($enabledAppHashes['checklist']) && $scopeReferenceHolon instanceof Holon) {
+if (!empty($enabledAppHashes['processus']) && $dashboardModuleContextHolon instanceof Holon) {
     $checklists = new ArrayChecklist();
     $checklists->loadForContext(
         $currentOrganizationId,

@@ -125,7 +125,7 @@ foreach (array(
     $dashboardDecisionRows[] = array('id' => $id, 'IDholon' => $holonId, 'IDorganization' => 1, 'IDuser' => 42, 'title' => 'Decision ' . $id, 'status' => $status);
 }
 $dashboardDecisionPendingGroups = array(4 => 300, 5 => null, 8 => 301, 9 => null, 11 => 302);
-$dashboardIsOrganizationHolon = false;
+$dashboardModuleIsOrganizationHolon = false;
 foreach (array(
     array(array(10), array('active' => 5, 'elaboration' => 1, 'pending' => 1)),
     array(array(10, 11), array('active' => 6, 'elaboration' => 1, 'pending' => 2)),
@@ -138,7 +138,7 @@ foreach (array(
     $elaborationIds = array_column(array_filter($dashboardDecisionItems, static fn(array $item): bool => in_array('elaboration', $item['filters'], true)), 'id');
     assertDashboardDecisions($elaborationIds === array(3), 'The elaboration filter must include consultation decisions and exclude draft, scheduled and evaluation decisions.');
 }
-$dashboardIsOrganizationHolon = true;
+$dashboardModuleIsOrganizationHolon = true;
 include dirname(__DIR__) . '/omo/api/dashboard/modules/data/decisions.php';
 assertDashboardDecisions($dashboardDecisionCounts['active'] === 8, 'Organization-level decisions must be included at the organization root.');
 assertDashboardDecisions($dashboardDecisionCounts['elaboration'] === 2, 'Organization-level elaboration decisions must be counted at the organization root.');
