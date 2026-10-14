@@ -7,7 +7,16 @@ use dbObject\ArrayOrganization;
 use dbObject\ArrayProject;
 use dbObject\Authority;
 
-const OMO_STRUCTURE_CACHE_VERSION = 7;
+const OMO_STRUCTURE_CACHE_VERSION = 8;
+
+function omoStructureLoadProjectTitles(array $representation, int $organizationId, $shareLink): array
+{
+    $projectIds = [];
+    omoStructureCollectProjectIds($representation, $projectIds);
+    return $shareLink instanceof \dbObject\HolonShareLink
+        ? ArrayProject::fetchTitlesForProjectIds($organizationId, array_keys($projectIds))
+        : ArrayProject::fetchTitlesForOrganization($organizationId);
+}
 
 function omoStructureBuildCacheKey($organizationId, $navigationRootId, $includeMemberUserIds, array $displaySettings)
 {
@@ -292,6 +301,8 @@ $cachedRepresentation = $forceRefresh
     : omoStructureReadSessionCache($cacheKey, $latestStructureHistoryId);
 
 if (is_array($cachedRepresentation)) {
+    // Project scopes and personal ownership can change independently of structure history.
+    $cachedRepresentation['projectTitles'] = omoStructureLoadProjectTitles($cachedRepresentation, $organizationId, $shareLink);
     if (session_status() === PHP_SESSION_ACTIVE) {
         session_write_close();
     }
@@ -324,11 +335,7 @@ if (count($representation) === 0) {
     exit;
 }
 
-$projectIds = array();
-omoStructureCollectProjectIds($representation, $projectIds);
-$representation['projectTitles'] = $shareLink instanceof \dbObject\HolonShareLink
-    ? ArrayProject::fetchTitlesForProjectIds($organizationId, array_keys($projectIds))
-    : ArrayProject::fetchTitlesForOrganization($organizationId);
+$representation['projectTitles'] = omoStructureLoadProjectTitles($representation, $organizationId, $shareLink);
 
 $authorityIds = array();
 omoStructureCollectAuthorityIds($representation, $authorityIds);

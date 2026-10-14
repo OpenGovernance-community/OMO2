@@ -576,7 +576,7 @@ $renderKanbanCard = static function (array $item, string $status) use ($context,
         <h4 class="omo-project-card__title generic-title generic-title--item"><?= omoApiEscape($projectTitle) ?></h4>
         <?php if ($isProposal): ?><span class="omo-project-proposal-badge"><?= omoApiEscape(omoProjectsT('projects.proposal.badge')) ?></span><?php endif; ?>
         <div class="omo-project-card__meta generic-meta generic-meta--compact">
-            <span><?= omoApiEscape($responsibleLabel) ?></span>
+            <span><?= omoProjectsRenderVisibilityIcon($project) ?><?= omoApiEscape($responsibleLabel) ?></span>
             <?php if ($plannedEnd !== ''): ?><time datetime="<?= omoApiEscape((string)$plannedEnd) ?>"><?= omoApiEscape($plannedEnd) ?></time><?php endif; ?>
         </div>
         <?= omoProjectsRenderBlockedInfo($project, 'omo-project-card__blocked-info') ?>
@@ -1120,7 +1120,7 @@ $projectTexts = [
                                     <h4 class="omo-project-card__title generic-title generic-title--item"><?= omoApiEscape($projectTitle) ?></h4>
                                     <?php if ($isProposal): ?><span class="omo-project-proposal-badge"><?= omoApiEscape(omoProjectsT('projects.proposal.badge')) ?></span><?php endif; ?>
                                     <div class="omo-project-card__meta generic-meta generic-meta--compact">
-                                        <span><?= omoApiEscape($responsibleLabel) ?></span>
+                                        <span><?= omoProjectsRenderVisibilityIcon($project) ?><?= omoApiEscape($responsibleLabel) ?></span>
                                         <?php if ($plannedEnd !== ''): ?><time datetime="<?= omoApiEscape((string)$plannedEnd) ?>"><?= omoApiEscape($plannedEnd) ?></time><?php endif; ?>
                                     </div>
                                     <?= omoProjectsRenderBlockedInfo($project, 'omo-project-card__blocked-info') ?>
@@ -1176,7 +1176,7 @@ $projectTexts = [
                                                 <?php if ($isProposal): ?><span class="omo-project-proposal-badge"><?= omoApiEscape(omoProjectsT('projects.proposal.badge')) ?></span><?php endif; ?>
                                                 <div class="omo-project-list-item__meta">
                                                     <span><?= $renderProjectFollowerMarker($item) ?><?= omoApiEscape($item['holonLabel']) ?></span>
-                                                    <span><?= omoApiEscape($item['responsibleLabel']) ?></span>
+                                                    <span><?= omoProjectsRenderVisibilityIcon($project) ?><?= omoApiEscape($item['responsibleLabel']) ?></span>
                                                     <span class="omo-project-status omo-project-status--<?= omoApiEscape($item['status']) ?>"><?= omoApiEscape(omoProjectsStatusLabel($item['status'])) ?></span>
                                                     <?php if ($usesSize): ?><span class="omo-project-detail__subproject-size"><?= omoApiEscape($item['projectSize']) ?></span><?php endif; ?>
                                                     <?php if ($usesPriority && $item['priority'] !== null): ?><span class="generic-project-priority generic-project-priority--p<?= (int)$item['priority'] ?>" title="<?= omoApiEscape(omoProjectsT('projects.detail.priority')) ?>">P<?= (int)$item['priority'] ?></span><?php endif; ?>
@@ -1238,7 +1238,7 @@ $projectTexts = [
                                         <?php if ($canManageProject): ?><label class="omo-project-selection-control"><input type="checkbox" data-omo-project-select data-project-can-delete="<?= $canDeleteProject ? '1' : '0' ?>" value="<?= (int)$project->getId() ?>" aria-label="<?= omoApiEscape(omoProjectsT('projects.selection.toggle')) ?>"></label><?php endif; ?>
                                             <strong><?= omoApiEscape($projectTitle) ?></strong>
                                             <?php if ($isProposal): ?><span class="omo-project-proposal-badge"><?= omoApiEscape(omoProjectsT('projects.proposal.badge')) ?></span><?php endif; ?>
-                                            <span><?= $renderProjectFollowerMarker($item) ?><?= omoApiEscape($item['holonLabel']) ?> · <?= omoApiEscape($item['responsibleLabel']) ?></span>
+                                            <span><?= $renderProjectFollowerMarker($item) ?><?= omoApiEscape($item['holonLabel']) ?> · <?= omoProjectsRenderVisibilityIcon($project) ?><?= omoApiEscape($item['responsibleLabel']) ?></span>
                                             <?= omoProjectsRenderBlockedInfo($project, 'omo-project-gantt-row__blocked-info') ?>
                                         </div>
                                         <div class="omo-projects__gantt-timeline omo-project-gantt-row__timeline" data-omo-project-gantt-timeline>

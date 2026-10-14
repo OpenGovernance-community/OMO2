@@ -125,6 +125,7 @@ class McpProjectWrite extends DbObject
             };
         }
         // Include native lifecycle fields in the revision so UI edits within the same second are detected.
+        $data['visibility_type'] = $project->getVisibilityType();
         $revision = $data;
         foreach (['active', 'project_kind', 'proposal_status', 'capture_mode', 'closed_at', 'archived_at', 'updated_at'] as $field) {
             $value = $project->get($field); $revision[$field] = $value instanceof \DateTimeInterface ? $value->format('Y-m-d H:i:s') : $value;

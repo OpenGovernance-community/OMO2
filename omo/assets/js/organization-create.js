@@ -731,6 +731,10 @@ window.commonPageScripts["/omo/assets/js/organization-create.js"] = function (pa
                         throw new Error(result.data && result.data.message ? result.data.message : pageConfig.message);
                     }
 
+                    if (typeof window.commonDrawerMarkSaved === 'function') {
+                        window.commonDrawerMarkSaved(form);
+                    }
+
                     setFeedback(result.data.message || pageConfig.successLabel, false);
 
                     window.setTimeout(function () {
