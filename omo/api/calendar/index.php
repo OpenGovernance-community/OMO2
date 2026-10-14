@@ -1839,6 +1839,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
     <script src="<?= commonAssetUrl('/common/calendar/availability-model.js') ?>"></script>
     <script src="<?= commonAssetUrl('/common/calendar/recurrence.js') ?>"></script>
     <script src="<?= commonAssetUrl('/common/calendar/document-fields.js') ?>"></script>
+    <script src="<?= commonAssetUrl('/common/calendar/invitations.js') ?>"></script>
     <script src="<?= commonAssetUrl('/common/calendar/availability-view.js') ?>"></script>
     <script src="<?= commonAssetUrl('/common/calendar/availability.js') ?>"></script>
     <script src="/common/calendar/share.js?v=20260916"></script>

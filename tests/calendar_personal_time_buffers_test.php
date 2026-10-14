@@ -185,9 +185,13 @@ try {
     $detailHtml = personalBufferRequest($detail);
     personalBufferExpect(str_contains($detailHtml, 'data-calendar-invitations-lazy') && !str_contains($detailHtml, 'omo-calendar-detail__summary-head'),
         'Event detail defers the invitation summary.');
+    file_put_contents(dirname(__DIR__) . '/tmp/calendar-invitations-detail.html', $detailHtml);
     $detail['get']['invitation_summary'] = 1;
     unset($detail['verify_session_cache']);
-    personalBufferExpect(str_contains(personalBufferRequest($detail), 'omo-calendar-detail__summary-head'), 'Opening the invitation section renders its summary.');
+    $summaryHtml = personalBufferRequest($detail);
+    personalBufferExpect(str_contains($summaryHtml, 'omo-calendar-detail__summary-head') && str_contains($summaryHtml, 'Invited group'),
+        'Opening the invitation section renders its invited group.');
+    file_put_contents(dirname(__DIR__) . '/tmp/calendar-invitations-summary.html', $summaryHtml);
     $nonMember = $fixture(User::class, ['email' => 'non-member-' . $nonce . '@example.invalid', 'active' => 1]);
     $deniedFragment = $fragment; $deniedFragment['session']['currentUser'] = (int)$nonMember->getId();
     personalBufferExpect(!str_contains(personalBufferRequest($deniedFragment), 'data-omo-calendar-holon-list'), 'The fragment keeps the editor permission checks.');
