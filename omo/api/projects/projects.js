@@ -1073,6 +1073,7 @@
     }
 
     function applyStoredDisplayPreferences() {
+        if (window.omoApplicationViewPreferencesIsDashboardNavigation?.(root)) return false;
         var serverDefault = typeof window.omoApplicationViewPreferencesGetDefault === 'function'
             ? window.omoApplicationViewPreferencesGetDefault(root)
             : null;

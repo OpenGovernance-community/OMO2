@@ -1424,7 +1424,7 @@ window.omoConfig = <?=
 <script src="/omo/assets/js/site-update.js"></script>
 <?php } ?>
 <script src="assets/js/simple-html-field.js?v=20261009-html-editor-placeholder"></script>
-<script src="assets/js/application-view-preferences.js?v=20260923-first-view"></script>
+<script src="<?= commonAssetUrl('/omo/assets/js/application-view-preferences.js') ?>"></script>
 <script src="<?= commonAssetUrl('/omo/assets/js/app.js') ?>"></script>
 <script src="<?= commonAssetUrl('/omo/assets/js/attention.js') ?>" defer></script>
 <script src="<?= commonAssetUrl('/common/tips/tips.js') ?>" defer></script>

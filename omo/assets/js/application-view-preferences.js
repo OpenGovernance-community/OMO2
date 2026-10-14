@@ -186,6 +186,10 @@
         });
     }
 
+    window.omoApplicationViewPreferencesIsDashboardNavigation = function (root) {
+        var context = readContext(root);
+        return Boolean(context && context.isDashboardNavigation);
+    };
     window.omoApplicationViewPreferencesGetDefault = function (root) {
         var context = readContext(root);
         return context && context.defaultView && typeof context.defaultView === 'object' ? context.defaultView : null;

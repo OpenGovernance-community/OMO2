@@ -21,6 +21,13 @@ class DashboardAudienceHolonFixture extends Holon
     public function getAssociatedMemberUserIds(array $options = array()) { return []; }
 }
 
+class DashboardTemplateHolonFixture extends Holon
+{
+    public ?Holon $template = null;
+    public function getTemplateHolon() { return $this->template; }
+    public function canViewDetail() { return true; }
+}
+
 function assertDashboardLayout(bool $condition, string $message): void
 {
     if (!$condition) {
@@ -222,6 +229,57 @@ assertDashboardLayout($holon->getDashboardDefaultLayout() === array(), 'An empty
 $holon->clearDashboardDefaultLayout();
 assertDashboardLayout($holon->getDashboardDefaultLayout() === null, 'Clearing a holon dashboard default must restore fallback resolution.');
 assertDashboardLayout($holon->getDashboardDirectTemplateLayoutKey() === '', 'A holon without a direct template must not receive a template layout key.');
+
+$templateOrganization = new class extends Organization {
+    public function canViewDetail() { return true; }
+};
+$templateInstance = new DashboardTemplateHolonFixture();
+$simpleRole = new DashboardTemplateHolonFixture();
+$structuralRole = new DashboardTemplateHolonFixture();
+$memoryRole = new DashboardTemplateHolonFixture();
+foreach ([$templateInstance, $simpleRole, $structuralRole, $memoryRole] as $index => $templateFixture) {
+    $templateFixture->hydrateFromDatabaseRow(['id' => 200 + $index, 'IDtypeholon' => 1, 'templatename' => 'Template ' . $index], true);
+}
+$templateInstance->template = $memoryRole;
+$memoryRole->template = $structuralRole;
+$structuralRole->template = $simpleRole;
+$simpleKey = $structuralRole->getDashboardDirectTemplateLayoutKey();
+$structuralKey = $memoryRole->getDashboardDirectTemplateLayoutKey();
+$memoryKey = $templateInstance->getDashboardDirectTemplateLayoutKey();
+$makeInheritedLayout = static fn(string $id): array => UserHolon::normalizeDashboardLayout([
+    ['id' => $id, 'type' => 'documents', 'row' => 0, 'column' => 0, 'rowSpan' => 1, 'columnSpan' => 1,
+        'settings' => ['scopeRoot' => 'parent', 'scope' => 'descendants']],
+]);
+$simpleLayout = $makeInheritedLayout('simple-role');
+$structuralLayout = $makeInheritedLayout('structural-role');
+$memoryLayout = $makeInheritedLayout('memory-role');
+$templateOrganization->setDashboardTemplateDefaultLayout($simpleKey, $simpleLayout);
+assertDashboardLayout($templateOrganization->getDashboardTemplateDefaultLayoutForHolon($templateInstance) === $simpleLayout, 'A role must inherit through multiple unconfigured template levels, preserving module settings.');
+$templateOrganization->setDashboardTemplateDefaultLayout($structuralKey, $structuralLayout);
+assertDashboardLayout($templateOrganization->getDashboardTemplateDefaultLayoutForHolon($templateInstance) === $structuralLayout, 'The closest configured template parent must win.');
+$templateOrganization->setDashboardTemplateDefaultLayout($memoryKey, $memoryLayout);
+assertDashboardLayout($templateOrganization->getDashboardTemplateDefaultLayoutForHolon($templateInstance) === $memoryLayout, 'The direct template must override its parents.');
+$templateOrganization->setDashboardTemplateDefaultLayout($memoryKey, []);
+assertDashboardLayout($templateOrganization->getDashboardTemplateDefaultLayoutForHolon($templateInstance) === [], 'An empty direct template must stop inheritance.');
+$templateOrganization->clearDashboardTemplateDefaultLayout($memoryKey);
+assertDashboardLayout($templateOrganization->getDashboardTemplateDefaultLayout($memoryKey) === null, 'An inherited layout must not become a local template override or reset target.');
+$templateOrganization->setDashboardTemplateDefaultLayout($structuralKey, []);
+assertDashboardLayout($templateOrganization->getDashboardTemplateDefaultLayoutForHolon($templateInstance) === [], 'An empty parent template must stop inheritance.');
+$templateOrganization->clearDashboardTemplateDefaultLayout($structuralKey);
+$templateOrganization->clearDashboardTemplateDefaultLayout($simpleKey);
+$templateOrganization->setDashboardTemplateDefaultLayout('type:1', $simpleLayout);
+assertDashboardLayout($templateOrganization->getDashboardTemplateDefaultLayoutForHolon($templateInstance) === null, 'Template lookup must leave type fallback to the dedicated layer.');
+$simpleRole->template = $memoryRole;
+assertDashboardLayout($templateOrganization->getDashboardTemplateDefaultLayoutForHolon($templateInstance) === null, 'A template cycle without configuration must terminate.');
+$templateOrganization->setDashboardTemplateDefaultLayout($simpleKey, $simpleLayout);
+assertDashboardLayout($templateOrganization->getDashboardTemplateDefaultLayoutForHolon($templateInstance) === $simpleLayout, 'A template cycle must still retain the nearest configured ancestor.');
+$inheritedLayers = ['temporary' => $makeInheritedLayout('temporary'), 'personal' => $makeInheritedLayout('personal'),
+    'organizationTemplate' => $templateOrganization->getDashboardTemplateDefaultLayoutForHolon($templateInstance),
+    'applicationType' => $makeInheritedLayout('type'), 'global' => $makeInheritedLayout('global')];
+foreach (['temporary', 'personal', 'organizationTemplate', 'applicationType', 'global'] as $layer) {
+    assertDashboardLayout(omoDashboardViewPreferencesResolveLayout($inheritedLayers) === $inheritedLayers[$layer], 'Wrong priority at layer ' . $layer);
+    unset($inheritedLayers[$layer]);
+}
 
 $applicationViewContext = array(
     'personalView' => array('scope' => 'children'),

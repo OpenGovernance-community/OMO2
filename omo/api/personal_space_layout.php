@@ -69,15 +69,16 @@ if ($holonId > 0) {
 }
 
 $layout = UserHolon::normalizeDashboardLayout($payload['layout'] ?? null);
-$availableModuleScopes = $holon instanceof Holon
-    ? omoApiGetAvailableContextScopes(true, $holon, $rootHolon)
-    : array('contextual');
 foreach ($layout as &$module) {
     $moduleType = trim((string)($module['type'] ?? ''));
     $moduleCatalogItem = UserHolon::getDashboardModuleCatalog()[$moduleType] ?? array();
     if (empty($moduleCatalogItem['settings']['scope'])) {
         continue;
     }
+    $moduleRootHolon = $holon instanceof Holon
+        ? $holon->getDashboardScopeRoot($module['settings']['scopeRoot'] ?? 'holon', $rootHolon)
+        : null;
+    $availableModuleScopes = omoApiGetAvailableContextScopes(true, $moduleRootHolon, $rootHolon);
     $module['settings']['scope'] = omoApiNormalizeContextScope(
         $module['settings']['scope'] ?? 'contextual',
         $availableModuleScopes

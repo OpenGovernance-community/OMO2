@@ -1205,14 +1205,6 @@ body {
     margin-left: auto;
 }
 
-.omo-dashboard-module__scope,
-.omo-dashboard-module__audience {
-    min-height: 18px;
-    padding: 1px 6px;
-    font-size: 0.68rem;
-    letter-spacing: 0.025em;
-}
-
 .omo-personal-space__item-button:hover,
 .omo-personal-space__item-button:focus-visible {
     transform: translateY(-1px);

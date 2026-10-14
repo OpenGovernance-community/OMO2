@@ -1986,7 +1986,8 @@ window.omoInitCalendar = function (root) {
         }
 
         function initializeCalendarViewFilter() {
-            currentSearch = readCalendarSearch();
+            var fromDashboard = window.omoApplicationViewPreferencesIsDashboardNavigation?.(root);
+            currentSearch = fromDashboard ? '' : readCalendarSearch();
             var quickSearch = root.querySelector('[data-omo-calendar-quick-search]');
             if (quickSearch) {
                 quickSearch.value = currentSearch;
@@ -1998,12 +1999,12 @@ window.omoInitCalendar = function (root) {
                 ? window.omoApplicationViewPreferencesGetDefault(root)
                 : null;
             var preferences = normalizeCalendarFilters(temporary || saved || defaultView || serverDefault || getActiveCalendarFilters());
-            if (initialOpenEventId > 0) {
+            if (fromDashboard || initialOpenEventId > 0) {
                 preferences = getActiveCalendarFilters();
             }
             // A configured preference must win over an old session position, which can
             // otherwise restore a stale month or week after the page is reloaded.
-            var temporaryPositionUrl = initialOpenEventId > 0 || temporary || saved || defaultView || serverDefault
+            var temporaryPositionUrl = fromDashboard || initialOpenEventId > 0 || temporary || saved || defaultView || serverDefault
                 ? ''
                 : readCalendarTemporaryPositionUrl();
             if (temporaryPositionUrl && resolveUrl(temporaryPositionUrl) !== resolveUrl(currentUrl)) {
