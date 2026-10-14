@@ -95,6 +95,24 @@ function commonRenderTopbarJqueryAssets()
     $jqueryLoaded = true;
 }
 
+function commonRenderTopbarSearchScopeHeading(string $title, string $archiveLabel = '', bool $checked = false)
+{
+    if ($title === '' && $archiveLabel === '') return;
+    ?>
+    <div class="common-topbar__search-scope-heading generic-action-row generic-action-row--start">
+        <?php if ($title !== ''): ?>
+        <span class="common-topbar__search-panel-label"><?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8') ?></span>
+        <?php endif; ?>
+        <?php if ($archiveLabel !== ''): ?>
+        <label class="generic-checkbox generic-checkbox--inline">
+            <input type="checkbox" role="switch" class="generic-switch" data-topbar-search-archive <?= $checked ? 'checked' : '' ?>>
+            <span><?= htmlspecialchars($archiveLabel, ENT_QUOTES, 'UTF-8') ?></span>
+        </label>
+        <?php endif; ?>
+    </div>
+    <?php
+}
+
 function commonRenderTopbarSearchPeriod(array $period, $idPrefix = 'commonTopbar')
 {
     $minDate = trim((string)($period['minDate'] ?? ''));
@@ -532,7 +550,7 @@ function commonRenderTopbar(array $options = [])
                     </div>
                     <?php if ($config['search']['scopeProvider'] !== ''): ?>
                     <div class="common-topbar__search-scopes" data-topbar-search-scopes hidden>
-                        <div class="common-topbar__search-panel-label"><?= htmlspecialchars($config['search']['scopeLabel']) ?></div>
+                        <?php commonRenderTopbarSearchScopeHeading($config['search']['scopeLabel'], (string)($options['search']['archiveLabel'] ?? '')); ?>
                         <div class="common-topbar__search-scope-list" data-topbar-search-scope-list></div>
                         <?php if ($config['search']['scopeHint'] !== ''): ?>
                             <div class="common-topbar__search-panel-hint"><?= htmlspecialchars($config['search']['scopeHint']) ?></div>
@@ -540,6 +558,7 @@ function commonRenderTopbar(array $options = [])
                     </div>
                     <?php else: ?>
                     <div class="common-topbar__search-panel-hint"><?= htmlspecialchars($config['search']['advancedHint']) ?></div>
+                    <?php commonRenderTopbarSearchScopeHeading('', (string)($options['search']['archiveLabel'] ?? '')); ?>
                     <?php endif; ?>
                     <?php commonRenderTopbarSearchPeriod($config['search']['period']); ?>
                 </form>

@@ -120,14 +120,17 @@ function omoApiResponseSchemas(): array
     $schemas['RecordText'] = $object([
         'organization_id' => $i, 'module' => $s, 'record_id' => $i, 'context_holon_id' => $idNull, 'mission_id' => $idNull,
         'title' => $s, 'record' => $ref('RecordSummary'), 'url' => $url,
+        'archived' => $b + ['description' => 'Selected archive partition, including records in archived holons.'],
         'text' => $s + ['description' => 'Plain text chunk; external attachment contents and full histories are not included.'],
         'offset' => $i + ['description' => 'Offset in UTF-8 characters, not bytes.'], 'next_offset' => $nextOffset, 'coverage' => $s,
     ]);
     $schemas['SearchPage'] = $object([
         'organization_id' => $i, 'query' => $s, 'modules' => $strings,
+        'archived' => $b + ['description' => 'False for active records only, true for archives only. Preserve for pagination.'],
         'items' => $list($object(['module' => $s, 'record_id' => $i, 'context_holon_id' => $idNull, 'mission_id' => $idNull,
-            'title' => $s, 'subtitle' => $s, 'excerpt' => $s, 'url' => $url, 'effective_invitees' => $ref('EffectiveInvitees')],
-            ['module', 'record_id', 'context_holon_id', 'mission_id', 'title', 'subtitle', 'excerpt', 'url'])),
+            'title' => $s, 'subtitle' => $s, 'excerpt' => $s, 'url' => $url, 'archived' => $b,
+            'effective_invitees' => $ref('EffectiveInvitees')],
+            ['module', 'record_id', 'context_holon_id', 'mission_id', 'title', 'subtitle', 'excerpt', 'url', 'archived'])),
         'next_offset' => $nextOffset, 'selection_count' => $i, 'selection_limit_per_module' => $i,
         'exhaustive' => $b + ['const' => false, 'description' => 'Search is bounded, even when next_offset is null.'],
     ]);

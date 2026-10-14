@@ -28,6 +28,7 @@ const context = {
     parseUrl: () => route,
     omoParseHashState: hash => ({routeToken: hash, popupToken: null}),
     omoConfirmDiscardChanges: () => true,
+    omoConfirmRouteChange: () => true,
     getSidebarMenuConfig: () => ({drawer: 'drawer_decisions', url: 'api/decision/index.php'}),
     omoNormalizeDrawerId: id => id,
     omoNormalizeDrawerForcedScope: scope => scope || '',

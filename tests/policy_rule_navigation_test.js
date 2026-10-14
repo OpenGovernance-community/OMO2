@@ -47,6 +47,7 @@ const card = id => `<article data-policy-rule-card data-policy-rule-id="${id}" d
                 function omoNormalizeHashToken(token) {return token || null;}
                 function omoGetMenuHashForRouteToken(token) {return token && token.split('-')[0];}
                 function omoConfirmDiscardChanges() {return true;}
+                function omoConfirmRouteChange() {return true;}
                 function getSidebarMenuConfig() {return {drawer:'drawer_policy', resolvedUrl:'/omo/api/policy/index.php'};}
                 function omoNormalizeDrawerId(id) {return id;}
                 function omoNormalizeDrawerForcedScope() {return '';}

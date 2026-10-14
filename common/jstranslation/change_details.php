@@ -1,6 +1,7 @@
 <?php
 require_once dirname(__DIR__, 2) . '/omo/api/bootstrap.php';
 require_once dirname(__DIR__) . '/choice/rule-scope-fields.php';
+require_once dirname(__DIR__) . '/choice/holon-removal-fields.php';
 
 $sourceLang = [
     'currentHolon' => ['text' => 'Holon courant', 'context' => 'Current structure context when a rule has no authority'],
@@ -62,6 +63,7 @@ $bundle = omoLoadTranslationBundle('common_choice_change_details', $sourceLang);
 $payload = [];
 foreach ($sourceLang as $key => $definition) $payload[$key] = t($key, [], $bundle, $sourceLang);
 foreach (['scope', 'authority', 'local', 'circle', 'descendants', 'global'] as $key) $payload['rule_' . $key] = omoRuleScopeT($key);
+foreach (['label', 'delete_all', 'delete_keep_rules', 'reassign', 'required'] as $key) $payload['authority_' . $key] = omoHolonRemovalT($key);
 header('Content-Type: application/json; charset=UTF-8');
 header('Cache-Control: private, no-store');
 echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

@@ -912,7 +912,8 @@ class DecisionGovernanceAction extends DbObject
         $beforeComparable = array_diff_key($before, ['editor_payload' => true]);
         if ($actionType === self::TYPE_HOLON_DELETE) {
             if ($current !== $beforeComparable) return ['status' => false, 'conflict' => true, 'message' => 'L’espace a été modifié depuis la préparation de cette modification.'];
-            $result = $organization->deleteHolonDefinition((int)$holon->getId(), 0, true);
+            $choice = self::normalizeState($this->get('after_state'))['authority_choice'] ?? '';
+            $result = $organization->deleteHolonDefinition((int)$holon->getId(), 0, true, is_string($choice) ? $choice : '');
             return !empty($result['status'])
                 ? ['status' => true, 'deleted_id' => (int)$holon->getId()]
                 : ['status' => false, 'message' => (string)($result['message'] ?? 'L’espace ne peut pas être supprimé.')];
