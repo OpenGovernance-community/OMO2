@@ -1,6 +1,7 @@
 <?php
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/shared.php';
+require_once dirname(__DIR__, 3) . '/common/object_visibility_selector.php';
 
 use dbObject\ArrayProject;
 use dbObject\ArrayHolon;
@@ -191,8 +192,10 @@ $formTexts = [
 $assignmentTargets = new ArrayHolon();
 $assignmentTargets->loadVisibilityTargetsForOrganization($organizationId);
 $selectableHolonIds = [];
+$visibilityHolons = [];
 $freshAssignmentContext = array_merge($context, ['freshPermissions' => true]);
 foreach ($assignmentTargets as $target) {
+    $visibilityHolons[(int)$target->getId()] = (int)$target->get('IDtypeholon') === 2 || (int)$target->getContainingCircleId(false) > 0;
     if ($target->canViewDetail() && omoProjectsCanUsePermission($target, 'CAN_CREATE_PROJECT', $freshAssignmentContext)) {
         $selectableHolonIds[] = (int)$target->getId();
     }
@@ -242,6 +245,21 @@ $holonSelectorConfig = [
 
         <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided generic-form-section--compact omo-project-form__section">
             <h3 class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoProjectsT('projects.form.assignment')) ?></h3>
+            <?= commonRenderObjectVisibilitySelector([
+                'idPrefix' => 'omo-project-visibility',
+                'fieldLabel' => omoProjectsT('projects.visibility.label'),
+                'selectedValue' => $project->getVisibilityType(),
+                'hint' => omoProjectsT('projects.visibility.hint'),
+                'hintAsContextHelp' => true,
+                'optionLabels' => array_combine(array_keys(\dbObject\ObjectVisibility::getVisibilityTypeOptions()), array_map(
+                    static fn($type) => omoProjectsT('projects.visibility.' . $type),
+                    array_keys(\dbObject\ObjectVisibility::getVisibilityTypeOptions())
+                )),
+                'optionDescriptions' => array_combine(array_keys(\dbObject\ObjectVisibility::getVisibilityTypeOptions()), array_map(
+                    static fn($type) => omoProjectsT('projects.visibility.' . $type . '_help'),
+                    array_keys(\dbObject\ObjectVisibility::getVisibilityTypeOptions())
+                )),
+            ]) ?>
             <div class="omo-project-form__grid omo-project-form__grid--assignment generic-form-grid">
                 <?php if (($context['rootHolon'] ?? null) instanceof Holon): ?>
                 <div class="omo-project-form__field generic-form-field">
@@ -266,10 +284,11 @@ $holonSelectorConfig = [
                 </div>
                 <div class="omo-project-form__field generic-form-field">
                     <label class="generic-form-label" for="omo-project-parent-label"><?= omoApiEscape(omoProjectsT('projects.field.parent')) ?></label>
-                    <div class="omo-project-form__parent-control">
+                    <div class="generic-form-control-group">
                         <input id="omo-project-parent-label" class="generic-form-control" type="text" value="<?= omoApiEscape($parentTitle) ?>" placeholder="<?= omoApiEscape(omoProjectsT('projects.parent.none')) ?>" readonly>
                         <input type="hidden" name="IDproject_parent" value="<?= $parentId > 0 ? $parentId : '' ?>" data-omo-project-parent-id>
-                        <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-project-parent-picker><?= omoApiEscape(omoProjectsT('projects.parent.choose')) ?></button>
+                        <button type="button" class="generic-action-button generic-action-button--secondary generic-action-button--icon-only" data-omo-project-parent-picker
+                            title="<?= omoApiEscape(omoProjectsT('projects.parent.choose')) ?>" aria-label="<?= omoApiEscape(omoProjectsT('projects.parent.choose')) ?>"><img src="/omo/images/tools/product.png" class="black-icon" alt=""></button>
                     </div>
                 </div>
             </div>
@@ -391,6 +410,7 @@ $holonSelectorConfig = [
 </div>
 <?= commonPageScriptTags('/omo/api/projects/create.js', [
     'formId' => $formId,
+    'visibilityHolons' => $visibilityHolons,
     'parentCandidates' => $parentProjects,
     'texts' => $formTexts,
     'projectsLevelNone' => omoApiEscape(omoProjectsT('projects.level.none')),

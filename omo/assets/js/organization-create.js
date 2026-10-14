@@ -95,7 +95,7 @@ window.commonPageScripts["/omo/assets/js/organization-create.js"] = function (pa
         }
 
         function getApplicationSnapshot() {
-            var fields = ['name', 'shortname', 'domain', 'color', 'interface_level', 'logo', 'banner'];
+            var fields = ['name', 'description', 'url', 'shortname', 'domain', 'color', 'interface_level', 'logo', 'banner'];
 
             return fields.map(function (fieldName) {
                 var field = form.querySelector('[name="' + fieldName + '"]');
@@ -729,6 +729,10 @@ window.commonPageScripts["/omo/assets/js/organization-create.js"] = function (pa
                 .then(function (result) {
                     if (!result.ok || !result.data || result.data.success !== true) {
                         throw new Error(result.data && result.data.message ? result.data.message : pageConfig.message);
+                    }
+
+                    if (typeof window.commonDrawerMarkSaved === 'function') {
+                        window.commonDrawerMarkSaved(form);
                     }
 
                     setFeedback(result.data.message || pageConfig.successLabel, false);

@@ -16,7 +16,7 @@ class ArrayProject extends ArrayDbObject
         }
 
         $rows = \dbObject\DbObject::fetchAll(
-            "SELECT id, title
+            "SELECT id, title, IDorganization, IDholon, IDuser, IDusercreation, visibility_type
             FROM project
             WHERE IDorganization = :organization_id
               AND active = 1
@@ -34,6 +34,9 @@ class ArrayProject extends ArrayDbObject
 
         $titles = [];
         foreach ($rows as $row) {
+            $project = new Project();
+            $project->hydrateFromDatabaseRow($row);
+            if (!$project->currentViewerCanAccessVisibility()) continue;
             $projectId = (int)($row['id'] ?? 0);
             if ($projectId > 0) {
                 $titles[$projectId] = trim((string)($row['title'] ?? ''));
@@ -63,6 +66,7 @@ class ArrayProject extends ArrayDbObject
 
         $titles = [];
         foreach ($projects as $project) {
+            if (!$project->currentViewerCanAccessVisibility()) continue;
             $projectId = (int)$project->getId();
             if ($projectId > 0) {
                 $titles[$projectId] = trim((string)$project->get('title'));

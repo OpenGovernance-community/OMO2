@@ -644,6 +644,21 @@
     font-weight: 700;
 }
 
+.omo-project-visibility-icon {
+    display: inline-block;
+    width: 1.2em;
+    height: 1.2em;
+    object-fit: contain;
+    vertical-align: -0.2em;
+    flex: 0 0 auto;
+}
+
+.omo-project-card__meta .omo-project-visibility-icon,
+.omo-project-list-item__meta .omo-project-visibility-icon,
+.omo-project-gantt-row .omo-project-visibility-icon {
+    margin-inline-end: 0.4em;
+}
+
 .omo-project-card__meta span {
     overflow: hidden;
     text-overflow: ellipsis;
@@ -2046,17 +2061,6 @@
     align-self: end;
 }
 
-.omo-project-form__parent-control {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 8px;
-}
-
-.omo-project-form__parent-control .generic-action-button {
-    min-height: 36px;
-    white-space: nowrap;
-}
-
 .omo-project-form__label-row {
     display: flex;
     align-items: baseline;
@@ -2257,10 +2261,6 @@
         min-height: 34px;
         padding: 7px 9px;
         font-size: .78rem;
-    }
-
-    .omo-project-form__parent-control {
-        grid-template-columns: 1fr;
     }
 
     .omo-project-detail__subproject-item {
