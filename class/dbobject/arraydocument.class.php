@@ -156,6 +156,7 @@
 				? (int)\commonGetCurrentUserId()
 				: (int)($_SESSION['currentUser'] ?? 0);
 			$candidateVisibleDocuments = array();
+			$meetingAccessIds = array();
 			$documentsById = array();
 			$loadedCount = 0;
 
@@ -187,7 +188,10 @@
 				$hasPvPreValidationAccess = $document->isPvDocument()
 					&& !$document->isPvValidated()
 					&& $document->canUserAccessPvBeforeValidation($viewerUserId, $resolvedOrganizationId);
-				if (!$canAccessVisibility && !$hasPvPreValidationAccess) {
+				if ($document->canUserAccessCooperativeDocumentThroughMeeting($viewerUserId, $resolvedOrganizationId)) {
+					$meetingAccessIds[$documentId] = true;
+				}
+				if (!$canAccessVisibility && !$hasPvPreValidationAccess && !isset($meetingAccessIds[$documentId])) {
 					continue;
 				}
 
@@ -209,6 +213,10 @@
 
 			$visibleDocuments = array();
 			foreach ($candidateVisibleDocuments as $document) {
+				if (isset($meetingAccessIds[(int)$document->getId()])) {
+					$visibleDocuments[] = $document;
+					continue;
+				}
 				$parentDocumentId = (int)$document->get('IDdocument_parent');
 				$visitedParentIds = array();
 				$hasVisibleChain = true;
