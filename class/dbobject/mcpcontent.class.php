@@ -31,12 +31,12 @@ final class McpContent
         require_once dirname(__DIR__, 2) . '/omo/translations.php';
         require_once dirname(__DIR__, 2) . '/omo/api/search/preview_shared.php';
     }
-    public static function sourceUrl(int $organizationId, string $module, int $id, int $holonId, int $missionId = 0): string
+    public static function sourceUrl(int $organizationId, string $module, int $id, int $holonId, int $missionId = 0, bool $archived = false): string
     {
         // Existing authenticated preview endpoint: no share keys or external URLs are disclosed.
         return \omoMcpIssuer() . '/omo/api/search/preview.php?' . http_build_query([
             'oid' => $organizationId, 'module' => $module, 'id' => $id, 'cid' => $holonId,
-            'mission_id' => $missionId], '', '&', PHP_QUERY_RFC3986);
+            'mission_id' => $missionId] + ($archived ? ['archive' => 1] : []), '', '&', PHP_QUERY_RFC3986);
     }
     public static function accessibleObject(Organization $organization, array $context, string $module, int $id): ?DbObject
     {
@@ -49,10 +49,11 @@ final class McpContent
         }
         return $object;
     }
-    public static function search(array $grant, string $query, array $modules, ?int $holonId, int $offset, int $limit): array
+    public static function search(array $grant, string $query, array $modules, ?int $holonId, int $offset, int $limit, bool $archived = false): array
     {
         $organization = McpStructure::organization($grant);
         $context = self::context($grant, $organization, $holonId);
+        $context['archived'] = $archived;
         $enabled = self::enabledModules($organization, (int)$grant['IDuser']);
         $scopes = $modules ? array_values(array_intersect($modules, $enabled)) : $enabled;
         // The existing search falls back to all modules when no requested scope is enabled.
@@ -72,22 +73,24 @@ final class McpContent
             $missionId = $module === 'tutorials' ? (int)($action['missionId'] ?? 0) : 0;
             $items[] = ['module' => $module, 'record_id' => $id,
                 'context_holon_id' => $context['currentHolonId'] ?: null, 'mission_id' => $missionId ?: null,
+                'archived' => $archived,
                 'title' => \omoSearchPreviewText($result['title'] ?? ''),
                 'subtitle' => \omoSearchPreviewText($result['subtitle'] ?? ''),
                 'excerpt' => \omoSearchPreviewText($result['excerpt'] ?? ''),
-                'url' => self::sourceUrl((int)$organization->getId(), $module, $id, $context['currentHolonId'], $missionId)];
-            if ($module === 'calendar') {
+                'url' => self::sourceUrl((int)$organization->getId(), $module, $id, $context['currentHolonId'], $missionId, $archived)];
+            if ($module === 'calendar' && !$archived) {
                 $items[array_key_last($items)]['effective_invitees'] = McpBrowse::eventInvitees((int)$organization->getId(), $id);
             }
         }
         return ['organization_id' => (int)$organization->getId(), 'query' => $query, 'modules' => $scopes,
-            'items' => $items, 'next_offset' => $offset + count($items) < count($selection) ? $offset + count($items) : null,
+            'archived' => $archived, 'items' => $items, 'next_offset' => $offset + count($items) < count($selection) ? $offset + count($items) : null,
             'selection_count' => count($selection), 'selection_limit_per_module' => 50, 'exhaustive' => false];
     }
-    public static function read(array $grant, string $module, int $id, ?int $holonId, int $missionId, int $offset, int $limit): array
+    public static function read(array $grant, string $module, int $id, ?int $holonId, int $missionId, int $offset, int $limit, bool $archived = false): array
     {
         $organization = McpStructure::organization($grant);
         $context = self::context($grant, $organization, $holonId);
+        $context['archived'] = $archived;
         if (!in_array($module, self::enabledModules($organization, (int)$grant['IDuser']), true)) {
             throw new \DomainException('Record unavailable.');
         }
@@ -121,9 +124,10 @@ final class McpContent
         $chunk = mb_substr($text, $offset, $limit, 'UTF-8');
         return ['organization_id' => (int)$organization->getId(), 'module' => $module, 'record_id' => $id,
             'context_holon_id' => $context['currentHolonId'] ?: null, 'mission_id' => $missionId ?: null,
+            'archived' => $archived,
             'title' => \omoSearchPreviewText($preview['title'] ?? ''),
             'record' => McpBrowse::summary($organization, $context, $module, $object),
-            'url' => self::sourceUrl((int)$organization->getId(), $module, $id, $context['currentHolonId'], $missionId),
+            'url' => self::sourceUrl((int)$organization->getId(), $module, $id, $context['currentHolonId'], $missionId, $archived),
             'text' => $chunk, 'offset' => $offset, 'next_offset' => $offset + mb_strlen($chunk, 'UTF-8') < mb_strlen($text, 'UTF-8')
                 ? $offset + mb_strlen($chunk, 'UTF-8') : null,
             'coverage' => 'OMO record text and visible collections from the module preview. External attachment contents and full module history are not included.'];

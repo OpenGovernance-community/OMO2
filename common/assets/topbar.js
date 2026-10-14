@@ -1094,6 +1094,7 @@
         var searchState = {
             query: query,
             scopes: readSelectedSearchScopes(form),
+            archived: !!(form && form.querySelector('[data-topbar-search-archive]:checked')),
             dateRange: getSearchPeriodState(form),
             config: config
         };

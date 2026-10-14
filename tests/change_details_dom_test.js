@@ -29,6 +29,8 @@ const markup = data => '<details data-omo-change-details-payload="' + encode(dat
     assert.equal(scopeChanges[0].before, 'Locale');
     assert.equal(scopeChanges[0].after, 'Cercle');
     const settle = () => new Promise(resolve => window.setTimeout(resolve, 0));
+    const authorityChange = window.omoChoiceChangeDetails.governanceChanges({type: 'holon.delete', before: {name: 'Role'}, after: {authority_choice: 'delete_keep_rules'}});
+    assert(authorityChange.some(change => change.before === 'Supprimer les autorites et remonter les regles'), 'Voters must see the selected authority disposition');
     const first = document.querySelector('details');
     assert.equal(first.querySelectorAll('.omo-change-details__absence').length, 1, 'Late script must hydrate existing content');
     assert(first.textContent.includes('Règle créée'), 'UTF-8 payload must survive decoding');
@@ -133,6 +135,11 @@ const markup = data => '<details data-omo-change-details-payload="' + encode(dat
     let summaryNotification = null;
     let summaryRequestFails = false;
     window.commonNotify = (message, type) => { summaryNotification = {message, type}; };
+    window.omoProposalHtml = {
+        mount(host, options) { host.value = options.value; host.addEventListener('input', () => options.onChange(host.value)); return Promise.resolve(); },
+        setValue(host, value) { host.value = value; return Promise.resolve(); },
+        getValue(host) { return host.value; }
+    };
     window.fetch = (url, options) => {
         if (url !== '/omo/api/decision/governance/summarize.php') throw new Error('Unexpected AI endpoint');
         sentSummary = JSON.parse(options.body.get('modifications'));
@@ -206,6 +213,30 @@ const markup = data => '<details data-omo-change-details-payload="' + encode(dat
     assert.equal(root.querySelectorAll('.omo-governance-proposal').length, 0);
     assert.equal(root.querySelector('[data-governance-blueprint]').value, '[]');
 
+    const deleteRoot = document.createElement('section');
+    deleteRoot.dataset.governanceEditor = '';
+    deleteRoot.innerHTML = '<form data-governance-form><input data-governance-blueprint><div data-governance-proposals></div><p data-governance-feedback hidden></p></form>'
+        + '<template data-governance-fields="holon_delete"><form data-editor><select name="authority_choice" required><option value=""></option><option value="delete_all">Delete</option><option value="delete_keep_rules">Keep rules</option><option value="reassign">Reassign</option></select><button type="submit">Save</button><button type="button" data-cancel>Cancel</button></form></template>'
+        + '<script type="application/json" data-governance-data></script>';
+    deleteRoot.querySelector('[data-governance-data]').textContent = JSON.stringify({editable:true, blueprint:[{title:'Delete role', actions:[
+        {type:'holon.delete',targetId:7,holonId:2,before:{name:'Target role'},after:{},status:'pending'}
+    ]}]});
+    const modal = document.createElement('div'); modal.id = 'commonTopbarModalBody';
+    document.body.append(deleteRoot, modal);
+    window.commonTopbarOpenModal = (title, html) => { modal.innerHTML = html; };
+    window.commonTopbarCloseModal = () => { modal.innerHTML = ''; };
+    window.omoGovernanceEditorInit(document);
+    deleteRoot.querySelector('[data-edit]').click();
+    let editor = modal.querySelector('[data-editor]');
+    assert.equal(editor.elements.namedItem('authority_choice').value, '', 'Legacy or new deletion has no automatic default');
+    assert(editor.textContent.includes('Target role'), 'Confirmation names the affected holon');
+    editor.dispatchEvent(new window.Event('submit', {cancelable:true}));
+    assert(modal.querySelector('[data-editor]'), 'Missing choice keeps editor open');
+    editor.elements.namedItem('authority_choice').value = 'delete_keep_rules';
+    editor.dispatchEvent(new window.Event('submit', {cancelable:true}));
+    assert.equal(JSON.parse(deleteRoot.querySelector('[data-governance-blueprint]').value)[0].actions[0].after.authority_choice, 'delete_keep_rules');
+    deleteRoot.querySelector('[data-edit]').click();
+    assert.equal(modal.querySelector('select').value, 'delete_keep_rules', 'Reopening keeps the selected disposition');
     dom.window.close();
     console.log('change_details_dom_test: OK');
 })().catch(error => { console.error(error); process.exitCode = 1; });

@@ -157,8 +157,8 @@ peuvent utiliser le meme serveur s ils supportent HTTP, OAuth DCR et PKCE S256.
 | `omo_list_assignments` | `user_id`, `holon_id` facultatifs ; `after_id` (0), `limit` (20, maximum 50) | Affectations directes actives : personne, role/cercle, focus et URL |
 | `omo_list_structure` | `parent_id` facultatif, `after_id` (0), `limit` (20, maximum 50) | Noms, types, parents, URL ; `next_after_id` pour la suite |
 | `omo_get_holon` | `holon_id` | Informations de base d un element |
-| `omo_search` | `query`, `modules` facultatif, `context_holon_id` facultatif, `offset` (0), `limit` (20, maximum 50) | Selection de resultats accessibles avec module, ID, extrait et URL ; `next_offset` pour la suite |
-| `omo_read_record` | `module`, `record_id`, `context_holon_id` facultatif, `mission_id` facultatif pour les tutoriels, `offset` (0), `limit` (12000 caracteres, maximum 20000) | Texte de la fiche et collections visibles ; `next_offset` pour la suite |
+| `omo_search` | `query`, `modules` facultatif, `context_holon_id` facultatif, `archived` (false), `offset` (0), `limit` (20, maximum 50) | Selection de resultats accessibles avec module, ID, extrait et URL ; `next_offset` pour la suite |
+| `omo_read_record` | `module`, `record_id`, `context_holon_id` facultatif, `mission_id` facultatif pour les tutoriels, `archived` (false), `offset` (0), `limit` (12000 caracteres, maximum 20000) | Texte de la fiche et collections visibles ; `next_offset` pour la suite |
 
 Une autorisation couvre une seule organisation. Le scope `organization:read`
 donne acces aux informations consultables avec les droits OMO du compte :
@@ -168,6 +168,25 @@ activites recurrentes, FAQ et tutoriels. `omo_connection_info` indique les
 modules actives ; la disponibilite d un module ne garantit pas l acces a toutes
 ses fiches. Une organisation sans module Structure peut aussi etre autorisee.
 La liste de structure reste limitee aux elements actifs et visibles.
+
+### Rechercher dans les archives
+
+`omo_search` accepte `archived: true` pour rechercher uniquement les objets archives
+individuellement et les contenus des cercles ou roles archives. Sans ce parametre,
+ou avec `false`, seuls les contenus actifs des espaces actifs sont recherches.
+Les deux perimetres ne sont jamais melanges. Exemple :
+
+```json
+{"name":"omo_search","arguments":{"query":"budget","modules":["documents","pv"],"archived":true}}
+```
+
+Conserver `archived: true` avec `offset` pour paginer, et avec `omo_read_record`
+pour consulter les resultats. La reponse et chaque resultat indiquent ce choix ;
+les URL de consultation le conservent. `context_holon_id` reste un contexte de
+navigation actif ; ne pas y passer l ID du holon archive trouve.
+Les droits de lecture habituels restent appliques. La consultation ne restaure
+aucun objet. Les fiches calendrier archivees omettent `effective_invitees`, qui
+represente les invitations actuelles et non leur historique.
 
 ### Explorer sans plafond de recherche
 

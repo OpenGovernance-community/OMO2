@@ -1625,6 +1625,7 @@ window.commonPageScripts["/omo/api/documents/create.js"] = function (pageConfig,
                 }
 
                 const savedDocumentId = Number(payload.id || editingDocumentId || 0);
+                if (typeof window.commonDrawerMarkSaved === 'function') window.commonDrawerMarkSaved(form);
 
                 const refreshPromise = editorHost !== 'project' && editorHost !== 'project_picker' && typeof window.omoRefreshDocumentsPanel === 'function'
                     ? window.omoRefreshDocumentsPanel()

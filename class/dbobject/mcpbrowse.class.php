@@ -292,7 +292,7 @@ final class McpBrowse
         };
         $result = ['module' => $module, 'record_id' => (int)$object->getId(), 'title' => self::text($title),
             'context_holon_id' => $context['currentHolonId'] ?: null,
-            'url' => McpContent::sourceUrl((int)$organization->getId(), $module, (int)$object->getId(), $context['currentHolonId'])];
+            'url' => McpContent::sourceUrl((int)$organization->getId(), $module, (int)$object->getId(), $context['currentHolonId'], 0, !empty($context['archived']))];
         if ($module === 'team') {
             $result['user_id'] = (int)$object->getId();
             $result['meeting_booking_url'] = self::meetingBookingUrl((int)$object->getId());
@@ -326,7 +326,7 @@ final class McpBrowse
             $value = $object->get($field);
             $result[$field] = $value instanceof \DateTimeInterface ? $value->format('Y-m-d H:i:s') : $value;
         }
-        if ($module === 'calendar') {
+        if ($module === 'calendar' && empty($context['archived'])) {
             $result['effective_invitees'] = self::eventInvitees((int)$organization->getId(), (int)$object->getId());
         }
         return $result;

@@ -26,6 +26,7 @@ class ArrayControlActivity extends ArrayDbObject
         if ($activeOnly || $archivedOnly) { $where[] = ['field' => 'active', 'value' => $archivedOnly ? 0 : 1]; }
         if ($archivedOnly) { $where[] = ['field' => 'archived_at', 'op' => 'is not null']; }
         $this->load([
+            'filter' => 'NOT ' . Holon::archivedContextSql('recurring_task.IDholon'),
             'where' => $where,
             'whereAny' => $holonFilter,
             'orderBy' => [['field' => 'position', 'dir' => 'ASC'], ['field' => 'title', 'dir' => 'ASC'], ['field' => 'id', 'dir' => 'ASC']],

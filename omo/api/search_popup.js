@@ -6,6 +6,7 @@
 
     var searchForm = root.querySelector('[data-omo-search-popup-form]');
     var searchInput = root.querySelector('[data-omo-search-popup-input]');
+    var archiveInput = root.querySelector('[data-topbar-search-archive]');
     var organizationId = Number(root.getAttribute('data-omo-search-popup-oid') || '0');
     var currentHolonId = Number(root.getAttribute('data-omo-search-popup-cid') || '0');
     var previousCleanup = typeof window.__omoPopupCleanup === 'function'
@@ -58,6 +59,7 @@
         var params = new URLSearchParams({
             oid: organizationId, cid: currentHolonId,
             module: button.dataset.omoSearchPreview,
+            archive: root.dataset.omoSearchPopupArchive || '0',
             id: button.dataset.omoSearchPreviewId,
             q: button.closest('[data-omo-search-result-query]').getAttribute('data-omo-search-result-query'),
             mission_id: button.dataset.omoSearchPreviewMission || '0'
@@ -78,7 +80,7 @@
             var openButton = button.cloneNode(false);
             openButton.removeAttribute('data-omo-search-preview');
             openButton.textContent = root.dataset.omoSearchPreviewOpenLabel;
-            previewAction.replaceChildren(openButton);
+            if (root.dataset.omoSearchPopupArchive !== '1') { previewAction.replaceChildren(openButton); }
         }).catch(function () {
             if (controller.signal.aborted || previewRequest !== controller) { return; }
             previewBody.textContent = root.dataset.omoSearchPreviewError;
@@ -128,7 +130,8 @@
 
     function buildPopupUrl(query, scopes) {
         var queryParts = [
-            'q=' + encodeURIComponent(String(query || '').trim())
+            'q=' + encodeURIComponent(String(query || '').trim()),
+            'archive=' + (archiveInput && archiveInput.checked ? '1' : '0')
         ];
 
         if (Number.isInteger(organizationId) && organizationId > 0) {
@@ -187,6 +190,7 @@
         var startDateInput = root.querySelector('[data-topbar-search-period-start]');
         var endDateInput = root.querySelector('[data-topbar-search-period-end]');
         var dateRange = {
+            archived: !!(archiveInput && archiveInput.checked),
             startDate: startDateInput ? String(startDateInput.value || '') : '',
             endDate: endDateInput ? String(endDateInput.value || '') : ''
         };

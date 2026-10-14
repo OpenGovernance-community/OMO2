@@ -1,5 +1,6 @@
 <?php
 require_once dirname(__DIR__) . '/bootstrap.php';
+require_once dirname(__DIR__, 3) . '/common/choice/holon-removal-fields.php';
 
 use dbObject\DeferredProposal;
 use dbObject\DecisionGovernanceAction;
@@ -36,6 +37,12 @@ $editingHolon = $operation === DeferredProposal::OPERATION_CREATE ? null : $targ
 $contextHolon = $operation === DeferredProposal::OPERATION_CREATE ? $targetHolon : $targetHolon->getParentHolon();
 if (!$contextHolon instanceof \dbObject\Holon) $respond(422, ['status' => false, 'message' => 'Le contexte de cet espace est invalide.']);
 $afterState = [];
+if ($operation === DeferredProposal::OPERATION_DELETE) {
+    if (!\dbObject\Authority::validateHolonRemovalChoice($rawPayload['authority_choice'] ?? null)) {
+        $respond(422, ['status' => false, 'message' => omoHolonRemovalT('required')]);
+    }
+    $afterState = ['authority_choice' => $rawPayload['authority_choice']];
+}
 if ($operation === DeferredProposal::OPERATION_MOVE) {
     $moveBeforeState = $proposalId > 0 ? DeferredProposal::normalizeState($proposal->get('before_state')) : DeferredProposal::captureHolonMoveState($targetHolon);
     $validation = DeferredProposal::validateHolonMove($organization, $targetHolon, (int)($rawPayload['parent_id'] ?? 0), $collectiveHolonId);

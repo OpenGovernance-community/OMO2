@@ -573,6 +573,12 @@
     gap: 8px;
 }
 
+.common-topbar__search-scope-heading {
+    align-self: stretch;
+    color: var(--topbar-menu-text, #f9fafb);
+    font-size: 13px;
+}
+
 .common-topbar__search-scope-list {
     display: flex;
     flex-wrap: wrap;

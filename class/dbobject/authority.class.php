@@ -8,6 +8,145 @@ class Authority extends DbObject
     public const DELETION_DELETE = 'delete';
     public const DELETION_REASSIGN = 'reassign';
 
+    public static function holonRemovalChoices(): array
+    {
+        return ['delete_all', 'delete_keep_rules', 'reassign'];
+    }
+
+    public static function validateHolonRemovalChoice($choice): bool
+    {
+        return is_string($choice) && in_array($choice, self::holonRemovalChoices(), true);
+    }
+
+    /** Called inside the holon lifecycle transaction, before any holon is removed. */
+    public static function applyHolonRemovalChoice(array $holons, string $choice, bool $archiving): array
+    {
+        if (!self::validateHolonRemovalChoice($choice)) {
+            throw new \DomainException('authority_choice_required');
+        }
+        $owners = [];
+        foreach ($holons as $holon) {
+            if (!$archiving || $holon->get('active')) $owners[(int)$holon->getId()] = true;
+        }
+        if (!$owners) return [];
+        $organizationId = $holons[0]->resolveOrganizationId();
+        $rows = self::fetchAll(
+            'SELECT a.*, h.active AS owner_active, h.archived_at AS owner_archived
+             FROM authority a INNER JOIN holon h ON h.id = a.IDholon
+             LEFT JOIN holon root ON root.id = h.IDholon_org
+             WHERE COALESCE(NULLIF(h.IDorganization, 0), root.IDorganization, 0) = :oid
+             ORDER BY a.id FOR UPDATE', ['oid' => $organizationId]);
+        if (!is_array($rows)) throw new \RuntimeException('Unable to load authorities');
+        $byId = $affected = [];
+        foreach ($rows as $row) {
+            $byId[(int)$row['id']] = $row;
+            if (isset($owners[(int)$row['IDholon']])) $affected[(int)$row['id']] = $row;
+        }
+        // Find the nearest live authority outside the whole departing branch.
+        $externalParent = static function (int $id) use ($byId, $affected): int {
+            $seen = [];
+            while (($id = (int)($byId[$id]['IDauthority_parent'] ?? 0)) > 0) {
+                if (isset($seen[$id]) || !isset($byId[$id])) throw new \RuntimeException('Invalid authority tree');
+                $seen[$id] = true;
+                if (!isset($affected[$id]) && !empty($byId[$id]['owner_active']) && !$byId[$id]['owner_archived']) return $id;
+            }
+            return 0;
+        };
+        $deleted = $moved = $replacements = $destinations = [];
+        foreach ($affected as $id => $row) {
+            $parentId = $externalParent($id);
+            $destinations[$id] = $parentId;
+            if ($choice === 'delete_all' || (!$archiving && !$parentId) || ($choice === 'delete_keep_rules' && $parentId)) {
+                $deleted[$id] = true;
+            } elseif ($parentId && $choice === 'reassign') {
+                // Complete delegations return to their source shell, without a duplicate authority.
+                if ((int)$row['IDauthority_parent'] === $parentId && !empty($byId[$parentId]['is_shell'])) {
+                    $deleted[$id] = true;
+                    $replacements[$id] = $parentId;
+                } else {
+                    $moved[$id] = (int)$byId[$parentId]['IDholon'];
+                }
+            }
+            // Local authorities stay archived with their owner, except for explicit deletion.
+        }
+        $survivingParent = static function (int $id) use ($byId, $deleted, $replacements): int {
+            $seen = [];
+            while (isset($deleted[$id])) {
+                if (isset($seen[$id])) throw new \RuntimeException('Invalid authority tree');
+                $seen[$id] = true;
+                $id = $replacements[$id] ?? (int)($byId[$id]['IDauthority_parent'] ?? 0);
+            }
+            return $id;
+        };
+        $helper = new self();
+        $movedRules = $deletedRules = [];
+        $reactivated = array_values($replacements);
+        foreach ($affected as $id => $row) {
+            $parentId = $destinations[$id];
+            if ($parentId && (int)$row['IDauthority_parent'] === $parentId && !empty($byId[$parentId]['is_shell'])) $reactivated[] = $parentId;
+        }
+        if ($choice === 'delete_keep_rules') $reactivated = array_merge($reactivated, array_values($destinations));
+        foreach (array_unique($reactivated) as $id) {
+            if (!$id || empty($byId[$id]['is_shell'])) continue;
+            $shell = new self();
+            if (!$shell->load($id)) throw new \RuntimeException('Source authority unavailable');
+            $shell->set('is_shell', false);
+            if (empty($shell->save()['status'])) throw new \RuntimeException('Unable to restore source authority');
+        }
+        $ruleRows = $helper->getRulesForAuthorities(array_keys($deleted));
+        if (!is_array($ruleRows)) throw new \RuntimeException('Unable to load authority rules');
+        foreach ($ruleRows as $row) {
+            $rule = new Rule();
+            if (!$rule->load((int)$row['id'])) throw new \RuntimeException('Rule unavailable');
+            $id = (int)$row['IDauthority'];
+            $targetId = $replacements[$id] ?? ($choice === 'delete_keep_rules' ? $destinations[$id] : 0);
+            if ($targetId > 0) {
+                $rule->set('IDauthority', $targetId);
+                $rule->set('IDholon', null);
+                if (empty($rule->save()['status'])) throw new \RuntimeException('Unable to move rule');
+                $movedRules[] = (int)$rule->getId();
+            } else {
+                if (!$rule->delete()) throw new \RuntimeException('Unable to delete rule');
+                $deletedRules[] = (int)$row['id'];
+            }
+        }
+        foreach ($rows as $row) {
+            $id = (int)$row['id'];
+            if (isset($deleted[$id])) continue;
+            $parentId = $survivingParent((int)$row['IDauthority_parent']);
+            if (!isset($moved[$id]) && $parentId === (int)$row['IDauthority_parent']) continue;
+            $authority = new self();
+            if (!$authority->load($id)) throw new \RuntimeException('Authority unavailable');
+            if (isset($moved[$id])) $authority->set('IDholon', $moved[$id]);
+            $authority->set('IDauthority_parent', $parentId ?: null);
+            if (!$parentId) $authority->set('is_local', true);
+            if (empty($authority->save()['status'])) throw new \RuntimeException('Unable to move authority');
+        }
+        $groups = [];
+        foreach ($moved as $id => $ownerId) $groups[$ownerId][] = $id;
+        foreach ($replacements as $id => $replacement) $groups[(int)$byId[$replacement]['IDholon']][] = $id;
+        foreach ($groups as $ownerId => $ids) {
+            $result = $helper->moveAuthorityPropertyReferences($ids, $ownerId, $replacements);
+            if (empty($result['status'])) throw new \RuntimeException('Unable to move authority references');
+        }
+        $result = $helper->moveAuthorityPropertyReferences([], 0, [], true, array_keys($deleted));
+        if (empty($result['status'])) throw new \RuntimeException('Unable to remove authority references');
+        $helper->detachTemplateAuthorityReferences(array_keys($deleted));
+        // Remove internal links first; foreign keys also protect external authorities and rules.
+        foreach (array_keys($deleted) as $id) {
+            if (!self::execute('UPDATE authority SET IDauthority_parent = NULL WHERE id = :id', ['id' => $id])) {
+                throw new \RuntimeException('Unable to detach authority');
+            }
+        }
+        foreach (array_keys($deleted) as $id) {
+            if (!self::execute('DELETE FROM authority WHERE id = :id', ['id' => $id])) throw new \RuntimeException('Unable to delete authority');
+        }
+        foreach (array_keys($byId) as $id) unset(self::$preload['authority_' . $id]);
+        foreach ($deletedRules as $id) unset(self::$preload['rule_' . $id]);
+        return ['choice' => $choice, 'deletedAuthorityIds' => array_keys($deleted), 'movedAuthorityIds' => array_keys($moved),
+            'replacements' => $replacements, 'deletedRuleIds' => $deletedRules, 'movedRuleIds' => $movedRules];
+    }
+
     public static function tableName()
     {
         return 'authority';
@@ -77,6 +216,7 @@ class Authority extends DbObject
              INNER JOIN `holon` h ON h.`id` = a.`IDholon`
              LEFT JOIN `holon` root ON root.`id` = h.`IDholon_org`
              WHERE COALESCE(NULLIF(h.`IDorganization`, 0), root.`IDorganization`, 0) = :organization_id
+               AND h.`archived_at` IS NULL
              ORDER BY a.`label` ASC, a.`id` ASC',
             ['organization_id' => $organizationId]
         );

@@ -194,6 +194,22 @@
                 if (type === 'holon' && operation !== 'delete') { openHolonEditor(pi, ai, operation, contextId, object); return; }
                 var action = baseAction(pi, ai, type, operation, contextId, object), state = clone(previous && operation !== 'delete' ? previous.after : (operation === 'create' ? {} : ((object || {}).state || {})));
                 if (operation === 'delete') {
+                    if (type === 'holon') {
+                        modal(actionLabel(action), root.querySelector('[data-governance-fields="holon_delete"]').innerHTML);
+                        var deletionForm = modalBody().querySelector('[data-editor]');
+                        var deletionTarget = document.createElement('strong');
+                        deletionTarget.textContent = targetLabel(action);
+                        deletionForm.prepend(deletionTarget);
+                        deletionForm.elements.namedItem('authority_choice').value = String(previous && previous.after ? previous.after.authority_choice || '' : '');
+                        deletionForm.querySelector('[data-cancel]').addEventListener('click', closeModal);
+                        deletionForm.addEventListener('submit', function (event) {
+                            event.preventDefault();
+                            if (!deletionForm.reportValidity()) return;
+                            action.after = {authority_choice: deletionForm.elements.namedItem('authority_choice').value};
+                            saveAction(pi, ai, action);
+                        });
+                        return;
+                    }
                     modal(actionLabel(action), '<section class="generic-section generic-section--stack generic-section--roomy"><p>La suppression sera appliquée uniquement si la proposition qui la contient est acceptée et si l’objet n’a pas changé.</p><strong>' + escapeHtml(targetLabel(action)) + '</strong><div class="generic-action-row"><button type="button" class="generic-action-button generic-action-button--danger" data-confirm>Ajouter la suppression</button><button type="button" class="generic-action-button generic-action-button--secondary" data-cancel>Annuler</button></div></section>');
                     modalBody().querySelector('[data-confirm]').addEventListener('click', function () { saveAction(pi, ai, action); }); modalBody().querySelector('[data-cancel]').addEventListener('click', closeModal); return;
                 }
@@ -337,7 +353,7 @@
                 if (!blueprint.length || blueprint.some(function (proposal) { return !(proposal.actions || []).length; })) { feedback.hidden = false; feedback.textContent = texts.genericError || 'Ajoutez une proposition et une modification.'; return; }
                 var formData = new FormData(form), submitButton = event.submitter || form.querySelector('[type="submit"]'), usesSharedPendingState = typeof window.omoBeginPendingAction === 'function';
                 if (usesSharedPendingState && !window.omoBeginPendingAction(form)) return; if (!usesSharedPendingState && submitButton) submitButton.disabled = true;
-                fetch(form.action, {method:'POST',credentials:'same-origin',headers:{'X-Requested-With':'XMLHttpRequest'},body:formData}).then(function (response) { return response.json().then(function (data) { return {ok:response.ok,data:data}; }); }).then(function (result) { if (!result.ok || !result.data.status) throw new Error(result.data.message); if (typeof window.omoDecisionOpenNestedDrawer === 'function') window.omoDecisionOpenNestedDrawer(result.data.drawerTitle || 'Prises de décision', result.data.redirectUrl, ''); else window.location.href = result.data.redirectUrl; }).catch(function (error) { if (typeof window.commonNotify === 'function') { feedback.hidden = true; feedback.textContent = ''; window.commonNotify(error.message || texts.genericError, 'error'); } else { feedback.hidden = false; feedback.textContent = error.message || texts.genericError; } }).finally(function () { if (usesSharedPendingState && typeof window.omoEndPendingAction === 'function') window.omoEndPendingAction(form); else if (submitButton) submitButton.disabled = false; });
+                fetch(form.action, {method:'POST',credentials:'same-origin',headers:{'X-Requested-With':'XMLHttpRequest'},body:formData}).then(function (response) { return response.json().then(function (data) { return {ok:response.ok,data:data}; }); }).then(function (result) { if (!result.ok || !result.data.status) throw new Error(result.data.message); if (typeof window.commonDrawerMarkSaved === 'function') window.commonDrawerMarkSaved(form); if (typeof window.omoDecisionOpenNestedDrawer === 'function') window.omoDecisionOpenNestedDrawer(result.data.drawerTitle || 'Prises de décision', result.data.redirectUrl, ''); else window.location.href = result.data.redirectUrl; }).catch(function (error) { if (typeof window.commonNotify === 'function') { feedback.hidden = true; feedback.textContent = ''; window.commonNotify(error.message || texts.genericError, 'error'); } else { feedback.hidden = false; feedback.textContent = error.message || texts.genericError; } }).finally(function () { if (usesSharedPendingState && typeof window.omoEndPendingAction === 'function') window.omoEndPendingAction(form); else if (submitButton) submitButton.disabled = false; });
             });
             if (!blueprint.length && editable) blueprint.push({id:0,title:(texts.proposalDefault || 'Proposition __INDEX__').replace('__INDEX__', '1'),description:'',actions:[]});
             render();
