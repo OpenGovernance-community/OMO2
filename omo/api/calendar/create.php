@@ -153,6 +153,18 @@ $sourceLang = array_merge(commonMeetingRecurrenceSourceLang(), commonCalendarAva
         'text' => 'Adresse du lien externe',
         'context' => 'Required URL of a new external link attached to a meeting.',
     ],
+    'calendar.create.field.document_file' => [
+        'text' => 'Fichier a joindre',
+        'context' => 'Required file picker for a new uploaded meeting document.',
+    ],
+    'calendar.create.error.document_file' => [
+        'text' => 'Selectionnez un fichier pour ce document.',
+        'context' => 'Validation error when a meeting attachment has no uploaded file.',
+    ],
+    'calendar.create.error.document_upload' => [
+        'text' => 'Le transfert du fichier a echoue. Verifiez sa taille et reessayez.',
+        'context' => 'Validation error for a failed or incomplete meeting attachment upload.',
+    ],
     'calendar.create.error.document_url' => [
         'text' => 'Saisissez une adresse de lien valide commencant par https:// ou http://.',
         'context' => 'Validation error for a missing or invalid meeting document URL.',
@@ -846,6 +858,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $requestedDocumentType = trim((string)($_POST['document_type'] ?? ''));
     $documentTitle = trim((string)($_POST['document_title'] ?? ''));
     $documentExternalUrl = Document::sanitizeExternalUrl($_POST['document_external_url'] ?? '');
+    $documentUploadedFile = $_FILES['document_uploaded_file'] ?? null;
     $documentTemplateId = isset($_POST['document_template_id']) ? max(0, (int)$_POST['document_template_id']) : 0;
     $selectedInvitationHolonIds = $hasStructureApplication ? array_values(array_unique(array_filter(array_map('intval', $_POST['invitation_holon_ids'] ?? []), static function ($holonId) {
         return $holonId > 0;
@@ -1040,6 +1053,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    if ($willCreateDocument && $resolvedDocumentType === Document::TYPE_UPLOADED_FILE && !($selectedDocumentTemplate instanceof Document)) {
+        $uploadError = is_array($documentUploadedFile) ? (int)($documentUploadedFile['error'] ?? UPLOAD_ERR_NO_FILE) : UPLOAD_ERR_NO_FILE;
+        if ($uploadError !== UPLOAD_ERR_OK || !is_file((string)($documentUploadedFile['tmp_name'] ?? ''))) {
+            echo json_encode(['status' => false, 'message' => omoCalendarCreateT($uploadError === UPLOAD_ERR_NO_FILE
+                ? 'calendar.create.error.document_file' : 'calendar.create.error.document_upload')],
+                JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            exit;
+        }
+    }
+
     if (!$isEditMode) {
         $event = new Event();
         $event->set('IDuser', $currentUserId);
@@ -1194,7 +1217,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'document_type' => $resolvedDocumentType,
                     'event_id' => (int)$event->getId(),
                     'external_url' => $documentExternalUrl,
-                    'allow_empty_type_payload' => $resolvedDocumentType !== Document::TYPE_EXTERNAL_LINK,
+                    'uploaded_file' => $documentUploadedFile,
+                    'allow_empty_type_payload' => !in_array($resolvedDocumentType, [Document::TYPE_EXTERNAL_LINK, Document::TYPE_UPLOADED_FILE], true),
                 ];
             $documentCreateResult = $selectedDocumentTemplate instanceof Document
                 ? $linkedDocument->createFromDocumentTemplateInOrganizationContext(
@@ -1505,6 +1529,7 @@ if ($isEditMode) {
             id="<?= omoApiEscape($calendarFormId) ?>"
             class="omo-calendar-create__form generic-form-stack generic-form-stack--compact"
             method="post"
+            enctype="multipart/form-data"
             action="/omo/api/calendar/create.php?oid=<?= (int)$organizationId ?><?= $currentHolonId > 0 ? '&cid=' . (int)$currentHolonId : '' ?><?= $isEditMode ? '&id=' . (int)$event->getId() : '' ?><?= $project instanceof Project ? '&project_id=' . (int)$project->getId() . '&editor_host=project' : '' ?>"
             data-omo-calendar-create-form
             data-omo-calendar-editor-host="<?= omoApiEscape($editorHost) ?>"
@@ -1769,6 +1794,11 @@ if ($isEditMode) {
                                             <input type="url" name="document_external_url" class="generic-form-control"
                                                 value="<?= omoApiEscape($documentExternalUrlDefault) ?>" placeholder="https://..." maxlength="2000"
                                                 <?= $documentTypeDefault === Document::TYPE_EXTERNAL_LINK ? 'required' : 'disabled' ?>>
+                                        </label>
+                                        <label class="omo-calendar-create__field generic-form-field" data-omo-calendar-document-file-field<?= $documentTypeDefault === Document::TYPE_UPLOADED_FILE ? '' : ' hidden' ?>>
+                                            <span class="generic-form-label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.document_file')) ?></span>
+                                            <input type="file" name="document_uploaded_file" class="generic-form-control"
+                                                <?= $documentTypeDefault === Document::TYPE_UPLOADED_FILE ? 'required' : 'disabled' ?>>
                                         </label>
                                     </div>
                                 <?php endif; ?>

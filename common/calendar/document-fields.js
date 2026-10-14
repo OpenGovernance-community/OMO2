@@ -3,15 +3,20 @@
     if (window.omoCalendarDocumentFields) { window.omoCalendarDocumentFields.init(document); return; }
 
     function sync(form) {
-        var container = form.querySelector('[data-omo-calendar-document-url-field]');
-        if (!container) { return; }
         var type = form.querySelector('[data-omo-calendar-document-type]');
         var template = form.querySelector('[name="document_template_id"]');
-        var needsUrl = type && type.value === 'external_link' && (!template || Number(template.value) === 0);
-        var input = container.querySelector('[name="document_external_url"]');
-        container.hidden = !needsUrl;
-        input.required = !!needsUrl;
-        input.disabled = !needsUrl;
+        [
+            ['[data-omo-calendar-document-url-field]', 'external_link'],
+            ['[data-omo-calendar-document-file-field]', 'uploaded_file']
+        ].forEach(function (field) {
+            var container = form.querySelector(field[0]);
+            if (!container) { return; }
+            var needed = type && type.value === field[1] && (!template || Number(template.value) === 0);
+            var input = container.querySelector('input');
+            container.hidden = !needed;
+            input.required = !!needed;
+            input.disabled = !needed;
+        });
     }
 
     function init(scope) {

@@ -1,5 +1,7 @@
 # Journal des nouveautés
 
+- Calendrier / pieces jointes (2026-10-14) : activation des champs de lien et de fichier lors de l ouverture du formulaire depuis le calendrier ou un projet. Ajout du selecteur de fichier, transmission au stockage et validation avant creation ; les modeles fournissent leur propre contenu. Tests de sauvegarde HTTP multipart, d echec du stockage et du formulaire dynamique sur ordinateur/mobile ; sans migration SQL.
+
 - Calendrier / liens externes (2026-10-14) : ajout du champ URL lors de la creation d un lien associe a une reunion, dans le calendrier comme depuis un projet. Adresse HTTP/HTTPS valide obligatoire avant toute sauvegarde ; transmission au document, reprise a la duplication et conservation du lien fourni par un modele. Champ masque et desactive pour les autres types ou un modele. Tests PHP 8.5 de sauvegarde et de validation, controles navigateur ordinateur/mobile ; sans migration SQL.
 
 - Projets / PV des evenements (2026-10-14) : les PV des reunions rattachees au projet apparaissent automatiquement dans sa liste de documents, sans doublon avec les associations directes. La liste suit le changement ou le retrait du projet de la reunion, respecte les droits et les etapes du PV et exclut les reunions annulees ou inactives. Les PV ajoutes via une reunion ne proposent pas de detachement direct. Tests de regression PHP 8.5 ; sans migration SQL.
