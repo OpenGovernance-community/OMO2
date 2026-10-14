@@ -19,6 +19,30 @@
 			return $this->lastVisibilityStats;
 		}
 
+		/** Project event PVs are derived associations; never persist project_document links for them. */
+		public function loadPvForProjectEvents(int $projectId, int $organizationId): void
+		{
+			$this->exchangeArray([]);
+			if ($projectId <= 0 || $organizationId <= 0) {
+				return;
+			}
+			$rows = Document::fetchAll('SELECT d.* FROM document d
+				JOIN event e ON e.id = d.IDevent
+				JOIN project p ON p.id = e.IDproject
+				WHERE p.id = :project AND p.IDorganization = :organization
+				AND e.IDorganization = p.IDorganization AND d.IDorganization = p.IDorganization
+				AND d.active = 1 AND e.active = 1 AND e.status <> :cancelled AND d.documenttype = :pv
+				AND NOT ' . Holon::archivedContextSql('e.IDholon') . '
+				AND NOT ' . Holon::archivedContextSql('d.IDholon') . '
+				ORDER BY e.start_at ASC, d.id ASC',
+				['project' => $projectId, 'organization' => $organizationId, 'cancelled' => Event::STATUS_CANCELLED, 'pv' => Document::TYPE_PV]);
+			foreach ($rows ?: [] as $row) {
+				$document = new Document();
+				$document->hydrateFromDatabaseRow($row, true);
+				$this[] = $document;
+			}
+		}
+
 		public static function loadListMetadataForOrganization(int $organizationId): array
 		{
 			$metadata = array(
