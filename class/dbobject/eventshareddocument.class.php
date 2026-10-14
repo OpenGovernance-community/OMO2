@@ -30,6 +30,23 @@ class EventSharedDocument extends DbObject
         return !empty($link->save()['status']);
     }
 
+    public static function eventsForDocument(int $documentId, int $organizationId): array
+    {
+        if ($documentId <= 0 || $organizationId <= 0 || !self::tableExists(self::tableName())) { return []; }
+        $events = [];
+        foreach (self::fetchAll('SELECT e.* FROM event e
+            JOIN event_shared_document link ON link.IDevent = e.id
+            JOIN document d ON d.id = link.IDdocument
+            WHERE d.id = :document AND e.IDorganization = :organization
+            AND d.IDorganization = e.IDorganization',
+            ['document' => $documentId, 'organization' => $organizationId]) ?: [] as $row) {
+            $event = new Event();
+            $event->hydrateFromDatabaseRow($row, true);
+            $events[] = $event;
+        }
+        return $events;
+    }
+
     /** Batch lookup also used by the calendar, avoiding one query per meeting. */
     public static function documentsByEvent(array $eventIds, int $organizationId): array
     {

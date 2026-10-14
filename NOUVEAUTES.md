@@ -1,5 +1,7 @@
 # Journal des nouveautés
 
+- Reunions / documents cooperatifs (2026-10-14) : acces en lecture et en edition aux PAD, tableurs, tableaux blancs et fichiers Collabora pour les participants, par invitation individuelle, e-mail ou cercle. Prise en compte des documents propres a une reunion et de ceux partages entre plusieurs reunions, sans modifier leurs portees generales ni accorder de droits de gestion ou de suppression. Acces au document partage meme dans un dossier prive, sans ouvrir le dossier ni ses autres contenus. Tests de permissions et de retrait des acces sous PHP 8.5 ; sans migration SQL.
+
 - Tableaux de pilotage / ouverture des applications (2026-10-14) : reprise de la racine, de la portee et du public configures dans chaque bloc, y compris depuis une application deja ouverte. Les anciennes preferences de filtre ne remplacent plus ce contexte au chargement. Transmission de la portee aux Processus et au Reglement, du public aux Processus, Projets, Indicateurs et Activites. Repli sur Local selon les enfants de la racine choisie. Structure centree sur cette racine. Tests de navigation, preferences, sauvegarde, rendu PHP 8.5 et configuration ordinateur/mobile ; sans migration SQL.
 
 - Tableaux de pilotage / entetes compacts (2026-10-14) : capsules de racine, portee et public reduites avec le composant partage de badges compacts. Bouton Ouvrir remplace par l icone fournie, avec infobulle, libelle accessible et adaptation au theme sombre.
