@@ -64,7 +64,6 @@ for (const [app, parameter] of [['checklist', 'checklist_scope'], ['activities',
                     return {ok: true, json: async () => ({status: true, layout: window.savedDashboard.layout})};
                 };
             });
-            await page.addScriptTag({path: path.join(root, 'omo/assets/js/personal-space-dashboard.js')});
             await page.locator('[data-omo-dashboard-edit]').click();
             await page.locator('[data-configure-module="holon-contextual"]').click();
             assert.equal(await page.locator('[data-omo-dashboard-configure-root]').count(), 3);
