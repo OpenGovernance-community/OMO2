@@ -1,5 +1,7 @@
 # Journal des nouveautés
 
+- Decisions / sauvegarde de gouvernance (2026-10-14) : suppression du chargement inutilise des regles et des editeurs de tous les roles du cercle. Seuls les objets des modifications sont prepares et controles. Test HTTP avec 20 roles non concernes : 2236 a 484 requetes SQL ; controles des cibles hors contexte et des droits retires conserves.
+
 - Structure / menu des holons (2026-10-13) : actions regroupees avec des separateurs ; Archiver et Supprimer places avant Historique et Voir les archives, en fin de menu.
 
 - Structure / apercu des archives (2026-10-13) : attendus affiches en listes avec titres et details, valeurs heritees conservees ; autorites presentees par leur nom, description et autorite parente, avec indication des autorites locales et delegations completes. Meme rendu a la confirmation et a la consultation des archives, sans afficher les identifiants bruts.
