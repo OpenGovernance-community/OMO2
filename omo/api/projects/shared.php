@@ -242,7 +242,7 @@ if (!function_exists('omoProjectsSourceLang')) {
             'projects.resources.import_recurring_task' => ['text' => 'Importer une tache recurrente', 'context' => 'Open the existing recurring task selector from a project.'],
             'projects.resources.recurring_task_menu' => ['text' => 'Options des taches recurrentes', 'context' => 'Accessible label for the recurring task creation and import menu.'],
             'projects.resources.visible_in_holon' => ['text' => 'Afficher dans l espace', 'context' => 'Checkbox keeping a project resource visible in its space.'],
-            'projects.resources.visible_in_holon_hint' => ['text' => 'Les elements lies a un projet sont masques dans l espace par defaut. Cochez pour les afficher aux deux endroits.', 'context' => 'Help for document, indicator and recurring task space visibility.'],
+            'projects.resources.visible_in_holon_hint' => ['text' => 'Les elements lies a un projet ou un evenement sont masques dans l espace par defaut. Cochez pour les afficher aux deux endroits.', 'context' => 'Help for document, indicator and recurring task space visibility.'],
             'projects.resources.visible_in_holon_required' => ['text' => 'Cet element est lie a plusieurs projets. Il reste visible dans l espace et cette option ne peut pas etre decochee.', 'context' => 'Help explaining why space visibility is mandatory for a resource shared by several projects.'],
             'projects.resources.existing' => ['text' => 'Élément existant', 'context' => 'Existing resource picker tab.'],
             'projects.resources.new' => ['text' => 'Nouvel élément', 'context' => 'New resource picker tab.'],
@@ -991,16 +991,36 @@ if (!function_exists('omoProjectsGetVisibleDocuments')) {
     {
         $projectDocuments = new ArrayProjectDocument();
         $projectDocuments->loadForProject((int)$project->getId());
-        $visibleDocuments = [];
-
+        $candidates = [];
+        $currentUserId = (int)commonGetCurrentUserId();
         foreach ($projectDocuments as $projectDocument) {
             $document = $projectDocument->getDocument();
+            if ($document instanceof Document) {
+                $candidates[(int)$document->getId()] = [
+                    'document' => $document, 'addedAt' => $projectDocument->get('datecreation'), 'isDirectAssociation' => true,
+                ];
+            }
+        }
+        $eventDocuments = new \dbObject\ArrayDocument();
+        $eventDocuments->loadForProjectEvents((int)$project->getId(), (int)$organizationId, $currentUserId);
+        foreach ($eventDocuments as $document) {
+            $candidates[(int)$document->getId()] ??= [
+                'document' => $document, 'addedAt' => null, 'isDirectAssociation' => false,
+            ];
+        }
+        $visibleDocuments = [];
+
+        foreach ($candidates as $candidate) {
+            $document = $candidate['document'];
             if (
                 !is_object($document)
                 || (int)$document->get('IDorganization') !== (int)$organizationId
                 || $document->isArchived()
+                || !$document->canUserPassPvMeetingVisibilityGate($currentUserId, (int)$organizationId)
                 || !(
-                    $document->canViewInOrganizationContext(
+                    ($document->isPvDocument() && !$document->isPvValidated()
+                        && $document->canUserAccessPvBeforeValidation($currentUserId, (int)$organizationId))
+                    || $document->canViewInOrganizationContext(
                         (int)$organizationId,
                         (int)$document->get('IDholon')
                     )
@@ -1010,7 +1030,7 @@ if (!function_exists('omoProjectsGetVisibleDocuments')) {
                 continue;
             }
 
-            $createdAt = $projectDocument->get('datecreation');
+            $createdAt = $candidate['addedAt'];
             $documentProjects = new ArrayProjectDocument();
             $documentProjects->loadForDocument((int)$document->getId());
             $otherProjectCount = 0;
@@ -1024,6 +1044,7 @@ if (!function_exists('omoProjectsGetVisibleDocuments')) {
             }
             $visibleDocuments[] = [
                 'id' => (int)$document->getId(),
+                'isDirectAssociation' => $candidate['isDirectAssociation'],
                 'title' => trim((string)$document->get('title')),
                 'type' => $document->isNextcloudFolder() ? omoProjectsT('projects.detail.documents.remote_folder') : $document->getDocumentTypeLabel(),
                 'iconUrl' => omoProjectsGetDocumentTypeIconUrl($document),

@@ -5,6 +5,7 @@ namespace dbObject;
 class EventSharedDocument extends DbObject
 {
     public static function tableName() { return 'event_shared_document'; }
+    public static function isStorageAvailable(): bool { return self::tableExists(self::tableName()); }
     public static function rules()
     {
         return [[['IDevent', 'IDdocument'], 'required'], [['IDevent', 'IDdocument'], 'fk'], [['id'], 'integer'], [['id'], 'safe']];
@@ -28,6 +29,23 @@ class EventSharedDocument extends DbObject
         if ($link->load([['IDevent', (int)$event->getId()], ['IDdocument', (int)$document->getId()]])) { return true; }
         $link->set('IDevent', $event->getId()); $link->set('IDdocument', $document->getId());
         return !empty($link->save()['status']);
+    }
+
+    public static function eventsForDocument(int $documentId, int $organizationId): array
+    {
+        if ($documentId <= 0 || $organizationId <= 0 || !self::tableExists(self::tableName())) { return []; }
+        $events = [];
+        foreach (self::fetchAll('SELECT e.* FROM event e
+            JOIN event_shared_document link ON link.IDevent = e.id
+            JOIN document d ON d.id = link.IDdocument
+            WHERE d.id = :document AND e.IDorganization = :organization
+            AND d.IDorganization = e.IDorganization',
+            ['document' => $documentId, 'organization' => $organizationId]) ?: [] as $row) {
+            $event = new Event();
+            $event->hydrateFromDatabaseRow($row, true);
+            $events[] = $event;
+        }
+        return $events;
     }
 
     /** Batch lookup also used by the calendar, avoiding one query per meeting. */

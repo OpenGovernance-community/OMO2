@@ -80,7 +80,7 @@ $sourceLang = array_merge(commonMeetingRecurrenceSourceLang(), [
         'context' => 'Label of the location card inside the event detail view.',
     ],
     'calendar.detail.section.document' => [
-        'text' => 'Document associé',
+        'text' => 'Documents associes',
         'context' => 'Label of the linked document card inside the event detail view.',
     ],
     'calendar.detail.section.invites' => [
@@ -329,27 +329,25 @@ foreach (['created_at', 'updated_at'] as $dateField) {
         ]);
     }
 }
-$associatedDocument = $event->getAssociatedDocument();
-$canOpenAssociatedDocument = $associatedDocument instanceof \dbObject\Document
-    && (
-        $associatedDocument->isPvDocument() && !$associatedDocument->isPvValidated()
-            ? (
-                $associatedDocument->canUserAccessPvBeforeValidation($currentUserId, $organizationId)
-                || ($associatedDocument->getPvStage() === \dbObject\Document::PV_STAGE_REVIEW
-                    && $associatedDocument->canUserViewPvReadOnly($currentUserId, $organizationId, $eventHolonId > 0 ? $eventHolonId : null))
-            )
-            : $associatedDocument->canViewDirectlyInOrganization($organizationId)
+$associatedDocuments = $event->getAssociatedDocuments();
+$visibleDocuments = [];
+foreach ($associatedDocuments as $document) {
+    if ($document->isArchived() || isset($visibleDocuments[(int)$document->getId()])) {
+        continue;
+    }
+    $openData = omoCalendarBuildAssociatedDocumentOpenData(
+        $event, $document, $currentUserId, $organizationId, $eventHolonId > 0 ? $eventHolonId : $currentHolonId
     );
-$associatedDocumentUrl = $canOpenAssociatedDocument
-    ? $event->buildAssociatedDocumentDetailUrl($eventHolonId > 0 ? $eventHolonId : $currentHolonId)
-    : '';
-$associatedDocumentPvPreparationUrl = $associatedDocument instanceof \dbObject\Document
-    && $associatedDocument->canUserOpenPvEditor($currentUserId, $organizationId)
-    ? $associatedDocument->buildPvEditorUrl($organizationId)
-    : '';
-$canDeleteAssociatedDocument = $associatedDocument instanceof \dbObject\Document
-    && $associatedDocument->canDeleteInOrganizationContext($organizationId, $currentUserId)
-    && $associatedDocument->canDeleteDocument(true);
+    if ($openData['url'] === '') {
+        continue;
+    }
+    $visibleDocuments[(int)$document->getId()] = [
+        'document' => $document,
+        'openData' => $openData,
+        'canDelete' => $document->canDeleteInOrganizationContext($organizationId, $currentUserId)
+            && $document->canDeleteDocument(true),
+    ];
+}
 $detailRefreshUrl = '/omo/api/calendar/detail.php?oid=' . rawurlencode((string)$organizationId)
     . '&id=' . rawurlencode((string)$eventId);
 if ($editContextHolonId > 0) {
@@ -394,7 +392,7 @@ if ($editContextHolonId > 0) {
                     <?php endif; ?>
                     data-omo-calendar-delete-confirm="<?= omoApiEscape(omoCalendarDetailT('calendar.detail.confirm_delete')) ?>"
                     data-omo-calendar-delete-error="<?= omoApiEscape(omoCalendarDetailT('calendar.detail.delete_error')) ?>"
-                    data-omo-calendar-delete-has-documents="<?= $associatedDocument instanceof \dbObject\Document ? '1' : '0' ?>"
+                    data-omo-calendar-delete-has-documents="<?= $associatedDocuments !== [] ? '1' : '0' ?>"
                     data-omo-calendar-delete-documents-title="<?= omoApiEscape(omoCalendarDetailT('calendar.detail.delete_documents_title')) ?>"
                     data-omo-calendar-delete-documents-question="<?= omoApiEscape(omoCalendarDetailT('calendar.detail.delete_documents_question')) ?>"
                     data-omo-calendar-delete-documents-yes="<?= omoApiEscape(omoCalendarDetailT('calendar.detail.delete_documents_yes')) ?>"
@@ -496,41 +494,50 @@ if ($editContextHolonId > 0) {
             <div class="omo-calendar-detail__primary-column">
                 <section class="generic-section generic-section--stack omo-calendar-detail__content">
                     <h3 class="generic-card-title generic-card-title--medium"><?= omoApiEscape(omoCalendarDetailT('calendar.detail.section.document')) ?></h3>
-                    <?php if ($associatedDocument instanceof \dbObject\Document): ?>
-                        <div class="omo-calendar-detail__document-head">
-                            <strong class="omo-calendar-detail__meta-value"><?= omoApiEscape(trim((string)$associatedDocument->get('title')) !== '' ? trim((string)$associatedDocument->get('title')) : ('Document #' . (int)$associatedDocument->getId())) ?></strong>
-                            <span class="omo-calendar-detail__document-type"><?= omoApiEscape($associatedDocument->getDocumentTypeLabel()) ?></span>
-                        </div>
-                        <?php if ($associatedDocumentUrl !== '' || $canDeleteAssociatedDocument): ?>
-                            <div class="omo-calendar-detail__document-actions">
-                                <?php if ($associatedDocumentUrl !== ''): ?>
-                                    <button
-                                        type="button"
-                                        class="generic-action-button generic-action-button--secondary"
-                                        data-omo-calendar-open-url="<?= omoApiEscape($associatedDocumentUrl) ?>"
-                                        data-omo-calendar-open-url-title="<?= omoApiEscape(trim((string)$associatedDocument->get('title')) !== '' ? trim((string)$associatedDocument->get('title')) : ('Document #' . (int)$associatedDocument->getId())) ?>"
-                                        data-omo-calendar-open-pv-editor-url="<?= omoApiEscape($associatedDocumentPvPreparationUrl) ?>"
-                                    ><?= omoApiEscape(omoCalendarDetailT('calendar.detail.action.open_document')) ?></button>
-                                <?php endif; ?>
-                                <?php if ($canDeleteAssociatedDocument): ?>
-                                    <button
-                                        type="button"
-                                        class="generic-action-button generic-action-button--danger generic-action-button--icon-only"
-                                        data-omo-calendar-document-delete-id="<?= (int)$associatedDocument->getId() ?>"
-                                        data-omo-calendar-document-delete-refresh-url="<?= omoApiEscape($detailRefreshUrl) ?>"
-                                        data-omo-calendar-document-delete-confirm="<?= omoApiEscape(omoCalendarDetailT('calendar.detail.confirm_delete_document')) ?>"
-                                        data-omo-calendar-document-delete-error="<?= omoApiEscape(omoCalendarDetailT('calendar.detail.delete_document_error')) ?>"
-                                        title="<?= omoApiEscape(omoCalendarDetailT('calendar.detail.action.delete_document')) ?>"
-                                        aria-label="<?= omoApiEscape(omoCalendarDetailT('calendar.detail.action.delete_document')) ?>"
-                                    >
-                                        <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-                                            <path d="M5 7h14M10 11v6M14 11v6M9 7V5h6v2m-9 0 1 13h10l1-13"></path>
-                                        </svg>
-                                    </button>
-                                <?php endif; ?>
+                    <?php foreach ($visibleDocuments as $documentData): ?>
+                        <?php
+                        $associatedDocument = $documentData['document'];
+                        $associatedDocumentUrl = $documentData['openData']['url'];
+                        $associatedDocumentPvPreparationUrl = $documentData['openData']['pvEditorUrl'];
+                        $canDeleteAssociatedDocument = $documentData['canDelete'];
+                        ?>
+                        <div class="generic-soft-panel generic-soft-panel--stack" data-omo-calendar-associated-document="<?= (int)$associatedDocument->getId() ?>">
+                            <div class="omo-calendar-detail__document-head">
+                                <strong class="omo-calendar-detail__meta-value"><?= omoApiEscape(trim((string)$associatedDocument->get('title')) !== '' ? trim((string)$associatedDocument->get('title')) : ('Document #' . (int)$associatedDocument->getId())) ?></strong>
+                                <span class="omo-calendar-detail__document-type"><?= omoApiEscape($associatedDocument->getDocumentTypeLabel()) ?></span>
                             </div>
-                        <?php endif; ?>
-                    <?php else: ?>
+                            <?php if ($associatedDocumentUrl !== '' || $canDeleteAssociatedDocument): ?>
+                                <div class="omo-calendar-detail__document-actions">
+                                    <?php if ($associatedDocumentUrl !== ''): ?>
+                                        <button
+                                            type="button"
+                                            class="generic-action-button generic-action-button--secondary"
+                                            data-omo-calendar-open-url="<?= omoApiEscape($associatedDocumentUrl) ?>"
+                                            data-omo-calendar-open-url-title="<?= omoApiEscape(trim((string)$associatedDocument->get('title')) !== '' ? trim((string)$associatedDocument->get('title')) : ('Document #' . (int)$associatedDocument->getId())) ?>"
+                                            data-omo-calendar-open-pv-editor-url="<?= omoApiEscape($associatedDocumentPvPreparationUrl) ?>"
+                                        ><?= omoApiEscape(omoCalendarDetailT('calendar.detail.action.open_document')) ?></button>
+                                    <?php endif; ?>
+                                    <?php if ($canDeleteAssociatedDocument): ?>
+                                        <button
+                                            type="button"
+                                            class="generic-action-button generic-action-button--danger generic-action-button--icon-only"
+                                            data-omo-calendar-document-delete-id="<?= (int)$associatedDocument->getId() ?>"
+                                            data-omo-calendar-document-delete-refresh-url="<?= omoApiEscape($detailRefreshUrl) ?>"
+                                            data-omo-calendar-document-delete-confirm="<?= omoApiEscape(omoCalendarDetailT('calendar.detail.confirm_delete_document')) ?>"
+                                            data-omo-calendar-document-delete-error="<?= omoApiEscape(omoCalendarDetailT('calendar.detail.delete_document_error')) ?>"
+                                            title="<?= omoApiEscape(omoCalendarDetailT('calendar.detail.action.delete_document')) ?>"
+                                            aria-label="<?= omoApiEscape(omoCalendarDetailT('calendar.detail.action.delete_document')) ?>"
+                                        >
+                                            <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                                                <path d="M5 7h14M10 11v6M14 11v6M9 7V5h6v2m-9 0 1 13h10l1-13"></path>
+                                            </svg>
+                                        </button>
+                                    <?php endif; ?>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    <?php endforeach; ?>
+                    <?php if ($visibleDocuments === []): ?>
                         <p class="omo-calendar-detail__empty generic-description generic-description--relaxed"><?= omoApiEscape(omoCalendarDetailT('calendar.detail.empty.document')) ?></p>
                     <?php endif; ?>
                 </section>

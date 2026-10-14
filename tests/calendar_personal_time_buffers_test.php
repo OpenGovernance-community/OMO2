@@ -185,9 +185,13 @@ try {
     $detailHtml = personalBufferRequest($detail);
     personalBufferExpect(str_contains($detailHtml, 'data-calendar-invitations-lazy') && !str_contains($detailHtml, 'omo-calendar-detail__summary-head'),
         'Event detail defers the invitation summary.');
+    file_put_contents(dirname(__DIR__) . '/tmp/calendar-invitations-detail.html', $detailHtml);
     $detail['get']['invitation_summary'] = 1;
     unset($detail['verify_session_cache']);
-    personalBufferExpect(str_contains(personalBufferRequest($detail), 'omo-calendar-detail__summary-head'), 'Opening the invitation section renders its summary.');
+    $summaryHtml = personalBufferRequest($detail);
+    personalBufferExpect(str_contains($summaryHtml, 'omo-calendar-detail__summary-head') && str_contains($summaryHtml, 'Invited group'),
+        'Opening the invitation section renders its invited group.');
+    file_put_contents(dirname(__DIR__) . '/tmp/calendar-invitations-summary.html', $summaryHtml);
     $nonMember = $fixture(User::class, ['email' => 'non-member-' . $nonce . '@example.invalid', 'active' => 1]);
     $deniedFragment = $fragment; $deniedFragment['session']['currentUser'] = (int)$nonMember->getId();
     personalBufferExpect(!str_contains(personalBufferRequest($deniedFragment), 'data-omo-calendar-holon-list'), 'The fragment keeps the editor permission checks.');
@@ -288,6 +292,39 @@ try {
     $feed = calendarShareBuildFeed($share, $day);
     personalBufferExpect(!str_contains($feed, 'UNINVITED') && str_contains($feed, 'SUMMARY:Edited with permission'),
         'Scoped ICS exports also exclude uninvited circle events.');
+    // Event details must render every accessible attachment, not just the first PV.
+    $documentBase = ['IDorganization' => $organizationId, 'IDholon' => $holon->getId(),
+        'IDuser' => $firstId, 'IDevent' => $event->getId(), 'active' => 1];
+    $pv = $fixture(\dbObject\Document::class, $documentBase + ['documenttype' => 'pv', 'title' => 'Meeting PV']);
+    $miro = $fixture(\dbObject\Document::class, $documentBase + ['documenttype' => 'external_link',
+        'title' => 'Miro workshop board', 'externalurl' => 'https://miro.com/app/board/test-meeting/']);
+    $file = $fixture(\dbObject\Document::class, $documentBase + ['documenttype' => 'uploaded_file', 'title' => 'Meeting attachment']);
+    $shared = $fixture(\dbObject\Document::class, array_replace($documentBase, ['IDevent' => null,
+        'documenttype' => 'external_link', 'title' => 'Shared reference', 'externalurl' => 'https://example.invalid/reference']));
+    foreach ([$miro, $file, $shared] as $document) {
+        personalBufferExpect(!empty($document->saveVisibilityRule('organization')['status']), 'Visible attachment');
+    }
+    foreach ([$miro, $shared] as $document) {
+        $fixture(\dbObject\EventSharedDocument::class, ['IDevent' => $event->getId(), 'IDdocument' => $document->getId()]);
+    }
+    $private = $fixture(\dbObject\Document::class, array_replace($documentBase, ['IDuser' => $ownerId,
+        'documenttype' => 'external_link', 'title' => 'Private reference', 'externalurl' => 'https://example.invalid/private']));
+    personalBufferExpect(!empty($private->saveVisibilityRule('self')['status']), 'Private attachment');
+    $archived = $fixture(\dbObject\Document::class, $documentBase + ['documenttype' => 'external_link', 'title' => 'Archived reference']);
+    $archived->set('active', 0); $archived->save();
+    $documentDetail = ['session' => ['currentUser' => $firstId, 'currentOrganization' => $organizationId,
+        'auth_security_version' => (int)$people['first']->get('security_version')],
+        'get' => ['oid' => $organizationId, 'id' => $event->getId()], 'post' => [], 'method' => 'GET', 'endpoint' => 'detail.php'];
+    $documentHtml = personalBufferRequest($documentDetail);
+    foreach ([$pv, $miro, $file, $shared] as $document) {
+        personalBufferExpect(substr_count($documentHtml, 'data-omo-calendar-associated-document="' . $document->getId() . '"') === 1,
+            'Each associated document appears once: ' . $document->get('title'));
+        personalBufferExpect(str_contains($documentHtml, '/omo/api/documents/detail.php?id=' . $document->getId() . '&amp;'),
+            'Each open action targets its own document');
+    }
+    personalBufferExpect(!str_contains($documentHtml, 'Private reference') && !str_contains($documentHtml, 'Archived reference'),
+        'Inaccessible and archived attachments remain hidden');
+    file_put_contents(dirname(__DIR__) . '/tmp/calendar-event-documents.html', $documentHtml);
     echo "calendar_personal_time_buffers_test: OK\n";
 } finally {
     foreach (array_reverse($fixtures) as $object) { $object->delete(); }

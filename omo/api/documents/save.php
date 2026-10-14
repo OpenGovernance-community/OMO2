@@ -199,7 +199,7 @@ if ($projectId > 0) {
     }
 }
 
-if ($canManageProjectVisibility && $document->hasProjectAssociation()) {
+if ($canManageProjectVisibility && ($document->hasProjectAssociation() || $document->hasEventAssociation())) {
     $projectVisibilityResult = $document->saveProjectHolonVisibility($projectVisibleInHolon);
     if (!is_array($projectVisibilityResult) || ($projectVisibilityResult['status'] ?? false) !== true) {
         http_response_code(422);

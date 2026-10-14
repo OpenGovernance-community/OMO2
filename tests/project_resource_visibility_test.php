@@ -178,5 +178,36 @@ try {
     $items['document_link_two']->delete(); unset($items['document_link_two']);
     mcpCheck(!empty($document->saveProjectHolonVisibility(false)['status']) && !$documentVisible(),
         'Returning to a single project allows a document to be hidden again.');
+    $items['document_link_one']->delete(); unset($items['document_link_one']);
+    mcpCheck($documentVisible(), 'An unattached document remains visible in its holon.');
+    $items['document_event'] = mcpFixture(\dbObject\Event::class, ['IDorganization' => $oid, 'IDholon' => $hid,
+        'IDproject' => $pid, 'IDuser' => $uid, 'title' => 'Document visibility meeting', 'status' => 'confirmed', 'active' => 1,
+        'start_at' => new DateTimeImmutable('+1 day'), 'end_at' => new DateTimeImmutable('+1 day +1 hour')]);
+    $document->set('IDevent', $items['document_event']->getId());
+    mcpCheck(!empty($document->save()['status']) && !$documentVisible(), 'Event-only documents are hidden in the holon by default.');
+    mcpCheck($document->canViewDirectlyInOrganization($oid), 'Hiding from the holon does not remove direct access.');
+    $editor = resourceVisibilityRequest($documentEdit);
+    mcpCheck(preg_match('/name="project_visible_in_holon"[^>]*>/', $editor, $checkbox) === 1
+        && !str_contains($checkbox[0], 'checked') && !str_contains($checkbox[0], 'disabled'), 'Event-only editor exposes the same editable visibility checkbox.');
+    foreach ([true, false] as $show) {
+        $documentSave['post']['project_visibility_present'] = 1;
+        $documentSave['post']['project_visible_in_holon'] = $show ? 1 : 0;
+        mcpCheck(!empty(resourceVisibilityResult($documentSave)['status']), 'Save event document holon visibility.');
+        $document->load($document->getId(), true);
+        mcpCheck($documentVisible() === $show && (bool)$document->get('project_visible_in_holon') === $show, 'Checkbox controls holon listing.');
+        $derived = new \dbObject\ArrayDocument(); $derived->loadForProjectEvents($pid, $oid, $uid);
+        mcpCheck(count($derived) === 1, 'Both checkbox states preserve the project event association.');
+        $scope = new \dbObject\ArrayDocument(); $scope->loadVisibleForOrganizationContext($oid, $hid, 'descendants', [$hid]);
+        mcpCheck(in_array($document->getId(), array_map(static fn($item) => $item->getId(), $scope->getArrayCopy())) === $show,
+            'Descendant scope follows the same checkbox.');
+    }
+    $document->set('IDevent', null); $document->save();
+    mcpCheck($documentVisible(), 'Removing the final event association restores ordinary holon listing.');
+    $items['shared_event_document'] = mcpFixture(\dbObject\EventSharedDocument::class,
+        ['IDevent' => $items['document_event']->getId(), 'IDdocument' => $document->getId()]);
+    mcpCheck(!$documentVisible(), 'Shared event attachments also follow the checkbox.');
+    mcpCheck(str_contains(resourceVisibilityRequest($documentEdit), 'name="project_visible_in_holon"'), 'Shared event attachment editor exposes the checkbox.');
+    $documentSave['post']['project_visible_in_holon'] = 1;
+    mcpCheck(!empty(resourceVisibilityResult($documentSave)['status']) && $documentVisible(), 'Shared event attachment visibility can be enabled.');
     echo "project_resource_visibility_test: OK\n";
 } finally { mcpCleanup($items); }

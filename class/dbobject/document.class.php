@@ -78,7 +78,7 @@
 				'is_template' => 'Modele de document',
 				'externalurl' => 'URL externe',
 				'openinnewwindow' => 'Ouvrir dans une nouvelle fenetre',
-				'project_visible_in_holon' => 'Afficher dans le holon si le document est lie a un projet',
+				'project_visible_in_holon' => 'Afficher dans le holon si le document est lie a un projet ou evenement',
 				'storedfilepath' => 'Chemin distant du fichier',
 				'storedfilename' => 'Nom original du fichier',
 				'storedfilemime' => 'Type MIME du fichier',
@@ -119,7 +119,7 @@
 				'pv_editor_handover_open' => 'Indique que le secretaire actuel autorise un invite a reprendre son role.',
 				'externalurl' => 'Adresse du site a ouvrir pour un document de type lien externe',
 				'openinnewwindow' => 'Ouvre le lien externe directement dans une autre fenetre',
-				'project_visible_in_holon' => 'Autorise l affichage dans la liste du holon pour un document lie a un projet',
+				'project_visible_in_holon' => 'Autorise l affichage dans la liste du holon pour un document lie a un projet ou evenement',
 				'storedfilepath' => 'Chemin du fichier sur le stockage de documents de l organisation',
 				'storedfilename' => 'Nom du fichier televerse par l utilisateur',
 				'storedfilemime' => 'Type MIME detecte pour le fichier distant',
@@ -265,6 +265,12 @@
 			$projectDocuments = new \dbObject\ArrayProjectDocument();
 			$projectDocuments->loadForDocument((int)$this->getId());
 			return count($projectDocuments) > 0;
+		}
+
+		public function hasEventAssociation(): bool
+		{
+			return (int)$this->get('IDevent') > 0
+				|| EventSharedDocument::eventsForDocument((int)$this->getId(), (int)$this->get('IDorganization')) !== [];
 		}
 
 		public function saveProjectHolonVisibility(bool $visible): array
@@ -418,11 +424,13 @@
 
 		public function canDeleteInOrganizationContext(int $organizationId, int $userId): bool
 		{
+			$viewerContext = ObjectVisibility::buildCurrentViewerContext($organizationId, $userId);
 			return $organizationId === (int)$this->get('IDorganization')
 				&& (!$this->isPvEditor($userId) || $this->canUserManagePvStructure($organizationId, $userId))
 				&& $this->hasObjectPermission('CAN_DELETE_DOCUMENT', $userId)
 				&& ((function_exists('commonUserHasAdminOverride') && \commonUserHasAdminOverride($userId, $organizationId))
-					|| $this->currentViewerCanAccessVisibility($organizationId, null, $userId));
+					|| ObjectVisibility::viewerCanAccessRule($this->getPrimaryVisibilityRuleRow(), $viewerContext,
+						['organizationId' => $organizationId, 'ownerUserId' => (int)$this->get('IDuser')]));
 		}
 
 		public function canManageLifecycle(int $organizationId, int $userId): bool
@@ -1049,16 +1057,10 @@
 				return $organizationId <= 0 && $userId === (int)$this->get('IDuser');
 			}
 
-			if (
-				$organizationId !== $documentOrganizationId
-				|| (function_exists('commonUserHasOrganizationAccess')
-					&& !\commonUserHasOrganizationAccess($userId, $documentOrganizationId))
-				|| !$this->currentViewerCanAccessVisibility($documentOrganizationId, null, $userId)
-			) {
-				return false;
-			}
-
-			return $this->hasObjectPermission('CAN_EDIT_DOCUMENT', $userId, $useSessionCache);
+			$viewerContext = ObjectVisibility::buildCurrentViewerContext($documentOrganizationId, $userId);
+			return $this->canManageInOrganizationContextWithVisibilityRule(
+				$organizationId, $userId, $this->getPrimaryVisibilityRuleRow(), $viewerContext, $useSessionCache
+			);
 		}
 
 		public function canManageInOrganizationContextWithVisibilityRule(int $organizationId, int $userId, ?array $visibilityRule, array &$viewerContext, bool $useSessionCache = true): bool
@@ -1085,6 +1087,10 @@
 
 		public function canEditInOrganizationContextWithVisibilityRules(int $organizationId, int $userId, ?array $visibilityRule, ?array $editVisibilityRule, array &$viewerContext): bool
 		{
+			if ($this->canUserAccessCooperativeDocumentThroughMeeting($userId, $organizationId)) {
+				return true;
+			}
+
 			$documentOrganizationId = (int)$this->get('IDorganization');
 			if (
 				$userId <= 0
@@ -1436,6 +1442,42 @@
 			}
 
 			return $event;
+		}
+
+		/** Meeting participation grants content access, without changing document management rights. */
+		public function canUserAccessCooperativeDocumentThroughMeeting(int $userId, int $organizationId): bool
+		{
+			if ($userId <= 0 || $organizationId <= 0 || (int)$this->get('IDorganization') !== $organizationId
+				|| (int)$this->getId() <= 0 || $this->isArchived()) {
+				return false;
+			}
+			if (!in_array($this->getDocumentType(), [
+				self::TYPE_ETHERPAD, self::TYPE_ETHERCALC, self::TYPE_WHITEBOARD,
+				self::TYPE_COLLABORA_DOCUMENT, self::TYPE_COLLABORA_SPREADSHEET,
+				self::TYPE_COLLABORA_PRESENTATION, self::TYPE_COLLABORA_DRAWING,
+			], true) && !$this->canOpenWithCollabora()) {
+				return false;
+			}
+
+			$viewerContext = ObjectVisibility::buildCurrentViewerContext($organizationId, $userId);
+			if ($viewerContext['type'] !== 'user' || !ObjectVisibility::viewerCanAccessRule(
+				['visibility_type' => ObjectVisibility::TYPE_ORGANIZATION],
+				$viewerContext,
+				['organizationId' => $organizationId]
+			)) {
+				return false;
+			}
+
+			$event = $this->getAssociatedEvent();
+			if ($event instanceof Event && $event->isVisibleToInvitationViewer($userId, $organizationId)) {
+				return true;
+			}
+			foreach (EventSharedDocument::eventsForDocument((int)$this->getId(), $organizationId) as $event) {
+				if ($event->isVisibleToInvitationViewer($userId, $organizationId)) {
+					return true;
+				}
+			}
+			return false;
 		}
 
 		public function getPvEditorPollingRevision(int $organizationId = 0): string
@@ -5412,6 +5454,13 @@
 
 		public function canViewInOrganizationContext(int $organizationId, ?int $holonId = null, ?int $userId = null): bool
 		{
+			$viewerUserId = $userId ?? (function_exists('commonGetCurrentUserId')
+				? (int)\commonGetCurrentUserId() : (int)($_SESSION['currentUser'] ?? 0));
+			if ($this->matchesOrganizationContext($organizationId, $holonId)
+				&& $this->canUserAccessCooperativeDocumentThroughMeeting($viewerUserId, $organizationId)) {
+				return true;
+			}
+
 			if (
 				!$this->matchesOrganizationContext($organizationId, $holonId)
 				|| !$this->currentViewerCanAccessVisibility($organizationId, null, $userId)
@@ -5443,6 +5492,9 @@
 				? (int)\commonGetCurrentUserId()
 				: (int)($_SESSION['currentUser'] ?? 0);
 			if ($this->isPvDocument() && $this->isPvCreatorOrEditor($currentUserId)) {
+				return true;
+			}
+			if ($this->canUserAccessCooperativeDocumentThroughMeeting($currentUserId, $organizationId)) {
 				return true;
 			}
 
@@ -7382,6 +7434,9 @@
 			}
 
 			$viewerContext = \dbObject\ObjectVisibility::buildCurrentViewerContext($organizationId, $viewerUserId);
+			if ($this->canUserAccessCooperativeDocumentThroughMeeting((int)$viewerContext['userId'], $organizationId)) {
+				return true;
+			}
 			return \dbObject\ObjectVisibility::viewerCanAccessRule(
 				is_array($ruleRow) ? $ruleRow : $this->getPrimaryVisibilityRuleRow(),
 				$viewerContext,
@@ -7419,6 +7474,9 @@
 			}
 
 			$viewerContext = \dbObject\ObjectVisibility::buildCurrentViewerContext($organizationId, $viewerUserId);
+			if ($this->canUserAccessCooperativeDocumentThroughMeeting((int)$viewerContext['userId'], $organizationId)) {
+				return true;
+			}
 			return \dbObject\ObjectVisibility::viewerCanAccessRule(
 				is_array($ruleRow) ? $ruleRow : $this->getPrimaryEditVisibilityRuleRow(),
 				$viewerContext,
