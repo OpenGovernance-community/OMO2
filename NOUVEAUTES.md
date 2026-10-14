@@ -1,5 +1,7 @@
 # Journal des nouveautés
 
+- Calendrier / invites du detail (2026-10-14) : chargement du script des invitations depuis le calendrier pour activer l accordeon des invites dans les details ouverts dynamiquement. Verification du contenu serveur et de l ouverture sur ordinateur/mobile, avec nouvelle tentative apres erreur ; sans migration SQL.
+
 - Calendrier / pieces jointes (2026-10-14) : activation des champs de lien et de fichier lors de l ouverture du formulaire depuis le calendrier ou un projet. Ajout du selecteur de fichier, transmission au stockage et validation avant creation ; les modeles fournissent leur propre contenu. Tests de sauvegarde HTTP multipart, d echec du stockage et du formulaire dynamique sur ordinateur/mobile ; sans migration SQL.
 
 - Calendrier / liens externes (2026-10-14) : ajout du champ URL lors de la creation d un lien associe a une reunion, dans le calendrier comme depuis un projet. Adresse HTTP/HTTPS valide obligatoire avant toute sauvegarde ; transmission au document, reprise a la duplication et conservation du lien fourni par un modele. Champ masque et desactive pour les autres types ou un modele. Tests PHP 8.5 de sauvegarde et de validation, controles navigateur ordinateur/mobile ; sans migration SQL.
