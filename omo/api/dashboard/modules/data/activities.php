@@ -6,13 +6,13 @@ use dbObject\Holon;
 $dashboardActivityItems = array();
 $dashboardActivityCounts = array('soon' => 0, 'due' => 0, 'overdue' => 0);
 
-if (!empty($enabledAppHashes['activities']) && $scopeReferenceHolon instanceof Holon) {
+if (!empty($enabledAppHashes['activities']) && $dashboardModuleContextHolon instanceof Holon) {
     $activityScopeHolonIds = $dashboardModuleScope === 'contextual'
-        ? array((int)$scopeReferenceHolon->getId())
+        ? array((int)$dashboardModuleContextHolon->getId())
         : $dashboardModuleScopeHolonIds;
     $activities = new ArrayControlActivity();
     $includeOrganizationTasks = $organizationRootHolon instanceof Holon
-        && (int)$scopeReferenceHolon->getId() === (int)$organizationRootHolon->getId();
+        && (int)$dashboardModuleContextHolon->getId() === (int)$organizationRootHolon->getId();
     $activities->loadForContext($currentOrganizationId, $activityScopeHolonIds, true, $includeOrganizationTasks);
     $now = new DateTimeImmutable('now');
 
