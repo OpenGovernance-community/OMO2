@@ -772,4 +772,4 @@ $dashboardMetricLabels = array(
     </div>
     <?php endif; ?>
 </div>
-<script src="/omo/assets/js/personal-space-dashboard.js?v=20260921-organization-model"></script>
+<script src="<?= commonAssetUrl('/omo/assets/js/personal-space-dashboard.js') ?>"></script>

@@ -1,5 +1,7 @@
 # Journal des nouveautés
 
+- Tableaux de pilotage / selecteur Racine (2026-10-14) : chargement du script avec la version automatique commune pour remplacer les anciennes copies en cache qui laissaient le libelle Racine sans boutons. Verification du chargement normal du script, sans injection dans le test navigateur.
+
 - Tableaux de pilotage / racine des modules (2026-10-14) : choix independants Organisation, Parent ou espace courant (lexique de l organisation), puis Local, Enfants directs ou Descendants pour tous les modules de donnees. Racine relative conservee dans les modeles et preferences ; configurations existantes rattachees a l espace courant. Ouverture des apps dans la racine choisie, droits conserves. Filtres locaux de l equipe et de l historique corriges, module Processus reconnecte a son nom actuel. Tests PHP 8.5 des neuf combinaisons, sauvegarde, rendu de tous les modules et interface ordinateur/mobile ; sans migration SQL.
 
 - Projets / choix du parent (2026-10-14) : bouton fusee accole au champ du projet parent, comme pour l espace associe. Libelle conserve dans l infobulle et pour les lecteurs d ecran ; presentation compacte aussi sur mobile.
