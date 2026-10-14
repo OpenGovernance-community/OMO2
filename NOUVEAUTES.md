@@ -1,5 +1,7 @@
 # Journal des nouveautés
 
+- Scrum / integration dans Dev (2026-10-14) : fusion avec les reglages des tableaux de pilotage et la visibilite des projets. Les projets du sprint restent soumis aux droits actuels dans le kanban, la selection, l equipe et les bilans archives ; retrait direct interdit pour un projet masque. Les mesures globales du sprint restent inchangees.
+
 - Tableaux de pilotage / ouverture des applications (2026-10-14) : reprise de la racine, de la portee et du public configures dans chaque bloc, y compris depuis une application deja ouverte. Les anciennes preferences de filtre ne remplacent plus ce contexte au chargement. Transmission de la portee aux Processus et au Reglement, du public aux Processus, Projets, Indicateurs et Activites. Repli sur Local selon les enfants de la racine choisie. Structure centree sur cette racine. Tests de navigation, preferences, sauvegarde, rendu PHP 8.5 et configuration ordinateur/mobile ; sans migration SQL.
 
 - Tableaux de pilotage / entetes compacts (2026-10-14) : capsules de racine, portee et public reduites avec le composant partage de badges compacts. Bouton Ouvrir remplace par l icone fournie, avec infobulle, libelle accessible et adaptation au theme sombre.
@@ -109,6 +111,8 @@
 - Décisions / invitations par cercle (2026-10-11) : participants et compteur d’invités prennent en compte les membres des rôles du cercle et les appartenances calculées par les rôles de liaison, avec déduplication et exclusion des affectations ou adhésions inactives. Les invitations à un rôle restent limitées à ce rôle. Contrôle des réunions et documents/PV, qui utilisent déjà les membres effectifs ; tests de participation, de conservation des bulletins et de périmètre. Sans migration SQL.
 
 - Statistiques / tableau de bord de performance (2026-10-11) : graphiques compacts sur deux colonnes sur ordinateur, suivi des durees, CPU PHP, SQL, erreurs, utilisateurs actifs et charge par page, organisation, jour et heure. Collecte continue dans performance_request, agregats horaires dans performance_hourly via le cron existant, retention de 30 jours et 13 mois. Cron et taches mesures separement, distinction entre pages sans cron, cron ignore et cron execute. Acces au role super administrateur sans activer son mode. Migration SQL et controles de non-duplication, retention et acces.
+
+- Integration (2026-10-11) : fusion de Dev dans Sprint, avec conservation du module Scrum et des nouveautes des deux branches.
 
 - Performances / caches partages (2026-10-11) : activation commune des caches de lecture et de permissions pour les ecrans de consultation, notamment equipe, projets, politiques, activites, checklists, decisions et espace personnel. Catalogue des applications reutilise aussi pour la liste des applications disponibles et conserve avant la fermeture de session. Les requetes de modification restent hors du cache de lecture. Sur huit ecrans locaux, rendu identique et moins de SQL : politiques 694 -> 178, activites 126 -> 52, equipe 105 -> 74, projets 71 -> 44. Tests de persistance, isolation et invalidation des caches ; SQL dans dbObject, sans migration.
 
@@ -261,6 +265,10 @@
 - Projets (2026-10-09) : les evenements passes restent consultables dans la fiche du projet, sous les evenements planifies, du plus recent au plus ancien, avec les liens et actions habituels.
 
 - OMO (2026-10-09) : calcul asynchrone des decisions invitees encore sans reponse soumise dans tous les espaces de l organisation. Pastille rouge animee directement sur le bouton de l application Decision, y compris dans le menu mobile et apres rechargement de la barre. Infobulle avec le contexte et le nombre d autres decisions, acces direct a la participation. Actualisation apres un vote et en arriere-plan, sans calcul dans le chargement initial ni verrouillage de la session pendant la recherche.
+
+- Scrum (2026-10-08) : charge multipliee par quatre entre chaque taille (S=1, M=4, L=16, XL=64, XXL=256), dans le calcul et l apercu d import. Les charges deja figees au demarrage restent conservees jusqu a une relance.
+
+- Scrum (2026-10-08) : nouvelle application de sprints par espace, import des projets avec tous leurs descendants et estimation de charge sans double comptage. Kanban partage avec Projets, demarrage date, arret et relance, burndown aux changements de statut et quotidien, bilan fige, archives et suppression du sprint sans supprimer les projets.
 
 - PV (2026-10-08) : les comparaisons de contenu du chat de relecture separent les paragraphes, listes, cellules et retours a la ligne par des espaces, pour eviter les mots colles et limiter le surlignage au texte modifie. Correction aussi appliquee a l affichage des anciennes entrees.
 
