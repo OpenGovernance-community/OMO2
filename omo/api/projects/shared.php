@@ -1,6 +1,7 @@
 <?php
 
 require_once dirname(__DIR__, 3) . '/common/pv_meeting_permissions.php';
+require_once dirname(__DIR__, 3) . '/common/object_visibility_selector.php';
 
 use dbObject\Holon;
 use dbObject\Organization;
@@ -349,6 +350,19 @@ if (!function_exists('omoProjectsSourceLang')) {
             'projects.field.holon' => ['text' => 'Espace associé', 'context' => 'Project assignment holon field label.'],
             'projects.field.responsible' => ['text' => 'Responsable', 'context' => 'Project responsible user field label.'],
             'projects.field.title' => ['text' => 'Titre du projet', 'context' => 'Project title field label.'],
+            'projects.visibility.label' => ['text' => 'Visibilite', 'context' => 'Project visibility selector label.'],
+            'projects.visibility.hint' => ['text' => 'La personne en charge voit toujours le projet. Le createur reste soumis a la visibilite choisie. Le mode admin actif permet de voir tous les projets.', 'context' => 'Project visibility exceptions.'],
+            'projects.visibility.everyone' => ['text' => 'Tout public', 'context' => 'Unrestricted project visibility.'],
+            'projects.visibility.organization' => ['text' => 'Organisation', 'context' => 'Organization project visibility.'],
+            'projects.visibility.circle' => ['text' => 'Cercle', 'context' => 'Circle project visibility.'],
+            'projects.visibility.role' => ['text' => 'Role / holon', 'context' => 'Holon project visibility.'],
+            'projects.visibility.self' => ['text' => 'Personnelle', 'context' => 'Personal project visibility.'],
+            'projects.visibility.everyone_help' => ['text' => 'Aucune restriction de visibilite du projet.', 'context' => 'Public project visibility description.'],
+            'projects.visibility.organization_help' => ['text' => 'Visible par tous les membres de l organisation.', 'context' => 'Organization project visibility description.'],
+            'projects.visibility.circle_help' => ['text' => 'Visible par les membres du cercle contenant le holon.', 'context' => 'Circle project visibility description.'],
+            'projects.visibility.role_help' => ['text' => 'Visible uniquement par les membres du holon du projet.', 'context' => 'Holon project visibility description.'],
+            'projects.visibility.self_help' => ['text' => 'Visible par le createur tant qu il appartient au holon, puis par les membres du holon apres son depart.', 'context' => 'Personal project visibility and departure fallback.'],
+            'projects.error.visibility' => ['text' => 'La visibilite choisie demande un holon ou un cercle compatible.', 'context' => 'Invalid project visibility scope.'],
             'projects.field.description' => ['text' => 'Description', 'context' => 'Project description field label.'],
             'projects.field.description_placeholder' => ['text' => 'Quel résultat voulez-vous obtenir ?', 'context' => 'Placeholder for the project description field.'],
             'projects.field.size' => ['text' => 'Taille', 'context' => 'Project size field label.'],
@@ -617,6 +631,9 @@ if (!function_exists('omoProjectsCanViewProject')) {
             return false;
         }
 
+        if (!$project->currentViewerCanAccessVisibility()) {
+            return false;
+        }
         if (!$project->isPrivateProposal()) {
             return true;
         }
@@ -649,6 +666,7 @@ function omoProjectsCanImportEvents(Project $project, array $context): bool
 if (!function_exists('omoProjectsCanManageProject')) {
     function omoProjectsCanManageProject(Project $project, array $context)
     {
+        if (!omoProjectsCanViewProject($project, $context)) return false;
         $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
         if (commonUserHasAdminOverride($currentUserId, (int)$project->get('IDorganization'))) return true;
         if ($project->isPendingProposal()) {
@@ -749,6 +767,7 @@ if (!function_exists('omoProjectsCanCreateDocument')) {
 if (!function_exists('omoProjectsCanDeleteProject')) {
     function omoProjectsCanDeleteProject(Project $project, array $context)
     {
+        if (!omoProjectsCanViewProject($project, $context)) return false;
         if (commonUserHasAdminOverride((int)commonGetCurrentUserId(), (int)$project->get('IDorganization'))) return true;
         $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
         if ($currentUserId <= 0) {
@@ -1167,6 +1186,17 @@ if (!function_exists('omoProjectsMatchesAssignment')) {
         return $projectHolon instanceof Holon
             && omoProjectsUserIsAssociatedWithHolon($currentUserId, $organizationId, $projectHolon);
     }
+}
+
+function omoProjectsRenderVisibilityIcon(Project $project): string
+{
+    $visibility = $project->getVisibilityType();
+    $label = omoProjectsT('projects.visibility.label') . ' : ' . omoProjectsT('projects.visibility.' . $visibility);
+    $description = omoProjectsT('projects.visibility.' . $visibility . '_help');
+    $icons = commonObjectVisibilitySelectorIconMap();
+
+    return '<img class="omo-project-visibility-icon black-icon" src="' . omoApiEscape($icons[$visibility])
+        . '" alt="' . omoApiEscape($label) . '" title="' . omoApiEscape($label . ' — ' . $description) . '">';
 }
 
 if (!function_exists('omoProjectsGetUserLabel')) {

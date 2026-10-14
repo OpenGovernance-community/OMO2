@@ -372,6 +372,8 @@ class OrganizationExport
             'sourceId' => (int)$project->getId(),
             'sourceUserId' => (int)$project->get('IDuser'),
             'sourceProposerUserId' => (int)$project->get('IDuser_proposed'),
+            'sourceCreatorUserId' => (int)$project->get('IDusercreation'),
+            'visibilityType' => $project->getVisibilityType(),
             'sourceHolonId' => (int)$project->get('IDholon'),
             'sourceParentProjectId' => (int)$project->get('IDproject_parent'),
             'sourceJournalDocumentId' => (int)$project->get('IDdocument_journal'),

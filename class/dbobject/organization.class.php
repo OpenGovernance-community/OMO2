@@ -6546,6 +6546,9 @@
 				$project->set('IDorganization', (int)$organization->getId());
 				$project->set('IDholon', $targetHolonId);
 				$project->set('IDuser', $targetUserId);
+				$sourceCreatorUserId = (int)($record['sourceCreatorUserId'] ?? 0);
+				$project->set('IDusercreation', $userIdMap[$sourceCreatorUserId] ?? (int)$actorUserId);
+				$project->set('visibility_type', \dbObject\ObjectVisibility::normalizeVisibilityType($record['visibilityType'] ?? null));
 				$sourceProposerUserId = (int)($record['sourceProposerUserId'] ?? 0);
 				$project->set('IDuser_proposed', isset($userIdMap[$sourceProposerUserId]) ? (int)$userIdMap[$sourceProposerUserId] : null);
 				$project->set('title', $title !== '' ? $title : 'Projet OMO 1 #' . $sourceId);
@@ -6809,6 +6812,9 @@
 				$task->set('IDuser', $targetUserId);
 				$sourceProposerUserId = (int)($record['sourceProposerUserId'] ?? 0);
 				$task->set('IDuser_proposed', isset($userIdMap[$sourceProposerUserId]) ? (int)$userIdMap[$sourceProposerUserId] : null);
+				$sourceCreatorUserId = (int)($record['sourceCreatorUserId'] ?? 0);
+				$task->set('IDusercreation', $userIdMap[$sourceCreatorUserId] ?? (int)$actorUserId);
+				$task->set('visibility_type', \dbObject\ObjectVisibility::normalizeVisibilityType($record['visibilityType'] ?? null));
 				$task->set('title', $title !== '' ? $title : 'Tache OMO 1 #' . (int)$record['sourceId']);
 				$task->set('description', $record['description'] ?? null);
 				$task->set('status', array_key_exists('status', $record)
@@ -9961,6 +9967,7 @@
 			$catalog = array();
 
 			foreach ($projects as $project) {
+				if (!$project->currentViewerCanAccessVisibility()) continue;
 				$projectId = (int)$project->getId();
 				if ($projectId <= 0) {
 					continue;
@@ -15398,6 +15405,9 @@
 			if ($module === 'decision') {
 				return self::topbarSearchResolveDecisionAccess($object, $viewerContext, $organizationId) ? $object : null;
 			}
+			if ($module === 'projects' && !$object->currentViewerCanAccessVisibility((int)($viewerContext['userId'] ?? 0))) {
+				return null;
+			}
 			if (!$archived && (int)$object->get('active') !== 1) {
 				return null;
 			}
@@ -16778,6 +16788,10 @@
 
 			$results = array();
 			foreach ($rows as $row) {
+				$project = new \dbObject\Project();
+				if (!$project->load((int)$row['id']) || !$project->currentViewerCanAccessVisibility((int)($viewerContext['userId'] ?? 0))) {
+					continue;
+				}
 				$holonId = (int)($row['IDholon'] ?? 0);
 				$subtitleParts = array();
 				if ($holonId > 0) {

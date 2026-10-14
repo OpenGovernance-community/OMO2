@@ -46,8 +46,8 @@ class Project extends DbObject
             [['IDorganization', 'title'], 'required'],
             [['id', 'priority', 'importance'], 'integer'],
             [['calculated_importance'], 'float'],
-            [['IDorganization', 'IDholon', 'IDuser', 'IDuser_proposed', 'IDproject_parent', 'IDdocument_journal', 'IDproject_template'], 'fk'],
-            [['title', 'status', 'capture_mode', 'project_size', 'project_kind', 'proposal_status', 'blocked_reactivate_status'], 'string'],
+            [['IDorganization', 'IDholon', 'IDuser', 'IDusercreation', 'IDuser_proposed', 'IDproject_parent', 'IDdocument_journal', 'IDproject_template'], 'fk'],
+            [['title', 'status', 'visibility_type', 'capture_mode', 'project_size', 'project_kind', 'proposal_status', 'blocked_reactivate_status'], 'string'],
             [['blocked_reason'], 'text'],
             [['description'], 'html'],
             [['planned_start_date', 'planned_end_date', 'blocked_until'], 'date'],
@@ -65,6 +65,8 @@ class Project extends DbObject
             'IDorganization' => 'Organisation',
             'IDholon' => 'Holon',
             'IDuser' => 'Responsable',
+            'IDusercreation' => 'Createur',
+            'visibility_type' => 'Visibilite',
             'IDuser_proposed' => 'Proposé par',
             'IDproject_parent' => 'Projet parent',
             'IDdocument_journal' => 'Document journal',
@@ -100,6 +102,7 @@ class Project extends DbObject
         return [
             'description' => 'Description HTML simple avec paragraphes, listes et mise en forme, y compris pour les modeles de processus.',
             'status' => 'Etat du projet pour une future vue kanban.',
+            'visibility_type' => 'La personne en charge conserve la visibilite quelle que soit son appartenance au holon.',
             'blocked_reason' => 'Ce qui empêche actuellement le projet d avancer.',
             'blocked_until' => 'Date à partir de laquelle le blocage doit être réévalué.',
             'blocked_auto_reactivate' => 'Réactive automatiquement le projet à la date de relance.',
@@ -124,6 +127,7 @@ class Project extends DbObject
         return [
             'title' => 255,
             'status' => 20,
+            'visibility_type' => 30,
             'blocked_reactivate_status' => 20,
             'capture_mode' => 30,
             'project_size' => 3,
@@ -151,6 +155,7 @@ class Project extends DbObject
 
         return [
             'status' => $statusValues,
+            'visibility_type' => array_map(static fn($value, $label) => [$value, $label], array_keys(ObjectVisibility::getVisibilityTypeOptions()), array_values(ObjectVisibility::getVisibilityTypeOptions())),
             'priority' => $priorityValues,
             'importance' => $importanceValues,
             'capture_mode' => [
@@ -174,6 +179,59 @@ class Project extends DbObject
     public static function getOrder()
     {
         return 'created_at DESC, id DESC';
+    }
+
+    public function getVisibilityType(): string
+    {
+        return ObjectVisibility::normalizeVisibilityType($this->get('visibility_type'));
+    }
+
+    public function getVisibilityCircleId(): int
+    {
+        $holon = $this->getHolon();
+        return $holon instanceof Holon
+            ? ((int)$holon->get('IDtypeholon') === 2 ? (int)$holon->getId() : (int)$holon->getContainingCircleId(false))
+            : 0;
+    }
+
+    public function currentViewerCanAccessVisibility(?int $userId = null): bool
+    {
+        $type = $this->getVisibilityType();
+        if ($type === ObjectVisibility::TYPE_EVERYONE) {
+            return true;
+        }
+        $organizationId = (int)$this->get('IDorganization');
+        $viewer = ObjectVisibility::buildCurrentViewerContext($organizationId, $userId);
+        if (!ObjectVisibility::viewerCanAccessRule(['visibility_type' => ObjectVisibility::TYPE_ORGANIZATION], $viewer)) {
+            return false;
+        }
+        // Reuse the shared override, which requires an active admin membership and enabled admin mode.
+        if (!empty($viewer['hasAdminOverride'])) {
+            return true;
+        }
+        $viewerId = (int)$viewer['userId'];
+        if ($viewer['type'] === 'user' && $viewerId > 0 && $viewerId === (int)$this->get('IDuser')) {
+            return true;
+        }
+        $holonId = (int)$this->get('IDholon');
+        if ($type === ObjectVisibility::TYPE_SELF) {
+            $ownerId = (int)$this->get('IDusercreation');
+            $ownerStillMember = $ownerId > 0 && commonUserHasOrganizationAccess($ownerId, $organizationId)
+                && ($holonId <= 0 || count(UserHolon::fetchEffectiveRowsForUserAndHolonIds($ownerId, [$holonId])) > 0);
+            if ($ownerStillMember) {
+                return $viewer['type'] === 'user' && $viewerId === $ownerId;
+            }
+            // When the personal owner leaves, the exact holon takes over visibility.
+            $type = ObjectVisibility::TYPE_ROLE;
+        }
+        if ($type === ObjectVisibility::TYPE_ROLE) {
+            return $viewer['type'] === 'user' && $holonId > 0
+                && count(UserHolon::fetchEffectiveRowsForUserAndHolonIds($viewerId, [$holonId])) > 0;
+        }
+        return ObjectVisibility::viewerCanAccessRule([
+            'visibility_type' => $type,
+            'IDholon' => $type === ObjectVisibility::TYPE_CIRCLE ? $this->getVisibilityCircleId() : null,
+        ], $viewer);
     }
 
     public static function handleUserDeparture($organizationId, $userId, $ghostUserId)
@@ -673,6 +731,7 @@ class Project extends DbObject
     {
         return [
             'title' => trim((string)($values['title'] ?? '')),
+            'visibility_type' => ObjectVisibility::getVisibilityTypeOptions()[ObjectVisibility::normalizeVisibilityType($values['visibility_type'] ?? null)],
             'status' => self::getHistoryStatusLabel($organizationId, $values['status'] ?? self::STATUS_SOMEDAY),
             'proposal_status' => self::getHistoryProposalStatusLabel($values['proposal_status'] ?? self::PROPOSAL_NONE),
             'planned_start_date' => self::formatHistoryDate($values['planned_start_date'] ?? null),
@@ -688,7 +747,7 @@ class Project extends DbObject
     private static function getStoredHistoryState($projectId)
     {
         $row = self::fetchRow(
-            'SELECT IDorganization, title, status, proposal_status, planned_start_date, planned_end_date, blocked_reason, blocked_until, blocked_auto_reactivate, blocked_reactivate_status
+            'SELECT IDorganization, title, visibility_type, status, proposal_status, planned_start_date, planned_end_date, blocked_reason, blocked_until, blocked_auto_reactivate, blocked_reactivate_status
              FROM project
              WHERE id = :id
              LIMIT 1',
@@ -701,6 +760,7 @@ class Project extends DbObject
     {
         return self::buildHistoryState([
             'title' => $this->get('title'),
+            'visibility_type' => $this->getVisibilityType(),
             'status' => $this->get('status'),
             'proposal_status' => $this->get('proposal_status'),
             'planned_start_date' => $this->get('planned_start_date'),
@@ -715,6 +775,7 @@ class Project extends DbObject
     private static function buildHistoryChanges(array $before, array $after)
     {
         $labels = [
+            'visibility_type' => 'Visibilite',
             'title' => 'Intitulé',
             'status' => 'Statut',
             'proposal_status' => 'Etat de la proposition',
@@ -965,6 +1026,21 @@ class Project extends DbObject
         $historyBeforeState = (int)$this->getId() > 0 ? self::getStoredHistoryState((int)$this->getId()) : null;
         $historyActionOverride = $this->historyActionOverride;
         $storedInputs = (int)$this->getId() > 0 ? self::getStoredImportanceInputs((int)$this->getId()) : null;
+        $this->set('visibility_type', $this->getVisibilityType());
+        if (is_array($storedInputs)) {
+            $ownerId = (int)($storedInputs['IDusercreation'] ?? 0);
+            if ($ownerId <= 0 && $this->getVisibilityType() === ObjectVisibility::TYPE_SELF
+                && ($storedInputs['visibility_type'] ?? '') !== ObjectVisibility::TYPE_SELF) {
+                $ownerId = (int)commonGetCurrentUserId();
+            }
+            $this->set('IDusercreation', $ownerId ?: null);
+        } elseif (!$this->get('IDusercreation')) {
+            $this->set('IDusercreation', (int)commonGetCurrentUserId() ?: null);
+        }
+        if (($this->getVisibilityType() === ObjectVisibility::TYPE_ROLE && (int)$this->get('IDholon') <= 0)
+            || ($this->getVisibilityType() === ObjectVisibility::TYPE_CIRCLE && $this->getVisibilityCircleId() <= 0)) {
+            return ['status' => false, 'text' => 'La visibilite choisie demande un holon ou un cercle compatible.'];
+        }
         if (is_array($storedInputs) && array_key_exists('calculated_importance', $storedInputs)) {
             // This field is server-owned. A value posted by a client must never replace it.
             $this->set('calculated_importance', (float)$storedInputs['calculated_importance']);
@@ -1119,7 +1195,7 @@ class Project extends DbObject
     private static function getStoredImportanceInputs($projectId): ?array
     {
         $row = self::fetchRow(
-            'SELECT IDorganization, IDproject_parent, IDholon, importance, calculated_importance FROM project WHERE id = :id LIMIT 1',
+            'SELECT IDorganization, IDproject_parent, IDholon, IDusercreation, visibility_type, importance, calculated_importance FROM project WHERE id = :id LIMIT 1',
             ['id' => (int)$projectId]
         );
         return is_array($row) ? $row : null;
