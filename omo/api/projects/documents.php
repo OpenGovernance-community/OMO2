@@ -84,7 +84,8 @@ if (count($documents) === 0) {
 <div class="omo-project-detail__documents-list">
     <?php foreach ($documents as $documentItem): ?>
         <?php
-        $canRemoveDocument = !$isArchivedProject && omoProjectsCanManageProject($project, $context);
+        $canRemoveDocument = !$isArchivedProject && !empty($documentItem['isDirectAssociation'])
+            && omoProjectsCanManageProject($project, $context);
         $shouldDeleteDocument = $canRemoveDocument
             && empty($documentItem['visibleInHolon'])
             && (int)($documentItem['otherProjectCount'] ?? 0) === 0

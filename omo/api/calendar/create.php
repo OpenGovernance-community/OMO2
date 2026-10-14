@@ -149,6 +149,14 @@ $sourceLang = array_merge(commonMeetingRecurrenceSourceLang(), commonCalendarAva
         'text' => 'Nom du document',
         'context' => 'Optional label of the linked document title field.',
     ],
+    'calendar.create.field.document_url' => [
+        'text' => 'Adresse du lien externe',
+        'context' => 'Required URL of a new external link attached to a meeting.',
+    ],
+    'calendar.create.error.document_url' => [
+        'text' => 'Saisissez une adresse de lien valide commencant par https:// ou http://.',
+        'context' => 'Validation error for a missing or invalid meeting document URL.',
+    ],
     'calendar.create.field.document_template' => [
         'text' => 'Modèle',
         'context' => 'Label of the optional document template selector in event creation.',
@@ -837,6 +845,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $requestedDocumentType = trim((string)($_POST['document_type'] ?? ''));
     $documentTitle = trim((string)($_POST['document_title'] ?? ''));
+    $documentExternalUrl = Document::sanitizeExternalUrl($_POST['document_external_url'] ?? '');
     $documentTemplateId = isset($_POST['document_template_id']) ? max(0, (int)$_POST['document_template_id']) : 0;
     $selectedInvitationHolonIds = $hasStructureApplication ? array_values(array_unique(array_filter(array_map('intval', $_POST['invitation_holon_ids'] ?? []), static function ($holonId) {
         return $holonId > 0;
@@ -1020,6 +1029,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    if ($willCreateDocument && $resolvedDocumentType === Document::TYPE_EXTERNAL_LINK) {
+        if ($selectedDocumentTemplate instanceof Document) {
+            $documentExternalUrl = $selectedDocumentTemplate->getExternalUrl();
+        }
+        if ($documentExternalUrl === '') {
+            echo json_encode(['status' => false, 'message' => omoCalendarCreateT('calendar.create.error.document_url')],
+                JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            exit;
+        }
+    }
+
     if (!$isEditMode) {
         $event = new Event();
         $event->set('IDuser', $currentUserId);
@@ -1173,7 +1193,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'keywords' => $defaultDocumentValues['keywords'],
                     'document_type' => $resolvedDocumentType,
                     'event_id' => (int)$event->getId(),
-                    'allow_empty_type_payload' => 1,
+                    'external_url' => $documentExternalUrl,
+                    'allow_empty_type_payload' => $resolvedDocumentType !== Document::TYPE_EXTERNAL_LINK,
                 ];
             $documentCreateResult = $selectedDocumentTemplate instanceof Document
                 ? $linkedDocument->createFromDocumentTemplateInOrganizationContext(
@@ -1409,6 +1430,8 @@ $documentTypeDefault = $associatedDocument instanceof Document
 $documentTitleDefault = $isDuplicateMode && $duplicateAssociatedDocument instanceof Document
     ? trim((string)$duplicateAssociatedDocument->get('title'))
     : '';
+$documentExternalUrlDefault = $duplicateAssociatedDocument instanceof Document
+    ? $duplicateAssociatedDocument->getExternalUrl() : '';
 $documentTypeOptions = omoCalendarDocumentTypeOptions($nextcloudDocumentsAvailable, $etherpadDocumentsAvailable, $ethercalcDocumentsAvailable, $pvDocumentsEnabled);
 $canOpenAssociatedDocument = $associatedDocument instanceof Document
     && (
@@ -1741,6 +1764,12 @@ if ($isEditMode) {
                                                 maxlength="255"
                                             >
                                         </label>
+                                        <label class="omo-calendar-create__field generic-form-field" data-omo-calendar-document-url-field<?= $documentTypeDefault === Document::TYPE_EXTERNAL_LINK ? '' : ' hidden' ?>>
+                                            <span class="generic-form-label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.document_url')) ?></span>
+                                            <input type="url" name="document_external_url" class="generic-form-control"
+                                                value="<?= omoApiEscape($documentExternalUrlDefault) ?>" placeholder="https://..." maxlength="2000"
+                                                <?= $documentTypeDefault === Document::TYPE_EXTERNAL_LINK ? 'required' : 'disabled' ?>>
+                                        </label>
                                     </div>
                                 <?php endif; ?>
                             <?php endif; ?>
@@ -1777,4 +1806,5 @@ if ($isEditMode) {
 <link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/calendar/editor.css') ?>">
 <link rel="stylesheet" href="<?= commonAssetUrl('/common/calendar/availability-grid.css') ?>">
 <script src="<?= commonAssetUrl('/common/calendar/recurrence.js') ?>"></script>
+<script src="<?= commonAssetUrl('/common/calendar/document-fields.js') ?>"></script>
 <script src="<?= commonAssetUrl('/common/calendar/invitations.js') ?>"></script>

@@ -991,16 +991,36 @@ if (!function_exists('omoProjectsGetVisibleDocuments')) {
     {
         $projectDocuments = new ArrayProjectDocument();
         $projectDocuments->loadForProject((int)$project->getId());
-        $visibleDocuments = [];
-
+        $candidates = [];
+        $currentUserId = (int)commonGetCurrentUserId();
         foreach ($projectDocuments as $projectDocument) {
             $document = $projectDocument->getDocument();
+            if ($document instanceof Document) {
+                $candidates[(int)$document->getId()] = [
+                    'document' => $document, 'addedAt' => $projectDocument->get('datecreation'), 'isDirectAssociation' => true,
+                ];
+            }
+        }
+        $eventPvs = new \dbObject\ArrayDocument();
+        $eventPvs->loadPvForProjectEvents((int)$project->getId(), (int)$organizationId);
+        foreach ($eventPvs as $document) {
+            $candidates[(int)$document->getId()] ??= [
+                'document' => $document, 'addedAt' => null, 'isDirectAssociation' => false,
+            ];
+        }
+        $visibleDocuments = [];
+
+        foreach ($candidates as $candidate) {
+            $document = $candidate['document'];
             if (
                 !is_object($document)
                 || (int)$document->get('IDorganization') !== (int)$organizationId
                 || $document->isArchived()
+                || !$document->canUserPassPvMeetingVisibilityGate($currentUserId, (int)$organizationId)
                 || !(
-                    $document->canViewInOrganizationContext(
+                    ($document->isPvDocument() && !$document->isPvValidated()
+                        && $document->canUserAccessPvBeforeValidation($currentUserId, (int)$organizationId))
+                    || $document->canViewInOrganizationContext(
                         (int)$organizationId,
                         (int)$document->get('IDholon')
                     )
@@ -1010,7 +1030,7 @@ if (!function_exists('omoProjectsGetVisibleDocuments')) {
                 continue;
             }
 
-            $createdAt = $projectDocument->get('datecreation');
+            $createdAt = $candidate['addedAt'];
             $documentProjects = new ArrayProjectDocument();
             $documentProjects->loadForDocument((int)$document->getId());
             $otherProjectCount = 0;
@@ -1024,6 +1044,7 @@ if (!function_exists('omoProjectsGetVisibleDocuments')) {
             }
             $visibleDocuments[] = [
                 'id' => (int)$document->getId(),
+                'isDirectAssociation' => $candidate['isDirectAssociation'],
                 'title' => trim((string)$document->get('title')),
                 'type' => $document->isNextcloudFolder() ? omoProjectsT('projects.detail.documents.remote_folder') : $document->getDocumentTypeLabel(),
                 'iconUrl' => omoProjectsGetDocumentTypeIconUrl($document),
