@@ -1,5 +1,9 @@
 # Journal des nouveautés
 
+- Organisations / choix d un modele public (2026-10-14) : fiches selectionnables avec banniere, logo, couleur et description libre en texte simple. La mention Partage par est retiree ; un champ URL facultatif fournit le lien En savoir plus. Champs disponibles a la creation et a l edition, conserves a l export/import ; URL HTTP/HTTPS validee, texte echappe et retours a la ligne preserves. Migration description/url et tests PHP 8.5.
+
+- Structure / bouton de creation (2026-10-14) : le libelle utilise le nom du modele de holon selectionne, par exemple Fonction, plutot que son type de base Role. Mise a jour lors du changement de modele.
+
 - Organisations / panneau initial (2026-10-14) : correction de la reference a la classe Organization dans le panneau sans structure. getOrg.php rend maintenant les informations completes des nouvelles organisations sans modele. Test de regression du endpoint sous PHP 8.5, sans migration SQL.
 
 - Decisions / sauvegarde de gouvernance (2026-10-14) : suppression du chargement inutilise des regles et des editeurs de tous les roles du cercle. Seuls les objets des modifications sont prepares et controles. Test HTTP avec 20 roles non concernes : 2236 a 484 requetes SQL ; controles des cibles hors contexte et des droits retires conserves.

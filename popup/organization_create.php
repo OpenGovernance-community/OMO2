@@ -34,6 +34,8 @@ $sourceLang = array(
     'organization.routing.preview_example' => array('text' => 'Cet identifiant sera utilise dans l URL de base du site, par exemple :', 'context' => 'Organization URL identifier example introduction.'),
     'organization.form.unavailable' => array('text' => 'Le formulaire n’est pas disponible.', 'context' => 'Missing organization form error.'),
     'organization.field.name' => array('text' => 'Nom', 'context' => 'Organization name field label.'),
+    'organization.field.description' => array('text' => 'Description', 'context' => 'Plain text organization description field label.'),
+    'organization.field.url' => array('text' => 'URL pour en savoir plus', 'context' => 'Optional HTTP or HTTPS link on the organization model card.'),
     'organization.field.shortname' => array('text' => 'Identifiant URL', 'context' => 'Organization URL identifier field label, distinct from the holon short display name.'),
     'organization.field.color' => array('text' => 'Couleur', 'context' => 'Organization color field label.'),
     'organization.field.domain' => array('text' => 'Domaine', 'context' => 'Organization domain field label.'),
@@ -103,7 +105,7 @@ if (!$isEditMode && $modelOrganizationId > 0) {
         die(htmlspecialchars(t('organization.error.model', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8'));
     }
 
-    foreach (array('color', 'latlong', 'interface_level', 'logo', 'banner') as $field) {
+    foreach (array('color', 'latlong', 'interface_level', 'logo', 'banner', 'description', 'url') as $field) {
         $organization->set($field, $modelOrganization->get($field));
     }
     $organization->set('name', '');
@@ -225,6 +227,16 @@ $organizationBannerPreviewWidth = max(1, (int)round(
                     <label class="generic-form-field generic-form-field--full">
                         <span class="generic-form-label"><?= htmlspecialchars(t('organization.field.name', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></span>
                         <input class="generic-form-control" type="text" name="name" id="name" maxlength="100" required value="<?= htmlspecialchars((string)$organization->get('name'), ENT_QUOTES, 'UTF-8') ?>">
+                    </label>
+
+                    <label class="generic-form-field generic-form-field--full">
+                        <span class="generic-form-label"><?= htmlspecialchars(t('organization.field.description', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></span>
+                        <textarea class="generic-form-control" name="description" id="description" rows="4" maxlength="<?= (int)\dbObject\Organization::attributeLength()['description'] ?>"><?= htmlspecialchars((string)$organization->get('description'), ENT_QUOTES, 'UTF-8') ?></textarea>
+                    </label>
+
+                    <label class="generic-form-field generic-form-field--full">
+                        <span class="generic-form-label"><?= htmlspecialchars(t('organization.field.url', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></span>
+                        <input class="generic-form-control" type="url" name="url" id="url" maxlength="<?= (int)\dbObject\Organization::attributeLength()['url'] ?>" placeholder="https://..." pattern="[Hh][Tt][Tt][Pp][Ss]?://.+" value="<?= htmlspecialchars((string)$organization->get('url'), ENT_QUOTES, 'UTF-8') ?>">
                     </label>
 
                     <label class="generic-form-field">
