@@ -159,7 +159,7 @@
 				'event' => array('app' => 'calendar', 'settings' => array('scope' => true)),
 				'structure' => array('app' => 'structure', 'settings' => array('scope' => true)),
 				'stats' => array('app' => 'stats', 'settings' => array('scope' => true, 'audience' => true)),
-				'checklist' => array('app' => 'checklist', 'settings' => array('scope' => true, 'audience' => true)),
+				'checklist' => array('app' => 'processus', 'settings' => array('scope' => true, 'audience' => true)),
 				'activities' => array('app' => 'activities', 'settings' => array('scope' => true, 'audience' => true)),
 			);
 		}
@@ -274,6 +274,7 @@
 			$normalized = array();
 
 			if (!empty($configuration['scope'])) {
+				$normalized['scopeRoot'] = self::normalizeDashboardModuleScopeRoot($settings['scopeRoot'] ?? 'holon');
 				$scope = trim(mb_strtolower((string)($settings['scope'] ?? 'contextual'), 'UTF-8'));
 				$normalized['scope'] = in_array($scope, array('contextual', 'children', 'descendants'), true)
 					? $scope
@@ -291,6 +292,12 @@
 			}
 
 			return $normalized;
+		}
+
+		public static function normalizeDashboardModuleScopeRoot($value): string
+		{
+			$value = trim(mb_strtolower((string)$value, 'UTF-8'));
+			return in_array($value, array('organization', 'parent', 'holon'), true) ? $value : 'holon';
 		}
 
 		public static function normalizeDashboardModuleAudience($value): string

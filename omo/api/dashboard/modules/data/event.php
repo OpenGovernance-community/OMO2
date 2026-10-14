@@ -72,7 +72,7 @@ if (!empty($enabledAppHashes['calendar'])) {
 
         $eventHolonId = (int)$event->get('IDholon');
         $eventStatus = \dbObject\Event::normalizeStatus($event->get('status'));
-        if ($eventHolonId > 0 && !isset($calendarScopeHolonIdMap[$eventHolonId])) {
+        if ($eventHolonId > 0 ? !isset($calendarScopeHolonIdMap[$eventHolonId]) : !$dashboardModuleIsOrganizationHolon) {
             continue;
         }
 

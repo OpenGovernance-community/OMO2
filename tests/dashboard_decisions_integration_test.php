@@ -50,7 +50,7 @@ try {
     dashboardIntegrationCheck($group !== null, 'Saving a decision must provide an evaluation group.');
 
     $enabledAppHashes = array('decision' => true);
-    $dashboardIsOrganizationHolon = true;
+    $dashboardModuleIsOrganizationHolon = true;
     $dashboardModuleScopeHolonIdMap = array();
     $dashboardDecisionUserEmail = '';
     $dashboardDecisionRows = array_filter(

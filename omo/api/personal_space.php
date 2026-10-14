@@ -13,6 +13,10 @@ use dbObject\UserHolon;
 use dbObject\ApplicationSetting;
 
 $sourceLang = [
+    'personal_space.root.label' => ['text' => 'Racine', 'context' => 'Reference level from which the dashboard module scope is applied.'],
+    'personal_space.root.organization' => ['text' => 'Organisation', 'context' => 'Use the current organization as the dashboard module root.'],
+    'personal_space.root.parent' => ['text' => 'Parent', 'context' => 'Use the parent of the current holon, skipping display groups; at organization level keep the organization.'],
+    'personal_space.root.holon' => ['text' => '{holonLabel} courant', 'context' => 'Use the current holon as module root, with the organization lexicon.'],
     'personal_space.title' => [
         'text' => 'Tableau de pilotage',
         'context' => 'Main title of the dashboard panel shown on the right side of the OMO workspace.',
@@ -379,11 +383,13 @@ if ($currentHolonId > 0) {
 $scopeReferenceHolon = $currentContextHolon instanceof Holon
     ? $currentContextHolon
     : $organizationRootHolon;
-$dashboardAvailableScopes = omoApiGetAvailableContextScopes(
-    $scopeReferenceHolon instanceof Holon,
-    $scopeReferenceHolon,
-    $organizationRootHolon
-);
+// Keep all relative scopes available, including on templates and leaf roles.
+$dashboardAvailableScopes = ['contextual', 'children', 'descendants'];
+$dashboardRootLabels = [
+    'organization' => t('personal_space.root.organization', [], $lang, $sourceLang),
+    'parent' => t('personal_space.root.parent', [], $lang, $sourceLang),
+    'holon' => t('personal_space.root.holon', ['holonLabel' => Organization::getLexiconLabel($organization->getLexicon(), 'space')], $lang, $sourceLang),
+];
 $dashboardHolonId = $scopeReferenceHolon instanceof Holon ? (int)$scopeReferenceHolon->getId() : 0;
 $dashboardInterfaceLevel = $organization->getInterfaceLevel();
 $dashboardSettings = $currentUserId > 0 && $dashboardHolonId > 0
@@ -577,6 +583,7 @@ $dashboardMetricLabels = array(
         'videoMissing' => t('personal_space.video.empty', [], $lang, $sourceLang),
         'configureApply' => t('personal_space.editor.configure_apply', [], $lang, $sourceLang),
         'cancel' => t('personal_space.editor.cancel', [], $lang, $sourceLang),
+        'rootLabels' => $dashboardRootLabels,
         'scopeLabels' => array(
             'contextual' => t('personal_space.scope.contextual', [], $lang, $sourceLang),
             'children' => t('personal_space.scope.children', [], $lang, $sourceLang),
@@ -637,6 +644,14 @@ $dashboardMetricLabels = array(
                         ? $dashboardModule['settings']
                         : array();
                     $dashboardModuleHasScope = !empty($dashboardModuleCatalog[$dashboardModuleType]['settings']['scope']);
+                    $dashboardModuleRoot = UserHolon::normalizeDashboardModuleScopeRoot($dashboardModuleSettings['scopeRoot'] ?? 'holon');
+                    $dashboardModuleContextHolon = $scopeReferenceHolon instanceof Holon
+                        ? $scopeReferenceHolon->getDashboardScopeRoot($dashboardModuleRoot, $organizationRootHolon)
+                        : null;
+                    $dashboardModuleContextHolonId = $dashboardModuleContextHolon instanceof Holon ? (int)$dashboardModuleContextHolon->getId() : 0;
+                    $dashboardModuleIsOrganizationHolon = $dashboardModuleContextHolonId > 0
+                        && $organizationRootHolon instanceof Holon
+                        && $dashboardModuleContextHolonId === (int)$organizationRootHolon->getId();
                     $dashboardModuleScope = $dashboardModuleHasScope
                         ? omoApiNormalizeContextScope($dashboardModuleSettings['scope'] ?? 'contextual', $dashboardAvailableScopes)
                         : 'contextual';
@@ -644,20 +659,19 @@ $dashboardMetricLabels = array(
                         ? UserHolon::normalizeDashboardModuleAudience($dashboardModuleSettings['audience'] ?? 'all')
                         : '';
                     $dashboardModuleScopeHolonIds = $dashboardModuleScope === 'children'
-                        ? omoApiGetDirectChildScopeHolonIds($scopeReferenceHolon)
+                        ? omoApiGetDirectChildScopeHolonIds($dashboardModuleContextHolon)
                         : ($dashboardModuleScope === 'descendants'
-                            ? omoApiGetDescendantHolonIds($scopeReferenceHolon)
-                            : array($dashboardHolonId));
+                            ? omoApiGetDescendantHolonIds($dashboardModuleContextHolon)
+                            : array($dashboardModuleContextHolonId));
                     $dashboardModuleScopeHolonIdMap = count($dashboardModuleScopeHolonIds) > 0
                         ? array_fill_keys(array_map('intval', $dashboardModuleScopeHolonIds), true)
                         : array();
-                    $dashboardModuleContextHolonId = $dashboardHolonId;
-                    $dashboardModuleForcedOpenScope = $dashboardModuleScope === 'contextual' ? '' : $dashboardModuleScope;
-                    $dashboardModuleScopeLabel = t('personal_space.scope.' . $dashboardModuleScope, [], $lang, $sourceLang);
+                    $dashboardModuleForcedOpenScope = $dashboardModuleScope;
+                    $dashboardModuleScopeLabel = $dashboardRootLabels[$dashboardModuleRoot] . ' / ' . t('personal_space.scope.' . $dashboardModuleScope, [], $lang, $sourceLang);
                     $dashboardModuleAudienceLabel = $dashboardModuleAudience !== ''
                         ? t('personal_space.audience.' . $dashboardModuleAudience, [], $lang, $sourceLang)
                         : '';
-                    $dashboardModuleEnabled = !empty($dashboardModuleDefinition['standalone']) || ($dashboardHolonId > 0 && !empty($enabledAppHashes[$dashboardModuleDefinition['app'] ?? '']));
+                    $dashboardModuleEnabled = !empty($dashboardModuleDefinition['standalone']) || ($dashboardModuleContextHolonId > 0 && $dashboardModuleContextHolon->canViewDetail() && !empty($enabledAppHashes[$dashboardModuleDefinition['app'] ?? '']));
                     $dashboardModuleRouteToken = (string)($dashboardRouteTokens[$dashboardModuleType] ?? '');
                     $dashboardModuleIsTall = (int)($dashboardModule['rowSpan'] ?? 1) > 1;
                     $dashboardModuleStyle = '--omo-dashboard-row:' . ((int)$dashboardModule['row'] + 1)
@@ -671,7 +685,7 @@ $dashboardMetricLabels = array(
                             <?php if ($dashboardModuleHasScope): ?><span class="omo-personal-space__tag omo-dashboard-module__scope"><?= omoApiEscape($dashboardModuleScopeLabel) ?></span><?php endif; ?>
                             <?php if ($dashboardModuleAudienceLabel !== ''): ?><span class="omo-personal-space__tag omo-dashboard-module__audience"><?= omoApiEscape($dashboardModuleAudienceLabel) ?></span><?php endif; ?>
                             <?php if ($dashboardModuleEnabled && $dashboardModuleRouteToken !== ''): ?>
-                                <button type="button" class="omo-personal-space__section-action generic-action-button generic-action-button--secondary generic-action-button--compact" data-omo-personal-space-route-token="<?= omoApiEscape($dashboardModuleRouteToken) ?>"<?= $dashboardModuleForcedOpenScope !== '' && $dashboardModuleType !== 'structure' ? ' data-omo-personal-space-forced-scope="' . omoApiEscape($dashboardModuleForcedOpenScope) . '"' : '' ?>><?= omoApiEscape(t('personal_space.open_app', [], $lang, $sourceLang)) ?></button>
+                                <button type="button" class="omo-personal-space__section-action generic-action-button generic-action-button--secondary generic-action-button--compact" data-omo-personal-space-route-token="<?= omoApiEscape($dashboardModuleRouteToken) ?>" data-omo-personal-space-context-holon-id="<?= $dashboardModuleContextHolonId ?>"<?= $dashboardModuleForcedOpenScope !== '' && $dashboardModuleType !== 'structure' ? ' data-omo-personal-space-forced-scope="' . omoApiEscape($dashboardModuleForcedOpenScope) . '"' : '' ?>><?= omoApiEscape(t('personal_space.open_app', [], $lang, $sourceLang)) ?></button>
                             <?php endif; ?>
                         </div>
 
@@ -735,6 +749,8 @@ $dashboardMetricLabels = array(
             <div class="omo-dashboard-picker__panel generic-soft-panel generic-soft-panel--stack" role="dialog" aria-modal="true">
                 <h4 class="generic-card-title" data-omo-dashboard-configurator-title></h4>
                 <div class="generic-form-field" data-omo-dashboard-configurator-scope-field>
+                    <span class="generic-form-label"><?= omoApiEscape(t('personal_space.root.label', [], $lang, $sourceLang)) ?></span>
+                    <div class="omo-segmented" data-omo-dashboard-configurator-roots></div>
                     <span class="generic-form-label"><?= omoApiEscape(t('personal_space.editor.configure_scope', [], $lang, $sourceLang)) ?></span>
                     <div class="omo-segmented" data-omo-dashboard-configurator-scopes></div>
                 </div>

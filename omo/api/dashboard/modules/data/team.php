@@ -4,9 +4,10 @@ use dbObject\Holon;
 
 $memberships = new ArrayUserOrganization();
 $allowedTeamUserIds = null;
-if ($dashboardModuleScope === 'contextual' && $scopeReferenceHolon instanceof Holon) {
-    $allowedTeamUserIds = $scopeReferenceHolon->getAssociatedMemberUserIds(array(
+if ($dashboardModuleScope === 'contextual' && $dashboardModuleContextHolon instanceof Holon) {
+    $allowedTeamUserIds = $dashboardModuleContextHolon->getAssociatedMemberUserIds(array(
         'organizationId' => $currentOrganizationId,
+        'includeDescendants' => false,
     ));
 } elseif ($dashboardModuleScope !== 'contextual' && count($dashboardModuleScopeHolonIds) > 0) {
     $allowedTeamUserIdMap = [];
