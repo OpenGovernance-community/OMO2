@@ -4,11 +4,14 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const {parseHTML} = require(process.argv[2] || 'linkedom');
+const publicEnabled = process.argv[3] !== 'disabled';
 const {document, Event, MutationObserver} = parseHTML('<html><body><form><div hidden data-calendar-invitations-lazy="/editor" data-loading-label="Loading" data-error-label="Retry">' +
     '<div hidden data-omo-calendar-invitations-editor data-omo-calendar-invitations-placeholder data-omo-calendar-uses-default-selection="1" data-omo-calendar-default-holon-id="12">' +
+    '<input type="checkbox" name="public_registration" value="1"' + (publicEnabled ? ' checked' : '') + '>' +
     '<input type="checkbox" name="invitation_holon_ids[]" value="12" checked><input type="checkbox" name="invitation_user_ids[]" value="34" checked><textarea name="invitation_emails">guest@example.invalid</textarea></div>' +
     '<div data-calendar-invitations-feedback></div></div></form></body></html>');
 const html = '<div data-omo-calendar-invitations-editor><input type="checkbox" name="invitation_holon_ids[]" value="12">' +
+    '<input type="checkbox" name="public_registration" value="1"' + (publicEnabled ? '' : ' checked') + '>' +
     '<input type="checkbox" name="invitation_user_ids[]" value="34"><input type="checkbox" name="invitation_user_ids[]" value="99" checked><textarea name="invitation_emails"></textarea></div>';
 let requests = [], initialize = 0, loadedEvents = 0;
 const window = {requestAnimationFrame() {}, omoCalendarInitInvitationEditors() { initialize++; }};
@@ -26,12 +29,14 @@ document.querySelector('form').addEventListener('omo-calendar-invitations-loaded
     host.hidden = true; host.hidden = false; await settle();
     assert.equal(requests.length, 1, 'In-flight requests are shared.');
     assert.ok(host.querySelector('[name="invitation_holon_ids[]"]'), 'Draft fields remain available while loading.');
+    assert.equal(host.querySelector('[name="public_registration"]').hasAttribute('checked'), publicEnabled, 'Public setting remains submittable before loading.');
     requests[0].resolve({ok: true, text: async () => html}); await settle(); await settle();
     assert.equal(host.dataset.loadState, 'loaded');
     assert.equal(host.querySelector('[value="12"]').checked, true);
     assert.equal(host.querySelector('[value="34"]').checked, true);
     assert.equal(host.querySelector('[value="99"]').checked, false, 'The server does not replace the form draft selections.');
     assert.equal(host.querySelector('textarea').value, 'guest@example.invalid');
+    assert.equal(host.querySelector('[name="public_registration"]').checked, publicEnabled, 'Lazy loading preserves the draft public setting over the fetched state.');
     assert.equal(host.querySelector('[data-omo-calendar-invitations-editor]').dataset.omoCalendarUsesDefaultSelection, '1');
     assert.equal(initialize, 1); assert.equal(loadedEvents, 1);
     host.hidden = true; host.hidden = false; await settle();

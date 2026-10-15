@@ -8,6 +8,8 @@ function omoRestRoutes(): array
     return [
         ['GET', '/connection', 'omo_connection_info'],
         ['GET', '/catalog', 'omo_catalog'],
+        ['GET', '/permissions/catalog', 'omo_permission_catalog'],
+        ['GET', '/permissions', 'omo_list_permissions'],
         ['GET', '/structure', 'omo_list_structure'],
         ['GET', '/structure/{holon_id}', 'omo_get_holon'],
         ['GET', '/members/{user_id}', 'omo_get_member'],

@@ -1,5 +1,11 @@
 # Journal des nouveautés
 
+- API / MCP / consultation des droits (2026-10-15) : catalogue des droits et recherche par personne, espace cible ou droit, avec filtres combinables. Chaque resultat indique le role ou l appartenance, la source heritee et l espace concerne. Droits normaux par defaut ; autorites etendues uniquement sur demande explicite, sans activation ni modification. Prise en compte des droits ouverts par defaut, des replis, des profils admin de role et des limites de visibilite ; droits collectifs et derogations administrateur exclus. Pagination, contrats OpenAPI et tests cibles PHP 8.5 en base et HTTP REST/MCP. Aucune migration SQL.
+
+- PV / envoi des invitations (2026-10-15) : apres un envoi reussi, le formulaire est marque comme enregistre pour fermer sans fausse alerte de perte de donnees. Les echecs et les modifications faites pendant ou apres l envoi restent proteges.
+
+- Calendrier / inscriptions tout public (2026-10-15) : meme onglet d inscription publique dans le detail, le PV et l editeur de l evenement, avec activation, lien et liste des inscrits partages. Sauvegarde avec l evenement et conservation du choix meme sans ouvrir les invites. Tests PHP 8.5 des trois acces, des droits et de la sauvegarde ; tests JavaScript du chargement differe. Aucune migration SQL.
+
 - Projets / documents des evenements (2026-10-14) : l onglet Documents reprend aussi les liens externes, fichiers et autres documents des evenements du projet, en plus des PV. Documents partages inclus, doublons evites et droits conserves ; archives et evenements annules, inactifs ou brouillons inaccessibles exclus. La meme case Afficher dans le holon est disponible pour les documents lies a un evenement : masques par defaut dans la liste du holon, ils restent accessibles depuis la reunion et le projet. Tests PHP 8.5 et verification du cas local ; sans migration SQL.
 
 - Calendrier / documents du detail (2026-10-14) : affichage de tous les documents associes a une reunion, dont les liens externes et fichiers aux cotes du PV, avec un bouton propre a chacun. Documents partages inclus sans doublon ; droits de consultation conserves et archives exclus. Tests PHP 8.5 du rendu, des permissions et du remplacement d un document supprime par un lien ; verification ordinateur/mobile, sans migration SQL.

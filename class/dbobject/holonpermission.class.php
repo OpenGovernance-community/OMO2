@@ -1041,8 +1041,11 @@ class HolonPermission extends DbObject
         return $debug;
     }
 
-    public static function buildEffectivePermissionDetailsForOrganization($userId, $organizationId, array $permissionKeys = [], bool $extendedOnly = false)
+    public static function buildEffectivePermissionDetailsForOrganization($userId, $organizationId, array $permissionKeys = [], bool $extendedOnly = false, ?string $inspectionMode = null)
     {
+        if ($inspectionMode !== null && !in_array($inspectionMode, ['normal', 'extended', 'all'], true)) {
+            throw new \InvalidArgumentException('Invalid permission inspection mode.');
+        }
         $userId = (int)$userId;
         $organizationId = (int)$organizationId;
         $details = [
@@ -1057,7 +1060,7 @@ class HolonPermission extends DbObject
             return $details;
         }
 
-        if (!$extendedOnly && function_exists('commonUserHasAdminOverride') && \commonUserHasAdminOverride($userId, $organizationId)) {
+        if ($inspectionMode === null && !$extendedOnly && function_exists('commonUserHasAdminOverride') && \commonUserHasAdminOverride($userId, $organizationId)) {
             $details['adminOverrideActive'] = true;
             foreach (\dbObject\Permission::getEditorCatalog() as $permissionEntry) {
                 $permissionKey = trim((string)($permissionEntry['key'] ?? ''));
@@ -1150,7 +1153,10 @@ class HolonPermission extends DbObject
                         continue;
                     }
 
-                    if ($extendedOnly ? empty($assignment['is_extended'])
+                    if ($inspectionMode !== null) {
+                        if (($inspectionMode === 'normal' && !empty($assignment['is_extended']))
+                            || ($inspectionMode === 'extended' && empty($assignment['is_extended']))) continue;
+                    } elseif ($extendedOnly ? empty($assignment['is_extended'])
                         : (!empty($assignment['is_extended']) && !self::extendedAuthoritiesActive($userId, $organizationId))) continue;
 
                     $permissionKey = trim((string)($assignment['permission_key'] ?? ''));
@@ -1192,6 +1198,9 @@ class HolonPermission extends DbObject
                             (string)$permissionSourceHolonId,
                             (string)($assignment['range'] ?? self::RANGE_SELF),
                         ]);
+                        if ($inspectionMode !== null) {
+                            $dedupeKey .= '|' . $assignment['member_type'] . '|' . (int)$assignment['is_extended'];
+                        }
                         $details['rows'][$dedupeKey] = [
                             'permissionKey' => $permissionKey,
                             'isContextual' => !empty($assignment['is_contextual']),
@@ -1201,6 +1210,14 @@ class HolonPermission extends DbObject
                             'sourceHolonId' => (int)$permissionSourceHolonId,
                             'range' => (string)($assignment['range'] ?? self::RANGE_SELF),
                         ];
+                        if ($inspectionMode !== null) {
+                            $details['rows'][$dedupeKey] += [
+                                'memberType' => $assignment['member_type'],
+                                'isExtended' => (bool)$assignment['is_extended'],
+                                'origin' => 'assignment',
+                                'fallbackPermissionKey' => null,
+                            ];
+                        }
                     }
                 }
             }
@@ -1208,6 +1225,77 @@ class HolonPermission extends DbObject
 
         $details['rows'] = array_values($details['rows']);
         return $details;
+    }
+
+    /** Explain configured rights without activating a mode or impersonating the subject.
+     * Unconfigured keys follow the same defaults as userHasPermissionForHolonContext().
+     * A configured collective/extended-only right is NOT an unconfigured right.
+     */
+    public static function inspectUserPermissionsForOrganization(int $userId, int $organizationId, array $permissionKeys, string $mode = 'normal'): array
+    {
+        if (!in_array($mode, ['normal', 'extended', 'all'], true)) {
+            throw new \InvalidArgumentException('Invalid permission inspection mode.');
+        }
+        if (!self::hasActiveUserOrganizationMembership($userId, $organizationId)) return [];
+        $rootId = self::resolveOrganizationRootHolonId($organizationId);
+        $holons = $rootId > 0 ? self::loadOrganizationHolonRows($rootId) : [];
+        if (!$holons) return [];
+        $keys = array_values(array_unique($permissionKeys));
+        foreach ($permissionKeys as $key) {
+            $fallback = Permission::getUnconfiguredFallbackPermissionKey($key);
+            if ($fallback !== null) $keys[] = $fallback;
+        }
+        $keys = array_values(array_unique($keys));
+        $configured = array_fill_keys(array_column(self::loadPermissionAssignmentsForOrganization(array_keys($holons), $keys), 'permission_key'), true);
+        $rows = self::buildEffectivePermissionDetailsForOrganization($userId, $organizationId, $keys, false, $mode)['rows'];
+        $byKey = [];
+        foreach ($rows as $row) $byKey[$row['permissionKey']][] = $row;
+        $contextual = Permission::getContextualMap($keys);
+        foreach ($keys as $key) {
+            if (isset($configured[$key]) || Permission::getUnconfiguredFallbackPermissionKey($key) !== null
+                || Permission::requiresExplicitAssignment($key) || $mode === 'extended') continue;
+            $byKey[$key][] = ['permissionKey' => $key, 'isContextual' => (bool)($contextual[$key] ?? true),
+                'scopeType' => 'organization', 'scopeHolonId' => 0, 'assignedHolonId' => 0, 'sourceHolonId' => 0,
+                'range' => self::RANGE_ORGANIZATION, 'memberType' => self::MEMBER_TYPE_MEMBER,
+                'isExtended' => false, 'origin' => 'default_membership', 'fallbackPermissionKey' => null];
+        }
+        $result = [];
+        foreach ($permissionKeys as $key) {
+            $fallback = Permission::getUnconfiguredFallbackPermissionKey($key);
+            if (!isset($configured[$key]) && $fallback !== null) {
+                foreach ($byKey[$fallback] ?? [] as $row) {
+                    $row['permissionKey'] = $key;
+                    $row['fallbackPermissionKey'] = $fallback;
+                    $result[] = $row;
+                }
+            } else {
+                array_push($result, ...($byKey[$key] ?? []));
+            }
+        }
+        usort($result, static fn(array $a, array $b): int =>
+            [$a['permissionKey'], $a['assignedHolonId'], $a['sourceHolonId'], $a['memberType'], $a['isExtended'], $a['range'], $a['scopeType'], $a['scopeHolonId']]
+            <=> [$b['permissionKey'], $b['assignedHolonId'], $b['sourceHolonId'], $b['memberType'], $b['isExtended'], $b['range'], $b['scopeType'], $b['scopeHolonId']]);
+        return $result;
+    }
+
+    /** Internal identifiers only: callers must apply viewer access checks before serialization. */
+    public static function permissionInspectionContextIds(int $organizationId, array $row, ?int $contextId = null): array
+    {
+        $rootId = self::resolveOrganizationRootHolonId($organizationId);
+        $holons = $rootId > 0 ? self::loadOrganizationHolonRows($rootId) : [];
+        $candidates = $contextId !== null ? [$contextId] : [0, ...array_keys($holons)];
+        $ids = [];
+        foreach ($candidates as $id) {
+            if ($id !== 0 && !isset($holons[$id])) continue;
+            if ($row['scopeType'] === 'organization'
+                || ($row['scopeType'] === 'exact' && $id === (int)$row['scopeHolonId'])
+                || ($row['scopeType'] === 'subtree' && $id > 0
+                    && in_array((int)$row['scopeHolonId'], self::collectAncestorChainHolonIds($id, $holons), true))) {
+                $ids[] = $id;
+            }
+        }
+        sort($ids, SORT_NUMERIC);
+        return $ids;
     }
 
     protected static function extendedAuthoritiesActive(int $userId, int $organizationId): bool

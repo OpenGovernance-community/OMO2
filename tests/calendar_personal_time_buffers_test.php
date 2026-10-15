@@ -18,7 +18,7 @@ if (($argv[1] ?? '') === '--request') {
     $_REQUEST = array_merge($_GET, $_POST);
     $_SERVER['HTTP_HOST'] = 'localtest.me';
     $endpoint = $request['endpoint'] ?? 'create.php';
-    personalBufferExpect(in_array($endpoint, ['create.php', 'index.php', 'detail.php'], true), 'Valid endpoint.');
+    personalBufferExpect(in_array($endpoint, ['create.php', 'index.php', 'detail.php', 'invitations_popup.php'], true), 'Valid endpoint.');
     $_SERVER['REQUEST_URI'] = '/omo/api/calendar/' . $endpoint;
     $_SERVER['REQUEST_METHOD'] = $request['method'];
     $_SERVER['HTTP_X_REQUESTED_WITH'] = 'XMLHttpRequest';
@@ -106,6 +106,7 @@ try {
     $request['method'] = 'POST';
     $request['post'] = ['csrf' => 'test-token', 'time_buffers_enabled' => 1, 'preparation_minutes' => 120, 'closing_minutes' => 20,
         'IDuser' => $ownerId, 'title' => 'Tampered', 'status' => 'cancelled', 'start_at' => '2030-01-01T00:00',
+        'public_registration_present' => 1, 'public_registration' => 1,
         'invitation_user_ids' => [(int)$people['outsider']->getId()]];
     $outside = $request;
     $outside['session']['currentUser'] = (int)$people['outsider']->getId();
@@ -123,6 +124,7 @@ try {
         && $event->getTimeBuffers($ownerId) === [30, 45], 'Saving one participant does not alter another.');
     personalBufferExpect($event->get('title') === 'Original title' && $event->get('status') === Event::STATUS_CONFIRMED
         && $event->get('start_at')->format('H:i') === '10:00' && count($event->getInvitations(true)) === 2, 'Forged fields cannot modify the event or invitations.');
+    personalBufferExpect(\dbObject\EventPublicLink::forEvent((int)$event->getId()) === null, 'Personal time access cannot enable public registration.');
     [$firstStart, $firstEnd] = $event->getBusyInterval($firstId);
     [$secondStart, $secondEnd] = $event->getBusyInterval($secondId);
     personalBufferExpect($firstStart->format('H:i') === '08:00' && $firstEnd->format('H:i') === '11:20'
@@ -325,6 +327,56 @@ try {
     personalBufferExpect(!str_contains($documentHtml, 'Private reference') && !str_contains($documentHtml, 'Archived reference'),
         'Inaccessible and archived attachments remain hidden');
     file_put_contents(dirname(__DIR__) . '/tmp/calendar-event-documents.html', $documentHtml);
+
+    // Public registration is the same event setting in the editor, detail and PV.
+    $publicEdit = $full;
+    $publicEdit['post']['public_registration_present'] = 1;
+    $publicEdit['post']['public_registration'] = 1;
+    personalBufferExpect(json_decode(personalBufferRequest($publicEdit), true)['status'] === true, 'Editor enables public registration.');
+    $publicLink = \dbObject\EventPublicLink::forEvent((int)$event->getId());
+    personalBufferExpect($publicLink && (int)$publicLink->get('enabled') === 1, 'Public link persisted.');
+    $fixtures[] = $publicLink;
+    $publicPath = $publicLink->publicPath();
+    $fixture(\dbObject\EventPublicRegistration::class, ['IDevent' => $event->getId(), 'name' => 'Public test guest',
+        'email' => 'public-test@example.invalid', 'token' => bin2hex(random_bytes(32)), 'confirmed_at' => new DateTimeImmutable()]);
+    $pv->set('IDuser_pv_editor', $firstId); $pv->save();
+    $popup = $fragment; $popup['endpoint'] = 'invitations_popup.php';
+    unset($popup['get']['invitation_editor']);
+    $pvPopup = $popup; $pvPopup['get']['pv_editor'] = 1;
+    foreach ([$fragment, $popup, $pvPopup] as $publicRequest) {
+        $publicHtml = personalBufferRequest($publicRequest);
+        personalBufferExpect(str_contains($publicHtml, 'data-omo-public-registration-toggle checked')
+            && str_contains($publicHtml, $publicPath) && str_contains($publicHtml, 'Public test guest'),
+            'All three entry points show the same enabled setting, link and registrants.');
+    }
+    $unopened = $fragment; unset($unopened['get']['invitation_editor']);
+    personalBufferExpect(str_contains(personalBufferRequest($unopened), 'name="public_registration" value="1" checked'),
+        'Unopened invitation tab preserves the enabled public setting.');
+    $failed = $publicEdit; $failed['post']['title'] = ''; unset($failed['post']['public_registration']);
+    personalBufferExpect(json_decode(personalBufferRequest($failed), true)['status'] === false
+        && (int)\dbObject\EventPublicLink::forEvent((int)$event->getId())->get('enabled') === 1,
+        'Invalid event edits cannot disable public registration.');
+    unset($publicEdit['post']['public_registration']);
+    personalBufferExpect(json_decode(personalBufferRequest($publicEdit), true)['status'] === true
+        && (int)\dbObject\EventPublicLink::forEvent((int)$event->getId())->get('enabled') === 0,
+        'Editor disables public registration.');
+    foreach ([$fragment, $popup, $pvPopup] as $publicRequest) {
+        $publicHtml = personalBufferRequest($publicRequest);
+        personalBufferExpect(!str_contains($publicHtml, 'data-omo-public-registration-toggle checked')
+            && !str_contains($publicHtml, $publicPath) && str_contains($publicHtml, 'Public test guest'),
+            'Disabling hides the public link but retains registrants in all three editors.');
+    }
+    foreach ([$popup, $pvPopup] as $publicRequest) {
+        $publicRequest['method'] = 'POST';
+        $publicRequest['session']['omo_calendar_invitations_csrf'] = 'public-test-token';
+        $publicRequest['post'] = ['csrf' => 'public-test-token', 'holon_ids' => [$holon->getId()], 'public_registration' => 1];
+        $result = json_decode(personalBufferRequest($publicRequest), true);
+        personalBufferExpect($result['status'] === true && str_ends_with($result['publicUrl'], $publicPath),
+            'Detail and PV reuse the same public link when enabling registration.');
+    }
+    personalBufferExpect(json_decode(personalBufferRequest($full), true)['status'] === true
+        && (int)\dbObject\EventPublicLink::forEvent((int)$event->getId())->get('enabled') === 1,
+        'Older event forms without a public setting preserve the link.');
     echo "calendar_personal_time_buffers_test: OK\n";
 } finally {
     foreach (array_reverse($fixtures) as $object) { $object->delete(); }

@@ -140,7 +140,7 @@ try {
         'clientInfo' => (object)['name' => 'test', 'version' => '1']], $tokens['access_token']);
     mcpCheck(mcpHttpJson($initialized)['result']['serverInfo']['name'] === 'OpenMyOrganization', 'MCP initialization');
     $tools = mcpHttpRpc('tools/list', [], $tokens['access_token']);
-    mcpCheck(count(mcpHttpJson($tools)['result']['tools']) === 23, 'Authenticated tool discovery');
+    mcpCheck(count(mcpHttpJson($tools)['result']['tools']) === 25, 'Authenticated tool discovery');
     foreach (['omo_connection_info' => new stdClass(), 'omo_catalog' => new stdClass(),
         'omo_list_records' => (object)['module' => 'structure', 'limit' => 1], 'omo_list_assignments' => new stdClass(),
         'omo_list_structure' => (object)['limit' => 1],
@@ -310,4 +310,4 @@ try {
     mcpCleanup($items);
     if (is_file($jar)) unlink($jar);
 }
-    echo "mcp_http_test: OK (23 tools, member lists, native composer/CSRF, read/mail/document/event/decision consent, document creation, isolation, revocation)\n";
+    echo "mcp_http_test: OK (25 tools, member lists, native composer/CSRF, read/mail/document/event/decision consent, document creation, isolation, revocation)\n";
