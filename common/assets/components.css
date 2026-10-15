@@ -1612,6 +1612,31 @@ html[data-theme="dark"] .black-icon,
     border-color: color-mix(in srgb, var(--color-danger, #dc2626) 30%, var(--color-border, #e5e7eb));
 }
 
+/* Floating assistance controls: the panel stays clear of the bottom action button. */
+.generic-action-button--floating {
+    position: fixed;
+    right: max(20px, env(safe-area-inset-right));
+    bottom: max(20px, env(safe-area-inset-bottom));
+    z-index: 1330;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--color-primary, #2563eb);
+    color: var(--color-on-primary, #ffffff);
+    box-shadow: 0 8px 28px #00000030;
+}
+
+.generic-floating-panel {
+    position: fixed;
+    right: max(20px, env(safe-area-inset-right));
+    bottom: calc(max(20px, env(safe-area-inset-bottom)) + 66px);
+    z-index: 1331;
+    width: min(440px, calc(100vw - 40px));
+    max-height: calc(100dvh - var(--topbar-height, 48px) - 110px);
+    overflow: hidden;
+    box-shadow: 0 16px 48px #00000030;
+}
+
 .generic-action-button--icon-only {
     width: 34px;
     min-width: 34px;
@@ -3596,6 +3621,9 @@ html[data-theme="dark"] .generic-tabs__tab:focus-visible .generic-monochrome-ico
 .generic-control-action > .generic-form-control {
     flex: 1 1 220px;
     min-width: 0;
+}
+.generic-control-action--nowrap {
+    flex-wrap: nowrap;
 }
 .generic-form-actions--sticky {
     position: sticky;

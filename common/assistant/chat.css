@@ -1,0 +1,36 @@
+.organization-assistant__panel {
+    display: flex;
+    flex-direction: column;
+    height: min(680px, calc(100dvh - var(--topbar-height, 48px) - 110px));
+}
+
+.organization-assistant__conversation {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: var(--generic-space-4, 16px);
+}
+
+.organization-assistant__composer {
+    flex: 0 0 auto;
+    padding: var(--generic-space-4, 16px);
+}
+
+.organization-assistant__mascot { flex: 0 0 auto; object-fit: cover; border-radius: var(--radius-md); }
+.organization-assistant__send-icon {
+    display: block;
+    width: 22px;
+    height: 22px;
+    background: currentColor;
+    -webkit-mask: url('./assets/send.png') center / contain no-repeat;
+    mask: url('./assets/send.png') center / contain no-repeat;
+}
+.organization-assistant__composer textarea { resize: vertical; max-height: 20vh; }
+.organization-assistant__message { white-space: pre-wrap; overflow-wrap: anywhere; }
+.organization-assistant__message a { text-decoration: underline; color: var(--color-primary, #2563eb); }
+.organization-assistant__sources { display: flex; flex-wrap: wrap; gap: var(--generic-space-2, 8px); }
+
+@media (max-width: 540px) {
+    .organization-assistant__panel { height: calc(100dvh - var(--topbar-height, 48px) - 110px); }
+}

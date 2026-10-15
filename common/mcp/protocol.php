@@ -54,6 +54,12 @@ function omoMcpPublicUrl(): string
 }
 
 function omoMcpIssuer(): string { return substr(rtrim(omoMcpPublicUrl(), '/'), 0, -4); }
+
+/** Browser tools reuse the read models without needing a public OAuth/MCP deployment. */
+function omoApiSourceBaseUrl(): string
+{
+    return defined('OMO_API_LOCAL_LINKS') && OMO_API_LOCAL_LINKS === true ? '' : omoMcpIssuer();
+}
 function omoMcpServerInfo(): array
 {
     return ['name' => 'OpenMyOrganization', 'title' => 'OpenMyOrganization', 'version' => '0.8.0',

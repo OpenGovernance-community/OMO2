@@ -83,7 +83,7 @@ class McpCalendar extends DbObject
             $participants[] = ['hours' => $hours, 'busy' => $busy];
             $items[] = ['user_id' => $uid, 'name' => trim(strip_tags($user->getScopedDisplayName($oid))), 'incomplete' => $unknown,
                 'free_intervals' => self::intervals($free, $zone), 'busy_intervals' => self::intervals($clippedBusy, $zone),
-                'url' => \omoMcpIssuer() . '/popup/user.php?' . http_build_query(['section' => 'availability', 'id' => $uid, 'oid' => $oid])];
+                'url' => \omoApiSourceBaseUrl() . '/popup/user.php?' . http_build_query(['section' => 'availability', 'id' => $uid, 'oid' => $oid])];
         }
         $common = [];
         for ($day = $start; $day < $end; $day = $day->modify('+1 day')) {
@@ -125,7 +125,7 @@ class McpCalendar extends DbObject
                 try { $holon = self::destination($org, $grant, $cursor); } catch (\DomainException $error) { continue; }
                 $items[] = ['holon_id' => $cursor, 'name' => trim(strip_tags($holon->getDisplayName())),
                     'holon_type_id' => (int)$holon->get('IDtypeholon'), 'default_invitation_holon_id' => $cursor,
-                    'url' => \omoMcpIssuer() . '/omo/o/' . (int)$org->getId() . '/h/' . $cursor];
+                    'url' => \omoApiSourceBaseUrl() . '/omo/o/' . (int)$org->getId() . '/h/' . $cursor];
                 if (count($items) === $limit) break;
             }
             if (count($items) < $limit && count($rows) < 100) { $complete = true; break; }

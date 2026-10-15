@@ -1,5 +1,13 @@
 # Journal des nouveautés
 
+- OMO / presentation assistant (2026-10-15) : bouton d envoi en couleur primaire et nouvelle mascotte carree avec son fond et ses coins arrondis, a gauche du titre et de l organisation.
+
+- OMO / interface assistant (2026-10-15) : aide regroupee dans une capsule ?, tete de la mascotte dans l entete, champ avec placeholder et bouton d envoi avec l avion fourni a sa droite. Libelles accessibles conserves et icone adaptee au theme.
+
+- OMO / acces a l assistant (2026-10-15) : bouton flottant et chat affiches uniquement si le compte peut utiliser l IA, selon le controle partage incluant les conditions Patreon. Aucun chargement des assets du chat ni creation de son contexte sans autorisation ; controle serveur conserve a chaque question.
+
+- OMO / assistant conversationnel (2026-10-15) : bouton flottant et chat dans l organisation courante, avec l IA configuree et les conditions d acces IA existantes. Consultation des roles, membres, reunions, contenus et droits via les operations partagees du MCP ; liste fermee d outils en lecture seule, sans envoi d e-mails ni modification. Liens controles vers les pages pour agir, conversations limitees a la session et a l organisation, protection CSRF et limites de requetes. Tests PHP 8.5 des droits et des quatre adaptateurs IA, navigateur ordinateur/mobile et essai reel OpenAI sur un role et une reunion de test. Aucun serveur MCP public ni migration SQL necessaire.
+
 - API / MCP / droits herites (2026-10-15) : correction des droits omis lorsque le modele source est absent de l organigramme (visible = 0). Les recherches par personne et par holon conservent ces droits et leur source, avec les controles existants d organisation, d activite et de lecture. Les espaces cibles et les attributions restent limites aux holons visibles. Tests PHP 8.5 du chemin membre / role Memoire / modele / parent seul pour creer, modifier et supprimer des dates, des chaines de modeles et de la separation normal / exceptionnel ; aucune migration SQL.
 
 - API / MCP / droits par holon (2026-10-15) : nouvelle entree omo_get_holon_permissions et GET /api/v1/structure/{holon_id}/permissions pour lister les droits et les roles dont la portee couvre l espace cible, meme sans titulaire. Sources heritees, portees hors du cercle et profils membre/admin conserves ; navigation vers les personnes concernees. Les consignes donnent priorite aux droits logiciels sur les descriptions des holons et relient la creation de reunions a CAN_CREATE_EVENT. Droits normaux par defaut, visibilite et consentement de lecture existants conserves. Tests PHP 8.5 des portees, des titulaires, des roles vacants et des acces HTTP REST/MCP ; aucune migration SQL.
