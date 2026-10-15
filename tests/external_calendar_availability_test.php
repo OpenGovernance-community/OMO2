@@ -100,8 +100,7 @@ try {
     $detailShare = CalendarShare::createForUser($uid, 'Fixture detailed', 1, true, '');
     $sharedBusy = commonExternalCalendarParseEvents(calendarShareBuildFeed($busyShare, $now), '', true);
     $sharedDetailed = commonExternalCalendarParseEvents(calendarShareBuildFeed($detailShare, $now), '', true);
-    openingExpect(count($sharedBusy) === 1 && count($sharedDetailed) === 3, 'Busy feeds omit opening windows; detailed feeds retain them.');
-    openingExpect(count(array_filter($sharedDetailed, static fn($event) => !$event['is_busy'])) === 2, 'Detailed ICS exports opening windows as transparent.');
+    openingExpect($sharedBusy === [] && $sharedDetailed === [], 'ICS feeds exclude external appointments and opening windows in both modes.');
 
     $puts = 0;
     $failReport = false;

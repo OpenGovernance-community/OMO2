@@ -1,9 +1,7 @@
 <?php
 require_once dirname(__DIR__) . '/caldav.php';
-require_once dirname(__DIR__) . '/external_calendar.php';
 
 use dbObject\ArrayEvent;
-use dbObject\ArrayExternalCalendarEvent;
 use dbObject\CalendarShare;
 use dbObject\Event;
 use dbObject\Holon;
@@ -97,78 +95,50 @@ function calendarShareLoadScopedOmoEvents(CalendarShare $share, array $scope): a
     return $visibleEvents;
 }
 
-/** Export base appointment times; personal occupied bounds remain internal to OMO. */
+/** Export only OMO appointments; connected calendars must never be re-exported. */
 function calendarShareBuildFeed(CalendarShare $share, ?DateTimeImmutable $now = null): string
 {
     [$start, $end] = $share->visibilityRange($now);
     $userId = (int)$share->get('IDuser');
     $scope = $share->getScopedCalendarConfig();
     if (is_array($scope)) {
-        $eventGroups = [calendarShareLoadScopedOmoEvents($share, $scope)];
+        $events = calendarShareLoadScopedOmoEvents($share, $scope);
     } else {
-        commonExternalCalendarRefreshForDisplay($userId);
-        $omo = new ArrayEvent();
-        $omo->loadBusyForUserDateRange($userId, $start, $end);
-        $external = new ArrayExternalCalendarEvent();
-        $external->loadActiveForUserDateRange($userId, $start, $end);
-        $eventGroups = [$omo, $external];
+        $events = new ArrayEvent();
+        $events->loadBusyForUserDateRange($userId, $start, $end);
     }
     $details = (bool)$share->get('details');
-    $availabilityCalendars = [];
-    if (!is_array($scope)) {
-        $calendars = new \dbObject\ArrayExternalCalendar();
-        $calendars->loadForUser($userId, true);
-        foreach ($calendars as $calendar) {
-            if ($calendar->get('availability_only')) { $availabilityCalendars[(int)$calendar->getId()] = true; }
-        }
-    }
     $lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//OpenMyOrganization//Calendar Share//EN',
         'CALSCALE:GREGORIAN', 'X-WR-CALNAME:Agenda partage', 'REFRESH-INTERVAL;VALUE=DURATION:PT1H', 'X-PUBLISHED-TTL:PT1H'];
-    foreach ($eventGroups as $events) {
-        foreach ($events as $event) {
-            $isOmo = $event instanceof Event;
-            $busy = $isOmo || (!isset($availabilityCalendars[(int)$event->get('IDexternalcalendar')]) && (bool)$event->get('is_busy'));
-            if (!$details && !$busy) { continue; }
-            $allDay = (bool)$event->get('is_all_day');
-            [$preparation] = $isOmo ? $event->getTimeBuffers($userId) : [(int)$event->get('preparation_minutes')];
-            if ($isOmo) {
-                $interval = $event->getBusyInterval();
-                if ($interval === null) { continue; }
-                [$eventStart, $eventEnd] = $interval;
-            } else {
-                $eventStart = DateTimeImmutable::createFromInterface($event->get('start_at'));
-                $eventEnd = DateTimeImmutable::createFromInterface($event->get('end_at'));
-                if ($allDay) {
-                    $eventStart = $eventStart->setTime(0, 0);
-                    $eventEnd = $eventEnd->setTime(0, 0)->modify('+1 day');
-                }
-            }
-            if ($eventStart >= $end || $eventEnd <= $start || $eventEnd <= $eventStart) { continue; }
-            // Stable per link, with no internal IDs or remote UIDs disclosed.
-            $uid = hash_hmac('sha256', ($isOmo ? 'omo:' : 'external:') . $event->getId(), (string)$share->get('token'));
-            $stamp = $event->get('updated_at') ?: $event->get('created_at') ?: $share->get('created_at');
-            $lines[] = 'BEGIN:VEVENT';
-            $lines[] = 'UID:' . $uid . '@omo-calendar-share';
-            $lines[] = 'DTSTAMP:' . commonCardDavFormatTimestamp($stamp);
-            $lines[] = 'LAST-MODIFIED:' . commonCardDavFormatTimestamp($stamp);
-            $lines[] = 'SUMMARY:' . commonCalDavEscapeText($details ? (string)$event->get('title') : 'Occupe');
-            $lines[] = 'TRANSP:' . ($busy ? 'OPAQUE' : 'TRANSPARENT');
-            if ($details) {
-                $description = html_entity_decode(strip_tags((string)$event->get('description')), ENT_QUOTES | ENT_HTML5, 'UTF-8');
-                $location = $isOmo ? (string)($event->getLocationDisplayData()['address'] ?? '') : (string)$event->get('location');
-                if ($description !== '') { $lines[] = 'DESCRIPTION:' . commonCalDavEscapeText($description); }
-                if ($location !== '') { $lines[] = 'LOCATION:' . commonCalDavEscapeText($location); }
-            }
-            $lines[] = $allDay ? commonCalDavBuildAllDayDateLine('DTSTART', $eventStart)
-                : commonCalDavBuildTimedDateLine('DTSTART', $eventStart, 'UTC');
-            $lines[] = $allDay ? commonCalDavBuildAllDayDateLine('DTEND', $eventEnd)
-                : commonCalDavBuildTimedDateLine('DTEND', $eventEnd, 'UTC');
-            // Availability windows are not appointments and must not raise reminders.
-            if ($isOmo || !isset($availabilityCalendars[(int)$event->get('IDexternalcalendar')])) {
-                array_push($lines, ...commonCalendarIcsReminderLines($preparation, $details ? (string)$event->get('title') : 'Occupe'));
-            }
-            $lines[] = 'END:VEVENT';
+    foreach ($events as $event) {
+        $allDay = (bool)$event->get('is_all_day');
+        [$preparation] = $event->getTimeBuffers($userId);
+        // Personal occupied bounds remain internal to OMO.
+        $interval = $event->getBusyInterval();
+        if ($interval === null) { continue; }
+        [$eventStart, $eventEnd] = $interval;
+        if ($eventStart >= $end || $eventEnd <= $start || $eventEnd <= $eventStart) { continue; }
+        // Stable per link, with no internal IDs or remote UIDs disclosed.
+        $uid = hash_hmac('sha256', 'omo:' . $event->getId(), (string)$share->get('token'));
+        $stamp = $event->get('updated_at') ?: $event->get('created_at') ?: $share->get('created_at');
+        $lines[] = 'BEGIN:VEVENT';
+        $lines[] = 'UID:' . $uid . '@omo-calendar-share';
+        $lines[] = 'DTSTAMP:' . commonCardDavFormatTimestamp($stamp);
+        $lines[] = 'LAST-MODIFIED:' . commonCardDavFormatTimestamp($stamp);
+        $lines[] = 'SUMMARY:' . commonCalDavEscapeText($details ? (string)$event->get('title') : 'Occupe');
+        $lines[] = 'TRANSP:OPAQUE';
+        if ($details) {
+            $description = html_entity_decode(strip_tags((string)$event->get('description')), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            $location = (string)($event->getLocationDisplayData()['address'] ?? '');
+            if ($description !== '') { $lines[] = 'DESCRIPTION:' . commonCalDavEscapeText($description); }
+            if ($location !== '') { $lines[] = 'LOCATION:' . commonCalDavEscapeText($location); }
         }
+        $lines[] = $allDay ? commonCalDavBuildAllDayDateLine('DTSTART', $eventStart)
+            : commonCalDavBuildTimedDateLine('DTSTART', $eventStart, 'UTC');
+        $lines[] = $allDay ? commonCalDavBuildAllDayDateLine('DTEND', $eventEnd)
+            : commonCalDavBuildTimedDateLine('DTEND', $eventEnd, 'UTC');
+        array_push($lines, ...commonCalendarIcsReminderLines($preparation, $details ? (string)$event->get('title') : 'Occupe'));
+        $lines[] = 'END:VEVENT';
     }
     $lines[] = 'END:VCALENDAR';
     return implode("\r\n", array_map('commonCalDavFoldLine', $lines)) . "\r\n";

@@ -4,9 +4,9 @@ require_once dirname(__DIR__) . '/bootstrap.php';
 use dbObject\CalendarShare;
 
 $sourceLang = [
-    'intro' => ['text' => 'Partagez tous vos agendas personnels : événements OMO de vos organisations et agendas externes connectés.', 'context' => 'Scope of a personal calendar subscription.'],
+    'intro' => ['text' => 'Partagez uniquement vos evenements OMO de vos organisations. Les agendas externes connectes sont exclus du partage ICS.', 'context' => 'Scope of a personal calendar subscription.'],
     'privacy' => ['text' => 'Toute personne possédant le lien peut le consulter. Sa révocation bloque les prochaines lectures, mais ne supprime pas les copies déjà téléchargées.', 'context' => 'Capability URL privacy and revocation warning.'],
-    'subscription' => ['text' => 'Ajoutez le lien comme abonnement dans un agenda plutôt que d’importer le fichier une seule fois. Les agendas externes utilisent la dernière synchronisation ; la fréquence de lecture dépend de l’application abonnée.', 'context' => 'How to subscribe and how freshness works.'],
+    'subscription' => ['text' => 'Ajoutez le lien comme abonnement dans un agenda pour suivre les mises a jour de vos evenements OMO. La frequence de lecture depend de votre application.', 'context' => 'How to subscribe and how freshness works.'],
     'instructions' => ['text' => 'Comment utiliser le lien ?', 'context' => 'Disclosure for calendar subscription instructions.'],
     'new' => ['text' => 'Nouveau lien', 'context' => 'Calendar share creation heading.'],
     'label' => ['text' => 'Nom du partage', 'context' => 'Private label to identify the recipient of a sharing link.'],
