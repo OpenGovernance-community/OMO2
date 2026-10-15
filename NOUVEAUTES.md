@@ -1,5 +1,7 @@
 # Journal des nouveautés
 
+- API / MCP / consultation des droits (2026-10-15) : catalogue des droits et recherche par personne, espace cible ou droit, avec filtres combinables. Chaque resultat indique le role ou l appartenance, la source heritee et l espace concerne. Droits normaux par defaut ; autorites etendues uniquement sur demande explicite, sans activation ni modification. Prise en compte des droits ouverts par defaut, des replis, des profils admin de role et des limites de visibilite ; droits collectifs et derogations administrateur exclus. Pagination, contrats OpenAPI et tests cibles PHP 8.5 en base et HTTP REST/MCP. Aucune migration SQL.
+
 - PV / envoi des invitations (2026-10-15) : apres un envoi reussi, le formulaire est marque comme enregistre pour fermer sans fausse alerte de perte de donnees. Les echecs et les modifications faites pendant ou apres l envoi restent proteges.
 
 - Calendrier / inscriptions tout public (2026-10-15) : meme onglet d inscription publique dans le detail, le PV et l editeur de l evenement, avec activation, lien et liste des inscrits partages. Sauvegarde avec l evenement et conservation du choix meme sans ouvrir les invites. Tests PHP 8.5 des trois acces, des droits et de la sauvegarde ; tests JavaScript du chargement differe. Aucune migration SQL.
