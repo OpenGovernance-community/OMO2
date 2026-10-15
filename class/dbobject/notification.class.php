@@ -11,7 +11,7 @@ class Notification extends DbObject
     public static function rules()
     {
         return [
-            [['IDuser', 'IDorganization', 'event_key', 'source_key', 'title'], 'required'],
+            [['IDuser', 'event_key', 'source_key', 'title'], 'required'],
             [['id'], 'integer'],
             [['IDuser', 'IDorganization'], 'fk'],
             [['event_key', 'source_key', 'dedupe_key', 'title', 'url', 'open_token'], 'string'],
@@ -55,6 +55,7 @@ class Notification extends DbObject
 
     public static function createForUser($userId, $organizationId, $eventKey, $sourceKey, $title, $body = '', $url = '', $dedupeKey = '')
     {
+        if ((int)$userId <= 0 || ((int)$organizationId <= 0 && !NotificationPreference::isPersonalEvent($eventKey))) { return null; }
         if (!self::isStorageAvailable()) {
             return null;
         }
@@ -68,10 +69,10 @@ class Notification extends DbObject
         }
         if ($dedupeKey !== '') {
             $existingUnreadId = (int)self::fetchValue(
-                'SELECT `id` FROM `notification` WHERE `IDuser` = :user_id AND `IDorganization` = :organization_id AND `dedupe_key` = :dedupe_key AND `read_at` IS NULL LIMIT 1',
+                'SELECT `id` FROM `notification` WHERE `IDuser` = :user_id AND `IDorganization` <=> :organization_id AND `dedupe_key` = :dedupe_key AND `read_at` IS NULL LIMIT 1',
                 [
                     'user_id' => (int)$userId,
-                    'organization_id' => (int)$organizationId,
+                    'organization_id' => (int)$organizationId > 0 ? (int)$organizationId : null,
                     'dedupe_key' => $dedupeKey,
                 ]
             );
@@ -80,7 +81,7 @@ class Notification extends DbObject
             }
         }
         $item->set('IDuser', (int)$userId);
-        $item->set('IDorganization', (int)$organizationId);
+        $item->set('IDorganization', (int)$organizationId > 0 ? (int)$organizationId : null);
         $item->set('event_key', mb_substr(trim((string)$eventKey), 0, 80, 'UTF-8'));
         $item->set('source_key', mb_substr(trim((string)$sourceKey), 0, 190, 'UTF-8'));
         $item->set('dedupe_key', $dedupeKey !== '' ? $dedupeKey : null);
@@ -159,7 +160,7 @@ class Notification extends DbObject
     {
         $limit = max(1, min(100, (int)$limit));
         $rows = self::fetchAll(
-            'SELECT * FROM `notification` WHERE `IDuser` = :user_id AND `IDorganization` = :organization_id ORDER BY `read_at` IS NULL DESC, `created_at` DESC, `id` DESC LIMIT ' . $limit,
+            'SELECT * FROM `notification` WHERE `IDuser` = :user_id AND (`IDorganization` = :organization_id OR `IDorganization` IS NULL) ORDER BY `read_at` IS NULL DESC, `created_at` DESC, `id` DESC LIMIT ' . $limit,
             ['user_id' => (int)$userId, 'organization_id' => (int)$organizationId]
         );
         $items = [];
@@ -175,7 +176,7 @@ class Notification extends DbObject
     public static function countUnreadForUser($userId, $organizationId)
     {
         $row = self::fetchRow(
-            'SELECT COUNT(*) AS `count` FROM `notification` WHERE `IDuser` = :user_id AND `IDorganization` = :organization_id AND `read_at` IS NULL',
+            'SELECT COUNT(*) AS `count` FROM `notification` WHERE `IDuser` = :user_id AND (`IDorganization` = :organization_id OR `IDorganization` IS NULL) AND `read_at` IS NULL',
             ['user_id' => (int)$userId, 'organization_id' => (int)$organizationId]
         );
         return is_array($row) ? (int)($row['count'] ?? 0) : 0;
@@ -183,7 +184,7 @@ class Notification extends DbObject
 
     public static function markReadForUser($userId, $organizationId, $notificationId = 0, $url = '')
     {
-        $where = '`IDuser` = :user_id AND `IDorganization` = :organization_id AND `read_at` IS NULL';
+        $where = '`IDuser` = :user_id AND (`IDorganization` = :organization_id OR `IDorganization` IS NULL) AND `read_at` IS NULL';
         $parameters = ['user_id' => (int)$userId, 'organization_id' => (int)$organizationId];
         if ((int)$notificationId > 0) {
             $where .= ' AND `id` = :notification_id';
@@ -205,7 +206,7 @@ class Notification extends DbObject
             return false;
         }
         return self::execute(
-            'UPDATE `notification` SET `read_at` = NOW() WHERE `IDuser` = :user_id AND `IDorganization` = :organization_id AND `read_at` IS NULL',
+            'UPDATE `notification` SET `read_at` = NOW() WHERE `IDuser` = :user_id AND (`IDorganization` = :organization_id OR `IDorganization` IS NULL) AND `read_at` IS NULL',
             ['user_id' => $userId, 'organization_id' => $organizationId]
         );
     }

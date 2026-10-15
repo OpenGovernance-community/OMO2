@@ -35,6 +35,7 @@ namespace dbObject {
     }
     class DecisionProposal extends NotificationActorFixture
     {
+        public static function descriptionToPlainText(string $html): string { return trim(strip_tags($html)); }
         public function getDecisionProcess() { return new DecisionProcess(['id' => 20, 'IDorganization' => 12, 'IDuser' => 1, 'title' => 'Budget']); }
         public function getAuthorUserId() { return (int)$this->get('IDuser_author'); }
         public function getAuthorParticipant() { return $this->get('participant'); }
@@ -52,6 +53,7 @@ namespace dbObject {
     }
     class Project extends NotificationActorFixture
     {
+        public function currentViewerCanAccessVisibility($userId): bool { return true; }
         public static function normalizeStatus($status) { return $status; }
         public static function getOrganizationStatusLabel($organizationId, $status) { return $status; }
     }

@@ -7,6 +7,15 @@ function meetingT(string $key, array $replace = []): string
     static $sourceLang = null;
     if ($sourceLang === null) {
         $texts = [
+            'not_me' => 'Ce n’est pas moi',
+            'identity_changed' => 'Le compte connecté a changé. Revenez au choix du créneau pour vérifier vos coordonnées.',
+            'visitor_calendar_planned' => 'Ce rendez-vous sera aussi ajouté à votre agenda « {calendar} ».',
+            'visitor_calendar' => 'Ajouter à mon agenda CalDAV',
+            'visitor_calendar_none' => 'Ne pas ajouter à mon agenda',
+            'guest_calendar_invalid' => 'Choisissez un agenda CalDAV actif vous appartenant, ou choisissez de ne pas ajouter le rendez-vous à votre agenda.',
+            'visitor_calendar_added' => 'Le rendez-vous a été ajouté à votre agenda.',
+            'visitor_calendar_pending' => 'Le rendez-vous est confirmé chez l’hôte, mais l’ajout dans votre agenda n’a pas pu être confirmé. Vous pouvez réessayer.',
+            'retry_calendar' => 'Réessayer l’ajout à mon agenda',
             'preparation_minutes' => 'Preparation par defaut (minutes)',
             'closing_minutes' => 'Cloture par defaut (minutes)',
             'buffers_hint' => 'Ces temps sont reserves avant et apres chaque rendez-vous et doivent tenir dans vos horaires, hors pauses.',

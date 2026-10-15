@@ -31,4 +31,11 @@ class ArrayExternalCalendar extends ArrayDbObject
 
         $this->load($params);
     }
+
+    public function loadMeetingDestinationsForUser(int $userId): void
+    {
+        $this->loadForUser($userId, true);
+        $this->exchangeArray(array_values(array_filter($this->getArrayCopy(),
+            static fn(ExternalCalendar $calendar): bool => $calendar->isMeetingDestinationForUser($userId))));
+    }
 }

@@ -11,7 +11,7 @@ class NotificationPreference extends DbObject
     public static function rules()
     {
         return [
-            [['IDuser', 'IDorganization', 'event_key'], 'required'],
+            [['IDuser', 'event_key'], 'required'],
             [['id'], 'integer'],
             [['IDuser', 'IDorganization'], 'fk'],
             [['event_key'], 'string'],
@@ -42,17 +42,14 @@ class NotificationPreference extends DbObject
     public static function getChannelsFor($userId, $organizationId, $eventKey)
     {
         $defaults = ['in_app' => true, 'push' => false, 'telegram' => false, 'email' => false, 'days' => [], 'lead_time' => ''];
+        if (self::isPersonalEvent($eventKey)) { $defaults['email'] = true; }
         if (trim((string)$eventKey) === 'calendar_recurring_occurrence_created') { $defaults['in_app'] = false; }
         if (!self::isStorageAvailable()) {
             return $defaults;
         }
 
-        $item = new self();
-        if (!$item->load([
-            ['IDuser', (int)$userId],
-            ['IDorganization', (int)$organizationId],
-            ['event_key', trim((string)$eventKey)],
-        ])) {
+        $item = self::findForScope($userId, $organizationId, $eventKey);
+        if (!$item) {
             return $defaults;
         }
 
@@ -94,18 +91,13 @@ class NotificationPreference extends DbObject
         $userId = (int)$userId;
         $organizationId = (int)$organizationId;
         $eventKey = trim((string)$eventKey);
-        if ($userId <= 0 || $organizationId <= 0 || $eventKey === '' || !self::isStorageAvailable()) {
+        if ($userId <= 0 || ($organizationId <= 0 && !self::isPersonalEvent($eventKey)) || $eventKey === '' || !self::isStorageAvailable()) {
             return false;
         }
 
-        $item = new self();
-        $item->load([
-            ['IDuser', $userId],
-            ['IDorganization', $organizationId],
-            ['event_key', $eventKey],
-        ]);
+        $item = self::findForScope($userId, $organizationId, $eventKey) ?? new self();
         $item->set('IDuser', $userId);
-        $item->set('IDorganization', $organizationId);
+        $item->set('IDorganization', self::isPersonalEvent($eventKey) ? null : $organizationId);
         $item->set('event_key', $eventKey);
         $item->set('channel_push', !empty($channels['push']) ? 1 : 0);
         $item->set('channel_telegram', !empty($channels['telegram']) ? 1 : 0);
@@ -129,6 +121,21 @@ class NotificationPreference extends DbObject
         $item->set('updated_at', new \DateTimeImmutable('now'));
         $result = $item->save();
         return is_array($result) && !empty($result['status']);
+    }
+
+    public static function isPersonalEvent($eventKey): bool
+    {
+        return $eventKey === 'meeting_booking_created';
+    }
+
+    private static function findForScope($userId, $organizationId, $eventKey): ?self
+    {
+        $id = self::fetchValue('SELECT id FROM notification_preference
+            WHERE IDuser = :uid AND IDorganization <=> :oid AND event_key = :event',
+            ['uid' => (int)$userId, 'oid' => self::isPersonalEvent($eventKey) ? null : (int)$organizationId,
+                'event' => trim((string)$eventKey)]);
+        $item = new self();
+        return $id && $item->load((int)$id, true) ? $item : null;
     }
 
     public static function getReminderLeadTimes()

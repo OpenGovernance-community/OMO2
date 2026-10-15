@@ -136,12 +136,19 @@ foreach (['free', 'partial', 'full', 'closed', 'day_availability', 'select_day',
                 <?php if ($selectedMethod): ?><div class="generic-soft-panel generic-soft-panel--tinted meeting-detail-row"><span class="meeting-icon-disc"><?= meetingIcon('user') ?></span><div><span class="meeting-muted"><?= meetingEscape(meetingT('method')) ?></span><strong><?= meetingEscape(meetingMethodLabel($selectedMethod)) ?></strong></div></div><?php endif; ?>
             </div>
             <?php if ($receipt): ?>
+                <?php if ($receipt->get('guest_calendar_status')): ?>
+                    <p class="<?= $receipt->get('guest_calendar_status') === 'added' ? 'meeting-muted' : 'generic-feedback is-error' ?>" role="status"><?= meetingEscape(meetingT($receipt->get('guest_calendar_status') === 'added' ? 'visitor_calendar_added' : 'visitor_calendar_pending')) ?></p>
+                    <?php if ($receipt->get('guest_calendar_status') === 'pending' && (int)$receipt->get('IDuser_guest') === (int)($visitor['id'] ?? 0) && $visitor): ?>
+                        <form method="post" action="<?= meetingEscape($path) ?>"><input type="hidden" name="csrf" value="<?= meetingEscape($csrf) ?>"><input type="hidden" name="action" value="confirm"><input type="hidden" name="token" value="<?= meetingEscape($receipt->get('token')) ?>"><button class="generic-action-button generic-action-button--secondary"><?= meetingEscape(meetingT('retry_calendar')) ?></button></form>
+                    <?php endif; ?>
+                <?php endif; ?>
                 <p class="<?= $receipt->get('email_sent_at') ? 'meeting-muted' : 'generic-feedback is-error' ?>" role="status"><?= meetingEscape(meetingT($receipt->get('email_sent_at') ? 'email_sent' : 'email_failed')) ?></p>
                 <a class="generic-action-button generic-action-button--main generic-action-button--wide" href="<?= meetingEscape($path . '?receipt=' . $receipt->get('token') . '&download=1') ?>"><?= meetingIcon('calendar') ?><?= meetingEscape(meetingT('download')) ?></a>
                 <?php if (!$receipt->get('email_sent_at')): ?>
                     <form method="post" action="<?= meetingEscape($path) ?>"><input type="hidden" name="csrf" value="<?= meetingEscape($csrf) ?>"><input type="hidden" name="action" value="confirm"><input type="hidden" name="token" value="<?= meetingEscape($receipt->get('token')) ?>"><button class="generic-action-button generic-action-button--secondary"><?= meetingEscape(meetingT('retry_email')) ?></button></form>
                 <?php endif; ?>
             <?php else: ?>
+                <?php if (!empty($draft['guest_calendar_id'])): ?><p class="generic-help-text"><?= meetingEscape(meetingT('visitor_calendar_planned', ['calendar' => $draft['guest_calendar_title']])) ?></p><?php endif; ?>
                 <form method="post" action="<?= meetingEscape($path) ?>" data-meeting-confirm><input type="hidden" name="csrf" value="<?= meetingEscape($csrf) ?>"><input type="hidden" name="action" value="confirm"><input type="hidden" name="token" value="<?= meetingEscape($draft['token']) ?>"><button class="generic-action-button generic-action-button--main generic-action-button--wide"><?= meetingEscape(meetingT('confirm')) ?><?= meetingIcon('arrow') ?></button></form>
                 <a class="meeting-back" href="<?= meetingEscape($path . '?date=' . $draft['date'] . '&duration=' . $durationMinutes . $methodQuery) ?>"><?= meetingEscape(meetingT('back')) ?></a>
             <?php endif; ?>
@@ -176,18 +183,39 @@ foreach (['free', 'partial', 'full', 'closed', 'day_availability', 'select_day',
                 <?php if (!$selectedDay): ?>
                     <div class="meeting-empty"><span class="meeting-icon-disc"><?= meetingIcon('calendar') ?></span><h2 id="meeting-day" class="generic-card-title generic-card-title--large"><?= meetingEscape(meetingT('select_day')) ?></h2><p class="meeting-muted"><?= meetingEscape(meetingT('day_hint')) ?></p></div>
                 <?php else: ?>
-                    <div><p class="meeting-eyebrow"><?= meetingEscape(meetingT(meetingWeekdayKeys()[(int)$selectedDay->format('N')])) ?></p><h2 id="meeting-day" class="generic-card-title generic-card-title--large"><?= meetingEscape($formatDay($selectedDay)) ?></h2></div>
                     <?php if ($selectedSlot): ?>
-                        <div class="meeting-selection"><span><?= meetingIcon('clock') ?><strong><?= meetingEscape($selectedSlot['time'] . ' - ' . $selectedSlot['booking_end']->format('H:i')) ?></strong></span><a href="<?= meetingEscape($path . '?date=' . $selectedDay->format('Y-m-d') . '&duration=' . $durationMinutes . $methodQuery . '#meeting-times') ?>"><?= meetingEscape(meetingT('change_time')) ?></a></div>
+                        <div class="meeting-selection">
+                            <p class="meeting-eyebrow"><?= meetingEscape(meetingT(meetingWeekdayKeys()[(int)$selectedDay->format('N')])) ?></p>
+                            <div class="meeting-selection__line"><h2 id="meeting-day" class="generic-card-title generic-card-title--big"><?= meetingEscape($formatDay($selectedDay)) ?></h2><strong class="meeting-selection__time"><?= meetingEscape($selectedSlot['time'] . ' - ' . $selectedSlot['booking_end']->format('H:i')) ?></strong></div>
+                            <a href="<?= meetingEscape($path . '?date=' . $selectedDay->format('Y-m-d') . '&duration=' . $durationMinutes . $methodQuery . '#meeting-times') ?>"><?= meetingEscape(meetingT('change_time')) ?></a>
+                        </div>
                         <form class="generic-form-stack generic-form-stack--compact" method="post" action="<?= meetingEscape($path . '#meeting-times') ?>">
                             <input type="hidden" name="csrf" value="<?= meetingEscape($csrf) ?>"><input type="hidden" name="date" value="<?= meetingEscape($selectedDay->format('Y-m-d')) ?>"><input type="hidden" name="time" value="<?= meetingEscape($selectedSlot['time']) ?>"><input type="hidden" name="duration" value="<?= $durationMinutes ?>"><input type="hidden" name="method" value="<?= meetingEscape($selectedMethod['id'] ?? '') ?>">
                             <label class="meeting-honeypot" aria-hidden="true">Website<input name="website" tabindex="-1" autocomplete="off"></label>
-                            <div class="generic-form-grid generic-form-grid--pair"><?php foreach (['name', 'email'] as $field): ?><label class="generic-form-field"><span><?= meetingEscape(meetingT($field)) ?></span><input class="generic-form-control generic-form-control--compact" name="<?= $field ?>" type="<?= $field === 'email' ? 'email' : 'text' ?>" autocomplete="<?= $field ?>" maxlength="<?= $field === 'email' ? 254 : 190 ?>" required value="<?= meetingEscape($guest[$field]) ?>"></label><?php endforeach; ?></div>
+                            <?php if ($identifiedVisitor): ?>
+                                <input type="hidden" name="identity_user_id" value="<?= (int)$identifiedVisitor['id'] ?>">
+                                <div class="generic-inline-help generic-meta meeting-identity" data-meeting-identity data-identity-key="<?= (int)$profile->get('IDuser') ?>:<?= (int)$identifiedVisitor['id'] ?>">
+                                    <span class="meeting-identity__details" title="<?= meetingEscape($identifiedVisitor['name'] . ' · ' . $identifiedVisitor['email']) ?>"><strong><?= meetingEscape($identifiedVisitor['name']) ?></strong> · <?= meetingEscape($identifiedVisitor['email']) ?></span>
+                                    <button type="submit" name="action" value="manual_identity" formnovalidate class="generic-action-button generic-action-button--compact generic-action-button--link"><?= meetingEscape(meetingT('not_me')) ?></button>
+                                </div>
+                                <?php if (count($visitorCalendars)): ?>
+                                    <label class="generic-form-field"><span><?= meetingEscape(meetingT('visitor_calendar')) ?></span>
+                                        <select name="guest_calendar_id" class="generic-form-control generic-form-control--compact">
+                                            <option value="0"<?= $visitorCalendarId === 0 ? ' selected' : '' ?>><?= meetingEscape(meetingT('visitor_calendar_none')) ?></option>
+                                            <?php foreach ($visitorCalendars as $calendar): ?><option value="<?= (int)$calendar->getId() ?>"<?= $visitorCalendarId === (int)$calendar->getId() ? ' selected' : '' ?>><?= meetingEscape($calendar->get('title')) ?></option><?php endforeach; ?>
+                                        </select>
+                                    </label>
+                                <?php endif; ?>
+                            <?php endif; ?>
+                            <?php if ($identifiedVisitor): ?><template data-meeting-manual-fields><?php endif; ?>
+                                <div class="generic-form-grid generic-form-grid--pair"><?php foreach (['name', 'email'] as $field): ?><label class="generic-form-field"><span><?= meetingEscape(meetingT($field)) ?></span><input class="generic-form-control generic-form-control--compact" name="<?= $field ?>" type="<?= $field === 'email' ? 'email' : 'text' ?>" autocomplete="<?= $field ?>" maxlength="<?= $field === 'email' ? 254 : 190 ?>" required value="<?= meetingEscape($identifiedVisitor ? '' : $guest[$field]) ?>"></label><?php endforeach; ?></div>
+                            <?php if ($identifiedVisitor): ?></template><?php endif; ?>
                             <label class="generic-form-field"><span><?= meetingEscape(meetingT('reason')) ?></span><textarea class="generic-form-control generic-form-control--compact" name="reason" rows="3" maxlength="4000" required placeholder="<?= meetingEscape(meetingT('reason_placeholder')) ?>"><?= meetingEscape($guest['reason']) ?></textarea></label>
                             <p class="generic-help-text"><?= meetingEscape(meetingT('privacy')) ?></p>
                             <button class="generic-action-button generic-action-button--main generic-action-button--wide"><?= meetingEscape(meetingT('review')) ?><?= meetingIcon('arrow') ?></button>
                         </form>
                     <?php else: ?>
+                        <div><p class="meeting-eyebrow"><?= meetingEscape(meetingT(meetingWeekdayKeys()[(int)$selectedDay->format('N')])) ?></p><h2 id="meeting-day" class="generic-card-title generic-card-title--large"><?= meetingEscape($formatDay($selectedDay)) ?></h2></div>
                         <p class="meeting-muted"><?= meetingEscape(meetingT('select_time')) ?></p>
                         <?php if ($dayResults[$selectedDay->format('Y-m-d')]['state'] === 'full' || !$dayResults[$selectedDay->format('Y-m-d')]['slots']): ?><p class="generic-help-text"><?= meetingEscape(meetingT('no_slots')) ?></p><?php endif; ?>
                         <div class="meeting-slots">
@@ -228,9 +256,36 @@ document.querySelectorAll('[data-meeting-avatar]').forEach(function (image) {
     image.addEventListener('error', fallback);
     if (image.complete && !image.naturalWidth) { fallback(); }
 });
+document.querySelectorAll('[data-meeting-identity]').forEach(function (identity) {
+    var form = identity.closest('form');
+    var template = form.querySelector('[data-meeting-manual-fields]');
+    var storageKey = 'meeting-manual-identity:' + identity.dataset.identityKey;
+    function useManualIdentity(focus) {
+        form.querySelector('[name="identity_user_id"]').value = '0';
+        var calendar = form.querySelector('[name="guest_calendar_id"]');
+        if (calendar) { calendar.closest('label').remove(); }
+        identity.replaceWith(template.content.cloneNode(true));
+        template.remove();
+        var mode = document.createElement('input');
+        mode.type = 'hidden'; mode.name = 'identity_mode'; mode.value = 'manual';
+        form.appendChild(mode);
+        if (focus) { form.querySelector('[name="name"]').focus(); }
+    }
+    identity.querySelector('button').addEventListener('click', function (event) {
+        event.preventDefault();
+        try { sessionStorage.setItem(storageKey, '1'); } catch (error) { /* Optional browser persistence. */ }
+        useManualIdentity(true);
+    });
+    try { if (sessionStorage.getItem(storageKey) === '1') { useManualIdentity(false); } } catch (error) { /* Keep the identified form. */ }
+});
 document.querySelectorAll('form').forEach(function (form) {
-    form.addEventListener('submit', function () {
-        var button = form.querySelector('button');
+    form.addEventListener('submit', function (event) {
+        var button = event.submitter || form.querySelector('button');
+        if (button && button.name) {
+            var action = document.createElement('input');
+            action.type = 'hidden'; action.name = button.name; action.value = button.value;
+            form.appendChild(action);
+        }
         if (button) { button.disabled = true; button.textContent = <?= json_encode(meetingT('wait')) ?>; }
     });
 });
