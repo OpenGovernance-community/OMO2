@@ -377,7 +377,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     message += '\n' + result.payload.diagnostic;
                 }
                 const success = result.ok && result.payload && result.payload.status === true;
-                if (success) { sentSignature = submittedSignature; }
+                if (success) {
+                    sentSignature = submittedSignature;
+                    if (currentSignature() === submittedSignature && typeof window.commonDrawerMarkSaved === 'function') {
+                        window.commonDrawerMarkSaved(form);
+                    }
+                }
                 window.commonNotify(message, success ? 'success' : 'error', {duration: success ? 5000 : 7000});
             })
             .catch(function () {
