@@ -1,5 +1,7 @@
 # Journal des nouveautés
 
+- IA / compte createur Patreon (2026-10-15) : PATREON_CREATOR_USER_ID ouvre aussi l acces IA et MCP de son organisation sans contribution ni abonnement a sa propre campagne. Connexion OAuth obligatoire ; limite conservee a une personne et une organisation, avec preservation des doublons individuels historiques.
+
 - IA / abonnements et consommation (2026-10-15) : connexion Patreon dans la configuration d organisation, seuil nominal configurable (PATREON_ORGANIZATION_MINIMUM_AMOUNT=40), acces IA et MCP pour ses membres. Nouveaux partages de compte Patreon refuses entre personnes ou entre organisations ; doublons individuels existants conserves et une connexion individuelle plus une organisation autorisees. Compteurs par personne, organisation, fonction et origine (site, API, MCP, Telegram, traitements automatiques), avec jetons des modeles separes des echanges API/MCP et suivi dans les statistiques globales du site, avec filtres de periode, organisation et origine. Aucun contenu de conversation conserve dans ces compteurs.
 
 - OMO / titres dans le chat (2026-10-15) : les titres Markdown de # a ###### deviennent des titres compacts propres aux reponses, sans reprendre les styles h1-h6 du site. Gras et liens controles conserves, y compris lors de la restauration de la discussion.
