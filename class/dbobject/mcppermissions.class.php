@@ -64,7 +64,7 @@ final class McpPermissions
             $cache = [];
             $space = $targetId > 0 ? self::holon($organization, $root, $targetId, $cache)
                 : ['holon_id' => 0, 'name' => self::text($organization->get('name')), 'type' => 'organization',
-                    'url' => \omoMcpIssuer() . '/omo/o/' . $oid];
+                    'url' => \omoApiSourceBaseUrl() . '/omo/o/' . $oid];
             $definitions = self::definitions($organization, $args['permission_key'] ?? null);
             $mode = $args['mode'] ?? 'normal';
             $rows = HolonPermission::inspectPermissionsForHolonContext($oid, $targetId, array_keys($definitions), $mode);
@@ -168,7 +168,7 @@ final class McpPermissions
             foreach ($targetIds as $id) {
                 $space = $id === 0
                     ? ['holon_id' => 0, 'name' => self::text($organization->get('name')), 'type' => 'organization',
-                        'url' => \omoMcpIssuer() . '/omo/o/' . $oid]
+                        'url' => \omoApiSourceBaseUrl() . '/omo/o/' . $oid]
                     : self::holon($organization, $root, $id, $holonCache);
                 if ($space === null) continue;
                 $key = implode('|', [$row['permissionKey'], $row['assignedHolonId'], $row['sourceHolonId'],
@@ -193,7 +193,7 @@ final class McpPermissions
         catch (\DomainException $error) { return $cache[$cacheKey] = null; }
         return $cache[$cacheKey] = ['holon_id' => $id, 'name' => self::text($holon->getFullDisplayName()),
             'type' => self::text($holon->getTypeLabel()),
-            'url' => \omoMcpIssuer() . '/omo/o/' . (int)$organization->getId() . '/c/' . $id];
+            'url' => \omoApiSourceBaseUrl() . '/omo/o/' . (int)$organization->getId() . '/c/' . $id];
     }
 
     private static function text($value): string

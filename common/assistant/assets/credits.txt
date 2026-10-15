@@ -1,0 +1,6 @@
+penguin.png
+Source: 303dc0ff-7416-44cc-a8fe-0f87dbed293c.png, image fournie par l utilisateur.
+Copie sans modification, fond conserve. Coins arrondis par CSS.
+
+send.png
+Source: avion-en-papier.png, image fournie par l utilisateur, copie sans modification.
