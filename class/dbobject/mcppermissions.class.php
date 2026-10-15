@@ -71,7 +71,8 @@ final class McpPermissions
             $items = []; $offset = $args['offset'] ?? 0; $position = 0; $next = null;
             foreach ($rows as $row) {
                 $assigned = self::holon($organization, $root, (int)$row['assignedHolonId'], $cache);
-                $source = self::holon($organization, $root, (int)$row['sourceHolonId'], $cache);
+                $source = self::holon($organization, $root, (int)$row['sourceHolonId'], $cache,
+                    $row['sourceHolonId'] !== $row['assignedHolonId']);
                 if (($row['assignedHolonId'] && $assigned === null) || ($row['sourceHolonId'] && $source === null)) continue;
                 if ($position++ < $offset) continue;
                 if (count($items) === ($args['limit'] ?? 50)) { $next = $position - 1; break; }
@@ -156,8 +157,10 @@ final class McpPermissions
         $seen = [];
         foreach ($rows as $row) {
             $assigned = self::holon($organization, $root, (int)$row['assignedHolonId'], $holonCache);
-            $source = self::holon($organization, $root, (int)$row['sourceHolonId'], $holonCache);
-            // Do not reveal grants configured on a hidden membership or hidden template.
+            $source = self::holon($organization, $root, (int)$row['sourceHolonId'], $holonCache,
+                $row['sourceHolonId'] !== $row['assignedHolonId']);
+            // Memberships must be visible; inherited templates may be absent from the diagram.
+            // Both still require active, same-organization, viewer-readable holons.
             if (($row['assignedHolonId'] && $assigned === null) || ($row['sourceHolonId'] && $source === null)) continue;
             $targetIds = HolonPermission::permissionInspectionContextIds($oid, $row, $contextId);
             // A noncontextual permission is global, not one separate grant per space.
@@ -181,13 +184,14 @@ final class McpPermissions
         }
     }
 
-    private static function holon(Organization $organization, Holon $root, int $id, array &$cache): ?array
+    private static function holon(Organization $organization, Holon $root, int $id, array &$cache, bool $templateSource = false): ?array
     {
         if ($id <= 0) return null;
-        if (array_key_exists($id, $cache)) return $cache[$id];
-        try { $holon = McpStructure::requireHolon($organization, $root, $id); }
-        catch (\DomainException $error) { return $cache[$id] = null; }
-        return $cache[$id] = ['holon_id' => $id, 'name' => self::text($holon->getFullDisplayName()),
+        $cacheKey = ($templateSource ? 'source:' : 'visible:') . $id;
+        if (array_key_exists($cacheKey, $cache)) return $cache[$cacheKey];
+        try { $holon = McpStructure::requireHolon($organization, $root, $id, $templateSource); }
+        catch (\DomainException $error) { return $cache[$cacheKey] = null; }
+        return $cache[$cacheKey] = ['holon_id' => $id, 'name' => self::text($holon->getFullDisplayName()),
             'type' => self::text($holon->getTypeLabel()),
             'url' => \omoMcpIssuer() . '/omo/o/' . (int)$organization->getId() . '/c/' . $id];
     }
