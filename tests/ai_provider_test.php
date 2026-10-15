@@ -13,6 +13,7 @@ function curl_init($url) { return (object)['url' => $url, 'options' => []]; }
 function curl_setopt_array($curl, array $options) { $curl->options = $options; return true; }
 function curl_exec($curl) { $GLOBALS['aiProviderLastRequest'] = $curl; return $GLOBALS['aiProviderResponse']; }
 function curl_getinfo($curl, $option) { return $GLOBALS['aiProviderHttpCode'] ?? 200; }
+function commonAiRecordUsage(...$args): void { $GLOBALS['aiProviderUsage'][] = $args; }
 function curl_error($curl) { return 'simulated transport failure'; }
 
 require_once dirname(__DIR__) . '/common/ai_client.php';
@@ -20,7 +21,7 @@ require_once dirname(__DIR__) . '/common/translation_bundles.php';
 require_once dirname(__DIR__) . '/common/openai_audio.php';
 require_once dirname(__DIR__) . '/includes/server_env_admin.php';
 $clientSource = file_get_contents(dirname(__DIR__) . '/common/ai_client.php');
-eval('namespace OmoAiProviderTest; use \Throwable; use \InvalidArgumentException;' . str_replace("require_once __DIR__ . '/ai_config.php';", '', substr($clientSource, strlen('<?php'))));
+eval('namespace OmoAiProviderTest; use \Throwable; use \InvalidArgumentException;' . str_replace(["require_once __DIR__ . '/ai_config.php';", "require_once __DIR__ . '/ai_usage.php';"], '', substr($clientSource, strlen('<?php'))));
 $audioSource = file_get_contents(dirname(__DIR__) . '/common/openai_audio.php');
 eval('namespace OmoAiProviderTest;' . str_replace("require_once __DIR__ . '/ai_access.php';", '', substr($audioSource, strlen('<?php'))));
 $translationSource = file_get_contents(dirname(__DIR__) . '/common/translation_bundles.php');

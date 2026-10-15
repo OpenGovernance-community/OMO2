@@ -1,5 +1,6 @@
 <?php
 namespace dbObject;
+require_once dirname(__DIR__, 2) . '/common/patreon.php';
 
 class McpOauthGrant extends DbObject
 {
@@ -35,6 +36,9 @@ class McpOauthGrant extends DbObject
 
     public static function issueCode(McpOauthClient $client, int $userId, int $organizationId, array $request): string
     {
+        if (!UserOrganization::hasActiveMembership($userId, $organizationId) || !\patreonUserCanUseAi($userId, $organizationId)) {
+            throw new \DomainException('Un abonnement individuel ou de cette organisation est requis.');
+        }
         $code = self::token();
         $grant = new self();
         foreach (['IDclient' => (int)$client->getId(), 'IDuser' => $userId, 'IDorganization' => $organizationId,
@@ -67,7 +71,7 @@ class McpOauthGrant extends DbObject
             $row = self::fetchRow('SELECT * FROM mcp_oauth_grant WHERE (' . $lookup . ') FOR UPDATE', $bindings);
             if (!$row || (int)$row['IDclient'] !== (int)$client->getId()
                 || $row['revoked_at'] !== null || \omoMcpNormalizeScope($row['scope']) === null || !hash_equals($row['resource'], $request['resource'])
-                || !UserOrganization::hasActiveMembership((int)$row['IDuser'], (int)$row['IDorganization'])) {
+                || (!UserOrganization::hasActiveMembership((int)$row['IDuser'], (int)$row['IDorganization']) || !\patreonUserCanUseAi((int)$row['IDuser'], (int)$row['IDorganization']))) {
                 $pdo->rollBack(); return null;
             }
             $user = new User();
@@ -121,7 +125,7 @@ class McpOauthGrant extends DbObject
             WHERE g.access_hash = :hash AND g.revoked_at IS NULL AND g.access_expires_at > :now',
             ['hash' => self::hash($token), 'now' => time()]);
         if (!$row || !hash_equals($resource, $row['resource']) || \omoMcpNormalizeScope($row['scope']) === null
-            || !UserOrganization::hasActiveMembership((int)$row['IDuser'], (int)$row['IDorganization'])) return null;
+            || (!UserOrganization::hasActiveMembership((int)$row['IDuser'], (int)$row['IDorganization']) || !\patreonUserCanUseAi((int)$row['IDuser'], (int)$row['IDorganization']))) return null;
         return $row;
     }
 

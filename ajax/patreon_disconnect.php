@@ -29,7 +29,7 @@ if ($connection === false) {
 	exit;
 }
 
-$result = $connection->disconnect();
+$result = \dbObject\UserPatreon::withConnectionLock(static fn () => $connection->disconnect());
 if (empty($result['status'])) {
 	echo json_encode([
 		'status' => false,

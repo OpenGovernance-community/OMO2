@@ -34,7 +34,7 @@ if (!commonAiIsConfigured(commonOpenAiGetRewriteModel())) {
     $jsonResponse(['status' => false, 'message' => 'Configuration IA indisponible.'], 503);
 }
 
-if (!patreonUserCanUseAi($currentUserId)) {
+if (!patreonUserCanUseAi($currentUserId, $organizationId)) {
     $jsonResponse(['status' => false, 'message' => 'Les fonctions IA sont réservées aux contributeurs Patreon actifs.'], 403);
 }
 
@@ -156,6 +156,7 @@ if ($fullText === '') {
     $jsonResponse(['status' => false, 'message' => 'Le contenu du PV est vide.'], 422);
 }
 
+commonAiSetUsageContext($currentUserId, $organizationId, 'minutes_summary');
 $result = commonOpenAiSummarizeSelectedDocumentText($fullText, $fullText, [
     'user_id' => $currentUserId,
     'title' => $title,

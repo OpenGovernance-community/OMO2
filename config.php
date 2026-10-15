@@ -64,6 +64,7 @@ $GLOBALS['patreonRedirectUri'] = envValue('PATREON_REDIRECT_URI', '');
 $GLOBALS['patreonConnectAllowedOrigins'] = envValue('PATREON_CONNECT_ALLOWED_ORIGINS', '');
 $GLOBALS['patreonCreatorCampaignId'] = envValue('PATREON_CREATOR_CAMPAIGN_ID', '');
 $GLOBALS['patreonCreatorUserId'] = envValue('PATREON_CREATOR_USER_ID', '');
+$GLOBALS['patreonOrganizationMinimumAmount'] = envValue('PATREON_ORGANIZATION_MINIMUM_AMOUNT', '40');
 $GLOBALS['patreonUserAgent'] = envValue('PATREON_USER_AGENT', 'EasyPV Patreon Sync');
 $GLOBALS['githubBugReportToken'] = envValue('GITHUB_BUGREPORT_TOKEN', '');
 $GLOBALS['githubBugReportRepoOwner'] = envValue('GITHUB_BUGREPORT_REPO_OWNER', 'OpenGovernance-community');

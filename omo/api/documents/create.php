@@ -142,8 +142,7 @@ $canManageDocument = false;
 $canEditDocumentContent = false;
 $isProjectDocument = false;
 $formErrorMessage = '';
-$canUseAiTools = commonAiUserCanUse($currentUserId, commonOpenAiGetRewriteModel());
-$canUseTranscription = commonAiUserCanTranscribe($currentUserId);
+
 
 if ($documentId > 0) {
     $isEditing = $document->load($documentId);
@@ -170,6 +169,9 @@ if ($documentId > 0) {
         }
     }
 }
+
+$canUseAiTools = commonAiUserCanUse($currentUserId, commonOpenAiGetRewriteModel(), null, $organizationId);
+$canUseTranscription = commonAiUserCanTranscribe($currentUserId, null, $organizationId);
 
 $isProjectDocument = $isProjectDocument || $projectId > 0;
 

@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/patreon.php';
 require_once __DIR__ . '/ai_config.php';
+require_once __DIR__ . '/ai_usage.php';
 
 function commonOpenAiGetApiKey(): string
 {
@@ -29,14 +30,14 @@ function commonAiIsTranscriptionConfigured(?string $model = null, ?string $apiKe
         && function_exists('curl_init');
 }
 
-function commonAiUserCanTranscribe(int $userId, ?string $model = null): bool
+function commonAiUserCanTranscribe(int $userId, ?string $model = null, ?int $organizationId = null): bool
 {
-    return commonAiIsTranscriptionConfigured($model) && patreonUserCanUseAi($userId);
+    return commonAiIsTranscriptionConfigured($model) && patreonUserCanUseAi($userId, $organizationId ?? commonAiContextOrganization($userId));
 }
 
-function commonAiUserCanUse(int $userId, ?string $model = null, ?string $apiKey = null): bool
+function commonAiUserCanUse(int $userId, ?string $model = null, ?string $apiKey = null, ?int $organizationId = null): bool
 {
-    return commonAiIsConfigured($model, $apiKey) && patreonUserCanUseAi($userId);
+    return commonAiIsConfigured($model, $apiKey) && patreonUserCanUseAi($userId, $organizationId ?? commonAiContextOrganization($userId));
 }
 
 function commonAiGetCurrentUserId(): int
@@ -44,4 +45,10 @@ function commonAiGetCurrentUserId(): int
     return function_exists('commonGetCurrentUserId')
         ? (int)commonGetCurrentUserId()
         : (int)($_SESSION['currentUser'] ?? 0);
+}
+
+function commonAiContextOrganization(int $userId): int
+{
+    $context = $GLOBALS['commonAiUsageContext'] ?? [];
+    return (int)($context['IDuser'] ?? 0) === $userId ? (int)($context['IDorganization'] ?? 0) : 0;
 }

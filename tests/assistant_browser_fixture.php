@@ -3,7 +3,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/mcp_test_helpers.php';
 require_once dirname(__DIR__) . '/common/ai_access.php';
 mcpCheck(parse_url(omoMcpPublicUrl(), PHP_URL_HOST) === 'localtest.me', 'Assistant browser fixture is local-only');
-$items = mcpFixtures();
+$items = mcpFixtures(false);
 try {
     $oid = (int)$items['org']->getId(); $uid = (int)$items['user']->getId();
     $_SESSION = ['currentUser' => $uid, 'currentOrganization' => $oid];
@@ -25,6 +25,7 @@ try {
     $items['event'] = mcpFixture(\dbObject\Event::class, ['IDuser' => $uid, 'IDorganization' => $oid,
         'IDholon' => $items['role']->getId(), 'title' => 'Reunion Suisse', 'active' => 1, 'status' => 'confirmed',
         'start_at' => $start->format('Y-m-d H:i:s'), 'end_at' => $start->modify('+1 hour')->format('Y-m-d H:i:s'), 'timezone' => 'Europe/Zurich']);
+    if (\dbObject\UserPatreon::isStorageAvailable()) $items['patreon_subscription']->delete();
     if (\dbObject\UserPatreon::isStorageAvailable()) $items['patreon'] = mcpFixture(\dbObject\UserPatreon::class,
         ['IDuser' => $uid, 'is_connected' => 1, 'patron_status' => 'active_patron', 'currently_entitled_amount_cents' => 100,
             'patreon_user_id' => 'assistant-test-' . $uid, 'refresh_token' => 'assistant-test-not-a-real-refresh-token',

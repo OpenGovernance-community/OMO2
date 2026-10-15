@@ -159,6 +159,9 @@ function commonOpenAiRequestAudioTranscription($apiKey, $tmpName, $mimeType, $fi
     $curlError = curl_error($curl);
     $httpCode = (int)curl_getinfo($curl, CURLINFO_HTTP_CODE);
 
+    $usageResponse = is_string($response) ? json_decode($response, true) : null;
+    commonAiRecordUsage('model', $provider, (string)($payload['model'] ?? ''), (string)($payload['prompt'] ?? ''),
+        is_array($usageResponse) ? (string)($usageResponse['text'] ?? '') : '', is_array($usageResponse) ? $usageResponse : [], $httpCode, (int)filesize($tmpName));
     if ($response === false) {
         return array(
             'status' => false,

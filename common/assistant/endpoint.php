@@ -32,7 +32,8 @@ if (!is_string($csrf) || empty($pageContext['csrf']) || ($pageContext['user'] ??
     || !hash_equals($pageContext['csrf'], $csrf)) $fail('context', 403);
 try { $grant = commonAssistantWithContext($oid, static fn () => commonAssistantGrant($oid)); }
 catch (Throwable $error) { $fail('context', 403); }
-if (!commonAiUserCanUse($grant['IDuser'])) $fail('unavailable', 403);
+commonAiSetUsageContext($grant['IDuser'], $oid, 'assistant');
+if (!commonAiUserCanUse($grant['IDuser'], null, null, $oid)) $fail('unavailable', 403);
 $chatId = $input['conversationId'] ?? null;
 if (!is_string($chatId) || !preg_match('/^[a-f0-9]{32}$/D', $chatId)) $fail('invalid');
 $identity = commonAssistantSessionIdentity($grant);

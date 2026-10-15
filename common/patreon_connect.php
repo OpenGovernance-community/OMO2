@@ -92,12 +92,19 @@ if ($returnOrigin === '' || !patreonIsAllowedReturnOrigin($returnOrigin)) {
 	exit;
 }
 
+$organizationId = (int)($_GET['organization_id'] ?? 0);
+if ($organizationId > 0 && (!patreonUserCanManageOrganization($currentUserId, $organizationId)
+    || !is_string($_GET['csrf'] ?? null) || empty($_SESSION['patreon_organization_csrf'])
+    || !hash_equals($_SESSION['patreon_organization_csrf'], $_GET['csrf']))) {
+    http_response_code(403); patreonRenderConnectErrorPage('Acces refuse.'); exit;
+}
 $connectUrl = patreonGetConnectUrl();
 $handoffToken = bin2hex(random_bytes(32));
 $transaction = \dbObject\PatreonOauthTransaction::createPending(
 	$currentUserId,
 	hash('sha256', $handoffToken),
-	$returnOrigin
+	$returnOrigin,
+    $organizationId
 );
 if (!($transaction instanceof \dbObject\PatreonOauthTransaction)) {
 	http_response_code(500);

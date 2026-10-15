@@ -8,7 +8,7 @@ function commonAssistantRender(int $organizationId, string $organizationName): v
     $userId = commonGetCurrentUserId();
     if ($organizationId <= 0 || $userId <= 0 || commonGetCurrentShareToken() !== ''
         || !\dbObject\UserOrganization::hasActiveMembership($userId, $organizationId)) return;
-    if (!commonAiUserCanUse($userId)) return;
+    if (!commonAiUserCanUse($userId, null, null, $organizationId)) return;
     if (($_SESSION['common_assistant_contexts'][$organizationId]['user'] ?? 0) !== $userId) {
         $_SESSION['common_assistant_contexts'][$organizationId] = ['user' => $userId, 'csrf' => bin2hex(random_bytes(32))];
     }
