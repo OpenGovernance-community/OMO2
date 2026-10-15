@@ -4,7 +4,7 @@ require_once dirname(__DIR__) . '/patreon.php';
 if (!isset($organizationId, $currentUserId) || !patreonUserCanManageOrganization((int)$currentUserId, (int)$organizationId)) return;
 $patreonSourceLang = [
     'title' => ['text' => 'Patreon et IA', 'context' => 'Organization subscription section.'],
-    'help' => ['text' => 'Une contribution active de {amount} minimum ouvre les fonctions IA aux membres dans cette organisation. Le seuil utilise le montant Patreon sans conversion de devise. Un compte Patreon peut financer une personne et une organisation.', 'context' => 'Organization Patreon help capsule.'],
+    'help' => ['text' => 'Une contribution active de {amount} minimum ouvre les fonctions IA aux membres dans cette organisation. Le seuil utilise le montant Patreon sans conversion de devise. Le compte createur configure est dispense du montant minimum. Un compte Patreon peut financer une personne et une organisation.', 'context' => 'Organization Patreon help capsule.'],
     'account' => ['text' => 'Compte Patreon', 'context' => 'Linked Patreon identity label.'],
     'connect' => ['text' => 'Connecter Patreon', 'context' => 'Connect organization Patreon account.'],
     'sync' => ['text' => 'Synchroniser', 'context' => 'Refresh Patreon subscription.'],

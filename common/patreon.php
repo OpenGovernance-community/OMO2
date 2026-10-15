@@ -126,10 +126,19 @@ function patreonOrganizationCanUseAi(int $organizationId): bool
 {
     if (trim((string)($GLOBALS['patreonClientId'] ?? '')) === '' || trim((string)($GLOBALS['patreonClientSecret'] ?? '')) === '') return false;
     $connection = \dbObject\OrganizationPatreon::findByOrganizationId($organizationId);
-    return $connection && $connection->isConnected()
-        && (patreonGetCreatorCampaignId() === '' || (string)$connection->get('campaign_id') === patreonGetCreatorCampaignId())
+    if (!$connection || !$connection->isConnected()) return false;
+    if (patreonConnectionIsCreator($connection)) return true;
+    return (patreonGetCreatorCampaignId() === '' || (string)$connection->get('campaign_id') === patreonGetCreatorCampaignId())
         && (string)$connection->get('patron_status') === 'active_patron'
         && (int)$connection->get('currently_entitled_amount_cents') >= patreonOrganizationMinimumCents();
+}
+
+/** Match the verified OAuth identity; attachment uniqueness still applies to creators. */
+function patreonConnectionIsCreator(\dbObject\UserPatreon $connection): bool
+{
+    $creatorUserId = trim((string)($GLOBALS['patreonCreatorUserId'] ?? ''));
+    return $connection->isConnected() && preg_match('/^[1-9][0-9]*$/D', $creatorUserId) === 1
+        && $creatorUserId === (string)$connection->get('patreon_user_id');
 }
 
 /** Check persisted membership, including on the central OAuth hub without the originating session. */
@@ -178,10 +187,7 @@ function patreonIndividualCanUseAi($userId)
 		return false;
 	}
 
-	// Match only the identity saved by the server after Patreon OAuth/sync.
-	$creatorUserId = trim((string)($GLOBALS['patreonCreatorUserId'] ?? ''));
-	if (preg_match('/^[1-9][0-9]*$/D', $creatorUserId) === 1
-		&& $creatorUserId === (string)$connection->get('patreon_user_id')) {
+	if (patreonConnectionIsCreator($connection)) {
 		return true;
 	}
 
