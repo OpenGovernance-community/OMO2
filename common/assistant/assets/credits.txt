@@ -4,3 +4,6 @@ Copie sans modification, fond conserve. Coins arrondis par CSS.
 
 send.png
 Source: avion-en-papier.png, image fournie par l utilisateur, copie sans modification.
+
+new-chat.png
+Source: crayon.png, image fournie par l utilisateur, copie sans modification.

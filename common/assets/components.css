@@ -1631,10 +1631,119 @@ html[data-theme="dark"] .black-icon,
     right: max(20px, env(safe-area-inset-right));
     bottom: calc(max(20px, env(safe-area-inset-bottom)) + 66px);
     z-index: 1331;
-    width: min(440px, calc(100vw - 40px));
+    width: min(var(--param-floating-panel-width, 440px), calc(100vw - 40px));
     max-height: calc(100dvh - var(--topbar-height, 48px) - 110px);
     overflow: hidden;
     box-shadow: 0 16px 48px #00000030;
+}
+
+/* Keyboard and pointer resize grip inside a floating panel. */
+.generic-resize-handle {
+    position: absolute;
+    z-index: 8;
+    touch-action: none;
+    user-select: none;
+    cursor: ew-resize;
+    display: grid;
+    place-items: center;
+}
+.generic-resize-handle--left {
+    left: 0;
+    top: 20%;
+    bottom: 20%;
+    width: 12px;
+}
+.generic-resize-handle::before {
+    content: '';
+    width: 3px;
+    height: 40px;
+    border-radius: 999px;
+    background: var(--color-border, #cbd5e1);
+}
+.generic-resize-handle:hover::before,
+.generic-resize-handle:focus-visible::before,
+.generic-resize-handle.is-resizing::before {
+    background: var(--color-primary, #2563eb);
+}
+.generic-resize-handle:focus-visible {
+    outline: 2px solid var(--color-primary, #2563eb);
+    outline-offset: -2px;
+}
+.generic-resize-handle[hidden] { display: none; }
+.generic-resize-shield {
+    position: fixed;
+    inset: 0;
+    z-index: 2147483647;
+    cursor: ew-resize;
+    touch-action: none;
+    user-select: none;
+}
+
+/* Conversation bubbles keep outgoing messages distinct in both themes. */
+.generic-message-bubble {
+    display: grid;
+    gap: var(--generic-space-2);
+    min-width: 0;
+    padding: var(--generic-space-3);
+    border: 1px solid var(--color-border, #e5e7eb);
+    border-radius: var(--radius-lg, 12px);
+    background: var(--color-surface, #ffffff);
+    color: var(--color-text, #1f2937);
+}
+.generic-message-bubble--outgoing {
+    margin-inline-start: 10%;
+    border-bottom-right-radius: 2px;
+    background: color-mix(in srgb, var(--color-primary, #2563eb) 14%, var(--color-surface, #ffffff));
+    border-color: color-mix(in srgb, var(--color-primary, #2563eb) 28%, var(--color-border, #e5e7eb));
+}
+
+/* Compact data comparisons with contained horizontal scrolling. */
+.generic-data-table-frame {
+    position: relative;
+    min-width: 0;
+}
+.generic-data-table-copy {
+    position: absolute;
+    right: var(--generic-space-2);
+    bottom: var(--generic-space-2);
+    opacity: 0;
+    pointer-events: none;
+}
+.generic-data-table-frame:hover .generic-data-table-copy,
+.generic-data-table-frame:focus-within .generic-data-table-copy {
+    opacity: 1;
+    pointer-events: auto;
+}
+@media (hover: none), (pointer: coarse) {
+    .generic-data-table-copy { opacity: 1; pointer-events: auto; }
+}
+.generic-data-table-scroll {
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+}
+.generic-data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: inherit;
+    line-height: 1.5;
+    text-align: left;
+}
+.generic-data-table th,
+.generic-data-table td {
+    padding: var(--generic-space-2) var(--generic-space-3);
+    border: 1px solid var(--color-border, #e5e7eb);
+    vertical-align: top;
+    min-width: 6rem;
+    overflow-wrap: anywhere;
+}
+.generic-data-table th {
+    background: color-mix(in srgb, var(--color-primary, #2563eb) 10%, var(--color-surface, #ffffff));
+    font-weight: 700;
+}
+.generic-data-table tbody tr:nth-child(even) {
+    background: var(--color-surface-alt, #f8fafc);
 }
 
 .generic-action-button--icon-only {

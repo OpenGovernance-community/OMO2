@@ -24,6 +24,17 @@ try {
     $_SESSION['extendedAuthoritiesByOrganization'][$oid] = $uid;
     mcpCheck(commonAssistantSessionIdentity($grant) !== $identity, 'Privilege changes invalidate conversation identity');
     unset($_SESSION['extendedAuthoritiesByOrganization']);
+    $chatId = str_repeat('a', 32);
+    $_SESSION['common_assistant_chats'][$chatId] = ['identity' => $identity, 'updated' => time() - 7200,
+        'history' => [['role' => 'user', 'content' => 'Private model context']],
+        'messages' => [['role' => 'assistant', 'text' => 'Previous reply', 'links' => []]]];
+    $snapshot = commonAssistantChatSnapshot(commonAssistantSessionChat($chatId, $identity));
+    mcpCheck($snapshot['messages'][0]['text'] === 'Previous reply' && !isset($snapshot['history']), 'Full display history survives idle time without exposing model context');
+    assistantReject(fn () => commonAssistantSessionChat($chatId, 'other-account-or-organization'), 'Stored chat cannot cross identity boundaries');
+    $pending = ['pending_question' => 'Question during reload', 'busy_until' => time() + 120];
+    mcpCheck(commonAssistantChatSnapshot($pending)['busy'], 'Reload recognizes a turn still running');
+    $pending['busy_until'] = time() - 1;
+    mcpCheck(commonAssistantChatSnapshot($pending)['failed'], 'Interrupted turn returns a recoverable question');
     mcpCheck(omoApiSourceBaseUrl() === '', 'Local assistant must not need a public MCP URL');
     assistantReject(fn () => commonAssistantGrant((int)$items['other_org']->getId()), 'Cannot select another organization');
     $tools = commonAssistantTools();

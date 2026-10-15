@@ -1,6 +1,7 @@
 <?php
 require_once dirname(__DIR__) . '/ai_access.php';
 require_once __DIR__ . '/translations.php';
+require_once __DIR__ . '/session.php';
 
 function commonAssistantRender(int $organizationId, string $organizationName): void
 {
@@ -12,9 +13,11 @@ function commonAssistantRender(int $organizationId, string $organizationName): v
         $_SESSION['common_assistant_contexts'][$organizationId] = ['user' => $userId, 'csrf' => bin2hex(random_bytes(32))];
     }
     $text = [];
-    foreach (['title', 'you', 'working', 'error', 'context', 'sources'] as $key) $text[$key] = commonAssistantT($key);
+    foreach (['title', 'you', 'working', 'error', 'context', 'sources', 'copy_csv', 'copied_csv', 'copy_error', 'restoring', 'restore_error', 'interrupted'] as $key) $text[$key] = commonAssistantT($key);
     $escape = static fn ($value) => htmlspecialchars((string)$value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
     $config = ['organizationId' => $organizationId, 'csrf' => $_SESSION['common_assistant_contexts'][$organizationId]['csrf'],
+        'storageScope' => hash('sha256', $_SESSION['common_assistant_contexts'][$organizationId]['csrf']
+            . commonAssistantSessionIdentity(['IDuser' => $userId, 'IDorganization' => $organizationId])),
         'endpoint' => '/common/assistant/endpoint.php', 'text' => $text];
     ?>
     <?= commonStylesheetTags('/common/assistant/chat.css') ?>
@@ -23,6 +26,7 @@ function commonAssistantRender(int $organizationId, string $organizationName): v
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11.5a8.5 8.5 0 0 1-8.5 8.5H4l-3 2V11.5a8.5 8.5 0 0 1 8.5-8.5H11"/><path d="m18 1 1.5 4.5L24 7l-4.5 1.5L18 13l-1.5-4.5L12 7l4.5-1.5Z"/><path d="M6 12h6M6 16h8"/></svg>
         </button>
         <section id="organization-assistant-panel" class="generic-soft-panel generic-soft-panel--flush generic-floating-panel organization-assistant__panel" role="dialog" aria-modal="false" aria-labelledby="organization-assistant-title" hidden>
+            <div class="generic-resize-handle generic-resize-handle--left" data-assistant-resize role="separator" tabindex="0" aria-orientation="vertical" aria-controls="organization-assistant-panel" aria-label="<?= $escape(commonAssistantT('resize')) ?>" title="<?= $escape(commonAssistantT('resize')) ?>"></div>
             <header class="generic-drawer-header">
                 <div class="generic-drawer-header__copy">
                     <div class="generic-heading-with-help">
@@ -43,7 +47,7 @@ function commonAssistantRender(int $organizationId, string $organizationName): v
                     </div>
                 </div>
                 <div class="generic-drawer-header__actions">
-                    <button type="button" class="generic-action-button generic-action-button--icon-only" data-assistant-new title="<?= $escape(commonAssistantT('new')) ?>" aria-label="<?= $escape(commonAssistantT('new')) ?>">+</button>
+                    <button type="button" class="generic-action-button generic-action-button--icon-only" data-assistant-new title="<?= $escape(commonAssistantT('new')) ?>" aria-label="<?= $escape(commonAssistantT('new')) ?>"><img class="black-icon" src="<?= $escape(commonAssetUrl('/common/assistant/assets/new-chat.png')) ?>" alt="" width="20" height="20"></button>
                     <button type="button" class="generic-action-button generic-action-button--icon-only generic-action-button--close" data-assistant-close aria-label="<?= $escape(commonAssistantT('close')) ?>"></button>
                 </div>
             </header>
