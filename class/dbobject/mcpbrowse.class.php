@@ -94,6 +94,7 @@ final class McpBrowse
         }
         return ['organization_id' => (int)$organization->getId(), 'modules' => $modules,
             'permission_inspection' => ['catalog_tool' => 'omo_permission_catalog', 'query_tool' => 'omo_list_permissions',
+                'holon_tool' => 'omo_get_holon_permissions', 'instructions' => \omoApiAgentPermissionInstructions(),
                 'filters' => ['user_id', 'holon_id', 'permission_key'], 'default_mode' => 'normal',
                 'exceptional_rights' => 'Use mode extended or all only when explicitly requested; no activation or rights changes.'],
             'availability' => ['tool' => 'omo_get_availability', 'member_lookup_module' => 'team', 'max_members' => 20, 'max_days' => 31,

@@ -152,6 +152,93 @@ try {
     }
     $code = McpOauthGrant::issueCode($items['client'], $viewer, $oid, mcpAuthorizationRequest($items['client']));
     $token = McpOauthGrant::exchange($items['client'], mcpExchangeRequest($items['client'], $code))['access_token'];
+    // Target-first discovery must find rights even for roles with no current holder.
+    $anchorMemory = $makeHolon('anchor_memory', 'Memoire ancrage', 1, $root, ['IDholon_template' => $template]);
+    $anchorPilot = $makeHolon('anchor_pilot', 'Lien pilotage ancrage', 1, $root);
+    $vacant = $makeHolon('vacant', 'Vacant memory', 1, $root, ['IDholon_template' => $template]);
+    $remote = $makeHolon('remote_role', 'Role in Budget', 1, $budget);
+    $makeGrant('meeting_template', $template, 'CAN_CREATE_EVENT', 'parent_circle');
+    $makeGrant('meeting_pilot', $anchorPilot, 'CAN_CREATE_EVENT', 'parent_circle');
+    $makeGrant('meeting_remote', $remote, 'CAN_CREATE_EVENT', 'organization_root');
+    $makeGrant('meeting_extended', $pilot, 'CAN_CREATE_EVENT', 'organization', 'member', true);
+    $makeGrant('meeting_hidden', (int)$items['hidden']->getId(), 'CAN_CREATE_EVENT', 'organization');
+    $makeGrant('meeting_collective', $role, 'CAN_CREATE_EVENT', 'organization', 'collective');
+    foreach (['anchor_germain' => [$germain, $anchorMemory], 'anchor_luc' => [$luc, $anchorPilot]] as $key => [$uid, $hid]) {
+        $items[$key] = mcpFixture(UserHolon::class, ['IDuser' => $uid, 'IDholon' => $hid, 'active' => 1, 'is_membership' => 1]);
+    }
+    $targetArgs = ['holon_id' => $root, 'permission_key' => 'CAN_CREATE_EVENT'];
+    $roleRows = []; $offset = 0;
+    do {
+        $page = omoApiExecuteOperation('omo_get_holon_permissions', $targetArgs + ['offset' => $offset, 'limit' => 1], $grant);
+        mcpCheck(restSchemaMatches(json_decode(json_encode($page)), omoApiResponseSchemas()['HolonPermissionPage'], omoApiResponseSchemas()), 'Target permission response contract');
+        array_push($roleRows, ...$page['items']);
+        $next = $page['next_offset'];
+        mcpCheck($next === null || $next > $offset, 'Role pagination advances');
+        $offset = $next;
+    } while ($offset !== null);
+    $expectedRoles = [$anchorMemory, $anchorPilot, $vacant, $remote]; sort($expectedRoles);
+    $actualRoles = array_column(array_column($roleRows, 'assigned_holon'), 'holon_id'); sort($actualRoles);
+    mcpCheck($actualRoles === $expectedRoles, 'Anchor meeting rights cover inherited, vacant and remote roles, excluding unrelated ranges, hidden sources, templates and collective/extended grants');
+    foreach ($roleRows as $row) {
+        $navigation = $row['holders'];
+        $validated = omoMcpToolArguments($navigation['tool'], (object)$navigation['arguments']);
+        $people = permissionPages($grant, $validated);
+        $expectedUsers = match ($row['assigned_holon']['holon_id']) { $anchorMemory => [$germain], $anchorPilot => [$luc], default => [] };
+        mcpCheck(array_column(array_column($people, 'member'), 'user_id') === $expectedUsers, 'Role holders navigation resolves the actual people without guessing occupancy');
+    }
+    $allTarget = McpPermissions::holonPermissions($grant, $targetArgs + ['mode' => 'all']);
+    mcpCheck(count($allTarget['items']) === 5, 'Explicit all mode adds the extended role separately');
+    $extendedTarget = McpPermissions::holonPermissions($grant, $targetArgs + ['mode' => 'extended']);
+    mcpCheck(count($extendedTarget['items']) === 1 && $extendedTarget['items'][0]['requires_activation'], 'Target extended mode only lists exceptional grants');
+    $defaultTarget = McpPermissions::holonPermissions($grant, ['holon_id' => $root, 'permission_key' => 'CAN_CREATE_RULE']);
+    mcpCheck(count($defaultTarget['items']) === 1 && $defaultTarget['items'][0]['origin'] === 'default_membership', 'Target unconfigured default is explained without inventing roles');
+    $fallbackTarget = McpPermissions::holonPermissions($grant, ['holon_id' => $role, 'permission_key' => 'CAN_EDIT_TYPE1_PROPERTIES']);
+    mcpCheck(count($fallbackTarget['items']) === 1 && $fallbackTarget['items'][0]['fallback_permission_key'] === 'CAN_EDIT_HOLON', 'Target fallback retains role provenance');
+    mcpCheck(McpPermissions::holonPermissions($grant, ['holon_id' => $root, 'permission_key' => 'CAN_EDIT_DECISION'])['items'] === [], 'Target explicit-only right remains closed');
+    mcpCheck(McpPermissions::holonPermissions($grant, ['holon_id' => $root, 'permission_key' => 'CAN_DELETE_DOCUMENT'])['items'] === [], 'Target collective-only right does not reopen defaults');
+    $adminTarget = McpPermissions::holonPermissions($grant, ['holon_id' => $role, 'permission_key' => 'CAN_DELETE_PROJECT']);
+    mcpCheck(count($adminTarget['items']) === 1 && $adminTarget['items'][0]['member_type'] === 'admin', 'Target identifies admin-only membership profile');
+    $items['germain_role']->setHolonAdmin(false);
+    mcpCheck(permissionPages($grant, $adminTarget['items'][0]['holders']['arguments']) === [], 'Holder lookup excludes ordinary members of an admin-only role grant');
+    // Compare target-first discovery to the native person resolver for every supported scope.
+    $makeGrant('scope_probe', $role, 'CAN_EDIT_EVENT', 'self');
+    foreach (array_keys(HolonPermission::getRangeLabels()) as $range) {
+        $items['scope_probe']->set('range', $range); $items['scope_probe']->save();
+        $native = HolonPermission::inspectUserPermissionsForOrganization($germain, $oid, ['CAN_EDIT_EVENT']);
+        foreach ([0, $root, $circle, $nested, $role, $pilot, $budget] as $target) {
+            $expected = false;
+            foreach ($native as $row) if (HolonPermission::permissionInspectionContextIds($oid, $row, $target)) $expected = true;
+            $actual = McpPermissions::holonPermissions($grant, ['holon_id' => $target, 'permission_key' => 'CAN_EDIT_EVENT']);
+            mcpCheck((bool)$actual['items'] === $expected, 'Reverse scope matches native evaluation: ' . $range . '/' . $target);
+        }
+    }
+    $structure = \dbObject\McpStructure::read($grant, $root);
+    mcpCheck($structure['permissions'] === ['tool' => 'omo_get_holon_permissions', 'arguments' => ['holon_id' => $root]], 'Holon detail exposes permission entry point');
+    $tools = array_column(omoMcpTools(), null, 'name');
+    foreach (['omo_get_holon_permissions', 'omo_read_record', 'omo_search', 'omo_permission_catalog'] as $name) {
+        mcpCheck(str_contains($tools[$name]['description'], omoApiAgentPermissionInstructions()), 'Permission precedence is part of discovery and descriptive-read contracts');
+    }
+    mcpCheck($tools['omo_get_holon_permissions']['annotations']['readOnlyHint'] && $tools['omo_get_holon_permissions']['securitySchemes'][0]['scopes'] === [OMO_MCP_SCOPE], 'Target inspection uses existing read consent');
+    $initialized = omoMcpDispatch(['jsonrpc' => '2.0', 'id' => 1, 'method' => 'initialize', 'params' => (object)[
+        'protocolVersion' => OMO_MCP_VERSIONS[0], 'capabilities' => new stdClass(), 'clientInfo' => (object)['name' => 'permissions-test', 'version' => '1']]], $grant);
+    mcpCheck(str_starts_with($initialized['result']['instructions'], omoApiAgentPermissionInstructions()), 'Permission guidance precedes general exploration guidance');
+    foreach ([[], ['holon_id' => '1'], ['holon_id' => -1], ['holon_id' => 0, 'mode' => 'active'], ['holon_id' => 0, 'permission_key' => 'bad'], ['holon_id' => 0, 'offset' => -1]] as $args) {
+        $denied = false;
+        try { omoMcpToolArguments('omo_get_holon_permissions', (object)$args); } catch (InvalidArgumentException $error) { $denied = true; }
+        mcpCheck($denied, 'Target permission validation rejects invalid arguments');
+    }
+    foreach ([$targetArgs, $targetArgs + ['mode' => 'extended'], ['holon_id' => $root, 'limit' => 1]] as $args) {
+        $response = restHttp('GET', '/api/v1/structure/' . $root . '/permissions?' . http_build_query(array_diff_key($args, ['holon_id' => true])), $token);
+        mcpCheck($response['status'] === 200, 'Direct holon REST entry point is available');
+        restCheckSchema('omo_get_holon_permissions', $response);
+        $rpc = restRpc($token, 'omo_get_holon_permissions', $args);
+        mcpCheck(($rpc['data']['result']['structuredContent'] ?? null) === $response['data'], 'Target REST/MCP parity');
+    }
+    foreach (['hidden', 'inactive', 'other_root'] as $key) {
+        mcpCheck(restHttp('GET', '/api/v1/structure/' . $items[$key]->getId() . '/permissions', $token)['status'] === 422, 'Target access remains isolated');
+    }
+    mcpCheck(restHttp('POST', '/api/v1/structure/' . $root . '/permissions', $token)['status'] === 405, 'Target entry point is read-only');
+    mcpCheck(restHttp('GET', '/api/v1/structure/' . $root . '/permissions')['status'] === 401, 'Target entry point requires authentication');
     foreach ([
         ['omo_permission_catalog', '/permissions/catalog', ['query' => 'DOCUMENT', 'limit' => 2]],
         ['omo_list_permissions', '/permissions', ['user_id' => $germain, 'permission_key' => 'CAN_CREATE_DOCUMENT']],
@@ -192,7 +279,7 @@ try {
     mcpCheck($firstPage['items'] === [] && !$firstPage['complete'] && $firstPage['next_cursor'] !== null, 'Empty scan page still offers continuation');
     $holders = permissionPages($grant, ['holon_id' => $circle, 'permission_key' => 'CAN_CREATE_DOCUMENT']);
     mcpCheck(array_column(array_column($holders, 'member'), 'user_id') === [$germain, $luc, $last], 'Pagination reaches later members without duplicates');
-    echo "mcp_permissions_test: OK (person/space/right, templates, scopes, defaults, fallback, normal/extended/admin, visibility, pagination, contracts, HTTP REST/MCP parity)\n";
+    echo "mcp_permissions_test: OK (person/space/right, target holon roles and holders, vacant roles, all ranges, permission-first guidance, defaults, normal/extended/admin, visibility, pagination, contracts, HTTP REST/MCP parity)\n";
 } finally {
     DbObject::enableReadOnlyMemoization(false);
     $_SESSION = $before;

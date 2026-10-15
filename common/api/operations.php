@@ -6,6 +6,12 @@ require_once dirname(__DIR__) . '/mcp/calendar.php';
 require_once __DIR__ . '/decisions.php';
 require_once __DIR__ . '/projects.php';
 
+/** The permission database is authoritative for software rights, not role descriptions. */
+function omoApiAgentPermissionInstructions(): string
+{
+    return 'For SOFTWARE RIGHTS (droits logiciels: who may create/edit/delete), consult the permission tools FIRST. Holon descriptions, purposes, accountabilities and role names are not evidence of software authorization. For a target circle/role/space, resolve its ID with omo_list_records module structure or omo_get_holon, then call omo_get_holon_permissions: it lists rights and granting roles whose range covers that target, even when unoccupied. Creating meetings/reunions, calendar dates or events uses CAN_CREATE_EVENT; query this key directly, not a text search for reunion in role descriptions. Do not use omo_list_event_spaces to find other people rights: it only discovers creation destinations for the signed-in user. For other rights use omo_permission_catalog; for a person use omo_list_permissions. Follow holders navigation and pagination to identify actual people. The root circle ID from omo_connection_info is distinct from holon_id=0 (organization space). Default mode normal excludes exceptional authorities; use extended/all only when explicitly requested. Never infer a grant from descriptive content if the permission results are empty or inaccessible; report that limitation.';
+}
+
 /** Shared agent guidance for MCP initialization and REST/MCP creation descriptors. */
 function omoApiAgentCreationInstructions(): string
 {
@@ -45,6 +51,15 @@ function omoApiScopeChallenge(array $grant, string $requiredScope): string
 function omoMcpTools(): array
 {
     $tools = [
+        ['name' => 'omo_get_holon_permissions', 'title' => 'List software rights and granting roles for a holon',
+            'description' => 'Start here for who may create meetings/documents or perform an action in a circle, role or space. Required holon_id is the TARGET, not the granting role. Lists permission definitions and role/circle/group configurations whose resolved range covers this holon, even for unoccupied roles; inherited templates and organization-wide scopes are included. Optional permission_key restricts the action; omit it to list all rights. Each item gives assigned_holon, source_holon, range, member_type and holders navigation to actual people. member_type admin means administrators of that membership only. Configurations alone do not prove that a role is occupied. Unconfigured default rights are explicit. Follow next_offset until null; visibility limits still apply. Normal rights by default; extended/all only on explicit request. Read-only under organization:read; no event creation consent is needed.',
+            'inputSchema' => ['type' => 'object', 'properties' => [
+                'holon_id' => ['type' => 'integer', 'minimum' => 0, 'description' => 'Target holon ID. 0 means organization space, not the root circle.'],
+                'permission_key' => ['type' => 'string', 'pattern' => '^[A-Z][A-Z0-9_]{0,189}$', 'description' => 'CAN_CREATE_EVENT for creating meetings/events. Omit to enumerate all rights.'],
+                'mode' => ['type' => 'string', 'enum' => ['normal', 'extended', 'all'], 'default' => 'normal'],
+                'offset' => ['type' => 'integer', 'minimum' => 0, 'default' => 0],
+                'limit' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 50, 'default' => 50]],
+                'required' => ['holon_id'], 'additionalProperties' => false]],
         ['name' => 'omo_permission_catalog', 'title' => 'Discover OMO permission keys',
             'description' => 'Read the permission catalog with labels, descriptions and contextual/global semantics. Optional query matches a literal substring of the key, title or description. Follow next_offset until null. Use the returned permission_key with omo_list_permissions; catalog entries are definitions, not grants to a person. Read-only.',
             'inputSchema' => ['type' => 'object', 'properties' => [
@@ -55,6 +70,8 @@ function omoMcpTools(): array
             'description' => 'Inspect rights by person, target space, permission, or combined filters (at least one required). Resolve names through omo_list_records module team/structure, and keys through omo_permission_catalog. Returns person, permission, assigned role/circle/group, source configuration/template and each affected visible space. Default mode normal ALWAYS excludes exceptional authorities and temporary admin overrides. Use extended or all ONLY on an explicit user request about exceptional rights; requires_activation does not mean the mode is currently enabled. Default membership grants and fallback keys are explained. Collective rights and administrator bypasses are excluded. General edit/delete rights remain subject to object visibility/ownership and application availability. Deduplicate people/spaces when summarizing; do not infer a role from membership alone. Follow next_cursor until null with identical filters, including after empty pages. complete only covers visible information: qualify exclusive claims accordingly. No rights or modes are changed. Read-only, no extra OAuth scope.',
             'inputSchema' => ['type' => 'object', 'properties' => [
                 'user_id' => ['type' => 'integer', 'minimum' => 1],
+                'assigned_holon_id' => ['type' => 'integer', 'minimum' => 0, 'description' => 'Optional granting membership from omo_get_holon_permissions, distinct from target holon_id. 0 selects organization membership defaults.'],
+                'member_type' => ['type' => 'string', 'enum' => ['member', 'admin'], 'description' => 'Optional granting membership profile, copied from holders navigation.'],
                 'holon_id' => ['type' => 'integer', 'minimum' => 0, 'description' => 'Target space, not the granting role. 0 is the organization space; use the actual root holon ID for its circle.'],
                 'permission_key' => ['type' => 'string', 'pattern' => '^[A-Z][A-Z0-9_]{0,189}$'],
                 'mode' => ['type' => 'string', 'enum' => ['normal', 'extended', 'all'], 'default' => 'normal'],
@@ -178,6 +195,9 @@ function omoMcpTools(): array
     array_push($tools, ...omoApiDecisionTools());
     array_push($tools, ...omoApiProjectTools());
     foreach ($tools as &$tool) {
+        if (in_array($tool['name'], ['omo_get_holon_permissions', 'omo_permission_catalog', 'omo_list_permissions', 'omo_get_holon', 'omo_read_record', 'omo_search'], true)) {
+            $tool['description'] = omoApiAgentPermissionInstructions() . ' ' . $tool['description'];
+        }
         $create = $tool['name'] === 'omo_create_document';
         $mail = $tool['name'] === 'omo_send_object_email';
         $event = $tool['name'] === 'omo_create_event';
@@ -205,8 +225,9 @@ function omoMcpToolArguments(string $name, mixed $input): array
     if (in_array($name, ['omo_get_availability', 'omo_list_event_spaces', 'omo_create_event'], true)) return omoMcpCalendarValidate($name, $args);
     if ($name === 'omo_send_object_email') { omoObjectMailValidate($args); return $args; }
     $allowed = match ($name) {
+        'omo_get_holon_permissions' => ['holon_id', 'permission_key', 'mode', 'offset', 'limit'],
         'omo_permission_catalog' => ['query', 'offset', 'limit'],
-        'omo_list_permissions' => ['user_id', 'holon_id', 'permission_key', 'mode', 'cursor', 'limit'],
+        'omo_list_permissions' => ['user_id', 'holon_id', 'permission_key', 'mode', 'cursor', 'limit', 'assigned_holon_id', 'member_type'],
         'omo_list_object_members' => ['object_type', 'object_id', 'user_ids', 'offset', 'limit'],
         'omo_object_email_status' => ['mail_id'],
         'omo_get_member' => ['user_id'],
@@ -223,10 +244,11 @@ function omoMcpToolArguments(string $name, mixed $input): array
     if (array_diff(array_keys($args), $allowed)) throw new InvalidArgumentException('Unknown argument.');
     if ($name === 'omo_list_object_members') omoObjectMailValidateSelection($args);
     foreach ($args as $key => $value) {
-        if ($name === 'omo_list_permissions' && in_array($key, ['permission_key', 'mode', 'cursor'], true)) {
+        if (in_array($name, ['omo_list_permissions', 'omo_get_holon_permissions'], true) && in_array($key, ['permission_key', 'mode', 'cursor', 'member_type'], true)) {
             if (!is_string($value) || !match ($key) {
                 'permission_key' => (bool)preg_match('/^[A-Z][A-Z0-9_]{0,189}$/D', $value),
                 'mode' => in_array($value, ['normal', 'extended', 'all'], true),
+                'member_type' => in_array($value, ['member', 'admin'], true),
                 'cursor' => (bool)preg_match('/^[0-9]{1,10}:[0-9]{1,10}$/D', $value),
             }) throw new InvalidArgumentException('Invalid ' . $key . '.');
             continue;
@@ -312,7 +334,7 @@ function omoMcpToolArguments(string $name, mixed $input): array
             continue;
         }
         $minimum = in_array($key, ['after_id', 'offset'], true) || ($key === 'parent_id' && $name === 'omo_list_records')
-            || ($name === 'omo_list_permissions' && $key === 'holon_id')
+            || (in_array($name, ['omo_list_permissions', 'omo_get_holon_permissions'], true) && in_array($key, ['holon_id', 'assigned_holon_id'], true))
             || ($name === 'omo_create_document' && in_array($key, ['holon_id', 'parent_document_id'], true)) ? 0 : 1;
         $maxLimit = $name === 'omo_read_record' ? 20000 : 50;
         if (!is_int($value) || $value < $minimum || ($key === 'limit' && $value > $maxLimit)
@@ -321,6 +343,7 @@ function omoMcpToolArguments(string $name, mixed $input): array
         }
     }
     if ($name === 'omo_get_holon' && !isset($args['holon_id'])) throw new InvalidArgumentException('holon_id is required.');
+    if ($name === 'omo_get_holon_permissions' && !isset($args['holon_id'])) throw new InvalidArgumentException('holon_id is required.');
     if ($name === 'omo_get_member' && !isset($args['user_id'])) throw new InvalidArgumentException('user_id is required.');
     if ($name === 'omo_list_permissions' && !isset($args['user_id']) && !isset($args['holon_id']) && !isset($args['permission_key'])) {
         throw new InvalidArgumentException('Supply user_id, holon_id or permission_key.');
@@ -347,6 +370,7 @@ function omoApiExecuteOperation(string $name, array $args, array $grant): array
     $scope = omoApiOperationScope($name);
     if (!in_array($scope, explode(' ', $grant['scope'] ?? ''), true)) throw new OmoApiScopeException($scope);
     return match ($name) {
+        'omo_get_holon_permissions' => \dbObject\McpPermissions::holonPermissions($grant, $args),
         'omo_permission_catalog' => \dbObject\McpPermissions::catalog($grant, $args),
         'omo_list_permissions' => \dbObject\McpPermissions::permissions($grant, $args),
         'omo_list_project_spaces' => \dbObject\McpProjectWrite::spaces($grant, $args),
