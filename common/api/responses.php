@@ -37,6 +37,7 @@ function omoApiResponseSchemas(): array
         'id' => $i, 'name' => $s, 'full_name' => $s, 'type_id' => $i, 'type' => $s,
         'parent_id' => $idNull + ['description' => 'Null when there is no readable parent.'],
         'organization_id' => $i, 'updated_at' => ['type' => ['string', 'null'], 'format' => 'date-time'], 'url' => $url,
+        'permissions' => $ref('Navigation'),
     ]);
     $schemas['Invitee'] = $object([
         'member_id' => $s + ['description' => 'Stable user:<id> or guest:<hash> identity.'],
@@ -81,7 +82,7 @@ function omoApiResponseSchemas(): array
         'organization_id' => $i,
         'modules' => $list($object(['module' => $moduleSchema, 'description' => $s, 'filters' => $strings,
             'user_relations' => $strings, 'statuses' => $list(['type' => ['string', 'integer']]), 'date_field' => $s])),
-        'permission_inspection' => $object(['catalog_tool' => $s, 'query_tool' => $s, 'filters' => $strings,
+        'permission_inspection' => $object(['catalog_tool' => $s, 'query_tool' => $s, 'holon_tool' => $s, 'instructions' => $instructions, 'filters' => $strings,
             'default_mode' => $s, 'exceptional_rights' => $s]),
         'availability' => $object(['tool' => $s, 'member_lookup_module' => $s, 'max_members' => $i, 'max_days' => $i,
             'includes_imported_calendars' => $b, 'timezone' => $s, 'private_event_details' => $b]),
@@ -117,10 +118,16 @@ function omoApiResponseSchemas(): array
         'range' => $s, 'space' => $ref('PermissionSpace'), 'fallback_permission_key' => $textNull,
     ]);
     $schemas['PermissionPage'] = $object(['organization_id' => $i, 'mode' => $s + ['enum' => ['normal', 'extended', 'all']],
-        'filters' => $object(['user_id' => $i, 'holon_id' => $i, 'permission_key' => $s], []),
+        'filters' => $object(['user_id' => $i, 'holon_id' => $i, 'permission_key' => $s, 'assigned_holon_id' => $i, 'member_type' => $s], []),
         'items' => $list($ref('PermissionGrant')),
         'next_cursor' => $textNull + ['description' => 'Copy into cursor with identical filters until null, even after an empty page.'],
         'complete' => $complete, 'coverage' => $s + ['const' => 'visible_members_and_spaces'], 'instructions' => $instructions]);
+    $holonGrant = array_diff_key($schemas['PermissionGrant']['properties'], array_flip(['member', 'space']));
+    $holonGrant['holders'] = $ref('Navigation');
+    $schemas['HolonPermissionPage'] = $object(['organization_id' => $i, 'space' => $ref('PermissionSpace'),
+        'mode' => $s + ['enum' => ['normal', 'extended', 'all']], 'items' => $list($object($holonGrant)),
+        'next_offset' => $nextOffset, 'complete' => $complete, 'coverage' => $s + ['const' => 'visible_role_configurations'],
+        'holders' => $ref('Navigation'), 'instructions' => $instructions]);
     $schemas['AssignmentPage'] = $object([
         'organization_id' => $i, 'items' => $list($object([
             'assignment_id' => $i, 'user_id' => $i, 'user_name' => $s, 'holon_id' => $i, 'holon_name' => $s,
@@ -280,6 +287,7 @@ function omoApiResponseName(string $operation, int $status = 200): string
     return match ($operation) {
         'omo_connection_info' => 'Connection', 'omo_catalog' => 'Catalog',
         'omo_permission_catalog' => 'PermissionCatalog', 'omo_list_permissions' => 'PermissionPage',
+        'omo_get_holon_permissions' => 'HolonPermissionPage',
         'omo_list_structure' => 'StructurePage', 'omo_get_holon' => 'Holon', 'omo_get_member' => 'Member',
         'omo_list_records' => 'RecordPage', 'omo_read_record' => 'RecordText', 'omo_list_assignments' => 'AssignmentPage',
         'omo_search' => 'SearchPage', 'omo_list_object_members' => 'AudiencePage',

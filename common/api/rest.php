@@ -12,6 +12,7 @@ function omoRestRoutes(): array
         ['GET', '/permissions', 'omo_list_permissions'],
         ['GET', '/structure', 'omo_list_structure'],
         ['GET', '/structure/{holon_id}', 'omo_get_holon'],
+        ['GET', '/structure/{holon_id}/permissions', 'omo_get_holon_permissions'],
         ['GET', '/members/{user_id}', 'omo_get_member'],
         ['GET', '/records/{module}', 'omo_list_records'],
         ['GET', '/records/{module}/{record_id}', 'omo_read_record'],

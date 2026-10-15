@@ -62,6 +62,7 @@ final class McpStructure
             'full_name' => (string)$holon->getFullDisplayName(), 'type_id' => (int)$holon->get('IDtypeholon'),
             'type' => (string)$holon->getTypeLabel(), 'parent_id' => $parent ? (int)$parent->getId() : null,
             'organization_id' => (int)$organization->getId(),
+            'permissions' => ['tool' => 'omo_get_holon_permissions', 'arguments' => ['holon_id' => (int)$holon->getId()]],
             'updated_at' => $modified instanceof \DateTimeInterface ? $modified->format(DATE_ATOM) : null,
             'url' => \omoMcpIssuer() . '/omo/o/' . (int)$organization->getId() . '/c/' . (int)$holon->getId()];
     }

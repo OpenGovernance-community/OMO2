@@ -76,6 +76,7 @@ try {
             ['user_id' => $uid, 'permission_key' => 'CAN_CREATE_DOCUMENT']],
         ['/structure?limit=1', 'omo_list_structure', ['limit' => 1]],
         ['/structure/' . $hid, 'omo_get_holon', ['holon_id' => $hid]],
+        ['/structure/' . $hid . '/permissions?permission_key=CAN_CREATE_DOCUMENT', 'omo_get_holon_permissions', ['holon_id' => $hid, 'permission_key' => 'CAN_CREATE_DOCUMENT']],
         ['/members/' . $uid, 'omo_get_member', ['user_id' => $uid]],
         ['/records/team?user_id=' . $uid, 'omo_list_records', ['module' => 'team', 'user_id' => $uid]],
         ['/assignments?user_id=' . $uid, 'omo_list_assignments', ['user_id' => $uid]],
@@ -247,7 +248,7 @@ try {
     $items['membership']->set('active', true); $items['membership']->save();
     $grant = McpOauthGrant::authenticate($write, omoMcpPublicUrl()); McpOauthGrant::revokeOwned((int)$grant['id'], $uid);
     mcpCheck(restHttp('GET', '/api/v1/connection', $write)['status'] === 401, 'OAuth revocation shared with REST');
-    echo "rest_http_test: OK (public return formats, response schemas/examples, all 25 routes, MCP parity, scopes, isolation, persisted documents/events/decisions/projects, shared retries, revocation)\n";
+    echo "rest_http_test: OK (public return formats, response schemas/examples, all 26 routes, MCP parity, scopes, isolation, persisted documents/events/decisions/projects, shared retries, revocation)\n";
 } finally {
     mcpCleanup($items);
     if (is_file($jar)) unlink($jar);
