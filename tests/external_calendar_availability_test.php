@@ -1,10 +1,12 @@
 <?php
 declare(strict_types=1);
+function notificationCenterSendEmail($user, $organization, $title, $body, $url) { return true; }
 require_once dirname(__DIR__) . '/shared_functions.php';
 require_once dirname(__DIR__) . '/common/user_availability.php';
 require_once dirname(__DIR__) . '/common/calendar/share-feed.php';
 require_once dirname(__DIR__) . '/meeting/service.php';
 require_once dirname(__DIR__) . '/meeting/translations.php';
+putenv('OMO_EXTERNAL_CALENDAR_ALLOW_PRIVATE_HOSTS=1');
 
 use dbObject\ArrayExternalCalendarEvent;
 use dbObject\CalendarShare;
@@ -90,17 +92,19 @@ try {
 
     $proposed = new Event();
     foreach (['IDuser' => $uid, 'IDorganization' => $organization->getId(), 'start_at' => $day->setTime(14, 0), 'end_at' => $day->setTime(15, 0)] as $field => $value) { $proposed->set($field, $value); }
-    $warning = $proposed->checkInvitationAvailability([]);
+    $invitation = new \dbObject\EventInvitation();
+    $invitation->set('invitation_type', 'user'); $invitation->set('IDuser', $uid);
+    $warning = $proposed->checkInvitationAvailability([$invitation]);
     openingExpect(count($warning['conflicts']) === 1 && $warning['conflicts'][0]['source'] === 'availability', 'Creation reports outside opening windows as a separate availability conflict.');
     openingExpect(!str_contains(json_encode($warning), 'PRIVATE'), 'Conflict checks preserve event privacy.');
     $proposed->set('start_at', $day->setTime(9, 0)); $proposed->set('end_at', $day->setTime(10, 0));
-    openingExpect($proposed->checkInvitationAvailability([])['conflicts'] === [], 'Opening events do not produce false meeting conflicts.');
+    openingExpect($proposed->checkInvitationAvailability([$invitation])['conflicts'] === [], 'Opening events do not produce false meeting conflicts.');
 
     $busyShare = CalendarShare::createForUser($uid, 'Fixture busy', 1, false, '');
     $detailShare = CalendarShare::createForUser($uid, 'Fixture detailed', 1, true, '');
-    $sharedBusy = commonExternalCalendarParseEvents(calendarShareBuildFeed($busyShare, $now), '', true);
-    $sharedDetailed = commonExternalCalendarParseEvents(calendarShareBuildFeed($detailShare, $now), '', true);
-    openingExpect($sharedBusy === [] && $sharedDetailed === [], 'ICS feeds exclude external appointments and opening windows in both modes.');
+    $sharedBusy = calendarShareBuildFeed($busyShare, $now);
+    $sharedDetailed = calendarShareBuildFeed($detailShare, $now);
+    openingExpect(!str_contains($sharedBusy, 'BEGIN:VEVENT') && !str_contains($sharedDetailed, 'BEGIN:VEVENT'), 'ICS feeds exclude external appointments and opening windows in both modes.');
 
     $puts = 0;
     $failReport = false;
@@ -144,7 +148,8 @@ try {
     $profile->set('IDexternalcalendar', $opening->getId());
     openingReject(fn() => meetingDestination($profile), 'calendar_invalid');
 
-    $window->set('active', 0); meetingSave($window);
+    // Live sync has replaced the original fixture with the remote all-day opening.
+    ExternalCalendarEvent::deactivateForCalendar((int)$opening->getId());
     $secondWindow->set('active', 0); meetingSave($secondWindow);
     $empty = ArrayExternalCalendarEvent::busyIntervalsForUser($uid, $day, $day->modify('+1 day'));
     openingExpect(count($empty['unavailable']) === 1 && $empty['unavailable'][0][0] == $day && $empty['unavailable'][0][1] == $day->modify('+1 day'), 'An empty opening calendar does not imply unrestricted availability.');

@@ -1,5 +1,19 @@
 # Journal des nouveautés
 
+- Rendez-vous / changement d’identité (2026-10-15) : « Ce n’est pas moi » affiche immédiatement les champs nom et e-mail sans rechargement ni vérification des disponibilités ; motif conservé, choix mémorisé pour cet agenda et ce compte.
+
+- Rendez-vous / formulaire compact (2026-10-15) : identité sur une seule ligne avec lien discret « Ce n’est pas moi » ; date et horaire réunis sur la même ligne, lien de changement de créneau en dessous.
+
+- Rendez-vous / visiteur connecté (2026-10-15) : identification par le compte OMO, avec retour au formulaire libre via « Ce n’est pas moi » sans déconnexion. Sélecteur des agendas CalDAV personnels, avec l’agenda de destination présélectionné et possibilité de ne pas ajouter de copie ; confirmation chez l’hôte préservée en cas d’échec, nouvelle tentative sans doublon et mise à jour du calendrier local. Migration dédiée incluse.
+
+- Rendez-vous / notifications et synchronisation (2026-10-15) : notification personnelle au propriétaire après confirmation, dans OMO et par e-mail par défaut ; canaux désactivables ou modifiables dans Paramètres > Notifications, avec un réglage commun aux organisations et sans doublon lors des nouvelles tentatives. Le contrôle CalDAV à la réservation actualise toute la plage habituelle du calendrier local et sa date de synchronisation, même si le créneau est refusé ; événements supprimés ou déplacés pris en compte, annotations locales conservées. Migration des notifications personnelles incluse.
+
+- CGU / relecture du français (2026-10-15) : accents et apostrophes rétablis dans les clauses sur les contributions et l’IA ; formulations et terminologie harmonisées.
+
+- Structure / commutateur de vue (2026-10-15) : bouton cercles/liste deplace en bas a gauche pour laisser la place a l assistant en bas a droite.
+
+- CGU / IA, MCP et API (2026-10-15) : acces des contributeurs individuels et des membres d organisations contributrices, sans extension des droits sur les donnees. Absence actuelle de quota de consommation distinguee des protections techniques ; evolution possible vers des plafonds ou abonnements specifiques avec information prealable. Precision du suivi de consommation et de la verification des reponses IA, harmonisation des clauses sur les contributions et date de version fixe.
+
 - IA / compte createur Patreon (2026-10-15) : PATREON_CREATOR_USER_ID ouvre aussi l acces IA et MCP de son organisation sans contribution ni abonnement a sa propre campagne. Connexion OAuth obligatoire ; limite conservee a une personne et une organisation, avec preservation des doublons individuels historiques.
 
 - IA / abonnements et consommation (2026-10-15) : connexion Patreon dans la configuration d organisation, seuil nominal configurable (PATREON_ORGANIZATION_MINIMUM_AMOUNT=40), acces IA et MCP pour ses membres. Nouveaux partages de compte Patreon refuses entre personnes ou entre organisations ; doublons individuels existants conserves et une connexion individuelle plus une organisation autorisees. Compteurs par personne, organisation, fonction et origine (site, API, MCP, Telegram, traitements automatiques), avec jetons des modeles separes des echanges API/MCP et suivi dans les statistiques globales du site, avec filtres de periode, organisation et origine. Aucun contenu de conversation conserve dans ces compteurs.

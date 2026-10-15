@@ -4,7 +4,7 @@ require_once __DIR__ . '/legal_page_helper.php';
 
 $siteTitle = 'OpenMyOrganization';
 $locale = commonLegalResolveLocale();
-$versionDate = (new DateTimeImmutable('today'))->format('d.m.Y');
+$versionDate = '15.10.2026';
 $sourceLang = [
     'legal.terms.page_title' => [
         'text' => 'Conditions générales d’utilisation - {siteTitle}',
@@ -35,7 +35,7 @@ $sourceLang = [
         'context' => 'Terms section title for the project-hosted instance.',
     ],
     'legal.terms.section.2.body' => [
-        'text' => 'L’accès à l’instance officielle est proposé librement, sans abonnement contractuel, engagement de durée ni niveau de service garanti. Le projet peut faire évoluer, limiter, interrompre ou mettre fin à tout ou partie du service, notamment pour la maintenance, la sécurité ou la continuité du projet. Dans la mesure du possible, les interruptions planifiées ou changements importants seront annoncés par les moyens disponibles.',
+        'text' => 'L’accès général à l’instance officielle est proposé librement, sans engagement de durée ni niveau de service garanti. Certaines fonctions sont réservées aux contributeurs selon les conditions décrites ci-dessous. Le projet peut faire évoluer, limiter, interrompre ou mettre fin à tout ou partie du service, notamment pour la maintenance, la sécurité ou la continuité du projet. Dans la mesure du possible, les interruptions planifiées ou les changements importants seront annoncés par les moyens disponibles.',
         'context' => 'Availability, pricing model and possible changes to the hosted service.',
     ],
     'legal.terms.section.3.title' => [
@@ -43,7 +43,7 @@ $sourceLang = [
         'context' => 'Terms section title about project funding.',
     ],
     'legal.terms.section.3.body' => [
-        'text' => 'Le projet est financé notamment par des dons. Des messages peuvent inviter les personnes qui ne sont pas identifiées comme contributrices à soutenir le projet. Ces invitations sont informatives et peuvent être affichées régulièrement. Un don est volontaire : il ne constitue pas le paiement d’un abonnement ou d’une prestation, ne garantit pas un accès particulier et ne confère aucun droit de contrôle sur le développement. Le traitement d’un don effectué par l’intermédiaire d’une plateforme externe dépend aussi des conditions de cette plateforme.',
+        'text' => 'Le projet est financé notamment par des dons et des contributions. Des messages peuvent inviter les personnes qui ne sont pas identifiées comme contributrices à soutenir le projet. Ces invitations sont informatives et peuvent être affichées régulièrement. Une contribution éligible peut ouvrir l’accès aux fonctions réservées aux contributeurs, selon les conditions en vigueur. Elle ne garantit pas le maintien indéfini de ces fonctions ou de leurs modalités d’utilisation et ne confère aucun droit de contrôle sur le développement. Les dons sans avantage associé restent volontaires et ne constituent pas le paiement d’une prestation. Le traitement d’une contribution effectuée par l’intermédiaire d’une plateforme externe dépend aussi des conditions de cette plateforme.',
         'context' => 'Voluntary donations, contribution prompts and external donation processors.',
     ],
     'legal.terms.section.4.title' => [
@@ -51,7 +51,7 @@ $sourceLang = [
         'context' => 'Terms section title for accounts and acceptable use.',
     ],
     'legal.terms.section.4.body' => [
-        'text' => 'Les utilisateurs doivent fournir des informations exactes lorsque cela est requis, protéger leurs moyens d’accès et respecter les droits des autres personnes. Il leur appartient de ne pas utiliser le service pour une activité illicite, porter atteinte aux systèmes, contourner les contrôles d’accès ou déposer des contenus dont ils n’ont pas le droit de disposer. Les administrateurs d’une organisation déterminent les accès, les contenus publiés et les paramètres de leur espace ; ils veillent à disposer des bases et autorisations nécessaires au traitement des données qu’ils y saisissent.',
+        'text' => 'Les utilisateurs doivent fournir des informations exactes lorsque cela est requis, protéger leurs moyens d’accès et respecter les droits des autres personnes. Ils ne doivent pas utiliser le service pour exercer une activité illicite, porter atteinte aux systèmes, contourner les contrôles d’accès ou déposer des contenus dont ils n’ont pas le droit de disposer. Les administrateurs d’une organisation déterminent les accès, les contenus publiés et les paramètres de leur espace ; ils veillent à disposer des bases et autorisations nécessaires au traitement des données qu’ils y saisissent.',
         'context' => 'Account security, acceptable use and organization administrator responsibilities.',
     ],
     'legal.terms.section.5.title' => [
@@ -59,7 +59,7 @@ $sourceLang = [
         'context' => 'Terms section title about hosting and data backups.',
     ],
     'legal.terms.section.5.body.1' => [
-        'text' => 'L’instance hébergée par le projet est hébergée chez Infomaniak. Les sauvegardes de cette infrastructure sont effectuées selon les services et la politique d’Infomaniak applicables à l’hébergement concerné. Le projet ne promet pas de sauvegarde distincte, de fréquence ou de délai de restauration supplémentaires. Les modalités du prestataire peuvent évoluer ; les informations publiées par Infomaniak et la politique de confidentialité d’OMO complètent ce point.',
+        'text' => 'L’instance officielle du projet est hébergée chez Infomaniak. Les sauvegardes de cette infrastructure sont effectuées selon les services et la politique d’Infomaniak applicables à l’hébergement concerné. Le projet ne promet pas de sauvegarde distincte ni de garanties supplémentaires quant à la fréquence des sauvegardes ou aux délais de restauration. Les modalités du prestataire peuvent évoluer ; les informations publiées par Infomaniak et la politique de confidentialité d’OMO complètent ce point.',
         'context' => 'Hosting provider and scope of backup commitments for the official instance.',
     ],
     'legal.terms.section.5.body.2' => [
@@ -75,7 +75,7 @@ $sourceLang = [
         'context' => 'Updates, optional automation and the operator responsibility to maintain self-hosted deployments.',
     ],
     'legal.terms.section.7.title' => [
-        'text' => '7. Bugs et signalements',
+        'text' => '7. Bogues et signalements',
         'context' => 'Terms section title about software defects and reports.',
     ],
     'legal.terms.section.7.body' => [
@@ -103,10 +103,34 @@ $sourceLang = [
         'context' => 'Third-party integrations and reference to the privacy policy.',
     ],
     'legal.terms.section.10.title' => [
-        'text' => '10. Évolution des conditions et droit applicable',
+        'text' => '10. Intelligence artificielle, MCP et API',
+        'context' => 'Terms section title for AI features and programmatic access.',
+    ],
+    'legal.terms.section.10.body.1' => [
+        'text' => 'Sur l’instance hébergée par le projet, l’usage des fonctions d’intelligence artificielle (IA), du MCP (Model Context Protocol) et de l’API est réservé aux contributeurs reconnus par le service, au titre d’une contribution personnelle ou de celle de leur organisation. La contribution doit remplir les conditions d’éligibilité en vigueur, notamment les conditions de validation et, le cas échéant, de montant indiquées lors de la connexion à Patreon. La contribution d’une organisation ouvre ces accès à ses membres actifs uniquement dans le cadre de cette organisation. Les droits d’accès de chaque personne et les autorisations accordées aux applications connectées restent applicables ; une contribution ne donne aucun droit supplémentaire sur les données.',
+        'context' => 'Contributor eligibility through personal or organization support and preservation of access permissions.',
+    ],
+    'legal.terms.section.10.body.2' => [
+        'text' => 'À la date de cette version, aucun quota de consommation n’est appliqué par le projet à l’usage de l’IA, du MCP ou de l’API : aucun plafond de requêtes, de jetons ou de caractères par période n’est imposé. Cette absence de quota ne constitue pas une garantie de capacité ou de disponibilité illimitée. Les limites techniques, notamment celles qui concernent la fréquence des appels, la taille des demandes et la durée des traitements, ainsi que les mesures de sécurité et de prévention des abus, restent applicables. Les services tiers utilisés peuvent imposer leurs propres limites et tarifs.',
+        'context' => 'Current absence of consumption allowances, distinct from technical safeguards and third-party limits.',
+    ],
+    'legal.terms.section.10.body.3' => [
+        'text' => 'Cette politique peut évoluer en fonction de la charge, des coûts et des ressources nécessaires au fonctionnement du service. Le projet peut notamment introduire des plafonds de consommation, des quotas par personne ou par organisation, ou des abonnements spécifiques pour certaines fonctions ou certains volumes. Ces changements seront annoncés avant leur entrée en vigueur, avec leurs conditions et leur date d’application. L’absence actuelle de quota ne constitue pas un droit acquis à un usage sans plafond. Les usages passés ne feront l’objet d’aucune facturation rétroactive et aucune souscription automatique à un nouvel abonnement payant ne sera effectuée ; toute nouvelle offre payante nécessitera une acceptation explicite.',
+        'context' => 'Prospective changes to usage policy with notice and explicit acceptance of new paid offers.',
+    ],
+    'legal.terms.section.10.body.4' => [
+        'text' => 'Pour suivre la charge et préparer ces évolutions, le service enregistre des indicateurs d’utilisation rattachés à la personne et, le cas échéant, à l’organisation : nombre d’appels, fonction utilisée, origine de l’appel (site, API, MCP ou autre intégration), nombre de jetons lorsque le fournisseur le communique, ou volumes de caractères en entrée et en sortie. Les échanges API et MCP sont distingués de la consommation des modèles d’IA : le nombre de jetons consommés par un assistant externe n’est pas nécessairement accessible au projet. Ces compteurs ne contiennent pas le texte des questions ou des réponses et servent au suivi de la consommation, au diagnostic et à la gestion des ressources.',
+        'context' => 'Purpose and scope of usage metering, separating external MCP/API activity from AI model tokens.',
+    ],
+    'legal.terms.section.10.body.5' => [
+        'text' => 'Les réponses produites par l’IA peuvent être inexactes, incomplètes ou inadaptées. Il appartient à la personne qui les utilise de les vérifier avant de s’y fier ou d’agir. Les données transmises à un fournisseur d’IA ou à une application connectée par MCP ou API dépendent de la fonction utilisée, de la configuration et des autorisations accordées. Ne transmettez que des données que vous avez l’autorisation de communiquer à ces destinataires. Les conditions des services tiers et la <a href="/common/politique-confidentialite.php">politique de confidentialité</a> complètent les présentes dispositions.',
+        'context' => 'Human verification of AI output and authorized sharing with configured providers and connected applications.',
+    ],
+    'legal.terms.section.11.title' => [
+        'text' => '11. Évolution des conditions et droit applicable',
         'context' => 'Terms section title for revisions and applicable law.',
     ],
-    'legal.terms.section.10.body' => [
+    'legal.terms.section.11.body' => [
         'text' => 'Ces conditions peuvent être mises à jour lorsque le logiciel, son hébergement ou les exigences applicables évoluent. La version publiée sur cette page s’applique à compter de sa publication. Les présentes conditions sont interprétées selon le droit suisse, sous réserve des règles impératives applicables et des protections dont bénéficie toute personne utilisatrice en vertu du droit de son lieu de résidence. Si une disposition est inapplicable, les autres dispositions conservent leur effet dans la mesure permise par la loi.',
         'context' => 'Terms revision, Swiss law and mandatory protections.',
     ],
@@ -114,8 +138,12 @@ $sourceLang = [
 $lang = commonLegalLoadBundle('common_legal_terms_page', $sourceLang, $locale);
 
 $sections = [];
-for ($sectionNumber = 1; $sectionNumber <= 10; $sectionNumber++) {
-    $paragraphKeys = $sectionNumber === 5 ? ['body.1', 'body.2'] : ($sectionNumber === 8 ? ['body.1', 'body.2'] : ['body']);
+for ($sectionNumber = 1; $sectionNumber <= 11; $sectionNumber++) {
+    $paragraphKeys = match ($sectionNumber) {
+        5, 8 => ['body.1', 'body.2'],
+        10 => ['body.1', 'body.2', 'body.3', 'body.4', 'body.5'],
+        default => ['body'],
+    };
     $paragraphs = [];
     foreach ($paragraphKeys as $paragraphKey) {
         $paragraphs[] = commonLegalT(

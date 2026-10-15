@@ -105,7 +105,7 @@ $holonTemplateCardIconUrl = '/img/omo-parameters/holon-template.png';
                 type="button"
                 class="omo-settings__card omo-card omo-card--interactive"
                 data-omo-settings-drawer-title="<?= htmlspecialchars(omoParametersIndexT('parameters.index.card.notifications.title'), ENT_QUOTES, 'UTF-8') ?>"
-                data-omo-settings-drawer-url="/omo/api/parameters/notifications/index.php"
+                data-omo-settings-drawer-url="/omo/api/parameters/notifications/index.php?oid=<?= (int)$currentOrganizationId ?>"
                 data-omo-settings-drawer-mode="fetch"
             >
                 <span class="omo-settings__card-head">
