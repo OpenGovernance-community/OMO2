@@ -41,8 +41,10 @@ try {
     $circle = $makeHolon('communication', 'Communication', 2, $root);
     $budget = $makeHolon('budget', 'Budget', 2, $root);
     $nested = $makeHolon('cuisine', 'Cuisine', 2, $circle);
-    $template = $makeHolon('template', 'Memory template', 1, $root, ['templatename' => 'Memory template']);
-    $role = $makeHolon('memory', 'Memoire', 1, $circle, ['IDholon_template' => $template]);
+    $template = $makeHolon('template', 'Memory template', 1, $root, ['templatename' => 'Memory template', 'visible' => 0]);
+    $intermediateTemplate = $makeHolon('intermediate_template', 'Inherited memory template', 1, $root,
+        ['visible' => 0, 'IDholon_template' => $template]);
+    $role = $makeHolon('memory', 'Memoire', 1, $circle, ['IDholon_template' => $intermediateTemplate]);
     $pilot = $makeHolon('pilot', 'Lien pilotage', 1, $circle);
     foreach (['germain' => 'Germain', 'luc' => 'Luc', 'inactive_member' => 'Inactive member'] as $key => $name) {
         $items[$key] = mcpFixture(User::class, ['firstname' => $name, 'active' => 1]);
@@ -266,6 +268,50 @@ try {
     }
     foreach (['POST', 'PATCH', 'DELETE'] as $method) {
         mcpCheck(restHttp($method, '/api/v1/permissions', $token)['status'] === 405, 'Permission endpoint is read-only');
+    }
+    // Production-shaped case, using isolated local IDs: member -> role -> hidden template -> parent only.
+    $swiss = $makeHolon('swiss', 'Suisse', 2, $root);
+    $memoryTemplate = $makeHolon('swiss_template', 'Memory model', 1, $root, ['visible' => 0]);
+    $memory = $makeHolon('swiss_memory', 'Memoire Suisse', 1, $swiss, ['IDholon_template' => $memoryTemplate]);
+    $items['benjamin'] = mcpFixture(User::class, ['firstname' => 'Benjamin', 'active' => 1]);
+    $benjamin = (int)$items['benjamin']->getId();
+    $items['benjamin_org'] = mcpFixture(UserOrganization::class, ['IDorganization' => $oid, 'IDuser' => $benjamin, 'active' => 1]);
+    $items['benjamin_memory'] = mcpFixture(UserHolon::class, ['IDuser' => $benjamin, 'IDholon' => $memory, 'active' => 1, 'is_membership' => 1]);
+    foreach (['CAN_CREATE_EVENT', 'CAN_EDIT_EVENT', 'CAN_DELETE_EVENT'] as $permissionKey) {
+        $makeGrant('swiss_' . $permissionKey, $memoryTemplate, $permissionKey, 'parent_circle');
+        $args = ['user_id' => $benjamin, 'permission_key' => $permissionKey];
+        $personRows = permissionPages($grant, $args);
+        mcpCheck(count($personRows) === 1 && $personRows[0]['space']['holon_id'] === $swiss
+            && $personRows[0]['assigned_holon']['holon_id'] === $memory && $personRows[0]['source_holon']['holon_id'] === $memoryTemplate
+            && $personRows[0]['member_type'] === 'member' && $personRows[0]['kind'] === 'normal',
+            'Hidden template grants explain ordinary member event CRUD on the parent circle');
+        mcpCheck(HolonPermission::userHasPermissionForHolonContext($benjamin, $oid, $permissionKey, $swiss), 'Inspection agrees with native parent authorization');
+        mcpCheck(permissionPages($grant, $args + ['holon_id' => $memory]) === [], 'Parent-only rights do not apply to the assigned role itself');
+        $target = McpPermissions::holonPermissions($grant, ['holon_id' => $swiss, 'permission_key' => $permissionKey]);
+        $matching = array_values(array_filter($target['items'], static fn(array $row): bool => ($row['assigned_holon']['holon_id'] ?? 0) === $memory));
+        mcpCheck(count($matching) === 1 && $matching[0]['source_holon']['holon_id'] === $memoryTemplate, 'Target discovery retains the hidden template source');
+        mcpCheck(permissionPages($grant, $matching[0]['holders']['arguments']) === $personRows, 'Circle holder navigation finds the member through the template');
+        foreach ([['omo_list_permissions', '/permissions', $args],
+            ['omo_get_holon_permissions', '/structure/' . $swiss . '/permissions', ['holon_id' => $swiss, 'permission_key' => $permissionKey]]] as [$operation, $path, $httpArgs]) {
+            $response = restHttp('GET', '/api/v1' . $path . '?' . http_build_query(array_diff_key($httpArgs, ['holon_id' => true])), $token);
+            mcpCheck($response['status'] === 200 && count($response['data']['items']) > 0, 'Inherited parent rights are exposed over HTTP');
+            restCheckSchema($operation, $response);
+            mcpCheck((restRpc($token, $operation, $httpArgs)['data']['result']['structuredContent'] ?? null) === $response['data'], 'Inherited parent CRUD REST/MCP parity');
+        }
+    }
+    // Reading a source model must not put it in the target-space cache or expose hidden memberships.
+    $makeGrant('swiss_extension', $memoryTemplate, 'CAN_CREATE_EVENT', 'organization', 'member', true);
+    $extended = permissionPages($grant, ['user_id' => $benjamin, 'permission_key' => 'CAN_CREATE_EVENT', 'mode' => 'extended']);
+    mcpCheck($extended && !in_array($memoryTemplate, array_column(array_column($extended, 'space'), 'holon_id'), true), 'Source access does not leak hidden template destinations');
+    mcpCheck(count(permissionPages($grant, ['user_id' => $benjamin, 'permission_key' => 'CAN_CREATE_EVENT'])) === 1, 'Normal mode still excludes hidden-template extensions');
+    mcpCheck(restHttp('GET', '/api/v1/structure/' . $memoryTemplate . '/permissions', $token)['status'] === 422, 'Hidden models remain unavailable as target spaces');
+    foreach (['active' => 0, 'IDorganization' => $items['other_org']->getId(), 'archived_at' => new DateTimeImmutable()] as $field => $invalidValue) {
+        $original = $items['swiss_template']->get($field);
+        $items['swiss_template']->set($field, $invalidValue); $items['swiss_template']->save();
+        mcpCheck(permissionPages($grant, ['user_id' => $benjamin, 'permission_key' => 'CAN_CREATE_EVENT']) === [], 'Unreadable/inactive/foreign template is not disclosed');
+        $target = McpPermissions::holonPermissions($grant, ['holon_id' => $swiss, 'permission_key' => 'CAN_CREATE_EVENT']);
+        mcpCheck(!in_array($memory, array_column(array_column($target['items'], 'assigned_holon'), 'holon_id'), true), 'Target discovery also rejects inaccessible template sources');
+        $items['swiss_template']->set($field, $original); $items['swiss_template']->save();
     }
     // Exercise the scan-boundary empty page, then find a holder on a later page.
     for ($i = 0; $i < 21; $i++) {
