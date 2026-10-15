@@ -42,7 +42,7 @@ mcpProtocolCheck($serverInfo['icons'][0]['src'] === 'https://mcp.example.invalid
 mcpProtocolCheck(omoMcpResourceMetadata()['resource_name'] === $serverInfo['title'], 'OAuth and MCP names agree');
 mcpProtocolCheck(omoMcpDispatch(['jsonrpc' => '2.0', 'method' => 'notifications/initialized'], []) === null, 'Notification has no response');
 mcpProtocolCheck(omoMcpDispatch(['jsonrpc' => '2.0', 'id' => 2, 'method' => 'delete_everything'], [])['error']['code'] === -32601, 'Unknown method');
-mcpProtocolCheck(count(omoMcpTools()) === 25, 'Twenty-five tools, including permission inspection');
+mcpProtocolCheck(count(omoMcpTools()) === 26, 'Twenty-six tools, including target holon permission inspection');
 mcpProtocolCheck(omoMcpNormalizeScope('decisions:create organization:read') === 'organization:read decisions:create', 'Decision scope is supported');
 mcpProtocolCheck(omoMcpNormalizeScope('projects:write organization:read') === 'organization:read projects:write', 'Project write scope is supported');
 $byName = array_column(omoMcpTools(), null, 'name');
