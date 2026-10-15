@@ -76,6 +76,10 @@ try {
         'title' => 'SECRET all day', 'start_at' => $day, 'end_at' => $day->setTime(23, 59, 59), 'is_all_day' => 1, 'active' => 1, 'is_busy' => 1]);
     shareFixture(ExternalCalendarEvent::class, ['IDexternalcalendar' => $calendar->getId(), 'source_key' => 'transparent',
         'title' => 'SECRET transparent', 'start_at' => $day->setTime(8, 0), 'end_at' => $day->setTime(12, 0), 'active' => 1, 'is_busy' => 0]);
+    $icsCalendar = shareFixture(ExternalCalendar::class, ['IDuser' => $uid, 'provider' => 'ics', 'title' => 'Google ICS',
+        'calendar_url' => 'https://example.invalid/google.ics', 'username' => 'unused', 'password_encrypted' => 'unused', 'active' => 1]);
+    shareFixture(ExternalCalendarEvent::class, ['IDexternalcalendar' => $icsCalendar->getId(), 'source_key' => 'google-event',
+        'title' => 'GOOGLE imported', 'start_at' => $day->setTime(9, 0), 'end_at' => $day->setTime(10, 0), 'active' => 1, 'is_busy' => 1]);
     $busy = CalendarShare::createForUser($uid, 'PRIVATE recipient', 3, false, '');
     $clear = CalendarShare::createForUser($uid, 'PRIVATE recipient 2', 3, true, '');
     [, $horizonEnd] = $busy->visibilityRange($today);
@@ -100,13 +104,15 @@ try {
     shareExpect(!str_contains($busyIcs, 'SECRET') && !str_contains($busyIcs, 'PRIVATE') && !str_contains($busyIcs, 'DESCRIPTION:SECRET')
         && !str_contains($busyIcs, 'LOCATION:') && !str_contains($busyIcs, 'ATTENDEE:'), 'Busy mode discloses no private metadata');
     $busyEvents = commonExternalCalendarParseEvents($busyIcs, '', true);
-    shareExpect(count($busyEvents) === 4, 'Both OMO organizations and busy external instances aggregated without unrelated events');
+    shareExpect(count($busyEvents) === 2, 'Busy feed includes both OMO organizations without ICS or CalDAV imports');
     $clearIcs = calendarShareBuildFeed($clear, $today);
     $clearEvents = commonExternalCalendarParseEvents($clearIcs, '', true);
-    shareExpect(count($clearEvents) === 5, 'Detailed feed includes transparent external events');
+    shareExpect(count($clearEvents) === 2, 'Detailed feed excludes busy, all-day and transparent external events');
     foreach ([$busyIcs, $clearIcs] as $feed) {
         shareExpect(substr_count($feed, 'TRIGGER;RELATED=START:-PT120M') === 1
-            && substr_count($feed, 'TRIGGER;RELATED=START:-PT30M') === 1, 'Shared feeds include the owner personal preparation reminders.');
+            && substr_count($feed, 'TRIGGER;RELATED=START:-PT30M') === 0, 'Shared feeds include only OMO personal preparation reminders.');
+        shareExpect(!str_contains($feed, 'GOOGLE') && !str_contains($feed, 'SECRET external')
+            && !str_contains($feed, 'SECRET all day') && !str_contains($feed, 'SECRET transparent'), 'No imported event metadata is exported.');
         shareExpect(substr_count($feed, 'TRIGGER;RELATED=START:-PT5M') === substr_count($feed, 'BEGIN:VEVENT'),
             'Every actual appointment gets exactly one five-minute reminder.');
     }
@@ -115,25 +121,26 @@ try {
         shareExpect($omoEvent['start_at'] == $day->setTime(9, 0) && $omoEvent['end_at'] == $day->setTime(11, 0),
             'Shared OMO appointment times exclude personal preparation and closing.');
     }
-    shareExpect(str_contains($clearIcs, 'SECRET One') && str_contains($clearIcs, 'SECRET Two') && str_contains($clearIcs, 'LOCATION:SECRET place'), 'Detailed content exported');
+    shareExpect(str_contains($clearIcs, 'SECRET One') && str_contains($clearIcs, 'SECRET Two') && !str_contains($clearIcs, 'LOCATION:SECRET place'), 'Only native OMO detailed content exported');
     shareExpect(!str_contains($clearIcs, 'UNRELATED') && !str_contains($clearIcs, 'OUTSIDE') && !str_contains($clearIcs, 'CANCELLED'), 'Scope, horizon and cancellation respected');
     shareExpect(!str_contains($clearIcs, 'SECRET account') && !str_contains($clearIcs, 'PRIVATE') && !str_contains($clearIcs, 'SECRET uid'), 'No credentials, private share names or source keys exported');
     shareExpect(!in_array('ATTENDEE:injected@example.invalid', commonExternalCalendarUnfoldLines($clearIcs), true), 'ICS content injection escaped');
     foreach (explode("\r\n", trim($clearIcs)) as $line) { shareExpect(strlen($line) <= 75, 'ICS octet folding'); }
-    $fullExternal = array_values(array_filter($clearEvents, static fn($event) => str_starts_with($event['title'], 'SECRET external')))[0];
-    shareExpect($fullExternal['start_at'] == $day->setTime(8, 0) && $fullExternal['end_at'] == $day->setTime(12, 0), 'UTC round trip preserves full hours');
-    $allDay = array_values(array_filter($clearEvents, static fn($event) => $event['title'] === 'SECRET all day'))[0];
-    shareExpect($allDay['is_all_day'] && $allDay['end_at'] == $day->modify('+1 day'), 'All-day exclusive ICS end round trips');
     shareExpect($clearIcs === calendarShareBuildFeed($clear, $today), 'Stable feed enables conditional requests');
     $openingCalendar = shareFixture(ExternalCalendar::class, ['IDuser' => $uid, 'provider' => 'caldav', 'title' => 'Opening calendar',
         'calendar_url' => 'https://example.invalid/opening', 'username' => 'unused', 'password_encrypted' => 'unused', 'active' => 1, 'availability_only' => 1]);
     shareFixture(ExternalCalendarEvent::class, ['IDexternalcalendar' => $openingCalendar->getId(), 'source_key' => 'opening',
         'title' => 'OPENING WINDOW', 'start_at' => $day->setTime(8, 0), 'end_at' => $day->setTime(18, 0), 'active' => 1, 'is_busy' => 1]);
     $withOpening = calendarShareBuildFeed($clear, $today);
-    $openingBlock = array_values(array_filter(explode('BEGIN:VEVENT', $withOpening), static fn($block) => str_contains($block, 'SUMMARY:OPENING WINDOW')));
-    shareExpect(count($openingBlock) === 1 && !str_contains($openingBlock[0], 'BEGIN:VALARM'), 'Availability windows do not receive appointment reminders.');
+    shareExpect($withOpening === $clearIcs && calendarShareBuildFeed($busy, $today) === $busyIcs, 'External availability windows leave both feeds unchanged.');
     $external->set('title', 'UPDATED external'); $external->save();
-    shareExpect(str_contains(calendarShareBuildFeed($clear, $today), 'UPDATED external'), 'Feed follows local changes without regenerating link');
+    shareExpect(calendarShareBuildFeed($clear, $today) === $clearIcs, 'External updates leave the existing ICS link unchanged.');
+    $event->set('title', 'UPDATED OMO'); $event->save();
+    $updatedIcs = calendarShareBuildFeed($clear, $today);
+    shareExpect(str_contains($updatedIcs, 'SUMMARY:UPDATED OMO') && !str_contains($updatedIcs, 'SUMMARY:SECRET Two'), 'OMO updates appear without regenerating the link.');
+    $stableUid = hash_hmac('sha256', 'omo:' . $event->getId(), (string)$clear->get('token')) . '@omo-calendar-share';
+    shareExpect(in_array('UID:' . $stableUid, commonExternalCalendarUnfoldLines($clearIcs), true)
+        && in_array('UID:' . $stableUid, commonExternalCalendarUnfoldLines($updatedIcs), true), 'Existing OMO event identifiers remain stable.');
     shareReject(fn() => CalendarShare::revokeForUser((int)$busy->getId(), (int)$other->getId()), 'missing');
 
     $mode = $argv[1] ?? '';
