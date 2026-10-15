@@ -71,6 +71,9 @@ try {
     $day = (new DateTimeImmutable('next monday', new DateTimeZone('Europe/Zurich')))->format('Y-m-d');
     foreach ([
         ['/connection', 'omo_connection_info', []], ['/catalog', 'omo_catalog', []],
+        ['/permissions/catalog?query=DOCUMENT&limit=2', 'omo_permission_catalog', ['query' => 'DOCUMENT', 'limit' => 2]],
+        ['/permissions?user_id=' . $uid . '&permission_key=CAN_CREATE_DOCUMENT', 'omo_list_permissions',
+            ['user_id' => $uid, 'permission_key' => 'CAN_CREATE_DOCUMENT']],
         ['/structure?limit=1', 'omo_list_structure', ['limit' => 1]],
         ['/structure/' . $hid, 'omo_get_holon', ['holon_id' => $hid]],
         ['/members/' . $uid, 'omo_get_member', ['user_id' => $uid]],
@@ -244,7 +247,7 @@ try {
     $items['membership']->set('active', true); $items['membership']->save();
     $grant = McpOauthGrant::authenticate($write, omoMcpPublicUrl()); McpOauthGrant::revokeOwned((int)$grant['id'], $uid);
     mcpCheck(restHttp('GET', '/api/v1/connection', $write)['status'] === 401, 'OAuth revocation shared with REST');
-    echo "rest_http_test: OK (public return formats, response schemas/examples, all 23 routes, MCP parity, scopes, isolation, persisted documents/events/decisions/projects, shared retries, revocation)\n";
+    echo "rest_http_test: OK (public return formats, response schemas/examples, all 25 routes, MCP parity, scopes, isolation, persisted documents/events/decisions/projects, shared retries, revocation)\n";
 } finally {
     mcpCleanup($items);
     if (is_file($jar)) unlink($jar);

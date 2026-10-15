@@ -45,6 +45,23 @@ function omoApiScopeChallenge(array $grant, string $requiredScope): string
 function omoMcpTools(): array
 {
     $tools = [
+        ['name' => 'omo_permission_catalog', 'title' => 'Discover OMO permission keys',
+            'description' => 'Read the permission catalog with labels, descriptions and contextual/global semantics. Optional query matches a literal substring of the key, title or description. Follow next_offset until null. Use the returned permission_key with omo_list_permissions; catalog entries are definitions, not grants to a person. Read-only.',
+            'inputSchema' => ['type' => 'object', 'properties' => [
+                'query' => ['type' => 'string', 'minLength' => 1, 'maxLength' => 500],
+                'offset' => ['type' => 'integer', 'minimum' => 0, 'default' => 0],
+                'limit' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 50, 'default' => 50]], 'additionalProperties' => false]],
+        ['name' => 'omo_list_permissions', 'title' => 'Explain who has which rights and why',
+            'description' => 'Inspect rights by person, target space, permission, or combined filters (at least one required). Resolve names through omo_list_records module team/structure, and keys through omo_permission_catalog. Returns person, permission, assigned role/circle/group, source configuration/template and each affected visible space. Default mode normal ALWAYS excludes exceptional authorities and temporary admin overrides. Use extended or all ONLY on an explicit user request about exceptional rights; requires_activation does not mean the mode is currently enabled. Default membership grants and fallback keys are explained. Collective rights and administrator bypasses are excluded. General edit/delete rights remain subject to object visibility/ownership and application availability. Deduplicate people/spaces when summarizing; do not infer a role from membership alone. Follow next_cursor until null with identical filters, including after empty pages. complete only covers visible information: qualify exclusive claims accordingly. No rights or modes are changed. Read-only, no extra OAuth scope.',
+            'inputSchema' => ['type' => 'object', 'properties' => [
+                'user_id' => ['type' => 'integer', 'minimum' => 1],
+                'holon_id' => ['type' => 'integer', 'minimum' => 0, 'description' => 'Target space, not the granting role. 0 is the organization space; use the actual root holon ID for its circle.'],
+                'permission_key' => ['type' => 'string', 'pattern' => '^[A-Z][A-Z0-9_]{0,189}$'],
+                'mode' => ['type' => 'string', 'enum' => ['normal', 'extended', 'all'], 'default' => 'normal'],
+                'cursor' => ['type' => 'string', 'pattern' => '^[0-9]{1,10}:[0-9]{1,10}$', 'description' => 'Copy next_cursor unchanged; keep every filter identical.'],
+                'limit' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 50, 'default' => 50]],
+                'anyOf' => [['required' => ['user_id']], ['required' => ['holon_id']], ['required' => ['permission_key']]],
+                'additionalProperties' => false]],
         ['name' => 'omo_list_object_members', 'title' => 'List members and invited people',
             'description' => 'Get complete paginated member/contact lists for an organization, holon, event (including meetings), project or decision. To contact organization members directly, use object_type organization with object_id from omo_connection_info.organization.id; no holon, meeting or management role is required. Resolve names through module team, pass user_ids for one or several selected members, or omit user_ids for all active members only when the user requests everyone. Holons include effective circle memberships and descendant roles; events return people, expanding invited holons into their members and deduplicating overlapping memberships and direct user invitations, or default holon membership. These are the effective invitees, not just holon names. Attendance and the accepted/present checkbox never filter this list. Referenced event contacts may be listed even when not eligible for email. Projects include the responsible person and active assignees. Decision participants and external event guest addresses require management permission, preserving native privacy. Returns names, scoped email/phone, relationship and invitation status, mail_eligible, can_send and recipient_count. Follow next_offset until null. Before sending user-requested mail, show the destination/title and recipient_count, and copy audience_token unchanged into omo_send_object_email. Declined/revoked people are excluded from sending, active members only, one delivery per unique email. A changed audience requires a new preview.',
             'inputSchema' => ['type' => 'object', 'properties' => [
@@ -188,6 +205,8 @@ function omoMcpToolArguments(string $name, mixed $input): array
     if (in_array($name, ['omo_get_availability', 'omo_list_event_spaces', 'omo_create_event'], true)) return omoMcpCalendarValidate($name, $args);
     if ($name === 'omo_send_object_email') { omoObjectMailValidate($args); return $args; }
     $allowed = match ($name) {
+        'omo_permission_catalog' => ['query', 'offset', 'limit'],
+        'omo_list_permissions' => ['user_id', 'holon_id', 'permission_key', 'mode', 'cursor', 'limit'],
         'omo_list_object_members' => ['object_type', 'object_id', 'user_ids', 'offset', 'limit'],
         'omo_object_email_status' => ['mail_id'],
         'omo_get_member' => ['user_id'],
@@ -204,6 +223,14 @@ function omoMcpToolArguments(string $name, mixed $input): array
     if (array_diff(array_keys($args), $allowed)) throw new InvalidArgumentException('Unknown argument.');
     if ($name === 'omo_list_object_members') omoObjectMailValidateSelection($args);
     foreach ($args as $key => $value) {
+        if ($name === 'omo_list_permissions' && in_array($key, ['permission_key', 'mode', 'cursor'], true)) {
+            if (!is_string($value) || !match ($key) {
+                'permission_key' => (bool)preg_match('/^[A-Z][A-Z0-9_]{0,189}$/D', $value),
+                'mode' => in_array($value, ['normal', 'extended', 'all'], true),
+                'cursor' => (bool)preg_match('/^[0-9]{1,10}:[0-9]{1,10}$/D', $value),
+            }) throw new InvalidArgumentException('Invalid ' . $key . '.');
+            continue;
+        }
         if ($key === 'archived') {
             if (!is_bool($value)) throw new InvalidArgumentException('archived must be a boolean.');
             continue;
@@ -285,6 +312,7 @@ function omoMcpToolArguments(string $name, mixed $input): array
             continue;
         }
         $minimum = in_array($key, ['after_id', 'offset'], true) || ($key === 'parent_id' && $name === 'omo_list_records')
+            || ($name === 'omo_list_permissions' && $key === 'holon_id')
             || ($name === 'omo_create_document' && in_array($key, ['holon_id', 'parent_document_id'], true)) ? 0 : 1;
         $maxLimit = $name === 'omo_read_record' ? 20000 : 50;
         if (!is_int($value) || $value < $minimum || ($key === 'limit' && $value > $maxLimit)
@@ -294,6 +322,9 @@ function omoMcpToolArguments(string $name, mixed $input): array
     }
     if ($name === 'omo_get_holon' && !isset($args['holon_id'])) throw new InvalidArgumentException('holon_id is required.');
     if ($name === 'omo_get_member' && !isset($args['user_id'])) throw new InvalidArgumentException('user_id is required.');
+    if ($name === 'omo_list_permissions' && !isset($args['user_id']) && !isset($args['holon_id']) && !isset($args['permission_key'])) {
+        throw new InvalidArgumentException('Supply user_id, holon_id or permission_key.');
+    }
     if ($name === 'omo_list_object_members' && !isset($args['object_type'], $args['object_id'])) throw new InvalidArgumentException('object_type and object_id are required.');
     if ($name === 'omo_object_email_status' && !isset($args['mail_id'])) throw new InvalidArgumentException('mail_id is required.');
     if ($name === 'omo_create_document' && (!isset($args['title'], $args['request_key'])
@@ -316,6 +347,8 @@ function omoApiExecuteOperation(string $name, array $args, array $grant): array
     $scope = omoApiOperationScope($name);
     if (!in_array($scope, explode(' ', $grant['scope'] ?? ''), true)) throw new OmoApiScopeException($scope);
     return match ($name) {
+        'omo_permission_catalog' => \dbObject\McpPermissions::catalog($grant, $args),
+        'omo_list_permissions' => \dbObject\McpPermissions::permissions($grant, $args),
         'omo_list_project_spaces' => \dbObject\McpProjectWrite::spaces($grant, $args),
         'omo_get_project' => \dbObject\McpProjectWrite::read($grant, $args['project_id']),
         'omo_create_project' => \dbObject\McpProjectWrite::write($grant, $args, true),

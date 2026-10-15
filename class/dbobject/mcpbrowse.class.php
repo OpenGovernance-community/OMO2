@@ -93,6 +93,9 @@ final class McpBrowse
                 'date_field' => substr($definition['date'], strpos($definition['date'], '.') + 1)];
         }
         return ['organization_id' => (int)$organization->getId(), 'modules' => $modules,
+            'permission_inspection' => ['catalog_tool' => 'omo_permission_catalog', 'query_tool' => 'omo_list_permissions',
+                'filters' => ['user_id', 'holon_id', 'permission_key'], 'default_mode' => 'normal',
+                'exceptional_rights' => 'Use mode extended or all only when explicitly requested; no activation or rights changes.'],
             'availability' => ['tool' => 'omo_get_availability', 'member_lookup_module' => 'team', 'max_members' => 20, 'max_days' => 31,
                 'includes_imported_calendars' => true, 'timezone' => 'Europe/Zurich', 'private_event_details' => false],
             'event_creation' => ['authorized' => \omoMcpCanCreateEvents($grant), 'scope' => \OMO_MCP_EVENT_SCOPE,

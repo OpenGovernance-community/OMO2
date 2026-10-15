@@ -81,6 +81,8 @@ function omoApiResponseSchemas(): array
         'organization_id' => $i,
         'modules' => $list($object(['module' => $moduleSchema, 'description' => $s, 'filters' => $strings,
             'user_relations' => $strings, 'statuses' => $list(['type' => ['string', 'integer']]), 'date_field' => $s])),
+        'permission_inspection' => $object(['catalog_tool' => $s, 'query_tool' => $s, 'filters' => $strings,
+            'default_mode' => $s, 'exceptional_rights' => $s]),
         'availability' => $object(['tool' => $s, 'member_lookup_module' => $s, 'max_members' => $i, 'max_days' => $i,
             'includes_imported_calendars' => $b, 'timezone' => $s, 'private_event_details' => $b]),
         'project_writing' => $object(['authorized' => $b, 'scope' => $s, 'discover_tool' => $s, 'read_tool' => $s,
@@ -97,6 +99,28 @@ function omoApiResponseSchemas(): array
             'default_visibility' => $s, 'requires_omo_permission' => $s]), 'instructions' => $instructions,
     ]);
     $schemas['StructurePage'] = $object(['organization_id' => $i, 'items' => $list($ref('Holon')), 'next_after_id' => $nextId]);
+    $schemas['PermissionDefinition'] = $object(['permission_key' => $s, 'title' => $s, 'description' => $s,
+        'group' => $s, 'is_contextual' => $b]);
+    $schemas['PermissionCatalog'] = $object(['organization_id' => $i, 'items' => $list($ref('PermissionDefinition')),
+        'next_offset' => $nextOffset, 'complete' => $complete, 'instructions' => $instructions]);
+    $schemas['PermissionSpace'] = $object(['holon_id' => $i + ['description' => '0 denotes the organization space, distinct from its root circle.'],
+        'name' => $s, 'type' => $s, 'url' => $url]);
+    $permissionHolon = ['anyOf' => [$ref('PermissionSpace'), ['type' => 'null']]];
+    $schemas['PermissionGrant'] = $object([
+        'member' => $object(['user_id' => $i, 'name' => $s, 'url' => $url]),
+        'permission' => $ref('PermissionDefinition'), 'kind' => $s + ['enum' => ['normal', 'extended']],
+        'requires_activation' => $b + ['description' => 'An extended authority is available on activation; this is not its current session state.'],
+        'origin' => $s + ['enum' => ['assignment', 'default_membership']],
+        'member_type' => $s + ['enum' => ['member', 'admin']],
+        'assigned_holon' => $permissionHolon + ['description' => 'Effective membership carrying this right; null for an organization membership default.'],
+        'source_holon' => $permissionHolon + ['description' => 'Configuration source, possibly an inherited template.'],
+        'range' => $s, 'space' => $ref('PermissionSpace'), 'fallback_permission_key' => $textNull,
+    ]);
+    $schemas['PermissionPage'] = $object(['organization_id' => $i, 'mode' => $s + ['enum' => ['normal', 'extended', 'all']],
+        'filters' => $object(['user_id' => $i, 'holon_id' => $i, 'permission_key' => $s], []),
+        'items' => $list($ref('PermissionGrant')),
+        'next_cursor' => $textNull + ['description' => 'Copy into cursor with identical filters until null, even after an empty page.'],
+        'complete' => $complete, 'coverage' => $s + ['const' => 'visible_members_and_spaces'], 'instructions' => $instructions]);
     $schemas['AssignmentPage'] = $object([
         'organization_id' => $i, 'items' => $list($object([
             'assignment_id' => $i, 'user_id' => $i, 'user_name' => $s, 'holon_id' => $i, 'holon_name' => $s,
@@ -255,6 +279,7 @@ function omoApiResponseName(string $operation, int $status = 200): string
     if ($status >= 400) return 'Error';
     return match ($operation) {
         'omo_connection_info' => 'Connection', 'omo_catalog' => 'Catalog',
+        'omo_permission_catalog' => 'PermissionCatalog', 'omo_list_permissions' => 'PermissionPage',
         'omo_list_structure' => 'StructurePage', 'omo_get_holon' => 'Holon', 'omo_get_member' => 'Member',
         'omo_list_records' => 'RecordPage', 'omo_read_record' => 'RecordText', 'omo_list_assignments' => 'AssignmentPage',
         'omo_search' => 'SearchPage', 'omo_list_object_members' => 'AudiencePage',
