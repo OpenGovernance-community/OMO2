@@ -39,10 +39,12 @@ final class McpStructure
         if (!$root) throw new \DomainException('Structure module unavailable.');
         return $root;
     }
-    public static function requireHolon(Organization $organization, Holon $root, int $id): Holon
+    // Template sources can be readable without appearing in the diagram; target spaces remain visible-only.
+    public static function requireHolon(Organization $organization, Holon $root, int $id, bool $allowTemplateSource = false): Holon
     {
         $holon = new Holon();
-        if (!$holon->load($id) || !$holon->get('active') || !$holon->get('visible')
+        if (!$holon->load($id) || !$holon->get('active')
+            || (!$holon->get('visible') && (!$allowTemplateSource || !$holon->isTemplateNode((int)$root->getId())))
             || ((int)$holon->getId() !== (int)$root->getId() && (int)$holon->get('IDholon_org') !== (int)$root->getId())
             || $holon->resolveOrganizationId() !== (int)$organization->getId() || !$holon->canViewDetail()) {
             throw new \DomainException('Structure element unavailable.');
