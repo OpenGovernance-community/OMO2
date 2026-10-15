@@ -31,7 +31,7 @@
                 if (placeholder && !fragment.content.querySelector('[data-omo-calendar-invitations-editor]')) { throw new Error('invalid editor'); }
                 if (selected) {
                     fragment.content.querySelectorAll('input[type="checkbox"]').forEach(function (field) {
-                        if (field.name === 'invitation_holon_ids[]' || field.name === 'invitation_user_ids[]') { field.checked = selected.includes(field.name + ':' + field.value); }
+                        if (field.name === 'invitation_holon_ids[]' || field.name === 'invitation_user_ids[]' || field.name === 'public_registration') { field.checked = selected.includes(field.name + ':' + field.value); }
                     });
                     fragment.content.querySelector('[name="invitation_emails"]').value = emails;
                     var editor = fragment.content.querySelector('[data-omo-calendar-invitations-editor]');

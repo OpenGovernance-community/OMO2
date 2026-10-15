@@ -307,13 +307,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'userFieldName' => 'user_ids[]',
             'emailFieldName' => 'emails',
             'showFooterHint' => false,
-            'publicRegistration' => $resource instanceof Event ? (static function () use ($eventId) {
-                $link = EventPublicLink::forEvent($eventId);
-                return ['enabled' => $link && (int)$link->get('enabled') === 1,
-                    'people' => \dbObject\EventPublicRegistration::forEvent($eventId),
-                    'url' => $link && (int)$link->get('enabled') === 1
-                        ? rtrim((string)appGetCurrentSiteBaseUrl(), '/') . $link->publicPath() : ''];
-            })() : null,
+            'publicRegistration' => $resource instanceof Event ? omoCalendarPublicRegistrationEditorState($eventId) : null,
         ]) ?>
 
         <div class="omo-calendar-invitations-popup__actions generic-action-row">

@@ -14,6 +14,7 @@ require_once dirname(__DIR__, 3) . '/common/calendar/recurrence.php';
 use dbObject\ArrayHolon;
 use dbObject\Document;
 use dbObject\Event;
+use dbObject\EventPublicLink;
 use dbObject\Holon;
 use dbObject\Organization;
 use dbObject\Project;
@@ -706,10 +707,12 @@ if ($isInvitationFragment) {
     header('Content-Type: text/html; charset=UTF-8');
     echo omoCalendarRenderInvitationEditor($invitationEditorState, $lang, $sourceLang, 'omoApiEscape', [
         'instanceId' => 'omoCalendarCreateInvitations', 'fillHeight' => true, 'showFooterHint' => true,
+        'publicRegistration' => omoCalendarPublicRegistrationEditorState($isEditMode ? (int)$event->getId() : 0),
     ]);
     exit;
 }
 $invitationEditorUrl = '/omo/api/calendar/create.php?' . http_build_query(array_merge($_GET, ['invitation_editor' => 1]));
+$publicRegistrationLink = $isEditMode ? EventPublicLink::forEvent((int)$event->getId()) : null;
 
 $documentTemplatesPayload = [];
 if (!$isEditMode || !($associatedDocument instanceof Document)) {
@@ -1309,6 +1312,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
 
+        // Older forms without this control must preserve the existing public link.
+        if (!empty($_POST['public_registration_present'])
+            && !EventPublicLink::setForEvent((int)$event->getId(), !empty($_POST['public_registration']))) {
+            throw new RuntimeException('Public event link could not be saved');
+        }
+
         if ($canEditPersonalTimeBuffers && $event->canEditTimeBuffers($currentUserId)
             && !$event->saveTimeBuffers($currentUserId, $preparationMinutes, $closingMinutes)) {
             throw new RuntimeException('personal_time_buffers_save');
@@ -1808,6 +1817,8 @@ if ($isEditMode) {
 
                     <div id="omoCalendarCreateTabInvites" class="generic-tabs__panel omo-calendar-create__tab-panel omo-calendar-create__tab-panel--invites" data-generic-tab-panel hidden data-calendar-invitations-lazy="<?= omoApiEscape($invitationEditorUrl) ?>" data-loading-label="<?= omoApiEscape(omoCalendarCreateT('calendar.invitations.loading')) ?>" data-error-label="<?= omoApiEscape(omoCalendarCreateT('calendar.invitations.load_error')) ?>">
                         <div data-omo-calendar-invitations-editor data-omo-calendar-invitations-placeholder data-omo-calendar-uses-default-selection="<?= !empty($invitationEditorState['usesDefaultHolonSelection']) ? '1' : '0' ?>" data-omo-calendar-default-holon-id="<?= (int)$defaultInvitationHolonId ?>" hidden>
+                            <input type="hidden" name="public_registration_present" value="1">
+                            <input type="checkbox" name="public_registration" value="1"<?= $publicRegistrationLink && (int)$publicRegistrationLink->get('enabled') === 1 ? ' checked' : '' ?>>
                             <?php foreach (['selectedHolonIds' => 'invitation_holon_ids[]', 'selectedUserIds' => 'invitation_user_ids[]'] as $selectionKey => $fieldName): ?>
                                 <?php foreach ($invitationEditorState[$selectionKey] as $selectedId): ?>
                                     <input type="checkbox" name="<?= omoApiEscape($fieldName) ?>" value="<?= (int)$selectedId ?>" checked>

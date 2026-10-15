@@ -793,6 +793,19 @@ if (!function_exists('omoCalendarRenderInvitationSummarySection')) {
     }
 }
 
+if (!function_exists('omoCalendarPublicRegistrationEditorState')) {
+    function omoCalendarPublicRegistrationEditorState(int $eventId): array
+    {
+        $link = \dbObject\EventPublicLink::forEvent($eventId);
+        $enabled = $link && (int)$link->get('enabled') === 1;
+        return [
+            'enabled' => $enabled,
+            'people' => \dbObject\EventPublicRegistration::forEvent($eventId),
+            'url' => $enabled ? rtrim((string)appGetCurrentSiteBaseUrl(), '/') . $link->publicPath() : '',
+        ];
+    }
+}
+
 if (!function_exists('omoCalendarRenderInvitationEditor')) {
     function omoCalendarRenderInvitationEditor(array $editorState, $lang, array $sourceLang, $escape, array $options = [])
     {
@@ -946,6 +959,7 @@ if (!function_exists('omoCalendarRenderInvitationEditor')) {
 
                     <?php if (is_array($options['publicRegistration'])): ?>
                     <div id="<?= $escape($publicTabId) ?>" class="generic-tabs__panel omo-calendar-invitations-editor__tab-panel" data-generic-tab-panel hidden>
+                        <input type="hidden" name="public_registration_present" value="1">
                         <div class="generic-heading-with-help">
                             <label class="omo-calendar-invitations-editor__check">
                                 <input type="checkbox" name="public_registration" value="1" data-omo-public-registration-toggle<?= !empty($options['publicRegistration']['enabled']) ? ' checked' : '' ?>>
