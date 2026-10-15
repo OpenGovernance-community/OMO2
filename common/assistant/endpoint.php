@@ -33,34 +33,39 @@ if (!is_string($csrf) || empty($pageContext['csrf']) || ($pageContext['user'] ??
 try { $grant = commonAssistantWithContext($oid, static fn () => commonAssistantGrant($oid)); }
 catch (Throwable $error) { $fail('context', 403); }
 if (!commonAiUserCanUse($grant['IDuser'])) $fail('unavailable', 403);
+$chatId = $input['conversationId'] ?? null;
+if (!is_string($chatId) || !preg_match('/^[a-f0-9]{32}$/D', $chatId)) $fail('invalid');
+$identity = commonAssistantSessionIdentity($grant);
+try { $chat = commonAssistantSessionChat($chatId, $identity); }
+catch (DomainException $error) { $fail('context', 403); }
+$action = $input['action'] ?? 'ask';
+if (!in_array($action, ['ask', 'state', 'reset'], true)) $fail('invalid');
+if ($action === 'state') {
+    $reply(200, ['status' => true, 'organizationId' => $oid, 'conversationId' => $chatId] + commonAssistantChatSnapshot($chat));
+}
+if ($action === 'reset') {
+    unset($_SESSION['common_assistant_chats'][$chatId]);
+    $reply(200, ['status' => true, 'organizationId' => $oid, 'conversationId' => $chatId]);
+}
 $question = $input['question'] ?? null;
 if (!is_string($question) || !mb_check_encoding($question, 'UTF-8')
     || trim($question) === '' || mb_strlen($question, 'UTF-8') > 4000) $fail('invalid');
 $question = trim($question);
-$chatId = $input['conversationId'] ?? null;
-if (!is_string($chatId) || !preg_match('/^[a-f0-9]{32}$/D', $chatId)) $fail('invalid');
 $cid = $input['holonId'] ?? null;
 if ($cid !== null && (!is_int($cid) || $cid < 1)) $fail('invalid');
-// A different tab, user, organization or privilege mode cannot reuse this conversation.
-$identity = commonAssistantSessionIdentity($grant);
 $now = time();
-foreach ($_SESSION['common_assistant_chats'] ?? [] as $id => $chat) {
-    if (($chat['updated'] ?? 0) < $now - 1800 || ($chat['identity'] ?? '') !== $identity) unset($_SESSION['common_assistant_chats'][$id]);
-}
-$chat = $_SESSION['common_assistant_chats'][$chatId] ?? ['history' => [], 'identity' => $identity];
 if (($chat['busy_until'] ?? 0) > $now) $fail('busy', 409);
 $rate = array_values(array_filter($_SESSION['common_assistant_rate'] ?? [], static fn ($time) => $time > $now - 600));
 if (count($rate) >= 20) $fail('rate', 429);
 $rate[] = $now;
 $_SESSION['common_assistant_rate'] = $rate;
-if (!isset($_SESSION['common_assistant_chats'][$chatId]) && count($_SESSION['common_assistant_chats'] ?? []) >= 4) {
-    array_shift($_SESSION['common_assistant_chats']);
-}
 $turn = bin2hex(random_bytes(12));
 $_SESSION['common_assistant_chats'][$chatId] = $chat + ['updated' => $now];
 $_SESSION['common_assistant_chats'][$chatId]['busy_until'] = $now + 125;
 $_SESSION['common_assistant_chats'][$chatId]['turn'] = $turn;
+$_SESSION['common_assistant_chats'][$chatId]['pending_question'] = $question;
 $locale = commonAuthGetTranslationLocale();
+ignore_user_abort(true); // Finish and save the answer even if the browser reloads during this turn.
 session_write_close(); // The user can keep browsing while the model is working.
 set_time_limit(120);
 $result = null; $failure = null;
@@ -85,4 +90,7 @@ $history = $chat['history'];
 $history[] = ['role' => 'user', 'content' => $question];
 $history[] = ['role' => 'assistant', 'content' => mb_substr($result['answer'], 0, 10000, 'UTF-8')];
 $_SESSION['common_assistant_chats'][$chatId]['history'] = array_slice($history, -12);
+$_SESSION['common_assistant_chats'][$chatId]['messages'][] = ['role' => 'user', 'text' => $question];
+$_SESSION['common_assistant_chats'][$chatId]['messages'][] = ['role' => 'assistant', 'text' => $result['answer'], 'links' => $result['links']];
+unset($_SESSION['common_assistant_chats'][$chatId]['pending_question']);
 $reply(200, ['status' => true, 'organizationId' => $oid, 'conversationId' => $chatId] + $result);

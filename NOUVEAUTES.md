@@ -1,5 +1,15 @@
 # Journal des nouveautés
 
+- OMO / titres dans le chat (2026-10-15) : les titres Markdown de # a ###### deviennent des titres compacts propres aux reponses, sans reprendre les styles h1-h6 du site. Gras et liens controles conserves, y compris lors de la restauration de la discussion.
+
+- OMO / nouvelle discussion (2026-10-15) : remplacement du + par le crayon fourni, avec infobulle, libelle accessible et adaptation au theme sombre.
+
+- OMO / reprise de discussion (2026-10-15) : historique du chat conserve dans la session serveur ; rechargement avec messages, tableaux, liens, brouillon et etat ouvert/ferme du meme onglet. Reprise des reponses en cours sans renvoi automatique. Nouvelle discussion efface l historique correspondant ; isolation par compte, organisation et contexte de droits. Bouton CSV en surimpression dans le coin inferieur droit du tableau.
+
+- OMO / copie des tableaux du chat (2026-10-15) : icone Copier en bas a droite au survol ou au focus, toujours disponible sur ecran tactile. Copie CSV des en-tetes et cellules affichees, avec echappement des virgules, guillemets et retours a la ligne ; confirmation ou erreur via les notifications partagees.
+
+- OMO / confort du chat (2026-10-15) : reponses avec tableaux Markdown, listes et gras, texte plus compact et questions en bulles teintees. Poignee gauche utilisable a la souris, au toucher et au clavier ; largeur memorisee et limitee a l ecran. Tableaux defilables sur mobile, contenu HTML inerte et liens toujours controles.
+
 - OMO / presentation assistant (2026-10-15) : bouton d envoi en couleur primaire et nouvelle mascotte carree avec son fond et ses coins arrondis, a gauche du titre et de l organisation.
 
 - OMO / interface assistant (2026-10-15) : aide regroupee dans une capsule ?, tete de la mascotte dans l entete, champ avec placeholder et bouton d envoi avec l avion fourni a sa droite. Libelles accessibles conserves et icone adaptee au theme.

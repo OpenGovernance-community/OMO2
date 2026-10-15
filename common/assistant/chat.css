@@ -10,6 +10,8 @@
     overflow-y: auto;
     overscroll-behavior: contain;
     padding: var(--generic-space-4, 16px);
+    font-size: 0.875rem;
+    line-height: 1.5;
 }
 
 .organization-assistant__composer {
@@ -27,7 +29,19 @@
     mask: url('./assets/send.png') center / contain no-repeat;
 }
 .organization-assistant__composer textarea { resize: vertical; max-height: 20vh; }
-.organization-assistant__message { white-space: pre-wrap; overflow-wrap: anywhere; }
+.organization-assistant__message { min-width: 0; overflow-wrap: anywhere; }
+.organization-assistant__heading {
+    margin-block: 1em 0.5em;
+    font-size: 1em;
+    font-weight: 700;
+    line-height: 1.4;
+}
+.organization-assistant__message > :first-child { margin-top: 0; }
+.organization-assistant__message > :last-child { margin-bottom: 0; }
+.organization-assistant__message p { white-space: pre-wrap; margin-block: 0.6em; }
+.organization-assistant__message ul,
+.organization-assistant__message ol { padding-inline-start: 1.5em; margin-block: 0.6em; }
+.organization-assistant__message .generic-data-table-frame { margin-block: 0.75em; }
 .organization-assistant__message a { text-decoration: underline; color: var(--color-primary, #2563eb); }
 .organization-assistant__sources { display: flex; flex-wrap: wrap; gap: var(--generic-space-2, 8px); }
 
