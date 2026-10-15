@@ -59,7 +59,7 @@ if (!commonAiIsConfigured(commonOpenAiGetRewriteModel())) {
     exit;
 }
 
-if (!patreonUserCanUseAi($currentUserId)) {
+if (!patreonUserCanUseAi($currentUserId, $organizationId)) {
     http_response_code(403);
     echo json_encode(array(
         'status' => false,
@@ -94,6 +94,7 @@ if ($selectedText === '' || $fullText === '') {
     exit;
 }
 
+commonAiSetUsageContext($currentUserId, $organizationId, 'rewrite');
 $result = commonOpenAiRewriteSelectedDocumentText($selectedText, $fullText, array(
     'user_id' => $currentUserId,
     'title' => $title,

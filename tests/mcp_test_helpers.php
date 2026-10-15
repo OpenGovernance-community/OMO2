@@ -20,13 +20,21 @@ function mcpFixture(string $class, array $fields): DbObject
     mcpCheck(!empty($object->save()['status']), 'Cannot create fixture ' . $class);
     return $object;
 }
-function mcpFixtures(): array
+function mcpFixtures(bool $configurePatreon = true): array
 {
+    // Unit fixtures use deterministic OAuth configuration, without external HTTP calls.
+    if ($configurePatreon) {
+        $GLOBALS['patreonClientId'] = 'fixture-client';
+        $GLOBALS['patreonClientSecret'] = 'fixture-secret';
+    }
     $nonce = bin2hex(random_bytes(8));
     $items = [];
     try {
         $items['user'] = mcpFixture(User::class, ['firstname' => 'MCP test', 'email' => 'mcp-' . $nonce . '@example.invalid',
             'password' => password_hash('MCP-fixture-password-' . $nonce, PASSWORD_DEFAULT), 'allow_password_login' => 1, 'active' => 1]);
+        // OAuth fixtures use an individual contribution; tests can explicitly revoke it.
+        $items['patreon_subscription'] = mcpFixture(\dbObject\UserPatreon::class, ['IDuser' => $items['user']->getId(),
+            'is_connected' => 1, 'refresh_token' => 'fixture-only', 'patron_status' => 'active_patron', 'currently_entitled_amount_cents' => 100]);
         $items['password'] = 'MCP-fixture-password-' . $nonce;
         $items['org'] = mcpFixture(McpTestOrganization::class, ['name' => 'MCP ' . $nonce, 'shortname' => 'mcp-' . $nonce]);
         $items['membership'] = mcpFixture(UserOrganization::class, ['IDuser' => $items['user']->getId(), 'IDorganization' => $items['org']->getId(), 'active' => 1]);

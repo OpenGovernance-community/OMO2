@@ -83,29 +83,29 @@
 
 		public static function isStorageAvailable($refresh = false)
 		{
-			if (!$refresh && self::$storageAvailable !== null) {
-				return self::$storageAvailable;
+			if (!$refresh && static::$storageAvailable !== null) {
+				return static::$storageAvailable;
 			}
 
 			$databaseName = trim((string)($GLOBALS['dbName'] ?? ''));
 			if ($databaseName === '') {
-				self::$storageAvailable = false;
+				static::$storageAvailable = false;
 				return false;
 			}
 
-			$result = self::fetchValue(
+			$result = static::fetchValue(
 				"SELECT COUNT(*)
 				 FROM information_schema.tables
 				 WHERE table_schema = :database_name
 				   AND table_name = :table_name",
 				[
 					'database_name' => $databaseName,
-					'table_name' => self::tableName(),
+					'table_name' => static::tableName(),
 				]
 			);
 
-			self::$storageAvailable = ((int)$result > 0);
-			return self::$storageAvailable;
+			static::$storageAvailable = ((int)$result > 0);
+			return static::$storageAvailable;
 		}
 
 		public static function findByUserId($userId)
@@ -121,6 +121,49 @@
 
 			return $item;
 		}
+
+        /** Serialize OAuth attachment and token rotation across both connection types. */
+        public static function withConnectionLock(callable $callback)
+        {
+            $name = 'omo-patreon-' . substr(hash('sha256', (string)$GLOBALS['dbName']), 0, 40);
+            if ((int)self::fetchValue('SELECT GET_LOCK(:name, 15)', ['name' => $name]) !== 1) {
+                throw new \RuntimeException('Une connexion Patreon est en cours. Reessayez.');
+            }
+            try { return $callback(); }
+            finally { self::fetchValue('SELECT RELEASE_LOCK(:name)', ['name' => $name]); }
+        }
+
+        /** Existing personal duplicates may reconnect; new owners cannot join them. Call under the lock. */
+        public function assertIdentityAvailable(string $identity): void
+        {
+            if (!preg_match('/^[1-9][0-9]*$/D', $identity)) throw new \RuntimeException('Identite Patreon invalide.');
+            $organization = $this instanceof OrganizationPatreon;
+            $table = $organization ? 'organization_patreon' : 'user_patreon';
+            $field = $organization ? 'IDorganization' : 'IDuser';
+            $existing = new static();
+            $existing->load([$field, (int)$this->get($field)]);
+            if (!$organization && $existing->isConnected() && (string)$existing->get('patreon_user_id') === $identity) return;
+            $other = self::fetchValue('SELECT id FROM `' . $table . '` WHERE patreon_user_id = :identity AND is_connected = 1 AND `' . $field . '` <> :owner LIMIT 1',
+                ['identity' => $identity, 'owner' => (int)$this->get($field)]);
+            if ($other) throw new \DomainException($organization
+                ? 'Ce compte Patreon est deja connecte a une autre organisation.'
+                : 'Ce compte Patreon est deja connecte a une autre personne.');
+        }
+
+        /** Patreon can rotate a shared OAuth identity's tokens. Keep permitted links in sync. */
+        public static function shareIdentityTokens(string $identity, array $tokens): void
+        {
+            if ($identity === '') return;
+            foreach ([self::class, OrganizationPatreon::class] as $class) {
+                if (!$class::isStorageAvailable()) continue;
+                $ok = self::execute('UPDATE `' . $class::tableName() . '` SET access_token = :access, refresh_token = :refresh,
+                    token_expires_at = :expires, scope = :scope, token_type = :type WHERE patreon_user_id = :identity AND is_connected = 1',
+                    ['access' => $tokens['access_token'], 'refresh' => $tokens['refresh_token'],
+                        'expires' => $tokens['token_expires_at'] instanceof \DateTimeInterface ? $tokens['token_expires_at']->format('Y-m-d H:i:s') : null,
+                        'scope' => $tokens['scope'] ?? '', 'type' => $tokens['token_type'] ?? 'Bearer', 'identity' => $identity]);
+                if (!$ok) throw new \RuntimeException('Impossible de synchroniser les jetons Patreon.');
+            }
+        }
 
 		public static function loadOrCreateByUserId($userId)
 		{

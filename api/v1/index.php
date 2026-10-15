@@ -21,6 +21,8 @@ if (in_array($path, ['', '/', '/openapi.json'], true)) {
         'oauth_resource' => omoMcpPublicUrl(), 'oauth_metadata_url' => omoMcpIssuer() . '/.well-known/oauth-authorization-server']);
 }
 $grant = omoApiAuthenticate();
+commonAiSetUsageContext((int)$grant['IDuser'], (int)$grant['IDorganization'], 'request', 'api');
+$GLOBALS['omoExternalUsageInput'] = $restQuery;
 $route = omoRestMatchRoute($path, $method);
 if ($route === null) omoMcpJson(['error' => 'not_found', 'error_description' => 'Unknown REST route.'], 404);
 if ($method !== $route['method']) {
@@ -38,6 +40,8 @@ try {
         throw new InvalidArgumentException('GET arguments belong in the URL, without a request body.');
     }
     $args = omoRestArguments($route, $restQuery, $body);
+    $GLOBALS['omoExternalUsageInput'] = $args;
+    $GLOBALS['commonAiUsageContext']['feature'] = $route['operation'];
     $data = omoApiExecuteOperation($route['operation'], $args, $grant);
     $status = 200;
     if ($route['operation'] === 'omo_create_event' && !empty($data['requires_confirmation'])) $status = 409;

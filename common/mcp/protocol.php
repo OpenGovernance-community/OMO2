@@ -96,6 +96,11 @@ function omoMcpAuthorizationMetadata(): array
 }
 function omoMcpJson(array $body, int $status = 200): never
 {
+    if (isset($GLOBALS['omoExternalUsageInput'])) {
+        commonAiRecordUsage('exchange', '', '', $GLOBALS['omoExternalUsageInput'], $body,
+            ['error' => $body['error'] ?? ($body['result']['isError'] ?? false)], $status);
+        unset($GLOBALS['omoExternalUsageInput']);
+    }
     http_response_code($status);
     header('Content-Type: application/json; charset=utf-8');
     header('Cache-Control: no-store');

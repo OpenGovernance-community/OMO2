@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/ai_config.php';
+require_once __DIR__ . '/ai_usage.php';
 
 /** Text-only adapter shared by document tools, Telegram and UI translations. */
 function commonAiBuildTextRequest(string $apiKey, array $payload): array
@@ -97,8 +98,11 @@ function commonAiRequestJson(array $request, int $timeout = 120): array
     ]);
     $response = curl_exec($curl);
     $httpCode = (int)curl_getinfo($curl, CURLINFO_HTTP_CODE);
+    $decoded = is_string($response) ? json_decode($response, true) : null;
+    $modelOutput = is_array($decoded) ? ($decoded['choices'][0]['message'] ?? $decoded['content'] ?? $decoded['output'] ?? '') : '';
+    commonAiRecordUsage('model', commonAiGetProvider(), (string)($request['payload']['model'] ?? ''),
+        $request['payload'], $modelOutput, is_array($decoded) ? $decoded : ['error' => true], $httpCode);
     if ($response === false) return ['status' => false, 'http_code' => $httpCode, 'message' => curl_error($curl) ?: 'La requete IA a echoue.'];
-    $decoded = json_decode((string)$response, true);
     if (!is_array($decoded)) return ['status' => false, 'http_code' => $httpCode, 'message' => 'La reponse IA est invalide.'];
     return ['status' => true, 'response' => $decoded, 'http_code' => $httpCode];
 }

@@ -111,6 +111,7 @@ foreach ($adminEmails as $adminEmail) {
 
 $aiDraft = '';
 if (\dbObject\FAQ::hasAiDraftColumn()) {
+	commonAiSetUsageContext($currentUserId, $organizationId, 'faq_draft');
 	$generatedDraft = faqAiGenerateDraft($question, $description, null, $currentUserId);
 	if ($generatedDraft !== '') {
 		try {

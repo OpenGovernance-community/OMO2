@@ -7,6 +7,11 @@ require_once dirname(__DIR__) . '/common/openai_audio.php';
 require_once dirname(__DIR__) . '/common/faq_ai.php';
 require_once dirname(__DIR__) . '/shared/openai.php';
 require_once dirname(__DIR__) . '/includes/server_env_admin.php';
+// Exercise the legacy key deliberately, independently of this developer server configuration.
+$_ENV['AI_API_KEY'] = '';
+$_ENV['AI_PROVIDER'] = 'openai';
+$_ENV['TRANSCRIPTION_API_KEY'] = '';
+$_ENV['TRANSCRIPTION_PROVIDER'] = 'openai';
 
 function aiAccessExpect(bool $condition, string $message): void
 {

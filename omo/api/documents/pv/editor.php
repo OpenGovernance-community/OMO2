@@ -87,7 +87,7 @@ $hasDocumentsApplication = !$isPublicParticipation && $hasOrganization && $organ
 $hasDecisionApplication = !$isPublicParticipation && $hasOrganization && $organization->isApplicationEnabled('decision', $currentUserId);
 $hasCalendarApplication = !$isPublicParticipation && $hasOrganization && $organization->isApplicationEnabled('calendar', $currentUserId);
 $hasStatsApplication = !$isPublicParticipation && $hasOrganization && $organization->isApplicationEnabled('stats', $currentUserId);
-$canUseAiTools = commonAiUserCanUse($currentUserId, commonOpenAiGetRewriteModel());
+$canUseAiTools = commonAiUserCanUse($currentUserId, commonOpenAiGetRewriteModel(), null, $organizationId);
 $hasUpcomingAssociatedEvent = $hasAssociatedEvent && $event->isUpcoming();
 $publicParticipationUserId = $isPublicParticipation
     ? commonPvParticipationRecipientOrganizationUserId($publicParticipationLink, $organizationId)

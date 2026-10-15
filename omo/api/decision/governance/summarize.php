@@ -34,7 +34,7 @@ if ((int)($context['targetHolonId'] ?? 0) <= 0
         : (empty($context['canCreate']) || empty($settings['governance']['enabled'])))) {
     $respond(403, ['status' => false, 'message' => 'Accès refusé.']);
 }
-if (!commonAiUserCanUse($currentUserId, commonOpenAiGetRewriteModel())) {
+if (!commonAiUserCanUse($currentUserId, commonOpenAiGetRewriteModel(), null, (int)$context['organization']->getId())) {
     $respond(403, ['status' => false, 'message' => omoDecisionGovernanceT('governance.proposal.summary.unavailable')]);
 }
 
@@ -69,6 +69,7 @@ foreach ($input as $item) {
 if (!$modifications) {
     $respond(422, ['status' => false, 'message' => omoDecisionGovernanceT('governance.proposal.summary.empty')]);
 }
+commonAiSetUsageContext($currentUserId, (int)$context['organization']->getId(), 'governance_summary');
 $result = commonOpenAiSummarizeGovernanceChanges($modifications, omoGetTranslationLocale());
 if (empty($result['status'])) {
     $respond(422, ['status' => false, 'message' => omoDecisionGovernanceT('governance.proposal.summary.failed')]);

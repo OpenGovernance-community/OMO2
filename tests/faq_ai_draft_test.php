@@ -10,6 +10,8 @@ function checkFaqAi(bool $condition, string $message): void
     }
 }
 
+$_ENV['AI_API_KEY'] = '';
+$_ENV['AI_PROVIDER'] = 'openai';
 $GLOBALS['OpenAI'] = 'test-key';
 $_SESSION['currentUser'] = 1;
 foreach (['patreonClientId', 'patreonClientSecret', 'patreonCreatorCampaignId', 'patreonCreatorUserId', 'patreonConnectUrl', 'patreonRedirectUri', 'patreonConnectAllowedOrigins'] as $key) {

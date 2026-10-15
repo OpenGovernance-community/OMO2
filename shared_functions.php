@@ -724,12 +724,12 @@
             $apiKey = commonAiGetApiKey();
             if ($apiKey === '') return $text;
             try {
-                $result = commonAiRequestText($apiKey, [
+                $result = commonAiWithUsageContext(['IDuser' => null, 'IDorganization' => null, 'origin' => 'background', 'feature' => 'translation'], static fn () => commonAiRequestText($apiKey, [
                     'model' => commonAiGetModel(true),
                     'messages' => $context,
                     'temperature' => 0.2,
                     'max_tokens' => 2000,
-                ]);
+                ]));
                 if (empty($result['status'])) return $text;
                 $translatedText = (string)$result['content'];
 

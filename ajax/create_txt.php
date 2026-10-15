@@ -20,8 +20,9 @@ if (isset($_POST['IDdocument']) && isset($_POST['IDaiprompt'])) {
 				echo json_encode(array('error' => 'true', 'errorMsg' => T_('Configuration IA indisponible.')));
 				exit;
 			}
-			if (!patreonUserCanUseAi((int)($_SESSION['currentUser'] ?? 0))) {
-				echo json_encode(array('error' => 'true', 'errorMsg' => 'Les fonctions IA sont reservees aux contributeurs Patreon actifs.'));
+			commonAiSetUsageContext((int)$_SESSION['currentUser'], (int)$doc->get('IDorganization'), 'document_text');
+			if (!patreonUserCanUseAi((int)($_SESSION['currentUser'] ?? 0), (int)$doc->get('IDorganization'))) {
+				echo json_encode(array('error' => 'true', 'errorMsg' => 'Un abonnement Patreon individuel ou de cette organisation est requis.'));
 				exit;
 			}
 			// Génère le text via l'IA

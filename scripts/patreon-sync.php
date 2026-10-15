@@ -36,6 +36,7 @@ if (!patreonIsConfigured('sync')) {
 }
 
 $connections = \dbObject\UserPatreon::loadActiveConnections($userId);
+if ($userId === 0) $connections = array_merge($connections, \dbObject\OrganizationPatreon::loadActiveConnections());
 if ($connections === []) {
 	echo "Aucun compte Patreon à synchroniser.\n";
 	exit(0);
@@ -43,7 +44,7 @@ if ($connections === []) {
 
 $hasError = false;
 foreach ($connections as $connection) {
-	$label = 'Utilisateur #' . (int)$connection->get('IDuser');
+	$label = $connection instanceof \dbObject\OrganizationPatreon ? 'Organisation #' . (int)$connection->get('IDorganization') : 'Utilisateur #' . (int)$connection->get('IDuser');
 	try {
 		$profile = patreonSyncConnection($connection);
 		$status = trim((string)($profile['patron_status'] ?? ''));
