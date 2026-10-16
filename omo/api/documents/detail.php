@@ -228,7 +228,7 @@ if ($associatedEvent instanceof \dbObject\Event) {
 <link rel="stylesheet" href="<?= commonAssetUrl('/common/document/pv-report.css') ?>">
 <?php endif; ?>
 <?php if ($showPvDiscussion): ?>
-<link rel="stylesheet" href="/common/chat/thread.css?v=20260821-pv-review-access-2">
+<link rel="stylesheet" href="/common/chat/thread.css?v=20261016-reactions-5">
 <link rel="stylesheet" href="/common/choice/change-details.css?v=20260923-lifecycle-details">
 <?php endif; ?>
 <div
@@ -464,5 +464,6 @@ if ($associatedEvent instanceof \dbObject\Event) {
 <?php if ($showPvDiscussion): ?>
 <script src="/common/choice/word-diff.js?v=20260821-pv-review-access-2"></script>
 <script src="<?= commonAssetUrl('/common/choice/change-details.js') ?>"></script>
-<script src="/common/chat/thread.js?v=20260821-pv-review-access-2"></script>
+<script src="<?= commonAssetUrl('/common/chat/reactions.js') ?>"></script>
+<script src="/common/chat/thread.js?v=20261016-reactions"></script>
 <?php endif; ?>

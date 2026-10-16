@@ -1511,6 +1511,16 @@ html[data-theme="dark"] .black-icon,
     text-underline-offset: 3px;
 }
 
+/* Discreet text actions on metadata rows, without link decoration. */
+.generic-action-button--inline {
+    min-height: 24px;
+    padding: 2px 4px;
+    background: transparent;
+    color: var(--color-text-light, #64748b);
+    font-size: .75rem;
+    font-weight: 500;
+}
+
 /* Compact disclosure control for expandable text, with a directional chevron. */
 .generic-action-button--disclosure {
     min-height: 26px;

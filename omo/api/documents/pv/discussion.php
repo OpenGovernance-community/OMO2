@@ -1,6 +1,7 @@
 <?php
 require_once dirname(__DIR__, 2) . '/bootstrap.php';
 require_once __DIR__ . '/helpers.php';
+require_once dirname(__DIR__, 4) . '/common/chat/reactions.php';
 
 use dbObject\ChatMessage;
 use dbObject\ChatThread;
@@ -77,6 +78,8 @@ $thread = ChatThread::findBySubject($organizationId, ChatThread::SUBJECT_DOCUMEN
 $canPost = $document->getPvStage() === \dbObject\Document::PV_STAGE_REVIEW
     && !$document->isPvValidated()
     && ($isPublicParticipation || $document->canUserAccessPvReview($viewerUserId, $organizationId));
+$reactionActor = \dbObject\ChatMessageReaction::actorKey($viewerUserId, 0, $viewerDocumentShareLinkId);
+commonChatHandleReaction($thread, $canPost, $reactionActor);
 if ($requestMethod === 'POST') {
     if (!$canPost) {
         omoDocumentsPvDiscussionRespond(['status' => false, 'message' => $translate('documents.pv_editor.chat.readonly')], 403);
@@ -113,11 +116,11 @@ $discussionSummary = ChatThread::getSubjectDiscussionSummaries(
 );
 $messageCount = max(0, (int)($discussionSummary[$pointId]['total_messages'] ?? 0));
 
-omoDocumentsPvDiscussionRespond([
+omoDocumentsPvDiscussionRespond(array_merge(commonChatReactionPayload($thread, $messages, $input, $reactionActor, $canPost), [
     'status' => true,
     'title' => trim((string)$point->get('title')),
     'canPost' => $canPost,
     'messages' => $messages,
     'messageCount' => $messageCount,
     'lastMessageId' => count($messages) > 0 ? (int)$messages[count($messages) - 1]['id'] : $afterId,
-]);
+]));

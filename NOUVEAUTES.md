@@ -1,5 +1,13 @@
 # Journal des nouveautés
 
+- Discussions / reactions sur ses propres messages (2026-10-16) : choix desactive pour l auteur et refus cote serveur, y compris en mode anonyme ou via un lien invite. Reactions recues toujours visibles ; migration de retrait des anciens votes personnels avec recalcul des compteurs.
+
+- Discussions / icones des reactions (2026-10-16) : images fournies pour les pouces et applaudissements ; pouce baisse par retournement vertical et poignets alignes en remontant le pouce leve et en descendant le pouce baisse. Contraste adapte aux boutons du menu en theme clair/sombre, icones noires conservees sur les bulles claires.
+
+- Discussions / presentation des reactions (2026-10-16) : trois icones toujours visibles, attenuees sans vote et opaques avec leur compteur. Choix dans un petit menu flottant, sans deplacer le message ; aucun soulignement et reaction personnelle distinguee par sa couleur et sa graisse.
+
+- Discussions / reactions (2026-10-16) : pouce leve, pouce baisse et applaudissements au clic sur un message dans les PV, projets et decisions. Une reaction par personne, modifiable ou retirable ; compteurs a cote de la date et actualisation des messages deja affiches. Totaux JSON et detail unique proteges par transaction, controles d acces conserves et migration SQL incluse. Tests PHP 8.5, votes simultanes, liens invites et navigateur ordinateur/mobile.
+
 - Rendez-vous / changement d’identité (2026-10-15) : « Ce n’est pas moi » affiche immédiatement les champs nom et e-mail sans rechargement ni vérification des disponibilités ; motif conservé, choix mémorisé pour cet agenda et ce compte.
 
 - Rendez-vous / formulaire compact (2026-10-15) : identité sur une seule ligne avec lien discret « Ce n’est pas moi » ; date et horaire réunis sur la même ligne, lien de changement de créneau en dessous.

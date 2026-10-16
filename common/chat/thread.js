@@ -207,7 +207,7 @@
         return details;
     }
 
-    function createMessageNode(message, labels) {
+    function createMessageNode(message, labels, root) {
         var type = String(message.type || 'user');
         var row = document.createElement('div');
         row.className = 'omo-chat-popup__message-row omo-chat-popup__message-row--' + type;
@@ -248,6 +248,7 @@
         time.textContent = String(message.createdAtLabel || '');
         bubble.appendChild(content);
         bubble.appendChild(time);
+        window.commonChatReactions.attach(root, bubble, time, message);
         row.appendChild(bubble);
         return row;
     }
@@ -270,7 +271,7 @@
         var shouldScrollToEnd = !append || (list.scrollHeight - list.scrollTop - list.clientHeight < 80);
         if (!append) list.replaceChildren();
         if (append && items.length > 0 && list.querySelector('.omo-chat-popup__empty')) list.replaceChildren();
-        items.forEach(function (message) { list.appendChild(createMessageNode(message, root.__omoChatLabels || {})); });
+        items.forEach(function (message) { list.appendChild(createMessageNode(message, root.__omoChatLabels || {}, root)); });
         if (!list.children.length) {
             var empty = document.createElement('p');
             empty.className = 'omo-chat-popup__empty';
@@ -324,10 +325,12 @@
         if (root.__omoChatLoading) return root.__omoChatLoading;
         var query = new URLSearchParams();
         appendContext(query, root.__omoChatContext);
+        window.commonChatReactions.appendQuery(root, query);
         if (root.__omoChatInitialized && root.__omoChatLastMessageId > 0) query.append('after_id', String(root.__omoChatLastMessageId));
         root.__omoChatLoading = requestJson(root.__omoChatEndpoint + '?' + query.toString()).then(function (payload) {
             syncPayload(root, payload);
             renderMessages(root, payload.messages || [], root.__omoChatInitialized === true);
+            window.commonChatReactions.update(root, payload);
             root.__omoChatInitialized = true;
             root.__omoChatLastMessageId = Math.max(Number(root.__omoChatLastMessageId || 0), Number(payload.lastMessageId || 0));
             return payload;
@@ -367,6 +370,7 @@
                 form.elements.content.value = '';
                 syncPayload(root, payload);
                 renderMessages(root, payload.messages || [], false);
+                window.commonChatReactions.update(root, payload);
                 root.__omoChatInitialized = true;
                 root.__omoChatLastMessageId = Number(payload.lastMessageId || 0);
                 form.elements.content.focus();
@@ -395,6 +399,13 @@
         root.__omoChatPointTitle = String(button.getAttribute('data-omo-chat-point-title') || '');
         root.__omoChatLastMessageId = 0;
         root.__omoChatInitialized = false;
+        window.commonChatReactions.bind(root, function (body) {
+            return requestJson(root.__omoChatEndpoint, {method: 'POST', body: body});
+        }, function () {
+            var body = new FormData();
+            appendContext(body, root.__omoChatContext);
+            return body;
+        });
         var form = root.querySelector('[data-omo-chat-popup-composer]');
         if (form) {
             form.elements.content.placeholder = String(labels.placeholder || '');

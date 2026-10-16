@@ -3,6 +3,7 @@ require_once dirname(__DIR__, 3) . '/bootstrap.php';
 require_once dirname(__DIR__) . '/context.php';
 require_once dirname(__DIR__) . '/common.php';
 require_once dirname(__DIR__, 5) . '/common/notification_center.php';
+require_once dirname(__DIR__, 5) . '/common/chat/reactions.php';
 
 use dbObject\ChatMessage;
 use dbObject\ChatThread;
@@ -58,6 +59,8 @@ if (!omoDecisionCanAccessProposalDiscussion($proposal, $context)) {
 }
 
 $thread = $proposal->getChatThread(false);
+$reactionActor = \dbObject\ChatMessageReaction::actorKey($viewerUserId, $viewerParticipantId);
+commonChatHandleReaction($thread, true, $reactionActor);
 $decision = $proposal->getDecisionProcess();
 $decisionAdministratorUserId = $decision instanceof \dbObject\DecisionProcess
     ? (int)$decision->get('IDuser')
@@ -179,7 +182,7 @@ if ($thread) {
     $discussionMessageCount = (int)($discussionSummary[(int)$proposal->getId()]['total_messages'] ?? 0);
 }
 
-omoDecisionProposalDiscussionRespond(200, [
+omoDecisionProposalDiscussionRespond(200, array_merge(commonChatReactionPayload($thread, $messages, $input, $reactionActor, true), [
     'status' => true,
     'proposal' => [
         'id' => (int)$proposal->getId(),
@@ -196,6 +199,6 @@ omoDecisionProposalDiscussionRespond(200, [
     'lastMessageId' => count($messages) > 0
         ? (int)$messages[count($messages) - 1]['id']
         : $afterMessageId,
-]);
+]));
 
 ?>
