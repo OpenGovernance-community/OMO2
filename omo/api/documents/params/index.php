@@ -249,6 +249,11 @@ $iconUrl = $applicationIcon !== '' ? $applicationIcon : 'images/tools/documents-
                         <?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.pv_enabled_hint'), ENT_QUOTES, 'UTF-8') ?>
                     </p>
                     <div class="omo-documents-params__pv-fields generic-soft-panel generic-form-grid generic-form-field--full" data-omo-documents-pv-fields<?= $pvEnabled ? '' : ' hidden' ?>>
+                        <label class="generic-form-field generic-form-field--full">
+                            <span class="generic-form-label"><?= htmlspecialchars(omoDocumentsParamsT('documents.params.pv.review_days'), ENT_QUOTES, 'UTF-8') ?></span>
+                            <input type="number" name="pv_review_days" class="generic-form-control" min="1" max="365" step="1" required value="<?= (int)($pvSettings['reviewDays'] ?? 5) ?>">
+                            <span class="generic-help-text"><?= htmlspecialchars(omoDocumentsParamsT('documents.params.pv.review_days_hint'), ENT_QUOTES, 'UTF-8') ?></span>
+                        </label>
                         <h4 class="generic-card-title generic-card-title--small generic-form-field--full">
                             <?= htmlspecialchars(omoDocumentsParamsT('documents.params.pv.priority_labels'), ENT_QUOTES, 'UTF-8') ?>
                         </h4>

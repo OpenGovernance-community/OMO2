@@ -827,6 +827,7 @@
 
 			return array(
 				'enabled' => !array_key_exists('enabled', $pvSettings) || !empty($pvSettings['enabled']),
+				'reviewDays' => self::normalizePvReviewDays($pvSettings['reviewDays'] ?? null),
 				'priorityLabels' => self::normalizePvPriorityLabels(
 					isset($pvSettings['priorityLabels']) && is_array($pvSettings['priorityLabels'])
 						? $pvSettings['priorityLabels']
@@ -838,6 +839,12 @@
 		public function isPvDocumentEnabled(): bool
 		{
 			return !empty($this->getPvDocumentSettings()['enabled']);
+		}
+
+		public static function normalizePvReviewDays($value): int
+		{
+			$days = filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 365]]);
+			return $days !== false ? $days : 5;
 		}
 
 		public function getPvPriorityLabels(): array

@@ -57,6 +57,9 @@ if (!function_exists('omoDocumentsParamsSourceLang')) {
             'documents.params.section.collabora' => ['text' => 'Documents Collabora', 'context' => 'Heading of the Collabora settings section.'],
             'documents.params.section.pv' => ['text' => 'Procès-verbaux de réunion', 'context' => 'Heading of the PV document settings section.'],
             'documents.params.field.pv_enabled' => ['text' => 'Activer les PV', 'context' => 'Checkbox enabling the meeting minutes document format.'],
+            'documents.params.pv.review_days' => ['text' => 'Delai de relecture (jours)', 'context' => 'Organization setting for automatic PV closure.'],
+            'documents.params.pv.review_days_hint' => ['text' => 'Les PV sont clotures automatiquement apres ce delai, compte depuis leur passage en relecture (5 jours par defaut, de 1 a 365 jours). Toute modification s applique aussi aux relectures en cours.', 'context' => 'Explanation of the organization review deadline.'],
+            'documents.params.pv.review_days_invalid' => ['text' => 'Le delai de relecture doit etre un nombre entier entre 1 et 365 jours.', 'context' => 'Invalid PV review duration.'],
             'documents.params.field.pv_enabled_hint' => ['text' => 'Le format de procès-verbal sera proposé lors de la création de documents et d événements.', 'context' => 'Explanation shown below the PV enable checkbox.'],
             'documents.params.pv.priority_labels' => ['text' => 'Libellés des priorités', 'context' => 'Heading above the PV priority label fields.'],
             'documents.params.pv.priority_label' => ['text' => 'Priorité {priority}', 'context' => 'Label of one editable PV priority name field.'],
@@ -742,6 +745,10 @@ if (!function_exists('omoDocumentsParamsStorePvSettings')) {
 
         $parameters = $organizationApplication->getParametersArray();
         $currentSettings = $organization->getPvDocumentSettings();
+        $reviewDays = $values['pv_review_days'] ?? $currentSettings['reviewDays'];
+        if (filter_var($reviewDays, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 365]]) === false) {
+            return ['status' => false, 'text' => omoDocumentsParamsT('documents.params.pv.review_days_invalid')];
+        }
         $priorityLabels = array();
         for ($priority = 1; $priority <= 5; $priority++) {
             $priorityLabels[$priority] = (string)($values['pv_priority_label_' . $priority]
@@ -750,6 +757,7 @@ if (!function_exists('omoDocumentsParamsStorePvSettings')) {
         }
 
         $parameters['pv'] = array(
+            'reviewDays' => (int)$reviewDays,
             'enabled' => array_key_exists('pv_enabled', $values)
                 ? (!empty($values['pv_enabled']) ? 1 : 0)
                 : (!empty($currentSettings['enabled']) ? 1 : 0),
