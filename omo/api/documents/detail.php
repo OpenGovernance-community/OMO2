@@ -144,6 +144,7 @@ $renderedContent = $document->getRenderedContentForCurrentViewer([
         'contentExcerpt' => omoDocumentsDetailT('documents.detail.pv_discussion.content_excerpt'),
     ],
 ]);
+$showPvProposals = str_contains($renderedContent, 'data-omo-pv-report-proposals');
 $uploadedFileCollaboraAvailable = false;
 $collaboraPostMessageOrigin = '';
 if ($document->isUploadedFile() && $document->canOpenWithCollabora()) {
@@ -224,12 +225,12 @@ if ($associatedEvent instanceof \dbObject\Event) {
     }
 }
 ?>
-<?php if ($document->isPvDocument()): ?>
+<?php if ($document->isPvDocument() || $showPvProposals): ?>
 <link rel="stylesheet" href="<?= commonAssetUrl('/common/document/pv-report.css') ?>">
+<link rel="stylesheet" href="<?= commonAssetUrl('/common/choice/change-details.css') ?>">
 <?php endif; ?>
 <?php if ($showPvDiscussion): ?>
 <link rel="stylesheet" href="/common/chat/thread.css?v=20261016-reactions-5">
-<link rel="stylesheet" href="/common/choice/change-details.css?v=20260923-lifecycle-details">
 <?php endif; ?>
 <div
     class="omo-document-detail"
@@ -461,9 +462,11 @@ if ($associatedEvent instanceof \dbObject\Event) {
 <?php if ($pdfExportUrl !== ''): ?>
 <script src="<?= commonAssetUrl('/omo/api/documents/detail.js') ?>"></script>
 <?php endif; ?>
-<?php if ($showPvDiscussion): ?>
+<?php if ($document->isPvDocument() || $showPvProposals): ?>
 <script src="/common/choice/word-diff.js?v=20260821-pv-review-access-2"></script>
 <script src="<?= commonAssetUrl('/common/choice/change-details.js') ?>"></script>
+<?php endif; ?>
+<?php if ($showPvDiscussion): ?>
 <script src="<?= commonAssetUrl('/common/chat/reactions.js') ?>"></script>
 <script src="/common/chat/thread.js?v=20261016-reactions"></script>
 <?php endif; ?>

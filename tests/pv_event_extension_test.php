@@ -9,6 +9,7 @@ function assertPvEventExtension(bool $condition, string $message): void
 }
 
 $editorSource = (string)file_get_contents(dirname(__DIR__) . '/omo/api/documents/pv/editor.php');
+$editorSource .= (string)file_get_contents(dirname(__DIR__) . '/omo/api/documents/pv/editor.js');
 assertPvEventExtension(
     strpos($editorSource, 'data-omo-pv-event-extension-minutes') !== false,
     'The PV editor must expose meeting extension menu choices.'

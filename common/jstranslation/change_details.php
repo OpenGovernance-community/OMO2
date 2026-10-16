@@ -21,6 +21,7 @@ $sourceLang = [
     'detail' => ['text' => 'détail', 'context' => 'Composite property detail'],
     'description' => ['text' => 'Description', 'context' => 'Changed indicator description'],
     'person' => ['text' => 'Personne en charge', 'context' => 'Changed indicator responsible person'],
+    'proposedBy' => ['text' => 'Propose par', 'context' => 'Member who requested the proposed project'],
     'personFallback' => ['text' => 'Personne #', 'context' => 'Fallback prefix for an unresolved person identifier'],
     'sourceType' => ['text' => 'Type de source', 'context' => 'Changed indicator source type'],
     'sourceLink' => ['text' => 'Lien vers la source', 'context' => 'Changed indicator source link'],

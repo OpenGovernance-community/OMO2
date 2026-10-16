@@ -875,11 +875,12 @@ a.generic-correspondence-list__row:focus-visible {
 }
 
 .generic-form-grid--trio {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: var(--param-form-grid-columns, repeat(3, minmax(0, 1fr)));
 }
 
 .generic-form-grid--main-aside {
-    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    /* Configurable column ratio, with the shared mobile stacking below. */
+    grid-template-columns: var(--param-form-grid-columns, minmax(0, 3fr) minmax(0, 2fr));
 }
 
 @media (max-width: 480px) {

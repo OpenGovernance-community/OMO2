@@ -319,12 +319,12 @@ foreach ($points as $point) {
 }
 $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
 ?>
-<link rel="stylesheet" href="/common/choice/change-details.css?v=20260923-lifecycle-details">
+<link rel="stylesheet" href="<?= commonAssetUrl('/common/choice/change-details.css') ?>">
 <?php if ($isPvReviewDiscussion): ?>
 <link rel="stylesheet" href="<?= commonAssetUrl('/common/chat/thread.css') ?>">
 <?php endif; ?>
 <div
-    class="omo-pv-editor<?= $showPvApplicationTabs ? ' omo-pv-editor--has-application-tabs' : '' ?>"
+    class="omo-pv-editor<?= $showPvApplicationTabs ? ' omo-pv-editor--has-application-tabs' : '' ?><?= $pvStage === \dbObject\Document::PV_STAGE_REVIEW ? ' omo-pv-editor--review' : '' ?>"
     data-omo-pv-editor-root="1"
     data-omo-pv-editor-document-id="<?= (int)$document->getId() ?>"
     data-omo-pv-editor-oid="<?= (int)$organizationId ?>"
@@ -423,7 +423,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                     </svg>
                     <div class="omo-pv-editor__timing-center">
                         <strong data-omo-pv-timing-center><?= $escape((string)$uiText['notStartedValue']) ?></strong>
-
+                        <span data-omo-pv-timing-point-count></span>
                     </div>
                 </div>
                 <div class="omo-pv-editor__timing-legend">
@@ -532,7 +532,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                             <span class="omo-pv-editor__event-info-icon" aria-hidden="true"><img src="/omo/assets/images/documents/event-schedule.png" alt="" class="black-icon"></span>
                             <span class="omo-pv-editor__event-info-value" data-omo-pv-event-schedule><?= $escape($eventSchedule) ?></span>
                             <?php if (!$isPublicParticipation && $hasAssociatedEvent): ?>
-                                <div class="generic-menu omo-pv-editor__event-extension-menu" data-omo-pv-event-extension-menu<?= $canExtendAssociatedEvent && $canManagePvStructure ? '' : ' hidden' ?>>
+                                <div class="generic-menu omo-pv-editor__event-extension-menu" data-omo-pv-event-extension-menu<?= $canExtendAssociatedEvent && $canManagePvDocument ? '' : ' hidden' ?>>
                                     <button type="button" class="generic-menu-toggle omo-pv-editor__event-extension-toggle" data-omo-pv-event-extension-toggle aria-haspopup="menu" aria-expanded="false" aria-controls="omoPvEventExtensionMenu" aria-label="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.event.extend.button_title')) ?>" title="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.event.extend.button_title')) ?>">+</button>
                                     <div id="omoPvEventExtensionMenu" class="generic-menu-panel generic-menu-panel--wide omo-pv-editor__event-extension-panel" data-omo-pv-event-extension-panel role="menu" aria-label="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.event.extend.menu_aria')) ?>" hidden>
                                         <?php foreach ([5, 10, 15, 30] as $extensionMinutes): ?>
@@ -731,6 +731,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     'validateIrreversibleMessage' => omoDocumentsPvEditorT('documents.pv_editor.warning.validate_irreversible'),
     'unsavedHandoverMessage' => (string)$uiText['unsavedHandover'],
     'notStartedValue' => (string)$uiText['notStartedValue'],
+    'pointProgressLabel' => (string)$uiText['pointProgress'],
     'marginLegendLabel' => (string)$uiText['marginLegend'],
     'overrunLegendLabel' => (string)$uiText['overrunLegend'],
     'groupPointsLabel' => (string)$uiText['groupPoints'],

@@ -30,6 +30,11 @@ $afterState = [];
 if ($operation !== DeferredProposal::OPERATION_DELETE) {
     $afterState = DeferredProposal::normalizeProjectState($_POST, $operation === DeferredProposal::OPERATION_UPDATE ? $project : null);
     $afterState['IDholon'] = $holonId;
+    if ((int)$afterState['IDuser_proposed'] > 0
+        && !\dbObject\UserOrganization::hasActiveMembership((int)$afterState['IDuser_proposed'], $organizationId)
+        && ($operation === DeferredProposal::OPERATION_CREATE || (int)$afterState['IDuser_proposed'] !== (int)$project->get('IDuser_proposed'))) {
+        $respond(422, ['status' => false, 'message' => 'La personne proposant le projet doit etre membre de l organisation.']);
+    }
     if ($afterState['title'] === '') $respond(422, ['status' => false, 'message' => 'Le titre du projet est obligatoire.']);
     if ($afterState['planned_start_date'] !== '' && $afterState['planned_end_date'] !== '' && $afterState['planned_end_date'] < $afterState['planned_start_date']) $respond(422, ['status' => false, 'message' => 'La fin planifiée doit suivre le début planifié.']);
     if ($afterState['status'] === Project::STATUS_BLOCKED && !Project::hasValidBlockedDetails($organizationId, $afterState['blocked_reason'], $afterState['blocked_until'])) $respond(422, ['status' => false, 'message' => 'Renseignez les champs de blocage obligatoires selon les paramètres de votre organisation.']);

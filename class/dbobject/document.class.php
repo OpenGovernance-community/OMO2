@@ -1506,6 +1506,7 @@
 						COALESCE(actual_duration_minutes, 0),
 						COALESCE(pointtype, ''),
 						COALESCE(is_handled, 0),
+						COALESCE(handled_at, ''),
 						COALESCE(IDpoint_moved_to, 0),
 						COALESCE(date_moved, ''),
 						COALESCE(date_abandoned, ''),
@@ -2609,26 +2610,42 @@
 				];
 			}
 
-			$nextStage = self::normalizePvStage($stage);
-			if (in_array($nextStage, [self::PV_STAGE_REVIEW, self::PV_STAGE_VALIDATED], true)) {
-				$event = $this->getAssociatedEvent();
-				if ($event instanceof Event && (int)$event->get('IDeventrecurrence') > 0 && !$event->freezeInvitationParticipants()) {
-					return ['status' => false, 'text' => 'Impossible de conserver les participants de la reunion.'];
+			$pdo = self::getPdo();
+			if (!$pdo) return ['status' => false, 'text' => 'Base de donnees indisponible.'];
+			$ownsTransaction = !$pdo->inTransaction();
+			try {
+				if ($ownsTransaction) $pdo->beginTransaction();
+				$nextStage = self::normalizePvStage($stage);
+				if (in_array($nextStage, [self::PV_STAGE_REVIEW, self::PV_STAGE_VALIDATED], true)) {
+					$event = $this->getAssociatedEvent();
+					if ($event instanceof Event && (int)$event->get('IDeventrecurrence') > 0 && !$event->freezeInvitationParticipants()) {
+						if ($ownsTransaction) $pdo->rollBack();
+						return ['status' => false, 'text' => 'Impossible de conserver les participants de la reunion.'];
+					}
+					DocumentPvPoint::reorderByHandledTimeForDocument((int)$this->getId(), $userId);
 				}
-			}
-			if ($nextStage === self::PV_STAGE_REVIEW) {
-				$reviewEditorUserId = $this->getPvReviewEditorUserId();
-				if ($reviewEditorUserId > 0) {
-					$this->set('IDuser_pv_editor', $reviewEditorUserId);
+				if ($nextStage === self::PV_STAGE_REVIEW) {
+					$reviewEditorUserId = $this->getPvReviewEditorUserId();
+					if ($reviewEditorUserId > 0) {
+						$this->set('IDuser_pv_editor', $reviewEditorUserId);
+					}
+					$this->set('pv_editor_handover_open', 0);
 				}
-				$this->set('pv_editor_handover_open', 0);
+
+				$this->set('pvstage', $nextStage);
+				$this->set('IDusermodification', $userId);
+				$this->set('datemodification', new \DateTimeImmutable());
+
+				$result = $this->save();
+				if ($ownsTransaction) {
+					if (!empty($result['status'])) $pdo->commit();
+					else $pdo->rollBack();
+				}
+				return $result;
+			} catch (\Throwable $exception) {
+				if ($ownsTransaction && $pdo->inTransaction()) $pdo->rollBack();
+				throw $exception;
 			}
-
-			$this->set('pvstage', $nextStage);
-			$this->set('IDusermodification', $userId);
-			$this->set('datemodification', new \DateTimeImmutable());
-
-			return $this->save();
 		}
 
 		public static function getDocumentTypeCatalog(): array
@@ -4765,6 +4782,7 @@
 				: (int)($_SESSION['currentUser'] ?? 0);
 			$points = $this->getVisiblePvPointsForUser($currentUserId, true);
 			$isReport = in_array($this->getPvStage(), [self::PV_STAGE_REVIEW, self::PV_STAGE_VALIDATED], true);
+			$reportPositions = $isReport ? DocumentPvPoint::buildReportPositionMap($points) : [];
 			$unhandledHtml = $isReport ? $this->renderPvUnhandledPointsForViewer() : '';
 			$includeDiscussionLinks = !empty($renderOptions['includePvDiscussionLinks']);
 			$discussionLabels = is_array($renderOptions['pvDiscussionLabels'] ?? null)
@@ -4788,7 +4806,7 @@
 					);
 				}
 			}
-			$positionLabels = \dbObject\DocumentPvPoint::buildHierarchyPositionLabels($points);
+			$positionLabels = \dbObject\DocumentPvPoint::buildHierarchyPositionLabels($points, $reportPositions);
 			$itemsByParent = array();
 			foreach ($points as $item) {
 				if (!($item instanceof \dbObject\DocumentPvPoint)) {
@@ -4797,8 +4815,9 @@
 				$itemsByParent[max(0, (int)$item->get('IDparent'))][] = $item;
 			}
 			foreach ($itemsByParent as &$siblings) {
-				usort($siblings, static function ($left, $right): int {
-					$positionComparison = (int)$left->get('position') <=> (int)$right->get('position');
+				usort($siblings, static function ($left, $right) use ($reportPositions): int {
+					$positionComparison = ($reportPositions[$left->getId()] ?? (int)$left->get('position'))
+						<=> ($reportPositions[$right->getId()] ?? (int)$right->get('position'));
 					return $positionComparison !== 0 ? $positionComparison : (int)$left->getId() <=> (int)$right->getId();
 				});
 			}
@@ -4830,6 +4849,9 @@
 				}
 				$orderedItems = array_filter($orderedItems, static fn($entry): bool => isset($bodyIds[(int)$entry['item']->getId()]));
 			}
+			$proposalsByPoint = DeferredProposal::getReportDataForPvPoints($this,
+				array_map(static fn($entry) => $entry['item'], $orderedItems));
+			$includeProposalDetails = !array_key_exists('includePvProposalDetails', $renderOptions) || !empty($renderOptions['includePvProposalDetails']);
 			$pointCount = 0;
 			$totalDesiredMinutes = 0;
 			$totalActualMinutes = 0;
@@ -4959,6 +4981,10 @@
 				if (!empty($pointData['contentHtml'])) {
 					$html .= '<div class="omo-document-pv__point-content prose">' . (string)$pointData['contentHtml'] . '</div>';
 				}
+				if (!empty($proposalsByPoint[(int)$point->getId()])) {
+					require_once dirname(__DIR__, 2) . '/common/document/pv-report.php';
+					$html .= \commonPvReportRenderProposals($proposalsByPoint[(int)$point->getId()], $includeProposalDetails);
+				}
 
 				$discussionSummary = $discussionSummaries[(int)$point->getId()] ?? array();
 				if ($includeDiscussionLinks && (int)($discussionSummary['total_messages'] ?? 0) > 0) {
@@ -4987,6 +5013,10 @@
 						. '</div>';
 				}
 
+				if ($isReport && $point->isHandled()) {
+					require_once dirname(__DIR__, 2) . '/common/document/pv-report.php';
+					$html .= \commonPvReportRenderHandledAt($point->get('handled_at'));
+				}
 				$html .= '</article>';
 			}
 

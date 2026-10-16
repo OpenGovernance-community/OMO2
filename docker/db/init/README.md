@@ -1,5 +1,10 @@
 # Database init
 
+Le schema inclut `document_pv_point.handled_at` et la migration
+`2026-10-16-04-pv-point-handled-at.sql`. Schema et historique regeneres
+depuis une base temporaire vide importee du seed ; reimport verifie sans
+exporter les donnees locales de travail. Les anciens points restent sans date.
+
 Ordre conseille pour l'initialisation locale :
 
 1. utiliser le seed versionne complet `docker/db/init/00-base.seed.sql`
@@ -66,6 +71,11 @@ de travail locale n a ete exportee.
 Lorsqu une migration est ajoutee a `sql/`, le seed doit etre regenere depuis
 une base locale vide sur laquelle cette migration a ete appliquee. Ainsi, une
 nouvelle instance Docker ne depend d aucun rejeu de migrations.
+
+Le contexte de creation des projets (`project.creation_context`, migration
+`2026-10-16-03-project-creation-context.sql`) est inclus. Le schema et l historique
+ont ete regeneres depuis une base temporaire vide importee du seed versionne,
+puis controles par une nouvelle importation, sans exporter de donnees locales.
 
 Les liens vers les documents reutilises entre occurrences sont inclus dans
 `event_shared_document` (`2026-10-10-01-event-shared-document.sql`). La table

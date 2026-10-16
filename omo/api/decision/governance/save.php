@@ -293,6 +293,11 @@ foreach (array_values($blueprint) as $proposalIndex => $proposalInput) {
             $beforeState = $operation === DeferredProposal::OPERATION_CREATE ? [] : ($existingDeferred instanceof DeferredProposal ? DeferredProposal::normalizeState($existingDeferred->get('before_state')) : DeferredProposal::captureProjectState($project));
             $afterState = $operation === DeferredProposal::OPERATION_DELETE ? [] : DeferredProposal::normalizeProjectState((array)($actionInput['after'] ?? []), $operation === DeferredProposal::OPERATION_UPDATE ? $project : null);
             if ($operation !== DeferredProposal::OPERATION_DELETE) $afterState['IDholon'] = $actionContextHolonId;
+            if ($operation !== DeferredProposal::OPERATION_DELETE && (int)$afterState['IDuser_proposed'] > 0
+                && !\dbObject\UserOrganization::hasActiveMembership((int)$afterState['IDuser_proposed'], $organizationId)
+                && ($operation === DeferredProposal::OPERATION_CREATE || (int)$afterState['IDuser_proposed'] !== (int)$project->get('IDuser_proposed'))) {
+                $respond(422, ['status' => false, 'message' => 'La personne proposant le projet doit etre membre de l organisation.']);
+            }
             if ($operation !== DeferredProposal::OPERATION_DELETE && trim((string)($afterState['title'] ?? '')) === '') $respond(422, ['status' => false, 'message' => 'Le titre du projet est obligatoire.']);
             if ($operation !== DeferredProposal::OPERATION_DELETE
                 && (string)($afterState['planned_start_date'] ?? '') !== ''

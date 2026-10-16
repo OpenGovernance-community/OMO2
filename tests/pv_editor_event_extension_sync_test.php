@@ -9,6 +9,7 @@ function assertPvEditorEventExtensionSync(bool $condition, string $message): voi
 }
 
 $editorSource = (string)file_get_contents(dirname(__DIR__) . '/omo/api/documents/pv/editor.php');
+$editorSource .= (string)file_get_contents(dirname(__DIR__) . '/omo/api/documents/pv/editor.js');
 
 assertPvEditorEventExtensionSync(
     strpos($editorSource, '<?php if (!$isPublicParticipation && $hasAssociatedEvent): ?>') !== false,

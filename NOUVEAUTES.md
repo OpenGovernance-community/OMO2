@@ -1,5 +1,37 @@
 # Journal des nouveautés
 
+- PV / timer en relecture (2026-10-16) : timer et poignee de redimensionnement masques des l ouverture et au passage en relecture ; espace libere pour la navigation des points.
+
+- Propositions et historiques / comparaison compacte (2026-10-16) : colonne d absence reduite a un quart lors des creations et suppressions, proprietes separees par des lignes horizontales, valeurs courtes sur la ligne du libelle et espacement reduit pour les contenus longs. Rendu partage entre PV, decisions et historiques, avec empilement sur mobile et surlignage avant/apres conserve.
+
+- PV / prolongation apres prise de main (2026-10-16) : le bouton + et la prolongation de la reunion sont aussi accessibles a l editeur remplacant actif, sans lui ouvrir les droits de modification de la structure du PV. Affichage actualise des la prise de main, limite a la phase Reunion et aux sessions authentifiees.
+
+- PV / contraste du compteur de points (2026-10-16) : compteur au centre du gestionnaire de temps en noir a 70 % d opacite, pour foncer le fond gris ou rouge du graphique.
+
+- Calendrier / corbeille des reunions passees (2026-10-16) : la liste et la fiche utilisent le meme controle de suppression que le serveur. Corbeille masquee pour les occurrences recurrentes deja terminees, dont les reunions avec PV valide, tout en conservant les actions autorisees sur les evenements a venir.
+
+- PV / marge et depassement reels (2026-10-16) : avant l heure de debut, comparaison entre la duree totale des points et celle de la reunion. Des le debut, comparaison entre la duree des points non traites et le temps reel restant jusqu a la fin prevue. Depassement actualise avec l horloge, les points coches et les prolongations ; retard deja ecoule inclus apres l heure de fin.
+
+- PV / progression dans le gestionnaire de temps (2026-10-16) : compteur points traites / total au centre du graphique, sous le temps restant. Inclut les points hors ecran et sans duree, respecte les droits de visibilite et exclut les groupes ainsi que les points deplaces ou abandonnes ; actualisation au cochage et lors des mises a jour du PV.
+
+- PV / points traites (2026-10-16) : fond gris leger des points traites dans l editeur et la navigation, avec teinte adaptee au theme sombre. Distinction retiree en relecture. Capsule Traite conservee ; retour au fond habituel lorsque le point est decoche.
+
+- PV / titre des groupes (2026-10-16) : bouton de sauvegarde inactif et libelle Sauvegarde lorsque le titre est inchange, actif et mis en evidence apres modification, puis Enregistrement pendant la requete. Validation possible par Entree ; brouillons conserves pendant les actualisations de navigation et erreurs signalees par notification.
+
+- PV / ordre de traitement (2026-10-16) : date et heure enregistrees lorsque le point est coche, conservees pendant les corrections et remplacees apres decochage puis recochage. Passage en relecture avec tri chronologique des points au sein de chaque groupe, groupes conserves dans leur ordre. Heure de traitement au bas des points en relecture, dans le PV valide et en PDF. Anciens points sans date conserves dans leur ordre ; migration SQL et seed Docker actualises.
+
+- PV / propositions en lecture seule (2026-10-16) : les propositions validees ou appliquees apparaissent dans leur point avec le type de modification et le titre. Bouton Detail depliant les changements lorsque l objet reste accessible ; titres conserves sans contenu prive ni bouton pour les objets supprimes ou inaccessibles. Export PDF avec les titres des propositions, sans controle interactif.
+
+- Projets / origine collective (2026-10-16) : contexte de creation conserve pour les propositions validees en PV ou en decision collective, ainsi que les creations directes depuis l editeur de PV. Affichage du proposeur ou createur, du titre de la source et de la date, avec lien vers le PV ou la decision selon les droits. Origine preservee lors des modifications et apres suppression de la source ; migration de reprise des origines historiques retrouvables, seed Docker actualise et mecanisme partage avec les regles.
+
+- Projets / origine dans la fiche (2026-10-16) : affichage de Cree par sous la description lorsque Propose par n est pas renseigne, a partir du createur enregistre sur le projet.
+
+- Propositions de projets / statut et dimensions (2026-10-16) : taille, priorite et importance strategique sur trois colonnes egales. Date de deblocage et motif visibles uniquement au statut bloque, sur la ligne du statut avec une repartition 1/4, 1/4 et 1/2, dans les PV et les decisions collectives.
+
+- Propositions de projets / formulaire (2026-10-16) : titre et select du proposeur reunis sur une ligne, avec une repartition 3/4 et 1/4 dans les PV et les decisions collectives ; champs empiles sur petit ecran.
+
+- Projets / propose par (2026-10-16) : auteur renseigne automatiquement pour une proposition individuelle et laisse vide pour une creation directe. Select des membres dans les propositions de decisions collectives et de PV, avec le membre courant preselectionne ; information conservee et visible apres validation. Suivi ajoute automatiquement au demandeur lors de la creation effective du projet, sans le retablir lors des modifications suivantes.
+
 - Documents / PV des reunions (2026-10-16) : correction du filtre des pieces jointes qui masquait aussi les PV dans la liste et les dossiers. Affichage retabli avec les controles de visibilite, d invitation, d etape et d archivage existants ; regression couverte par un test en base.
 
 - PV / explorateur de documents (2026-10-16) : tous les types de documents proposes, dont EtherCalc et Etherpad, avec dossiers selectionnables et fichiers classes dans leur hierarchie. Recherche dans les chemins des dossiers ; liens vers les dossiers ouvrant leurs ancetres et leur contenu dans l explorateur. Droits de visibilite conserves, y compris pour les sous-dossiers.

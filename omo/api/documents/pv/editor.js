@@ -75,6 +75,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
     const saveLabel = pageConfig.saveLabel;
     const savingLabel = pageConfig.savingLabel;
     const savedLabel = pageConfig.savedLabel;
+    const groupTitleSaves = new Set();
     const takeOverLockLabel = pageConfig.takeOverLockLabel;
     const takeOverWaitingLabel = pageConfig.takeOverWaitingLabel;
     const takeoverDraftCopiedMessage = pageConfig.takeoverDraftCopiedMessage;
@@ -1056,6 +1057,11 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         if (typeof window.initGenericComponents === 'function') window.initGenericComponents(body);
         const search = body.querySelector('[data-omo-pv-project-embed-search]'), select = body.querySelector('[data-omo-pv-project-embed-select]'), preview = body.querySelector('[data-omo-pv-project-embed-preview]'), cancelButtons = Array.from(body.querySelectorAll('[data-omo-pv-project-embed-cancel]')), insert = body.querySelector('[data-omo-pv-project-embed-insert]'), remove = body.querySelector('[data-omo-pv-embed-remove]'), createForm = body.querySelector('[data-omo-pv-project-create-form]'), createSubmit = body.querySelector('[data-omo-pv-project-create-submit]'); let selected = null, projectPickerController = null;
         if (createForm instanceof HTMLFormElement) {
+            const sourcePvDocumentInput = document.createElement('input');
+            sourcePvDocumentInput.type = 'hidden';
+            sourcePvDocumentInput.name = 'source_pv_document_id';
+            sourcePvDocumentInput.value = String(documentId);
+            createForm.appendChild(sourcePvDocumentInput);
             if (Number(projectCreateContext.pvMeetingDocumentId || 0) > 0 && String(projectCreateContext.pvMeetingEditorToken || '') !== '') {
                 const meetingDocumentInput = document.createElement('input');
                 meetingDocumentInput.type = 'hidden';
@@ -2737,6 +2743,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         const canManageStructure = documentPayload.canManagePvStructure === true;
         const canManageAgenda = canManageStructure || documentPayload.canCreatePvGroups === true;
         const isReview = String(documentPayload.pvStage || '') === 'review';
+        root.classList.toggle('omo-pv-editor--review', isReview);
         if (addMenu) addMenu.hidden = isReview || (isCurrentEditor && !canManageAgenda);
         if (addMenuToggle) {
             addMenuToggle.disabled = isReview || documentPayload.isPvValidated === true || documentPayload.isPvTemplate === true || (isCurrentEditor && !canManageAgenda);
@@ -3041,7 +3048,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         }
 
         const canExtendEvent = documentPayload
-            && documentPayload.canManagePvStructure === true
+            && documentPayload.canManagePvDocument === true
             && String(documentPayload.pvStage || '') === 'meeting';
         eventExtensionMenu.hidden = !canExtendEvent;
         if (eventExtensionToggle instanceof HTMLButtonElement) {
@@ -3072,15 +3079,16 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         const startAt = new Date(eventStartAtIso);
         const endAt = new Date(eventEndAtIso);
         const now = new Date();
+        if (!Number.isFinite(startAt.getTime()) || !Number.isFinite(endAt.getTime())) {
+            return fallbackMinutes;
+        }
         if (now < startAt) {
             return Math.max(0, Number(meetingDurationMinutes || 0));
         }
 
-        if (now > endAt) {
-            return 0;
-        }
-
-        return Math.max(0, Math.round((endAt.getTime() - now.getTime()) / 60000));
+        // Keep a signed budget so elapsed overtime contributes to the overrun.
+        // The visible countdown and sector already clamp negative values to zero.
+        return Math.round((endAt.getTime() - now.getTime()) / 60000);
     }
 
     function collectTimingPointState() {
@@ -3173,11 +3181,14 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         const pointState = collectTimingPointState();
         let totalPointMinutes = 0;
         let remainingPointMinutes = 0;
+        let handledPointCount = 0;
 
         pointState.forEach(function (point) {
             totalPointMinutes += point.durationMinutes;
             if (!point.isHandled) {
                 remainingPointMinutes += point.durationMinutes;
+            } else {
+                handledPointCount++;
             }
         });
 
@@ -3187,12 +3198,11 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         const timerRatio = plannedDurationMinutes > 0
             ? Math.max(0, Math.min(1, timerRemainingMinutes / plannedDurationMinutes))
             : 0;
-        const marginMinutes = meetingDurationMinutes > totalPointMinutes
-            ? meetingDurationMinutes - totalPointMinutes
-            : 0;
-        const overrunMinutes = meetingDurationMinutes > 0 && totalPointMinutes > meetingDurationMinutes
-            ? totalPointMinutes - meetingDurationMinutes
-            : 0;
+        const hasMeetingStarted = meetingDurationMinutes > 0 && Date.now() >= Date.parse(eventStartAtIso);
+        const availableMinutes = hasMeetingStarted ? timerRemainingMinutes : meetingDurationMinutes;
+        const requiredMinutes = hasMeetingStarted ? remainingPointMinutes : totalPointMinutes;
+        const marginMinutes = Math.max(0, availableMinutes - requiredMinutes);
+        const overrunMinutes = meetingDurationMinutes > 0 ? Math.max(0, requiredMinutes - availableMinutes) : 0;
         const bufferMinutes = marginMinutes > 0 ? marginMinutes : overrunMinutes;
         const outerTotalMinutes = handledPointMinutes + remainingPointMinutes + bufferMinutes;
         const chartNode = root.querySelector('[data-omo-pv-timing-chart="1"]');
@@ -3202,6 +3212,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         const outerBufferNode = root.querySelector('[data-omo-pv-timing-outer-buffer]');
         const outerBaseNode = root.querySelector('[data-omo-pv-timing-outer-base]');
         const centerNode = root.querySelector('[data-omo-pv-timing-center]');
+        const pointCountNode = root.querySelector('[data-omo-pv-timing-point-count]');
         const handledLegendNode = root.querySelector('[data-omo-pv-timing-legend-handled]');
         const remainingLegendNode = root.querySelector('[data-omo-pv-timing-legend-remaining]');
         const bufferLegendNode = root.querySelector('[data-omo-pv-timing-legend-buffer]');
@@ -3210,6 +3221,13 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
 
         if (centerNode) {
             centerNode.textContent = plannedDurationMinutes > 0 ? formatMinutesLabel(timerRemainingMinutes) : notStartedValue;
+        }
+        if (pointCountNode) {
+            const progressLabel = String(pageConfig.pointProgressLabel || '{handled}/{total}')
+                .replace('{handled}', String(handledPointCount)).replace('{total}', String(pointState.length));
+            pointCountNode.textContent = handledPointCount + '/' + pointState.length;
+            pointCountNode.setAttribute('aria-label', progressLabel);
+            pointCountNode.setAttribute('title', progressLabel);
         }
         if (handledLegendNode) {
             handledLegendNode.textContent = formatMinutesLabel(handledPointMinutes);
@@ -3253,9 +3271,10 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
             }
         }
         if (chartNode) {
-            chartNode.setAttribute('title', plannedDurationMinutes > 0
+            const remainingLabel = plannedDurationMinutes > 0
                 ? formatMinutesLabel(timerRemainingMinutes)
-                : notStartedValue);
+                : notStartedValue;
+            chartNode.setAttribute('title', remainingLabel + (pointCountNode ? ' | ' + pointCountNode.getAttribute('title') : ''));
         }
     }
 
@@ -4111,6 +4130,12 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
     function renderNavTreeFromPayloads() {
         if (!(nav instanceof Element)) return;
 
+        const groupDrafts = new Map();
+        nav.querySelectorAll('[data-omo-pv-group-title]').forEach(function (input) {
+            if (input.value.trim() !== input.defaultValue.trim()) {
+                groupDrafts.set(Number(input.getAttribute('data-omo-pv-group-title')), input.value);
+            }
+        });
         const collapsedIds = new Set(Array.from(nav.querySelectorAll('[data-omo-pv-group].is-collapsed')).map(function (node) {
             return Number(node.getAttribute('data-omo-pv-group') || 0);
         }));
@@ -4189,6 +4214,11 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         appendChildren(0, rootNode);
         nav.replaceChildren(rootNode);
         updateGroupSummaryLabels();
+        nav.querySelectorAll('[data-omo-pv-group-title]').forEach(function (input) {
+            const groupId = Number(input.getAttribute('data-omo-pv-group-title'));
+            if (groupDrafts.has(groupId)) input.value = groupDrafts.get(groupId);
+            syncGroupTitleUi(input);
+        });
 
         if (focusedPointId > 0) {
             const nextFocusedRow = nav.querySelector('[data-omo-pv-point-nav-row="' + focusedPointId + '"]');
@@ -5902,22 +5932,46 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
             });
     }
 
+    function syncGroupTitleUi(input) {
+        if (!(input instanceof HTMLInputElement)) return;
+        const groupId = Number(input.getAttribute('data-omo-pv-group-title') || 0);
+        const button = nav.querySelector('[data-omo-pv-group-title-save="' + groupId + '"]');
+        if (!(button instanceof HTMLButtonElement)) return;
+        const isDirty = input.value.trim() !== input.defaultValue.trim();
+        const isSaving = groupTitleSaves.has(groupId);
+        input.disabled = isSaving;
+        button.disabled = isSaving || !isDirty || input.value.trim() === '';
+        button.setAttribute('aria-disabled', button.disabled ? 'true' : 'false');
+        button.textContent = isSaving ? savingLabel : (isDirty ? saveLabel : savedLabel);
+        button.classList.toggle('generic-action-button--main', isDirty);
+    }
+
     function saveGroupTitle(input) {
         if (!(input instanceof HTMLInputElement)) return;
         const groupId = Number(input.getAttribute('data-omo-pv-group-title') || 0);
         const title = input.value.trim();
-        if (groupId <= 0 || title === '') return;
-        input.disabled = true;
+        if (groupId <= 0 || title === '' || title === input.defaultValue.trim() || groupTitleSaves.has(groupId)) return;
+        groupTitleSaves.add(groupId);
+        syncGroupTitleUi(input);
         postPointAction('update_group', groupId, {title: title})
             .then(function (payload) {
                 if (payload && payload.point) {
+                    // A refresh can replace the input while the request is in flight.
+                    const currentInput = nav.querySelector('[data-omo-pv-group-title="' + groupId + '"]');
+                    if (currentInput instanceof HTMLInputElement) {
+                        currentInput.value = currentInput.defaultValue = String(payload.point.title || title);
+                    }
                     mergeKnownPointSignature(payload.point);
                     mergeCurrentPointPayload(payload.point);
                     renderNavTreeFromPayloads();
                 }
             })
+            .catch(function (error) {
+                window.omoNotify(String(error && error.message || editorClientUi.genericError || ''), 'error');
+            })
             .finally(function () {
-                if (input.isConnected) input.disabled = false;
+                groupTitleSaves.delete(groupId);
+                syncGroupTitleUi(nav.querySelector('[data-omo-pv-group-title="' + groupId + '"]'));
             });
     }
 
@@ -6355,7 +6409,18 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         }
     });
 
+    root.addEventListener('input', function (event) {
+        const groupTitleInput = event.target.closest('[data-omo-pv-group-title]');
+        if (groupTitleInput && nav.contains(groupTitleInput)) syncGroupTitleUi(groupTitleInput);
+    });
+
     root.addEventListener('keydown', function (event) {
+        const groupTitleInput = event.target.closest('[data-omo-pv-group-title]');
+        if (groupTitleInput && nav.contains(groupTitleInput) && event.key === 'Enter' && !event.isComposing) {
+            event.preventDefault();
+            saveGroupTitle(groupTitleInput);
+            return;
+        }
         const prioritySummary = event.target.closest('[data-omo-pv-point-priority-menu] > summary');
         if (prioritySummary instanceof HTMLElement && root.contains(prioritySummary)) {
             if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') {

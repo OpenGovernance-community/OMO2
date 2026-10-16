@@ -50,6 +50,7 @@ class Project extends DbObject
             [['title', 'status', 'visibility_type', 'capture_mode', 'project_size', 'project_kind', 'proposal_status', 'blocked_reactivate_status'], 'string'],
             [['blocked_reason'], 'text'],
             [['description'], 'html'],
+            [['creation_context'], 'parameters'],
             [['planned_start_date', 'planned_end_date', 'blocked_until'], 'date'],
             [['created_at', 'updated_at', 'closed_at', 'archived_at', 'proposed_at', 'proposal_decided_at'], 'datetime'],
             [['active'], 'boolean'],
@@ -66,6 +67,7 @@ class Project extends DbObject
             'IDholon' => 'Holon',
             'IDuser' => 'Responsable',
             'IDusercreation' => 'Createur',
+            'creation_context' => 'Contexte de creation',
             'visibility_type' => 'Visibilite',
             'IDuser_proposed' => 'Proposé par',
             'IDproject_parent' => 'Projet parent',
@@ -1023,6 +1025,7 @@ class Project extends DbObject
 
     public function save()
     {
+        $isNew = (int)$this->getId() <= 0;
         $historyBeforeState = (int)$this->getId() > 0 ? self::getStoredHistoryState((int)$this->getId()) : null;
         $historyActionOverride = $this->historyActionOverride;
         $storedInputs = (int)$this->getId() > 0 ? self::getStoredImportanceInputs((int)$this->getId()) : null;
@@ -1034,6 +1037,7 @@ class Project extends DbObject
                 $ownerId = (int)commonGetCurrentUserId();
             }
             $this->set('IDusercreation', $ownerId ?: null);
+            $this->set('creation_context', $storedInputs['creation_context'] ?? null);
         } elseif (!$this->get('IDusercreation')) {
             $this->set('IDusercreation', (int)commonGetCurrentUserId() ?: null);
         }
@@ -1049,6 +1053,16 @@ class Project extends DbObject
         }
         $this->set('project_kind', self::normalizeKind($this->get('project_kind')));
         $this->set('proposal_status', self::normalizeProposalStatus($this->get('proposal_status')));
+        $proposerId = max(0, (int)$this->get('IDuser_proposed'));
+        if ($isNew && $this->isPendingProposal() && $proposerId <= 0) {
+            $proposerId = (int)commonGetCurrentUserId();
+        }
+        $this->set('IDuser_proposed', $proposerId ?: null);
+        if ($proposerId > 0
+            && ($isNew || $proposerId !== (int)($storedInputs['IDuser_proposed'] ?? 0))
+            && !UserOrganization::hasActiveMembership($proposerId, (int)$this->get('IDorganization'))) {
+            return ['status' => false, 'text' => 'La personne proposant le projet doit etre membre de l organisation.'];
+        }
         $this->set('status', self::normalizeStatus($this->get('status')));
         $this->set('capture_mode', self::normalizeCaptureMode($this->get('capture_mode')));
         $this->set('project_size', self::normalizeSize($this->get('project_size')));
@@ -1119,7 +1133,37 @@ class Project extends DbObject
         }
         $this->set('updated_at', $now);
 
-        $result = parent::save();
+        // A proposal and its initial follow-up must be created together, even
+        // when a collective proposal is applied later by another person.
+        $followProposer = $isNew && $proposerId > 0 && (int)$this->get('active') === 1
+            && self::normalizeKind($this->get('project_kind')) === self::KIND_STANDARD;
+        $pdo = $followProposer ? DbObject::getPdo() : null;
+        $startedTransaction = $pdo instanceof \PDO && !$pdo->inTransaction();
+        if ($startedTransaction) {
+            $pdo->beginTransaction();
+        }
+        try {
+            $result = parent::save();
+            if ($followProposer && is_array($result) && !empty($result['status'])
+                && !ProjectFollower::setFollowing((int)$this->getId(), $proposerId, true)) {
+                throw new \RuntimeException('Initial project follow-up could not be saved.');
+            }
+            if ($startedTransaction) {
+                if (is_array($result) && !empty($result['status'])) {
+                    $pdo->commit();
+                } else {
+                    $pdo->rollBack();
+                    $this->setId(0);
+                }
+            }
+        } catch (\Throwable $exception) {
+            if ($startedTransaction && $pdo->inTransaction()) {
+                $pdo->rollBack();
+                $this->setId(0);
+            }
+            error_log('project_creation_failed: ' . $exception->getMessage());
+            return ['status' => false, 'text' => 'Impossible d enregistrer le projet et son suivi.'];
+        }
         if (!is_array($result) || empty($result['status']) || (int)$this->getId() <= 0) {
             return $result;
         }
@@ -1195,7 +1239,7 @@ class Project extends DbObject
     private static function getStoredImportanceInputs($projectId): ?array
     {
         $row = self::fetchRow(
-            'SELECT IDorganization, IDproject_parent, IDholon, IDusercreation, visibility_type, importance, calculated_importance FROM project WHERE id = :id LIMIT 1',
+            'SELECT IDorganization, IDproject_parent, IDholon, IDusercreation, IDuser_proposed, creation_context, visibility_type, importance, calculated_importance FROM project WHERE id = :id LIMIT 1',
             ['id' => (int)$projectId]
         );
         return is_array($row) ? $row : null;
@@ -1254,6 +1298,28 @@ class Project extends DbObject
 
         $user = new User();
         return $user->load($userId) ? $user : null;
+    }
+
+    public static function getProposerOptions(int $organizationId): array
+    {
+        $members = new ArrayUserOrganization();
+        $members->loadActiveForOrganization($organizationId);
+        $options = [];
+        foreach ($members as $membership) {
+            $userId = (int)$membership->get('IDuser');
+            if ($userId > 0) {
+                $options[$userId] = DocumentPvPoint::getUserDisplayNameForOrganization($userId, $organizationId);
+            }
+        }
+        return $options;
+    }
+
+    public function getCreationContext(): array
+    {
+        $value = $this->get('creation_context');
+        if (is_array($value)) return $value;
+        $decoded = json_decode((string)$value, true);
+        return is_array($decoded) ? $decoded : [];
     }
 
     public function getReviewMetadata()
