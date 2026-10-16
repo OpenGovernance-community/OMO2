@@ -2,7 +2,7 @@
 'use strict';
 if(window.omoChoiceChangeDetails)return;
 var lifecycleTexts={notExisting:'Cet élément n’existait pas.',deleted:'Supprimé'};
-var detailTexts={authority_label:'Traitement des autorites',authority_delete_all:'Supprimer les autorites et les regles associees',authority_delete_keep_rules:'Supprimer les autorites et remonter les regles',authority_reassign:'Remonter les autorites au holon de leur autorite parente',authority_required:'Choix des autorites requis',currentHolon:'Contexte courant',rule_scope:'Portée',rule_authority:'Domaine d’autorité',rule_local:'Locale',rule_circle:'Cercle',rule_descendants:'Descendante',rule_global:'Globale',parent:'Emplacement',name:'Nom',fullName:'Nom complet',color:'Couleur',icon:'Icône',adminMin:'Minimum d’administrateurs',adminMax:'Maximum d’administrateurs',property:'Propriété',introduction:'introduction',conclusion:'conclusion',title:'titre',detail:'détail',description:'Description',person:'Personne en charge',sourceType:'Type de source',sourceLink:'Lien vers la source',sourceDocument:'Document source',updateFrequency:'Fréquence de mise à jour',expectedMoment:'Moment attendu',ethercalcSync:'Fréquence de synchronisation EtherCalc',spreadsheetSync:'Fréquence de synchronisation du tableur',ethercalcCell:'Cellule EtherCalc',ethercalcRange:'Plage EtherCalc',ethercalcDateColumn:'Colonne des dates EtherCalc',ethercalcValueColumn:'Colonne des valeurs EtherCalc',spreadsheetSheet:'Feuille du tableur',spreadsheetCell:'Cellule du tableur',spreadsheetRange:'Plage du tableur',spreadsheetDateColumn:'Colonne des dates du tableur',spreadsheetValueColumn:'Colonne des valeurs du tableur',chartMinimum:'Valeur basse du graphique',ceiling:'Plafond',referenceType:'Type de référence',referenceScale:'Échelle de référence',showCumulative:'Afficher le cumul',referencePoint:'Point de référence',yes:'Oui',no:'Non',personFallback:'Personne #',sourceManual:'Manuelle',sourceEthercalcCell:'Cellule EtherCalc',sourceEthercalcTable:'Tableau EtherCalc',sourceSpreadsheetCell:'Cellule tableur',sourceSpreadsheetTable:'Tableau tableur',frequencyHourly:'Chaque heure',frequencyDaily:'Chaque jour',frequencyWeekly:'Chaque semaine',frequencyMonthly:'Chaque mois',frequencyQuarterly:'Chaque trimestre',frequencySemiannual:'Chaque semestre',frequencyYearly:'Chaque année'};
+var detailTexts={authority_label:'Traitement des autorites',authority_delete_all:'Supprimer les autorites et les regles associees',authority_delete_keep_rules:'Supprimer les autorites et remonter les regles',authority_reassign:'Remonter les autorites au holon de leur autorite parente',authority_required:'Choix des autorites requis',currentHolon:'Contexte courant',rule_scope:'Portée',rule_authority:'Domaine d’autorité',rule_local:'Locale',rule_circle:'Cercle',rule_descendants:'Descendante',rule_global:'Globale',parent:'Emplacement',name:'Nom',fullName:'Nom complet',color:'Couleur',icon:'Icône',adminMin:'Minimum d’administrateurs',adminMax:'Maximum d’administrateurs',property:'Propriété',introduction:'introduction',conclusion:'conclusion',title:'titre',detail:'détail',description:'Description',person:'Personne en charge',proposedBy:'Propose par',sourceType:'Type de source',sourceLink:'Lien vers la source',sourceDocument:'Document source',updateFrequency:'Fréquence de mise à jour',expectedMoment:'Moment attendu',ethercalcSync:'Fréquence de synchronisation EtherCalc',spreadsheetSync:'Fréquence de synchronisation du tableur',ethercalcCell:'Cellule EtherCalc',ethercalcRange:'Plage EtherCalc',ethercalcDateColumn:'Colonne des dates EtherCalc',ethercalcValueColumn:'Colonne des valeurs EtherCalc',spreadsheetSheet:'Feuille du tableur',spreadsheetCell:'Cellule du tableur',spreadsheetRange:'Plage du tableur',spreadsheetDateColumn:'Colonne des dates du tableur',spreadsheetValueColumn:'Colonne des valeurs du tableur',chartMinimum:'Valeur basse du graphique',ceiling:'Plafond',referenceType:'Type de référence',referenceScale:'Échelle de référence',showCumulative:'Afficher le cumul',referencePoint:'Point de référence',yes:'Oui',no:'Non',personFallback:'Personne #',sourceManual:'Manuelle',sourceEthercalcCell:'Cellule EtherCalc',sourceEthercalcTable:'Tableau EtherCalc',sourceSpreadsheetCell:'Cellule tableur',sourceSpreadsheetTable:'Tableau tableur',frequencyHourly:'Chaque heure',frequencyDaily:'Chaque jour',frequencyWeekly:'Chaque semaine',frequencyMonthly:'Chaque mois',frequencyQuarterly:'Chaque trimestre',frequencySemiannual:'Chaque semestre',frequencyYearly:'Chaque année'};
 if(typeof window.fetch==='function')window.fetch('/common/jstranslation/change_details.php',{credentials:'same-origin'}).then(function(response){if(!response.ok)throw new Error('Translation unavailable');return response.json();}).then(function(texts){[lifecycleTexts,detailTexts].forEach(function(target){Object.keys(target).forEach(function(key){if(typeof texts[key]==='string')target[key]=texts[key];});});document.querySelectorAll('[data-omo-change-details-container]').forEach(function(node){delete node.dataset.omoChangeDetailsBound;});hydrate(document);document.querySelectorAll('[data-change-lifecycle-text]').forEach(function(node){node.textContent=lifecycleTexts[node.dataset.changeLifecycleText];});}).catch(function(){});
 function sanitize(value){value=String(value||'');if(window.omoSimpleHtmlField&&typeof window.omoSimpleHtmlField.sanitizeHtml==='function')return window.omoSimpleHtmlField.sanitizeHtml(value);var node=document.createElement('div');node.textContent=value;return node.innerHTML.replace(/\r\n?|\n/g,'<br>');}
 function richRoot(value){var root=document.createElement('div');root.innerHTML=sanitize(value);return root;}
@@ -135,15 +135,31 @@ function detailedGovernanceChanges(action,authorities,responsibleLabels){
         return changes;
     }
     if(type.indexOf('indicator.')===0)return detailedIndicatorChanges(action||{},responsibleLabels||{});
+    if(type.indexOf('project.')===0){
+        var projectChanges=governanceChanges(action,authorities),before=action.before||{},after=action.after||{};
+        function proposer(value){var id=Number(value||0);return id>0?String((responsibleLabels||{})[id]||detailTexts.personFallback+id):'';}
+        displayChange(projectChanges,detailTexts.proposedBy,proposer(before.IDuser_proposed),proposer(after.IDuser_proposed));
+        return projectChanges;
+    }
     return governanceChanges(action,authorities);
 }
 function operationOf(action) {
     var operation=String(action&&action.type||'').split('.').pop();
     return operation==='create'||operation==='delete'?operation:'update';
 }
+function compactCard(card) {
+    var contents=Array.prototype.slice.call(card.querySelectorAll('.omo-change-details__value-content'));
+    if(card.querySelector('.omo-change-details__title').textContent.length>45)return;
+    if(card.classList.contains('omo-change-details__card--snapshot')&&contents.length!==1)return;
+    var shortValues=contents.every(function(content){
+        var text=String(content.textContent||'').trim();
+        return text.length<=70&&!/[\r\n]/.test(text)&&!content.querySelector('br,ul,ol,table,blockquote,pre,img,hr,h1,h2,h3,h4,h5,h6')&&content.querySelectorAll('p,div').length<=1;
+    });
+    if(shortValues)card.classList.add('omo-change-details__card--compact');
+}
 function createLifecycleList(changes,operation) {
     var comparison=document.createElement('div'),notice=document.createElement('div'),values=document.createElement('div');
-    comparison.className='omo-change-details__lifecycle';
+    comparison.className='omo-change-details__lifecycle omo-change-details__lifecycle--'+operation;
     notice.className='omo-change-details__absence generic-soft-panel';
     notice.dataset.changeLifecycleText=operation==='create'?'notExisting':'deleted';
     notice.textContent=lifecycleTexts[notice.dataset.changeLifecycleText];
@@ -164,13 +180,32 @@ function createLifecycleList(changes,operation) {
             content.classList.remove('is-added','is-removed','is-before','is-after');
             card.appendChild(value);
         });
+        compactCard(card);
         values.appendChild(card);
     });
     if(operation==='create'){comparison.appendChild(notice);comparison.appendChild(values);}
     else{comparison.appendChild(values);comparison.appendChild(notice);}
     return comparison;
 }
-function createList(changes,options){options=options||{};changes=Array.isArray(changes)?changes:[];if(options.operation==='create'||options.operation==='delete')return createLifecycleList(changes,options.operation);var list=document.createElement('div');list.className='omo-change-details__list';changes.forEach(function(change){var isList=!!change.list,beforeRaw=isList&&Array.isArray(change.before)?change.before:(change.before==null?'':String(change.before)),afterRaw=isList&&Array.isArray(change.after)?change.after:(change.after==null?'':String(change.after)),before=isList?beforeRaw.join('\n'):beforeRaw,after=isList?afterRaw.join('\n'):afterRaw,status=String(change.status||'changed'),card=document.createElement('section'),title=document.createElement('strong'),operations=null,rich=null;if(['added','removed','changed'].indexOf(status)===-1)status='changed';card.className='omo-change-details__card omo-change-details__card--'+status;title.className='omo-change-details__title';title.textContent=change.operationLabel===false?String(change.label||'Modification'):operationTitle(change.label,status);card.appendChild(title);if(change.rich)rich=richDiff(before,after);else if(!isList&&window.omoChoiceWordDiff)operations=window.omoChoiceWordDiff.buildOperations(before,after);card.appendChild(valueBlock('Avant',beforeRaw,'before',operations,rich?rich.before:null,isList));card.appendChild(valueBlock('Après',afterRaw,'after',operations,rich?rich.after:null,isList));list.appendChild(card);});return list;}
+function createList(changes,options){
+    options=options||{};changes=Array.isArray(changes)?changes:[];
+    if(options.operation==='create'||options.operation==='delete')return createLifecycleList(changes,options.operation);
+    var list=document.createElement('div');list.className='omo-change-details__list';
+    changes.forEach(function(change){
+        var isList=!!change.list,beforeRaw=isList&&Array.isArray(change.before)?change.before:(change.before==null?'':String(change.before)),afterRaw=isList&&Array.isArray(change.after)?change.after:(change.after==null?'':String(change.after)),before=isList?beforeRaw.join('\n'):beforeRaw,after=isList?afterRaw.join('\n'):afterRaw,status=String(change.status||'changed'),card=document.createElement('section'),title=document.createElement('strong'),operations=null,rich=null;
+        if(['added','removed','changed'].indexOf(status)===-1)status='changed';
+        card.className='omo-change-details__card omo-change-details__card--'+status;
+        title.className='omo-change-details__title';title.textContent=change.operationLabel===false?String(change.label||'Modification'):operationTitle(change.label,status);
+        card.appendChild(title);
+        if(change.rich)rich=richDiff(before,after);
+        else if(!isList&&window.omoChoiceWordDiff)operations=window.omoChoiceWordDiff.buildOperations(before,after);
+        card.appendChild(valueBlock('Avant',beforeRaw,'before',operations,rich?rich.before:null,isList));
+        card.appendChild(valueBlock('Après',afterRaw,'after',operations,rich?rich.after:null,isList));
+        compactCard(card);
+        list.appendChild(card);
+    });
+    return list;
+}
 function create(changes,options){options=options||{};if(options.details===false)return createList(changes,options);var details=document.createElement('details'),summary=document.createElement('summary');details.className='omo-change-details';summary.textContent=String(options.label||'Détail');details.appendChild(summary);details.appendChild(createList(changes,options));return details;}
 function payload(value){try{var binary=window.atob(String(value||'')),bytes=Uint8Array.from(binary,function(character){return character.charCodeAt(0);}),text=typeof TextDecoder==='function'?new TextDecoder().decode(bytes):decodeURIComponent(Array.prototype.map.call(bytes,function(byte){return '%'+('00'+byte.toString(16)).slice(-2);}).join(''));return JSON.parse(text);}catch(error){return null;}}
 function hydrate(root){

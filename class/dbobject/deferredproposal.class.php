@@ -460,6 +460,7 @@ class DeferredProposal extends DbObject
         return [
             'IDholon' => (int)$project->get('IDholon'),
             'IDuser' => (int)$project->get('IDuser') ?: null,
+            'IDuser_proposed' => (int)$project->get('IDuser_proposed') ?: null,
             'IDproject_parent' => (int)$project->get('IDproject_parent') ?: null,
             'title' => trim((string)$project->get('title')),
             'description' => PropertyFormat::sanitizeHtml((string)$project->get('description')),
@@ -488,6 +489,7 @@ class DeferredProposal extends DbObject
         $normalized = [
             'IDholon' => (int)($state['IDholon'] ?? 0),
             'IDuser' => (int)($state['IDuser'] ?? 0) ?: null,
+            'IDuser_proposed' => max(0, (int)($state['IDuser_proposed'] ?? 0)) ?: null,
             'IDproject_parent' => (int)($state['IDproject_parent'] ?? 0) ?: null,
             'title' => mb_substr(trim((string)($state['title'] ?? '')), 0, 255, 'UTF-8'),
             'description' => PropertyFormat::sanitizeHtml((string)($state['description'] ?? '')),
@@ -925,6 +927,16 @@ class DeferredProposal extends DbObject
         }
 
         $responsibleLabels = [];
+        if ($targetType === self::TARGET_PROJECT) {
+            foreach (array_unique(array_filter([
+                (int)($beforeState['IDuser_proposed'] ?? 0),
+                (int)($afterState['IDuser_proposed'] ?? 0),
+            ])) as $proposerId) {
+                $responsibleLabels[$proposerId] = DocumentPvPoint::getUserDisplayNameForOrganization(
+                    $proposerId, (int)$this->get('IDorganization')
+                );
+            }
+        }
         if (in_array($targetType, [self::TARGET_INDICATOR, self::TARGET_RECURRING_TASK], true)) {
             foreach (array_unique(array_filter([
                 (int)($beforeState['IDuser_responsible'] ?? 0),
@@ -966,6 +978,68 @@ class DeferredProposal extends DbObject
     public static function getForPvPoint(int $pointId, bool $pendingOnly = false)
     {
         return self::getForValidationContext('IDdocument_pv_point', $pointId, $pendingOnly);
+    }
+
+    public static function getReportDataForPvPoints(Document $document, array $points): array
+    {
+        $userId = (int)commonGetCurrentUserId();
+        $pointIds = [];
+        foreach ($points as $point) {
+            if ($point instanceof DocumentPvPoint && !$point->isGroup()
+                && (int)$point->get('IDdocument') === (int)$document->getId()
+                && $document->canUserViewPvPoint($point, $userId)) {
+                $pointIds[] = (int)$point->getId();
+            }
+        }
+        if (!$pointIds) return [];
+        $organizationId = (int)$document->get('IDorganization');
+        $proposals = new ArrayDeferredProposal();
+        $proposals->load(['where' => [
+            ['field' => 'IDdocument_pv_point', 'op' => 'IN', 'value' => $pointIds],
+            ['field' => 'IDorganization', 'value' => $organizationId],
+            ['field' => 'status', 'op' => 'IN', 'value' => [self::STATUS_VALIDATED, self::STATUS_APPLIED]],
+        ], 'hydrate' => true, 'orderBy' => [['field' => 'position', 'dir' => 'ASC'], ['field' => 'id', 'dir' => 'ASC']]]);
+        $byPoint = [];
+        foreach ($proposals as $proposal) {
+            $data = $proposal->buildPresentationData();
+            $canViewDetails = $proposal->canViewReportTarget($organizationId);
+            if (!$canViewDetails) {
+                // The PV keeps its historical titles, without embedding private snapshots.
+                $data = array_intersect_key($data, array_flip(['id', 'targetType', 'targetLabel', 'operation', 'status', 'title']));
+            }
+            $data['canViewDetails'] = $canViewDetails;
+            $byPoint[(int)$proposal->get('IDdocument_pv_point')][] = $data;
+        }
+        return $byPoint;
+    }
+
+    private function canViewReportTarget(int $organizationId): bool
+    {
+        $classes = [self::TARGET_PROJECT => Project::class, self::TARGET_RULE => Rule::class,
+            self::TARGET_HOLON => Holon::class, self::TARGET_RECURRING_TASK => ControlActivity::class,
+            self::TARGET_INDICATOR => StatIndicator::class];
+        $type = (string)$this->get('target_type');
+        if (!isset($classes[$type]) || (int)$this->get('target_id') <= 0 || (string)$this->get('operation') === self::OPERATION_DELETE) return false;
+        $target = new $classes[$type]();
+        if (!$target->load((int)$this->get('target_id'))) return false;
+        $targetOrganizationId = $target instanceof Rule ? $target->getOrganizationId()
+            : ($target instanceof Holon ? (int)$target->resolveOrganizationId() : (int)$target->get('IDorganization'));
+        if ($targetOrganizationId !== $organizationId) return false;
+        if ($target instanceof Holon || $target instanceof StatIndicator) return $target->canViewDetail();
+        $organization = new Organization();
+        if (!$organization->load($organizationId) || !$organization->canViewDetail()) return false;
+        if ($target instanceof Rule) {
+            return History::getResourceReferenceUrl('rule', (int)$target->getId(), $organizationId) !== '';
+        }
+        if ($target instanceof Project) {
+            if (!$target->currentViewerCanAccessVisibility()) return false;
+            $userId = (int)commonGetCurrentUserId();
+            if ($target->isPrivateProposal() && ($userId <= 0 || !in_array($userId, [(int)$target->get('IDuser_proposed'), (int)$target->get('IDuser')], true))) return false;
+        } elseif ((int)$target->get('active') !== 1) return false;
+        $holon = $target->getHolon();
+        if (!$holon instanceof Holon) return (int)$target->get('IDholon') <= 0;
+        $root = $organization->getEnabledStructuralRootHolon();
+        return $root instanceof Holon && $holon->isDescendantOf((int)$root->getId(), true) && $holon->canViewDetail();
     }
 
     protected static function getForValidationContext(string $field, int $id, bool $pendingOnly)
@@ -1114,6 +1188,9 @@ class DeferredProposal extends DbObject
             if ($targetId > 0) return ['status' => false, 'conflict' => true, 'message' => 'La création du projet est dans un état incohérent.'];
             $project = new Project();
             self::applyProjectState($project, $state, $organizationId);
+            $project->set('creation_context', ObjectCreationContext::fromProposal($proposal) ?: null);
+            $project->set('IDusercreation', (int)$proposal->get('IDuser_author') ?: null);
+            $project->set('proposed_at', $proposal->get('created_at'));
             $result = $project->save();
             if (!is_array($result) || empty($result['status']) || (int)$project->getId() <= 0) {
                 return ['status' => false, 'message' => 'Le projet ne peut pas être créé.'];
@@ -1155,7 +1232,7 @@ class DeferredProposal extends DbObject
     protected static function applyProjectState(Project $project, array $state, int $organizationId): void
     {
         $project->set('IDorganization', $organizationId);
-        foreach (['IDholon', 'IDuser', 'IDproject_parent', 'title', 'description', 'status', 'blocked_reason', 'blocked_auto_reactivate', 'blocked_reactivate_status', 'capture_mode', 'project_size', 'priority', 'importance'] as $field) {
+        foreach (['IDholon', 'IDuser', 'IDuser_proposed', 'IDproject_parent', 'title', 'description', 'status', 'blocked_reason', 'blocked_auto_reactivate', 'blocked_reactivate_status', 'capture_mode', 'project_size', 'priority', 'importance'] as $field) {
             $project->set($field, $state[$field] ?? null);
         }
         foreach (['planned_start_date', 'planned_end_date', 'blocked_until'] as $field) {

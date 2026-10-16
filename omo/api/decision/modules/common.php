@@ -1054,6 +1054,7 @@ if (!function_exists('omoDecisionRenderGovernanceChanges')) {
             $payload = base64_encode((string)json_encode([
                 'governanceAction' => ['type' => $actionType, 'before' => $before, 'after' => $after],
                 'authorities' => (array)($summaryData['authorities'] ?? []),
+                'responsibleLabels' => (array)($summaryData['responsibleLabels'] ?? []),
             ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
             $items[] = '<section class="omo-governance-proposal-changes__item">'
                 . '<strong>' . $escape($operationLabel . ' ' . mb_strtolower($heading) . ($target !== '' ? ' : ' . $target : '')) . '</strong>'
@@ -1447,7 +1448,7 @@ if (!function_exists('omoDecisionRenderProposalDiscussionAssets')) {
             . '<link rel="stylesheet" href="/common/chat/thread.css?v=20261016-reactions-5">'
             . '<link rel="stylesheet" href="' . commonAssetUrl('/common/choice/proposal-discussion.css') . '">'
             . '<script src="' . commonAssetUrl('/common/choice/proposal-description.js') . '" defer></script>'
-            . '<link rel="stylesheet" href="/common/choice/change-details.css?v=20260923-lifecycle-details">'
+            . '<link rel="stylesheet" href="' . commonAssetUrl('/common/choice/change-details.css') . '">'
             . '<script src="/common/choice/word-diff.js?v=20260815" defer></script>'
             . '<script src="' . commonAssetUrl('/common/choice/change-details.js') . '" defer></script>'
             . '<script src="' . commonAssetUrl('/common/choice/highlight-palette.js') . '" defer></script>'

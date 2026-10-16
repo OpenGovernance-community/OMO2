@@ -833,7 +833,7 @@ $projectTexts = [
 ];
 ?>
 <link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260902-save-menu">
-<link rel="stylesheet" href="/common/choice/change-details.css?v=20260923-lifecycle-details">
+<link rel="stylesheet" href="<?= commonAssetUrl('/common/choice/change-details.css') ?>">
 <link rel="stylesheet" href="/common/chat/thread.css?v=20261016-reactions-5">
 <?php if ($organization->isApplicationEnabled('stats')): ?><link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/stats/stats.css') ?>"><?php endif; ?>
 <?php if ($organization->isApplicationEnabled('activities')): ?><link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/activities/activities.css') ?>"><?php endif; ?>

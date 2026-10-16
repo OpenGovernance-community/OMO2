@@ -327,6 +327,7 @@ function omoDocumentsPvEditorSourceLang(): array
         'documents.pv_editor.warning.validate_irreversible' => ['text' => 'Valider ce PV est irréversible. Il ne sera plus possible de le modifier. Continuer ?', 'context' => 'Confirmation shown before changing a PV stage to validated.'],
         'documents.pv_editor.summary.meeting_duration' => ['text' => 'Durée de la réunion', 'context' => 'Label for the total meeting duration in the PV editor timing summary.'],
         'documents.pv_editor.summary.remaining_time' => ['text' => 'Temps restant', 'context' => 'Label for the remaining meeting time when the meeting is in progress.'],
+        'documents.pv_editor.summary.point_progress' => ['text' => '{handled}/{total} points traites', 'context' => 'Accessible description of the handled agenda point count in the center of the PV timing chart.'],
         'documents.pv_editor.summary.points_duration' => ['text' => 'Durée des points', 'context' => 'Label for the total planned duration of PV points.'],
         'documents.pv_editor.summary.points_remaining' => ['text' => 'Points restants', 'context' => 'Label for the remaining planned duration of unhandled PV points.'],
         'documents.pv_editor.summary.handled' => ['text' => 'Traités', 'context' => 'Legend label for handled agenda points in the PV editor chart.'],
@@ -554,6 +555,7 @@ function omoDocumentsPvEditorBuildUiText(?callable $translate = null, array $pri
         'stageReadonly' => $resolve('documents.pv_editor.notice.stage_readonly', 'Seules les personnes qui peuvent éditer le document peuvent changer cette étape.'),
         'meetingDuration' => $resolve('documents.pv_editor.summary.meeting_duration', 'Durée de la réunion'),
         'remainingTime' => $resolve('documents.pv_editor.summary.remaining_time', 'Temps restant'),
+        'pointProgress' => $resolve('documents.pv_editor.summary.point_progress', '{handled}/{total} points traites'),
         'pointsDuration' => $resolve('documents.pv_editor.summary.points_duration', 'Durée des points'),
         'pointsRemaining' => $resolve('documents.pv_editor.summary.points_remaining', 'Points restants'),
         'handledLegend' => $resolve('documents.pv_editor.summary.handled', 'Traités'),
@@ -1023,7 +1025,7 @@ function omoDocumentsPvEditorRenderNavItem(array $pointData, array $uiText): str
             ? '<span class="omo-pv-editor__nav-handle generic-drag-handle generic-drag-handle--static" draggable="true" data-omo-pv-point-drag-handle="' . $pointId . '" title="' . omoDocumentsPvEditorEscape((string)($uiText['reorder'] ?? 'Reordonner les points')) . '">::</span>'
             : '<span class="omo-pv-editor__nav-handle omo-pv-editor__nav-handle--disabled" aria-hidden="true"></span>';
         $titleHtml = !empty($pointData['canEditGroup'])
-            ? '<input type="text" class="omo-pv-editor__group-title-input" maxlength="80" value="' . omoDocumentsPvEditorEscape($title) . '" data-omo-pv-group-title="' . $pointId . '" aria-label="' . omoDocumentsPvEditorEscape((string)($uiText['title'] ?? 'Titre')) . '"><button type="button" class="generic-action-button omo-pv-editor__group-title-save" data-omo-pv-group-title-save="' . $pointId . '">' . omoDocumentsPvEditorEscape((string)($uiText['save'] ?? 'Enregistrer')) . '</button>'
+            ? '<input type="text" class="omo-pv-editor__group-title-input" maxlength="80" value="' . omoDocumentsPvEditorEscape($title) . '" data-omo-pv-group-title="' . $pointId . '" aria-label="' . omoDocumentsPvEditorEscape((string)($uiText['title'] ?? 'Titre')) . '"><button type="button" class="generic-action-button omo-pv-editor__group-title-save" data-omo-pv-group-title-save="' . $pointId . '" disabled aria-disabled="true">' . omoDocumentsPvEditorEscape((string)($uiText['saved'] ?? 'Enregistre')) . '</button>'
             : '<strong class="omo-pv-editor__group-title">' . omoDocumentsPvEditorEscape($title) . '</strong>';
         $groupPointCount = (int)($pointData['groupPointCount'] ?? 0);
         $groupPointCountLabel = $groupPointCount . ' ' . (string)($uiText['groupPoints'] ?? 'points');
@@ -1074,7 +1076,7 @@ function omoDocumentsPvEditorRenderNavItem(array $pointData, array $uiText): str
     $priorityWidthClass = !empty($pointData['wasCreatedBeforeMeeting'])
         ? ' omo-pv-editor__nav-row--priority-wide'
         : '';
-    return '<div class="omo-pv-editor__nav-row omo-pv-editor__nav-row--priority-p' . $priority . $priorityWidthClass . (!empty($pointData['isHandled']) ? ' is-handled' : '') . '" data-omo-pv-nav-node="' . $pointId . '" data-omo-pv-parent-id="' . (int)($pointData['parentId'] ?? 0) . '" data-omo-pv-point-nav-row="' . $pointId . '" data-omo-pv-can-delete="' . ($canDelete ? '1' : '0') . '">'
+    return '<div class="omo-pv-editor__nav-row omo-pv-editor__nav-row--priority-p' . $priority . $priorityWidthClass . (!empty($pointData['isHandled']) && empty($pointData['isReview']) ? ' is-handled' : '') . '" data-omo-pv-nav-node="' . $pointId . '" data-omo-pv-parent-id="' . (int)($pointData['parentId'] ?? 0) . '" data-omo-pv-point-nav-row="' . $pointId . '" data-omo-pv-can-delete="' . ($canDelete ? '1' : '0') . '">'
         . $reorderHandle
         . '  <button type="button" class="omo-pv-editor__nav-item" data-omo-pv-point-nav-target="' . $pointId . '">'
         . '      <span class="omo-pv-editor__nav-titleline">'
@@ -1323,7 +1325,7 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
     }
     $deferredProposalHtml = omoDocumentsPvEditorRenderDeferredProposals($pointData, $uiText);
 
-    $html = '<article class="omo-pv-editor__point-card omo-document-pv__point' . ($canEditNow ? ' is-editable' : ' is-readonly') . '"'
+    $html = '<article class="omo-pv-editor__point-card omo-document-pv__point' . ($canEditNow ? ' is-editable' : ' is-readonly') . (!empty($pointData['isHandled']) && !$isReview ? ' is-handled' : '') . '"'
         . ' id="omo-pv-editor-point-' . $pointId . '"'
         . ' data-omo-pv-point-card="' . $pointId . '"'
         . ' data-omo-pv-point-editable="' . ($canEditNow ? '1' : '0') . '"'
@@ -1500,6 +1502,10 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
         $html .= '</div>';
     }
 
+    if (!empty($pointData['isReview']) && !empty($pointData['isHandled'])) {
+        require_once dirname(__DIR__, 4) . '/common/document/pv-report.php';
+        $html .= commonPvReportRenderHandledAt($pointData['handledAt'] ?? null);
+    }
     $html .= '</article>';
 
     return $html;
@@ -1522,6 +1528,7 @@ function omoDocumentsPvEditorBuildPointPayload(array $pointData, array $uiText):
         'canReorder' => !empty($pointData['canReorder']),
         'canEditGroup' => !empty($pointData['canEditGroup']),
         'isReview' => !empty($pointData['isReview']),
+        'handledAt' => (string)($pointData['handledAt'] ?? ''),
         'isReportOmitted' => !empty($pointData['isReportOmitted']),
         'canTakeOverLock' => !empty($pointData['canTakeOverLock']),
         'title' => (string)($pointData['title'] ?? ''),

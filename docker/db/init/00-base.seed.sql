@@ -930,6 +930,7 @@ CREATE TABLE `document_pv_point` (
   `actual_duration_minutes` int(11) DEFAULT NULL,
   `pointtype` varchar(20) NOT NULL DEFAULT 'information',
   `is_handled` tinyint(1) NOT NULL DEFAULT 0,
+  `handled_at` datetime DEFAULT NULL,
   `IDpoint_moved_to` int(11) DEFAULT NULL,
   `date_moved` datetime DEFAULT NULL,
   `is_confidential` tinyint(1) NOT NULL DEFAULT 0,
@@ -3450,6 +3451,7 @@ CREATE TABLE `project` (
   `archived_at` datetime DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `creation_context` mediumtext DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `idx_project_organization` (`IDorganization`),
   KEY `idx_project_creator` (`IDusercreation`),
@@ -3467,8 +3469,8 @@ CREATE TABLE `project` (
   KEY `idx_project_blocked_until` (`status`,`blocked_auto_reactivate`,`blocked_until`),
   KEY `idx_project_proposer` (`IDuser_proposed`),
   KEY `idx_project_proposal_status` (`proposal_status`,`active`),
-  CONSTRAINT `fk_project_holon` FOREIGN KEY (`IDholon`) REFERENCES `holon` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_project_creator` FOREIGN KEY (`IDusercreation`) REFERENCES `user` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_project_holon` FOREIGN KEY (`IDholon`) REFERENCES `holon` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_project_journal` FOREIGN KEY (`IDdocument_journal`) REFERENCES `document` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_project_organization` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_project_parent` FOREIGN KEY (`IDproject_parent`) REFERENCES `project` (`id`) ON DELETE SET NULL,
@@ -4414,7 +4416,9 @@ INSERT INTO `sql_migration` VALUES
 ('2026-10-09-02-project-resource-holon-visibility.sql','bf8eef249afe8b37dc48b9c517425d42a81bf86b7d80345adac724aebe3c1bd3','2026-10-09 18:36:06'),
 ('2026-10-09-02-remove-paypal-configuration.sql','95c586a6f072e7a73e7563fde2120c4028619ea0786fb21ed92da6e697f2a7eb','2026-10-09 18:36:06'),
 ('2026-10-09-03-event-recurrence.sql','3bc31ee2c9171f7e32116aebf02851bf30c9cb617b5b67d87d08875283879bb7','2026-10-09 18:36:07'),
-('2026-10-10-01-event-shared-document.sql','ee894c95b2d64c7f1da62180be93d5014c6f313f99ebd46cee3942b7dca6d29f','2026-10-10 08:11:19');
+('2026-10-10-01-event-shared-document.sql','ee894c95b2d64c7f1da62180be93d5014c6f313f99ebd46cee3942b7dca6d29f','2026-10-10 08:11:19'),
+('2026-10-16-03-project-creation-context.sql','7f9e9418a18a740f80771a66a5d40905020fc318862a6bd5120137a718d26d37','2026-10-16 10:55:59'),
+('2026-10-16-04-pv-point-handled-at.sql','4ce84a6f8a6a8a24f01b21ab06935b5f4b664ea0af15c7cc45da5496fc31e45d','2026-10-16 11:28:31');
 /*!40000 ALTER TABLE `sql_migration` ENABLE KEYS */;
 UNLOCK TABLES;
 

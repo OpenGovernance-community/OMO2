@@ -259,16 +259,7 @@ if ($eventHolonId > 0) {
     $contextLabel = trim((string)$eventHolon->getDisplayName());
 }
 
-$deletePermissionHolon = $eventHolonId > 0 && isset($eventHolon) && $eventHolon instanceof Holon
-    ? $eventHolon
-    : $rootHolon;
-$canDelete = $currentUserId > 0
-    && (
-        $deletePermissionHolon instanceof Holon
-            ? $deletePermissionHolon->isAllowed('CAN_DELETE_EVENT', true, $currentUserId)
-            : commonCurrentUserHasOrganizationAccess($organizationId)
-    );
-$canDelete = $canDelete && !$event->isPastRecurringMeeting();
+$canDelete = omoCalendarCanDeleteEvent($event, $organizationId, $currentUserId, $rootHolon, true);
 $canEdit = omoCalendarCanEditEvent($event, $organizationId, $currentUserId, $rootHolon, true);
 if (!empty($_GET['invitation_summary'])) {
     header('Content-Type: text/html; charset=UTF-8');

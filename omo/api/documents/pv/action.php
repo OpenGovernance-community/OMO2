@@ -711,7 +711,7 @@ if ($action === 'update_document_metadata') {
 if ($action === 'extend_associated_event') {
     if (
         $document->getPvStage() !== \dbObject\Document::PV_STAGE_MEETING
-        || !$document->canUserManagePvStructure($organizationId, $currentUserId)
+        || !$document->canUserManagePvDocument($currentUserId)
         || !omoDocumentsPvEditorHasValidSessionToken($organizationId, $documentId, $currentUserId, $editorToken)
     ) {
         omoDocumentsPvEditorJsonResponse([

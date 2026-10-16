@@ -471,7 +471,7 @@ try {
     . '<h1>' . omoDocumentsPdfEscape($title !== '' ? $title : ('PV #' . $documentId)) . '</h1>'
     . ($description !== '' ? '<p class="lead">' . nl2br(omoDocumentsPdfEscape($description)) . '</p>' : '')
     . ($metaHtml !== '' ? '<div class="meta">' . $metaHtml . '</div>' : '')
-    . $document->getRenderedContentForCurrentViewer()
+    . $document->getRenderedContentForCurrentViewer(['includePvProposalDetails' => false])
     . '<div class="footer">' . omoDocumentsPdfEscape(omoDocumentsPdfT('documents.pdf.footer.generated', ['date' => $generatedAt])) . '</div>'
     . '</body></html>';
     $documentHtml = omoDocumentsPdfConvertIndicatorSvgs($documentHtml);

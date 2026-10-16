@@ -61,7 +61,8 @@ if ($operation !== DeferredProposal::OPERATION_CREATE && (!$project->load($proje
 }
 $state = $proposal instanceof DeferredProposal && $operation !== DeferredProposal::OPERATION_DELETE
     ? DeferredProposal::normalizeProjectState(DeferredProposal::normalizeState($proposal->get('after_state')), $operation === DeferredProposal::OPERATION_UPDATE ? $project : null)
-    : ($operation === DeferredProposal::OPERATION_UPDATE ? DeferredProposal::captureProjectState($project) : DeferredProposal::normalizeProjectState(['IDholon' => $holonId, 'status' => Project::STATUS_IN_PROGRESS, 'project_size' => Project::SIZE_M]));
+    : ($operation === DeferredProposal::OPERATION_UPDATE ? DeferredProposal::captureProjectState($project) : DeferredProposal::normalizeProjectState(['IDholon' => $holonId, 'IDuser_proposed' => $userId, 'status' => Project::STATUS_IN_PROGRESS, 'project_size' => Project::SIZE_M]));
+$memberLabels = Project::getProposerOptions($organizationId);
 $children = new ArrayProject(); if ($operation === DeferredProposal::OPERATION_DELETE) $children->loadForParent($projectId, true);
 $projectCatalog = DeferredProposal::getProjectTargetHolonCatalog($organizationId, $collectiveHolonId);
 $saveLabel = $operation === DeferredProposal::OPERATION_CREATE
@@ -76,12 +77,14 @@ $saveLabel = $operation === DeferredProposal::OPERATION_CREATE
     <div class="generic-action-row"><button type="button" class="generic-action-button generic-action-button--danger" data-deferred-project-save<?= count($children) > 0 ? ' disabled' : '' ?>><?= omoApiEscape($tr('delete_confirm')) ?></button><button type="button" class="generic-action-button generic-action-button--secondary" data-deferred-project-cancel><?= omoApiEscape($tr('cancel')) ?></button></div>
 <?php else: ?>
     <form class="generic-form-stack" data-deferred-project-form>
-        <?php omoDeferredEditorRenderFields('project', $state); ?>
+        <?php omoDeferredEditorRenderFields('project', $state, $memberLabels); ?>
         <p class="generic-feedback" data-deferred-project-feedback hidden></p><div class="generic-action-row"><button class="generic-action-button generic-action-button--main" type="submit"><?= omoApiEscape($saveLabel) ?></button><button class="generic-action-button generic-action-button--secondary" type="button" data-deferred-project-cancel><?= omoApiEscape($tr('cancel')) ?></button></div>
     </form>
 <?php endif; ?>
 </section>
 <script src="<?= commonAssetUrl('/common/choice/proposal-html.js') ?>"></script>
+<script src="<?= commonAssetUrl('/common/choice/deferred-project-fields.js') ?>"></script>
+<script>if(window.omoInitDeferredProjectFields){window.omoInitDeferredProjectFields(document);}</script>
 <script>
 (function(){const root=document.querySelector('[data-deferred-project-editor]');if(!root)return;const feedback=root.querySelector('[data-deferred-project-feedback]');const save=root.querySelector('[data-deferred-project-save]');function show(m){if(m&&typeof window.commonNotify==='function'){if(feedback){feedback.hidden=true;feedback.textContent=''}window.commonNotify(String(m),'error');return}if(feedback){feedback.hidden=!m;feedback.textContent=m||''}}function close(){window.dispatchEvent(new CustomEvent('omo-deferred-proposal-editor-back'))}function submit(data){if(save)save.disabled=true;fetch('/omo/api/deferred_proposals/pv_project_save.php',{method:'POST',body:data,credentials:'same-origin'}).then(r=>r.json().then(p=>({ok:r.ok,p}))).then(r=>{if(!r.ok||!r.p.status)throw new Error(r.p.message||<?= json_encode($tr('save_error')) ?>);window.dispatchEvent(new CustomEvent('omo-deferred-proposal-saved',{detail:{pointId:Number(r.p.pointId||<?= $pointId ?>),proposalId:Number(r.p.id||0)}}));if(window.commonTopbarCloseModal)window.commonTopbarCloseModal()}).catch(e=>{show(e.message||<?= json_encode($tr('save_error')) ?>);if(save)save.disabled=false})}root.querySelectorAll('[data-deferred-project-cancel]').forEach(b=>b.addEventListener('click',close));const form=root.querySelector('[data-deferred-project-form]');if(form)form.addEventListener('submit',e=>{e.preventDefault();if(!form.reportValidity())return;const htmlEditor=form.querySelector('[data-omo-deferred-html="description"]');if(htmlEditor&&window.omoProposalHtml)form.elements.namedItem('description').value=window.omoProposalHtml.getValue(htmlEditor);const data=new FormData(form);data.append('oid','<?= $organizationId ?>');data.append('point_id','<?= $pointId ?>');data.append('proposal_id','<?= $proposalId ?>');data.append('operation',<?= json_encode($operation) ?>);data.append('holon_id','<?= $holonId ?>');data.append('project_id','<?= $projectId ?>');submit(data)});if(save)save.addEventListener('click',()=>{const data=new FormData();data.append('oid','<?= $organizationId ?>');data.append('point_id','<?= $pointId ?>');data.append('proposal_id','<?= $proposalId ?>');data.append('operation','delete');data.append('holon_id','<?= $holonId ?>');data.append('project_id','<?= $projectId ?>');submit(data)})}());
 </script>

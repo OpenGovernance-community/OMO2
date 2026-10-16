@@ -122,7 +122,7 @@ if ($requestFragment === 'items') {
 	exit;
 }
 ?>
-<link rel="stylesheet" href="/common/choice/change-details.css?v=20260923-lifecycle-details">
+<link rel="stylesheet" href="<?= commonAssetUrl('/common/choice/change-details.css') ?>">
 <link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/holons/history.css') ?>">
 
 <div
