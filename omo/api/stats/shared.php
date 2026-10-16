@@ -864,16 +864,10 @@ if (!function_exists('omoStatsLoadVisibleEthercalcDocument')) {
         }
 
         $documents = new ArrayDocument();
-        $documents->load([
-            'where' => [
-                ['field' => 'id', 'value' => $documentId],
-                ['field' => 'IDorganization', 'value' => $organizationId],
-                ['field' => 'active', 'value' => 1],
-            ],
-        ]);
-        $documents->filterVisibleForCurrentViewer($organizationId);
+        // Keep ancestors in the collection while checking folder visibility.
+        $documents->loadVisibleForOrganization($organizationId);
         foreach ($documents as $document) {
-            if ($document instanceof Document && $document->isEthercalcDocument() && $document->getEthercalcRoomId() !== '') {
+            if ($document instanceof Document && (int)$document->getId() === $documentId && $document->isEthercalcDocument() && $document->getEthercalcRoomId() !== '') {
                 return $document;
             }
         }
@@ -892,17 +886,12 @@ if (!function_exists('omoStatsLoadVisibleSpreadsheetDocument')) {
         }
 
         $documents = new ArrayDocument();
-        $documents->load([
-            'where' => [
-                ['field' => 'id', 'value' => $documentId],
-                ['field' => 'IDorganization', 'value' => $organizationId],
-                ['field' => 'active', 'value' => 1],
-            ],
-        ]);
-        $documents->filterVisibleForCurrentViewer($organizationId);
+        // Keep ancestors in the collection while checking folder visibility.
+        $documents->loadVisibleForOrganization($organizationId);
         foreach ($documents as $document) {
             if (
                 $document instanceof Document
+                && (int)$document->getId() === $documentId
                 && $document->isUploadedFile()
                 && $document->hasStoredFile()
                 && omoSpreadsheetSupportsFilename($document->getStoredFileDownloadName())
