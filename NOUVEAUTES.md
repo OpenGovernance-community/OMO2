@@ -1,5 +1,7 @@
 # Journal des nouveautés
 
+- PV / relecture et cloture (2026-10-16) : delai de relecture configurable dans les parametres Documents de chaque organisation, 5 jours par defaut. Date de passage conservee et cloture automatique par le cron ; fin de reunion utilisee pour les anciennes relectures sans date. Notifications aux presents lors de la relecture, puis a tous les invites lors de la cloture manuelle ou automatique, avec deux reglages de canaux distincts. Invites par email inclus, notifications mises en file avec reprise et protection des formulaires ouverts avant la cloture. Migration SQL et tests PHP 8.5 inclus.
+
 - PV / timer en relecture (2026-10-16) : timer et poignee de redimensionnement masques des l ouverture et au passage en relecture ; espace libere pour la navigation des points.
 
 - Propositions et historiques / comparaison compacte (2026-10-16) : colonne d absence reduite a un quart lors des creations et suppressions, proprietes separees par des lignes horizontales, valeurs courtes sur la ligne du libelle et espacement reduit pour les contenus longs. Rendu partage entre PV, decisions et historiques, avec empilement sur mobile et surlignage avant/apres conserve.

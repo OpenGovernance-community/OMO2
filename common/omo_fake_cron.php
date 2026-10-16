@@ -33,6 +33,8 @@ if (!function_exists('omo_run_fake_cron_maintenance')) {
             'spreadsheetIndicatorsSynced' => 0,
             'decisionNotificationsProcessed' => 0,
             'eventNotificationsProcessed' => 0,
+            'pvReviewsClosed' => 0,
+            'pvNotificationsProcessed' => 0,
             'meetingParticipantsFrozen' => 0,
             'meetingOccurrencesCreated' => 0,
             'meetingDocumentTitlesRepaired' => 0,
@@ -136,6 +138,14 @@ if (!function_exists('omo_run_fake_cron_maintenance')) {
             static function () use ($force) {
                 return notificationCenterMaybeProcessEventLifecycle(200, $force);
             }
+        );
+        $result['pvReviewsClosed'] = $runTask(
+            'pv_review_closure', 'OMO PV review maintenance failed: ',
+            static fn () => \dbObject\Document::closeDuePvReviewsBatch(200)
+        );
+        $result['pvNotificationsProcessed'] = $runTask(
+            'pv_notifications', 'OMO PV notification maintenance failed: ',
+            static fn () => \dbObject\DocumentPvNotification::processPending(200)
         );
         $result['meetingInvitationsProcessed'] = $runTask(
             'meeting_invitations', 'OMO recurring invitation maintenance failed: ',

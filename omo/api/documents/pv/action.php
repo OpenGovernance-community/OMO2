@@ -1515,6 +1515,8 @@ if ($action === 'update_stage') {
         ], 400);
     }
 
+    try { \dbObject\DocumentPvNotification::processPending(20, (int)$document->getId()); }
+    catch (\Throwable $exception) { error_log('OMO PV notification dispatch failed: ' . $exception->getMessage()); }
     $document->load((int)$document->getId());
     omoDocumentsPvEditorJsonResponse([
         'status' => true,
