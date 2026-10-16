@@ -488,12 +488,17 @@ window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, p
                             let draggedDocumentId = 0;
                             const progressiveLists = new Set();
                             const renderedCounts = new Map();
+                            let routedFolderId = 0;
+                            let routedFolderPath = new Set();
                             const startProgressiveList = function (container, items, appendItem, key) {
+                                const routeIndex = items.reduce(function (last, item, index) {
+                                    return routedFolderPath.has(Number((item.item || item).id)) ? index : last;
+                                }, -1);
                                 const controller = window.omoCreateDocumentProgressiveList({
                                     container: container,
                                     items: items,
                                     appendItem: appendItem,
-                                    initialCount: renderedCounts.get(key) || 30,
+                                    initialCount: Math.max(renderedCounts.get(key) || 30, routeIndex + 1),
                                     moreLabel: pageConfig.moreLabel,
                                     afterAppend: function (count) {
                                         renderedCounts.set(key, count);
@@ -507,6 +512,17 @@ window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, p
                                             if (accordion.hasAttribute('data-omo-nextcloud-folder-id')) loadNextcloudFolder(accordion);
                                             else loadDocumentFolder(accordion);
                                         });
+                                        const routeFolder = routedFolderId > 0
+                                            ? results.querySelector('[data-omo-document-folder="' + routedFolderId + '"]') : null;
+                                        if (routeFolder) {
+                                            requestAnimationFrame(function () {
+                                                if (!routeFolder.isConnected) return;
+                                                routedFolderId = 0;
+                                                routeFolder.scrollIntoView({block: 'center'});
+                                                const toggle = routeFolder.querySelector('[data-omo-document-folder-toggle]');
+                                                if (toggle) toggle.focus({preventScroll: true});
+                                            });
+                                        }
                                     }
                                 });
                                 progressiveLists.add(controller);
@@ -2854,6 +2870,35 @@ window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, p
                                 payload.openDocumentId = 0;
                                 payload.openDocumentMode = 'detail';
                                 payload.requestedDocument = null;
+                                return true;
+                            };
+
+                            panel.__omoDocumentsOpenFolder = function (documentItem) {
+                                const folderId = Number(documentItem.id || 0);
+                                const path = Array.isArray(documentItem.folderPath) ? documentItem.folderPath.slice() : [];
+                                if (path.length === 0) {
+                                    let current = documentItem;
+                                    const visited = new Set();
+                                    while (current && !visited.has(Number(current.id))) {
+                                        visited.add(Number(current.id));
+                                        path.unshift(Number(current.id));
+                                        const parentId = Number(current.parentDocumentId || 0);
+                                        if (parentId <= 0) break;
+                                        current = findDocumentItemById(parentId);
+                                        if (!current) return false;
+                                    }
+                                }
+                                if (folderId <= 0 || !findDocumentItemById(Number(path[0]))) return false;
+                                routedFolderId = folderId;
+                                routedFolderPath = new Set(path.map(Number));
+                                routedFolderPath.forEach(function (id) { state.openFolderIds.add(id); });
+                                state.query = '';
+                                if (quickSearch) quickSearch.value = '';
+                                omoDocumentsWriteSearch(panel, '');
+                                if (typeof window.omoCloseDocumentDetailDrawer === 'function') {
+                                    window.omoCloseDocumentDetailDrawer({force: true, root: panel});
+                                }
+                                render();
                                 return true;
                             };
 

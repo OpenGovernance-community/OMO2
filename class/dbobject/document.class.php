@@ -3018,13 +3018,8 @@
 
 		public function canBeEmbedded(): bool
 		{
-			return !$this->isFolder()
-				&& (
-					$this->supportsHtmlContent()
-				|| $this->isExternalLink()
-				|| $this->isUploadedFile()
-				|| $this->isWhiteboardDocument()
-			);
+			// References can link to every document type; visibility is checked by the caller.
+			return array_key_exists($this->getDocumentType(), self::getDocumentTypeCatalog());
 		}
 
 		public static function sanitizeExternalUrl($url): string
@@ -4230,7 +4225,7 @@
 				$sourceTitle .= ' (' . $sourceHolonLabel . ')';
 			}
 
-			if ($isCompactEmbed) {
+			if ($isCompactEmbed || !$targetDocument->supportsHtmlContent()) {
 				return self::buildDocumentEmbedDisplayHtml(
 					$targetDocumentId,
 					$targetTitle !== '' ? $targetTitle : $fallbackTitle,

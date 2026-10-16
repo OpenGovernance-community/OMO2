@@ -804,6 +804,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         };
         const picker = window.omoDocumentEmbedPicker.open({
             items: embeddableDocuments,
+            hierarchical: true,
             organizationId: resourcePickerOrganizationId,
             initialHolonId: resourcePickerInitialHolonId,
             scopeLabels: resourcePickerScopeUi,

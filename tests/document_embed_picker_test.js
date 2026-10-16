@@ -142,6 +142,31 @@ const structure = node(7, 'Organization', [node(10, 'Team', [node(11, 'Child', [
         await select.selectOption('5');
         await page.locator('[data-document-picker-apply]').click();
         assert.equal(await page.locator('#memo [data-omo-document-id="5"]').count(), 1);
+        await page.evaluate(() => {
+            window.embeddableDocuments.push(
+                {id: 10, title: 'Budgets', contextHolonId: 10, isFolder: true},
+                {id: 11, title: 'Archive', contextHolonId: 10, isFolder: true, parentDocumentId: 10},
+                {id: 12, title: 'EtherCalc source', contextHolonId: 10, documentType: 'ethercalc', parentDocumentId: 11},
+                {id: 13, title: 'Collabora source', contextHolonId: 10, documentType: 'uploaded_file', parentDocumentId: 10}
+            );
+            window.openPvDocumentEmbedPicker(window.api, null);
+        });
+        await page.locator('[data-document-picker-scope] canvas').waitFor();
+        assert.deepEqual(await ids(), [10, 11, 12, 13, 1, 5], 'Folders precede their nested files and remain selectable.');
+        assert.equal(await select.locator('option[value="12"]').textContent(), '    EtherCalc source');
+        assert.equal(await select.locator('option[value="12"]').getAttribute('title'), 'Budgets / Archive / EtherCalc source');
+        await page.locator('[data-document-picker-search]').fill('ethercalc');
+        assert.deepEqual(await ids(), [10, 11, 12], 'Search retains the matching file and its ancestor folders.');
+        await select.selectOption('12');
+        await page.locator('[data-document-picker-apply]').click();
+        assert.equal(await page.locator('#memo [data-omo-document-id="12"]').count(), 1, 'Nested EtherCalc can be inserted.');
+        await page.evaluate(() => window.openPvDocumentEmbedPicker(window.api, null));
+        await page.locator('[data-document-picker-scope] canvas').waitFor();
+        await page.locator('[data-document-picker-search]').fill('budgets');
+        assert.deepEqual(await ids(), [10, 11, 12, 13], 'Searching a folder also finds its contents.');
+        await select.selectOption('11');
+        await page.locator('[data-document-picker-apply]').click();
+        assert.equal(await page.locator('#memo [data-omo-document-id="11"]').count(), 1, 'Folder reference can be inserted.');
         assert((await page.evaluate(() => window.requests)).some(url => url.includes('getStructureData.php?oid=7')));
         assert.deepEqual(errors, []);
         console.log('document_embed_picker_test: OK (shared Memo/PV selector, real circle canvas, local/children/descendants, holon selection, search, Memo/self filter, insertion caret, cancel/update/remove, PV catalogue)');
