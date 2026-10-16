@@ -36,7 +36,7 @@
 				[['id', 'version', 'estDossier', 'active', 'is_template', 'pv_editor_handover_open', 'openinnewwindow', 'project_visible_in_holon', 'storedfilesize'], 'integer'],				// Nombres entiers
 				[['title', 'codeview', 'codeedit', 'keywords', 'documenttype', 'pvstage', 'externalurl', 'storedfilepath', 'storedfilename', 'storedfilemime', 'nextcloudfolderpath', 'nextcloudfolderfileid', 'etherpadpadid', 'ethercalcroomid', 'spacedeckspaceid'], 'string'],	// Chaines de caractere
 				[['description', 'content', 'contentedition'], 'text'],			// Textes libres
-				[['datecreation', 'datemodification', 'dateconsultation', 'dateedition', 'datecontentedition'], 'datetime'],	// Date avec precision des heures
+				[['datecreation', 'datemodification', 'dateconsultation', 'dateedition', 'datecontentedition', 'pv_review_started_at'], 'datetime'],	// Date avec precision des heures
 				[['IDuser', 'IDusercreation', 'IDusermodification', 'IDuseredition', 'IDuser_pv_editor', 'IDuser_pv_official_editor', 'IDorganization', 'IDholon', 'IDdocument_parent', 'IDevent'], 'fk'],	// Cles etrangeres
 				[['id'], 'safe'],								// Champs proteges
 			];
@@ -75,6 +75,7 @@
 				'codeedit' => 'Code d edition',
 				'documenttype' => 'Type de document',
 				'pvstage' => 'Etape du PV',
+				'pv_review_started_at' => 'Debut de la relecture',
 				'is_template' => 'Modele de document',
 				'externalurl' => 'URL externe',
 				'openinnewwindow' => 'Ouvrir dans une nouvelle fenetre',
@@ -196,6 +197,7 @@
 				'active',
 				'documenttype',
 				'pvstage',
+				'pv_review_started_at',
 				'is_template',
 				'pv_editor_handover_open',
 				'externalurl',
@@ -2566,6 +2568,97 @@
 			return $this->isPvDocument() && $this->getPvStage() === self::PV_STAGE_VALIDATED;
 		}
 
+		public function getPvReviewDeadline(): ?\DateTimeImmutable
+		{
+			if (!$this->isPvDocument() || $this->getPvStage() !== self::PV_STAGE_REVIEW) return null;
+			$startedAt = $this->get('pv_review_started_at');
+			if (!($startedAt instanceof \DateTimeInterface)) {
+				$event = $this->getAssociatedEvent();
+				$startedAt = $event instanceof Event && (int)$event->get('IDorganization') === (int)$this->get('IDorganization')
+					? $event->get('end_at') : null;
+			}
+			if (!($startedAt instanceof \DateTimeInterface)) return null;
+			$organization = new Organization();
+			if (!$organization->load((int)$this->get('IDorganization'))) return null;
+			return \DateTimeImmutable::createFromInterface($startedAt)->modify('+' . $organization->getPvDocumentSettings()['reviewDays'] . ' days');
+		}
+
+		/** Snapshot the actual audience, including email guests, at each transition. */
+		public function getPvStageNotificationAudience(string $stage): array
+		{
+			$oid = (int)$this->get('IDorganization');
+			$event = $this->getAssociatedEvent();
+			if ($event instanceof Event && (int)$event->get('IDorganization') !== $oid) return [];
+			$entries = $event instanceof Event ? $event->getAttendanceEntries($oid) : $this->getInvitationAttendanceEntries($oid);
+			return array_values(array_filter($entries, static fn(array $entry): bool =>
+				$stage === self::PV_STAGE_VALIDATED || !empty($entry['isPresent'])));
+		}
+
+		private function persistPvStage(string $nextStage, int $userId, \DateTimeImmutable $now): array
+		{
+			if ($this->getPvStage() === $nextStage) return ['status' => true, 'id' => $this->getId()];
+			if (in_array($nextStage, [self::PV_STAGE_REVIEW, self::PV_STAGE_VALIDATED], true)) {
+				$event = $this->getAssociatedEvent();
+				if ($event instanceof Event && (int)$event->get('IDeventrecurrence') > 0 && !$event->freezeInvitationParticipants()) {
+					return ['status' => false, 'text' => 'Impossible de conserver les participants de la reunion.'];
+				}
+				DocumentPvPoint::reorderByHandledTimeForDocument((int)$this->getId(), $userId);
+			}
+			if ($nextStage === self::PV_STAGE_REVIEW) {
+				$reviewEditorUserId = $this->getPvReviewEditorUserId();
+				if ($reviewEditorUserId > 0) $this->set('IDuser_pv_editor', $reviewEditorUserId);
+				$this->set('pv_editor_handover_open', 0);
+				$this->set('pv_review_started_at', $now);
+			} elseif ($nextStage !== self::PV_STAGE_VALIDATED) {
+				$this->set('pv_review_started_at', null);
+			}
+			$this->set('pvstage', $nextStage);
+			$this->set('IDusermodification', $userId > 0 ? $userId : null);
+			$this->set('datemodification', $now);
+			$result = $this->save();
+			if (!empty($result['status']) && in_array($nextStage, [self::PV_STAGE_REVIEW, self::PV_STAGE_VALIDATED], true)) {
+				DocumentPvNotification::enqueue($this, $nextStage, $now, $userId === 0);
+			}
+			return $result;
+		}
+
+		public static function closeDuePvReviewsBatch(int $limit = 200, ?\DateTimeImmutable $now = null, int $organizationId = 0): int
+		{
+			$now ??= new \DateTimeImmutable();
+			$pdo = self::getPdo();
+			$closed = 0;
+			// Process only committed documents; notification delivery runs after these transactions.
+			if ($pdo->inTransaction()) return 0;
+			$params = ['type' => self::TYPE_PV, 'stage' => self::PV_STAGE_REVIEW, 'earliest' => $now->modify('-1 day')->format('Y-m-d H:i:s')];
+			$organizationFilter = '';
+			if ($organizationId > 0) { $organizationFilter = ' AND d.IDorganization = :oid'; $params['oid'] = $organizationId; }
+			$rows = self::fetchAll('SELECT d.id FROM document d
+				LEFT JOIN event e ON e.id = d.IDevent AND e.IDorganization = d.IDorganization
+				WHERE d.documenttype = :type AND d.pvstage = :stage AND d.active = 1 AND COALESCE(d.is_template, 0) = 0
+				AND COALESCE(d.pv_review_started_at, e.end_at) <= :earliest
+				AND NOT ' . Holon::archivedContextSql('d.IDholon') . $organizationFilter . '
+				ORDER BY COALESCE(d.pv_review_started_at, e.end_at), d.id', $params);
+			foreach ($rows ?: [] as $row) {
+				if ($closed >= max(1, $limit)) break;
+				try {
+					$pdo->beginTransaction();
+					$locked = self::fetchRow('SELECT * FROM document WHERE id = :id FOR UPDATE', ['id' => (int)$row['id']]);
+					$document = new self();
+					if (!$locked || !$document->hydrateFromDatabaseRow($locked, true) || $document->isArchived()) { $pdo->rollBack(); continue; }
+					$deadline = $document->getPvReviewDeadline();
+					if (!$deadline || $deadline > $now || $document->isDocumentTemplate()) { $pdo->rollBack(); continue; }
+					$result = $document->persistPvStage(self::PV_STAGE_VALIDATED, 0, $now);
+					if (empty($result['status'])) throw new \RuntimeException((string)($result['text'] ?? 'PV closure failed'));
+					$pdo->commit();
+					$closed++;
+				} catch (\Throwable $exception) {
+					if ($pdo->inTransaction()) $pdo->rollBack();
+					error_log('OMO PV automatic closure ' . (int)$row['id'] . ' failed: ' . $exception->getMessage());
+				}
+			}
+			return $closed;
+		}
+
 		public function canManagePvStage(int $organizationId = 0, ?int $userId = null): bool
 		{
 			if (!$this->isPvDocument() || $this->isPvValidated()) {
@@ -2615,31 +2708,19 @@
 			$ownsTransaction = !$pdo->inTransaction();
 			try {
 				if ($ownsTransaction) $pdo->beginTransaction();
-				$nextStage = self::normalizePvStage($stage);
-				if (in_array($nextStage, [self::PV_STAGE_REVIEW, self::PV_STAGE_VALIDATED], true)) {
-					$event = $this->getAssociatedEvent();
-					if ($event instanceof Event && (int)$event->get('IDeventrecurrence') > 0 && !$event->freezeInvitationParticipants()) {
-						if ($ownsTransaction) $pdo->rollBack();
-						return ['status' => false, 'text' => 'Impossible de conserver les participants de la reunion.'];
-					}
-					DocumentPvPoint::reorderByHandledTimeForDocument((int)$this->getId(), $userId);
+				$row = self::fetchRow('SELECT * FROM document WHERE id = :id FOR UPDATE', ['id' => (int)$this->getId()]);
+				if (!$row || !$this->hydrateFromDatabaseRow($row, true) || !$this->canManagePvStage($organizationId, $userId)) {
+					if ($ownsTransaction) $pdo->rollBack();
+					return ['status' => false, 'text' => 'Acces refuse.'];
 				}
-				if ($nextStage === self::PV_STAGE_REVIEW) {
-					$reviewEditorUserId = $this->getPvReviewEditorUserId();
-					if ($reviewEditorUserId > 0) {
-						$this->set('IDuser_pv_editor', $reviewEditorUserId);
-					}
-					$this->set('pv_editor_handover_open', 0);
-				}
-
-				$this->set('pvstage', $nextStage);
-				$this->set('IDusermodification', $userId);
-				$this->set('datemodification', new \DateTimeImmutable());
-
-				$result = $this->save();
+				$result = $this->persistPvStage(self::normalizePvStage($stage), $userId, new \DateTimeImmutable());
 				if ($ownsTransaction) {
 					if (!empty($result['status'])) $pdo->commit();
 					else $pdo->rollBack();
+				}
+				if ($ownsTransaction && !empty($result['status'])) {
+					try { DocumentPvNotification::processPending(20, (int)$this->getId()); }
+					catch (\Throwable $exception) { error_log('OMO PV notification dispatch failed: ' . $exception->getMessage()); }
 				}
 				return $result;
 			} catch (\Throwable $exception) {
@@ -6863,6 +6944,16 @@
 					$this->set('nextcloudfolderfileid', trim((string)($nextcloudFolderLocation['fileId'] ?? '')) ?: null);
 				}
 
+				if ($canManagePvDocument) {
+					// A concurrent cron/manual closure must not be undone by an older metadata form.
+					$currentPv = self::fetchRow('SELECT pvstage, pv_review_started_at FROM document WHERE id = :id FOR UPDATE', ['id' => (int)$this->getId()]);
+					if (!$currentPv || self::normalizePvStage($currentPv['pvstage']) !== $this->getPvStage()
+						|| self::normalizePvStage($currentPv['pvstage']) === self::PV_STAGE_VALIDATED) {
+						if ($startedTransaction && $pdo->inTransaction()) $pdo->rollBack();
+						return ['status' => false, 'text' => 'L etape du PV a change. Rechargez le document avant de continuer.'];
+					}
+					$this->set('pv_review_started_at', $currentPv['pv_review_started_at']);
+				}
 				$saveResult = $this->save();
 				if (!is_array($saveResult) || ($saveResult['status'] ?? false) !== true) {
 					if ($startedTransaction && $pdo->inTransaction()) {

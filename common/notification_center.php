@@ -13,6 +13,13 @@ if (!function_exists('notificationCenterT')) {
             'notification.meeting.reason' => ['text' => 'Motif : {reason}', 'context' => 'Reason provided by the visitor.'],
             'notification.meeting.method' => ['text' => 'Lieu ou moyen de rencontre : {method}', 'context' => 'Contact details for the booked appointment.'],
             'notification.member' => ['text' => 'Un membre', 'context' => 'Fallback when a notification actor cannot be identified.'],
+            'notification.pv.review_preference' => ['text' => 'Passage en relecture des PV auxquels j ai assiste', 'context' => 'PV review notification preference.'],
+            'notification.pv.closed_preference' => ['text' => 'Cloture des PV auxquels je suis invite', 'context' => 'PV closure notification preference.'],
+            'notification.pv.review_title' => ['text' => 'PV en relecture - {title}', 'context' => 'PV review notification title.'],
+            'notification.pv.review_body' => ['text' => 'Le PV "{title}" est disponible pour relecture. Sa cloture automatique est prevue le {deadline}.', 'context' => 'Notification sent to people present at the meeting.'],
+            'notification.pv.closed_title' => ['text' => 'PV cloture - {title}', 'context' => 'PV closure notification title.'],
+            'notification.pv.closed_body' => ['text' => 'Le PV "{title}" est cloture. Vous pouvez consulter sa version definitive.', 'context' => 'Notification sent to all invitees after manual closure.'],
+            'notification.pv.closed_auto_body' => ['text' => 'Le delai de relecture du PV "{title}" est termine. Le PV a ete cloture automatiquement et sa version definitive est disponible.', 'context' => 'Notification sent to all invitees after automatic closure.'],
             'notification.participant' => ['text' => 'Un participant', 'context' => 'Anonymous or unidentified decision participant.'],
             'notification.event.invitation_title' => ['text' => 'Nouvel événement — {title}', 'context' => 'Event invitation notification title.'],
             'notification.event.invitation' => ['text' => '{actor} vous invite à l’événement « {title} ».', 'context' => 'Event invitation with the person who sent it.'],
@@ -74,6 +81,8 @@ if (!function_exists('notificationCenterEventCatalog')) {
     {
         return [
             'meeting_booking_created' => notificationCenterT('notification.meeting.preference'),
+            'document_pv_review_started' => notificationCenterT('notification.pv.review_preference'),
+            'document_pv_closed' => notificationCenterT('notification.pv.closed_preference'),
             'decision_proposal_owner' => 'Nouvelle proposition dans mes scrutins',
             'decision_proposal_participant' => 'Nouvelle proposition dans un scrutin auquel je participe',
             'decision_chat_proposal_owner' => 'Nouveau commentaire sur mes propositions',
@@ -102,6 +111,7 @@ if (!function_exists('notificationCenterEventGroupCatalog')) {
     {
         return [
             'personal' => ['applicationHash' => '', 'eventKeys' => ['meeting_booking_created']],
+            'documents' => ['applicationHash' => 'documents', 'eventKeys' => ['document_pv_review_started', 'document_pv_closed']],
             'decisions' => [
                 'applicationHash' => 'decision',
                 'eventKeys' => [
@@ -168,6 +178,37 @@ if (!function_exists('notificationCenterGetActiveEventGroups')) {
         }
 
         return $groups;
+    }
+}
+
+if (!function_exists('notificationCenterDispatchPvStage')) {
+    function notificationCenterDispatchPvStage(\dbObject\DocumentPvNotification $item, \dbObject\Document $document): bool
+    {
+        $payload = $item->getPayload();
+        $oid = (int)($payload['organizationId'] ?? 0);
+        if ($oid <= 0 || $oid !== (int)$document->get('IDorganization')) return true;
+        $review = $item->get('stage') === \dbObject\Document::PV_STAGE_REVIEW;
+        $key = $review ? 'document_pv_review_started' : 'document_pv_closed';
+        $variables = ['title' => $payload['title'], 'deadline' => $payload['deadline'] ?? ''];
+        $title = notificationCenterT($review ? 'notification.pv.review_title' : 'notification.pv.closed_title', $variables);
+        $body = notificationCenterT($review ? 'notification.pv.review_body'
+            : (!empty($payload['automatic']) ? 'notification.pv.closed_auto_body' : 'notification.pv.closed_body'), $variables);
+        notificationCenterCreateForUsers($oid, $key, $payload['userIds'] ?? [], 'document-pv-stage-' . $item->getId(),
+            $title, $body, '/omo/o/' . $oid . '#documents-d' . $document->getId());
+        foreach ($payload['guests'] ?? [] as $guest) {
+            $email = $guest['email'];
+            if (in_array($email, $payload['sentEmails'] ?? [], true)) continue;
+            $recipient = new \dbObject\User();
+            $recipient->set('email', $email);
+            if (!notificationCenterSendEmail($recipient, null, $title, $body, $guest['url'])) {
+                error_log('OMO PV guest notification delivery failed for transition ' . $item->getId());
+                return false;
+            }
+            $payload['sentEmails'][] = $email;
+            $item->set('parameters', $payload);
+            if (empty($item->save()['status'])) throw new \RuntimeException('Unable to record PV guest notification delivery.');
+        }
+        return true;
     }
 }
 
