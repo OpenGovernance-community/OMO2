@@ -659,6 +659,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
 <script src="<?= commonAssetUrl('/common/choice/change-details.js') ?>"></script>
 <script src="<?= commonAssetUrl('/common/document/embed-picker.js') ?>"></script>
 <?php if ($isPvReviewDiscussion): ?>
+<script src="<?= commonAssetUrl('/common/chat/reactions.js') ?>"></script>
 <script src="<?= commonAssetUrl('/common/chat/thread.js') ?>"></script>
 <?php endif; ?>
 

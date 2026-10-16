@@ -20,6 +20,7 @@ async function renderChange(before, after, withWordDiff = true) {
     }});
     if (withWordDiff) window.eval(read('common/choice/word-diff.js'));
     window.eval(read('common/choice/change-details.js'));
+    window.eval(read('common/chat/reactions.js'));
     window.eval(read('common/chat/thread.js'));
     window.document.querySelector('button').click();
     await new Promise(resolve => window.setTimeout(resolve, 0));

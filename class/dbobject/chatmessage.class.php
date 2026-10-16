@@ -19,7 +19,7 @@ class ChatMessage extends DbObject
             [['IDchat_thread', 'IDorganization', 'IDuser', 'IDdecision_participant', 'IDdocument_share_link'], 'fk'],
             [['message_type', 'author_name'], 'string'],
             [['content'], 'text'],
-            [['parameters'], 'parameters'],
+            [['parameters', 'reactions'], 'parameters'],
             [['created_at', 'updated_at'], 'datetime'],
             [['id'], 'safe'],
         ];
@@ -38,6 +38,7 @@ class ChatMessage extends DbObject
             'content' => 'Message',
             'author_name' => 'Nom de l auteur',
             'parameters' => 'Paramètres',
+            'reactions' => 'Reactions',
             'created_at' => 'Création',
             'updated_at' => 'Mise à jour',
         ];
@@ -75,6 +76,13 @@ class ChatMessage extends DbObject
     public static function normalizeMessageType($messageType)
     {
         return (string)$messageType === self::TYPE_SYSTEM ? self::TYPE_SYSTEM : self::TYPE_USER;
+    }
+
+    /** Called with the message row locked by ChatMessageReaction's transaction. */
+    public static function saveReactionCounts(int $messageId, array $counts): bool
+    {
+        return self::execute('UPDATE chat_message SET reactions = :counts WHERE id = :id',
+            ['id' => $messageId, 'counts' => json_encode($counts, JSON_THROW_ON_ERROR)]);
     }
 
     public static function findByThreadId($threadId, $limit = 200, $afterMessageId = 0)
@@ -289,6 +297,9 @@ class ChatMessage extends DbObject
             $this->set('IDdocument_share_link', null);
         }
 
+        // Totals are maintained only while holding the reaction transaction's row lock.
+        // Saving a previously loaded message must not overwrite more recent reactions.
+        unset($this->_fields['reactions']);
         return parent::save();
     }
 
