@@ -117,14 +117,14 @@ class ChatMessageReaction extends DbObject
         $rows = self::fetchAll(
             'SELECT m.id, m.reactions, r.reaction,
                 CASE
-                    WHEN m.IDuser > 0 THEN CONCAT("user:", m.IDuser)
+                    WHEN m.IDuser > 0 THEN CONCAT(\'user:\', m.IDuser)
                     WHEN m.IDdecision_participant > 0 THEN
-                        CASE WHEN p.IDuser > 0 THEN CONCAT("user:", p.IDuser)
-                             ELSE CONCAT("participant:", m.IDdecision_participant) END
-                    WHEN l.recipient_user_id > 0 THEN CONCAT("user:", l.recipient_user_id)
-                    WHEN TRIM(COALESCE(l.recipient_email, "")) <> "" THEN
-                        CONCAT("email:", SHA2(LOWER(TRIM(l.recipient_email)), 256))
-                    ELSE ""
+                        CASE WHEN p.IDuser > 0 THEN CONCAT(\'user:\', p.IDuser)
+                             ELSE CONCAT(\'participant:\', m.IDdecision_participant) END
+                    WHEN l.recipient_user_id > 0 THEN CONCAT(\'user:\', l.recipient_user_id)
+                    WHEN TRIM(COALESCE(l.recipient_email, \'\')) <> \'\' THEN
+                        CONCAT(\'email:\', SHA2(LOWER(TRIM(l.recipient_email)), 256))
+                    ELSE \'\'
                 END AS author_actor
              FROM chat_message m
              LEFT JOIN decision_participant p ON p.id = m.IDdecision_participant
