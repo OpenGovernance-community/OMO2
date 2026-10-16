@@ -396,7 +396,8 @@
 					}
 
 					$documentId = (int)$document->getId();
-					return ((int)$document->get('IDevent') <= 0 && !isset($associatedDocumentIds[$documentId]))
+					// Meeting PVs keep their stage/invitation gates in filterVisibleForCurrentViewer().
+					return (($document->isPvDocument() || (int)$document->get('IDevent') <= 0) && !isset($associatedDocumentIds[$documentId]))
 						|| (int)$document->get('project_visible_in_holon') === 1;
 				}
 			)));
