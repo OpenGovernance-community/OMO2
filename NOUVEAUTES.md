@@ -1,5 +1,7 @@
 # Journal des nouveautés
 
+- PV / timer en relecture (2026-10-16) : timer et poignee de redimensionnement masques des l ouverture et au passage en relecture ; espace libere pour la navigation des points.
+
 - Propositions et historiques / comparaison compacte (2026-10-16) : colonne d absence reduite a un quart lors des creations et suppressions, proprietes separees par des lignes horizontales, valeurs courtes sur la ligne du libelle et espacement reduit pour les contenus longs. Rendu partage entre PV, decisions et historiques, avec empilement sur mobile et surlignage avant/apres conserve.
 
 - PV / prolongation apres prise de main (2026-10-16) : le bouton + et la prolongation de la reunion sont aussi accessibles a l editeur remplacant actif, sans lui ouvrir les droits de modification de la structure du PV. Affichage actualise des la prise de main, limite a la phase Reunion et aux sessions authentifiees.

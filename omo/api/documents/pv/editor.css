@@ -767,6 +767,15 @@
     grid-template-rows: minmax(0, 1fr) var(--omo-pv-editor-timing-resizer-size) 0;
 }
 
+.omo-pv-editor--review .omo-pv-editor__sidebar {
+    grid-template-rows: minmax(0, 1fr);
+}
+
+.omo-pv-editor--review .omo-pv-editor__timing,
+.omo-pv-editor--review .omo-pv-editor__timing-resizer {
+    display: none;
+}
+
 .omo-pv-editor__resizer {
     width: 10px;
     min-width: 10px;
