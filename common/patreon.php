@@ -83,34 +83,14 @@ function patreonSupportUiIsEnabled()
 
 function patreonCanManageOrganizationRouting($userId, $minimumAmountCents = 2000)
 {
-	$userId = (int)$userId;
-	$minimumAmountCents = max(0, (int)$minimumAmountCents);
-	if (function_exists('commonUserHasSiteAdminOverride') && commonUserHasSiteAdminOverride($userId)) {
-		return true;
-	}
-
-	if ($userId <= 0 || !class_exists('\\dbObject\\UserPatreon') || !\dbObject\UserPatreon::isStorageAvailable()) {
-		return false;
-	}
-
-	$connection = \dbObject\UserPatreon::findByUserId($userId);
-	if (!($connection instanceof \dbObject\UserPatreon) || !$connection->isConnected()) {
-		return false;
-	}
-
-	if ((string)$connection->get('patron_status') !== 'active_patron') {
-		return false;
-	}
-
-	return (int)$connection->get('currently_entitled_amount_cents') > $minimumAmountCents;
+    require_once __DIR__ . '/support.php';
+    return supportCanManageOrganizationRouting((int)$userId, (int)$minimumAmountCents);
 }
 
 function patreonUserCanUseAi($userId, int $organizationId = 0)
 {
-    if (patreonIndividualCanUseAi($userId)) return true;
-    return $organizationId > 0 && (int)$userId > 0
-        && \dbObject\UserOrganization::hasActiveMembership((int)$userId, $organizationId)
-        && patreonOrganizationCanUseAi($organizationId);
+    require_once __DIR__ . '/support.php';
+    return supportUserCanUseAi((int)$userId, $organizationId);
 }
 
 function patreonOrganizationMinimumCents(): int
@@ -153,6 +133,13 @@ function patreonUserCanManageOrganization(int $userId, int $organizationId): boo
 
 function patreonIndividualCanUseAi($userId)
 {
+    require_once __DIR__ . '/support.php';
+    return supportIndividualCanUseAi((int)$userId);
+}
+
+/** Provider-specific access and legacy installation exceptions; callers use support.php. */
+function patreonIndividualHasAiAccess($userId)
+{
 	$userId = (int)$userId;
 	if ($userId <= 0) {
 		return false;
@@ -170,7 +157,8 @@ function patreonIndividualCanUseAi($userId)
 		}
 	}
 	if (!$configured) {
-		return true;
+        require_once __DIR__ . '/helloasso.php';
+        return !helloAssoIsEnabled();
 	}
 
 	if (trim((string)($GLOBALS['patreonClientId'] ?? '')) === ''

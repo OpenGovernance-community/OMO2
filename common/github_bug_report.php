@@ -1,7 +1,7 @@
 <?php
 
 require_once dirname(__DIR__) . '/config.php';
-require_once __DIR__ . '/patreon.php';
+require_once __DIR__ . '/support.php';
 require_once __DIR__ . '/translation_bundles.php';
 
 if (!function_exists('githubBugReportGetSourceLang')) {
@@ -23,10 +23,10 @@ if (!function_exists('githubBugReportGetSourceLang')) {
             'login_required_help' => 'Le signalement automatique vers GitHub est réservé aux personnes connectées.',
             'unavailable' => 'Fonction indisponible',
             'unavailable_help' => 'Le module de signalement n’est pas configuré sur ce serveur.',
-            'patreon_required' => 'La configuration Patreon est également requise pour activer ce module.',
-            'patreon_access' => 'Accès réservé aux comptes Patreon connectés',
-            'patreon_access_help' => 'Le module de signalement est réservé aux personnes ayant connecté un compte Patreon actif, même sans abonnement payant.',
-            'patreon_connect_help' => 'Pour continuer, connectez votre compte Patreon puis revenez à ce formulaire.',
+            'patreon_required' => 'La configuration Patreon ou HelloAsso est requise pour activer ce module.',
+            'patreon_access' => 'Acces reserve aux soutiens du projet',
+            'patreon_access_help' => 'Le signalement est accessible avec un compte Patreon connecte ou une contribution HelloAsso active.',
+            'patreon_connect_help' => 'Les dons HelloAsso sont reconnus automatiquement avec la meme adresse email que votre compte. Vous pouvez aussi connecter Patreon.',
             'connect' => 'Se connecter avec Patreon',
             'describe' => 'Décrire le problème',
             'context_help' => 'Le contexte de la page sera ajouté automatiquement : URL, titre, navigateur, langue, fuseau horaire, dimensions de la fenêtre et thème.',
@@ -50,7 +50,7 @@ if (!function_exists('githubBugReportGetSourceLang')) {
             'request_method' => 'Méthode non autorisée.',
             'login_error' => 'Connexion requise.',
             'module_unavailable' => 'Le module de signalement n’est pas disponible sur ce serveur.',
-            'patreon_error' => 'Le module de signalement est réservé aux comptes Patreon connectés.',
+            'patreon_error' => 'Un compte Patreon connecte ou une contribution HelloAsso active est requis.',
             'required_fields' => 'Le titre et la description sont obligatoires.',
             'user_missing' => 'Utilisateur introuvable.',
             'attachment_error' => 'Une pièce jointe n’a pas pu être téléversée correctement.',
@@ -214,6 +214,7 @@ if (!function_exists('githubBugReportUiIsEnabled')) {
         return githubBugReportIsConfigured() && (
             (function_exists('commonCurrentUserIsSiteAdminModeEnabled') && commonCurrentUserIsSiteAdminModeEnabled())
             || patreonSupportUiIsEnabled()
+            || helloAssoIsConfigured()
         );
     }
 }
@@ -224,6 +225,7 @@ if (!function_exists('githubBugReportUserCanSubmit')) {
         $userId = (int)$userId;
         if ($userId <= 0) return false;
         if (function_exists('commonUserHasSiteAdminOverride') && commonUserHasSiteAdminOverride($userId)) return true;
+        if (helloAssoIsConfigured() && supportGetUserContributionAmountCents($userId) > 0) return true;
         if (!\dbObject\UserPatreon::isStorageAvailable()) return false;
         $connection = \dbObject\UserPatreon::findByUserId($userId);
         return $connection !== false && $connection->isConnected();

@@ -1,6 +1,6 @@
 <?php
 
-require_once __DIR__ . '/patreon.php';
+require_once __DIR__ . '/support.php';
 require_once __DIR__ . '/ai_config.php';
 require_once __DIR__ . '/ai_usage.php';
 
@@ -32,12 +32,12 @@ function commonAiIsTranscriptionConfigured(?string $model = null, ?string $apiKe
 
 function commonAiUserCanTranscribe(int $userId, ?string $model = null, ?int $organizationId = null): bool
 {
-    return commonAiIsTranscriptionConfigured($model) && patreonUserCanUseAi($userId, $organizationId ?? commonAiContextOrganization($userId));
+    return commonAiIsTranscriptionConfigured($model) && supportUserCanUseAi($userId, $organizationId ?? commonAiContextOrganization($userId));
 }
 
 function commonAiUserCanUse(int $userId, ?string $model = null, ?string $apiKey = null, ?int $organizationId = null): bool
 {
-    return commonAiIsConfigured($model, $apiKey) && patreonUserCanUseAi($userId, $organizationId ?? commonAiContextOrganization($userId));
+    return commonAiIsConfigured($model, $apiKey) && supportUserCanUseAi($userId, $organizationId ?? commonAiContextOrganization($userId));
 }
 
 function commonAiGetCurrentUserId(): int

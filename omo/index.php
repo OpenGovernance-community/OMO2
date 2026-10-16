@@ -2,7 +2,7 @@
 require_once dirname(__DIR__) . '/shared_functions.php';
 require_once dirname(__DIR__) . '/common/auth.php';
 require_once dirname(__DIR__) . '/common/topbar.php';
-require_once dirname(__DIR__) . '/common/patreon.php';
+require_once dirname(__DIR__) . '/common/support.php';
 require_once dirname(__DIR__) . '/common/translation_bundles.php';
 require_once dirname(__DIR__) . '/common/web_push.php';
 require_once __DIR__ . '/topbar.php';
@@ -783,7 +783,7 @@ if ($isOrganizationHub && !$isDemoGuest) {
     $organizationStatusLabel = $organizationCount === 0
         ? t('app.directory.status.none')
         : t('app.directory.status.available', ['count' => $organizationCount]);
-    $showPatreonConnectCard = $patreonConfigured && !$patreonConnected;
+    $showPatreonConnectCard = $patreonConfigured && !$patreonConnected && supportGetUserContributionAmountCents($currentUserId) <= 0;
     $directoryDescriptionKey = $organizationCount > 0
         ? 'app.directory.description.with_results'
         : ($showPatreonConnectCard ? 'app.directory.description.empty.patreon_connect' : 'app.directory.description.empty');
@@ -1238,7 +1238,8 @@ if ($currentUser->load($currentUserId)) {
 
 if (!$isDemoGuest && $currentUserId > 0 && patreonSupportUiIsEnabled()) {
     $patreonConnection = \dbObject\UserPatreon::findByUserId($currentUserId);
-    $patreonPromptShouldShow = !($patreonConnection !== false && $patreonConnection->isConnected());
+    $patreonPromptShouldShow = !($patreonConnection !== false && $patreonConnection->isConnected())
+        && supportGetUserContributionAmountCents($currentUserId) <= 0;
 }
 ?>
 <!DOCTYPE html>

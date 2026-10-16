@@ -207,6 +207,8 @@
 				}
 				if (empty($this->save()['status']) || !$this->revokeAuthentication()) throw new \RuntimeException('Recovery failed.');
 				$pdo->commit();
+				require_once dirname(__DIR__, 2) . '/common/helloasso.php';
+				\helloAssoCheckActivatedAccount((int)$this->getId());
 				return true;
 			} catch (\Throwable $error) {
 				if ($pdo->inTransaction()) $pdo->rollBack();

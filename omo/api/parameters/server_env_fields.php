@@ -4,6 +4,19 @@
 function omoServerEnvAdditionalSections(): array
 {
     return [
+        'helloasso' => [
+            'title' => 'HelloAsso',
+            'intro' => 'Reconnaissance des dons par email. Un don mensuel couvre un mois ; un don ponctuel couvre un an, avec son montant divise par 10 pour le calcul des droits.',
+            'fields' => [
+                'HELLOASSO_CLIENT_ID' => ['label' => 'Client ID HelloAsso', 'help' => 'Identifiant API de l association, disponible dans son espace HelloAsso, Integrations et API. Le privilege AccessTransactions est requis.'],
+                'HELLOASSO_CLIENT_SECRET' => ['label' => 'Client secret HelloAsso', 'secret' => true, 'help' => 'Secret API de la meme association. Laissez vide pour conserver la valeur actuelle.'],
+                'HELLOASSO_ORGANIZATION_SLUG' => ['label' => 'Identifiant de l association', 'help' => 'Partie de l URL HelloAsso apres /associations/, sans autre chemin. Les dons doivent etre verses a cette association.'],
+                'HELLOASSO_SANDBOX' => ['label' => 'Utiliser le bac a sable', 'type' => 'boolean', 'help' => 'Utilise les identifiants et paiements de test HelloAsso. Desactiver pour la production.'],
+                'HELLOASSO_FORMS' => ['label' => 'Formulaires retenus', 'help' => 'Vide : tous les formulaires de don. Pour restreindre : Donation/soutien,Donation/autre-formulaire. Les billets et achats sont exclus par defaut.'],
+                'HELLOASSO_SYNC_INTERVAL' => ['label' => 'Intervalle de controle (secondes)', 'type' => 'number', 'min' => 900, 'max' => 604800, 'help' => 'Delai entre deux controles reussis par compte. Par defaut 21600 secondes, soit six heures. Les echecs sont retentes apres quinze minutes.'],
+                'HELLOASSO_BATCH_SIZE' => ['label' => 'Comptes par passage du cron', 'type' => 'number', 'min' => 1, 'max' => 100, 'help' => 'Nombre maximal de comptes controles par passage, sous reserve de la duree limite du lot. Par defaut 20.'],
+            ],
+        ],
         'hosting' => [
             'title' => 'Adresse et hebergement',
             'intro' => 'Identite publique du site et particularites du reseau. Les exceptions de proxy et d images ne sont utiles que si votre hebergement ou vos documents les demandent.',

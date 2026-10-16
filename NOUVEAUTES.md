@@ -1,5 +1,9 @@
 # Journal des nouveautés
 
+- Documents / PV des reunions (2026-10-16) : correction du filtre des pieces jointes qui masquait aussi les PV dans la liste et les dossiers. Affichage retabli avec les controles de visibilite, d invitation, d etape et d archivage existants ; regression couverte par un test en base.
+
+- Contributions / HelloAsso (2026-10-16) : controle des dons par email dans le cron et apres validation du compte, avec paiements mensuels valables un mois et ponctuels valables un an au montant divise par 10. Lecture commune Patreon / HelloAsso, montant le plus eleve sans cumul, droits IA et routage compatibles, remboursements, expiration et reprises apres erreur API. Migration et configuration documentees dans docs/DEPLOY.md.
+
 - PV / explorateur de documents (2026-10-16) : tous les types de documents proposes, dont EtherCalc et Etherpad, avec dossiers selectionnables et fichiers classes dans leur hierarchie. Recherche dans les chemins des dossiers ; liens vers les dossiers ouvrant leurs ancetres et leur contenu dans l explorateur. Droits de visibilite conserves, y compris pour les sous-dossiers.
 
 - Indicateurs / tableurs dans les dossiers (2026-10-16) : sources EtherCalc et Collabora accessibles dans les dossiers et sous-dossiers, y compris apres deplacement d un document deja lie a un indicateur. Controle de visibilite sur toute la hierarchie conserve ; dossiers prives ou archives exclus.

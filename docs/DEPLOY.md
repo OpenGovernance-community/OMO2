@@ -324,6 +324,92 @@ Chaque appel ouvre une connexion MySQL neuve (delai de connexion limite a trois 
 
 Ce controle confirme la disponibilite de la connexion et du moteur SQL ; il ne verifie pas les tables applicatives, les droits d ecriture, l integrite des donnees ou les sauvegardes. Une frequence de cinq minutes est suffisante pour une surveillance de base. Publier `omo/health.php` et la classe DbObject mise a jour ensemble avant d activer le moniteur.
 
+### Contributions HelloAsso et Patreon
+
+Appliquer `sql/2026-10-16-04-helloasso-contributions.sql`, puis renseigner dans
+le `.env` prive du serveur les identifiants API de l association avec le privilege
+`AccessTransactions` :
+
+Ces reglages sont aussi disponibles dans Parametres serveur > HelloAsso.
+
+```dotenv
+HELLOASSO_CLIENT_ID=
+HELLOASSO_CLIENT_SECRET=
+HELLOASSO_ORGANIZATION_SLUG=
+HELLOASSO_SANDBOX=false
+HELLOASSO_FORMS=
+HELLOASSO_SYNC_INTERVAL=21600
+HELLOASSO_BATCH_SIZE=20
+```
+
+Avec `HELLOASSO_FORMS` vide, tous les formulaires de type `Donation` de cette
+association sont retenus, sans billetterie ni boutique. Une liste facultative
+`Donation/soutien,Donation/autre-formulaire` permet de restreindre ce choix.
+Ne jamais mettre les secrets dans le depot. Le mode sandbox utilise les comptes
+et identifiants de `api.helloasso-sandbox.com`, independants de la production.
+
+La tache `helloasso_contributions` du cron OMO traite les comptes actifs par lots,
+par anciennete du dernier controle. Chaque compte est recontrole toutes les six
+heures par defaut ; un echec est retente apres quinze minutes. Dimensionner la
+frequence du cron et `HELLOASSO_BATCH_SIZE` pour parcourir tous les comptes dans
+ce delai. Le traitement partage les protections et journaux du cron existant.
+Il ne fait aucun appel HelloAsso si les trois identifiants sont vides.
+
+Le premier controle a lieu apres validation du compte par email, et les connexions
+interactives recontrolent les comptes qui en ont besoin. Un echec API ne bloque
+jamais l activation ou la connexion. Commandes de diagnostic sans sortie de secret :
+
+```bash
+php scripts/helloasso-sync.php
+php scripts/helloasso-sync.php --user=123
+```
+
+Le rapprochement utilise exclusivement l email principal du compte actif, dont
+l activation ne doit plus etre en attente. Les adresses ambigues presentes sur
+plusieurs comptes ne donnent aucun droit. Les adresses de contact des organisations
+ne sont pas utilisees. Un changement d email invalide immediatement les anciens
+droits HelloAsso. Le rattachement aux organisations reste assure par Patreon ; un
+don HelloAsso rapproche par email finance uniquement le compte personnel.
+
+Seuls les paiements `Authorized` sont pris en compte, avec leur part effectivement
+affectee aux articles, hors pourboire HelloAsso. Les types `MonthlyDonation` et
+`MonthlyPayment` couvrent un mois calendaire a compter du paiement ; les versements
+ponctuels couvrent une annee. Les anniversaires en fin de mois sont ramenes au dernier
+jour existant. La date de fin est exclusive. Les remboursements confirmes ou en cours
+reduisent le montant ; les paiements refuses, contestes ou rembourses ne donnent pas
+de droits. Un echec de pagination conserve le dernier instantane complet, dont les
+periodes continuent a expirer normalement. Les remboursements sont detectes au
+prochain controle reussi, sans webhook dans cette version.
+
+Le montant mensuel de reference vaut le montant du versement mensuel, ou le montant
+ponctuel divise par **10** (arrondi au centime inferieur). Ainsi 40 EUR par mois et
+400 EUR pour une annee ouvrent le meme niveau. On retient le maximum des versements
+encore valables, puis le maximum entre HelloAsso et Patreon, sans cumul. HelloAsso
+est en EUR ; comme auparavant les seuils Patreon sont nominaux, sans conversion de
+devise. Les exceptions createur et super administrateur restent des autorisations,
+sans montant fictif.
+
+API PHP partagee dans `common/support.php` :
+
+- `supportGetUserContribution($userId)` : `amount_cents`, `source`, `valid_until`
+  (fin connue pour HelloAsso ; `null` pour Patreon).
+- `supportGetUserContributionAmountCents($userId)` : montant personnel commun.
+- `supportGetOrganizationContributionAmountCents($organizationId)` : montant de
+  l organisation, sans le confondre avec celui de ses membres.
+- `supportUserCanUseAi($userId, $organizationId)` et
+  `supportCanManageOrganizationRouting($userId)` : controles communs ; les anciens
+  noms de fonctions Patreon restent compatibles.
+
+La presence d une configuration HelloAsso, meme incomplete, desactive le mode IA
+libre auparavant reserve aux installations sans configuration Patreon. L IA doit
+toujours etre configuree separement. Le module de signalement accepte aussi une
+contribution HelloAsso active ; un compte Patreon simplement connecte conserve son
+acces historique.
+
+References API : [paiements de l association](https://dev.helloasso.com/reference/get_organizations-organizationslug-payments),
+[exemple de paiement de don](https://dev.helloasso.com/docs/paiement-autoris%C3%A9-sur-un-formulaire-de-don),
+[authentification](https://dev.helloasso.com/docs/api-overview).
+
 ### Patreon des organisations et suivi IA
 
 - Appliquer les migrations `sql/2026-10-15-01-organization-patreon.sql` et `sql/2026-10-15-02-ai-usage.sql`, y compris sur le serveur central de connexion Patreon. Deployer aussi le nouveau callback central avant d activer les connexions d organisation sur les sites clients : un ancien callback ne connait que les comptes individuels.

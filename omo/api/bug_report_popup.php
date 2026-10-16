@@ -67,7 +67,7 @@ if ($currentUserId > 0 && $featureEnabled) {
                     <?php endforeach; ?>
                 </ul>
             <?php endif; ?>
-            <?php if (!commonCurrentUserIsSiteAdminModeEnabled() && !patreonSupportUiIsEnabled()): ?>
+            <?php if (!commonCurrentUserIsSiteAdminModeEnabled() && !patreonSupportUiIsEnabled() && !helloAssoIsConfigured()): ?>
                 <p><?= omoApiEscape(githubBugReportT('patreon_required')) ?></p>
             <?php endif; ?>
         </div>
@@ -76,9 +76,11 @@ if ($currentUserId > 0 && $featureEnabled) {
             <h3 class="generic-card-title generic-card-title--medium"><?= omoApiEscape(githubBugReportT('patreon_access')) ?></h3>
             <p><?= omoApiEscape(githubBugReportT('patreon_access_help')) ?></p>
             <p><?= omoApiEscape(githubBugReportT('patreon_connect_help')) ?></p>
+            <?php if (patreonSupportUiIsEnabled()): ?>
             <div class="omo-bug-report-popup__connect-actions">
                 <button type="button" class="generic-action-button generic-action-button--main" id="omoBugReportPatreonConnect"><?= omoApiEscape(githubBugReportT('connect')) ?></button>
             </div>
+            <?php endif; ?>
         </div>
     <?php else: ?>
         <div class="omo-bug-report-popup__panel generic-section generic-section--stack">

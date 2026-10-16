@@ -2541,6 +2541,8 @@ function commonCompleteInteractiveLogin($userId, $remember, $ipAddress)
     commonClearCurrentUserAllAdminModes();
     unset($_SESSION['permissionCacheByOrganization']);
     commonStorePendingLoginToken(null);
+    require_once __DIR__ . '/helloasso.php';
+    helloAssoCheckActivatedAccount($userId);
     return true;
 }
 

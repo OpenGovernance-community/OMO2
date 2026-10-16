@@ -7,6 +7,7 @@ require_once __DIR__ . '/omo_cron_log.php';
 require_once __DIR__ . '/omo_maintenance_lock.php';
 require_once __DIR__ . '/organization_backup.php';
 require_once __DIR__ . '/performance_monitor.php';
+require_once __DIR__ . '/helloasso.php';
 
 if (!function_exists('omo_run_fake_cron_maintenance')) {
     function omo_run_fake_cron_maintenance($checklistLimit = 50, $force = false, $source = 'unknown')
@@ -52,6 +53,11 @@ if (!function_exists('omo_run_fake_cron_maintenance')) {
         $result['performanceSamplesAggregated'] = $runTask(
             'performance_aggregation', 'OMO performance aggregation failed: ',
             static fn () => \dbObject\PerformanceRequest::aggregate()
+        );
+
+        $result['helloAssoAccountsSynced'] = $runTask(
+            'helloasso_contributions', 'OMO HelloAsso synchronization failed: ',
+            static fn () => helloAssoSyncBatch()
         );
 
         $result['organizationBackupsSent'] = $runTask(

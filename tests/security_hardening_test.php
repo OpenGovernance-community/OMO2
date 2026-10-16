@@ -40,12 +40,18 @@ function securityHttp(string $path, ?array $body = null, ?string $origin = 'http
 }
 
 try {
+    $GLOBALS['patreonClientId'] = 'security-fixture';
+    $GLOBALS['patreonClientSecret'] = 'security-fixture';
     $nonce = bin2hex(random_bytes(6));
     $password = 'Security-Fixture-Password!48-' . $nonce;
     $items['user'] = $user = mcpFixture(User::class, ['email' => 'sec-' . $nonce . '@example.invalid',
         'password' => commonHashUserPassword($password), 'active' => 1, 'siteadmin' => 0,
         'allow_password_login' => 1, 'security_version' => 0, 'parameters' => ['isSiteAdmin' => false]]);
     $id = (int)$user->getId();
+    // MCP recovery checks require an entitled account, also when the local paywall is configured.
+    $items['patreon_subscription'] = mcpFixture(\dbObject\UserPatreon::class, ['IDuser' => $id,
+        'is_connected' => 1, 'refresh_token' => 'fixture-only', 'patron_status' => 'active_patron',
+        'currently_entitled_amount_cents' => 100, 'campaign_id' => (string)($GLOBALS['patreonCreatorCampaignId'] ?? '')]);
     $originalEmail = $user->get('email');
     $items['other'] = $other = mcpFixture(User::class, ['email' => 'sec-other-' . $nonce . '@example.invalid', 'active' => 1]);
     $items['org'] = $org = mcpFixture(McpTestOrganization::class, ['name' => 'Security ' . $nonce]);
