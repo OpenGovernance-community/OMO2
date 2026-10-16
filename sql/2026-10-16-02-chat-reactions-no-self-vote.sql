@@ -8,7 +8,7 @@ FROM chat_message m
 INNER JOIN chat_message_reaction r ON r.IDchat_message = m.id
 LEFT JOIN decision_participant p ON p.id = m.IDdecision_participant
 LEFT JOIN document_share_link l ON l.id = m.IDdocument_share_link
-WHERE r.actor_key = CASE
+WHERE r.actor_key = CAST(CASE
     WHEN m.IDuser > 0 THEN CONCAT('user:', m.IDuser)
     WHEN m.IDdecision_participant > 0 THEN
         CASE WHEN p.IDuser > 0 THEN CONCAT('user:', p.IDuser)
@@ -16,7 +16,7 @@ WHERE r.actor_key = CASE
     WHEN l.recipient_user_id > 0 THEN CONCAT('user:', l.recipient_user_id)
     WHEN TRIM(COALESCE(l.recipient_email, '')) <> '' THEN CONCAT('email:', SHA2(LOWER(TRIM(l.recipient_email)), 256))
     ELSE ''
-END;
+END AS BINARY);
 
 START TRANSACTION;
 
@@ -30,7 +30,7 @@ INNER JOIN chat_self_reaction_messages affected ON affected.id = r.IDchat_messag
 INNER JOIN chat_message m ON m.id = r.IDchat_message
 LEFT JOIN decision_participant p ON p.id = m.IDdecision_participant
 LEFT JOIN document_share_link l ON l.id = m.IDdocument_share_link
-WHERE r.actor_key = CASE
+WHERE r.actor_key = CAST(CASE
     WHEN m.IDuser > 0 THEN CONCAT('user:', m.IDuser)
     WHEN m.IDdecision_participant > 0 THEN
         CASE WHEN p.IDuser > 0 THEN CONCAT('user:', p.IDuser)
@@ -38,7 +38,7 @@ WHERE r.actor_key = CASE
     WHEN l.recipient_user_id > 0 THEN CONCAT('user:', l.recipient_user_id)
     WHEN TRIM(COALESCE(l.recipient_email, '')) <> '' THEN CONCAT('email:', SHA2(LOWER(TRIM(l.recipient_email)), 256))
     ELSE ''
-END;
+END AS BINARY);
 
 UPDATE chat_message m
 INNER JOIN chat_self_reaction_messages affected ON affected.id = m.id

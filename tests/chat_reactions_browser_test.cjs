@@ -56,6 +56,7 @@ const {chromium} = require(process.argv[2] || 'playwright');
             const ownBubble = page.locator('.omo-chat-popup__message-row--own .omo-chat-popup__bubble, .omo-proposal-chat__message-row--own .omo-proposal-chat__bubble').first();
             assert(await ownBubble.locator('.chat-reactions__summary').isDisabled(), 'Own message reactions are read-only');
             assert.equal(await ownBubble.locator('.chat-reactions__summary img').count(), 3, 'Own message still displays reactions');
+            assert.equal(await ownBubble.locator('[data-reaction-kind="clap"]').textContent(), '1', 'Reactions received on own messages remain visible');
             await ownBubble.locator('p').click();
             assert.equal(await page.locator('body > .chat-reactions__picker').count(), 0, 'Clicking an own message cannot open the picker');
             const bubble = page.locator('.omo-chat-popup__bubble, .omo-proposal-chat__bubble').first();

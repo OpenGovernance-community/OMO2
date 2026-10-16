@@ -81,11 +81,41 @@ try {
         $contexts[$name]['messageId'] = (int)$items[$name . '_message']->getId();
         $items[$name . '_own_message'] = ChatMessage::createUserMessage($thread, $uid, 'Mon propre message.', $name === 'decision', $name === 'decision');
         $contexts[$name]['ownMessageId'] = (int)$items[$name . '_own_message']->getId();
+        ChatMessageReaction::setForMessage($thread, $contexts[$name]['ownMessageId'], ChatMessageReaction::actorKey($authorId), 'clap');
     }
     if (in_array('--browser', $argv, true)) {
         echo json_encode(['origin' => omoMcpIssuer(), 'cookie' => ['name' => session_name(), 'value' => session_id()],
             'contexts' => $contexts], JSON_THROW_ON_ERROR) . "\n";
         fflush(STDOUT); session_write_close(); fgets(STDIN); session_start();
+    } elseif (in_array('--migration', $argv, true)) {
+        require_once dirname(__DIR__) . '/db/migrations.php';
+        $items['migration_guest_pv'] = ChatMessage::createUserMessage($items['pv_thread'], 0, 'Guest PV', false, false, 0, (int)$items['guest_link']->getId());
+        $items['migration_guest_decision'] = ChatMessage::createUserMessage($items['decision_thread'], 0, 'Guest decision', true, false, (int)$items['guest_participant']->getId());
+        $items['migration_linked_participant'] = ChatMessage::createUserMessage($items['decision_thread'], 0, 'Linked participant', true, false, (int)$items['participant']->getId());
+        $cases = [
+            [$items['project_thread'], $items['project_own_message'], ChatMessageReaction::actorKey($uid), ['up' => 0, 'down' => 0, 'clap' => 1]],
+            [$items['pv_thread'], $items['migration_guest_pv'], ChatMessageReaction::actorKey(0, 0, (int)$items['guest_link']->getId()), ['up' => 0, 'down' => 0, 'clap' => 0]],
+            [$items['decision_thread'], $items['migration_guest_decision'], ChatMessageReaction::actorKey(0, (int)$items['guest_participant']->getId()), ['up' => 0, 'down' => 0, 'clap' => 0]],
+            [$items['decision_thread'], $items['migration_linked_participant'], ChatMessageReaction::actorKey($uid), ['up' => 0, 'down' => 0, 'clap' => 0]],
+        ];
+        foreach ($cases as [$thread, $message, $actor, $expected]) {
+            // Seed the legacy state through the underlying model, bypassing the new mutation guard.
+            mcpFixture(ChatMessageReaction::class, ['IDchat_message' => $message->getId(), 'actor_key' => $actor, 'reaction' => 'up']);
+            ChatMessage::saveReactionCounts((int)$message->getId(), array_replace($expected, ['up' => 1, '_version' => 10]));
+        }
+        $path = dirname(__DIR__) . '/sql/2026-10-16-02-chat-reactions-no-self-vote.sql';
+        executeSqlFile(\dbObject\DbObject::getPdo(), $path);
+        foreach ($cases as [$thread, $message, $actor, $expected]) {
+            $state = ChatMessageReaction::forMessages($thread, [(int)$message->getId()], $actor)[0];
+            mcpCheck($state['counts'] === $expected && $state['own'] === '' && $state['version'] === 11,
+                'Migration removes legacy self-votes, preserves received votes and updates the version');
+        }
+        executeSqlFile(\dbObject\DbObject::getPdo(), $path);
+        foreach ($cases as [$thread, $message, $actor, $expected]) {
+            mcpCheck(ChatMessageReaction::forMessages($thread, [(int)$message->getId()], $actor)[0]['version'] === 11,
+                'Repeating cleanup does not change unaffected totals');
+        }
+        echo "chat_reactions_migration: OK (accounts, guests, linked identities, preserved votes, idempotence)\n";
     } else {
         $thread = $items['project_thread']; $mid = (int)$items['project_message']->getId();
         $actor = ChatMessageReaction::actorKey($uid);
@@ -133,6 +163,7 @@ try {
             $states = array_column($read['json']['reactions'], null, 'id');
             mcpCheck($states[$config['ownMessageId']]['canReact'] === false && $states[$config['messageId']]['canReact'] === true,
                 $name . ' distinguishes own messages without exposing author identity');
+            mcpCheck($states[$config['ownMessageId']]['counts']['clap'] === 1, $name . ' preserves reactions received from others');
             foreach (['up', 'down', 'clap', ''] as $kind) {
                 $own = reactionHttp($config['endpoint'], $config['context'], ['action' => 'reaction',
                     'message_id' => $config['ownMessageId'], 'reaction' => $kind, 'isOwn' => '0', 'IDuser' => $authorId]);
