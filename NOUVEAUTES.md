@@ -1,5 +1,7 @@
 # Journal des nouveautés
 
+- Indicateurs / tableurs dans les dossiers (2026-10-16) : sources EtherCalc et Collabora accessibles dans les dossiers et sous-dossiers, y compris apres deplacement d un document deja lie a un indicateur. Controle de visibilite sur toute la hierarchie conserve ; dossiers prives ou archives exclus.
+
 - Discussions / reactions sur ses propres messages (2026-10-16) : choix desactive pour l auteur et refus cote serveur, y compris en mode anonyme ou via un lien invite. Reactions recues toujours visibles ; migration de retrait des anciens votes personnels avec recalcul des compteurs.
 
 - Discussions / icones des reactions (2026-10-16) : images fournies pour les pouces et applaudissements ; pouce baisse par retournement vertical et poignets alignes en remontant le pouce leve et en descendant le pouce baisse. Contraste adapte aux boutons du menu en theme clair/sombre, icones noires conservees sur les bulles claires.
