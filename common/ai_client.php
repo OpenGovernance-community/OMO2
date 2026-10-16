@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/ai_config.php';
+require_once __DIR__ . '/ai_usage.php';
 
 /** Text-only adapter shared by document tools, Telegram and UI translations. */
 function commonAiBuildTextRequest(string $apiKey, array $payload): array
@@ -72,10 +73,18 @@ function commonAiRequestText(string $apiKey, array $payload, int $timeout = 120)
     }
     try {
         $request = commonAiBuildTextRequest($apiKey, $payload);
-        $encoded = json_encode($request['payload'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+        $result = commonAiRequestJson($request, $timeout);
     } catch (Throwable $error) {
         return ['status' => false, 'message' => 'Configuration ou requete IA invalide.'];
     }
+    if (empty($result['status'])) return $result;
+    return commonAiDecodeTextResponse($result['response'], $result['http_code']);
+}
+
+/** Shared HTTP transport for text requests and local assistant tool calls. */
+function commonAiRequestJson(array $request, int $timeout = 120): array
+{
+    $encoded = json_encode($request['payload'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
     $curl = curl_init($request['url']);
     if ($curl === false) return ['status' => false, 'message' => 'Impossible de preparer la requete IA.'];
     curl_setopt_array($curl, [
@@ -89,8 +98,11 @@ function commonAiRequestText(string $apiKey, array $payload, int $timeout = 120)
     ]);
     $response = curl_exec($curl);
     $httpCode = (int)curl_getinfo($curl, CURLINFO_HTTP_CODE);
+    $decoded = is_string($response) ? json_decode($response, true) : null;
+    $modelOutput = is_array($decoded) ? ($decoded['choices'][0]['message'] ?? $decoded['content'] ?? $decoded['output'] ?? '') : '';
+    commonAiRecordUsage('model', commonAiGetProvider(), (string)($request['payload']['model'] ?? ''),
+        $request['payload'], $modelOutput, is_array($decoded) ? $decoded : ['error' => true], $httpCode);
     if ($response === false) return ['status' => false, 'http_code' => $httpCode, 'message' => curl_error($curl) ?: 'La requete IA a echoue.'];
-    $decoded = json_decode((string)$response, true);
     if (!is_array($decoded)) return ['status' => false, 'http_code' => $httpCode, 'message' => 'La reponse IA est invalide.'];
-    return commonAiDecodeTextResponse($decoded, $httpCode);
+    return ['status' => true, 'response' => $decoded, 'http_code' => $httpCode];
 }

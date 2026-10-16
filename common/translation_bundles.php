@@ -798,7 +798,7 @@ function translationBundleTranslateWithAi(string $bundleKey, string $locale, arr
         'source_bundle' => $sourceLang,
     ];
 
-    $result = commonAiRequestText($apiKey, [
+    $result = commonAiWithUsageContext(['IDuser' => null, 'IDorganization' => null, 'origin' => 'background', 'feature' => 'translation'], static fn () => commonAiRequestText($apiKey, [
         'model' => $translationModel,
         'messages' => [
             ['role' => 'system', 'content' => $systemPrompt],
@@ -806,7 +806,7 @@ function translationBundleTranslateWithAi(string $bundleKey, string $locale, arr
         ],
         'temperature' => 0.1,
         'max_tokens' => 8000,
-    ]);
+    ]));
 
     if (empty($result['status'])) {
         throw new \RuntimeException((string)($result['message'] ?? 'AI translation failed.'));

@@ -149,6 +149,42 @@ class ExternalCalendarEvent extends DbObject
         );
     }
 
+    /** Import atomically, preserving a caller's transaction and local event annotations. */
+    public static function synchronizeImportedEvents(int $calendarId, array $events, \DateTimeInterface $start, \DateTimeInterface $end, bool $replaceCache): void
+    {
+        $pdo = self::getPdo();
+        if (!$pdo instanceof \PDO) { throw new \RuntimeException('storage'); }
+        $ownsTransaction = !$pdo->inTransaction();
+        if ($ownsTransaction) { $pdo->beginTransaction(); }
+        else { $pdo->exec('SAVEPOINT external_calendar_import'); }
+        try {
+            $deactivated = $replaceCache ? self::deactivateForCalendar($calendarId) : self::deactivateInRange($calendarId, $start, $end);
+            if (!$deactivated) { throw new \RuntimeException('storage'); }
+            foreach ($events as $values) {
+                $event = self::findForImportedValues($calendarId, $values);
+                if (!$event) {
+                    $event = new self();
+                    $event->set('IDexternalcalendar', $calendarId);
+                    $event->set('created_at', new \DateTimeImmutable());
+                }
+                $event->applyImportedValues($values);
+                $event->set('active', 1);
+                $event->set('updated_at', new \DateTimeImmutable());
+                if (empty($event->save()['status'])) { throw new \RuntimeException('storage'); }
+            }
+            ProjectExternalEvent::synchronizeForCalendar($calendarId, $start, $end);
+            if ($ownsTransaction) { $pdo->commit(); }
+            else { $pdo->exec('RELEASE SAVEPOINT external_calendar_import'); }
+        } catch (\Throwable $error) {
+            if ($ownsTransaction) { $pdo->rollBack(); }
+            else {
+                $pdo->exec('ROLLBACK TO SAVEPOINT external_calendar_import');
+                $pdo->exec('RELEASE SAVEPOINT external_calendar_import');
+            }
+            throw $error;
+        }
+    }
+
     public static function deactivateInRange($calendarId, \DateTimeInterface $rangeStart, \DateTimeInterface $rangeEnd)
     {
         return self::execute(

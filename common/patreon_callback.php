@@ -127,15 +127,27 @@ if ($code === '') {
 }
 
 try {
-	$tokens = patreonExchangeCodeForTokens($code);
-	$connection = \dbObject\UserPatreon::loadOrCreateByUserId($userId);
-	$connection->applyOauthTokens($tokens);
-	$saveResult = $connection->save();
-	if (empty($saveResult['status'])) {
-		throw new RuntimeException('Impossible d’enregistrer les jetons Patreon.');
-	}
-
-	patreonSyncConnection($connection);
+    $organizationId = (int)$transaction->get('IDorganization');
+    if ($organizationId > 0 && !patreonUserCanManageOrganization($userId, $organizationId)) {
+        throw new RuntimeException('Les droits de gestion de cette organisation ont ete retires.');
+    }
+    \dbObject\UserPatreon::withConnectionLock(static function () use ($userId, $organizationId, $code) {
+        if ($organizationId > 0 && !patreonUserCanManageOrganization($userId, $organizationId)) {
+            throw new RuntimeException('Les droits de gestion de cette organisation ont ete retires.');
+        }
+        $tokens = patreonExchangeCodeForTokens($code);
+        $profile = patreonExtractProfile(patreonFetchIdentity($tokens['access_token']));
+        $connection = $organizationId > 0
+            ? \dbObject\OrganizationPatreon::loadOrCreateByOrganizationId($organizationId)
+            : \dbObject\UserPatreon::loadOrCreateByUserId($userId);
+        // Even a refused new link must not invalidate existing links when Patreon rotates tokens.
+        \dbObject\UserPatreon::shareIdentityTokens((string)$profile['patreon_user_id'], $tokens);
+        $connection->assertIdentityAvailable((string)$profile['patreon_user_id']);
+        $connection->applyOauthTokens($tokens);
+        $connection->applyPatreonProfile($profile);
+        $connection->markSyncSuccess();
+        if (empty($connection->save()['status'])) throw new RuntimeException('Impossible de connecter Patreon.');
+    });
 	if (empty($transaction->markCompleted()['status'])) {
 		throw new RuntimeException('La connexion est active, mais sa confirmation n’a pas pu être enregistrée.');
 	}

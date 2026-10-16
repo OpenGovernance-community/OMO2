@@ -834,7 +834,7 @@ $projectTexts = [
 ?>
 <link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260902-save-menu">
 <link rel="stylesheet" href="/common/choice/change-details.css?v=20260923-lifecycle-details">
-<link rel="stylesheet" href="/common/chat/thread.css?v=20260910-project-chat">
+<link rel="stylesheet" href="/common/chat/thread.css?v=20261016-reactions-5">
 <?php if ($organization->isApplicationEnabled('stats')): ?><link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/stats/stats.css') ?>"><?php endif; ?>
 <?php if ($organization->isApplicationEnabled('activities')): ?><link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/activities/activities.css') ?>"><?php endif; ?>
 <link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/projects/projects.css') ?>">
@@ -1303,6 +1303,7 @@ $projectTexts = [
 <script src="<?= commonAssetUrl('/omo/assets/js/application-view-preferences.js') ?>"></script>
 <script src="/common/choice/word-diff.js?v=20260816"></script>
 <script src="<?= commonAssetUrl('/common/choice/change-details.js') ?>"></script>
-<script src="/common/chat/thread.js?v=20260910-project-chat"></script>
+<script src="<?= commonAssetUrl('/common/chat/reactions.js') ?>"></script>
+<script src="/common/chat/thread.js?v=20261016-reactions"></script>
 <script src="<?= commonAssetUrl('/omo/api/projects/projects.js') ?>"></script>
 <script src="<?= commonAssetUrl('/common/document/embed-picker.js') ?>"></script>

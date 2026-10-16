@@ -33,8 +33,13 @@ $selectedDay = null;
 $path = '/meeting/' . rawurlencode($name);
 $ownerName = '';
 $ownerPhoto = '';
+$visitor = null;
+$identifiedVisitor = null;
+$visitorCalendars = new \dbObject\ArrayExternalCalendar();
+$visitorCalendarId = 0;
 
 try {
+    $visitor = meetingVisitorIdentity();
     if (!MeetingProfile::isStorageAvailable()) { throw new RuntimeException('disabled'); }
     $limit = AuthRateLimit::consume('meeting-read', commonAuthHashIdentifier('meeting-ip', commonGetRequestIp()), 90, 60);
     if (empty($limit['allowed'])) { http_response_code(429); throw new RuntimeException('rate'); }
@@ -44,6 +49,15 @@ try {
     meetingDestination($candidate);
     $profile = $candidate;
     $userId = (int)$profile->get('IDuser');
+    $identityKey = $userId . ':' . ($visitor['id'] ?? 0);
+    $identifiedVisitor = $visitor && empty($_SESSION['meeting_manual_identity'][$identityKey]) ? $visitor : null;
+    if ($identifiedVisitor) {
+        $visitorCalendars->loadMeetingDestinationsForUser($identifiedVisitor['id']);
+        $defaultCalendarId = (int)MeetingProfile::forUser($identifiedVisitor['id'])->get('IDexternalcalendar');
+        foreach ($visitorCalendars as $calendar) {
+            if ((int)$calendar->getId() === $defaultCalendarId) { $visitorCalendarId = $defaultCalendarId; }
+        }
+    }
     $ownerName = (string)$profile->get('slug');
     $owner = new User();
     if ($owner->load($userId)) {
@@ -83,6 +97,22 @@ try {
         }
         if (!empty($_POST['website'])) { throw new RuntimeException('guest_invalid'); }
         foreach ($guest as $field => $value) { $guest[$field] = trim((string)($_POST[$field] ?? '')); }
+        if (($_POST['action'] ?? '') === 'manual_identity') {
+            $_SESSION['meeting_manual_identity'][$identityKey] = true;
+            $identifiedVisitor = null;
+            $guest['name'] = $guest['email'] = '';
+        } elseif (!empty($_POST['identity_user_id'])) {
+            if (!$identifiedVisitor || (int)$_POST['identity_user_id'] !== $identifiedVisitor['id']) { throw new RuntimeException('identity_changed'); }
+            $guest['name'] = $identifiedVisitor['name'];
+            $guest['email'] = $identifiedVisitor['email'];
+            $visitorCalendarId = filter_var($_POST['guest_calendar_id'] ?? 0, FILTER_VALIDATE_INT);
+            if ($visitorCalendarId === false || $visitorCalendarId < 0) { throw new RuntimeException('guest_calendar_invalid'); }
+            meetingVisitorCalendar($identifiedVisitor['id'], $visitorCalendarId);
+        } else {
+            // A form opened anonymously stays a manual booking even if another tab logged in.
+            $identifiedVisitor = null;
+            if (($_POST['identity_mode'] ?? '') === 'manual' && $visitor) { $_SESSION['meeting_manual_identity'][$identityKey] = true; }
+        }
         $selectedDay = meetingDate((string)($_POST['date'] ?? ''), $zone);
         $selectedTime = (string)($_POST['time'] ?? '');
     }
@@ -107,7 +137,7 @@ try {
             }
             if (!$selectedSlot) { throw new RuntimeException('slot_taken'); }
         }
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== 'manual_identity') {
             if (!$selectedSlot) { throw new RuntimeException('slot_taken'); }
             if ($guest['name'] === '' || mb_strlen($guest['name']) > 190 || preg_match('/[\x00-\x1f\x7f]/', $guest['name'])
                 || !filter_var($guest['email'], FILTER_VALIDATE_EMAIL) || strlen($guest['email']) > 254
@@ -115,7 +145,10 @@ try {
             $limit = AuthRateLimit::consume('meeting-email', commonAuthHashIdentifier('meeting-email', $guest['email']), 10, 3600);
             if (empty($limit['allowed'])) { throw new RuntimeException('rate'); }
             $draft = $guest + ['token' => bin2hex(random_bytes(32)), 'user' => $userId, 'date' => $selectedDay->format('Y-m-d'),
-                'time' => $selectedTime, 'duration' => $durationMinutes, 'method' => $selectedMethod, 'expires' => time() + 900];
+                'time' => $selectedTime, 'duration' => $durationMinutes, 'method' => $selectedMethod, 'expires' => time() + 900,
+                'guest_user_id' => $identifiedVisitor['id'] ?? null,
+                'guest_calendar_id' => $identifiedVisitor ? $visitorCalendarId : 0,
+                'guest_calendar_title' => $identifiedVisitor && $visitorCalendarId ? meetingVisitorCalendar($identifiedVisitor['id'], $visitorCalendarId)->get('title') : ''];
             $drafts = array_slice((array)($_SESSION['meeting_drafts'] ?? []), -19, null, true);
             $drafts[$draft['token']] = $draft;
             $_SESSION['meeting_drafts'] = $drafts;
@@ -123,7 +156,7 @@ try {
     }
 } catch (Throwable $exception) {
     $key = $exception instanceof RuntimeException ? $exception->getMessage() : 'unavailable';
-    if (!in_array($key, ['disabled', 'rate', 'csrf', 'expired', 'guest_invalid', 'date_invalid', 'duration_invalid', 'method_invalid', 'slot_taken', 'busy', 'pending', 'write_failed', 'calendar_invalid', 'storage', 'unavailable'], true)) {
+    if (!in_array($key, ['disabled', 'rate', 'csrf', 'expired', 'identity_changed', 'guest_calendar_invalid', 'guest_invalid', 'date_invalid', 'duration_invalid', 'method_invalid', 'slot_taken', 'busy', 'pending', 'write_failed', 'calendar_invalid', 'storage', 'unavailable'], true)) {
         error_log('Meeting request failed: ' . get_class($exception)); $key = 'unavailable';
     }
     $error = meetingT($key);

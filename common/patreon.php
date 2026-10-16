@@ -105,7 +105,53 @@ function patreonCanManageOrganizationRouting($userId, $minimumAmountCents = 2000
 	return (int)$connection->get('currently_entitled_amount_cents') > $minimumAmountCents;
 }
 
-function patreonUserCanUseAi($userId)
+function patreonUserCanUseAi($userId, int $organizationId = 0)
+{
+    if (patreonIndividualCanUseAi($userId)) return true;
+    return $organizationId > 0 && (int)$userId > 0
+        && \dbObject\UserOrganization::hasActiveMembership((int)$userId, $organizationId)
+        && patreonOrganizationCanUseAi($organizationId);
+}
+
+function patreonOrganizationMinimumCents(): int
+{
+    $amount = trim((string)($GLOBALS['patreonOrganizationMinimumAmount'] ?? '40'));
+    // Fail closed for invalid configuration, including a zero or negative threshold.
+    if (!preg_match('/^[0-9]{1,8}(?:\.[0-9]{1,2})?$/D', $amount) || (float)$amount <= 0) return PHP_INT_MAX;
+    $cents = round((float)$amount * 100);
+    return $cents <= 2147483647 ? (int)$cents : PHP_INT_MAX;
+}
+
+function patreonOrganizationCanUseAi(int $organizationId): bool
+{
+    if (trim((string)($GLOBALS['patreonClientId'] ?? '')) === '' || trim((string)($GLOBALS['patreonClientSecret'] ?? '')) === '') return false;
+    $connection = \dbObject\OrganizationPatreon::findByOrganizationId($organizationId);
+    if (!$connection || !$connection->isConnected()) return false;
+    if (patreonConnectionIsCreator($connection)) return true;
+    return (patreonGetCreatorCampaignId() === '' || (string)$connection->get('campaign_id') === patreonGetCreatorCampaignId())
+        && (string)$connection->get('patron_status') === 'active_patron'
+        && (int)$connection->get('currently_entitled_amount_cents') >= patreonOrganizationMinimumCents();
+}
+
+/** Match the verified OAuth identity; attachment uniqueness still applies to creators. */
+function patreonConnectionIsCreator(\dbObject\UserPatreon $connection): bool
+{
+    $creatorUserId = trim((string)($GLOBALS['patreonCreatorUserId'] ?? ''));
+    return $connection->isConnected() && preg_match('/^[1-9][0-9]*$/D', $creatorUserId) === 1
+        && $creatorUserId === (string)$connection->get('patreon_user_id');
+}
+
+/** Check persisted membership, including on the central OAuth hub without the originating session. */
+function patreonUserCanManageOrganization(int $userId, int $organizationId): bool
+{
+    $user = new \dbObject\User();
+    $organization = new \dbObject\Organization();
+    if ($userId <= 0 || !$user->load($userId) || !$user->get('active') || !$organization->load($organizationId)) return false;
+    $membership = $organization->getMembership($userId, true);
+    return $membership && $membership->isOrganizationAdmin();
+}
+
+function patreonIndividualCanUseAi($userId)
 {
 	$userId = (int)$userId;
 	if ($userId <= 0) {
@@ -141,10 +187,7 @@ function patreonUserCanUseAi($userId)
 		return false;
 	}
 
-	// Match only the identity saved by the server after Patreon OAuth/sync.
-	$creatorUserId = trim((string)($GLOBALS['patreonCreatorUserId'] ?? ''));
-	if (preg_match('/^[1-9][0-9]*$/D', $creatorUserId) === 1
-		&& $creatorUserId === (string)$connection->get('patreon_user_id')) {
+	if (patreonConnectionIsCreator($connection)) {
 		return true;
 	}
 
@@ -568,6 +611,8 @@ function patreonSelectMembership(array $identity)
 				return $member;
 			}
 		}
+
+        return null; // Never grant benefits from a different creator's campaign.
 	}
 
 	if (count($members) === 1) {
@@ -646,6 +691,7 @@ function patreonEnsureFreshToken(\dbObject\UserPatreon $connection, $thresholdSe
 	}
 
 	$tokens = patreonRefreshTokens((string)$connection->get('refresh_token'));
+	\dbObject\UserPatreon::shareIdentityTokens((string)$connection->get('patreon_user_id'), $tokens);
 	$connection->applyOauthTokens($tokens);
 	$saveResult = $connection->save();
 	if (empty($saveResult['status'])) {
@@ -656,6 +702,15 @@ function patreonEnsureFreshToken(\dbObject\UserPatreon $connection, $thresholdSe
 }
 
 function patreonSyncConnection(\dbObject\UserPatreon $connection)
+{
+    return \dbObject\UserPatreon::withConnectionLock(static function () use ($connection) {
+        // Another permitted link may have rotated this identity's tokens since it was loaded.
+        $connection->load((int)$connection->getId(), true);
+        return patreonSyncLockedConnection($connection);
+    });
+}
+
+function patreonSyncLockedConnection(\dbObject\UserPatreon $connection)
 {
 	patreonAssertConfigured('sync');
 
@@ -674,6 +729,7 @@ function patreonSyncConnection(\dbObject\UserPatreon $connection)
 			}
 
 			$tokens = patreonRefreshTokens((string)$connection->get('refresh_token'));
+			\dbObject\UserPatreon::shareIdentityTokens((string)$connection->get('patreon_user_id'), $tokens);
 			$connection->applyOauthTokens($tokens);
 			$saveResult = $connection->save();
 			if (empty($saveResult['status'])) {
@@ -684,6 +740,9 @@ function patreonSyncConnection(\dbObject\UserPatreon $connection)
 		}
 
 		$profile = patreonExtractProfile($identity);
+        if ((string)$profile['patreon_user_id'] !== (string)$connection->get('patreon_user_id')) {
+            throw new RuntimeException('Identite Patreon inattendue. Reconnectez le compte.');
+        }
 		$connection->applyPatreonProfile($profile);
 		$connection->markSyncSuccess();
 		$saveResult = $connection->save();

@@ -14,6 +14,7 @@ class PatreonOauthTransaction extends DbObject
 	{
 		return [
 			[['id', 'IDuser'], 'integer'],
+            [['IDorganization'], 'fk'],
 			[['handoff_token_hash', 'oauth_state_hash', 'claim_token', 'return_origin', 'status'], 'string'],
 			[['expires_at', 'created_at', 'completed_at'], 'datetime'],
 			[['id'], 'safe'],
@@ -25,6 +26,7 @@ class PatreonOauthTransaction extends DbObject
 		return [
 			'id' => 'ID',
 			'IDuser' => 'Utilisateur',
+            'IDorganization' => 'Organisation',
 			'handoff_token_hash' => 'Empreinte du jeton de relais',
 			'oauth_state_hash' => 'Empreinte de l’état OAuth',
 			'claim_token' => 'Jeton de prise en charge',
@@ -67,11 +69,12 @@ class PatreonOauthTransaction extends DbObject
 		return self::$storageAvailable;
 	}
 
-	public static function createPending(int $userId, string $handoffTokenHash, string $returnOrigin)
+	public static function createPending(int $userId, string $handoffTokenHash, string $returnOrigin, int $organizationId = 0)
 	{
 		self::cleanupExpired();
 		$item = new self();
 		$item->set('IDuser', $userId);
+        $item->set('IDorganization', $organizationId > 0 ? $organizationId : null);
 		$item->set('handoff_token_hash', $handoffTokenHash);
 		$item->set('return_origin', $returnOrigin);
 		$item->set('status', 'pending');

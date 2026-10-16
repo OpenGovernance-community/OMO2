@@ -70,7 +70,7 @@ class McpDocumentCreation extends DbObject
             $items[] = ['kind' => $kind, 'id' => $id, 'name' => trim(html_entity_decode(strip_tags($name), ENT_QUOTES | ENT_HTML5, 'UTF-8')),
                 ...$destination, 'visibility_types' => self::visibilityTypes($oid, $destination['holon_id']),
                 'url' => $parentId > 0 ? McpContent::sourceUrl($oid, 'documents', $parentId, $hid)
-                    : \omoMcpIssuer() . '/omo/o/' . $oid . ($hid > 0 ? '/h/' . $hid : '')];
+                    : \omoApiSourceBaseUrl() . '/omo/o/' . $oid . ($hid > 0 ? '/h/' . $hid : '')];
         };
         if ($kind === 'organization') {
             $append(0, 0, (string)$org->get('name'), $oid); $complete = true;

@@ -197,6 +197,8 @@ $organizationBannerPreviewWidth = max(1, (int)round(
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8') ?></title>
+    <link rel="stylesheet" href="<?= commonAssetUrl('/common/notifications/notifications.css') ?>">
+    <script src="<?= commonAssetUrl('/common/notifications/notifications.js') ?>"></script>
     <script src="/shared_functions.js"></script>
     <script>sharedApplyDocumentTheme();</script>
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
@@ -347,6 +349,7 @@ $organizationBannerPreviewWidth = max(1, (int)round(
 <?php } ?>
             </section>
 
+            <?php if ($isEditMode && patreonUserCanManageOrganization($currentUserId, $organizationId)) require __DIR__ . '/../common/patreon/organization-panel.php'; ?>
             <div class="organization-create-actions generic-form-actions">
                 <button type="button" class="generic-action-button generic-action-button--secondary" id="organization_create_cancel"><?= htmlspecialchars(t('organization.action.cancel', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></button>
                 <button type="button" class="generic-action-button generic-action-button--main" id="organization_create_submit"><?= htmlspecialchars($submitLabel, ENT_QUOTES, 'UTF-8') ?></button>

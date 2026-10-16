@@ -1,0 +1,50 @@
+.organization-assistant__panel {
+    display: flex;
+    flex-direction: column;
+    height: min(680px, calc(100dvh - var(--topbar-height, 48px) - 110px));
+}
+
+.organization-assistant__conversation {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: var(--generic-space-4, 16px);
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+.organization-assistant__composer {
+    flex: 0 0 auto;
+    padding: var(--generic-space-4, 16px);
+}
+
+.organization-assistant__mascot { flex: 0 0 auto; object-fit: cover; border-radius: var(--radius-md); }
+.organization-assistant__send-icon {
+    display: block;
+    width: 22px;
+    height: 22px;
+    background: currentColor;
+    -webkit-mask: url('./assets/send.png') center / contain no-repeat;
+    mask: url('./assets/send.png') center / contain no-repeat;
+}
+.organization-assistant__composer textarea { resize: vertical; max-height: 20vh; }
+.organization-assistant__message { min-width: 0; overflow-wrap: anywhere; }
+.organization-assistant__heading {
+    margin-block: 1em 0.5em;
+    font-size: 1em;
+    font-weight: 700;
+    line-height: 1.4;
+}
+.organization-assistant__message > :first-child { margin-top: 0; }
+.organization-assistant__message > :last-child { margin-bottom: 0; }
+.organization-assistant__message p { white-space: pre-wrap; margin-block: 0.6em; }
+.organization-assistant__message ul,
+.organization-assistant__message ol { padding-inline-start: 1.5em; margin-block: 0.6em; }
+.organization-assistant__message .generic-data-table-frame { margin-block: 0.75em; }
+.organization-assistant__message a { text-decoration: underline; color: var(--color-primary, #2563eb); }
+.organization-assistant__sources { display: flex; flex-wrap: wrap; gap: var(--generic-space-2, 8px); }
+
+@media (max-width: 540px) {
+    .organization-assistant__panel { height: calc(100dvh - var(--topbar-height, 48px) - 110px); }
+}

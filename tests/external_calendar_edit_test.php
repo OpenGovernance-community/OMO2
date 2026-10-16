@@ -25,7 +25,7 @@ $pdo = DbObject::getPdo();
 $pdo->beginTransaction();
 $mode = $argv[1] ?? 'ics';
 $nonce = bin2hex(random_bytes(6));
-$user = editFixture(\dbObject\User::class, ['firstname' => 'Calendar editor', 'email' => 'calendar-edit-' . $nonce . '@example.invalid']);
+$user = editFixture(\dbObject\User::class, ['firstname' => 'Calendar editor', 'email' => 'calendar-edit-' . $nonce . '@example.invalid', 'active' => 1]);
 $org = editFixture(\dbObject\Organization::class, ['name' => 'Calendar edit fixture', 'shortname' => 'edit-' . $nonce]);
 editFixture(\dbObject\UserOrganization::class, ['IDuser' => $user->getId(), 'IDorganization' => $org->getId(), 'active' => 1]);
 $url = 'https://127.0.0.1:1/original';

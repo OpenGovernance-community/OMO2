@@ -34,7 +34,7 @@ final class McpContent
     public static function sourceUrl(int $organizationId, string $module, int $id, int $holonId, int $missionId = 0, bool $archived = false): string
     {
         // Existing authenticated preview endpoint: no share keys or external URLs are disclosed.
-        return \omoMcpIssuer() . '/omo/api/search/preview.php?' . http_build_query([
+        return \omoApiSourceBaseUrl() . '/omo/api/search/preview.php?' . http_build_query([
             'oid' => $organizationId, 'module' => $module, 'id' => $id, 'cid' => $holonId,
             'mission_id' => $missionId] + ($archived ? ['archive' => 1] : []), '', '&', PHP_QUERY_RFC3986);
     }

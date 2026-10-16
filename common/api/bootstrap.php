@@ -1,6 +1,7 @@
 <?php
 require_once dirname(__DIR__, 2) . '/shared_functions.php';
 require_once dirname(__DIR__) . '/mcp/protocol.php';
+require_once dirname(__DIR__) . '/ai_usage.php';
 header('Cache-Control: no-store');
 header('Referrer-Policy: no-referrer');
 header('X-Content-Type-Options: nosniff');

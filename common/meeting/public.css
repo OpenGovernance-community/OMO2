@@ -77,8 +77,12 @@
 .meeting-slot { font-size: 13px; }
 .meeting-slots__pause { grid-column: 1 / -1; height: 1px; margin: 2px 4px; background: color-mix(in srgb, var(--color-primary) 34%, var(--color-border)); }
 .meeting-selection { display: grid; gap: 10px; padding-bottom: 20px; border-bottom: 1px solid var(--color-border); }
-.meeting-selection > span { display: flex; align-items: center; gap: 10px; color: var(--color-primary); font-size: 20px; }
+.meeting-selection__line { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.meeting-selection__time { color: var(--color-primary); white-space: nowrap; }
 .meeting-selection > a { font-size: 12px; }
+.meeting-identity { min-width: 0; }
+.meeting-identity__details { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.meeting-identity > button { flex-shrink: 0; white-space: nowrap; }
 .meeting-summary__heading { display: grid; gap: 12px; }
 .meeting-summary__details { display: grid; gap: 14px; }
 .meeting-detail-row { display: flex; align-items: center; gap: 18px; }

@@ -59,7 +59,7 @@ if (!commonAiIsTranscriptionConfigured()) {
     exit;
 }
 
-if (!patreonUserCanUseAi($currentUserId)) {
+if (!patreonUserCanUseAi($currentUserId, $organizationId)) {
     http_response_code(403);
     echo json_encode(array(
         'status' => false,
@@ -95,6 +95,7 @@ if ($title !== '') {
     $prompt .= ' Le titre du document est : ' . $title . '.';
 }
 
+commonAiSetUsageContext($currentUserId, $organizationId, 'transcribe');
 $result = commonOpenAiTranscribeUploadedAudio($_FILES['audio'], array(
     'user_id' => $currentUserId,
     'prompt' => $prompt,

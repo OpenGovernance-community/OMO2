@@ -1,3 +1,63 @@
+.chat-reactions__footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+    margin-top: 4px;
+}
+
+.chat-reactions__summary {
+    display: inline-flex;
+    gap: 6px;
+}
+
+.chat-reactions__summary strong {
+    color: var(--color-primary, #2563eb);
+}
+
+.chat-reactions__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    white-space: nowrap;
+}
+
+.chat-reactions__icon {
+    display: block;
+    flex: 0 0 auto;
+    object-fit: contain;
+}
+
+.chat-reactions__icon--up {
+    /* Align the wrist centers of the original and vertically flipped artwork. */
+    transform: translateY(-17.5%);
+}
+
+.chat-reactions__icon--down {
+    transform: translateY(17.5%) scaleY(-1);
+}
+
+/* Message bubbles stay light in both themes. Only the floating menu follows the theme. */
+.chat-reactions__picker [aria-pressed="true"] {
+    --black-icon-filter-light: invert(1);
+    --black-icon-filter-dark: none;
+}
+
+.chat-reactions__item--empty {
+    opacity: .3;
+}
+
+.chat-reactions__picker {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+}
+
+.chat-reactions__picker[hidden] {
+    display: none;
+}
+
 .omo-chat-popup-trigger {
     position: relative;
     z-index: 2;

@@ -323,3 +323,13 @@ Configurer un controle HTTPS GET sur `https://votre-domaine/omo/health.php`, par
 Chaque appel ouvre une connexion MySQL neuve (delai de connexion limite a trois secondes) et execute uniquement `SELECT 1`, via DbObject. Il ne cree pas de session, ne lance ni maintenance ni installation, et n expose aucun identifiant, contenu de table ou detail d erreur. Les reponses ne sont pas mises en cache.
 
 Ce controle confirme la disponibilite de la connexion et du moteur SQL ; il ne verifie pas les tables applicatives, les droits d ecriture, l integrite des donnees ou les sauvegardes. Une frequence de cinq minutes est suffisante pour une surveillance de base. Publier `omo/health.php` et la classe DbObject mise a jour ensemble avant d activer le moniteur.
+
+### Patreon des organisations et suivi IA
+
+- Appliquer les migrations `sql/2026-10-15-01-organization-patreon.sql` et `sql/2026-10-15-02-ai-usage.sql`, y compris sur le serveur central de connexion Patreon. Deployer aussi le nouveau callback central avant d activer les connexions d organisation sur les sites clients : un ancien callback ne connait que les comptes individuels.
+- `PATREON_ORGANIZATION_MINIMUM_AMOUNT=40` definit le minimum inclusif en unites du montant nominal renvoye par Patreon, sans conversion de devise. Une valeur invalide desactive le droit d organisation.
+- La configuration de l organisation permet a ses administrateurs de connecter, synchroniser ou deconnecter Patreon. Le cron `php scripts/patreon-sync.php` synchronise les personnes et les organisations ; garder son execution quotidienne.
+- Le compte verifie indique par `PATREON_CREATOR_USER_ID` dispense aussi son organisation du minimum de contribution et du statut de patron actif. Il doit rester connecte via OAuth ; les limites de rattachement restent identiques.
+- Le meme compte Patreon peut etre relie a une personne et une organisation. Les liens individuels deja connectes en double restent acceptes ; les nouvelles associations supplementaires sont refusees. Les rotations OAuth sont partagees entre les liens autorises de la meme identite.
+- `/common/admin/stats.php` affiche les mesures par personne, organisation, origine et fonction. Les filtres de periode, organisation et origine s appliquent aux compteurs ; les filtres de performance et CalDAV ne les filtrent pas.
+- `ai_usage` conserve des metadonnees et compteurs, jamais les prompts ou reponses : jetons fournis pour les modeles, caracteres JSON et octets audio, requetes API/MCP separees des jetons. Les valeurs de jetons absentes restent NULL ; aucune estimation de facturation ni quota n est applique. Les dates des mesures sont en UTC.

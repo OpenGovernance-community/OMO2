@@ -7,6 +7,11 @@ if (!function_exists('notificationCenterT')) {
     {
         static $bundle = null;
         static $sourceLang = [
+            'notification.meeting.preference' => ['text' => 'Nouvelle réservation sur ma page de rendez-vous', 'context' => 'Personal booking notification preference.'],
+            'notification.meeting.title' => ['text' => 'Nouveau rendez-vous — {guest}', 'context' => 'Booking notification sent to the calendar owner.'],
+            'notification.meeting.body' => ['text' => '{guest} ({email}) a réservé un rendez-vous le {date} à {time}, pour {duration} minutes (Europe/Zurich).', 'context' => 'Confirmed booking summary for the owner.'],
+            'notification.meeting.reason' => ['text' => 'Motif : {reason}', 'context' => 'Reason provided by the visitor.'],
+            'notification.meeting.method' => ['text' => 'Lieu ou moyen de rencontre : {method}', 'context' => 'Contact details for the booked appointment.'],
             'notification.member' => ['text' => 'Un membre', 'context' => 'Fallback when a notification actor cannot be identified.'],
             'notification.participant' => ['text' => 'Un participant', 'context' => 'Anonymous or unidentified decision participant.'],
             'notification.event.invitation_title' => ['text' => 'Nouvel événement — {title}', 'context' => 'Event invitation notification title.'],
@@ -68,6 +73,7 @@ if (!function_exists('notificationCenterEventCatalog')) {
     function notificationCenterEventCatalog()
     {
         return [
+            'meeting_booking_created' => notificationCenterT('notification.meeting.preference'),
             'decision_proposal_owner' => 'Nouvelle proposition dans mes scrutins',
             'decision_proposal_participant' => 'Nouvelle proposition dans un scrutin auquel je participe',
             'decision_chat_proposal_owner' => 'Nouveau commentaire sur mes propositions',
@@ -95,6 +101,7 @@ if (!function_exists('notificationCenterEventGroupCatalog')) {
     function notificationCenterEventGroupCatalog()
     {
         return [
+            'personal' => ['applicationHash' => '', 'eventKeys' => ['meeting_booking_created']],
             'decisions' => [
                 'applicationHash' => 'decision',
                 'eventKeys' => [
@@ -257,16 +264,17 @@ if (!function_exists('notificationCenterSendTelegram')) {
 }
 
 if (!function_exists('notificationCenterSendEmail')) {
-    function notificationCenterSendEmail(\dbObject\User $user, \dbObject\Organization $organization, $title, $body, $url)
+    function notificationCenterSendEmail(\dbObject\User $user, ?\dbObject\Organization $organization, $title, $body, $url)
     {
-        $organizationId = (int)$organization->getId();
-        $email = trim((string)$user->getScopedEmail($organizationId));
+        $email = trim((string)($organization ? $user->getScopedEmail((int)$organization->getId()) : $user->get('email')));
         if (!filter_var($email, FILTER_VALIDATE_EMAIL) || !function_exists('myHTMLMail')) {
             return false;
         }
         $fromAddress = function_exists('envValue') ? trim((string)envValue('MAIL_USER', '')) : '';
         if ($fromAddress === '' || !filter_var($fromAddress, FILTER_VALIDATE_EMAIL)) {
-            $fromAddress = 'noreply@' . preg_replace('/:\\d+$/', '', (string)($_SERVER['HTTP_HOST'] ?? 'localhost'));
+            $host = function_exists('commonGetRootHost') ? commonGetRootHost() : (string)($_SERVER['HTTP_HOST'] ?? '');
+            $fromAddress = 'noreply@' . preg_replace('/:\d+$/', '', (string)$host);
+            if (!filter_var($fromAddress, FILTER_VALIDATE_EMAIL)) { $fromAddress = 'noreply@localhost.invalid'; }
         }
         $safeTitle = htmlspecialchars(trim((string)$title), ENT_QUOTES, 'UTF-8');
         $safeBody = nl2br(htmlspecialchars(trim((string)$body), ENT_QUOTES, 'UTF-8'));
@@ -276,7 +284,7 @@ if (!function_exists('notificationCenterSendEmail')) {
             $link = '<p><a href="' . htmlspecialchars($absoluteUrl, ENT_QUOTES, 'UTF-8') . '">Ouvrir dans OMO</a></p>';
         }
         $html = '<h2>' . $safeTitle . '</h2><p>' . $safeBody . '</p>' . $link;
-        return myHTMLMail([$fromAddress, trim((string)$organization->get('name')) ?: 'OMO'], $email, $safeTitle, $html);
+        return myHTMLMail([$fromAddress, $organization ? (trim((string)$organization->get('name')) ?: 'OMO') : 'OMO'], $email, $title, $html);
     }
 }
 
@@ -284,13 +292,15 @@ if (!function_exists('notificationCenterCreateForUsers')) {
     function notificationCenterCreateForUsers($organizationId, $eventKey, array $userIds, $sourceKey, $title, $body, $url, $dedupeKey = '', $excludedUserId = 0)
     {
         $organizationId = (int)$organizationId;
-        if ($organizationId <= 0 || !array_key_exists((string)$eventKey, notificationCenterEventCatalog())) {
+        $personal = \dbObject\NotificationPreference::isPersonalEvent($eventKey);
+        if ((!$personal && $organizationId <= 0) || !array_key_exists((string)$eventKey, notificationCenterEventCatalog())) {
             return;
         }
-        $organization = new \dbObject\Organization();
-        if (!$organization->load($organizationId)) {
+        $organization = $personal ? null : new \dbObject\Organization();
+        if ($organization && !$organization->load($organizationId)) {
             return;
         }
+        if ($personal) { $organizationId = 0; }
         $excludedUserId = (int)$excludedUserId;
         foreach (array_values(array_unique(array_filter(array_map('intval', $userIds)))) as $userId) {
             if ($excludedUserId > 0 && $userId === $excludedUserId) {
@@ -324,6 +334,22 @@ if (!function_exists('notificationCenterCreateForUsers')) {
             }
         }
     }
+}
+
+function notificationCenterDispatchMeetingBooking(\dbObject\MeetingBooking $booking): void
+{
+    if ($booking->get('status') !== 'confirmed') { return; }
+    $start = \DateTimeImmutable::createFromInterface($booking->get('start_at'))->setTimezone(new \DateTimeZone('Europe/Zurich'));
+    $guest = (string)$booking->get('guest_name');
+    $body = notificationCenterT('notification.meeting.body', ['guest' => $guest, 'email' => $booking->get('guest_email'),
+        'date' => $start->format('d.m.Y'), 'time' => $start->format('H:i'),
+        'duration' => (int)(($booking->get('end_at')->getTimestamp() - $start->getTimestamp()) / 60)]);
+    $body .= "\n\n" . notificationCenterT('notification.meeting.reason', ['reason' => $booking->get('reason')]);
+    if ($method = $booking->meetingMethod()) {
+        $body .= "\n\n" . notificationCenterT('notification.meeting.method', ['method' => $method['value']]);
+    }
+    notificationCenterCreateForUsers(0, 'meeting_booking_created', [(int)$booking->get('IDuser')],
+        'meeting-booking:' . (int)$booking->getId(), notificationCenterT('notification.meeting.title', ['guest' => $guest]), $body, '/omo/#calendar');
 }
 
 if (!function_exists('notificationCenterDispatchEventInvitation')) {

@@ -1430,6 +1430,10 @@ window.omoConfig = <?=
 <script src="<?= commonAssetUrl('/common/tips/tips.js') ?>" defer></script>
 <script src="<?= commonAssetUrl('/common/panel-view/actions.js') ?>"></script>
 <script src="<?= commonAssetUrl('/common/object_mail/ui.js') ?>"></script>
+<?php
+require_once dirname(__DIR__) . '/common/assistant/ui.php';
+commonAssistantRender((int)$organizationContext['id'], (string)$organizationContext['name']);
+?>
 <script src="assets/js/structure-mini-map.js?v=20260916-structure-render-cache"></script>
 
 <script>

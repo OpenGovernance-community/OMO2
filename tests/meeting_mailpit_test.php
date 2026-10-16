@@ -5,7 +5,7 @@ require_once dirname(__DIR__) . '/common/auth.php';
 require_once dirname(__DIR__) . '/meeting/service.php';
 require_once dirname(__DIR__) . '/meeting/translations.php';
 
-// Explicit opt-in: this test delivers one synthetic message to local Mailpit only.
+// Explicit opt-in: this test delivers synthetic messages to local Mailpit only.
 if (!in_array('--run', $argv, true) || ($GLOBALS['mailHost'] ?? '') !== 'mailpit'
     || (int)($GLOBALS['mailPort'] ?? 0) !== 1025 || !empty($GLOBALS['mailAuth'])) {
     echo "meeting_mailpit_test: SKIP (requires --run and local unauthenticated Mailpit)\n";
@@ -63,4 +63,26 @@ if (!$attachment || $attachment['FileName'] !== 'rendez-vous.ics'
 }
 $receivedIcs = meetingMailpitGet('message/' . rawurlencode($message['ID']) . '/part/' . rawurlencode($attachment['PartID']));
 if ($receivedIcs !== $ics) { throw new RuntimeException('Calendar attachment was changed during delivery'); }
-echo "meeting_mailpit_test: OK (OMO layout and escaped details verified, ICS intact, no booking created)\n";
+$owner = new \dbObject\User();
+$owner->set('email', 'meeting-owner-test@example.invalid');
+$ownerTitle = $reference . '-owner';
+if (!notificationCenterSendEmail($owner, null, $ownerTitle, 'Guest <visitor> : <script>private reason</script>', '/omo/#calendar')) {
+    throw new RuntimeException('Personal owner notification could not reach Mailpit');
+}
+$ownerMessage = null;
+for ($attempt = 0; $attempt < 5; $attempt++) {
+    $result = json_decode(meetingMailpitGet('search?query=' . rawurlencode('subject:' . $ownerTitle)), true, 512, JSON_THROW_ON_ERROR);
+    foreach ($result['messages'] ?? [] as $candidate) {
+        if (($candidate['Subject'] ?? '') === $ownerTitle) { $ownerMessage = $candidate; break; }
+    }
+    if ($ownerMessage) { break; }
+    usleep(200000);
+}
+if (!$ownerMessage) { throw new RuntimeException('Owner notification not found in Mailpit'); }
+$ownerDetail = json_decode(meetingMailpitGet('message/' . rawurlencode($ownerMessage['ID'])), true, 512, JSON_THROW_ON_ERROR);
+$ownerHtml = (string)($ownerDetail['HTML'] ?? '');
+if (($ownerDetail['To'][0]['Address'] ?? '') !== 'meeting-owner-test@example.invalid'
+    || !str_contains($ownerHtml, '&lt;script&gt;private reason&lt;/script&gt;') || str_contains($ownerHtml, '<script>')) {
+    throw new RuntimeException('Owner recipient or escaping incorrect');
+}
+echo "meeting_mailpit_test: OK (visitor and owner recipients, escaped details, ICS intact, no booking created)\n";

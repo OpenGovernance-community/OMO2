@@ -1,6 +1,7 @@
 <?php
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/shared.php';
+require_once dirname(__DIR__, 3) . '/common/chat/reactions.php';
 
 use dbObject\ChatMessage;
 use dbObject\ChatThread;
@@ -48,6 +49,8 @@ if (
 
 $thread = ChatThread::findBySubject($organizationId, ChatThread::SUBJECT_PROJECT, $projectId);
 $canPost = (int)$project->get('active') === 1;
+$reactionActor = \dbObject\ChatMessageReaction::actorKey($currentUserId);
+commonChatHandleReaction($thread, $canPost, $reactionActor);
 if ($requestMethod === 'POST') {
     if (!$canPost) {
         omoProjectsDiscussionRespond([
@@ -109,7 +112,7 @@ $messagesSinceViewer = (int)($discussionSummary['last_viewer_message_id'] ?? 0) 
     ? max(0, (int)($discussionSummary['messages_since_viewer'] ?? 0))
     : null;
 
-omoProjectsDiscussionRespond([
+omoProjectsDiscussionRespond(array_merge(commonChatReactionPayload($thread, $messages, $input, $reactionActor, $canPost), [
     'status' => true,
     'title' => trim((string)$project->get('title')),
     'canPost' => $canPost,
@@ -119,4 +122,4 @@ omoProjectsDiscussionRespond([
     'lastMessageId' => count($messages) > 0
         ? (int)$messages[count($messages) - 1]['id']
         : $afterId,
-]);
+]));

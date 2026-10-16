@@ -478,7 +478,7 @@
         return details;
     }
 
-    function createMessageNode(message) {
+    function createMessageNode(message, root) {
         var row = document.createElement('div');
         var type = String(message.type || 'user');
         if (type === 'system') {
@@ -542,6 +542,7 @@
         time.className = 'omo-proposal-chat__time';
         time.textContent = String(message.createdAtLabel || '');
         bubble.appendChild(time);
+        window.commonChatReactions.attach(root, bubble, time, message);
         row.appendChild(bubble);
         return row;
     }
@@ -577,7 +578,7 @@
                 if (empty) {
                     empty.remove();
                 }
-                list.appendChild(createMessageNode(message || {}));
+                list.appendChild(createMessageNode(message || {}, root));
                 if (messageId > 0) {
                     knownMessageIds[messageId] = true;
                     root.__omoLastMessageId = Math.max(Number(root.__omoLastMessageId || 0), messageId);
@@ -721,6 +722,7 @@
         var query = new URLSearchParams();
         appendContext(query, root.__omoContext || {});
         query.append('proposal_id', String(root.__omoProposalId || 0));
+        window.commonChatReactions.appendQuery(root, query);
         if (root.__omoMessagesInitialized === true && Number(root.__omoLastMessageId || 0) > 0) {
             query.append('after_id', String(root.__omoLastMessageId));
         }
@@ -728,6 +730,7 @@
             syncProposal(root, payload.proposal || {}, payload.discussionMessageCount);
             syncDiscussionMode(root, payload);
             renderMessages(root, payload.messages || []);
+            window.commonChatReactions.update(root, payload);
             root.__omoLastMessageId = Math.max(
                 Number(root.__omoLastMessageId || 0),
                 Number(payload.lastMessageId || 0)
@@ -769,6 +772,14 @@
     }
 
     function bindModal(root, button) {
+        window.commonChatReactions.bind(root, function (body) {
+            return requestJson(discussionUrl, {method: 'POST', body: body});
+        }, function () {
+            var body = new FormData();
+            appendContext(body, root.__omoContext || {});
+            body.append('proposal_id', String(root.__omoProposalId || 0));
+            return body;
+        });
         var composer = root.querySelector('[data-omo-proposal-chat-composer]');
         var anonymousInput = composer.querySelector('[data-omo-proposal-chat-anonymous]');
 
@@ -803,6 +814,7 @@
                     syncProposal(root, payload.proposal || {}, payload.discussionMessageCount);
                     syncDiscussionMode(root, payload);
                     renderMessages(root, payload.messages || []);
+                    window.commonChatReactions.update(root, payload);
                 })
                 .catch(function (error) {
                     notify(error.message, 'error');

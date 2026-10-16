@@ -36,7 +36,7 @@ function omoMcpUiBundle(): array
         'scope_create' => ['text' => 'L assistant pourra aussi enregistrer des textes et fichiers dans les espaces ou votre compte a le droit de creer des documents. Les droits OMO sont verifies a chaque creation. Cette autorisation ne permet pas de modifier ou supprimer des documents existants.', 'context' => 'Additional document creation scope on OAuth consent.'],
         'allow_create' => ['text' => 'Autoriser la lecture et la creation de documents', 'context' => 'Approve read and document creation OAuth access.'],
         'deny' => ['text' => 'Refuser', 'context' => 'Deny OAuth consent.'],
-        'empty' => ['text' => 'Aucune organisation accessible pour ce compte.', 'context' => 'No eligible organization for MCP authorization.'],
+        'empty' => ['text' => 'Aucune organisation eligible. Un abonnement Patreon individuel ou de l organisation est requis, ainsi qu une adhesion active.', 'context' => 'No eligible organization for MCP authorization.'],
         'invalid' => ['text' => 'Demande invalide ou expiree. Relancez la connexion depuis votre assistant.', 'context' => 'Persistent OAuth request validation error.'],
         'connections' => ['text' => 'Mes connexions aux assistants', 'context' => 'MCP grant management page title and link.'],
         'connections_intro' => ['text' => 'Chaque connexion autorise les operations acceptees lors du consentement, dans une organisation. Vous pouvez retirer cet acces ici.', 'context' => 'MCP grant management page introduction.'],
@@ -97,12 +97,13 @@ function omoMcpLoginIfNeeded(string $returnTo): void
 }
 function omoMcpEligibleOrganizations(int $userId): array
 {
+    require_once dirname(__DIR__) . '/patreon.php';
     $user = new \dbObject\User();
     if (!$user->load($userId)) return [];
     $items = [];
     foreach ($user->getAccessibleOrganizations() as $organization) {
         if (\dbObject\UserOrganization::hasActiveMembership($userId, (int)$organization->getId())
-            && $organization->canViewDetail()) $items[] = $organization;
+            && patreonUserCanUseAi($userId, (int)$organization->getId()) && $organization->canViewDetail()) $items[] = $organization;
     }
     return $items;
 }

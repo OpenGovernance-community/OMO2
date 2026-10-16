@@ -1444,7 +1444,7 @@ if (!function_exists('omoDecisionRenderProposalDiscussionAssets')) {
             . '<template data-omo-proposal-description-template>' . omoDecisionRenderProposalDescription('', $escape, 'omo-proposal-live-description') . '</template>'
             . '<link rel="stylesheet" href="' . commonAssetUrl('/common/choice/proposal-dates.css') . '">'
             . '<script src="' . commonAssetUrl('/common/choice/proposal-dates.js') . '" defer></script>'
-            . '<link rel="stylesheet" href="/common/chat/thread.css?v=20260821-unified-chat-errors">'
+            . '<link rel="stylesheet" href="/common/chat/thread.css?v=20261016-reactions-5">'
             . '<link rel="stylesheet" href="' . commonAssetUrl('/common/choice/proposal-discussion.css') . '">'
             . '<script src="' . commonAssetUrl('/common/choice/proposal-description.js') . '" defer></script>'
             . '<link rel="stylesheet" href="/common/choice/change-details.css?v=20260923-lifecycle-details">'
@@ -1455,6 +1455,7 @@ if (!function_exists('omoDecisionRenderProposalDiscussionAssets')) {
             . '<script src="/common/choice/decision-anonymity.js?v=20260825-named-vote" defer></script>'
             . '<script src="/common/choice/decision-notifications.js?v=20260825-topbar-errors" defer></script>'
             . '<script src="' . commonAssetUrl('/common/choice/proposal-html.js') . '" defer></script>'
+            . '<script src="' . commonAssetUrl('/common/chat/reactions.js') . '" defer></script>'
             . '<script src="' . commonAssetUrl('/common/choice/proposal-discussion.js') . '" defer></script>';
     }
 }

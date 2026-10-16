@@ -1,5 +1,51 @@
 # Journal des nouveautés
 
+- Discussions / reactions sur ses propres messages (2026-10-16) : choix desactive pour l auteur et refus cote serveur, y compris en mode anonyme ou via un lien invite. Reactions recues toujours visibles ; migration de retrait des anciens votes personnels avec recalcul des compteurs.
+
+- Discussions / icones des reactions (2026-10-16) : images fournies pour les pouces et applaudissements ; pouce baisse par retournement vertical et poignets alignes en remontant le pouce leve et en descendant le pouce baisse. Contraste adapte aux boutons du menu en theme clair/sombre, icones noires conservees sur les bulles claires.
+
+- Discussions / presentation des reactions (2026-10-16) : trois icones toujours visibles, attenuees sans vote et opaques avec leur compteur. Choix dans un petit menu flottant, sans deplacer le message ; aucun soulignement et reaction personnelle distinguee par sa couleur et sa graisse.
+
+- Discussions / reactions (2026-10-16) : pouce leve, pouce baisse et applaudissements au clic sur un message dans les PV, projets et decisions. Une reaction par personne, modifiable ou retirable ; compteurs a cote de la date et actualisation des messages deja affiches. Totaux JSON et detail unique proteges par transaction, controles d acces conserves et migration SQL incluse. Tests PHP 8.5, votes simultanes, liens invites et navigateur ordinateur/mobile.
+
+- Rendez-vous / changement d’identité (2026-10-15) : « Ce n’est pas moi » affiche immédiatement les champs nom et e-mail sans rechargement ni vérification des disponibilités ; motif conservé, choix mémorisé pour cet agenda et ce compte.
+
+- Rendez-vous / formulaire compact (2026-10-15) : identité sur une seule ligne avec lien discret « Ce n’est pas moi » ; date et horaire réunis sur la même ligne, lien de changement de créneau en dessous.
+
+- Rendez-vous / visiteur connecté (2026-10-15) : identification par le compte OMO, avec retour au formulaire libre via « Ce n’est pas moi » sans déconnexion. Sélecteur des agendas CalDAV personnels, avec l’agenda de destination présélectionné et possibilité de ne pas ajouter de copie ; confirmation chez l’hôte préservée en cas d’échec, nouvelle tentative sans doublon et mise à jour du calendrier local. Migration dédiée incluse.
+
+- Rendez-vous / notifications et synchronisation (2026-10-15) : notification personnelle au propriétaire après confirmation, dans OMO et par e-mail par défaut ; canaux désactivables ou modifiables dans Paramètres > Notifications, avec un réglage commun aux organisations et sans doublon lors des nouvelles tentatives. Le contrôle CalDAV à la réservation actualise toute la plage habituelle du calendrier local et sa date de synchronisation, même si le créneau est refusé ; événements supprimés ou déplacés pris en compte, annotations locales conservées. Migration des notifications personnelles incluse.
+
+- CGU / relecture du français (2026-10-15) : accents et apostrophes rétablis dans les clauses sur les contributions et l’IA ; formulations et terminologie harmonisées.
+
+- Structure / commutateur de vue (2026-10-15) : bouton cercles/liste deplace en bas a gauche pour laisser la place a l assistant en bas a droite.
+
+- CGU / IA, MCP et API (2026-10-15) : acces des contributeurs individuels et des membres d organisations contributrices, sans extension des droits sur les donnees. Absence actuelle de quota de consommation distinguee des protections techniques ; evolution possible vers des plafonds ou abonnements specifiques avec information prealable. Precision du suivi de consommation et de la verification des reponses IA, harmonisation des clauses sur les contributions et date de version fixe.
+
+- IA / compte createur Patreon (2026-10-15) : PATREON_CREATOR_USER_ID ouvre aussi l acces IA et MCP de son organisation sans contribution ni abonnement a sa propre campagne. Connexion OAuth obligatoire ; limite conservee a une personne et une organisation, avec preservation des doublons individuels historiques.
+
+- IA / abonnements et consommation (2026-10-15) : connexion Patreon dans la configuration d organisation, seuil nominal configurable (PATREON_ORGANIZATION_MINIMUM_AMOUNT=40), acces IA et MCP pour ses membres. Nouveaux partages de compte Patreon refuses entre personnes ou entre organisations ; doublons individuels existants conserves et une connexion individuelle plus une organisation autorisees. Compteurs par personne, organisation, fonction et origine (site, API, MCP, Telegram, traitements automatiques), avec jetons des modeles separes des echanges API/MCP et suivi dans les statistiques globales du site, avec filtres de periode, organisation et origine. Aucun contenu de conversation conserve dans ces compteurs.
+
+- OMO / titres dans le chat (2026-10-15) : les titres Markdown de # a ###### deviennent des titres compacts propres aux reponses, sans reprendre les styles h1-h6 du site. Gras et liens controles conserves, y compris lors de la restauration de la discussion.
+
+- OMO / nouvelle discussion (2026-10-15) : remplacement du + par le crayon fourni, avec infobulle, libelle accessible et adaptation au theme sombre.
+
+- OMO / reprise de discussion (2026-10-15) : historique du chat conserve dans la session serveur ; rechargement avec messages, tableaux, liens, brouillon et etat ouvert/ferme du meme onglet. Reprise des reponses en cours sans renvoi automatique. Nouvelle discussion efface l historique correspondant ; isolation par compte, organisation et contexte de droits. Bouton CSV en surimpression dans le coin inferieur droit du tableau.
+
+- OMO / copie des tableaux du chat (2026-10-15) : icone Copier en bas a droite au survol ou au focus, toujours disponible sur ecran tactile. Copie CSV des en-tetes et cellules affichees, avec echappement des virgules, guillemets et retours a la ligne ; confirmation ou erreur via les notifications partagees.
+
+- OMO / confort du chat (2026-10-15) : reponses avec tableaux Markdown, listes et gras, texte plus compact et questions en bulles teintees. Poignee gauche utilisable a la souris, au toucher et au clavier ; largeur memorisee et limitee a l ecran. Tableaux defilables sur mobile, contenu HTML inerte et liens toujours controles.
+
+- OMO / presentation assistant (2026-10-15) : bouton d envoi en couleur primaire et nouvelle mascotte carree avec son fond et ses coins arrondis, a gauche du titre et de l organisation.
+
+- OMO / interface assistant (2026-10-15) : aide regroupee dans une capsule ?, tete de la mascotte dans l entete, champ avec placeholder et bouton d envoi avec l avion fourni a sa droite. Libelles accessibles conserves et icone adaptee au theme.
+
+- OMO / acces a l assistant (2026-10-15) : bouton flottant et chat affiches uniquement si le compte peut utiliser l IA, selon le controle partage incluant les conditions Patreon. Aucun chargement des assets du chat ni creation de son contexte sans autorisation ; controle serveur conserve a chaque question.
+
+- Calendrier / export ICS (2026-10-15) : les liens de partage exportent uniquement les evenements OMO. Les rendez-vous et plages de disponibilite des agendas externes (ICS, Google ou CalDAV) restent exclus, avec ou sans details, pour eviter leur reimportation en double. Liens existants, identifiants OMO et rappels conserves ; aucune migration SQL.
+
+- OMO / assistant conversationnel (2026-10-15) : bouton flottant et chat dans l organisation courante, avec l IA configuree et les conditions d acces IA existantes. Consultation des roles, membres, reunions, contenus et droits via les operations partagees du MCP ; liste fermee d outils en lecture seule, sans envoi d e-mails ni modification. Liens controles vers les pages pour agir, conversations limitees a la session et a l organisation, protection CSRF et limites de requetes. Tests PHP 8.5 des droits et des quatre adaptateurs IA, navigateur ordinateur/mobile et essai reel OpenAI sur un role et une reunion de test. Aucun serveur MCP public ni migration SQL necessaire.
+
 - API / MCP / droits herites (2026-10-15) : correction des droits omis lorsque le modele source est absent de l organigramme (visible = 0). Les recherches par personne et par holon conservent ces droits et leur source, avec les controles existants d organisation, d activite et de lecture. Les espaces cibles et les attributions restent limites aux holons visibles. Tests PHP 8.5 du chemin membre / role Memoire / modele / parent seul pour creer, modifier et supprimer des dates, des chaines de modeles et de la separation normal / exceptionnel ; aucune migration SQL.
 
 - API / MCP / droits par holon (2026-10-15) : nouvelle entree omo_get_holon_permissions et GET /api/v1/structure/{holon_id}/permissions pour lister les droits et les roles dont la portee couvre l espace cible, meme sans titulaire. Sources heritees, portees hors du cercle et profils membre/admin conserves ; navigation vers les personnes concernees. Les consignes donnent priorite aux droits logiciels sur les descriptions des holons et relient la creation de reunions a CAN_CREATE_EVENT. Droits normaux par defaut, visibilite et consentement de lecture existants conserves. Tests PHP 8.5 des portees, des titulaires, des roles vacants et des acces HTTP REST/MCP ; aucune migration SQL.

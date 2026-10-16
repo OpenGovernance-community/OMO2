@@ -1,6 +1,7 @@
 <?php
 require_once dirname(__DIR__) . '/common/external_calendar.php';
 require_once dirname(__DIR__) . '/common/calendar/icalendar.php';
+require_once dirname(__DIR__) . '/common/notification_center.php';
 
 use dbObject\MeetingProfile;
 use dbObject\MeetingBooking;
@@ -10,6 +11,37 @@ use dbObject\ArrayExternalCalendar;
 use dbObject\ArrayExternalCalendarEvent;
 use dbObject\ArrayEvent;
 use dbObject\User;
+
+/** Use the global account identity, never an organization-specific email or posted identity. */
+function meetingVisitorIdentity(): ?array
+{
+    $id = commonRestoreRememberedUser();
+    $user = new User();
+    if ($id <= 0 || !$user->load($id)) { return null; }
+    $email = trim((string)$user->get('email'));
+    $name = trim($user->get('firstname') . ' ' . $user->get('lastname'));
+    if ($name === '') { $name = trim((string)$user->get('username')) ?: $email; }
+    if ($name === '' || mb_strlen($name) > 190 || preg_match('/[\x00-\x1f\x7f]/', $name)
+        || !filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 254) { return null; }
+    return ['id' => $id, 'name' => $name, 'email' => $email];
+}
+
+function meetingCheckVisitor(array $draft): void
+{
+    if (!empty($draft['guest_user_id']) && (int)$draft['guest_user_id'] !== (int)commonRestoreRememberedUser()) {
+        throw new RuntimeException('identity_changed');
+    }
+}
+
+function meetingVisitorCalendar(int $userId, int $calendarId): ?ExternalCalendar
+{
+    if ($calendarId === 0) { return null; }
+    $calendar = new ExternalCalendar();
+    if (!$calendar->load($calendarId, true) || !$calendar->isMeetingDestinationForUser($userId)) {
+        throw new RuntimeException('guest_calendar_invalid');
+    }
+    return $calendar;
+}
 
 function meetingSlug(string $value): string
 {
@@ -198,30 +230,18 @@ function meetingBusy(MeetingProfile $profile, DateTimeImmutable $start, DateTime
     foreach ($calendars as $calendar) { $destinationPresent = $destinationPresent || (int)$calendar->getId() === (int)$profile->get('IDexternalcalendar'); }
     if (!$destinationPresent) { throw new RuntimeException('unavailable'); }
     $request ??= 'commonExternalCalendarHttpRequest';
-    $icsCalendarIds = [];
     $availabilityCalendarIds = [];
     $available = [];
     foreach ($calendars as $calendar) {
         if ($calendar->get('availability_only')) { $availabilityCalendarIds[(int)$calendar->getId()] = true; }
         $isIcs = (string)$calendar->get('provider') === 'ics';
-        if ($isIcs) { $icsCalendarIds[(int)$calendar->getId()] = true; }
         if ($live && !$isIcs) {
-            $password = commonExternalCalendarDecryptPassword($calendar->get('password_encrypted'));
-            if ($password === null) { throw new RuntimeException('unavailable'); }
-            $result = $request($calendar->get('calendar_url'), $calendar->get('username'), $password,
-                commonExternalCalendarBuildReport($start->modify('-1 day'), $end->modify('+1 day')), 'REPORT', 1);
+            // Refresh the whole usual cache window before resetting its age, not just the booked day.
+            [$syncStart, $syncEnd] = ExternalCalendar::synchronizationRange();
+            $syncStart = min($syncStart, $start->modify('-1 day'));
+            $syncEnd = max($syncEnd, $end->modify('+1 day'));
+            $result = commonExternalCalendarSynchronize($calendar, $syncStart, $syncEnd, true, null, $request, true);
             if (empty($result['status'])) { throw new RuntimeException('unavailable'); }
-            $parsed = commonExternalCalendarParseReport($result['body'], true);
-            if (empty($parsed['status'])) { throw new RuntimeException('unavailable'); }
-            foreach (ExternalCalendarEvent::withLocalTimeBuffers((int)$calendar->getId(), $parsed['events']) as $event) {
-                // Strict REPORT parsing already returns exclusive all-day ends.
-                $eventEnd = $event['end_at'];
-                if ($calendar->get('availability_only')) { $available[] = [$event['start_at'], $eventEnd]; }
-                elseif ($event['is_busy']) {
-                    $busy[] = [$event['start_at']->modify('-' . (int)$event['preparation_minutes'] . ' minutes'),
-                        $eventEnd->modify('+' . (int)$event['closing_minutes'] . ' minutes')];
-                }
-            }
         } elseif ($live && $isIcs) {
             $last = $calendar->get('last_sync_at');
             if (!$last instanceof DateTimeInterface || $last->getTimestamp() < time() - 3600 || $calendar->get('last_sync_error')) {
@@ -237,18 +257,15 @@ function meetingBusy(MeetingProfile $profile, DateTimeImmutable $start, DateTime
             if ($storageStart < $coveredStart || $storageEnd > $coveredEnd) { throw new RuntimeException('unavailable'); }
         }
     }
-    if (!$live || $icsCalendarIds !== []) {
-        $external = new ArrayExternalCalendarEvent();
-        $external->loadActiveForUserDateRange($uid, $storageStart, $storageEnd);
-        foreach ($external as $event) {
-            if ($live && !isset($icsCalendarIds[(int)$event->get('IDexternalcalendar')])) { continue; }
-            $isAvailability = isset($availabilityCalendarIds[(int)$event->get('IDexternalcalendar')]);
-            if ($isAvailability || $event->get('is_busy')) {
-                $endAt = DateTimeImmutable::createFromInterface($event->get('end_at'));
-                $interval = [$event->get('start_at'), $event->get('is_all_day') ? $endAt->modify('+1 second') : $endAt];
-                if ($isAvailability) { $available[] = $interval; }
-                else { $busy[] = $event->getBusyInterval(); }
-            }
+    $external = new ArrayExternalCalendarEvent();
+    $external->loadActiveForUserDateRange($uid, $storageStart, $storageEnd);
+    foreach ($external as $event) {
+        $isAvailability = isset($availabilityCalendarIds[(int)$event->get('IDexternalcalendar')]);
+        if ($isAvailability || $event->get('is_busy')) {
+            $endAt = DateTimeImmutable::createFromInterface($event->get('end_at'));
+            $interval = [$event->get('start_at'), $event->get('is_all_day') ? $endAt->modify('+1 second') : $endAt];
+            if ($isAvailability) { $available[] = $interval; }
+            else { $busy[] = $event->getBusyInterval(); }
         }
     }
     return array_merge($busy, $availabilityCalendarIds ? ArrayExternalCalendarEvent::outsideAvailability($available, $start, $end) : []);
@@ -325,6 +342,7 @@ function meetingMail(MeetingBooking $booking): bool
 
 function meetingBook(int $userId, array $draft, ?callable $request = null, ?callable $mailer = null): MeetingBooking
 {
+    meetingCheckVisitor($draft);
     $request ??= 'commonExternalCalendarHttpRequest';
     $mailer ??= 'meetingMail';
     if (!MeetingProfile::lock($userId)) { throw new RuntimeException('busy'); }
@@ -332,6 +350,8 @@ function meetingBook(int $userId, array $draft, ?callable $request = null, ?call
         $booking = new MeetingBooking();
         $existing = $booking->load(['token', $draft['token']], true);
         if ($existing && (int)$booking->get('IDuser') !== $userId) { throw new RuntimeException('expired'); }
+        if ($existing && (int)$booking->get('IDuser_guest') !== (int)($draft['guest_user_id'] ?? 0)) { throw new RuntimeException('identity_changed'); }
+        $guestCalendar = !$existing ? meetingVisitorCalendar((int)($draft['guest_user_id'] ?? 0), (int)($draft['guest_calendar_id'] ?? 0)) : null;
         if (!$existing || $booking->get('status') !== 'confirmed') {
             $profile = MeetingProfile::forUser($userId);
             if (!(int)$profile->get('enabled')) { throw new RuntimeException('disabled'); }
@@ -371,6 +391,7 @@ function meetingBook(int $userId, array $draft, ?callable $request = null, ?call
                 }
                 if (!$slot) { throw new RuntimeException('slot_taken'); }
                 if (!$existing) {
+                    $guestUserId = (int)($draft['guest_user_id'] ?? 0);
                     $ownerName = (string)$profile->get('slug');
                     $owner = new User();
                     if ($owner->load($userId)) {
@@ -382,6 +403,8 @@ function meetingBook(int $userId, array $draft, ?callable $request = null, ?call
                             . ($method ? "\n\n" . meetingT('method') . ' : ' . meetingMethodLabel($method) : ''),
                         $method ? meetingMethodLabel($method) : '', $preparationMinutes, $closingMinutes);
                     foreach (['IDuser' => $userId, 'IDexternalcalendar' => $calendar->getId(), 'token' => $draft['token'],
+                        'IDuser_guest' => $guestUserId ?: null, 'IDexternalcalendar_guest' => $guestCalendar ? $guestCalendar->getId() : null,
+                        'guest_calendar_status' => $guestCalendar ? 'pending' : null,
                         'preparation_minutes' => $preparationMinutes, 'closing_minutes' => $closingMinutes,
                         'guest_name' => $draft['name'], 'guest_email' => $draft['email'], 'reason' => $draft['reason'],
                         'meeting_method' => $method ? json_encode($method, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE) : null,
@@ -402,19 +425,81 @@ function meetingBook(int $userId, array $draft, ?callable $request = null, ?call
                 }
             }
             // Publish into the private OMO cache immediately; subsequent sync stays authoritative.
-            foreach (commonExternalCalendarParseEvents($booking->get('calendar_data')) as $values) {
-                $event = ExternalCalendarEvent::findForCalendarSourceKey((int)$calendar->getId(), $values['source_key']) ?? new ExternalCalendarEvent();
-                $event->set('IDexternalcalendar', $calendar->getId());
-                $event->applyImportedValues($values);
-                $event->set('active', 1); $event->set('created_at', new DateTimeImmutable()); $event->set('updated_at', new DateTimeImmutable());
-                meetingSave($event);
-            }
+            meetingCacheEvent($calendar, (string)$booking->get('calendar_data'));
             $booking->set('status', 'confirmed');
             meetingSave($booking);
         }
+        if ($booking->get('guest_calendar_status') === 'pending') {
+            try { meetingCopyToVisitorCalendar($booking, $request); }
+            catch (Throwable $exception) { error_log('Meeting visitor calendar copy failed: ' . get_class($exception)); }
+        }
+        // Delivery must never undo a confirmed calendar write. Source keys deduplicate retries.
+        try { notificationCenterDispatchMeetingBooking($booking); }
+        catch (Throwable $exception) { error_log('Meeting owner notification failed: ' . get_class($exception)); }
         if (!$booking->get('email_sent_at') && $mailer($booking)) {
             $booking->set('email_sent_at', new DateTimeImmutable()); meetingSave($booking);
         }
         return $booking;
     } finally { MeetingProfile::unlock($userId); }
+}
+
+function meetingCacheEvent(ExternalCalendar $calendar, string $ics): void
+{
+    foreach (commonExternalCalendarParseEvents($ics) as $values) {
+        $event = ExternalCalendarEvent::findForCalendarSourceKey((int)$calendar->getId(), $values['source_key']) ?? new ExternalCalendarEvent();
+        $event->set('IDexternalcalendar', $calendar->getId());
+        $event->applyImportedValues($values);
+        $event->set('active', 1);
+        if (!$event->getId()) { $event->set('created_at', new DateTimeImmutable()); }
+        $event->set('updated_at', new DateTimeImmutable());
+        meetingSave($event);
+    }
+}
+
+/** A failed visitor copy never cancels the host reservation. Retries keep the same target and UID. */
+function meetingCopyToVisitorCalendar(MeetingBooking $booking, callable $request): void
+{
+    $guestId = (int)$booking->get('IDuser_guest');
+    if ($booking->get('status') !== 'confirmed' || $guestId <= 0 || $guestId !== (int)commonRestoreRememberedUser()) {
+        throw new RuntimeException('identity_changed');
+    }
+    $needsLock = $guestId !== (int)$booking->get('IDuser');
+    if ($needsLock && !MeetingProfile::lock($guestId)) { throw new RuntimeException('busy'); }
+    try {
+        $calendar = new ExternalCalendar();
+        if (!$calendar->load((int)$booking->get('IDexternalcalendar_guest'), true) || !$calendar->isMeetingDestinationForUser($guestId)) {
+            throw new RuntimeException('calendar_invalid');
+        }
+        $resource = commonExternalCalendarResolveHref(rtrim($calendar->get('calendar_url'), '/') . '/', 'omo-meeting-' . $booking->get('token') . '.ics');
+        if (!$resource || ($booking->get('guest_resource_url') && $booking->get('guest_resource_url') !== $resource)) {
+            throw new RuntimeException('calendar_invalid');
+        }
+        if (!$booking->get('guest_resource_url')) {
+            $booking->set('guest_resource_url', $resource);
+            meetingSave($booking);
+        }
+        $ics = meetingGuestIcs($booking);
+        if ((int)$calendar->getId() === (int)$booking->get('IDexternalcalendar')) {
+            // Booking one's own calendar needs no second event and must retain the host buffers.
+            $booking->set('guest_calendar_status', 'added'); meetingSave($booking); return;
+        }
+        if (!commonExternalCalendarCanCreate($calendar, $request)) { throw new RuntimeException('calendar_invalid'); }
+        $password = commonExternalCalendarDecryptPassword($calendar->get('password_encrypted'));
+        $existing = $request($resource, $calendar->get('username'), $password, '', 'GET', 0);
+        if (!empty($existing['status'])) {
+            $events = commonExternalCalendarParseEvents($existing['body'], '', true);
+            if (!in_array('UID:' . $booking->get('token') . '@omo2.org', commonExternalCalendarUnfoldLines($existing['body']), true)
+                || count($events) !== 1 || $events[0]['start_at'] != $booking->get('start_at') || $events[0]['end_at'] != $booking->get('end_at')) {
+                throw new RuntimeException('pending');
+            }
+            $ics = $existing['body'];
+        } else {
+            if (($existing['code'] ?? 0) !== 404) { throw new RuntimeException('pending'); }
+            $result = $request($resource, $calendar->get('username'), $password, $ics, 'PUT', 0, 0, ['If-None-Match: *']);
+            if (empty($result['status'])) { throw new RuntimeException('pending'); }
+        }
+        meetingCacheEvent($calendar, $ics);
+        $booking->set('guest_calendar_status', 'added');
+        meetingSave($booking);
+    } finally { if ($needsLock) { MeetingProfile::unlock($guestId); } }
 }

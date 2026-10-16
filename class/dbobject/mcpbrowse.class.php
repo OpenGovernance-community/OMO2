@@ -136,7 +136,7 @@ final class McpBrowse
     public static function meetingBookingUrl(int $userId): ?string
     {
         $path = MeetingProfile::publicBookingPathForUser($userId);
-        return $path === null ? null : \omoMcpIssuer() . $path;
+        return $path === null ? null : \omoApiSourceBaseUrl() . $path;
     }
 
     public static function member(array $grant, int $userId): array

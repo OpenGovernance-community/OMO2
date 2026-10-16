@@ -711,7 +711,7 @@ function commonExternalCalendarParseReport($xml, $strict = false)
     return ['status' => true, 'events' => array_values($events)];
 }
 
-function commonExternalCalendarSynchronize(ExternalCalendar $calendar, $rangeStart = null, $rangeEnd = null, $force = false, ?float $deadline = null, ?callable $request = null)
+function commonExternalCalendarSynchronize(ExternalCalendar $calendar, $rangeStart = null, $rangeEnd = null, $force = false, ?float $deadline = null, ?callable $request = null, bool $strict = false)
 {
     $calendarId = (int)$calendar->getId();
     $isIcs = (string)$calendar->get('provider') === 'ics';
@@ -735,8 +735,8 @@ function commonExternalCalendarSynchronize(ExternalCalendar $calendar, $rangeSta
     $request ??= 'commonExternalCalendarHttpRequest';
     $response = $isIcs
         ? $request($url, '', '', '', 'GET', 0, 0, [], $deadline)
-        : commonExternalCalendarHttpReport($url, trim((string)$calendar->get('username')), $secret,
-            commonExternalCalendarBuildReport($rangeStart, $rangeEnd), $deadline);
+        : $request($url, trim((string)$calendar->get('username')), $secret,
+            commonExternalCalendarBuildReport($rangeStart, $rangeEnd), 'REPORT', 1, 0, [], $deadline);
     if (empty($response['status'])) {
         $message = trim((string)($response['message'] ?? 'Synchronisation du calendrier impossible.'));
         $calendar->markSyncResult(false, $message);
@@ -744,54 +744,33 @@ function commonExternalCalendarSynchronize(ExternalCalendar $calendar, $rangeSta
     }
     $parsed = $isIcs
         ? commonExternalCalendarParseIcsFeed((string)$response['body'], $rangeStart, $rangeEnd)
-        : commonExternalCalendarParseReport((string)$response['body']);
+        : commonExternalCalendarParseReport((string)$response['body'], $strict);
     if (empty($parsed['status'])) {
         $message = trim((string)($parsed['message'] ?? 'La reponse CalDAV ne peut pas etre lue.'));
         $calendar->markSyncResult(false, $message);
         return ['status' => false, 'message' => $message];
     }
 
-    $pdo = \dbObject\DbObject::getPdo();
-    if (!$pdo instanceof \PDO) {
-        return ['status' => false, 'message' => 'La base de donnees est indisponible.'];
+    // Strict CalDAV parsing uses exclusive all-day ends; storage uses inclusive ends.
+    if ($strict && !$isIcs) {
+        foreach ($parsed['events'] as &$values) {
+            if ($values['is_all_day']) { $values['end_at'] = $values['end_at']->modify('-1 second'); }
+        }
+        unset($values);
     }
+
     try {
-        $pdo->beginTransaction();
-        $deactivated = $replaceCache
-            ? ExternalCalendarEvent::deactivateForCalendar($calendarId)
-            : ExternalCalendarEvent::deactivateInRange($calendarId, $rangeStart, $rangeEnd);
-        if (!$deactivated) {
-            throw new \RuntimeException('Impossible de preparer les evenements importes.');
-        }
-        foreach ((array)$parsed['events'] as $values) {
-            $event = ExternalCalendarEvent::findForImportedValues($calendarId, $values);
-            if (!$event instanceof ExternalCalendarEvent) {
-                $event = new ExternalCalendarEvent();
-                $event->set('IDexternalcalendar', $calendarId);
-                $event->set('source_key', (string)$values['source_key']);
-                $event->set('created_at', new \DateTimeImmutable('now'));
-            }
-            $event->applyImportedValues($values);
-            $event->set('active', 1);
-            $event->set('updated_at', new \DateTimeImmutable('now'));
-            $saveResult = $event->save();
-            if (!is_array($saveResult) || empty($saveResult['status'])) {
-                throw new \RuntimeException('Impossible d enregistrer les evenements importes.');
-            }
-        }
-        \dbObject\ProjectExternalEvent::synchronizeForCalendar($calendarId, $rangeStart, $rangeEnd);
-        $pdo->commit();
+        ExternalCalendarEvent::synchronizeImportedEvents($calendarId, (array)$parsed['events'], $rangeStart, $rangeEnd, $replaceCache);
     } catch (\Throwable $exception) {
-        if ($pdo->inTransaction()) {
-            $pdo->rollBack();
-        }
         $message = 'La synchronisation du calendrier a echoue.';
         error_log('OMO external calendar synchronization failed: ' . $exception->getMessage());
         $calendar->markSyncResult(false, $message);
         return ['status' => false, 'message' => $message];
     }
 
-    $calendar->markSyncResult(true);
+    if (!$calendar->markSyncResult(true)) {
+        return ['status' => false, 'message' => 'Impossible de dater la synchronisation du calendrier.'];
+    }
     return ['status' => true, 'count' => count((array)$parsed['events'])];
 }
 

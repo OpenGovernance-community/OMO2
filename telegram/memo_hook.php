@@ -1465,7 +1465,9 @@
 			return;
 		}
 
-		if (!patreonUserCanUseAi((int)$documentUser->getId())) {
+		$aiOrganizationId = !$summaryOnly && is_array($groupDestinationContext ?? null) ? (int)$groupDestinationContext['organizationId'] : 0;
+		commonAiSetUsageContext((int)$documentUser->getId(), $aiOrganizationId, 'telegram_memo', 'telegram');
+		if (!patreonUserCanUseAi((int)$documentUser->getId(), $aiOrganizationId)) {
 			sendMessage(
 				$chatId,
 				"Les fonctions IA sont reservees aux contributeurs Patreon payants. Connectez votre compte avec /connect puis soutenez le projet sur Patreon pour utiliser la transcription audio.",

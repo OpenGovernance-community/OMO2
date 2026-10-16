@@ -64,6 +64,12 @@ class ExternalCalendar extends DbObject
         return self::tableExists(self::tableName());
     }
 
+    public function isMeetingDestinationForUser(int $userId): bool
+    {
+        return $userId > 0 && (int)$this->get('IDuser') === $userId && $this->get('active')
+            && $this->get('provider') === 'caldav' && !$this->get('availability_only');
+    }
+
     public static function normalizeColor($value)
     {
         $value = trim((string)$value);

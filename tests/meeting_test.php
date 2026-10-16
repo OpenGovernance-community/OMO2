@@ -1,8 +1,15 @@
 <?php
 declare(strict_types=1);
+// Owner notifications are exercised without any external delivery.
+$ownerDeliveries = [];
+function notificationCenterSendEmail($user, $organization, $title, $body, $url) { $GLOBALS['ownerDeliveries'][] = [$user->getId(), $title, $body]; return true; }
+function notificationCenterSendPush($userId, array $payload) { return true; }
+function notificationCenterSendTelegram($user, $title, $body, $url) { return true; }
 require_once dirname(__DIR__) . '/shared_functions.php';
 require_once dirname(__DIR__) . '/meeting/service.php';
 require_once dirname(__DIR__) . '/meeting/translations.php';
+// All calendar HTTP is mocked; fixture hostnames deliberately have no DNS records.
+putenv('OMO_EXTERNAL_CALENDAR_ALLOW_PRIVATE_HOSTS=1');
 
 $meetingSettingsSource = (string)file_get_contents(dirname(__DIR__) . '/omo/api/calendar/meeting_settings.php');
 $calendarSource = (string)file_get_contents(dirname(__DIR__) . '/omo/api/calendar/index.php');
@@ -12,6 +19,12 @@ use dbObject\MeetingProfile;
 use dbObject\MeetingBooking;
 use dbObject\ExternalCalendar;
 use dbObject\User;
+
+// Exercise legacy stored photo URLs, bypassing the upload-only input setter.
+class MeetingFixtureUser extends User
+{
+    public function setStoredPhoto(string $value): void { $this->_fields['image'] = $value; }
+}
 
 function meetingExpect(bool $condition, string $message): void
 {
@@ -112,7 +125,7 @@ meetingExpect(commonExternalCalendarParseEvents($allDayIcs, '', true)[0]['end_at
 
 // Integration fixture: dedicated disposable user, no live CalDAV calls or email delivery.
 if (!MeetingProfile::isStorageAvailable()) { throw new RuntimeException('Run meeting migration first'); }
-$user = new User();
+$user = new MeetingFixtureUser();
 $nonce = bin2hex(random_bytes(6));
 $user->set('email', 'meeting-test-' . $nonce . '@example.invalid');
 $user->set('firstname', 'Meeting');
@@ -180,6 +193,8 @@ try {
     $booking = meetingBook($uid, $draft, $request, $mailer);
     meetingBook($uid, $draft, $request, $mailer);
     meetingExpect($puts === 1 && $mailCount === 1 && $booking->get('email_sent_at') instanceof DateTimeInterface, 'Retry is idempotent for creation and email');
+    meetingExpect(count($ownerDeliveries) === 1 && (int)$ownerDeliveries[0][0] === $uid,
+        'Confirmed booking notifies the owner by default once, even when visitor email is retried.');
     $other = $draft; $other['token'] = bin2hex(random_bytes(32));
     meetingReject(fn() => meetingBook($uid, $other, $request, $mailer), 'slot_taken');
     $later = $other; $later['time'] = '14:00';
@@ -293,18 +308,18 @@ try {
     meetingExpect(!str_contains($page, 'A test') && !str_contains($page, 'visitor@example.invalid'), 'Visitor cannot read existing booking details');
     [$code, $page] = $http($path . '?date=' . $draft['date']);
     meetingExpect($code === 200 && str_contains($page, 'meeting-slots__pause') && !str_contains($page, '11:30 - 12:30'), 'Lunch slots are replaced by one divider');
-    $user->set('image', '/common/assets/icon-topbar-help.png'); meetingSave($user);
+    $user->setStoredPhoto('/img/omo-parameters/notification.png'); meetingSave($user);
     [$code, $page] = $http($path);
-    meetingExpect(str_contains($page, 'src="/common/assets/icon-topbar-help.png"') && str_contains($page, ' data-meeting-avatar '), 'Global OMO photo renders publicly');
+    meetingExpect(str_contains($page, 'src="/img/omo-parameters/notification.png"') && str_contains($page, ' data-meeting-avatar '), 'Global OMO photo renders publicly');
     $photoDom = new DOMDocument();
     @$photoDom->loadHTML($page);
     $photoXpath = new DOMXPath($photoDom);
-    meetingExpect($photoXpath->evaluate('string(//meta[@property="og:image"]/@content)') === 'https://localhost/common/assets/icon-topbar-help.png', 'Relative profile photo becomes an absolute Open Graph image');
-    meetingExpect($photoXpath->evaluate('string(//meta[@name="twitter:image"]/@content)') === 'https://localhost/common/assets/icon-topbar-help.png', 'Relative profile photo becomes an absolute card image');
-    $user->set('image', 'javascript:alert(1)'); meetingSave($user);
+    meetingExpect($photoXpath->evaluate('string(//meta[@property="og:image"]/@content)') === 'https://localhost/img/omo-parameters/notification.png', 'Relative profile photo becomes an absolute Open Graph image');
+    meetingExpect($photoXpath->evaluate('string(//meta[@name="twitter:image"]/@content)') === 'https://localhost/img/omo-parameters/notification.png', 'Relative profile photo becomes an absolute card image');
+    $user->setStoredPhoto('javascript:alert(1)'); meetingSave($user);
     [$code, $page] = $http($path);
     meetingExpect(!str_contains($page, 'javascript:') && !str_contains($page, ' data-meeting-avatar ') && !str_contains($page, 'property="og:image"'), 'Unsafe photo URL falls back to initials and is not shared');
-    $user->set('image', ''); meetingSave($user);
+    $user->setStoredPhoto(''); meetingSave($user);
     [$code, $page] = $http($path . '?receipt=' . $draft['token']);
     meetingExpect(!str_contains($page, 'visitor@example.invalid'), 'Receipt is bound to visitor session');
     [$code, $page] = $http($path . '?date=' . $draft['date'] . '&time=16:00&duration=60');

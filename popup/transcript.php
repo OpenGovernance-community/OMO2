@@ -11,8 +11,10 @@
 			echo T_('Configuration IA indisponible.');
 			exit;
 		}
-		if (!patreonUserCanUseAi((int)($_SESSION['currentUser'] ?? 0))) {
-			echo 'Les fonctions IA sont reservees aux contributeurs Patreon actifs.';
+		$document = new \dbObject\Document();
+        $document->load((int)($_GET['id'] ?? 0));
+        if (!patreonUserCanUseAi((int)($_SESSION['currentUser'] ?? 0), (int)$document->get('IDorganization'))) {
+			echo 'Un abonnement Patreon individuel ou de cette organisation est requis.';
 			exit;
 		}
 		// Affichage des champs de formulaires
