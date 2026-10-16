@@ -86,23 +86,22 @@ const fallback = environment(false).mount(items);
 fallback.container.children.at(-1).listeners.click({type: 'click'});
 assert.equal(fallback.rendered.length, 60, 'Works without IntersectionObserver.');
 
-// A cold drawer reload must not depend on an asynchronously inserted external script.
+// The fragment declares its dependency before registering the page initializer.
 const page = fs.readFileSync(path.join(__dirname, '../omo/api/documents/index.php'), 'utf8');
 const helper = fs.readFileSync(path.join(__dirname, '../omo/api/documents/progressive-list.js'), 'utf8');
-const inlineHelper = /<\?php[^?]*readfile\(__DIR__ \. '\/progressive-list\.js'\); \?>/;
-assert(inlineHelper.test(page), 'The helper is embedded synchronously in the drawer bootstrap.');
-const renderedPage = page.replace(inlineHelper, () => helper);
-const bootstrap = Array.from(renderedPage.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g))
-    .find(match => match[2].includes('window.omoDocumentsFindRoot = function'))[2];
-const bootstrapStart = bootstrap.indexOf('            (function () {');
-assert(bootstrapStart > 0);
+const helperPosition = page.indexOf("commonAssetUrl('/omo/api/documents/progressive-list.js')");
+const initializerPosition = page.indexOf("commonPageScriptTags('/omo/api/documents/list.js'");
+assert(helperPosition >= 0 && initializerPosition > helperPosition, 'The progressive helper loads before the document list initializer.');
+const bootstrap = fs.readFileSync(path.join(__dirname, '../omo/api/documents/list.js'), 'utf8');
 const coldWindow = {};
-vm.runInNewContext(bootstrap.slice(0, bootstrapStart), {window: coldWindow});
+vm.runInNewContext(helper, {window: coldWindow});
+vm.runInNewContext(bootstrap, {window: coldWindow});
 assert.equal(typeof coldWindow.omoCreateDocumentProgressiveList, 'function', 'Helper exists before cold panel initialization.');
+assert.equal(typeof coldWindow.commonPageScripts['/omo/api/documents/list.js'], 'function', 'The list initializer is registered.');
 
 // Parse the PHP-rendered inline JavaScript, replacing the remaining PHP expressions.
-for (const match of renderedPage.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g)) {
-    if (!match[1].includes('application/json')) new vm.Script(match[2].replace(/<\?[\s\S]*?\?>/g, 'null'));
+for (const match of page.replace(/<\?[\s\S]*?\?>/g, 'null').matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g)) {
+    if (!match[1].includes('application/json')) new vm.Script(match[2]);
 }
 assert(page.includes('foreach (array_slice($documentEntries, 0, 30) as $entry)'), 'Server HTML is bounded too.');
 console.log('documents_progressive_list_test: OK (400 rows, batches, fallback, reset, cleanup, cold bootstrap, inline syntax)');

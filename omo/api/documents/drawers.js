@@ -541,6 +541,11 @@ window.commonPageScripts["/omo/api/documents/drawers.js"] = function (pageConfig
                     ? rootOverride
                     : getDocumentsRoot();
 
+                if (documentItem && documentItem.isFolder) {
+                    return !!root && typeof root.__omoDocumentsOpenFolder === 'function'
+                        && root.__omoDocumentsOpenFolder(documentItem);
+                }
+
                 if (isPvDocumentBlockedInLocalNavigation(documentItem, root)) {
                     return false;
                 }

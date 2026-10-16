@@ -1,5 +1,7 @@
 # Journal des nouveautés
 
+- PV / explorateur de documents (2026-10-16) : tous les types de documents proposes, dont EtherCalc et Etherpad, avec dossiers selectionnables et fichiers classes dans leur hierarchie. Recherche dans les chemins des dossiers ; liens vers les dossiers ouvrant leurs ancetres et leur contenu dans l explorateur. Droits de visibilite conserves, y compris pour les sous-dossiers.
+
 - Indicateurs / tableurs dans les dossiers (2026-10-16) : sources EtherCalc et Collabora accessibles dans les dossiers et sous-dossiers, y compris apres deplacement d un document deja lie a un indicateur. Controle de visibilite sur toute la hierarchie conserve ; dossiers prives ou archives exclus.
 
 - Discussions / reactions sur ses propres messages (2026-10-16) : choix desactive pour l auteur et refus cote serveur, y compris en mode anonyme ou via un lien invite. Reactions recues toujours visibles ; migration de retrait des anciens votes personnels avec recalcul des compteurs.
