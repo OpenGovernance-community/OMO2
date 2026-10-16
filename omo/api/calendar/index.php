@@ -1069,19 +1069,8 @@ foreach ($events as $event) {
     $isInDescendantContext = $isInCurrentContext || ($eventHolonId > 0 && isset($descendantHolonIdMap[$eventHolonId]));
     $canEditEvent = !$isExternalEvent && (omoCalendarCanEditEvent($event, $organizationId, $currentUserId, $rootHolon, false)
         || $event->canEditTimeBuffers($currentUserId));
-    $deletePermissionHolon = $rootHolon;
-    if ($eventHolonId > 0) {
-        $eventPermissionHolon = new Holon();
-        if ($eventPermissionHolon->load($eventHolonId)) {
-            $deletePermissionHolon = $eventPermissionHolon;
-        }
-    }
-    $canDeleteEvent = !$isExternalEvent && $currentUserId > 0
-        && (
-            $deletePermissionHolon instanceof Holon
-                ? $deletePermissionHolon->isAllowed('CAN_DELETE_EVENT', false, $currentUserId)
-                : commonCurrentUserHasOrganizationAccess($organizationId)
-        );
+    $canDeleteEvent = !$isExternalEvent
+        && omoCalendarCanDeleteEvent($event, $organizationId, $currentUserId, $rootHolon, false);
     $eventHasAssociatedDocuments = $canDeleteEvent && count($event->getAssociatedDocuments()) > 0;
     $associatedDocumentOpenData = omoCalendarBuildAssociatedDocumentOpenData(
         $event,

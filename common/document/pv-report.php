@@ -1,12 +1,20 @@
 <?php
 require_once dirname(__DIR__) . '/translation_bundles.php';
 
-function commonPvReportT(string $key): string
+function commonPvReportT(string $key, array $replace = []): string
 {
     static $lang = null;
     $sourceLang = [
+        'pv.report.handled_at' => ['text' => 'Traite le {date} a {time}', 'context' => 'Completion date and time below an agenda point in reviewed or validated minutes.'],
         'pv.report.unhandled' => ['text' => 'Points non traites', 'context' => 'Final list of non-confidential unfinished agenda points in reviewed and validated minutes.'],
         'pv.report.empty' => ['text' => 'Aucun point traite dans ce PV.', 'context' => 'Empty reviewed or validated minutes, with no handled point or public unfinished title.'],
+        'pv.report.proposals' => ['text' => 'Propositions validees', 'context' => 'Validated changes listed inside a read-only meeting minutes point'],
+        'pv.report.proposal.summary' => ['text' => '{operation} : {type} "{title}"', 'context' => 'Summary of a validated change in read-only minutes'],
+        'pv.report.proposal.create' => ['text' => 'Creation', 'context' => 'Validated object creation in read-only minutes'],
+        'pv.report.proposal.update' => ['text' => 'Modification', 'context' => 'Validated object update in read-only minutes'],
+        'pv.report.proposal.delete' => ['text' => 'Suppression', 'context' => 'Validated object deletion in read-only minutes'],
+        'pv.report.proposal.move' => ['text' => 'Deplacement', 'context' => 'Validated object move in read-only minutes'],
+        'pv.report.proposal.detail' => ['text' => 'Detail', 'context' => 'Button expanding an accessible validated proposal in read-only minutes'],
         'pv.report.author' => ['text' => 'Auteur', 'context' => 'Author label in an unfinished agenda point summary.'],
         'pv.report.author_missing' => ['text' => 'Non renseigne', 'context' => 'Fallback when an unfinished agenda point has no author.'],
         'pv.report.duration' => ['text' => 'Duree prevue', 'context' => 'Planned duration label in an unfinished agenda point summary.'],
@@ -21,7 +29,51 @@ function commonPvReportT(string $key): string
         $locale = translationBundleResolveRequestLocale('lang', translationBundleGetSupportedLocales(), 'fr');
         $lang = loadTranslationBundle('common_pv_report', $locale, $sourceLang);
     }
-    return t($key, [], $lang, $sourceLang);
+    return t($key, $replace, $lang, $sourceLang);
+}
+
+function commonPvReportRenderHandledAt($handledAt): string
+{
+    if (is_string($handledAt) && trim($handledAt) !== '') {
+        try { $handledAt = new DateTimeImmutable($handledAt); }
+        catch (Throwable $exception) { return ''; }
+    }
+    if (!($handledAt instanceof DateTimeInterface)) return '';
+    return '<p class="generic-meta generic-meta--compact" data-omo-pv-handled-at><time datetime="'
+        . htmlspecialchars($handledAt->format(DATE_ATOM), ENT_QUOTES, 'UTF-8') . '">'
+        . htmlspecialchars(commonPvReportT('pv.report.handled_at', ['date' => $handledAt->format('d.m.Y'), 'time' => $handledAt->format('H:i')]), ENT_QUOTES, 'UTF-8')
+        . '</time></p>';
+}
+
+function commonPvReportRenderProposals(array $proposals, bool $includeDetails = true): string
+{
+    if (!$proposals) return '';
+    $escape = static fn($value): string => htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
+    $html = '<section class="generic-section generic-stack generic-stack--compact" data-omo-pv-report-proposals>'
+        . '<h4 class="generic-card-title generic-card-title--medium">' . $escape(commonPvReportT('pv.report.proposals')) . '</h4>';
+    foreach ($proposals as $proposal) {
+        $operation = (string)($proposal['operation'] ?? '');
+        $operationLabel = in_array($operation, ['create', 'update', 'delete', 'move'], true)
+            ? commonPvReportT('pv.report.proposal.' . $operation) : $operation;
+        $summary = commonPvReportT('pv.report.proposal.summary', [
+            'operation' => $operationLabel, 'type' => (string)($proposal['targetLabel'] ?? ''), 'title' => (string)($proposal['title'] ?? ''),
+        ]);
+        $html .= '<article class="generic-soft-panel generic-stack generic-stack--compact" data-omo-pv-report-proposal="' . (int)($proposal['id'] ?? 0) . '">'
+            . '<strong>' . $escape($summary) . '</strong>';
+        if ($includeDetails && !empty($proposal['canViewDetails'])) {
+            $payload = base64_encode((string)json_encode([
+                'governanceAction' => ['type' => (string)$proposal['changeType'], 'before' => (array)$proposal['beforeState'], 'after' => (array)$proposal['afterState']],
+                'authorities' => (array)($proposal['authorities'] ?? []), 'responsibleLabels' => (array)($proposal['responsibleLabels'] ?? []),
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+            $html .= '<details class="generic-accordion" data-omo-change-details-payload="' . $escape($payload) . '">'
+                . '<summary class="generic-action-button generic-action-button--secondary">' . $escape(commonPvReportT('pv.report.proposal.detail')) . '</summary>'
+                . '<div class="generic-accordion__content" data-omo-change-details-container>';
+            if (!empty($proposal['excerpt'])) $html .= '<p class="generic-description">' . $escape($proposal['excerpt']) . '</p>';
+            $html .= '</div></details>';
+        }
+        $html .= '</article>';
+    }
+    return $html . '</section>';
 }
 
 function commonPvReportRenderUnhandledPoints(array $items): string

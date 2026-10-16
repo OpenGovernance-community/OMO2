@@ -103,6 +103,13 @@ $proposer = $project->get('IDuser_proposed') ? (new \dbObject\User()) : null;
 if ($proposer instanceof \dbObject\User && !$proposer->load((int)$project->get('IDuser_proposed'))) {
     $proposer = null;
 }
+$creator = null;
+if ((int)$project->get('IDuser_proposed') <= 0 && (int)$project->get('IDusercreation') > 0) {
+    $creator = new \dbObject\User();
+    if (!$creator->load((int)$project->get('IDusercreation'))) {
+        $creator = null;
+    }
+}
 $canCreateSubproject = !$isArchivedProject && !$isPendingProposal && $canEdit
     && omoProjectsCanCreateContext(array_replace($context, ['currentHolon' => $projectHolon]));
 $editUrl = '/omo/api/projects/create.php?oid=' . rawurlencode((string)$organizationId) . '&id=' . rawurlencode((string)$projectId);
@@ -355,10 +362,7 @@ if ((int)($_GET['cid'] ?? 0) > 0) {
     <?php if ($isPendingProposal): ?>
         <section class="generic-soft-panel omo-project-detail__section omo-project-proposal-panel">
             <span class="omo-project-proposal-badge"><?= omoApiEscape(omoProjectsT('projects.proposal.badge')) ?></span>
-            <dl class="omo-project-detail__facts">
-                <div><dt><?= omoApiEscape(omoProjectsT('projects.proposal.proposed_by')) ?></dt><dd><?= omoApiEscape(omoProjectsGetUserLabel($proposer, 'projects.detail.none')) ?></dd></div>
-                <div><dt><?= omoApiEscape(omoProjectsT('projects.proposal.proposed_at')) ?></dt><dd><?= omoApiEscape(omoProjectsFormatDate($project->get('proposed_at')) ?: omoProjectsT('projects.detail.none')) ?></dd></div>
-            </dl>
+            <p class="generic-meta"><?= omoProjectsRenderOrigin($project, $proposer ?? $creator) ?></p>
             <?php if ($canEdit): ?>
                 <p class="generic-description generic-description--small"><?= omoApiEscape(omoProjectsT('projects.proposal.editable')) ?></p>
             <?php elseif ($canRespondToProposal): ?>
@@ -440,6 +444,11 @@ if ((int)($_GET['cid'] ?? 0) > 0) {
             <strong><?= omoApiEscape(omoProjectsGetUserLabel($responsible)) ?></strong>
             <?php if ($responsibleHolonLabel !== ''): ?><span class="omo-project-detail__responsible-holon">(<?= omoApiEscape($responsibleHolonLabel) ?>)</span><?php endif; ?>
         </p>
+        <?php if ($creator instanceof \dbObject\User || (!$isPendingProposal && $proposer instanceof \dbObject\User)): ?>
+        <p class="generic-meta">
+            <?= omoProjectsRenderOrigin($project, $proposer ?? $creator) ?>
+        </p>
+        <?php endif; ?>
     </section>
 
     <section class="omo-project-detail__timeline" aria-label="<?= omoApiEscape(omoProjectsT('projects.detail.schedule')) ?>">

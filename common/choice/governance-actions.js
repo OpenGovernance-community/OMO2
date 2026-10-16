@@ -264,6 +264,7 @@
                     else if (field) field.value = state[name] == null ? '' : String(state[name]);
                 });
                 if (targetType === 'rule' && window.omoInitRuleScopeFields) window.omoInitRuleScopeFields(editor, scopeContext, state);
+                if (targetType === 'project' && window.omoInitDeferredProjectFields) window.omoInitDeferredProjectFields(editor);
                 editor.querySelector('[data-cancel]').addEventListener('click', closeModal);
                 editor.addEventListener('submit', function (event) {
                     event.preventDefault();
@@ -299,7 +300,7 @@
                     .catch(function (error) { if (window.commonNotify) window.commonNotify(error.message, 'error'); });
             }
             function openProjectEditor(pi, ai, action, state) {
-                openFieldsEditor(pi, ai, action, Object.assign({title:'',description:'',status:'in_progress',project_size:'M'}, state || {}), 'project');
+                openFieldsEditor(pi, ai, action, Object.assign({title:'',description:'',status:'in_progress',project_size:'M',IDuser_proposed:actionParts(action).operation === 'create' ? Number(payload.currentUserId || 0) : null}, state || {}), 'project');
             }
             function openObjectEditor(pi, ai, action, state, targetType) {
                 var defaults = targetType === 'recurring_task'

@@ -578,7 +578,7 @@
             if (!$object->load($id)) return '';
             $objectOrganizationId = $type === 'rule' ? $object->getOrganizationId() : (int)$object->get('IDorganization');
             if ($objectOrganizationId !== $organizationId) return '';
-            if ($type === 'document' && !$object->canViewInOrganizationContext($organizationId)) return '';
+            if ($type === 'document' && !$object->canViewInOrganizationContext($organizationId, (int)$object->get('IDholon') ?: null)) return '';
             if ($type === 'event' && (int)$object->get('IDholon') > 0) {
                 $eventHolon = new Holon();
                 if (!$eventHolon->load((int)$object->get('IDholon')) || !$eventHolon->canViewDetail()) return '';

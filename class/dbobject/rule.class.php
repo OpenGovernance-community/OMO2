@@ -326,8 +326,7 @@ class Rule extends DbObject
 
     public static function buildDecisionCreationContext(DecisionProcess $decision): array
     {
-        return ['type' => 'decision', 'id' => (int)$decision->getId(),
-            'label' => (string)$decision->get('title'), 'holon_id' => (int)$decision->get('IDholon')];
+        return ObjectCreationContext::fromDecision($decision);
     }
 
     public function getCreationContext(): array
@@ -340,26 +339,7 @@ class Rule extends DbObject
 
     public static function buildProposalCreationContext(DeferredProposal $proposal): array
     {
-        $decisionProposal = new DecisionProposal();
-        if ((int)$proposal->get('IDdecision_proposal') > 0
-            && $decisionProposal->load((int)$proposal->get('IDdecision_proposal'))) {
-            $decision = $decisionProposal->getDecisionProcess();
-            if ($decision instanceof DecisionProcess) return self::buildDecisionCreationContext($decision);
-        }
-        $point = new DocumentPvPoint();
-        $document = new Document();
-        if (!$point->load((int)$proposal->get('IDdocument_pv_point'))
-            || !$document->load((int)$point->get('IDdocument'))) return [];
-        $context = ['type' => 'document', 'id' => (int)$document->getId(),
-            'label' => (string)$document->get('title'), 'holon_id' => (int)$document->getPvContextHolonId()];
-        $event = $document->getAssociatedEvent();
-        if ($event instanceof Event) {
-            $date = $event->get('start_at');
-            $context = ['type' => 'event', 'id' => (int)$event->getId(),
-                'label' => (string)$event->get('title') . ($date instanceof \DateTimeInterface ? ' du ' . $date->format('d.m.Y') : ''),
-                'holon_id' => (int)$event->get('IDholon'), 'document_id' => (int)$document->getId()];
-        }
-        return $context;
+        return ObjectCreationContext::fromProposal($proposal);
     }
 
     public static function findDefinedInHolon($holonId)

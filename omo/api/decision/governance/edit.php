@@ -107,15 +107,7 @@ foreach ($authorityItems as $authority) {
         ];
     }
 }
-$responsibleLabels = [];
-$organizationMembers = new \dbObject\ArrayUserOrganization();
-$organizationMembers->loadActiveForOrganization((int)$context['organizationId']);
-foreach ($organizationMembers as $membership) {
-    $memberUserId = (int)$membership->get('IDuser');
-    if ($memberUserId > 0) {
-        $responsibleLabels[$memberUserId] = \dbObject\DocumentPvPoint::getUserDisplayNameForOrganization($memberUserId, (int)$context['organizationId']);
-    }
-}
+$responsibleLabels = \dbObject\Project::getProposerOptions((int)$context['organizationId']);
 $targetCatalogs = DeferredProposal::getTargetHolonCatalogs((int)$context['organizationId'], $targetHolonId);
 $ruleCatalog = $targetCatalogs[DeferredProposal::TARGET_RULE];
 $holonCatalog = $targetCatalogs[DeferredProposal::TARGET_HOLON];
@@ -172,6 +164,7 @@ $payload = [
     'roleTemplates' => $roleTemplates,
     'authorities' => array_values($authorities),
     'responsibleLabels' => $responsibleLabels,
+    'currentUserId' => $currentUserId,
     'organizationId' => (int)$context['organizationId'],
     'decisionId' => $decision instanceof DecisionProcess ? (int)$decision->getId() : 0,
     'contextLabels' => $contextLabels,
@@ -236,7 +229,7 @@ $payload = [
 ?>
 <link rel="stylesheet" href="/common/choice/governance-actions.css?v=20260923-compact-editor">
 <link rel="stylesheet" href="/common/choice/deferred-proposal-picker.css?v=20260923-shared">
-<link rel="stylesheet" href="/common/choice/change-details.css?v=20260923-lifecycle-details">
+<link rel="stylesheet" href="<?= commonAssetUrl('/common/choice/change-details.css') ?>">
 <section class="omo-decision-governance generic-form-stack generic-form-stack--compact" data-governance-editor>
     <div
         hidden
@@ -333,7 +326,7 @@ $payload = [
     <template data-governance-fields="<?= $editorTargetType ?>">
         <section class="generic-section generic-section--stack generic-section--roomy">
             <form class="generic-form-stack" data-editor>
-                <?php omoDeferredEditorRenderFields($editorTargetType, []); ?>
+                <?php omoDeferredEditorRenderFields($editorTargetType, [], $responsibleLabels); ?>
                 <div class="generic-action-row">
                     <button class="generic-action-button generic-action-button--main" type="submit"><?= omoApiEscape(omoDeferredEditorT('save')) ?></button>
                     <button class="generic-action-button generic-action-button--secondary" type="button" data-cancel><?= omoApiEscape(omoDeferredEditorT('cancel')) ?></button>
@@ -347,6 +340,7 @@ $payload = [
 <script src="/common/choice/word-diff.js?v=20260815"></script>
 <script src="<?= commonAssetUrl('/common/choice/rule-scope-fields.js') ?>"></script>
 <script src="<?= commonAssetUrl('/common/choice/proposal-html.js') ?>"></script>
+<script src="<?= commonAssetUrl('/common/choice/deferred-project-fields.js') ?>"></script>
 <script src="<?= commonAssetUrl('/common/choice/change-details.js') ?>"></script>
 <script src="<?= commonAssetUrl('/common/choice/governance-actions.js') ?>"></script>
 <script>if(window.omoGovernanceEditorInit){window.omoGovernanceEditorInit(document);}</script>

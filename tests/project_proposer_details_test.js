@@ -1,0 +1,21 @@
+'use strict';
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const vm = require('node:vm');
+
+const window = {};
+const document = {readyState: 'loading', addEventListener() {}};
+vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../common/choice/change-details.js'), 'utf8'), {window, document});
+const changes = window.omoChoiceChangeDetails.governanceChanges;
+const labels = {12: 'Alice', 34: 'Bob'};
+let result = changes({type: 'project.create', before: {}, after: {title: 'New project', IDuser_proposed: 34}}, [], labels);
+assert.equal(result.find(change => change.label === 'Propose par').after, 'Bob');
+result = changes({type: 'project.update', before: {IDuser_proposed: 12}, after: {IDuser_proposed: 34}}, [], labels);
+assert.equal(result[0].before, 'Alice');
+assert.equal(result[0].after, 'Bob');
+result = changes({type: 'project.update', before: {IDuser_proposed: 12}, after: {IDuser_proposed: null}}, [], labels);
+assert.equal(result[0].before, 'Alice');
+assert.equal(result[0].after, '');
+assert.equal(changes({type: 'project.create', before: {}, after: {IDuser_proposed: null}}, [], labels).length, 0);
+console.log('project_proposer_details_test: OK');

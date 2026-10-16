@@ -26,7 +26,7 @@ class DocumentPvPoint extends DbObject
             [['title', 'item_type', 'author_email', 'pointtype', 'edit_lock_token', 'edit_takeover_request_token', 'edit_takeover_target_token'], 'string'],
             [['content'], 'html'],
             [['active', 'is_handled', 'is_confidential'], 'boolean'],
-            [['datecreation', 'datemodification', 'dateedition', 'date_edit_takeover_request', 'date_moved', 'date_abandoned'], 'datetime'],
+            [['datecreation', 'datemodification', 'dateedition', 'date_edit_takeover_request', 'date_moved', 'date_abandoned', 'handled_at'], 'datetime'],
             [['id'], 'safe'],
         ];
     }
@@ -56,6 +56,7 @@ class DocumentPvPoint extends DbObject
             'edit_takeover_target_token' => 'Jeton du verrou a reprendre',
             'date_edit_takeover_request' => 'Date de demande de reprise',
             'is_handled' => 'Traite',
+            'handled_at' => 'Date de traitement',
             'IDpoint_moved_to' => 'Point de destination',
             'date_moved' => 'Date de deplacement',
             'date_abandoned' => 'Fin du suivi',
@@ -90,6 +91,7 @@ class DocumentPvPoint extends DbObject
             'edit_takeover_target_token' => 'Session invitee a enregistrer avant le transfert.',
             'date_edit_takeover_request' => 'Debut du delai laisse a la session actuelle pour enregistrer.',
             'is_handled' => 'Indique si le point a deja ete traite en reunion.',
+            'handled_at' => 'Date et heure du dernier passage du point au statut traite.',
             'IDpoint_moved_to' => 'Point copie dans une reunion suivante ; le point source reste non traite et ne peut plus etre importe.',
             'date_moved' => 'Conserve le deplacement meme si le point de destination est supprime.',
             'date_abandoned' => 'Point conservé dans son PV, sans traitement supplémentaire attendu.',
@@ -181,7 +183,63 @@ class DocumentPvPoint extends DbObject
         return !$this->isGroup() && !empty($this->get('is_confidential'));
     }
 
-    public static function buildHierarchyPositionLabels(iterable $items): array
+    public static function buildReportPositionMap(iterable $items): array
+    {
+        $childrenByParent = [];
+        foreach ($items as $item) {
+            if ($item instanceof self && (int)$item->getId() > 0) {
+                $childrenByParent[max(0, (int)$item->get('IDparent'))][] = $item;
+            }
+        }
+        $positions = [];
+        foreach ($childrenByParent as $siblings) {
+            usort($siblings, static fn(self $left, self $right): int =>
+                ((int)$left->get('position') <=> (int)$right->get('position')) ?: ((int)$left->getId() <=> (int)$right->getId()));
+            $datedPoints = [];
+            $datedSlots = [];
+            foreach ($siblings as $index => $item) {
+                $positions[(int)$item->getId()] = $index + 1;
+                if (!$item->isGroup() && $item->isHandled() && $item->get('handled_at') instanceof \DateTimeInterface) {
+                    $datedPoints[] = $item;
+                    $datedSlots[] = $index + 1;
+                }
+            }
+            // Stable sorting keeps the agenda order for simultaneous completions.
+            // Groups, unfinished points and legacy undated points keep their slots.
+            usort($datedPoints, static fn(self $left, self $right): int =>
+                $left->get('handled_at')->getTimestamp() <=> $right->get('handled_at')->getTimestamp());
+            foreach ($datedPoints as $index => $item) {
+                $positions[(int)$item->getId()] = $datedSlots[$index];
+            }
+        }
+        return $positions;
+    }
+
+    public static function reorderByHandledTimeForDocument(int $documentId, int $userId): void
+    {
+        $pdo = self::getPdo();
+        if (!$pdo || !$pdo->inTransaction()) {
+            throw new \LogicException('PV report ordering requires a transaction.');
+        }
+        $rows = self::fetchAll('SELECT * FROM document_pv_point WHERE IDdocument = :document AND active = 1 ORDER BY id FOR UPDATE', ['document' => $documentId]);
+        $points = [];
+        foreach ($rows as $row) {
+            $point = new self();
+            $point->hydrateFromDatabaseRow($row, true);
+            $points[] = $point;
+        }
+        $positions = self::buildReportPositionMap($points);
+        $statement = $pdo->prepare('UPDATE document_pv_point SET position = :position, IDuser_modification = :user, datemodification = :date WHERE id = :id AND IDdocument = :document');
+        foreach ($points as $point) {
+            $id = (int)$point->getId();
+            if ((int)$point->get('position') === $positions[$id]) continue;
+            $statement->execute(['position' => $positions[$id], 'user' => $userId > 0 ? $userId : null,
+                'date' => date('Y-m-d H:i:s'), 'id' => $id, 'document' => $documentId]);
+            unset(self::$preload['document_pv_point_' . $id]);
+        }
+    }
+
+    public static function buildHierarchyPositionLabels(iterable $items, array $positionOverrides = []): array
     {
         $childrenByParent = [];
         foreach ($items as $item) {
@@ -192,8 +250,9 @@ class DocumentPvPoint extends DbObject
         }
 
         foreach ($childrenByParent as &$siblings) {
-            usort($siblings, static function (self $left, self $right): int {
-                $positionComparison = (int)$left->get('position') <=> (int)$right->get('position');
+            usort($siblings, static function (self $left, self $right) use ($positionOverrides): int {
+                $positionComparison = ($positionOverrides[$left->getId()] ?? (int)$left->get('position'))
+                    <=> ($positionOverrides[$right->getId()] ?? (int)$right->get('position'));
                 return $positionComparison !== 0
                     ? $positionComparison
                     : (int)$left->getId() <=> (int)$right->getId();
@@ -1815,6 +1874,7 @@ class DocumentPvPoint extends DbObject
             'actual_duration_minutes' => $this->getDurationMinutesValue('actual_duration_minutes'),
             'pointtype' => self::normalizePointType($this->get('pointtype')),
             'is_handled' => $this->isHandled(),
+            'handled_at' => ($this->get('handled_at') instanceof \DateTimeInterface) ? $this->get('handled_at')->format(DATE_ATOM) : '',
             'moved_to_point_id' => (int)$this->get('IDpoint_moved_to'),
             'is_moved' => $this->isMoved(),
             'is_abandoned' => $this->isAbandoned(),
@@ -1844,6 +1904,7 @@ class DocumentPvPoint extends DbObject
             'desiredDurationMinutes' => $this->getDurationMinutesValue('desired_duration_minutes'),
             'actualDurationMinutes' => $this->getDurationMinutesValue('actual_duration_minutes'),
             'isHandled' => $this->isHandled(),
+            'handledAt' => ($this->get('handled_at') instanceof \DateTimeInterface) ? $this->get('handled_at')->format(DATE_ATOM) : '',
             'isMoved' => $this->isMoved(),
             'isAbandoned' => $this->isAbandoned(),
             'movedToPointId' => (int)$this->get('IDpoint_moved_to'),
@@ -1907,12 +1968,12 @@ class DocumentPvPoint extends DbObject
         try {
             if ($ownsTransaction) $pdo->beginTransaction();
             // Fence every write, including status changes, against a concurrent transfer.
-            $row = self::fetchRow('SELECT IDdocument, IDpoint_moved_to, date_moved, date_abandoned FROM document_pv_point WHERE id = :id FOR UPDATE', ['id' => (int)$this->getId()]);
+            $row = self::fetchRow('SELECT IDdocument, IDpoint_moved_to, date_moved, date_abandoned, is_handled, handled_at FROM document_pv_point WHERE id = :id FOR UPDATE', ['id' => (int)$this->getId()]);
             if (!$row || (int)$row['IDdocument'] !== (int)$this->get('IDdocument') || !empty($row['IDpoint_moved_to']) || !empty($row['date_moved']) || !empty($row['date_abandoned'])) {
                 if ($ownsTransaction) $pdo->rollBack();
                 return ['status' => false, 'text' => 'Ce point est indisponible, déplacé ou sans suivi supplémentaire.'];
             }
-            $result = $this->savePointValues();
+            $result = $this->savePointValues($row);
             if ($ownsTransaction) {
                 if (!empty($result['status'])) $pdo->commit();
                 else $pdo->rollBack();
@@ -1924,7 +1985,7 @@ class DocumentPvPoint extends DbObject
         }
     }
 
-    private function savePointValues()
+    private function savePointValues(?array $storedHandling = null)
     {
         $previousValues = null;
         if ((int)$this->getId() > 0) {
@@ -2064,6 +2125,11 @@ class DocumentPvPoint extends DbObject
             $this->set('datecreation', $now);
         }
         $this->set('datemodification', $now);
+
+        // Server-owned timestamp: ordinary edits never rewrite a completion time.
+        // Historical handled points without a timestamp remain undated.
+        $this->set('handled_at', !$this->isHandled() || $this->isGroup() ? null
+            : (!empty($storedHandling['is_handled']) ? $storedHandling['handled_at'] : $now));
 
         $saveResult = parent::save();
         $currentValues = $this->getReviewDiscussionValues();

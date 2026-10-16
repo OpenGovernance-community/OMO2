@@ -171,6 +171,11 @@ if (!function_exists('omoProjectsSourceLang')) {
             'projects.detail.schedule' => ['text' => 'Dates planifiées', 'context' => 'Project detail planned dates section label.'],
             'projects.detail.organisation' => ['text' => 'Organisation', 'context' => 'Project detail organization label.'],
             'projects.detail.responsible' => ['text' => 'Personne en charge', 'context' => 'Project detail responsible person label.'],
+            'projects.detail.created_by' => ['text' => 'Cree par', 'context' => 'Project creator shown when no proposer is recorded.'],
+            'projects.origin.event' => ['text' => 'reunion', 'context' => 'Meeting origin of a project'],
+            'projects.origin.document' => ['text' => 'PV', 'context' => 'Meeting minutes origin of a project without an associated event'],
+            'projects.origin.decision' => ['text' => 'decision collective', 'context' => 'Collective decision origin of a project'],
+            'projects.origin.date' => ['text' => 'le {date}', 'context' => 'Date when a project was proposed or created'],
             'projects.detail.status' => ['text' => 'Statut', 'context' => 'Project detail status label.'],
             'projects.detail.priority' => ['text' => 'Priorité', 'context' => 'Project detail priority label.'],
             'projects.detail.importance' => ['text' => 'Importance stratégique', 'context' => 'Project detail importance label.'],
@@ -1235,6 +1240,28 @@ if (!function_exists('omoProjectsGetUserLabel')) {
         $username = trim((string)$user->get('username'));
         return $username !== '' ? $username : trim((string)$user->get('email'));
     }
+}
+
+function omoProjectsRenderOrigin(Project $project, ?\dbObject\User $author): string
+{
+    $isProposed = (int)$project->get('IDuser_proposed') > 0;
+    $html = omoApiEscape(omoProjectsT($isProposed ? 'projects.proposal.proposed_by' : 'projects.detail.created_by'))
+        . ' <strong>' . omoApiEscape(omoProjectsGetUserLabel($author, 'projects.detail.none')) . '</strong>';
+    $context = $project->getCreationContext();
+    $type = (string)($context['type'] ?? '');
+    $title = trim((string)($context['title'] ?? $context['label'] ?? ''));
+    if (in_array($type, ['decision', 'event', 'document'], true) && $title !== '') {
+        $linkType = $type === 'event' && (int)($context['document_id'] ?? 0) > 0 ? 'document' : $type;
+        $linkId = $linkType === 'document' && $type === 'event' ? (int)$context['document_id'] : (int)($context['id'] ?? 0);
+        $url = \dbObject\History::getResourceReferenceUrl($linkType, $linkId, (int)$project->get('IDorganization'));
+        $titleHtml = $url !== '' ? '<a href="' . omoApiEscape($url) . '">' . omoApiEscape($title) . '</a>' : omoApiEscape($title);
+        $html .= ' <span>(' . omoApiEscape(omoProjectsT('projects.origin.' . $type)) . ' ' . $titleHtml . ')</span>';
+    }
+    $date = omoProjectsFormatDate($isProposed ? ($project->get('proposed_at') ?: $project->get('created_at')) : $project->get('created_at'));
+    if ($date !== '') {
+        $html .= ' <span>' . omoApiEscape(omoProjectsT('projects.origin.date', ['date' => $date])) . '</span>';
+    }
+    return $html;
 }
 
 if (!function_exists('omoProjectsBuildStatusBar')) {

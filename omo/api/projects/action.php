@@ -671,6 +671,20 @@ if ($projectId <= 0) {
 }
 if ($projectId <= 0) {
     $project->set('IDorganization', $organizationId);
+    $meetingDocument = $context['pvMeetingPermission']['document'] ?? null;
+    $sourcePvDocumentId = (int)($_POST['source_pv_document_id'] ?? 0);
+    if ($sourcePvDocumentId > 0) {
+        $sourcePvDocument = new Document();
+        if (!$sourcePvDocument->load($sourcePvDocumentId)
+            || (int)$sourcePvDocument->get('IDorganization') !== $organizationId
+            || !$sourcePvDocument->canUserOpenPvEditor($currentUserId, $organizationId)) {
+            omoProjectsActionRespond(false, omoProjectsT('projects.error.forbidden'), [], 403);
+        }
+        $meetingDocument = $sourcePvDocument;
+    }
+    if ($meetingDocument instanceof \dbObject\Document) {
+        $project->set('creation_context', \dbObject\ObjectCreationContext::fromDocument($meetingDocument));
+    }
 }
 $project->set('IDholon', $targetHolonId > 0 ? $targetHolonId : null);
 if (array_key_exists('visibility_type', $_POST)) {
