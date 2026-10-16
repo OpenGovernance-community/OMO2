@@ -2743,6 +2743,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         const canManageStructure = documentPayload.canManagePvStructure === true;
         const canManageAgenda = canManageStructure || documentPayload.canCreatePvGroups === true;
         const isReview = String(documentPayload.pvStage || '') === 'review';
+        root.classList.toggle('omo-pv-editor--review', isReview);
         if (addMenu) addMenu.hidden = isReview || (isCurrentEditor && !canManageAgenda);
         if (addMenuToggle) {
             addMenuToggle.disabled = isReview || documentPayload.isPvValidated === true || documentPayload.isPvTemplate === true || (isCurrentEditor && !canManageAgenda);

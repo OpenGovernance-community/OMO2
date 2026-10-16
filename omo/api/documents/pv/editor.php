@@ -324,7 +324,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
 <link rel="stylesheet" href="<?= commonAssetUrl('/common/chat/thread.css') ?>">
 <?php endif; ?>
 <div
-    class="omo-pv-editor<?= $showPvApplicationTabs ? ' omo-pv-editor--has-application-tabs' : '' ?>"
+    class="omo-pv-editor<?= $showPvApplicationTabs ? ' omo-pv-editor--has-application-tabs' : '' ?><?= $pvStage === \dbObject\Document::PV_STAGE_REVIEW ? ' omo-pv-editor--review' : '' ?>"
     data-omo-pv-editor-root="1"
     data-omo-pv-editor-document-id="<?= (int)$document->getId() ?>"
     data-omo-pv-editor-oid="<?= (int)$organizationId ?>"
