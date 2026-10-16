@@ -36,6 +36,9 @@ function omoDocumentsPvEditorLoadResourceCatalog(\dbObject\Document $document, \
 
             $embeddableDocumentsPayload[] = [
                 'id' => (int)$embeddableDocument->getId(),
+                'parentDocumentId' => (int)$embeddableDocument->get('IDdocument_parent'),
+                'isFolder' => $embeddableDocument->isFolder(),
+                'documentType' => $embeddableDocument->getDocumentType(),
                 'contextHolonId' => (int)$embeddableDocument->get('IDholon'),
                 'title' => trim((string)$embeddableDocument->get('title')),
                 'description' => trim((string)$embeddableDocument->get('description')),

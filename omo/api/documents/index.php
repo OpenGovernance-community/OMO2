@@ -414,6 +414,29 @@ $initialOpenDocumentMode = $initialOpenDocumentMode === 'edit'
     : 'detail';
 $requestedDocumentScope = $_GET['document_scope'] ?? 'contextual';
 
+// A folder reference opens its own context and expands its ancestors in the existing explorer.
+$initialFolderPath = [];
+if ($initialOpenDocumentId > 0 && $initialOpenDocumentMode === 'detail') {
+    $folderCandidate = new \dbObject\Document();
+    if ($folderCandidate->load($initialOpenDocumentId) && $folderCandidate->isFolder()) {
+        $visibleFolderDocuments = new \dbObject\ArrayDocument();
+        $visibleFolderDocuments->loadVisibleForOrganization($currentOrganizationId);
+        foreach ($visibleFolderDocuments as $visibleFolderDocument) {
+            if ((int)$visibleFolderDocument->getId() !== $initialOpenDocumentId) {
+                continue;
+            }
+            $currentHolonId = (int)$visibleFolderDocument->get('IDholon');
+            $requestedDocumentScope = 'contextual';
+            $initialFolderPath = array_map(
+                static fn (\dbObject\Document $folder): int => (int)$folder->getId(),
+                $visibleFolderDocument->getParentFolderChain()
+            );
+            $initialFolderPath[] = $initialOpenDocumentId;
+            break;
+        }
+    }
+}
+
 $organization = new Organization();
 if ($currentOrganizationId > 0) {
     $organization->load($currentOrganizationId);
@@ -933,6 +956,7 @@ if ($initialOpenDocumentId > 0) {
             'canOpenInPvApplicationTab' => !$requestedOpenDocument->isPvDocument()
                 || ($requestedCanOpenDirectly && $requestedOpenDocument->isPvValidated()),
             'isFolder' => $requestedOpenDocument->isFolder(),
+            'folderPath' => $initialFolderPath,
             'openInNewWindow' => false,
             'externalUrl' => '',
             'pvPreparationUrl' => $requestedCanOpenPvEditor

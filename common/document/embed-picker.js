@@ -63,18 +63,58 @@
             function render() {
                 if (closed || !host.isConnected) return;
                 const query = search.value.trim().toLowerCase();
-                matches = (settings.items || []).filter(function (item) {
+                const eligible = (settings.items || []).filter(function (item) {
                     return (!activeTab || String(item.source) === String(activeTab.value))
                         && (!settings.filter || settings.filter(item))
                         && (!scope || (activeTab && activeTab.scope === false)
-                            || (settings.includeUnscoped && Number(item.contextHolonId || 0) <= 0) || scope.matches(item.contextHolonId))
-                        && (!query || [item.title, item.description, item.contextLabel].join(' ').toLowerCase().includes(query));
+                            || (settings.includeUnscoped && Number(item.contextHolonId || 0) <= 0) || scope.matches(item.contextHolonId));
                 });
+                let rows = eligible.map(function (item) { return {item: item, parents: []}; });
+                if (settings.hierarchical) {
+                    const byId = new Map(eligible.map(function (item) { return [Number(item.id), item]; }));
+                    const children = new Map();
+                    eligible.forEach(function (item) {
+                        const parent = byId.get(Number(item.parentDocumentId));
+                        const parentId = parent && parent.isFolder ? Number(parent.id) : 0;
+                        if (!children.has(parentId)) children.set(parentId, []);
+                        children.get(parentId).push(item);
+                    });
+                    children.forEach(function (items) {
+                        items.sort(function (left, right) {
+                            return Number(!!right.isFolder) - Number(!!left.isFolder)
+                                || title(left).localeCompare(title(right), undefined, {numeric: true, sensitivity: 'base'});
+                        });
+                    });
+                    rows = [];
+                    const visited = new Set();
+                    function append(item, parents) {
+                        if (visited.has(Number(item.id))) return;
+                        visited.add(Number(item.id));
+                        rows.push({item: item, parents: parents});
+                        (children.get(Number(item.id)) || []).forEach(function (child) { append(child, parents.concat(item)); });
+                    }
+                    (children.get(0) || []).forEach(function (item) { append(item, []); });
+                    // Keep malformed cycles finite, and retain items whose parent is outside the current scope.
+                    eligible.forEach(function (item) { append(item, []); });
+                }
+                const matchingIds = new Set();
+                rows.forEach(function (row) {
+                    const item = row.item;
+                    const path = row.parents.map(title).join(' / ');
+                    if (!query || [item.title, item.description, item.contextLabel, path].join(' ').toLowerCase().includes(query)) {
+                        matchingIds.add(Number(item.id));
+                        row.parents.forEach(function (parent) { matchingIds.add(Number(parent.id)); });
+                    }
+                });
+                rows = rows.filter(function (row) { return matchingIds.has(Number(row.item.id)); });
+                matches = rows.map(function (row) { return row.item; });
                 select.replaceChildren();
-                matches.forEach(function (item) {
+                rows.forEach(function (row) {
+                    const item = row.item;
                     const option = document.createElement('option');
                     option.value = String(item.id);
-                    option.textContent = title(item);
+                    option.textContent = (settings.hierarchical ? '  '.repeat(row.parents.length) + (item.isFolder ? '\uD83D\uDCC1 ' : '') : '') + title(item);
+                    option.title = row.parents.concat(item).map(title).join(' / ');
                     select.appendChild(option);
                 });
                 select.disabled = matches.length === 0;
