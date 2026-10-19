@@ -44,10 +44,13 @@ permissionVisibilityCheck(array_values(array_unique(array_column($minimal, 'grou
 permissionVisibilityCheck(Permission::getEditorCatalog() === $fullCatalog, 'The unrestricted catalog must remain available to permission evaluation and exports');
 
 $organizations = new ArrayOrganization();
-$organizations->load(['limit' => 1]);
+$organizations->load();
 $organization = new PermissionVisibilityOrganization();
-foreach ($organizations as $candidate) $organization->load((int)$candidate->getId());
-$root = $organization->getStructuralRootHolon();
+$root = null;
+foreach ($organizations as $candidate) {
+    if ($organization->load((int)$candidate->getId())) $root = $organization->getStructuralRootHolon();
+    if ($root instanceof Holon) break;
+}
 permissionVisibilityCheck($root instanceof Holon, 'Local organization required');
 $_SESSION['currentUser'] = 1;
 $_SERVER['HTTP_HOST'] = 'omo.localtest.me';

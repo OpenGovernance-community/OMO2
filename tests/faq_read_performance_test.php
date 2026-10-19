@@ -90,7 +90,8 @@ try {
     $items['admin_membership'] = mcpFixture(\dbObject\UserOrganization::class, ['IDuser' => $items['admin_user']->getId(),
         'IDorganization' => $items['org']->getId(), 'active' => 1, 'parameters' => ['isAdmin' => true]]);
     $_SESSION = ['currentUser' => (int)$items['admin_user']->getId(), 'currentOrganization' => (int)$items['org']->getId(),
-        'auth_security_version' => (int)$items['admin_user']->get('security_version')];
+        'auth_security_version' => (int)$items['admin_user']->get('security_version'),
+        'isAdminByOrganization' => [(int)$items['org']->getId() => true]];
     $adminLegacy = faqReadSnapshot($query, false);
     $adminOptimized = faqReadSnapshot($query, true);
     mcpCheck($adminLegacy['rows'] === $adminOptimized['rows'], 'Administrator visibility and actions must also stay identical.');

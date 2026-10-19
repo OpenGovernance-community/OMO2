@@ -6,7 +6,10 @@ require_once("../common/auth.php");
 require_once("../omo/api/lms/inc/access.php");
 require_once("../common/faq_popup_helper.php");
 
+faqPopupRequirePostRequest();
+
 if (!checklogin()) {
+	http_response_code(401);
 	echo json_encode(array(
 		'status' => false,
 		'success' => false,
@@ -20,6 +23,7 @@ $faqContext = \dbObject\FAQ::resolvePopupRequestContext($_GET);
 $faqScope = \dbObject\FAQ::normalizePopupScope($_GET['faq_scope'] ?? null, $faqContext ?: array());
 
 if ($faqId <= 0 || $faqContext === false) {
+	http_response_code(403);
 	echo json_encode(array(
 		'status' => false,
 		'success' => false,
@@ -39,6 +43,7 @@ if (!$faq->load($faqId) || !(int)$faq->getId()) {
 }
 
 if (!$faq->canBeDeletedInContext($faqContext ?: array())) {
+	http_response_code(403);
 	echo json_encode(array(
 		'status' => false,
 		'success' => false,

@@ -1,5 +1,13 @@
 # Journal des nouveautés
 
+- Documents / visibilite et PAD (2026-10-19) : lecture des PAD prives dans une vue OMO actualisee toutes les 10 secondes, sans session d edition accordee aux lecteurs. Edition collaborative conservee pour les personnes autorisees. Controles harmonises entre ouverture, listes et liens des evenements pour les documents archives et les dossiers parents inaccessibles. Tests de regression en base, HTTP avec Etherpad et JavaScript, dont le renommage avec accents simples et combines, sans modification des droits ni de l identifiant du PAD.
+
+- Securite / historique Git (2026-10-17) : retrait des anciennes cles OpenRouter et Afforai de l historique des neuf branches publiques, en conservant les fichiers applicatifs courants de Beta.
+
+- Securite / FAQ (2026-10-17) : attribution explicite et controles distincts CAN_CREATE_FAQ, CAN_EDIT_FAQ et CAN_DELETE_FAQ cote serveur, y compris pour les parcours et les changements d emplacement. Contournement administrateur limite au mode admin actif ; creation, modification et suppression reservees a POST avec protection CSRF commune. Champs des formulaires limites au contenu editable ; metadonnees des demandes et scores proteges.
+
+- Securite / migration OMO1 (2026-10-17) : suppression de l ancien exporteur MySQL devenu inutile dans OMO2 et de sa reecriture /omo1_export.php. Documentation actualisee ; import des fichiers JSON et ZIP conserve.
+
 - Accueil OMO2 / footer (2026-10-16) : ajout du lien API Developpeur vers la page publique de presentation et de documentation de l API (/developer/).
 
 - PV / relecture et cloture (2026-10-16) : delai de relecture configurable dans les parametres Documents de chaque organisation, 5 jours par defaut. Date de passage conservee et cloture automatique par le cron ; fin de reunion utilisee pour les anciennes relectures sans date. Notifications aux presents lors de la relecture, puis a tous les invites lors de la cloture manuelle ou automatique, avec deux reglages de canaux distincts. Invites par email inclus, notifications mises en file avec reprise et protection des formulaires ouverts avant la cloture. Migration SQL et tests PHP 8.5 inclus.

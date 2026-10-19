@@ -100,6 +100,8 @@ if (!function_exists('omoCalendarBuildAssociatedDocumentOpenData')) {
                 !($documentItem instanceof \dbObject\Document)
                 || (int)$documentItem->getId() <= 0
                 || (int)$documentItem->get('IDorganization') !== $organizationId
+                || $documentItem->isArchived()
+                || !$documentItem->canUserPassPvMeetingVisibilityGate($userId, $organizationId)
             ) {
                 continue;
             }
@@ -118,7 +120,7 @@ if (!function_exists('omoCalendarBuildAssociatedDocumentOpenData')) {
                         )
                     )
                 )
-                : $documentItem->canViewDirectlyInOrganization($organizationId);
+                : $documentItem->canViewDirectlyInOrganization($organizationId, $userId);
 
             if (!$canOpenDocument) {
                 continue;

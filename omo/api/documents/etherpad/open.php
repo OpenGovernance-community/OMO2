@@ -49,23 +49,17 @@ if ($padId === '' || !omoEtherpadHasConfig($organization)) {
 }
 
 $canEdit = $document->canEditInOrganizationContext($organizationId, $userId, false);
-if (!$canEdit) {
-    $readOnlyResult = omoEtherpadApiRequest($organization, 'getReadOnlyID', array('padID' => $padId));
-    $readOnlyId = trim((string)($readOnlyResult['data']['readOnlyID'] ?? ''));
-    if (!($readOnlyResult['status'] ?? false) || $readOnlyId === '') {
-        http_response_code(503);
-        echo 'Impossible d ouvrir ce pad en lecture seule.';
+if (!$canEdit || isset($_GET['content'])) {
+    // Private group pads reject even their read-only ID without an API session.
+    // Such a session also grants editing: serve the sanitized content through OMO.
+    $content = omoEtherpadGetReadOnlyContent($organization, $padId);
+    if (isset($_GET['content'])) {
+        header('Content-Type: application/json; charset=UTF-8');
+        http_response_code(!empty($content['status']) ? 200 : 503);
+        echo json_encode($content, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
         exit;
     }
-
-    $padUrl = omoEtherpadBuildPadUrl($organization, $readOnlyId);
-    if ($padUrl === '') {
-        http_response_code(503);
-        echo 'URL Etherpad invalide.';
-        exit;
-    }
-    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
-    header('Location: ' . $padUrl, true, 302);
+    require __DIR__ . '/readonly.php';
     exit;
 }
 

@@ -5,7 +5,8 @@ class Permission extends DbObject
 {
     public static function requiresExplicitAssignment(string $permissionKey): bool
     {
-        return in_array($permissionKey, ['CAN_DELETE_PARCOURS', 'CAN_EDIT_DECISION', 'CAN_DELETE_DECISION'], true)
+        return in_array($permissionKey, ['CAN_DELETE_PARCOURS', 'CAN_EDIT_DECISION', 'CAN_DELETE_DECISION',
+            'CAN_CREATE_FAQ', 'CAN_EDIT_FAQ', 'CAN_DELETE_FAQ'], true)
             || (bool)preg_match('/^CAN_(CREATE|DELETE)_TYPE[1-9][0-9]*_PROPERTIES$/', $permissionKey);
     }
 

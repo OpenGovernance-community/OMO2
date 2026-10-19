@@ -1467,6 +1467,8 @@ $documentExternalUrlDefault = $duplicateAssociatedDocument instanceof Document
     ? $duplicateAssociatedDocument->getExternalUrl() : '';
 $documentTypeOptions = omoCalendarDocumentTypeOptions($nextcloudDocumentsAvailable, $etherpadDocumentsAvailable, $ethercalcDocumentsAvailable, $pvDocumentsEnabled);
 $canOpenAssociatedDocument = $associatedDocument instanceof Document
+    && !$associatedDocument->isArchived()
+    && $associatedDocument->canUserPassPvMeetingVisibilityGate($currentUserId, $organizationId)
     && (
         $associatedDocument->isPvDocument() && !$associatedDocument->isPvValidated()
             ? (
@@ -1474,7 +1476,7 @@ $canOpenAssociatedDocument = $associatedDocument instanceof Document
                 || ($associatedDocument->getPvStage() === Document::PV_STAGE_REVIEW
                     && $associatedDocument->canUserViewPvReadOnly($currentUserId, $organizationId, $currentHolonId > 0 ? $currentHolonId : null))
             )
-            : $associatedDocument->canViewDirectlyInOrganization($organizationId)
+            : $associatedDocument->canViewDirectlyInOrganization($organizationId, $currentUserId)
     );
 $associatedDocumentUrl = $canOpenAssociatedDocument
     ? $event->buildAssociatedDocumentDetailUrl($currentHolonId > 0 ? $currentHolonId : $defaultHolonId)

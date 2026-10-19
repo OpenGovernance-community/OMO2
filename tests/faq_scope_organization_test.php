@@ -29,6 +29,8 @@ namespace {
     function commonGetCurrentUserId(): int { return 5; }
     function commonCurrentUserIsSiteAdmin(): bool { return $GLOBALS['faqTestSiteAdmin']; }
     function commonCurrentUserCanUseAdminMode($organizationId): bool { return (int)$organizationId === 7; }
+    function commonCurrentUserIsSiteAdminModeEnabled(): bool { return $GLOBALS['faqTestSiteAdmin']; }
+    function commonCurrentUserIsAdminModeEnabled($organizationId): bool { return (int)$organizationId === 7; }
     function faqScopeCheck(bool $condition, string $message): void
     {
         if (!$condition) throw new \RuntimeException($message);

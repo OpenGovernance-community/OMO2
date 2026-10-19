@@ -7,7 +7,10 @@ require_once("../common/faq_mail.php");
 require_once("../omo/api/lms/inc/access.php");
 require_once("../common/faq_popup_helper.php");
 
+faqPopupRequirePostRequest();
+
 if (!checklogin()) {
+	http_response_code(401);
 	echo json_encode([
 		'status' => false,
 		'success' => false,
@@ -21,6 +24,7 @@ $faqContext = \dbObject\FAQ::resolvePopupRequestContext($_GET);
 $faqScope = \dbObject\FAQ::normalizePopupScope($_GET['faq_scope'] ?? null, $faqContext ?: array());
 
 if ($faqId <= 0 || $faqContext === false) {
+	http_response_code(403);
 	echo json_encode([
 		'status' => false,
 		'success' => false,
@@ -40,6 +44,7 @@ if (!$faq->load($faqId) || !(int)$faq->getId()) {
 }
 
 if (!$faq->canBeEditedInContext($faqContext ?: array())) {
+	http_response_code(403);
 	echo json_encode([
 		'status' => false,
 		'success' => false,
@@ -86,10 +91,17 @@ if (\dbObject\FAQ::hasApplicationColumn() && $canManageFaqCollection) {
 		: 0;
 }
 unset($data['IDapplication']);
-$faq->loadFromArray($data);
+$previousScope = [(int)$faq->getResolvedOrganizationId(), (int)$faq->get('IDholon'), (int)$faq->get('IDparcours')];
 $faq->set('IDorganization', $scope['organizationId'] ?? null);
 $faq->set('IDholon', $scope['holonId'] ?? null);
 $faq->set('IDparcours', $scope['parcoursId'] ?? null);
+$nextScope = [(int)$faq->getResolvedOrganizationId(), (int)$faq->get('IDholon'), (int)$faq->get('IDparcours')];
+if ($previousScope !== $nextScope && !$faq->canBeCreatedInContext($faqContext)) {
+	http_response_code(403);
+	echo json_encode(['status' => false, 'success' => false, 'message' => faqPopupT('request.create_denied')], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+	exit;
+}
+$faq->loadEditorInput($data);
 if (\dbObject\FAQ::hasApplicationColumn() && $canManageFaqCollection) {
 	if ($linkedApplicationId > 0) {
 		$application = new \dbObject\Application();
