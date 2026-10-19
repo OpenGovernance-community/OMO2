@@ -2,11 +2,13 @@
 require_once("../config.php");
 require_once("../shared_functions.php");
 commonEnableReadOnlyCaches();
-require_once("../omo/api/lms/inc/access.php");
+require_once("../common/auth.php");
 require_once("../common/faq_popup_helper.php");
 require_once("../common/faq_ai.php");
+$responderRequest = \dbObject\FAQ::loadRequestForResponder((int)($_GET['id'] ?? 0));
+if (!$responderRequest) require_once("../omo/api/lms/inc/access.php");
 
-$faqContext = \dbObject\FAQ::resolvePopupRequestContext($_GET);
+$faqContext = \dbObject\FAQ::resolvePopupRequestContext($_GET, $responderRequest);
 
 if ($faqContext === false) {
 	http_response_code(403);
@@ -36,6 +38,7 @@ $popupReloadUrl = '/popup/faq.php' . ($popupReloadQuery ? '?' . http_build_query
 // Direct question links do not need the collection or the creation form.
 $initialFaqId = (int)($_GET['id'] ?? 0);
 if ($initialFaqId > 0) {
+	$requestOnly = $responderRequest !== null && !commonUserHasOrganizationAccess(commonGetCurrentUserId(), $contextOrganizationId);
 	?>
 	<link rel="stylesheet" href="<?= commonAssetUrl('/common/assets/components.css') ?>">
 	<link rel="stylesheet" href="<?= commonAssetUrl('/omo/assets/css/faq.css') ?>">
@@ -45,9 +48,19 @@ if ($initialFaqId > 0) {
 		data-faq-scope="<?= htmlspecialchars($faqScope, ENT_QUOTES, 'UTF-8') ?>"
 		data-faq-reload-url="<?= htmlspecialchars($popupReloadUrl, ENT_QUOTES, 'UTF-8') ?>"
 		data-faq-initial-id="<?= $initialFaqId ?>"
+		data-faq-request-only="<?= $requestOnly ? '1' : '0' ?>"
+		data-faq-admin-edit-script="<?= htmlspecialchars(commonAssetUrl('/common/assets/admin-edit.js'), ENT_QUOTES, 'UTF-8') ?>"
 		data-faq-list-loaded="0">
 		<div class="faq-popup__detail" data-faq-detail-view></div>
 		<template data-faq-detail-back><?php faqPopupRenderBackButton(); ?></template>
+		<?php if ($requestOnly): ?>
+			<template data-faq-request-complete>
+				<div class="generic-drawer-content generic-stack">
+					<p class="generic-soft-panel" role="status" data-faq-complete-message></p>
+					<div class="generic-action-row"><button type="button" class="generic-action-button generic-action-button--main" data-faq-back><?= htmlspecialchars(faqPopupT('request.close'), ENT_QUOTES, 'UTF-8') ?></button></div>
+				</div>
+			</template>
+		<?php endif; ?>
 	</div>
 	<script src="<?= commonAssetUrl('/omo/assets/js/faq.js') ?>"></script>
 	<?php
@@ -148,6 +161,7 @@ if (!$canManageFaqCollection && $canCreateContextualFaq) {
 <div
 	class="faq-popup"
 	id="faqPopupRoot"
+	data-faq-admin-edit-script="<?= htmlspecialchars(commonAssetUrl('/common/assets/admin-edit.js'), ENT_QUOTES, 'UTF-8') ?>"
 	data-faq-oid="<?= (int)$contextOrganizationId ?>"
 	data-faq-cid="<?= (int)$contextHolonId ?>"
 	data-faq-scope="<?= htmlspecialchars($faqScope, ENT_QUOTES, 'UTF-8') ?>"
@@ -281,7 +295,7 @@ if (!$canManageFaqCollection && $canCreateContextualFaq) {
 			<?php endforeach; ?>
 		</div>
 		<div class="faq-popup__ask generic-soft-panel generic-stack generic-stack--compact" data-faq-ask-shell hidden>
-			<div>Pas trouvé de réponse à votre problème dans cette liste ? Posez la question ci-dessous, et un administrateur vous répondra rapidement.</div>
+			<div><?= htmlspecialchars(faqAiT('ask_help'), ENT_QUOTES, 'UTF-8') ?></div>
 			<button type="button" class="generic-action-button generic-action-button--main" data-faq-ask>Poser la question</button>
 		</div>
 		<div class="faq-popup__footer" data-faq-load-more-shell<?= $initialRemainingFaqCount > 0 ? '' : ' hidden' ?>>
@@ -293,18 +307,33 @@ if (!$canManageFaqCollection && $canCreateContextualFaq) {
 	<div class="faq-popup__detail" data-faq-detail-view hidden></div>
 	<div class="faq-popup__detail" data-faq-request-view hidden>
 		<div class="faq-popup__editor-shell">
-			<form data-faq-request-form class="generic-drawer-content">
+			<form data-faq-request-form class="generic-drawer-content"
+				data-searching="<?= htmlspecialchars(faqAiT('searching'), ENT_QUOTES, 'UTF-8') ?>"
+				data-sending="<?= htmlspecialchars(faqAiT('sending'), ENT_QUOTES, 'UTF-8') ?>"
+				data-error="<?= htmlspecialchars(faqAiT('error'), ENT_QUOTES, 'UTF-8') ?>">
 				<?php faqPopupRenderBackButton(); ?>
 				<h4 class="generic-title generic-title--section" data-faq-view-title>Poser une question</h4>
 				<label class="generic-form-field"><span class="generic-form-label">Votre question</span><input class="generic-form-control" type="text" name="question" maxlength="255" required></label>
 				<label class="generic-form-field"><span class="generic-form-label">Description du problème</span><textarea class="generic-form-control" name="request_description" rows="5" maxlength="10000" required></textarea></label>
-				<div class="generic-action-row"><button type="submit" class="generic-action-button generic-action-button--main">Envoyer</button></div>
+				<div class="generic-action-row" data-faq-request-search><button type="submit" class="generic-action-button generic-action-button--main"><?= htmlspecialchars(faqAiT('search'), ENT_QUOTES, 'UTF-8') ?></button></div>
 				<div data-faq-request-message role="status" aria-live="polite"></div>
 				<p data-faq-ai-notice class="generic-help-text" role="status" aria-live="polite" hidden><?= htmlspecialchars(faqAiT('notice'), ENT_QUOTES, 'UTF-8') ?></p>
 				<div data-faq-ai-draft class="generic-soft-panel generic-stack" aria-live="polite" hidden>
 					<div data-faq-ai-draft-text class="generic-stack generic-stack--compact"></div>
+					<div class="generic-help-text" data-faq-ai-sources><span><?= htmlspecialchars(faqAiT('sources'), ENT_QUOTES, 'UTF-8') ?></span> <span data-faq-ai-source-list></span></div>
+					<div data-faq-ai-escalation class="generic-stack generic-stack--compact">
+						<p><?= htmlspecialchars(faqAiT('unresolved'), ENT_QUOTES, 'UTF-8') ?></p>
+						<div class="generic-action-row"><button type="button" data-faq-send-admin class="generic-action-button generic-action-button--main"><?= htmlspecialchars(faqAiT('send_admin'), ENT_QUOTES, 'UTF-8') ?></button></div>
+					</div>
 				</div>
 			</form>
+			<div data-faq-request-sent class="generic-drawer-content generic-stack" hidden>
+				<?php faqPopupRenderBackButton(); ?>
+				<h4 class="generic-title generic-title--section" data-faq-view-title><?= htmlspecialchars(faqAiT('submitted_title'), ENT_QUOTES, 'UTF-8') ?></h4>
+				<p data-faq-sent-message class="generic-soft-panel" role="status" aria-live="polite"></p>
+				<h5 data-faq-sent-question class="generic-card-title"></h5>
+				<div data-faq-sent-description class="generic-description"></div>
+			</div>
 		</div>
 	</div>
 	<?php if ($canAddFaq): ?>

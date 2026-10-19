@@ -127,6 +127,22 @@ try {
     $legacyDoc = new Document(); $legacyDoc->load(reset($legacyIds));
     visibilityRoundtripCheck($legacyDoc->getPrimaryVisibilityRuleRow()['visibility_type'] === 'organization', 'OMO1 numeric read visibility must remain compatible');
     visibilityRoundtripCheck($legacyDoc->getPrimaryEditVisibilityRuleRow()['visibility_type'] === 'role', 'Legacy edit default must remain compatible');
+    $projectRole = $makeHolon($target, 'Project source role', 1, $targetCircle);
+    $projectHolons = $holons;
+    $projectHolons[$sourceRole->getId()] = $projectRole->getId();
+    foreach ([1 => 'everyone', 2 => 'organization', 3 => 'circle', 4 => 'role', 5 => 'self'] as $legacyType => $expectedType) {
+        $projectDocument = $legacy;
+        $projectDocument['sourceProjectId'] = 999999999;
+        $projectDocument['legacyVisibility'] = $legacyType;
+        $projectIds = $target->importDocuments([$projectDocument], $actor->getId(), $users, $projectHolons, $warnings);
+        $projectDoc = new Document(); $projectDoc->load(reset($projectIds));
+        visibilityRoundtripCheck(!$projectDoc->get('IDholon'), 'Project documents must keep their project-based location');
+        $read = $projectDoc->getPrimaryVisibilityRuleRow(); $edit = $projectDoc->getPrimaryEditVisibilityRuleRow();
+        visibilityRoundtripCheck($read['visibility_type'] === $expectedType, 'Legacy project document read scope must survive: ' . $expectedType);
+        $expectedTarget = $expectedType === 'circle' ? $targetCircle->getId() : ($expectedType === 'role' ? $projectRole->getId() : 0);
+        visibilityRoundtripCheck((int)$read['IDholon'] === (int)$expectedTarget, 'Legacy read scope must use the original space independently of project location');
+        visibilityRoundtripCheck($edit['visibility_type'] === 'role' && (int)$edit['IDholon'] === (int)$projectRole->getId(), 'Legacy project document edit scope must use the original role');
+    }
     foreach (['absent', 'null', 'empty'] as $missingValue) {
         $old = $records[0]; unset($old['visibility'], $old['editVisibility']);
         if ($missingValue === 'null') { $old['visibility'] = null; $old['editVisibility'] = ['type' => null]; }

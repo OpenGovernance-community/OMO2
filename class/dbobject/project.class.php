@@ -33,6 +33,7 @@ class Project extends DbObject
     public const SIZE_XXL = 'XXL';
 
     private $historyActionOverride = '';
+    private bool $restoringImport = false;
     private static array $organizationStatusLabelsCache = [];
 
     public static function tableName()
@@ -699,6 +700,18 @@ class Project extends DbObject
         }
     }
 
+    /** Restore historical attribution without activating members or inventing a proposer/follow-up. */
+    public function saveForImport()
+    {
+        $previous = $this->restoringImport;
+        $this->restoringImport = true;
+        try {
+            return $this->save();
+        } finally {
+            $this->restoringImport = $previous;
+        }
+    }
+
     private static function formatHistoryDate($value)
     {
         if ($value instanceof \DateTimeInterface) {
@@ -1054,14 +1067,18 @@ class Project extends DbObject
         $this->set('project_kind', self::normalizeKind($this->get('project_kind')));
         $this->set('proposal_status', self::normalizeProposalStatus($this->get('proposal_status')));
         $proposerId = max(0, (int)$this->get('IDuser_proposed'));
-        if ($isNew && $this->isPendingProposal() && $proposerId <= 0) {
+        if (!$this->restoringImport && $isNew && $this->isPendingProposal() && $proposerId <= 0) {
             $proposerId = (int)commonGetCurrentUserId();
         }
         $this->set('IDuser_proposed', $proposerId ?: null);
-        if ($proposerId > 0
-            && ($isNew || $proposerId !== (int)($storedInputs['IDuser_proposed'] ?? 0))
-            && !UserOrganization::hasActiveMembership($proposerId, (int)$this->get('IDorganization'))) {
-            return ['status' => false, 'text' => 'La personne proposant le projet doit etre membre de l organisation.'];
+        if ($proposerId > 0 && ($isNew || $proposerId !== (int)($storedInputs['IDuser_proposed'] ?? 0))) {
+            $membership = new UserOrganization();
+            $hasMembership = $this->restoringImport
+                ? $membership->load([['IDuser', $proposerId], ['IDorganization', (int)$this->get('IDorganization')]])
+                : UserOrganization::hasActiveMembership($proposerId, (int)$this->get('IDorganization'));
+            if (!$hasMembership) {
+                return ['status' => false, 'text' => 'La personne proposant le projet doit etre membre de l organisation.'];
+            }
         }
         $this->set('status', self::normalizeStatus($this->get('status')));
         $this->set('capture_mode', self::normalizeCaptureMode($this->get('capture_mode')));
@@ -1135,7 +1152,7 @@ class Project extends DbObject
 
         // A proposal and its initial follow-up must be created together, even
         // when a collective proposal is applied later by another person.
-        $followProposer = $isNew && $proposerId > 0 && (int)$this->get('active') === 1
+        $followProposer = !$this->restoringImport && $isNew && $proposerId > 0 && (int)$this->get('active') === 1
             && self::normalizeKind($this->get('project_kind')) === self::KIND_STANDARD;
         $pdo = $followProposer ? DbObject::getPdo() : null;
         $startedTransaction = $pdo instanceof \PDO && !$pdo->inTransaction();

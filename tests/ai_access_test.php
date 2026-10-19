@@ -157,7 +157,7 @@ try {
     aiAccessExpect(empty(commonOpenAiTranscribeUploadedAudio([])['status']), 'Audio transcription stops before file processing.');
     aiAccessExpect(say('never send') === '', 'Legacy generation also denies unpaid administrators.');
     $called = false;
-    aiAccessExpect(faqAiGenerateDraft('question', 'description', function () use (&$called) { $called = true; return []; }) === '' && !$called, 'FAQ silently skips AI for an unpaid author.');
+    aiAccessExpect(faqAiFindAnswer('question', 'description', [], function () use (&$called) { $called = true; return []; })['answer'] === '' && !$called, 'FAQ silently skips AI for an unpaid author.');
     $GLOBALS['OpenAI'] = '';
     aiAccessExpect(empty(commonOpenAiRequestChatCompletion('', ['model' => 'test'])['status']), 'Low-level chat rejects missing configuration.');
     aiAccessExpect(empty(commonOpenAiRequestAudioTranscription('', '', '', '', ['model' => 'test'])['status']), 'Low-level audio rejects missing configuration.');

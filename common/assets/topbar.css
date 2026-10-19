@@ -370,6 +370,14 @@
     line-height: 1.4;
 }
 
+.omo-notification-inbox__date {
+    justify-self: end;
+    color: var(--topbar-menu-text-muted, rgba(255,255,255,0.78));
+    font-size: 11px;
+    line-height: 1.4;
+    text-align: right;
+}
+
 .common-topbar__help-item {
     display: flex;
     flex-direction: column;

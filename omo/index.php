@@ -29,6 +29,10 @@ $sourceLang = [
         'text' => 'Accès interdit - OMO',
         'context' => 'Browser title shown on the forbidden access page.',
     ],
+    'app.access_denied.faq_title' => [
+        'text' => 'Repondre a une question',
+        'context' => 'FAQ request popup title above a denied organization access page.',
+    ],
     'app.access_denied.request_action' => [
         'text' => "Demander l'accès",
         'context' => 'Button label shown on the forbidden access page to let the current user request access to the organization.',
@@ -1168,31 +1172,11 @@ if (
         </div>
     </div>
     </main>
-    <script>
-        (function () {
-            var button = document.getElementById('omoAccessRequestButton');
-            if (!button || button.disabled) {
-                return;
-            }
-
-            button.addEventListener('click', function () {
-                if (typeof window.commonTopbarOpenModal !== 'function') {
-                    window.location.href = button.getAttribute('data-modal-url') || '/omo/';
-                    return;
-                }
-
-                window.commonTopbarOpenModal(
-                    button.getAttribute('data-modal-title') || 'Demander l’accès',
-                    button.getAttribute('data-modal-url') || '',
-                    'fetch'
-                );
-            });
-
-            window.addEventListener('omo-access-request-submitted', function () {
-                window.location.reload();
-            });
-        })();
-    </script>
+    <?= commonPageScriptTags('/omo/assets/js/organization-access-denied.js', [
+        'organizationId' => (int)$organizationContext['id'],
+        'canAnswerFaq' => commonCurrentUserIsSiteAdmin(),
+        'faqTitle' => t('app.access_denied.faq_title'),
+    ]) ?>
 </body>
 </html>
 <?php

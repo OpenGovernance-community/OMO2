@@ -462,7 +462,7 @@ function commonRenderTopbar(array $options = [])
         echo '<link rel="stylesheet" href="' . commonAssetUrl('/common/assets/topbar.css') . '">' . PHP_EOL;
         echo '<link rel="stylesheet" href="' . commonAssetUrl('/common/notifications/notifications.css') . '">' . PHP_EOL;
         echo '<script src="' . commonAssetUrl('/common/notifications/notifications.js') . '" defer></script>' . PHP_EOL;
-        echo '<script src="/common/notifications/inbox.js?v=20260821-mark-all-read" defer></script>' . PHP_EOL;
+        echo '<script src="' . commonAssetUrl('/common/notifications/inbox.js') . '" defer></script>' . PHP_EOL;
         echo '<script src="' . commonAssetUrl('/common/assets/topbar.js') . '" defer></script>' . PHP_EOL;
         $assetsLoaded = true;
     }

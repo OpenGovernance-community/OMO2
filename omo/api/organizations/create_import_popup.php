@@ -5,6 +5,10 @@ $sourceLang = array(
     'organization_import.roleplay' => ['text' => 'Importer comme jeu de role', 'context' => 'Date shift option on import.'],
     'organization_import.roleplay_help' => ['text' => 'Decale les dates du nombre de jours entre la date d export et aujourd hui. Les heures et les intervalles sont conserves. Sans cette option, les dates du fichier sont conservees.', 'context' => 'Explanation of roleplay import.'],
     'organization_import.action.cancel' => array('text' => 'Annuler', 'context' => 'Cancel button in the organization import popup.'),
+    'organization_import.action.close' => ['text' => 'Fermer', 'context' => 'Close the completed organization import.'],
+    'organization_import.action.open' => ['text' => 'Ouvrir l organisation', 'context' => 'Open the successfully imported organization.'],
+    'organization_import.completed' => ['text' => 'Import termine', 'context' => 'Persistent confirmation after a successful organization import, including imports with warnings.'],
+    'organization_import.warnings' => ['text' => 'Points a verifier', 'context' => 'Detailed warnings from a completed organization import.'],
     'organization_import.action.submit' => array('text' => 'Créer et importer', 'context' => 'Submit button in the organization import popup.'),
     'organization_import.error.auth' => array('text' => 'Connexion requise.', 'context' => 'Authentication message in the organization import popup.'),
     'organization_import.error.file' => array('text' => 'Choisissez un fichier ZIP ou JSON avant de continuer.', 'context' => 'Validation message when no import file is selected.'),
@@ -165,6 +169,17 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
         <small><?= htmlspecialchars(t('organization_import.wait.progress', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></small>
     </section>
 
+    <section class="generic-section generic-section--stack generic-section--roomy" data-omo-create-import-completed="1" hidden aria-live="polite">
+        <h3 class="generic-card-title generic-card-title--large"><?= htmlspecialchars(t('organization_import.completed', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></h3>
+        <div class="generic-soft-panel" data-omo-create-import-warnings="1" hidden>
+            <h4 class="generic-card-title"><?= htmlspecialchars(t('organization_import.warnings', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></h4>
+            <ul data-omo-create-import-warning-list="1"></ul>
+        </div>
+        <div class="generic-action-row">
+            <a class="generic-action-button generic-action-button--main" data-omo-create-import-open="1" hidden><?= htmlspecialchars(t('organization_import.action.open', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></a>
+            <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-create-import-close="1"><?= htmlspecialchars(t('organization_import.action.close', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></button>
+        </div>
+    </section>
     <div class="omo-create-import__feedback generic-soft-panel" data-omo-create-import-feedback="1" hidden></div>
     </div>
 </div>
