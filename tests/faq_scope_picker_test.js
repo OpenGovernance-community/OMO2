@@ -27,7 +27,8 @@ const {chromium} = require(process.argv[2] || 'playwright');
             const labels = {title: 'Choose space', hint: 'FAQ attachment', confirm: 'Confirm', cancel: 'Cancel', none: 'Organization'};
             const configs = {};
             for (const [organizationId, id] of [[1, 10], [2, 20]]) {
-                configs[organizationId] = {organizationId, selectableHolonIds: [id], allowOrganization: true, organizationLabel: 'Organization', labels};
+                configs[organizationId] = {organizationId, selectableHolonIds: [id], allowOrganization: true, organizationLabel: 'Organization', labels,
+                    structureData: {ID: id, name: 'Inline tree', type: 2, children: []}};
             }
             const shell = document.querySelector('[data-faq-scope-holon-shell]');
             shell.setAttribute('data-faq-holon-configs', JSON.stringify(configs));
@@ -41,6 +42,19 @@ const {chromium} = require(process.argv[2] || 'playwright');
         for (const script of ['common/assets/topbar.js', 'common/holon_scope_picker.js', 'omo/assets/js/faq.js']) {
             await page.addScriptTag({content: fs.readFileSync(path.join(__dirname, '..', script), 'utf8')});
         }
+        assert.deepEqual(await page.evaluate(async () => {
+            const previousD3 = window.d3, previousFetch = window.omoFetchStructureData;
+            let calls = 0;
+            window.d3 = {layout: {pack() {}}};
+            window.omoFetchStructureData = () => { calls++; return Promise.reject(new Error('No structure API grant')); };
+            const picker = window.omoMountHolonScopePicker({host: document.createElement('div'), organizationId: 2,
+                initialHolonId: 20, structureData: {ID: 20, name: 'Authorized inline role', type: 1, children: []}});
+            await Promise.resolve();
+            const result = [calls, picker.getSelectedHolonLabel()];
+            picker.destroy();
+            window.d3 = previousD3; window.omoFetchStructureData = previousFetch;
+            return result;
+        }), [0, 'Authorized inline role'], 'Inline trees work without requesting wider structure API access.');
         await page.evaluate(() => {
             document.querySelector('[data-faq-editor-view]').hidden = false;
             window.omoMountHolonScopePicker = config => {
@@ -67,6 +81,7 @@ const {chromium} = require(process.argv[2] || 'playwright');
         assert.equal(await page.locator('[data-holon-target-label]').inputValue(), 'Organization');
         await page.locator('[data-holon-target-selector]').click();
         assert.deepEqual(await page.evaluate(() => [window.lastPickerConfig.organizationId, window.lastPickerConfig.selectableHolonIds]), [2, [20]]);
+        assert.equal(await page.evaluate(() => window.lastPickerConfig.structureData.ID), 20, 'The authorized inline tree reaches the shared picker.');
         await page.evaluate(() => window.selectSpace(10));
         assert(await page.locator('[data-holon-target-apply]').isDisabled(), 'A space in another organization cannot be accepted.');
         await page.evaluate(() => window.selectSpace(20));

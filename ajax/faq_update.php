@@ -4,7 +4,6 @@ require_once("../config.php");
 require_once("../shared_functions.php");
 require_once("../common/auth.php");
 require_once("../common/faq_mail.php");
-require_once("../omo/api/lms/inc/access.php");
 require_once("../common/faq_popup_helper.php");
 
 faqPopupRequirePostRequest();
@@ -18,9 +17,11 @@ if (!checklogin()) {
 	], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 	exit;
 }
+$responderRequest = \dbObject\FAQ::loadRequestForResponder((int)($_GET['id'] ?? 0));
+if (!$responderRequest) require_once("../omo/api/lms/inc/access.php");
 
 $faqId = (int)($_GET['id'] ?? 0);
-$faqContext = \dbObject\FAQ::resolvePopupRequestContext($_GET);
+$faqContext = \dbObject\FAQ::resolvePopupRequestContext($_GET, $responderRequest);
 $faqScope = \dbObject\FAQ::normalizePopupScope($_GET['faq_scope'] ?? null, $faqContext ?: array());
 
 if ($faqId <= 0 || $faqContext === false) {
@@ -33,8 +34,8 @@ if ($faqId <= 0 || $faqContext === false) {
 	exit;
 }
 
-$faq = new \dbObject\FAQ();
-if (!$faq->load($faqId) || !(int)$faq->getId()) {
+$faq = $responderRequest ?? new \dbObject\FAQ();
+if ((!$responderRequest && !$faq->load($faqId)) || !(int)$faq->getId()) {
 	echo json_encode([
 		'status' => false,
 		'success' => false,
@@ -43,7 +44,13 @@ if (!$faq->load($faqId) || !(int)$faq->getId()) {
 	exit;
 }
 
-if (!$faq->canBeEditedInContext($faqContext ?: array())) {
+$isPendingRequest = $faq->isPendingRequest();
+if (!empty($_POST['faq_answer_request']) && !$isPendingRequest) {
+	http_response_code(409);
+	echo json_encode(['status' => false, 'success' => false, 'message' => faqPopupT('request.already_answered')], JSON_UNESCAPED_UNICODE);
+	exit;
+}
+if (!$faq->canAnswerRequest() && !$faq->canBeEditedInContext($faqContext ?: array())) {
 	http_response_code(403);
 	echo json_encode([
 		'status' => false,
@@ -53,15 +60,24 @@ if (!$faq->canBeEditedInContext($faqContext ?: array())) {
 	exit;
 }
 
-$viewerAccess = \dbObject\FAQ::resolveViewerAccess($faqContext ?: array());
+$viewerAccess = $isPendingRequest ? \dbObject\FAQ::resolveRequestViewerAccess($faqContext) : \dbObject\FAQ::resolveViewerAccess($faqContext);
 $canManageFaqCollection = !empty($viewerAccess['canManageAllFaqs']) || !empty($viewerAccess['canManageOrganizationFaqs']);
 $canManageParcoursFaqs = \dbObject\FAQ::canManageParcoursInContext($faqContext ?: array(), (int)($viewerAccess['userId'] ?? 0), false);
-$isPendingRequest = $faq->isPendingRequest();
-$requestResolution = trim((string)($_POST['faq_request_resolution'] ?? ''));
+$publishAnswer = $isPendingRequest && (string)($_POST['faq_publish_answer'] ?? '') === '1';
+$originalScope = [];
+foreach (['IDorganization', 'IDholon', 'IDparcours', 'IDapplication'] as $field) $originalScope[$field] = $faq->get($field);
+$requestOrganization = $faq->getResolvedOrganization();
+$preservedScope = ['status' => true, 'organizationId' => $faq->get('IDorganization'), 'holonId' => $faq->get('IDholon'), 'parcoursId' => $faq->get('IDparcours')];
+$requesterEmail = trim((string)$faq->get('request_author_email'));
+if ($isPendingRequest && !filter_var($requesterEmail, FILTER_VALIDATE_EMAIL)) {
+	http_response_code(422);
+	echo json_encode(['status' => false, 'success' => false, 'message' => faqPopupT('request.email_required')], JSON_UNESCAPED_UNICODE);
+	exit;
+}
 
 // Ordinary editors change content, never the attachment or application.
 $scope = $isPendingRequest
-	? faqPopupResolveRequestScope($faq, $faqContext ?: array(), $requestResolution)
+	? ($publishAnswer ? \dbObject\FAQ::resolveRequestPublicationScope($_POST) : $preservedScope)
 	: (!$canManageFaqCollection ? array(
 		'status' => true,
 		'organizationId' => $faq->get('IDorganization'),
@@ -71,21 +87,21 @@ $scope = $isPendingRequest
 		'allowParcoursCreate' => $canManageParcoursFaqs,
 	)));
 if (empty($scope['status'])) {
+	if ($isPendingRequest) http_response_code(403);
 	echo json_encode([
 		'status' => false,
 		'success' => false,
-		'message' => (string)($scope['message'] ?? "Impossible de resoudre le scope de la FAQ."),
+		'message' => $isPendingRequest ? faqPopupT('request.scope_denied') : (string)($scope['message'] ?? "Impossible de resoudre le scope de la FAQ."),
 	], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 	exit;
 }
 
 $data = $_POST;
 unset($data['id']);
-unset($data['faq_request_resolution']);
 unset($data['request_ai_draft']);
 $requestAlreadyAnswered = $faq->hasRequestBeenAnswered();
-$linkedApplicationId = 0;
-if (\dbObject\FAQ::hasApplicationColumn() && $canManageFaqCollection) {
+$linkedApplicationId = $isPendingRequest ? ($publishAnswer ? ($scope['applicationId'] ?? 0) : (int)$faq->get('IDapplication')) : 0;
+if (!$isPendingRequest && \dbObject\FAQ::hasApplicationColumn() && $canManageFaqCollection) {
 	$linkedApplicationId = isset($data['IDapplication']) && is_numeric($data['IDapplication'])
 		? (int)$data['IDapplication']
 		: 0;
@@ -96,13 +112,14 @@ $faq->set('IDorganization', $scope['organizationId'] ?? null);
 $faq->set('IDholon', $scope['holonId'] ?? null);
 $faq->set('IDparcours', $scope['parcoursId'] ?? null);
 $nextScope = [(int)$faq->getResolvedOrganizationId(), (int)$faq->get('IDholon'), (int)$faq->get('IDparcours')];
-if ($previousScope !== $nextScope && !$faq->canBeCreatedInContext($faqContext)) {
+if (!$isPendingRequest && $previousScope !== $nextScope && !$faq->canBeCreatedInContext($faqContext)) {
 	http_response_code(403);
 	echo json_encode(['status' => false, 'success' => false, 'message' => faqPopupT('request.create_denied')], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 	exit;
 }
-$faq->loadEditorInput($data);
-if (\dbObject\FAQ::hasApplicationColumn() && $canManageFaqCollection) {
+$faq->loadEditorInput($isPendingRequest ? array_intersect_key($data, array_flip(['question', 'answer', 'detail', 'image', 'video'])) : $data);
+if ($isPendingRequest) $faq->set('isactive', $publishAnswer);
+if (\dbObject\FAQ::hasApplicationColumn() && ($canManageFaqCollection || $isPendingRequest)) {
 	if ($linkedApplicationId > 0) {
 		$application = new \dbObject\Application();
 		if (!$application->load($linkedApplicationId) || (int)$application->getId() <= 0) {
@@ -129,7 +146,7 @@ if (trim((string)$faq->get('question')) === '' || trim((string)$faq->get('answer
 	exit;
 }
 
-$notifyRequester = (int)$faq->get('request_user_id') > 0
+$notifyRequester = $isPendingRequest && (int)$faq->get('request_user_id') > 0
 	&& !$requestAlreadyAnswered
 	&& trim((string)$faq->get('answer')) !== '';
 if ($notifyRequester) {
@@ -150,11 +167,10 @@ if (!is_array($saveResult) || empty($saveResult['status'])) {
 }
 
 $requesterNotified = false;
-$requesterEmail = trim((string)$faq->get('request_author_email'));
 if ($notifyRequester && filter_var($requesterEmail, FILTER_VALIDATE_EMAIL)) {
 	$mailFrom = trim((string)($GLOBALS['mailUser'] ?? ''));
 	if ($mailFrom === '') $mailFrom = 'info@systemdd.ch';
-	$organization = $faq->getResolvedOrganization();
+	$organization = $requestOrganization;
 	$requesterNotified = myHTMLMail(
 		[$mailFrom, faqMailBrandOptions($organization)['brand_name']],
 		$requesterEmail,
@@ -163,7 +179,13 @@ if ($notifyRequester && filter_var($requesterEmail, FILTER_VALIDATE_EMAIL)) {
 	);
 	if (!$requesterNotified) {
 		$faq->set('request_answered_at', null);
-		$faq->save();
+		$faq->set('isactive', false);
+		foreach ($originalScope as $field => $value) $faq->set($field, $value);
+		$restoreResult = $faq->save();
+		if (empty($restoreResult['status'])) error_log('FAQ answer: could not restore pending request ' . (int)$faq->getId());
+		http_response_code(502);
+		echo json_encode(['status' => false, 'success' => false, 'message' => faqPopupT('request.email_failed')], JSON_UNESCAPED_UNICODE);
+		exit;
 	}
 }
 
@@ -182,7 +204,7 @@ if (count($popupReloadQuery) > 0) {
 	$popupReloadUrl .= '?' . implode('&', $popupReloadQuery);
 }
 
-$focusId = $faq->canBeViewedInContext($faqContext ?: array(), $faqScope)
+$focusId = !($isPendingRequest && !$publishAnswer) && $faq->canBeViewedInContext($faqContext ?: array(), $faqScope)
 	? (int)$faq->getId()
 	: null;
 
@@ -191,9 +213,7 @@ $script = "if (window.commonTopbarRefreshModalContent) { window.commonTopbarRefr
 echo json_encode([
 	'status' => true,
 	'success' => true,
-	'message' => $notifyRequester && !$requesterNotified
-		? 'FAQ mise à jour, mais l’e-mail à la personne qui a posé la question n’a pas pu être envoyé.'
-		: ($requesterNotified ? 'Réponse enregistrée et envoyée par e-mail.' : 'FAQ mise à jour.'),
+	'message' => $requesterNotified ? faqPopupT($publishAnswer ? 'request.replied_published' : 'request.replied') : 'FAQ mise à jour.',
 	'reloadUrl' => $popupReloadUrl,
 	'focusId' => $focusId,
 	'script' => $script,

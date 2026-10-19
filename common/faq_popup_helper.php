@@ -11,8 +11,18 @@ function faqPopupT(string $key): string
 		'navigation.back_list' => ['text' => 'Retour à la FAQ', 'context' => 'Back navigation to the FAQ list.'],
 		'navigation.back_question' => ['text' => 'Retour à la question', 'context' => 'Back navigation from the FAQ editor to the question.'],
 		'editor.title' => ['text' => 'Modifier la FAQ', 'context' => 'FAQ edit screen heading.'],
-		'editor.pending_help' => ['text' => 'Rédigez votre réponse puis choisissez la FAQ dans laquelle l’enregistrer.', 'context' => 'Instructions for answering a FAQ request.'],
-		'editor.relayed_help' => ['text' => 'Cette demande a été relayée. Répondez puis enregistrez-la dans la FAQ de l’organisation.', 'context' => 'Instructions for answering a relayed FAQ request.'],
+		'editor.pending_help' => ['text' => 'Repondez a la personne par e-mail. Vous pouvez aussi enregistrer votre reponse dans la FAQ.', 'context' => 'Instructions for answering a FAQ request.'],
+		'editor.relayed_help' => ['text' => 'Cette demande a ete relayee. Repondez par e-mail et choisissez si vous souhaitez aussi publier la reponse dans la FAQ.', 'context' => 'Instructions for answering a relayed FAQ request.'],
+		'editor.reply' => ['text' => 'Repondre', 'context' => 'Send a private answer to the person who asked a FAQ question.'],
+		'editor.reply_publish' => ['text' => 'Repondre et enregistrer', 'context' => 'Email the answer and publish it in the selected FAQ.'],
+		'editor.publish_answer' => ['text' => 'Enregistrer dans la FAQ', 'context' => 'Optional publication of a private FAQ answer.'],
+		'request.scope_denied' => ['text' => 'Choisissez une FAQ autorisee, dans une organisation que vous administrez, ou une FAQ generique si vous etes super administrateur.', 'context' => 'Invalid publication target for a FAQ request answer.'],
+		'request.already_answered' => ['text' => 'Cette demande a deja recu une reponse. Rechargez la page.', 'context' => 'A request answer must not be sent twice.'],
+		'request.email_required' => ['text' => 'La demande ne contient pas d adresse e-mail valide pour envoyer la reponse.', 'context' => 'A FAQ answer requires a valid original recipient.'],
+		'request.email_failed' => ['text' => 'L e-mail n a pas pu etre envoye. Votre reponse est conservee en attente, sans publication. Vous pouvez reessayer.', 'context' => 'An unsuccessful email must leave the FAQ request pending.'],
+		'request.replied' => ['text' => 'Votre reponse a ete envoyee par e-mail.', 'context' => 'Private FAQ answer success notification.'],
+		'request.replied_published' => ['text' => 'Votre reponse a ete envoyee par e-mail et enregistree dans la FAQ.', 'context' => 'Published FAQ answer success notification.'],
+		'request.close' => ['text' => 'Fermer', 'context' => 'Close a completed support request opened without organization access.'],
 		'editor.edit_help' => ['text' => 'Mettez à jour le contenu puis enregistrez vos modifications.', 'context' => 'Instructions for editing an existing FAQ.'],
 		'editor.response' => ['text' => 'Question et réponse', 'context' => 'FAQ editor content section.'],
 		'editor.media' => ['text' => 'Image et vidéo (facultatif)', 'context' => 'Collapsible FAQ media fields.'],
@@ -20,12 +30,12 @@ function faqPopupT(string $key): string
 		'editor.publication_help' => ['text' => 'Cochez la case pour rendre cette réponse visible dans la FAQ choisie.', 'context' => 'FAQ publication help.'],
 		'editor.scope' => ['text' => 'Emplacement dans la FAQ', 'context' => 'FAQ attachment settings heading.'],
 		'editor.space_hint' => ['text' => 'Choisissez l espace dans lequel rattacher cette FAQ.', 'context' => 'FAQ space assignment picker help.'],
-		'editor.space' => ['text' => 'Espace', 'context' => 'FAQ attachment type when choosing a permitted space.'],
+		'editor.organization' => ['text' => 'Organisation', 'context' => 'FAQ attachment type for an organization, optionally limited to a space.'],
+		'editor.space' => ['text' => 'Espace', 'context' => 'Optional space selector within the selected FAQ organization.'],
 		'request.post_required' => ['text' => 'Cette action necessite une requete POST.', 'context' => 'Error when a FAQ mutation uses an unsupported HTTP method.'],
 		'request.create_denied' => ['text' => 'Vous n avez pas le droit de creer une FAQ a cet emplacement.', 'context' => 'Error when FAQ creation or reassignment targets a scope without creation rights.'],
 		'request.pending' => ['text' => 'Question en attente de réponse', 'context' => 'Pending FAQ request heading.'],
 		'request.relayed' => ['text' => 'Question relayée aux administrateurs de l’organisation', 'context' => 'Relayed FAQ request heading.'],
-		'request.answered' => ['text' => 'Demande d’origine', 'context' => 'Original FAQ request heading.'],
 		'request.author' => ['text' => 'Auteur', 'context' => 'FAQ request author label.'],
 		'request.description' => ['text' => 'Description du problème', 'context' => 'FAQ request description label.'],
 	];
@@ -70,10 +80,8 @@ function faqPopupRenderBackButton(int $faqId = 0): void
 
 function faqPopupRenderRequestInfo(\dbObject\FAQ $faq): void
 {
-	if ((int)$faq->get('request_user_id') <= 0) return;
-	$title = $faq->isPendingRequest()
-		? ($faq->hasRequestBeenRelayed() ? 'request.relayed' : 'request.pending')
-		: 'request.answered';
+	if (!$faq->isPendingRequest()) return;
+	$title = $faq->hasRequestBeenRelayed() ? 'request.relayed' : 'request.pending';
 	$authorName = trim((string)$faq->get('request_author_name'));
 	$authorEmail = trim((string)$faq->get('request_author_email'));
 	$author = $authorName !== '' && $authorName !== $authorEmail ? $authorName . ' · ' . $authorEmail : $authorEmail;
@@ -125,45 +133,6 @@ if (!function_exists('faqPopupCanCreateParcoursFaqs')) {
 	function faqPopupCanCreateParcoursFaqs(array $faqContext, $userId = 0, $useSessionCache = true)
 	{
 		return \dbObject\FAQ::canCreateParcoursInContext($faqContext, $userId, $useSessionCache);
-	}
-}
-
-if (!function_exists('faqPopupResolveRequestScope')) {
-	function faqPopupResolveRequestScope(\dbObject\FAQ $faq, array $faqContext, $resolution)
-	{
-		$resolution = trim((string)$resolution);
-		$organizationId = (int)$faq->getResolvedOrganizationId();
-		$viewerAccess = \dbObject\FAQ::resolveViewerAccess($faqContext);
-
-		if ($resolution === 'generic') {
-			if (empty($viewerAccess['canManageAllFaqs'])) {
-				return array(
-					'status' => false,
-					'message' => 'Seul un super admin peut sauver cette demande comme FAQ generique.',
-				);
-			}
-
-			return array(
-				'status' => true,
-				'organizationId' => null,
-				'holonId' => null,
-				'parcoursId' => null,
-			);
-		}
-
-		if ($resolution !== 'organization' || $organizationId <= 0) {
-			return array(
-				'status' => false,
-				'message' => 'Choisissez de sauver la demande comme FAQ generique ou comme FAQ d organisation.',
-			);
-		}
-
-		return array(
-			'status' => true,
-			'organizationId' => $organizationId,
-			'holonId' => null,
-			'parcoursId' => null,
-		);
 	}
 }
 
@@ -461,8 +430,9 @@ if (!function_exists('faqPopupRenderVoteBlock')) {
 }
 
 if (!function_exists('faqPopupLoadOrganizationOptions')) {
-	function faqPopupLoadOrganizationOptions(array $faqContext, ?\dbObject\FAQ $faq = null)
+	function faqPopupLoadOrganizationOptions(array $faqContext, ?\dbObject\FAQ $faq = null, bool $requestResponse = false)
 	{
+		if ($requestResponse) return \dbObject\FAQ::loadRequestPublicationOrganizations();
 		$viewerAccess = \dbObject\FAQ::resolveViewerAccess($faqContext);
 		$options = array();
 
@@ -561,6 +531,8 @@ if (!function_exists('faqPopupAppendHolonOptionsFromTree')) {
 			'organizationId' => $organizationId,
 			'label' => faqPopupFormatHolonOptionLabel($holon->getDisplayName(), $depth),
 			'name' => trim((string)$holon->getDisplayName()),
+			'parentId' => (int)$holon->get('IDholon_parent'),
+			'type' => (int)$holon->get('IDtypeholon'),
 			'organizationLabel' => trim((string)$organizationLabel),
 		);
 
@@ -578,13 +550,13 @@ if (!function_exists('faqPopupAppendHolonOptionsFromTree')) {
 }
 
 if (!function_exists('faqPopupLoadHolonOptions')) {
-	function faqPopupLoadHolonOptions(array $faqContext, array $organizations)
+	function faqPopupLoadHolonOptions(array $faqContext, array $organizations, bool $requestResponse = false)
 	{
 		$viewerAccess = \dbObject\FAQ::resolveViewerAccess($faqContext);
 		$options = array();
 		$visited = array();
 
-		if (!empty($viewerAccess['canManageAllFaqs'])) {
+		if ($requestResponse || !empty($viewerAccess['canManageAllFaqs'])) {
 			foreach ($organizations as $organization) {
 				if (!$organization instanceof \dbObject\Organization) {
 					continue;
@@ -695,7 +667,8 @@ if (!function_exists('faqPopupLoadParcoursOptions')) {
 if (!function_exists('faqPopupRenderScopeFields')) {
 	function faqPopupRenderScopeFields(\dbObject\FAQ $faq, array $faqContext, array $options = array())
 	{
-		$viewerAccess = \dbObject\FAQ::resolveViewerAccess($faqContext);
+		$requestResponse = !empty($options['requestResponse']);
+		$viewerAccess = $requestResponse ? \dbObject\FAQ::resolveRequestViewerAccess($faqContext) : \dbObject\FAQ::resolveViewerAccess($faqContext);
 		$canManageAllFaqs = !empty($viewerAccess['canManageAllFaqs']);
 		$canManageOrganizationFaqs = !empty($viewerAccess['canManageOrganizationFaqs']);
 		$isContextualOnly = empty($options['allowScopeEditing']);
@@ -732,9 +705,15 @@ if (!function_exists('faqPopupRenderScopeFields')) {
 			$selectedHolonId = 0;
 		}
 
-		$organizations = faqPopupLoadOrganizationOptions($faqContext, $faq);
-		$holons = faqPopupLoadHolonOptions($faqContext, $organizations);
-		$parcoursOptions = faqPopupLoadParcoursOptions($faqContext, $organizations);
+		$organizations = faqPopupLoadOrganizationOptions($faqContext, $faq, $requestResponse);
+		$holons = faqPopupLoadHolonOptions($faqContext, $organizations, $requestResponse);
+		$parcoursOptions = $requestResponse ? [] : faqPopupLoadParcoursOptions($faqContext, $organizations);
+		$showParcours = !$requestResponse && ($allowParcoursAttachment || $canManageAllFaqs || $canManageOrganizationFaqs);
+		if ($requestResponse && !in_array($selectedOrganizationId, array_map(static fn($item) => (int)$item->getId(), $organizations), true)) {
+			$selectedOrganizationId = isset($organizations[0]) ? (int)$organizations[0]->getId() : 0;
+			$selectedHolonId = 0;
+			$selectedAttachmentType = $allowGeneric ? 'generic' : 'organization';
+		}
 		if ($allowContextualAttachment && !$canManageAllFaqs && !$canManageOrganizationFaqs) {
 			$holons = [];
 			foreach (\dbObject\FAQ::loadContextualCreationTargets($contextOrganizationId, (int)$viewerAccess['userId']) as $target) {
@@ -752,6 +731,10 @@ if (!function_exists('faqPopupRenderScopeFields')) {
 			$holonSelectorConfigs[$targetOrganizationId] = ['organizationId' => $targetOrganizationId, 'selectableHolonIds' => [],
 				'allowOrganization' => $canManageAllFaqs || $canManageOrganizationFaqs,
 				'organizationLabel' => $selectorLabels['none'], 'labels' => $selectorLabels];
+			if ($requestResponse) {
+				$organizationRoot = $targetOrganization->getStructuralRootHolon();
+				$holonSelectorConfigs[$targetOrganizationId]['organizationHolonId'] = $organizationRoot ? (int)$organizationRoot->getId() : 0;
+			}
 		}
 		$holonNames = [];
 		foreach ($holons as $option) {
@@ -759,9 +742,28 @@ if (!function_exists('faqPopupRenderScopeFields')) {
 			if (isset($holonSelectorConfigs[$targetOrganizationId])) { $holonSelectorConfigs[$targetOrganizationId]['selectableHolonIds'][] = (int)$option['id']; }
 			$holonNames[(int)$option['id']] = $option['name'];
 		}
+		if ($requestResponse) {
+			// Provide the already authorized tree; inactive super admins need no broader structure API grant.
+			$children = [];
+			foreach ($holons as $option) $children[(int)$option['organizationId']][(int)$option['parentId']][] = $option;
+			foreach ($organizations as $targetOrganization) {
+				$oid = (int)$targetOrganization->getId();
+				$visited = [];
+				$buildTree = static function ($holon) use (&$buildTree, &$visited, $children, $oid): array {
+					$id = (int)$holon['id'];
+					$visited[$id] = true;
+					$node = ['ID' => $id, 'name' => $holon['name'], 'type' => $holon['type'], 'children' => []];
+					foreach ($children[$oid][$id] ?? [] as $child) if (!isset($visited[(int)$child['id']])) $node['children'][] = $buildTree($child);
+					return $node;
+				};
+				$root = $targetOrganization->getStructuralRootHolon();
+				if ($root) $holonSelectorConfigs[$oid]['structureData'] = $buildTree(['id' => $root->getId(), 'name' => $root->getDisplayName(), 'type' => $root->get('IDtypeholon')]);
+			}
+		}
 		$selectorOrganizationId = $selectedOrganizationId > 0 ? $selectedOrganizationId : $contextOrganizationId;
 		$holonSelectorConfig = $holonSelectorConfigs[$selectorOrganizationId] ?? ['organizationId' => $selectorOrganizationId, 'selectableHolonIds' => [],
 			'allowOrganization' => false, 'organizationLabel' => $selectorLabels['none'], 'labels' => $selectorLabels];
+		if ($requestResponse && $selectedHolonId === (int)($holonSelectorConfig['organizationHolonId'] ?? 0)) $selectedHolonId = 0;
 		$hasScopeControls = $canManageAllFaqs || $canManageOrganizationFaqs || !$isContextualOnly || $allowParcoursAttachment;
 
 		if (!$hasScopeControls) {
@@ -770,7 +772,7 @@ if (!function_exists('faqPopupRenderScopeFields')) {
 		?>
 		<fieldset class="generic-fieldset" data-faq-scope-section>
 		<legend class="generic-card-title generic-card-title--small"><?= htmlspecialchars(faqPopupT('editor.scope'), ENT_QUOTES, 'UTF-8') ?></legend>
-		<div class="faq-popup__scope-grid generic-form-grid" data-faq-scope-fields>
+		<div class="faq-popup__scope-grid generic-form-grid generic-form-grid--pair" data-faq-scope-fields>
 			<input type="hidden" name="IDorganization" value="<?= $selectedOrganizationId > 0 ? $selectedOrganizationId : $contextOrganizationId ?>">
 			<input type="hidden" name="IDholon" value="<?= $selectedHolonId > 0 ? $selectedHolonId : '' ?>">
 			<input type="hidden" name="IDparcours" value="<?= $selectedParcoursId > 0 ? $selectedParcoursId : '' ?>">
@@ -816,26 +818,6 @@ if (!function_exists('faqPopupRenderScopeFields')) {
 					</div>
 				</div>
 			<?php else: ?>
-				<?php if ($canManageAllFaqs): ?>
-					<div class="faq-popup__scope-field faq-popup__scope-field--full generic-form-field generic-form-field--full" data-faq-scope-organization-shell>
-						<label class="faq-popup__scope-label generic-form-label" for="faqScopeOrganization">Organisation</label>
-						<select
-							class="faq-popup__scope-control generic-form-control"
-							id="faqScopeOrganization"
-							data-faq-scope-organization
-						>
-							<option value="">Choisir une organisation</option>
-							<?php foreach ($organizations as $organization): ?>
-								<?php if (!$organization instanceof \dbObject\Organization) {
-									continue;
-								} ?>
-								<option value="<?= (int)$organization->getId() ?>"<?= $selectedOrganizationId === (int)$organization->getId() ? ' selected' : '' ?>>
-									<?= htmlspecialchars(trim((string)$organization->getLabel()), ENT_QUOTES, 'UTF-8') ?>
-								</option>
-							<?php endforeach; ?>
-						</select>
-					</div>
-				<?php endif; ?>
 				<div class="faq-popup__scope-field generic-form-field">
 					<label class="faq-popup__scope-label generic-form-label" for="faqScopeType">Attachement</label>
 					<select
@@ -844,9 +826,9 @@ if (!function_exists('faqPopupRenderScopeFields')) {
 						data-faq-scope-kind
 					>
 						<?php if ($allowContextualAttachment || $canManageAllFaqs || $canManageOrganizationFaqs): ?>
-							<option value="organization"<?= $selectedAttachmentType === 'organization' ? ' selected' : '' ?>><?= htmlspecialchars(faqPopupT('editor.space'), ENT_QUOTES, 'UTF-8') ?></option>
+							<option value="organization"<?= $selectedAttachmentType === 'organization' ? ' selected' : '' ?>><?= htmlspecialchars(faqPopupT('editor.organization'), ENT_QUOTES, 'UTF-8') ?></option>
 						<?php endif; ?>
-						<?php if ($allowParcoursAttachment || $canManageAllFaqs || $canManageOrganizationFaqs): ?>
+						<?php if ($showParcours): ?>
 							<option value="parcours"<?= $selectedAttachmentType === 'parcours' ? ' selected' : '' ?>>Parcours</option>
 						<?php endif; ?>
 						<?php if ($allowGeneric): ?>
@@ -878,14 +860,34 @@ if (!function_exists('faqPopupRenderScopeFields')) {
 						</select>
 					</div>
 				<?php endif; ?>
+				<?php if ($canManageAllFaqs || $requestResponse): ?>
+					<div class="faq-popup__scope-field generic-form-field" data-faq-scope-organization-shell>
+						<label class="faq-popup__scope-label generic-form-label" for="faqScopeOrganization">Organisation</label>
+						<select
+							class="faq-popup__scope-control generic-form-control"
+							id="faqScopeOrganization"
+							data-faq-scope-organization
+						>
+							<option value="">Choisir une organisation</option>
+							<?php foreach ($organizations as $organization): ?>
+								<?php if (!$organization instanceof \dbObject\Organization) {
+									continue;
+								} ?>
+								<option value="<?= (int)$organization->getId() ?>"<?= $selectedOrganizationId === (int)$organization->getId() ? ' selected' : '' ?>>
+									<?= htmlspecialchars(trim((string)$organization->getLabel()), ENT_QUOTES, 'UTF-8') ?>
+								</option>
+							<?php endforeach; ?>
+						</select>
+					</div>
+				<?php endif; ?>
 				<div class="faq-popup__scope-field generic-form-field" data-faq-scope-holon-shell
 					data-faq-holon-configs="<?= htmlspecialchars(json_encode($holonSelectorConfigs, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT), ENT_QUOTES, 'UTF-8') ?>"
 					data-faq-holon-names="<?= htmlspecialchars(json_encode($holonNames, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT), ENT_QUOTES, 'UTF-8') ?>">
-					<label class="faq-popup__scope-label generic-form-label" for="faqScopeHolonLabel"><?= htmlspecialchars(\dbObject\Organization::formatLexiconText('Holon'), ENT_QUOTES, 'UTF-8') ?></label>
+					<label class="faq-popup__scope-label generic-form-label" for="faqScopeHolonLabel"><?= htmlspecialchars($requestResponse ? faqPopupT('editor.space') : \dbObject\Organization::formatLexiconText('Holon'), ENT_QUOTES, 'UTF-8') ?></label>
 					<?php commonHolonScopeRenderTargetField('', $selectedHolonId, $holonNames[$selectedHolonId] ?? $selectorLabels['none'], $holonSelectorConfig,
 						['id' => 'faqScopeHolon', 'data-faq-scope-holon' => '']); ?>
 				</div>
-				<div class="faq-popup__scope-field generic-form-field" data-faq-scope-parcours-shell>
+				<div class="faq-popup__scope-field generic-form-field" data-faq-scope-parcours-shell<?= !$showParcours ? ' hidden' : '' ?>>
 					<label class="faq-popup__scope-label generic-form-label" for="faqScopeParcours">Parcours</label>
 					<select
 						class="faq-popup__scope-control generic-form-control"

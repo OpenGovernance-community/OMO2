@@ -75,9 +75,14 @@
         }
         host.innerHTML = items.map(function (item) {
             var classes = 'omo-notification-inbox__item' + (item.readAt ? '' : ' is-unread');
+            var createdAt = item.createdAt ? new Date(item.createdAt) : null;
+            var createdAtLabel = createdAt && !isNaN(createdAt.getTime())
+                ? createdAt.toLocaleString(undefined, {dateStyle: 'short', timeStyle: 'short'})
+                : '';
             return '<a class="' + classes + '" href="' + escapeHtml(item.url || '#') + '" data-omo-notification-item data-notification-id="' + Number(item.id || 0) + '" data-notification-url="' + escapeHtml(item.url || '') + '">'
                 + '<strong>' + escapeHtml(item.title) + '</strong>'
                 + (item.body ? '<span>' + escapeHtml(item.body) + '</span>' : '')
+                + (createdAtLabel ? '<time class="omo-notification-inbox__date" datetime="' + escapeHtml(item.createdAt) + '">' + escapeHtml(createdAtLabel) + '</time>' : '')
                 + '</a>';
         }).join('');
     }

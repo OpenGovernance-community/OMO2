@@ -31,6 +31,7 @@
 	const currentScope = normalizeFaqScope(root.getAttribute('data-faq-scope') || 'contextual');
 	const reloadUrl = root.getAttribute('data-faq-reload-url') || '/popup/faq.php';
 	const listLoaded = root.getAttribute('data-faq-list-loaded') !== '0';
+	const requestOnly = root.getAttribute('data-faq-request-only') === '1';
 	const initialFaqId = Number(root.getAttribute('data-faq-initial-id') || 0);
 	let listRequestPending = false;
 	let currentViewToken = null;
@@ -99,15 +100,25 @@
 
 
 	function initFaqRichTextFields(container) {
-		if (!container || typeof window.adminEditInitHtmlFields !== 'function') {
+		if (!container || !container.querySelector('textarea.summernote')) {
 			return Promise.resolve();
 		}
-
-		try {
-			return Promise.resolve(window.adminEditInitHtmlFields(container));
-		} catch (error) {
-			return Promise.resolve();
+		if (typeof window.adminEditInitHtmlFields === 'function') return Promise.resolve(window.adminEditInitHtmlFields(container));
+		// Detail HTML is inserted with innerHTML: its script tags do not initialize adminEdit.
+		if (!window.__faqAdminEditPromise) {
+			window.__faqAdminEditPromise = new Promise(function (resolve, reject) {
+				const script = document.createElement('script');
+				script.src = root.getAttribute('data-faq-admin-edit-script') || '/common/assets/admin-edit.js';
+				script.onload = resolve;
+				script.onerror = reject;
+				document.head.appendChild(script);
+			}).catch(function (error) {
+				window.__faqAdminEditPromise = null;
+				throw error;
+			});
 		}
+		return window.__faqAdminEditPromise.then(function () { return window.adminEditInitHtmlFields(container); })
+			.catch(function (error) { console.warn('FAQ HTML editor could not be loaded.', error); });
 	}
 
 	function destroyFaqRichTextFields(container) {
@@ -296,6 +307,11 @@
 	}
 
 	function showList(options) {
+		if (requestOnly) {
+			if (typeof window.commonDrawerConfirmDiscard === 'function' && !window.commonDrawerConfirmDiscard(root)) return;
+			if (typeof window.commonTopbarCloseModal === 'function') window.commonTopbarCloseModal();
+			return;
+		}
 		const config = options || {};
 		currentViewToken = 'faq';
 		if (!listLoaded) {
@@ -424,12 +440,24 @@
 		syncFaqTitle(requestView);
 		const form = requestView.querySelector('[data-faq-request-form]');
 		if (form && form.dataset.submitting !== '1') {
+			requestView.querySelector('[data-faq-request-sent]').hidden = true;
+			form.hidden = false;
 			form.reset();
-			form.querySelector('[data-faq-ai-notice]').hidden = true;
-			form.querySelector('[data-faq-ai-draft]').hidden = true;
-			form.querySelector('[data-faq-ai-draft-text]').replaceChildren();
-			form.querySelector('[data-faq-request-message]').textContent = '';
+			resetQuestionAnswer(form);
+			if (typeof window.commonDrawerMarkSaved === 'function') window.commonDrawerMarkSaved(form);
 		}
+	}
+
+	function resetQuestionAnswer(form) {
+		delete form.dataset.answered;
+		delete form.dataset.submitted;
+		form.querySelector('[data-faq-ai-notice]').hidden = true;
+		form.querySelector('[data-faq-ai-draft]').hidden = true;
+		form.querySelector('[data-faq-ai-draft-text]').replaceChildren();
+		form.querySelector('[data-faq-ai-source-list]').replaceChildren();
+		form.querySelector('[data-faq-ai-escalation]').hidden = false;
+		form.querySelector('[data-faq-request-search]').hidden = false;
+		form.querySelector('[data-faq-request-message]').textContent = '';
 	}
 
 	function syncFaqTitle(view) {
@@ -440,37 +468,44 @@
 		if (heading) heading.hidden = true;
 	}
 
-	function submitQuestionRequest(form) {
-		if (form.dataset.submitting === '1') return;
+	function submitQuestionRequest(form, action) {
+		action = action || 'search';
+		if (form.dataset.submitting === '1' || form.dataset.submitted === '1') return;
+		if (action === 'search' && form.dataset.answered === '1') return;
+		if (!form.reportValidity()) return;
 		form.dataset.submitting = '1';
 		const message = form.querySelector('[data-faq-request-message]');
 		const draftNotice = form.querySelector('[data-faq-ai-notice]');
 		const draftPanel = form.querySelector('[data-faq-ai-draft]');
 		const draftText = form.querySelector('[data-faq-ai-draft-text]');
-		if (draftNotice) draftNotice.hidden = true;
-		if (draftPanel) draftPanel.hidden = true;
-		if (draftText) draftText.replaceChildren();
-		const submitButton = form.querySelector('[type="submit"]');
-		if (submitButton) submitButton.disabled = true;
-		if (message) message.textContent = 'Envoi en cours...';
+		const sourceList = form.querySelector('[data-faq-ai-source-list]');
+		const buttons = form.querySelectorAll('[type="submit"], [data-faq-send-admin]');
+		buttons.forEach(function (button) { button.disabled = true; });
+		const fields = form.querySelectorAll('[name="question"], [name="request_description"]');
+		fields.forEach(function (field) { field.readOnly = true; });
+		if (message) message.textContent = action === 'send_admin' ? form.dataset.sending : form.dataset.searching;
 		const requestParams = new URLSearchParams();
 		if (currentOid > 0) requestParams.set('oid', String(currentOid));
 		if (currentCid > 0) requestParams.set('cid', String(currentCid));
+		requestParams.set('faq_scope', currentScope);
+		const body = new FormData(form);
+		body.set('action', action);
 		fetch('/ajax/faq_question_request.php' + (requestParams.toString() ? '?' + requestParams.toString() : ''), {
 			method: 'POST',
 			credentials: 'same-origin',
 			headers: { 'X-Requested-With': 'XMLHttpRequest' },
-			body: new FormData(form)
+			body: body
 		}).then(function (response) {
 			return response.json().then(function (payload) {
-				if (!response.ok || !payload.success) throw new Error(payload.message || 'Impossible d envoyer votre question.');
+				if (!response.ok || !payload.success) throw new Error(payload.message || form.dataset.error);
 				return payload;
 			});
 		}).then(function (payload) {
-            if (message) message.textContent = '';
-            window.omoNotify(payload.message || 'Votre question a bien été envoyée.', 'success');
-			if (draftPanel && draftText && typeof payload.ai_draft === 'string' && payload.ai_draft.trim()) {
-				payload.ai_draft.trim().split(/\r?\n\s*\r?\n/).forEach(function (block) {
+			if (message) message.textContent = '';
+			if (payload.status === 'answered' && typeof payload.answer === 'string' && payload.answer.trim()) {
+				draftText.replaceChildren();
+				sourceList.replaceChildren();
+				payload.answer.trim().split(/\r?\n\s*\r?\n/).forEach(function (block) {
 					const paragraph = document.createElement('p');
 					block.split(/\r?\n/).forEach(function (line, index) {
 						if (index > 0) paragraph.appendChild(document.createElement('br'));
@@ -478,16 +513,50 @@
 					});
 					draftText.appendChild(paragraph);
 				});
+				(payload.sources || []).forEach(function (source, index) {
+					if (index > 0) sourceList.appendChild(document.createTextNode(' ; '));
+					const reference = document.createElement(source.type === 'faq' ? 'a' : 'span');
+					reference.textContent = source.title;
+					if (source.type === 'faq') {
+						const url = new URL(window.location.href);
+						url.hash = '|faq-' + Number(source.id);
+						reference.href = url.href;
+						reference.target = '_blank';
+						reference.rel = 'noopener';
+					}
+					sourceList.appendChild(reference);
+				});
+				form.dataset.answered = '1';
 				draftNotice.hidden = false;
 				draftPanel.hidden = false;
+			} else if (payload.status === 'submitted') {
+				form.dataset.submitted = '1';
+				form.querySelector('[data-faq-ai-escalation]').hidden = true;
+				const summary = requestView.querySelector('[data-faq-request-sent]');
+				summary.querySelector('[data-faq-sent-message]').textContent = payload.message;
+				summary.querySelector('[data-faq-sent-question]').textContent = String(body.get('question') || '');
+				const description = summary.querySelector('[data-faq-sent-description]');
+				description.replaceChildren();
+				String(body.get('request_description') || '').split(/\r?\n/).forEach(function (line, index) {
+					if (index > 0) description.appendChild(document.createElement('br'));
+					description.appendChild(document.createTextNode(line));
+				});
+				form.hidden = true;
+				summary.hidden = false;
+				form.reset();
+				if (typeof window.commonDrawerMarkSaved === 'function') window.commonDrawerMarkSaved(form);
+				syncFaqTitle(summary);
+			} else {
+				throw new Error(form.dataset.error);
 			}
-			form.reset();
+			form.querySelector('[data-faq-request-search]').hidden = true;
 		}).catch(function (error) {
-            if (message) message.textContent = '';
-            window.omoNotify(error.message || 'Impossible d envoyer votre question.', 'error');
+			if (message) message.textContent = '';
+			window.omoNotify(error.message || form.dataset.error, 'error');
 		}).finally(function () {
 			delete form.dataset.submitting;
-			if (submitButton) submitButton.disabled = false;
+			buttons.forEach(function (button) { button.disabled = false; });
+			fields.forEach(function (field) { field.readOnly = false; });
 		});
 	}
 
@@ -633,10 +702,15 @@
 		}
 
 		const form = container.querySelector('#formulaire-edit');
+		const publication = container.querySelector('[data-faq-request-publication]');
+		const publishCheckbox = container.querySelector('[data-faq-publish-answer]');
+		const answerButton = container.querySelector('[data-faq-answer-save]');
+		if (publication) publication.hidden = !publishCheckbox.checked;
+		if (answerButton) answerButton.textContent = publishCheckbox && publishCheckbox.checked ? answerButton.dataset.publishLabel : answerButton.dataset.replyLabel;
 		const scopeFields = container.querySelector('[data-faq-scope-fields]');
 		if (form && scopeFields && !form.contains(scopeFields)) {
 			const scopeSection = scopeFields.closest('[data-faq-scope-section]') || scopeFields;
-			form.insertBefore(scopeSection, form.firstChild || null);
+			if (!publication) form.insertBefore(scopeSection, form.firstChild || null);
 		}
 
 		const typeSelect = container.querySelector('[data-faq-scope-kind]');
@@ -698,6 +772,7 @@
 			const config = configs[String(organizationId)];
 			const pickerButton = holonShell.querySelector('[data-holon-target-selector]');
 			if (config) {
+				if (config.allowOrganization && Number(config.organizationHolonId || 0) === Number(holonSelect.value || 0)) holonSelect.value = '0';
 				if (!config.selectableHolonIds.includes(Number(holonSelect.value || 0))) {
 					holonSelect.value = config.allowOrganization ? '0' : String(config.selectableHolonIds[0] || 0);
 				}
@@ -755,6 +830,15 @@
 			window.omoNotify(payload && payload.message ? payload.message : "Impossible d'enregistrer cette FAQ.", 'error');
 			return;
 		}
+		if (requestOnly) {
+			// Do not reload the organization's FAQ collection after processing a single authorized request.
+			detailRequestId++;
+			clearFaqView(detailView);
+			detailView.appendChild(root.querySelector('[data-faq-request-complete]').content.cloneNode(true));
+			detailView.querySelector('[data-faq-complete-message]').textContent = payload.message;
+			if (typeof window.commonDrawerMarkSaved === 'function') window.commonDrawerMarkSaved(root);
+			return;
+		}
 
 		if (typeof window.omoOpenPopupHashState === 'function') {
 			if (payload.focusId) {
@@ -797,26 +881,17 @@
 		});
 	}
 
-	function submitFaqForm(form, requestResolution) {
-		if (!form) {
+	function submitFaqForm(form) {
+		if (!form || form.dataset.saving === '1') {
 			return;
 		}
 
 		syncScopeSelectors(form.closest('[data-faq-form-shell]') || form);
 		syncFaqRichTextFields(form);
-		let resolutionInput = form.querySelector('input[name="faq_request_resolution"]');
-		if (requestResolution) {
-			if (!resolutionInput) {
-				resolutionInput = document.createElement('input');
-				resolutionInput.type = 'hidden';
-				resolutionInput.name = 'faq_request_resolution';
-				form.appendChild(resolutionInput);
-			}
-			resolutionInput.value = requestResolution;
-		} else if (resolutionInput) {
-			resolutionInput.remove();
-		}
 		form.classList.add('disabled');
+		form.dataset.saving = '1';
+		const saveButtons = (form.closest('[data-faq-form-shell]') || form).querySelectorAll('[data-faq-save]');
+		saveButtons.forEach(function (button) { button.disabled = true; });
 
 		fetch(form.getAttribute('action'), {
 			method: 'POST',
@@ -837,6 +912,8 @@
 			})
 			.finally(function () {
 				form.classList.remove('disabled');
+				delete form.dataset.saving;
+				saveButtons.forEach(function (button) { button.disabled = false; });
 			});
 	}
 
@@ -1096,7 +1173,7 @@
 	}
 
 	root.addEventListener('change', function (event) {
-		if (event.target.matches('[data-faq-scope-kind], [data-faq-scope-organization], [data-faq-scope-holon], [data-faq-scope-parcours]')) {
+		if (event.target.matches('[data-faq-publish-answer], [data-faq-scope-kind], [data-faq-scope-organization], [data-faq-scope-holon], [data-faq-scope-parcours]')) {
 			syncScopeSelectors(event.target.closest('[data-faq-form-shell]') || event.target.closest('.faq-popup__detail') || root);
 		}
 	});
@@ -1166,12 +1243,18 @@
 			return;
 		}
 
+		const sendAdminButton = event.target.closest('[data-faq-send-admin]');
+		if (sendAdminButton) {
+			submitQuestionRequest(sendAdminButton.closest('[data-faq-request-form]'), 'send_admin');
+			return;
+		}
+
 		const saveButton = event.target.closest('[data-faq-save]');
 		if (saveButton) {
 			const scope = saveButton.closest('[data-faq-form-shell]') || editorView || detailView;
 			const form = scope ? scope.querySelector('#formulaire-edit') : null;
 			if (form) {
-				submitFaqForm(form, saveButton.getAttribute('data-faq-request-resolution') || '');
+				submitFaqForm(form);
 			}
 			return;
 		}
@@ -1194,10 +1277,20 @@
 	});
 
 	root.addEventListener('submit', function (event) {
+		const answerForm = event.target.closest('#formulaire-edit');
+		if (answerForm && answerForm.querySelector('[name="faq_answer_request"]')) {
+			event.preventDefault();
+			submitFaqForm(answerForm);
+			return;
+		}
 		const form = event.target.closest('[data-faq-request-form]');
 		if (!form) return;
 		event.preventDefault();
 		submitQuestionRequest(form);
+	});
+	root.addEventListener('input', function (event) {
+		const form = event.target.closest('[data-faq-request-form]');
+		if (form && form.dataset.submitting !== '1') resetQuestionAnswer(form);
 	});
 
 	if (searchInput) {

@@ -16,6 +16,11 @@ window.commonPageScripts["/omo/api/organizations/create_import_popup.js"] = func
     var feedback = root.querySelector('[data-omo-create-import-feedback="1"]');
     var cancelButton = root.querySelector('[data-omo-create-import-cancel="1"]');
     var waiting = root.querySelector('[data-omo-create-import-waiting="1"]');
+    var completed = root.querySelector('[data-omo-create-import-completed="1"]');
+    var warningPanel = root.querySelector('[data-omo-create-import-warnings="1"]');
+    var warningList = root.querySelector('[data-omo-create-import-warning-list="1"]');
+    var openOrganization = root.querySelector('[data-omo-create-import-open="1"]');
+    var closeCompleted = root.querySelector('[data-omo-create-import-close="1"]');
     var moduleNames = ['structure', 'rules', 'members', 'documents', 'projects', 'tasks', 'checklists', 'indicators', 'calendar', 'pv'];
     var templateCatalog = pageConfig.templateCatalog;
     var importPayload = null;
@@ -24,6 +29,7 @@ window.commonPageScripts["/omo/api/organizations/create_import_popup.js"] = func
     var propertyMappings = {};
     var touchedPropertyMappings = {};
     var isImporting = false;
+    var isImportComplete = false;
     var previewSequence = 0;
     var ui = pageConfig.ui;
 
@@ -61,6 +67,7 @@ window.commonPageScripts["/omo/api/organizations/create_import_popup.js"] = func
         isImporting = !!active;
         if (form) { form.hidden = !!active; }
         if (waiting) { waiting.hidden = !active; }
+        if (waiting) { waiting.setAttribute('aria-busy', String(!!active)); }
         if (active && typeof window.requestAnimationFrame === 'function') {
             window.requestAnimationFrame(function () {
                 root.scrollIntoView({ block: 'start' });
@@ -584,9 +591,11 @@ window.commonPageScripts["/omo/api/organizations/create_import_popup.js"] = func
     });
 
     if (cancelButton) { cancelButton.addEventListener('click', closeModal); }
+    if (closeCompleted) { closeCompleted.addEventListener('click', closeModal); }
     if (!form) { return; }
     form.addEventListener('submit', function (event) {
         event.preventDefault();
+        if (isImporting || isImportComplete) { return; }
         if (!fileInput || !fileInput.files || !fileInput.files[0]) { showError(ui.fileError); return; }
         if (!importPayload) { showError(ui.genericError); return; }
         if (!memberInvitationEmailChoice || ['send', 'skip'].indexOf(memberInvitationEmailChoice.value) === -1) { showError(ui.memberInvitationEmailChoiceError); return; }
@@ -600,20 +609,32 @@ window.commonPageScripts["/omo/api/organizations/create_import_popup.js"] = func
             .then(function (result) {
                 if (!result.ok || !result.data || !result.data.status) { throw new Error(result.data && result.data.message ? result.data.message : ui.genericError); }
                 var message = result.data.message || '';
-                var warnings = Array.isArray(result.data.warnings) && result.data.warnings.length ? result.data.warnings.join('\n') : '';
-                var usedGlobalFeedback = false;
-                if (message) { usedGlobalFeedback = notifyGlobal(message, 'success') || usedGlobalFeedback; }
-                if (warnings) { usedGlobalFeedback = notifyGlobal(warnings, 'warning') || usedGlobalFeedback; }
-                setFeedback(message + (warnings ? '\n\n' + warnings : ''), false);
-                if (result.data.redirect) {
-                    window.setTimeout(function () { window.location.href = result.data.redirect; }, warnings ? 5000 : 450);
+                var warnings = Array.isArray(result.data.warnings) ? result.data.warnings : [];
+                isImportComplete = true;
+                if (typeof window.commonDrawerMarkSaved === 'function') { window.commonDrawerMarkSaved(form); }
+                setImportWaiting(false);
+                form.hidden = true;
+                if (completed) { completed.hidden = false; }
+                if (warningList) {
+                    warningList.replaceChildren();
+                    warnings.forEach(function (warning) {
+                        var item = document.createElement('li');
+                        item.textContent = String(warning);
+                        warningList.appendChild(item);
+                    });
                 }
+                if (warningPanel) { warningPanel.hidden = warnings.length === 0; }
+                if (openOrganization) {
+                    openOrganization.hidden = !result.data.redirect;
+                    if (result.data.redirect) { openOrganization.href = result.data.redirect; }
+                }
+                setFeedback(notifyGlobal(message, 'success') ? '' : message, false);
             })
             .catch(function (error) {
                 setImportWaiting(false);
                 showError(error && error.message ? error.message : ui.genericError);
             })
-            .finally(function () { submitButton.disabled = false; });
+            .finally(function () { submitButton.disabled = isImportComplete; });
     });
 })();
 };

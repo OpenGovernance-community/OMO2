@@ -5451,6 +5451,90 @@
 			}
 		}
 
+		/** Missing legacy spaces must not turn their documents into unrelated private records. */
+		protected function omo1ImportFilterUnavailableDocuments(array $payload, array $selectedModules, array &$warnings): array
+		{
+			if (($payload['source']['system'] ?? '') !== 'omo1') {
+				return $payload;
+			}
+			$holonIds = $holonIdsByRole = array();
+			foreach ($this->getImportedHolonRecords($payload) as $record) {
+				$id = (int)($record['id'] ?? 0);
+				if ($id <= 0) continue;
+				$holonIds[$id] = true;
+				if ((int)($record['sourceRoleId'] ?? 0) > 0) {
+					$holonIdsByRole[(int)$record['sourceRoleId']] = $id;
+				}
+			}
+			$skipped = 0;
+			foreach (['documents', 'pv'] as $module) {
+				if (empty($selectedModules[$module])) continue;
+				$records = array();
+				foreach (self::omo1ImportModuleRecords($payload, $module) as $record) {
+					if (!is_array($record)) continue;
+					$sourceId = (int)($record['sourceHolonId'] ?? 0);
+					$roleId = (int)($record['sourceRoleId'] ?? 0);
+					if ($sourceId <= 0 && isset($holonIdsByRole[$roleId])) {
+						$sourceId = $record['sourceHolonId'] = $holonIdsByRole[$roleId];
+					}
+					if (($sourceId > 0 || $roleId > 0) && !isset($holonIds[$sourceId])) {
+						$skipped++;
+						continue;
+					}
+					$records[] = $record;
+				}
+				$payload['modules'][$module]['records'] = $records;
+			}
+			if ($skipped > 0) {
+				$warnings[] = $skipped . ($skipped === 1
+					? ' document n a pas pu etre importe car son holon a ete supprime. Il existe dans l archive mais n a pas ete importe.'
+					: ' documents n ont pas pu etre importes car leur holon a ete supprime. Ils existent dans l archive mais n ont pas ete importes.');
+			}
+			return $payload;
+		}
+
+		/** Restore archive batches only after scopes and content have been validated against the imported tree. */
+		protected function omo1ImportRestoreArchivedHolons(array $payload, array $holonIdMap, array $mappedSourceTemplateIds = array()): int
+		{
+			$records = array();
+			foreach ($this->getImportedHolonRecords($payload) as $record) {
+				$records[(int)($record['id'] ?? 0)] = $record;
+			}
+			$states = array();
+			$count = 0;
+			$restore = function (int $sourceId) use (&$restore, &$states, &$count, $records, $holonIdMap, $mappedSourceTemplateIds, $payload) {
+				if (array_key_exists($sourceId, $states)) return $states[$sourceId];
+				$states[$sourceId] = null; // Also guards malformed parent cycles.
+				if (!isset($records[$sourceId], $holonIdMap[$sourceId]) || !empty($mappedSourceTemplateIds[$sourceId])) return null;
+				$record = $records[$sourceId];
+				if ((int)($record['typeId'] ?? 0) === 4) return null;
+				$parentState = $restore((int)($record['parentId'] ?? 0));
+				$archivedAt = self::omo1ImportDate($record['archivedAt'] ?? null);
+				$isArchived = !empty($record['archived']) || $archivedAt
+					|| (array_key_exists('active', $record) && !$record['active']);
+				if (!$parentState && !$isArchived) return null;
+				$state = $parentState ?: array(
+					'root_id' => (int)$holonIdMap[$sourceId],
+					'batch' => bin2hex(random_bytes(16)),
+					'date' => $archivedAt ?: self::omo1ImportDate($payload['exportedAt'] ?? null) ?: new \DateTimeImmutable(),
+				);
+				$holon = new \dbObject\Holon();
+				if (!$holon->load((int)$holonIdMap[$sourceId], true)) {
+					throw new \RuntimeException('Un espace importe n a pas pu etre archive.');
+				}
+				$parameters = $holon->getParametersArray();
+				$parameters['holon_archive'] = array('root_id' => $state['root_id'], 'batch' => $state['batch']);
+				$holon->setParametersArray($parameters);
+				$holon->set('active', false);
+				$holon->set('archived_at', $archivedAt ?: $state['date']);
+				self::omo1ImportSave($holon, 'Un espace importe n a pas pu etre archive');
+				$count++;
+				return $states[$sourceId] = $state;
+			};
+			foreach (array_keys($records) as $sourceId) $restore($sourceId);
+			return $count;
+		}
+
 		protected static function omo1ImportModuleRecords(array $payload, $module)
 		{
 			$modules = isset($payload['modules']) && is_array($payload['modules']) ? $payload['modules'] : array();
@@ -5530,7 +5614,7 @@
 
 		protected static function omo1ImportSave($object, $label)
 		{
-			$result = $object->save();
+			$result = $object instanceof \dbObject\Project ? $object->saveForImport() : $object->save();
 			if (!is_array($result) || empty($result['status']) || (int)$object->getId() <= 0) {
 				$message = is_array($result) ? trim((string)($result['text'] ?? '')) : '';
 				if ($message === '' && is_array($result)) {
@@ -7471,12 +7555,18 @@
 
 		protected static function omo1ImportSaveDocumentVisibilityRules(\dbObject\Document $document, array $record, array $holonIdMap, array &$warnings): void
 		{
+			// A project document has no direct location. Legacy scopes still refer to its original space.
+			$legacyContext = clone $document;
+			$sourceHolonId = (int)($record['sourceHolonId'] ?? 0);
+			if (isset($holonIdMap[$sourceHolonId])) {
+				$legacyContext->set('IDholon', (int)$holonIdMap[$sourceHolonId]);
+			}
 			foreach (['visibility', 'editVisibility'] as $field) {
 				$scope = $record[$field] ?? null;
 				$missing = $scope === null || (is_array($scope) && !isset($scope['type']))
 					|| (is_array($scope) && ($scope['type'] ?? null) === '');
 				if ($missing && $field === 'visibility' && isset($record['legacyVisibility'])) {
-					self::omo1ImportSaveDocumentVisibility($document, $record['legacyVisibility'], $warnings);
+					self::omo1ImportSaveDocumentVisibility($legacyContext, $record['legacyVisibility'], $warnings);
 					continue;
 				}
 
@@ -7487,7 +7577,7 @@
 					$type = \dbObject\Document::resolveCompatibleScopeTypeForHolonId(
 						\dbObject\ObjectVisibility::TYPE_ROLE,
 						(int)$document->get('IDorganization'),
-						(int)$document->get('IDholon'),
+						(int)$legacyContext->get('IDholon'),
 						\dbObject\ObjectVisibility::TYPE_SELF
 					);
 					$fallback = $type === \dbObject\ObjectVisibility::TYPE_SELF;
@@ -7502,7 +7592,8 @@
 					}
 				}
 				$saveMethod = $field === 'visibility' ? 'saveVisibilityRule' : 'saveEditVisibilityRule';
-				$result = $document->$saveMethod($fallback ? \dbObject\ObjectVisibility::TYPE_SELF : $type, $fallback ? null : $targetHolonId);
+				$scopeDocument = $missing ? $legacyContext : $document;
+				$result = $scopeDocument->$saveMethod($fallback ? \dbObject\ObjectVisibility::TYPE_SELF : $type, $fallback ? null : $targetHolonId);
 				if (empty($result['status']) && !$fallback) {
 					$fallback = true;
 					$result = $document->$saveMethod(\dbObject\ObjectVisibility::TYPE_SELF);
@@ -8031,6 +8122,15 @@
 				$holonIdMap = isset($structureResult['holonIdMap']) && is_array($structureResult['holonIdMap']) ? $structureResult['holonIdMap'] : array();
 				$rulesRecords = $selectedModules['rules'] && !$isOmo2Export ? self::omo1ImportModuleRecords($payload, 'rules') : array();
 				$ruleDomainRecords = $selectedModules['rules'] && !$isOmo2Export ? self::omo1ImportRuleDomains($payload, $rulesRecords) : array();
+				// Legacy structural roles can be represented by a template only in the domain inventory.
+				$domainHolonIds = array_column($ruleDomainRecords, 'sourceHolonId', 'sourceId');
+				foreach ($rulesRecords as &$ruleRecord) {
+					$domainHolonId = (int)($domainHolonIds[(int)($ruleRecord['sourceScopeId'] ?? 0)] ?? 0);
+					if (empty($ruleRecord['sourceScopeHolonId']) && $domainHolonId > 0) {
+						$ruleRecord['sourceScopeHolonId'] = $domainHolonId;
+					}
+				}
+				unset($ruleRecord);
 				$userIdMap = array();
 				$documentIdMap = array();
 				$documentProjectSourceMap = array();
@@ -8052,6 +8152,7 @@
 						? $structureResult['warnings']
 						: array()
 				);
+				$payload = $organization->omo1ImportFilterUnavailableDocuments($payload, $selectedModules, $warnings);
 
 				if ($selectedModules['members']) {
 					self::omo1ImportJournalWrite('module_members_started', array(
@@ -8181,6 +8282,9 @@
 						'pvPoints' => (int)$stats['pvPoints'],
 					));
 				}
+				$stats['archivedHolons'] = $organization->omo1ImportRestoreArchivedHolons(
+					$payload, $holonIdMap, (array)($structureResult['mappedSourceTemplateIds'] ?? array())
+				);
 				$pdo->commit();
 				self::omo1ImportJournalWrite('content_transaction_completed');
 				self::omo1ImportJournalWrite('basic_parcours_started');

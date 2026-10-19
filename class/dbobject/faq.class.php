@@ -325,7 +325,84 @@ class FAQ extends DbObject
 	public function isPendingRequest()
 	{
 		return (int)$this->get('request_user_id') > 0
-			&& (trim((string)$this->get('answer')) === '' || $this->hasAiDraft());
+			&& !$this->hasRequestBeenAnswered();
+	}
+
+	/** Request handling uses persisted roles, independently of the optional admin UI modes. */
+	public static function resolveRequestViewerAccess(array $context = []): array
+	{
+		$userId = self::resolveCurrentUserId();
+		$organizationId = (int)($context['organizationId'] ?? 0);
+		$isSiteAdmin = $userId > 0 && function_exists('commonCurrentUserIsSiteAdmin') && \commonCurrentUserIsSiteAdmin();
+		return ['userId' => $userId, 'organizationId' => $organizationId,
+			'canManageAllFaqs' => $isSiteAdmin,
+			'canManageOrganizationFaqs' => $organizationId > 0 && ($isSiteAdmin
+				|| (function_exists('commonCurrentUserCanUseAdminMode') && \commonCurrentUserCanUseAdminMode($organizationId)))];
+	}
+
+	public function canAnswerRequest(): bool
+	{
+		if (!$this->isPendingRequest()) return false;
+		$access = self::resolveRequestViewerAccess(['organizationId' => $this->getResolvedOrganizationId()]);
+		return $access['canManageAllFaqs'] || $access['canManageOrganizationFaqs'];
+	}
+
+	public static function loadRequestForResponder(int $id): ?self
+	{
+		if ($id <= 0) return null;
+		$faq = new self();
+		return $faq->load($id) && $faq->canAnswerRequest() ? $faq : null;
+	}
+
+	public static function loadRequestPublicationOrganizations(): array
+	{
+		$access = self::resolveRequestViewerAccess();
+		$organizations = new ArrayOrganization();
+		if ($access['canManageAllFaqs']) {
+			$organizations->load(['orderBy' => [['field' => 'name', 'dir' => 'ASC']]]);
+			return iterator_to_array($organizations);
+		}
+		$memberships = new ArrayUserOrganization();
+		$memberships->load(['where' => [['field' => 'IDuser', 'value' => $access['userId']], ['field' => 'active', 'value' => 1]]]);
+		$result = [];
+		foreach ($memberships as $membership) {
+			if (!$membership->isOrganizationAdmin()) continue;
+			$organization = new Organization();
+			if ($organization->load((int)$membership->get('IDorganization'))) $result[] = $organization;
+		}
+		usort($result, static fn($left, $right) => strcasecmp((string)$left->getLabel(), (string)$right->getLabel()));
+		return $result;
+	}
+
+	/** Validate every publication target on the server, including its organization boundaries. */
+	public static function resolveRequestPublicationScope(array $data): array|false
+	{
+		$organizationId = (int)($data['IDorganization'] ?? 0);
+		$access = self::resolveRequestViewerAccess(['organizationId' => $organizationId]);
+		$kind = (string)($data['faq_scope_kind'] ?? 'organization');
+		if ($kind === 'generic') {
+			if (!$access['canManageAllFaqs']) return false;
+			$organizationId = 0;
+		} elseif ($kind !== 'organization' || $organizationId <= 0 || !$access['canManageOrganizationFaqs']) {
+			return false;
+		}
+		if ($organizationId > 0) {
+			$organization = new Organization();
+			if (!$organization->load($organizationId)) return false;
+		}
+		$holonId = $kind === 'organization' ? (int)($data['IDholon'] ?? 0) : 0;
+		if ($holonId > 0) {
+			$holon = new Holon();
+			if (!$holon->load($holonId) || $holon->resolveOrganizationId() !== $organizationId
+				|| $holon->get('archived_at') instanceof \DateTimeInterface) return false;
+		}
+		$applicationId = (int)($data['IDapplication'] ?? 0);
+		if ($applicationId > 0) {
+			$application = new Application();
+			if (!self::hasApplicationColumn() || !$application->load($applicationId)) return false;
+		}
+		return ['status' => true, 'organizationId' => $organizationId ?: null, 'holonId' => $holonId ?: null,
+			'parcoursId' => null, 'applicationId' => $applicationId ?: null];
 	}
 
 	public static function hasAiDraftColumn()
@@ -542,7 +619,7 @@ class FAQ extends DbObject
 		return self::clampUnitFloat($approval * $signalWeight * $historyWeight);
 	}
 
-	public static function resolvePopupContext($organizationId = 0, $currentHolonId = 0)
+	public static function resolvePopupContext($organizationId = 0, $currentHolonId = 0, bool $requestResponder = false)
 	{
 		$organizationId = (int)$organizationId;
 		$currentHolonId = (int)$currentHolonId;
@@ -559,8 +636,10 @@ class FAQ extends DbObject
 		}
 
 		$organization = new \dbObject\Organization();
+		$requestAccess = $requestResponder ? self::resolveRequestViewerAccess(['organizationId' => $organizationId]) : [];
+		$canManageContext = self::currentViewerHasOrganizationAdminAccess($organizationId) || !empty($requestAccess['canManageOrganizationFaqs']);
 		if (!$organization->load($organizationId)
-			|| (!self::currentViewerHasOrganizationAdminAccess($organizationId) && !$organization->canViewDetail())) {
+			|| (!$canManageContext && !$organization->canViewDetail())) {
 			return false;
 		}
 
@@ -578,7 +657,7 @@ class FAQ extends DbObject
 			if (
 				!$candidate->load($currentHolonId)
 				|| !$candidate->isDescendantOf($rootHolon->getId())
-				|| (!self::currentViewerHasOrganizationAdminAccess($organizationId) && !$candidate->canViewDetail())
+				|| (!$canManageContext && !$candidate->canViewDetail())
 			) {
 				return false;
 			}
@@ -593,7 +672,7 @@ class FAQ extends DbObject
 		return $context;
 	}
 
-	public static function resolvePopupRequestContext(array $request = array())
+	public static function resolvePopupRequestContext(array $request = array(), ?self $responderRequest = null)
 	{
 		$organizationId = isset($request['oid']) && is_numeric($request['oid'])
 			? (int)$request['oid']
@@ -602,7 +681,7 @@ class FAQ extends DbObject
 			? (int)$request['cid']
 			: 0;
 
-		return self::resolvePopupContext($organizationId, $currentHolonId);
+		return self::resolvePopupContext($organizationId, $currentHolonId, $responderRequest !== null && $responderRequest->canAnswerRequest());
 	}
 
 	public static function getAvailablePopupScopes(array $context = array())
@@ -733,6 +812,23 @@ class FAQ extends DbObject
 		}
 
 		return $filteredFaq;
+	}
+
+	/** Only published, authorized answers may be sent to the FAQ assistant, even for admins. */
+	public static function loadAiSources(array $context = [], string $scope = 'contextual'): array
+	{
+		$sources = [];
+		foreach (self::loadPopupCollection($context, $scope) as $faq) {
+			if (!$faq->get('isactive') || $faq->hasAiDraft() || $faq->isPendingRequest()) continue;
+			$source = ['id' => (int)$faq->getId()];
+			foreach (['question', 'answer', 'detail'] as $field) {
+				$html = preg_replace('~<(script|style)\b[^>]*>.*?</\1>~is', '', (string)$faq->get($field));
+				$html = preg_replace('~<(?:br\b[^>]*|/(?:p|div|li|h[1-6]))>~i', "\n", $html);
+				$source[$field] = trim(html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+			}
+			if ($source['answer'] !== '' || $source['detail'] !== '') $sources[] = $source;
+		}
+		return $sources;
 	}
 
 	protected static function getAvailableParcoursIdMapForOrganization($organizationId)

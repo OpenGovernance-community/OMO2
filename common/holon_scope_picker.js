@@ -669,7 +669,7 @@
         });
 
         var structureDataUrl = '/omo/api/getStructureData.php?oid=' + encodeURIComponent(String(organizationId));
-        var structureRequest = typeof window.omoFetchStructureData === 'function'
+        var structureRequest = settings.structureData ? Promise.resolve(settings.structureData) : typeof window.omoFetchStructureData === 'function'
             ? window.omoFetchStructureData(structureDataUrl)
             : fetch(structureDataUrl, { credentials: 'same-origin' })
                 .then(function (response) { return response.ok ? response.json() : null; });
@@ -756,6 +756,7 @@
         }
         var picker = window.omoMountHolonScopePicker({host: dialog.querySelector('[data-holon-target-map]'),
             organizationId: settings.organizationId, initialHolonId: selected, selectableHolonIds: settings.selectableHolonIds,
+            structureData: settings.structureData,
             allowEmptySelection: settings.allowOrganization, showModes: false, labelMode: 'context', onChange: update,
             onReady: function (id) { ready = true; update(id); }});
         var destroyed = false;

@@ -9,7 +9,7 @@ function commonHolonScopeTargetLabels(string $hint): array
         'choose' => ['text' => 'Choisir un espace', 'context' => 'Space assignment picker title and accessible icon button label.'],
         'confirm' => ['text' => 'Choisir cet espace', 'context' => 'Confirm a permitted space assignment.'],
         'cancel' => ['text' => 'Annuler', 'context' => 'Cancel space assignment.'],
-        'organization' => ['text' => 'Toute l organisation', 'context' => 'Organization-wide assignment without a specific space.'],
+        'organization' => ['text' => 'Toute l\'organisation', 'context' => 'Organization-wide assignment without a specific space.'],
     ];
     if ($lang === null) {
         $locale = translationBundleResolveRequestLocale('lang', translationBundleGetSupportedLocales(), 'fr');

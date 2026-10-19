@@ -4,8 +4,10 @@ require_once("../shared_functions.php");
 require_once("../common/auth.php");
 require_once("../common/faq_mail.php");
 require_once("../common/faq_ai.php");
+require_once("../omo/api/lms/inc/access.php");
 
 header('Content-Type: application/json; charset=utf-8');
+header('Cache-Control: no-store');
 
 function faqQuestionRequestRespond(array $payload, $status = 200)
 {
@@ -43,21 +45,40 @@ $context = \dbObject\FAQ::resolvePopupRequestContext($_GET);
 if ($context === false || $currentUserId <= 0 || !\dbObject\FAQ::hasFaqTable()) {
 	faqQuestionRequestRespond(array('success' => false, 'message' => 'Contexte FAQ indisponible.'), 400);
 }
-if (!\dbObject\FAQ::hasRequestColumns()) {
-	faqQuestionRequestRespond(array('success' => false, 'message' => 'La migration des demandes FAQ n’est pas entièrement appliquée. Contactez l’administrateur.'), 503);
-}
-
 $question = trim((string)($_POST['question'] ?? ''));
 $description = trim((string)($_POST['request_description'] ?? ''));
 if ($question === '' || mb_strlen($question, 'UTF-8') > 255 || $description === '' || mb_strlen($description, 'UTF-8') > 10000) {
 	faqQuestionRequestRespond(array('success' => false, 'message' => 'Saisissez une question et une description (255 et 10 000 caractères maximum).'), 422);
+}
+$action = (string)($_POST['action'] ?? 'search');
+if (!in_array($action, ['search', 'send_admin'], true)) {
+	faqQuestionRequestRespond(['success' => false, 'message' => faqAiT('error')], 422);
+}
+$organizationId = (int)($context['organizationId'] ?? 0);
+if ($action === 'search') {
+	commonAiSetUsageContext($currentUserId, $organizationId, 'faq_search');
+	$answer = ['answer' => '', 'sources' => []];
+	try {
+		if (commonAiUserCanUse($currentUserId, commonOpenAiGetRewriteModel())) {
+			$scope = \dbObject\FAQ::normalizePopupScope($_GET['faq_scope'] ?? null, $context);
+			$answer = faqAiFindAnswer($question, $description, \dbObject\FAQ::loadAiSources($context, $scope), null, $currentUserId);
+		}
+	} catch (\Throwable $exception) {
+		error_log('FAQ AI search unavailable (' . get_class($exception) . ').');
+	}
+	if ($answer['answer'] !== '') {
+		// A successful search is not a pending request and sends no administrator email.
+		faqQuestionRequestRespond(['success' => true, 'status' => 'answered'] + $answer);
+	}
+}
+if (!\dbObject\FAQ::hasRequestColumns()) {
+	faqQuestionRequestRespond(array('success' => false, 'message' => 'La migration des demandes FAQ n’est pas entièrement appliquée. Contactez l’administrateur.'), 503);
 }
 
 $user = new \dbObject\User();
 if (!$user->load($currentUserId)) {
 	faqQuestionRequestRespond(array('success' => false, 'message' => 'Votre compte est introuvable.'), 400);
 }
-$organizationId = (int)($context['organizationId'] ?? 0);
 $authorEmail = trim((string)$user->getScopedEmail($organizationId));
 $authorName = trim((string)$user->getScopedDisplayName($organizationId));
 if (!filter_var($authorEmail, FILTER_VALIDATE_EMAIL)) {
@@ -109,28 +130,13 @@ foreach ($adminEmails as $adminEmail) {
 	}
 }
 
-$aiDraft = '';
-if (\dbObject\FAQ::hasAiDraftColumn()) {
-	commonAiSetUsageContext($currentUserId, $organizationId, 'faq_draft');
-	$generatedDraft = faqAiGenerateDraft($question, $description, null, $currentUserId);
-	if ($generatedDraft !== '') {
-		try {
-			if ($faq->saveAiDraft($generatedDraft)) {
-				$aiDraft = $generatedDraft;
-			}
-		} catch (\Throwable $exception) {
-			error_log('FAQ AI draft: could not store draft for FAQ ' . (int)$faq->getId() . '.');
-		}
-	}
-}
-
 faqQuestionRequestRespond(array(
 	'success' => true,
+	'status' => 'submitted',
 	'message' => $emailSent
-		? 'Votre question a bien été envoyée. Vous recevrez la réponse à l’adresse associée à votre compte.'
+		? faqAiT('sent')
 		: (count($adminEmails) === 0
 			? 'Votre question est enregistrée, mais aucun administrateur du site actif n’a d’adresse e-mail valide.'
 			: 'Votre question est enregistrée. La notification par e-mail à l’administrateur n’a pas pu être envoyée.'),
 	'id' => (int)$faq->getId(),
-	'ai_draft' => $aiDraft,
 ));

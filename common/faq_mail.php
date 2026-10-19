@@ -38,24 +38,17 @@ function faqMailRenderQuestionRequest(\dbObject\FAQ $faq, $faqUrl, $organization
 	]);
 }
 
-function faqMailDetailAsText($html)
-{
-	$html = preg_replace('/<\s*br\b[^>]*>/i', "\n", (string)$html);
-	$html = preg_replace('/<\s*\/\s*(?:p|div|li|h[1-6])\s*>/i', "\n\n", (string)$html);
-	return trim(html_entity_decode(strip_tags((string)$html), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
-}
-
 function faqMailRenderAnswer(\dbObject\FAQ $faq, $organization = null)
 {
 	$authorName = trim((string)$faq->get('request_author_name'));
 	$greeting = $authorName !== '' ? 'Bonjour ' . commonMailEscape($authorName) . ',' : 'Bonjour,';
 	$detailsHtml = '<p style="margin:0 0 8px;color:#64748b;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;">Réponse</p>'
 		. commonMailTextToHtml($faq->get('answer'));
-	$detailText = faqMailDetailAsText($faq->get('detail'));
-	if ($detailText !== '') {
+	$detailHtml = \dbObject\PropertyFormat::sanitizeHtml((string)$faq->get('detail'));
+	if ($detailHtml !== '') {
 		$detailsHtml .= '<div style="border-top:1px solid #dbe3ef;margin-top:18px;padding-top:18px;">'
 			. '<p style="margin:0 0 8px;color:#64748b;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;">Précisions</p>'
-			. commonMailTextToHtml($detailText)
+			. $detailHtml
 			. '</div>';
 	}
 

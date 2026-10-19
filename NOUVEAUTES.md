@@ -1,5 +1,25 @@
 # Journal des nouveautés
 
+- Import / fin de traitement (2026-10-19) : apres une reussite, y compris avec avertissements, la fenetre quitte l attente et le formulaire est marque comme enregistre. Un ecran de fin conserve les avertissements avec les actions Ouvrir l organisation et Fermer, sans confirmation de perte de donnees ni redirection automatique. Un espacement separe le bloc d information des boutons.
+
+- Import OMO1 / espaces archives et documents (2026-10-19) : restauration des roles et cercles archives fournis par DevOMO, avec leurs contenus et les metadonnees de restauration. Les documents lies a un projet conservent leurs portees depuis leur espace d origine. Les documents et PV dont l espace est absent du fichier restent dans l archive sans etre importes, avec un seul avertissement recapitulatif. Les regles peuvent retrouver leur espace depuis le domaine exporte lorsque leur reference directe manque.
+
+- Import OMO1 / proposant des projets (2026-10-19) : conservation du proposant historique des projets et des taches meme si son adhesion est en attente, sans activer son acces. Un proposant absent ou non importe reste vide, y compris pour une proposition en attente. Les suivis sont restaures depuis le fichier sans abonnement automatique ; les creations ordinaires gardent leur validation de membre actif.
+
+- FAQ / lien hors organisation (2026-10-19) : un super administrateur peut ouvrir et traiter une demande depuis son lien FAQ sans etre membre de l organisation ni activer son mode admin. La page Acces interdit reste en arriere-plan ; seule la demande autorisee est chargee. Apres la reponse, une confirmation permet de fermer la popup sans charger la FAQ ou les donnees de l organisation.
+
+- Notifications / date (2026-10-19) : date et heure de creation affichees en petit en bas a droite de chaque notification du menu, selon le format regional et le fuseau horaire du navigateur de l utilisateur.
+
+- FAQ / classement des reponses (2026-10-19) : Attachement et Application sur une premiere ligne, Organisation et Espace sur la suivante. Le choix d attachement est libelle Organisation. La racine de l organisation est presentee comme Toute l'organisation dans les demandes, avec possibilite d enregistrer la FAQ pour toute l organisation sans choisir d espace particulier.
+
+- FAQ / confirmation d envoi (2026-10-19) : apres envoi d une question a un administrateur, le formulaire est remplace par la question et sa description en lecture seule, avec une confirmation persistante dans la popup. Le formulaire est marque comme enregistre pour fermer la popup sans avertissement de perte de donnees.
+
+- FAQ / affichage des reponses (2026-10-19) : les informations de la demande d origine (auteur, e-mail et description du probleme) sont masquees apres traitement, y compris dans l edition de la FAQ. Elles restent visibles pour traiter une demande en attente.
+
+- FAQ / reponses aux demandes (2026-10-19) : traitement accessible aux administrateurs d organisation et super administrateurs sans activer leur mode admin. Reponse detaillee avec l editeur HTML partage et mise en forme conservee dans l e-mail. Bouton Repondre pour un envoi prive ; case Enregistrer dans la FAQ pour choisir une destination autorisee (generique, organisation, espace et application) et Repondre et enregistrer. En cas d echec de l e-mail, la demande reste en attente sans publication.
+
+- FAQ / recherche IA (2026-10-19) : recherche dans les FAQ publiees et accessibles du contexte choisi, puis dans NOUVEAUTES.md si aucune reponse n est trouvee. Reponse accompagnee des liens vers les FAQ utilisees ou d une reference non cliquable au journal. Envoi aux administrateurs uniquement sans reponse, sans acces IA, ou sur demande avec le bouton Envoyer a un administrateur.
+
 - Documents / visibilite et PAD (2026-10-19) : lecture des PAD prives dans une vue OMO actualisee toutes les 10 secondes, sans session d edition accordee aux lecteurs. Edition collaborative conservee pour les personnes autorisees. Controles harmonises entre ouverture, listes et liens des evenements pour les documents archives et les dossiers parents inaccessibles. Tests de regression en base, HTTP avec Etherpad et JavaScript, dont le renommage avec accents simples et combines, sans modification des droits ni de l identifiant du PAD.
 
 - Securite / historique Git (2026-10-17) : retrait des anciennes cles OpenRouter et Afforai de l historique des neuf branches publiques, en conservant les fichiers applicatifs courants de Beta.
