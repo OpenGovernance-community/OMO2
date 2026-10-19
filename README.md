@@ -39,6 +39,5 @@ Guide complet : [DEPLOY.md](docs/DEPLOY.md)
 - `views/omo2-home.php` et `views/omo2-migration.php` : pages publiques OMO2, accessibles aux URL historiques `/index2.php` et `/migration-omo.php`.
 - `pv/export.php` : exports Word, OpenDocument et PDF d EasyPV.
 - `common/confirm.php`, `common/qr/` et `common/admin/stats.php` : confirmation de compte, QR codes et statistiques du site.
-- `tools/migration/omo1-export.php` : outil ponctuel d export d une organisation OMO1 vers le format importe par OMO2. Il demande les acces a la base source et l identifiant de l organisation ; il s utilise depuis le navigateur.
 
 Les anciennes URL des pages deplacees restent gerees par les reecritures internes de `.htaccess`, y compris les requetes POST. Les commandes des guides se lancent depuis la racine du depot.

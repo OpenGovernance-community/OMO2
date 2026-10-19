@@ -4043,14 +4043,13 @@
 				return '<div class="omo-document-etherpad omo-document-etherpad--empty">Le serveur Etherpad n est pas disponible.</div>';
 			}
 
-			$htmlResult = omoEtherpadApiRequest($organization, 'getHTML', array('padID' => $padId));
-			$html = (string)($htmlResult['data']['html'] ?? '');
+			$htmlResult = omoEtherpadGetReadOnlyContent($organization, $padId);
 			if (!($htmlResult['status'] ?? false)) {
 				return '<div class="omo-document-etherpad omo-document-etherpad--empty">Impossible de charger le contenu Etherpad.</div>';
 			}
 
 			return '<div class="omo-document-etherpad-snapshot">'
-				. \dbObject\PropertyFormat::sanitizeHtml($html)
+				. (string)$htmlResult['html']
 				. '</div>';
 		}
 
@@ -5560,6 +5559,9 @@
 
 		public function canViewInOrganizationContext(int $organizationId, ?int $holonId = null, ?int $userId = null): bool
 		{
+			if ($this->isArchived()) {
+				return false;
+			}
 			$viewerUserId = $userId ?? (function_exists('commonGetCurrentUserId')
 				? (int)\commonGetCurrentUserId() : (int)($_SESSION['currentUser'] ?? 0));
 			if ($this->matchesOrganizationContext($organizationId, $holonId)
@@ -5578,6 +5580,8 @@
 				if (
 					!($parentFolder instanceof \dbObject\Document)
 					|| !$parentFolder->isFolder()
+					|| $parentFolder->isArchived()
+					|| (int)$parentFolder->get('IDorganization') !== $organizationId
 					|| !$parentFolder->currentViewerCanAccessVisibility($organizationId, null, $userId)
 				) {
 					return false;
@@ -5587,39 +5591,21 @@
 			return true;
 		}
 
-		public function canViewDirectlyInOrganization(int $organizationId): bool
+		public function canViewDirectlyInOrganization(int $organizationId, ?int $userId = null): bool
 		{
 			$organizationId = (int)$organizationId;
-			if ($organizationId <= 0 || (int)$this->get('IDorganization') !== $organizationId) {
+			if ($organizationId <= 0 || (int)$this->get('IDorganization') !== $organizationId || $this->isArchived()) {
 				return false;
 			}
 
-			$currentUserId = function_exists('commonGetCurrentUserId')
+			$currentUserId = $userId ?? (function_exists('commonGetCurrentUserId')
 				? (int)\commonGetCurrentUserId()
-				: (int)($_SESSION['currentUser'] ?? 0);
+				: (int)($_SESSION['currentUser'] ?? 0));
 			if ($this->isPvDocument() && $this->isPvCreatorOrEditor($currentUserId)) {
 				return true;
 			}
-			if ($this->canUserAccessCooperativeDocumentThroughMeeting($currentUserId, $organizationId)) {
-				return true;
-			}
 
-			if (!$this->currentViewerCanAccessVisibility($organizationId)) {
-				return false;
-			}
-
-			foreach ($this->getParentFolderChain() as $parentFolder) {
-				if (
-					!($parentFolder instanceof \dbObject\Document)
-					|| !$parentFolder->isFolder()
-					|| (int)$parentFolder->get('IDorganization') !== $organizationId
-					|| !$parentFolder->currentViewerCanAccessVisibility($organizationId)
-				) {
-					return false;
-				}
-			}
-
-			return true;
+			return $this->canViewInOrganizationContext($organizationId, (int)$this->get('IDholon') ?: null, $currentUserId);
 		}
 
 		public function assignOrganizationContext(int $organizationId, ?int $holonId = null)

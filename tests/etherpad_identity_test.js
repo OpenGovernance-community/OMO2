@@ -39,6 +39,13 @@ const connect = (padID, sessionID, name) => {
   let observer;
   try {
     const {padID} = await api('createGroupPad', {groupID, padName: 'identity-regression'});
+    // Even this ASCII-only pad name is denied through its read-only URL when
+    // the browser has no group session. OMO titles never enter this identifier.
+    const {readOnlyID} = await api('getReadOnlyID', {padID});
+    socket = connect(readOnlyID, undefined, 'Read-only visitor');
+    await waitMessage(socket, (message) => message.accessStatus === 'deny');
+    socket.disconnect();
+    socket = null;
     const {authorID: observerID} = await api('createAuthor', {name: 'Test observer'});
     const {sessionID: observerSession} = await api('createSession', {groupID, authorID: observerID, validUntil: Math.floor(Date.now() / 1000) + 60});
     observer = connect(padID, observerSession, 'Test observer');
@@ -62,6 +69,7 @@ const connect = (padID, sessionID, name) => {
       socket = null;
       await api('deleteSession', {sessionID});
     }
+    console.log('Private read-only URL without a session: denied even with an ASCII pad name.');
     console.log('Member and external identities: forged handshake and rename blocked.');
   } finally {
     if (socket) socket.disconnect();

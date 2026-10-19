@@ -1,0 +1,16 @@
+.omo-pad-reader {
+    margin: 0;
+    padding: 16px;
+    background: var(--color-bg, #fff);
+    color: var(--color-text, #1f2937);
+    font-family: system-ui, sans-serif;
+}
+
+[data-pad-reader-content] {
+    overflow-wrap: anywhere;
+}
+
+[data-pad-reader-content] img {
+    max-width: 100%;
+    height: auto;
+}

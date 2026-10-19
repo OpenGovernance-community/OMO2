@@ -6,7 +6,10 @@ require_once("../common/auth.php");
 require_once("../omo/api/lms/inc/access.php");
 require_once("../common/faq_popup_helper.php");
 
+faqPopupRequirePostRequest();
+
 if (!checklogin()) {
+	http_response_code(401);
 	echo json_encode([
 		'status' => false,
 		'success' => false,
@@ -22,6 +25,7 @@ $faqContext = \dbObject\FAQ::resolvePopupRequestContext($_GET);
 $faqScope = \dbObject\FAQ::normalizePopupScope($_GET['faq_scope'] ?? null, $faqContext ?: array());
 
 if ($currentUserId <= 0 || $faqContext === false) {
+	http_response_code(403);
 	echo json_encode([
 		'status' => false,
 		'success' => false,
@@ -38,6 +42,7 @@ $canCreateContextualFaq = count(\dbObject\FAQ::loadContextualCreationTargets($co
 $canCreateParcoursFaqs = faqPopupCanCreateParcoursFaqs($faqContext ?: array(), $currentUserId, false);
 
 if (!$canManageFaqCollection && !$canCreateContextualFaq && !$canCreateParcoursFaqs) {
+	http_response_code(403);
 	echo json_encode([
 		'status' => false,
 		'success' => false,
@@ -51,6 +56,7 @@ $scope = faqPopupResolveSubmittedScope($faqContext ?: array(), $_POST, array(
 	'allowParcoursCreate' => $canCreateParcoursFaqs,
 ));
 if (empty($scope['status'])) {
+	http_response_code(403);
 	echo json_encode([
 		'status' => false,
 		'success' => false,
@@ -69,7 +75,6 @@ if (\dbObject\FAQ::hasApplicationColumn() && $canManageFaqCollection) {
 		: 0;
 }
 unset($data['IDapplication']);
-$faq->loadFromArray($data);
 $faq->set('IDorganization', $scope['organizationId'] ?? null);
 $faq->set('IDholon', $scope['holonId'] ?? null);
 $faq->set('IDparcours', $scope['parcoursId'] ?? null);
@@ -91,8 +96,15 @@ if (\dbObject\FAQ::hasApplicationColumn() && $canManageFaqCollection) {
 	}
 }
 if (!$canManageFaqCollection) {
-	$faq->set('isactive', true);
+	$data['isactive'] = true;
 }
+
+if (!$faq->canBeCreatedInContext($faqContext)) {
+	http_response_code(403);
+	echo json_encode(['status' => false, 'success' => false, 'message' => faqPopupT('request.create_denied')], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+	exit;
+}
+$faq->loadEditorInput($data);
 
 if (trim((string)$faq->get('question')) === '' || trim((string)$faq->get('answer')) === '') {
 	echo json_encode([

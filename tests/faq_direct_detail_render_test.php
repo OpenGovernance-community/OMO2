@@ -2,6 +2,7 @@
 declare(strict_types=1);
 $_SERVER['HTTP_HOST'] = 'localtest.me';
 $_SERVER['HTTPS'] = 'on';
+$_SERVER['DOCUMENT_ROOT'] = dirname(__DIR__);
 require_once __DIR__ . '/mcp_test_helpers.php';
 
 use dbObject\{DbObject, FAQ};

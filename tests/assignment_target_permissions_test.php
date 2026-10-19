@@ -84,7 +84,7 @@ $fixture = static function (string $class, array $fields) use (&$fixtures): DbOb
 };
 try {
     $nonce = bin2hex(random_bytes(8));
-    $user = $fixture(\dbObject\User::class, ['email' => 'assignment-' . $nonce . '@example.invalid', 'firstname' => 'Member']);
+    $user = $fixture(\dbObject\User::class, ['email' => 'assignment-' . $nonce . '@example.invalid', 'firstname' => 'Member', 'active' => 1]);
     $org = $fixture(\dbObject\Organization::class, ['name' => 'Assignment fixture', 'shortname' => 'assignment-' . $nonce]);
     $fixture(\dbObject\UserOrganization::class, ['IDorganization' => $org->getId(), 'IDuser' => $user->getId(), 'active' => 1]);
     foreach (['calendar', 'structure', 'projects'] as $hash) {

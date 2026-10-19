@@ -21,6 +21,8 @@ function faqPopupT(string $key): string
 		'editor.scope' => ['text' => 'Emplacement dans la FAQ', 'context' => 'FAQ attachment settings heading.'],
 		'editor.space_hint' => ['text' => 'Choisissez l espace dans lequel rattacher cette FAQ.', 'context' => 'FAQ space assignment picker help.'],
 		'editor.space' => ['text' => 'Espace', 'context' => 'FAQ attachment type when choosing a permitted space.'],
+		'request.post_required' => ['text' => 'Cette action necessite une requete POST.', 'context' => 'Error when a FAQ mutation uses an unsupported HTTP method.'],
+		'request.create_denied' => ['text' => 'Vous n avez pas le droit de creer une FAQ a cet emplacement.', 'context' => 'Error when FAQ creation or reassignment targets a scope without creation rights.'],
 		'request.pending' => ['text' => 'Question en attente de réponse', 'context' => 'Pending FAQ request heading.'],
 		'request.relayed' => ['text' => 'Question relayée aux administrateurs de l’organisation', 'context' => 'Relayed FAQ request heading.'],
 		'request.answered' => ['text' => 'Demande d’origine', 'context' => 'Original FAQ request heading.'],
@@ -32,6 +34,17 @@ function faqPopupT(string $key): string
 		$lang = loadTranslationBundle('faq_popup', $locale, $sourceLang);
 	}
 	return t($key, [], $lang, $sourceLang);
+}
+
+function faqPopupRequirePostRequest(): void
+{
+	if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? '')) === 'POST') return;
+	http_response_code(405);
+	header('Allow: POST');
+	header('Content-Type: application/json; charset=UTF-8');
+	header('Cache-Control: no-store');
+	echo json_encode(['status' => false, 'success' => false, 'message' => faqPopupT('request.post_required')], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+	exit;
 }
 
 function faqPopupEditorSections(): array
@@ -111,7 +124,7 @@ function faqPopupRenderRelayAction(\dbObject\FAQ $faq)
 if (!function_exists('faqPopupCanCreateParcoursFaqs')) {
 	function faqPopupCanCreateParcoursFaqs(array $faqContext, $userId = 0, $useSessionCache = true)
 	{
-		return \dbObject\FAQ::canManageParcoursInContext($faqContext, $userId, $useSessionCache);
+		return \dbObject\FAQ::canCreateParcoursInContext($faqContext, $userId, $useSessionCache);
 	}
 }
 
@@ -1069,6 +1082,9 @@ if (!function_exists('faqPopupResolveSubmittedScope')) {
 		}
 
 		if ($allowParcoursCreate && $attachmentType === 'parcours') {
+			if (!faqPopupCanCreateParcoursFaqs($faqContext, (int)$viewerAccess['userId'], false)) {
+				return ['status' => false, 'message' => faqPopupT('request.create_denied')];
+			}
 			$contextOrganizationId = (int)($faqContext['organizationId'] ?? 0);
 			if ($contextOrganizationId <= 0 || $organizationId !== $contextOrganizationId || !$parcours) {
 				return array(

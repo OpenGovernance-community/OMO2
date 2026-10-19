@@ -520,6 +520,17 @@ if (!function_exists('omoEtherpadGetOrigin')) {
     }
 }
 
+/** Caller must authorize reading this document. Never issue an editing session to a reader. */
+function omoEtherpadGetReadOnlyContent(\dbObject\Organization $organization, string $padId): array
+{
+    $result = omoEtherpadApiRequest($organization, 'getHTML', ['padID' => $padId]);
+    if (empty($result['status'])) {
+        return ['status' => false];
+    }
+
+    return ['status' => true, 'html' => \dbObject\PropertyFormat::sanitizeHtml((string)($result['data']['html'] ?? ''))];
+}
+
 /** Caller must authorize editing this document before issuing an Etherpad session. */
 function omoEtherpadPrepareEditingAccess(\dbObject\Organization $organization, string $padId, string $authorMapper, string $authorName): array
 {

@@ -684,8 +684,8 @@ class FAQ extends DbObject
 
 	public static function currentViewerHasSiteAdminAccess()
 	{
-		return function_exists('commonCurrentUserIsSiteAdmin')
-			&& \commonCurrentUserIsSiteAdmin();
+		return function_exists('commonCurrentUserIsSiteAdminModeEnabled')
+			&& \commonCurrentUserIsSiteAdminModeEnabled();
 	}
 
 	public static function currentViewerHasOrganizationAdminAccess($organizationId = 0)
@@ -699,8 +699,8 @@ class FAQ extends DbObject
 			return true;
 		}
 
-		return function_exists('commonCurrentUserCanUseAdminMode')
-			&& \commonCurrentUserCanUseAdminMode($organizationId);
+		return function_exists('commonCurrentUserIsAdminModeEnabled')
+			&& \commonCurrentUserIsAdminModeEnabled($organizationId);
 	}
 
 	public static function resolveViewerAccess(array $context = array())
@@ -813,7 +813,7 @@ class FAQ extends DbObject
 		}
 
 		$userId = (int)$userId;
-		if ($userId <= 0) {
+		if ($userId <= 0 || (int)$organizationId <= 0 || $holon->resolveOrganizationId() !== (int)$organizationId) {
 			return false;
 		}
 
@@ -1088,9 +1088,23 @@ class FAQ extends DbObject
 		return $this->canUseContextPermission('CAN_EDIT_FAQ', $context);
 	}
 
+	public function canBeCreatedInContext(array $context = array()): bool
+	{
+		return $this->canUseContextPermission('CAN_CREATE_FAQ', $context);
+	}
+
+	/** Only editor content is client-controlled; scope and request metadata are handled separately. */
+	public function loadEditorInput(array $data): void
+	{
+		$this->loadFromArray(array_intersect_key($data, array_flip([
+			'question', 'answer', 'detail', 'image', 'video', 'isactive', 'displayorder',
+		])));
+	}
+
 	protected function canUseContextPermission(string $permissionKey, array $context): bool
 	{
 		$viewerAccess = self::resolveViewerAccess($context);
+		if ((int)$viewerAccess['userId'] <= 0) return false;
 		if (!empty($viewerAccess['canManageAllFaqs'])) {
 			return true;
 		}
@@ -1112,6 +1126,7 @@ class FAQ extends DbObject
 		$organization = $this->getResolvedOrganization();
 		$holon = $holonId > 0 ? new Holon() : ($organization ? $organization->getEnabledStructuralRootHolon() : null);
 		if ($holonId > 0 && !$holon->load($holonId)) return false;
+		if ($holon instanceof Holon && $holon->resolveOrganizationId() !== $organizationId) return false;
 		$userId = (int)($viewerAccess['userId'] ?? 0);
 		$allowed = $holon instanceof Holon
 			? $holon->isAllowed($permissionKey, false, $userId)
@@ -1130,7 +1145,7 @@ class FAQ extends DbObject
 		return self::canManageParcoursInContext(
 			$context,
 			(int)($viewerAccess['userId'] ?? 0),
-			true
+			false
 		);
 	}
 
@@ -1151,6 +1166,16 @@ class FAQ extends DbObject
 
 		return \lmsCurrentUserCanCreateParcours($organizationId, $userId, (bool)$useSessionCache)
 			|| \lmsCurrentUserCanEditParcours($organizationId, $userId, (bool)$useSessionCache);
+	}
+
+	public static function canCreateParcoursInContext(array $context, $userId = 0, $useSessionCache = true): bool
+	{
+		$userId = (int)$userId ?: self::resolveCurrentUserId();
+		$faq = new self();
+		$faq->set('IDorganization', (int)($context['organizationId'] ?? 0));
+		return $userId > 0 && $userId === self::resolveCurrentUserId()
+			&& $faq->canBeCreatedInContext($context)
+			&& self::canManageParcoursInContext($context, $userId, $useSessionCache);
 	}
 
 	public function canBeDetachedInContext(array $context = array())

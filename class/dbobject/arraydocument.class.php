@@ -209,6 +209,9 @@
 				$documentId = (int)$document->getId();
 				$documentOrganizationId = (int)$document->get('IDorganization');
 				$resolvedOrganizationId = $organizationId > 0 ? $organizationId : $documentOrganizationId;
+				if ($documentOrganizationId !== $resolvedOrganizationId) {
+					continue;
+				}
 
 				$canAccessVisibility = \dbObject\ObjectVisibility::viewerCanAccessRule(
 					$ruleMap[$documentId] ?? null,
@@ -265,6 +268,7 @@
 					if (
 						!isset($candidateVisibleIds[$parentDocumentId])
 						|| !isset($documentsById[$parentDocumentId])
+						|| !$documentsById[$parentDocumentId]->isFolder()
 					) {
 						$hasVisibleChain = false;
 						break;
