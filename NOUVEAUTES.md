@@ -1,5 +1,7 @@
 # Journal des nouveautés
 
+- Patreon / popup de soutien (2026-10-19) : la popup Soutenir le projet ne s affiche plus lorsque l organisation courante est connectee a Patreon, meme sans connexion Patreon personnelle.
+
 - Import / fin de traitement (2026-10-19) : apres une reussite, y compris avec avertissements, la fenetre quitte l attente et le formulaire est marque comme enregistre. Un ecran de fin conserve les avertissements avec les actions Ouvrir l organisation et Fermer, sans confirmation de perte de donnees ni redirection automatique. Un espacement separe le bloc d information des boutons.
 
 - Import OMO1 / espaces archives et documents (2026-10-19) : restauration des roles et cercles archives fournis par DevOMO, avec leurs contenus et les metadonnees de restauration. Les documents lies a un projet conservent leurs portees depuis leur espace d origine. Les documents et PV dont l espace est absent du fichier restent dans l archive sans etre importes, avec un seul avertissement recapitulatif. Les regles peuvent retrouver leur espace depuis le domaine exporte lorsque leur reference directe manque.

@@ -1222,7 +1222,9 @@ if ($currentUser->load($currentUserId)) {
 
 if (!$isDemoGuest && $currentUserId > 0 && patreonSupportUiIsEnabled()) {
     $patreonConnection = \dbObject\UserPatreon::findByUserId($currentUserId);
-    $patreonPromptShouldShow = !($patreonConnection !== false && $patreonConnection->isConnected());
+    $organizationPatreonConnection = \dbObject\OrganizationPatreon::findByOrganizationId((int)$organizationContext['id']);
+    $patreonPromptShouldShow = !($patreonConnection !== false && $patreonConnection->isConnected())
+        && !($organizationPatreonConnection !== null && $organizationPatreonConnection->isConnected());
 }
 ?>
 <!DOCTYPE html>
