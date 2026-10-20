@@ -6,6 +6,7 @@
     let busy = false;
     let revealTimer = null;
     let autoTimer = null;
+    let seenDay = '';
     let region = null;
     let texts = {title: 'Trucs et astuces', next: 'Suivant', read: 'En savoir plus', close: 'Fermer', error: 'Impossible de charger cette astuce.'};
 
@@ -22,9 +23,20 @@
     }
     function remember(seen) {
         if (!payload || !payload.tip) return;
+        if (seen) seenDay = payload.cookieName + ':' + payload.day;
         const value = {day: payload.day, id: payload.tip.id, seen: seen};
-        document.cookie = payload.cookieName + '=' + encodeURIComponent(JSON.stringify(value))
-            + '; Path=/; SameSite=Lax; Expires=' + payload.expires + (location.protocol === 'https:' ? '; Secure' : '');
+        try {
+            document.cookie = payload.cookieName + '=' + encodeURIComponent(JSON.stringify(value))
+                + '; Path=/; SameSite=Lax; Expires=' + payload.expires + (location.protocol === 'https:' ? '; Secure' : '');
+        } catch (_) { /* In-memory state also prevents repeats when cookies are unavailable. */ }
+    }
+    function currentPayload(value = payload) {
+        return !!value && Date.parse(value.expires) > Date.now();
+    }
+    function alreadySeen() {
+        const cookie = readCookie();
+        return seenDay === payload.cookieName + ':' + payload.day
+            || !!cookie && cookie.day === payload.day && cookie.seen;
     }
     function visibleSlot() {
         if (!slot) return false;
@@ -60,6 +72,12 @@
     }
     function show() {
         if (!visibleSlot() || !payload || !payload.tip || notificationId || typeof window.commonNotify !== 'function') return;
+        if (!currentPayload()) {
+            load(false).then(function (loaded) { if (loaded) show(); });
+            return;
+        }
+        clearTimeout(autoTimer);
+        autoTimer = null;
         reveal();
         const tip = payload.tip;
         const content = document.createElement('div');
@@ -120,25 +138,26 @@
     }
     function maybeAutoShow() {
         if (!payload || !payload.tip || !visibleSlot() || document.hidden) return;
-        const cookie = readCookie();
-        if ((!cookie || cookie.day !== payload.day || !cookie.seen) && !autoTimer && !notificationId) {
+        if (!currentPayload()) { load(false); return; }
+        if (!alreadySeen() && !autoTimer && !notificationId) {
             reveal();
             autoTimer = setTimeout(function () {
                 autoTimer = null;
-                const latest = readCookie();
-                if (!document.hidden && (!latest || latest.day !== payload.day || !latest.seen)) show();
+                if (!document.hidden && !alreadySeen()) show();
             }, 320);
         }
     }
     async function load(next, nextButton) {
-        if (busy) return;
+        if (busy) return false;
         busy = true;
         if (nextButton) nextButton.disabled = true;
         try {
             const oid = Number((window.omoConfig || {}).oid) || 0;
             const response = await fetch(url('/omo/api/tips.php?oid=' + oid + (next ? '&next=1' : '')), {credentials: 'same-origin', cache: 'no-store'});
             if (!response.ok) throw new Error('Tip request failed');
-            payload = await response.json();
+            const received = await response.json();
+            if (!currentPayload(received)) throw new Error('Expired tip response');
+            payload = received;
             if (next) {
                 dismiss();
                 notificationId = '';
@@ -147,8 +166,10 @@
                 maybeAutoShow();
             }
             if (!payload.tip && slot) slot.classList.remove('is-revealed');
+            return true;
         } catch (_) {
             if (next && typeof window.commonNotify === 'function') window.commonNotify(texts.error, 'error');
+            return false;
         } finally {
             busy = false;
             if (nextButton) nextButton.disabled = false;
@@ -166,7 +187,7 @@
             reveal();
             if (notificationId) dismiss();
             else if (payload && payload.tip) show();
-            else load(false).then(show);
+            else load(false).then(function (loaded) { if (loaded) show(); });
         });
         slot.addEventListener('pointerdown', function (event) {
             if (event.pointerType === 'touch' && !slot.classList.contains('is-revealed')) reveal();

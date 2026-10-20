@@ -191,13 +191,7 @@ function omoActivityCanUsePermission(?Holon $holon, $permissionKey, $organizatio
 
 function omoActivityPvMeetingQuery(int $organizationId): string
 {
-    $meetingContext = commonResolvePvMeetingPermissionContext($organizationId);
-    $documentId = is_array($meetingContext) ? (int)($meetingContext['documentId'] ?? 0) : 0;
-    $request = $_SERVER['REQUEST_METHOD'] === 'POST' ? $_POST : $_GET;
-    $editorToken = trim((string)($request['pv_meeting_editor_token'] ?? $request['editor_token'] ?? ''));
-    return $documentId > 0 && $editorToken !== ''
-        ? '&pv_meeting_document_id=' . $documentId . '&pv_meeting_editor_token=' . rawurlencode($editorToken)
-        : '';
+    return commonPvMeetingQuery($organizationId);
 }
 
 function omoActivityCanView(ControlActivity $activity)

@@ -1,5 +1,6 @@
 <?php
 require_once dirname(__DIR__) . '/bootstrap.php';
+require_once dirname(__DIR__, 3) . '/common/choice/deferred-editor-fields.php';
 
 use dbObject\ControlActivity;
 use dbObject\DeferredProposal;
@@ -60,6 +61,9 @@ $GLOBALS['omoDeferredObjectEditor'] = [
     'state' => $state,
     'pointId' => $pointId,
     'proposalId' => $proposalId,
+    'creationHolonCatalog' => $operation === DeferredProposal::OPERATION_CREATE
+        ? DeferredProposal::getObjectTargetHolonCatalog($organizationId, (int)$document->getPvContextHolonId(), $targetType)
+        : [],
 ];
 ?>
 <?php if ($operation === DeferredProposal::OPERATION_DELETE): ?>

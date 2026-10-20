@@ -402,7 +402,9 @@
         if (Number.isInteger(holonId) && holonId > 0) {
             detailUrl += '&cid=' + encodeURIComponent(String(holonId));
         }
-        return detailUrl;
+        var url = new URL(detailUrl, window.location.origin);
+        appendPvMeetingContext(url.searchParams);
+        return url.pathname + url.search;
     }
 
     function getCurrentRouteToken() {

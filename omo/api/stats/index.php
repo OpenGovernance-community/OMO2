@@ -29,10 +29,7 @@ if (empty($context['status'])) {
     exit;
 }
 $context['pvMeetingPermission'] = commonResolvePvMeetingPermissionContext($organizationId);
-$pvMeetingQuery = is_array($context['pvMeetingPermission'])
-    ? '&pv_meeting_document_id=' . (int)$context['pvMeetingPermission']['documentId']
-        . '&pv_meeting_editor_token=' . rawurlencode((string)($_GET['pv_meeting_editor_token'] ?? ''))
-    : '';
+$pvMeetingQuery = commonPvMeetingQuery($organizationId);
 
 $organization = $context['organization'];
 $rootHolon = $context['rootHolon'];

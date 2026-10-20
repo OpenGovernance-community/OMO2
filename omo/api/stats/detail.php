@@ -80,6 +80,7 @@ $editUrl = '/omo/api/stats/edit.php?oid=' . rawurlencode((string)$organizationId
 if ($currentHolonId > 0) {
     $editUrl .= '&cid=' . rawurlencode((string)$currentHolonId);
 }
+$editUrl .= commonPvMeetingQuery($organizationId);
 $detailUrl = '/omo/api/stats/detail.php?oid=' . rawurlencode((string)$organizationId) . '&id=' . rawurlencode((string)$indicatorId);
 if ($currentHolonId > 0) {
     $detailUrl .= '&cid=' . rawurlencode((string)$currentHolonId);
@@ -87,6 +88,7 @@ if ($currentHolonId > 0) {
 if ($isImport) {
     $detailUrl .= '&import_id=' . rawurlencode((string)$importId);
 }
+$detailUrl .= commonPvMeetingQuery($organizationId);
 $tabPrefix = 'omo-stats-detail-' . (int)$indicatorId;
 ?>
 <article

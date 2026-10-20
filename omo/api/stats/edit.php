@@ -223,6 +223,9 @@ $showCumulative = (int)$indicator->get('show_cumulative') > 0;
         data-omo-subdrawer-title="<?= omoApiEscape(omoStatsT($indicatorId > 0 ? 'stats.form.edit_title' : 'stats.form.create_title')) ?>"
         data-omo-subdrawer-description="<?= omoApiEscape(omoStatsT('stats.form.intro')) ?>"></div>
     <form id="<?= $projectId > 0 ? 'omoProjectIndicatorForm' : 'omoStatsIndicatorForm' ?>" class="generic-form-stack generic-form-stack--compact" action="<?= $deferredEditor && $deferredEditor['origin'] === 'pv' ? '/omo/api/deferred_proposals/pv_object_save.php' : '/omo/api/stats/action.php' ?>" method="post"<?= $deferredEditor ? ' data-deferred-object-form' : '' ?>>
+        <?php if ($deferredEditor && $deferredEditor['origin'] === 'pv' && $deferredEditor['operation'] === 'create'): ?>
+            <?php omoDeferredEditorRenderCreationHolonField($organizationId, $currentHolonId, $deferredEditor['creationHolonCatalog']); ?>
+        <?php endif; ?>
         <?php if (!$deferredEditor && ($projectId > 0 || $indicator->hasProjectAssociation())): ?>
             <?= omoProjectsRenderResourceHolonVisibility($indicator) ?>
         <?php endif; ?>
@@ -521,6 +524,7 @@ $showCumulative = (int)$indicator->get('show_cumulative') > 0;
  <input type="hidden" name="cid" value="<?= (int)$currentHolonId ?>">
  <?php if ($deferredEditor && $deferredEditor['origin'] === 'pv'): ?>
      <?php foreach (['point_id' => $deferredEditor['pointId'], 'proposal_id' => $deferredEditor['proposalId'], 'target_type' => $deferredEditor['targetType'], 'operation' => $deferredEditor['operation'], 'holon_id' => $currentHolonId, 'object_id' => $indicatorId] as $key => $entry): ?>
+         <?php if ($key === 'holon_id' && $deferredEditor['operation'] === 'create') continue; ?>
          <input type="hidden" name="<?= omoApiEscape($key) ?>" value="<?= omoApiEscape((string)$entry) ?>">
      <?php endforeach; ?>
  <?php endif; ?>
@@ -556,6 +560,6 @@ $showCumulative = (int)$indicator->get('show_cumulative') > 0;
     'measurementScheduleOptions' => $measurementScheduleOptions,
 ]) ?>
 <?php if ($deferredEditor): ?>
-<script src="/common/choice/deferred-object-editor.js?v=20260924-shared-form-validation"></script>
+<script src="<?= commonAssetUrl('/common/choice/deferred-object-editor.js') ?>"></script>
 <script>window.omoDeferredObjectEditorInit(document.querySelector('[data-deferred-object-editor]'), <?= json_encode(['origin'=>$deferredEditor['origin'],'targetType'=>$deferredEditor['targetType'],'holonId'=>$currentHolonId,'pointId'=>$deferredEditor['pointId'] ?? 0], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>);</script>
 <?php endif; ?>

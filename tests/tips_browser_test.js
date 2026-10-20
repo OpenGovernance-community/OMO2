@@ -14,6 +14,8 @@ const read = file => fs.readFileSync(path.join(root, file), 'utf8');
         page.on('pageerror', error => errors.push(error.message));
         let requests = 0;
         let failNext = false;
+        let day = new Date().toISOString().slice(0, 10);
+        let expires = new Date(Date.now() + 86400000).toUTCString();
         const tips = [
             {id: 11, text: 'Une petite astuce pour decouvrir le logiciel.', link: '#|faq', image: ''},
             {id: 12, text: '<img src=x onerror=alert(1)> reste du texte.', link: 'https://example.org/help', image: '/img/test-tip.png'}
@@ -26,7 +28,7 @@ const read = file => fs.readFileSync(path.join(root, file), 'utf8');
             const cookie = value ? JSON.parse(decodeURIComponent(value.slice('omo_tip_2='.length))) : {};
             const next = route.request().url().includes('next=1');
             const tip = next ? tips.find(tip => tip.id !== cookie.id) : tips.find(tip => tip.id === cookie.id) || tips[0];
-            return route.fulfill({contentType: 'application/json', body: JSON.stringify({tip, cookieName: 'omo_tip_2', day: '2026-10-12', expires: 'Tue, 13 Oct 2026 00:00:00 GMT'})});
+            return route.fulfill({contentType: 'application/json', body: JSON.stringify({tip, cookieName: 'omo_tip_2', day, expires})});
         });
         await page.route('**/common/jstranslation/tips.php', route => route.fulfill({contentType: 'application/json', body: '{}'}));
         await page.route('**/img/test-tip.png', route => route.fulfill({contentType: 'image/png', body: fs.readFileSync(path.join(root, 'common/tips/ampoule.png'))}));
@@ -140,6 +142,62 @@ const read = file => fs.readFileSync(path.join(root, file), 'utf8');
         });
         assert.equal(await page.locator('[data-tips-admin] [name=image]').inputValue(), '');
         assert.equal(await page.evaluate(() => window.croppedImages.image), undefined);
+
+        // Resume the same tab on successive days, without reloading its scripts.
+        await page.keyboard.press('Escape');
+        await page.clock.runFor(600);
+        await page.setViewportSize({width: 1200, height: 850});
+        await page.mouse.move(800, 100);
+        await page.clock.runFor(500);
+        const wakeNextDay = async () => {
+            const wake = Date.parse(expires) + 1000;
+            day = new Date(Date.parse(day + 'T12:00:00Z') + 86400000).toISOString().slice(0, 10);
+            expires = new Date(wake + 86400000).toUTCString();
+            await page.context().clearCookies();
+            await page.clock.setSystemTime(wake);
+            await page.evaluate(() => {
+                document.dispatchEvent(new Event('visibilitychange'));
+                window.dispatchEvent(new Event('resize'));
+            });
+            await popup.waitFor({state: 'visible'});
+        };
+        const dismissAndCheckQuiet = async () => {
+            await page.keyboard.press('Escape');
+            await page.clock.runFor(600);
+            for (let index = 0; index < 5; index++) {
+                await page.evaluate(() => document.getElementById('sidebar').dispatchEvent(new Event('transitionend', {bubbles: true})));
+                await page.clock.runFor(1000);
+            }
+            assert.equal(await popup.count(), 0, 'Sidebar transitions must not repeatedly reopen the daily tip.');
+        };
+        let beforeWake = requests;
+        await wakeNextDay();
+        assert.equal(requests, beforeWake + 1, 'Concurrent wake events refresh the expired payload once.');
+        const dailyCookie = await page.evaluate(() => JSON.parse(decodeURIComponent(document.cookie.split('; ').find(value => value.startsWith('omo_tip_2=')).slice('omo_tip_2='.length))));
+        assert.equal(dailyCookie.day, day, 'The resumed tab records the current day, not the expired day.');
+        await dismissAndCheckQuiet();
+        assert.equal(requests, beforeWake + 1);
+
+        // A blocked cookie must not make an already displayed tip look unread forever.
+        await page.evaluate(() => Object.defineProperty(document, 'cookie', {
+            configurable: true, get() { return ''; }, set() { throw new Error('Cookies unavailable'); }
+        }));
+        beforeWake = requests;
+        await wakeNextDay();
+        await dismissAndCheckQuiet();
+        assert.equal(requests, beforeWake + 1, 'In-memory daily state prevents repetition without a writable cookie.');
+        await page.evaluate(html => { document.querySelector('#menu_sidebar').innerHTML = html; }, sidebar);
+        await page.clock.runFor(1500);
+        assert.equal(await popup.count(), 0, 'Replacing the sidebar also retains the daily seen state.');
+
+        // An expired server response is rejected without scheduling a recursive reload.
+        await page.clock.setSystemTime(Date.parse(expires) + 1000);
+        beforeWake = requests;
+        await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+        await page.waitForTimeout(100);
+        await page.clock.runFor(5000);
+        assert.equal(requests, beforeWake + 1, 'Stale responses must not cause an automatic fetch loop.');
+        assert.equal(await popup.count(), 0);
         assert.deepEqual(errors, [], 'No browser errors.');
         console.log('tips_browser_test: OK');
     } finally { await browser.close(); }
