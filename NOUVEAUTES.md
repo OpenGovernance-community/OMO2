@@ -1,5 +1,13 @@
 # Journal des nouveautés
 
+- Tests / fond de l editeur de holons (2026-10-20) : controle des propositions adapte a la regle de surface commune a tous les editeurs de holons. Verification de la couleur dans cette regle precise, au lieu d exiger l ancien selecteur reserve au mode proposition.
+
+- PV / espace des creations proposees (2026-10-20) : choix de l espace directement dans les formulaires de creation de projets, indicateurs et taches recurrentes, avec le champ non editable et le bouton de selection partage. Destinations limitees aux droits collectifs du holon du PV, conservees a la reouverture et controlees a nouveau lors de l enregistrement ; espace choisi respecte a la validation.
+
+- PV / droits collectifs des onglets (2026-10-20) : conservation du contexte de reunion lors des changements de vue, de l ouverture des formulaires de projets et d indicateurs, et de la navigation des taches recurrentes. Le kanban conserve les droits collectifs de l editeur pour changer le statut et deplacer les projets dans les espaces autorises, y compris apres actualisation.
+
+- Trucs et astuces / reprise le lendemain (2026-10-20) : actualisation des donnees expirees lorsqu un onglet reste ouvert apres minuit, avant tout nouvel affichage. Memorisation locale de l astuce vue pour eviter les reouvertures en boucle si le cookie expire ou ne peut pas etre enregistre.
+
 - Calendrier / resume des documents lies (2026-10-20) : resume automatique avec nom de l evenement, date et heure, et mention Compte rendu pour les PV. Heure omise pour les evenements sur toute la journee ; descriptions renseignees conservees. Migration ciblee pour retirer l antislash parasite et enrichir les anciens resumes automatiques lorsque l evenement existe toujours.
 
 - Documents / descriptif compact (2026-10-20) : debut du descriptif affiche en texte normal apres le titre en gras et un tiret long, sur une seule ligne tronquee avec points de suspension. Texte complet conserve au survol ; aucun separateur ajoute sans descriptif.
