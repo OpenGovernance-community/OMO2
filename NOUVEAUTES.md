@@ -1,5 +1,17 @@
 # Journal des nouveautés
 
+- Calendrier / resume des documents lies (2026-10-20) : resume automatique avec nom de l evenement, date et heure, et mention Compte rendu pour les PV. Heure omise pour les evenements sur toute la journee ; descriptions renseignees conservees. Migration ciblee pour retirer l antislash parasite et enrichir les anciens resumes automatiques lorsque l evenement existe toujours.
+
+- Documents / descriptif compact (2026-10-20) : debut du descriptif affiche en texte normal apres le titre en gras et un tiret long, sur une seule ligne tronquee avec points de suspension. Texte complet conserve au survol ; aucun separateur ajoute sans descriptif.
+
+- Documents / selection multiple (2026-10-20) : case toujours affichee pour aligner les elements, grisee si aucune action groupee n est autorisee. Ctrl/Cmd + clic bascule la selection sans ouvrir le document ; Maj + clic ajoute la plage visible depuis le dernier element clique, en ignorant les cases desactivees et le contenu des dossiers replies. Actions groupees proposees selon les droits de toute la selection.
+
+- Documents / presentation ordinateur (2026-10-20) : lignes compactes limitees a un titre et une ligne de contexte, avec titre complet au survol. Fiches organisees par titre, contexte, description puis metadonnees ; dossiers presentes avec le meme rendu compact dans les deux modes.
+
+- Documents / menu mobile (2026-10-20) : le bouton Nouveau reste un bouton complet dans le menu d actions, sans ancien positionnement en petit bouton +. Le choix d un modele garde le menu parent ouvert et se ferme avec Echap. Le menu Plein ecran ne reutilise plus les sous-menus de creation, dont le selecteur de modeles.
+
+- Documents / affichage mobile (2026-10-20) : fiches avec titre et description sur toute la largeur, icone et selection regroupees avec les metadonnees. Mode compact avec tags et date sur une meme ligne, menu en haut et retraits des dossiers reduits.
+
 - Patreon / popup de soutien (2026-10-19) : la popup Soutenir le projet ne s affiche plus lorsque l organisation courante est connectee a Patreon, meme sans connexion Patreon personnelle.
 
 - Import / fin de traitement (2026-10-19) : apres une reussite, y compris avec avertissements, la fenetre quitte l attente et le formulaire est marque comme enregistre. Un ecran de fin conserve les avertissements avec les actions Ouvrir l organisation et Fermer, sans confirmation de perte de donnees ni redirection automatique. Un espacement separe le bloc d information des boutons.

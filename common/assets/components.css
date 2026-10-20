@@ -2739,7 +2739,7 @@ html[data-theme="dark"] .generic-tabs__tab:focus-visible .generic-monochrome-ico
 }
 
 .generic-file-list {
-    --generic-file-list-columns: minmax(0, 2.55fr) minmax(120px, 0.95fr) minmax(160px, 1.45fr) minmax(110px, 0.95fr);
+    --generic-file-list-columns: var(--param-file-list-columns, minmax(0, 2.55fr) minmax(120px, 0.95fr) minmax(160px, 1.45fr) minmax(110px, 0.95fr));
     --generic-file-list-border: color-mix(in srgb, var(--color-border, #d1d5db) 82%, white 18%);
     --generic-file-list-surface: var(--color-surface, #ffffff);
     --generic-file-list-surface-alt: color-mix(in srgb, var(--color-surface-alt, #f8fafc) 78%, white 22%);
@@ -3039,8 +3039,8 @@ html[data-theme="dark"] .generic-tabs__tab:focus-visible .generic-monochrome-ico
 
 .generic-file-list--structured .generic-file-list__folder-content {
     position: relative;
-    margin-left: 18px;
-    padding: 0 0 0 20px;
+    margin-left: var(--param-file-list-folder-margin, 18px);
+    padding: 0 0 0 var(--param-file-list-folder-padding, 20px);
 }
 
 .generic-file-list--structured .generic-file-list__folder-content::before {
@@ -3226,6 +3226,50 @@ html[data-theme="dark"] .generic-tabs__tab:focus-visible .generic-monochrome-ico
     z-index: 30;
 }
 
+/* Desktop rows reserve one line for the title and one for its context. */
+@media (min-width: 769px) {
+    .generic-file-list--structured .generic-file-list__row--dense-desktop {
+        padding-block: 8px;
+    }
+
+    .generic-file-list__row--dense-desktop .generic-file-list__name-main {
+        align-items: center;
+        width: 100%;
+        gap: 8px;
+    }
+
+    .generic-file-list__row--dense-desktop .generic-file-list__title-block {
+        flex: 1;
+        gap: 2px;
+    }
+
+    .generic-file-list__row--dense-desktop .generic-file-list__title-row,
+    .generic-file-list__row--dense-desktop .generic-file-list__tag-list {
+        flex-wrap: nowrap;
+        overflow: hidden;
+    }
+
+    .generic-file-list__row--dense-desktop .generic-file-list__title {
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .generic-file-list__row--dense-desktop .generic-file-list__meta-line {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .generic-file-list__row--dense-desktop .generic-file-list__tag,
+    .generic-file-list__row--dense-desktop .generic-file-list__cell--date,
+    .generic-file-list__row--dense-desktop .generic-file-list__count {
+        white-space: nowrap;
+    }
+}
+
 .generic-file-list--structured.generic-file-list--stacked-sticky .generic-file-list__group-title {
     position: sticky;
     top: 0;
@@ -3389,6 +3433,27 @@ html[data-theme="dark"] .generic-tabs__tab:focus-visible .generic-monochrome-ico
     .generic-file-list__row--summary-mobile .generic-file-list__cell--status .generic-action-button {
         min-height: 44px;
         min-width: 64px;
+    }
+
+    /* Keep short metadata on one line below a full-width mobile title. */
+    .generic-file-list--structured .generic-file-list__row--inline-meta-mobile {
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .generic-file-list__row--inline-meta-mobile .generic-file-list__cell--name {
+        grid-column: 1 / -1;
+    }
+
+    .generic-file-list__row--inline-meta-mobile .generic-file-list__cell--date {
+        grid-column: 2;
+        justify-content: flex-end;
+        align-self: end;
+        font-size: var(--generic-type-size-sm);
+    }
+
+    .generic-file-list--structured .generic-file-list__menu--top-mobile {
+        top: 12px;
+        transform: none;
     }
 }
 

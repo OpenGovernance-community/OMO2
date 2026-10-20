@@ -1264,6 +1264,7 @@ window.commonPageScripts["/omo/api/documents/drawers.js"] = function (pageConfig
                 if (templateToggle && templatePanel) {
                     templateToggle.addEventListener('click', function (event) {
                         event.preventDefault();
+                        event.stopPropagation();
                         const willOpen = templatePanel.hidden;
                         closeTemplatePicker();
                         templatePanel.hidden = !willOpen;
@@ -1314,6 +1315,11 @@ window.commonPageScripts["/omo/api/documents/drawers.js"] = function (pageConfig
 
                 ownerDocument.addEventListener('click', function (event) {
                     if (!templatePicker.contains(event.target)) {
+                        closeTemplatePicker();
+                    }
+                });
+                ownerDocument.addEventListener('keydown', function (event) {
+                    if (event.key === 'Escape') {
                         closeTemplatePicker();
                     }
                 });

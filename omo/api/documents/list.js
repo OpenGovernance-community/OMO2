@@ -476,6 +476,7 @@ window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, p
                                 ),
                                 loadingFolderIds: new Set(),
                                 selectedDocumentIds: new Set(),
+                                selectionAnchorId: null,
                                 activeDocumentId: detailDrawer && detailDrawer.dataset.omoDocumentActiveId
                                     ? Number(detailDrawer.dataset.omoDocumentActiveId)
                                     : null
@@ -806,6 +807,15 @@ window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, p
                                 });
                             };
 
+                            const selectedDocumentsCanBeArchived = function (selectedDocumentIds) {
+                                return selectedDocumentIds.every(function (documentId) {
+                                    return documents.some(function (documentItem) {
+                                        return Number(documentItem && documentItem.id || 0) === documentId
+                                            && documentItem.canArchive === true;
+                                    });
+                                });
+                            };
+
                             const selectedDocumentsCanBeMoved = function (selectedDocumentIds) {
                                 return selectedDocumentIds.every(function (documentId) {
                                     return documents.some(function (documentItem) {
@@ -833,6 +843,7 @@ window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, p
                                 const moveButton = panel.querySelector('[data-omo-documents-bulk-action="move"]');
                                 const mergeButton = panel.querySelector('[data-omo-documents-bulk-action="merge"]');
                                 const deleteButton = panel.querySelector('[data-omo-documents-bulk-action="delete"]');
+                                const archiveButton = panel.querySelector('[data-omo-documents-bulk-action="archive"]');
 
                                 if (bulkActions) {
                                     bulkActions.hidden = selectedCount === 0;
@@ -852,6 +863,9 @@ window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, p
                                 if (deleteButton) {
                                     deleteButton.hidden = selectedCount === 0 || !selectedDocumentsCanBeDeleted(selectedDocumentIds);
                                 }
+                                if (archiveButton) {
+                                    archiveButton.hidden = selectedCount === 0 || !selectedDocumentsCanBeArchived(selectedDocumentIds);
+                                }
 
                                 results.querySelectorAll('[data-omo-document-select]').forEach(function (input) {
                                     const documentId = Number(input.value || 0);
@@ -867,36 +881,22 @@ window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, p
                             };
 
                             const createDocumentSelectionControl = function (documentItem) {
-								if (documentItem && documentItem.isRemoteFile) {
-									return null;
-								}
-                                if (!documentItem || (!documentItem.canArchive && !documentItem.canMove && !documentItem.canMerge)) {
-                                    return null;
-                                }
-
-                                const documentId = Number(documentItem.id || 0);
-                                if (!Number.isInteger(documentId) || documentId <= 0) {
-                                    return null;
-                                }
-
+                                const documentId = Number(documentItem && documentItem.id || 0);
+                                const canSelect = documentItem && !documentItem.isRemoteFile
+                                    && Number.isInteger(documentId) && documentId > 0
+                                    && (documentItem.canArchive || documentItem.canMove || documentItem.canMerge || documentItem.canDelete);
                                 const control = document.createElement('label');
                                 control.className = 'omo-documents__selection-control';
                                 const input = document.createElement('input');
                                 input.type = 'checkbox';
                                 input.value = String(documentId);
+                                input.disabled = !canSelect;
                                 input.checked = state.selectedDocumentIds.has(documentId);
                                 input.setAttribute('data-omo-document-select', '1');
                                 input.setAttribute('data-document-can-delete', documentItem.canDelete ? '1' : '0');
                                 input.setAttribute('aria-label', pageConfig.documentsSelectionToggle);
                                 control.appendChild(input);
                                 return control;
-                            };
-
-                            const createDocumentSelectionPlaceholder = function () {
-                                const placeholder = document.createElement('span');
-                                placeholder.className = 'omo-documents__selection-placeholder';
-                                placeholder.setAttribute('aria-hidden', 'true');
-                                return placeholder;
                             };
 
                             const postBulkDocumentAction = function (action) {
@@ -941,8 +941,12 @@ window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, p
                                     return;
                                 }
 
-                                if (state.density === 'compact') {
+                                const usesCompactLayout = state.density === 'compact' || documentItem.isFolder;
+                                if (usesCompactLayout) {
                                     container.classList.add('omo-documents__item--compact');
+                                }
+                                if (documentItem.isFolder) {
+                                    container.classList.add('generic-file-list--structured');
                                 }
 
                                 if (settings.interactive) {
@@ -980,7 +984,6 @@ window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, p
                                 const frame = document.createElement('div');
                                 frame.className = 'omo-documents__item-frame omo-documents__item-frame--with-selection';
                                 const selectionControl = createDocumentSelectionControl(documentItem);
-                                frame.appendChild(selectionControl || createDocumentSelectionPlaceholder());
 
                                 const visual = document.createElement('div');
                                 visual.className = 'omo-documents__visual';
@@ -1015,9 +1018,9 @@ window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, p
                                         return keyword !== '';
                                     });
 
-                                if (state.density === 'compact') {
+                                if (usesCompactLayout) {
                                     const frame = document.createElement('div');
-                                    frame.className = 'omo-documents__item-frame omo-documents__item-frame--compact-list generic-file-list__row';
+                                    frame.className = 'omo-documents__item-frame omo-documents__item-frame--compact-list generic-file-list__row generic-file-list__row--dense-desktop generic-file-list__row--summary-mobile generic-file-list__row--inline-meta-mobile';
                                     const showsContext = omoDocumentsNormalizeScope(panel.getAttribute('data-omo-document-scope') || 'contextual') !== 'contextual';
 
                                     const compactNameCell = document.createElement('div');
@@ -1032,10 +1035,23 @@ window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, p
                                     const compactTitleStack = document.createElement('div');
                                     compactTitleStack.className = 'omo-documents__compact-title-stack generic-file-list__title-row';
 
+                                    const compactHeading = document.createElement('div');
+                                    compactHeading.className = 'omo-documents__compact-heading';
                                     const compactTitle = document.createElement('strong');
                                     compactTitle.className = 'omo-documents__compact-title generic-file-list__title';
                                     compactTitle.textContent = documentItem.listTitle || documentItem.title || '';
-                                    compactTitleStack.appendChild(compactTitle);
+                                    compactTitle.title = compactTitle.textContent;
+                                    compactHeading.appendChild(compactTitle);
+                                    const compactDescription = String(documentItem.description || '').replace(/\s+/g, ' ').trim();
+                                    if (compactDescription !== '') {
+                                        compactHeading.classList.add('omo-documents__compact-heading--with-excerpt');
+                                        const excerpt = document.createElement('span');
+                                        excerpt.className = 'omo-documents__compact-excerpt';
+                                        excerpt.textContent = '\u2014 ' + compactDescription;
+                                        excerpt.title = compactDescription;
+                                        compactHeading.appendChild(excerpt);
+                                    }
+                                    compactTitleStack.appendChild(compactHeading);
                                     if (documentItem.isTemplate) {
                                         const templateBadge = document.createElement('span');
                                         templateBadge.className = 'omo-documents__template-star';
@@ -1051,14 +1067,11 @@ window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, p
                                         compactTitleStack.appendChild(compactMissingUpload);
                                     }
                                     const compactScopeCapsule = createVisibilityCapsule(documentItem);
-                                    if (compactScopeCapsule) {
-                                        compactTitleStack.appendChild(compactScopeCapsule);
-                                    }
-
+                                    let compactCount = null;
                                     if (documentItem.isFolder) {
                                         const count = Array.isArray(documentItem.children) ? documentItem.children.length : 0;
                                         const childrenLoaded = documentItem.childrenLoaded === true;
-                                        const compactCount = document.createElement('span');
+                                        compactCount = document.createElement('span');
                                         compactCount.className = 'omo-documents__compact-count generic-file-list__count';
 										compactCount.textContent = documentItem.isNextcloudFolder
 											? omoDocumentsNextcloudFolderLabel
@@ -1067,10 +1080,11 @@ window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, p
 												: (count > 0
                                             ? String(count) + ' element' + (count > 1 ? 's' : '')
 													: omoDocumentsFolderEmptyLabel));
-                                        compactTitleStack.appendChild(compactCount);
                                     }
 
                                     compactTitleBlock.appendChild(compactTitleStack);
+                                    const compactContextInline = document.createElement('div');
+                                    compactContextInline.className = 'omo-documents__compact-context-inline';
 
                                     if (showsContext) {
                                         let compactContextLine = null;
@@ -1109,14 +1123,20 @@ window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, p
                                         }
 
                                         if (compactContextLine) {
-                                            const compactContextInline = document.createElement('div');
-                                            compactContextInline.className = 'omo-documents__compact-context-inline';
                                             compactContextInline.appendChild(compactContextLine);
-                                            compactTitleBlock.appendChild(compactContextInline);
                                         }
                                     }
+                                    if (compactCount) {
+                                        compactContextInline.appendChild(compactCount);
+                                    }
+                                    if (compactScopeCapsule) {
+                                        compactContextInline.appendChild(compactScopeCapsule);
+                                    }
+                                    if (compactContextInline.childElementCount > 0) {
+                                        compactTitleBlock.appendChild(compactContextInline);
+                                    }
 
-                                    compactNameMain.appendChild(selectionControl || createDocumentSelectionPlaceholder());
+                                    compactNameMain.appendChild(selectionControl);
                                     compactNameMain.appendChild(visual);
                                     compactNameMain.appendChild(compactTitleBlock);
                                     compactNameCell.appendChild(compactNameMain);
@@ -1147,6 +1167,7 @@ window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, p
                                     compactDateCell.textContent = state.sort === 'alpha'
                                         ? getDocumentDateLabel(documentItem, 'updated', true)
                                         : getDocumentDateLabel(documentItem, state.sort, false);
+                                    compactDateCell.title = getDateColumnLabel(state.sort) + ': ' + compactDateCell.textContent;
 
                                     frame.appendChild(compactNameCell);
                                     frame.appendChild(compactTagsCell);
@@ -1273,9 +1294,7 @@ window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, p
                                     content.appendChild(keywords);
                                 }
 
-                                if (selectionControl) {
-                                    frame.appendChild(selectionControl);
-                                }
+                                frame.appendChild(selectionControl);
                                 frame.appendChild(visual);
                                 frame.appendChild(content);
                                 container.appendChild(frame);
@@ -1295,7 +1314,7 @@ window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, p
                                 }
 
                                 const menu = document.createElement('div');
-                                menu.className = 'omo-documents__menu generic-menu generic-file-list__menu';
+                                menu.className = 'omo-documents__menu generic-menu generic-file-list__menu generic-file-list__menu--top-mobile';
                                 menu.setAttribute('data-omo-document-menu', '1');
 
                                 const toggle = document.createElement('button');
@@ -3187,9 +3206,86 @@ window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, p
                                 }
                             });
 
+                            // Use the displayed order, excluding children of collapsed folders.
+                            const selectDocumentRange = function (selectionInput) {
+                                const visibleInputs = Array.from(results.querySelectorAll('[data-omo-document-select]')).filter(function (input) {
+                                    return input.getClientRects().length > 0;
+                                });
+                                const end = visibleInputs.indexOf(selectionInput);
+                                const anchor = visibleInputs.findIndex(function (input) {
+                                    return Number(input.value || 0) === state.selectionAnchorId;
+                                });
+                                const start = anchor >= 0 ? anchor : end;
+                                if (end < 0) {
+                                    return;
+                                }
+                                visibleInputs.slice(Math.min(start, end), Math.max(start, end) + 1).forEach(function (input) {
+                                    if (!input.disabled) {
+                                        state.selectedDocumentIds.add(Number(input.value));
+                                    }
+                                });
+                            };
+
+                            results.addEventListener('mousedown', function (event) {
+                                if (event.shiftKey && event.target.closest('.omo-documents__item')
+                                    && !event.target.closest('button, a, input, select, textarea, [contenteditable]')) {
+                                    event.preventDefault();
+                                }
+                            });
+
+                            // Capture before folder toggles and document-opening handlers.
+                            results.addEventListener('click', function (event) {
+                                if (event.defaultPrevented || event.button !== 0 || event.altKey) {
+                                    return;
+                                }
+                                const item = event.target.closest('.omo-documents__item');
+                                if (!item) {
+                                    return;
+                                }
+                                const control = event.target.closest('.omo-documents__selection-control');
+                                if (!control && event.target.closest('button, a, input, select, textarea, [contenteditable]')) {
+                                    return;
+                                }
+                                const input = item.querySelector('[data-omo-document-select]');
+                                if (!input) {
+                                    return;
+                                }
+                                const documentId = Number(input.value || 0);
+                                if (event.ctrlKey || event.metaKey || event.shiftKey) {
+                                    // Keep native checkbox activation: cancelling it would undo checked.
+                                    if (event.target !== input || input.disabled) {
+                                        event.preventDefault();
+                                    }
+                                    event.stopPropagation();
+                                    if (event.shiftKey) {
+                                        selectDocumentRange(input);
+                                    } else if (!input.disabled) {
+                                        if (state.selectedDocumentIds.has(documentId)) {
+                                            state.selectedDocumentIds.delete(documentId);
+                                        } else {
+                                            state.selectedDocumentIds.add(documentId);
+                                        }
+                                    }
+                                    if (documentId > 0) {
+                                        state.selectionAnchorId = documentId;
+                                    }
+                                    syncDocumentSelection();
+                                    return;
+                                }
+                                if (documentId > 0) {
+                                    state.selectionAnchorId = documentId;
+                                }
+                                if (control) {
+                                    if (input.disabled) {
+                                        event.preventDefault();
+                                    }
+                                    event.stopPropagation();
+                                }
+                            }, true);
+
                             panel.addEventListener('change', function (event) {
                                 const selectionInput = event.target.closest('[data-omo-document-select]');
-                                if (!selectionInput || !panel.contains(selectionInput)) {
+                                if (!selectionInput || selectionInput.disabled || !panel.contains(selectionInput)) {
                                     return;
                                 }
 
@@ -3204,6 +3300,7 @@ window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, p
                                 } else {
                                     state.selectedDocumentIds.delete(documentId);
                                 }
+                                state.selectionAnchorId = documentId;
                                 syncDocumentSelection();
                             });
 
@@ -3236,6 +3333,9 @@ window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, p
                                         return;
                                     }
                                     if (isDelete && !selectedDocumentsCanBeDeleted(selectedDocumentIds)) {
+                                        return;
+                                    }
+                                    if (action === 'archive' && !selectedDocumentsCanBeArchived(selectedDocumentIds)) {
                                         return;
                                     }
 
@@ -3379,6 +3479,7 @@ window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, p
                                     folderToggle
                                     && panel.contains(folderToggle)
                                     && (event.key === 'Enter' || event.key === ' ')
+                                    && !event.target.closest('input, button, a, select, textarea')
                                 ) {
                                     event.preventDefault();
                                     folderToggle.click();
