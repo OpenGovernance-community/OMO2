@@ -1,5 +1,27 @@
 # Journal des nouveautés
 
+- Tests / fond de l editeur de holons (2026-10-20) : controle des propositions adapte a la regle de surface commune a tous les editeurs de holons. Verification de la couleur dans cette regle precise, au lieu d exiger l ancien selecteur reserve au mode proposition.
+
+- PV / espace des creations proposees (2026-10-20) : choix de l espace directement dans les formulaires de creation de projets, indicateurs et taches recurrentes, avec le champ non editable et le bouton de selection partage. Destinations limitees aux droits collectifs du holon du PV, conservees a la reouverture et controlees a nouveau lors de l enregistrement ; espace choisi respecte a la validation.
+
+- PV / droits collectifs des onglets (2026-10-20) : conservation du contexte de reunion lors des changements de vue, de l ouverture des formulaires de projets et d indicateurs, et de la navigation des taches recurrentes. Le kanban conserve les droits collectifs de l editeur pour changer le statut et deplacer les projets dans les espaces autorises, y compris apres actualisation.
+
+- Trucs et astuces / reprise le lendemain (2026-10-20) : actualisation des donnees expirees lorsqu un onglet reste ouvert apres minuit, avant tout nouvel affichage. Memorisation locale de l astuce vue pour eviter les reouvertures en boucle si le cookie expire ou ne peut pas etre enregistre.
+
+- Calendrier / resume des documents lies (2026-10-20) : resume automatique avec nom de l evenement, date et heure, et mention Compte rendu pour les PV. Heure omise pour les evenements sur toute la journee ; descriptions renseignees conservees. Migration ciblee pour retirer l antislash parasite et enrichir les anciens resumes automatiques lorsque l evenement existe toujours.
+
+- Documents / descriptif compact (2026-10-20) : debut du descriptif affiche en texte normal apres le titre en gras et un tiret long, sur une seule ligne tronquee avec points de suspension. Texte complet conserve au survol ; aucun separateur ajoute sans descriptif.
+
+- Documents / selection multiple (2026-10-20) : case toujours affichee pour aligner les elements, grisee si aucune action groupee n est autorisee. Ctrl/Cmd + clic bascule la selection sans ouvrir le document ; Maj + clic ajoute la plage visible depuis le dernier element clique, en ignorant les cases desactivees et le contenu des dossiers replies. Actions groupees proposees selon les droits de toute la selection.
+
+- Documents / presentation ordinateur (2026-10-20) : lignes compactes limitees a un titre et une ligne de contexte, avec titre complet au survol. Fiches organisees par titre, contexte, description puis metadonnees ; dossiers presentes avec le meme rendu compact dans les deux modes.
+
+- Documents / menu mobile (2026-10-20) : le bouton Nouveau reste un bouton complet dans le menu d actions, sans ancien positionnement en petit bouton +. Le choix d un modele garde le menu parent ouvert et se ferme avec Echap. Le menu Plein ecran ne reutilise plus les sous-menus de creation, dont le selecteur de modeles.
+
+- Documents / affichage mobile (2026-10-20) : fiches avec titre et description sur toute la largeur, icone et selection regroupees avec les metadonnees. Mode compact avec tags et date sur une meme ligne, menu en haut et retraits des dossiers reduits.
+
+- Patreon / popup de soutien (2026-10-19) : la popup Soutenir le projet ne s affiche plus lorsque l organisation courante est connectee a Patreon, meme sans connexion Patreon personnelle.
+
 - Import / fin de traitement (2026-10-19) : apres une reussite, y compris avec avertissements, la fenetre quitte l attente et le formulaire est marque comme enregistre. Un ecran de fin conserve les avertissements avec les actions Ouvrir l organisation et Fermer, sans confirmation de perte de donnees ni redirection automatique. Un espacement separe le bloc d information des boutons.
 
 - Import OMO1 / espaces archives et documents (2026-10-19) : restauration des roles et cercles archives fournis par DevOMO, avec leurs contenus et les metadonnees de restauration. Les documents lies a un projet conservent leurs portees depuis leur espace d origine. Les documents et PV dont l espace est absent du fichier restent dans l archive sans etre importes, avec un seul avertissement recapitulatif. Les regles peuvent retrouver leur espace depuis le domaine exporte lorsque leur reference directe manque.

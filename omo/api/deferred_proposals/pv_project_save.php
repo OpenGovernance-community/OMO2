@@ -24,6 +24,12 @@ $contextHolon = DeferredProposal::loadAllowedProjectTargetHolon($organizationId,
 if (!$contextHolon instanceof Holon) $respond(403, ['status' => false, 'message' => 'Le collectif du PV ne dispose pas du droit nécessaire dans cet espace.']);
 $proposal = new DeferredProposal();
 if ($proposalId > 0 && (!$proposal->load($proposalId) || (int)$proposal->get('IDdocument_pv_point') !== $pointId || (int)$proposal->get('IDorganization') !== $organizationId || (string)$proposal->get('target_type') !== DeferredProposal::TARGET_PROJECT || (string)$proposal->get('status') !== DeferredProposal::STATUS_PENDING)) $respond(404, ['status' => false, 'message' => 'Cette modification ne peut plus être modifiée.']);
+if (($operation === DeferredProposal::OPERATION_CREATE && $projectId !== 0)
+    || ($proposalId > 0 && ((string)$proposal->get('operation') !== $operation
+        || ($operation !== DeferredProposal::OPERATION_CREATE && (int)$proposal->get('IDholon') !== $holonId)
+        || (int)$proposal->get('target_id') !== $projectId))) {
+    $respond(422, ['status' => false, 'message' => 'Le contexte de cette modification a change.']);
+}
 $project = new Project();
 if ($operation !== DeferredProposal::OPERATION_CREATE && (!$project->load($projectId) || (int)$project->get('IDorganization') !== $organizationId || (int)$project->get('IDholon') !== $holonId || !$project->currentViewerCanAccessVisibility($userId))) $respond(404, ['status' => false, 'message' => 'Le projet sélectionné est introuvable dans cet espace.']);
 $afterState = [];

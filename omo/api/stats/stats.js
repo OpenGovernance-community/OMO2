@@ -322,7 +322,9 @@ window.commonPageScripts["/omo/api/stats/stats.js"] = function (pageConfig, page
         query.push('stats_scope=' + encodeURIComponent(nextScope));
         query.push('stats_assignment=' + encodeURIComponent(nextAssignment));
         query.push('stats_sort=' + encodeURIComponent(nextSort));
-        return '/omo/api/stats/index.php?' + query.join('&');
+        var params = new URLSearchParams(query.join('&'));
+        appendPvMeetingContext(params);
+        return '/omo/api/stats/index.php?' + params.toString();
     }
 
     function setLoading(isLoading) {
@@ -828,9 +830,9 @@ window.commonPageScripts["/omo/api/stats/stats.js"] = function (pageConfig, page
         openDrawerWithUrl(buildGroupDetailUrl(resolvedId));
     }
 
-    function postFormData(formData) {
+    function appendPvMeetingContext(formData) {
         try {
-            var meetingUrl = new URL(currentUrl, window.location.origin);
+            var meetingUrl = new URL(root.getAttribute('data-omo-stats-current-url') || '', window.location.origin);
             var meetingDocumentId = meetingUrl.searchParams.get('pv_meeting_document_id') || '';
             var meetingEditorToken = meetingUrl.searchParams.get('pv_meeting_editor_token') || '';
             if (meetingDocumentId !== '' && meetingEditorToken !== '') {
@@ -839,6 +841,10 @@ window.commonPageScripts["/omo/api/stats/stats.js"] = function (pageConfig, page
             }
         } catch (error) {
         }
+    }
+
+    function postFormData(formData) {
+        appendPvMeetingContext(formData);
         return fetch(resolveUrl('/omo/api/stats/action.php'), {
             method: 'POST',
             credentials: 'same-origin',

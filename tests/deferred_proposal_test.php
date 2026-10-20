@@ -241,8 +241,9 @@ assertDeferredProposal(
 );
 assertDeferredProposal(
     strpos($holonCreate, 'omo-holon-create--governance-capture') !== false
-        && strpos($holonEditorCss, '.omo-holon-create--governance-capture') !== false
-        && strpos($holonEditorCss, 'background: var(--color-surface, #ffffff)') !== false,
+        && strpos($holonCreate, 'class="omo-holon-create omo-panel-view') !== false
+        // The surface rule now covers every holon editor, including embedded capture forms.
+        && preg_match('/\.omo-holon-create\.omo-panel-view\s*\{[^}]*\bbackground\s*:\s*var\(\s*--color-surface(?:\s*,[^)]*)?\s*\)\s*;/s', $holonEditorCss) === 1,
     'The embedded holon editor must use the modal surface instead of the full-screen application background.'
 );
 assertDeferredProposal(

@@ -102,8 +102,12 @@ $activityHelp = static function ($label, $text) {
         <?php if ($activityId > 0): ?><input type="hidden" name="id" value="<?= (int)$activityId ?>"><?php endif; ?>
         <?php if ($deferredEditor && $deferredEditor['origin'] === 'pv'): ?>
             <?php foreach (['oid' => $organizationId, 'point_id' => $deferredEditor['pointId'], 'proposal_id' => $deferredEditor['proposalId'], 'target_type' => $deferredEditor['targetType'], 'operation' => $deferredEditor['operation'], 'holon_id' => $currentHolonId, 'object_id' => $activityId] as $key => $entry): ?>
+                <?php if ($key === 'holon_id' && $deferredEditor['operation'] === 'create') continue; ?>
                 <input type="hidden" name="<?= omoApiEscape($key) ?>" value="<?= omoApiEscape((string)$entry) ?>">
             <?php endforeach; ?>
+            <?php if ($deferredEditor['operation'] === 'create'): ?>
+                <?php omoDeferredEditorRenderCreationHolonField($organizationId, $currentHolonId, $deferredEditor['creationHolonCatalog']); ?>
+            <?php endif; ?>
         <?php endif; ?>
 
         <?php if (!$deferredEditor && ($projectId > 0 || $activity->hasProjectAssociation())): ?>
@@ -214,6 +218,6 @@ $activityHelp = static function ($label, $text) {
 <?php endif; ?>
 <?php if ($deferredEditor): ?>
 <script src="/omo/assets/js/simple-html-field.js?v=20261009-html-editor-placeholder"></script>
-<script src="/common/choice/deferred-object-editor.js?v=20260924-shared-form-validation"></script>
+<script src="<?= commonAssetUrl('/common/choice/deferred-object-editor.js') ?>"></script>
 <script>window.omoDeferredObjectEditorInit(document.querySelector('[data-deferred-object-editor]'), <?= json_encode(['origin'=>$deferredEditor['origin'],'targetType'=>$deferredEditor['targetType'],'holonId'=>$currentHolonId,'pointId'=>$deferredEditor['pointId'] ?? 0], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>);</script>
 <?php endif; ?>

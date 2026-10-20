@@ -918,7 +918,9 @@
         if (nextQuickSearch !== '') {
             query.push('project_query=' + encodeURIComponent(nextQuickSearch));
         }
-        return '/omo/api/projects/index.php?' + query.join('&');
+        var params = new URLSearchParams(query.join('&'));
+        appendPvMeetingContext(params);
+        return '/omo/api/projects/index.php?' + params.toString();
     }
 
     function buildArchivesUrl() {
@@ -935,7 +937,9 @@
         if (String(currentQuickSearch || '').trim() !== '') {
             query.push('project_query=' + encodeURIComponent(String(currentQuickSearch).trim()));
         }
-        return '/omo/api/projects/archives.php?' + query.join('&');
+        var params = new URLSearchParams(query.join('&'));
+        appendPvMeetingContext(params);
+        return '/omo/api/projects/archives.php?' + params.toString();
     }
 
     function getDisplayPreferencesContextKey() {

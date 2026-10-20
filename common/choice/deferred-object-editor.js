@@ -82,7 +82,7 @@
             var htmlHost = form.querySelector('[data-activity-html-editor]');
             var htmlField = form.querySelector('[data-activity-html-value]');
             if (htmlHost && htmlField && htmlHost.__omoSimpleHtmlField && htmlHost.__omoSimpleHtmlField.getValue) htmlField.value = String(htmlHost.__omoSimpleHtmlField.getValue() || '');
-            var state = stateFromForm(form, config.holonId);
+            var state = stateFromForm(form, form.elements.namedItem('holon_id')?.value || config.holonId);
             if (config.origin === 'governance') {
                 window.dispatchEvent(new CustomEvent('omo-deferred-object-capture', {detail: {state: state, targetType: config.targetType}}));
                 return;

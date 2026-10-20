@@ -116,6 +116,7 @@ $editUrl = '/omo/api/projects/create.php?oid=' . rawurlencode((string)$organizat
 if ((int)($_GET['cid'] ?? 0) > 0) {
     $editUrl .= '&cid=' . rawurlencode((string)(int)$_GET['cid']);
 }
+$editUrl .= omoProjectsPvMeetingQuery($organizationId);
 $description = PropertyFormat::sanitizeHtml((string)$project->get('description'));
 $projectSize = Project::normalizeSize($project->get('project_size'));
 $projectPriority = Project::normalizeLevel($project->get('priority'));
@@ -199,6 +200,7 @@ $newSubprojectUrl = '/omo/api/projects/create.php?oid=' . rawurlencode((string)$
 if ($projectHolon instanceof Holon) {
     $newSubprojectUrl .= '&cid=' . rawurlencode((string)$projectHolon->getId());
 }
+$newSubprojectUrl .= omoProjectsPvMeetingQuery($organizationId);
 $hasSubprojectActions = $canCreateSubproject || count($attachableProjects) > 0;
 $subprojects = $projectsByParent[(int)$project->getId()] ?? [];
 $archivedSubprojects = new ArrayProject();

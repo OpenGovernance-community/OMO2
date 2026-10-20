@@ -172,8 +172,9 @@
                 (header.querySelector(options.headerMainSelector || '[data-common-panel-header-main]') || header).appendChild(actions);
             }
             actions.classList.add('generic-panel-actions-host');
-            // Reuse the application's existing menu and leave its own actions intact.
-            panel = actions.querySelector('.generic-menu > .generic-menu-panel');
+            var actionGroup = actions.querySelector(options.actionsGroupSelector || '[data-common-panel-actions-group]') || actions;
+            // Nested creation pickers are not the application's actions menu.
+            panel = actionGroup.querySelector(':scope > .generic-menu > .generic-menu-panel');
             if (!panel) {
                 var menu = document.createElement('div');
                 menu.className = 'generic-menu generic-menu--expanded-mobile generic-panel-actions';
@@ -195,7 +196,6 @@
                 actions.appendChild(menu);
                 if (typeof window.resetGenericExpandedMenu === 'function') window.resetGenericExpandedMenu(menu);
             }
-            var actionGroup = actions.querySelector(options.actionsGroupSelector || '[data-common-panel-actions-group]') || actions;
             var actionMenu = panel.parentElement;
             if (actionGroup.lastElementChild !== actionMenu) actionGroup.appendChild(actionMenu);
         }

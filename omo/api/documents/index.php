@@ -1096,11 +1096,11 @@ if (!is_string($documentsPayload)) {
                     <div class="omo-documents__new-actions">
                         <button
                             type="button"
-                            class="generic-action-button generic-action-button--main omo-documents__new-button omo-mobile-corner-action"
+                            class="generic-action-button generic-action-button--main omo-documents__new-button"
                             aria-label="<?= $escape(omoDocumentsScopeT('documents.action.new')) ?>"
                             data-omo-documents-new
                             data-omo-documents-new-url="<?= $escape($newDocumentUrl) ?>"
-                        ><span class="omo-mobile-corner-action__text"><?= $escape(omoDocumentsScopeT('documents.action.new')) ?></span></button>
+                        ><?= $escape(omoDocumentsScopeT('documents.action.new')) ?></button>
                         <?php if (count($documentTemplateGroups) > 0): ?>
                             <div class="omo-documents__template-picker generic-menu" data-omo-document-template-picker>
                                 <button type="button" class="generic-action-button generic-action-button--main omo-documents__template-picker-toggle" data-omo-document-template-picker-toggle aria-label="<?= $escape(omoDocumentsScopeT('documents.action.create_from_template')) ?>" aria-haspopup="menu" aria-expanded="false">&#9662;</button>

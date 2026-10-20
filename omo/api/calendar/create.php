@@ -218,6 +218,22 @@ $sourceLang = array_merge(commonMeetingRecurrenceSourceLang(), commonCalendarAva
         'text' => '{pvLabel} {eventTitle} du {eventDate}',
         'context' => 'Default linked PV document title generated when no custom title is provided.',
     ],
+    'calendar.create.document.summary.pv' => [
+        'text' => 'Compte rendu de « {eventTitle} » du {eventDate}.',
+        'context' => 'Automatic summary for a meeting report when the event has no description.',
+    ],
+    'calendar.create.document.summary.document' => [
+        'text' => 'Document lié à « {eventTitle} » du {eventDate}.',
+        'context' => 'Automatic summary for a linked document when the event has no description.',
+    ],
+    'calendar.create.document.summary.date_time' => [
+        'text' => '{date} à {time}',
+        'context' => 'Date and local starting time included in an automatic linked document summary.',
+    ],
+    'calendar.create.document.summary.untitled' => [
+        'text' => 'Événement',
+        'context' => 'Fallback event name in an automatic linked document summary.',
+    ],
     'calendar.create.document.none' => [
         'text' => 'Aucun document',
         'context' => 'Option shown when no linked document should be created.',
@@ -347,7 +363,7 @@ function omoCalendarDocumentTypeOptions(bool $nextcloudDocumentsAvailable, bool 
     return $options;
 }
 
-function omoCalendarBuildDefaultLinkedDocumentValues(string $eventTitle, string $eventDescription, \DateTimeInterface $startAt, string $documentType, string $documentTitle = ''): array
+function omoCalendarBuildDefaultLinkedDocumentValues(string $eventTitle, string $eventDescription, \DateTimeInterface $startAt, string $documentType, string $documentTitle = '', bool $isAllDay = false): array
 {
     $normalizedEventTitle = trim($eventTitle);
     $normalizedTitle = trim($documentTitle);
@@ -376,11 +392,16 @@ function omoCalendarBuildDefaultLinkedDocumentValues(string $eventTitle, string 
 
     $description = trim($eventDescription);
     if ($description === '') {
-        if ($normalizedEventTitle !== '') {
-            $description = "Document associé à l'événement \"" . $normalizedEventTitle . '\".';
-        } else {
-            $description = "Document associé à l'événement du " . $startAt->format('d.m.Y H:i') . '.';
-        }
+        $summaryDate = $isAllDay ? $startAt->format('d.m.Y') : omoCalendarCreateT('calendar.create.document.summary.date_time', [
+            'date' => $startAt->format('d.m.Y'),
+            'time' => $startAt->format('H:i'),
+        ]);
+        $description = omoCalendarCreateT($documentType === Document::TYPE_PV
+            ? 'calendar.create.document.summary.pv'
+            : 'calendar.create.document.summary.document', [
+                'eventTitle' => $normalizedEventTitle !== '' ? $normalizedEventTitle : omoCalendarCreateT('calendar.create.document.summary.untitled'),
+                'eventDate' => $summaryDate,
+            ]);
     }
 
     $keywords = $documentType === Document::TYPE_PV
@@ -1211,7 +1232,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $description,
                 $startAt,
                 $resolvedDocumentType,
-                $documentTitle
+                $documentTitle,
+                $isAllDay
             );
             $documentValues = [
                     'title' => $defaultDocumentValues['title'],

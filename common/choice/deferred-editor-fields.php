@@ -2,6 +2,7 @@
 require_once __DIR__ . '/rule-scope-fields.php';
 require_once __DIR__ . '/rule-date-fields.php';
 require_once __DIR__ . '/holon-removal-fields.php';
+require_once dirname(__DIR__) . '/holon_scope_helper.php';
 
 // Shared form fields for deferred proposals in meeting minutes and ballots.
 function omoDeferredEditorT(string $key): string
@@ -27,10 +28,31 @@ function omoDeferredEditorT(string $key): string
         'move_destination' => ['text' => 'Destination', 'context' => 'Deferred holon move destination'],
         'move_help' => ['text' => 'Le deplacement sera applique apres validation de la proposition.', 'context' => 'Deferred holon move explanation'],
         'move_empty' => ['text' => 'Aucune destination compatible et autorisee.', 'context' => 'Deferred holon move without destination'],
+        'creation_space' => ['text' => 'Espace de creation', 'context' => 'Space receiving an object created by a PV proposal'],
+        'creation_space_hint' => ['text' => 'Choisissez un espace autorise par les droits collectifs du holon du PV.', 'context' => 'Collective permission boundary for a PV proposal creation destination'],
     ];
     static $bundle = null;
     $bundle ??= omoLoadTranslationBundle('omo_deferred_editor_fields', $sourceLang);
     return t($key, [], $bundle, $sourceLang);
+}
+
+function omoDeferredEditorRenderCreationHolonField(int $organizationId, int $holonId, array $catalog): void
+{
+    $config = [
+        'organizationId' => $organizationId,
+        'selectableHolonIds' => array_values(array_map('intval', array_keys(array_filter(
+            $catalog,
+            static fn (array $entry): bool => !empty($entry['permissions']['create'])
+        )))),
+        'allowOrganization' => false,
+        'labels' => commonHolonScopeTargetLabels(omoDeferredEditorT('creation_space_hint')),
+    ];
+    ?>
+    <div class="generic-form-field">
+        <label class="generic-form-label" for="omoDeferredCreationHolonLabel"><?= htmlspecialchars(omoDeferredEditorT('creation_space'), ENT_QUOTES, 'UTF-8') ?></label>
+        <?php commonHolonScopeRenderTargetField('holon_id', $holonId, (string)($catalog[$holonId]['label'] ?? ''), $config, ['id' => 'omoDeferredCreationHolon']); ?>
+    </div>
+    <?php
 }
 
 function omoDeferredEditorRenderFields(string $targetType, array $state, array $memberLabels = []): void

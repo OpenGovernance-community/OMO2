@@ -50,6 +50,17 @@ function commonResolvePvMeetingPermissionContext(int $organizationId): ?array
     ];
 }
 
+function commonPvMeetingQuery(int $organizationId): string
+{
+    $meetingContext = commonResolvePvMeetingPermissionContext($organizationId);
+    $request = $_SERVER['REQUEST_METHOD'] === 'POST' ? $_POST : $_GET;
+    $editorToken = trim((string)($request['pv_meeting_editor_token'] ?? $request['editor_token'] ?? ''));
+    $documentId = (int)($meetingContext['documentId'] ?? 0);
+    return $documentId > 0 && $editorToken !== ''
+        ? '&pv_meeting_document_id=' . $documentId . '&pv_meeting_editor_token=' . rawurlencode($editorToken)
+        : '';
+}
+
 function commonResolveHolonOrganizationId(\dbObject\Holon $holon): int
 {
     $organizationId = (int)$holon->get('IDorganization');

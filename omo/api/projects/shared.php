@@ -536,13 +536,7 @@ if (!function_exists('omoProjectsCanUsePermission')) {
 if (!function_exists('omoProjectsPvMeetingQuery')) {
     function omoProjectsPvMeetingQuery(int $organizationId): string
     {
-        $meetingContext = commonResolvePvMeetingPermissionContext($organizationId);
-        $request = $_SERVER['REQUEST_METHOD'] === 'POST' ? $_POST : $_GET;
-        $editorToken = trim((string)($request['pv_meeting_editor_token'] ?? ''));
-        $documentId = is_array($meetingContext) ? (int)($meetingContext['documentId'] ?? 0) : 0;
-        return $documentId > 0 && $editorToken !== ''
-            ? '&pv_meeting_document_id=' . $documentId . '&pv_meeting_editor_token=' . rawurlencode($editorToken)
-            : '';
+        return commonPvMeetingQuery($organizationId);
     }
 }
 
