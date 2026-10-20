@@ -1402,6 +1402,9 @@ window.commonPageScripts["/omo/api/documents/list.js"] = function (pageConfig, p
 
                                     const header = document.createElement('div');
                                     header.className = 'generic-accordion__header omo-documents__folder-header generic-file-list__folder-header';
+                                    if (state.density !== 'compact') {
+                                        header.classList.add('omo-card', 'generic-section--flush');
+                                    }
 
                                     const headerToggle = document.createElement('div');
                                     headerToggle.className = 'omo-documents__folder-toggle generic-file-list__folder-toggle';

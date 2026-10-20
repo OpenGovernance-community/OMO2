@@ -278,24 +278,26 @@ foreach (array_values($blueprint) as $proposalIndex => $proposalInput) {
             $normalizedActions[] = ['id' => $actionId, 'existing' => $existingAction, 'existing_deferred' => $existingDeferred, 'action_type' => $actionType, 'operation' => $operation, 'holon_id' => $actionContextHolonId, 'target_id' => $targetId, 'target_type' => DeferredProposal::TARGET_HOLON, 'before' => $beforeState, 'after' => $afterState, 'position' => $actionIndex + 1];
             continue;
         }
-        if (in_array($actionType, ['project.create', 'project.update', 'project.delete'], true)) {
+        if (in_array($actionType, ['project.create', 'project.propose', 'project.update', 'project.delete'], true)) {
             $operation = substr($actionType, strpos($actionType, '.') + 1);
+            $isCreation = DeferredProposal::isProjectCreationOperation($operation);
             $targetId = (int)($actionInput['targetId'] ?? 0);
+            if ($isCreation && $targetId !== 0) $respond(422, ['status' => false, 'message' => 'La cible du nouveau projet est invalide.']);
             $contextHolon = DeferredProposal::loadAllowedProjectTargetHolon($organizationId, $actionContextHolonId, $operation, $targetHolonId);
             if (!($contextHolon instanceof Holon)) $respond(403, ['status' => false, 'message' => 'Le collectif ne dispose pas du droit nécessaire pour ce projet.']);
             $project = new Project();
-            if ($operation !== DeferredProposal::OPERATION_CREATE
+            if (!$isCreation
                 && (!$project->load($targetId) || (int)$project->get('IDorganization') !== $organizationId || (int)$project->get('IDholon') !== $actionContextHolonId)) {
                 $respond(422, ['status' => false, 'message' => 'Le projet choisi n’appartient pas à cet espace.']);
             }
-            if ($operation !== DeferredProposal::OPERATION_CREATE && isset($usedTargetIds['project:' . $targetId])) $respond(422, ['status' => false, 'message' => 'Un même projet ne peut pas être modifié plusieurs fois dans ce scrutin.']);
-            if ($operation !== DeferredProposal::OPERATION_CREATE) $usedTargetIds['project:' . $targetId] = true;
-            $beforeState = $operation === DeferredProposal::OPERATION_CREATE ? [] : ($existingDeferred instanceof DeferredProposal ? DeferredProposal::normalizeState($existingDeferred->get('before_state')) : DeferredProposal::captureProjectState($project));
+            if (!$isCreation && isset($usedTargetIds['project:' . $targetId])) $respond(422, ['status' => false, 'message' => 'Un même projet ne peut pas être modifié plusieurs fois dans ce scrutin.']);
+            if (!$isCreation) $usedTargetIds['project:' . $targetId] = true;
+            $beforeState = $isCreation ? [] : ($existingDeferred instanceof DeferredProposal ? DeferredProposal::normalizeState($existingDeferred->get('before_state')) : DeferredProposal::captureProjectState($project));
             $afterState = $operation === DeferredProposal::OPERATION_DELETE ? [] : DeferredProposal::normalizeProjectState((array)($actionInput['after'] ?? []), $operation === DeferredProposal::OPERATION_UPDATE ? $project : null);
             if ($operation !== DeferredProposal::OPERATION_DELETE) $afterState['IDholon'] = $actionContextHolonId;
             if ($operation !== DeferredProposal::OPERATION_DELETE && (int)$afterState['IDuser_proposed'] > 0
                 && !\dbObject\UserOrganization::hasActiveMembership((int)$afterState['IDuser_proposed'], $organizationId)
-                && ($operation === DeferredProposal::OPERATION_CREATE || (int)$afterState['IDuser_proposed'] !== (int)$project->get('IDuser_proposed'))) {
+                && ($isCreation || (int)$afterState['IDuser_proposed'] !== (int)$project->get('IDuser_proposed'))) {
                 $respond(422, ['status' => false, 'message' => 'La personne proposant le projet doit etre membre de l organisation.']);
             }
             if ($operation !== DeferredProposal::OPERATION_DELETE && trim((string)($afterState['title'] ?? '')) === '') $respond(422, ['status' => false, 'message' => 'Le titre du projet est obligatoire.']);
@@ -311,7 +313,7 @@ foreach (array_values($blueprint) as $proposalIndex => $proposalInput) {
                 $respond(422, ['status' => false, 'message' => 'Renseignez les champs de blocage obligatoires selon les paramètres de votre organisation.']);
             }
             $projectTitle = trim((string)(($operation === DeferredProposal::OPERATION_DELETE ? $beforeState : $afterState)['title'] ?? ''));
-            $verb = $operation === DeferredProposal::OPERATION_CREATE ? 'Créer' : ($operation === DeferredProposal::OPERATION_UPDATE ? 'Modifier' : 'Supprimer');
+            $verb = $operation === DeferredProposal::OPERATION_PROPOSE ? 'Proposer' : ($isCreation ? 'Créer' : ($operation === DeferredProposal::OPERATION_UPDATE ? 'Modifier' : 'Supprimer'));
             $suggestedTitles[] = $verb . ' le projet ' . $projectTitle;
             $actionDescriptions[] = '<h4>' . htmlspecialchars($verb . ' le projet ' . $projectTitle, ENT_QUOTES, 'UTF-8') . '</h4>';
             $normalizedActions[] = ['id' => $actionId, 'existing' => null, 'existing_deferred' => $existingDeferred, 'action_type' => $actionType, 'operation' => $operation, 'holon_id' => $actionContextHolonId, 'target_id' => $targetId, 'target_type' => DeferredProposal::TARGET_PROJECT, 'before' => $beforeState, 'after' => $afterState, 'position' => $actionIndex + 1];

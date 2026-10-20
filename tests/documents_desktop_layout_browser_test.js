@@ -37,7 +37,8 @@ const root = path.resolve(__dirname, '..');
                         {label: 'Ancrage', organizationId: 7, holonId: 10}, {label: 'La Clairiere', organizationId: 7, holonId: 20}], ...extra});
                 const documents = [entry(1, 'PV Reunion OP du 12.10.2026 09:00 (Relecture)'),
                     entry(2, 'Un document avec un titre volontairement tres long pour verifier la limite de deux lignes et garder son contenu complet accessible'),
-                    entry(3, 'Dossier des reunions et documents de suivi', {documentType: 'folder', isFolder: true, childrenLoaded: true}),
+                    entry(3, 'Dossier des reunions et documents de suivi', {documentType: 'folder', isFolder: true, childrenLoaded: true,
+                        description: 'Ce dossier rassemble les comptes rendus, les documents preparatoires et le suivi des actions. Les membres peuvent y retrouver les decisions prises et les prochaines etapes de chaque reunion.'}),
                     entry(4, 'Document dans le dossier', {parentDocumentId: 3}),
                     entry(5, 'Document prive sans action', {canMove: false, canArchive: false, keywords: '', description: ''})];
                 document.body.innerHTML = `<main id="omo-documents-root" class="omo-documents omo-panel-view" data-omo-document-oid="7" data-omo-document-scope="descendants">
@@ -55,33 +56,57 @@ const root = path.resolve(__dirname, '..');
             await page.evaluate(() => window.commonPageScripts['/omo/api/documents/list.js']({emptyStateMessage: 'Vide', moreLabel: 'Suite',
                 documentsSelectionToggle: 'Selectionner ce document', documentsDateColumnUpdated: 'Modifie le',
                 documentsDateColumnCreated: 'Cree le', tooltipLabel: 'Voir', documentsScopeEdit: 'Editer'}));
+            await page.locator('main').evaluate(node => {node.style.width = '420px';});
+            const folderExcerpt = page.locator('.omo-documents__folder-card .omo-documents__compact-excerpt');
+            const collapsed = await folderExcerpt.evaluate(node => ({wrap: getComputedStyle(node).whiteSpace,
+                clipped: node.scrollWidth > node.clientWidth, text: node.textContent}));
+            assert.equal(collapsed.wrap, 'nowrap');
+            assert.equal(collapsed.clipped, true, 'Closed folders keep a single-line description preview.');
+            assert(await page.locator('.omo-documents__folder-card .omo-documents__item-frame').evaluate(node => node.getBoundingClientRect().height <= 64), 'Closed folders remain compact.');
+            if (density === 'detail') {
+                const outline = await page.locator('.omo-documents__folder-header').evaluate(node => {
+                    const css = getComputedStyle(node);
+                    return {border: parseFloat(css.borderTopWidth), radius: parseFloat(css.borderRadius)};
+                });
+                assert.equal(outline.border, 1, 'Folder headers reuse the document card outline.');
+                assert(outline.radius > 0, 'The outline retains the card corners.');
+            }
             await page.locator('[data-omo-document-folder-toggle]').click();
             assert.equal(await page.locator('[data-omo-document-id="4"]').isVisible(), true, 'Folder contents remain available.');
             await page.waitForFunction(() => document.querySelector('[data-omo-document-folder-icon]').src.endsWith('/folder-open.png'));
+            const expanded = await folderExcerpt.evaluate(node => ({wrap: getComputedStyle(node).whiteSpace,
+                clipped: node.scrollWidth > node.clientWidth + 1, text: node.textContent, height: node.getBoundingClientRect().height}));
+            assert.equal(expanded.wrap, 'normal');
+            assert.equal(expanded.clipped, false, 'Open folders reveal the complete description.');
+            assert.equal(expanded.text, collapsed.text);
+            assert(expanded.height > 25, 'Long descriptions expand over multiple lines.');
             folderMarkup.push(await page.locator('.omo-documents__folder-card .omo-documents__item-frame').evaluate(node => node.outerHTML));
             for (const width of [420, 700, 1100]) {
                 await page.locator('main').evaluate((node, width) => {node.style.width = width + 'px';}, width);
                 const rows = await page.locator('.generic-file-list__row--dense-desktop').evaluateAll(nodes => nodes.map(node => ({
                     height: node.getBoundingClientRect().height, overflow: node.scrollWidth > node.clientWidth + 1,
-                    title: node.querySelector('.generic-file-list__title')?.getAttribute('title')})));
+                    title: node.querySelector('.generic-file-list__title')?.getAttribute('title'),
+                    folder: !!node.closest('.omo-documents__folder-card')})));
                 assert(rows.length > 0);
                 for (const row of rows) {
-                    assert(row.height <= 64, density + ' row height at ' + width + ': ' + row.height);
+                    if (!row.folder) assert(row.height <= 64, density + ' row height at ' + width + ': ' + row.height);
                     assert.equal(row.overflow, false, 'No horizontal overflow at ' + width);
                     assert(row.title, 'The complete title is retained.');
                 }
-                const summary = await page.locator('.omo-documents__compact-heading--with-excerpt').first().evaluate(node => {
-                    const title = node.querySelector('strong'), excerpt = node.querySelector('.omo-documents__compact-excerpt');
-                    const css = getComputedStyle(excerpt);
-                    return {titleWeight: Number(getComputedStyle(title).fontWeight), excerptWeight: Number(css.fontWeight),
-                        text: excerpt.textContent, overflow: css.textOverflow, wrap: css.whiteSpace,
-                        height: node.getBoundingClientRect().height};
-                });
-                assert(summary.titleWeight > summary.excerptWeight, 'The title is bold and the excerpt is regular.');
-                assert(summary.text.startsWith('\u2014 '), 'An em dash separates the excerpt.');
-                assert.equal(summary.overflow, 'ellipsis');
-                assert.equal(summary.wrap, 'nowrap');
-                assert(summary.height < 25, 'Title and excerpt share one line.');
+                if (density === 'compact') {
+                    const summary = await page.locator('.omo-documents__item--file-card .omo-documents__compact-heading--with-excerpt').first().evaluate(node => {
+                        const title = node.querySelector('strong'), excerpt = node.querySelector('.omo-documents__compact-excerpt');
+                        const css = getComputedStyle(excerpt);
+                        return {titleWeight: Number(getComputedStyle(title).fontWeight), excerptWeight: Number(css.fontWeight),
+                            text: excerpt.textContent, overflow: css.textOverflow, wrap: css.whiteSpace,
+                            height: node.getBoundingClientRect().height};
+                    });
+                    assert(summary.titleWeight > summary.excerptWeight, 'The title is bold and the excerpt is regular.');
+                    assert(summary.text.startsWith('\u2014 '), 'An em dash separates the excerpt.');
+                    assert.equal(summary.overflow, 'ellipsis');
+                    assert.equal(summary.wrap, 'nowrap');
+                    assert(summary.height < 25, 'Title and excerpt share one line.');
+                }
                 if (density === 'compact') assert.equal(await page.locator('[data-omo-document-id="5"] .omo-documents__compact-excerpt').count(), 0, 'Empty descriptions add no separator.');
                 if (density === 'detail') {
                     const order = await page.locator('[data-omo-document-id="1"]').evaluate(node => {
@@ -91,7 +116,12 @@ const root = path.resolve(__dirname, '..');
                     assert.deepEqual(order, [...order].sort((a, b) => a - b), 'Cards show title, context, description, then metadata.');
                 }
             }
+            await page.locator('[data-omo-document-folder-toggle]').click();
+            assert.equal(await folderExcerpt.evaluate(node => getComputedStyle(node).whiteSpace), 'nowrap', 'Closing the folder restores the single-line preview.');
+            assert.equal(await page.locator('[data-omo-document-id="4"]').isVisible(), false);
+            await page.locator('[data-omo-document-folder-toggle]').click();
             await page.locator('main').evaluate(node => {node.style.width = '1000px';});
+            await page.locator('h1').click();
             if (process.env.OMO_LAYOUT_PREVIEW_DIR) await page.locator('main').screenshot({path: path.join(process.env.OMO_LAYOUT_PREVIEW_DIR, 'documents-desktop-' + density + '.png')});
             assert.deepEqual(errors, []);
             await page.close();

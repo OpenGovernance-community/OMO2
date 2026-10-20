@@ -16,6 +16,7 @@ $sourceLang = [
     'denied' => ['text' => 'Accès refusé.', 'context' => 'Deferred project proposal forbidden error'],
     'unavailable' => ['text' => 'Cette modification ne peut plus être modifiée.', 'context' => 'Deferred project proposal unavailable error'],
     'save' => ['text' => 'Enregistrer la modification', 'context' => 'Deferred project proposal save button'],
+    'create' => ['text' => 'Creer le projet', 'context' => 'Deferred project creation submit button'],
     'propose' => ['text' => 'Proposer le projet', 'context' => 'Deferred project proposal submit button when only proposal permission is granted'],
     'cancel' => ['text' => 'Annuler', 'context' => 'Deferred project proposal cancel button'],
     'delete_intro' => ['text' => 'La suppression sera appliquée uniquement lorsque cette modification sera validée.', 'context' => 'Deferred project deletion confirmation intro'],
@@ -41,7 +42,7 @@ if ($organizationId <= 0 || $pointId <= 0 || !$point->load($pointId)
     || !$document->canUserProposePvPointChange($point, $userId)
     || $point->isHandled()
     || $document->getPvStage() === Document::PV_STAGE_REVIEW
-    || !in_array($operation, [DeferredProposal::OPERATION_CREATE, DeferredProposal::OPERATION_UPDATE, DeferredProposal::OPERATION_DELETE], true)) {
+    || !in_array($operation, [DeferredProposal::OPERATION_CREATE, DeferredProposal::OPERATION_PROPOSE, DeferredProposal::OPERATION_UPDATE, DeferredProposal::OPERATION_DELETE], true)) {
     http_response_code(403); echo '<div class="omo-empty-state">' . omoApiEscape($tr('denied')) . '</div>'; exit;
 }
 $collectiveHolonId = (int)$document->getPvContextHolonId();
@@ -56,7 +57,8 @@ if ($proposalId > 0) {
 $contextHolon = DeferredProposal::loadAllowedProjectTargetHolon($organizationId, $holonId, $operation, $collectiveHolonId);
 if (!$contextHolon instanceof Holon) { http_response_code(403); echo '<div class="omo-empty-state">' . omoApiEscape($tr('denied')) . '</div>'; exit; }
 $project = new Project();
-if ($operation !== DeferredProposal::OPERATION_CREATE && (!$project->load($projectId) || (int)$project->get('IDorganization') !== $organizationId || (int)$project->get('IDholon') !== $holonId || !$project->currentViewerCanAccessVisibility($userId))) {
+$isCreation = DeferredProposal::isProjectCreationOperation($operation);
+if (!$isCreation && (!$project->load($projectId) || (int)$project->get('IDorganization') !== $organizationId || (int)$project->get('IDholon') !== $holonId || !$project->currentViewerCanAccessVisibility($userId))) {
     http_response_code(404); echo '<div class="omo-empty-state">' . omoApiEscape($tr('unavailable')) . '</div>'; exit;
 }
 $state = $proposal instanceof DeferredProposal && $operation !== DeferredProposal::OPERATION_DELETE
@@ -65,10 +67,7 @@ $state = $proposal instanceof DeferredProposal && $operation !== DeferredProposa
 $memberLabels = Project::getProposerOptions($organizationId);
 $children = new ArrayProject(); if ($operation === DeferredProposal::OPERATION_DELETE) $children->loadForParent($projectId, true);
 $projectCatalog = DeferredProposal::getProjectTargetHolonCatalog($organizationId, $collectiveHolonId);
-$saveLabel = $operation === DeferredProposal::OPERATION_CREATE
-    && (string)($projectCatalog[$holonId]['project_creation_mode'] ?? '') === 'propose'
-    ? $tr('propose')
-    : $tr('save');
+$saveLabel = $isCreation ? $tr($operation === DeferredProposal::OPERATION_PROPOSE ? 'propose' : 'create') : $tr('save');
 ?>
 <section class="generic-section generic-section--stack generic-section--roomy omo-deferred-project-editor" data-deferred-project-editor>
 <?php if ($operation === DeferredProposal::OPERATION_DELETE): ?>
@@ -77,10 +76,9 @@ $saveLabel = $operation === DeferredProposal::OPERATION_CREATE
     <div class="generic-action-row"><button type="button" class="generic-action-button generic-action-button--danger" data-deferred-project-save<?= count($children) > 0 ? ' disabled' : '' ?>><?= omoApiEscape($tr('delete_confirm')) ?></button><button type="button" class="generic-action-button generic-action-button--secondary" data-deferred-project-cancel><?= omoApiEscape($tr('cancel')) ?></button></div>
 <?php else: ?>
     <form class="generic-form-stack" data-deferred-project-form>
-        <?php if ($operation === DeferredProposal::OPERATION_CREATE): ?>
-            <?php omoDeferredEditorRenderCreationHolonField($organizationId, $holonId, $projectCatalog); ?>
-        <?php endif; ?>
-        <?php omoDeferredEditorRenderFields('project', $state, $memberLabels); ?>
+        <?php omoDeferredEditorRenderFields('project', $state, $memberLabels, $isCreation
+            ? static fn () => omoDeferredEditorRenderCreationHolonField($organizationId, $holonId, $projectCatalog, $operation)
+            : null); ?>
         <p class="generic-feedback" data-deferred-project-feedback hidden></p><div class="generic-action-row"><button class="generic-action-button generic-action-button--main" type="submit"><?= omoApiEscape($saveLabel) ?></button><button class="generic-action-button generic-action-button--secondary" type="button" data-deferred-project-cancel><?= omoApiEscape($tr('cancel')) ?></button></div>
     </form>
 <?php endif; ?>
@@ -96,7 +94,6 @@ $saveLabel = $operation === DeferredProposal::OPERATION_CREATE
     const save = root.querySelector('[data-deferred-project-save]');
     const form = root.querySelector('[data-deferred-project-form]');
     const holonField = form?.elements.namedItem('holon_id');
-    const creationModes = <?= json_encode(array_map(static fn (array $entry): string => (string)($entry['project_creation_mode'] ?? ''), $projectCatalog)) ?>;
     function show(message) {
         if (message && typeof window.commonNotify === 'function') {
             if (feedback) { feedback.hidden = true; feedback.textContent = ''; }
@@ -123,10 +120,6 @@ $saveLabel = $operation === DeferredProposal::OPERATION_CREATE
     root.querySelectorAll('[data-deferred-project-cancel]').forEach(button => button.addEventListener('click', () => {
         window.dispatchEvent(new CustomEvent('omo-deferred-proposal-editor-back'));
     }));
-    if (holonField) holonField.addEventListener('change', () => {
-        form.querySelector('[type="submit"]').textContent = creationModes[holonField.value] === 'propose'
-            ? <?= json_encode($tr('propose')) ?> : <?= json_encode($tr('save')) ?>;
-    });
     if (form) form.addEventListener('submit', event => {
         event.preventDefault();
         if (!form.reportValidity()) return;

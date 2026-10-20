@@ -9,6 +9,7 @@ namespace dbObject;
 class DeferredProposal extends DbObject
 {
     public const OPERATION_CREATE = 'create';
+    public const OPERATION_PROPOSE = 'propose';
     public const OPERATION_UPDATE = 'update';
     public const OPERATION_DELETE = 'delete';
     public const OPERATION_MOVE = 'move';
@@ -117,6 +118,7 @@ class DeferredProposal extends DbObject
     {
         return match ($operation) {
             self::OPERATION_CREATE => 'CAN_CREATE_PROJECT',
+            self::OPERATION_PROPOSE => 'CAN_PROPOSE_PROJECT',
             self::OPERATION_UPDATE => 'CAN_EDIT_PROJECT',
             self::OPERATION_DELETE => 'CAN_DELETE_PROJECT',
             default => '',
@@ -131,6 +133,11 @@ class DeferredProposal extends DbObject
             self::OPERATION_DELETE => 'CAN_DELETE_RECURRING_TASK',
             default => '',
         };
+    }
+
+    public static function isProjectCreationOperation(string $operation): bool
+    {
+        return in_array($operation, [self::OPERATION_CREATE, self::OPERATION_PROPOSE], true);
     }
 
     public static function getIndicatorOperationPermissionKey(string $operation): string
@@ -223,8 +230,6 @@ class DeferredProposal extends DbObject
                 if ($targetType === self::TARGET_PROJECT) {
                     $create = !empty($permissions[self::OPERATION_CREATE]);
                     $propose = !empty($permissions['propose']);
-                    $entry['permissions'][self::OPERATION_CREATE] = $create || $propose;
-                    unset($entry['permissions']['propose']);
                     $entry['project_creation_mode'] = $create ? 'create' : ($propose ? 'propose' : '');
                 }
                 $catalogs[$targetType][$id] = $entry;
@@ -269,14 +274,6 @@ class DeferredProposal extends DbObject
             $permissionKey,
             $holonId
         );
-        if (!$allowed && $operation === self::OPERATION_CREATE) {
-            $allowed = HolonPermission::holonHasCollectivePermissionForHolonContext(
-                $organizationId,
-                $collectiveHolonId,
-                'CAN_PROPOSE_PROJECT',
-                $holonId
-            );
-        }
         if (!$allowed) return null;
 
         return $targetHolon;
@@ -1153,7 +1150,7 @@ class DeferredProposal extends DbObject
         // The existing governance executor remains the single source of truth
         // for rules and roles while the other editors receive capture modes.
         if ((string)$proposal->get('target_type') === self::TARGET_PROJECT) {
-            return self::applyProjectProposal($proposal);
+            return self::applyProjectProposal($proposal, $contextHolonId);
         }
         if ((string)$proposal->get('target_type') === self::TARGET_RECURRING_TASK) {
             return self::applyRecurringTaskProposal($proposal);
@@ -1172,7 +1169,7 @@ class DeferredProposal extends DbObject
         );
     }
 
-    protected static function applyProjectProposal(self $proposal): array
+    protected static function applyProjectProposal(self $proposal, int $collectiveHolonId): array
     {
         $organizationId = (int)$proposal->get('IDorganization');
         $contextHolonId = (int)$proposal->get('IDholon');
@@ -1181,13 +1178,21 @@ class DeferredProposal extends DbObject
         if ($organizationId <= 0 || $contextHolonId <= 0) {
             return ['status' => false, 'conflict' => true, 'message' => 'Le contexte du projet est invalide.'];
         }
-        if ($operation === self::OPERATION_CREATE) {
+        if (self::isProjectCreationOperation($operation)) {
+            if ($operation === self::OPERATION_PROPOSE
+                && !self::loadAllowedProjectTargetHolon($organizationId, $contextHolonId, $operation, $collectiveHolonId)) {
+                return ['status' => false, 'message' => 'Le collectif ne peut plus proposer de projet dans cet espace.'];
+            }
             $state = self::normalizeProjectState(self::normalizeState($proposal->get('after_state')));
             $state['IDholon'] = $contextHolonId;
             if ($state['title'] === '') return ['status' => false, 'message' => 'Le titre du projet est obligatoire.'];
             if ($targetId > 0) return ['status' => false, 'conflict' => true, 'message' => 'La création du projet est dans un état incohérent.'];
             $project = new Project();
             self::applyProjectState($project, $state, $organizationId);
+            if ($operation === self::OPERATION_PROPOSE) {
+                $project->set('proposal_status', Project::PROPOSAL_PENDING);
+                $project->set('IDuser_proposed', (int)$state['IDuser_proposed'] ?: (int)$proposal->get('IDuser_author'));
+            }
             $project->set('creation_context', ObjectCreationContext::fromProposal($proposal) ?: null);
             $project->set('IDusercreation', (int)$proposal->get('IDuser_author') ?: null);
             $project->set('proposed_at', $proposal->get('created_at'));

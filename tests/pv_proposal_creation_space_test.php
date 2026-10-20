@@ -13,7 +13,7 @@ if (($argv[1] ?? '') === '--request') {
     $_SERVER['HTTP_HOST'] = 'localtest.me';
     $_SERVER['REQUEST_METHOD'] = $_POST ? 'POST' : 'GET';
     $_SERVER['HTTP_X_REQUESTED_WITH'] = 'XMLHttpRequest';
-    if (!in_array($request['endpoint'], ['pv_project_editor.php', 'pv_project_save.php', 'pv_object_editor.php', 'pv_object_save.php'], true)) exit(1);
+    if (!in_array($request['endpoint'], ['pv_project_editor.php', 'pv_project_save.php', 'pv_object_editor.php', 'pv_object_save.php', 'pv_proposal_picker.php', 'pv_proposal_context.php'], true)) exit(1);
     $_SERVER['REQUEST_URI'] = '/omo/api/deferred_proposals/' . $request['endpoint'];
     require dirname(__DIR__) . $_SERVER['REQUEST_URI'];
     exit;
@@ -72,6 +72,8 @@ try {
     $items['holon_membership'] = mcpFixture(UserHolon::class, ['IDholon' => $items['role']->getId(), 'IDuser' => $uid, 'active' => 1, 'is_membership' => 1]);
     $items['propose_only'] = mcpFixture(HolonPermission::class, ['IDholon' => $hid,
         'IDpermission' => Permission::findByKey('CAN_PROPOSE_PROJECT')->getId(), 'range' => 'parent_circle', 'member_type' => 'collective']);
+    $items['personal_propose'] = mcpFixture(HolonPermission::class, ['IDholon' => $items['role']->getId(),
+        'IDpermission' => Permission::findByKey('CAN_PROPOSE_PROJECT')->getId(), 'range' => 'self', 'member_type' => 'member']);
     $items['pv'] = mcpFixture(Document::class, ['IDorganization' => $oid, 'IDholon' => $hid, 'IDuser' => $uid,
         'IDusercreation' => $uid, 'IDuser_pv_editor' => $uid, 'documenttype' => Document::TYPE_PV,
         'pvstage' => Document::PV_STAGE_MEETING, 'title' => 'Creation destination fixture', 'active' => 1]);
@@ -85,7 +87,7 @@ try {
         $request = ['session' => $_SESSION, 'get' => $get, 'post' => [], 'endpoint' => $isProject ? 'pv_project_editor.php' : 'pv_object_editor.php'];
         $html = creationSpaceRequest($request); $browser['html'][$type] = $html;
         $field = creationSpaceForm($html);
-        $expected = [$hid, $destination]; if ($isProject) $expected[] = (int)$items['root']->getId();
+        $expected = [$hid, $destination];
         sort($expected); $actual = $field['config']['selectableHolonIds']; sort($actual);
         mcpCheck($actual === $expected && !$field['config']['allowOrganization'], $type . ' destinations must use only collective creation rights.');
         $post = $get + ['project_id' => 0, 'object_id' => 0, 'title' => 'Created elsewhere', 'name' => 'Created elsewhere',
@@ -104,7 +106,7 @@ try {
         $browser['reopened'][$type] = creationSpaceRequest($edit);
         mcpCheck(creationSpaceForm($browser['reopened'][$type])['selected'] === $destination, 'Reopen must retain the destination.');
         $request['post']['proposal_id'] = $proposal->getId();
-        $request['post']['holon_id'] = $isProject ? $items['root']->getId() : $hid;
+        $request['post']['holon_id'] = $hid;
         mcpCheck(!empty(json_decode(creationSpaceRequest($request), true)['status']), 'Pending creation must allow another authorized space.');
         $request['post']['holon_id'] = $destination;
         mcpCheck(!empty(json_decode(creationSpaceRequest($request), true)['status']), 'Pending creation must allow returning to the destination.');
@@ -127,6 +129,44 @@ try {
         $items['created_' . $type] = $object;
         mcpCheck((int)$object->get('IDholon') === $destination, 'The created object must use the chosen destination.');
     }
+    $rootId = (int)$items['root']->getId();
+    $browser['picker'] = creationSpaceRequest(['session' => $_SESSION, 'get' => $get, 'post' => [], 'endpoint' => 'pv_proposal_picker.php']);
+    $get = ['oid' => $oid, 'point_id' => $items['point']->getId(), 'holon_id' => $rootId, 'operation' => DeferredProposal::OPERATION_PROPOSE];
+    $request = ['session' => $_SESSION, 'get' => $get, 'post' => [], 'endpoint' => 'pv_project_editor.php'];
+    $browser['html']['project_propose'] = creationSpaceRequest($request);
+    $field = creationSpaceForm($browser['html']['project_propose']);
+    mcpCheck($field['config']['selectableHolonIds'] === [$rootId], 'Proposal scope must be separate from the collective creation scope.');
+    $request['get']['operation'] = DeferredProposal::OPERATION_CREATE;
+    mcpCheck(!str_contains(creationSpaceRequest($request), 'data-deferred-project-form'), 'Propose permission must not open the creation form.');
+    $request['get'] = $get;
+    $post = $get + ['project_id' => 0, 'title' => 'Proposed outside creation scope', 'proposal_status' => Project::PROPOSAL_NONE];
+    $request['endpoint'] = 'pv_project_save.php'; $request['post'] = $post;
+    $result = json_decode(creationSpaceRequest($request), true);
+    mcpCheck(!empty($result['status']), 'A project may be proposed outside the creation scope.');
+    $proposal = new DeferredProposal(); mcpCheck($proposal->load((int)$result['id']), 'Cannot reload proposed project draft.');
+    $items['proposal_propose'] = $proposal;
+    mcpCheck($proposal->get('operation') === DeferredProposal::OPERATION_PROPOSE && (int)$proposal->get('target_id') === 0
+        && DeferredProposal::normalizeState($proposal->get('before_state')) === [], 'Propose must persist as its own creation operation.');
+    $browser['reopened']['project_propose'] = creationSpaceRequest(['session' => $_SESSION, 'get' => $get + ['proposal_id' => $proposal->getId()], 'post' => [], 'endpoint' => 'pv_project_editor.php']);
+    mcpCheck(creationSpaceForm($browser['reopened']['project_propose'])['selected'] === $rootId, 'Reopening must retain the proposal operation and destination.');
+    $request['post']['proposal_id'] = $proposal->getId();
+    foreach ([$hid, $destination, $items['role']->getId(), $items['other_root']->getId(), 0] as $deniedId) {
+        $request['post']['holon_id'] = $deniedId;
+        mcpCheck(empty(json_decode(creationSpaceRequest($request), true)['status']), 'Creation rights, foreign or empty destinations cannot expand the proposal range.');
+    }
+    $request['post']['holon_id'] = $rootId;
+    $items['propose_only']->set('range', 'self'); $items['propose_only']->save();
+    mcpCheck(empty(json_decode(creationSpaceRequest($request), true)['status']), 'Revoked collective proposal rights must block save.');
+    mcpCheck(empty(DeferredProposal::applyBatch([$proposal], $hid, $uid, 'proposal-revoked-test')['status']), 'Revoked collective proposal rights must also block application.');
+    $items['propose_only']->set('range', 'parent_circle'); $items['propose_only']->save();
+    $proposal->set('status', DeferredProposal::STATUS_PENDING); $proposal->save();
+    mcpCheck(!empty(DeferredProposal::applyBatch([$proposal], $hid, $uid, 'proposal-space-test')['status']), 'Collective validation must submit the project.');
+    $proposal->load($proposal->getId(), true);
+    $project = new Project(); mcpCheck($project->load((int)$proposal->get('target_id')), 'Submitted project must exist.');
+    $items['created_proposed_project'] = $project;
+    mcpCheck((int)$project->get('IDholon') === $rootId && $project->isPendingProposal(), 'Collective validation must leave the project awaiting its destination acceptance.');
+    mcpCheck($proposal->buildPresentationData()['changeType'] === 'project.propose', 'Reports must retain the explicit proposal action.');
+    mcpCheck(!DeferredProposal::loadAllowedProjectTargetHolon($oid, $rootId, DeferredProposal::OPERATION_CREATE, $hid), 'Proposal rights must never authorize direct creation.');
     file_put_contents(dirname(__DIR__) . '/tmp/pv-proposal-creation-space.json', json_encode($browser, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
     echo "pv_proposal_creation_space_test: OK\n";
 } catch (Throwable $error) {

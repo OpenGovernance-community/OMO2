@@ -11,6 +11,7 @@ function commonPvReportT(string $key, array $replace = []): string
         'pv.report.proposals' => ['text' => 'Propositions validees', 'context' => 'Validated changes listed inside a read-only meeting minutes point'],
         'pv.report.proposal.summary' => ['text' => '{operation} : {type} "{title}"', 'context' => 'Summary of a validated change in read-only minutes'],
         'pv.report.proposal.create' => ['text' => 'Creation', 'context' => 'Validated object creation in read-only minutes'],
+        'pv.report.proposal.propose' => ['text' => 'Proposition de projet', 'context' => 'Project submitted for acceptance after collective validation'],
         'pv.report.proposal.update' => ['text' => 'Modification', 'context' => 'Validated object update in read-only minutes'],
         'pv.report.proposal.delete' => ['text' => 'Suppression', 'context' => 'Validated object deletion in read-only minutes'],
         'pv.report.proposal.move' => ['text' => 'Deplacement', 'context' => 'Validated object move in read-only minutes'],
@@ -53,7 +54,7 @@ function commonPvReportRenderProposals(array $proposals, bool $includeDetails = 
         . '<h4 class="generic-card-title generic-card-title--medium">' . $escape(commonPvReportT('pv.report.proposals')) . '</h4>';
     foreach ($proposals as $proposal) {
         $operation = (string)($proposal['operation'] ?? '');
-        $operationLabel = in_array($operation, ['create', 'update', 'delete', 'move'], true)
+        $operationLabel = in_array($operation, ['create', 'propose', 'update', 'delete', 'move'], true)
             ? commonPvReportT('pv.report.proposal.' . $operation) : $operation;
         $summary = commonPvReportT('pv.report.proposal.summary', [
             'operation' => $operationLabel, 'type' => (string)($proposal['targetLabel'] ?? ''), 'title' => (string)($proposal['title'] ?? ''),

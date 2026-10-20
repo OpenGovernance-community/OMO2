@@ -1,5 +1,9 @@
 # Journal des nouveautés
 
+- PV / proposer un projet (2026-10-20) : action Proposer distincte de Creer, avec destinations filtrees uniquement par la portee collective de CAN_PROPOSE_PROJECT. Meme formulaire, bouton Proposer, puis projet en attente d acceptation dans l espace destinataire apres validation collective. Le choix de l espace passe en premiere position sur la ligne des dates. Separation des deux actions egalement dans les scrutins utilisant les memes propositions differees.
+
+- Documents / fiches des dossiers (2026-10-20) : en vue fiches, les dossiers gardent une hauteur compacte avec le meme contour que les documents. Descriptif tronque sur une ligne lorsque le dossier est replie, puis affiche integralement a son ouverture, sans deplier celui des sous-dossiers fermes.
+
 - Tests / fond de l editeur de holons (2026-10-20) : controle des propositions adapte a la regle de surface commune a tous les editeurs de holons. Verification de la couleur dans cette regle precise, au lieu d exiger l ancien selecteur reserve au mode proposition.
 
 - PV / espace des creations proposees (2026-10-20) : choix de l espace directement dans les formulaires de creation de projets, indicateurs et taches recurrentes, avec le champ non editable et le bouton de selection partage. Destinations limitees aux droits collectifs du holon du PV, conservees a la reouverture et controlees a nouveau lors de l enregistrement ; espace choisi respecte a la validation.

@@ -145,7 +145,7 @@ function detailedGovernanceChanges(action,authorities,responsibleLabels){
 }
 function operationOf(action) {
     var operation=String(action&&action.type||'').split('.').pop();
-    return operation==='create'||operation==='delete'?operation:'update';
+    return operation==='propose'?'create':(operation==='create'||operation==='delete'?operation:'update');
 }
 function compactCard(card) {
     var contents=Array.prototype.slice.call(card.querySelectorAll('.omo-change-details__value-content'));
