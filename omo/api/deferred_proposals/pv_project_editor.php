@@ -118,7 +118,7 @@ $saveLabel = $isCreation ? $tr($operation === DeferredProposal::OPERATION_PROPOS
             });
     }
     root.querySelectorAll('[data-deferred-project-cancel]').forEach(button => button.addEventListener('click', () => {
-        window.dispatchEvent(new CustomEvent('omo-deferred-proposal-editor-back'));
+        window.commonTopbarCloseModal?.();
     }));
     if (form) form.addEventListener('submit', event => {
         event.preventDefault();

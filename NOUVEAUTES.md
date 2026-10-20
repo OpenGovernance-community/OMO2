@@ -1,5 +1,7 @@
 # Journal des nouveautés
 
+- PV / annulation des projets (2026-10-20) : le bouton Annuler ferme le formulaire apres confirmation de la perte des modifications, comme la croix. Un refus conserve le formulaire ; une popup precedente est restauree si elle existe.
+
 - PV / proposer un projet (2026-10-20) : action Proposer distincte de Creer, avec destinations filtrees uniquement par la portee collective de CAN_PROPOSE_PROJECT. Meme formulaire, bouton Proposer, puis projet en attente d acceptation dans l espace destinataire apres validation collective. Le choix de l espace passe en premiere position sur la ligne des dates. Separation des deux actions egalement dans les scrutins utilisant les memes propositions differees.
 
 - Documents / fiches des dossiers (2026-10-20) : en vue fiches, les dossiers gardent une hauteur compacte avec le meme contour que les documents. Descriptif tronque sur une ligne lorsque le dossier est replie, puis affiche integralement a son ouverture, sans deplier celui des sous-dossiers fermes.

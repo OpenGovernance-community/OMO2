@@ -139,6 +139,54 @@ async function checkGovernanceChooser() {
     } finally { window.close(); }
 }
 
+async function checkProjectCancel(type, reopened, stacked, dirty) {
+    const dom = new JSDOM('<div id="commonTopbarModal" hidden><div class="common-topbar-modal__panel">'
+        + '<span id="commonTopbarModalTitle"></span><button data-topbar-modal-close>Close</button>'
+        + '<div id="commonTopbarModalBody"></div></div></div>',
+    {url: 'https://omo.test/omo/', runScripts: 'outside-only', pretendToBeVisual: true});
+    const {window} = dom;
+    const {document} = window;
+    let confirmations = 0;
+    let approved = false;
+    let closures = 0;
+    window.fetch = async () => ({ok: true, json: async () => ({})});
+    window.HTMLElement.prototype.scrollIntoView = () => {};
+    window.confirm = () => { confirmations++; return approved; };
+    window.addEventListener('common-topbar-modal-close', () => closures++);
+    try {
+        window.eval(read('common/assets/topbar.js'));
+        window.eval(read('common/drawer/subdrawer.js'));
+        if (stacked) window.commonTopbarOpenModal('Parent', '<div data-parent>Parent</div>');
+        const open = stacked ? window.commonTopbarPushModal : window.commonTopbarOpenModal;
+        open('Project', fixture[reopened ? 'reopened' : 'html'][type]);
+        for (const script of document.querySelectorAll('script:not([src])')) {
+            if (!script.type || script.type === 'text/javascript') window.eval(script.textContent);
+        }
+        await tick();
+        const form = document.querySelector('[data-deferred-project-form]');
+        const cancel = form.querySelector('[data-deferred-project-cancel]');
+        const field = form.elements.namedItem('title');
+        if (dirty) {
+            field.dispatchEvent(new window.Event('focusin', {bubbles: true}));
+            field.value = 'Unsaved project';
+            field.dispatchEvent(new window.Event('input', {bubbles: true}));
+            cancel.click();
+            assert.equal(confirmations, 1, 'Cancel must ask before discarding changes.');
+            assert.equal(form.isConnected, true, 'Declining must preserve the form.');
+            assert.equal(field.value, 'Unsaved project');
+            assert.equal(document.getElementById('commonTopbarModal').hidden, false);
+            assert.equal(closures, 0);
+            approved = true;
+        }
+        cancel.click();
+        assert.equal(confirmations, dirty ? 2 : 0, 'Each cancellation asks once, only for modified forms.');
+        assert.equal(form.isConnected, false, 'Confirmed cancel must remove the project form.');
+        assert.equal(document.getElementById('commonTopbarModal').hidden, !stacked);
+        assert.equal(closures, stacked ? 0 : 1);
+        if (stacked) assert.ok(document.querySelector('[data-parent]'), 'Cancel must restore the previous popup.');
+    } finally { window.close(); }
+}
+
 async function checkChooser() {
     const dom = new JSDOM(fixture.picker, {url: 'https://omo.test/omo/', runScripts: 'outside-only'});
     const {window} = dom;
@@ -186,5 +234,12 @@ async function checkChooser() {
     }
     await checkChooser();
     await checkGovernanceChooser();
+    for (const type of ['project', 'project_propose']) {
+        for (const reopened of [false, true]) {
+            for (const stacked of [false, true]) {
+                for (const dirty of [false, true]) await checkProjectCancel(type, reopened, stacked, dirty);
+            }
+        }
+    }
     console.log('pv_proposal_creation_space_browser_test: OK');
 })().catch(error => { console.error(error); process.exitCode = 1; });
