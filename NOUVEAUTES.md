@@ -1,5 +1,7 @@
 # Journal des nouveautés
 
+- Indicateurs / mesures des cellules (2026-10-21) : chaque synchronisation d une cellule de tableur ou EtherCalc enregistre une nouvelle mesure datee, meme si la valeur est identique a la precedente. Les echeances automatiques alimentent ainsi l historique et evitent un retard artificiel lorsque la valeur reste stable.
+
 - PV / annulation des projets (2026-10-20) : le bouton Annuler ferme le formulaire apres confirmation de la perte des modifications, comme la croix. Un refus conserve le formulaire ; une popup precedente est restauree si elle existe.
 
 - PV / proposer un projet (2026-10-20) : action Proposer distincte de Creer, avec destinations filtrees uniquement par la portee collective de CAN_PROPOSE_PROJECT. Meme formulaire, bouton Proposer, puis projet en attente d acceptation dans l espace destinataire apres validation collective. Le choix de l espace passe en premiere position sur la ligne des dates. Separation des deux actions egalement dans les scrutins utilisant les memes propositions differees.

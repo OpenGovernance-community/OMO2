@@ -832,30 +832,6 @@ class StatIndicator extends DbObject
         return $values;
     }
 
-    public function hasLatestMeasurementValue($candidateValue): bool
-    {
-        if (!is_numeric($candidateValue)) {
-            return false;
-        }
-
-        $latestMeasurement = null;
-        foreach ($this->getMeasurements() as $measurement) {
-            if ($measurement instanceof \dbObject\StatIndicatorValue) {
-                $latestMeasurement = $measurement;
-            }
-        }
-
-        if (!($latestMeasurement instanceof \dbObject\StatIndicatorValue) || !is_numeric($latestMeasurement->get('value'))) {
-            return false;
-        }
-
-        $candidate = (float)$candidateValue;
-        $latest = (float)$latestMeasurement->get('value');
-        $tolerance = 0.000000001 * max(1.0, abs($candidate), abs($latest));
-
-        return abs($candidate - $latest) <= $tolerance;
-    }
-
     public function getReferencePoints()
     {
         $points = new \dbObject\ArrayStatIndicatorReferencePoint();
