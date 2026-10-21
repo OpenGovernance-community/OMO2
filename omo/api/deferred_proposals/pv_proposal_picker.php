@@ -23,6 +23,7 @@ $sourceLang = [
     'indicator_help' => ['text' => 'Indicateurs et mesures de l’espace', 'context' => 'Deferred proposal indicator type help'],
     'action' => ['text' => 'Action', 'context' => 'Deferred proposal operation label'],
     'create' => ['text' => 'Création', 'context' => 'Deferred proposal create operation'],
+    'propose' => ['text' => 'Proposer', 'context' => 'Deferred project proposal operation using collective proposal rights'],
     'update' => ['text' => 'Modification', 'context' => 'Deferred proposal update operation'],
     'move' => ['text' => 'Deplacement', 'context' => 'Deferred holon move operation'],
     'move_holon' => ['text' => 'Deplacer le role ou cercle', 'context' => 'Deferred holon move editor'],
@@ -113,7 +114,6 @@ $holonCatalog = DeferredProposal::getHolonTargetHolonCatalog($organizationId, $c
 $projectCatalog = DeferredProposal::getProjectTargetHolonCatalog($organizationId, $collectiveHolonId);
 $recurringTaskCatalog = DeferredProposal::getObjectTargetHolonCatalog($organizationId, $collectiveHolonId, DeferredProposal::TARGET_RECURRING_TASK);
 $indicatorCatalog = DeferredProposal::getObjectTargetHolonCatalog($organizationId, $collectiveHolonId, DeferredProposal::TARGET_INDICATOR);
-$projectCreationModes = [];
 $contextLabels = [];
 foreach ([$ruleCatalog, $holonCatalog, $projectCatalog, $recurringTaskCatalog, $indicatorCatalog] as $catalog) {
     foreach ($catalog as $holonId => $entry) $contextLabels[(int)$holonId] = (string)($entry['label'] ?? '');
@@ -121,7 +121,7 @@ foreach ([$ruleCatalog, $holonCatalog, $projectCatalog, $recurringTaskCatalog, $
 $contextPermissions = [
     DeferredProposal::TARGET_RULE => ['create' => [], 'update' => [], 'delete' => []],
     DeferredProposal::TARGET_HOLON => ['create' => [], 'update' => [], 'delete' => [], 'move' => []],
-    DeferredProposal::TARGET_PROJECT => ['create' => [], 'update' => [], 'delete' => []],
+    DeferredProposal::TARGET_PROJECT => ['create' => [], 'propose' => [], 'update' => [], 'delete' => []],
     DeferredProposal::TARGET_RECURRING_TASK => ['create' => [], 'update' => [], 'delete' => []],
     DeferredProposal::TARGET_INDICATOR => ['create' => [], 'update' => [], 'delete' => []],
 ];
@@ -140,7 +140,6 @@ foreach ($holonCatalog as $holonId => $entry) {
     }
 }
 foreach ($projectCatalog as $holonId => $entry) {
-    $projectCreationModes[(int)$holonId] = (string)($entry['project_creation_mode'] ?? '');
     foreach (array_keys($contextPermissions[DeferredProposal::TARGET_PROJECT]) as $catalogOperation) {
         if (!empty($entry['permissions'][$catalogOperation])) $contextPermissions[DeferredProposal::TARGET_PROJECT][$catalogOperation][] = (int)$holonId;
     }
@@ -184,7 +183,7 @@ $buttonLabels = [
         </div>
     </div>
     <div class="generic-form-grid omo-deferred-workflow__selection-row">
-        <label class="generic-form-field"><span class="generic-form-label"><?= omoApiEscape($tr('action')) ?></span><select class="generic-form-control" data-deferred-operation<?= $proposalId > 0 ? ' disabled' : '' ?>><option value="create"<?= $operation === 'create' ? ' selected' : '' ?>><?= omoApiEscape($tr('create')) ?></option><option value="update"<?= $operation === 'update' ? ' selected' : '' ?>><?= omoApiEscape($tr('update')) ?></option><option value="delete"<?= $operation === 'delete' ? ' selected' : '' ?>><?= omoApiEscape($tr('delete')) ?></option><option value="move"<?= $operation === 'move' ? ' selected' : '' ?>><?= omoApiEscape($tr('move')) ?></option></select></label>
+        <label class="generic-form-field"><span class="generic-form-label"><?= omoApiEscape($tr('action')) ?></span><select class="generic-form-control" data-deferred-operation<?= $proposalId > 0 ? ' disabled' : '' ?>><option value="create"<?= $operation === 'create' ? ' selected' : '' ?>><?= omoApiEscape($tr('create')) ?></option><option value="propose"<?= $operation === 'propose' ? ' selected' : '' ?>><?= omoApiEscape($tr('propose')) ?></option><option value="update"<?= $operation === 'update' ? ' selected' : '' ?>><?= omoApiEscape($tr('update')) ?></option><option value="delete"<?= $operation === 'delete' ? ' selected' : '' ?>><?= omoApiEscape($tr('delete')) ?></option><option value="move"<?= $operation === 'move' ? ' selected' : '' ?>><?= omoApiEscape($tr('move')) ?></option></select></label>
         <label class="generic-form-field"><span class="generic-form-label"><?= omoApiEscape($tr('context')) ?></span><span class="omo-deferred-workflow__context-control"><input class="generic-form-control" type="text" readonly data-deferred-context-label value="<?= omoApiEscape((string)($contextLabels[$contextHolonId] ?? '')) ?>"><button class="generic-action-button generic-action-button--secondary generic-action-button--icon-only" type="button" data-deferred-context-open title="<?= omoApiEscape($tr('open_context')) ?>" aria-label="<?= omoApiEscape($tr('open_context')) ?>"<?= $proposalId > 0 ? ' disabled' : '' ?>><img src="/omo/images/tools/connection.png" alt=""></button></span></label>
     </div>
     <div class="generic-form-grid omo-deferred-workflow__object-row" data-deferred-object-row hidden>
@@ -199,7 +198,6 @@ $buttonLabels = [
 <?= commonPageScriptTags('/omo/api/deferred_proposals/pv_proposal_picker.js', [
     'labels' => $contextLabels,
     'contextPermissions' => $contextPermissions,
-    'projectCreationModes' => $projectCreationModes,
     'buttonLabels' => $buttonLabels,
     'tr' => ['empty'=>$tr('empty'),'loading'=>$tr('loading'),'allowed'=>$tr('allowed'),'denied'=>$tr('denied_context'),'loadError'=>$tr('load_error'),'editorError'=>$tr('editor_error')],
     'initialObjectId' => $objectId,

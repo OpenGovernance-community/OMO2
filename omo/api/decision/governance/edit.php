@@ -118,11 +118,10 @@ $contextLabels = [];
 $contextPermissions = [
     DeferredProposal::TARGET_RULE => ['create' => [], 'update' => [], 'delete' => []],
     DeferredProposal::TARGET_HOLON => ['create' => [], 'update' => [], 'delete' => [], 'move' => []],
-    DeferredProposal::TARGET_PROJECT => ['create' => [], 'update' => [], 'delete' => []],
+    DeferredProposal::TARGET_PROJECT => ['create' => [], 'propose' => [], 'update' => [], 'delete' => []],
     DeferredProposal::TARGET_RECURRING_TASK => ['create' => [], 'update' => [], 'delete' => []],
     DeferredProposal::TARGET_INDICATOR => ['create' => [], 'update' => [], 'delete' => []],
 ];
-$projectCreationModes = [];
 foreach ([$ruleCatalog, $holonCatalog, $projectCatalog, $recurringTaskCatalog, $indicatorCatalog] as $catalog) {
     foreach ($catalog as $catalogHolonId => $entry) $contextLabels[(int)$catalogHolonId] = (string)($entry['label'] ?? '');
 }
@@ -141,7 +140,6 @@ foreach ($holonCatalog as $catalogHolonId => $entry) {
     }
 }
 foreach ($projectCatalog as $catalogHolonId => $entry) {
-    $projectCreationModes[(int)$catalogHolonId] = (string)($entry['project_creation_mode'] ?? '');
     foreach (array_keys($contextPermissions[DeferredProposal::TARGET_PROJECT]) as $catalogOperation) {
         if (!empty($entry['permissions'][$catalogOperation])) $contextPermissions[DeferredProposal::TARGET_PROJECT][$catalogOperation][] = (int)$catalogHolonId;
     }
@@ -169,7 +167,6 @@ $payload = [
     'decisionId' => $decision instanceof DecisionProcess ? (int)$decision->getId() : 0,
     'contextLabels' => $contextLabels,
     'contextPermissions' => $contextPermissions,
-    'projectCreationModes' => $projectCreationModes,
     'defaultRuleState' => $defaultRuleState,
     'editable' => $canEdit,
     'aiEnabled' => $canUseAi,
@@ -198,6 +195,7 @@ $payload = [
         'roleDelete' => omoDecisionGovernanceT('governance.action.role_delete'),
         'projectUpdate' => omoDecisionGovernanceT('governance.action.project_update'),
         'projectCreate' => omoDecisionGovernanceT('governance.action.project_create'),
+        'propose' => omoDecisionGovernanceT('governance.action.propose'),
         'projectPropose' => omoDecisionGovernanceT('governance.action.project_propose'),
         'projectDelete' => omoDecisionGovernanceT('governance.action.project_delete'),
         'recurringTaskUpdate' => omoDecisionGovernanceT('governance.action.recurring_task_update'),

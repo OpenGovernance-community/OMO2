@@ -45,7 +45,7 @@ $targetType = trim((string)($_GET['target_type'] ?? ''));
 $operation = trim((string)($_GET['operation'] ?? ''));
 $contextHolonId = (int)($_GET['context_holon_id'] ?? 0);
 if (!in_array($targetType, [DeferredProposal::TARGET_RULE, DeferredProposal::TARGET_HOLON, DeferredProposal::TARGET_PROJECT, DeferredProposal::TARGET_RECURRING_TASK, DeferredProposal::TARGET_INDICATOR], true)
-    || !in_array($operation, [DeferredProposal::OPERATION_CREATE, DeferredProposal::OPERATION_UPDATE, DeferredProposal::OPERATION_DELETE, DeferredProposal::OPERATION_MOVE], true)) {
+    || !in_array($operation, [DeferredProposal::OPERATION_CREATE, DeferredProposal::OPERATION_UPDATE, DeferredProposal::OPERATION_DELETE, DeferredProposal::OPERATION_MOVE, DeferredProposal::OPERATION_PROPOSE], true)) {
     $respond(422, ['status' => false, 'message' => 'Sélection invalide.']);
 }
 
@@ -93,7 +93,7 @@ if ($targetType === DeferredProposal::TARGET_RULE) {
 } elseif ($targetType === DeferredProposal::TARGET_PROJECT) {
     $contextHolon = DeferredProposal::loadAllowedProjectTargetHolon($organizationId, $contextHolonId, $operation, $collectiveHolonId);
     if (!($contextHolon instanceof Holon)) $respond(403, ['status' => false, 'message' => 'Le collectif ne dispose pas du droit nécessaire dans cet espace.']);
-    if ($operation !== DeferredProposal::OPERATION_CREATE) {
+    if (!DeferredProposal::isProjectCreationOperation($operation)) {
         $projects = new ArrayProject();
         $projects->loadForContext($organizationId, $contextHolonId, 'contextual', [], false, true);
         foreach ($projects as $project) {

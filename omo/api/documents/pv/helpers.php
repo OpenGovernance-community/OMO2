@@ -67,6 +67,7 @@ function omoDocumentsPvEditorSourceLang(): array
         'documents.pv_editor.action.add_proposal' => ['text' => 'Ajouter une modification', 'context' => 'Button used to attach a deferred proposal to a PV point.'],
         'documents.pv_editor.proposals.title' => ['text' => 'Modifications', 'context' => 'Heading above the deferred proposals attached to a PV point.'],
         'documents.pv_editor.proposals.operation.create' => ['text' => 'Création', 'context' => 'Operation label for a deferred object creation.'],
+        'documents.pv_editor.proposals.operation.propose' => ['text' => 'Proposition de projet', 'context' => 'Operation label for a project submitted to another space for acceptance.'],
         'documents.pv_editor.proposals.operation.update' => ['text' => 'Modification', 'context' => 'Operation label for a deferred object update.'],
         'documents.pv_editor.proposals.operation.move' => ['text' => 'Deplacement', 'context' => 'Deferred holon move operation'],
         'documents.pv_editor.proposals.operation.delete' => ['text' => 'Suppression', 'context' => 'Operation label for a deferred object deletion.'],
@@ -422,6 +423,7 @@ function omoDocumentsPvEditorBuildUiText(?callable $translate = null, array $pri
         'addProposal' => $resolve('documents.pv_editor.action.add_proposal', 'Ajouter une modification'),
         'proposalsTitle' => $resolve('documents.pv_editor.proposals.title', 'Modifications'),
         'proposalOperationCreate' => $resolve('documents.pv_editor.proposals.operation.create', 'Création'),
+        'proposalOperationPropose' => $resolve('documents.pv_editor.proposals.operation.propose', 'Proposition de projet'),
         'proposalOperationUpdate' => $resolve('documents.pv_editor.proposals.operation.update', 'Modification'),
         'proposalOperationMove' => $resolve('documents.pv_editor.proposals.operation.move', 'Deplacement'),
         'proposalOperationDelete' => $resolve('documents.pv_editor.proposals.operation.delete', 'Suppression'),
@@ -1159,6 +1161,7 @@ function omoDocumentsPvEditorRenderDeferredProposals(array $pointData, array $ui
 
     $operationLabels = [
         \dbObject\DeferredProposal::OPERATION_CREATE => (string)($uiText['proposalOperationCreate'] ?? 'Création'),
+        \dbObject\DeferredProposal::OPERATION_PROPOSE => (string)($uiText['proposalOperationPropose'] ?? 'Proposition de projet'),
         \dbObject\DeferredProposal::OPERATION_UPDATE => (string)($uiText['proposalOperationUpdate'] ?? 'Modification'),
         \dbObject\DeferredProposal::OPERATION_MOVE => (string)($uiText['proposalOperationMove'] ?? 'Deplacement'),
         \dbObject\DeferredProposal::OPERATION_DELETE => (string)($uiText['proposalOperationDelete'] ?? 'Suppression'),

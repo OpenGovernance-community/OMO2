@@ -767,6 +767,23 @@
     line-height: 1.35;
 }
 
+/* Only the opened folder's own summary expands, not its nested folders. */
+.omo-documents__folder:not(.is-collapsed) > .omo-documents__folder-header .omo-documents__compact-heading {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+}
+
+.omo-documents__folder:not(.is-collapsed) > .omo-documents__folder-header .omo-documents__compact-title {
+    max-width: 100%;
+}
+
+.omo-documents__folder:not(.is-collapsed) > .omo-documents__folder-header .omo-documents__compact-excerpt {
+    flex: none;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
 .omo-documents__item--compact .omo-documents__context,
 .omo-documents__item--compact .omo-documents__description,
 .omo-documents__item--compact .omo-documents__keywords,

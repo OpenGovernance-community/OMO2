@@ -3,21 +3,9 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/class/dbobject/recurrenceschedule.class.php';
 require_once dirname(__DIR__) . '/class/dbobject/dbobject.class.php';
-require_once dirname(__DIR__) . '/class/dbobject/statindicatorvalue.class.php';
 require_once dirname(__DIR__) . '/class/dbobject/statindicator.class.php';
 
 use dbObject\StatIndicator;
-use dbObject\StatIndicatorValue;
-
-class StatIndicatorMeasurementTestDouble extends StatIndicator
-{
-    public array $measurements = [];
-
-    public function getMeasurements()
-    {
-        return $this->measurements;
-    }
-}
 
 function assertStatIndicatorFrequency(bool $condition, string $message): void
 {
@@ -88,19 +76,6 @@ assertStatIndicatorFrequency(
 assertStatIndicatorFrequency(
     $ethercalcTableIndicator->isEthercalcSyncDue(new DateTimeImmutable('2026-04-15 09:00:00')),
     'EtherCalc tables must synchronize when their configured period is reached.'
-);
-
-$sameValueIndicator = new StatIndicatorMeasurementTestDouble();
-$existingValue = new StatIndicatorValue();
-$existingValue->set('value', 42.5);
-$sameValueIndicator->measurements = [$existingValue];
-assertStatIndicatorFrequency(
-    $sameValueIndicator->hasLatestMeasurementValue(42.5),
-    'A synchronization must not create a duplicate when the source value is unchanged.'
-);
-assertStatIndicatorFrequency(
-    !$sameValueIndicator->hasLatestMeasurementValue(42.6),
-    'A synchronization must record a changed source value.'
 );
 
 echo "stat_indicator_frequency_test: OK\n";

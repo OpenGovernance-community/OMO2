@@ -36,13 +36,13 @@ function omoDeferredEditorT(string $key): string
     return t($key, [], $bundle, $sourceLang);
 }
 
-function omoDeferredEditorRenderCreationHolonField(int $organizationId, int $holonId, array $catalog): void
+function omoDeferredEditorRenderCreationHolonField(int $organizationId, int $holonId, array $catalog, string $operation = 'create'): void
 {
     $config = [
         'organizationId' => $organizationId,
         'selectableHolonIds' => array_values(array_map('intval', array_keys(array_filter(
             $catalog,
-            static fn (array $entry): bool => !empty($entry['permissions']['create'])
+            static fn (array $entry): bool => !empty($entry['permissions'][$operation])
         )))),
         'allowOrganization' => false,
         'labels' => commonHolonScopeTargetLabels(omoDeferredEditorT('creation_space_hint')),
@@ -55,7 +55,7 @@ function omoDeferredEditorRenderCreationHolonField(int $organizationId, int $hol
     <?php
 }
 
-function omoDeferredEditorRenderFields(string $targetType, array $state, array $memberLabels = []): void
+function omoDeferredEditorRenderFields(string $targetType, array $state, array $memberLabels = [], ?callable $creationSpaceRenderer = null): void
 {
     if ($targetType === 'holon_delete') {
         echo '<p>' . htmlspecialchars(omoHolonRemovalT('deferred'), ENT_QUOTES, 'UTF-8') . '</p>';
@@ -122,7 +122,8 @@ function omoDeferredEditorRenderFields(string $targetType, array $state, array $
                 <label class="generic-form-field" data-deferred-project-blocked-field<?= $isBlocked ? '' : ' hidden' ?>><span class="generic-form-label"><?= $label('blocked_until') ?></span><input class="generic-form-control" type="date" name="blocked_until" value="<?= $value('blocked_until') ?>"></label>
                 <label class="generic-form-field" data-deferred-project-blocked-field<?= $isBlocked ? '' : ' hidden' ?>><span class="generic-form-label"><?= $label('blocked_reason') ?></span><input class="generic-form-control" name="blocked_reason" value="<?= $value('blocked_reason') ?>"></label>
             </div>
-            <div class="generic-form-grid">
+            <div class="generic-form-grid<?= $creationSpaceRenderer ? ' generic-form-grid--trio' : '' ?>">
+                <?php if ($creationSpaceRenderer) $creationSpaceRenderer(); ?>
                 <?php foreach (['planned_start_date' => 'start', 'planned_end_date' => 'end'] as $field => $key): ?>
                     <label class="generic-form-field"><span class="generic-form-label"><?= $label($key) ?></span><input class="generic-form-control" type="date" name="<?= $field ?>" value="<?= $value($field) ?>"></label>
                 <?php endforeach; ?>

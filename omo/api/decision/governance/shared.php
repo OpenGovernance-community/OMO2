@@ -53,6 +53,7 @@ if (!function_exists('omoDecisionGovernanceGetSourceLang')) {
             'governance.action.project_update' => ['text' => 'Modifier un projet', 'context' => 'Project update deferred proposal label.'],
             'governance.action.project_create' => ['text' => 'Créer un projet', 'context' => 'Project creation deferred proposal label.'],
             'governance.action.project_propose' => ['text' => 'Proposer un projet', 'context' => 'Project proposal label when the collective can propose but not create projects.'],
+            'governance.action.propose' => ['text' => 'Proposer', 'context' => 'Project proposal action with its own collective permission scope'],
             'governance.action.project_delete' => ['text' => 'Supprimer un projet', 'context' => 'Project deletion deferred proposal label.'],
             'governance.action.recurring_task_update' => ['text' => 'Modifier une tâche récurrente', 'context' => 'Recurring task update deferred proposal label.'],
             'governance.action.recurring_task_create' => ['text' => 'Créer une tâche récurrente', 'context' => 'Recurring task creation deferred proposal label.'],

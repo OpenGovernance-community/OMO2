@@ -37,6 +37,14 @@ const markup = data => '<details data-omo-change-details-payload="' + encode(dat
     assert(first.textContent.includes('Cet élément n’existait pas.'));
     assert.equal(first.querySelectorAll('.is-before, .is-removed, .is-empty').length, 0, 'Creation has no red or empty before fields');
 
+    const proposed = document.createElement('section');
+    proposed.innerHTML = markup({governanceAction: {type: 'project.propose', before: {}, after: {title: 'Project awaiting acceptance'}}});
+    document.body.appendChild(proposed);
+    await settle();
+    assert.equal(proposed.querySelectorAll('.omo-change-details__absence').length, 1, 'A proposed project uses a new-object snapshot.');
+    assert.equal(proposed.querySelectorAll('.is-before, .is-removed, .is-empty').length, 0, 'Propose must not appear as an edit of an existing project.');
+    proposed.remove();
+
     document.body.insertAdjacentHTML('beforeend', markup(action('delete', '')));
     await settle();
     const deletion = document.querySelectorAll('details')[1];
