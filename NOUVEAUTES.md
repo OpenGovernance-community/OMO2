@@ -1,5 +1,7 @@
 # Journal des nouveautés
 
+- Indicateurs / reprise des anciennes cellules (2026-10-22) : migration des synchronisations marquees reussies sans mesure correspondante par l ancien filtre des valeurs identiques. Ces cellules sont relues au prochain passage du cron, avec une nouvelle mesure a la date de lecture ; les imports de tableaux et les synchronisations disposant deja d une mesure sont conserves.
+
 - Indicateurs / mesures des cellules (2026-10-21) : chaque synchronisation d une cellule de tableur ou EtherCalc enregistre une nouvelle mesure datee, meme si la valeur est identique a la precedente. Les echeances automatiques alimentent ainsi l historique et evitent un retard artificiel lorsque la valeur reste stable.
 
 - PV / annulation des projets (2026-10-20) : le bouton Annuler ferme le formulaire apres confirmation de la perte des modifications, comme la croix. Un refus conserve le formulaire ; une popup precedente est restauree si elle existe.
