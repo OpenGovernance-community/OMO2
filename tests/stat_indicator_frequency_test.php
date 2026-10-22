@@ -64,6 +64,35 @@ assertStatIndicatorFrequency(
     'Monthly synchronization must be due on the last day of a shorter month.'
 );
 
+foreach ([
+    StatIndicator::SOURCE_SPREADSHEET_CELL => 'spreadsheet',
+    StatIndicator::SOURCE_ETHERCALC_CELL => 'ethercalc',
+] as $sourceType => $prefix) {
+    $lateIndicator = new StatIndicator();
+    $lateIndicator->set('source_type', $sourceType);
+    $lateIndicator->set('active', 1);
+    $lateIndicator->set($prefix . '_frequency', 'monthly');
+    $lateIndicator->set($prefix . '_last_sync_at', new DateTimeImmutable('2026-09-10 07:02:00'));
+    $isDue = $prefix === 'spreadsheet' ? 'isSpreadsheetSyncDue' : 'isEthercalcSyncDue';
+    $referenceDate = new DateTimeImmutable('2026-10-22 07:02:00');
+    assertStatIndicatorFrequency(
+        $lateIndicator->$isDue($referenceDate),
+        $prefix . ': a monthly synchronization missed twelve days ago remains due.'
+    );
+
+    // Reproduce the legacy state: a sync was marked successful without a measurement.
+    $lateIndicator->set($prefix . '_last_sync_at', new DateTimeImmutable('2026-10-10 07:02:00'));
+    assertStatIndicatorFrequency(
+        !$lateIndicator->$isDue($referenceDate),
+        $prefix . ': a recent recorded synchronization delays the next monthly run.'
+    );
+    $lateIndicator->set($prefix . '_last_sync_at', null);
+    assertStatIndicatorFrequency(
+        $lateIndicator->$isDue($referenceDate),
+        $prefix . ': resetting an unmeasured legacy sync makes the cell immediately due.'
+    );
+}
+
 $ethercalcTableIndicator = new StatIndicator();
 $ethercalcTableIndicator->set('source_type', StatIndicator::SOURCE_ETHERCALC_TABLE);
 $ethercalcTableIndicator->set('ethercalc_frequency', StatIndicator::ETHERCALC_FREQUENCY_QUARTERLY);

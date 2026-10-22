@@ -529,7 +529,7 @@ class StatIndicator extends DbObject
             $lastSyncAt,
             self::normalizeEthercalcFrequency($this->get('ethercalc_frequency')),
             $referenceDate
-        );
+        ) || ($this->isEthercalcCellSource() && $this->hasMissingCellMeasurement($lastSyncAt));
     }
 
     public function markEthercalcSynced(\DateTimeInterface $syncedAt)
@@ -554,7 +554,27 @@ class StatIndicator extends DbObject
             $lastSyncAt,
             self::normalizeSpreadsheetFrequency($this->get('spreadsheet_frequency')),
             $referenceDate
-        );
+        ) || ($this->isSpreadsheetCellSource() && $this->hasMissingCellMeasurement($lastSyncAt));
+    }
+
+    protected function hasMissingCellMeasurement(\DateTimeInterface $lastSyncAt): bool
+    {
+        $indicatorId = (int)$this->getId();
+        if ($indicatorId <= 0) {
+            return false;
+        }
+
+        // A cell sync is complete only when its dated measurement was saved too.
+        // Older synchronizers advanced last_sync_at for unchanged values without one.
+        $values = new \dbObject\ArrayStatIndicatorValue();
+        $values->load([
+            'where' => [
+                ['field' => 'IDstatindicator', 'value' => $indicatorId],
+                ['field' => 'measured_at', 'op' => '>=', 'value' => $lastSyncAt->format('Y-m-d H:i:s')],
+            ],
+            'limit' => 1,
+        ]);
+        return count($values) === 0;
     }
 
     protected static function isSourceSyncDue(\DateTimeInterface $lastSyncAt, $frequency, \DateTimeInterface $referenceDate)
