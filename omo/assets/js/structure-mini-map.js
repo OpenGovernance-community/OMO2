@@ -1231,7 +1231,7 @@
     }
 
     function handlePointerMove(event) {
-      const node = hitTest(event.clientX, event.clientY);
+      const node = hitTest(event.clientX, event.clientY) || state.rootData;
       const nextHoverId = node && node.ID ? String(node.ID) : null;
 
       if (nextHoverId === state.hoveredNodeId) {
@@ -1254,7 +1254,7 @@
     }
 
     function handleCanvasClick(event) {
-      const node = hitTest(event.clientX, event.clientY);
+      const node = hitTest(event.clientX, event.clientY) || state.rootData;
       if (!node || typeof navigate !== 'function') {
         return;
       }

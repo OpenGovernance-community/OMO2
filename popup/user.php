@@ -72,10 +72,12 @@ function omoUserContextAvailabilityRenderFragment(int $userId, int $organization
         }
     }
 
-    $hours = MeetingProfile::defaultHours();
+    $availabilityOrganization = new \dbObject\Organization();
+    $availabilityOrganization->load($organizationId);
+    $hours = $availabilityOrganization->getCalendarAvailabilityHours();
     if (MeetingProfile::isStorageAvailable()) {
         $profile = MeetingProfile::forUser($userId);
-        $hours = $profile->availabilityHours();
+        $hours = $profile->availabilityHours($availabilityOrganization);
     }
     $rangeStart = $month->setTime(0, 0);
     $rangeEnd = $month->modify('+1 month')->setTime(0, 0);

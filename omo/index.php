@@ -1420,7 +1420,7 @@ window.omoConfig = <?=
 require_once dirname(__DIR__) . '/common/assistant/ui.php';
 commonAssistantRender((int)$organizationContext['id'], (string)$organizationContext['name']);
 ?>
-<script src="assets/js/structure-mini-map.js?v=20260916-structure-render-cache"></script>
+<script src="assets/js/structure-mini-map.js?v=20261028-background-root-navigation"></script>
 
 <script>
 $(document).ready(function () {
