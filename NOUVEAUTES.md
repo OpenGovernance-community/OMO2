@@ -1,5 +1,9 @@
 # Journal des nouveautés
 
+- Calendrier / horaires de l organisation (2026-10-28) : rubrique Calendrier dans les parametres Admin pour definir le debut et la fin de journee par defaut (09:00-17:00 initialement). Utilises pour les disponibilites individuelles, communes et via MCP en absence d horaires personnels actifs ; niveau de disponibilite calcule sur cette plage. Jours personnels, pauses et agendas existants conserves.
+
+- OMO / mini-carte de navigation (2026-10-28) : clic sur le fond gris pour revenir a la racine de l organisation, avec curseur et libelle de survol adaptes. Selection des cercles conservee.
+
 - Scrutins / suivi de participation (2026-10-28) : pastille pres du statut en vues compacte et detaillee, jaune en elaboration et rouge lorsqu une reponse reste attendue en evaluation. Pastille verte fixe apres envoi de toutes les reponses ; invitations actives et groupes de scrutin pris en compte. LeftBar inchangee.
 
 - Migration OMO1 / droits (2026-10-28) : export du projet adjacent DevOMO aligne sur les templates de l organisation Docker 2384 (Demarche Z), avec les correspondances pilotage/Premier lien, representation/Second lien et Memoire/Secretaire. Conservation des droits collectifs, des portees et des autorites etendues ; aucune modification de l organisation de reference.
