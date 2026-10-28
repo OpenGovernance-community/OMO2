@@ -124,8 +124,7 @@ final class ObjectMail extends DbObject
         $user = new User();
         if ($uid <= 0 || !$user->load($uid, true) || !$user->get('active')
             || !UserOrganization::hasActiveMembership($uid, $oid) || !$document->isPvDocument()
-            || $document->getPvStage() !== Document::PV_STAGE_PREPARATION
-            || !$document->canUserManagePvStructure($oid, $uid)) {
+            || !$document->canUserSendPvInvitations($oid, $uid)) {
             throw new \DomainException('Invitation PV non autorisee.');
         }
         if (!$recipients || trim($subject) === '' || trim($message) === '') {
