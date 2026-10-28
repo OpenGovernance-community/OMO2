@@ -1,5 +1,7 @@
 # Journal des nouveautés
 
+- PV / e-mails en revision (2026-10-28) : action Envoyer un e-mail aux participants disponible pendant la reunion et en revision, avec choix des destinataires et message personnalisable. Objet et texte proposes adaptes a la relecture ; acces conserve pour les gestionnaires autorises, sans rouvrir la modification des invites.
+
 - Reunions / invites et presence (2026-10-27) : collage d adresses au format Prenom Nom <adresse@exemple.ch>, seules ou en liste. Noms conserves dans les invitations et a la reouverture du formulaire, puis affiches dans la liste de presence des reunions et des PV ; adresses seules toujours acceptees et doublons regroupes par e-mail. Placeholder avec exemples des deux formats acceptes.
 
 - PV / prolongation et horaires (2026-10-27) : le bouton + reste utilisable en preparation et en reunion, meme apres la fin prevue d une reunion recurrente. Le passage en relecture ou la cloture verrouille les horaires dans le PV et le calendrier, avec controle a la sauvegarde. Tests des prolongations, des dates synchronisees et des refus apres cloture.

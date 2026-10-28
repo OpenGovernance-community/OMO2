@@ -41,7 +41,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
     const invitationsButton = root.querySelector('[data-omo-pv-invitations-url]');
     const invitationsMenuToggle = root.querySelector('[data-omo-pv-invitations-menu-toggle]');
     const invitationsMenuPanel = root.querySelector('[data-omo-pv-invitations-menu-panel]');
-    const invitationsSendButton = root.querySelector('[data-omo-pv-invitations-send-url]');
+    const invitationsSendButtons = Array.from(root.querySelectorAll('[data-omo-pv-invitations-send-url]'));
     const eventScheduleValue = root.querySelector('[data-omo-pv-event-schedule]');
     const eventExtensionMenu = root.querySelector('[data-omo-pv-event-extension-menu]');
     const eventExtensionToggle = root.querySelector('[data-omo-pv-event-extension-toggle]');
@@ -2835,6 +2835,12 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         if (invitationsMenuToggle instanceof HTMLButtonElement) {
             invitationsMenuToggle.disabled = !canManageInvitations;
         }
+        invitationsSendButtons.forEach(function (button) {
+            const visible = documentPayload.canSendPvInvitations === true
+                && (!button.hasAttribute('data-omo-pv-invitations-send-direct') || !canManageInvitations);
+            button.hidden = !visible;
+            button.disabled = !visible;
+        });
 
         if (addButton instanceof HTMLButtonElement) {
             addButton.hidden = isReview || (isCurrentEditor && !canManageAgenda);
@@ -7023,16 +7029,16 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
             }
         });
     }
-    if (invitationsSendButton instanceof HTMLButtonElement) {
+    invitationsSendButtons.forEach(function (invitationsSendButton) {
         invitationsSendButton.addEventListener('click', function () {
             const invitationUrl = String(invitationsSendButton.getAttribute('data-omo-pv-invitations-send-url') || '').trim();
             const invitationTitle = String(invitationsSendButton.getAttribute('data-omo-pv-invitations-send-title') || '').trim();
             closeInvitationsMenu();
             if (invitationUrl && typeof window.commonTopbarOpenModal === 'function') {
-                window.commonTopbarOpenModal(invitationTitle || 'Envoyer les invitations', invitationUrl, 'fetch');
+                window.commonTopbarOpenModal(invitationTitle || 'Envoyer un e-mail aux participants', invitationUrl, 'fetch');
             }
         });
-    }
+    });
     window.addEventListener('omo:pv-invitations-updated', function (event) {
         const updatedDocumentId = Number(event && event.detail ? event.detail.documentId : 0);
         if (updatedDocumentId === documentId) {

@@ -1930,6 +1930,14 @@
 					|| $this->canUserClaimPvEditor($organizationId, $userId));
 		}
 
+		public function canUserSendPvInvitations(int $organizationId, int $userId): bool
+		{
+			return $organizationId > 0
+				&& (int)$this->get('IDorganization') === $organizationId
+				&& in_array($this->getPvStage(), [self::PV_STAGE_PREPARATION, self::PV_STAGE_MEETING, self::PV_STAGE_REVIEW], true)
+				&& $this->canUserManagePvStructure($organizationId, $userId);
+		}
+
 		public function canUserReplacePvEditor(int $organizationId, int $userId): bool
 		{
 			if (
