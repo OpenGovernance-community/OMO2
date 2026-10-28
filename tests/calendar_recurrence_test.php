@@ -407,6 +407,40 @@ try {
     $legacyEvents = recurrenceEvents($legacySeries); $latest = end($legacyEvents);
     recurrenceExpect($latest->getAssociatedDocument()->get('title') === 'PV Legacy meeting du ' . $latest->get('start_at')->format('d.m.Y H:i'), 'Repaired legacy series generates future titles with the correct date.');
 
+    // PV state, rather than the clock or recurrence membership, controls schedule edits.
+    foreach ([false, true] as $recurring) {
+        foreach (['yesterday', 'tomorrow'] as $relativeDay) {
+            $day = (new DateTimeImmutable($relativeDay))->format('Y-m-d');
+            $meeting = recurrenceFixture(Event::class, ['IDorganization' => $oid, 'IDuser' => $uid, 'title' => 'PV schedule lock',
+                'status' => 'confirmed', 'timezone' => 'Europe/Zurich', 'start_at' => $day . ' 08:00:00', 'end_at' => $day . ' 09:00:00', 'active' => 1]);
+            $minutes = new Document();
+            recurrenceExpect(!empty($minutes->createInOrganizationContext($oid, (int)$holon->getId(), $uid,
+                ['title' => 'Schedule PV', 'document_type' => 'pv', 'event_id' => $meeting->getId()])['status']), 'Create schedule PV.');
+            if ($recurring) { $meeting->set('IDeventrecurrence', (int)$manualSeries->getId()); }
+            foreach (['preparation', 'meeting', 'review', 'validated'] as $stage) {
+                $minutes->set('pvstage', $stage);
+                recurrenceExpect(!empty($minutes->save()['status']), 'Save PV stage ' . $stage);
+                $locked = in_array($stage, ['review', 'validated'], true);
+                recurrenceExpect($meeting->isScheduleLocked() === $locked, 'Fresh PV state controls locking: ' . $stage . '/' . $relativeDay);
+                $oldEnd = $meeting->get('end_at');
+                $meeting->set('end_at', DateTimeImmutable::createFromInterface($oldEnd)->modify('+5 minutes'));
+                recurrenceExpect(!empty($meeting->save()['status']) === !$locked, 'End edit follows PV stage for single and recurring meetings.');
+                $meeting->load((int)$meeting->getId(), true);
+                if ($locked) {
+                    recurrenceExpect($meeting->get('end_at') == $oldEnd, 'Rejected extension leaves the persisted end unchanged.');
+                    $oldStart = $meeting->get('start_at');
+                    $meeting->set('start_at', DateTimeImmutable::createFromInterface($oldStart)->modify('-5 minutes'));
+                    recurrenceExpect(empty($meeting->save()['status']), 'Start edits are also locked.');
+                    $meeting->load((int)$meeting->getId(), true);
+                    recurrenceExpect($meeting->get('start_at') == $oldStart, 'Rejected start edit leaves the persisted date unchanged.');
+                } else {
+                    $minutes->load((int)$minutes->getId(), true);
+                    recurrenceExpect($minutes->get('datecreation') == $meeting->get('end_at'), 'Extension synchronizes the PV date.');
+                }
+            }
+        }
+    }
+
     foreach (['individual', 'following', 'stop'] as $correctionMode) {
         $yesterday = (new DateTimeImmutable('yesterday'))->format('Y-m-d');
         $tomorrow = (new DateTimeImmutable('tomorrow'))->format('Y-m-d');

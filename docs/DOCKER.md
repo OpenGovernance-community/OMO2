@@ -203,7 +203,15 @@ Collabora CODE est disponible localement via `https://document.localtest.me`. Co
 
 SpaceDeck Open est disponible localement via `https://whiteboard.localtest.me`. Copier `docker/spacedeck/.env.private.example` vers `docker/spacedeck/.env.private` avant de lancer Docker. Le service est construit depuis le fork local `docker/spacedeck/fork`, qui implemente un contrat generique de controle d acces externe et une API interne de creation/suppression de tableaux. Il conserve ses medias et sa base SQLite dans deux volumes Docker, et Apache transmet son WebSocket `/socket`. L image locale installe GraphicsMagick pour les images; FFmpeg, Ghostscript et Chromium pourront etre ajoutes lorsque les conversions multimedia et les exports seront integres.
 
-Une page locale de test est disponible sur `https://org1.localtest.me/test/spacedeck.php`. Elle ouvre dans une iframe le tableau blanc de demonstration cree automatiquement au demarrage du conteneur. Elle utilise l utilisateur OMO connecte, son nom affiche et un jeton signe de courte duree. Les liens `mode=edit`, `mode=read` et `mode=deny` permettent de verifier les trois niveaux de droit.
+Le controle d acces OMO utilise `http://app/omo/api/documents/spacedeck/access.php`
+dans `NODE_CONFIG.ext_access_control` du fichier `docker/spacedeck/.env.private`.
+Ne pas utiliser l ancienne adresse `/test/spacedeck_access.php` : le repertoire
+`/test/` est volontairement bloque par Apache. Apres modification du fichier
+prive, appliquer la configuration avec `docker compose up -d --no-deps --no-build spacedeck`
+(un simple redemarrage ne recharge pas les variables du fichier).
+Verifier la liaison reelle, sans modifier les tableaux ni afficher de jeton :
+`docker compose exec -T app php tests/spacedeck_local_integration_test.php`.
+La demonstration autonome est decrite en section 7.
 
 `localtest.me` n'est pas "publie" par Docker sur Internet du projet : c'est simplement un domaine public qui renvoie automatiquement vers `127.0.0.1`, ce qui evite toute configuration DNS locale supplementaire.
 
@@ -220,3 +228,34 @@ Si ce n'est pas le cas, ajouter temporairement ces entrees dans le fichier hosts
 127.0.0.1 org1.localhost
 127.0.0.1 org2.localhost
 ```
+
+## 7. Essai isole de SpaceDeck sous Node 24
+
+Le service SpaceDeck utilise maintenant Node 24 et le fork local modernise. Pour
+tester sans ouvrir les volumes habituels de l application :
+
+```sh
+docker compose -f docker/spacedeck/compose.preview.yaml up -d --build
+```
+
+Ouvrir `http://127.0.0.1:19666/spaces/omo-local-demo?spaceAuth=omo-local-demo&embedded=1`.
+Cet apercu est limite a la machine locale, sans connexion OMO, avec deux volumes
+de demonstration distincts. L arreter sans effacer ces donnees :
+
+```sh
+docker compose -f docker/spacedeck/compose.preview.yaml down
+```
+
+Verification des droits et de la collaboration via un serveur d autorisation de
+test, sans contacter OMO ni envoyer de mail :
+
+```sh
+docker run --rm --entrypoint npm omo-spacedeck:node24-adaptation test
+```
+
+Le fork est un depot Git distinct, ignore par le depot OMO : publier ses sources
+et son fichier package-lock.json dans le depot SpaceDeck, en plus des changements
+Docker dans OMO. Le guide `docker/spacedeck/fork/docs/node24-upgrade.md` explique
+les changements, les tests avec une base de l ancienne image et le retour arriere.
+Le VPS n est pas mis a jour par ces commandes locales. Sauvegarder les volumes
+SQLite et medias de facon coherente avant toute future migration du serveur.

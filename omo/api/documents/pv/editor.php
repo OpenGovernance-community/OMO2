@@ -122,7 +122,7 @@ $isPvReview = $document->getPvStage() === \dbObject\Document::PV_STAGE_REVIEW;
 $canEditPvDocumentHeader = $canManagePvStructure && !$isPvReview;
 $canExtendAssociatedEvent = !$isPublicParticipation
     && $hasAssociatedEvent
-    && $document->getPvStage() === \dbObject\Document::PV_STAGE_MEETING;
+    && in_array($document->getPvStage(), [\dbObject\Document::PV_STAGE_PREPARATION, \dbObject\Document::PV_STAGE_MEETING], true);
 $handoverUserId = $isPublicParticipation ? $publicParticipationUserId : $currentUserId;
 $isParticipationPvEditor = $document->isPvEditor($handoverUserId);
 $canPassPvEditor = $isParticipationPvEditor && !$isPvReview;
@@ -192,6 +192,7 @@ $hasPvInvitationEditor = true;
 $canManagePvInvitations = $hasPvInvitationEditor
     && $pvStage === \dbObject\Document::PV_STAGE_PREPARATION
     && $canManagePvStructure;
+$canSendPvInvitations = !$isPublicParticipation && $document->canUserSendPvInvitations($organizationId, $currentUserId);
 $pvInvitationPopupUrl = '/omo/api/calendar/invitations_popup.php?oid=' . rawurlencode((string)$organizationId)
     . ($hasAssociatedEvent
         ? '&id=' . rawurlencode((string)(int)$event->getId())
@@ -580,6 +581,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                             </div>
                         </div>
                     <?php endif; ?>
+                    <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-pv-invitations-send-direct data-omo-pv-invitations-send-url="<?= $escape($pvInvitationSendPopupUrl) ?>" data-omo-pv-invitations-send-title="<?= $escape((string)$uiText['sendInvitations']) ?>"<?= $canSendPvInvitations && !$canManagePvInvitations ? '' : ' hidden disabled' ?>><?= $escape((string)$uiText['sendInvitations']) ?></button>
                     <details class="omo-pv-editor__more-actions" data-omo-pv-more-actions>
                         <summary aria-label="<?= $escape((string)$uiText['moreActions']) ?>" title="<?= $escape((string)$uiText['moreActions']) ?>">...</summary>
                         <div class="omo-pv-editor__more-actions-menu">
@@ -698,6 +700,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         'isPvEditor' => $isPvEditor,
         'canManagePvDocument' => $canManagePvDocument,
         'canManagePvStructure' => $canManagePvStructure,
+        'canSendPvInvitations' => $canSendPvInvitations,
         'canSortPvAgenda' => $canSortPvAgenda,
         'canCreatePvGroups' => $canCreatePvGroups,
         'canClaimPvEditor' => $canClaimPvEditor,

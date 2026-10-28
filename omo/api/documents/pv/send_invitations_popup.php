@@ -9,8 +9,9 @@ use dbObject\ObjectMail;
 
 $sourceLang = [
     'documents.pv_invitations.denied' => ['text' => 'Vous ne pouvez pas envoyer les invitations de ce PV.', 'context' => 'Error shown when the current user cannot send PV invitations.'],
-    'documents.pv_invitations.title' => ['text' => 'Envoyer les invitations', 'context' => 'Title of the PV invitation sending popup.'],
+    'documents.pv_invitations.title' => ['text' => 'Envoyer un e-mail aux participants', 'context' => 'Title of the popup for emailing PV participants.'],
     'documents.pv_invitations.intro' => ['text' => 'Le lien ouvre le PV en direct. Chaque invité peut ajouter et modifier ses propres points tant que le PV n’est pas validé.', 'context' => 'Explanation shown above the PV invitation email editor.'],
+    'documents.pv_invitations.review_intro' => ['text' => 'Le lien permet aux participants de relire le PV en revision et de signaler leurs remarques.', 'context' => 'Explanation when emailing PV participants during review.'],
     'documents.pv_invitations.no_recipient' => ['text' => 'Aucun invité ne possède une adresse e-mail valide.', 'context' => 'Empty state when no PV invitation email recipient can be found.'],
     'documents.pv_invitations.recipient_count' => ['one' => '{count} destinataire recevra un lien individuel vers la réunion.', 'other' => '{count} destinataires recevront un lien individuel vers la réunion.', 'context' => 'Recipient count shown in the PV invitation email editor.'],
     'documents.pv_invitations.recipients' => ['text' => 'Destinataires', 'context' => 'Accessible label for the PV invitation recipient selection.'],
@@ -20,7 +21,7 @@ $sourceLang = [
     'documents.pv_invitations.history_incomplete' => ['text' => 'Le suivi de certains envois n a pas pu etre mis a jour. Leur resultat reste a verifier dans les messages envoyes.', 'context' => 'Warning when SMTP was attempted but the history outcome could not be saved.'],
     'documents.pv_invitations.send_unknown' => ['text' => 'Le resultat de certains envois est incertain. Verifiez leur suivi dans les messages envoyes avant de renvoyer une invitation.', 'context' => 'Warning when invitation delivery throws and SMTP acceptance cannot be determined.'],
     'documents.pv_invitations.message' => ['text' => 'Texte du message', 'context' => 'Label for the customizable PV invitation email message.'],
-    'documents.pv_invitations.send' => ['text' => 'Envoyer les invitations', 'context' => 'Submit button for sending PV invitation emails.'],
+    'documents.pv_invitations.send' => ['text' => 'Envoyer le message', 'context' => 'Submit button for emailing PV participants.'],
     'documents.pv_invitations.already_sent' => ['text' => 'Le message a déjà été envoyé', 'context' => 'Tooltip on the disabled send button when the current message and recipients match the last successful send.'],
     'documents.pv_invitations.message_required' => ['text' => 'Le texte du message est obligatoire.', 'context' => 'Error returned when the PV invitation email message is empty.'],
     'documents.pv_invitations.share_error' => ['text' => 'Le lien public de la réunion n’a pas pu être créé. Aucun e-mail n’a été envoyé.', 'context' => 'Error returned when the public PV share link cannot be created before invitation emails are sent.'],
@@ -29,6 +30,8 @@ $sourceLang = [
     'documents.pv_invitations.send_partial' => ['one' => '{count} envoi a échoué.', 'other' => '{count} envois ont échoué.', 'context' => 'Partial failure message after sending PV invitation emails.'],
     'documents.pv_invitations.default_message' => ['text' => "Bonjour,\n\nVous êtes invité à participer à la réunion « {title} ».\n\nUtilisez le lien ci-dessous pour consulter le PV en direct et ajouter vos propres points.\n\nÀ bientôt,\n{organization}", 'context' => 'Default body of the PV invitation email.'],
     'documents.pv_invitations.subject' => ['text' => 'Invitation à la réunion : {title}', 'context' => 'Subject of the PV invitation email.'],
+    'documents.pv_invitations.review_message' => ['text' => "Bonjour,\n\nLe PV de la reunion {title} est en revision.\n\nUtilisez le lien ci-dessous pour le relire et signaler vos remarques.\n\nBonne lecture,\n{organization}", 'context' => 'Default editable message when emailing PV participants during review.'],
+    'documents.pv_invitations.review_subject' => ['text' => 'Relecture du PV : {title}', 'context' => 'Subject when emailing PV participants during review.'],
     'documents.pv_invitations.open' => ['text' => 'Ouvrir la réunion', 'context' => 'Call to action in the PV invitation email.'],
     'documents.pv_invitations.footer' => ['text' => 'Cette invitation a été envoyée depuis {organization}.', 'context' => 'Footer of the PV invitation email.'],
     'documents.pv_invitations.network_error' => ['text' => 'Impossible d’envoyer les invitations pour le moment.', 'context' => 'Browser error shown when sending PV invitation emails fails.'],
@@ -110,8 +113,7 @@ $canSend = $documentId > 0
     && $organization->load($organizationId)
     && (int)$document->get('IDorganization') === $organizationId
     && $document->isPvDocument()
-    && $document->getPvStage() === Document::PV_STAGE_PREPARATION
-    && $document->canUserManagePvStructure($organizationId, $currentUserId);
+    && $document->canUserSendPvInvitations($organizationId, $currentUserId);
 
 if (!$canSend) {
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -135,7 +137,8 @@ $organizationName = trim((string)$organization->get('name'));
 if ($organizationName === '') {
     $organizationName = omoDocumentsPvSendInvitationT('documents.pv_invitations.fallback_organization');
 }
-$defaultMessage = omoDocumentsPvSendInvitationT('documents.pv_invitations.default_message', [
+$isReview = $document->getPvStage() === Document::PV_STAGE_REVIEW;
+$defaultMessage = omoDocumentsPvSendInvitationT($isReview ? 'documents.pv_invitations.review_message' : 'documents.pv_invitations.default_message', [
     'title' => $documentTitle,
     'organization' => $organizationName,
 ]);
@@ -172,7 +175,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     $recipients = array_values($selectedRecipients);
 
-    $subject = mb_substr(omoDocumentsPvSendInvitationT('documents.pv_invitations.subject', ['title' => $documentTitle]), 0, 250, 'UTF-8');
+    $subject = mb_substr(omoDocumentsPvSendInvitationT($isReview ? 'documents.pv_invitations.review_subject' : 'documents.pv_invitations.subject', ['title' => $documentTitle]), 0, 250, 'UTF-8');
     try {
         $historyMail = ObjectMail::beginPvInvitationDelivery($document, $subject, $message, $recipients);
     } catch (\Throwable $error) {
@@ -275,7 +278,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </div>
     <div class="generic-drawer-content generic-stack">
-        <p class="generic-description generic-description--relaxed"><?= omoApiEscape(omoDocumentsPvSendInvitationT('documents.pv_invitations.intro')) ?></p>
+        <p class="generic-description generic-description--relaxed"><?= omoApiEscape(omoDocumentsPvSendInvitationT($isReview ? 'documents.pv_invitations.review_intro' : 'documents.pv_invitations.intro')) ?></p>
         <?php if (count($recipients) === 0): ?>
             <p class="generic-feedback generic-feedback--warning"><?= omoApiEscape(omoDocumentsPvSendInvitationT('documents.pv_invitations.no_recipient')) ?></p>
         <?php else: ?>

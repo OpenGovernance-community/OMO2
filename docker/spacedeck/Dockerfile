@@ -1,4 +1,4 @@
-FROM node:14-bullseye
+FROM node:24-bookworm
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -12,8 +12,6 @@ RUN apt-get update \
 WORKDIR /app
 
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
-
-RUN npm install --global npm@8.19.4
 
 COPY fork/package.json fork/package-lock.json ./
 

@@ -20,8 +20,8 @@ assertPvEditorEventExtensionSync(
     'The PV editor must synchronize the event extension menu with the document state.'
 );
 assertPvEditorEventExtensionSync(
-    strpos($editorSource, "String(documentPayload.pvStage || '') === 'meeting'") !== false,
-    'The event extension menu must be available only during the meeting stage.'
+    strpos($editorSource, "['preparation', 'meeting'].includes(String(documentPayload.pvStage || ''))") !== false,
+    'The event extension menu must remain available until review or validation.'
 );
 assertPvEditorEventExtensionSync(
     strpos($editorSource, 'syncEventExtensionUi(documentPayload);') !== false,

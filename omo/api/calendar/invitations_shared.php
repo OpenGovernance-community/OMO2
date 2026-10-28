@@ -91,11 +91,11 @@ if (!function_exists('omoCalendarInvitationSourceLang')) {
                 'context' => 'Section title for invited guest emails in calendar.',
             ],
             'calendar.invitations.guests_placeholder' => [
-                'text' => 'prenom.nom@exemple.ch',
+                'text' => "Adresse seule ou avec un nom :\nprenom.nom@exemple.ch\nPrenom Nom <prenom.nom@exemple.ch>",
                 'context' => 'Placeholder shown in the guest email textarea for event invitations.',
             ],
             'calendar.invitations.guests_hint' => [
-                'text' => "Une adresse par ligne. L'envoi d'e-mails pourra être branché ensuite sur cette liste.",
+                'text' => 'Adresses seules ou Prenom Nom <adresse@exemple.ch>, une par ligne ou avec des virgules ou points-virgules. Les noms renseignes apparaissent dans la liste de presence.',
                 'context' => 'Hint shown below the guest email textarea in the event invitation editor.',
             ],
             'calendar.invitations.public_enable' => [
@@ -221,27 +221,69 @@ if (!function_exists('omoCalendarInvitationSourceLang')) {
     }
 }
 
-if (!function_exists('omoCalendarInvitationParseEmails')) {
-    function omoCalendarInvitationParseEmails($value)
+if (!function_exists('omoCalendarInvitationParseEmailRecipients')) {
+    function omoCalendarInvitationParseEmailRecipients($value): array
     {
-        $rawItems = is_array($value)
-            ? $value
-            : preg_split('/[\r\n,;]+/', (string)$value);
-        $rawItems = is_array($rawItems) ? $rawItems : [];
+        $rawItems = [];
+        foreach (is_array($value) ? $value : [$value] as $list) {
+            $item = '';
+            $quoted = false;
+            $escaped = false;
+            $inAddress = false;
+            // Keep separators inside quoted names and angle-bracketed addresses.
+            foreach (str_split((string)$list) as $character) {
+                if (!$quoted && !$inAddress && str_contains("\r\n,;", $character)) {
+                    $rawItems[] = $item;
+                    $item = '';
+                    continue;
+                }
+                $item .= $character;
+                if ($escaped) {
+                    $escaped = false;
+                } elseif ($quoted && $character === '\\') {
+                    $escaped = true;
+                } elseif ($character === '"') {
+                    $quoted = !$quoted;
+                } elseif (!$quoted && $character === '<') {
+                    $inAddress = true;
+                } elseif (!$quoted && $character === '>') {
+                    $inAddress = false;
+                }
+            }
+            $rawItems[] = $item;
+        }
 
-        $emails = [];
+        $recipients = [];
         foreach ($rawItems as $item) {
-            $email = trim(mb_strtolower((string)$item, 'UTF-8'));
+            $email = trim($item);
+            $name = '';
+            if (preg_match('/^(.*?)<([^<>]+)>$/s', $email, $matches)) {
+                $email = trim($matches[2]);
+                $name = trim($matches[1]);
+                if (strlen($name) >= 2 && $name[0] === '"' && substr($name, -1) === '"') {
+                    $name = preg_replace('/\\\\(.)/s', '$1', substr($name, 1, -1));
+                }
+                $name = trim(preg_replace('/[\r\n\t]+/', ' ', $name));
+            }
+            $email = mb_strtolower($email, 'UTF-8');
             if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 continue;
             }
 
-            if (!in_array($email, $emails, true)) {
-                $emails[] = $email;
+            // A later bare duplicate must not erase a supplied name.
+            if (!isset($recipients[$email]) || ($recipients[$email]['display_name'] === '' && $name !== '')) {
+                $recipients[$email] = ['email' => $email, 'display_name' => $name];
             }
         }
 
-        return $emails;
+        return array_values($recipients);
+    }
+}
+
+if (!function_exists('omoCalendarInvitationParseEmails')) {
+    function omoCalendarInvitationParseEmails($value)
+    {
+        return array_column(omoCalendarInvitationParseEmailRecipients($value), 'email');
     }
 }
 
@@ -274,7 +316,10 @@ if (!function_exists('omoCalendarExtractInvitationSelections')) {
 
                 $email = trim((string)$invitation->get('email'));
                 if ($email !== '') {
-                    $selectedEmails[] = $email;
+                    $name = trim((string)$invitation->get('display_name'));
+                    $selectedEmails[] = $name !== ''
+                        ? '"' . addcslashes($name, '"\\') . '" <' . $email . '>'
+                        : $email;
                 }
             }
         }
@@ -506,7 +551,7 @@ if (!function_exists('omoCalendarPrepareInvitationSelections')) {
         $selectedUserIds = array_values(array_unique(array_filter(array_map('intval', $selectedUserIds), static function ($userId) {
             return $userId > 0;
         })));
-        $selectedEmails = omoCalendarInvitationParseEmails($selectedEmails);
+        $selectedEmailRecipients = omoCalendarInvitationParseEmailRecipients($selectedEmails);
 
         if (!$organization->isStructureApplicationEnabled()) {
             $selectedHolonIds = [];
@@ -559,11 +604,12 @@ if (!function_exists('omoCalendarPrepareInvitationSelections')) {
                 'display_name' => $validUserLabels[$userId] ?? '',
             ];
         }
-        foreach ($selectedEmails as $email) {
+        foreach ($selectedEmailRecipients as $recipient) {
+            $email = $recipient['email'];
             $desiredInvitations['email:' . $email] = [
                 'invitation_type' => ResourceInvitation::TYPE_EMAIL,
                 'email' => $email,
-                'display_name' => '',
+                'display_name' => $recipient['display_name'],
             ];
         }
 

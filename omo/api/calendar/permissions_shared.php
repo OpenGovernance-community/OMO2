@@ -42,7 +42,7 @@ if (!function_exists('omoCalendarCanEditEvent')) {
     {
         $organizationId = (int)$organizationId;
         $userId = (int)$userId;
-        if ($organizationId <= 0 || $userId <= 0 || (int)$event->get('IDorganization') !== $organizationId || $event->isPastRecurringMeeting()) {
+        if ($organizationId <= 0 || $userId <= 0 || (int)$event->get('IDorganization') !== $organizationId || $event->isScheduleLocked()) {
             return false;
         }
 

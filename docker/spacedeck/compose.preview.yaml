@@ -1,0 +1,25 @@
+name: spacedeck-node24-preview
+
+services:
+  spacedeck:
+    image: omo-spacedeck:node24-adaptation
+    build:
+      context: .
+    ports:
+      - "127.0.0.1:19666:9666"
+    environment:
+      NODE_ENV: production
+      NODE_CONFIG: >-
+        {"host":"0.0.0.0","endpoint":"http://127.0.0.1:19666","ext_access_control":"","db_logs_disabled":true}
+    volumes:
+      - preview_database:/app/database
+      - preview_storage:/app/storage
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:9666/_health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+volumes:
+  preview_database:
+  preview_storage:

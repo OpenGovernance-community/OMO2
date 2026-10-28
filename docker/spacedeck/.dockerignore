@@ -1,2 +1,7 @@
 .env.private
 fork/.git
+fork/node_modules
+fork/storage
+fork/database
+fork/config/local*.json
+fork/config/production*.json

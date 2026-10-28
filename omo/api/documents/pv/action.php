@@ -265,6 +265,7 @@ function omoDocumentsPvEditorBuildDocumentPayload(\dbObject\Document $document, 
         'isPvEditor' => $document->isPvEditor($currentUserId),
         'canManagePvDocument' => $document->canUserManagePvDocument($currentUserId),
         'canManagePvStructure' => $document->canUserManagePvStructure($organizationId, $currentUserId),
+        'canSendPvInvitations' => $publicParticipationLink === null && $document->canUserSendPvInvitations($organizationId, $currentUserId),
         'canSortPvAgenda' => $agendaUserId > 0 && $document->isPvEditor($agendaUserId) && $document->canUserCreatePvGroups($agendaUserId),
         'canCreatePvGroups' => $agendaUserId > 0 && $document->canUserCreatePvGroups($agendaUserId),
         'canClaimPvEditor' => $stageUserId > 0 && $document->canUserClaimPvEditor($organizationId, $stageUserId),
@@ -710,7 +711,7 @@ if ($action === 'update_document_metadata') {
 
 if ($action === 'extend_associated_event') {
     if (
-        $document->getPvStage() !== \dbObject\Document::PV_STAGE_MEETING
+        !in_array($document->getPvStage(), [\dbObject\Document::PV_STAGE_PREPARATION, \dbObject\Document::PV_STAGE_MEETING], true)
         || !$document->canUserManagePvDocument($currentUserId)
         || !omoDocumentsPvEditorHasValidSessionToken($organizationId, $documentId, $currentUserId, $editorToken)
     ) {

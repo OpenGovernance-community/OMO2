@@ -1,5 +1,19 @@
 # Journal des nouveautés
 
+- PV / e-mails en revision (2026-10-28) : action Envoyer un e-mail aux participants disponible pendant la reunion et en revision, avec choix des destinataires et message personnalisable. Objet et texte proposes adaptes a la relecture ; acces conserve pour les gestionnaires autorises, sans rouvrir la modification des invites. Controle de l historique aligne sur ces droits pour permettre l enregistrement avant envoi ; test reel en base en preparation, reunion et revision.
+
+- Reunions / invites et presence (2026-10-27) : collage d adresses au format Prenom Nom <adresse@exemple.ch>, seules ou en liste. Noms conserves dans les invitations et a la reouverture du formulaire, puis affiches dans la liste de presence des reunions et des PV ; adresses seules toujours acceptees et doublons regroupes par e-mail. Placeholder avec exemples des deux formats acceptes.
+
+- PV / prolongation et horaires (2026-10-27) : le bouton + reste utilisable en preparation et en reunion, meme apres la fin prevue d une reunion recurrente. Le passage en relecture ou la cloture verrouille les horaires dans le PV et le calendrier, avec controle a la sauvegarde. Tests des prolongations, des dates synchronisees et des refus apres cloture.
+
+- Tableaux blancs / publication VPS (2026-10-23) : SpaceDeck sous Node 24 publie sur board.opengov.tools, avec les correctifs des outils et de sauvegarde. Configuration OMO et volumes existants conserves ; sauvegarde coherente, validation d une copie restauree et comparaison de tous les enregistrements. Douze tests executes sur le VPS et controles publics HTTPS/WebSocket reussis. Modele Compose et consignes de maintenance ajoutes.
+
+- Tableaux blancs / outils de creation (2026-10-23) : correction des identifiants techniques traduits par erreur dans les classes et les bibliotheques de selection de texte. Retablissement des outils de creation et des etats actifs, avec tests de regression et verification dans Chromium ; droits de lecture seule conserves. Correction du suivi des sauvegardes simultanees pour vider correctement la file des changements enregistres.
+
+- Tableaux blancs / connexion locale (2026-10-23) : controle d acces SpaceDeck dirige vers l API Documents plutot que l ancien endpoint sous /test/, bloque par Apache. Exemple de configuration et documentation corriges ; test de la liaison HTTP reelle avec OMO, des droits et de l identite sans rouvrir le repertoire de test. Instance locale habituelle reconstruite sous Node 24 apres sauvegarde des tableaux et medias ; VPS inchange.
+
+- Tableaux blancs / adaptation locale Node 24 (2026-10-23) : image Docker actualisee, Sequelize 6 et pilote SQLite Microsoft, dependances serveur modernisees et compilation Sass retablie. Tests HTTP/WebSocket sur une base de l ancienne image Node 14, droits, identite, images et persistance ; diffusion des mises a jour limitee au tableau autorise. Apercu local isole et guide de migration, sans deploiement sur le VPS.
+
 - Indicateurs / selection par le cron (2026-10-22) : le filtre PHP detecte les cellules marquees synchronisees sans mesure correspondante. Elles sont relues et une mesure datee est enregistree sans attendre le mois suivant, independamment de la migration de reprise. Les imports de tableaux conservent leur frequence habituelle.
 
 - Indicateurs / reprise des anciennes cellules (2026-10-22) : migration des synchronisations marquees reussies sans mesure correspondante par l ancien filtre des valeurs identiques. Ces cellules sont relues au prochain passage du cron, avec une nouvelle mesure a la date de lecture ; les imports de tableaux et les synchronisations disposant deja d une mesure sont conserves.

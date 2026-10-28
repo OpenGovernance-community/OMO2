@@ -106,6 +106,27 @@ class Event extends DbObject
             && $this->get('end_at') < new \DateTimeImmutable();
     }
 
+    /** A meeting with its own PV stays editable until review, even after its planned end. */
+    public function isScheduleLocked(?\DateTimeInterface $persistedEndAt = null): bool
+    {
+        $stages = (int)$this->getId() > 0 ? self::fetchAll(
+            'SELECT pvstage FROM document WHERE IDevent = :event AND IDorganization = :organization
+                AND documenttype = :type AND active = 1 AND COALESCE(is_template, 0) = 0',
+            ['event' => (int)$this->getId(), 'organization' => (int)$this->get('IDorganization'), 'type' => Document::TYPE_PV]
+        ) : [];
+        foreach ($stages as $row) {
+            if (in_array(Document::normalizePvStage($row['pvstage']), [Document::PV_STAGE_REVIEW, Document::PV_STAGE_VALIDATED], true)) {
+                return true;
+            }
+        }
+        if ($stages) { return false; }
+
+        // Preserve the historical rule for recurring meetings without a PV.
+        $endAt = $persistedEndAt ?? $this->get('end_at');
+        return (int)$this->get('IDeventrecurrence') > 0 && $endAt instanceof \DateTimeInterface
+            && $endAt < new \DateTimeImmutable();
+    }
+
     /** Snapshot identities separately from presence, which remains editable during the meeting. */
     public function freezeInvitationParticipants(): bool
     {
@@ -1468,10 +1489,8 @@ class Event extends DbObject
     public function save()
     {
         $original = (int)$this->getId() > 0 ? self::fetchRow('SELECT title, start_at, end_at FROM event WHERE id = :id', ['id' => $this->getId()]) : null;
-        if ((int)$this->getId() > 0 && (int)$this->get('IDeventrecurrence') > 0) {
-            if ($original && new \DateTimeImmutable($original['end_at']) < new \DateTimeImmutable()) {
-                return ['status' => false, 'text' => 'Les reunions recurrentes passees ne peuvent plus etre modifiees.'];
-            }
+        if ($original && $this->isScheduleLocked(new \DateTimeImmutable($original['end_at']))) {
+            return ['status' => false, 'text' => 'Les horaires de cette reunion sont verrouilles.'];
         }
         $this->set('status', self::normalizeStatus($this->get('status')));
 

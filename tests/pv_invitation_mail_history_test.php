@@ -39,6 +39,25 @@ try {
     $pending->set('updated_at', time() - 700); $pending->save();
     ObjectMail::processBatch(10, (int)$items['interrupted']->getId());
     mcpCheck(ObjectMail::status($oid, (int)$items['interrupted']->getId())['delivery']['unknown'] === 1, 'An interrupted native send becomes uncertain without retrying.');
+    foreach ([Document::PV_STAGE_MEETING, Document::PV_STAGE_REVIEW] as $stage) {
+        $items['pv']->set('pvstage', $stage);
+        mcpCheck(!empty($items['pv']->save()['status']), 'Save stage ' . $stage);
+        $items['mail_' . $stage] = ObjectMail::beginPvInvitationDelivery($items['pv'], 'Fixture ' . $stage, 'Reminder message', $recipients);
+        $stageMailId = (int)$items['mail_' . $stage]->getId();
+        $detail = ObjectMail::getHistoryDetail($oid, $stageMailId);
+        mcpCheck($detail['mail']->get('message') === 'Reminder message'
+            && count($detail['recipients']) === 2, 'History must persist the message and audience in ' . $stage);
+        mcpCheck(ObjectMail::status($oid, $stageMailId)['delivery']['sending'] === 2
+            && ObjectMail::processBatch(10, $stageMailId) === 0, 'Stage ' . $stage . ' must retain native delivery tracking without queued sends.');
+    }
+    $historyCount = count(ObjectMail::getHistory($oid));
+    $items['pv']->set('pvstage', Document::PV_STAGE_VALIDATED);
+    mcpCheck(!empty($items['pv']->save()['status']), 'Save validated stage');
+    $denied = false;
+    try {
+        ObjectMail::beginPvInvitationDelivery($items['pv'], 'Closed PV', 'Fixture message', $recipients);
+    } catch (DomainException $error) { $denied = true; }
+    mcpCheck($denied && count(ObjectMail::getHistory($oid)) === $historyCount, 'A validated PV cannot create a delivery history entry.');
     $_SESSION['currentUser'] = 0;
     $denied = false;
     try { ObjectMail::getHistoryDetail($oid, $mailId); } catch (DomainException $error) { $denied = true; }
