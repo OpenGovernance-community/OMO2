@@ -423,9 +423,40 @@ try {
         mcpCheck($occurrence->get('end_at')->format('H:i') === '09:00', 'Following meetings receive the corrected one-hour duration.');
     }
     $request['method'] = 'GET'; $request['post'] = [];
+    $openForm = recurrenceEndpointRequest($request);
+    mcpCheck(str_contains($openForm, 'name="start_at"') && str_contains($openForm, 'name="end_at"'), 'An overdue meeting with an open PV keeps editable dates.');
+
+    $extensionRequest = $request;
+    $extensionRequest['endpoint'] = 'documents/pv/action.php'; $extensionRequest['method'] = 'POST';
+    $extensionRequest['get']['id'] = $correctionPv->getId();
+    $extensionRequest['session']['omo_pv_editor_tokens'][$oid . ':' . $correctionPv->getId() . ':user:' . $uid] = $token;
+    $extensionRequest['post'] = ['action' => 'extend_associated_event', 'document_id' => $correctionPv->getId(),
+        'oid' => $oid, 'editor_token' => $token, 'minutes' => 5];
+    foreach (['preparation', 'meeting'] as $stage) {
+        $correctionPv->set('pvstage', $stage); $correctionPv->save();
+        foreach ([5, 10, 15, 30] as $extensionMinutes) {
+            $oldEnd = DateTimeImmutable::createFromInterface($correction->get('end_at'));
+            $extensionRequest['post']['minutes'] = $extensionMinutes;
+            $extended = json_decode(recurrenceEndpointRequest($extensionRequest), true);
+            mcpCheck(!empty($extended['status']), 'Extend overdue recurring meeting through the PV action: ' . json_encode($extended));
+            $correction->load((int)$correction->getId(), true); $correctionPv->load((int)$correctionPv->getId(), true);
+            mcpCheck($correction->get('end_at') == $oldEnd->modify('+' . $extensionMinutes . ' minutes')
+                && $correctionPv->get('datecreation') == $correction->get('end_at'), 'Extension persists exactly once and synchronizes the PV date.');
+            mcpCheck(!empty($extended['event']) && !empty($extended['document']), 'Extension returns the refreshed timer and document payloads.');
+        }
+    }
+    foreach (['review', 'validated'] as $stage) {
+        $correctionPv->set('pvstage', $stage); $correctionPv->save();
+        $refused = json_decode(recurrenceEndpointRequest($extensionRequest), true);
+        mcpCheck(is_array($refused) && empty($refused['status']), 'PV extension is refused after ' . $stage);
+        $oldEnd = $correction->get('end_at');
+        $correction->load((int)$correction->getId(), true);
+        mcpCheck($correction->get('end_at') == $oldEnd, 'Refused extension leaves the schedule unchanged.');
+    }
+    $correctionPv->set('pvstage', 'review'); $correctionPv->save();
     $historicalForm = recurrenceEndpointRequest($request);
     mcpCheck(str_contains($historicalForm, 'data-omo-calendar-personal-time-buffers-form')
-        && !str_contains($historicalForm, 'name="start_at"') && !str_contains($historicalForm, 'name="end_at"'), 'A later request cannot edit the now-historical schedule.');
+        && !str_contains($historicalForm, 'name="start_at"') && !str_contains($historicalForm, 'name="end_at"'), 'Review locks the schedule while personal buffers remain editable.');
     echo "calendar_recurrence_endpoint_test: OK\n";
 } finally {
     $pdo = \dbObject\DbObject::getPdo();

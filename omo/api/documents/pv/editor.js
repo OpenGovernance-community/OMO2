@@ -3049,7 +3049,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
 
         const canExtendEvent = documentPayload
             && documentPayload.canManagePvDocument === true
-            && String(documentPayload.pvStage || '') === 'meeting';
+            && ['preparation', 'meeting'].includes(String(documentPayload.pvStage || ''));
         eventExtensionMenu.hidden = !canExtendEvent;
         if (eventExtensionToggle instanceof HTMLButtonElement) {
             eventExtensionToggle.disabled = !canExtendEvent;

@@ -122,7 +122,7 @@ $isPvReview = $document->getPvStage() === \dbObject\Document::PV_STAGE_REVIEW;
 $canEditPvDocumentHeader = $canManagePvStructure && !$isPvReview;
 $canExtendAssociatedEvent = !$isPublicParticipation
     && $hasAssociatedEvent
-    && $document->getPvStage() === \dbObject\Document::PV_STAGE_MEETING;
+    && in_array($document->getPvStage(), [\dbObject\Document::PV_STAGE_PREPARATION, \dbObject\Document::PV_STAGE_MEETING], true);
 $handoverUserId = $isPublicParticipation ? $publicParticipationUserId : $currentUserId;
 $isParticipationPvEditor = $document->isPvEditor($handoverUserId);
 $canPassPvEditor = $isParticipationPvEditor && !$isPvReview;

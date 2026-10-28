@@ -710,7 +710,7 @@ if ($action === 'update_document_metadata') {
 
 if ($action === 'extend_associated_event') {
     if (
-        $document->getPvStage() !== \dbObject\Document::PV_STAGE_MEETING
+        !in_array($document->getPvStage(), [\dbObject\Document::PV_STAGE_PREPARATION, \dbObject\Document::PV_STAGE_MEETING], true)
         || !$document->canUserManagePvDocument($currentUserId)
         || !omoDocumentsPvEditorHasValidSessionToken($organizationId, $documentId, $currentUserId, $editorToken)
     ) {

@@ -190,7 +190,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $selectedUserIds = array_values(array_unique(array_filter(array_map('intval', $_POST['user_ids'] ?? []), static function ($userId) {
         return $userId > 0;
     })));
-    $selectedEmails = omoCalendarInvitationParseEmails($_POST['emails'] ?? '');
+    $selectedEmails = $_POST['emails'] ?? '';
 
     $pdo = DbObject::getPdo();
     if (!$pdo) {

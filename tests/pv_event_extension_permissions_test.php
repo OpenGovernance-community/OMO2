@@ -50,7 +50,9 @@ $editorToken = 'valid-fixture-token';
 $currentUserId = 11;
 extensionExpect(!$allowed(), 'Former editor without another management permission cannot extend.');
 $currentUserId = 12;
-foreach (['preparation', 'review', 'validated'] as $stage) {
+$document->set('pvstage', 'preparation');
+extensionExpect($allowed(), 'Extension remains available during preparation.');
+foreach (['review', 'validated'] as $stage) {
     $document->set('pvstage', $stage);
     extensionExpect(!$allowed(), 'Extension is refused in stage ' . $stage);
 }

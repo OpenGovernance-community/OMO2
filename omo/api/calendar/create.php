@@ -890,7 +890,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $selectedInvitationUserIds = array_values(array_unique(array_filter(array_map('intval', $_POST['invitation_user_ids'] ?? []), static function ($userId) {
         return $userId > 0;
     })));
-    $selectedInvitationEmails = omoCalendarInvitationParseEmails($_POST['invitation_emails'] ?? '');
+    $selectedInvitationEmails = $_POST['invitation_emails'] ?? '';
 
     if ($title === '') {
         echo json_encode([
