@@ -1435,6 +1435,44 @@ class DecisionProcess extends DbObject
         return null;
     }
 
+    public function getParticipationIndicatorForUser(int $userId, string $email = ''): string
+    {
+        $status = $this->resolveAutomaticStatus();
+        if ($userId <= 0 || !in_array($status, [self::STATUS_CONSULTATION, self::STATUS_EVALUATION], true)) {
+            return '';
+        }
+
+        $participant = DecisionParticipant::findByDecisionAndUser((int)$this->getId(), $userId);
+        if ((!$participant || (int)$participant->get('active') !== 1) && trim($email) !== '') {
+            $participant = DecisionParticipant::findByDecisionAndEmail((int)$this->getId(), $email);
+        }
+        if (!$participant || (int)$participant->get('active') !== 1 || in_array(
+            DecisionParticipant::normalizeStatus($participant->get('status')),
+            [DecisionParticipant::STATUS_DECLINED, DecisionParticipant::STATUS_REVOKED],
+            true
+        )) {
+            return '';
+        }
+
+        if ($status === self::STATUS_CONSULTATION) {
+            return $this->isConsultationOpen() ? 'elaboration' : '';
+        }
+
+        if (!$this->isParticipationOpen()) {
+            return '';
+        }
+        if ($this->getPendingEvaluationGroupIdForParticipant($participant) !== null) {
+            return 'pending';
+        }
+        // A consultation-only group does not require a ballot and cannot be marked as answered.
+        foreach ($this->getDecisionGroups(true) as $group) {
+            if ($group instanceof DecisionGroup && $group->get('evaluation_method') !== self::METHOD_CONSULTATION_ONLY) {
+                return 'submitted';
+            }
+        }
+        return '';
+    }
+
     public function getResult()
     {
         $primaryGroup = $this->getPrimaryGroup(false);

@@ -1,5 +1,9 @@
 # Journal des nouveautés
 
+- Scrutins / suivi de participation (2026-10-28) : pastille pres du statut en vues compacte et detaillee, jaune en elaboration et rouge lorsqu une reponse reste attendue en evaluation. Pastille verte fixe apres envoi de toutes les reponses ; invitations actives et groupes de scrutin pris en compte. LeftBar inchangee.
+
+- Migration OMO1 / droits (2026-10-28) : export du projet adjacent DevOMO aligne sur les templates de l organisation Docker 2384 (Demarche Z), avec les correspondances pilotage/Premier lien, representation/Second lien et Memoire/Secretaire. Conservation des droits collectifs, des portees et des autorites etendues ; aucune modification de l organisation de reference.
+
 - PV / e-mails en revision (2026-10-28) : action Envoyer un e-mail aux participants disponible pendant la reunion et en revision, avec choix des destinataires et message personnalisable. Objet et texte proposes adaptes a la relecture ; acces conserve pour les gestionnaires autorises, sans rouvrir la modification des invites. Controle de l historique aligne sur ces droits pour permettre l enregistrement avant envoi ; test reel en base en preparation, reunion et revision.
 
 - Reunions / invites et presence (2026-10-27) : collage d adresses au format Prenom Nom <adresse@exemple.ch>, seules ou en liste. Noms conserves dans les invitations et a la reouverture du formulaire, puis affiches dans la liste de presence des reunions et des PV ; adresses seules toujours acceptees et doublons regroupes par e-mail. Placeholder avec exemples des deux formats acceptes.
