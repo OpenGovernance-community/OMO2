@@ -1,5 +1,13 @@
 # Journal des nouveautés
 
+- Connexion / renvoi de code (2026-10-29) : bouton desactive pendant 60 secondes apres chaque envoi, avec decompte visible et reprise du temps restant apres rechargement de la page.
+
+- Holons / presentation des regles associees (2026-10-29) : compteur integre sous forme de capsule arrondie compacte (padding reduit, hauteur 26 px) avec survol discret, masque en l absence de regles ; marges uniformes et espacement resserre des cartes dans la popup.
+
+- Holons / regles associees aux valeurs (2026-10-29) : listes sans puces, compteur de regles dans le principe et popup reutilisant les cartes du reglement, avec regle puis intention depliables. Champs des editeurs de regles ordonnes regle, intention, valeur incarnee. Acces et compteurs verifies par HTTP, affichage teste sur ordinateur et mobile.
+
+- Holons / valeurs (2026-10-29) : nouveau type de liste Valeur, avec titre et principe HTML dans un objet de base de donnees dedie. Creation dans les holons et modeles, principe depliable dans la structure, et lien facultatif entre une regle et une valeur affiche dans son intention. Propositions de regles et droits existants pris en compte ; sauvegardes annulees en cas d erreur. Tests PHP 8.5 et JavaScript.
+
 - Calendrier / horaires de l organisation (2026-10-28) : rubrique Calendrier dans les parametres Admin pour definir le debut et la fin de journee par defaut (09:00-17:00 initialement). Utilises pour les disponibilites individuelles, communes et via MCP en absence d horaires personnels actifs ; niveau de disponibilite calcule sur cette plage. Jours personnels, pauses et agendas existants conserves.
 
 - OMO / mini-carte de navigation (2026-10-28) : clic sur le fond gris pour revenir a la racine de l organisation, avec curseur et libelle de survol adaptes. Selection des cercles conservee.
