@@ -126,6 +126,35 @@
 
 		public function save()
 		{
+			$definition = new Property();
+			if (!$definition->load((int)$this->get('IDproperty'))
+				|| $definition->get('listitemtype') !== Property::LIST_ITEM_VALUE
+				|| !PropertyFormat::isListFormat((int)$definition->get('IDpropertyformat'))) {
+				return $this->saveTracked();
+			}
+			$pdo = self::getPdo();
+			$ownsTransaction = !$pdo->inTransaction();
+			$raw = $this->get('value');
+			try {
+				if ($ownsTransaction) $pdo->beginTransaction();
+				else $pdo->exec('SAVEPOINT holon_value_save');
+				Valeur::syncProperty($this, $definition);
+				$result = $this->saveTracked();
+				if (empty($result['status'])) throw new \RuntimeException($result['text'] ?? 'Enregistrement impossible.');
+				if ($ownsTransaction) $pdo->commit();
+				else $pdo->exec('RELEASE SAVEPOINT holon_value_save');
+				return $result;
+			} catch (\Throwable $error) {
+				if ($ownsTransaction && $pdo->inTransaction()) $pdo->rollBack();
+				elseif (!$ownsTransaction) $pdo->exec('ROLLBACK TO SAVEPOINT holon_value_save');
+				$this->set('value', $raw);
+				self::$preload = [];
+				return ['status' => false, 'text' => $error->getMessage()];
+			}
+		}
+
+		protected function saveTracked()
+		{
 			if ($this->getId() > 0 && !$this->_loaded) {
 				$this->load($this->getId());
 			}

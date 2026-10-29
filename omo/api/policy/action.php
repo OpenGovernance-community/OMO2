@@ -53,6 +53,7 @@ $scope = (string)($_POST['scope'] ?? ($ruleId > 0 ? $rule->get('scope') : Rule::
 $scopeValidation = Rule::validateScopeAttachment($scope, $context['currentHolon'], $authorityId);
 if (empty($scopeValidation['status'])) $respond(false, $scopeValidation['text'], 422);
 $rule->set('scope', $scope);
+$rule->set('IDvaleur', (int)($_POST['IDvaleur'] ?? ($ruleId > 0 ? $rule->get('IDvaleur') : 0)) ?: null);
 $rule->set('title', trim((string)($_POST['title'] ?? '')));
 $intention = Rule::sanitizeContentHtml((string)($_POST['intention'] ?? ''));
 $rule->set('intention', $intention !== '' ? $intention : null);

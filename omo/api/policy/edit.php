@@ -1,6 +1,7 @@
 <?php
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/shared.php';
+require_once dirname(__DIR__, 3) . '/common/choice/rule-value-fields.php';
 require_once dirname(__DIR__, 3) . '/common/choice/rule-scope-fields.php';
 require_once dirname(__DIR__, 3) . '/common/choice/rule-date-fields.php';
 
@@ -56,15 +57,16 @@ $selectedAuthorityId = $isEditing ? (int)$editingRule->get('IDauthority') : 0;
             </label>
             <?php omoRuleScopeRenderFields(['scope' => $isEditing ? $editingRule->get('scope') : 'local', 'IDauthority' => $selectedAuthorityId], $scopeContext); ?>
             <label class="generic-form-field">
-                <span class="generic-form-label"><?= omoApiEscape(omoPolicyT('policy.field.intention')) ?></span>
-                <div class="omo-policy__html-field" data-policy-html-field></div>
-                <input type="hidden" name="intention" value="<?= omoApiEscape($isEditing ? (string)$editingRule->get('intention') : '') ?>" data-policy-html-input>
-            </label>
-            <label class="generic-form-field">
                 <span class="generic-form-label"><?= omoApiEscape(omoPolicyT('policy.field.description')) ?></span>
                 <div class="omo-policy__html-field" data-policy-html-field></div>
                 <input type="hidden" name="description" value="<?= omoApiEscape($isEditing ? (string)$editingRule->get('description') : '') ?>" data-policy-html-input>
             </label>
+            <label class="generic-form-field">
+                <span class="generic-form-label"><?= omoApiEscape(omoPolicyT('policy.field.intention')) ?></span>
+                <div class="omo-policy__html-field" data-policy-html-field></div>
+                <input type="hidden" name="intention" value="<?= omoApiEscape($isEditing ? (string)$editingRule->get('intention') : '') ?>" data-policy-html-input>
+            </label>
+            <?php omoRuleValueRenderField($organizationId, $isEditing ? (int)$editingRule->get('IDvaleur') : 0); ?>
             <div class="generic-form-grid">
                 <label class="generic-form-field">
                     <span class="generic-form-label"><?= omoApiEscape(omoPolicyT('policy.field.review_date')) ?></span>

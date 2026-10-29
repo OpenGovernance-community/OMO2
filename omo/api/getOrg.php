@@ -2,6 +2,7 @@
 require_once __DIR__ . '/bootstrap.php';
 require_once dirname(__DIR__, 2) . '/common/avatar.php';
 require_once __DIR__ . '/projects/shared.php';
+require_once dirname(__DIR__, 2) . '/common/choice/rule-value-fields.php';
 commonReleaseReadOnlySession();
 use dbObject\ArrayOrganization;
 use dbObject\ArrayProject;
@@ -662,6 +663,7 @@ function omoRenderHtmlBlock($html, $className = 'section-html')
 
 function omoRenderFormattedList(array $items, array $entry, $className = 'section-list')
 {
+    if (($entry['listItemType'] ?? '') === 'value') $className .= ' section-list--values';
     if ((string)($entry['listItemType'] ?? '') === 'project') {
         $items = omoSortProjectReferenceItems($items);
     }
@@ -676,6 +678,11 @@ function omoRenderFormattedList(array $items, array $entry, $className = 'sectio
         }
         if ((string)($entry['listItemType'] ?? '') === 'authority') {
             $html .= omoRenderAuthorityReferenceItem($item);
+            continue;
+        }
+        if (($entry['listItemType'] ?? '') === 'value') {
+            $value = \dbObject\Valeur::loadInOrganization(is_array($item) ? ($item['id'] ?? 0) : $item, (int)($_SESSION['currentOrganization'] ?? 0));
+            if ($value) $html .= '<li>' . omoRuleValueRender($value, true) . '</li>';
             continue;
         }
         $formattedItem = omoFormatListItemValue($item, $entry);
@@ -726,6 +733,12 @@ function omoBuildListItemDescriptors(array $ancestorItems, array $currentItems)
 
 function omoRenderMixedList(array $ancestorItems, array $currentItems, array $entry, $className = 'section-list')
 {
+    if (($entry['listItemType'] ?? '') === 'value') $className .= ' section-list--values';
+    if (($entry['listItemType'] ?? '') === 'value') {
+        $referenceId = static fn($item) => is_array($item) ? (int)($item['id'] ?? 0) : (int)$item;
+        $ancestorItems = array_map($referenceId, $ancestorItems);
+        $currentItems = array_map($referenceId, $currentItems);
+    }
     $descriptors = omoBuildListItemDescriptors($ancestorItems, $currentItems);
     if ((string)($entry['listItemType'] ?? '') === 'project') {
         $descriptors = omoSortProjectReferenceItems($descriptors, true);
@@ -753,6 +766,12 @@ function omoRenderMixedList(array $ancestorItems, array $currentItems, array $en
         }
         if ((string)($entry['listItemType'] ?? '') === 'authority') {
             $html .= omoRenderAuthorityReferenceItem($descriptor['item'], $descriptor['source']);
+            continue;
+        }
+        if (($entry['listItemType'] ?? '') === 'value') {
+            $item = $descriptor['item'];
+            $value = \dbObject\Valeur::loadInOrganization(is_array($item) ? ($item['id'] ?? 0) : $item, (int)($_SESSION['currentOrganization'] ?? 0));
+            if ($value) $html .= '<li class="is-' . omoApiEscape($descriptor['source']) . '">' . omoRuleValueRender($value, true) . '</li>';
             continue;
         }
         $formattedItem = omoFormatListItemValue($descriptor['item'], $entry);

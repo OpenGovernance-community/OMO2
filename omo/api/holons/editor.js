@@ -1413,6 +1413,8 @@ function renderPropertyInput(property) {
             || '<p class="generic-meta">' + escapeHtml(pageConfig.propertyDefineDenied) + '</p>';
     }
 
+    if (formatId === 2 && property.listItemType === 'value') return window.omoPropertyValues.render(parseStoredListValue(localValue), false);
+
     if (formatId === 2) {
         if (String(property.listItemType || 'text') === 'authority') {
             return renderAuthorityListInput(parseStoredListValue(localValue));
@@ -1525,6 +1527,7 @@ function getPropertyPreviewItems(property, rawValue) {
 }
 
 function renderReadonlyListContent(property, rawValue) {
+    if (property.listItemType === 'value') return window.omoPropertyValues.preview(parseStoredListValue(rawValue));
     const items = getPropertyPreviewItems(property, rawValue);
     if (!items.length) {
         return '';
@@ -1593,6 +1596,7 @@ function renderReadonlyPropertyValue(property, rawValue) {
 
 // Rend valeur héritée
 function renderInheritedValue(property) {
+    if (property.listItemType === 'value' && [2, 7].includes(Number(property.formatId))) return window.omoPropertyValues.previewStored(property.inheritedValue || '', property.formatId);
     const inheritedValue = property.inheritedValue !== undefined && property.inheritedValue !== null
         ? String(property.inheritedValue)
         : '';
@@ -1764,10 +1768,10 @@ function createPropertyRow(property, index) {
         + '  </div>'
         + renderDirectPropertyDefinition(property)
         + renderInheritedValue(property)
-        + '  <' + ([5, 7].indexOf(Number(property.formatId || 0)) >= 0 ? 'div' : 'label') + ' class="omo-holon-create__field generic-form-field">'
+        + '  <' + ([5, 7].indexOf(Number(property.formatId || 0)) >= 0 || property.listItemType === 'value' ? 'div' : 'label') + ' class="omo-holon-create__field generic-form-field">'
         + '      <span>Valeur locale</span>'
         + '      <div class="omo-holon-create__property-input">' + renderPropertyInput(window.omoPropertyListConversion.sourceProperty(property)) + '</div>'
-        + '  </' + ([5, 7].indexOf(Number(property.formatId || 0)) >= 0 ? 'div' : 'label') + '>'
+        + '  </' + ([5, 7].indexOf(Number(property.formatId || 0)) >= 0 || property.listItemType === 'value' ? 'div' : 'label') + '>'
         + '</div>';
 
     const propertyTitle = row.querySelector('.omo-holon-create__property-label');
@@ -1972,6 +1976,8 @@ function serializePropertyValue(row) {
         return String(row.dataset.value || '');
     }
 
+    if ([2, 7].includes(formatId) && listItemType === 'value') return window.omoPropertyValues.serialize(row, formatId);
+
     if (formatId === 5 && htmlFieldHost && htmlFieldHost.__omoSimpleHtmlField && typeof htmlFieldHost.__omoSimpleHtmlField.getValue === 'function') {
         return String(htmlFieldHost.__omoSimpleHtmlField.getValue() || '');
     }
@@ -2153,6 +2159,7 @@ function readProperties() {
             property.displayItems = items.filter(function (item) {
                 return !(item && typeof item === 'object' && item.delete === true);
             }).map(function (item) {
+                if (property.listItemType === 'value') return String(item.title || '').trim();
                 if (property.listItemType === 'holon') return formatInheritedHolonItem(item);
                 if (property.listItemType === 'project') return formatInheritedProjectItem(item);
                 if (property.listItemType === 'authority') {

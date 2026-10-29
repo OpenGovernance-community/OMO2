@@ -381,7 +381,7 @@
     padding-left: 18px;
 }
 
-.section-html a {
+.section-html a:not(.generic-action-button) {
     color: var(--color-primary);
     text-decoration: underline;
 }
@@ -397,6 +397,11 @@
     flex-direction: column;
     gap: 6px;
     margin: 0;
+}
+
+.section-list--values {
+    list-style: none;
+    padding-left: 0;
 }
 
 .section-html-list {

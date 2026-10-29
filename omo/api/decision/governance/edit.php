@@ -67,6 +67,7 @@ $question = $existingQuestion !== '' ? $existingQuestion : $configuredQuestion;
 $questionValue = $question !== '' ? $question : omoDecisionGovernanceT('governance.question.default');
 $questionIsEditable = $canEdit;
 $defaultRuleState = [
+    'IDvaleur' => null,
     'IDauthority' => null,
     'IDholon' => $targetHolonId,
     'title' => '',

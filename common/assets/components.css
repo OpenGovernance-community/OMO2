@@ -1500,6 +1500,13 @@ html[data-theme="dark"] .black-icon,
     line-height: 1.2;
 }
 
+.generic-action-button--pill {
+    border-radius: 999px;
+    min-height: 26px;
+    padding: 3px 8px;
+    gap: var(--generic-space-1);
+}
+
 /* Inline disclosure actions displayed as links, with native button interaction. */
 .generic-action-button--link {
     min-height: auto;

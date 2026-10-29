@@ -449,6 +449,10 @@ function commonGetAuthSharedSourceLang(): array
             'text' => 'Envoyer un nouveau code',
             'context' => 'Resend button label in the shared authentication user interface.'
         ],
+        'auth.button.resend_code_countdown' => [
+            'text' => 'Envoyer un nouveau code ({seconds} s)',
+            'context' => 'Disabled login code resend button showing the remaining cooldown in seconds.'
+        ],
         'auth.button.send_code' => [
             'text' => 'Envoyer le code',
             'context' => 'Primary action button label in the shared authentication user interface.'
