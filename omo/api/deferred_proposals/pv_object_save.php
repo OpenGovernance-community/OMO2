@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__) . '/bootstrap.php';
 
 use dbObject\ControlActivity;
@@ -18,29 +19,29 @@ if (!in_array($targetType, [DeferredProposal::TARGET_RECURRING_TASK, DeferredPro
     || !in_array($operation, [DeferredProposal::OPERATION_CREATE, DeferredProposal::OPERATION_UPDATE, DeferredProposal::OPERATION_DELETE], true)
     || !$point->load($pointId) || !$document->load((int)$point->get('IDdocument'))
     || (int)$document->get('IDorganization') !== $organizationId || !$document->canUserProposePvPointChange($point, $userId)
-    || $point->isHandled() || $document->getPvStage() === Document::PV_STAGE_REVIEW) $respond(403, ['status' => false, 'message' => 'Accès refusé.']);
+    || $point->isHandled() || $document->getPvStage() === Document::PV_STAGE_REVIEW) $respond(403, ['status' => false, 'message' => omoDeferredProposalsUiT('acces_refuse')]);
 $proposal = new DeferredProposal();
-if ($proposalId > 0 && (!$proposal->load($proposalId) || (int)$proposal->get('IDdocument_pv_point') !== $pointId || (string)$proposal->get('target_type') !== $targetType || (string)$proposal->get('status') !== DeferredProposal::STATUS_PENDING)) $respond(404, ['status' => false, 'message' => 'Cette modification ne peut plus être modifiée.']);
+if ($proposalId > 0 && (!$proposal->load($proposalId) || (int)$proposal->get('IDdocument_pv_point') !== $pointId || (string)$proposal->get('target_type') !== $targetType || (string)$proposal->get('status') !== DeferredProposal::STATUS_PENDING)) $respond(404, ['status' => false, 'message' => omoDeferredProposalsUiT('cette_modification_ne_peut_plus_etre_modifiee')]);
 if ($proposalId > 0 && ((string)$proposal->get('operation') !== $operation
     || ($operation !== DeferredProposal::OPERATION_CREATE && (int)$proposal->get('IDholon') !== $holonId)
-    || (int)$proposal->get('target_id') !== $objectId)) $respond(422, ['status' => false, 'message' => 'Le contexte de cette modification a changé.']);
+    || (int)$proposal->get('target_id') !== $objectId)) $respond(422, ['status' => false, 'message' => omoDeferredProposalsUiT('le_contexte_de_cette_modification_a_change')]);
 $contextHolon = DeferredProposal::loadAllowedObjectTargetHolon($organizationId, $holonId, $operation, (int)$document->getPvContextHolonId(), $targetType);
-if (!$contextHolon) $respond(403, ['status' => false, 'message' => 'Le collectif du PV ne dispose pas du droit nécessaire.']);
+if (!$contextHolon) $respond(403, ['status' => false, 'message' => omoDeferredProposalsUiT('le_collectif_du_pv_ne_dispose_pas_du_droit_necessaire')]);
 $object = $targetType === DeferredProposal::TARGET_RECURRING_TASK ? new ControlActivity() : new StatIndicator();
-if ($operation !== DeferredProposal::OPERATION_CREATE && (!$object->load($objectId) || (int)$object->get('IDorganization') !== $organizationId || (int)$object->get('IDholon') !== $holonId || (int)$object->get('active') !== 1)) $respond(404, ['status' => false, 'message' => 'L’élément demandé est introuvable.']);
-if ($operation === DeferredProposal::OPERATION_CREATE && $objectId !== 0) $respond(422, ['status' => false, 'message' => 'Sélection invalide.']);
+if ($operation !== DeferredProposal::OPERATION_CREATE && (!$object->load($objectId) || (int)$object->get('IDorganization') !== $organizationId || (int)$object->get('IDholon') !== $holonId || (int)$object->get('active') !== 1)) $respond(404, ['status' => false, 'message' => omoDeferredProposalsUiT('l_element_demande_est_introuvable')]);
+if ($operation === DeferredProposal::OPERATION_CREATE && $objectId !== 0) $respond(422, ['status' => false, 'message' => omoDeferredProposalsUiT('selection_invalide')]);
 $before = $operation === DeferredProposal::OPERATION_CREATE ? [] : ($proposalId > 0 ? DeferredProposal::normalizeState($proposal->get('before_state')) : ($targetType === DeferredProposal::TARGET_RECURRING_TASK ? DeferredProposal::captureRecurringTaskState($object) : DeferredProposal::captureIndicatorState($object)));
 $input = $_POST; $input['IDholon'] = $holonId;
 if ($targetType === DeferredProposal::TARGET_RECURRING_TASK) {
     $after = $operation === DeferredProposal::OPERATION_DELETE ? [] : DeferredProposal::normalizeRecurringTaskState($input, $operation === DeferredProposal::OPERATION_UPDATE ? $object : null);
-    if ($operation !== DeferredProposal::OPERATION_DELETE && $after['title'] === '') $respond(422, ['status' => false, 'message' => 'Le titre est obligatoire.']);
+    if ($operation !== DeferredProposal::OPERATION_DELETE && $after['title'] === '') $respond(422, ['status' => false, 'message' => omoDeferredProposalsUiT('le_titre_est_obligatoire')]);
 } else {
     try {
         $after = $operation === DeferredProposal::OPERATION_DELETE ? [] : DeferredProposal::normalizeIndicatorEditorState($input, $organizationId, $operation === DeferredProposal::OPERATION_UPDATE ? $object : null);
     } catch (InvalidArgumentException $exception) {
         $respond(422, ['status' => false, 'message' => $exception->getMessage()]);
     }
-    if ($operation !== DeferredProposal::OPERATION_DELETE && $after['name'] === '') $respond(422, ['status' => false, 'message' => 'Le nom est obligatoire.']);
+    if ($operation !== DeferredProposal::OPERATION_DELETE && $after['name'] === '') $respond(422, ['status' => false, 'message' => omoDeferredProposalsUiT('le_nom_est_obligatoire')]);
 }
 if ((int)($after['IDuser_responsible'] ?? 0) > 0 && !\dbObject\UserOrganization::hasActiveMembership((int)$after['IDuser_responsible'], $organizationId)) $after['IDuser_responsible'] = null;
 $proposal->set('IDorganization', $organizationId); $proposal->set('IDholon', $holonId); $proposal->set('IDuser_author', $userId);
@@ -49,5 +50,5 @@ $proposal->set('before_state', $before); $proposal->set('after_state', $after); 
 if ($proposalId <= 0) $proposal->set('position', count(DeferredProposal::getForPvPoint($pointId)) + 1);
 $proposal->set('status', DeferredProposal::STATUS_PENDING); $proposal->set('parameters', ['payload_version' => 1, 'editor' => $targetType]);
 $result = $proposal->save();
-if (!is_array($result) || empty($result['status'])) $respond(500, ['status' => false, 'message' => 'La modification ne peut pas être enregistrée.']);
+if (!is_array($result) || empty($result['status'])) $respond(500, ['status' => false, 'message' => omoDeferredProposalsUiT('la_modification_ne_peut_pas_etre_enregistree')]);
 $respond(200, ['status' => true, 'id' => (int)$proposal->getId(), 'pointId' => $pointId]);

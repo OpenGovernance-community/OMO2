@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../../ui_translations.php';
 require_once dirname(__DIR__, 3) . '/bootstrap.php';
 require_once dirname(__DIR__) . '/context.php';
 require_once __DIR__ . '/shared.php';
@@ -13,7 +14,7 @@ header('Content-Type: application/json; charset=UTF-8');
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
     omoDecisionModuleJsonResponse(405, [
         'status' => false,
-        'message' => 'Methode non autorisee.',
+        'message' => omoDecisionUiT('methode_non_autorisee'),
     ]);
 }
 
@@ -21,7 +22,7 @@ $context = omoDecisionResolveEditorContext($_POST);
 if (empty($context['status']) || (string)($context['intent'] ?? '') !== 'participate') {
     omoDecisionModuleJsonResponse((int)($context['code'] ?? 403), [
         'status' => false,
-        'message' => 'Vous ne pouvez pas participer a ce scrutin.',
+        'message' => omoDecisionUiT('vous_ne_pouvez_pas_participer_a_ce_scrutin'),
     ]);
 }
 
@@ -29,7 +30,7 @@ $decision = $context['decision'];
 if (!$decision instanceof DecisionProcess || !$decision->isParticipationOpen()) {
     omoDecisionModuleJsonResponse(403, [
         'status' => false,
-        'message' => 'Le vote n est pas ouvert pour le moment.',
+        'message' => omoDecisionUiT('le_vote_n_est_pas_ouvert_pour_le_moment'),
     ]);
 }
 
@@ -49,7 +50,7 @@ if ($decision instanceof DecisionProcess && (!$participant || (int)$participant-
         if (empty($saveParticipant['status'])) {
             omoDecisionModuleJsonResponse(500, [
                 'status' => false,
-                'message' => 'Impossible de preparer votre participation.',
+                'message' => omoDecisionUiT('impossible_de_preparer_votre_participation'),
             ]);
         }
     }
@@ -58,7 +59,7 @@ if ($decision instanceof DecisionProcess && (!$participant || (int)$participant-
 if (!$decision instanceof DecisionProcess || !$participant || (int)$participant->getId() <= 0) {
     omoDecisionModuleJsonResponse(403, [
         'status' => false,
-        'message' => 'Participant introuvable pour ce scrutin.',
+        'message' => omoDecisionUiT('participant_introuvable_pour_ce_scrutin'),
     ]);
 }
 
@@ -71,14 +72,14 @@ if (!$decisionGroup instanceof DecisionGroup && $decision instanceof DecisionPro
 if (!$decisionGroup || (int)$decisionGroup->getId() <= 0) {
     omoDecisionModuleJsonResponse(500, [
         'status' => false,
-        'message' => 'Impossible de preparer le groupe de participation.',
+        'message' => omoDecisionUiT('impossible_de_preparer_le_groupe_de_participation'),
     ]);
 }
 
 if (DecisionProcess::normalizeEvaluationMethod($decisionGroup->get('evaluation_method')) !== DecisionProcess::METHOD_CONSENT) {
     omoDecisionModuleJsonResponse(400, [
         'status' => false,
-        'message' => 'Ce scrutin n utilise pas le consentement.',
+        'message' => omoDecisionUiT('ce_scrutin_n_utilise_pas_le_consentement'),
     ]);
 }
 
@@ -100,7 +101,7 @@ foreach ($activeProposals as $proposal) {
         }
         omoDecisionModuleJsonResponse(400, [
             'status' => false,
-            'message' => 'Veuillez vous prononcer sur chaque proposition.',
+            'message' => omoDecisionUiT('veuillez_vous_prononcer_sur_chaque_proposition'),
         ]);
     }
 
@@ -114,7 +115,7 @@ foreach ($activeProposals as $proposal) {
 if (count($choiceMap) === 0 && !$draftRequested) {
     omoDecisionModuleJsonResponse(400, [
         'status' => false,
-        'message' => 'Aucune proposition active pour ce scrutin.',
+        'message' => omoDecisionUiT('aucune_proposition_active_pour_ce_scrutin'),
     ]);
 }
 
@@ -126,7 +127,7 @@ if (
 ) {
     omoDecisionModuleJsonResponse(403, [
         'status' => false,
-        'message' => 'Votre réponse a déjà été soumise et ne peut plus être modifiée.',
+        'message' => omoDecisionUiT('votre_reponse_a_deja_ete_soumise_et_ne_peut_plus_etre_modifiee'),
     ]);
 }
 if (!$response) {
@@ -143,7 +144,7 @@ $saveResult = $response->save();
 if (empty($saveResult['status'])) {
     omoDecisionModuleJsonResponse(500, [
         'status' => false,
-        'message' => 'Impossible d enregistrer votre vote pour le moment.',
+        'message' => omoDecisionUiT('impossible_d_enregistrer_votre_vote_pour_le_moment'),
     ]);
 }
 

@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../ui_translations.php';
 require_once dirname(__DIR__, 2) . '/bootstrap.php';
 require_once __DIR__ . '/helpers.php';
 require_once dirname(__DIR__, 4) . '/common/patreon.php';
@@ -844,7 +845,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         'pvMeetingEditorToken' => $isPvEditor && $document->getPvStage() === \dbObject\Document::PV_STAGE_MEETING ? $editorToken : '',
     ],
     'pvPriorityLabels' => $uiText['priorityLabels'] ?? [],
-    'pvPriorityFieldLabel' => $uiText['priority'] ?? 'Priorité',
+    'pvPriorityFieldLabel' => $uiText['priority'] ?? omoDocumentsUiT('priorite'),
     'canEmbedChecklists' => !$isPublicParticipation && $hasOrganization && ($organization->isApplicationEnabled('processus', $currentUserId) || $organization->isApplicationEnabled('checklist', $currentUserId)),
     'canCompleteChecklistProjects' => ($canEditPvDocumentHeader),
     'embeddableChecklists' => $embeddableChecklistsPayload,

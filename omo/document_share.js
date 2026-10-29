@@ -1,3 +1,5 @@
+var omoUiText = window.omoUiText || function (key, fallback) { return fallback; };
+var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; };
 window.commonPageScripts = window.commonPageScripts || {};
 window.commonPageScripts["/omo/document_share.js"] = function (pageConfig, pageScript) {
     (function () {
@@ -53,7 +55,7 @@ window.commonPageScripts["/omo/document_share.js"] = function (pageConfig, pageS
             if (updatedAtNode && payload.updatedAt) {
                 const date = new Date(payload.updatedAt);
                 if (!Number.isNaN(date.getTime())) {
-                    updatedAtNode.textContent = 'Mise a jour ' + date.toLocaleString('fr-CH');
+                    updatedAtNode.textContent = omoUiText("mise_a_jour", "Mise à jour ") + date.toLocaleString((window.omoConfig && window.omoConfig.translationLocale) || document.documentElement.lang || 'fr-CH');
                 }
             }
 
@@ -63,11 +65,11 @@ window.commonPageScripts["/omo/document_share.js"] = function (pageConfig, pageS
 
             if (statusNode) {
                 if (payload.isDraft && payload.editingUserName) {
-                    statusNode.textContent = 'Edition en cours par ' + payload.editingUserName + '.';
+                    statusNode.textContent = omoUiText("editing_by_name", "Édition en cours par " + payload.editingUserName + ".", {name: payload.editingUserName});
                 } else if (payload.isDraft) {
-                    statusNode.textContent = 'Edition en cours.';
+                    statusNode.textContent = omoUiText("edition_en_cours", "Édition en cours.");
                 } else {
-                    statusNode.textContent = 'Lecture partagee du document.';
+                    statusNode.textContent = omoUiText("lecture_partagee_du_document", "Lecture partagée du document.");
                 }
             }
         }

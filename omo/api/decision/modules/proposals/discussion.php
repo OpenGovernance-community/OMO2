@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../../ui_translations.php';
 require_once dirname(__DIR__, 3) . '/bootstrap.php';
 require_once dirname(__DIR__) . '/context.php';
 require_once dirname(__DIR__) . '/common.php';
@@ -21,7 +22,7 @@ $requestMethod = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET'));
 if (!in_array($requestMethod, ['GET', 'POST'], true)) {
     omoDecisionProposalDiscussionRespond(405, [
         'status' => false,
-        'message' => 'Méthode non autorisée.',
+        'message' => omoDecisionUiT('methode_non_autorisee'),
     ]);
 }
 
@@ -30,7 +31,7 @@ $context = omoDecisionResolveEditorContext($input);
 if (empty($context['status'])) {
     omoDecisionProposalDiscussionRespond((int)($context['code'] ?? 403), [
         'status' => false,
-        'message' => 'Accès refusé.',
+        'message' => omoDecisionUiT('acces_refuse'),
     ]);
 }
 
@@ -40,7 +41,7 @@ if ($viewerUserId <= 0 && $viewerParticipantId <= 0) {
     omoDecisionProposalDiscussionRespond(403, [
         'status' => false,
         'reason' => 'participant_required',
-        'message' => 'Un participant valide est nécessaire pour accéder à cette discussion.',
+        'message' => omoDecisionUiT('un_participant_valide_est_necessaire_pour_acceder_a_cette_discussion'),
     ]);
 }
 
@@ -48,13 +49,13 @@ $proposal = omoDecisionLoadProposalForContext((int)($input['proposal_id'] ?? 0),
 if (!$proposal instanceof DecisionProposal) {
     omoDecisionProposalDiscussionRespond(404, [
         'status' => false,
-        'message' => 'Proposition introuvable.',
+        'message' => omoDecisionUiT('proposition_introuvable'),
     ]);
 }
 if (!omoDecisionCanAccessProposalDiscussion($proposal, $context)) {
     omoDecisionProposalDiscussionRespond(403, [
         'status' => false,
-        'message' => 'Accès refusé.',
+        'message' => omoDecisionUiT('acces_refuse'),
     ]);
 }
 
@@ -93,7 +94,7 @@ if ($requestMethod === 'POST') {
     if ($content === '' || mb_strlen($content, 'UTF-8') > 4000) {
         omoDecisionProposalDiscussionRespond(422, [
             'status' => false,
-            'message' => 'Le message doit contenir entre 1 et 4000 caractères.',
+            'message' => omoDecisionUiT('le_message_doit_contenir_entre_1_et_4000_caracteres'),
         ]);
     }
 
@@ -101,7 +102,7 @@ if ($requestMethod === 'POST') {
     if (!$thread) {
         omoDecisionProposalDiscussionRespond(500, [
             'status' => false,
-            'message' => 'La discussion ne peut pas être créée pour le moment.',
+            'message' => omoDecisionUiT('la_discussion_ne_peut_pas_etre_creee_pour_le_moment'),
         ]);
     }
 
@@ -117,7 +118,7 @@ if ($requestMethod === 'POST') {
     if (!$message instanceof ChatMessage) {
         omoDecisionProposalDiscussionRespond(500, [
             'status' => false,
-            'message' => 'Le message ne peut pas être envoyé pour le moment.',
+            'message' => omoDecisionUiT('le_message_ne_peut_pas_etre_envoye_pour_le_moment'),
         ]);
     }
 
@@ -154,7 +155,7 @@ if ($thread) {
             if (!$hideMessageAuthor && $messageAuthorUserId > 0 && $messageAuthorUserId === $decisionAdministratorUserId) {
                 $messageData['authorRoles'][] = [
                     'key' => 'decision-administrator',
-                    'label' => 'Administrateur du scrutin',
+                    'label' => omoDecisionUiT('administrateur_du_scrutin'),
                 ];
             }
             if (
@@ -166,7 +167,7 @@ if ($thread) {
             ) {
                 $messageData['authorRoles'][] = [
                     'key' => 'proposal-author',
-                    'label' => 'Auteur de la proposition',
+                    'label' => omoDecisionUiT('auteur_de_la_proposition'),
                 ];
             }
             $messages[] = $messageData;

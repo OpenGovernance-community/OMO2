@@ -1,3 +1,5 @@
+var omoUiText = window.omoUiText || function (key, fallback) { return fallback; };
+var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; };
 (() => {
 const root = typeof window.omoFindApplicationRoot === 'function'
     ? window.omoFindApplicationRoot('omo-decisions-root')
@@ -966,7 +968,7 @@ function omoDecisionRenderNestedEditorLoading() {
         return;
     }
 
-    window.commonRenderLoadingState(elements.editorBody, 'Chargement...');
+    window.commonRenderLoadingState(elements.editorBody, omoUiText("chargement", "Chargement..."));
 }
 
 function omoDecisionRenderNestedEditorError() {
@@ -974,7 +976,7 @@ function omoDecisionRenderNestedEditorError() {
         return;
     }
 
-    elements.editorBody.innerHTML = '<div class="omo-empty-state">Impossible de charger ce module.</div>';
+    elements.editorBody.innerHTML = ("<div class=\"omo-empty-state\">" + omoUiHtml("impossible_de_charger_ce_module", "Impossible de charger ce module.") + "</div>");
 }
 
 openDecisionEditor = function (url, title, description) {
@@ -1218,7 +1220,7 @@ function openDecisionItemById(decisionId, options) {
 
     openDecisionEditor(
         actionUrl,
-        String(settings.title || item.title || (payload.text && payload.text.drawerTitle ? payload.text.drawerTitle : 'Prises de decision')),
+        String(settings.title || item.title || (payload.text && payload.text.drawerTitle ? payload.text.drawerTitle : "Prises de décision")),
         String(settings.description || '')
     );
 
@@ -1577,10 +1579,10 @@ function buildCompactListHeader() {
     const header = document.createElement('div');
     header.className = 'generic-file-list__header';
     header.innerHTML = ''
-        + '<div class="generic-file-list__header-cell">' + escapeHtml(payload.text && payload.text.compactHeaderName ? payload.text.compactHeaderName : 'Decision') + '</div>'
+        + '<div class="generic-file-list__header-cell">' + escapeHtml(payload.text && payload.text.compactHeaderName ? payload.text.compactHeaderName : "Décision") + '</div>'
         + '<div class="generic-file-list__header-cell">' + escapeHtml(payload.text && payload.text.compactHeaderStatus ? payload.text.compactHeaderStatus : 'Statut') + '</div>'
         + '<div class="generic-file-list__header-cell">' + escapeHtml(payload.text && payload.text.compactHeaderScope ? payload.text.compactHeaderScope : 'Structure') + '</div>'
-        + '<div class="generic-file-list__header-cell">' + escapeHtml(payload.text && payload.text.compactHeaderActivity ? payload.text.compactHeaderActivity : 'Activite') + '</div>';
+        + '<div class="generic-file-list__header-cell">' + escapeHtml(payload.text && payload.text.compactHeaderActivity ? payload.text.compactHeaderActivity : "Activité") + '</div>';
     return header;
 }
 
@@ -1630,7 +1632,7 @@ function buildDecisionActionMenuToggle(item, actions, className) {
     toggle.setAttribute('data-omo-decision-id', String(Number(item && item.id ? item.id : 0) || 0));
     toggle.setAttribute('aria-haspopup', 'menu');
     toggle.setAttribute('aria-expanded', 'false');
-    toggle.setAttribute('aria-label', String(payload.text && payload.text.moreActionAriaLabel ? payload.text.moreActionAriaLabel : 'Plus d actions pour cette prise de decision'));
+    toggle.setAttribute('aria-label', String(payload.text && payload.text.moreActionAriaLabel ? payload.text.moreActionAriaLabel : "Plus d’actions pour cette prise de décision"));
     toggle.textContent = String(payload.text && payload.text.moreActionLabel ? payload.text.moreActionLabel : '\u22ee');
     return toggle;
 }
@@ -1726,7 +1728,7 @@ function renderCompactRow(item) {
     }
 
     row.innerHTML = ''
-        + '<div class="generic-file-list__cell generic-file-list__cell--name" data-label="' + escapeHtml(payload.text && payload.text.compactHeaderName ? payload.text.compactHeaderName : 'Decision') + '">'
+        + '<div class="generic-file-list__cell generic-file-list__cell--name" data-label="' + escapeHtml(payload.text && payload.text.compactHeaderName ? payload.text.compactHeaderName : "Décision") + '">'
             + '<div class="omo-decisions__compact-name-main generic-file-list__name-main">'
                 + buildCompactAvatar(item && item.owner ? item.owner : {})
                 + '<div class="omo-decisions__compact-title-block generic-file-list__title-block">'
@@ -1743,7 +1745,7 @@ function renderCompactRow(item) {
         + '<div class="generic-file-list__cell" data-label="' + escapeHtml(payload.text && payload.text.compactHeaderScope ? payload.text.compactHeaderScope : 'Structure') + '">'
             + '<span class="omo-decisions__compact-scope">' + escapeHtml(scopeLabel) + '</span>'
         + '</div>'
-        + '<div class="generic-file-list__cell generic-file-list__cell--date" data-label="' + escapeHtml(payload.text && payload.text.compactHeaderActivity ? payload.text.compactHeaderActivity : 'Activite') + '">'
+        + '<div class="generic-file-list__cell generic-file-list__cell--date" data-label="' + escapeHtml(payload.text && payload.text.compactHeaderActivity ? payload.text.compactHeaderActivity : "Activité") + '">'
             + '<span class="omo-decisions__compact-activity">' + escapeHtml(activityLabel) + '</span>'
         + '</div>';
 
@@ -1879,7 +1881,7 @@ function renderCard(item) {
                 value: String(item.decisionTypeLabel || '')
             },
             {
-                label: payload.text.methodLabel || 'Methode',
+                label: payload.text.methodLabel || "Méthode",
                 value: String(item.evaluationMethodLabel || '')
             },
             {
@@ -1898,7 +1900,7 @@ function renderCard(item) {
             },
             {
                 value: String(Number(item.responseCount || 0)),
-                label: payload.text.responsesLabel || 'Reponses'
+                label: payload.text.responsesLabel || "Réponses"
             }
         ];
         const dateItems = [];
@@ -1912,14 +1914,14 @@ function renderCard(item) {
 
         if (item.deadlineLabel) {
             dateItems.push({
-                label: payload.text.deadlineLabel || 'Echeance',
+                label: payload.text.deadlineLabel || "Échéance",
                 value: item.deadlineLabel
             });
         }
 
         if (item.lastActivityLabel) {
             dateItems.push({
-                label: payload.text.lastActivityLabel || 'Derniere activite',
+                label: payload.text.lastActivityLabel || "Dernière activité",
                 value: item.lastActivityLabel
             });
         }
@@ -1939,7 +1941,7 @@ function renderCard(item) {
             stats: stats,
             dateItems: dateItems
         }, {
-            fallbackTitle: payload.text.drawerTitle || 'Prises de decision',
+            fallbackTitle: payload.text.drawerTitle || "Prises de décision",
             openUrlAttribute: 'data-open-url',
             openTitleAttribute: 'data-open-title'
         });
@@ -2363,16 +2365,16 @@ function buildDecisionExportModalHtml(title, exportUrl, formats) {
 
         if (available && safeExportUrl !== '' && key !== '') {
             html += '<button type="button" class="generic-action-button generic-action-button--main"'
-                + ' data-omo-decision-export-format-button="1"'
+                + " data-omo-decision-export-format-button=\"1\""
                 + ' data-omo-decision-export-url="' + escapeHtml(safeExportUrl) + '"'
-                + ' data-omo-decision-export-format="' + escapeHtml(key) + '"'
+                + " data-omo-decision-export-format=\"" + escapeHtml(key) + '"'
                 + ' data-omo-decision-export-title="' + escapeHtml(safeTitle) + '"'
                 + '>'
-                + escapeHtml(payload.text && payload.text.exportOpenLabel ? payload.text.exportOpenLabel : 'Telecharger')
+                + escapeHtml(payload.text && payload.text.exportOpenLabel ? payload.text.exportOpenLabel : "Télécharger")
                 + '</button>';
         } else {
             html += '<button type="button" class="generic-action-button generic-action-button--secondary" disabled>'
-                + escapeHtml(payload.text && payload.text.exportComingSoonLabel ? payload.text.exportComingSoonLabel : 'Bientot disponible')
+                + escapeHtml(payload.text && payload.text.exportComingSoonLabel ? payload.text.exportComingSoonLabel : "Bientôt disponible")
                 + '</button>';
         }
 
@@ -2490,14 +2492,14 @@ function submitDecisionMenuAction(button) {
             if (!result.ok || !result.data || !result.data.status) {
                 const message = result.data && result.data.message
                     ? String(result.data.message)
-                    : String(payload.text && payload.text.actionErrorUpdate ? payload.text.actionErrorUpdate : 'Impossible de mettre a jour cette prise de decision pour le moment.');
+                    : String(payload.text && payload.text.actionErrorUpdate ? payload.text.actionErrorUpdate : "Impossible de mettre à jour cette prise de décision pour le moment.");
                 throw new Error(message);
             }
 
             return omoDecisionRefreshIndex({ silent: false });
         })
         .catch(function (error) {
-            window.omoNotify(error && error.message ? error.message : (payload.text && payload.text.actionErrorUpdate ? payload.text.actionErrorUpdate : 'Impossible de mettre a jour cette prise de decision pour le moment.'), 'error');
+            window.omoNotify(error && error.message ? error.message : (payload.text && payload.text.actionErrorUpdate ? payload.text.actionErrorUpdate : "Impossible de mettre à jour cette prise de décision pour le moment."), 'error');
             return false;
         })
         .finally(function () {
@@ -2631,7 +2633,7 @@ omoDecisionRegisterGlobalListener(ownerDocument, 'click', function (event) {
                 openDecisionEditor(
                     targetUrl,
                     String(actionButton.getAttribute('data-open-title') || '').trim()
-                        || (payload.text && payload.text.drawerTitle ? payload.text.drawerTitle : 'Prises de decision'),
+                        || (payload.text && payload.text.drawerTitle ? payload.text.drawerTitle : "Prises de décision"),
                     String(actionButton.getAttribute('data-open-description') || '').trim()
                 );
             }
@@ -2645,7 +2647,7 @@ omoDecisionRegisterGlobalListener(ownerDocument, 'click', function (event) {
             openDecisionFromInteraction(
                 activeCompactMenuToggle ? Number(activeCompactMenuToggle.getAttribute('data-omo-decision-id') || 0) : 0,
                 targetUrl,
-                String(actionButton.getAttribute('data-open-title') || '').trim() || (payload.text && payload.text.drawerTitle ? payload.text.drawerTitle : 'Prises de decision'),
+                String(actionButton.getAttribute('data-open-title') || '').trim() || (payload.text && payload.text.drawerTitle ? payload.text.drawerTitle : "Prises de décision"),
                 String(actionButton.getAttribute('data-open-description') || '').trim(),
                 String(actionButton.getAttribute('data-open-mode') || '').trim()
             );
@@ -2833,7 +2835,7 @@ window.omoRefreshDecisionView = function (url, options) {
     }
 
     const settings = options && typeof options === 'object' ? options : {};
-    const title = String(settings.title || (payload.text && payload.text.drawerTitle ? payload.text.drawerTitle : 'Prises de decision')).trim();
+    const title = String(settings.title || (payload.text && payload.text.drawerTitle ? payload.text.drawerTitle : "Prises de décision")).trim();
     const description = String(settings.description || '').trim();
     openDecisionEditor(targetUrl, title, description);
 };

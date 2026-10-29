@@ -1,3 +1,5 @@
+var omoUiText = window.omoUiText || function (key, fallback) { return fallback; };
+var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; };
 window.commonPageScripts = window.commonPageScripts || {};
 window.commonPageScripts["/omo/api/shares/popup.js"] = function (pageConfig, pageScript) {
 (function () {
@@ -76,12 +78,12 @@ window.commonPageScripts["/omo/api/shares/popup.js"] = function (pageConfig, pag
             allowStructure.checked = true;
             allowPeople.checked = false;
             allowPeopleDetail.checked = false;
-            passwordHint.textContent = 'Si un mot de passe est defini, il sera demande a l ouverture du lien.';
-            submitButton.textContent = 'Creer le lien';
-            title.textContent = hasExistingLinks ? 'Nouveau lien de partage' : 'Creer un lien de partage';
+            passwordHint.textContent = omoUiText("si_un_mot_de_passe_est_defini_il_sera_demande_a_l_ouverture_du_lien", "Si un mot de passe est défini, il sera demandé à l’ouverture du lien.");
+            submitButton.textContent = omoUiText("creer_le_lien", "Créer le lien");
+            title.textContent = hasExistingLinks ? omoUiText("nouveau_lien_de_partage", "Nouveau lien de partage") : omoUiText("creer_un_lien_de_partage", "Créer un lien de partage");
             intro.textContent = hasExistingLinks
-                ? 'Configure un nouveau lien ou modifie un lien existant.'
-                : 'Aucun lien n existe encore pour ce holon. Creons le premier.';
+                ? omoUiText("configure_un_nouveau_lien_ou_modifie_un_lien_existant", "Configurez un nouveau lien ou modifiez un lien existant.")
+                : omoUiText("aucun_lien_n_existe_encore_pour_ce_holon_creons_le_premier", "Aucun lien n’existe encore pour ce holon. Créons le premier.");
             syncPermissionDependencies();
         };
 
@@ -109,10 +111,10 @@ window.commonPageScripts["/omo/api/shares/popup.js"] = function (pageConfig, pag
             allowPeople.checked = card.dataset.allowPeople === '1';
             allowPeopleDetail.checked = card.dataset.allowPeopleDetail === '1';
             clearPasswordWrap.hidden = card.dataset.hasPassword !== '1';
-            passwordHint.textContent = 'Laisse vide pour conserver le mot de passe actuel, ou saisis-en un nouveau.';
-            submitButton.textContent = 'Enregistrer';
-            title.textContent = 'Modifier le lien de partage';
-            intro.textContent = 'Mets a jour les droits, l expiration ou le mot de passe de ce lien.';
+            passwordHint.textContent = omoUiText("laisse_vide_pour_conserver_le_mot_de_passe_actuel_ou_saisis_en_un_nouveau", "Laissez vide pour conserver le mot de passe actuel, ou saisis-en un nouveau.");
+            submitButton.textContent = omoUiText("enregistrer", "Enregistrer");
+            title.textContent = omoUiText("modifier_le_lien_de_partage", "Modifier le lien de partage");
+            intro.textContent = omoUiText("mets_a_jour_les_droits_l_expiration_ou_le_mot_de_passe_de_ce_lien", "Mettez à jour les droits, l’expiration ou le mot de passe de ce lien.");
             syncPermissionDependencies();
 
             if (listSection) {
@@ -193,9 +195,9 @@ window.commonPageScripts["/omo/api/shares/popup.js"] = function (pageConfig, pag
 
                 try {
                     await navigator.clipboard.writeText(url);
-                    setFeedback('Lien copie.', true);
+                    setFeedback(omoUiText("lien_copie_2", "Lien copié."), true);
                 } catch (error) {
-                    setFeedback('Copie impossible automatiquement.', false);
+                    setFeedback(omoUiText("copie_impossible_automatiquement", "Copie impossible automatiquement."), false);
                 }
                 return;
             }
@@ -219,7 +221,7 @@ window.commonPageScripts["/omo/api/shares/popup.js"] = function (pageConfig, pag
                 return;
             }
 
-            if (!window.confirm('Supprimer le lien "' + label + '" ?')) {
+            if (!window.confirm(omoUiText("share_delete_confirm", 'Supprimer le lien « ' + label + ' » ?', {label: label}))) {
                 return;
             }
 
@@ -240,12 +242,12 @@ window.commonPageScripts["/omo/api/shares/popup.js"] = function (pageConfig, pag
 
                 const payload = await response.json();
                 if (!response.ok || !payload || !payload.status) {
-                    throw new Error(payload && payload.message ? payload.message : 'Erreur de suppression.');
+                    throw new Error(payload && payload.message ? payload.message : omoUiText("erreur_de_suppression", "Erreur de suppression."));
                 }
 
-                await refreshPopup(payload.message || 'Lien supprime.', true);
+                await refreshPopup(payload.message || omoUiText("lien_supprime_2", "Lien supprimé."), true);
             } catch (error) {
-                setFeedback(error && error.message ? error.message : 'Erreur de suppression.', false);
+                setFeedback(error && error.message ? error.message : omoUiText("erreur_de_suppression", "Erreur de suppression."), false);
                 deleteButton.disabled = false;
             }
         });
@@ -266,12 +268,12 @@ window.commonPageScripts["/omo/api/shares/popup.js"] = function (pageConfig, pag
 
                 const payload = await response.json();
                 if (!response.ok || !payload || !payload.status) {
-                    throw new Error(payload && payload.message ? payload.message : 'Erreur de sauvegarde.');
+                    throw new Error(payload && payload.message ? payload.message : omoUiText("erreur_de_sauvegarde", "Erreur de sauvegarde."));
                 }
 
-                await refreshPopup(payload.message || 'Lien enregistre.', true);
+                await refreshPopup(payload.message || omoUiText("lien_enregistre_2", "Lien enregistré."), true);
             } catch (error) {
-                setFeedback(error && error.message ? error.message : 'Erreur de sauvegarde.', false);
+                setFeedback(error && error.message ? error.message : omoUiText("erreur_de_sauvegarde", "Erreur de sauvegarde."), false);
                 submitButton.disabled = false;
             }
         });

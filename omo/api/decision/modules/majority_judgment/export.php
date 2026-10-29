@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../../ui_translations.php';
 
 require_once dirname(__DIR__) . '/export_common.php';
 require_once __DIR__ . '/shared.php';
@@ -177,7 +178,7 @@ if (!function_exists('omoDecisionMajorityJudgmentBuildExportPayload')) {
             if (!is_string($xmlContent) || $xmlContent === '') {
                 return [
                     'status' => false,
-                    'message' => 'Impossible de generer l export XML.',
+                    'message' => omoDecisionUiT('impossible_de_generer_l_export_xml'),
                 ];
             }
 

@@ -63,8 +63,8 @@ body.lms-drawer-open {
     <div id="drawer-content"></div>
     <div id="quiz-zone"></div>
     <div id="drawer-footer">
-        <button onclick="closeDrawer()">Close</button>
-        <button id="doneBtn">Done</button>
+        <button onclick="closeDrawer()"><?= htmlspecialchars(omoLmsUiT('fermer'), ENT_QUOTES, 'UTF-8') ?></button>
+        <button id="doneBtn"><?= htmlspecialchars(omoLmsUiT('termine'), ENT_QUOTES, 'UTF-8') ?></button>
     </div>
 </div>
 <script src="<?= commonAssetUrl('/omo/api/lms/inc/drawer.js') ?>"></script>

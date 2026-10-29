@@ -28,8 +28,8 @@ class StatIndicatorImport extends DbObject
             'IDholon' => 'Contexte',
             'IDstatindicator' => 'Indicateur',
             'active' => 'Actif',
-            'created_at' => 'Creation',
-            'updated_at' => 'Mise a jour',
+            'created_at' => 'Création',
+            'updated_at' => 'Mise à jour',
         ];
     }
 

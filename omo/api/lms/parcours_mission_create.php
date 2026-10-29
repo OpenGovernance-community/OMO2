@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once __DIR__ . '/bootstrap.php';
 
 commonRestoreRememberedUser();
@@ -18,7 +19,7 @@ if ($currentUserId <= 0 || !$hasOrganizationAccess || $organizationId <= 0) {
     echo json_encode(array(
         'status' => false,
         'success' => false,
-        'message' => 'Acces refuse.',
+        'message' => omoLmsUiT('acces_refuse'),
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -28,7 +29,7 @@ if ($parcoursId <= 0) {
     echo json_encode(array(
         'status' => false,
         'success' => false,
-        'message' => 'Parcours invalide.',
+        'message' => omoLmsUiT('parcours_invalide'),
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -38,7 +39,7 @@ if (($managementContext['link'] ?? null) === null || !(($managementContext['parc
     echo json_encode(array(
         'status' => false,
         'success' => false,
-        'message' => 'Parcours introuvable.',
+        'message' => omoLmsUiT('parcours_introuvable'),
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -48,7 +49,7 @@ if (empty($managementContext['canEditContent'])) {
     echo json_encode(array(
         'status' => false,
         'success' => false,
-        'message' => 'Vous n avez pas le droit de modifier ce parcours.',
+        'message' => omoLmsUiT('vous_n_avez_pas_le_droit_de_modifier_ce_parcours'),
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -61,7 +62,7 @@ if (trim((string)$mission->get('title')) === '') {
     echo json_encode(array(
         'status' => false,
         'success' => false,
-        'message' => 'Le titre est obligatoire.',
+        'message' => omoLmsUiT('le_titre_est_obligatoire'),
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -70,7 +71,7 @@ if (trim((string)$mission->get('resume')) === '') {
     echo json_encode(array(
         'status' => false,
         'success' => false,
-        'message' => 'Le resume est obligatoire.',
+        'message' => omoLmsUiT('le_resume_est_obligatoire'),
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -103,6 +104,6 @@ if (!is_array($attachResult) || empty($attachResult['status'])) {
 echo json_encode(array(
     'status' => true,
     'success' => true,
-    'message' => 'Mission creee et ajoutee.',
+    'message' => omoLmsUiT('mission_creee_et_ajoutee'),
     'id' => (int)$mission->getId(),
 ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/modules/context.php';
 
@@ -16,7 +17,7 @@ function omoDecisionActionJsonResponse($statusCode, array $payload)
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
     omoDecisionActionJsonResponse(405, [
         'status' => false,
-        'message' => 'Méthode non autorisée.',
+        'message' => omoDecisionUiT('methode_non_autorisee'),
     ]);
 }
 
@@ -27,7 +28,7 @@ $context = omoDecisionResolveEditorContext($request);
 if (empty($context['status'])) {
     omoDecisionActionJsonResponse((int)($context['code'] ?? 400), [
         'status' => false,
-        'message' => 'Contexte de prise de décision invalide.',
+        'message' => omoDecisionUiT('contexte_de_prise_de_decision_invalide'),
     ]);
 }
 
@@ -35,14 +36,14 @@ $decision = $context['decision'] ?? null;
 if (!($decision instanceof DecisionProcess) || (int)$decision->getId() <= 0) {
     omoDecisionActionJsonResponse(404, [
         'status' => false,
-        'message' => 'Prise de décision introuvable.',
+        'message' => omoDecisionUiT('prise_de_decision_introuvable'),
     ]);
 }
 
 if (empty($context['canDelete'])) {
     omoDecisionActionJsonResponse(403, [
         'status' => false,
-        'message' => 'Accès refusé à cette prise de décision.',
+        'message' => omoDecisionUiT('acces_refuse_a_cette_prise_de_decision'),
     ]);
 }
 
@@ -56,7 +57,7 @@ if ($requestedAction === 'archive') {
 if (!is_array($result) || empty($result['status'])) {
     omoDecisionActionJsonResponse(422, [
         'status' => false,
-        'message' => (string)($result['message'] ?? 'Impossible de mettre à jour cette prise de décision.'),
+        'message' => (string)($result['message'] ?? omoDecisionUiT('impossible_de_mettre_a_jour_cette_prise_de_decision')),
         'requestedAction' => $requestedAction,
         'resolvedAction' => is_array($result) ? (string)($result['action'] ?? '') : '',
     ]);
@@ -64,7 +65,7 @@ if (!is_array($result) || empty($result['status'])) {
 
 omoDecisionActionJsonResponse(200, [
     'status' => true,
-    'message' => (string)($result['message'] ?? 'Prise de décision mise à jour.'),
+    'message' => (string)($result['message'] ?? omoDecisionUiT('prise_de_decision_mise_a_jour')),
     'requestedAction' => $requestedAction,
     'resolvedAction' => (string)($result['action'] ?? ''),
     'decisionId' => (int)$decision->getId(),

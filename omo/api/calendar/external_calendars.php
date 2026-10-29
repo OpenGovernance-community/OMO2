@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once dirname(__DIR__, 3) . '/common/external_calendar.php';
 
@@ -6,26 +7,26 @@ use dbObject\ExternalCalendar;
 
 $sourceLang = [
     'unavailable' => ['text' => 'Les calendriers externes ne sont pas disponibles pour le moment.', 'context' => 'External calendar storage or login unavailable.'],
-    'method' => ['text' => 'Methode non autorisee.', 'context' => 'Invalid external calendar request method.'],
-    'csrf' => ['text' => 'Rechargez le panneau de connexion puis reessayez.', 'context' => 'Missing or expired CSRF token.'],
-    'credentials' => ['text' => 'Renseignez une adresse HTTPS, un identifiant et un mot de passe d application.', 'context' => 'Missing CalDAV discovery credentials.'],
-    'key' => ['text' => 'La cle EXTERNAL_CALENDAR_ENCRYPTION_KEY doit etre configuree sur le serveur.', 'context' => 'Missing encryption key for calendar credentials.'],
-    'expired' => ['text' => 'La recherche a expire. Recherchez a nouveau les agendas.', 'context' => 'Expired CalDAV discovery selection.'],
-    'selection' => ['text' => 'Selectionnez un agenda issu de la recherche.', 'context' => 'Invalid discovered calendar selection.'],
+    'method' => ['text' => 'Méthode non autorisée.', 'context' => 'Invalid external calendar request method.'],
+    'csrf' => ['text' => 'Rechargez le panneau de connexion puis réessayez.', 'context' => 'Missing or expired CSRF token.'],
+    'credentials' => ['text' => 'Renseignez une adresse HTTPS, un identifiant et un mot de passe d’application.', 'context' => 'Missing CalDAV discovery credentials.'],
+    'key' => ['text' => 'La clé EXTERNAL_CALENDAR_ENCRYPTION_KEY doit être configurée sur le serveur.', 'context' => 'Missing encryption key for calendar credentials.'],
+    'expired' => ['text' => 'La recherche a expiré. Recherchez à nouveau les agendas.', 'context' => 'Expired CalDAV discovery selection.'],
+    'selection' => ['text' => 'Sélectionnez un agenda issu de la recherche.', 'context' => 'Invalid discovered calendar selection.'],
     'found' => ['text' => 'Choisissez les agendas a connecter et leur couleur.', 'context' => 'Successful calendar discovery.'],
     'missing' => ['text' => 'Calendrier externe introuvable.', 'context' => 'Calendar absent or not owned by the current user.'],
     'removed' => ['text' => 'Calendrier externe retire.', 'context' => 'Successful calendar disconnection.'],
     'remove_failed' => ['text' => 'Impossible de retirer le calendrier externe.', 'context' => 'Calendar disconnection failed.'],
     'unknown' => ['text' => 'Action inconnue.', 'context' => 'Unknown calendar action.'],
-    'save_failed' => ['text' => 'Impossible d enregistrer le calendrier externe.', 'context' => 'Calendar could not be saved.'],
-    'synced' => ['text' => '{count} evenement(s) synchronise(s).', 'context' => 'Successful manual calendar sync.'],
-    'connected' => ['text' => 'Agenda connecte et synchronise.', 'context' => 'Calendar saved and first sync completed.'],
+    'save_failed' => ['text' => 'Impossible d’enregistrer le calendrier externe.', 'context' => 'Calendar could not be saved.'],
+    'synced' => ['text' => '{count} événement(s) synchronisé(s).', 'context' => 'Successful manual calendar sync.'],
+    'connected' => ['text' => 'Agenda connecte et synchronisé.', 'context' => 'Calendar saved and first sync completed.'],
     'sync_failed' => ['text' => 'Agenda enregistre. Synchronisation a relancer : {reason}', 'context' => 'Calendar saved but initial sync failed.'],
     'ics_url' => ['text' => 'Indiquez une adresse ICS HTTPS valide.', 'context' => 'Invalid subscription URL.'],
-    'ics_connected' => ['text' => 'Agenda ICS ajoute et synchronise.', 'context' => 'ICS subscription created.'],
-    'updated' => ['text' => 'Calendrier mis a jour.', 'context' => 'Calendar settings saved.'],
+    'ics_connected' => ['text' => 'Agenda ICS ajoute et synchronisé.', 'context' => 'ICS subscription created.'],
+    'updated' => ['text' => 'Calendrier mis à jour.', 'context' => 'Calendar settings saved.'],
     'title_required' => ['text' => 'Indiquez un nom pour ce calendrier.', 'context' => 'Missing calendar display name.'],
-    'duplicate' => ['text' => 'Cette adresse est deja utilisee par un autre calendrier connecte.', 'context' => 'Duplicate calendar URL during editing.'],
+    'duplicate' => ['text' => 'Cette adresse est déjà utilisée par un autre calendrier connecté.', 'context' => 'Duplicate calendar URL during editing.'],
     'availability_destination' => ['text' => 'Ce calendrier reçoit vos réservations. Choisissez d’abord un autre calendrier de destination dans les paramètres de prise de rendez-vous.', 'context' => 'A booking destination cannot become an availability calendar.'],
     'busy' => ['text' => 'Une réservation ou une modification est en cours. Réessayez dans un instant.', 'context' => 'Calendar settings owner lock unavailable.'],
 ];
@@ -136,7 +137,7 @@ if ($action === 'sync') {
         !empty($result['status']),
         !empty($result['status'])
             ? omoExternalCalendarT('synced', ['count' => (int)($result['count'] ?? 0)])
-            : (string)($result['message'] ?? 'Synchronisation impossible.'),
+            : (string)($result['message'] ?? omoCalendarUiT('synchronisation_impossible')),
         ['count' => (int)($result['count'] ?? 0)]
     );
 }

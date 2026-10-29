@@ -1,3 +1,5 @@
+var omoUiText = window.omoUiText || function (key, fallback) { return fallback; };
+var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; };
 (function (window, document) {
     'use strict';
 
@@ -252,9 +254,9 @@
             loadedAttribute: 'data-omo-project-detail-documents-loaded',
             loadingAttribute: 'data-omo-project-detail-documents-loading',
             loadingTextKey: 'documentsLoading',
-            loadingFallback: 'Chargement...',
+            loadingFallback: omoUiText("chargement", "Chargement..."),
             errorTextKey: 'documentsError',
-            errorFallback: 'Impossible de charger les documents.'
+            errorFallback: omoUiText("impossible_de_charger_les_documents", "Impossible de charger les documents.")
         });
     }
 
@@ -266,9 +268,9 @@
             loadedAttribute: 'data-omo-project-detail-events-loaded',
             loadingAttribute: 'data-omo-project-detail-events-loading',
             loadingTextKey: 'eventsLoading',
-            loadingFallback: 'Chargement...',
+            loadingFallback: omoUiText("chargement", "Chargement..."),
             errorTextKey: 'eventsError',
-            errorFallback: 'Impossible de charger les événements.'
+            errorFallback: omoUiText("impossible_de_charger_les_evenements", "Impossible de charger les événements.")
         });
     }
 
@@ -280,9 +282,9 @@
             loadedAttribute: 'data-resource-loaded',
             loadingAttribute: 'data-resource-loading',
             loadingTextKey: 'documentsLoading',
-            loadingFallback: 'Chargement...',
+            loadingFallback: omoUiText("chargement", "Chargement..."),
             errorTextKey: 'documentsError',
-            errorFallback: 'Impossible de charger les éléments.'
+            errorFallback: omoUiText("impossible_de_charger_les_elements", "Impossible de charger les éléments.")
         });
     }
 
@@ -294,9 +296,9 @@
             loadedAttribute: 'data-omo-project-detail-history-loaded',
             loadingAttribute: 'data-omo-project-detail-history-loading',
             loadingTextKey: 'historyLoading',
-            loadingFallback: 'Chargement...',
+            loadingFallback: omoUiText("chargement", "Chargement..."),
             errorTextKey: 'historyError',
-            errorFallback: 'Impossible de charger l’historique.'
+            errorFallback: omoUiText("impossible_de_charger_l_historique", "Impossible de charger l’historique.")
         });
     }
 
@@ -2182,7 +2184,7 @@
             window.omoApplicationViewPreferencesSave(root, 'personal', next, 'save').then(function () {
                 return refreshRoot(buildProjectsUrl(next.scope, next.view, next.sort, next.assignment, currentQuickSearch));
             }).catch(function (error) {
-                var message = error && error.message ? error.message : 'Impossible d’enregistrer cette vue.';
+                var message = error && error.message ? error.message : omoUiText("impossible_d_enregistrer_cette_vue", "Impossible d’enregistrer cette vue.");
                 if (typeof window.omoNotify === 'function') {
                     window.omoNotify(message, 'error');
                 } else {

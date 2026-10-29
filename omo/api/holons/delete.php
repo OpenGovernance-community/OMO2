@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__) . '/bootstrap.php';
 
 use dbObject\Organization;
@@ -11,7 +12,7 @@ if ($organizationId <= 0) {
     echo json_encode(
         array(
             'status' => 'error',
-            'message' => "Aucune organisation n'est sélectionnée.",
+            'message' => omoHolonsUiT('aucune_organisation_n_est_selectionnee'),
         ),
         JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
     );
@@ -24,7 +25,7 @@ if (!$organization->load($organizationId)) {
     echo json_encode(
         array(
             'status' => 'error',
-            'message' => "L'organisation demandée est introuvable.",
+            'message' => omoHolonsUiT('l_organisation_demandee_est_introuvable'),
         ),
         JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
     );
@@ -42,7 +43,7 @@ if ($holonId <= 0) {
     echo json_encode(
         array(
             'status' => 'error',
-        'message' => 'L’espace à supprimer est invalide.',
+        'message' => omoHolonsUiT('l_espace_a_supprimer_est_invalide'),
         ),
         JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
     );
@@ -56,7 +57,7 @@ if (!($result['status'] ?? false)) {
     echo json_encode(
         array(
             'status' => 'error',
-        'message' => (string)($result['message'] ?? "L’espace n’a pas pu être supprimé."),
+        'message' => (string)($result['message'] ?? omoHolonsUiT('l_espace_n_a_pas_pu_etre_supprime')),
         ),
         JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
     );
@@ -66,7 +67,7 @@ if (!($result['status'] ?? false)) {
 echo json_encode(
     array(
         'status' => 'ok',
-        'message' => (string)($result['message'] ?? 'Espace supprimé.'),
+        'message' => (string)($result['message'] ?? omoHolonsUiT('espace_supprime')),
         'holon' => $result['holon'] ?? null,
         'parent' => $result['parent'] ?? null,
     ),

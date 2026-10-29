@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once __DIR__ . '/bootstrap.php';
 
 commonRestoreRememberedUser();
@@ -19,7 +20,7 @@ if ($currentUserId <= 0 || !$hasOrganizationAccess || $organizationId <= 0 || $p
     echo json_encode([
         'status' => false,
         'success' => false,
-        'message' => 'Acces refuse.',
+        'message' => omoLmsUiT('acces_refuse'),
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -33,7 +34,7 @@ if ($link === null || !($pack instanceof \dbObject\Parcours) || !$pack->isOwnedB
     echo json_encode([
         'status' => false,
         'success' => false,
-        'message' => 'Pack introuvable.',
+        'message' => omoLmsUiT('pack_introuvable'),
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -43,7 +44,7 @@ if (empty($managementContext['canEditContent'])) {
     echo json_encode([
         'status' => false,
         'success' => false,
-        'message' => 'Vous n avez pas le droit de modifier ce parcours.',
+        'message' => omoLmsUiT('vous_n_avez_pas_le_droit_de_modifier_ce_parcours'),
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -53,7 +54,7 @@ if (!$childParcours->load($childParcoursId) || !$childParcours->isOwnedByOrganiz
     echo json_encode([
         'status' => false,
         'success' => false,
-        'message' => 'Parcours enfant introuvable ou non autorise.',
+        'message' => omoLmsUiT('parcours_enfant_introuvable_ou_non_autorise'),
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }

@@ -1,3 +1,5 @@
+var omoUiText = window.omoUiText || function (key, fallback) { return fallback; };
+var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; };
 window.commonPageScripts = window.commonPageScripts || {};
 window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConfig, pageScript) {
 (function () {
@@ -836,7 +838,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         return '<span class="omo-decision-embed" contenteditable="false" data-omo-embed-type="decision"'
             + ' data-omo-decision-id="' + String(decisionId) + '"'
             + ' data-omo-decision-title="' + escapeDocumentEmbedHtml(title) + '"'
-            + (typeLabel !== '' ? ' data-omo-decision-type="' + escapeDocumentEmbedHtml(typeLabel) + '"' : '')
+            + (typeLabel !== '' ? " data-omo-decision-type=\"" + escapeDocumentEmbedHtml(typeLabel) + '"' : '')
             + (summary !== '' ? ' data-omo-decision-summary="' + escapeDocumentEmbedHtml(summary) + '"' : '')
             + '><strong><a class="omo-decision-embed__title" href="#decision-d' + String(decisionId) + '">' + escapeDocumentEmbedHtml(title) + '</a></strong>'
             + (displaySummary !== '' ? '<em>' + escapeDocumentEmbedHtml(displaySummary) + '</em>' : '')
@@ -913,7 +915,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
     function buildPvChecklistEmbedHtml(item) {
         const checklistId = Number.parseInt(String(item && item.id || ''), 10);
         if (!Number.isInteger(checklistId) || checklistId <= 0) return '';
-        const title = String(item.title || '').trim() || ('Processus #' + String(checklistId));
+        const title = String(item.title || '').trim() || (omoUiText("processus", "Processus #") + String(checklistId));
         const summary = String(item.contextLabel || '').trim();
         return '<span class="omo-checklist-embed" contenteditable="false" data-omo-embed-type="checklist" data-omo-checklist-id="' + String(checklistId) + '" data-omo-checklist-title="' + escapeDocumentEmbedHtml(title) + '"><strong><a href="#processus-c' + String(checklistId) + '">' + escapeDocumentEmbedHtml(title) + '</a></strong>' + (summary ? '<em>' + escapeDocumentEmbedHtml(summary) + '</em>' : '') + '</span>';
     }
@@ -1431,14 +1433,14 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
             : indicatorItem && indicatorItem.isOverdue
             ? (overdueSeverity === 'warning' ? ' omo-indicator-embed__status-dot--warning' : ' omo-indicator-embed__status-dot--overdue')
             : (statusLabel !== '' ? ' omo-indicator-embed__status-dot--current' : ' omo-indicator-embed__status-dot--unknown');
-        return '<span class="omo-indicator-embed' + statusClass + '" contenteditable="false" data-omo-embed-type="indicator"'
+        return '<span class="omo-indicator-embed' + statusClass + "\" contenteditable=\"false\" data-omo-embed-type=\"indicator\""
             + ' data-omo-indicator-id="' + String(indicatorId) + '"'
             + ' data-omo-indicator-kind="' + indicatorKind + '"'
-            + (sourceStatus !== 'current' ? ' data-omo-indicator-source-status="' + sourceStatus + '"' : '')
+            + (sourceStatus !== 'current' ? " data-omo-indicator-source-status=\"" + sourceStatus + '"' : '')
             + ' data-omo-indicator-title="' + escapeDocumentEmbedHtml(title) + '"'
             + (description !== '' ? ' data-omo-indicator-description="' + escapeDocumentEmbedHtml(description) + '"' : '')
             + (valueLabel !== '' ? ' data-omo-indicator-value="' + escapeDocumentEmbedHtml(valueLabel) + '"' : '')
-            + (dateLabel !== '' ? ' data-omo-indicator-date="' + escapeDocumentEmbedHtml(dateLabel) + '"' : '')
+            + (dateLabel !== '' ? " data-omo-indicator-date=\"" + escapeDocumentEmbedHtml(dateLabel) + '"' : '')
             + (statusLabel !== '' ? ' data-omo-indicator-status="' + escapeDocumentEmbedHtml(statusLabel) + '"' : '')
             + (contextLabel !== '' ? ' data-omo-indicator-context="' + escapeDocumentEmbedHtml(contextLabel) + '"' : '')
             + (chartMinLabel !== '' ? ' data-omo-indicator-chart-min="' + escapeDocumentEmbedHtml(chartMinLabel) + '"' : '')
@@ -2332,7 +2334,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         const onReady = function () {
             ensureHighlightPalette(callback);
         };
-        const htmlFieldVersion = '20261009-html-editor-placeholder';
+        const htmlFieldVersion = '20261029-translations';
         if (
             window.omoSimpleHtmlField
             && typeof window.omoSimpleHtmlField.mount === 'function'
@@ -3831,7 +3833,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
         const summary = card.querySelector('[data-omo-pv-point-priority-menu="' + pointId + '"] > summary');
         if (summary instanceof Element) {
             summary.className = 'omo-pv-editor__priority-circle omo-pv-editor__priority-circle--p' + level;
-            const label = String(pvPriorityFieldLabel || 'Priorite') + ' ' + priorityLabel;
+            const label = String(pvPriorityFieldLabel || "Priorité") + ' ' + priorityLabel;
             summary.setAttribute('aria-label', label);
             summary.setAttribute('title', label);
             const hiddenLabel = summary.querySelector('.omo-pv-editor__sr-only');
@@ -6308,7 +6310,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
                     if (payload && payload.point) replacePointProposalsHtml(payload.point);
                 })
                 .catch(function (payload) {
-                    window.omoNotify(String(payload && payload.message || 'Impossible de supprimer la modification.'), 'error');
+                    window.omoNotify(String(payload && payload.message || omoUiText("impossible_de_supprimer_la_modification", "Impossible de supprimer la modification.")), 'error');
                     if (proposalDeleteButton.isConnected) proposalDeleteButton.disabled = false;
                 });
             return;
@@ -7000,7 +7002,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
             const invitationUrl = String(invitationsButton.getAttribute('data-omo-pv-invitations-url') || '').trim();
             const invitationTitle = String(invitationsButton.getAttribute('data-omo-pv-invitations-title') || '').trim();
             if (invitationUrl && typeof window.commonTopbarOpenModal === 'function') {
-                window.commonTopbarOpenModal(invitationTitle || 'Invités', invitationUrl, 'fetch');
+                window.commonTopbarOpenModal(invitationTitle || omoUiText("invites_2", "Invités"), invitationUrl, 'fetch');
             }
         });
     }
@@ -7035,7 +7037,7 @@ window.commonPageScripts["/omo/api/documents/pv/editor.js"] = function (pageConf
             const invitationTitle = String(invitationsSendButton.getAttribute('data-omo-pv-invitations-send-title') || '').trim();
             closeInvitationsMenu();
             if (invitationUrl && typeof window.commonTopbarOpenModal === 'function') {
-                window.commonTopbarOpenModal(invitationTitle || 'Envoyer un e-mail aux participants', invitationUrl, 'fetch');
+                window.commonTopbarOpenModal(invitationTitle || omoUiText("envoyer_un_e_mail_aux_participants", "Envoyer un e-mail aux participants"), invitationUrl, 'fetch');
             }
         });
     });

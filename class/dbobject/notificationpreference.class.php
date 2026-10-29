@@ -27,7 +27,7 @@ class NotificationPreference extends DbObject
         return [
             'IDuser' => 'Utilisateur',
             'IDorganization' => 'Organisation',
-            'event_key' => 'Evenement',
+            'event_key' => 'Événement',
             'channel_push' => 'Notification',
             'channel_telegram' => 'Telegram',
             'channel_email' => 'E-mail',

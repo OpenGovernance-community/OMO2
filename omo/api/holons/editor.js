@@ -1,3 +1,5 @@
+var omoUiText = window.omoUiText || function (key, fallback) { return fallback; };
+var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; };
 window.commonPageScripts = window.commonPageScripts || {};
 window.commonPageScripts["/omo/api/holons/editor.js"] = function (pageConfig, pageScript) {
 (() => {
@@ -278,10 +280,10 @@ function buildPermissionSummary(assignments) {
     });
 
     if (!titles.length) {
-        return 'Droits associés à l’élément : aucun';
+        return omoUiText("droits_associes_a_l_element_aucun", "Droits associés à l’élément : aucun");
     }
 
-    return 'Droits associés à l’élément : ' + titles.join(', ');
+    return omoUiText("droits_associes_a_l_element", "Droits associés à l’élément : ") + titles.join(', ');
 }
 
 function getPermissionTitle(permissionKey) {
@@ -312,7 +314,7 @@ function renderPermissionSummaryCapsules(items, emptyText) {
 function buildLocalPermissionSummaryItems(assignments) {
     const defaultRangeOptions = getPermissionRangeOptions();
     const profiles = normalizePermissionProfiles(assignments);
-    const profileLabels = { member: 'Membres', admin: adminLexiconLabel, collective: 'Collectif' };
+    const profileLabels = { member: omoUiText("membres", "Membres"), admin: adminLexiconLabel, collective: omoUiText("collectif", "Collectif") };
     const items = [];
 
     Object.keys(profiles).forEach(function (profileKey) {
@@ -346,7 +348,7 @@ function buildLocalPermissionSummaryItems(assignments) {
 function buildInheritedPermissionSummary(inheritedPermissions) {
     const profiles = normalizePermissionProfiles(inheritedPermissions);
     const visiblePermissionKeys = new Set(getPermissionCatalog().map(permission => permission.key));
-    const profileLabels = { member: 'Membres', admin: adminLexiconLabel, collective: 'Collectif' };
+    const profileLabels = { member: omoUiText("membres", "Membres"), admin: adminLexiconLabel, collective: omoUiText("collectif", "Collectif") };
     const items = [];
 
     Object.keys(profiles).forEach(function (profileKey) {
@@ -382,12 +384,12 @@ function syncPermissionSummary() {
     if (!permissionCatalog.length) {
         elements.permissionSummary.innerHTML = ''
             + '<div class="omo-holon-create__permission-summary-line">'
-            + '  <div class="omo-holon-create__permission-summary-label">Droits hérités</div>'
-            + '  <div class="omo-holon-create__permission-summary-empty">aucun droit disponible</div>'
+            + ("  <div class=\"omo-holon-create__permission-summary-label\">" + omoUiHtml("droits_herites", "Droits hérités") + "</div>")
+            + ("  <div class=\"omo-holon-create__permission-summary-empty\">" + omoUiHtml("aucun_droit_disponible", "aucun droit disponible") + "</div>")
             + '</div>'
             + '<div class="omo-holon-create__permission-summary-line">'
             +      renderLocalPermissionSummaryHeading()
-            + '  <div class="omo-holon-create__permission-summary-empty">aucun droit disponible</div>'
+            + ("  <div class=\"omo-holon-create__permission-summary-empty\">" + omoUiHtml("aucun_droit_disponible", "aucun droit disponible") + "</div>")
             + '</div>';
         return;
     }
@@ -396,12 +398,12 @@ function syncPermissionSummary() {
     const localItems = buildLocalPermissionSummaryItems(readPermissions());
     elements.permissionSummary.innerHTML = ''
         + '<div class="omo-holon-create__permission-summary-line">'
-        + '  <div class="omo-holon-create__permission-summary-label">Droits hérités</div>'
-        +      renderPermissionSummaryCapsules(inheritedItems, 'aucun')
+        + ("  <div class=\"omo-holon-create__permission-summary-label\">" + omoUiHtml("droits_herites", "Droits hérités") + "</div>")
+        +      renderPermissionSummaryCapsules(inheritedItems, omoUiText("aucun", "aucun"))
         + '</div>'
         + '<div class="omo-holon-create__permission-summary-line">'
         +      renderLocalPermissionSummaryHeading()
-        +      renderPermissionSummaryCapsules(localItems, 'aucun')
+        +      renderPermissionSummaryCapsules(localItems, omoUiText("aucun", "aucun"))
         + '</div>';
 }
 
@@ -410,7 +412,7 @@ function renderLocalPermissionSummaryHeading() {
     return ''
         + '<div class="omo-holon-create__permission-summary-heading">'
         + '  <div class="omo-holon-create__permission-summary-label">' + escapeHtml(directPermissionLabel) + '</div>'
-        + '  <button type="button" class="generic-action-button generic-action-button--secondary generic-action-button--compact" id="omo-holon-create-permissions-toggle" aria-expanded="' + (isExpanded ? 'true' : 'false') + '" aria-controls="omo-holon-create-permissions-editor">' + (isExpanded ? 'Fermer' : 'Éditer') + '</button>'
+        + '  <button type="button" class="generic-action-button generic-action-button--secondary generic-action-button--compact" id="omo-holon-create-permissions-toggle" aria-expanded="' + (isExpanded ? 'true' : 'false') + '" aria-controls="omo-holon-create-permissions-editor">' + (isExpanded ? omoUiText("fermer", "Fermer") : omoUiText("editer", "Éditer")) + '</button>'
         + '</div>';
 }
 
@@ -421,16 +423,16 @@ function setPermissionEditorExpanded(isExpanded) {
 
     const permissionToggle = root.querySelector('#omo-holon-create-permissions-toggle');
     if (permissionToggle) {
-        permissionToggle.textContent = isExpanded ? 'Fermer' : 'Éditer';
+        permissionToggle.textContent = isExpanded ? omoUiText("fermer", "Fermer") : omoUiText("editer", "Éditer");
         permissionToggle.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
     }
 }
 
 function getPermissionProfiles() {
     return [
-        { key: 'member', label: 'Membres' },
+        { key: 'member', label: omoUiText("membres", "Membres") },
         { key: 'admin', label: adminLexiconLabel },
-        { key: 'collective', label: 'Collectif' }
+        { key: 'collective', label: omoUiText("collectif", "Collectif") }
     ];
 }
 
@@ -476,7 +478,7 @@ function setPermissionRowRanges(row, selectedAssignments, rangeOptions, profiles
     }
 
     if (!normalizedRanges.length) {
-        tokensContainer.innerHTML = '<span class="omo-holon-create__permission-empty">Aucune portee selectionnee.</span>';
+        tokensContainer.innerHTML = ("<span class=\"omo-holon-create__permission-empty\">" + omoUiHtml("aucune_portee_selectionnee", "Aucune portée sélectionnée.") + "</span>");
     } else {
         tokensContainer.innerHTML = normalizedRanges.map(function (rangeKey) {
             return ''
@@ -554,7 +556,7 @@ function renderPermissions(permissionAssignments) {
     }
 
     if (!permissionCatalog.length) {
-        elements.permissions.innerHTML = '<div class="omo-holon-create__empty-note generic-description generic-description--compact">Aucun droit n est disponible.</div>';
+        elements.permissions.innerHTML = ("<div class=\"omo-holon-create__empty-note generic-description generic-description--compact\">" + omoUiHtml("aucun_droit_n_est_disponible", "Aucun droit n’est disponible.") + "</div>");
         syncPermissionSummary();
         return;
     }
@@ -582,7 +584,7 @@ function renderPermissions(permissionAssignments) {
             html += '</div><div class="omo-holon-create__permission-picker">'
                 + '<div class="omo-holon-create__permission-tokens" data-permission-tokens></div>'
                 + '<select class="omo-holon-create__permission-select generic-form-control" data-permission-select>'
-                + '<option value="">Ajouter une portée...</option>';
+                + ("<option value=\"\">" + omoUiHtml("ajouter_une_portee", "Ajouter une portée...") + "</option>");
 
             permissionRangeOptions.forEach(function (range) {
                 html += '<option value="' + escapeHtml(range.key) + '">' + escapeHtml(range.label || range.key) + '</option>';
@@ -622,7 +624,7 @@ function groupPermissionCatalog(permissionCatalog) {
         if (!groupsByKey[key]) {
             groupsByKey[key] = {
                 key: key,
-                title: String(permission && permission.groupTitle ? permission.groupTitle : 'Autres droits'),
+                title: String(permission && permission.groupTitle ? permission.groupTitle : omoUiText("autres_droits", "Autres droits")),
                 order: Number(permission && permission.groupOrder ? permission.groupOrder : 999),
                 permissions: []
             };
@@ -735,7 +737,7 @@ function syncNameField(template) {
         elements.name.disabled = true;
         elements.name.required = false;
         if (elements.nameHelp) {
-            elements.nameHelp.textContent = 'Le nom est verrouillé par le modèle.';
+            elements.nameHelp.textContent = omoUiText("le_nom_est_verrouille_par_le_modele", "Le nom est verrouillé par le modèle.");
         }
         return;
     }
@@ -750,7 +752,7 @@ function syncNameField(template) {
     elements.name.required = !isUnique;
     if (elements.nameHelp) {
         elements.nameHelp.textContent = isUnique
-            ? 'Si le nom est vide, celui du modèle sera utilisé.'
+            ? omoUiText("si_le_nom_est_vide_celui_du_modele_sera_utilise", "Si le nom est vide, celui du modèle sera utilisé.")
             : '';
     }
 }
@@ -815,14 +817,14 @@ function syncAdminBounds(template) {
     if (elements.adminBoundsHelp) {
         const locked = [];
         if (minLocked) {
-            locked.push('minimum verrouille');
+            locked.push(omoUiText("minimum_verrouille", "minimum verrouillé"));
         }
         if (maxLocked) {
-            locked.push('maximum verrouille');
+            locked.push(omoUiText("maximum_verrouille", "maximum verrouillé"));
         }
         elements.adminBoundsHelp.textContent = locked.length
-            ? 'Le modèle impose le ' + locked.join(' et le ') + '.'
-            : 'Cochez Redéfinir pour appliquer une limite propre à ce holon.';
+            ? omoUiText("le_modele_impose_le", "Le modèle impose le ") + locked.join(' et le ') + '.'
+            : omoUiText("cochez_redefinir_pour_appliquer_une_limite_propre_a_ce_holon", "Cochez Redéfinir pour appliquer une limite propre à ce holon.");
     }
 }
 
@@ -832,7 +834,7 @@ function getMediaDisplayConfig() {
         displayHeight: 160,
         targetWidth: 320,
         targetHeight: 320,
-        emptyText: 'Aucune icône définie pour ce holon.'
+        emptyText: omoUiText("aucune_icone_definie_pour_ce_holon", "Aucune icône définie pour ce holon.")
     };
 }
 
@@ -860,7 +862,7 @@ function renderMediaFields(template) {
     }
 
     [
-        ['icon', elements.iconField, 'Icône']
+        ['icon', elements.iconField, omoUiText("icone", "Icône")]
     ].forEach(function (entry) {
         const kind = entry[0];
         const target = entry[1];
@@ -883,9 +885,9 @@ function renderMediaFields(template) {
             targetHeight: config.targetHeight,
             emptyText: config.emptyText,
             labels: {
-                choose: 'Choisir une ' + label.toLowerCase(),
-                clear: 'Effacer',
-                zoom: 'Zoom'
+                choose: omoUiText("choisir_une", "Choisir une ") + label.toLowerCase(),
+                clear: omoUiText("effacer", "Effacer"),
+                zoom: omoUiText("zoom", "Zoom")
             }
         });
     });
@@ -924,11 +926,11 @@ function renderSimpleListRow(listItemType, value) {
             + '<div class="omo-holon-create__list-row omo-holon-create__list-row--detail">'
             + '  <div class="omo-holon-create__list-detail-fields">'
             + '      <input type="text" class="omo-holon-create__property-value-item omo-holon-create__property-value-item--detail-title generic-form-control" value="' + escapeHtml(detailItem.title) + '" placeholder="Titre">'
-            + '      <textarea class="omo-holon-create__property-value-item omo-holon-create__property-value-item--detail-description generic-form-control" rows="3" placeholder="Description">' + escapeHtml(detailItem.description) + '</textarea>'
+            + ("      <textarea class=\"omo-holon-create__property-value-item omo-holon-create__property-value-item--detail-description generic-form-control\" rows=\"3\" placeholder=\"" + omoUiHtml("description", "Description") + "\">") + escapeHtml(detailItem.description) + '</textarea>'
             + '  </div>'
-            + '  <button type="button" class="generic-action-button generic-action-button--secondary generic-action-button--icon-only omo-holon-create__list-move" data-list-move="-1" aria-label="Monter">&#8593;</button>'
-            + '  <button type="button" class="generic-action-button generic-action-button--secondary generic-action-button--icon-only omo-holon-create__list-move" data-list-move="1" aria-label="Descendre">&#8595;</button>'
-            + '  <button type="button" class="generic-action-button generic-action-button--secondary generic-action-button--icon-only omo-holon-create__list-remove" data-list-remove="1" aria-label="Retirer">&times;</button>'
+            + ("  <button type=\"button\" class=\"generic-action-button generic-action-button--secondary generic-action-button--icon-only omo-holon-create__list-move\" data-list-move=\"-1\" aria-label=\"" + omoUiHtml("monter", "Monter") + "\">&#8593;</button>")
+            + ("  <button type=\"button\" class=\"generic-action-button generic-action-button--secondary generic-action-button--icon-only omo-holon-create__list-move\" data-list-move=\"1\" aria-label=\"" + omoUiHtml("descendre", "Descendre") + "\">&#8595;</button>")
+            + ("  <button type=\"button\" class=\"generic-action-button generic-action-button--secondary generic-action-button--icon-only omo-holon-create__list-remove\" data-list-remove=\"1\" aria-label=\"" + omoUiHtml("retirer", "Retirer") + "\">&times;</button>")
             + '</div>';
     }
 
@@ -936,10 +938,10 @@ function renderSimpleListRow(listItemType, value) {
     const stepAttribute = inputType === 'number' ? ' step="any"' : '';
     return ''
         + '<div class="omo-holon-create__list-row">'
-        + '  <input type="' + inputType + '" class="omo-holon-create__property-value-item generic-form-control" value="' + escapeHtml(value !== undefined && value !== null ? value : '') + '"' + stepAttribute + '>'
-        + '  <button type="button" class="generic-action-button generic-action-button--secondary generic-action-button--icon-only omo-holon-create__list-move" data-list-move="-1" aria-label="Monter">&#8593;</button>'
-        + '  <button type="button" class="generic-action-button generic-action-button--secondary generic-action-button--icon-only omo-holon-create__list-move" data-list-move="1" aria-label="Descendre">&#8595;</button>'
-        + '  <button type="button" class="generic-action-button generic-action-button--secondary generic-action-button--icon-only omo-holon-create__list-remove" data-list-remove="1" aria-label="Retirer">&times;</button>'
+        + '  <input type="' + inputType + "\" class=\"omo-holon-create__property-value-item generic-form-control\" value=\"" + escapeHtml(value !== undefined && value !== null ? value : '') + '"' + stepAttribute + '>'
+        + ("  <button type=\"button\" class=\"generic-action-button generic-action-button--secondary generic-action-button--icon-only omo-holon-create__list-move\" data-list-move=\"-1\" aria-label=\"" + omoUiHtml("monter", "Monter") + "\">&#8593;</button>")
+        + ("  <button type=\"button\" class=\"generic-action-button generic-action-button--secondary generic-action-button--icon-only omo-holon-create__list-move\" data-list-move=\"1\" aria-label=\"" + omoUiHtml("descendre", "Descendre") + "\">&#8595;</button>")
+        + ("  <button type=\"button\" class=\"generic-action-button generic-action-button--secondary generic-action-button--icon-only omo-holon-create__list-remove\" data-list-remove=\"1\" aria-label=\"" + omoUiHtml("retirer", "Retirer") + "\">&times;</button>")
         + '</div>';
 }
 
@@ -953,7 +955,7 @@ function renderSimpleListInput(listItemType, values) {
             return renderSimpleListRow(listItemType, item);
         }).join('')
         + '  </div>'
-        + '  <div class="generic-action-row generic-action-row--start"><button type="button" class="generic-action-button generic-action-button--main omo-holon-create__list-add" data-list-add="1">Ajouter une valeur</button></div>'
+        + ("  <div class=\"generic-action-row generic-action-row--start\"><button type=\"button\" class=\"generic-action-button generic-action-button--main omo-holon-create__list-add\" data-list-add=\"1\">" + omoUiHtml("ajouter_une_valeur", "Ajouter une valeur") + "</button></div>")
         + '</div>';
 }
 
@@ -1023,9 +1025,9 @@ function updateAuthorityDeletionCounts(authorityRow) {
         getChoice('children', 'reassign')
     );
     const counts = {
-        authority: formatAuthorityDeletionCount(1, 'autorité', 'autorités'),
+        authority: formatAuthorityDeletionCount(1, omoUiText("autorite", "autorité"), omoUiText("autorites", "autorités")),
         children: formatAuthorityDeletionCount(impact.descendants, 'sous-autorité', 'sous-autorités'),
-        rules: formatAuthorityDeletionCount(impact.rules, 'regle concernee', 'regles concernees')
+        rules: formatAuthorityDeletionCount(impact.rules, omoUiText("regle_concernee", "règle concernée"), 'regles concernees')
     };
     Object.keys(counts).forEach(function (name) {
         authorityRow.querySelectorAll('[data-authority-deletion-count="' + name + '"]').forEach(function (element) {
@@ -1094,12 +1096,12 @@ function renderAuthorityDeletionChoices(authorityId, draft) {
     const prefix = 'authority-delete-' + String(authorityId);
     return ''
         + '<div class="omo-holon-create__authority-deletion" data-authority-deletion-options>'
-        + '  <p>Choisissez ce qui doit etre conserve avant validation.</p>'
-        + '  <fieldset><legend>Cette autorité</legend>'
+        + ("  <p>" + omoUiHtml("choisissez_ce_qui_doit_etre_conserve_avant_validation", "Choisissez ce qui doit être conservé avant validation.") + "</p>")
+        + ("  <fieldset><legend>" + omoUiHtml("cette_autorite", "Cette autorité") + "</legend>")
         + '    <label><input type="radio" name="' + prefix + '-authority" value="delete" data-authority-deletion-choice="authority"' + checked('authority', 'delete', 'reassign') + '> Supprimer definitivement</label>'
             + '    <label><input type="radio" name="' + prefix + '-authority" value="reassign" data-authority-deletion-choice="authority"' + checked('authority', 'reassign', 'reassign') + '> Remonter à l’espace parent</label>'
         + '  </fieldset>'
-        + '  <p>Les sous-autorites et les regles seront conservees et rattachees a leur autorite parente si possible.</p>'
+        + ("  <p>" + omoUiHtml("les_sous_autorites_et_les_regles_seront_conservees_et_rattachees_a_leur_autorite_parente_s", "Les sous-autorités et les règles seront conservées et rattachées à leur autorité parente si possible.") + "</p>")
         + '</div>';
 }
 
@@ -1110,13 +1112,13 @@ function renderAuthorityListRow(value) {
     }) : null;
     const draft = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
     if (authorityId > 0 && !draft.editing) {
-        const label = authority ? String(authority.label || '') : 'Autorite #' + String(authorityId);
+        const label = authority ? String(authority.label || '') : omoUiText("autorite_3", "Autorité #") + String(authorityId);
         const authorityPath = authority ? String(authority.pathLabel || authority.holonLabel || '') : '';
         const detailsPrefix = authority
             ? (authority.templateOriginLost
-                ? 'Origine du modèle supprimée'
+                ? omoUiText("origine_du_modele_supprimee", "Origine du modèle supprimée")
                 : (authority.isTemplateInstance || authority.isTemplateSource
-                    ? 'Définie par le modèle'
+                    ? omoUiText("definie_par_le_modele", "Définie par le modèle")
                     : (authority.needsParent ? 'A rattacher manuellement' : '')))
             : '';
         const details = detailsPrefix + (detailsPrefix && authorityPath ? ' - ' : '') + authorityPath;
@@ -1129,7 +1131,7 @@ function renderAuthorityListRow(value) {
             + (isManagedTemplateAuthority || !authority
                 ? '  <div class="omo-holon-create__authority-edit" aria-disabled="true">' + labelMarkup + (details ? '<small>' + escapeHtml(details) + '</small>' : '') + '</div>'
                 : '  <button type="button" class="omo-holon-create__authority-edit" data-authority-edit="1">' + labelMarkup + (details ? '<small>' + escapeHtml(details) + '</small>' : '') + '</button>')
-            + (isManagedTemplateAuthority ? '' : '  <button type="button" class="generic-action-button generic-action-button--secondary generic-action-button--icon-only" data-authority-delete="1" aria-label="Supprimer l’autorité">&times;</button>')
+            + (isManagedTemplateAuthority ? '' : ("  <button type=\"button\" class=\"generic-action-button generic-action-button--secondary generic-action-button--icon-only\" data-authority-delete=\"1\" aria-label=\"" + omoUiHtml("supprimer_l_autorite", "Supprimer l’autorité") + "\">&times;</button>"))
             + (isManagedTemplateAuthority ? '' : renderAuthorityDeletionChoices(authorityId, draft))
             + '</div>';
     }
@@ -1165,13 +1167,13 @@ function renderAuthorityListRow(value) {
         + '      </select>';
     const authorityDetails = (authorityId > 0 || parentId > 0 || rootAuthoritySelected) && (authorityId > 0 || delegationMode !== 'complete')
         ? '      <input type="text" class="omo-holon-create__authority-label generic-form-control" value="' + escapeHtml(label) + '" placeholder="Nouvelle autorité">'
-            + '      <textarea class="omo-holon-create__authority-description generic-form-control" rows="3" placeholder="Description">' + escapeHtml(description) + '</textarea>'
+            + ("      <textarea class=\"omo-holon-create__authority-description generic-form-control\" rows=\"3\" placeholder=\"" + omoUiHtml("description", "Description") + "\">") + escapeHtml(description) + '</textarea>'
         : parentId > 0 && delegationMode === 'complete'
-            ? '      <div class="omo-holon-create__authority-complete-note">L autorite parente sera deleguee completement. Une coquille sera conservee si le chemin doit rester marque.</div>'
+            ? ("      <div class=\"omo-holon-create__authority-complete-note\">" + omoUiHtml("l_autorite_parente_sera_deleguee_completement_une_coquille_sera_conservee_si_le_chemin_doi", "L’autorité parente sera déléguée complètement. Une coquille sera conservée si le chemin doit rester marqué.") + "</div>")
             : '';
     const rootOption = canCreateRootAuthority()
         ? '<option value="0"' + (parentId <= 0 ? ' selected' : '') + '>Sans racine</option>'
-        : '<option value="0">Autorite parente</option>';
+        : ("<option value=\"0\">" + omoUiHtml("autorite_parente", "Autorité parente") + "</option>");
 
     return ''
         + '<div class="omo-holon-create__authority-row" data-authority-entry' + (authorityId > 0 ? ' data-authority-id="' + authorityId + '"' : '') + '>'
@@ -1192,15 +1194,15 @@ function renderAuthorityListInput(values) {
     const rows = Array.isArray(values) && values.length ? values : [];
     const canCreateAuthority = authorities.length > 0 || canCreateRootAuthority();
     if (!canCreateAuthority && !rows.length) {
-        return '<div class="omo-holon-create__empty-note generic-description generic-description--compact">Une autorité parente existante est nécessaire avant de pouvoir en créer une nouvelle.</div>';
+        return ("<div class=\"omo-holon-create__empty-note generic-description generic-description--compact\">" + omoUiHtml("une_autorite_parente_existante_est_necessaire_avant_de_pouvoir_en_creer_une_nouvelle", "Une autorité parente existante est nécessaire avant de pouvoir en créer une nouvelle.") + "</div>");
     }
 
     return ''
         + '<div class="omo-holon-create__authority-list">'
         + '  <div class="omo-holon-create__authority-items">' + rows.map(renderAuthorityListRow).join('') + '</div>'
         + (canCreateAuthority
-            ? '  <div class="generic-action-row generic-action-row--start"><button type="button" class="generic-action-button generic-action-button--main" data-authority-add="1">Ajouter une autorité</button></div>'
-            : '  <div class="omo-holon-create__empty-note generic-description generic-description--compact">Les autorités existantes restent disponibles, mais une autorité parente est nécessaire pour en créer une nouvelle.</div>')
+            ? ("  <div class=\"generic-action-row generic-action-row--start\"><button type=\"button\" class=\"generic-action-button generic-action-button--main\" data-authority-add=\"1\">" + omoUiHtml("ajouter_une_autorite", "Ajouter une autorité") + "</button></div>")
+            : ("  <div class=\"omo-holon-create__empty-note generic-description generic-description--compact\">" + omoUiHtml("les_autorites_existantes_restent_disponibles_mais_une_autorite_parente_est_necessaire_pour", "Les autorités existantes restent disponibles, mais une autorité parente est nécessaire pour en créer une nouvelle.") + "</div>"))
         + '</div>';
 }
 
@@ -1428,7 +1430,7 @@ function renderPropertyInput(property) {
             const selectedIds = parseStoredListValue(localValue).map(Number);
 
             if (!holonOptions.length) {
-        return '<div class="omo-holon-create__empty-note generic-description generic-description--compact">Aucun élément disponible pour les types autorisés.</div>';
+        return ("<div class=\"omo-holon-create__empty-note generic-description generic-description--compact\">" + omoUiHtml("aucun_element_disponible_pour_les_types_autorises", "Aucun élément disponible pour les types autorisés.") + "</div>");
             }
 
             return '<div class="omo-holon-create__check-grid">'
@@ -1455,7 +1457,7 @@ function renderPropertyInput(property) {
         let parts = {};
         try { parts = JSON.parse(localValue) || {}; } catch (error) {}
         return '<input type="text" class="omo-holon-create__property-value-text-html-title generic-form-control" value="' + escapeHtml(parts.text || '') + '" placeholder="Texte affiche">'
-            + '<textarea class="omo-holon-create__property-value-text-html-detail generic-form-control" rows="5" placeholder="Detail HTML">' + escapeHtml(parts.detail || '') + '</textarea>';
+            + ("<textarea class=\"omo-holon-create__property-value-text-html-detail generic-form-control\" rows=\"5\" placeholder=\"" + omoUiHtml("detail_html", "Détail HTML") + "\">") + escapeHtml(parts.detail || '') + '</textarea>';
     }
 
     if (formatId === 7) {
@@ -1479,7 +1481,7 @@ function renderPropertyInput(property) {
         return '<div class="omo-holon-create__html-editor"></div>';
     }
 
-    return '<textarea class="omo-holon-create__property-value generic-form-control" rows="4" placeholder="Renseignez une valeur locale si nécessaire.">' + escapeHtml(localValue) + '</textarea>';
+    return ("<textarea class=\"omo-holon-create__property-value generic-form-control\" rows=\"4\" placeholder=\"" + omoUiHtml("renseignez_une_valeur_locale_si_necessaire", "Renseignez une valeur locale si nécessaire.") + "\">") + escapeHtml(localValue) + '</textarea>';
 }
 
 // Formate holon hérité
@@ -1537,7 +1539,7 @@ function renderReadonlyListContent(property, rawValue) {
         return '<div class="omo-holon-create__inherited-detail-list">'
             + items.map(function (item) {
                 return '<details class="generic-accordion generic-accordion--inset omo-holon-create__detail-card">'
-                    + '<summary>' + escapeHtml(item.title || 'Element') + '</summary>'
+                    + '<summary>' + escapeHtml(item.title || omoUiText("element", "Élément")) + '</summary>'
                     + (item.description !== ''
                         ? '<div class="omo-holon-create__detail-body">' + escapeHtml(item.description).replace(/\n/g, '<br>') + '</div>'
                         : '')
@@ -1615,12 +1617,12 @@ function renderInheritedValue(property) {
         if (String(property.listItemType || 'text') === 'detail') {
             return ''
                 + '<div class="omo-holon-create__inherited">'
-                + '  <div class="omo-holon-create__inherited-label generic-card-title generic-card-title--eyebrow">Valeur héritée</div>'
+                + ("  <div class=\"omo-holon-create__inherited-label generic-card-title generic-card-title--eyebrow\">" + omoUiHtml("valeur_heritee", "Valeur héritée") + "</div>")
                 + '  <div class="omo-holon-create__inherited-detail-list">'
                 + items.map(function (item) {
                     return ''
                         + '<details class="generic-accordion generic-accordion--inset omo-holon-create__detail-card">'
-                        + '  <summary>' + escapeHtml(item.title || 'Element') + '</summary>'
+                        + '  <summary>' + escapeHtml(item.title || omoUiText("element", "Élément")) + '</summary>'
                         + (item.description !== ''
                             ? '  <div class="omo-holon-create__detail-body">' + escapeHtml(item.description).replace(/\n/g, '<br>') + '</div>'
                             : '')
@@ -1632,7 +1634,7 @@ function renderInheritedValue(property) {
 
         return ''
             + '<div class="omo-holon-create__inherited">'
-            + '  <div class="omo-holon-create__inherited-label generic-card-title generic-card-title--eyebrow">Valeur héritée</div>'
+            + ("  <div class=\"omo-holon-create__inherited-label generic-card-title generic-card-title--eyebrow\">" + omoUiHtml("valeur_heritee", "Valeur héritée") + "</div>")
             + '  <ul class="omo-holon-create__inherited-list">'
             + items.map(function (item) {
                 return '<li>' + escapeHtml(item) + '</li>';
@@ -1644,14 +1646,14 @@ function renderInheritedValue(property) {
     if (Number(property.formatId || 0) === 5) {
         return ''
             + '<div class="omo-holon-create__inherited">'
-            + '  <div class="omo-holon-create__inherited-label generic-card-title generic-card-title--eyebrow">Valeur héritée</div>'
+            + ("  <div class=\"omo-holon-create__inherited-label generic-card-title generic-card-title--eyebrow\">" + omoUiHtml("valeur_heritee", "Valeur héritée") + "</div>")
             +       renderHtmlPreview(inheritedValue, 'omo-holon-create__inherited-text generic-meta')
             + '</div>';
     }
 
     return ''
         + '<div class="omo-holon-create__inherited">'
-        + '  <div class="omo-holon-create__inherited-label generic-card-title generic-card-title--eyebrow">Valeur héritée</div>'
+        + ("  <div class=\"omo-holon-create__inherited-label generic-card-title generic-card-title--eyebrow\">" + omoUiHtml("valeur_heritee", "Valeur héritée") + "</div>")
         + '  <div class="omo-holon-create__inherited-text generic-meta">' + escapeHtml(inheritedValue).replace(/\n/g, '<br>') + '</div>'
         + '</div>';
 }
@@ -1690,7 +1692,7 @@ function renderDirectPropertyListConfig(property, disabled) {
 
     return ''
         + '<label class="omo-holon-create__field generic-form-field">'
-        + '  <span>Type des elements</span>'
+        + ("  <span>" + omoUiHtml("type_des_elements", "Type des éléments") + "</span>")
         + '  <select class="omo-holon-create__direct-property-list-type generic-form-control"' + disabledAttribute + '>' + itemTypeOptions + '</select>'
         + '</label>'
         + holonTypeOptions;
@@ -1707,8 +1709,8 @@ function renderDirectPropertyDefinition(property) {
     return ''
         + '<div class="omo-holon-create__direct-property-definition generic-soft-panel">'
         + '  <div class="omo-holon-create__grid">'
-        + '    <label class="omo-holon-create__field generic-form-field"><span>Nom de la propriété</span><input type="text" class="omo-holon-create__direct-property-name generic-form-control" maxlength="255" value="' + escapeHtml(property.name || '') + '"' + disabledAttribute + '></label>'
-        + '    <label class="omo-holon-create__field generic-form-field"><span>Format</span><select class="omo-holon-create__direct-property-format generic-form-control"' + disabledAttribute + '>' + getPropertyFormatOptions(property.formatId) + '</select></label>'
+        + ("    <label class=\"omo-holon-create__field generic-form-field\"><span>" + omoUiHtml("nom_de_la_propriete", "Nom de la propriété") + "</span><input type=\"text\" class=\"omo-holon-create__direct-property-name generic-form-control\" maxlength=\"255\" value=\"") + escapeHtml(property.name || '') + '"' + disabledAttribute + '></label>'
+        + ("    <label class=\"omo-holon-create__field generic-form-field\"><span>" + omoUiHtml("format", "Format") + "</span><select class=\"omo-holon-create__direct-property-format generic-form-control\"") + disabledAttribute + '>' + getPropertyFormatOptions(property.formatId) + '</select></label>'
         +      window.omoPropertyTypes.render(property, state.data.propertyTypes, pageConfig.propertyTypeLabel, !disabled)
         +      renderDirectPropertyListConfig(property, disabled)
         + '  </div>'
@@ -1749,10 +1751,10 @@ function createPropertyRow(property, index) {
         chips.push('<span class="omo-holon-create__chip omo-holon-create__chip--accent">' + escapeHtml(property.formatName) + '</span>');
     }
     if (property.effectiveMandatory) {
-        chips.push('<span class="omo-holon-create__chip">Obligatoire</span>');
+        chips.push(("<span class=\"omo-holon-create__chip\">" + omoUiHtml("obligatoire", "Obligatoire") + "</span>"));
     }
     if (property.effectiveLocked) {
-        chips.push('<span class="omo-holon-create__chip">Verrouillée</span>');
+        chips.push(("<span class=\"omo-holon-create__chip\">" + omoUiHtml("verrouillee", "Verrouillée") + "</span>"));
     }
 
     row.innerHTML = ''
@@ -1760,7 +1762,7 @@ function createPropertyRow(property, index) {
         + '<div class="omo-holon-create__property-body">'
         + '  <div class="omo-holon-create__property-head">'
         + '      <div>'
-        + '          <div class="omo-holon-create__property-name"><span class="omo-holon-create__property-label">' + escapeHtml(property.name || ('Propriété ' + Number(property.id || 0))) + '</span>'
+        + '          <div class="omo-holon-create__property-name"><span class="omo-holon-create__property-label">' + escapeHtml(property.name || (omoUiText("propriete", "Propriété ") + Number(property.id || 0))) + '</span>'
         + (property.canEditValue ? '' : '<img class="omo-holon-create__property-lock black-icon" src="/img/cadenas.png" width="14" height="14" alt="' + escapeHtml(pageConfig.propertyEditDenied) + '" title="' + escapeHtml(pageConfig.propertyEditDenied) + '">')
         + '          </div>'
         + '          <div class="omo-holon-create__property-meta">' + chips.join('') + '</div>'
@@ -1769,14 +1771,14 @@ function createPropertyRow(property, index) {
         + renderDirectPropertyDefinition(property)
         + renderInheritedValue(property)
         + '  <' + ([5, 7].indexOf(Number(property.formatId || 0)) >= 0 || property.listItemType === 'value' ? 'div' : 'label') + ' class="omo-holon-create__field generic-form-field">'
-        + '      <span>Valeur locale</span>'
+        + ("      <span>" + omoUiHtml("valeur_locale", "Valeur locale") + "</span>")
         + '      <div class="omo-holon-create__property-input">' + renderPropertyInput(window.omoPropertyListConversion.sourceProperty(property)) + '</div>'
         + '  </' + ([5, 7].indexOf(Number(property.formatId || 0)) >= 0 || property.listItemType === 'value' ? 'div' : 'label') + '>'
         + '</div>';
 
     const propertyTitle = row.querySelector('.omo-holon-create__property-label');
     if (propertyTitle && (!property.name || Number(property.id || 0) <= 0)) {
-        propertyTitle.textContent = String(property.name || '').trim() || 'Nouvelle propriété';
+        propertyTitle.textContent = String(property.name || '').trim() || omoUiText("nouvelle_propriete", "Nouvelle propriété");
     }
 
     if ([5, 7].indexOf(Number(property.formatId || 0)) >= 0) {
@@ -1784,7 +1786,7 @@ function createPropertyRow(property, index) {
         if (htmlEditorHost && window.omoSimpleHtmlField && typeof window.omoSimpleHtmlField.mount === 'function') {
             window.omoSimpleHtmlField.mount(htmlEditorHost, {
                 value: htmlEditorHost.hasAttribute('data-omo-composite-html') ? String(htmlEditorHost.getAttribute('data-value') || '') : (property.value !== undefined && property.value !== null ? String(property.value) : ''),
-                placeholder: 'Renseignez une valeur locale si necessaire.'
+                placeholder: omoUiText("renseignez_une_valeur_locale_si_necessaire", "Renseignez une valeur locale si nécessaire.")
             });
         }
         });
@@ -1799,7 +1801,7 @@ function renderProperties(properties) {
     elements.properties.innerHTML = '';
 
     if (!Array.isArray(properties) || !properties.length) {
-        elements.properties.innerHTML = '<div class="omo-holon-create__empty-note generic-description generic-description--compact">Ce modèle ne définit aucune propriété.</div>';
+        elements.properties.innerHTML = ("<div class=\"omo-holon-create__empty-note generic-description generic-description--compact\">" + omoUiHtml("ce_modele_ne_definit_aucune_propriete", "Ce modèle ne définit aucune propriété.") + "</div>");
         return;
     }
 
@@ -1919,14 +1921,14 @@ function syncSubmitLabel(template) {
     }
 
     if (getMode() === 'edit') {
-        elements.submit.textContent = 'Enregistrer l’élément';
+        elements.submit.textContent = omoUiText("enregistrer_l_element", "Enregistrer l’élément");
         return;
     }
 
     const templateName = String(template && template.name ? template.name : '').trim();
     elements.submit.textContent = templateName !== ''
-        ? 'Créer un élément de type ' + templateName
-        : 'Créer un élément';
+        ? omoUiText("creer_un_element_de_type", "Créer un élément de type ") + templateName
+        : omoUiText("creer_un_element", "Créer un élément");
 }
 
 // Synchronise modèle courant
@@ -2426,7 +2428,7 @@ function saveHolon(event) {
                 return;
             }
             if (!result.ok || !result.data || result.data.status !== 'ok') {
-        throw new Error(result.data && result.data.message ? result.data.message : (getMode() === 'edit' ? "Impossible d’enregistrer l’élément." : "Impossible de créer l’élément."));
+        throw new Error(result.data && result.data.message ? result.data.message : (getMode() === 'edit' ? omoUiText("impossible_d_enregistrer_l_element", "Impossible d’enregistrer l’élément.") : omoUiText("impossible_de_creer_l_element", "Impossible de créer l’élément.")));
             }
             if (typeof window.commonDrawerMarkSaved === 'function') window.commonDrawerMarkSaved(elements.form);
 
@@ -2546,7 +2548,7 @@ function saveHolon(event) {
             }
         })
         .catch(function (error) {
-        showStatus(error && error.message ? error.message : (getMode() === 'edit' ? "Impossible d’enregistrer l’élément." : "Impossible de créer l’élément."), 'error');
+        showStatus(error && error.message ? error.message : (getMode() === 'edit' ? omoUiText("impossible_d_enregistrer_l_element", "Impossible d’enregistrer l’élément.") : omoUiText("impossible_de_creer_l_element", "Impossible de créer l’élément.")), 'error');
         })
         .finally(function () {
             if (elements.form && typeof window.omoEndPendingAction === 'function') {
@@ -2575,7 +2577,7 @@ if (elements.addProperty) {
         }
         const defaultFormat = (state.data.formats || []).length
             ? state.data.formats[0]
-            : { id: 1, name: 'Texte libre' };
+            : { id: 1, name: omoUiText("texte_libre", "Texte libre") };
         const emptyNote = elements.properties.querySelector('.omo-holon-create__empty-note');
         if (emptyNote) {
             emptyNote.remove();
@@ -2686,7 +2688,7 @@ root.addEventListener('input', function (event) {
     const propertyRow = event.target.closest('.omo-holon-create__property');
     const propertyTitle = propertyRow ? propertyRow.querySelector('.omo-holon-create__property-label') : null;
     if (propertyTitle) {
-        propertyTitle.textContent = String(event.target.value || '').trim() || 'Nouvelle propriete';
+        propertyTitle.textContent = String(event.target.value || '').trim() || omoUiText("nouvelle_propriete", "Nouvelle propriété");
     }
 });
 
@@ -2720,7 +2722,7 @@ root.addEventListener('click', function (event) {
             propertyRow.remove();
         }
         if (!elements.properties.querySelector('.omo-holon-create__property')) {
-            elements.properties.innerHTML = '<div class="omo-holon-create__empty-note generic-description generic-description--compact">Ce modele ne definit aucune propriete.</div>';
+            elements.properties.innerHTML = ("<div class=\"omo-holon-create__empty-note generic-description generic-description--compact\">" + omoUiHtml("ce_modele_ne_definit_aucune_propriete_2", "Ce modèle ne définit aucune propriété.") + "</div>");
         }
         return;
     }
@@ -2754,7 +2756,7 @@ root.addEventListener('click', function (event) {
         const authorityId = Number(authorityRow && authorityRow.getAttribute('data-authority-id') || 0);
         if (authorityRow && authorityId > 0) {
             authorityRow.outerHTML = renderAuthorityListRow({ id: authorityId, editing: true });
-            const labelField = root.querySelector('[data-authority-entry][data-authority-id="' + authorityId + '"] .omo-holon-create__authority-label');
+            const labelField = root.querySelector('[data-authority-entry][data-authority-id="' + authorityId + omoUiText("omo_holon_create_authority_label", "\"] .omo-holon-create__authority-label"));
             if (labelField) {
                 labelField.focus();
             }
@@ -2770,13 +2772,13 @@ root.addEventListener('click', function (event) {
             if (isPendingDeletion) {
                 authorityRow.removeAttribute('data-authority-delete');
                 authorityRow.classList.remove('is-pending-delete');
-                authorityDeleteButton.setAttribute('aria-label', 'Supprimer l autorite');
-                authorityDeleteButton.title = 'Supprimer l autorite';
+                authorityDeleteButton.setAttribute('aria-label', omoUiText("supprimer_l_autorite", "Supprimer l’autorité"));
+                authorityDeleteButton.title = omoUiText("supprimer_l_autorite", "Supprimer l’autorité");
             } else {
                 authorityRow.setAttribute('data-authority-delete', '1');
                 authorityRow.classList.add('is-pending-delete');
-                authorityDeleteButton.setAttribute('aria-label', 'Annuler la suppression');
-                authorityDeleteButton.title = 'Annuler la suppression';
+                authorityDeleteButton.setAttribute('aria-label', omoUiText("annuler_la_suppression", "Annuler la suppression"));
+                authorityDeleteButton.title = omoUiText("annuler_la_suppression", "Annuler la suppression");
                 updateAuthorityDeletionCounts(authorityRow);
             }
         }

@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../ui_translations.php';
 require_once dirname(__DIR__, 2) . '/bootstrap.php';
 require_once dirname(__DIR__, 4) . '/common/etherpad.php';
 
@@ -10,14 +11,14 @@ $userId = (int)commonGetCurrentUserId();
 
 if ($documentId <= 0 || $userId <= 0) {
     http_response_code(400);
-    echo 'Demande invalide.';
+    echo omoDocumentsUiT('demande_invalide');
     exit;
 }
 
 $document = new Document();
 if (!$document->load($documentId) || !$document->isEtherpadDocument()) {
     http_response_code(404);
-    echo 'Document introuvable.';
+    echo omoDocumentsUiT('document_introuvable');
     exit;
 }
 
@@ -30,21 +31,21 @@ if (
     || !$document->canViewInOrganizationContext($organizationId, $documentHolonId > 0 ? $documentHolonId : null)
 ) {
     http_response_code(403);
-    echo 'Accès refusé.';
+    echo omoDocumentsUiT('acces_refuse');
     exit;
 }
 
 $organization = new \dbObject\Organization();
 if (!$organization->load($organizationId)) {
     http_response_code(404);
-    echo 'Organisation introuvable.';
+    echo omoDocumentsUiT('organisation_introuvable');
     exit;
 }
 
 $padId = $document->getEtherpadPadId();
 if ($padId === '' || !omoEtherpadHasConfig($organization)) {
     http_response_code(503);
-    echo 'Etherpad n’est pas disponible pour cette organisation.';
+    echo omoDocumentsUiT('etherpad_n_est_pas_disponible_pour_cette_organisation');
     exit;
 }
 
@@ -66,7 +67,7 @@ if (!$canEdit || isset($_GET['content'])) {
 $user = new User();
 if (!$user->load($userId)) {
     http_response_code(503);
-    echo 'Identité OMO introuvable.';
+    echo omoDocumentsUiT('identite_omo_introuvable');
     exit;
 }
 $userName = trim((string)$user->getScopedDisplayName($organizationId));

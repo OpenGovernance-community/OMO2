@@ -236,7 +236,7 @@ if (!function_exists('omoEtherpadCreateDocumentPad')) {
         try {
             $padName = 'omo-' . (int)$organizationId . '-' . bin2hex(random_bytes(10));
         } catch (\Throwable $exception) {
-            return array('status' => false, 'text' => 'Impossible de generer le nom du pad Etherpad.');
+            return array('status' => false, 'text' => 'Impossible de générer le nom du pad Etherpad.');
         }
 
         $authorResult = omoEtherpadApiRequest($organization, 'createAuthorIfNotExistsFor', array(
@@ -249,7 +249,7 @@ if (!function_exists('omoEtherpadCreateDocumentPad')) {
 
         $authorId = trim((string)($authorResult['data']['authorID'] ?? ''));
         if ($authorId === '') {
-            return array('status' => false, 'text' => 'Etherpad n a pas renvoye d identifiant auteur.');
+            return array('status' => false, 'text' => 'Etherpad n’a pas renvoyé d’identifiant auteur.');
         }
 
         $groupResult = omoEtherpadApiRequest($organization, 'createGroupIfNotExistsFor', array(
@@ -261,7 +261,7 @@ if (!function_exists('omoEtherpadCreateDocumentPad')) {
 
         $groupId = trim((string)($groupResult['data']['groupID'] ?? ''));
         if ($groupId === '') {
-            return array('status' => false, 'text' => 'Etherpad n a pas renvoye d identifiant de groupe.');
+            return array('status' => false, 'text' => 'Etherpad n’a pas renvoyé d’identifiant de groupe.');
         }
 
         $padResult = omoEtherpadApiRequest($organization, 'createGroupPad', array(
@@ -278,7 +278,7 @@ if (!function_exists('omoEtherpadCreateDocumentPad')) {
         $padId = trim((string)($padResult['data']['padID'] ?? ($groupId . '$' . $padName)));
         return $padId !== ''
             ? array('status' => true, 'padId' => $padId, 'authorId' => $authorId, 'groupId' => $groupId)
-            : array('status' => false, 'text' => 'Etherpad n a pas renvoye d identifiant de pad.');
+            : array('status' => false, 'text' => 'Etherpad n’a pas renvoyé d’identifiant de pad.');
     }
 }
 
@@ -358,7 +358,7 @@ if (!function_exists('omoEtherpadCreateSession')) {
         $sessionId = trim((string)($result['data']['sessionID'] ?? ''));
         return $sessionId !== ''
             ? array('status' => true, 'sessionId' => $sessionId, 'validUntil' => $validUntil)
-            : array('status' => false, 'text' => 'Etherpad n a pas renvoye d identifiant de session.');
+            : array('status' => false, 'text' => 'Etherpad n’a pas renvoyé d’identifiant de session.');
     }
 }
 

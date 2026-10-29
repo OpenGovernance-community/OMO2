@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../ui_translations.php';
 require_once __DIR__ . '/bootstrap.php';
 require_once dirname(__DIR__, 2) . '/common/patreon.php';
 
@@ -17,8 +18,8 @@ if (!$patreonConfigured) {
     http_response_code(404);
     ?>
 <div class="generic-section generic-section--stack">
-    <h3 class="generic-card-title generic-card-title--medium">Fonction indisponible</h3>
-    <p>Le module Patreon n est pas configure sur ce serveur.</p>
+    <h3 class="generic-card-title generic-card-title--medium"><?= htmlspecialchars(omoInterfaceUiT('fonction_indisponible'), ENT_QUOTES, 'UTF-8') ?></h3>
+    <p><?= htmlspecialchars(omoInterfaceUiT('le_module_patreon_n_est_pas_configure_sur_ce_serveur'), ENT_QUOTES, 'UTF-8') ?></p>
 </div>
 <?php
     exit;
@@ -28,11 +29,10 @@ if (!$patreonConfigured) {
     <div class="omo-patreon-welcome__header generic-drawer-header generic-drawer-header--sticky">
         <div class="generic-drawer-header__copy omo-patreon-welcome__header-copy">
             <div class="omo-patreon-welcome__eyebrow">OpenGovernance</div>
-            <h3 class="omo-patreon-welcome__title generic-title generic-title--large">Contribuez au developpement du logiciel</h3>
+            <h3 class="omo-patreon-welcome__title generic-title generic-title--large"><?= htmlspecialchars(omoInterfaceUiT('contribuez_au_developpement_du_logiciel'), ENT_QUOTES, 'UTF-8') ?></h3>
             <p class="omo-patreon-welcome__text generic-description generic-description--relaxed">
-                Si cet outil vous est utile, vous pouvez soutenir son evolution sur
-                <a href="https://www.patreon.com/cw/OpenGovernance" target="_blank" rel="noopener noreferrer">Patreon</a>.
-                La video ci-dessous presente le projet et sa direction.
+                <?= htmlspecialchars(omoInterfaceUiT('si_cet_outil_vous_est_utile_vous_pouvez_soutenir_son_evolution_sur'), ENT_QUOTES, 'UTF-8') ?>
+                <a href="https://www.patreon.com/cw/OpenGovernance" target="_blank" rel="noopener noreferrer">Patreon</a><?= htmlspecialchars(omoInterfaceUiT('la_video_ci_dessous_presente_le_projet_et_sa_direction'), ENT_QUOTES, 'UTF-8') ?>
             </p>
         </div>
     </div>
@@ -41,7 +41,7 @@ if (!$patreonConfigured) {
     <div class="omo-patreon-welcome__video">
         <iframe
             src="https://player.vimeo.com/video/1200446731"
-            title="Presentation OpenGovernance"
+            title="<?= htmlspecialchars(omoInterfaceUiT('presentation_opengovernance'), ENT_QUOTES, 'UTF-8') ?>"
             loading="lazy"
             allow="autoplay; fullscreen; picture-in-picture"
             allowfullscreen
@@ -54,15 +54,15 @@ if (!$patreonConfigured) {
             href="https://www.patreon.com/cw/OpenGovernance"
             target="_blank"
             rel="noopener noreferrer"
-        >Voir Patreon</a>
+        ><?= htmlspecialchars(omoInterfaceUiT('voir_patreon'), ENT_QUOTES, 'UTF-8') ?></a>
 
         <?php if (!$patreonConnected): ?>
         <button type="button" class="omo-patreon-welcome__button" id="omoPatreonWelcomeConnect">
-            Se connecter avec Patreon
+            <?= htmlspecialchars(omoInterfaceUiT('se_connecter_avec_patreon'), ENT_QUOTES, 'UTF-8') ?>
         </button>
         <?php elseif ($patreonConnected): ?>
         <div class="omo-patreon-welcome__status omo-patreon-welcome__status--success generic-soft-panel">
-            Votre compte Patreon est deja connecte.
+            <?= htmlspecialchars(omoInterfaceUiT('votre_compte_patreon_est_deja_connecte'), ENT_QUOTES, 'UTF-8') ?>
         </div>
         <?php endif; ?>
     </div>

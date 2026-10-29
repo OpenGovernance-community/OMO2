@@ -1,9 +1,10 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__) . '/bootstrap.php';
 header('Content-Type: application/json; charset=UTF-8');
 if ((int)commonGetCurrentUserId() <= 0) {
     http_response_code(401);
-    echo json_encode(['status' => false, 'message' => 'Connexion requise.']);
+    echo json_encode(['status' => false, 'message' => omoOrganizationsUiT('connexion_requise')]);
     exit;
 }
 try {
@@ -16,5 +17,5 @@ try {
     echo json_encode(['status' => true, 'payload' => $payload], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
 } catch (Throwable $e) {
     http_response_code(422);
-    echo json_encode(['status' => false, 'message' => 'Import invalide : '.$e->getMessage()], JSON_UNESCAPED_UNICODE);
+    echo json_encode(['status' => false, 'message' => omoOrganizationsUiT('import_invalide').$e->getMessage()], JSON_UNESCAPED_UNICODE);
 }

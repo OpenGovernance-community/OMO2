@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../ui_translations.php';
 
 if (!function_exists('omoRenderOrganizationSetupPanel')) {
     function omoRenderOrganizationSetupPanel(\dbObject\Organization $organization)
@@ -28,7 +29,7 @@ if (!function_exists('omoRenderOrganizationSetupPanel')) {
     data-organization-id="<?= (int)($setupData['organizationId'] ?? 0) ?>"
 >
     <div class="omo-setup-panel__section generic-section">
-        <div class="omo-setup-panel__section-title generic-card-title generic-card-title--small">Choisissez un point de départ</div>
+        <div class="omo-setup-panel__section-title generic-card-title generic-card-title--small"><?= htmlspecialchars(omoInterfaceUiT('choisissez_un_point_de_depart'), ENT_QUOTES, 'UTF-8') ?></div>
         <div class="omo-setup-card-grid">
             <?php if ($canStartFromScratch): ?>
             <button
@@ -38,12 +39,12 @@ if (!function_exists('omoRenderOrganizationSetupPanel')) {
                 data-template-id="0"
             >
                 <span class="omo-setup-card__media" style="<?= $emptyCardMediaStyle ?>">
-                    <span class="omo-setup-card__badge">Structure vide</span>
+                    <span class="omo-setup-card__badge"><?= htmlspecialchars(omoInterfaceUiT('structure_vide'), ENT_QUOTES, 'UTF-8') ?></span>
                 </span>
                 <span class="omo-setup-card__content">
-                    <span class="omo-setup-card__title generic-card-title generic-card-title--big">Créer à partir de rien</span>
+                    <span class="omo-setup-card__title generic-card-title generic-card-title--big"><?= htmlspecialchars(omoInterfaceUiT('creer_a_partir_de_rien'), ENT_QUOTES, 'UTF-8') ?></span>
                     <span class="omo-setup-card__text generic-description generic-description--small"><?= htmlspecialchars(\dbObject\Organization::formatLexiconText('Crée uniquement le holon racine de type organisation, sans cercle ni rôle.', $organization->getLexicon()), ENT_QUOTES, 'UTF-8') ?></span>
-                    <span class="omo-setup-card__cta">Créer l'organisation</span>
+                    <span class="omo-setup-card__cta"><?= htmlspecialchars(omoInterfaceUiT('creer_l_organisation'), ENT_QUOTES, 'UTF-8') ?></span>
                 </span>
             </button>
             <?php endif; ?>
@@ -54,12 +55,12 @@ if (!function_exists('omoRenderOrganizationSetupPanel')) {
                 data-omo-org-import-button="1"
             >
                 <span class="omo-setup-card__media" style="<?= $importCardMediaStyle ?>">
-                    <span class="omo-setup-card__badge">Import JSON</span>
+                    <span class="omo-setup-card__badge"><?= htmlspecialchars(omoInterfaceUiT('import_json'), ENT_QUOTES, 'UTF-8') ?></span>
                 </span>
                 <span class="omo-setup-card__content">
-                    <span class="omo-setup-card__title generic-card-title generic-card-title--big">Importer une organisation</span>
-                    <span class="omo-setup-card__text generic-description generic-description--small">Charge un export JSON et reconstruit la structure, les roles et les proprietes dans cette nouvelle organisation.</span>
-                    <span class="omo-setup-card__cta">Selectionner un fichier</span>
+                    <span class="omo-setup-card__title generic-card-title generic-card-title--big"><?= htmlspecialchars(omoInterfaceUiT('importer_une_organisation'), ENT_QUOTES, 'UTF-8') ?></span>
+                    <span class="omo-setup-card__text generic-description generic-description--small"><?= htmlspecialchars(omoInterfaceUiT('charge_un_export_json_et_reconstruit_la_structure_les_roles_et_les_proprietes_dans_cette_n'), ENT_QUOTES, 'UTF-8') ?></span>
+                    <span class="omo-setup-card__cta"><?= htmlspecialchars(omoInterfaceUiT('selectionner_un_fichier'), ENT_QUOTES, 'UTF-8') ?></span>
                 </span>
             </button>
 
@@ -82,7 +83,7 @@ if (!function_exists('omoRenderOrganizationSetupPanel')) {
                     data-template-id="<?= (int)($template['id'] ?? 0) ?>"
                 >
                     <span class="omo-setup-card__media" style="<?= $templateMediaStyle ?>">
-                        <span class="omo-setup-card__badge">Modèle</span>
+                        <span class="omo-setup-card__badge"><?= htmlspecialchars(omoInterfaceUiT('modele'), ENT_QUOTES, 'UTF-8') ?></span>
                         <?php if ($templateIcon !== ''): ?>
                             <span class="omo-setup-card__icon">
                                 <img src="<?= omoApiEscape($templateIcon) ?>" alt="">
@@ -90,7 +91,7 @@ if (!function_exists('omoRenderOrganizationSetupPanel')) {
                         <?php endif; ?>
                     </span>
                     <span class="omo-setup-card__content">
-                        <span class="omo-setup-card__title generic-card-title generic-card-title--big"><?= omoApiEscape($template['name'] ?? 'Modèle') ?></span>
+                        <span class="omo-setup-card__title generic-card-title generic-card-title--big"><?= omoApiEscape($template['name'] ?? omoInterfaceUiT('modele')) ?></span>
                         <span class="omo-setup-card__text generic-description generic-description--small">
                             <?php if (!empty($template['sourceOrganizationName'])): ?>
                                 Inspiré de <?= omoApiEscape($template['sourceOrganizationName']) ?>.
@@ -98,14 +99,14 @@ if (!function_exists('omoRenderOrganizationSetupPanel')) {
                                 Duplique la structure de ce modèle d'organisation.
                             <?php endif; ?>
                         </span>
-                        <span class="omo-setup-card__cta">Utiliser ce modèle</span>
+                        <span class="omo-setup-card__cta"><?= htmlspecialchars(omoInterfaceUiT('utiliser_ce_modele'), ENT_QUOTES, 'UTF-8') ?></span>
                     </span>
                 </button>
             <?php endforeach; ?>
         </div>
 
         <?php if (count($templates) === 0): ?>
-            <div class="omo-setup-panel__empty generic-description generic-description--small">Aucun modèle d'organisation n'est disponible pour le moment.</div>
+            <div class="omo-setup-panel__empty generic-description generic-description--small"><?= htmlspecialchars(omoInterfaceUiT('aucun_modele_d_organisation_n_est_disponible_pour_le_moment'), ENT_QUOTES, 'UTF-8') ?></div>
         <?php endif; ?>
     </div>
 
@@ -205,7 +206,7 @@ if (!function_exists('omoRenderOrganizationInfoPanel')) {
 <div class="omo-org-info-panel" data-omo-org-info-panel="1" data-organization-id="<?= (int)$organizationId ?>">
     <div class="omo-org-info-panel__hero" style="<?= $heroStyle ?>">
         <div class="omo-org-info-panel__hero-content">
-            <div class="omo-org-info-panel__kicker generic-card-title generic-card-title--eyebrow">Organisation</div>
+            <div class="omo-org-info-panel__kicker generic-card-title generic-card-title--eyebrow"><?= htmlspecialchars(omoInterfaceUiT('organisation'), ENT_QUOTES, 'UTF-8') ?></div>
             <h2 class="omo-org-info-panel__title generic-title generic-title--hero"><?= omoApiEscape($organizationName) ?></h2>
         </div>
     </div>
@@ -213,14 +214,14 @@ if (!function_exists('omoRenderOrganizationInfoPanel')) {
     <div class="omo-org-info-panel__card">
         <div class="omo-org-members">
             <div class="omo-org-members__head">
-                <div class="generic-card-title generic-card-title--small">Membres</div>
+                <div class="generic-card-title generic-card-title--small"><?= htmlspecialchars(omoInterfaceUiT('membres'), ENT_QUOTES, 'UTF-8') ?></div>
                 <?php if ($canAddMembers): ?>
                     <button
                         type="button"
                         class="generic-action-button generic-action-button--secondary"
                         data-omo-org-open-member-popup="1"
                         data-oid="<?= (int)$organizationId ?>"
-                    >Inviter un membre</button>
+                    ><?= htmlspecialchars(omoInterfaceUiT('inviter_un_membre'), ENT_QUOTES, 'UTF-8') ?></button>
                 <?php endif; ?>
             </div>
 
@@ -258,7 +259,7 @@ if (!function_exists('omoRenderOrganizationInfoPanel')) {
                     <?php endif; ?>
                 </div>
             <?php else: ?>
-                <div class="omo-org-members__empty generic-description">Aucun membre n est encore rattache a cette organisation.</div>
+                <div class="omo-org-members__empty generic-description"><?= htmlspecialchars(omoInterfaceUiT('aucun_membre_n_est_encore_rattache_a_cette_organisation'), ENT_QUOTES, 'UTF-8') ?></div>
             <?php endif; ?>
         </div>
     </div>
@@ -266,7 +267,7 @@ if (!function_exists('omoRenderOrganizationInfoPanel')) {
     <div class="omo-org-info-panel__card">
         <div class="omo-org-info-list">
             <div class="omo-org-info-list__item">
-                <span class="omo-org-info-list__label generic-title generic-title--eyebrow">Nom</span>
+                <span class="omo-org-info-list__label generic-title generic-title--eyebrow"><?= htmlspecialchars(omoInterfaceUiT('nom'), ENT_QUOTES, 'UTF-8') ?></span>
                 <span class="omo-org-info-list__value generic-title generic-title--compact"><?= omoApiEscape($organizationName) ?></span>
             </div>
             <div class="omo-org-info-list__item">
@@ -274,7 +275,7 @@ if (!function_exists('omoRenderOrganizationInfoPanel')) {
                 <span class="omo-org-info-list__value generic-title generic-title--compact"><?= omoApiEscape($organizationShortname !== '' ? $organizationShortname : 'Non défini') ?></span>
             </div>
             <div class="omo-org-info-list__item">
-                <span class="omo-org-info-list__label generic-title generic-title--eyebrow">Domaine</span>
+                <span class="omo-org-info-list__label generic-title generic-title--eyebrow"><?= htmlspecialchars(omoInterfaceUiT('domaine'), ENT_QUOTES, 'UTF-8') ?></span>
                 <span class="omo-org-info-list__value generic-title generic-title--compact"><?= omoApiEscape($organizationDomain !== '' ? $organizationDomain : 'Non défini') ?></span>
             </div>
         </div>

@@ -5,11 +5,11 @@ use dbObject\DecisionProcess;
 function omoDecisionScheduleGetSourceLang(): array
 {
     return [
-        'decisions.schedule.consultation' => ['text' => "Definir une phase d'elaboration", 'context' => 'Checkbox opening the dates of the proposal and discussion phase.'],
-        'decisions.schedule.consultation_help' => ['text' => "La phase d'elaboration precede le vote. Elle permet de recueillir les propositions et d'en debattre avant leur evaluation.", 'context' => 'Explanation of the elaboration phase next to its scheduling checkbox.'],
-        'decisions.schedule.evaluation' => ['text' => "Definir une phase d'evaluation", 'context' => 'Checkbox opening the dates of the voting phase.'],
-        'decisions.schedule.evaluation_help' => ['text' => "La phase d'evaluation est la periode pendant laquelle les participants votent sur les propositions selon la methode du scrutin.", 'context' => 'Explanation of the evaluation phase next to its scheduling checkbox.'],
-        'decisions.schedule.start' => ['text' => 'Debut', 'context' => 'Label for the start date and time of a decision phase.'],
+        'decisions.schedule.consultation' => ['text' => "Définir une phase d'élaboration", 'context' => 'Checkbox opening the dates of the proposal and discussion phase.'],
+        'decisions.schedule.consultation_help' => ['text' => "La phase d'élaboration précède le vote. Elle permet de recueillir les propositions et d'en débattre avant leur évaluation.", 'context' => 'Explanation of the elaboration phase next to its scheduling checkbox.'],
+        'decisions.schedule.evaluation' => ['text' => "Définir une phase d'évaluation", 'context' => 'Checkbox opening the dates of the voting phase.'],
+        'decisions.schedule.evaluation_help' => ['text' => "La phase d'évaluation est la période pendant laquelle les participants votent sur les propositions selon la méthode du scrutin.", 'context' => 'Explanation of the evaluation phase next to its scheduling checkbox.'],
+        'decisions.schedule.start' => ['text' => 'Début', 'context' => 'Label for the start date and time of a decision phase.'],
         'decisions.schedule.end' => ['text' => 'Fin', 'context' => 'Label for the end date and time of a decision phase.'],
     ];
 }

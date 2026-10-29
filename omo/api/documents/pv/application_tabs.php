@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../ui_translations.php';
 require_once dirname(__DIR__, 2) . '/bootstrap.php';
 
 header('Content-Type: application/json; charset=UTF-8');
@@ -56,7 +57,7 @@ if ($action === 'add') {
     $result = \dbObject\DocumentApplicationTab::createForDocument($document, $applicationId);
     $tab = $result['item'] ?? null;
     if (empty($result['status']) || !($tab instanceof \dbObject\DocumentApplicationTab)) {
-        $respond(false, (string)($result['text'] ?? 'Impossible d ajouter cette application.'), [], 422);
+        $respond(false, (string)($result['text'] ?? omoDocumentsUiT('impossible_d_ajouter_cette_application')), [], 422);
     }
 
     $respond(true, '', [

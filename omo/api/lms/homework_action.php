@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once __DIR__ . '/bootstrap.php';
 
 commonRestoreRememberedUser();
@@ -14,25 +15,25 @@ $isOrganizationAdmin = !empty($accessContext['isOrganizationAdmin']);
 
 if (empty($accessContext['exists'])) {
 	http_response_code(404);
-	echo "Unknown parcours";
+	echo omoLmsUiT('parcours_inconnu');
 	exit;
 }
 
 if (empty($accessContext['canView'])) {
 	http_response_code(!empty($accessContext['isLoggedIn']) ? 403 : 401);
-	echo "Unauthorized";
+	echo omoLmsUiT('acces_non_autorise');
 	exit;
 }
 
 if ($mission_id <= 0 || $homework_id <= 0 || $parcours_id <= 0) {
 	http_response_code(400);
-	echo "Invalid homework request";
+	echo omoLmsUiT('demande_de_devoir_invalide');
 	exit;
 }
 
 if (!lmsCanTrackProgress($accessContext)) {
 	http_response_code(403);
-	echo "Progress unavailable";
+	echo omoLmsUiT('progression_indisponible');
 	exit;
 }
 
@@ -42,19 +43,19 @@ if (!$parcoursMission->load([
 	['IDmission', $mission_id],
 ])) {
 	http_response_code(400);
-	echo "Mission not found in parcours";
+	echo omoLmsUiT('mission_introuvable_dans_ce_parcours');
 	exit;
 }
 
 if (!\dbObject\MissionHomework::existsForMission($mission_id, $homework_id)
 	|| !in_array($homework_id, \dbObject\Mission::fetchHomeworkIdsForMission($mission_id, $isOrganizationAdmin), true)) {
 	http_response_code(400);
-	echo "Homework not found in mission";
+	echo omoLmsUiT('devoir_introuvable_dans_cette_mission');
 	exit;
 }
 
 if (lmsIsAnonymousViewer($accessContext)) {
-	echo "OK";
+	echo omoLmsUiT('ok');
 	exit;
 }
 
@@ -66,4 +67,4 @@ if (empty($result['status'])) {
 	exit;
 }
 
-echo "OK";
+echo omoLmsUiT('ok');

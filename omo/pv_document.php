@@ -5,10 +5,10 @@ require_once dirname(__DIR__) . '/common/pv_participation.php';
 require_once __DIR__ . '/translations.php';
 
 $sourceLang = [
-    'title' => ['text' => 'Document de la reunion', 'context' => 'Public meeting document reader title.'],
-    'unavailable' => ['text' => 'Ce document est introuvable ou son acces est indisponible avec ce lien de reunion.', 'context' => 'Public meeting document access denied message.'],
+    'title' => ['text' => 'Document de la réunion', 'context' => 'Public meeting document reader title.'],
+    'unavailable' => ['text' => 'Ce document est introuvable ou son accès est indisponible avec ce lien de réunion.', 'context' => 'Public meeting document access denied message.'],
     'read_only' => ['text' => 'Lecture seule via votre lien de participation.', 'context' => 'Public meeting document reader access explanation.'],
-    'download' => ['text' => 'Telecharger le fichier', 'context' => 'Meeting attachment download action.'],
+    'download' => ['text' => 'Télécharger le fichier', 'context' => 'Meeting attachment download action.'],
     'preview' => ['text' => 'Ouvrir le PDF', 'context' => 'Meeting attachment PDF preview action.'],
 ];
 $lang = omoLoadTranslationBundle('omo_pv_document', $sourceLang);
@@ -39,7 +39,7 @@ if (!$document) {
 }
 ?>
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="<?= htmlspecialchars(omoGetTranslationLocale(), ENT_QUOTES, 'UTF-8') ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">

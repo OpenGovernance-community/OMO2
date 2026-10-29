@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once dirname(__DIR__) . '/projects/shared.php';
 
@@ -40,7 +41,7 @@ if ($action === 'set_template') {
     $isTemplate = !empty($payload['is_template']) || !empty($_POST['is_template']);
     $result = $template->updateDocumentTemplateState($organizationId, $userId, $isTemplate);
     if (!is_array($result) || empty($result['status'])) {
-        $error(trim((string)($result['text'] ?? 'Impossible de modifier le modèle.')));
+        $error(trim((string)($result['text'] ?? omoDocumentsUiT('impossible_de_modifier_le_modele'))));
     }
 
     echo json_encode([
@@ -79,7 +80,7 @@ $result = $duplicate->createFromDocumentTemplateInOrganizationContext(
     $userId
 );
 if (!is_array($result) || empty($result['status'])) {
-    $error(trim((string)($result['text'] ?? 'Impossible de créer le document depuis ce modèle.')));
+    $error(trim((string)($result['text'] ?? omoDocumentsUiT('impossible_de_creer_le_document_depuis_ce_modele'))));
 }
 
 if ($projectId > 0) {

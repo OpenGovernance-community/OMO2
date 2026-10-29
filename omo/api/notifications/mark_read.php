@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__) . '/bootstrap.php';
 
 header('Content-Type: application/json; charset=UTF-8');
@@ -13,14 +14,14 @@ function omoNotificationMarkReadRespond($statusCode, array $payload)
 $userId = commonGetCurrentUserId();
 $organizationId = (int)($_SESSION['currentOrganization'] ?? 0);
 if ($userId <= 0 || $organizationId <= 0) {
-    omoNotificationMarkReadRespond(403, ['status' => false, 'message' => 'Connexion ou organisation requise.']);
+    omoNotificationMarkReadRespond(403, ['status' => false, 'message' => omoNotificationsUiT('connexion_ou_organisation_requise')]);
 }
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
-    omoNotificationMarkReadRespond(405, ['status' => false, 'message' => 'Methode non autorisee.']);
+    omoNotificationMarkReadRespond(405, ['status' => false, 'message' => omoNotificationsUiT('methode_non_autorisee')]);
 }
 $input = json_decode((string)file_get_contents('php://input'), true);
 if (!is_array($input) || !hash_equals((string)($_SESSION['omo_notification_inbox_csrf'] ?? ''), (string)($input['csrf_token'] ?? ''))) {
-    omoNotificationMarkReadRespond(403, ['status' => false, 'message' => 'Verification de securite invalide.']);
+    omoNotificationMarkReadRespond(403, ['status' => false, 'message' => omoNotificationsUiT('verification_de_securite_invalide')]);
 }
 
 $notificationId = (int)($input['notification_id'] ?? 0);

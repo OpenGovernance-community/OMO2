@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__) . '/bootstrap.php';
 
 use dbObject\Holon;
@@ -11,7 +12,7 @@ function omoShareResolveManageContext(array $input)
         return array(
             'status' => false,
             'code' => 401,
-            'message' => 'Connexion requise.',
+            'message' => omoSharesUiT('connexion_requise'),
         );
     }
 
@@ -22,7 +23,7 @@ function omoShareResolveManageContext(array $input)
         return array(
             'status' => false,
             'code' => 400,
-            'message' => 'Organisation invalide.',
+            'message' => omoSharesUiT('organisation_invalide'),
         );
     }
 
@@ -31,7 +32,7 @@ function omoShareResolveManageContext(array $input)
         return array(
             'status' => false,
             'code' => 403,
-            'message' => 'Acces refuse a cette organisation.',
+            'message' => omoSharesUiT('acces_refuse_a_cette_organisation'),
         );
     }
 

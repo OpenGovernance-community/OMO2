@@ -1,11 +1,12 @@
 <?php
+require_once __DIR__ . '/../ui_translations.php';
 require_once __DIR__ . '/shared.php';
 
 $context = omoDocumentsNextcloudLoadFolder((int)($_GET['id'] ?? 0), (int)($_GET['oid'] ?? $_SESSION['currentOrganization'] ?? 0));
 if (empty($context['status'])) {
     http_response_code((int)($context['httpCode'] ?? 404));
     header('Content-Type: text/plain; charset=UTF-8');
-    echo (string)($context['text'] ?? 'Acces refuse.');
+    echo (string)($context['text'] ?? omoDocumentsUiT('acces_refuse'));
     exit;
 }
 
@@ -13,7 +14,7 @@ $remotePath = omoDocumentsNextcloudGetRemotePath($context['folder'], $context['o
 if ($remotePath === '') {
     http_response_code(400);
     header('Content-Type: text/plain; charset=UTF-8');
-    echo 'Chemin NextCloud invalide.';
+    echo omoDocumentsUiT('chemin_nextcloud_invalide');
     exit;
 }
 
@@ -21,7 +22,7 @@ $downloadResult = $context['organization']->downloadDocumentFileFromStorage($rem
 if (empty($downloadResult['status'])) {
     http_response_code(502);
     header('Content-Type: text/plain; charset=UTF-8');
-    echo trim((string)($downloadResult['text'] ?? 'Impossible de recuperer le fichier distant.'));
+    echo trim((string)($downloadResult['text'] ?? omoDocumentsUiT('impossible_de_recuperer_le_fichier_distant')));
     exit;
 }
 

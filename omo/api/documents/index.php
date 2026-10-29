@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__) . '/bootstrap.php';
 
 use dbObject\Document;
@@ -89,36 +90,36 @@ $sourceLang = [
         'context' => 'Accessible label shown beside document titles that are reusable templates.',
     ],
     'documents.upload.drop_root' => [
-        'text' => 'Deposez les fichiers pour les televerser dans cette liste.',
+        'text' => 'Déposez les fichiers pour les téléverser dans cette liste.',
         'context' => 'Feedback shown while files are dragged over the root document list.',
     ],
     'documents.upload.drop_folder' => [
-        'text' => 'Deposez les fichiers dans ce dossier.',
+        'text' => 'Déposez les fichiers dans ce dossier.',
         'context' => 'Feedback shown while files are dragged over an uploadable document folder.',
     ],
     'documents.upload.success' => [
-        'one' => '{count} fichier televerse.',
-        'other' => '{count} fichiers televerses.',
+        'one' => '{count} fichier téléversé.',
+        'other' => '{count} fichiers téléversés.',
         'context' => 'Confirmation displayed after files dropped into the documents list have been uploaded.',
     ],
     'documents.upload.error' => [
-        'text' => 'Le televersement des fichiers a echoue.',
+        'text' => 'Le téléversement des fichiers a échoué.',
         'context' => 'Fallback error displayed when a file dropped into the documents list cannot be uploaded.',
     ],
     'documents.upload.forbidden' => [
-        'text' => 'Vous n avez pas le droit de creation de fichier ici.',
+        'text' => 'Vous n’avez pas le droit de création de fichier ici.',
         'context' => 'Feedback shown when files are dragged over a document list or folder where the user cannot create files.',
     ],
     'documents.move.drop_root' => [
-        'text' => 'Deposez le document pour le deplacer a la racine de cette liste.',
+        'text' => 'Déposez le document pour le déplacer à la racine de cette liste.',
         'context' => 'Feedback shown while a document is dragged over the root document list.',
     ],
     'documents.move.drop_folder' => [
-        'text' => 'Deposez le document pour le deplacer dans ce dossier.',
+        'text' => 'Déposez le document pour le déplacer dans ce dossier.',
         'context' => 'Feedback shown while a document is dragged over a folder that can receive it.',
     ],
     'documents.move.drop_forbidden' => [
-        'text' => 'Vous n avez pas le droit de deplacer ce document ici.',
+        'text' => 'Vous n’avez pas le droit de déplacer ce document ici.',
         'context' => 'Feedback shown while a document is dragged over a destination where moving is forbidden.',
     ],
     'documents.controls.sort.aria' => [
@@ -330,7 +331,7 @@ $sourceLang = [
         'context' => 'Bulk action moving the selected documents.',
     ],
     'documents.selection.merge_memos' => [
-        'text' => 'Fusionner les Memos sélectionnés',
+        'text' => 'Fusionner les Mémos sélectionnés',
         'context' => 'Bulk action merging selected Memos into a new document.',
     ],
     'documents.selection.confirm_archive' => [
@@ -665,7 +666,7 @@ $escape = 'omoApiEscape';
 $normalizeSortValue = 'omoApiSortKey';
 
 $formatter = class_exists('IntlDateFormatter')
-    ? new IntlDateFormatter('fr_FR', IntlDateFormatter::MEDIUM, IntlDateFormatter::NONE)
+    ? new IntlDateFormatter(omoGetTranslationLocale(), IntlDateFormatter::MEDIUM, IntlDateFormatter::NONE)
     : null;
 
 if ($formatter instanceof IntlDateFormatter) {
@@ -673,7 +674,7 @@ if ($formatter instanceof IntlDateFormatter) {
 }
 
 $formatterWithYear = class_exists('IntlDateFormatter')
-    ? new IntlDateFormatter('fr_FR', IntlDateFormatter::MEDIUM, IntlDateFormatter::NONE)
+    ? new IntlDateFormatter(omoGetTranslationLocale(), IntlDateFormatter::MEDIUM, IntlDateFormatter::NONE)
     : null;
 
 if ($formatterWithYear instanceof IntlDateFormatter) {
@@ -1264,7 +1265,7 @@ if (!is_string($documentsPayload)) {
                                     </div>
 
                                     <?php if (!empty($entry['contextBreadcrumb'])): ?>
-                                        <div class="omo-documents__context" aria-label="Contexte du document">
+                                        <div class="omo-documents__context" aria-label="<?= htmlspecialchars(omoDocumentsUiT('contexte_du_document'), ENT_QUOTES, 'UTF-8') ?>">
                                             <?php foreach ($entry['contextBreadcrumb'] as $breadcrumbIndex => $breadcrumbItem): ?>
                                                 <?php if ($breadcrumbIndex > 0): ?>
                                                     <span class="omo-documents__context-separator">›</span>

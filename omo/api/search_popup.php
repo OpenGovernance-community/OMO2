@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../ui_translations.php';
 require_once __DIR__ . '/bootstrap.php';
 require_once dirname(__DIR__, 2) . '/common/topbar.php';
 require_once dirname(__DIR__, 2) . '/common/search_text.php';
@@ -238,20 +239,20 @@ if (!function_exists('omoSearchPopupRenderContent')) {
             <?php endif; ?>
 
             <?php if ($query === ''): ?>
-                <div class="omo-search-popup__empty">Aucune recherche demandee.</div>
+                <div class="omo-search-popup__empty"><?= htmlspecialchars(omoInterfaceUiT('aucune_recherche_demandee'), ENT_QUOTES, 'UTF-8') ?></div>
             <?php elseif ($status === 'queued' || $status === 'running'): ?>
                 <div class="omo-search-popup__status-card generic-section">
                     <div class="omo-search-popup__spinner" aria-hidden="true"></div>
-                    <strong class="omo-search-popup__status-title">Recherche en attente</strong>
-                    <p class="omo-search-popup__status-text">La recherche s execute dans un worker separe. Les resultats arrivent des qu ils sont prets.</p>
+                    <strong class="omo-search-popup__status-title"><?= htmlspecialchars(omoInterfaceUiT('recherche_en_attente'), ENT_QUOTES, 'UTF-8') ?></strong>
+                    <p class="omo-search-popup__status-text"><?= htmlspecialchars(omoInterfaceUiT('la_recherche_s_execute_dans_un_worker_separe_les_resultats_arrivent_des_qu_ils_sont_prets'), ENT_QUOTES, 'UTF-8') ?></p>
                 </div>
             <?php elseif ($status === 'failed'): ?>
                 <div class="omo-search-popup__status-card generic-section is-error">
-                    <strong class="omo-search-popup__status-title">Recherche indisponible</strong>
+                    <strong class="omo-search-popup__status-title"><?= htmlspecialchars(omoInterfaceUiT('recherche_indisponible'), ENT_QUOTES, 'UTF-8') ?></strong>
                     <p class="omo-search-popup__status-text"><?= $escape($error !== '' ? $error : 'Le worker de recherche n a pas pu terminer correctement.') ?></p>
                 </div>
             <?php elseif (count($results) === 0): ?>
-                <div class="omo-search-popup__empty">Aucun resultat trouve pour cette selection de modules.</div>
+                <div class="omo-search-popup__empty"><?= htmlspecialchars(omoInterfaceUiT('aucun_resultat_trouve_pour_cette_selection_de_modules'), ENT_QUOTES, 'UTF-8') ?></div>
             <?php else: ?>
                 <div class="omo-search-popup__list" data-omo-search-popup-results-list>
                     <?php foreach ($results as $index => $result): ?>
@@ -304,7 +305,7 @@ if (!function_exists('omoSearchPopupRenderContent')) {
                             <div class="omo-search-popup__result-head">
                                 <div class="omo-search-popup__result-meta">
                                     <span class="omo-search-popup__badge"><?= $escape((string)($result['moduleLabel'] ?? $module)) ?></span>
-                                    <span class="omo-search-popup__score">score <?= (int)($result['relevance'] ?? 0) ?></span>
+                                    <span class="omo-search-popup__score"><?= htmlspecialchars(omoInterfaceUiT('score'), ENT_QUOTES, 'UTF-8') ?> <?= (int)($result['relevance'] ?? 0) ?></span>
                                 </div>
                                 <span class="omo-search-popup__rank">#<?= $index + 1 ?></span>
                             </div>
@@ -335,7 +336,7 @@ if (!function_exists('omoSearchPopupRenderContent')) {
                         </article>
                     <?php endforeach; ?>
                 </div>
-                <div class="omo-search-popup__empty" data-omo-search-popup-filter-empty hidden>Aucun resultat visible pour ce filtre.</div>
+                <div class="omo-search-popup__empty" data-omo-search-popup-filter-empty hidden><?= htmlspecialchars(omoInterfaceUiT('aucun_resultat_visible_pour_ce_filtre'), ENT_QUOTES, 'UTF-8') ?></div>
             <?php endif; ?>
         </div>
         <?php
@@ -405,7 +406,7 @@ if (!function_exists('omoSearchPopupRenderPollingScript')) {
                 })
                     .then(function (response) {
                         if (!response.ok) {
-                            throw new Error('Erreur de chargement');
+                            throw new Error(<?= json_encode(omoInterfaceUiT('search_follow_failed'), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>);
                         }
 
                         return response.text();
@@ -425,7 +426,11 @@ if (!function_exists('omoSearchPopupRenderPollingScript')) {
                     })
                     .catch(function () {
                         if (!stopped && content) {
-                            content.innerHTML = '<div class="omo-search-popup__status-card generic-section is-error" data-omo-search-job-status="failed"><strong class="omo-search-popup__status-title">Recherche indisponible</strong><p class="omo-search-popup__status-text">Le suivi du job de recherche a echoue.</p></div>';
+                            content.innerHTML = '<div class="omo-search-popup__status-card generic-section is-error" data-omo-search-job-status="failed"><strong class="omo-search-popup__status-title">'
+                                + <?= json_encode(htmlspecialchars(omoInterfaceUiT('recherche_indisponible'), ENT_QUOTES, 'UTF-8'), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>
+                                + '</strong><p class="omo-search-popup__status-text">'
+                                + <?= json_encode(htmlspecialchars(omoInterfaceUiT('search_follow_failed'), ENT_QUOTES, 'UTF-8'), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>
+                                + '</p></div>';
                         }
                     });
             }
@@ -449,7 +454,7 @@ if ($organizationId <= 0) {
     omoSearchPopupRenderStyles();
     ?>
     <div class="omo-search-popup">
-        <div class="omo-search-popup__empty">Organisation invalide.</div>
+        <div class="omo-search-popup__empty"><?= htmlspecialchars(omoInterfaceUiT('organisation_invalide'), ENT_QUOTES, 'UTF-8') ?></div>
     </div>
     <?php
     exit;
@@ -461,7 +466,7 @@ if (!$organization->load($organizationId) || !$organization->canViewDetail()) {
     omoSearchPopupRenderStyles();
     ?>
     <div class="omo-search-popup">
-        <div class="omo-search-popup__empty">Acces refuse a cette organisation.</div>
+        <div class="omo-search-popup__empty"><?= htmlspecialchars(omoInterfaceUiT('acces_refuse_a_cette_organisation'), ENT_QUOTES, 'UTF-8') ?></div>
     </div>
     <?php
     exit;
@@ -504,7 +509,7 @@ if (!$isPartial && $restoreJobId > 0 && $restoreJobToken !== '') {
         $restoredJob = false;
         $restoredPayload = array(
             'status' => 'failed',
-            'error' => 'Cette recherche n est plus accessible dans le contexte courant.',
+            'error' => omoInterfaceUiT('cette_recherche_n_est_plus_accessible_dans_le_contexte_courant'),
         );
     }
 }
@@ -518,7 +523,7 @@ if ($isPartial) {
         http_response_code(403);
         omoSearchPopupRenderContent($query, $selectedScopes, $scopeLabels, array(
             'status' => 'failed',
-            'error' => 'Cette recherche n est plus accessible dans le contexte courant.',
+            'error' => omoInterfaceUiT('cette_recherche_n_est_plus_accessible_dans_le_contexte_courant'),
         ), $escape);
         exit;
     }
@@ -591,7 +596,7 @@ omoSearchPopupRenderStyles();
             if (!$job) {
                 omoSearchPopupRenderContent($query, $selectedScopes, $scopeLabels, array(
                     'status' => 'failed',
-                    'error' => 'Impossible de creer le job de recherche.',
+                    'error' => omoInterfaceUiT('impossible_de_creer_le_job_de_recherche'),
                 ), $escape);
             } else {
                 $jobDispatched = $job->dispatchAsync();

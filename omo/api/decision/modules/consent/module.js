@@ -1,3 +1,5 @@
+var omoUiText = window.omoUiText || function (key, fallback) { return fallback; };
+var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; };
         (function () {
             window.omoDecisionConsentInit = function (root) {
                 const scope = root instanceof Element ? root : document;
@@ -328,7 +330,7 @@
                                 const proposalLabelNode = card.querySelector('[data-omo-decision-consent-proposal-label]');
                                 const modalTitle = proposalLabelNode
                                     ? String(proposalLabelNode.textContent || '').trim()
-                                    : String(payload.texts && payload.texts.proposalDetails ? payload.texts.proposalDetails : 'Details');
+                                    : String(payload.texts && payload.texts.proposalDetails ? payload.texts.proposalDetails : "Détails");
                                 const proposalContent = payload.proposalContent || {title: true, description: true};
                                 const descriptionDetailsField = proposalContent.title && proposalContent.description
                                     ? '  <label style="display:grid;gap:6px;">'
@@ -344,12 +346,12 @@
                                     + '    <input type="url" class="generic-form-control generic-form-control--compact" data-omo-decision-consent-proposal-modal-info-url placeholder="' + String(payload.texts && payload.texts.proposalInfoUrlPlaceholder ? payload.texts.proposalInfoUrlPlaceholder : 'https://...') + '">'
                                     + '  </label>'
                                     + '  <div style="display:flex;justify-content:flex-end;gap:8px;">'
-                                    + '    <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-decision-consent-proposal-modal-cancel>Fermer</button>'
+                                    + ("    <button type=\"button\" class=\"generic-action-button generic-action-button--secondary\" data-omo-decision-consent-proposal-modal-cancel>" + omoUiHtml("fermer", "Fermer") + "</button>")
                                     + '    <button type="button" class="generic-action-button generic-action-button--main" data-omo-decision-consent-proposal-modal-apply>' + String(payload.texts && payload.texts.proposalApply ? payload.texts.proposalApply : 'Enregistrer') + '</button>'
                                     + '  </div>'
                                     + '</div>';
 
-                                window.commonTopbarOpenModal(modalTitle || 'Details', modalHtml, 'html');
+                                window.commonTopbarOpenModal(modalTitle || omoUiText("details", "Détails"), modalHtml, 'html');
                                 const modalBody = document.getElementById('commonTopbarModalBody');
                                 if (!modalBody) {
                                     return;
@@ -432,7 +434,7 @@
                         dragButton.className = 'omo-decision-consent__proposal-drag generic-drag-handle generic-drag-handle--stretch';
                         dragButton.setAttribute('data-omo-decision-consent-proposal-drag', '');
                         dragButton.textContent = '⋮⋮';
-                        dragButton.setAttribute('aria-label', String(payload.texts && payload.texts.proposalReorder ? payload.texts.proposalReorder : 'Reordonner'));
+                        dragButton.setAttribute('aria-label', String(payload.texts && payload.texts.proposalReorder ? payload.texts.proposalReorder : "Réordonner"));
 
                         const field = document.createElement('div');
                         field.className = 'omo-decision-consent__proposal-field';
@@ -492,7 +494,7 @@
                         menuToggle.setAttribute('data-omo-decision-consent-proposal-menu-toggle', '');
                         menuToggle.setAttribute('aria-haspopup', 'menu');
                         menuToggle.setAttribute('aria-expanded', 'false');
-                        menuToggle.setAttribute('aria-label', 'Actions');
+                        menuToggle.setAttribute('aria-label', omoUiText("actions", "Actions"));
                         menuToggle.textContent = '...';
 
                         const menuPanel = document.createElement('div');
@@ -506,7 +508,7 @@
                         detailsButton.className = 'generic-action-button generic-action-button--secondary omo-decision-consent__proposal-menu-item';
                         detailsButton.setAttribute('data-omo-decision-consent-proposal-settings', '');
                         detailsButton.setAttribute('role', 'menuitem');
-                        detailsButton.textContent = String(payload.texts && payload.texts.proposalDetails ? payload.texts.proposalDetails : 'Details');
+                        detailsButton.textContent = String(payload.texts && payload.texts.proposalDetails ? payload.texts.proposalDetails : "Détails");
 
                         const removeButton = document.createElement('button');
                         removeButton.type = 'button';
@@ -544,7 +546,7 @@
 
                         const modalTitle = settingsOpenButton
                             ? String(settingsOpenButton.getAttribute('data-omo-decision-consent-settings-title') || settingsOpenButton.textContent || 'Paramètres du scrutin')
-                            : 'Paramètres du scrutin';
+                            : omoUiText("parametres_du_scrutin", "Paramètres du scrutin");
                         window.commonTopbarOpenModal(modalTitle, settingsTemplate.innerHTML, 'html');
                         const modalBody = document.getElementById('commonTopbarModalBody');
                         if (!modalBody) {
@@ -801,9 +803,9 @@
                                 setFeedback(result.message || (payload.texts && payload.texts.success ? payload.texts.success : ''), false);
                                 if (result.redirectUrl) {
                                     if (typeof window.omoDecisionOpenNestedDrawer === 'function') {
-                                        window.omoDecisionOpenNestedDrawer(result.drawerTitle || payload.drawerTitle || 'Prises de decision', result.redirectUrl, '');
+                                        window.omoDecisionOpenNestedDrawer(result.drawerTitle || payload.drawerTitle || omoUiText("prises_de_decision", "Prises de décision"), result.redirectUrl, '');
                                     } else if (typeof window.commonTopbarOpenDrawer === 'function') {
-                                        window.commonTopbarOpenDrawer(result.drawerTitle || payload.drawerTitle || 'Prises de decision', result.redirectUrl, 'fetch');
+                                        window.commonTopbarOpenDrawer(result.drawerTitle || payload.drawerTitle || omoUiText("prises_de_decision", "Prises de décision"), result.redirectUrl, 'fetch');
                                     } else {
                                         window.location.href = result.redirectUrl;
                                     }
@@ -925,9 +927,9 @@
                                 window.dispatchEvent(new CustomEvent('omo-decision-response-saved'));
                                 if (result.redirectUrl) {
                                     if (typeof window.omoDecisionOpenNestedDrawer === 'function') {
-                                        window.omoDecisionOpenNestedDrawer(result.drawerTitle || payload.drawerTitle || 'Prises de decision', result.redirectUrl, '');
+                                        window.omoDecisionOpenNestedDrawer(result.drawerTitle || payload.drawerTitle || omoUiText("prises_de_decision", "Prises de décision"), result.redirectUrl, '');
                                     } else if (typeof window.commonTopbarOpenDrawer === 'function') {
-                                        window.commonTopbarOpenDrawer(result.drawerTitle || payload.drawerTitle || 'Prises de decision', result.redirectUrl, 'fetch');
+                                        window.commonTopbarOpenDrawer(result.drawerTitle || payload.drawerTitle || omoUiText("prises_de_decision", "Prises de décision"), result.redirectUrl, 'fetch');
                                     } else {
                                         window.location.href = result.redirectUrl;
                                     }

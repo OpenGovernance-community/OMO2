@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../ui_translations.php';
 require_once dirname(__DIR__, 2) . '/bootstrap.php';
 require_once dirname(__DIR__, 4) . '/common/patreon.php';
 require_once dirname(__DIR__, 4) . '/common/openai_text.php';
@@ -12,7 +13,7 @@ $jsonResponse = static function (array $payload, int $status = 200): void {
 };
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
-    $jsonResponse(['status' => false, 'message' => 'Requête invalide.'], 405);
+    $jsonResponse(['status' => false, 'message' => omoDocumentsUiT('requete_invalide')], 405);
 }
 
 $organizationId = isset($_POST['oid'])
@@ -27,15 +28,15 @@ if (
     || $currentUserId <= 0
     || !commonCurrentUserHasOrganizationAccess($organizationId)
 ) {
-    $jsonResponse(['status' => false, 'message' => 'Accès refusé.'], 403);
+    $jsonResponse(['status' => false, 'message' => omoDocumentsUiT('acces_refuse')], 403);
 }
 
 if (!commonAiIsConfigured(commonOpenAiGetRewriteModel())) {
-    $jsonResponse(['status' => false, 'message' => 'Configuration IA indisponible.'], 503);
+    $jsonResponse(['status' => false, 'message' => omoDocumentsUiT('configuration_ia_indisponible')], 503);
 }
 
 if (!patreonUserCanUseAi($currentUserId, $organizationId)) {
-    $jsonResponse(['status' => false, 'message' => 'Les fonctions IA sont réservées aux contributeurs Patreon actifs.'], 403);
+    $jsonResponse(['status' => false, 'message' => omoDocumentsUiT('les_fonctions_ia_sont_reservees_aux_contributeurs_patreon_actifs')], 403);
 }
 
 $document = new \dbObject\Document();
@@ -46,7 +47,7 @@ if (
     || $document->getPvStage() !== \dbObject\Document::PV_STAGE_REVIEW
     || !$document->canUserManagePvStructure($organizationId, $currentUserId)
 ) {
-    $jsonResponse(['status' => false, 'message' => 'Vous ne pouvez pas générer le résumé de ce PV.'], 403);
+    $jsonResponse(['status' => false, 'message' => omoDocumentsUiT('vous_ne_pouvez_pas_generer_le_resume_de_ce_pv')], 403);
 }
 
 $normalizeText = static function ($value): string {
@@ -153,7 +154,7 @@ if ($pointLines !== []) {
 
 $fullText = trim(implode("\n\n", $sections));
 if ($fullText === '') {
-    $jsonResponse(['status' => false, 'message' => 'Le contenu du PV est vide.'], 422);
+    $jsonResponse(['status' => false, 'message' => omoDocumentsUiT('le_contenu_du_pv_est_vide')], 422);
 }
 
 commonAiSetUsageContext($currentUserId, $organizationId, 'minutes_summary');
@@ -165,13 +166,13 @@ $result = commonOpenAiSummarizeSelectedDocumentText($fullText, $fullText, [
 if (empty($result['status'])) {
     $jsonResponse([
         'status' => false,
-        'message' => trim((string)($result['message'] ?? 'Impossible de générer le résumé.')),
+        'message' => trim((string)($result['message'] ?? omoDocumentsUiT('impossible_de_generer_le_resume'))),
     ], 422);
 }
 
 $summary = trim((string)($result['text'] ?? ''));
 if ($summary === '') {
-    $jsonResponse(['status' => false, 'message' => 'Le résumé généré est vide.'], 422);
+    $jsonResponse(['status' => false, 'message' => omoDocumentsUiT('le_resume_genere_est_vide')], 422);
 }
 
 $jsonResponse([

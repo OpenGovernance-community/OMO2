@@ -155,7 +155,7 @@ if (!function_exists('omoEthercalcRequest')) {
             return array(
                 'status' => false,
                 'httpCode' => $httpCode,
-                'text' => 'EtherCalc a renvoye une erreur HTTP ' . $httpCode . '.',
+                'text' => 'EtherCalc a renvoyé une erreur HTTP ' . $httpCode . '.',
             );
         }
 
@@ -177,7 +177,7 @@ if (!function_exists('omoEthercalcCreateDocumentSheet')) {
         try {
             $roomId = 'omo-' . (int)$organizationId . '-' . bin2hex(random_bytes(12));
         } catch (\Throwable $exception) {
-            return array('status' => false, 'text' => 'Impossible de generer l identifiant EtherCalc.');
+            return array('status' => false, 'text' => 'Impossible de générer l’identifiant EtherCalc.');
         }
 
         $result = omoEthercalcRequest('POST', '/_', array(), json_encode(array(

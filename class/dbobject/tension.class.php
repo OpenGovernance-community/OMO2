@@ -4,6 +4,18 @@ namespace dbObject;
 
 class Tension extends DbObject
 {
+        protected static function uiMessageSourceLang(): array
+        {
+            return [
+                'vous_ne_pouvez_pas_creer_de_tension_dans_ce_contexte' => ['text' => 'Vous ne pouvez pas créer de tension dans ce contexte.', 'context' => 'Validation or action feedback for tension.'],
+                'le_titre_est_obligatoire' => ['text' => 'Le titre est obligatoire.', 'context' => 'Validation or action feedback for tension.'],
+                'le_titre_doit_contenir_au_maximum_3_mots' => ['text' => 'Le titre doit contenir au maximum 3 mots.', 'context' => 'Validation or action feedback for tension.'],
+                'la_description_est_obligatoire' => ['text' => 'La description est obligatoire.', 'context' => 'Validation or action feedback for tension.'],
+                'une_tension_doit_etre_rattachee_a_une_organisation' => ['text' => 'Une tension doit être rattachée à une organisation.', 'context' => 'Validation or action feedback for tension.'],
+                'une_tension_doit_avoir_un_auteur' => ['text' => 'Une tension doit avoir un auteur.', 'context' => 'Validation or action feedback for tension.'],
+            ];
+        }
+
     public static function tableName()
     {
         return 'tension';
@@ -32,7 +44,7 @@ class Tension extends DbObject
             'IDuser' => 'Auteur',
             'title' => 'Titre',
             'description' => 'Description',
-            'datecreation' => 'Creation',
+            'datecreation' => 'Création',
             'datemodification' => 'Modification',
             'active' => 'Active',
         ];
@@ -137,7 +149,7 @@ class Tension extends DbObject
         if (!self::canCreateInOrganizationContext($organizationId, $holonId, $userId)) {
             return [
                 'status' => false,
-                'text' => 'Vous ne pouvez pas creer de tension dans ce contexte.',
+                'text' => self::uiMessage('vous_ne_pouvez_pas_creer_de_tension_dans_ce_contexte'),
             ];
         }
 
@@ -165,21 +177,21 @@ class Tension extends DbObject
         if ($title === '') {
             return [
                 'status' => false,
-                'text' => 'Le titre est obligatoire.',
+                'text' => self::uiMessage('le_titre_est_obligatoire'),
             ];
         }
 
         if (self::countTitleWords($title) > 3) {
             return [
                 'status' => false,
-                'text' => 'Le titre doit contenir au maximum 3 mots.',
+                'text' => self::uiMessage('le_titre_doit_contenir_au_maximum_3_mots'),
             ];
         }
 
         if ($description === '') {
             return [
                 'status' => false,
-                'text' => 'La description est obligatoire.',
+                'text' => self::uiMessage('la_description_est_obligatoire'),
             ];
         }
 
@@ -194,14 +206,14 @@ class Tension extends DbObject
         if ((int)$this->get('IDorganization') <= 0) {
             return [
                 'status' => false,
-                'text' => 'Une tension doit etre rattachee a une organisation.',
+                'text' => self::uiMessage('une_tension_doit_etre_rattachee_a_une_organisation'),
             ];
         }
 
         if ((int)$this->get('IDuser') <= 0) {
             return [
                 'status' => false,
-                'text' => 'Une tension doit avoir un auteur.',
+                'text' => self::uiMessage('une_tension_doit_avoir_un_auteur'),
             ];
         }
 

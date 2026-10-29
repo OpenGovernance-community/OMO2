@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../ui_translations.php';
 require_once dirname(__DIR__, 2) . '/shared_functions.php';
 require_once dirname(__DIR__, 2) . '/common/auth.php';
 require_once dirname(__DIR__, 2) . '/common/omo_context_scope.php';
@@ -138,7 +139,7 @@ commonRestoreRememberedUser();
 
 if (!commonGetCurrentUserId() && !commonCanAccessWithoutLogin() && !$shareLink && !$publicDecisionTokenAccess && !($publicPvParticipationLink instanceof \dbObject\DocumentShareLink) && !$collaboraWopiTokenAccess && !omoApiCanUsePublicBasicLmsAccess()) {
     http_response_code(401);
-    echo "Unauthorized";
+    echo omoInterfaceUiT('acces_non_autorise');
     exit;
 }
 
@@ -153,6 +154,6 @@ if (
     && !commonCurrentUserHasOrganizationAccess()
 ) {
     http_response_code(403);
-    echo "Forbidden";
+    echo omoInterfaceUiT('acces_interdit');
     exit;
 }

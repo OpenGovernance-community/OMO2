@@ -11,8 +11,8 @@ $participationSourceLang = [
     'documents.pv_participation.default_title' => ['text' => 'Réunion', 'context' => 'Fallback title of a public PV participation page.'],
     'documents.pv_participation.close' => ['text' => 'Fermer', 'context' => 'Accessible label for closing the public PV discussion dialog.'],
     'documents.pv_participation.discussion' => ['text' => 'Discussion', 'context' => 'Fallback title of a public PV discussion dialog.'],
-    'documents.pv_participation.document' => ['text' => 'Document de la reunion', 'context' => 'Public PV document drawer title.'],
-    'documents.pv_participation.open_window' => ['text' => 'Ouvrir dans une nouvelle fenetre', 'context' => 'Public PV document drawer external link.'],
+    'documents.pv_participation.document' => ['text' => 'Document de la réunion', 'context' => 'Public PV document drawer title.'],
+    'documents.pv_participation.open_window' => ['text' => 'Ouvrir dans une nouvelle fenêtre', 'context' => 'Public PV document drawer external link.'],
 ];
 $participationLang = omoLoadTranslationBundle('omo_pv_participation', $participationSourceLang);
 $participationT = static function (string $key) use ($participationLang, $participationSourceLang): string {
@@ -32,7 +32,7 @@ if (!$canParticipate) {
     http_response_code(404);
     ?>
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="<?= htmlspecialchars(omoGetTranslationLocale(), ENT_QUOTES, 'UTF-8') ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">

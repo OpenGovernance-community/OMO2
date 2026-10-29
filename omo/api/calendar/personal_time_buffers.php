@@ -5,12 +5,12 @@ if (!isset($event, $currentUserId, $organizationId) || !$event->canEditTimeBuffe
     exit;
 }
 $sourceLang = [
-    'hint' => ['text' => 'Ces temps sont personnels et deduits uniquement de vos disponibilites. Les informations de l evenement restent inchangees.', 'context' => 'Personal buffers for an invited participant without event editing permission.'],
-    'saved' => ['text' => 'Vos temps avant / apres sont enregistres.', 'context' => 'Personal event buffers saved.'],
-    'csrf' => ['text' => 'Rechargez le formulaire puis reessayez.', 'context' => 'Invalid personal event editor CSRF token.'],
-    'failed' => ['text' => 'Impossible d enregistrer ces temps.', 'context' => 'Personal event time settings save failed.'],
-    'invalid' => ['text' => 'Indiquez des durees entieres entre 0 et 1440 minutes.', 'context' => 'Invalid personal time duration.'],
-    'busy' => ['text' => 'Une modification est en cours. Reessayez dans un instant.', 'context' => 'Personal calendar lock unavailable.'],
+    'hint' => ['text' => 'Ces temps sont personnels et déduits uniquement de vos disponibilités. Les informations de l’événement restent inchangées.', 'context' => 'Personal buffers for an invited participant without event editing permission.'],
+    'saved' => ['text' => 'Vos temps avant / après sont enregistrés.', 'context' => 'Personal event buffers saved.'],
+    'csrf' => ['text' => 'Rechargez le formulaire puis réessayez.', 'context' => 'Invalid personal event editor CSRF token.'],
+    'failed' => ['text' => 'Impossible d’enregistrer ces temps.', 'context' => 'Personal event time settings save failed.'],
+    'invalid' => ['text' => 'Indiquez des durées entières entre 0 et 1440 minutes.', 'context' => 'Invalid personal time duration.'],
+    'busy' => ['text' => 'Une modification est en cours. Réessayez dans un instant.', 'context' => 'Personal calendar lock unavailable.'],
 ];
 $bundle = omoLoadTranslationBundle('omo_calendar_invited_time_buffers', $sourceLang);
 $translate = static fn(string $key): string => t($key, [], $bundle, $sourceLang);

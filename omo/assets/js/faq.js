@@ -1,3 +1,5 @@
+var omoUiText = window.omoUiText || function (key, fallback) { return fallback; };
+var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; };
 (function () {
 	if (typeof window.__omoPopupCleanup === 'function') {
 		window.__omoPopupCleanup();
@@ -234,7 +236,7 @@
 			})
 			.catch(function () {
 				setLoadingState(false);
-				window.omoNotify('Impossible de recharger la FAQ pour le moment.', 'error');
+				window.omoNotify(omoUiText("impossible_de_recharger_la_faq_pour_le_moment", "Impossible de recharger la FAQ pour le moment."), 'error');
 			});
 	}
 
@@ -382,7 +384,7 @@
 		clearFaqView(detailView);
 		detailView.hidden = false;
 		syncFaqTitle(null);
-		detailView.innerHTML = '<div class="faq-popup__helper">Chargement...</div>';
+		detailView.innerHTML = ("<div class=\"faq-popup__helper\">" + omoUiHtml("chargement", "Chargement...") + "</div>");
 
 		if (config.updateHash !== false && typeof window.omoOpenPopupHashState === 'function') {
 			window.omoOpenPopupHashState('faq', id);
@@ -420,7 +422,7 @@
 				if (requestId !== detailRequestId || !document.documentElement.contains(root)) {
 					return;
 				}
-				detailView.innerHTML = '<div class="faq-popup__no-result">Impossible de charger cette FAQ pour le moment.</div>';
+				detailView.innerHTML = ("<div class=\"faq-popup__no-result\">" + omoUiHtml("impossible_de_charger_cette_faq_pour_le_moment", "Impossible de charger cette FAQ pour le moment.") + "</div>");
 				const backTemplate = root.querySelector('[data-faq-detail-back]');
 				if (backTemplate) detailView.prepend(backTemplate.content.cloneNode(true));
 			});
@@ -602,7 +604,7 @@
 		}
 
 		const increment = Math.min(defaultVisibleLimit, remainingCount);
-		loadMoreButton.textContent = 'Voir ' + increment + ' de plus';
+		loadMoreButton.textContent = omoUiText("voir", "Voir ") + increment + ' de plus';
 	}
 
 	function filterList() {
@@ -827,7 +829,7 @@
 		}
 
 		if (!payload || payload.status === false) {
-			window.omoNotify(payload && payload.message ? payload.message : "Impossible d'enregistrer cette FAQ.", 'error');
+			window.omoNotify(payload && payload.message ? payload.message : omoUiText("impossible_d_enregistrer_cette_faq", "Impossible d'enregistrer cette FAQ."), 'error');
 			return;
 		}
 		if (requestOnly) {
@@ -908,7 +910,7 @@
 				handleSaveResponse(data);
 			})
 			.catch(function () {
-				window.omoNotify("Impossible d'enregistrer cette FAQ.", 'error');
+				window.omoNotify(omoUiText("impossible_d_enregistrer_cette_faq", "Impossible d'enregistrer cette FAQ."), 'error');
 			})
 			.finally(function () {
 				form.classList.remove('disabled');
@@ -932,17 +934,17 @@
 			.then(function (response) {
 				return response.json().then(function (payload) {
 					if (!response.ok || !payload.success) {
-						throw new Error(payload.message || 'Impossible de relayer cette question.');
+						throw new Error(payload.message || omoUiText("impossible_de_relayer_cette_question", "Impossible de relayer cette question."));
 					}
 					return payload;
 				});
 			})
 			.then(function (payload) {
-                window.omoNotify(payload.message || 'Question relayée aux administrateurs de l’organisation.', 'success');
+                window.omoNotify(payload.message || omoUiText("question_relayee_aux_administrateurs_de_l_organisation", "Question relayée aux administrateurs de l’organisation."), 'success');
 				showDetail(faqId, { updateHash: false });
 			})
 			.catch(function (error) {
-				window.omoNotify(error.message || 'Impossible de relayer cette question.', 'error');
+				window.omoNotify(error.message || omoUiText("impossible_de_relayer_cette_question", "Impossible de relayer cette question."), 'error');
 			})
 			.finally(function () {
 				relayButton.disabled = false;
@@ -980,7 +982,7 @@
 
 				if (!payload || payload.status === false) {
 					deleteButton.disabled = false;
-					window.omoNotify(payload && payload.message ? payload.message : 'Impossible de supprimer cette FAQ.', 'error');
+					window.omoNotify(payload && payload.message ? payload.message : omoUiText("impossible_de_supprimer_cette_faq", "Impossible de supprimer cette FAQ."), 'error');
 					return;
 				}
 
@@ -988,7 +990,7 @@
 			})
 			.catch(function () {
 				deleteButton.disabled = false;
-				window.omoNotify('Impossible de supprimer cette FAQ.', 'error');
+				window.omoNotify(omoUiText("impossible_de_supprimer_cette_faq", "Impossible de supprimer cette FAQ."), 'error');
 			});
 	}
 
@@ -1164,11 +1166,11 @@
 				}
 
 				setVoteButtonsDisabled(normalizedFaqId, false);
-				window.omoNotify(result.payload && result.payload.message ? result.payload.message : 'Impossible d enregistrer ce vote.', 'error');
+				window.omoNotify(result.payload && result.payload.message ? result.payload.message : omoUiText("impossible_d_enregistrer_ce_vote", "Impossible d’enregistrer ce vote."), 'error');
 			})
 			.catch(function () {
 				setVoteButtonsDisabled(normalizedFaqId, false);
-				window.omoNotify('Impossible d enregistrer ce vote pour le moment.', 'error');
+				window.omoNotify(omoUiText("impossible_d_enregistrer_ce_vote_pour_le_moment", "Impossible d’enregistrer ce vote pour le moment."), 'error');
 			});
 	}
 

@@ -1,3 +1,5 @@
+var omoUiText = window.omoUiText || function (key, fallback) { return fallback; };
+var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; };
 (function (window, document) {
     'use strict';
 
@@ -240,7 +242,7 @@
                 cell.disabled = Boolean(moduleAt(row, column));
                 cell.setAttribute('data-row', String(row));
                 cell.setAttribute('data-column', String(column));
-                cell.setAttribute('aria-label', 'Ligne ' + String(row + 1) + ', colonne ' + String(column + 1));
+                cell.setAttribute('aria-label', omoUiText("ligne", "Ligne ") + String(row + 1) + ', colonne ' + String(column + 1));
                 editorGrid.appendChild(cell);
             }
         }

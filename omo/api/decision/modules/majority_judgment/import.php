@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../../ui_translations.php';
 
 require_once dirname(__DIR__) . '/import_common.php';
 require_once __DIR__ . '/shared.php';
@@ -13,7 +14,7 @@ if (!function_exists('omoDecisionMajorityJudgmentImportBlock')) {
         if (count($proposals) < 2) {
             return [
                 'status' => false,
-                'message' => 'Le jugement majoritaire importe au moins deux propositions par bloc.',
+                'message' => omoDecisionUiT('le_jugement_majoritaire_importe_au_moins_deux_propositions_par_bloc'),
             ];
         }
 
@@ -43,7 +44,7 @@ if (!function_exists('omoDecisionMajorityJudgmentImportBlock')) {
         if (empty($saveGroup['status'])) {
             return [
                 'status' => false,
-                'message' => 'Impossible d enregistrer le bloc de jugement majoritaire importe.',
+                'message' => omoDecisionUiT('impossible_d_enregistrer_le_bloc_de_jugement_majoritaire_importe'),
             ];
         }
 
@@ -55,7 +56,7 @@ if (!function_exists('omoDecisionMajorityJudgmentImportBlock')) {
             if (empty($saveDecision['status'])) {
                 return [
                     'status' => false,
-                    'message' => 'Impossible de synchroniser le processus importe.',
+                    'message' => omoDecisionUiT('impossible_de_synchroniser_le_processus_importe'),
                 ];
             }
         }

@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../ui_translations.php';
 
 require_once __DIR__ . '/common.php';
 require_once __DIR__ . '/registry.php';
@@ -168,7 +169,7 @@ if (!function_exists('omoDecisionImportLoadUploadedFile')) {
         if ($originalName === '' || $tmpName === '' || !is_uploaded_file($tmpName)) {
             return [
                 'status' => false,
-                'message' => 'Fichier d import invalide.',
+                'message' => omoDecisionUiT('fichier_d_import_invalide'),
             ];
         }
 
@@ -176,7 +177,7 @@ if (!function_exists('omoDecisionImportLoadUploadedFile')) {
         if (!is_string($content) || $content === '') {
             return [
                 'status' => false,
-                'message' => 'Impossible de lire le fichier d import.',
+                'message' => omoDecisionUiT('impossible_de_lire_le_fichier_d_import'),
             ];
         }
 
@@ -194,7 +195,7 @@ if (!function_exists('omoDecisionImportLoadUploadedFile')) {
         if (!is_array($decoded)) {
             return [
                 'status' => false,
-                'message' => 'Format de fichier non reconnu ou contenu invalide.',
+                'message' => omoDecisionUiT('format_de_fichier_non_reconnu_ou_contenu_invalide'),
             ];
         }
 
@@ -469,7 +470,7 @@ if (!function_exists('omoDecisionImportEnsureOwnerParticipant')) {
         if ($decisionId <= 0 || $userId <= 0) {
             return [
                 'status' => false,
-                'message' => 'Participant proprietaire invalide.',
+                'message' => omoDecisionUiT('participant_proprietaire_invalide'),
             ];
         }
 
@@ -487,7 +488,7 @@ if (!function_exists('omoDecisionImportEnsureOwnerParticipant')) {
         $saveResult = $participant->save();
         return !empty($saveResult['status'])
             ? ['status' => true, 'participant' => $participant]
-            : ['status' => false, 'message' => 'Impossible d enregistrer le proprietaire du scrutin.'];
+            : ['status' => false, 'message' => omoDecisionUiT('impossible_d_enregistrer_le_proprietaire_du_scrutin')];
     }
 }
 
@@ -499,7 +500,7 @@ if (!function_exists('omoDecisionImportSyncGroupProposals')) {
         if ($decisionId <= 0 || $groupId <= 0) {
             return [
                 'status' => false,
-                'message' => 'Bloc de decision invalide pour les propositions.',
+                'message' => omoDecisionUiT('bloc_de_decision_invalide_pour_les_propositions'),
             ];
         }
 
@@ -532,7 +533,7 @@ if (!function_exists('omoDecisionImportSyncGroupProposals')) {
             if (empty($saveResult['status'])) {
                 return [
                     'status' => false,
-                    'message' => 'Impossible d enregistrer une proposition importee.',
+                    'message' => omoDecisionUiT('impossible_d_enregistrer_une_proposition_importee'),
                 ];
             }
         }
@@ -544,7 +545,7 @@ if (!function_exists('omoDecisionImportSyncGroupProposals')) {
             if (empty($saveResult['status'])) {
                 return [
                     'status' => false,
-                    'message' => 'Impossible d archiver une ancienne proposition.',
+                    'message' => omoDecisionUiT('impossible_d_archiver_une_ancienne_proposition'),
                 ];
             }
         }

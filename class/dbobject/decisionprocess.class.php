@@ -3,6 +3,32 @@ namespace dbObject;
 
 class DecisionProcess extends DbObject
 {
+        protected static function uiMessageSourceLang(): array
+        {
+            return [
+                'impossible_de_synchroniser_les_dates_dans_l_agenda' => ['text' => 'Impossible de synchroniser les dates dans l’agenda.', 'context' => 'Validation or action feedback for decisionprocess.'],
+                'cette_date_ne_peut_pas_etre_confirmee_ou_annulee' => ['text' => 'Cette date ne peut pas être confirmée ou annulée.', 'context' => 'Validation or action feedback for decisionprocess.'],
+                'impossible_de_mettre_a_jour_les_agendas' => ['text' => 'Impossible de mettre à jour les agendas.', 'context' => 'Validation or action feedback for decisionprocess.'],
+                'impossible_de_sauvegarder_la_decision_et_son_agenda' => ['text' => 'Impossible de sauvegarder la décision et son agenda.', 'context' => 'Validation or action feedback for decisionprocess.'],
+                'destination_invalide' => ['text' => 'Destination invalide.', 'context' => 'Validation or action feedback for decisionprocess.'],
+                'acces_refuse' => ['text' => 'Accès refusé.', 'context' => 'Validation or action feedback for decisionprocess.'],
+                'acces_refuse_pour_cette_destination' => ['text' => 'Accès refusé pour cette destination.', 'context' => 'Validation or action feedback for decisionprocess.'],
+                'cette_prise_de_decision_est_deja_a_cette_destination' => ['text' => 'Cette prise de décision est déjà à cette destination.', 'context' => 'Validation or action feedback for decisionprocess.'],
+                'prise_de_decision_deplacee' => ['text' => 'Prise de décision déplacée.', 'context' => 'Validation or action feedback for decisionprocess.'],
+                'espace_de_la_decision_introuvable' => ['text' => 'Espace de la décision introuvable.', 'context' => 'Validation or action feedback for decisionprocess.'],
+                'la_visibilite_role_demande_une_decision_liee_a_un_role' => ['text' => 'La visibilité « rôle » demande une décision liée à un rôle.', 'context' => 'Validation or action feedback for decisionprocess.'],
+                'la_visibilite_cercle_demande_une_decision_placee_dans_un_cercle_ou_dans_un_role_de_cercle' => ['text' => 'La visibilité « cercle » demande une décision placée dans un cercle ou dans un rôle de cercle.', 'context' => 'Validation or action feedback for decisionprocess.'],
+                'prise_de_decision_introuvable' => ['text' => 'Prise de décision introuvable.', 'context' => 'Validation or action feedback for decisionprocess.'],
+                'connexion_a_la_base_impossible' => ['text' => 'Connexion à la base impossible.', 'context' => 'Validation or action feedback for decisionprocess.'],
+                'prise_de_decision_archivee' => ['text' => 'Prise de décision archivée.', 'context' => 'Validation or action feedback for decisionprocess.'],
+                'impossible_d_archiver_cette_prise_de_decision_pour_le_moment' => ['text' => 'Impossible d’archiver cette prise de décision pour le moment.', 'context' => 'Validation or action feedback for decisionprocess.'],
+                'prise_de_decision_supprimee' => ['text' => 'Prise de décision supprimée.', 'context' => 'Validation or action feedback for decisionprocess.'],
+                'impossible_de_supprimer_cette_prise_de_decision_pour_le_moment' => ['text' => 'Impossible de supprimer cette prise de décision pour le moment.', 'context' => 'Validation or action feedback for decisionprocess.'],
+                'la_prise_de_decision_doit_etre_enregistree_avant_de_synchroniser_les_participants' => ['text' => 'La prise de décision doit être enregistrée avant de synchroniser les participants.', 'context' => 'Validation or action feedback for decisionprocess.'],
+                'impossible_de_synchroniser_les_participants_a_la_prise_de_decision' => ['text' => 'Impossible de synchroniser les participants à la prise de décision.', 'context' => 'Validation or action feedback for decisionprocess.'],
+            ];
+        }
+
     private bool $participantRefreshLocked = false;
 
     /** Synchronize through native events so ICS and CalDAV keep stable event identities. */
@@ -133,7 +159,7 @@ class DecisionProcess extends DbObject
         } catch (\Throwable $exception) {
             if ($ownsTransaction && $pdo->inTransaction()) $pdo->rollBack();
             error_log('decision_calendar_sync_failed: ' . $exception->getMessage());
-            return ['status' => false, 'text' => 'Impossible de synchroniser les dates dans l’agenda.'];
+            return ['status' => false, 'text' => self::uiMessage('impossible_de_synchroniser_les_dates_dans_l_agenda')];
         }
     }
 
@@ -191,7 +217,7 @@ class DecisionProcess extends DbObject
         if ((int)$proposal->get('IDdecision_process') !== (int)$this->getId() || !(int)$proposal->get('active') || !$proposal->get('start_at')
             || !in_array($this->get('status'), [DecisionProcess::STATUS_RESULTS, DecisionProcess::STATUS_ARCHIVED], true)
             || !in_array($status, [Event::STATUS_CONFIRMED, Event::STATUS_CANCELLED], true)) {
-            return ['status' => false, 'message' => 'Cette date ne peut pas être confirmée ou annulée.'];
+            return ['status' => false, 'message' => self::uiMessage('cette_date_ne_peut_pas_etre_confirmee_ou_annulee')];
         }
         $pdo = self::getPdo();
         $ownsTransaction = !$pdo->inTransaction();
@@ -214,7 +240,7 @@ class DecisionProcess extends DbObject
         } catch (\Throwable $exception) {
             if ($ownsTransaction && $pdo->inTransaction()) $pdo->rollBack();
             error_log('decision_calendar_status_failed: ' . $exception->getMessage());
-            return ['status' => false, 'message' => 'Impossible de mettre à jour les agendas.'];
+            return ['status' => false, 'message' => self::uiMessage('impossible_de_mettre_a_jour_les_agendas')];
         }
     }
 
@@ -574,7 +600,7 @@ class DecisionProcess extends DbObject
         } catch (\Throwable $exception) {
             if ($ownsTransaction && $pdo->inTransaction()) $pdo->rollBack();
             error_log('decision_process_save_failed: ' . $exception->getMessage());
-            return ['status' => false, 'text' => 'Impossible de sauvegarder la décision et son agenda.'];
+            return ['status' => false, 'text' => self::uiMessage('impossible_de_sauvegarder_la_decision_et_son_agenda')];
         }
     }
 
@@ -625,14 +651,14 @@ class DecisionProcess extends DbObject
         if ($targetHolonId <= 0) {
             return [
                 'status' => false,
-                'text' => 'Destination invalide.',
+                'text' => self::uiMessage('destination_invalide'),
             ];
         }
 
         if (!$this->canMoveInOrganizationContext($organizationId, $userId)) {
             return [
                 'status' => false,
-                'text' => 'Accès refusé.',
+                'text' => self::uiMessage('acces_refuse'),
             ];
         }
 
@@ -648,7 +674,7 @@ class DecisionProcess extends DbObject
         ) {
             return [
                 'status' => false,
-                'text' => 'Accès refusé pour cette destination.',
+                'text' => self::uiMessage('acces_refuse_pour_cette_destination'),
             ];
         }
 
@@ -656,7 +682,7 @@ class DecisionProcess extends DbObject
         if ($currentHolonId === $targetHolonId) {
             return [
                 'status' => false,
-                'text' => 'Cette prise de décision est déjà à cette destination.',
+                'text' => self::uiMessage('cette_prise_de_decision_est_deja_a_cette_destination'),
             ];
         }
 
@@ -718,7 +744,7 @@ class DecisionProcess extends DbObject
 
         return [
             'status' => true,
-            'text' => 'Prise de décision déplacée.',
+            'text' => self::uiMessage('prise_de_decision_deplacee'),
             'previousHolonId' => $currentHolonId,
             'targetHolonId' => $targetHolonId,
             'visibilityType' => (string)$this->get('visibility_type'),
@@ -1019,7 +1045,7 @@ class DecisionProcess extends DbObject
         ) {
             return array(
                 'status' => false,
-                'text' => 'Espace de la décision introuvable.',
+                'text' => self::uiMessage('espace_de_la_decision_introuvable'),
             );
         }
 
@@ -1027,7 +1053,7 @@ class DecisionProcess extends DbObject
             if ((int)$holon->get('IDtypeholon') !== 1) {
                 return array(
                     'status' => false,
-                    'text' => 'La visibilité « rôle » demande une décision liée à un rôle.',
+                    'text' => self::uiMessage('la_visibilite_role_demande_une_decision_liee_a_un_role'),
                 );
             }
 
@@ -1048,7 +1074,7 @@ class DecisionProcess extends DbObject
         if ($circleId <= 0) {
             return array(
                 'status' => false,
-                'text' => 'La visibilité « cercle » demande une décision placée dans un cercle ou dans un rôle de cercle.',
+                'text' => self::uiMessage('la_visibilite_cercle_demande_une_decision_placee_dans_un_cercle_ou_dans_un_role_de_cercle'),
             );
         }
 
@@ -1808,7 +1834,7 @@ class DecisionProcess extends DbObject
             return [
                 'status' => false,
                 'action' => 'archive',
-                'message' => 'Prise de décision introuvable.',
+                'message' => self::uiMessage('prise_de_decision_introuvable'),
             ];
         }
 
@@ -1822,7 +1848,7 @@ class DecisionProcess extends DbObject
             return [
                 'status' => false,
                 'action' => 'archive',
-                'message' => 'Connexion à la base impossible.',
+                'message' => self::uiMessage('connexion_a_la_base_impossible'),
             ];
         }
 
@@ -1861,7 +1887,7 @@ class DecisionProcess extends DbObject
             return [
                 'status' => true,
                 'action' => 'archive',
-                'message' => 'Prise de décision archivée.',
+                'message' => self::uiMessage('prise_de_decision_archivee'),
             ];
         } catch (\Throwable $exception) {
             if ($pdo->inTransaction()) {
@@ -1871,7 +1897,7 @@ class DecisionProcess extends DbObject
             return [
                 'status' => false,
                 'action' => 'archive',
-                'message' => 'Impossible d’archiver cette prise de décision pour le moment.',
+                'message' => self::uiMessage('impossible_d_archiver_cette_prise_de_decision_pour_le_moment'),
             ];
         }
     }
@@ -1882,7 +1908,7 @@ class DecisionProcess extends DbObject
             return [
                 'status' => false,
                 'action' => 'delete',
-                'message' => 'Prise de décision introuvable.',
+                'message' => self::uiMessage('prise_de_decision_introuvable'),
             ];
         }
 
@@ -1891,7 +1917,7 @@ class DecisionProcess extends DbObject
             return [
                 'status' => false,
                 'action' => 'delete',
-                'message' => 'Connexion à la base impossible.',
+                'message' => self::uiMessage('connexion_a_la_base_impossible'),
             ];
         }
 
@@ -1935,7 +1961,7 @@ class DecisionProcess extends DbObject
             return [
                 'status' => true,
                 'action' => 'delete',
-                'message' => 'Prise de décision supprimée.',
+                'message' => self::uiMessage('prise_de_decision_supprimee'),
             ];
         } catch (\Throwable $exception) {
             if ($pdo->inTransaction()) {
@@ -1945,7 +1971,7 @@ class DecisionProcess extends DbObject
             return [
                 'status' => false,
                 'action' => 'delete',
-                'message' => 'Impossible de supprimer cette prise de décision pour le moment.',
+                'message' => self::uiMessage('impossible_de_supprimer_cette_prise_de_decision_pour_le_moment'),
             ];
         }
     }
@@ -2844,7 +2870,7 @@ class DecisionProcess extends DbObject
         if ($decisionId <= 0) {
             return [
                 'status' => false,
-                'message' => 'La prise de décision doit être enregistrée avant de synchroniser les participants.',
+                'message' => self::uiMessage('la_prise_de_decision_doit_etre_enregistree_avant_de_synchroniser_les_participants'),
             ];
         }
         // Membership remains dynamic until the effective end, including between cron runs.
@@ -3121,7 +3147,7 @@ class DecisionProcess extends DbObject
         } catch (\Throwable $exception) {
             if ($ownsTransaction && $pdo->inTransaction()) $pdo->rollBack();
             error_log('decision_participant_sync_failed: ' . $exception->getMessage());
-            return ['status' => false, 'message' => 'Impossible de synchroniser les participants à la prise de décision.'];
+            return ['status' => false, 'message' => self::uiMessage('impossible_de_synchroniser_les_participants_a_la_prise_de_decision')];
         }
     }
 

@@ -3,6 +3,32 @@
 
 	class Parcours extends DbObject
 	{
+        protected static function uiMessageSourceLang(): array
+        {
+            return [
+                'ce_parcours_retire_du_partage_est_conserve_en_lecture_seule' => ['text' => 'Ce parcours retire du partage est conservé en lecture seule.', 'context' => 'Validation or action feedback for parcours.'],
+                'organisation_invalide' => ['text' => 'Organisation invalide.', 'context' => 'Validation or action feedback for parcours.'],
+                'impossible_de_charger_les_parcours_basic' => ['text' => 'Impossible de charger les parcours basic.', 'context' => 'Validation or action feedback for parcours.'],
+                'pack_ou_parcours_invalide' => ['text' => 'Pack ou parcours invalide.', 'context' => 'Validation or action feedback for parcours.'],
+                'impossible_de_charger_les_organisations_liees_au_pack' => ['text' => 'Impossible de charger les organisations liées au pack.', 'context' => 'Validation or action feedback for parcours.'],
+                'impossible_de_nettoyer_un_ancien_lien_direct_de_parcours' => ['text' => 'Impossible de nettoyer un ancien lien direct de parcours.', 'context' => 'Validation or action feedback for parcours.'],
+                'impossible_de_charger_les_parcours_herites_du_pack' => ['text' => 'Impossible de charger les parcours hérités du pack.', 'context' => 'Validation or action feedback for parcours.'],
+                'impossible_de_detacher_un_parcours_du_pack' => ['text' => 'Impossible de détacher un parcours du pack.', 'context' => 'Validation or action feedback for parcours.'],
+                'parcours_ou_organisation_invalide' => ['text' => 'Parcours ou organisation invalide.', 'context' => 'Validation or action feedback for parcours.'],
+                'ce_parcours_n_est_pas_rattache_a_l_organisation_courante' => ['text' => 'Ce parcours n’est pas rattaché à l’organisation courante.', 'context' => 'Validation or action feedback for parcours.'],
+                'ce_parcours_est_actuellement_fourni_par_un_pack_rattache_a_votre_organisation_detachez_d_a' => ['text' => 'Ce parcours est actuellement fourni par un pack rattaché à votre organisation. Detachez d’abord le pack parent.', 'context' => 'Validation or action feedback for parcours.'],
+                'ce_parcours_appartient_a_une_autre_organisation_il_sera_seulement_detache_de_votre_organis' => ['text' => 'Ce parcours appartient à une autre organisation. Il sera seulement détaché de votre organisation.', 'context' => 'Validation or action feedback for parcours.'],
+                'ce_parcours_est_encore_utilise_il_sera_retire_du_partage_et_conserve_pour_ses_utilisateurs' => ['text' => 'Ce parcours est encore utilisé. Il sera retire du partage et conserve pour ses utilisateurs existants.', 'context' => 'Validation or action feedback for parcours.'],
+                'ce_parcours_n_est_utilise_que_dans_votre_organisation_il_sera_supprime_definitivement_avec' => ['text' => 'Ce parcours n’est utilisé que dans votre organisation. Il sera supprime définitivement avec ses éléments non reutilises.', 'context' => 'Validation or action feedback for parcours.'],
+                'impossible_de_preparer_la_suppression_de_ce_parcours' => ['text' => 'Impossible de préparer la suppression de ce parcours.', 'context' => 'Validation or action feedback for parcours.'],
+                'connexion_a_la_base_indisponible' => ['text' => 'Connexion à la base indisponible.', 'context' => 'Validation or action feedback for parcours.'],
+                'le_parcours_a_ete_retire_du_partage_son_contenu_et_les_progressions_restent_accessibles_a' => ['text' => 'Le parcours a été retire du partage. Son contenu et les progressions restent accessibles a ses utilisateurs existants.', 'context' => 'Validation or action feedback for parcours.'],
+                'le_parcours_a_ete_detache_de_votre_organisation' => ['text' => 'Le parcours a été détaché de votre organisation.', 'context' => 'Validation or action feedback for parcours.'],
+                'le_parcours_et_ses_elements_non_reutilises_ont_ete_supprimes' => ['text' => 'Le parcours et ses éléments non reutilises ont été supprimés.', 'context' => 'Validation or action feedback for parcours.'],
+                'impossible_de_supprimer_ce_parcours_pour_le_moment' => ['text' => 'Impossible de supprimer ce parcours pour le moment.', 'context' => 'Validation or action feedback for parcours.'],
+            ];
+        }
+
 		protected static $hasApplicationColumnCache = null;
 		protected static $hasIsPackColumnCache = null;
 		protected static $hasPrerequisiteTableCache = null;
@@ -35,11 +61,11 @@
 				'title' => 'Titre',
 				'description' => 'Description',
 				'image' => 'Image',
-				'IDorganization' => 'Organisation proprietaire',
-				'IDapplication' => 'Application liee',
-				'IDusercreation' => 'Createur',
+				'IDorganization' => 'Organisation propriétaire',
+				'IDapplication' => 'Application liée',
+				'IDusercreation' => 'Créateur',
 				'IDusermodification' => 'Dernier modificateur',
-				'datecreation' => 'Date de creation',
+				'datecreation' => 'Date de création',
 				'datemodification' => 'Date de modification',
 				'ispublic' => 'Public',
 				'isbasic' => 'Basic',
@@ -51,15 +77,15 @@
 		public static function attributeDescriptions()
 		{
 			return [
-				'IDorganization' => 'Organisation proprietaire du parcours',
-				'IDapplication' => 'Application dont depend ce parcours. Si elle est desactivee dans une organisation, ce parcours et ses FAQ liees sont masques.',
+				'IDorganization' => 'Organisation propriétaire du parcours',
+				'IDapplication' => 'Application dont dépend ce parcours. Si elle est désactivée dans une organisation, ce parcours et ses FAQ liées sont masqués.',
 				'IDusercreation' => 'Utilisateur qui a cree le parcours',
 				'IDusermodification' => 'Utilisateur qui a modifie le parcours en dernier',
-				'datecreation' => 'Date de creation du parcours',
-				'datemodification' => 'Date de derniere modification du parcours',
+				'datecreation' => 'Date de création du parcours',
+				'datemodification' => 'Date de dernière modification du parcours',
 				'ispublic' => 'Rend le parcours visible dans un catalogue partage et ajoutable dans une organisation',
 				'isbasic' => 'Instancie automatiquement ce parcours pour chaque nouvelle organisation',
-				'ispack' => 'Transforme ce parcours en pack. Un pack contient d autres parcours, pas des missions.',
+				'ispack' => 'Transforme ce parcours en pack. Un pack contient d’autres parcours, pas des missions.',
 			];
 		}
 
@@ -463,7 +489,7 @@
 		{
 			$isNew = (int)$this->getId() <= 0;
 			if (!$isNew && self::fetchValue('SELECT isarchived FROM parcours WHERE id = :id', ['id' => (int)$this->getId()])) {
-				return ['status' => false, 'text' => 'Ce parcours retire du partage est conserve en lecture seule.'];
+				return ['status' => false, 'text' => self::uiMessage('ce_parcours_retire_du_partage_est_conserve_en_lecture_seule')];
 			}
 			$now = new \DateTimeImmutable();
 			$currentUserId = self::resolveCurrentUserId();
@@ -520,7 +546,7 @@
 			if ($organizationId <= 0) {
 				return array(
 					'status' => false,
-					'message' => 'Organisation invalide.',
+					'message' => self::uiMessage('organisation_invalide'),
 					'createdCount' => 0,
 				);
 			}
@@ -529,7 +555,7 @@
 			if ($rows === false) {
 				return array(
 					'status' => false,
-					'message' => 'Impossible de charger les parcours basic.',
+					'message' => self::uiMessage('impossible_de_charger_les_parcours_basic'),
 					'createdCount' => 0,
 				);
 			}
@@ -1503,7 +1529,7 @@
 			if ($packParcoursId <= 0 || $childParcoursId <= 0) {
 				return [
 					'status' => false,
-					'message' => 'Pack ou parcours invalide.',
+					'message' => self::uiMessage('pack_ou_parcours_invalide'),
 					'detachedCount' => 0,
 				];
 			}
@@ -1520,7 +1546,7 @@
 			if (!is_array($organizationRows)) {
 				return [
 					'status' => false,
-					'message' => 'Impossible de charger les organisations liees au pack.',
+					'message' => self::uiMessage('impossible_de_charger_les_organisations_liees_au_pack'),
 					'detachedCount' => 0,
 				];
 			}
@@ -1579,7 +1605,7 @@
 				if ($deleteResult === false) {
 					return [
 						'status' => false,
-						'message' => 'Impossible de nettoyer un ancien lien direct de parcours.',
+						'message' => self::uiMessage('impossible_de_nettoyer_un_ancien_lien_direct_de_parcours'),
 						'detachedCount' => $detachedCount,
 					];
 				}
@@ -1627,7 +1653,7 @@
 			if (!is_array($fallbackRows)) {
 				return [
 					'status' => false,
-					'message' => 'Impossible de charger les parcours herites du pack.',
+					'message' => self::uiMessage('impossible_de_charger_les_parcours_herites_du_pack'),
 				];
 			}
 
@@ -1669,7 +1695,7 @@
 				if ($deleteResult === false) {
 					return [
 						'status' => false,
-						'message' => 'Impossible de detacher un parcours du pack.',
+						'message' => self::uiMessage('impossible_de_detacher_un_parcours_du_pack'),
 					];
 				}
 
@@ -1978,7 +2004,7 @@
 				return [
 					'status' => false,
 					'action' => 'none',
-					'message' => 'Parcours ou organisation invalide.',
+					'message' => self::uiMessage('parcours_ou_organisation_invalide'),
 				];
 			}
 
@@ -1987,7 +2013,7 @@
 				return [
 					'status' => false,
 					'action' => 'none',
-					'message' => 'Ce parcours n est pas rattache a l organisation courante.',
+					'message' => self::uiMessage('ce_parcours_n_est_pas_rattache_a_l_organisation_courante'),
 				];
 			}
 
@@ -1995,7 +2021,7 @@
 				return [
 					'status' => false,
 					'action' => 'none',
-					'message' => 'Ce parcours est actuellement fourni par un pack rattache a votre organisation. Detachez d abord le pack parent.',
+					'message' => self::uiMessage('ce_parcours_est_actuellement_fourni_par_un_pack_rattache_a_votre_organisation_detachez_d_a'),
 				];
 			}
 
@@ -2003,7 +2029,7 @@
 				return [
 					'status' => true,
 					'action' => 'detach',
-					'message' => 'Ce parcours appartient a une autre organisation. Il sera seulement detache de votre organisation.',
+					'message' => self::uiMessage('ce_parcours_appartient_a_une_autre_organisation_il_sera_seulement_detache_de_votre_organis'),
 					'confirmMessage' => 'Ce parcours appartient a une autre organisation.' . "\n\n" . 'Vous ne pouvez pas le supprimer definitivement.' . "\n\n" . 'Il sera seulement detache de votre organisation.' . "\n\n" . 'Voulez vous continuer ?',
 					'totalOrganizationCount' => 0,
 					'otherOrganizationCount' => 0,
@@ -2024,7 +2050,7 @@
 				return [
 					'status' => true,
 					'action' => 'archive',
-					'message' => 'Ce parcours est encore utilise. Il sera retire du partage et conserve pour ses utilisateurs existants.',
+					'message' => self::uiMessage('ce_parcours_est_encore_utilise_il_sera_retire_du_partage_et_conserve_pour_ses_utilisateurs'),
 					'confirmMessage' => "Ce parcours est encore utilise.\n\nSon contenu et les progressions seront conserves. Il ne sera plus modifiable ni accessible aux nouvelles organisations.\n\nVoulez vous continuer ?",
 					'totalOrganizationCount' => $totalOrganizationCount,
 					'otherOrganizationCount' => $otherOrganizationCount,
@@ -2035,7 +2061,7 @@
 			return [
 				'status' => true,
 				'action' => 'delete',
-				'message' => 'Ce parcours n est utilise que dans votre organisation. Il sera supprime definitivement avec ses elements non reutilises.',
+				'message' => self::uiMessage('ce_parcours_n_est_utilise_que_dans_votre_organisation_il_sera_supprime_definitivement_avec'),
 				'confirmMessage' => 'Ce parcours n est utilise que dans votre organisation.' . "\n\n" . 'Il sera supprime definitivement, avec ses missions, questions et devoirs devenus orphelins.' . "\n\n" . 'Etes vous sur de vouloir continuer ?',
 				'totalOrganizationCount' => $totalOrganizationCount,
 				'otherOrganizationCount' => 0,
@@ -2054,7 +2080,7 @@
 					: [
 						'status' => false,
 						'action' => 'none',
-						'message' => 'Impossible de preparer la suppression de ce parcours.',
+						'message' => self::uiMessage('impossible_de_preparer_la_suppression_de_ce_parcours'),
 					];
 			}
 
@@ -2063,7 +2089,7 @@
 				return [
 					'status' => false,
 					'action' => 'none',
-					'message' => 'Connexion a la base indisponible.',
+					'message' => self::uiMessage('connexion_a_la_base_indisponible'),
 				];
 			}
 
@@ -2081,7 +2107,7 @@
 					$this->archiveForExistingUsers();
 					if ($startedTransaction) $pdo->commit();
 					return ['status' => true, 'action' => 'archive',
-						'message' => 'Le parcours a ete retire du partage. Son contenu et les progressions restent accessibles a ses utilisateurs existants.',
+						'message' => self::uiMessage('le_parcours_a_ete_retire_du_partage_son_contenu_et_les_progressions_restent_accessibles_a'),
 						'remainingOrganizationCount' => (int)$preview['otherOrganizationCount'],
 						'deletedMissionCount' => 0, 'deletedQuestionCount' => 0, 'deletedHomeworkCount' => 0];
 				}
@@ -2122,7 +2148,7 @@
 					return [
 						'status' => true,
 						'action' => 'detach',
-						'message' => 'Le parcours a ete detache de votre organisation.',
+						'message' => self::uiMessage('le_parcours_a_ete_detache_de_votre_organisation'),
 						'remainingOrganizationCount' => 0,
 						'deletedMissionCount' => 0,
 						'deletedQuestionCount' => 0,
@@ -2263,7 +2289,7 @@
 				return [
 					'status' => true,
 					'action' => 'delete',
-					'message' => 'Le parcours et ses elements non reutilises ont ete supprimes.',
+					'message' => self::uiMessage('le_parcours_et_ses_elements_non_reutilises_ont_ete_supprimes'),
 					'remainingOrganizationCount' => 0,
 					'deletedMissionCount' => $deletedMissionCount,
 					'deletedQuestionCount' => $deletedQuestionCount,
@@ -2277,7 +2303,7 @@
 				return [
 					'status' => false,
 					'action' => 'none',
-					'message' => 'Impossible de supprimer ce parcours pour le moment.',
+					'message' => self::uiMessage('impossible_de_supprimer_ce_parcours_pour_le_moment'),
 				];
 			}
 		}

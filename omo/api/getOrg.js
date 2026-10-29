@@ -1,3 +1,5 @@
+var omoUiText = window.omoUiText || function (key, fallback) { return fallback; };
+var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; };
 
 $(document)
   .off('click.omoOrgValueRules', '[data-value-rules-popup]')
@@ -304,7 +306,7 @@ $(document)
     }
 
     if (typeof window.omoOpenExternalRouteDrawer === 'function' && window.omoOpenExternalRouteDrawer('holon-create-' + cid, {
-        title: 'Ajouter'
+        title: omoUiText("ajouter", "Ajouter")
     })) {
         return;
     }
@@ -330,7 +332,7 @@ $(document)
       .then(function (response) { return response.json(); })
       .then(function (result) {
         if (!result || !result.status) {
-            throw new Error(result && result.message ? result.message : 'Action impossible.');
+            throw new Error(result && result.message ? result.message : omoUiText("action_impossible", "Action impossible."));
         }
         if (typeof window.omoLoadLeft === 'function') {
             window.omoLoadLeft();
@@ -340,7 +342,7 @@ $(document)
       })
       .catch(function (error) {
         button.prop('disabled', false);
-        window.omoNotify(error && error.message ? error.message : 'Action impossible.', 'error');
+        window.omoNotify(error && error.message ? error.message : omoUiText("action_impossible", "Action impossible."), 'error');
       });
   });
 
@@ -363,7 +365,7 @@ $(document)
     }
 
     if (typeof window.omoOpenExternalRouteDrawer === 'function' && window.omoOpenExternalRouteDrawer(routeToken, {
-        title: 'Modifier'
+        title: omoUiText("modifier", "Modifier")
     })) {
         return;
     }

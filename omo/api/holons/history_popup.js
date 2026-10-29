@@ -1,3 +1,5 @@
+var omoUiText = window.omoUiText || function (key, fallback) { return fallback; };
+var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; };
 	(function () {
 		function safeObject(value) {
 			return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
@@ -441,7 +443,7 @@
 				return label;
 			}
 
-			return 'Propriete ' + propertyId;
+			return omoUiText("propriete", "Propriété ") + propertyId;
 		}
 
 		function createPropertyCard(title, status) {
@@ -569,7 +571,7 @@
 					list.appendChild(createElement(
 						'div',
 						'omo-holon-history-popup__diff-list-item omo-holon-history-popup__diff-list-item--muted',
-						'Ordre modifie'
+						omoUiText("ordre_modifie", "Ordre modifié")
 					));
 				} else if (unchangedCount > 0) {
 					list.appendChild(createElement(
@@ -588,16 +590,16 @@
 			var beforeHolon = safeObject(safeObject(payload.before).holon);
 			var afterHolon = safeObject(safeObject(payload.after).holon);
 			var fieldLabels = {
-				name: 'Nom',
-				color: 'Couleur',
-				icon: 'Icone',
-				visible: 'Visible',
-				mandatory: 'Obligatoire',
-				lockedName: 'Nom verrouille',
-				lockedIcon: 'Icone verrouillee',
-				unique: 'Unique',
-				link: 'Lien',
-				inheritsFromName: 'Modele parent'
+				name: omoUiText("nom", "Nom"),
+				color: omoUiText("couleur", "Couleur"),
+				icon: omoUiText("icone", "Icône"),
+				visible: omoUiText("visible", "Visible"),
+				mandatory: omoUiText("obligatoire", "Obligatoire"),
+				lockedName: omoUiText("nom_verrouille", "Nom verrouillé"),
+				lockedIcon: omoUiText("icone_verrouillee", "Icône verrouillée"),
+				unique: omoUiText("unique", "Unique"),
+				link: omoUiText("lien", "Lien"),
+				inheritsFromName: omoUiText("modele_parent", "Modèle parent")
 			};
 			var booleanFields = {
 				visible: true,
@@ -607,15 +609,15 @@
 				unique: true,
 				link: true
 			};
-    var section = createSection('Espace');
+    var section = createSection(omoUiText("espace", "Espace"));
 			var hasChanges = false;
 
 			Object.keys(fieldLabels).forEach(function (field) {
 				var beforeValue = booleanFields[field]
-					? ((beforeHolon[field] ? 'Oui' : 'Non'))
+					? ((beforeHolon[field] ? omoUiText("oui", "Oui") : omoUiText("non", "Non")))
 					: decodeHtmlToText(beforeHolon[field] || '');
 				var afterValue = booleanFields[field]
-					? ((afterHolon[field] ? 'Oui' : 'Non'))
+					? ((afterHolon[field] ? omoUiText("oui", "Oui") : omoUiText("non", "Non")))
 					: decodeHtmlToText(afterHolon[field] || '');
 				var useInlineWordDiff = field === 'name';
 				if (beforeValue === afterValue) {
@@ -640,7 +642,7 @@
 				return label;
 			}
 
-			return normalizeText(permissionKey) !== '' ? permissionKey : 'Droit';
+			return normalizeText(permissionKey) !== '' ? permissionKey : omoUiText("droit", "Droit");
 		}
 
 		function renderPermissionDiffs(payload, root) {
@@ -648,7 +650,7 @@
 			var afterPermissions = safeObject(safeObject(payload.after).permissions);
 			var permissionKeys = Object.keys(beforePermissions).concat(Object.keys(afterPermissions));
 			var uniqueKeys = [];
-			var section = createSection('Droits');
+			var section = createSection(omoUiText("droits", "Droits"));
 			var hasChanges = false;
 
 			permissionKeys.forEach(function (permissionKey) {
@@ -701,7 +703,7 @@
 			var afterProperties = safeObject(safeObject(payload.after).properties);
 			var propertyIds = Object.keys(beforeProperties).concat(Object.keys(afterProperties));
 			var uniqueIds = [];
-			var section = createSection('Proprietes');
+			var section = createSection(omoUiText("proprietes", "Propriétés"));
 			var hasChanges = false;
 
 			propertyIds.forEach(function (propertyId) {
@@ -786,7 +788,7 @@
 			var propertyIds = Object.keys(afterProperties).sort(function (left, right) {
 				return Number(left) - Number(right);
 			});
-			var section = createSection('Etat cree');
+			var section = createSection(omoUiText("etat_cree", "État créé"));
 			var hasContent = false;
 
 			propertyIds.forEach(function (propertyId) {
@@ -824,7 +826,7 @@
 				return buildPermissionLabel(afterPermissions[left], left)
 					.localeCompare(buildPermissionLabel(afterPermissions[right], right));
 			});
-			var section = createSection('Droits');
+			var section = createSection(omoUiText("droits", "Droits"));
 			var hasContent = false;
 
 			permissionKeys.forEach(function (permissionKey) {
@@ -857,12 +859,12 @@
 				return;
 			}
 
-			section = createSection('Autorite');
+			section = createSection(omoUiText("autorite_4", "Autorité"));
 
 			[
-				{ key: 'label', title: 'Libelle' },
-				{ key: 'description', title: 'Description' },
-				{ key: 'parentLabel', title: 'Autorite parente' }
+				{ key: 'label', title: omoUiText("libelle", "Libellé") },
+				{ key: 'description', title: omoUiText("description", "Description") },
+				{ key: 'parentLabel', title: omoUiText("autorite_parente", "Autorité parente") }
 			].forEach(function (field) {
 				var beforeValue = normalizeText(beforeAuthority[field.key] || '');
 				var afterValue = normalizeText(afterAuthority[field.key] || '');
@@ -891,12 +893,12 @@
 
 			if (Object.keys(deletionPlan).length > 0) {
 				var planLines = [
-        'Autorité : ' + (deletionPlan.authority === 'reassign' ? 'remontée à l’espace parent' : 'supprimée'),
-        'Sous-autorités : ' + (deletionPlan.children === 'reassign' ? 'remontées à l’espace parent' : 'supprimées'),
-					'Regles concernees : ' + (deletionPlan.rules === 'reassign' ? 'remontees et a revoir sous 2 mois' : 'supprimees')
+        omoUiText("autorite_2", "Autorité : ") + (deletionPlan.authority === 'reassign' ? omoUiText("remontee_a_l_espace_parent", "remontée à l’espace parent") : omoUiText("supprimee", "supprimée")),
+        omoUiText("sous_autorites", "Sous-autorités : ") + (deletionPlan.children === 'reassign' ? omoUiText("remontees_a_l_espace_parent", "remontées à l’espace parent") : omoUiText("supprimees", "supprimées")),
+					omoUiText("regles_concernees", "Règles concernées : ") + (deletionPlan.rules === 'reassign' ? omoUiText("remontees_et_a_revoir_sous_2_mois", "remontées et à revoir sous 2 mois") : 'supprimees')
 				];
 				hasChanges = true;
-				renderScalarProperty(section, 'Traitement choisi', '', planLines.join('\n'), 'added', {});
+				renderScalarProperty(section, omoUiText("traitement_choisi", "Traitement choisi"), '', planLines.join('\n'), 'added', {});
 			}
 
 			if (hasChanges) {
@@ -964,21 +966,21 @@
 			var afterHolon = safeObject(afterRoot.holon);
 			var hasHolonSnapshot = Object.keys(beforeHolon).length > 0 || Object.keys(afterHolon).length > 0;
 			var fieldLabels = {
-				name: 'Nom', fullName: 'Nom complet', color: 'Couleur', icon: 'Icone',
-				visible: 'Visible', mandatory: 'Obligatoire', lockedName: 'Nom verrouille',
-				lockedIcon: 'Icone verrouillee',
-				lockedAdminMin: 'Minimum d admins verrouille', lockedAdminMax: 'Maximum d admins verrouille',
-				adminMinOverride: 'Minimum d admins redefini', adminMaxOverride: 'Maximum d admins redefini',
-				unique: 'Unique', link: 'Lien', adminParent: 'Admin parent',
-				adminMin: 'Nombre minimum d admins', adminMax: 'Nombre maximum d admins',
-				inheritsFromName: 'Modele parent'
+				name: omoUiText("nom", "Nom"), fullName: omoUiText("nom_complet", "Nom complet"), color: omoUiText("couleur", "Couleur"), icon: omoUiText("icone", "Icône"),
+				visible: omoUiText("visible", "Visible"), mandatory: omoUiText("obligatoire", "Obligatoire"), lockedName: omoUiText("nom_verrouille", "Nom verrouillé"),
+				lockedIcon: omoUiText("icone_verrouillee", "Icône verrouillée"),
+				lockedAdminMin: omoUiText("minimum_d_admins_verrouille", "Minimum d’admins verrouillé"), lockedAdminMax: omoUiText("maximum_d_admins_verrouille", "Maximum d’admins verrouillé"),
+				adminMinOverride: omoUiText("minimum_d_admins_redefini", "Minimum d’admins redéfini"), adminMaxOverride: omoUiText("maximum_d_admins_redefini", "Maximum d’admins redéfini"),
+				unique: omoUiText("unique", "Unique"), link: omoUiText("lien", "Lien"), adminParent: omoUiText("admin_parent", "Admin parent"),
+				adminMin: omoUiText("nombre_minimum_d_admins", "Nombre minimum d’admins"), adminMax: omoUiText("nombre_maximum_d_admins", "Nombre maximum d’admins"),
+				inheritsFromName: omoUiText("modele_parent", "Modèle parent")
 			};
 			var booleanFields = {visible:true, mandatory:true, lockedName:true, lockedIcon:true, lockedAdminMin:true, lockedAdminMax:true, adminMinOverride:true, adminMaxOverride:true, unique:true, link:true, adminParent:true};
 
 			if (hasHolonSnapshot) {
 				Object.keys(fieldLabels).forEach(function (field) {
-					var beforeValue = booleanFields[field] && Object.prototype.hasOwnProperty.call(beforeHolon, field) ? (beforeHolon[field] ? 'Oui' : 'Non') : decodeHtmlToText(beforeHolon[field] || '');
-					var afterValue = booleanFields[field] && Object.prototype.hasOwnProperty.call(afterHolon, field) ? (afterHolon[field] ? 'Oui' : 'Non') : decodeHtmlToText(afterHolon[field] || '');
+					var beforeValue = booleanFields[field] && Object.prototype.hasOwnProperty.call(beforeHolon, field) ? (beforeHolon[field] ? omoUiText("oui", "Oui") : omoUiText("non", "Non")) : decodeHtmlToText(beforeHolon[field] || '');
+					var afterValue = booleanFields[field] && Object.prototype.hasOwnProperty.call(afterHolon, field) ? (afterHolon[field] ? omoUiText("oui", "Oui") : omoUiText("non", "Non")) : decodeHtmlToText(afterHolon[field] || '');
 					appendGenericChange(changes, fieldLabels[field], beforeValue, afterValue);
 				});
 
@@ -1008,18 +1010,18 @@
 				});
 			} else {
 				[
-					{key:'label', label:'Libelle'},
-					{key:'description', label:'Description'},
-					{key:'parentLabel', label:'Autorite parente'}
+					{key:'label', label:omoUiText("libelle", "Libellé")},
+					{key:'description', label:omoUiText("description", "Description")},
+					{key:'parentLabel', label:omoUiText("autorite_parente", "Autorité parente")}
 				].forEach(function (field) {
 					appendGenericChange(changes, field.label, beforeRoot[field.key] || '', afterRoot[field.key] || '');
 				});
 				var deletionPlan = safeObject(payload.deletionPlan);
 				if (Object.keys(deletionPlan).length) {
-					appendGenericChange(changes, 'Traitement choisi', '', [
-        'Autorité : ' + (deletionPlan.authority === 'reassign' ? 'remontée à l’espace parent' : 'supprimée'),
-        'Sous-autorités : ' + (deletionPlan.children === 'reassign' ? 'remontées à l’espace parent' : 'supprimées'),
-						'Regles concernees : ' + (deletionPlan.rules === 'reassign' ? 'remontees et a revoir sous 2 mois' : 'supprimees')
+					appendGenericChange(changes, omoUiText("traitement_choisi", "Traitement choisi"), '', [
+        omoUiText("autorite_2", "Autorité : ") + (deletionPlan.authority === 'reassign' ? omoUiText("remontee_a_l_espace_parent", "remontée à l’espace parent") : omoUiText("supprimee", "supprimée")),
+        omoUiText("sous_autorites", "Sous-autorités : ") + (deletionPlan.children === 'reassign' ? omoUiText("remontees_a_l_espace_parent", "remontées à l’espace parent") : omoUiText("supprimees", "supprimées")),
+						omoUiText("regles_concernees", "Règles concernées : ") + (deletionPlan.rules === 'reassign' ? omoUiText("remontees_et_a_revoir_sous_2_mois", "remontées et à revoir sous 2 mois") : 'supprimees')
 					].join('\n'));
 				}
 			}
@@ -1041,12 +1043,12 @@
 			try {
 				payload = decodeBase64Json(payloadBase64);
 			} catch (error) {
-				appendEmptyState(container, 'Impossible de lire le detail de cette entree.');
+				appendEmptyState(container, omoUiText("impossible_de_lire_le_detail_de_cette_entree", "Impossible de lire le détail de cette entrée."));
 				return;
 			}
 
 			if (!payload || typeof payload !== 'object') {
-				appendEmptyState(container, 'Aucun detail supplementaire disponible.');
+				appendEmptyState(container, omoUiText("aucun_detail_supplementaire_disponible", "Aucun détail supplémentaire disponible."));
 				return;
 			}
 
@@ -1055,7 +1057,7 @@
 				if (genericChanges.length) {
 					container.appendChild(window.omoChoiceChangeDetails.createList(genericChanges));
 				} else {
-					appendEmptyState(container, 'Aucun diff visuel supplementaire disponible pour cette entree.');
+					appendEmptyState(container, omoUiText("aucun_diff_visuel_supplementaire_disponible_pour_cette_entree", "Aucun diff visuel supplémentaire disponible pour cette entrée."));
 				}
 				details.setAttribute('data-history-rendered', '1');
 				return;
@@ -1075,7 +1077,7 @@
 			}
 
 			if (!container.children.length) {
-				appendEmptyState(container, 'Aucun diff visuel supplementaire disponible pour cette entree.');
+				appendEmptyState(container, omoUiText("aucun_diff_visuel_supplementaire_disponible_pour_cette_entree", "Aucun diff visuel supplémentaire disponible pour cette entrée."));
 			}
 
 			details.setAttribute('data-history-rendered', '1');
@@ -1129,13 +1131,13 @@
 			var lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
 
 			return [
-				{ key: 'today', label: "Aujourd'hui", start: today, end: tomorrow },
-				{ key: 'yesterday', label: 'Hier', start: yesterday, end: today },
-				{ key: 'this_week', label: 'Cette semaine', start: thisWeekStart, end: yesterday },
-				{ key: 'last_week', label: 'La semaine passee', start: lastWeekStart, end: thisWeekStart },
-				{ key: 'this_month', label: 'Ce mois-ci', start: thisMonthStart, end: lastWeekStart },
-				{ key: 'last_month', label: 'Le mois passe', start: lastMonthStart, end: thisMonthStart },
-				{ key: 'earlier', label: 'Plus ancien', start: null, end: lastMonthStart }
+				{ key: 'today', label: omoUiText("aujourd_hui", "Aujourd'hui"), start: today, end: tomorrow },
+				{ key: 'yesterday', label: omoUiText("hier", "Hier"), start: yesterday, end: today },
+				{ key: 'this_week', label: omoUiText("cette_semaine", "Cette semaine"), start: thisWeekStart, end: yesterday },
+				{ key: 'last_week', label: omoUiText("la_semaine_passee", "La semaine passée"), start: lastWeekStart, end: thisWeekStart },
+				{ key: 'this_month', label: omoUiText("ce_mois_ci", "Ce mois-ci"), start: thisMonthStart, end: lastWeekStart },
+				{ key: 'last_month', label: omoUiText("le_mois_passe", "Le mois passé"), start: lastMonthStart, end: thisMonthStart },
+				{ key: 'earlier', label: omoUiText("plus_ancien", "Plus ancien"), start: null, end: lastMonthStart }
 			];
 		}
 
@@ -1180,7 +1182,7 @@
 					currentGroupKey = group ? group.key : 'earlier';
 					currentSection = createElement('section', 'omo-holon-history-popup__group');
 					currentSectionList = createElement('div', 'omo-holon-history-popup__group-list');
-					currentSection.appendChild(createElement('h3', 'omo-holon-history-popup__group-title', group ? group.label : 'Plus ancien'));
+					currentSection.appendChild(createElement('h3', 'omo-holon-history-popup__group-title', group ? group.label : omoUiText("plus_ancien", "Plus ancien")));
 					currentSection.appendChild(currentSectionList);
 					fragment.appendChild(currentSection);
 				}
@@ -1283,7 +1285,7 @@
 			}
 
 			state.loading = true;
-			updateFeedStatus('Chargement...', false, true);
+			updateFeedStatus(omoUiText("chargement", "Chargement..."), false, true);
 
 			fetch(buildHistoryFeedUrl(state), {
 				method: 'GET',
@@ -1305,7 +1307,7 @@
 
 					if (!result.ok || !result.data || !result.data.status) {
 						state.hasMore = false;
-						updateFeedStatus('Impossible de charger la suite.', false, false);
+						updateFeedStatus(omoUiText("impossible_de_charger_la_suite", "Impossible de charger la suite."), false, false);
 						return;
 					}
 
@@ -1317,16 +1319,16 @@
 					state.nextOffset = Number(result.data.nextOffset || state.nextOffset);
 
 					if (state.hasMore) {
-						updateFeedStatus('Faites defiler pour charger la suite.', false, false);
+						updateFeedStatus(omoUiText("faites_defiler_pour_charger_la_suite", "Faites défiler pour charger la suite."), false, false);
 						window.setTimeout(maybeLoadMoreHistory, 0);
 					} else {
-						updateFeedStatus('Fin de l\'historique.', false, false);
+						updateFeedStatus(omoUiText("fin_de_l_historique", "Fin de l'historique."), false, false);
 					}
 				})
 				.catch(function () {
 					state.loading = false;
 					state.hasMore = false;
-					updateFeedStatus('Impossible de charger la suite.', false, false);
+					updateFeedStatus(omoUiText("impossible_de_charger_la_suite", "Impossible de charger la suite."), false, false);
 				});
 		}
 

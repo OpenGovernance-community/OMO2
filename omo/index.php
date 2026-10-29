@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__) . '/shared_functions.php';
 require_once dirname(__DIR__) . '/common/auth.php';
 require_once dirname(__DIR__) . '/common/topbar.php';
@@ -14,7 +15,7 @@ $sourceLang = [
         'context' => 'Message shown on the forbidden access page when the user is logged in but has no access to the organization.',
     ],
     'app.access_denied.organization_fallback' => [
-        'text' => 'demandee',
+        'text' => 'demandée',
         'context' => 'Fallback organization name used on the forbidden access page when the organization name is missing.',
     ],
     'app.access_denied.page_description' => [
@@ -30,7 +31,7 @@ $sourceLang = [
         'context' => 'Browser title shown on the forbidden access page.',
     ],
     'app.access_denied.faq_title' => [
-        'text' => 'Repondre a une question',
+        'text' => 'Répondre à une question',
         'context' => 'FAQ request popup title above a denied organization access page.',
     ],
     'app.access_denied.request_action' => [
@@ -106,11 +107,11 @@ $sourceLang = [
         'context' => 'Aria label for the public organization model card.',
     ],
     'app.directory.model.badge' => [
-        'text' => 'Communaute',
+        'text' => 'Communauté',
         'context' => 'Badge displayed on the public organization model card.',
     ],
     'app.directory.model.description' => [
-        'text' => 'Reprendre une structure et des reglages partages',
+        'text' => 'Reprendre une structure et des réglages partagés',
         'context' => 'Subtitle displayed on the public organization model card.',
     ],
     'app.directory.model.modal_title' => [
@@ -167,11 +168,11 @@ $sourceLang = [
         'context' => 'Main heading shown on the organization directory page.',
     ],
     'app.directory.template.badge' => [
-        'text' => "Template partagé",
+        'text' => 'Modèle partagé',
         'context' => 'Badge shown on a shared organization template card.',
     ],
     'app.directory.templates.heading' => [
-        'text' => "Vos templates d'organisation",
+        'text' => 'Vos modèles d\'organisation',
         'context' => 'Heading shown above the shared organization template cards on the directory page.',
     ],
     'app.directory.js.action_error' => [
@@ -679,7 +680,7 @@ if (empty($organizationContext['isValid'])) {
     $logoutUrl = '/common/logout.php?return_to=' . urlencode('/omo/');
     ?>
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="<?= htmlspecialchars(omoGetTranslationLocale(), ENT_QUOTES, 'UTF-8') ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -1133,7 +1134,7 @@ if (
     $accessRequestPopupUrl = '/omo/api/organization/access_request_popup.php?oid=' . rawurlencode((string)$organizationContext['id']);
     ?>
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="<?= htmlspecialchars(omoGetTranslationLocale(), ENT_QUOTES, 'UTF-8') ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -1255,7 +1256,7 @@ if (!$isDemoGuest && $currentUserId > 0 && patreonSupportUiIsEnabled()) {
 
     <div class="sidebar-toggle" id="sidebar-toggle">
         <span class="icon" aria-hidden="true">&#9776;</span>
-        <span class="label">Applications</span>
+        <span class="label"><?= htmlspecialchars(omoInterfaceUiT('applications'), ENT_QUOTES, 'UTF-8') ?></span>
     </div>
 
     <div class="menu" id="menu_sidebar">
@@ -1337,7 +1338,7 @@ if (!$isDemoGuest && $currentUserId > 0 && patreonSupportUiIsEnabled()) {
                         id="panel-left-structure-resizer"
                         role="separator"
                         aria-orientation="horizontal"
-                        aria-label="Redimensionner la mini structure"
+                        aria-label="<?= htmlspecialchars(omoInterfaceUiT('redimensionner_la_mini_structure'), ENT_QUOTES, 'UTF-8') ?>"
                     ></div>
                     <div class="omo-left-panel-shell__structure" id="panel-left-structure">
                         <div class="omo-left-panel-shell__structure-host" id="omo-left-structure-map"></div>
@@ -1378,6 +1379,7 @@ window.omoConfig = <?=
             'host' => $organizationContext['host'],
             'routeMode' => $organizationContext['routeMode'] ?? 'host',
             'translationLocale' => omoGetTranslationLocale(),
+            'uiTexts' => omoUiJsPayload(),
             'drawerCloseLabel' => t('app.drawer.close'),
             'lexicon' => $organizationContext['lexicon'] ?? \dbObject\Organization::getDefaultLexicon(),
             'rootHolonId' => $organizationRootHolonId,
@@ -1401,15 +1403,16 @@ window.omoConfig = <?=
                 'mode' => 'fetch',
             ],
         ],
-        JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
+        JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
     );
 ?>;
 </script>
 <?= $omoPwaBodyEndHtml ?>
+<script src="<?= commonAssetUrl('/omo/assets/js/ui-translations.js') ?>"></script>
 <?php if ($isSiteAdmin) { ?>
 <script src="/omo/assets/js/site-update.js"></script>
 <?php } ?>
-<script src="assets/js/simple-html-field.js?v=20261009-html-editor-placeholder"></script>
+<script src="<?= commonAssetUrl('/omo/assets/js/simple-html-field.js') ?>"></script>
 <script src="<?= commonAssetUrl('/omo/assets/js/application-view-preferences.js') ?>"></script>
 <script src="<?= commonAssetUrl('/omo/assets/js/app.js') ?>"></script>
 <script src="<?= commonAssetUrl('/omo/assets/js/attention.js') ?>" defer></script>

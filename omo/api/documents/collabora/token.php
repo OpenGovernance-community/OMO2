@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../ui_translations.php';
 
 require_once dirname(__DIR__, 2) . '/bootstrap.php';
 require_once dirname(__DIR__, 4) . '/common/collabora.php';
@@ -14,14 +15,14 @@ $userId = (int)commonGetCurrentUserId();
 
 if ($documentId <= 0 || $userId <= 0) {
     http_response_code(400);
-    echo json_encode(array('status' => false, 'message' => 'Demande invalide.'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    echo json_encode(array('status' => false, 'message' => omoDocumentsUiT('demande_invalide')), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
 
 $document = new Document();
 if (!$document->load($documentId) || (!$document->canOpenWithCollabora() && !$document->isNextcloudFolder())) {
     http_response_code(404);
-    echo json_encode(array('status' => false, 'message' => 'Document introuvable.'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    echo json_encode(array('status' => false, 'message' => omoDocumentsUiT('document_introuvable')), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
 
@@ -33,21 +34,21 @@ if (
     || !$document->canViewInOrganizationContext($organizationId, $holonId > 0 ? $holonId : null, $userId)
 ) {
     http_response_code(403);
-    echo json_encode(array('status' => false, 'message' => 'Acces refuse.'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    echo json_encode(array('status' => false, 'message' => omoDocumentsUiT('acces_refuse')), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
 
 $organization = new \dbObject\Organization();
 if (!$organization->load($organizationId) || !$organization->hasDocumentStorage() || !omoCollaboraHasConfig($organization)) {
     http_response_code(503);
-    echo json_encode(array('status' => false, 'message' => 'Collabora ou le stockage de documents n est pas disponible.'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    echo json_encode(array('status' => false, 'message' => omoDocumentsUiT('collabora_ou_le_stockage_de_documents_n_est_pas_disponible')), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
 
 $isRemoteFile = $document->isNextcloudFolder();
 if ($isRemoteFile && ($remotePath === '' || !$document->isRemoteFolderStoragePathAllowed($organization, $remotePath))) {
     http_response_code(400);
-    echo json_encode(array('status' => false, 'message' => 'Chemin NextCloud invalide.'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    echo json_encode(array('status' => false, 'message' => omoDocumentsUiT('chemin_nextcloud_invalide')), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
 
@@ -55,7 +56,7 @@ $expiresAt = time() + omoCollaboraGetWopiTokenLifetimeSeconds();
 $accessToken = omoCollaboraBuildWopiToken($document, $userId, $expiresAt, $isRemoteFile ? $remotePath : '');
 if ($accessToken === '') {
     http_response_code(500);
-    echo json_encode(array('status' => false, 'message' => 'Impossible de renouveler le jeton Collabora.'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    echo json_encode(array('status' => false, 'message' => omoDocumentsUiT('impossible_de_renouveler_le_jeton_collabora')), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
 

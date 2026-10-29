@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__) . '/bootstrap.php';
 
 use dbObject\Document;
@@ -13,7 +14,7 @@ $userId = (int)commonGetCurrentUserId();
 
 if ($userId <= 0) {
     http_response_code(403);
-    echo json_encode(array('status' => false, 'message' => 'Acces refuse.'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    echo json_encode(array('status' => false, 'message' => omoDocumentsUiT('acces_refuse')), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
 
@@ -32,7 +33,7 @@ if (!is_array($result) || ($result['status'] ?? false) !== true) {
     http_response_code(422);
     echo json_encode(array(
         'status' => false,
-        'message' => (string)($result['text'] ?? 'Impossible de fusionner les documents.'),
+        'message' => (string)($result['text'] ?? omoDocumentsUiT('impossible_de_fusionner_les_documents')),
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -40,7 +41,7 @@ if (!is_array($result) || ($result['status'] ?? false) !== true) {
 $document = $result['document'] ?? null;
 echo json_encode(array(
     'status' => true,
-    'message' => 'Document fusionne.',
+    'message' => omoDocumentsUiT('document_fusionne'),
     'documentId' => $document instanceof Document ? (int)$document->getId() : 0,
     'sourcesDeleted' => !empty($result['sourcesDeleted']),
 ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

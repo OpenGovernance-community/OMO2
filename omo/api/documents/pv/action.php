@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../ui_translations.php';
 require_once dirname(__DIR__, 2) . '/bootstrap.php';
 require_once __DIR__ . '/helpers.php';
 require_once dirname(__DIR__, 2) . '/stats/shared.php';
@@ -1381,7 +1382,7 @@ if ($action === 'toggle_handled') {
             }
             omoDocumentsPvEditorJsonResponse([
                 'status' => false,
-                'message' => trim((string)($proposalResult['message'] ?? 'Les modifications de ce point ne peuvent pas etre appliquees.')),
+                'message' => trim((string)($proposalResult['message'] ?? omoDocumentsUiT('les_modifications_de_ce_point_ne_peuvent_pas_etre_appliquees'))),
                 'point' => omoDocumentsPvEditorBuildPointResponsePayload($point, $organizationId, $currentUserId),
             ], !empty($proposalResult['conflict']) ? 409 : 400);
         }

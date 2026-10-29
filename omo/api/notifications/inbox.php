@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__) . '/bootstrap.php';
 
 header('Content-Type: application/json; charset=UTF-8');
@@ -13,7 +14,7 @@ function omoNotificationInboxRespond($statusCode, array $payload)
 $userId = commonGetCurrentUserId();
 $organizationId = (int)($_SESSION['currentOrganization'] ?? 0);
 if ($userId <= 0 || $organizationId <= 0) {
-    omoNotificationInboxRespond(403, ['status' => false, 'message' => 'Connexion ou organisation requise.']);
+    omoNotificationInboxRespond(403, ['status' => false, 'message' => omoNotificationsUiT('connexion_ou_organisation_requise')]);
 }
 
 $items = [];

@@ -1,22 +1,23 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__) . '/bootstrap.php';
 
 $sourceLang = [
-    'organization_export.title' => ['text' => 'Exporter l organisation', 'context' => 'Title of the organization export popup.'],
+    'organization_export.title' => ['text' => 'Exporter l’organisation', 'context' => 'Title of the organization export popup.'],
     'organization_export.error.auth' => ['text' => 'Connexion requise.', 'context' => 'Authentication message in the organization export popup.'],
-    'organization_export.help' => ['text' => 'Choisissez les elements a inclure. Le ZIP contient les donnees JSON et les images locales : profils, logo et illustrations. Les images distantes ne sont pas copiees ; les images indisponibles sont signalees dans le JSON.', 'context' => 'Introductory text of the organization export popup.'],
-    'organization_export.module.members' => ['text' => 'Membres et roles', 'context' => 'Members module label in the organization export popup.'],
+    'organization_export.help' => ['text' => 'Choisissez les éléments a inclure. Le ZIP contient les données JSON et les images locales : profils, logo et illustrations. Les images distantes ne sont pas copiees ; les images indisponibles sont signalées dans le JSON.', 'context' => 'Introductory text of the organization export popup.'],
+    'organization_export.module.members' => ['text' => 'Membres et rôles', 'context' => 'Members module label in the organization export popup.'],
     'organization_export.module.rules' => ['text' => 'Règles', 'context' => 'Rules module label in the organization export popup.'],
     'organization_export.module.documents' => ['text' => 'Documents', 'context' => 'Documents module label in the organization export popup.'],
-    'organization_export.documents_memos_notice' => ['text' => 'Seuls les Memos, liens externes et dossiers sont exportés. Les fichiers téléversés et les documents reliés à Etherpad, EtherCalc, Nextcloud, Collabora ou SpaceDeck ne le sont pas.', 'context' => 'Notice explaining which documents are intentionally omitted from an organization export.'],
+    'organization_export.documents_memos_notice' => ['text' => 'Seuls les Mémos, liens externes et dossiers sont exportés. Les fichiers téléversés et les documents reliés à Etherpad, EtherCalc, Nextcloud, Collabora ou SpaceDeck ne le sont pas.', 'context' => 'Notice explaining which documents are intentionally omitted from an organization export.'],
     'organization_export.module.projects' => ['text' => 'Projets', 'context' => 'Projects module label in the organization export popup.'],
-    'organization_export.module.tasks' => ['text' => 'Taches et sous-projets', 'context' => 'Tasks module label in the organization export popup.'],
-    'organization_export.module.checklists' => ['text' => 'Processus et taches recurrentes', 'context' => 'Process module label in the organization export popup.'],
+    'organization_export.module.tasks' => ['text' => 'Tâches et sous-projets', 'context' => 'Tasks module label in the organization export popup.'],
+    'organization_export.module.checklists' => ['text' => 'Processus et tâches récurrentes', 'context' => 'Process module label in the organization export popup.'],
     'organization_export.module.indicators' => ['text' => 'Indicateurs et mesures', 'context' => 'Indicators module label in the organization export popup.'],
     'organization_export.module.calendar' => ['text' => 'Calendrier', 'context' => 'Calendar module label in the organization export popup.'],
-    'organization_export.module.pv' => ['text' => 'Proces-verbaux', 'context' => 'Meeting minutes module label in the organization export popup.'],
+    'organization_export.module.pv' => ['text' => 'Procès-verbaux', 'context' => 'Meeting minutes module label in the organization export popup.'],
     'organization_export.action.cancel' => ['text' => 'Annuler', 'context' => 'Cancel button in the organization export popup.'],
-    'organization_export.action.download' => ['text' => 'Telecharger le ZIP', 'context' => 'Download button in the organization export popup.'],
+    'organization_export.action.download' => ['text' => 'Télécharger le ZIP', 'context' => 'Download button in the organization export popup.'],
     'organization_export.structure' => ['text' => 'Structure', 'context' => 'Always selected structure module label in the organization export popup.'],
 ];
 $lang = translationBundleInit('omo_organization_export_popup', omoGetTranslationLocale(), $sourceLang);
@@ -41,7 +42,7 @@ $modules = [
 <div class="omo-organization-export" data-omo-organization-export="1">
     <header class="generic-drawer-header generic-drawer-header--sticky">
         <div class="generic-drawer-header__copy">
-            <div class="generic-card-title generic-card-title--eyebrow">ZIP OMO 2</div>
+            <div class="generic-card-title generic-card-title--eyebrow"><?= htmlspecialchars(omoOrganizationsUiT('zip_omo_2'), ENT_QUOTES, 'UTF-8') ?></div>
             <h2 class="generic-card-title generic-card-title--large"><?= htmlspecialchars(t('organization_export.title', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></h2>
             <p><?= htmlspecialchars(t('organization_export.help', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></p>
         </div>
@@ -53,7 +54,7 @@ $modules = [
             <label class="omo-organization-export__module is-required">
                 <input type="checkbox" checked disabled>
                 <span><?= htmlspecialchars(t('organization_export.structure', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></span>
-                <small>Obligatoire</small>
+                <small><?= htmlspecialchars(omoOrganizationsUiT('obligatoire'), ENT_QUOTES, 'UTF-8') ?></small>
             </label>
             <?php foreach ($modules as $module => $label): ?>
             <label class="omo-organization-export__module">

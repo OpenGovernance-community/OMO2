@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/modules/context.php';
 require_once __DIR__ . '/modules/common.php';
@@ -14,7 +15,7 @@ if (empty($context['status']) || empty($context['decision']) || !($context['deci
     $statusCode = (int)($context['code'] ?? 403);
     http_response_code($statusCode);
     ?>
-    <div class="omo-decision-send-invitations-popup__empty">Vous ne pouvez pas envoyer les invitations de ce scrutin.</div>
+    <div class="omo-decision-send-invitations-popup__empty"><?= htmlspecialchars(omoDecisionUiT('vous_ne_pouvez_pas_envoyer_les_invitations_de_ce_scrutin'), ENT_QUOTES, 'UTF-8') ?></div>
     <?php
     exit;
 }
@@ -38,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($isDraft) {
         omoDecisionModuleJsonResponse(422, [
             'status' => false,
-            'message' => 'Envoyez les invitations une fois le scrutin sorti du brouillon.',
+            'message' => omoDecisionUiT('envoyez_les_invitations_une_fois_le_scrutin_sorti_du_brouillon'),
         ]);
     }
 
@@ -64,7 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($message === '') {
         omoDecisionModuleJsonResponse(422, [
             'status' => false,
-            'message' => 'Le texte du message est obligatoire.',
+            'message' => omoDecisionUiT('le_texte_du_message_est_obligatoire'),
         ]);
     }
 
@@ -116,7 +117,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($sentCount === 0) {
         omoDecisionModuleJsonResponse(500, [
             'status' => false,
-            'message' => 'Aucune invitation n a pu etre envoyee.',
+            'message' => omoDecisionUiT('aucune_invitation_n_a_pu_etre_envoyee'),
         ]);
     }
 
@@ -154,8 +155,8 @@ $canSendAll = !$isDraft && $allRecipientCount > 0;
     <input type="hidden" id="omoDecisionSendInvitationsScope" name="send_scope" value="pending">
     <div class="omo-decision-send-invitations-popup__header generic-drawer-header generic-drawer-header--sticky">
         <div class="generic-drawer-header__copy omo-decision-send-invitations-popup__header-copy">
-            <div class="generic-card-title generic-card-title--eyebrow">Prises de decision</div>
-            <h3 class="generic-card-title generic-card-title--medium">Envoyer les invitations</h3>
+            <div class="generic-card-title generic-card-title--eyebrow"><?= htmlspecialchars(omoDecisionUiT('prises_de_decision'), ENT_QUOTES, 'UTF-8') ?></div>
+            <h3 class="generic-card-title generic-card-title--medium"><?= htmlspecialchars(omoDecisionUiT('envoyer_les_invitations'), ENT_QUOTES, 'UTF-8') ?></h3>
         </div>
     </div>
     <div class="omo-decision-send-invitations-popup__shell generic-drawer-content">
@@ -172,19 +173,19 @@ $canSendAll = !$isDraft && $allRecipientCount > 0;
 
     <?php if ($isDraft): ?>
     <p class="omo-decision-send-invitations-popup__hint generic-description generic-description--relaxed">
-        Ce scrutin est encore en brouillon. Sortez-le du brouillon avant d envoyer les invitations.
+        <?= htmlspecialchars(omoDecisionUiT('ce_scrutin_est_encore_en_brouillon_sortez_le_du_brouillon_avant_d_envoyer_les_invitations'), ENT_QUOTES, 'UTF-8') ?>
     </p>
     <?php elseif ($allRecipientCount === 0): ?>
     <p class="omo-decision-send-invitations-popup__hint generic-description generic-description--relaxed">
-        Aucun destinataire avec une adresse e-mail valide n a ete trouve pour ce scrutin.
+        <?= htmlspecialchars(omoDecisionUiT('aucun_destinataire_avec_une_adresse_e_mail_valide_n_a_ete_trouve_pour_ce_scrutin'), ENT_QUOTES, 'UTF-8') ?>
     </p>
     <?php else: ?>
     <p class="omo-decision-send-invitations-popup__hint generic-description generic-description--relaxed">
-        L action principale relance seulement les participants qui n ont pas encore repondu. La fleche permet aussi d envoyer le lien a tout le monde, y compris a l auteur s il fait partie des participants.
+        <?= htmlspecialchars(omoDecisionUiT('l_action_principale_relance_seulement_les_participants_qui_n_ont_pas_encore_repondu_la_fle'), ENT_QUOTES, 'UTF-8') ?>
     </p>
     <?php endif; ?>
 
-    <label for="omoDecisionSendInvitationsMessage"><strong>Texte du message</strong></label>
+    <label for="omoDecisionSendInvitationsMessage"><strong><?= htmlspecialchars(omoDecisionUiT('texte_du_message'), ENT_QUOTES, 'UTF-8') ?></strong></label>
     <textarea
         id="omoDecisionSendInvitationsMessage"
         name="message"
@@ -202,7 +203,7 @@ $canSendAll = !$isDraft && $allRecipientCount > 0;
                 class="generic-action-button generic-action-button--main omo-decision-send-invitations-popup__split-main"
                 <?= $canSendPending ? '' : 'disabled' ?>
             >
-                Envoyer aux non-repondants
+                <?= htmlspecialchars(omoDecisionUiT('envoyer_aux_non_repondants'), ENT_QUOTES, 'UTF-8') ?>
             </button>
             <button
                 type="button"
@@ -211,7 +212,7 @@ $canSendAll = !$isDraft && $allRecipientCount > 0;
                 aria-haspopup="menu"
                 aria-expanded="false"
                 aria-controls="omoDecisionSendInvitationsPopupMenu"
-                aria-label="Choisir un autre envoi"
+                aria-label="<?= htmlspecialchars(omoDecisionUiT('choisir_un_autre_envoi'), ENT_QUOTES, 'UTF-8') ?>"
                 <?= $canSendAll ? '' : 'disabled' ?>
             >
             </button>

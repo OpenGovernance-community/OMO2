@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__) . '/bootstrap.php';
 
 header('Content-Type: application/json; charset=UTF-8');
@@ -14,7 +15,7 @@ if ($documentId <= 0 || $currentUserId <= 0) {
     http_response_code(400);
     echo json_encode(array(
         'status' => false,
-        'message' => 'Requête invalide.',
+        'message' => omoDocumentsUiT('requete_invalide'),
     ));
     exit;
 }
@@ -23,7 +24,7 @@ if (!$document->load($documentId)) {
     http_response_code(404);
     echo json_encode(array(
         'status' => false,
-        'message' => 'Document introuvable.',
+        'message' => omoDocumentsUiT('document_introuvable'),
     ));
     exit;
 }
@@ -33,7 +34,7 @@ if ($organizationId <= 0 || !commonCurrentUserHasOrganizationAccess($organizatio
     http_response_code(403);
     echo json_encode(array(
         'status' => false,
-        'message' => 'Accès refusé.',
+        'message' => omoDocumentsUiT('acces_refuse'),
     ));
     exit;
 }
@@ -48,7 +49,7 @@ if (!is_array($result) || ($result['status'] ?? false) !== true) {
     http_response_code(423);
     echo json_encode(array(
         'status' => false,
-        'message' => trim((string)($result['text'] ?? 'Document verrouillé.')),
+        'message' => trim((string)($result['text'] ?? omoDocumentsUiT('document_verrouille'))),
         'lock' => is_array($result['lock'] ?? null) ? $result['lock'] : null,
     ));
     exit;

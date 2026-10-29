@@ -80,7 +80,7 @@ $sourceLang = array_merge(commonMeetingRecurrenceSourceLang(), [
         'context' => 'Label of the location card inside the event detail view.',
     ],
     'calendar.detail.section.document' => [
-        'text' => 'Documents associes',
+        'text' => 'Documents associés',
         'context' => 'Label of the linked document card inside the event detail view.',
     ],
     'calendar.detail.section.invites' => [

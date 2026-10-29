@@ -77,7 +77,7 @@ if (!function_exists('omoStatsSpreadsheetLoadWorksheet')) {
     function omoStatsSpreadsheetLoadWorksheet(StatIndicator $indicator): array
     {
         if (!class_exists(IOFactory::class)) {
-            return ['status' => false, 'text' => 'La lecture des fichiers tableurs n est pas disponible sur ce serveur.'];
+            return ['status' => false, 'text' => 'La lecture des fichiers tableurs n’est pas disponible sur ce serveur.'];
         }
 
         $document = $indicator->getSpreadsheetDocument();
@@ -93,7 +93,7 @@ if (!function_exists('omoStatsSpreadsheetLoadWorksheet')) {
 
         $organization = $indicator->getOrganization();
         if (!($organization instanceof \dbObject\Organization)) {
-            return ['status' => false, 'text' => 'L organisation du document tableur est introuvable.'];
+            return ['status' => false, 'text' => 'L’organisation du document tableur est introuvable.'];
         }
         $download = $organization->downloadDocumentFileFromStorage((string)$document->get('storedfilepath'));
         if (!is_array($download) || empty($download['status']) || !isset($download['body'])) {
@@ -103,13 +103,13 @@ if (!function_exists('omoStatsSpreadsheetLoadWorksheet')) {
         $extension = omoSpreadsheetFilenameExtension($document->getStoredFileDownloadName());
         $temporaryPath = tempnam(sys_get_temp_dir(), 'omo-spreadsheet-');
         if ($temporaryPath === false) {
-            return ['status' => false, 'text' => 'Impossible de preparer la lecture du document tableur.'];
+            return ['status' => false, 'text' => 'Impossible de préparer la lecture du document tableur.'];
         }
         $pathWithExtension = $temporaryPath . '.' . $extension;
         @unlink($temporaryPath);
         if (@file_put_contents($pathWithExtension, (string)$download['body']) === false) {
             @unlink($pathWithExtension);
-            return ['status' => false, 'text' => 'Impossible de preparer la lecture du document tableur.'];
+            return ['status' => false, 'text' => 'Impossible de préparer la lecture du document tableur.'];
         }
 
         try {
@@ -140,7 +140,7 @@ if (!function_exists('omoStatsSpreadsheetReadCell')) {
     {
         $cell = StatIndicator::normalizeEthercalcCell($cell);
         if ($cell === '') {
-            return ['status' => false, 'text' => 'La cellule du tableur doit etre ecrite sous la forme A1.'];
+            return ['status' => false, 'text' => 'La cellule du tableur doit être écrite sous la forme A1.'];
         }
         $result = omoStatsSpreadsheetLoadWorksheet($indicator);
         if (empty($result['status'])) {
@@ -176,7 +176,7 @@ if (!function_exists('omoStatsSpreadsheetReadTable')) {
         $dateColumnIndex = Coordinate::columnIndexFromString($dateColumn);
         $valueColumnIndex = Coordinate::columnIndexFromString($valueColumn);
         if ($dateColumnIndex < $startColumn || $dateColumnIndex > $endColumn || $valueColumnIndex < $startColumn || $valueColumnIndex > $endColumn) {
-            return ['status' => false, 'text' => 'Les colonnes de date et de valeur doivent etre incluses dans la plage.'];
+            return ['status' => false, 'text' => 'Les colonnes de date et de valeur doivent être incluses dans la plage.'];
         }
 
         $result = omoStatsSpreadsheetLoadWorksheet($indicator);
@@ -225,7 +225,7 @@ if (!function_exists('omoStatsSynchronizeSpreadsheetIndicator')) {
             $value->set('measured_at', \DateTime::createFromInterface($referenceDate));
             $saveResult = $value->save();
             if (!is_array($saveResult) || empty($saveResult['status'])) {
-                return ['status' => false, 'text' => 'Impossible d enregistrer la valeur du tableur.'];
+                return ['status' => false, 'text' => 'Impossible d’enregistrer la valeur du tableur.'];
             }
         } elseif ($indicator->isSpreadsheetTableSource()) {
             $result = omoStatsSpreadsheetReadTable(

@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/modules/context.php';
 require_once __DIR__ . '/modules/export_common.php';
@@ -89,7 +90,7 @@ $bundle = count($bundleList) === 1
 $exportResult = call_user_func((string)$definition['export_function'], $decision, $decisionGroup, $context, $format, $bundle);
 
 if (!is_array($exportResult) || empty($exportResult['status'])) {
-    omoDecisionExportFail(422, (string)($exportResult['message'] ?? 'Impossible de generer cet export.'));
+    omoDecisionExportFail(422, (string)($exportResult['message'] ?? omoDecisionUiT('impossible_de_generer_cet_export')));
 }
 
 $filename = trim((string)($exportResult['filename'] ?? ''));

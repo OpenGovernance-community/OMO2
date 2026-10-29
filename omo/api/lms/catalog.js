@@ -1,3 +1,5 @@
+var omoUiText = window.omoUiText || function (key, fallback) { return fallback; };
+var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; };
 
 const lmsIndexViewer = {
     userId: window.omoLmsCatalogConfig.userId,
@@ -451,11 +453,11 @@ function initParcoursEditorDrawer() {
             }
 
             if (!response.ok) {
-                throw new Error(payload && payload.message ? payload.message : 'Impossible d enregistrer ce parcours.');
+                throw new Error(payload && payload.message ? payload.message : omoUiText("impossible_d_enregistrer_ce_parcours", "Impossible d’enregistrer ce parcours."));
             }
 
             if (!payload || payload.success !== true) {
-                throw new Error(payload && payload.message ? payload.message : 'Impossible d enregistrer ce parcours.');
+                throw new Error(payload && payload.message ? payload.message : omoUiText("impossible_d_enregistrer_ce_parcours", "Impossible d’enregistrer ce parcours."));
             }
 
             initialState = captureParcoursEditorState();
@@ -464,7 +466,7 @@ function initParcoursEditorDrawer() {
             closeDrawer();
             window.location.reload();
         } catch (error) {
-            window.omoNotify(error && error.message ? error.message : 'Impossible d enregistrer ce parcours.', 'error');
+            window.omoNotify(error && error.message ? error.message : omoUiText("impossible_d_enregistrer_ce_parcours", "Impossible d’enregistrer ce parcours."), 'error');
         } finally {
             isSubmitting = false;
             setSubmitState();
@@ -547,13 +549,13 @@ function initParcoursImportDrawer() {
                 }
 
                 if (!response.ok || !payload || payload.success !== true) {
-                    throw new Error(payload && payload.message ? payload.message : 'Impossible d importer ce parcours.');
+                    throw new Error(payload && payload.message ? payload.message : omoUiText("impossible_d_importer_ce_parcours", "Impossible d’importer ce parcours."));
                 }
 
                 closeDrawer();
                 window.location.reload();
             } catch (error) {
-                window.omoNotify(error && error.message ? error.message : 'Impossible d importer ce parcours.', 'error');
+                window.omoNotify(error && error.message ? error.message : omoUiText("impossible_d_importer_ce_parcours", "Impossible d’importer ce parcours."), 'error');
                 button.disabled = false;
             }
         });
@@ -615,7 +617,7 @@ function initMissionEditorDrawer() {
 
             const payload = await response.json();
             if (!response.ok || !payload || payload.success !== true) {
-                throw new Error(payload && payload.message ? payload.message : 'Impossible d enregistrer cette mission.');
+                throw new Error(payload && payload.message ? payload.message : omoUiText("impossible_d_enregistrer_cette_mission", "Impossible d’enregistrer cette mission."));
             }
 
             openDrawerFromUrl(buildMissionEditUrl(parcoursId, missionId), { simpleMode: true })
@@ -662,7 +664,7 @@ async function refreshParcoursMissionManager(parcoursId) {
 
     const response = await fetch(buildParcoursMissionPanelUrl(parcoursId), { credentials: 'same-origin' });
     if (!response.ok) {
-        throw new Error('Impossible de recharger les missions du parcours.');
+        throw new Error(omoUiText("impossible_de_recharger_les_missions_du_parcours", "Impossible de recharger les missions du parcours."));
     }
 
     const html = await response.text();
@@ -770,7 +772,7 @@ function initParcoursMissionManager() {
                 return;
             }
 
-            if (!window.confirm('Retirer cette mission du parcours ?')) {
+            if (!window.confirm(omoUiText("retirer_cette_mission_du_parcours", "Retirer cette mission du parcours ?"))) {
                 return;
             }
 
@@ -790,12 +792,12 @@ function initParcoursMissionManager() {
 
                 const payload = await response.json();
                 if (!response.ok || !payload || payload.success !== true) {
-                    throw new Error(payload && payload.message ? payload.message : 'Impossible de retirer cette mission du parcours.');
+                    throw new Error(payload && payload.message ? payload.message : omoUiText("impossible_de_retirer_cette_mission_du_parcours", "Impossible de retirer cette mission du parcours."));
                 }
 
                 await refreshParcoursMissionManager(parcoursId);
             } catch (error) {
-                window.omoNotify(error && error.message ? error.message : 'Impossible de retirer cette mission du parcours.', 'error');
+                window.omoNotify(error && error.message ? error.message : omoUiText("impossible_de_retirer_cette_mission_du_parcours", "Impossible de retirer cette mission du parcours."), 'error');
             } finally {
                 button.disabled = false;
             }
@@ -859,12 +861,12 @@ function initParcoursMissionManager() {
 
                 const payload = await response.json();
                 if (!response.ok || !payload || payload.success !== true) {
-                    throw new Error(payload && payload.message ? payload.message : 'Impossible d ajouter cette mission.');
+                    throw new Error(payload && payload.message ? payload.message : omoUiText("impossible_d_ajouter_cette_mission", "Impossible d’ajouter cette mission."));
                 }
 
                 await refreshParcoursMissionManager(parcoursId);
             } catch (error) {
-                window.omoNotify(error && error.message ? error.message : 'Impossible d ajouter cette mission.', 'error');
+                window.omoNotify(error && error.message ? error.message : omoUiText("impossible_d_ajouter_cette_mission", "Impossible d’ajouter cette mission."), 'error');
             } finally {
                 button.disabled = false;
             }
@@ -952,12 +954,12 @@ function initParcoursMissionManager() {
 
                     const payload = await response.json();
                     if (!response.ok || !payload || payload.success !== true) {
-                        throw new Error(payload && payload.message ? payload.message : 'Impossible de reordonner les missions.');
+                        throw new Error(payload && payload.message ? payload.message : omoUiText("impossible_de_reordonner_les_missions", "Impossible de réordonner les missions."));
                     }
 
                     await refreshParcoursMissionManager(parcoursId);
                 } catch (error) {
-                    window.omoNotify(error && error.message ? error.message : 'Impossible de reordonner les missions.', 'error');
+                    window.omoNotify(error && error.message ? error.message : omoUiText("impossible_de_reordonner_les_missions", "Impossible de réordonner les missions."), 'error');
                     await refreshParcoursMissionManager(parcoursId);
                 }
             }
@@ -1429,7 +1431,7 @@ function initParcoursPackManager() {
                 return;
             }
 
-            if (!window.confirm('Retirer ce parcours du pack ?')) {
+            if (!window.confirm(omoUiText("retirer_ce_parcours_du_pack", "Retirer ce parcours du pack ?"))) {
                 return;
             }
 
@@ -1449,12 +1451,12 @@ function initParcoursPackManager() {
 
                 const payload = await response.json();
                 if (!response.ok || !payload || payload.success !== true) {
-                    throw new Error(payload && payload.message ? payload.message : 'Impossible de retirer ce parcours du pack.');
+                    throw new Error(payload && payload.message ? payload.message : omoUiText("impossible_de_retirer_ce_parcours_du_pack", "Impossible de retirer ce parcours du pack."));
                 }
 
                 await refreshParcoursMissionManager(parcoursId);
             } catch (error) {
-                window.omoNotify(error && error.message ? error.message : 'Impossible de retirer ce parcours du pack.', 'error');
+                window.omoNotify(error && error.message ? error.message : omoUiText("impossible_de_retirer_ce_parcours_du_pack", "Impossible de retirer ce parcours du pack."), 'error');
             } finally {
                 button.disabled = false;
             }
@@ -1506,12 +1508,12 @@ function initParcoursPackManager() {
 
                 const payload = await response.json();
                 if (!response.ok || !payload || payload.success !== true) {
-                    throw new Error(payload && payload.message ? payload.message : 'Impossible d ajouter ce parcours au pack.');
+                    throw new Error(payload && payload.message ? payload.message : omoUiText("impossible_d_ajouter_ce_parcours_au_pack", "Impossible d’ajouter ce parcours au pack."));
                 }
 
                 await refreshParcoursMissionManager(parcoursId);
             } catch (error) {
-                window.omoNotify(error && error.message ? error.message : 'Impossible d ajouter ce parcours au pack.', 'error');
+                window.omoNotify(error && error.message ? error.message : omoUiText("impossible_d_ajouter_ce_parcours_au_pack", "Impossible d’ajouter ce parcours au pack."), 'error');
             } finally {
                 button.disabled = false;
             }
@@ -1545,12 +1547,12 @@ function initParcoursPackManager() {
 
                     const payload = await response.json();
                     if (!response.ok || !payload || payload.success !== true) {
-                        throw new Error(payload && payload.message ? payload.message : 'Impossible de reordonner les parcours du pack.');
+                        throw new Error(payload && payload.message ? payload.message : omoUiText("impossible_de_reordonner_les_parcours_du_pack", "Impossible de réordonner les parcours du pack."));
                     }
 
                     await refreshParcoursMissionManager(parcoursId);
                 } catch (error) {
-                    window.omoNotify(error && error.message ? error.message : 'Impossible de reordonner les parcours du pack.', 'error');
+                    window.omoNotify(error && error.message ? error.message : omoUiText("impossible_de_reordonner_les_parcours_du_pack", "Impossible de réordonner les parcours du pack."), 'error');
                     await refreshParcoursMissionManager(parcoursId);
                 }
             }
@@ -1643,7 +1645,7 @@ function openMissionHomeworkFormForEdit(homeworkForm, submitButton, item) {
     }
 
     homeworkForm.hidden = false;
-    setMissionFormButtonLabel(submitButton, 'Mettre a jour le devoir');
+    setMissionFormButtonLabel(submitButton, omoUiText("mettre_a_jour_le_devoir", "Mettre à jour le devoir"));
     lmsInitAdminEditHtmlFields(homeworkForm);
     if (titleField) {
         window.setTimeout(function () {

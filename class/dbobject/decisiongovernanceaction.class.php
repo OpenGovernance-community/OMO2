@@ -3,6 +3,40 @@ namespace dbObject;
 
 class DecisionGovernanceAction extends DbObject
 {
+        protected static function uiMessageSourceLang(): array
+        {
+            return [
+                'la_regle_doit_etre_definie_dans_le_contexte_de_la_decision' => ['text' => 'La règle doit être définie dans le contexte de la décision.', 'context' => 'Validation or action feedback for decisiongovernanceaction.'],
+                'valeur_introuvable_dans_cette_organisation' => ['text' => 'Valeur introuvable dans cette organisation.', 'context' => 'Validation or action feedback for decisiongovernanceaction.'],
+                'le_domaine_d_autorite_choisi_n_appartient_pas_au_contexte_de_la_decision' => ['text' => 'Le domaine d’autorité choisi n’appartient pas au contexte de la décision.', 'context' => 'Validation or action feedback for decisiongovernanceaction.'],
+                'le_titre_la_regle_et_les_deux_dates_sont_obligatoires' => ['text' => 'Le titre, la règle et les deux dates sont obligatoires.', 'context' => 'Validation or action feedback for decisiongovernanceaction.'],
+                'la_date_de_requestionnement_ne_peut_pas_suivre_la_date_d_echeance' => ['text' => 'La date de requestionnement ne peut pas suivre la date d’échéance.', 'context' => 'Validation or action feedback for decisiongovernanceaction.'],
+                'espace_introuvable' => ['text' => 'Espace introuvable.', 'context' => 'Validation or action feedback for decisiongovernanceaction.'],
+                'le_nom_du_role_est_obligatoire' => ['text' => 'Le nom du rôle est obligatoire.', 'context' => 'Validation or action feedback for decisiongovernanceaction.'],
+                'le_nom_du_role_est_trop_long' => ['text' => 'Le nom du rôle est trop long.', 'context' => 'Validation or action feedback for decisiongovernanceaction.'],
+                'le_modele_de_l_espace_est_obligatoire' => ['text' => 'Le modèle de l’espace est obligatoire.', 'context' => 'Validation or action feedback for decisiongovernanceaction.'],
+                'le_modele_d_espace_choisi_est_invalide' => ['text' => 'Le modèle d’espace choisi est invalide.', 'context' => 'Validation or action feedback for decisiongovernanceaction.'],
+                'consultez_le_detail_ci_dessous_pour_lire_le_texte_complet_de_la_regle' => ['text' => 'Consultez le détail ci-dessous pour lire le texte complet de la règle.', 'context' => 'Validation or action feedback for decisiongovernanceaction.'],
+                'connexion_a_la_base_impossible' => ['text' => 'Connexion à la base impossible.', 'context' => 'Validation or action feedback for decisiongovernanceaction.'],
+                'type_de_modification_invalide' => ['text' => 'Type de modification invalide.', 'context' => 'Validation or action feedback for decisiongovernanceaction.'],
+                'ce_type_d_action_n_est_pas_encore_executable' => ['text' => 'Ce type d’action n’est pas encore exécutable.', 'context' => 'Validation or action feedback for decisiongovernanceaction.'],
+                'la_creation_de_la_regle_est_dans_un_etat_incoherent' => ['text' => 'La création de la règle est dans un état incohérent.', 'context' => 'Validation or action feedback for decisiongovernanceaction.'],
+                'la_regle_cible_n_existe_plus' => ['text' => 'La règle cible n’existe plus.', 'context' => 'Validation or action feedback for decisiongovernanceaction.'],
+                'la_regle_cible_a_change_de_contexte' => ['text' => 'La règle cible a changé de contexte.', 'context' => 'Validation or action feedback for decisiongovernanceaction.'],
+                'la_regle_a_ete_modifiee_depuis_la_preparation_de_cette_modification' => ['text' => 'La règle a été modifiée depuis la préparation de cette modification.', 'context' => 'Validation or action feedback for decisiongovernanceaction.'],
+                'la_regle_ne_peut_pas_etre_supprimee' => ['text' => 'La règle ne peut pas être supprimée.', 'context' => 'Validation or action feedback for decisiongovernanceaction.'],
+                'le_contexte_de_la_modification_n_existe_plus' => ['text' => 'Le contexte de la modification n’existe plus.', 'context' => 'Validation or action feedback for decisiongovernanceaction.'],
+                'l_organisation_de_la_modification_est_introuvable' => ['text' => 'L’organisation de la modification est introuvable.', 'context' => 'Validation or action feedback for decisiongovernanceaction.'],
+                'la_creation_de_l_espace_est_dans_un_etat_incoherent' => ['text' => 'La création de l’espace est dans un état incohérent.', 'context' => 'Validation or action feedback for decisiongovernanceaction.'],
+                'l_espace_ne_peut_pas_etre_cree' => ['text' => 'L’espace ne peut pas être créé.', 'context' => 'Validation or action feedback for decisiongovernanceaction.'],
+                'le_role_ne_peut_pas_etre_cree' => ['text' => 'Le rôle ne peut pas être créé.', 'context' => 'Validation or action feedback for decisiongovernanceaction.'],
+                'l_espace_cible_n_appartient_plus_a_cette_organisation' => ['text' => 'L’espace cible n’appartient plus à cette organisation.', 'context' => 'Validation or action feedback for decisiongovernanceaction.'],
+                'le_role_cible_n_appartient_plus_a_ce_cercle' => ['text' => 'Le rôle cible n’appartient plus à ce cercle.', 'context' => 'Validation or action feedback for decisiongovernanceaction.'],
+                'l_espace_a_ete_modifie_depuis_la_preparation_de_cette_modification' => ['text' => 'L’espace a été modifié depuis la préparation de cette modification.', 'context' => 'Validation or action feedback for decisiongovernanceaction.'],
+                'le_parent_de_l_espace_cible_est_introuvable' => ['text' => 'Le parent de l’espace cible est introuvable.', 'context' => 'Validation or action feedback for decisiongovernanceaction.'],
+            ];
+        }
+
     protected $ruleAuditUserId = 0;
     protected $ruleCreationContext = [];
     public const TYPE_RULE_CREATE = 'rule.create';
@@ -199,25 +233,25 @@ class DecisionGovernanceAction extends DbObject
     {
         $ruleHolon = $rule->getHolon();
         if (!$ruleHolon instanceof Holon || (int)$ruleHolon->getId() !== (int)$expectedHolonId) {
-            return ['status' => false, 'message' => 'La règle doit être définie dans le contexte de la décision.'];
+            return ['status' => false, 'message' => self::uiMessage('la_regle_doit_etre_definie_dans_le_contexte_de_la_decision')];
         }
         $state = self::normalizeRuleState($afterState, $rule);
-        if ($state['IDvaleur'] && !Valeur::loadInOrganization($state['IDvaleur'], $rule->getOrganizationId())) return ['status' => false, 'message' => 'Valeur introuvable dans cette organisation.'];
+        if ($state['IDvaleur'] && !Valeur::loadInOrganization($state['IDvaleur'], $rule->getOrganizationId())) return ['status' => false, 'message' => self::uiMessage('valeur_introuvable_dans_cette_organisation')];
         $scopeValidation = Rule::validateScopeAttachment($afterState['scope'] ?? $state['scope'], $ruleHolon, $state['IDauthority']);
         if (empty($scopeValidation['status'])) return ['status' => false, 'message' => $scopeValidation['text']];
         if ((int)$state['IDauthority'] > 0) {
             $authority = new Authority();
             if (!$authority->load((int)$state['IDauthority']) || (int)$authority->get('IDholon') !== (int)$expectedHolonId) {
-                return ['status' => false, 'message' => 'Le domaine d’autorité choisi n’appartient pas au contexte de la décision.'];
+                return ['status' => false, 'message' => self::uiMessage('le_domaine_d_autorite_choisi_n_appartient_pas_au_contexte_de_la_decision')];
             }
         } else {
             $state['IDholon'] = (int)$expectedHolonId;
         }
         if ($state['title'] === '' || !Rule::hasContentText($state['description']) || $state['review_date'] === '' || $state['expiration_date'] === '') {
-            return ['status' => false, 'message' => 'Le titre, la règle et les deux dates sont obligatoires.'];
+            return ['status' => false, 'message' => self::uiMessage('le_titre_la_regle_et_les_deux_dates_sont_obligatoires')];
         }
         if ($state['review_date'] > $state['expiration_date']) {
-            return ['status' => false, 'message' => 'La date de requestionnement ne peut pas suivre la date d’échéance.'];
+            return ['status' => false, 'message' => self::uiMessage('la_date_de_requestionnement_ne_peut_pas_suivre_la_date_d_echeance')];
         }
         return ['status' => true, 'state' => $state];
     }
@@ -226,17 +260,17 @@ class DecisionGovernanceAction extends DbObject
     {
         $state = self::normalizeRuleState($afterState);
         $holon = new Holon();
-        if (!$holon->load((int)$expectedHolonId)) return ['status' => false, 'message' => 'Espace introuvable.'];
+        if (!$holon->load((int)$expectedHolonId)) return ['status' => false, 'message' => self::uiMessage('espace_introuvable')];
         $root = new Holon();
         $valueOrganizationId = (int)$holon->get('IDorganization');
         if (!$valueOrganizationId && $root->load((int)$holon->get('IDholon_org'))) $valueOrganizationId = (int)$root->get('IDorganization');
-        if ($state['IDvaleur'] && !Valeur::loadInOrganization($state['IDvaleur'], $valueOrganizationId)) return ['status' => false, 'message' => 'Valeur introuvable dans cette organisation.'];
+        if ($state['IDvaleur'] && !Valeur::loadInOrganization($state['IDvaleur'], $valueOrganizationId)) return ['status' => false, 'message' => self::uiMessage('valeur_introuvable_dans_cette_organisation')];
         $scopeValidation = Rule::validateScopeAttachment($afterState['scope'] ?? $state['scope'], $holon, $state['IDauthority']);
         if (empty($scopeValidation['status'])) return ['status' => false, 'message' => $scopeValidation['text']];
         if ((int)$state['IDauthority'] > 0) {
             $authority = new Authority();
             if (!$authority->load((int)$state['IDauthority']) || (int)$authority->get('IDholon') !== (int)$expectedHolonId) {
-                return ['status' => false, 'message' => 'Le domaine d’autorité choisi n’appartient pas au contexte de la décision.'];
+                return ['status' => false, 'message' => self::uiMessage('le_domaine_d_autorite_choisi_n_appartient_pas_au_contexte_de_la_decision')];
             }
             $state['IDholon'] = null;
         } else {
@@ -244,10 +278,10 @@ class DecisionGovernanceAction extends DbObject
             $state['IDholon'] = (int)$expectedHolonId;
         }
         if ($state['title'] === '' || !Rule::hasContentText($state['description']) || $state['review_date'] === '' || $state['expiration_date'] === '') {
-            return ['status' => false, 'message' => 'Le titre, la règle et les deux dates sont obligatoires.'];
+            return ['status' => false, 'message' => self::uiMessage('le_titre_la_regle_et_les_deux_dates_sont_obligatoires')];
         }
         if ($state['review_date'] > $state['expiration_date']) {
-            return ['status' => false, 'message' => 'La date de requestionnement ne peut pas suivre la date d’échéance.'];
+            return ['status' => false, 'message' => self::uiMessage('la_date_de_requestionnement_ne_peut_pas_suivre_la_date_d_echeance')];
         }
         return ['status' => true, 'state' => $state];
     }
@@ -256,7 +290,7 @@ class DecisionGovernanceAction extends DbObject
     {
         $ruleHolon = $rule->getHolon();
         if (!$ruleHolon instanceof Holon || (int)$ruleHolon->getId() !== (int)$expectedHolonId) {
-            return ['status' => false, 'message' => 'La règle doit être définie dans le contexte de la décision.'];
+            return ['status' => false, 'message' => self::uiMessage('la_regle_doit_etre_definie_dans_le_contexte_de_la_decision')];
         }
         return ['status' => true, 'state' => self::captureRuleState($rule)];
     }
@@ -360,18 +394,18 @@ class DecisionGovernanceAction extends DbObject
     {
         $state = self::normalizeRoleState($state, $role);
         if ($state['name'] === '') {
-            return ['status' => false, 'message' => 'Le nom du rôle est obligatoire.'];
+            return ['status' => false, 'message' => self::uiMessage('le_nom_du_role_est_obligatoire')];
         }
         if (mb_strlen($state['name'], 'UTF-8') > 255 || mb_strlen($state['full_name'], 'UTF-8') > 255) {
-            return ['status' => false, 'message' => 'Le nom du rôle est trop long.'];
+            return ['status' => false, 'message' => self::uiMessage('le_nom_du_role_est_trop_long')];
         }
         if ($role === null && $state['template_id'] <= 0) {
-            return ['status' => false, 'message' => 'Le modèle de l’espace est obligatoire.'];
+            return ['status' => false, 'message' => self::uiMessage('le_modele_de_l_espace_est_obligatoire')];
         }
         if ($state['template_id'] > 0) {
             $template = new Holon();
             if (!$template->load($state['template_id']) || !in_array((int)$template->get('IDtypeholon'), [1, 2, 3], true)) {
-                return ['status' => false, 'message' => 'Le modèle d’espace choisi est invalide.'];
+                return ['status' => false, 'message' => self::uiMessage('le_modele_d_espace_choisi_est_invalide')];
             }
         }
         return ['status' => true, 'state' => $state];
@@ -494,7 +528,7 @@ class DecisionGovernanceAction extends DbObject
     {
         static $sourceLang = [
             'rule_content_details' => [
-                'text' => 'Consultez le detail ci-dessous pour lire le texte complet de la regle.',
+                'text' => self::uiMessage('consultez_le_detail_ci_dessous_pour_lire_le_texte_complet_de_la_regle'),
                 'context' => 'Generated proposal summary replacing a long rule body; the complete content and changes are available in the modification detail below.',
             ],
         ];
@@ -687,7 +721,7 @@ class DecisionGovernanceAction extends DbObject
     {
         $pdo = self::getPdo();
         if (!$pdo) {
-            return ['status' => false, 'failed' => true, 'message' => 'Connexion à la base impossible.'];
+            return ['status' => false, 'failed' => true, 'message' => self::uiMessage('connexion_a_la_base_impossible')];
         }
 
         try {
@@ -767,7 +801,7 @@ class DecisionGovernanceAction extends DbObject
         $operation = trim((string)$proposal->get('operation'));
         $actionType = $targetType . '.' . $operation;
         if (!self::isImplementedType($actionType)) {
-            return ['status' => false, 'message' => 'Type de modification invalide.'];
+            return ['status' => false, 'message' => self::uiMessage('type_de_modification_invalide')];
         }
         $action = new self();
         $action->ruleAuditUserId = (int)$proposal->get('IDuser_author');
@@ -794,7 +828,7 @@ class DecisionGovernanceAction extends DbObject
             return $this->applyHolonAction($decision, $actionType, $collectiveHolonId ?? (int)$decision->get('IDholon'));
         }
         if (!in_array($actionType, [self::TYPE_RULE_CREATE, self::TYPE_RULE_UPDATE, self::TYPE_RULE_DELETE], true)) {
-            return ['status' => false, 'message' => 'Ce type d’action n’est pas encore exécutable.'];
+            return ['status' => false, 'message' => self::uiMessage('ce_type_d_action_n_est_pas_encore_executable')];
         }
 
         if ($actionType === self::TYPE_RULE_CREATE) {
@@ -809,7 +843,7 @@ class DecisionGovernanceAction extends DbObject
                 if ($existingRule instanceof Rule && self::captureRuleState($existingRule) === (array)$validation['state']) {
                     return ['status' => true, 'already_applied' => true];
                 }
-                return ['status' => false, 'conflict' => true, 'message' => 'La création de la règle est dans un état incohérent.'];
+                return ['status' => false, 'conflict' => true, 'message' => self::uiMessage('la_creation_de_la_regle_est_dans_un_etat_incoherent')];
             }
             $rule = new Rule();
             $rule->set('creation_context', $this->ruleCreationContext ?: null);
@@ -826,21 +860,21 @@ class DecisionGovernanceAction extends DbObject
 
         $rule = Rule::loadForGovernanceApplication((int)$this->get('target_id'));
         if (!$rule instanceof Rule) {
-            return ['status' => false, 'conflict' => true, 'message' => 'La règle cible n’existe plus.'];
+            return ['status' => false, 'conflict' => true, 'message' => self::uiMessage('la_regle_cible_n_existe_plus')];
         }
         $ruleHolon = $rule->getHolon();
         if (!$ruleHolon instanceof Holon || (int)$ruleHolon->getId() !== (int)$decision->get('IDholon')) {
-            return ['status' => false, 'conflict' => true, 'message' => 'La règle cible a changé de contexte.'];
+            return ['status' => false, 'conflict' => true, 'message' => self::uiMessage('la_regle_cible_a_change_de_contexte')];
         }
 
         $before = self::normalizeRuleState(self::normalizeState($this->get('before_state')));
         $current = self::captureRuleState($rule);
         if ($actionType === self::TYPE_RULE_DELETE) {
             if ($current !== $before) {
-                return ['status' => false, 'conflict' => true, 'message' => 'La règle a été modifiée depuis la préparation de cette modification.'];
+                return ['status' => false, 'conflict' => true, 'message' => self::uiMessage('la_regle_a_ete_modifiee_depuis_la_preparation_de_cette_modification')];
             }
             if (!$rule->delete()) {
-                return ['status' => false, 'message' => 'La règle ne peut pas être supprimée.'];
+                return ['status' => false, 'message' => self::uiMessage('la_regle_ne_peut_pas_etre_supprimee')];
             }
             return ['status' => true, 'deleted_id' => (int)$rule->getId()];
         }
@@ -850,7 +884,7 @@ class DecisionGovernanceAction extends DbObject
             return ['status' => true, 'already_applied' => true];
         }
         if ($current !== $before) {
-            return ['status' => false, 'conflict' => true, 'message' => 'La règle a été modifiée depuis la préparation de cette modification.'];
+            return ['status' => false, 'conflict' => true, 'message' => self::uiMessage('la_regle_a_ete_modifiee_depuis_la_preparation_de_cette_modification')];
         }
 
         $validation = self::validateRuleUpdate($rule, $after, (int)$decision->get('IDholon'));
@@ -864,11 +898,11 @@ class DecisionGovernanceAction extends DbObject
     {
         $context = new Holon();
         if (!$context->load((int)$decision->get('IDholon'))) {
-            return ['status' => false, 'conflict' => true, 'message' => 'Le contexte de la modification n’existe plus.'];
+            return ['status' => false, 'conflict' => true, 'message' => self::uiMessage('le_contexte_de_la_modification_n_existe_plus')];
         }
         $organization = new Organization();
         if (!$organization->load((int)$decision->get('IDorganization'))) {
-            return ['status' => false, 'message' => 'L’organisation de la modification est introuvable.'];
+            return ['status' => false, 'message' => self::uiMessage('l_organisation_de_la_modification_est_introuvable')];
         }
         if ($actionType === self::TYPE_HOLON_CREATE) {
             $validation = self::validateHolonState(self::normalizeState($this->get('after_state')), $context);
@@ -881,7 +915,7 @@ class DecisionGovernanceAction extends DbObject
                     && self::captureHolonState($existingHolon) === array_diff_key((array)$validation['state'], ['editor_payload' => true])) {
                     return ['status' => true, 'already_applied' => true];
                 }
-                return ['status' => false, 'conflict' => true, 'message' => 'La création de l’espace est dans un état incohérent.'];
+                return ['status' => false, 'conflict' => true, 'message' => self::uiMessage('la_creation_de_l_espace_est_dans_un_etat_incoherent')];
             }
             $holon = new Holon();
             $state = $validation['state'];
@@ -889,7 +923,7 @@ class DecisionGovernanceAction extends DbObject
                 $result = $organization->saveHolonEditorDefinition($state['editor_payload'], 0, (int)$context->getId(), 0, true, $collectiveHolonId);
                 if (empty($result['status'])) return $result;
                 $createdId = (int)($result['holon']['id'] ?? 0);
-                if ($createdId <= 0) return ['status' => false, 'message' => 'L’espace ne peut pas être créé.'];
+                if ($createdId <= 0) return ['status' => false, 'message' => self::uiMessage('l_espace_ne_peut_pas_etre_cree')];
                 $this->set('target_id', $createdId);
                 return ['status' => true, 'created_id' => $createdId];
             }
@@ -907,7 +941,7 @@ class DecisionGovernanceAction extends DbObject
             $holon->set('active', true);
             $holon->set('visible', true);
             $holon->save();
-            if ((int)$holon->getId() <= 0) return ['status' => false, 'message' => 'Le rôle ne peut pas être créé.'];
+            if ((int)$holon->getId() <= 0) return ['status' => false, 'message' => self::uiMessage('le_role_ne_peut_pas_etre_cree')];
             $this->set('target_id', (int)$holon->getId());
             return ['status' => true, 'created_id' => (int)$holon->getId()];
         }
@@ -918,19 +952,19 @@ class DecisionGovernanceAction extends DbObject
             || !$holon->isDescendantOf($rootHolon, true)
             || $holon->isTemplateNode((int)$rootHolon->getId())
             || !in_array((int)$holon->get('IDtypeholon'), [1, 2, 3], true)) {
-            return ['status' => false, 'conflict' => true, 'message' => 'L’espace cible n’appartient plus à cette organisation.'];
+            return ['status' => false, 'conflict' => true, 'message' => self::uiMessage('l_espace_cible_n_appartient_plus_a_cette_organisation')];
         }
         // A persisted hors-reorg decision retains its historic role-only
         // boundary. DeferredProposal builds an unsaved decision adapter and
         // deliberately permits any structural holon selected by the PV.
         if ((int)$decision->getId() > 0 && !self::roleBelongsToGovernanceContext($holon, $context)) {
-            return ['status' => false, 'conflict' => true, 'message' => 'Le rôle cible n’appartient plus à ce cercle.'];
+            return ['status' => false, 'conflict' => true, 'message' => self::uiMessage('le_role_cible_n_appartient_plus_a_ce_cercle')];
         }
         $before = self::normalizeRoleState(self::normalizeState($this->get('before_state')));
         $current = self::captureHolonState($holon);
         $beforeComparable = array_diff_key($before, ['editor_payload' => true]);
         if ($actionType === self::TYPE_HOLON_DELETE) {
-            if ($current !== $beforeComparable) return ['status' => false, 'conflict' => true, 'message' => 'L’espace a été modifié depuis la préparation de cette modification.'];
+            if ($current !== $beforeComparable) return ['status' => false, 'conflict' => true, 'message' => self::uiMessage('l_espace_a_ete_modifie_depuis_la_preparation_de_cette_modification')];
             $choice = self::normalizeState($this->get('after_state'))['authority_choice'] ?? '';
             $result = $organization->deleteHolonDefinition((int)$holon->getId(), 0, true, is_string($choice) ? $choice : '');
             return !empty($result['status'])
@@ -939,9 +973,9 @@ class DecisionGovernanceAction extends DbObject
         }
         $after = self::normalizeHolonState(self::normalizeState($this->get('after_state')), $holon);
         if ($current === $after) return ['status' => true, 'already_applied' => true];
-        if ($current !== $beforeComparable) return ['status' => false, 'conflict' => true, 'message' => 'L’espace a été modifié depuis la préparation de cette modification.'];
+        if ($current !== $beforeComparable) return ['status' => false, 'conflict' => true, 'message' => self::uiMessage('l_espace_a_ete_modifie_depuis_la_preparation_de_cette_modification')];
         $parentHolon = $holon->getParentHolon();
-        if (!$parentHolon instanceof Holon) return ['status' => false, 'conflict' => true, 'message' => 'Le parent de l’espace cible est introuvable.'];
+        if (!$parentHolon instanceof Holon) return ['status' => false, 'conflict' => true, 'message' => self::uiMessage('le_parent_de_l_espace_cible_est_introuvable')];
         $validation = self::validateHolonState($after, $parentHolon, $holon);
         if (empty($validation['status'])) return $validation;
         if (is_array($validation['state']['editor_payload'] ?? null)) {

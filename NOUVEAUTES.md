@@ -1,5 +1,9 @@
 # Journal des nouveautés
 
+- OMO / traductions (2026-10-29) : correction du français dans les écrans, les notifications et les formulaires ; raccordement des libellés et messages d’API manquants, des choix adminEdit et des outils JavaScript. Catalogues partagés, variables et pluriels traduisibles, langue des dates, de l’éditeur HTML et de la page hors ligne adaptée. Grands catalogues traduits par lots pour éviter les réponses tronquées. Contrôles sur la conservation des valeurs techniques et l’échappement HTML.
+
+- MCP / API / valeurs (2026-10-29) : catalogue de l organisation et filtre par holon (valeurs locales et heritees), lecture du principe actuel, navigation vers les regles associees et lecture de la valeur incarnee par une regle. Proprietes des holons resolues depuis les valeurs en base ; pagination, droits et isolation des organisations communs aux deux transports. Routes et schemas OpenAPI mis a jour ; tests HTTP REST/MCP, contrats et lectures existantes verifies.
+
 - Holons / principes des valeurs (2026-10-29) : retrait de generic-form-stack du conteneur du principe ; paragraphes en flux normal avec une demi-ligne d espacement.
 
 - Connexion / renvoi de code (2026-10-29) : bouton desactive pendant 60 secondes apres chaque envoi, avec decompte visible et reprise du temps restant apres rechargement de la page.

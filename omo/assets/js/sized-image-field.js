@@ -1,3 +1,5 @@
+var omoUiText = window.omoUiText || function (key, fallback) { return fallback; };
+var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; };
 (function (window, document) {
     'use strict';
 
@@ -95,15 +97,15 @@
 
     function resolveMetaText(state, value, inheritedValue) {
         if (state.locked) {
-            return 'Cette image est verrouillée par le modèle.';
+            return omoUiText("cette_image_est_verrouillee_par_le_modele", "Cette image est verrouillée par le modèle.");
         }
 
         if (String(value || '').trim() !== '') {
-        return 'Une image locale est définie pour cet espace.';
+        return omoUiText("une_image_locale_est_definie_pour_cet_espace", "Une image locale est définie pour cet espace.");
         }
 
         if (String(inheritedValue || '').trim() !== '') {
-            return 'Aucune image locale: la valeur héritée du modèle sera utilisée.';
+            return omoUiText("aucune_image_locale_la_valeur_heritee_du_modele_sera_utilisee", "Aucune image locale: la valeur héritée du modèle sera utilisée.");
         }
 
         return state.emptyText || 'Aucune image définie pour le moment.';
@@ -122,15 +124,15 @@
             value: '',
             inheritedValue: '',
             locked: false,
-            emptyText: 'Aucune image définie.',
+            emptyText: omoUiText("aucune_image_definie", "Aucune image définie."),
             displayWidth: 200,
             displayHeight: 200,
             targetWidth: 500,
             targetHeight: 500,
             labels: {
-                choose: 'Choisir une image',
-                clear: 'Effacer',
-                zoom: 'Zoom'
+                choose: omoUiText("choisir_une_image", "Choisir une image"),
+                clear: omoUiText("effacer", "Effacer"),
+                zoom: omoUiText("zoom", "Zoom")
             }
         }, options || {});
 

@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__) . '/bootstrap.php';
 
 use dbObject\DeferredProposal;
@@ -37,11 +38,11 @@ if ($organizationId <= 0
     || !$document->canUserProposePvPointChange($point, $userId)
     || $point->isHandled()
     || $document->getPvStage() === Document::PV_STAGE_REVIEW) {
-    $respond(403, ['status' => false, 'message' => 'Accès refusé.']);
+    $respond(403, ['status' => false, 'message' => omoDeferredProposalsUiT('acces_refuse')]);
 }
 if (!in_array($targetType, [DeferredProposal::TARGET_RULE, DeferredProposal::TARGET_HOLON, DeferredProposal::TARGET_PROJECT, DeferredProposal::TARGET_RECURRING_TASK, DeferredProposal::TARGET_INDICATOR], true)
     || !in_array($operation, [DeferredProposal::OPERATION_CREATE, DeferredProposal::OPERATION_UPDATE, DeferredProposal::OPERATION_DELETE, DeferredProposal::OPERATION_MOVE, DeferredProposal::OPERATION_PROPOSE], true)) {
-    $respond(422, ['status' => false, 'message' => 'Sélection invalide.']);
+    $respond(422, ['status' => false, 'message' => omoDeferredProposalsUiT('selection_invalide')]);
 }
 
 $collectiveHolonId = (int)$document->getPvContextHolonId();
@@ -54,7 +55,7 @@ if ($targetType === DeferredProposal::TARGET_RULE) {
         $collectiveHolonId
     );
     if (!$contextHolon) {
-        $respond(403, ['status' => false, 'message' => 'Le collectif du PV ne dispose pas du droit nécessaire dans cet espace.']);
+        $respond(403, ['status' => false, 'message' => omoDeferredProposalsUiT('le_collectif_du_pv_ne_dispose_pas_du_droit_necessaire_dans_cet_espace')]);
     }
     if ($operation !== DeferredProposal::OPERATION_CREATE) {
         foreach (Rule::findDefinedInHolon($contextHolonId) as $rule) {
@@ -72,11 +73,11 @@ if ($targetType === DeferredProposal::TARGET_RULE) {
     if (!isset($catalog[$contextHolonId])
         || !$contextHolon->load($contextHolonId)
         || !in_array((int)$contextHolon->get('IDtypeholon'), [2, 3, 4], true)) {
-        $respond(422, ['status' => false, 'message' => 'Le contexte structurel est invalide.']);
+        $respond(422, ['status' => false, 'message' => omoDeferredProposalsUiT('le_contexte_structurel_est_invalide')]);
     }
     if ($operation === DeferredProposal::OPERATION_CREATE) {
         if (empty($catalog[$contextHolonId]['permissions'][$operation])) {
-            $respond(403, ['status' => false, 'message' => 'Le collectif du PV ne peut pas créer d’espace ici.']);
+            $respond(403, ['status' => false, 'message' => omoDeferredProposalsUiT('le_collectif_du_pv_ne_peut_pas_creer_d_espace_ici')]);
         }
     } else {
         foreach (DeferredProposal::getHolonTargetsForContext($contextHolon, $operation, $catalog) as $child) {
@@ -97,7 +98,7 @@ if ($targetType === DeferredProposal::TARGET_RULE) {
         $collectiveHolonId
     );
     if (!$contextHolon) {
-        $respond(403, ['status' => false, 'message' => 'Le collectif du PV ne dispose pas du droit nécessaire dans cet espace.']);
+        $respond(403, ['status' => false, 'message' => omoDeferredProposalsUiT('le_collectif_du_pv_ne_dispose_pas_du_droit_necessaire_dans_cet_espace')]);
     }
     if (!DeferredProposal::isProjectCreationOperation($operation)) {
         $projects = new ArrayProject();
@@ -114,7 +115,7 @@ if ($targetType === DeferredProposal::TARGET_RULE) {
     }
 } else {
     $contextHolon = DeferredProposal::loadAllowedObjectTargetHolon($organizationId, $contextHolonId, $operation, $collectiveHolonId, $targetType);
-    if (!$contextHolon) $respond(403, ['status' => false, 'message' => 'Le collectif du PV ne dispose pas du droit nécessaire dans cet espace.']);
+    if (!$contextHolon) $respond(403, ['status' => false, 'message' => omoDeferredProposalsUiT('le_collectif_du_pv_ne_dispose_pas_du_droit_necessaire_dans_cet_espace')]);
     if ($operation !== DeferredProposal::OPERATION_CREATE) {
         $items = $targetType === DeferredProposal::TARGET_RECURRING_TASK ? new ArrayControlActivity() : new ArrayStatIndicator();
         $items->load(['where' => [['field' => 'IDorganization', 'value' => $organizationId], ['field' => 'IDholon', 'value' => $contextHolonId], ['field' => 'active', 'value' => 1]], 'hydrate' => true]);

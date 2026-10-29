@@ -321,7 +321,7 @@ window.commonPageScripts["/omo/api/parameters/server_env_popup.js"] = function (
             }
         })
         .catch(function () {
-            setFeedback(feedback, texts.saveFailed || ('Impossible d enregistrer le fichier ' + envTargetLabel + '.'), 'error');
+            setFeedback(feedback, texts.saveFailed || ("Impossible d’enregistrer le fichier " + envTargetLabel + '.'), 'error');
         })
         .finally(function () {
             if (submitButton) {

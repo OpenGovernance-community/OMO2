@@ -7,13 +7,13 @@ use dbObject\ExternalCalendarEvent;
 use dbObject\MeetingProfile;
 
 $sourceLang = [
-    'hint' => ['text' => 'Ces temps sont enregistres dans OMO, conserves lors des synchronisations et deduits de vos disponibilites. Ils ne modifient pas votre agenda source.', 'context' => 'Local annotations for imported CalDAV and ICS events.'],
-    'saved' => ['text' => 'Temps du rendez-vous enregistres.', 'context' => 'Local event time settings saved.'],
-    'missing' => ['text' => 'Evenement importe introuvable ou non modifiable.', 'context' => 'Imported event not owned, active or eligible for editing.'],
-    'csrf' => ['text' => 'Rechargez le formulaire puis reessayez.', 'context' => 'Invalid local time editor CSRF token.'],
-    'invalid' => ['text' => 'Indiquez des durees entieres entre 0 et 1440 minutes.', 'context' => 'Invalid imported event buffer duration.'],
-    'failed' => ['text' => 'Impossible d enregistrer ces temps.', 'context' => 'Local time settings save failed.'],
-    'busy' => ['text' => 'Une reservation ou une modification est en cours. Reessayez dans un instant.', 'context' => 'Owner calendar lock unavailable.'],
+    'hint' => ['text' => 'Ces temps sont enregistrés dans OMO, conservés lors des synchronisations et déduits de vos disponibilités. Ils ne modifient pas votre agenda source.', 'context' => 'Local annotations for imported CalDAV and ICS events.'],
+    'saved' => ['text' => 'Temps du rendez-vous enregistrés.', 'context' => 'Local event time settings saved.'],
+    'missing' => ['text' => 'Événement importé introuvable ou non modifiable.', 'context' => 'Imported event not owned, active or eligible for editing.'],
+    'csrf' => ['text' => 'Rechargez le formulaire puis réessayez.', 'context' => 'Invalid local time editor CSRF token.'],
+    'invalid' => ['text' => 'Indiquez des durées entières entre 0 et 1440 minutes.', 'context' => 'Invalid imported event buffer duration.'],
+    'failed' => ['text' => 'Impossible d’enregistrer ces temps.', 'context' => 'Local time settings save failed.'],
+    'busy' => ['text' => 'Une réservation ou une modification est en cours. Réessayez dans un instant.', 'context' => 'Owner calendar lock unavailable.'],
 ];
 $lang = omoLoadTranslationBundle('omo_calendar_external_event', $sourceLang);
 $translate = static fn(string $key): string => t($key, [], $lang, $sourceLang);

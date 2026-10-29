@@ -9,10 +9,10 @@ function commonChatReactionLabels(): array
         'up' => ['text' => 'Pouce leve', 'context' => 'Chat reaction expressing support'],
         'down' => ['text' => 'Pouce baisse', 'context' => 'Chat reaction expressing disagreement'],
         'clap' => ['text' => 'Applaudissements', 'context' => 'Chat reaction expressing applause'],
-        'choose' => ['text' => 'Reagir au message', 'context' => 'Open chat reaction picker'],
-        'remove' => ['text' => 'Retirer ma reaction', 'context' => 'Selected reaction can be removed'],
-        'ownMessage' => ['text' => 'Vous ne pouvez pas reagir a votre propre message.', 'context' => 'Own chat messages show received reactions only'],
-        'error' => ['text' => 'La reaction ne peut pas etre enregistree. Rechargez la discussion et reessayez.', 'context' => 'Chat reaction save error'],
+        'choose' => ['text' => 'Réagir au message', 'context' => 'Open chat reaction picker'],
+        'remove' => ['text' => 'Retirer ma réaction', 'context' => 'Selected reaction can be removed'],
+        'ownMessage' => ['text' => 'Vous ne pouvez pas réagir à votre propre message.', 'context' => 'Own chat messages show received reactions only'],
+        'error' => ['text' => 'La réaction ne peut pas être enregistrée. Rechargez la discussion et réessayez.', 'context' => 'Chat reaction save error'],
     ];
     $bundle = omoLoadTranslationBundle('common_chat_reactions', $sourceLang);
     $labels = [];

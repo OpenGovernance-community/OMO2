@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../../ui_translations.php';
 
 use dbObject\DecisionProcess;
 use dbObject\DecisionGroup;
@@ -55,7 +56,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleGetSourceLang')) {
             'decisions.majority_judgment.field.scale_label' => ['text' => 'Libellé', 'context' => 'Label for one majority judgment mention label input.'],
             'decisions.majority_judgment.field.scale_active' => ['text' => 'Active', 'context' => 'Label for one majority judgment mention activation toggle.'],
             'decisions.majority_judgment.field.scale_empty' => ['text' => 'Aucune mention active', 'context' => 'Fallback text when no mention is active in the configured scale.'],
-            'decisions.majority_judgment.field.scale_center_hint' => ['text' => 'La mention centrale reste hors calcul si elle est active.', 'context' => 'Hint explaining that the central mention stays excluded from the majority computation when enabled.'],
+            'decisions.majority_judgment.field.scale_center_hint' => ['text' => 'La mention centrale reste hors calcul si elle est activé.', 'context' => 'Hint explaining that the central mention stays excluded from the majority computation when enabled.'],
             'decisions.majority_judgment.field.scale_customize' => ['text' => 'Redéfinir les mentions', 'context' => 'Toggle label used to reveal mention customization controls in majority judgment settings.'],
             'decisions.majority_judgment.field.anonymous' => ['text' => 'Vote anonyme', 'context' => 'Label for the anonymity setting.'],
             'decisions.majority_judgment.field.named' => ['text' => 'Vote nominatif', 'context' => 'Label for enabling a named vote.'],
@@ -949,7 +950,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                             <?php if ($oneProposalAtATime && !$isConsultationPhase): ?>
                             <div class="omo-decision-one-at-a-time__navigation">
                                 <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-decision-one-at-a-time-previous><?= $escape(t('decisions.majority_judgment.action.previous_proposal', [], $lang, $sourceLang)) ?></button>
-                                <div class="omo-decision-one-at-a-time__dots" data-omo-decision-one-at-a-time-dots aria-label="Propositions"></div>
+                                <div class="omo-decision-one-at-a-time__dots" data-omo-decision-one-at-a-time-dots aria-label="<?= htmlspecialchars(omoDecisionUiT('propositions'), ENT_QUOTES, 'UTF-8') ?>"></div>
                                 <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-decision-one-at-a-time-next><?= $escape(t('decisions.majority_judgment.action.next_proposal', [], $lang, $sourceLang)) ?></button>
                             </div>
                             <?php endif; ?>

@@ -10,25 +10,25 @@ if (!$responderRequest) require_once("../omo/api/lms/inc/access.php");
 
 $faqId = (int)($_GET["id"] ?? 0);
 if ($faqId <= 0) {
-	die("FAQ invalide");
+	die(faqPopupT('faq_invalide'));
 }
 
 $faqContext = \dbObject\FAQ::resolvePopupRequestContext($_GET, $responderRequest);
 $faqScope = \dbObject\FAQ::normalizePopupScope($_GET['faq_scope'] ?? null, $faqContext ?: array());
 
 if ($faqContext === false) {
-	die("Contexte FAQ invalide");
+	die(faqPopupT('contexte_faq_invalide_2'));
 }
 
 $faq = $responderRequest ?? new \dbObject\FAQ();
 if ((!$responderRequest && !$faq->load($faqId)) || !(int)$faq->get("id")) {
-	die("FAQ introuvable");
+	die(faqPopupT('faq_introuvable_2'));
 }
 
 $viewerAccess = \dbObject\FAQ::resolveViewerAccess($faqContext ?: array());
 $canEditFaq = $faq->canAnswerRequest() || $faq->canBeEditedInContext($faqContext ?: array());
 if (!$faq->canBeViewedInContext($faqContext ?: array(), $faqScope) && !$canEditFaq) {
-	die("Vous n'avez pas le droit de consulter ou de modifier cette FAQ.");
+	die(faqPopupT('vous_n_avez_pas_le_droit_de_consulter_ou_de_modifier_cette_faq'));
 }
 
 $isPendingRequest = $faq->isPendingRequest();
@@ -46,7 +46,7 @@ $scopeInfo = faqPopupDescribeScope($faq);
 
 if ($isEditMode) {
 	if (!$canEditFaq) {
-		die("Vous n'avez pas le droit d'editer cette FAQ.");
+		die(faqPopupT('vous_n_avez_pas_le_droit_d_editer_cette_faq'));
 	}
 
 	$editorFields = array(
@@ -112,14 +112,14 @@ if ($isEditMode) {
 			?>
 			</div>
 			<footer class="faq-popup__editor-actions generic-drawer-footer generic-drawer-footer--sticky">
-				<button type="button" class="faq-popup__back generic-action-button generic-action-button--secondary" data-faq-cancel-edit data-faq-id="<?= (int)$faq->getId() ?>">Annuler</button>
+				<button type="button" class="faq-popup__back generic-action-button generic-action-button--secondary" data-faq-cancel-edit data-faq-id="<?= (int)$faq->getId() ?>"><?= htmlspecialchars(faqPopupT('annuler'), ENT_QUOTES, 'UTF-8') ?></button>
 				<div class="generic-action-row">
 				<?php if ($isPendingRequest): ?>
 					<button type="button" class="faq-popup__add generic-action-button generic-action-button--main" data-faq-save data-faq-answer-save
 						data-reply-label="<?= htmlspecialchars(faqPopupT('editor.reply'), ENT_QUOTES, 'UTF-8') ?>"
 						data-publish-label="<?= htmlspecialchars(faqPopupT('editor.reply_publish'), ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars(faqPopupT('editor.reply'), ENT_QUOTES, 'UTF-8') ?></button>
 				<?php else: ?>
-					<button type="button" class="faq-popup__add generic-action-button generic-action-button--main" data-faq-save>Enregistrer</button>
+					<button type="button" class="faq-popup__add generic-action-button generic-action-button--main" data-faq-save><?= htmlspecialchars(faqPopupT('enregistrer'), ENT_QUOTES, 'UTF-8') ?></button>
 				<?php endif; ?>
 				</div>
 			</footer>
@@ -139,10 +139,10 @@ if (\dbObject\FAQ::hasViewcountColumn()) {
 			<?php faqPopupRenderBackButton(); ?>
 			<div class="generic-action-row">
 				<?php if ($canEditFaq): ?>
-					<button type="button" class="faq-popup__edit generic-action-button generic-action-button--secondary" data-faq-edit data-faq-id="<?= (int)$faq->getId() ?>">Editer</button>
+					<button type="button" class="faq-popup__edit generic-action-button generic-action-button--secondary" data-faq-edit data-faq-id="<?= (int)$faq->getId() ?>"><?= htmlspecialchars(faqPopupT('editer'), ENT_QUOTES, 'UTF-8') ?></button>
 				<?php endif; ?>
 				<?php if ($canDeleteFaq): ?>
-					<button type="button" class="generic-action-button generic-action-button--danger generic-action-button--icon-only" data-faq-delete data-faq-id="<?= (int)$faq->getId() ?>" data-faq-delete-confirm="Supprimer cette FAQ ? Cette action est definitive." title="Supprimer" aria-label="Supprimer">
+					<button type="button" class="generic-action-button generic-action-button--danger generic-action-button--icon-only" data-faq-delete data-faq-id="<?= (int)$faq->getId() ?>" data-faq-delete-confirm="Supprimer cette FAQ ? Cette action est definitive." title="<?= htmlspecialchars(faqPopupT('supprimer'), ENT_QUOTES, 'UTF-8') ?>" aria-label="<?= htmlspecialchars(faqPopupT('supprimer'), ENT_QUOTES, 'UTF-8') ?>">
 						<svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"><path d="M5 7h14M10 11v6M14 11v6M9 7V5h6v2m-9 0 1 13h10l1-13"></path></svg>
 					</button>
 				<?php endif; ?>
@@ -153,10 +153,10 @@ if (\dbObject\FAQ::hasViewcountColumn()) {
 						<?= htmlspecialchars((string)($scopeInfo['label'] ?? 'FAQ'), ENT_QUOTES, 'UTF-8') ?>
 					</span>
 					<?php if (!(int)$faq->get('isactive')): ?>
-						<span class="faq-popup__meta-badge faq-popup__meta-badge--generic">Inactive</span>
+						<span class="faq-popup__meta-badge faq-popup__meta-badge--generic"><?= htmlspecialchars(faqPopupT('inactive'), ENT_QUOTES, 'UTF-8') ?></span>
 					<?php endif; ?>
 					<?php if ($faq->canBeDetachedInContext($faqContext ?: array())): ?>
-						<span class="faq-popup__meta-badge">Detach possible</span>
+						<span class="faq-popup__meta-badge"><?= htmlspecialchars(faqPopupT('detach_possible'), ENT_QUOTES, 'UTF-8') ?></span>
 					<?php endif; ?>
 				</div>
 		<h4 class="generic-title generic-title--section" data-faq-view-title><?= htmlspecialchars((string)$faq->get("question")) ?></h4>
@@ -176,7 +176,7 @@ if (\dbObject\FAQ::hasViewcountColumn()) {
 		<?php faqPopupRenderVoteBlock($faq); ?>
 		<?php if (\dbObject\FAQ::hasViewcountColumn()): ?>
 			<div class="generic-help-text">
-				Consultations: <?= (int)$faq->get("viewcount") ?>
+				<?= htmlspecialchars(faqPopupT('consultations'), ENT_QUOTES, 'UTF-8') ?> <?= (int)$faq->get("viewcount") ?>
 			</div>
 		<?php endif; ?>
 	</div>

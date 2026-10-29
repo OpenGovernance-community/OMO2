@@ -1,6 +1,7 @@
 <?php
 
 require_once dirname(__DIR__) . '/common/translation_bundles.php';
+require_once dirname(__DIR__) . '/common/jstranslation/omo_ui_sources.php';
 
 function omoGetTranslationLocale()
 {

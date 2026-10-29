@@ -3,10 +3,10 @@ function omoRuleValueT(string $key, array $replace = []): string
 {
     static $sourceLang = [
         'value' => ['text' => 'Valeur incarnee (facultatif)', 'context' => 'Optional organizational value embodied by a rule'],
-        'none' => ['text' => 'Aucune valeur liee', 'context' => 'Rule without an organizational value'],
-        'rules' => ['one' => '{count} regle associee', 'other' => '{count} regles associees', 'context' => 'Number of rules embodying a value; opens the associated rules popup'],
-        'rules_title' => ['text' => 'Regles associees a {value}', 'context' => 'Title of the popup listing rules embodying a value'],
-        'rules_empty' => ['text' => 'Aucune regle associee a cette valeur.', 'context' => 'Value without associated rules'],
+        'none' => ['text' => 'Aucune valeur liée', 'context' => 'Rule without an organizational value'],
+        'rules' => ['one' => '{count} règle associée', 'other' => '{count} règles associées', 'context' => 'Number of rules embodying a value; opens the associated rules popup'],
+        'rules_title' => ['text' => 'Règles associées a {value}', 'context' => 'Title of the popup listing rules embodying a value'],
+        'rules_empty' => ['text' => 'Aucune règle associée à cette valeur.', 'context' => 'Value without associated rules'],
     ];
     static $bundle = null;
     $bundle ??= omoLoadTranslationBundle('common_rule_value', $sourceLang);

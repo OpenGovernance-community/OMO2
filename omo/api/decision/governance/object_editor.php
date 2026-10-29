@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../ui_translations.php';
 require_once dirname(__DIR__, 2) . '/bootstrap.php';
 require_once dirname(__DIR__) . '/modules/context.php';
 require_once dirname(__DIR__) . '/params/shared.php';
@@ -40,8 +41,8 @@ if (!$allowed) {
     http_response_code(403);
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header('Content-Type: application/json; charset=UTF-8');
-        echo json_encode(['status' => false, 'message' => 'Accès refusé.'], JSON_UNESCAPED_UNICODE);
-    } else echo '<div class="omo-empty-state">Accès refusé.</div>';
+        echo json_encode(['status' => false, 'message' => omoDecisionUiT('acces_refuse')], JSON_UNESCAPED_UNICODE);
+    } else echo ('<div class="omo-empty-state">' . htmlspecialchars(omoDecisionUiT('acces_refuse'), ENT_QUOTES, 'UTF-8') . '</div>');
     exit;
 }
 
@@ -76,7 +77,7 @@ if (!is_array($draft)
     || (int)$draft['userId'] !== $currentUserId
     || time() - (int)$draft['createdAt'] > 300) {
     http_response_code(403);
-    echo '<div class="omo-empty-state">Cet éditeur a expiré.</div>';
+    echo ('<div class="omo-empty-state">' . htmlspecialchars(omoDecisionUiT('cet_editeur_a_expire'), ENT_QUOTES, 'UTF-8') . '</div>');
     exit;
 }
 $GLOBALS['omoDeferredObjectEditor'] = $draft + ['origin' => 'governance'];

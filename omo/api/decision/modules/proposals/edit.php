@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../../ui_translations.php';
 require_once dirname(__DIR__, 3) . '/bootstrap.php';
 require_once dirname(__DIR__) . '/context.php';
 require_once dirname(__DIR__) . '/common.php';
@@ -11,7 +12,7 @@ $requestMethod = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET'));
 if (!in_array($requestMethod, ['GET', 'POST'], true)) {
     omoDecisionModuleJsonResponse(405, [
         'status' => false,
-        'message' => 'Méthode non autorisée.',
+        'message' => omoDecisionUiT('methode_non_autorisee'),
     ]);
 }
 
@@ -20,7 +21,7 @@ $context = omoDecisionResolveEditorContext($input);
 if (empty($context['status'])) {
     omoDecisionModuleJsonResponse((int)($context['code'] ?? 403), [
         'status' => false,
-        'message' => 'Accès refusé.',
+        'message' => omoDecisionUiT('acces_refuse'),
     ]);
 }
 
@@ -30,7 +31,7 @@ if ($userId <= 0 && $participantId <= 0) {
     omoDecisionModuleJsonResponse(403, [
         'status' => false,
         'reason' => 'participant_required',
-        'message' => 'Un participant valide est nécessaire pour modifier une proposition.',
+        'message' => omoDecisionUiT('un_participant_valide_est_necessaire_pour_modifier_une_proposition'),
     ]);
 }
 
@@ -38,13 +39,13 @@ $proposal = omoDecisionLoadProposalForContext((int)($input['proposal_id'] ?? 0),
 if (!$proposal instanceof DecisionProposal) {
     omoDecisionModuleJsonResponse(404, [
         'status' => false,
-        'message' => 'Proposition introuvable.',
+        'message' => omoDecisionUiT('proposition_introuvable'),
     ]);
 }
 if (!omoDecisionCanEditProposalFromPublicInterface($proposal, $context)) {
     omoDecisionModuleJsonResponse(403, [
         'status' => false,
-        'message' => 'Vous ne pouvez pas modifier cette proposition.',
+        'message' => omoDecisionUiT('vous_ne_pouvez_pas_modifier_cette_proposition'),
     ]);
 }
 
@@ -100,7 +101,7 @@ $discussionMessageCount = (int)($discussionSummary['total_messages'] ?? 0);
 omoDecisionModuleJsonResponse(200, [
     'status' => true,
     'changed' => !empty($result['changed']),
-    'message' => (string)($result['message'] ?? 'Proposition modifiée.'),
+    'message' => (string)($result['message'] ?? omoDecisionUiT('proposition_modifiee')),
     'proposal' => $proposal->getCalendarData() + ['calendarHtml' => omoDecisionRenderProposalCalendar($proposal, $context, 'omoApiEscape'), 'calendarStatusLabel' => omoDecisionProposalT('decisions.proposals.dates.' . ($proposal->getCalendarData()['calendarStatus'] ?: 'option'))] + [
         'id' => (int)$proposal->getId(),
         'title' => trim((string)$proposal->get('title')),

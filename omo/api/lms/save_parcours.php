@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once __DIR__ . '/bootstrap.php';
 
 commonRestoreRememberedUser();
@@ -25,7 +26,7 @@ if ($currentUserId <= 0 || !$hasOrganizationAccess || $organizationId <= 0) {
     echo json_encode(array(
         'status' => false,
         'success' => false,
-        'message' => 'Acces refuse.',
+        'message' => omoLmsUiT('acces_refuse'),
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -44,7 +45,7 @@ if ($isEditMode) {
         echo json_encode(array(
             'status' => false,
             'success' => false,
-            'message' => 'Parcours introuvable.',
+            'message' => omoLmsUiT('parcours_introuvable'),
         ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         exit;
     }
@@ -54,7 +55,7 @@ if ($isEditMode) {
         echo json_encode(array(
             'status' => false,
             'success' => false,
-            'message' => 'Vous n avez pas le droit de modifier ce parcours.',
+            'message' => omoLmsUiT('vous_n_avez_pas_le_droit_de_modifier_ce_parcours'),
         ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         exit;
     }
@@ -67,7 +68,7 @@ if ($isEditMode) {
     echo json_encode(array(
         'status' => false,
         'success' => false,
-        'message' => 'Vous n avez pas le droit de creer un parcours dans ce contexte.',
+        'message' => omoLmsUiT('vous_n_avez_pas_le_droit_de_creer_un_parcours_dans_ce_contexte'),
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -100,7 +101,7 @@ if (trim((string)$parcours->get('title')) === '') {
     echo json_encode(array(
         'status' => false,
         'success' => false,
-        'message' => 'Le titre est obligatoire.',
+        'message' => omoLmsUiT('le_titre_est_obligatoire'),
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }

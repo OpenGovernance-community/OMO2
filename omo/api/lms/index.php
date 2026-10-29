@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once __DIR__ . '/bootstrap.php';
 
 commonRestoreRememberedUser();
@@ -12,7 +13,7 @@ $sourceLang = [
     'lms.index.title.embed_catalog' => ['text' => 'Parcours de prise en main', 'context' => 'Subtitle shown in embedded LMS catalog mode.'],
     'lms.index.card.action.delete' => ['text' => 'Supprimer', 'context' => 'Menu action used to delete an owned parcours or pack.'],
     'lms.index.card.action.detach' => ['text' => 'Détacher', 'context' => 'Menu action used to detach a shared parcours or pack from the current organization.'],
-    'lms.index.card.archived' => ['text' => 'Retire du partage - conserve pour les utilisateurs existants.', 'context' => 'Label on a retired parcours which remains available to existing learners and organizations.'],
+    'lms.index.card.archived' => ['text' => 'Retiré du partage - conservé pour les utilisateurs existants.', 'context' => 'Label on a retired parcours which remains available to existing learners and organizations.'],
     'lms.index.card.action.edit' => ['text' => 'Éditer', 'context' => 'Menu action used to open the editor of a parcours or pack.'],
     'lms.index.card.visibility_hidden' => ['text' => 'Actuellement masqué pour les membres standard.', 'context' => 'Note shown on hidden parcours cards.'],
     'lms.index.card.open' => ['text' => 'Ouvrir', 'context' => 'Button label used to open a parcours.'],
@@ -26,7 +27,7 @@ $sourceLang = [
     'lms.index.section.completed' => ['text' => 'Parcours terminés', 'context' => 'Section title listing completed parcours.'],
     'lms.index.section.packs' => ['text' => 'Packs de parcours', 'context' => 'Section title listing parcours packs.'],
     'lms.index.pack.kicker' => ['text' => 'Pack', 'context' => 'Small overline shown on pack cards.'],
-    'lms.index.section.completed_intro' => ['text' => 'Retrouvez ici les parcours deja completes a 100%.', 'context' => 'Intro text shown above the completed parcours section.'],
+    'lms.index.section.completed_intro' => ['text' => 'Retrouvez ici les parcours déjà complétés à 100 %.', 'context' => 'Intro text shown above the completed parcours section.'],
     'lms.index.section.packs_intro' => ['text' => 'Ces packs regroupent plusieurs parcours. Les parcours liés à des applications désactivées y restent automatiquement masqués.', 'context' => 'Intro text shown above the parcours packs section.'],
     'lms.index.alert.required_title' => ['text' => 'Le titre est obligatoire.', 'context' => 'Alert shown when a title is required before submitting a form.'],
     'lms.index.alert.required_resume' => ['text' => 'Le résumé est obligatoire.', 'context' => 'Alert shown when a summary is required before submitting a mission form.'],
@@ -159,7 +160,7 @@ if (!$isEmbedded) {
     <div class="banner-content">
         <?php if (!empty($org['logo'])): ?>
             <div class="logo-wrapper">
-                <img src="<?php echo htmlspecialchars($org['logo']); ?>" alt="logo">
+                <img src="<?php echo htmlspecialchars($org['logo']); ?>" alt="<?= htmlspecialchars(omoLmsUiT('logo'), ENT_QUOTES, 'UTF-8') ?>">
             </div>
         <?php endif; ?>
 
@@ -204,7 +205,7 @@ if (!$isEmbedded) {
             <button
                 type="button"
                 class="card-menu-trigger"
-                aria-label="Actions"
+                aria-label="<?= htmlspecialchars(omoLmsUiT('actions'), ENT_QUOTES, 'UTF-8') ?>"
                 onclick="toggleParcoursCardMenu(event, <?php echo (int)$p['id']; ?>)"
             >&#8942;</button>
             <div class="card-menu" id="parcours-card-menu-<?php echo (int)$p['id']; ?>">
@@ -307,7 +308,7 @@ if (!$isEmbedded) {
                 <button
                     type="button"
                     class="card-menu-trigger"
-                    aria-label="Actions"
+                    aria-label="<?= htmlspecialchars(omoLmsUiT('actions'), ENT_QUOTES, 'UTF-8') ?>"
                     onclick="toggleParcoursCardMenu(event, <?php echo (int)$p['id']; ?>)"
                 >&#8942;</button>
                 <div class="card-menu" id="parcours-card-menu-<?php echo (int)$p['id']; ?>">
@@ -383,7 +384,7 @@ if (!$isEmbedded) {
                 <button
                     type="button"
                     class="card-menu-trigger"
-                    aria-label="Actions"
+                    aria-label="<?= htmlspecialchars(omoLmsUiT('actions'), ENT_QUOTES, 'UTF-8') ?>"
                     onclick="toggleParcoursCardMenu(event, <?php echo (int)$p['id']; ?>)"
                 >&#8942;</button>
                 <div class="card-menu" id="parcours-card-menu-<?php echo (int)$p['id']; ?>">

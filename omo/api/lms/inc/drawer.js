@@ -1,3 +1,5 @@
+var omoUiText = window.omoUiText || function (key, fallback) { return fallback; };
+var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; };
 let lmsDrawerJqueryPromise = null;
 
 function lmsEnsureJquery() {
@@ -101,7 +103,7 @@ function openDrawer(content, options) {
     return lmsExecuteDrawerScripts(container).then(() => {
         applyScrollPosition();
     }).catch(() => {
-        window.omoNotify('Impossible de charger les scripts du drawer.', 'error');
+        window.omoNotify(omoUiText("impossible_de_charger_les_scripts_du_drawer", "Impossible de charger les scripts du drawer."), 'error');
     });
 }
 

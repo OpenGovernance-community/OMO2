@@ -3,6 +3,19 @@
 
 	class ObjectVisibility extends DbObject
 	{
+        protected static function uiMessageSourceLang(): array
+        {
+            return [
+                'organisation_invalide' => ['text' => 'Organisation invalide.', 'context' => 'Validation or action feedback for objectvisibility.'],
+                'organisation_introuvable' => ['text' => 'Organisation introuvable.', 'context' => 'Validation or action feedback for objectvisibility.'],
+                'l_espace_de_visibilite_est_obligatoire' => ['text' => 'L’espace de visibilité est obligatoire.', 'context' => 'Validation or action feedback for objectvisibility.'],
+                'espace_de_visibilite_introuvable_pour_cette_organisation' => ['text' => 'Espace de visibilité introuvable pour cette organisation.', 'context' => 'Validation or action feedback for objectvisibility.'],
+                'objet_de_visibilite_invalide' => ['text' => 'Objet de visibilité invalide.', 'context' => 'Validation or action feedback for objectvisibility.'],
+                'impossible_de_mettre_a_jour_les_anciennes_regles_de_visibilite' => ['text' => 'Impossible de mettre à jour les anciennes règles de visibilité.', 'context' => 'Validation or action feedback for objectvisibility.'],
+                'visibilite_enregistree' => ['text' => 'Visibilité enregistrée.', 'context' => 'Validation or action feedback for objectvisibility.'],
+            ];
+        }
+
 		const OBJECT_TYPE_DOCUMENT = 'document';
 
 		const TYPE_EVERYONE = 'everyone';
@@ -33,13 +46,13 @@
 			return [
 				'id' => 'ID',
 				'version' => 'Version',
-				'object_type' => 'Type d objet',
+				'object_type' => 'Type d’objet',
 				'object_id' => 'ID objet',
 				'IDorganization' => 'Organisation',
-				'visibility_type' => 'Portee de visibilite',
+				'visibility_type' => 'Portée de visibilité',
 				'IDholon' => 'Holon cible',
 				'active' => 'Actif',
-				'datecreation' => 'Date de creation',
+				'datecreation' => 'Date de création',
 				'datemodification' => 'Date de modification',
 			];
 		}
@@ -114,7 +127,7 @@
 			if ($organizationId <= 0) {
 				return [
 					'status' => false,
-					'text' => 'Organisation invalide.',
+					'text' => self::uiMessage('organisation_invalide'),
 				];
 			}
 
@@ -122,7 +135,7 @@
 			if (!$organization->load($organizationId)) {
 				return [
 					'status' => false,
-					'text' => 'Organisation introuvable.',
+					'text' => self::uiMessage('organisation_introuvable'),
 				];
 			}
 
@@ -137,7 +150,7 @@
 			if ($holonId <= 0) {
 				return [
 					'status' => false,
-            'text' => 'L’espace de visibilité est obligatoire.',
+            'text' => self::uiMessage('l_espace_de_visibilite_est_obligatoire'),
 				];
 			}
 
@@ -150,7 +163,7 @@
 			) {
 				return [
 					'status' => false,
-            'text' => 'Espace de visibilité introuvable pour cette organisation.',
+            'text' => self::uiMessage('espace_de_visibilite_introuvable_pour_cette_organisation'),
 				];
 			}
 
@@ -185,7 +198,7 @@
 			if ($objectType === '' || $objectId <= 0) {
 				return [
 					'status' => false,
-					'text' => 'Objet de visibilite invalide.',
+					'text' => self::uiMessage('objet_de_visibilite_invalide'),
 				];
 			}
 
@@ -208,7 +221,7 @@
 			if ($deactivateResult === false) {
 				return [
 					'status' => false,
-					'text' => 'Impossible de mettre a jour les anciennes regles de visibilite.',
+					'text' => self::uiMessage('impossible_de_mettre_a_jour_les_anciennes_regles_de_visibilite'),
 				];
 			}
 
@@ -234,7 +247,7 @@
 
 			return [
 				'status' => true,
-				'text' => 'Visibilite enregistree.',
+				'text' => self::uiMessage('visibilite_enregistree'),
 				'ruleId' => (int)$rule->getId(),
 			];
 		}

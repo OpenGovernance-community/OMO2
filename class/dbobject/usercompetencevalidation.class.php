@@ -23,11 +23,11 @@
 		{
 			return [
 				'id' => 'ID',
-				'IDuser_competence' => 'Competence utilisateur',
+				'IDuser_competence' => 'Compétence utilisateur',
 				'IDvalidator_user' => 'Validateur',
 				'IDorganization' => 'Organisation',
 				'level' => 'Niveau',
-				'datecreation' => 'Creation',
+				'datecreation' => 'Création',
 				'datemodification' => 'Modification',
 			];
 		}

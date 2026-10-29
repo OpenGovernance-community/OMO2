@@ -1,3 +1,5 @@
+var omoUiText = window.omoUiText || function (key, fallback) { return fallback; };
+var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; };
 window.commonPageScripts = window.commonPageScripts || {};
 window.commonPageScripts["/omo/api/documents/drawers.js"] = function (pageConfig, pageScript) {
         (function () {
@@ -314,7 +316,7 @@ window.commonPageScripts["/omo/api/documents/drawers.js"] = function (pageConfig
 
                 if (typeof window.commonTopbarOpenModal === 'function') {
                     window.commonTopbarOpenModal(
-                        'Déplacer',
+                        omoUiText("deplacer", "Déplacer"),
                         '/omo/api/documents/move.php?id=' + encodeURIComponent(String(singleDocumentId)),
                         'fetch'
                     );
@@ -330,7 +332,7 @@ window.commonPageScripts["/omo/api/documents/drawers.js"] = function (pageConfig
 
                 if (typeof window.commonTopbarOpenModal === 'function') {
                     window.commonTopbarOpenModal(
-                        'Partager le document',
+                        omoUiText("partager_le_document", "Partager le document"),
                         '/omo/api/documents/share_popup.php?id=' + encodeURIComponent(String(resolvedDocumentId)),
                         'fetch'
                     );
@@ -485,7 +487,7 @@ window.commonPageScripts["/omo/api/documents/drawers.js"] = function (pageConfig
                 if (titleNode) {
                     titleNode.textContent = resolvedTitle !== ''
                         ? resolvedTitle
-                        : String(fallbackTitle || '').trim() || 'Détail du document';
+                        : String(fallbackTitle || '').trim() || omoUiText("detail_du_document", "Détail du document");
                 }
 
                 if (descriptionNode) {
@@ -523,11 +525,11 @@ window.commonPageScripts["/omo/api/documents/drawers.js"] = function (pageConfig
                 return window.omoOpenExternalPanelDrawer({
                     url: preparationUrl,
                     mode: 'fetch',
-                    title: title !== '' ? title : (hasUpcomingPvEvent ? 'Préparation du PV' : 'Édition du PV'),
+                    title: title !== '' ? title : (hasUpcomingPvEvent ? omoUiText("preparation_du_pv", "Préparation du PV") : omoUiText("edition_du_pv", "Édition du PV")),
                     description: hasUpcomingPvEvent
                         ? (fullDate !== ''
-                            ? 'Préparation ouverte avant la réunion du ' + fullDate + '.'
-                            : 'Préparation du PV avant la réunion.')
+                            ? omoUiText("preparation_ouverte_avant_la_reunion_du", "Préparation ouverte avant la réunion du ") + fullDate + '.'
+                            : omoUiText("preparation_du_pv_avant_la_reunion", "Préparation du PV avant la réunion."))
                         : '',
                     variant: 'top-sheet',
                     hideHeader: true,
@@ -600,12 +602,12 @@ window.commonPageScripts["/omo/api/documents/drawers.js"] = function (pageConfig
                 drawer.dataset.omoDocumentDrawerDocumentId = String(documentItem && documentItem.id ? documentItem.id : '');
 
                 if (titleNode) {
-                    titleNode.textContent = title !== '' ? title : 'Détail du document';
+                    titleNode.textContent = title !== '' ? title : omoUiText("detail_du_document", "Détail du document");
                 }
 
                 if (descriptionNode) {
                     descriptionNode.textContent = fullDate !== ''
-                        ? 'Document créé le ' + fullDate + '.'
+                        ? omoUiText("document_cree_le", "Document créé le ") + fullDate + '.'
                         : pageConfig.documentsDrawerDetailDescription;
                 }
 
@@ -852,7 +854,7 @@ window.commonPageScripts["/omo/api/documents/drawers.js"] = function (pageConfig
                 const fragment = ownerDocument.createDocumentFragment();
 
                 if (canEdit && editUrl !== '') {
-                    fragment.appendChild(buildDocumentMenuItem('Éditer', {
+                    fragment.appendChild(buildDocumentMenuItem(omoUiText("editer", "Éditer"), {
                         'data-omo-document-menu-action': 'edit',
                         'data-omo-document-edit': '1',
                         'data-omo-document-edit-id': String(documentId),
@@ -869,7 +871,7 @@ window.commonPageScripts["/omo/api/documents/drawers.js"] = function (pageConfig
                 }
 
                 if (canMove && Number.isInteger(documentId) && documentId > 0) {
-                    fragment.appendChild(buildDocumentMenuItem('Déplacer', {
+                    fragment.appendChild(buildDocumentMenuItem(omoUiText("deplacer", "Déplacer"), {
                         'data-omo-document-menu-action': 'move',
                         'data-omo-document-move': '1',
                         'data-omo-document-move-id': String(documentId)
@@ -877,7 +879,7 @@ window.commonPageScripts["/omo/api/documents/drawers.js"] = function (pageConfig
                 }
 
                 if (Number.isInteger(documentId) && documentId > 0 && !isFolder && canShare) {
-                    fragment.appendChild(buildDocumentMenuItem('Partager', {
+                    fragment.appendChild(buildDocumentMenuItem(omoUiText("partager", "Partager"), {
                         'data-omo-document-menu-action': 'share',
                         'data-omo-document-share': '1',
                         'data-omo-document-share-id': String(documentId)

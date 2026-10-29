@@ -1,3 +1,5 @@
+var omoUiText = window.omoUiText || function (key, fallback) { return fallback; };
+var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; };
 function omoGetOrganizationSetupRoute() {
     if (typeof parseUrl === 'function') {
         return parseUrl();
@@ -56,7 +58,7 @@ $(document)
     }
 
     panel.find('[data-omo-org-init-button="1"]').prop('disabled', true);
-    feedback.prop('hidden', false).removeClass('is-error').text('Initialisation en cours...');
+    feedback.prop('hidden', false).removeClass('is-error').text(omoUiText("initialisation_en_cours", "Initialisation en cours..."));
 
     fetch('/omo/api/organizations/initialize.php', {
         method: 'POST',
@@ -80,16 +82,16 @@ $(document)
     })
     .then(function (result) {
         if (!result.ok || !result.data || result.data.status !== 'ok') {
-            throw new Error(result.data && result.data.message ? result.data.message : "Impossible d'initialiser l'organisation.");
+            throw new Error(result.data && result.data.message ? result.data.message : omoUiText("impossible_d_initialiser_l_organisation", "Impossible d'initialiser l'organisation."));
         }
 
-        feedback.removeClass('is-error').text(result.data.message || 'Organisation initialisée.');
+        feedback.removeClass('is-error').text(result.data.message || omoUiText("organisation_initialisee", "Organisation initialisée."));
 
         const route = omoGetOrganizationSetupRoute();
         omoReloadOrganizationPanels(route.oid || organizationId);
     })
     .catch(function (error) {
-        feedback.addClass('is-error').text(error && error.message ? error.message : "Impossible d'initialiser l'organisation.");
+        feedback.addClass('is-error').text(error && error.message ? error.message : omoUiText("impossible_d_initialiser_l_organisation", "Impossible d'initialiser l'organisation."));
     })
   .finally(function () {
         panel.find('[data-omo-org-init-button="1"]').prop('disabled', false);
@@ -113,5 +115,5 @@ $(document)
         popupUrl = window.omoResolveAppUrl(popupUrl);
     }
 
-    window.commonTopbarOpenModal('Importer une organisation', popupUrl, 'fetch');
+    window.commonTopbarOpenModal(omoUiText("importer_une_organisation", "Importer une organisation"), popupUrl, 'fetch');
   });

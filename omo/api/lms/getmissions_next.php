@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once __DIR__ . '/bootstrap.php';
 
 commonRestoreRememberedUser();
@@ -53,8 +54,8 @@ foreach ($missions as $m) {
 	echo "<h3>" . htmlspecialchars($m['title']) . "</h3>";
 	echo "<p>" . htmlspecialchars($m['resume']) . "</p>";
 	echo "<div class='card-footer'>";
-	echo "<span class='card-meta'>Verrouillee</span>";
-	echo "<button type='button' disabled>Verrouille</button>";
+	echo ('<span class=\'card-meta\'>' . htmlspecialchars(omoLmsUiT('verrouillee'), ENT_QUOTES, 'UTF-8') . '</span>');
+	echo ('<button type=\'button\' disabled>' . htmlspecialchars(omoLmsUiT('verrouille'), ENT_QUOTES, 'UTF-8') . '</button>');
 	echo "</div>";
 	echo "</div>";
 	echo "</div>";

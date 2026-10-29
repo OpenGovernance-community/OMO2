@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../../ui_translations.php';
 
 require_once dirname(__DIR__) . '/common.php';
 
@@ -23,12 +24,12 @@ if (!function_exists('omoDecisionMajorityJudgmentGetDefaultMentionOptions')) {
     function omoDecisionMajorityJudgmentGetDefaultMentionOptions()
     {
         return [
-            0 => ['label' => 'A rejeter', 'active' => 1],
+            0 => ['label' => omoDecisionUiT('a_rejeter'), 'active' => 1],
             1 => ['label' => 'Insuffisant', 'active' => 1],
             2 => ['label' => 'Passable', 'active' => 1],
-            3 => ['label' => 'Sans avis', 'active' => 1],
-            4 => ['label' => 'Assez bien', 'active' => 1],
-            5 => ['label' => 'Très bien', 'active' => 1],
+            3 => ['label' => omoDecisionUiT('sans_avis'), 'active' => 1],
+            4 => ['label' => omoDecisionUiT('assez_bien'), 'active' => 1],
+            5 => ['label' => omoDecisionUiT('tres_bien'), 'active' => 1],
             6 => ['label' => 'Excellent', 'active' => 1],
         ];
     }

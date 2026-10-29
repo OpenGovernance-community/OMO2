@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__) . '/bootstrap.php';
 
 use dbObject\Organization;
@@ -11,7 +12,7 @@ if ($organizationId <= 0) {
     echo json_encode(
         array(
             'status' => 'error',
-            'message' => "Aucune organisation n'est selectionnee.",
+            'message' => omoOrganizationsUiT('aucune_organisation_n_est_selectionnee'),
         ),
         JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
     );
@@ -23,7 +24,7 @@ if ((int)commonGetCurrentUserId() <= 0 || !commonCurrentUserHasOrganizationAcces
     echo json_encode(
         array(
             'status' => 'error',
-            'message' => "Vous n'avez pas les droits pour importer cette organisation.",
+            'message' => omoOrganizationsUiT('vous_n_avez_pas_les_droits_pour_importer_cette_organisation'),
         ),
         JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
     );
@@ -36,7 +37,7 @@ if (!$organization->load($organizationId)) {
     echo json_encode(
         array(
             'status' => 'error',
-            'message' => "L'organisation demandee est introuvable.",
+            'message' => omoOrganizationsUiT('l_organisation_demandee_est_introuvable'),
         ),
         JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
     );
@@ -48,7 +49,7 @@ if (!isset($_FILES['structure_file']) || !is_array($_FILES['structure_file'])) {
     echo json_encode(
         array(
             'status' => 'error',
-            'message' => "Aucun fichier n'a ete transmis.",
+            'message' => omoOrganizationsUiT('aucun_fichier_n_a_ete_transmis'),
         ),
         JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
     );
@@ -61,7 +62,7 @@ if ((int)($upload['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
     echo json_encode(
         array(
             'status' => 'error',
-            'message' => "Le fichier n'a pas pu etre televerse.",
+            'message' => omoOrganizationsUiT('le_fichier_n_a_pas_pu_etre_televerse_2'),
         ),
         JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
     );
@@ -86,7 +87,7 @@ if (!($result['status'] ?? false)) {
     echo json_encode(
         array(
             'status' => 'error',
-            'message' => (string)($result['message'] ?? "L'import de l'organisation a echoue."),
+            'message' => (string)($result['message'] ?? omoOrganizationsUiT('l_import_de_l_organisation_a_echoue')),
         ),
         JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
     );
@@ -98,7 +99,7 @@ $rootHolon = $result['rootHolon'] ?? null;
 echo json_encode(
     array(
         'status' => 'ok',
-        'message' => (string)($result['message'] ?? "L'organisation a ete importee."),
+        'message' => (string)($result['message'] ?? omoOrganizationsUiT('l_organisation_a_ete_importee')),
         'rootHolon' => $rootHolon
             ? array(
                 'id' => (int)$rootHolon->getId(),

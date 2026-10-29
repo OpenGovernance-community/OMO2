@@ -55,15 +55,15 @@
 				'IDholon' => 'Holon',
 				'focus' => 'Focus',
 				'time_budget_hours' => 'Budget temps',
-				'time_budget_recurrence' => 'Recurrence du budget temps',
+				'time_budget_recurrence' => 'Récurrence du budget temps',
 				'money_budget' => 'Budget argent',
-				'money_budget_recurrence' => 'Recurrence du budget argent',
-				'assignment_review_date' => 'Date limite d affectation',
+				'money_budget_recurrence' => 'Récurrence du budget argent',
+				'assignment_review_date' => 'Date limite d’affectation',
 				'parameters' => 'Paramètres',
 				'datecreation' => 'Création',
 				'dateconnexion' => 'Dernière connexion',
 				'active' => 'Actif',
-				'is_membership' => 'Lien d appartenance',
+				'is_membership' => 'Lien d’appartenance',
 			];
 		}
 
@@ -71,10 +71,10 @@
 		{
 			return [
 				'focus' => 'Specificite de la participation de cette personne dans ce holon.',
-				'time_budget_hours' => 'Temps prevu pour cette affectation, exprime en heures.',
-				'money_budget' => 'Montant prevu pour cette affectation.',
-				'assignment_review_date' => 'Date a laquelle l affectation doit etre reconfirmee ou arretee.',
-				'is_membership' => 'Distingue une affectation au holon d une ligne technique utilisee uniquement pour stocker des preferences.',
+				'time_budget_hours' => 'Temps prévu pour cette affectation, exprime en heures.',
+				'money_budget' => 'Montant prévu pour cette affectation.',
+				'assignment_review_date' => 'Date a laquelle l’affectation doit être reconfirmée ou arrêtée.',
+				'is_membership' => 'Distingue une affectation au holon d’une ligne technique utilisée uniquement pour stocker des préférences.',
 			];
 		}
 

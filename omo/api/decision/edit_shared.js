@@ -1,3 +1,5 @@
+var omoUiText = window.omoUiText || function (key, fallback) { return fallback; };
+var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; };
 window.commonPageScripts = window.commonPageScripts || {};
 window.commonPageScripts["/omo/api/decision/edit_shared.js"] = function (pageConfig, pageScript) {
 (function () {
@@ -7,12 +9,12 @@ window.commonPageScripts["/omo/api/decision/edit_shared.js"] = function (pageCon
         }
 
         if (typeof window.omoDecisionOpenNestedDrawer === 'function') {
-            window.omoDecisionOpenNestedDrawer(title || 'Prises de decision', url, '');
+            window.omoDecisionOpenNestedDrawer(title || omoUiText("prises_de_decision", "Prises de décision"), url, '');
             return;
         }
 
         if (typeof window.commonTopbarOpenDrawer === 'function') {
-            window.commonTopbarOpenDrawer(title || 'Prises de decision', url, 'fetch');
+            window.commonTopbarOpenDrawer(title || omoUiText("prises_de_decision", "Prises de décision"), url, 'fetch');
             return;
         }
 
@@ -131,7 +133,7 @@ window.commonPageScripts["/omo/api/decision/edit_shared.js"] = function (pageCon
         link.className = 'omo-decision-edit__question-tab';
         link.setAttribute('data-omo-decision-question-link', '');
         link.setAttribute('data-question-key', questionKey);
-        link.textContent = String(questionItemTemplate || 'Question __INDEX__').replace('__INDEX__', String(questionNumber));
+        link.textContent = String(questionItemTemplate || omoUiText("question_index", "Question __INDEX__")).replace('__INDEX__', String(questionNumber));
         const badge = document.createElement('span');
         badge.className = 'omo-decision-edit__question-tab-badge';
         badge.textContent = unsavedQuestionLabel;
@@ -285,7 +287,7 @@ window.commonPageScripts["/omo/api/decision/edit_shared.js"] = function (pageCon
                 });
                 root.dataset.multiInitialSignature = getMultiEditorSignature(root);
                 notifyQuestionSwitch(root.getAttribute('data-saved-message') || 'Scrutin enregistré.', 'success');
-                openEditorUrl(activeRedirectUrl || lastRedirectUrl, 'Prises de decision');
+                openEditorUrl(activeRedirectUrl || lastRedirectUrl, omoUiText("prises_de_decision", "Prises de décision"));
             })
             .catch(function (error) {
                 notifyQuestionSwitch(
@@ -517,7 +519,7 @@ window.commonPageScripts["/omo/api/decision/edit_shared.js"] = function (pageCon
             event.preventDefault();
             openEditorUrl(
                 link.getAttribute('href') || '',
-                link.getAttribute('data-omo-decision-editor-title') || 'Prises de decision'
+                link.getAttribute('data-omo-decision-editor-title') || "Prises de décision"
             );
         });
     });
@@ -583,7 +585,7 @@ window.commonPageScripts["/omo/api/decision/edit_shared.js"] = function (pageCon
 
                     openEditorUrl(
                         String(result.data.redirectUrl || ''),
-                        String(result.data.drawerTitle || 'Prises de decision')
+                        String(result.data.drawerTitle || omoUiText("prises_de_decision", "Prises de décision"))
                     );
                 })
                 .catch(function (error) {

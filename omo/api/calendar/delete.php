@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/permissions_shared.php';
 
@@ -20,7 +21,7 @@ function omoCalendarDeleteResponse(array $payload, $statusCode = 200)
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
     omoCalendarDeleteResponse([
         'status' => false,
-        'message' => 'Méthode non autorisée.',
+        'message' => omoCalendarUiT('methode_non_autorisee'),
     ], 405);
 }
 
@@ -35,7 +36,7 @@ $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurre
 if ($organizationId <= 0 || $eventId <= 0 || $currentUserId <= 0) {
     omoCalendarDeleteResponse([
         'status' => false,
-        'message' => 'Accès refusé.',
+        'message' => omoCalendarUiT('acces_refuse'),
     ], 403);
 }
 
@@ -43,7 +44,7 @@ $organization = new Organization();
 if (!$organization->load($organizationId) || !$organization->canViewDetail()) {
     omoCalendarDeleteResponse([
         'status' => false,
-        'message' => 'Organisation invalide.',
+        'message' => omoCalendarUiT('organisation_invalide'),
     ], 403);
 }
 
@@ -56,7 +57,7 @@ if (
 ) {
     omoCalendarDeleteResponse([
         'status' => false,
-        'message' => 'Événement invalide.',
+        'message' => omoCalendarUiT('evenement_invalide'),
     ], 403);
 }
 
@@ -72,7 +73,7 @@ if ($eventHolonId > 0) {
     ) {
         omoCalendarDeleteResponse([
             'status' => false,
-            'message' => 'Événement invalide.',
+            'message' => omoCalendarUiT('evenement_invalide'),
         ], 403);
     }
 
@@ -85,7 +86,7 @@ $canDelete = $permissionHolon instanceof Holon
 if (!$canDelete || $event->isPastRecurringMeeting()) {
     omoCalendarDeleteResponse([
         'status' => false,
-        'message' => "Vous n'avez pas le droit de supprimer cet événement.",
+        'message' => omoCalendarUiT('vous_n_avez_pas_le_droit_de_supprimer_cet_evenement'),
     ], 403);
 }
 
@@ -94,7 +95,7 @@ if (!in_array($recurrenceScope, ['single', 'following'], true)
     || ($recurrenceScope === 'following' && (!$series || !$series->canManage($organizationId, $currentUserId, 'CAN_DELETE_EVENT')))
     || ($series && (empty($_SESSION['omo_event_recurrence_csrf'])
         || !hash_equals((string)$_SESSION['omo_event_recurrence_csrf'], (string)($_POST['recurrence_csrf'] ?? ''))))) {
-    omoCalendarDeleteResponse(['status' => false, 'message' => 'Accès refusé.'], 403);
+    omoCalendarDeleteResponse(['status' => false, 'message' => omoCalendarUiT('acces_refuse')], 403);
 }
 
 $pdo = \dbObject\DbObject::getPdo();
@@ -127,7 +128,7 @@ try {
 
     omoCalendarDeleteResponse([
         'status' => false,
-        'message' => 'Impossible de supprimer cet événement.',
+        'message' => omoCalendarUiT('impossible_de_supprimer_cet_evenement'),
     ], 422);
 }
 
@@ -143,5 +144,5 @@ foreach ($deletedEvents as $deletedEvent) {
 omoCalendarDeleteResponse([
     'status' => true,
     'deletedCount' => count($deletedEvents),
-    'message' => 'Événement supprimé.',
+    'message' => omoCalendarUiT('evenement_supprime'),
 ]);

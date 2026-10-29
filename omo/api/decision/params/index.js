@@ -1,3 +1,5 @@
+var omoUiText = window.omoUiText || function (key, fallback) { return fallback; };
+var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; };
 window.commonPageScripts = window.commonPageScripts || {};
 window.commonPageScripts["/omo/api/decision/params/index.js"] = function (pageConfig, pageScript) {
 (function () {
@@ -42,10 +44,10 @@ window.commonPageScripts["/omo/api/decision/params/index.js"] = function (pageCo
         window.fetch(form.action, {method: 'POST', credentials: 'same-origin', headers: {'X-Requested-With': 'XMLHttpRequest'}, body: new FormData(form)})
             .then(function (response) { return response.json().then(function (payload) { return {ok: response.ok, payload: payload}; }); })
             .then(function (response) {
-                if (!response.ok || !response.payload || response.payload.status !== true) throw new Error(response.payload && response.payload.message ? response.payload.message : 'Erreur');
+                if (!response.ok || !response.payload || response.payload.status !== true) throw new Error(response.payload && response.payload.message ? response.payload.message : omoUiText("erreur", "Erreur"));
                 showFeedback(response.payload.message || successLabel, false);
             })
-            .catch(function (error) { showFeedback(error && error.message ? error.message : 'Erreur', true); })
+            .catch(function (error) { showFeedback(error && error.message ? error.message : omoUiText("erreur", "Erreur"), true); })
             .finally(function () { if (submit) { submit.disabled = false; submit.textContent = saveLabel; } });
     });
     sync();

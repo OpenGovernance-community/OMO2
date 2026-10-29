@@ -286,7 +286,7 @@ function omoGetTopbarSourceLang(): array
             'context' => 'Button label for the OMO notification inbox bell.',
         ],
         'topbar.mail.title' => [
-            'text' => 'E-mails envoyes',
+            'text' => 'E-mails envoyés',
             'context' => 'Title and accessible label for the sent email history popup.',
         ],
         'topbar.mail.button' => [

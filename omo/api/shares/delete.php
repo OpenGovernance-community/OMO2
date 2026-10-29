@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once __DIR__ . '/context.php';
 
 header('Content-Type: application/json; charset=UTF-8');
@@ -23,7 +24,7 @@ if ($shareLinkId <= 0) {
     http_response_code(400);
     echo json_encode(array(
         'status' => false,
-        'message' => 'Lien de partage invalide.',
+        'message' => omoSharesUiT('lien_de_partage_invalide'),
     ));
     exit;
 }
@@ -33,7 +34,7 @@ if (!$shareLink || !(bool)$shareLink->get('active')) {
     http_response_code(404);
     echo json_encode(array(
         'status' => false,
-        'message' => 'Lien de partage introuvable.',
+        'message' => omoSharesUiT('lien_de_partage_introuvable'),
     ));
     exit;
 }
@@ -44,12 +45,12 @@ if (empty($result['status'])) {
     http_response_code(500);
     echo json_encode(array(
         'status' => false,
-        'message' => 'Impossible de supprimer le lien de partage.',
+        'message' => omoSharesUiT('impossible_de_supprimer_le_lien_de_partage'),
     ));
     exit;
 }
 
 echo json_encode(array(
     'status' => true,
-    'message' => 'Lien supprime.',
+    'message' => omoSharesUiT('lien_supprime'),
 ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

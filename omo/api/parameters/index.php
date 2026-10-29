@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once __DIR__ . '/../bootstrap.php';
 require_once __DIR__ . '/translation.php';
 require_once dirname(__DIR__, 3) . '/includes/server_env_admin.php';
@@ -97,7 +98,7 @@ $holonTemplateCardIconUrl = '/img/omo-parameters/holon-template.png';
                 </span>
                 <span class="omo-settings__card-description generic-description"><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.profile.description'), ENT_QUOTES, 'UTF-8') ?></span>
                 <span class="omo-settings__card-footer" aria-hidden="true">
-                    <span class="omo-settings__card-cta generic-action-button generic-action-button--compact generic-action-button--main">editer</span>
+                    <span class="omo-settings__card-cta generic-action-button generic-action-button--compact generic-action-button--main"><?= htmlspecialchars(omoParametersUiT('editer'), ENT_QUOTES, 'UTF-8') ?></span>
                 </span>
             </button>
 
@@ -232,7 +233,7 @@ $holonTemplateCardIconUrl = '/img/omo-parameters/holon-template.png';
                 </span>
                 <span class="omo-settings__card-description generic-description"><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.export.description', ['organizationName' => $organizationName]), ENT_QUOTES, 'UTF-8') ?></span>
                 <span class="omo-settings__card-footer" aria-hidden="true">
-                    <span class="omo-settings__card-cta generic-action-button generic-action-button--compact generic-action-button--main">exporter</span>
+                    <span class="omo-settings__card-cta generic-action-button generic-action-button--compact generic-action-button--main"><?= htmlspecialchars(omoParametersUiT('exporter'), ENT_QUOTES, 'UTF-8') ?></span>
                 </span>
             </button>
 
@@ -264,7 +265,7 @@ $holonTemplateCardIconUrl = '/img/omo-parameters/holon-template.png';
                     'organizationName' => $organizationName,
                 ]), ENT_QUOTES, 'UTF-8') ?></span>
                 <span class="omo-settings__card-footer" aria-hidden="true">
-                    <span class="omo-settings__card-cta generic-action-button generic-action-button--compact generic-action-button--main">editer</span>
+                    <span class="omo-settings__card-cta generic-action-button generic-action-button--compact generic-action-button--main"><?= htmlspecialchars(omoParametersUiT('editer'), ENT_QUOTES, 'UTF-8') ?></span>
                 </span>
             </button>
             <?php endforeach; ?>
@@ -361,7 +362,7 @@ $holonTemplateCardIconUrl = '/img/omo-parameters/holon-template.png';
                 </span>
                 <span class="omo-settings__card-description generic-description"><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.server_admin.description'), ENT_QUOTES, 'UTF-8') ?></span>
                 <span class="omo-settings__card-footer" aria-hidden="true">
-                    <span class="omo-settings__card-cta generic-action-button generic-action-button--compact generic-action-button--main">editer</span>
+                    <span class="omo-settings__card-cta generic-action-button generic-action-button--compact generic-action-button--main"><?= htmlspecialchars(omoParametersUiT('editer'), ENT_QUOTES, 'UTF-8') ?></span>
                 </span>
             </button>
             <?php endif; ?>

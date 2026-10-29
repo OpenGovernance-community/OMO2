@@ -3,6 +3,98 @@
 
 	class document extends DbObject
 	{
+        protected static function uiMessageSourceLang(): array
+        {
+            return [
+                'document_introuvable' => ['text' => 'Document introuvable.', 'context' => 'Validation or action feedback for document.'],
+                'impossible_de_modifier_la_visibilite_du_document' => ['text' => 'Impossible de modifier la visibilité du document.', 'context' => 'Validation or action feedback for document.'],
+                'acces_refuse' => ['text' => 'Accès refusé.', 'context' => 'Validation or action feedback for document.'],
+                'impossible_de_mettre_a_jour_la_visibilite_du_document' => ['text' => 'Impossible de mettre à jour la visibilité du document.', 'context' => 'Validation or action feedback for document.'],
+                'impossible_de_mettre_a_jour_la_portee_d_edition_du_document' => ['text' => 'Impossible de mettre à jour la portée d’édition du document.', 'context' => 'Validation or action feedback for document.'],
+                'impossible_de_charger_les_documents_a_verifier' => ['text' => 'Impossible de charger les documents à vérifier.', 'context' => 'Validation or action feedback for document.'],
+                'impossible_de_verifier_la_portee_des_documents' => ['text' => 'Impossible de vérifier la portée des documents.', 'context' => 'Validation or action feedback for document.'],
+                'selection_invalide' => ['text' => 'Sélection invalide.', 'context' => 'Validation or action feedback for document.'],
+                'seuls_les_memos_peuvent_etre_fusionnes' => ['text' => 'Seuls les Mémos peuvent être fusionnés.', 'context' => 'Validation or action feedback for document.'],
+                'le_titre_est_obligatoire' => ['text' => 'Le titre est obligatoire.', 'context' => 'Validation or action feedback for document.'],
+                'un_ou_plusieurs_documents_source_ne_peuvent_pas_etre_supprimes' => ['text' => 'Un ou plusieurs documents source ne peuvent pas être supprimés.', 'context' => 'Validation or action feedback for document.'],
+                'impossible_de_finaliser_la_fusion_des_documents' => ['text' => 'Impossible de finaliser la fusion des documents.', 'context' => 'Validation or action feedback for document.'],
+                'impossible_de_devenir_editeur_du_pv' => ['text' => 'Impossible de devenir éditeur du PV.', 'context' => 'Validation or action feedback for document.'],
+                'le_pv_est_deja_attribue_a_une_autre_personne' => ['text' => 'Le PV est déjà attribue a une autre personne.', 'context' => 'Validation or action feedback for document.'],
+                'impossible_de_passer_la_main_pour_ce_pv' => ['text' => 'Impossible de passer la main pour ce PV.', 'context' => 'Validation or action feedback for document.'],
+                'impossible_de_remplacer_l_editeur_du_pv' => ['text' => 'Impossible de remplacer l’éditeur du PV.', 'context' => 'Validation or action feedback for document.'],
+                'participant_introuvable' => ['text' => 'Participant introuvable.', 'context' => 'Validation or action feedback for document.'],
+                'impossible_de_conserver_les_participants_de_la_reunion' => ['text' => 'Impossible de conserver les participants de la réunion.', 'context' => 'Validation or action feedback for document.'],
+                'document_pv_introuvable' => ['text' => 'Document PV introuvable.', 'context' => 'Validation or action feedback for document.'],
+                'base_de_donnees_indisponible' => ['text' => 'Base de données indisponible.', 'context' => 'Validation or action feedback for document.'],
+                'le_dossier_nextcloud_est_indisponible' => ['text' => 'Le dossier NextCloud est indisponible.', 'context' => 'Validation or action feedback for document.'],
+                'chemin_nextcloud_invalide' => ['text' => 'Chemin NextCloud invalide.', 'context' => 'Validation or action feedback for document.'],
+                'le_stockage_de_dossiers_distants_est_indisponible' => ['text' => 'Le stockage de dossiers distants est indisponible.', 'context' => 'Validation or action feedback for document.'],
+                'chemin_kdrive_invalide' => ['text' => 'Chemin kDrive invalide.', 'context' => 'Validation or action feedback for document.'],
+                'organisation_invalide' => ['text' => 'Organisation invalide.', 'context' => 'Validation or action feedback for document.'],
+                'impossible_de_mettre_a_jour_un_document_apres_suppression_de_son_fichier' => ['text' => 'Impossible de mettre à jour un document après suppression de son fichier.', 'context' => 'Validation or action feedback for document.'],
+                'modele_de_pv_invalide_pour_les_applications_de_reunion' => ['text' => 'Modèle de PV invalide pour les applications de réunion.', 'context' => 'Validation or action feedback for document.'],
+                'impossible_de_copier_une_application_du_modele_de_pv' => ['text' => 'Impossible de copier une application du modèle de PV.', 'context' => 'Validation or action feedback for document.'],
+                'modele_de_pv_invalide_ou_inaccessible' => ['text' => 'Modèle de PV invalide ou inaccessible.', 'context' => 'Validation or action feedback for document.'],
+                'impossible_de_copier_un_element_du_modele' => ['text' => 'Impossible de copier un élément du modèle.', 'context' => 'Validation or action feedback for document.'],
+                'impossible_de_verrouiller_ce_document_pour_l_edition' => ['text' => 'Impossible de verrouiller ce document pour l’édition.', 'context' => 'Validation or action feedback for document.'],
+                'verrou_d_edition_actif' => ['text' => 'Verrou d’édition actif.', 'context' => 'Validation or action feedback for document.'],
+                'verrou_introuvable' => ['text' => 'Verrou introuvable.', 'context' => 'Validation or action feedback for document.'],
+                'aucun_verrou_a_liberer' => ['text' => 'Aucun verrou a libérer.', 'context' => 'Validation or action feedback for document.'],
+                'impossible_de_liberer_le_verrou_d_edition' => ['text' => 'Impossible de libérer le verrou d’édition.', 'context' => 'Validation or action feedback for document.'],
+                'verrou_d_edition_libere' => ['text' => 'Verrou d’édition libéré.', 'context' => 'Validation or action feedback for document.'],
+                'dossier_parent_introuvable' => ['text' => 'Dossier parent introuvable.', 'context' => 'Validation or action feedback for document.'],
+                'le_dossier_cible_est_invalide' => ['text' => 'Le dossier cible est invalide.', 'context' => 'Validation or action feedback for document.'],
+                'organisation_introuvable' => ['text' => 'Organisation introuvable.', 'context' => 'Validation or action feedback for document.'],
+                'contexte_de_visibilite_du_document_invalide' => ['text' => 'Contexte de visibilité du document invalide.', 'context' => 'Validation or action feedback for document.'],
+                'impossible_de_creer_la_visibilite_du_document' => ['text' => 'Impossible de créer la visibilité du document.', 'context' => 'Validation or action feedback for document.'],
+                'impossible_de_creer_la_portee_d_edition_du_document' => ['text' => 'Impossible de créer la portée d’édition du document.', 'context' => 'Validation or action feedback for document.'],
+                'utilisateur_invalide' => ['text' => 'Utilisateur invalide.', 'context' => 'Validation or action feedback for document.'],
+                'l_url_externe_est_obligatoire' => ['text' => 'L’URL externe est obligatoire.', 'context' => 'Validation or action feedback for document.'],
+                'un_fichier_est_obligatoire_pour_ce_type_de_document' => ['text' => 'Un fichier est obligatoire pour ce type de document.', 'context' => 'Validation or action feedback for document.'],
+                'le_chemin_du_dossier_nextcloud_est_obligatoire_et_ne_peut_pas_contenir_de_remontee_de_doss' => ['text' => 'Le chemin du dossier NextCloud est obligatoire et ne peut pas contenir de remontée de dossier.', 'context' => 'Validation or action feedback for document.'],
+                'le_format_pv_n_est_pas_active_pour_cette_organisation' => ['text' => 'Le format PV n’est pas active pour cette organisation.', 'context' => 'Validation or action feedback for document.'],
+                'evenement_associe_introuvable' => ['text' => 'Événement associé introuvable.', 'context' => 'Validation or action feedback for document.'],
+                'le_stockage_de_documents_n_est_pas_configure_pour_cette_organisation' => ['text' => 'Le stockage de documents n’est pas configuré pour cette organisation.', 'context' => 'Validation or action feedback for document.'],
+                'un_stockage_de_documents_doit_etre_configure_avant_collabora' => ['text' => 'Un stockage de documents doit être configuré avant Collabora.', 'context' => 'Validation or action feedback for document.'],
+                'le_serveur_collabora_n_est_pas_configure_pour_cette_organisation' => ['text' => 'Le serveur Collabora n’est pas configuré pour cette organisation.', 'context' => 'Validation or action feedback for document.'],
+                'le_serveur_spacedeck_n_est_pas_configure_pour_cette_organisation' => ['text' => 'Le serveur SpaceDeck n’est pas configuré pour cette organisation.', 'context' => 'Validation or action feedback for document.'],
+                'le_serveur_etherpad_ou_son_domaine_de_session_n_est_pas_configure_pour_cette_organisation' => ['text' => 'Le serveur Etherpad ou son domaine de session n’est pas configuré pour cette organisation.', 'context' => 'Validation or action feedback for document.'],
+                'le_serveur_ethercalc_n_est_pas_configure' => ['text' => 'Le serveur EtherCalc n’est pas configuré.', 'context' => 'Validation or action feedback for document.'],
+                'impossible_de_creer_le_fichier_collabora' => ['text' => 'Impossible de créer le fichier Collabora.', 'context' => 'Validation or action feedback for document.'],
+                'impossible_de_creer_le_tableau_blanc_spacedeck' => ['text' => 'Impossible de créer le tableau blanc SpaceDeck.', 'context' => 'Validation or action feedback for document.'],
+                'modele_de_pv_introuvable' => ['text' => 'Modèle de PV introuvable.', 'context' => 'Validation or action feedback for document.'],
+                'impossible_de_copier_le_modele_de_pv' => ['text' => 'Impossible de copier le modèle de PV.', 'context' => 'Validation or action feedback for document.'],
+                'impossible_de_creer_le_pad_etherpad' => ['text' => 'Impossible de créer le pad Etherpad.', 'context' => 'Validation or action feedback for document.'],
+                'impossible_d_enregistrer_le_pad_etherpad' => ['text' => 'Impossible d’enregistrer le pad Etherpad.', 'context' => 'Validation or action feedback for document.'],
+                'impossible_de_creer_le_tableur_ethercalc' => ['text' => 'Impossible de créer le tableur EtherCalc.', 'context' => 'Validation or action feedback for document.'],
+                'impossible_d_enregistrer_le_tableur_ethercalc' => ['text' => 'Impossible d’enregistrer le tableur EtherCalc.', 'context' => 'Validation or action feedback for document.'],
+                'impossible_de_creer_ce_document' => ['text' => 'Impossible de créer ce document.', 'context' => 'Validation or action feedback for document.'],
+                'document_de_reference_indisponible' => ['text' => 'Document de référence indisponible.', 'context' => 'Validation or action feedback for document.'],
+                'impossible_de_preparer_le_fichier_de_la_reunion' => ['text' => 'Impossible de préparer le fichier de la réunion.', 'context' => 'Validation or action feedback for document.'],
+                'structure_du_pv_de_reference_invalide' => ['text' => 'Structure du PV de référence invalide.', 'context' => 'Validation or action feedback for document.'],
+                'impossible_de_conserver_le_nom_automatique_du_document' => ['text' => 'Impossible de conserver le nom automatique du document.', 'context' => 'Validation or action feedback for document.'],
+                'modele_de_document_invalide_ou_inaccessible' => ['text' => 'Modèle de document invalide ou inaccessible.', 'context' => 'Validation or action feedback for document.'],
+                'la_structure_du_dossier_modele_est_invalide' => ['text' => 'La structure du dossier modèle est invalide.', 'context' => 'Validation or action feedback for document.'],
+                'impossible_de_recuperer_le_fichier_du_modele' => ['text' => 'Impossible de récupérer le fichier du modèle.', 'context' => 'Validation or action feedback for document.'],
+                'impossible_de_preparer_le_fichier_du_modele' => ['text' => 'Impossible de préparer le fichier du modèle.', 'context' => 'Validation or action feedback for document.'],
+                'ce_type_de_document_ne_peut_pas_etre_utilise_comme_modele' => ['text' => 'Ce type de document ne peut pas être utilisé comme modèle.', 'context' => 'Validation or action feedback for document.'],
+                'impossible_de_copier_le_contenu_du_dossier_modele' => ['text' => 'Impossible de copier le contenu du dossier modèle.', 'context' => 'Validation or action feedback for document.'],
+                'impossible_de_copier_le_contenu_du_modele' => ['text' => 'Impossible de copier le contenu du modèle.', 'context' => 'Validation or action feedback for document.'],
+                'aucun_fichier_n_est_actuellement_associe_a_ce_document' => ['text' => 'Aucun fichier n’est actuellement associe à ce document.', 'context' => 'Validation or action feedback for document.'],
+                'les_fichiers_sans_contexte_ne_peuvent_pas_etre_modifies_depuis_cet_editeur' => ['text' => 'Les fichiers sans contexte ne peuvent pas être modifiés depuis cet éditeur.', 'context' => 'Validation or action feedback for document.'],
+                'l_etape_du_pv_a_change_rechargez_le_document_avant_de_continuer' => ['text' => 'L’étape du PV a changé. Rechargez le document avant de continuer.', 'context' => 'Validation or action feedback for document.'],
+                'impossible_de_mettre_a_jour_ce_document' => ['text' => 'Impossible de mettre à jour ce document.', 'context' => 'Validation or action feedback for document.'],
+                'destination_invalide' => ['text' => 'Destination invalide.', 'context' => 'Validation or action feedback for document.'],
+                'acces_refuse_pour_cette_destination' => ['text' => 'Accès refusé pour cette destination.', 'context' => 'Validation or action feedback for document.'],
+                'le_document_est_deja_dans_cette_destination' => ['text' => 'Le document est déjà dans cette destination.', 'context' => 'Validation or action feedback for document.'],
+                'impossible_de_deplacer_ce_document' => ['text' => 'Impossible de déplacer ce document.', 'context' => 'Validation or action feedback for document.'],
+                'la_visibilite_role_demande_un_document_lie_a_un_role' => ['text' => 'La visibilité rôle demande un document lié a un rôle.', 'context' => 'Validation or action feedback for document.'],
+                'la_visibilite_cercle_demande_un_document_place_dans_un_cercle_ou_dans_un_role_de_cercle' => ['text' => 'La visibilité cercle demande un document placé dans un cercle ou dans un rôle de cercle.', 'context' => 'Validation or action feedback for document.'],
+                'contexte_de_visibilite_invalide' => ['text' => 'Contexte de visibilité invalide.', 'context' => 'Validation or action feedback for document.'],
+                'contexte_d_edition_invalide' => ['text' => 'Contexte d’édition invalide.', 'context' => 'Validation or action feedback for document.'],
+            ];
+        }
+
 		public const TYPE_HTML = 'html';
 		public const TYPE_EXTERNAL_LINK = 'external_link';
 		public const TYPE_UPLOADED_FILE = 'uploaded_file';
@@ -49,37 +141,37 @@
 				'id' => 'ID',
 				'active' => 'Actif',
 				'title' => 'Titre',
-				'description' => 'Resume',
+				'description' => 'Résumé',
 				'content' => 'Contenu',
-				'contentedition' => 'Contenu temporaire en edition',
-				'keywords' => 'Mots cles',
+				'contentedition' => 'Contenu temporaire en édition',
+				'keywords' => 'Mots clés',
 				'IDuser' => 'Auteur',
-				'IDusercreation' => 'Createur',
+				'IDusercreation' => 'Créateur',
 				'IDusermodification' => 'Utilisateur de modification',
-				'IDuseredition' => 'Utilisateur en cours d edition',
+				'IDuseredition' => 'Utilisateur en cours d’édition',
 				'IDorganization' => 'Organisation',
 				'IDholon' => 'Holon',
-				'IDevent' => 'Evenement associe',
+				'IDevent' => 'Événement associé',
 				'IDuser_pv_editor' => 'Secretaire du PV',
 				'IDuser_pv_official_editor' => 'Dernier secretaire officiel du PV',
 				'pv_editor_handover_open' => 'Passation du secretaire ouverte',
 				'estDossier' => 'Dossier',
 				'IDdocument_parent' => 'Dossier parent',
-				'datecreation' => 'Date de creation',
+				'datecreation' => 'Date de création',
 				'datemodification' => 'Date de modification',
 				'dateconsultation' => 'Date de consultation',
-				'dateedition' => 'Date d edition en cours',
-				'datecontentedition' => 'Date du brouillon en edition',
+				'dateedition' => 'Date d’édition en cours',
+				'datecontentedition' => 'Date du brouillon en édition',
 				'version' => 'Version',
-				'codeview' => 'Code d affichage',
-				'codeedit' => 'Code d edition',
+				'codeview' => 'Code d’affichage',
+				'codeedit' => 'Code d’édition',
 				'documenttype' => 'Type de document',
-				'pvstage' => 'Etape du PV',
-				'pv_review_started_at' => 'Debut de la relecture',
-				'is_template' => 'Modele de document',
+				'pvstage' => 'Étape du PV',
+				'pv_review_started_at' => 'Début de la relecture',
+				'is_template' => 'Modèle de document',
 				'externalurl' => 'URL externe',
-				'openinnewwindow' => 'Ouvrir dans une nouvelle fenetre',
-				'project_visible_in_holon' => 'Afficher dans le holon si le document est lie a un projet ou evenement',
+				'openinnewwindow' => 'Ouvrir dans une nouvelle fenêtre',
+				'project_visible_in_holon' => 'Afficher dans le holon si le document est lié a un projet ou événement',
 				'storedfilepath' => 'Chemin distant du fichier',
 				'storedfilename' => 'Nom original du fichier',
 				'storedfilemime' => 'Type MIME du fichier',
@@ -99,37 +191,37 @@
 				'title' => 'Titre affiche dans une liste de fichiers',
 				'description' => 'Abstract du contenu du document',
 				'content' => 'Formate en texte libre ou en HTML',
-				'contentedition' => 'Brouillon HTML temporaire pendant l edition',
-				'IDuser' => 'Createur du document',
+				'contentedition' => 'Brouillon HTML temporaire pendant l’édition',
+				'IDuser' => 'Créateur du document',
 				'IDusercreation' => 'Utilisateur qui a cree le document',
-				'IDusermodification' => 'Utilisateur qui a realise la derniere modification',
+				'IDusermodification' => 'Utilisateur qui a realise la dernière modification',
 				'IDuseredition' => 'Utilisateur qui edite actuellement le document',
-				'IDorganization' => 'Organisation a laquelle le document est rattache',
-				'IDholon' => 'Holon concerne si le document est specifique a un contexte local',
-				'IDevent' => 'Evenement auquel ce document est rattache si le fichier provient de l agenda',
-				'estDossier' => 'Permet de traiter cette entree comme un dossier',
+				'IDorganization' => 'Organisation a laquelle le document est rattaché',
+				'IDholon' => 'Holon concerne si le document est spécifique a un contexte local',
+				'IDevent' => 'Événement auquel ce document est rattaché si le fichier provient de l’agenda',
+				'estDossier' => 'Permet de traiter cette entrée comme un dossier',
 				'IDdocument_parent' => 'Dossier qui contient ce document',
-				'dateconsultation' => 'Derniere fois que le document a ete affiche dans son detail',
-				'dateedition' => 'Date du dernier signal de presence pendant l edition',
-				'datecontentedition' => 'Date de mise a jour du brouillon temporaire',
-				'documenttype' => 'Permet de distinguer les Memos, les liens externes, les telechargements, les documents collaboratifs, les tableurs collaboratifs, les PV et les dossiers',
-				'pvstage' => 'Etape actuelle du flux d un document PV: preparation, reunion, relecture ou valide',
-				'is_template' => 'Permet d utiliser le contenu de ce document lors d une nouvelle creation',
-				'IDuser_pv_editor' => 'Personne qui tient le PV pendant la reunion et peut modifier tous les points.',
-				'IDuser_pv_official_editor' => 'Derniere personne officielle a tenir le PV, utilisee pour le retour en relecture.',
-				'pv_editor_handover_open' => 'Indique que le secretaire actuel autorise un invite a reprendre son role.',
+				'dateconsultation' => 'Dernière fois que le document a été affiche dans son détail',
+				'dateedition' => 'Date du dernier signal de présence pendant l’édition',
+				'datecontentedition' => 'Date de mise à jour du brouillon temporaire',
+				'documenttype' => 'Permet de distinguer les Mémos, les liens externes, les telechargements, les documents collaboratifs, les tableurs collaboratifs, les PV et les dossiers',
+				'pvstage' => 'Étape actuelle du flux d’un document PV: préparation, réunion, relecture ou valide',
+				'is_template' => 'Permet d’utiliser le contenu de ce document lors d’une nouvelle création',
+				'IDuser_pv_editor' => 'Personne qui tient le PV pendant la réunion et peut modifier tous les points.',
+				'IDuser_pv_official_editor' => 'Dernière personne officielle a tenir le PV, utilisée pour le retour en relecture.',
+				'pv_editor_handover_open' => 'Indique que le secretaire actuel autorise un invite à reprendre son rôle.',
 				'externalurl' => 'Adresse du site a ouvrir pour un document de type lien externe',
-				'openinnewwindow' => 'Ouvre le lien externe directement dans une autre fenetre',
-				'project_visible_in_holon' => 'Autorise l affichage dans la liste du holon pour un document lie a un projet ou evenement',
-				'storedfilepath' => 'Chemin du fichier sur le stockage de documents de l organisation',
-				'storedfilename' => 'Nom du fichier televerse par l utilisateur',
+				'openinnewwindow' => 'Ouvre le lien externe directement dans une autre fenêtre',
+				'project_visible_in_holon' => 'Autorise l’affichage dans la liste du holon pour un document lié a un projet ou événement',
+				'storedfilepath' => 'Chemin du fichier sur le stockage de documents de l’organisation',
+				'storedfilename' => 'Nom du fichier téléversé par l’utilisateur',
 				'storedfilemime' => 'Type MIME detecte pour le fichier distant',
 				'storedfilesize' => 'Taille du fichier distant en octets',
 				'nextcloudfolderpath' => 'Chemin du dossier NextCloud, relatif au dossier configure pour les documents',
 				'nextcloudfolderfileid' => 'Identifiant stable NextCloud utilise pour retrouver un dossier renomme ou deplace',
-				'etherpadpadid' => 'Identifiant technique du pad associe a ce document',
-				'ethercalcroomid' => 'Identifiant technique du tableur associe a ce document',
-				'spacedeckspaceid' => 'Identifiant technique du tableau blanc SpaceDeck associe a ce document',
+				'etherpadpadid' => 'Identifiant technique du pad associe à ce document',
+				'ethercalcroomid' => 'Identifiant technique du tableur associe à ce document',
+				'spacedeckspaceid' => 'Identifiant technique du tableau blanc SpaceDeck associe à ce document',
 			];
 		}
 
@@ -278,14 +370,14 @@
 		public function saveProjectHolonVisibility(bool $visible): array
 		{
 			if ((int)$this->getId() <= 0) {
-				return array('status' => false, 'text' => 'Document introuvable.');
+				return array('status' => false, 'text' => self::uiMessage('document_introuvable'));
 			}
 
 			$this->set('project_visible_in_holon', $visible || $this->hasMultipleProjectAssociations() ? 1 : 0);
 			$result = $this->save();
 			return is_array($result)
 				? $result
-				: array('status' => false, 'text' => 'Impossible de modifier la visibilite du document.');
+				: array('status' => false, 'text' => self::uiMessage('impossible_de_modifier_la_visibilite_du_document'));
 		}
 
 		public function isDocumentTemplate(): bool
@@ -401,7 +493,7 @@
 					? !$this->canUserManagePvStructure($organizationId, $userId)
 					: !$this->canManageInOrganizationContext($organizationId, $userId, false))
 			) {
-				return array('status' => false, 'text' => 'Acces refuse.');
+				return array('status' => false, 'text' => self::uiMessage('acces_refuse'));
 			}
 
 			$this->set('is_template', $isTemplate ? 1 : 0);
@@ -847,7 +939,7 @@
 						? $saveVisibilityResult
 						: array(
 							'status' => false,
-							'text' => 'Impossible de mettre a jour la visibilite du document.',
+							'text' => self::uiMessage('impossible_de_mettre_a_jour_la_visibilite_du_document'),
 						);
 				}
 
@@ -861,7 +953,7 @@
 						? $saveEditVisibilityResult
 						: array(
 							'status' => false,
-							'text' => 'Impossible de mettre a jour la portee d edition du document.',
+							'text' => self::uiMessage('impossible_de_mettre_a_jour_la_portee_d_edition_du_document'),
 						);
 				}
 
@@ -904,7 +996,7 @@
 			if ($rows === false) {
 				return array(
 					'status' => false,
-					'text' => 'Impossible de charger les documents a verifier.',
+					'text' => self::uiMessage('impossible_de_charger_les_documents_a_verifier'),
 				);
 			}
 
@@ -926,7 +1018,7 @@
 						? $normalizeResult
 						: array(
 							'status' => false,
-							'text' => 'Impossible de verifier la portee des documents.',
+							'text' => self::uiMessage('impossible_de_verifier_la_portee_des_documents'),
 						);
 				}
 
@@ -1141,7 +1233,7 @@
 				return $documentId > 0;
 			})));
 			if (count($documentIds) < 2 || $userId <= 0) {
-				return array('status' => false, 'text' => 'Selection invalide.');
+				return array('status' => false, 'text' => self::uiMessage('selection_invalide'));
 			}
 
 			$documents = array();
@@ -1165,7 +1257,7 @@
 			foreach ($documentIds as $documentId) {
 				$document = new self();
 				if (!$document->load($documentId) || $document->getDocumentType() !== self::TYPE_HTML) {
-					return array('status' => false, 'text' => 'Seuls les Memos peuvent etre fusionnes.');
+					return array('status' => false, 'text' => self::uiMessage('seuls_les_memos_peuvent_etre_fusionnes'));
 				}
 
 				$documentOrganizationId = (int)$document->get('IDorganization');
@@ -1174,7 +1266,7 @@
 					|| ($organizationId > 0 && $organizationId !== $documentOrganizationId)
 					|| !$document->canEditInOrganizationContext($documentOrganizationId, $userId, false)
 				) {
-					return array('status' => false, 'text' => 'Acces refuse.');
+					return array('status' => false, 'text' => self::uiMessage('acces_refuse'));
 				}
 
 				$organizationId = $documentOrganizationId;
@@ -1248,7 +1340,7 @@
 				(int)$firstDocument->get('IDdocument_parent'),
 				false
 			)) {
-				return array('status' => false, 'text' => 'Acces refuse.');
+				return array('status' => false, 'text' => self::uiMessage('acces_refuse'));
 			}
 
 			$items = array();
@@ -1298,10 +1390,10 @@
 
 			$title = trim($title);
 			if ($title === '') {
-				return array('status' => false, 'text' => 'Le titre est obligatoire.');
+				return array('status' => false, 'text' => self::uiMessage('le_titre_est_obligatoire'));
 			}
 			if (!$keepSources && empty($mergeData['canDeleteSources'])) {
-				return array('status' => false, 'text' => 'Un ou plusieurs documents source ne peuvent pas etre supprimes.');
+				return array('status' => false, 'text' => self::uiMessage('un_ou_plusieurs_documents_source_ne_peuvent_pas_etre_supprimes'));
 			}
 			$visibilityType = trim($visibilityType) !== ''
 				? \dbObject\ObjectVisibility::normalizeVisibilityType($visibilityType)
@@ -1379,7 +1471,7 @@
 				if ($startedTransaction && $pdo instanceof \PDO && $pdo->inTransaction()) {
 					$pdo->rollBack();
 				}
-				return array('status' => false, 'text' => 'Impossible de finaliser la fusion des documents.');
+				return array('status' => false, 'text' => self::uiMessage('impossible_de_finaliser_la_fusion_des_documents'));
 			}
 		}
 
@@ -1966,7 +2058,7 @@
 		public function claimPvEditor(int $organizationId, int $userId): array
 		{
 			if (!$this->canUserClaimPvEditor($organizationId, $userId)) {
-				return array('status' => false, 'text' => 'Acces refuse.');
+				return array('status' => false, 'text' => self::uiMessage('acces_refuse'));
 			}
 
 			$this->set('IDuser_pv_editor', $userId);
@@ -1976,12 +2068,12 @@
 			$this->set('datemodification', new \DateTimeImmutable());
 			$saveResult = $this->save();
 			if (!is_array($saveResult) || ($saveResult['status'] ?? false) !== true) {
-				return array('status' => false, 'text' => 'Impossible de devenir editeur du PV.');
+				return array('status' => false, 'text' => self::uiMessage('impossible_de_devenir_editeur_du_pv'));
 			}
 
 			$this->load((int)$this->getId());
 			if (!$this->isPvEditor($userId)) {
-				return array('status' => false, 'text' => 'Le PV est deja attribue a une autre personne.');
+				return array('status' => false, 'text' => self::uiMessage('le_pv_est_deja_attribue_a_une_autre_personne'));
 			}
 
 			return array('status' => true);
@@ -1990,7 +2082,7 @@
 		public function openPvEditorHandover(int $userId): array
 		{
 			if (!$this->isPvEditor($userId) || $this->isPvValidated() || $this->getPvStage() === self::PV_STAGE_REVIEW) {
-				return array('status' => false, 'text' => 'Acces refuse.');
+				return array('status' => false, 'text' => self::uiMessage('acces_refuse'));
 			}
 
 			$this->set('pv_editor_handover_open', 1);
@@ -2001,7 +2093,7 @@
 			$this->set('datemodification', new \DateTimeImmutable());
 			$saveResult = $this->save();
 			if (!is_array($saveResult) || ($saveResult['status'] ?? false) !== true) {
-				return array('status' => false, 'text' => 'Impossible de passer la main pour ce PV.');
+				return array('status' => false, 'text' => self::uiMessage('impossible_de_passer_la_main_pour_ce_pv'));
 			}
 
 			$this->load((int)$this->getId());
@@ -2011,7 +2103,7 @@
 		public function replacePvEditor(int $organizationId, int $userId): array
 		{
 			if (!$this->canUserReplacePvEditor($organizationId, $userId)) {
-				return array('status' => false, 'text' => 'Acces refuse.');
+				return array('status' => false, 'text' => self::uiMessage('acces_refuse'));
 			}
 
 			if ($this->getLastOfficialPvEditorUserId() <= 0) {
@@ -2023,7 +2115,7 @@
 			$this->set('datemodification', new \DateTimeImmutable());
 			$saveResult = $this->save();
 			if (!is_array($saveResult) || ($saveResult['status'] ?? false) !== true) {
-				return array('status' => false, 'text' => 'Impossible de remplacer l editeur du PV.');
+				return array('status' => false, 'text' => self::uiMessage('impossible_de_remplacer_l_editeur_du_pv'));
 			}
 
 			$this->load((int)$this->getId());
@@ -2264,7 +2356,7 @@
 				}
 				return $saveResult;
 			}
-			return ['status' => false, 'text' => 'Participant introuvable.'];
+			return ['status' => false, 'text' => self::uiMessage('participant_introuvable')];
 		}
 
 		public function getPvPointAuthorOptions(int $organizationId = 0): array
@@ -2608,7 +2700,7 @@
 			if (in_array($nextStage, [self::PV_STAGE_REVIEW, self::PV_STAGE_VALIDATED], true)) {
 				$event = $this->getAssociatedEvent();
 				if ($event instanceof Event && (int)$event->get('IDeventrecurrence') > 0 && !$event->freezeInvitationParticipants()) {
-					return ['status' => false, 'text' => 'Impossible de conserver les participants de la reunion.'];
+					return ['status' => false, 'text' => self::uiMessage('impossible_de_conserver_les_participants_de_la_reunion')];
 				}
 				DocumentPvPoint::reorderByHandledTimeForDocument((int)$this->getId(), $userId);
 			}
@@ -2700,26 +2792,26 @@
 			if ((int)$this->getId() <= 0 || !$this->isPvDocument()) {
 				return [
 					'status' => false,
-					'text' => 'Document PV introuvable.',
+					'text' => self::uiMessage('document_pv_introuvable'),
 				];
 			}
 
 			if (!$this->canManagePvStage($organizationId, $userId)) {
 				return [
 					'status' => false,
-					'text' => 'Acces refuse.',
+					'text' => self::uiMessage('acces_refuse'),
 				];
 			}
 
 			$pdo = self::getPdo();
-			if (!$pdo) return ['status' => false, 'text' => 'Base de donnees indisponible.'];
+			if (!$pdo) return ['status' => false, 'text' => self::uiMessage('base_de_donnees_indisponible')];
 			$ownsTransaction = !$pdo->inTransaction();
 			try {
 				if ($ownsTransaction) $pdo->beginTransaction();
 				$row = self::fetchRow('SELECT * FROM document WHERE id = :id FOR UPDATE', ['id' => (int)$this->getId()]);
 				if (!$row || !$this->hydrateFromDatabaseRow($row, true) || !$this->canManagePvStage($organizationId, $userId)) {
 					if ($ownsTransaction) $pdo->rollBack();
-					return ['status' => false, 'text' => 'Acces refuse.'];
+					return ['status' => false, 'text' => self::uiMessage('acces_refuse')];
 				}
 				$result = $this->persistPvStage(self::normalizePvStage($stage), $userId, new \DateTimeImmutable());
 				if ($ownsTransaction) {
@@ -2844,7 +2936,7 @@
 		public function resolveNextcloudFolderLocation(\dbObject\Organization $organization): array
 		{
 			if (!$this->isNextcloudFolder() || !$organization->hasNextcloudDocumentStorage()) {
-				return array('status' => false, 'text' => 'Le dossier NextCloud est indisponible.');
+				return array('status' => false, 'text' => self::uiMessage('le_dossier_nextcloud_est_indisponible'));
 			}
 
 			$currentRelativePath = $this->getNextcloudFolderPath();
@@ -2852,7 +2944,7 @@
 			$storedFileId = $this->getNextcloudFolderFileId();
 			$currentLocation = $currentRemotePath !== ''
 				? $organization->getNextcloudDocumentsDirectoryInfo($currentRemotePath)
-				: array('status' => false, 'text' => 'Chemin NextCloud invalide.');
+				: array('status' => false, 'text' => self::uiMessage('chemin_nextcloud_invalide'));
 
 			if (
 				!empty($currentLocation['status'])
@@ -2932,7 +3024,7 @@
 		public function resolveRemoteFolderStorageLocation(\dbObject\Organization $organization): array
 		{
 			if (!$this->isNextcloudFolder() || !$organization->hasDocumentStorage()) {
-				return array('status' => false, 'text' => 'Le stockage de dossiers distants est indisponible.');
+				return array('status' => false, 'text' => self::uiMessage('le_stockage_de_dossiers_distants_est_indisponible'));
 			}
 			if (!$organization->isKdriveDocumentStorage()) {
 				return $this->resolveNextcloudFolderLocation($organization);
@@ -2941,7 +3033,7 @@
 			$remotePath = $this->buildRemoteFolderStoragePath($organization);
 			$location = $remotePath !== ''
 				? $organization->getDocumentStorageDirectoryInfo($remotePath)
-				: array('status' => false, 'text' => 'Chemin kDrive invalide.');
+				: array('status' => false, 'text' => self::uiMessage('chemin_kdrive_invalide'));
 			if (empty($location['status']) || empty($location['isFolder'])) {
 				return array('status' => false, 'text' => trim((string)($location['text'] ?? 'Le dossier kDrive est introuvable.')));
 			}
@@ -3032,7 +3124,7 @@
 		{
 			$organizationId = (int)$organizationId;
 			if ($organizationId <= 0) {
-				return array('status' => false, 'text' => 'Organisation invalide.');
+				return array('status' => false, 'text' => self::uiMessage('organisation_invalide'));
 			}
 
 			$documents = new \dbObject\ArrayDocument();
@@ -3061,7 +3153,7 @@
 				$document->clearStoredFileState();
 				$saveResult = $document->save();
 				if (!is_array($saveResult) || empty($saveResult['status'])) {
-					return array('status' => false, 'text' => 'Impossible de mettre à jour un document après suppression de son fichier.');
+					return array('status' => false, 'text' => self::uiMessage('impossible_de_mettre_a_jour_un_document_apres_suppression_de_son_fichier'));
 				}
 
 				$deletedCount++;
@@ -4608,7 +4700,7 @@
 				|| !$template->isPvTemplate()
 				|| (int)$this->get('IDorganization') !== (int)$template->get('IDorganization')
 			) {
-				return array('status' => false, 'text' => 'Modele de PV invalide pour les applications de reunion.');
+				return array('status' => false, 'text' => self::uiMessage('modele_de_pv_invalide_pour_les_applications_de_reunion'));
 			}
 
 			$copiedCount = 0;
@@ -4628,7 +4720,7 @@
 				if (!is_array($saveResult) || empty($saveResult['status'])) {
 					return is_array($saveResult)
 						? $saveResult
-						: array('status' => false, 'text' => 'Impossible de copier une application du modele de PV.');
+						: array('status' => false, 'text' => self::uiMessage('impossible_de_copier_une_application_du_modele_de_pv'));
 				}
 				$copiedCount++;
 			}
@@ -4644,7 +4736,7 @@
 				|| (int)$this->get('IDorganization') !== $organizationId
 				|| !$template->canUseAsPvTemplateInOrganizationContext($organizationId, $contextHolonId)
 			) {
-				return array('status' => false, 'text' => 'Modele de PV invalide ou inaccessible.');
+				return array('status' => false, 'text' => self::uiMessage('modele_de_pv_invalide_ou_inaccessible'));
 			}
 
 			$sourceItems = $template->getPvPoints(true);
@@ -4701,7 +4793,7 @@
 					if (!is_array($saveResult) || ($saveResult['status'] ?? false) !== true) {
 						return is_array($saveResult)
 							? $saveResult
-							: array('status' => false, 'text' => 'Impossible de copier un element du modele.');
+							: array('status' => false, 'text' => self::uiMessage('impossible_de_copier_un_element_du_modele'));
 					}
 
 					$copiedIds[$sourceItemId] = (int)$targetItem->getId();
@@ -5172,7 +5264,7 @@
 			) {
 				return array(
 					'status' => false,
-					'text' => 'Acces refuse.',
+					'text' => self::uiMessage('acces_refuse'),
 				);
 			}
 
@@ -5201,13 +5293,13 @@
 			if (!is_array($saveResult) || ($saveResult['status'] ?? false) !== true) {
 				return array(
 					'status' => false,
-					'text' => 'Impossible de verrouiller ce document pour l edition.',
+					'text' => self::uiMessage('impossible_de_verrouiller_ce_document_pour_l_edition'),
 				);
 			}
 
 			return array(
 				'status' => true,
-				'text' => 'Verrou d edition actif.',
+				'text' => self::uiMessage('verrou_d_edition_actif'),
 				'lock' => array(
 					'userId' => $userId,
 					'userName' => $this->getEditingUserDisplayName(),
@@ -5223,14 +5315,14 @@
 			if ((int)$this->getId() <= 0 || $userId <= 0) {
 				return array(
 					'status' => false,
-					'text' => 'Verrou introuvable.',
+					'text' => self::uiMessage('verrou_introuvable'),
 				);
 			}
 
 			if ($this->getEditingUserId() !== $userId) {
 				return array(
 					'status' => true,
-					'text' => 'Aucun verrou a liberer.',
+					'text' => self::uiMessage('aucun_verrou_a_liberer'),
 				);
 			}
 
@@ -5244,13 +5336,13 @@
 			if (!is_array($saveResult) || ($saveResult['status'] ?? false) !== true) {
 				return array(
 					'status' => false,
-					'text' => 'Impossible de liberer le verrou d edition.',
+					'text' => self::uiMessage('impossible_de_liberer_le_verrou_d_edition'),
 				);
 			}
 
 			return array(
 				'status' => true,
-				'text' => 'Verrou d edition libere.',
+				'text' => self::uiMessage('verrou_d_edition_libere'),
 			);
 		}
 
@@ -5359,7 +5451,7 @@
 			) {
 				return array(
 					'status' => false,
-					'text' => 'Dossier parent introuvable.',
+					'text' => self::uiMessage('dossier_parent_introuvable'),
 				);
 			}
 
@@ -5372,7 +5464,7 @@
 			) {
 				return array(
 					'status' => false,
-					'text' => 'Le dossier cible est invalide.',
+					'text' => self::uiMessage('le_dossier_cible_est_invalide'),
 				);
 			}
 
@@ -5624,7 +5716,7 @@
 			if ($organizationId <= 0) {
 				return array(
 					'status' => false,
-					'text' => "Organisation invalide.",
+					'text' => self::uiMessage('organisation_invalide'),
 				);
 			}
 
@@ -5632,7 +5724,7 @@
 			if (!$organization->load($organizationId)) {
 				return array(
 					'status' => false,
-					'text' => "Organisation introuvable.",
+					'text' => self::uiMessage('organisation_introuvable'),
 				);
 			}
 
@@ -5677,7 +5769,7 @@
 			if ($documentId <= 0 || $organizationId <= 0) {
 				return array(
 					'status' => false,
-					'text' => 'Contexte de visibilite du document invalide.',
+					'text' => self::uiMessage('contexte_de_visibilite_du_document_invalide'),
 				);
 			}
 
@@ -5695,7 +5787,7 @@
 				if (!is_array($visibilitySaveResult) || ($visibilitySaveResult['status'] ?? false) !== true) {
 					return is_array($visibilitySaveResult)
 						? $visibilitySaveResult
-						: array('status' => false, 'text' => 'Impossible de creer la visibilite du document.');
+						: array('status' => false, 'text' => self::uiMessage('impossible_de_creer_la_visibilite_du_document'));
 				}
 			}
 
@@ -5713,7 +5805,7 @@
 				if (!is_array($editVisibilitySaveResult) || ($editVisibilitySaveResult['status'] ?? false) !== true) {
 					return is_array($editVisibilitySaveResult)
 						? $editVisibilitySaveResult
-						: array('status' => false, 'text' => 'Impossible de creer la portee d edition du document.');
+						: array('status' => false, 'text' => self::uiMessage('impossible_de_creer_la_portee_d_edition_du_document'));
 				}
 			}
 
@@ -5848,7 +5940,7 @@
 			if ($userId <= 0) {
 				return array(
 					'status' => false,
-					'text' => "Utilisateur invalide.",
+					'text' => self::uiMessage('utilisateur_invalide'),
 				);
 			}
 
@@ -5856,7 +5948,7 @@
 			if ($title === '') {
 				return array(
 					'status' => false,
-					'text' => "Le titre est obligatoire.",
+					'text' => self::uiMessage('le_titre_est_obligatoire'),
 				);
 			}
 
@@ -5895,19 +5987,19 @@
 			if ($documentType === self::TYPE_EXTERNAL_LINK && $externalUrl === '' && !$allowEmptyTypePayload) {
 				return array(
 					'status' => false,
-					'text' => "L URL externe est obligatoire.",
+					'text' => self::uiMessage('l_url_externe_est_obligatoire'),
 				);
 			}
 			if ($documentType === self::TYPE_UPLOADED_FILE && !$isCollaboraTemplate && $uploadedFile === null && !$allowEmptyTypePayload) {
 				return array(
 					'status' => false,
-					'text' => 'Un fichier est obligatoire pour ce type de document.',
+					'text' => self::uiMessage('un_fichier_est_obligatoire_pour_ce_type_de_document'),
 				);
 			}
 			if ($documentType === self::TYPE_NEXTCLOUD_FOLDER && $nextcloudFolderPath === '') {
 				return array(
 					'status' => false,
-					'text' => 'Le chemin du dossier NextCloud est obligatoire et ne peut pas contenir de remontee de dossier.',
+					'text' => self::uiMessage('le_chemin_du_dossier_nextcloud_est_obligatoire_et_ne_peut_pas_contenir_de_remontee_de_doss'),
 				);
 			}
 			$keywords = trim((string)($values['keywords'] ?? ''));
@@ -6002,7 +6094,7 @@
 
 					return array(
 						'status' => false,
-						'text' => 'Organisation introuvable.',
+						'text' => self::uiMessage('organisation_introuvable'),
 					);
 				}
 
@@ -6013,7 +6105,7 @@
 
 					return array(
 						'status' => false,
-						'text' => 'Le format PV n est pas active pour cette organisation.',
+						'text' => self::uiMessage('le_format_pv_n_est_pas_active_pour_cette_organisation'),
 					);
 				}
 
@@ -6029,7 +6121,7 @@
 
 						return array(
 							'status' => false,
-							'text' => 'Evenement associe introuvable.',
+							'text' => self::uiMessage('evenement_associe_introuvable'),
 						);
 					}
 				}
@@ -6041,7 +6133,7 @@
 
 					return array(
 						'status' => false,
-						'text' => 'Le stockage de documents n est pas configure pour cette organisation.',
+						'text' => self::uiMessage('le_stockage_de_documents_n_est_pas_configure_pour_cette_organisation'),
 					);
 				}
 
@@ -6052,7 +6144,7 @@
 
 					return array(
 						'status' => false,
-					'text' => 'Le stockage de documents n est pas configure pour cette organisation.',
+					'text' => self::uiMessage('le_stockage_de_documents_n_est_pas_configure_pour_cette_organisation'),
 					);
 				}
 
@@ -6074,7 +6166,7 @@
 							$pdo->rollBack();
 						}
 
-						return array('status' => false, 'text' => 'Un stockage de documents doit etre configure avant Collabora.');
+						return array('status' => false, 'text' => self::uiMessage('un_stockage_de_documents_doit_etre_configure_avant_collabora'));
 					}
 
 					if (!omoCollaboraHasConfig($organization)) {
@@ -6082,7 +6174,7 @@
 							$pdo->rollBack();
 						}
 
-						return array('status' => false, 'text' => 'Le serveur Collabora n est pas configure pour cette organisation.');
+						return array('status' => false, 'text' => self::uiMessage('le_serveur_collabora_n_est_pas_configure_pour_cette_organisation'));
 					}
 				}
 
@@ -6091,7 +6183,7 @@
 						$pdo->rollBack();
 					}
 
-					return array('status' => false, 'text' => 'Le serveur SpaceDeck n est pas configure pour cette organisation.');
+					return array('status' => false, 'text' => self::uiMessage('le_serveur_spacedeck_n_est_pas_configure_pour_cette_organisation'));
 				}
 
 				if ($documentType === self::TYPE_ETHERPAD && !omoEtherpadCanUseEditingSessions($organization)) {
@@ -6101,7 +6193,7 @@
 
 					return array(
 						'status' => false,
-						'text' => 'Le serveur Etherpad ou son domaine de session n est pas configure pour cette organisation.',
+						'text' => self::uiMessage('le_serveur_etherpad_ou_son_domaine_de_session_n_est_pas_configure_pour_cette_organisation'),
 					);
 				}
 
@@ -6112,7 +6204,7 @@
 
 					return array(
 						'status' => false,
-						'text' => 'Le serveur EtherCalc n est pas configure.',
+						'text' => self::uiMessage('le_serveur_ethercalc_n_est_pas_configure'),
 					);
 				}
 
@@ -6164,7 +6256,7 @@
 
 						return is_array($blankFileResult)
 							? $blankFileResult
-							: array('status' => false, 'text' => 'Impossible de creer le fichier Collabora.');
+							: array('status' => false, 'text' => self::uiMessage('impossible_de_creer_le_fichier_collabora'));
 					}
 
 					$uploadedFile = array(
@@ -6206,7 +6298,7 @@
 							$pdo->rollBack();
 						}
 
-						return array('status' => false, 'text' => 'Impossible de creer le tableau blanc SpaceDeck.');
+						return array('status' => false, 'text' => self::uiMessage('impossible_de_creer_le_tableau_blanc_spacedeck'));
 					}
 
 					$this->set('spacedeckspaceid', $createdSpaceDeckSpaceId);
@@ -6282,7 +6374,7 @@
 						if ($startedTransaction && $pdo->inTransaction()) {
 							$pdo->rollBack();
 						}
-						return array('status' => false, 'text' => 'Modele de PV introuvable.');
+						return array('status' => false, 'text' => self::uiMessage('modele_de_pv_introuvable'));
 					}
 
 					$templateCopyResult = $this->copyPvAgendaFromTemplate($pvTemplate, $organizationId, $userId, $resolvedHolonId);
@@ -6292,7 +6384,7 @@
 						}
 						return is_array($templateCopyResult)
 							? $templateCopyResult
-							: array('status' => false, 'text' => 'Impossible de copier le modele de PV.');
+							: array('status' => false, 'text' => self::uiMessage('impossible_de_copier_le_modele_de_pv'));
 					}
 				}
 
@@ -6311,7 +6403,7 @@
 
 						return is_array($etherpadResult)
 							? $etherpadResult
-							: array('status' => false, 'text' => 'Impossible de creer le pad Etherpad.');
+							: array('status' => false, 'text' => self::uiMessage('impossible_de_creer_le_pad_etherpad'));
 					}
 
 					$createdEtherpadPadId = trim((string)($etherpadResult['padId'] ?? ''));
@@ -6327,7 +6419,7 @@
 
 						return is_array($etherpadSaveResult)
 							? $etherpadSaveResult
-							: array('status' => false, 'text' => 'Impossible d enregistrer le pad Etherpad.');
+							: array('status' => false, 'text' => self::uiMessage('impossible_d_enregistrer_le_pad_etherpad'));
 					}
 				}
 
@@ -6340,7 +6432,7 @@
 
 						return is_array($ethercalcResult)
 							? $ethercalcResult
-							: array('status' => false, 'text' => 'Impossible de creer le tableur EtherCalc.');
+							: array('status' => false, 'text' => self::uiMessage('impossible_de_creer_le_tableur_ethercalc'));
 					}
 
 					$createdEthercalcRoomId = trim((string)($ethercalcResult['roomId'] ?? ''));
@@ -6356,7 +6448,7 @@
 
 						return is_array($ethercalcSaveResult)
 							? $ethercalcSaveResult
-							: array('status' => false, 'text' => 'Impossible d enregistrer le tableur EtherCalc.');
+							: array('status' => false, 'text' => self::uiMessage('impossible_d_enregistrer_le_tableur_ethercalc'));
 					}
 				}
 
@@ -6395,7 +6487,7 @@
 
 				return array(
 					'status' => false,
-					'text' => 'Impossible de creer ce document.',
+					'text' => self::uiMessage('impossible_de_creer_ce_document'),
 				);
 			}
 		}
@@ -6502,7 +6594,7 @@
 			if (!in_array($values['document_type'], [self::TYPE_PV, self::TYPE_HTML, self::TYPE_EXTERNAL_LINK, self::TYPE_UPLOADED_FILE, self::TYPE_ETHERPAD, self::TYPE_ETHERCALC], true)) {
 				$source = new self();
 				if (!$source->load((int)$blueprint['source_id']) || (int)$source->get('IDorganization') !== $organizationId) {
-					return ['status' => false, 'text' => 'Document de reference indisponible.'];
+					return ['status' => false, 'text' => self::uiMessage('document_de_reference_indisponible')];
 				}
 				$visited = [];
 				return $this->copyDocumentTemplateInOrganizationContext($source, $organizationId, $holonId, $userId, $values, $visited);
@@ -6513,7 +6605,7 @@
 				$temporaryFile = tempnam(sys_get_temp_dir(), 'omo-recurrence-');
 				if ($body === false || $temporaryFile === false || file_put_contents($temporaryFile, $body) !== strlen($body)) {
 					if ($temporaryFile) { @unlink($temporaryFile); }
-					return ['status' => false, 'text' => 'Impossible de preparer le fichier de la reunion.'];
+					return ['status' => false, 'text' => self::uiMessage('impossible_de_preparer_le_fichier_de_la_reunion')];
 				}
 				$values['uploaded_file'] = ['error' => UPLOAD_ERR_OK, 'tmp_name' => $temporaryFile,
 					'name' => $blueprint['file']['name'], 'type' => $blueprint['file']['type'], 'size' => strlen($body)];
@@ -6548,7 +6640,7 @@
 					$saved = $point->save(); if (empty($saved['status'])) { return $saved; }
 					$copied[(int)$data['id']] = (int)$point->getId(); unset($pending[$index]); $progress = true;
 				}
-				if (!$progress) { return ['status' => false, 'text' => 'Structure du PV de reference invalide.']; }
+				if (!$progress) { return ['status' => false, 'text' => self::uiMessage('structure_du_pv_de_reference_invalide')]; }
 			}
 			foreach ($blueprint['tabs'] as $data) {
 				$tab = new DocumentApplicationTab(); $tab->set('IDdocument', $this->getId());
@@ -6557,7 +6649,7 @@
 				$saved = $tab->save(); if (empty($saved['status'])) { return $saved; }
 			}
 			if (isset($blueprint['title_date_pattern']) && !$event->registerDefaultDocumentTitle($this, $blueprint['title_date_pattern'])) {
-				return ['status' => false, 'text' => 'Impossible de conserver le nom automatique du document.'];
+				return ['status' => false, 'text' => self::uiMessage('impossible_de_conserver_le_nom_automatique_du_document')];
 			}
 			$synced = $event->syncAssociatedDocumentEventDate();
 			if (empty($synced['status'])) { return $synced; }
@@ -6572,7 +6664,7 @@
 			array $overrides = array()
 		): array {
 			if (!$template->canUseAsDocumentTemplateInOrganizationContext($organizationId, $holonId)) {
-				return array('status' => false, 'text' => 'Modele de document invalide ou inaccessible.');
+				return array('status' => false, 'text' => self::uiMessage('modele_de_document_invalide_ou_inaccessible'));
 			}
 
 			$sourceDocumentIds = array();
@@ -6589,7 +6681,7 @@
 		): array {
 			$templateId = (int)$template->getId();
 			if ($templateId <= 0 || isset($sourceDocumentIds[$templateId])) {
-				return array('status' => false, 'text' => 'La structure du dossier modele est invalide.');
+				return array('status' => false, 'text' => self::uiMessage('la_structure_du_dossier_modele_est_invalide'));
 			}
 			$sourceDocumentIds[$templateId] = true;
 
@@ -6620,13 +6712,13 @@
 			} elseif ($templateType === self::TYPE_UPLOADED_FILE && $template->hasStoredFile()) {
 				$organization = new \dbObject\Organization();
 				if (!$organization->load($organizationId)) {
-					return array('status' => false, 'text' => 'Organisation introuvable.');
+					return array('status' => false, 'text' => self::uiMessage('organisation_introuvable'));
 				}
 				$downloadResult = $organization->downloadDocumentFileFromStorage((string)$template->get('storedfilepath'));
 				if (!is_array($downloadResult) || empty($downloadResult['status'])) {
 					return is_array($downloadResult)
 						? $downloadResult
-						: array('status' => false, 'text' => 'Impossible de récupérer le fichier du modèle.');
+						: array('status' => false, 'text' => self::uiMessage('impossible_de_recuperer_le_fichier_du_modele'));
 				}
 
 				$temporaryFile = tempnam(sys_get_temp_dir(), 'omo-document-template-');
@@ -6635,7 +6727,7 @@
 					if (is_string($temporaryFile) && $temporaryFile !== '') {
 						@unlink($temporaryFile);
 					}
-					return array('status' => false, 'text' => 'Impossible de préparer le fichier du modèle.');
+					return array('status' => false, 'text' => self::uiMessage('impossible_de_preparer_le_fichier_du_modele'));
 				}
 
 				$values['uploaded_file'] = array(
@@ -6646,7 +6738,7 @@
 					'size' => strlen($fileContents),
 				);
 			} elseif ($templateType !== self::TYPE_ETHERPAD && $templateType !== self::TYPE_ETHERCALC) {
-				return array('status' => false, 'text' => 'Ce type de document ne peut pas etre utilise comme modele.');
+				return array('status' => false, 'text' => self::uiMessage('ce_type_de_document_ne_peut_pas_etre_utilise_comme_modele'));
 			}
 
 			try {
@@ -6686,7 +6778,7 @@
 						$this->deleteDocumentTree();
 						return is_array($childCopyResult)
 							? $childCopyResult
-							: array('status' => false, 'text' => 'Impossible de copier le contenu du dossier modele.');
+							: array('status' => false, 'text' => self::uiMessage('impossible_de_copier_le_contenu_du_dossier_modele'));
 					}
 				}
 
@@ -6698,7 +6790,7 @@
 				$organization = new \dbObject\Organization();
 				$copyResult = $organization->load($organizationId)
 					? omoEtherpadCopyDocumentPadContents($organization, $template->getEtherpadPadId(), $this->getEtherpadPadId())
-					: array('status' => false, 'text' => 'Organisation introuvable.');
+					: array('status' => false, 'text' => self::uiMessage('organisation_introuvable'));
 			} elseif ($templateType === self::TYPE_ETHERCALC) {
 				require_once dirname(__DIR__, 2) . '/common/ethercalc.php';
 				$copyResult = omoEthercalcCopyDocumentSheetContents($template->getEthercalcRoomId(), $this->getEthercalcRoomId());
@@ -6713,7 +6805,7 @@
 			$this->delete();
 			return is_array($copyResult)
 				? $copyResult
-				: array('status' => false, 'text' => 'Impossible de copier le contenu du modèle.');
+				: array('status' => false, 'text' => self::uiMessage('impossible_de_copier_le_contenu_du_modele'));
 		}
 
 		protected function deleteDocumentTree(): bool
@@ -6736,7 +6828,7 @@
 			if ((int)$this->getId() <= 0 || (int)$this->get('IDorganization') !== $organizationId) {
 				return array(
 					'status' => false,
-					'text' => 'Document introuvable.',
+					'text' => self::uiMessage('document_introuvable'),
 				);
 			}
 
@@ -6752,7 +6844,7 @@
 			) {
 				return array(
 					'status' => false,
-					'text' => 'Acces refuse.',
+					'text' => self::uiMessage('acces_refuse'),
 				);
 			}
 
@@ -6770,7 +6862,7 @@
 			if ($title === '') {
 				return array(
 					'status' => false,
-					'text' => 'Le titre est obligatoire.',
+					'text' => self::uiMessage('le_titre_est_obligatoire'),
 				);
 			}
 
@@ -6786,7 +6878,7 @@
 			if ($documentType === self::TYPE_NEXTCLOUD_FOLDER && $nextcloudFolderPath === '') {
 				return array(
 					'status' => false,
-					'text' => 'Le chemin du dossier NextCloud est obligatoire et ne peut pas contenir de remontee de dossier.',
+					'text' => self::uiMessage('le_chemin_du_dossier_nextcloud_est_obligatoire_et_ne_peut_pas_contenir_de_remontee_de_doss'),
 				);
 			}
 			$uploadedFile = $canEditContent && $documentType === self::TYPE_UPLOADED_FILE
@@ -6808,13 +6900,13 @@
 			if ($documentType === self::TYPE_EXTERNAL_LINK && $externalUrl === '') {
 				return array(
 					'status' => false,
-					'text' => 'L URL externe est obligatoire.',
+					'text' => self::uiMessage('l_url_externe_est_obligatoire'),
 				);
 			}
 			if ($documentType === self::TYPE_UPLOADED_FILE && $uploadedFile === null && $removeUploadedFile && !$this->hasStoredFile()) {
 				return array(
 					'status' => false,
-					'text' => 'Aucun fichier n est actuellement associe a ce document.',
+					'text' => self::uiMessage('aucun_fichier_n_est_actuellement_associe_a_ce_document'),
 				);
 			}
 			$keywords = $canManageDocument || $canManagePvDocument
@@ -6876,7 +6968,7 @@
 
 					return array(
 						'status' => false,
-						'text' => 'Organisation introuvable.',
+						'text' => self::uiMessage('organisation_introuvable'),
 					);
 				}
 
@@ -6891,7 +6983,7 @@
 
 					return array(
 						'status' => false,
-						'text' => 'Les fichiers sans contexte ne peuvent pas etre modifies depuis cet editeur.',
+						'text' => self::uiMessage('les_fichiers_sans_contexte_ne_peuvent_pas_etre_modifies_depuis_cet_editeur'),
 					);
 				}
 
@@ -6907,7 +6999,7 @@
 
 					return array(
 						'status' => false,
-						'text' => 'Le stockage de documents n est pas configure pour cette organisation.',
+						'text' => self::uiMessage('le_stockage_de_documents_n_est_pas_configure_pour_cette_organisation'),
 					);
 				}
 
@@ -6922,7 +7014,7 @@
 
 					return array(
 						'status' => false,
-					'text' => 'Le stockage de documents n est pas configure pour cette organisation.',
+					'text' => self::uiMessage('le_stockage_de_documents_n_est_pas_configure_pour_cette_organisation'),
 					);
 				}
 
@@ -6944,7 +7036,7 @@
 					if (!$currentPv || self::normalizePvStage($currentPv['pvstage']) !== $this->getPvStage()
 						|| self::normalizePvStage($currentPv['pvstage']) === self::PV_STAGE_VALIDATED) {
 						if ($startedTransaction && $pdo->inTransaction()) $pdo->rollBack();
-						return ['status' => false, 'text' => 'L etape du PV a change. Rechargez le document avant de continuer.'];
+						return ['status' => false, 'text' => self::uiMessage('l_etape_du_pv_a_change_rechargez_le_document_avant_de_continuer')];
 					}
 					$this->set('pv_review_started_at', $currentPv['pv_review_started_at']);
 				}
@@ -7038,7 +7130,7 @@
 
 				return array(
 					'status' => false,
-					'text' => 'Impossible de mettre a jour ce document.',
+					'text' => self::uiMessage('impossible_de_mettre_a_jour_ce_document'),
 				);
 			}
 		}
@@ -7167,21 +7259,21 @@
 			if ($targetHolonId < 0 || $targetParentDocumentId < 0) {
 				return array(
 					'status' => false,
-					'text' => 'Destination invalide.',
+					'text' => self::uiMessage('destination_invalide'),
 				);
 			}
 
 			if ((int)$this->getId() <= 0 || (int)$this->get('IDorganization') !== $organizationId) {
 				return array(
 					'status' => false,
-					'text' => 'Document introuvable.',
+					'text' => self::uiMessage('document_introuvable'),
 				);
 			}
 
 			if ($userId <= 0 || !$this->canMoveInOrganizationContext($organizationId, $userId)) {
 				return array(
 					'status' => false,
-					'text' => 'Acces refuse.',
+					'text' => self::uiMessage('acces_refuse'),
 				);
 			}
 
@@ -7189,7 +7281,7 @@
 			if (!$organization->load($organizationId)) {
 				return array(
 					'status' => false,
-					'text' => 'Organisation introuvable.',
+					'text' => self::uiMessage('organisation_introuvable'),
 				);
 			}
 
@@ -7225,7 +7317,7 @@
 				) {
 					return array(
 						'status' => false,
-						'text' => 'Destination invalide.',
+						'text' => self::uiMessage('destination_invalide'),
 					);
 				}
 			}
@@ -7246,7 +7338,7 @@
 			) {
 				return array(
 					'status' => false,
-					'text' => 'Acces refuse pour cette destination.',
+					'text' => self::uiMessage('acces_refuse_pour_cette_destination'),
 				);
 			}
 
@@ -7256,7 +7348,7 @@
 			) {
 				return array(
 					'status' => false,
-					'text' => 'Le document est deja dans cette destination.',
+					'text' => self::uiMessage('le_document_est_deja_dans_cette_destination'),
 				);
 			}
 
@@ -7368,7 +7460,7 @@
 
 				return array(
 					'status' => false,
-					'text' => 'Impossible de deplacer ce document.',
+					'text' => self::uiMessage('impossible_de_deplacer_ce_document'),
 				);
 			}
 		}
@@ -7451,7 +7543,7 @@
 				if ((int)$holon->get('IDtypeholon') !== 1) {
 					return array(
 						'status' => false,
-                        'text' => 'La visibilite role demande un document lie a un role.',
+                        'text' => self::uiMessage('la_visibilite_role_demande_un_document_lie_a_un_role'),
 					);
 				}
 
@@ -7472,7 +7564,7 @@
 			if ($circleId <= 0) {
 				return array(
 					'status' => false,
-                    'text' => 'La visibilite cercle demande un document place dans un cercle ou dans un role de cercle.',
+                    'text' => self::uiMessage('la_visibilite_cercle_demande_un_document_place_dans_un_cercle_ou_dans_un_role_de_cercle'),
 				);
 			}
 
@@ -7488,7 +7580,7 @@
 			if ((int)$this->getId() <= 0 || $organizationId <= 0) {
 				return array(
 					'status' => false,
-					'text' => 'Contexte de visibilite invalide.',
+					'text' => self::uiMessage('contexte_de_visibilite_invalide'),
 				);
 			}
 
@@ -7514,7 +7606,7 @@
 			if ((int)$this->getId() <= 0 || $organizationId <= 0) {
 				return array(
 					'status' => false,
-					'text' => 'Contexte d edition invalide.',
+					'text' => self::uiMessage('contexte_d_edition_invalide'),
 				);
 			}
 

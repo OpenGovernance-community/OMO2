@@ -23,7 +23,7 @@ class Tip extends DbObject
     public static function attributeDescriptions()
     {
         return ['link' => 'Lien interne commencant par / ou #, ou adresse externe https://...',
-            'active' => 'Les astuces publiees sont proposees a tous les membres du logiciel.'];
+            'active' => 'Les astuces publiées sont proposées a tous les membres du logiciel.'];
     }
     public static function getOrder() { return 'id DESC'; }
     public static function isAvailable(): bool { return self::tableExists('tip'); }

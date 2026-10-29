@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/modules/context.php';
 require_once __DIR__ . '/modules/import_common.php';
@@ -10,7 +11,7 @@ use dbObject\DecisionProcess;
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
     omoDecisionImportJsonResponse(405, [
         'status' => false,
-        'message' => 'Methode non autorisee.',
+        'message' => omoDecisionUiT('methode_non_autorisee'),
     ]);
 }
 
@@ -18,28 +19,28 @@ $context = omoDecisionResolveEditorContext($_POST);
 if (empty($context['status'])) {
     omoDecisionImportJsonResponse((int)($context['code'] ?? 400), [
         'status' => false,
-        'message' => 'Contexte d import invalide.',
+        'message' => omoDecisionUiT('contexte_d_import_invalide'),
     ]);
 }
 
 if (!empty($context['decision']) || !empty($context['decisionId'])) {
     omoDecisionImportJsonResponse(400, [
         'status' => false,
-        'message' => 'L import est reserve a la creation d un nouveau processus.',
+        'message' => omoDecisionUiT('l_import_est_reserve_a_la_creation_d_un_nouveau_processus'),
     ]);
 }
 
 if (empty($context['canManage'])) {
     omoDecisionImportJsonResponse(403, [
         'status' => false,
-        'message' => 'Acces refuse pour cet import.',
+        'message' => omoDecisionUiT('acces_refuse_pour_cet_import'),
     ]);
 }
 
 if (empty($_FILES['import_file']) || !is_array($_FILES['import_file'])) {
     omoDecisionImportJsonResponse(400, [
         'status' => false,
-        'message' => 'Aucun fichier d import n a ete envoye.',
+        'message' => omoDecisionUiT('aucun_fichier_d_import_n_a_ete_envoye'),
     ]);
 }
 
@@ -47,7 +48,7 @@ $loadedFile = omoDecisionImportLoadUploadedFile($_FILES['import_file']);
 if (empty($loadedFile['status'])) {
     omoDecisionImportJsonResponse(400, [
         'status' => false,
-        'message' => (string)($loadedFile['message'] ?? 'Impossible de lire le fichier d import.'),
+        'message' => (string)($loadedFile['message'] ?? omoDecisionUiT('impossible_de_lire_le_fichier_d_import')),
     ]);
 }
 
@@ -55,7 +56,7 @@ $normalizedImport = omoDecisionImportNormalizePayload($loadedFile);
 if (empty($normalizedImport['status'])) {
     omoDecisionImportJsonResponse(422, [
         'status' => false,
-        'message' => (string)($normalizedImport['message'] ?? 'Impossible d interpreter le fichier d import.'),
+        'message' => (string)($normalizedImport['message'] ?? omoDecisionUiT('impossible_d_interpreter_le_fichier_d_import')),
     ]);
 }
 
@@ -63,7 +64,7 @@ $blocks = is_array($normalizedImport['blocks'] ?? null) ? $normalizedImport['blo
 if (count($blocks) === 0) {
     omoDecisionImportJsonResponse(422, [
         'status' => false,
-        'message' => 'Aucun bloc importable n a ete trouve.',
+        'message' => omoDecisionUiT('aucun_bloc_importable_n_a_ete_trouve'),
     ]);
 }
 
@@ -77,7 +78,7 @@ $pdo = DbObject::getPdo();
 if (!$pdo) {
     omoDecisionImportJsonResponse(500, [
         'status' => false,
-        'message' => 'Connexion a la base impossible.',
+        'message' => omoDecisionUiT('connexion_a_la_base_impossible'),
     ]);
 }
 
@@ -107,7 +108,7 @@ try {
     $resolvedVisibility = $decision->resolveVisibilityRuleInput((string)$decision->get('visibility_type'));
     if (($resolvedVisibility['status'] ?? false) !== true) {
         throw new InvalidArgumentException(
-            trim((string)($resolvedVisibility['text'] ?? 'Visibilite invalide pour ce contexte d import.'))
+            trim((string)($resolvedVisibility['text'] ?? omoDecisionUiT('visibilite_invalide_pour_ce_contexte_d_import')))
         );
     }
 
@@ -160,7 +161,7 @@ try {
 
         if (!is_array($importResult) || empty($importResult['status'])) {
             throw new InvalidArgumentException(
-                trim((string)($importResult['message'] ?? 'Impossible d importer un bloc du scrutin.'))
+                trim((string)($importResult['message'] ?? omoDecisionUiT('impossible_d_importer_un_bloc_du_scrutin')))
             );
         }
     }
@@ -184,7 +185,7 @@ try {
 
     omoDecisionImportJsonResponse(500, [
         'status' => false,
-        'message' => 'Impossible d importer ce scrutin pour le moment.',
+        'message' => omoDecisionUiT('impossible_d_importer_ce_scrutin_pour_le_moment'),
     ]);
 }
 
@@ -196,7 +197,7 @@ $redirectGroupId = $primaryGroup instanceof DecisionGroup ? (int)$primaryGroup->
 
 omoDecisionImportJsonResponse(200, [
     'status' => true,
-    'message' => 'Scrutin importe.',
+    'message' => omoDecisionUiT('scrutin_importe'),
     'decisionId' => (int)$decision->getId(),
     'redirectUrl' => omoDecisionBuildEditorUrl($organizationId, $targetHolonId, (int)$decision->getId(), $redirectMethod, 'manage', $redirectGroupId),
     'drawerTitle' => 'Prises de decision',

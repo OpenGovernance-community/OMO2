@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once __DIR__ . '/bootstrap.php';
 
 commonRestoreRememberedUser();
@@ -19,7 +20,7 @@ if ($currentUserId <= 0 || !$hasOrganizationAccess || $organizationId <= 0) {
     echo json_encode(array(
         'status' => false,
         'success' => false,
-        'message' => 'Acces refuse.',
+        'message' => omoLmsUiT('acces_refuse'),
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -35,7 +36,7 @@ if (($managementContext['link'] ?? null) === null || !$parcoursMission->load([
     echo json_encode(array(
         'status' => false,
         'success' => false,
-        'message' => 'Mission introuvable.',
+        'message' => omoLmsUiT('mission_introuvable'),
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -45,7 +46,7 @@ if (empty($managementContext['canEditContent'])) {
     echo json_encode(array(
         'status' => false,
         'success' => false,
-        'message' => 'Vous n avez pas le droit de modifier ce parcours.',
+        'message' => omoLmsUiT('vous_n_avez_pas_le_droit_de_modifier_ce_parcours'),
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -57,7 +58,7 @@ if (trim((string)$mission->get('title')) === '') {
     echo json_encode(array(
         'status' => false,
         'success' => false,
-        'message' => 'Le titre est obligatoire.',
+        'message' => omoLmsUiT('le_titre_est_obligatoire'),
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -66,7 +67,7 @@ if (trim((string)$mission->get('resume')) === '') {
     echo json_encode(array(
         'status' => false,
         'success' => false,
-        'message' => 'Le resume est obligatoire.',
+        'message' => omoLmsUiT('le_resume_est_obligatoire'),
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -98,6 +99,6 @@ if (!is_array($linkSaveResult) || empty($linkSaveResult['status'])) {
 echo json_encode(array(
     'status' => true,
     'success' => true,
-    'message' => 'Mission mise a jour.',
+    'message' => omoLmsUiT('mission_mise_a_jour'),
     'id' => (int)$mission->getId(),
 ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

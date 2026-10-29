@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once __DIR__ . '/bootstrap.php';
 
 commonRestoreRememberedUser();
@@ -20,7 +21,7 @@ if ($currentUserId <= 0 || !$hasOrganizationAccess || $organizationId <= 0 || $p
     echo json_encode([
         'status' => false,
         'success' => false,
-        'message' => 'Acces refuse.',
+        'message' => omoLmsUiT('acces_refuse'),
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -30,7 +31,7 @@ if (empty($managementContext['canEditContent'])) {
     echo json_encode([
         'status' => false,
         'success' => false,
-        'message' => 'Vous n avez pas le droit de modifier ce parcours.',
+        'message' => omoLmsUiT('vous_n_avez_pas_le_droit_de_modifier_ce_parcours'),
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -50,5 +51,5 @@ if (!is_array($result) || empty($result['status'])) {
 echo json_encode([
     'status' => true,
     'success' => true,
-    'message' => 'Prerequis retire.',
+    'message' => omoLmsUiT('prerequis_retire'),
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

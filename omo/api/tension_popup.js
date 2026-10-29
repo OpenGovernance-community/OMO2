@@ -1,3 +1,5 @@
+var omoUiText = window.omoUiText || function (key, fallback) { return fallback; };
+var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; };
 (function () {
     if (typeof window.__omoPopupCleanup === 'function') {
         window.__omoPopupCleanup();
@@ -54,8 +56,8 @@
         const wordCount = countWords(titleInput.value);
         const isValid = wordCount <= 3;
         titleHint.textContent = wordCount > 0
-            ? wordCount + ' / 3 mots'
-            : '3 mots maximum.';
+            ? wordCount + omoUiText("3_mots", " / 3 mots")
+            : omoUiText("3_mots_maximum", "3 mots maximum.");
         titleHint.style.color = isValid ? '' : '#b91c1c';
 
         return isValid;
@@ -85,7 +87,7 @@
         event.preventDefault();
 
         if (!refreshTitleHint()) {
-            setFeedback('Le titre doit contenir au maximum 3 mots.', 'error');
+            setFeedback(omoUiText("le_titre_doit_contenir_au_maximum_3_mots", "Le titre doit contenir au maximum 3 mots."), 'error');
             if (titleInput) {
                 titleInput.focus();
             }
@@ -94,7 +96,7 @@
 
         const submitUrl = root.getAttribute('data-submit-url') || '/omo/api/tension_save.php';
         const formData = new FormData(form);
-        setFeedback('Enregistrement...', '');
+        setFeedback(omoUiText("enregistrement", "Enregistrement..."), '');
 
         if (submitButton) {
             submitButton.disabled = true;
@@ -124,7 +126,7 @@
                     throw new Error(result && result.data && result.data.message ? result.data.message : 'save_failed');
                 }
 
-                setFeedback(result.data.message || 'Tension enregistree.', 'success');
+                setFeedback(result.data.message || omoUiText("tension_enregistree", "Tension enregistrée."), 'success');
                 form.reset();
                 refreshTitleHint();
 
@@ -137,7 +139,7 @@
             .catch(function (error) {
                 const message = error && error.message && error.message !== 'save_failed'
                     ? error.message
-                    : 'Impossible d enregistrer la tension.';
+                    : omoUiText("impossible_d_enregistrer_la_tension", "Impossible d’enregistrer la tension.");
                 setFeedback(message, 'error');
             })
             .finally(function () {

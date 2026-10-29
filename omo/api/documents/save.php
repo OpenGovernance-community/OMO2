@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once dirname(__DIR__) . '/projects/shared.php';
 
@@ -13,7 +14,7 @@ if ($currentUserId <= 0) {
     http_response_code(403);
     echo json_encode(array(
         'status' => false,
-        'message' => 'Accès refusé.',
+        'message' => omoDocumentsUiT('acces_refuse'),
     ));
     exit;
 }
@@ -47,7 +48,7 @@ if ($projectId > 0) {
         http_response_code(403);
         echo json_encode(array(
             'status' => false,
-            'message' => 'Accès refusé.',
+            'message' => omoDocumentsUiT('acces_refuse'),
         ));
         exit;
     }
@@ -57,7 +58,7 @@ if ($projectId > 0) {
         http_response_code(403);
         echo json_encode(array(
             'status' => false,
-            'message' => 'Contexte de projet invalide.',
+            'message' => omoDocumentsUiT('contexte_de_projet_invalide'),
         ));
         exit;
     }
@@ -78,7 +79,7 @@ if (
     http_response_code(403);
     echo json_encode(array(
         'status' => false,
-        'message' => 'Accès refusé.',
+        'message' => omoDocumentsUiT('acces_refuse'),
     ));
     exit;
 }
@@ -87,7 +88,7 @@ if ($documentId <= 0 && $title === '') {
     http_response_code(422);
     echo json_encode(array(
         'status' => false,
-        'message' => 'Le titre est obligatoire.',
+        'message' => omoDocumentsUiT('le_titre_est_obligatoire'),
     ));
     exit;
 }
@@ -122,7 +123,7 @@ if ($documentId > 0) {
         http_response_code(403);
         echo json_encode(array(
             'status' => false,
-            'message' => 'Accès refusé.',
+            'message' => omoDocumentsUiT('acces_refuse'),
         ));
         exit;
     }
@@ -142,7 +143,7 @@ if ($documentId > 0) {
         http_response_code(403);
         echo json_encode(array(
             'status' => false,
-            'message' => 'Accès refusé.',
+            'message' => omoDocumentsUiT('acces_refuse'),
         ));
         exit;
     }
@@ -159,7 +160,7 @@ if ($documentId > 0) {
         http_response_code(403);
         echo json_encode(array(
             'status' => false,
-            'message' => 'Accès refusé.',
+            'message' => omoDocumentsUiT('acces_refuse'),
         ));
         exit;
     }
@@ -176,7 +177,7 @@ if (!is_array($result) || ($result['status'] ?? false) !== true) {
     http_response_code(422);
     echo json_encode(array(
         'status' => false,
-        'message' => trim((string)($result['text'] ?? 'Impossible de créer ce document.')),
+        'message' => trim((string)($result['text'] ?? omoDocumentsUiT('impossible_de_creer_ce_document'))),
     ));
     exit;
 }
@@ -191,7 +192,7 @@ if ($projectId > 0) {
             http_response_code(422);
             echo json_encode(array(
                 'status' => false,
-                'message' => 'Impossible d associer le document au projet.',
+                'message' => omoDocumentsUiT('impossible_d_associer_le_document_au_projet'),
             ));
             exit;
         }

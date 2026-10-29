@@ -1,3 +1,5 @@
+var omoUiText = window.omoUiText || function (key, fallback) { return fallback; };
+var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; };
 window.commonPageScripts = window.commonPageScripts || {};
 window.commonPageScripts["/omo/api/parameters/holon-templates/templates.js"] = function (pageConfig, pageScript) {
 (() => {
@@ -416,7 +418,7 @@ function omoHolonTemplateGetMediaDisplayConfig() {
         displayHeight: 160,
         targetWidth: 320,
         targetHeight: 320,
-        emptyText: 'Aucune icône transmise par ce modèle.'
+        emptyText: omoUiText("aucune_icone_transmise_par_ce_modele", "Aucune icône transmise par ce modèle.")
     };
 }
 
@@ -445,7 +447,7 @@ function omoHolonTemplateRenderMediaFields(template, preserveCurrentValue) {
     }
 
     [
-        ['icon', omoHolonTemplateElements.iconField, omoHolonTemplateElements.lockedIcon, 'Icône']
+        ['icon', omoHolonTemplateElements.iconField, omoHolonTemplateElements.lockedIcon, omoUiText("icone", "Icône")]
     ].forEach(function (entry) {
         const kind = entry[0];
         const target = entry[1];
@@ -475,9 +477,9 @@ function omoHolonTemplateRenderMediaFields(template, preserveCurrentValue) {
             targetHeight: config.targetHeight,
             emptyText: config.emptyText,
             labels: {
-                choose: 'Choisir une ' + label.toLowerCase(),
-                clear: 'Effacer',
-                zoom: 'Zoom'
+                choose: omoUiText("choisir_une", "Choisir une ") + label.toLowerCase(),
+                clear: omoUiText("effacer", "Effacer"),
+                zoom: omoUiText("zoom", "Zoom")
             }
         });
     });
@@ -818,7 +820,7 @@ function omoHolonTemplateGroupPermissionCatalog(permissionCatalog) {
         if (!groupsByKey[key]) {
             groupsByKey[key] = {
                 key: key,
-                title: String(permission && permission.groupTitle ? permission.groupTitle : 'Autres droits'),
+                title: String(permission && permission.groupTitle ? permission.groupTitle : omoUiText("autres_droits", "Autres droits")),
                 order: Number(permission && permission.groupOrder ? permission.groupOrder : 999),
                 permissions: []
             };
@@ -1085,7 +1087,7 @@ function omoHolonTemplateApplyInheritedMediaState(template) {
 }
 
 function omoHolonTemplateBuildDraft(inheritsFromId, definitionHolonId) {
-    const firstType = (omoHolonTemplateState.data.types || [])[0] || { id: 1, name: 'Élément' };
+    const firstType = (omoHolonTemplateState.data.types || [])[0] || { id: 1, name: omoUiText("element", "Élément") };
     const suggestedInheritanceId = Number(inheritsFromId || 0);
     const inheritedTemplate = omoHolonTemplateFind(suggestedInheritanceId);
     const suggestedDefinitionHolonId = Number(
@@ -1249,7 +1251,7 @@ function omoHolonTemplateBuildParentOptions(selectedParentId, currentTemplateId)
 function omoHolonTemplateBuildParentOptions(selectedParentId, currentTemplateId) {
     const options = [{
         id: 0,
-        label: 'Aucun heritage direct'
+        label: omoUiText("aucun_heritage_direct", "Aucun héritage direct")
     }];
 
     (omoHolonTemplateState.data.templateCatalog || []).forEach(function (template) {
@@ -1384,15 +1386,15 @@ function omoHolonTemplateBuildDefinitionHolonOptions(selectedHolonId, allowedHol
 function omoHolonTemplateGetValueHelpText(formatId) {
     const numericFormatId = Number(formatId || 0);
     if (numericFormatId === 3) {
-        return 'Laissez vide pour ne rien imposer. Utilisez un nombre entier ou decimal.';
+        return omoUiText("laissez_vide_pour_ne_rien_imposer_utilisez_un_nombre_entier_ou_decimal", "Laissez vide pour ne rien imposer. Utilisez un nombre entier ou décimal.");
     }
     if (numericFormatId === 4) {
-        return 'Laissez vide pour ne rien imposer. La date sera heritee au format AAAA-MM-JJ.';
+        return omoUiText("laissez_vide_pour_ne_rien_imposer_la_date_sera_heritee_au_format_aaaa_mm_jj", "Laissez vide pour ne rien imposer. La date sera héritée au format AAAA-MM-JJ.");
     }
     if (numericFormatId === 2) {
-        return 'Laissez vide pour ne rien imposer. Utilisez une ligne par element si besoin.';
+        return omoUiText("laissez_vide_pour_ne_rien_imposer_utilisez_une_ligne_par_element_si_besoin", "Laissez vide pour ne rien imposer. Utilisez une ligne par élément si besoin.");
     }
-    return 'Si cette valeur reste vide, chaque holon derive pourra definir librement son contenu.';
+    return omoUiText("si_cette_valeur_reste_vide_chaque_holon_derive_pourra_definir_librement_son_contenu", "Si cette valeur reste vide, chaque holon dérivé pourra définir librement son contenu.");
 }
 
 function omoHolonTemplateRenderValueInputHtml(formatId, value) {
@@ -1407,7 +1409,7 @@ function omoHolonTemplateRenderValueInputHtml(formatId, value) {
         return '<input type="date" class="omo-template-property__value" value="' + omoHolonTemplateEscapeHtml(safeValue) + '">';
     }
 
-    return '<textarea class="omo-template-property__value" rows="4" placeholder="Laissez vide pour ne rien imposer.">' + omoHolonTemplateEscapeHtml(safeValue) + '</textarea>';
+    return ("<textarea class=\"omo-template-property__value\" rows=\"4\" placeholder=\"" + omoUiHtml("laissez_vide_pour_ne_rien_imposer", "Laissez vide pour ne rien imposer.") + "\">") + omoHolonTemplateEscapeHtml(safeValue) + '</textarea>';
 }
 
 function omoHolonTemplateCreatePropertyRow(property) {
@@ -1428,23 +1430,23 @@ function omoHolonTemplateCreatePropertyRow(property) {
         + '<div class="omo-template-property__body">'
         + '  <div class="omo-template-property__main">'
         + '      <label class="omo-field">'
-        + '          <span>Nom</span>'
+        + ("          <span>" + omoUiHtml("nom", "Nom") + "</span>")
         + '          <input type="text" class="omo-template-property__name" maxlength="255" value="' + omoHolonTemplateEscapeHtml(property && property.name ? property.name : '') + '" placeholder="Ex.: Raison d etre">'
         + '      </label>'
         + '      <label class="omo-field">'
-        + '          <span>Format</span>'
+        + ("          <span>" + omoUiHtml("format", "Format") + "</span>")
         + '          <select class="omo-template-property__format">' + formatOptions + '</select>'
         + '      </label>'
         + '  </div>'
         + '  <' + ([5, 7].indexOf(propertyFormatId) >= 0 ? 'div' : 'label') + ' class="omo-field omo-template-property__value-field">'
-        + '      <span>Valeur heritee par defaut</span>'
+        + ("      <span>" + omoUiHtml("valeur_heritee_par_defaut", "Valeur héritée par défaut") + "</span>")
         + '      <div class="omo-template-property__value-control">' + omoHolonTemplateRenderValueInputHtml(propertyFormatId, propertyValue) + '</div>'
-        + '      <small>Si cette valeur reste vide, chaque holon derive pourra definir librement son contenu.</small>'
+        + ("      <small>" + omoUiHtml("si_cette_valeur_reste_vide_chaque_holon_derive_pourra_definir_librement_son_contenu", "Si cette valeur reste vide, chaque holon dérivé pourra définir librement son contenu.") + "</small>")
         + '  </' + ([5, 7].indexOf(propertyFormatId) >= 0 ? 'div' : 'label') + '>'
         + '  <div class="omo-template-property__actions">'
-        + '      <button type="button" class="omo-button omo-button--ghost" data-property-move="-1">Monter</button>'
-        + '      <button type="button" class="omo-button omo-button--ghost" data-property-move="1">Descendre</button>'
-        + '      <button type="button" class="omo-button omo-button--danger" data-property-remove="1">Retirer</button>'
+        + ("      <button type=\"button\" class=\"omo-button omo-button--ghost\" data-property-move=\"-1\">" + omoUiHtml("monter", "Monter") + "</button>")
+        + ("      <button type=\"button\" class=\"omo-button omo-button--ghost\" data-property-move=\"1\">" + omoUiHtml("descendre", "Descendre") + "</button>")
+        + ("      <button type=\"button\" class=\"omo-button omo-button--danger\" data-property-remove=\"1\">" + omoUiHtml("retirer", "Retirer") + "</button>")
         + '  </div>'
         + '</div>';
 
@@ -1639,7 +1641,7 @@ function omoHolonTemplateUpdateAuthorityDeletionCounts(authorityRow) {
     const counts = {
         authority: omoHolonTemplateFormatAuthorityDeletionCount(1, 'autorite', 'autorites'),
         children: omoHolonTemplateFormatAuthorityDeletionCount(impact.descendants, 'sous-autorite', 'sous-autorites'),
-        rules: omoHolonTemplateFormatAuthorityDeletionCount(impact.rules, 'regle concernee', 'regles concernees')
+        rules: omoHolonTemplateFormatAuthorityDeletionCount(impact.rules, omoUiText("regle_concernee", "règle concernée"), 'regles concernees')
     };
     Object.keys(counts).forEach(function (name) {
         authorityRow.querySelectorAll('[data-authority-deletion-count="' + name + '"]').forEach(function (element) {
@@ -1714,12 +1716,12 @@ function omoHolonTemplateRenderAuthorityDeletionChoices(authorityId, draft) {
     const prefix = 'template-authority-delete-' + String(authorityId);
     return ''
         + '<div class="omo-template-authority__deletion" data-authority-deletion-options>'
-        + '  <p>Choisissez ce qui doit etre conserve avant validation.</p>'
-        + '  <fieldset><legend>Cette autorite</legend>'
+        + ("  <p>" + omoUiHtml("choisissez_ce_qui_doit_etre_conserve_avant_validation", "Choisissez ce qui doit être conservé avant validation.") + "</p>")
+        + ("  <fieldset><legend>" + omoUiHtml("cette_autorite", "Cette autorité") + "</legend>")
         + '    <label><input type="radio" name="' + prefix + '-authority" value="delete" data-authority-deletion-choice="authority"' + checked('authority', 'delete', authorityFallback) + '> Supprimer definitivement</label>'
         + '    <label><input type="radio" name="' + prefix + '-authority" value="reassign" data-authority-deletion-choice="authority"' + checked('authority', 'reassign', authorityFallback) + '> Remonter au holon parent</label>'
         + '  </fieldset>'
-        + '  <p>Les sous-autorites et les regles seront conservees et rattachees a leur autorite parente si possible.</p>'
+        + ("  <p>" + omoUiHtml("les_sous_autorites_et_les_regles_seront_conservees_et_rattachees_a_leur_autorite_parente_s", "Les sous-autorités et les règles seront conservées et rattachées à leur autorité parente si possible.") + "</p>")
         + '</div>';
 }
 
@@ -1730,7 +1732,7 @@ function omoHolonTemplateRenderAuthorityRow(value) {
     }) : null;
     const draft = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
     if (authorityId > 0 && !draft.editing) {
-        const label = authority ? String(authority.label || '') : 'Autorite #' + String(authorityId);
+        const label = authority ? String(authority.label || '') : omoUiText("autorite_3", "Autorité #") + String(authorityId);
         const details = authority && authority.needsParent ? 'A rattacher manuellement' : '';
         const labelMarkup = authority && authority.isShell ? '<em>' + omoHolonTemplateEscapeHtml(label) + '</em>' : '<strong>' + omoHolonTemplateEscapeHtml(label) + '</strong>';
         return ''
@@ -1738,7 +1740,7 @@ function omoHolonTemplateRenderAuthorityRow(value) {
             + (authority
                 ? '  <button type="button" class="omo-template-authority__edit" data-authority-edit="1">' + labelMarkup + (details ? '<small>' + omoHolonTemplateEscapeHtml(details) + '</small>' : '') + '</button>'
                 : '  <div class="omo-template-authority__edit">' + labelMarkup + '</div>')
-            + '  <button type="button" class="omo-button omo-button--ghost" data-authority-delete="1" aria-label="Supprimer l autorite">&times;</button>'
+            + ("  <button type=\"button\" class=\"omo-button omo-button--ghost\" data-authority-delete=\"1\" aria-label=\"" + omoUiHtml("supprimer_l_autorite", "Supprimer l’autorité") + "\">&times;</button>")
             + omoHolonTemplateRenderAuthorityDeletionChoices(authorityId, draft)
             + '</div>';
     }
@@ -1767,7 +1769,7 @@ function omoHolonTemplateRenderAuthorityRow(value) {
     const rootAuthoritySelected = isLocal && parentId <= 0;
     const rootOption = omoHolonTemplateCanCreateRootAuthority()
         ? '<option value="0"' + (parentId <= 0 ? ' selected' : '') + '>Sans autorite parente</option>'
-        : '<option value="0">Autorite parente</option>';
+        : ("<option value=\"0\">" + omoUiHtml("autorite_parente", "Autorité parente") + "</option>");
 
     const delegationField = authorityId > 0 || rootAuthoritySelected ? '' : '      <select class="omo-template-authority__delegation"' + (parentId <= 0 ? ' disabled' : '') + '>'
         + '<option value="partial"' + (delegationMode !== 'complete' ? ' selected' : '') + (partialAllowed ? '' : ' disabled') + '>Delegation partielle</option>'
@@ -1775,9 +1777,9 @@ function omoHolonTemplateRenderAuthorityRow(value) {
     const authorityDetails = (authorityId > 0 || parentId > 0 || rootAuthoritySelected) && (authorityId > 0 || delegationMode !== 'complete')
         ? '      <label class="omo-template-authority__local-label"><input type="checkbox" class="omo-template-authority__local"' + (isLocal ? ' checked' : '') + '> Autorite locale</label>'
             + '      <input type="text" class="omo-template-authority__label" value="' + omoHolonTemplateEscapeHtml(label) + '" placeholder="Nouvelle autorite">'
-            + '      <textarea class="omo-template-authority__description" rows="3" placeholder="Description">' + omoHolonTemplateEscapeHtml(description) + '</textarea>'
+            + ("      <textarea class=\"omo-template-authority__description\" rows=\"3\" placeholder=\"" + omoUiHtml("description", "Description") + "\">") + omoHolonTemplateEscapeHtml(description) + '</textarea>'
         : parentId > 0 && delegationMode === 'complete'
-            ? '      <div class="omo-template-authority__complete-note">L autorite parente sera deleguee completement.</div>'
+            ? ("      <div class=\"omo-template-authority__complete-note\">" + omoUiHtml("l_autorite_parente_sera_deleguee_completement", "L’autorité parente sera déléguée complètement.") + "</div>")
             : '      <label class="omo-template-authority__local-label"><input type="checkbox" class="omo-template-authority__local"' + (isLocal ? ' checked' : '') + '> Autorite locale</label>';
     return ''
         + '<div class="omo-template-authority__row" data-authority-entry' + (authorityId > 0 ? ' data-authority-id="' + authorityId + '"' : '') + '>'
@@ -1803,7 +1805,7 @@ function omoHolonTemplateRenderAuthorityInput(values, disabled) {
         + '  <div class="omo-template-authority__items">' + rows.map(omoHolonTemplateRenderAuthorityRow).join('') + '</div>'
         + (canCreateAuthority
             ? '  <button type="button" class="omo-button omo-button--secondary" data-authority-add="1"' + disabledAttribute + '>Ajouter une autorite</button>'
-            : '  <div class="omo-template-property__empty-note">Les autorites locales de ce modele seront ajoutees automatiquement a ses instances.</div>')
+            : ("  <div class=\"omo-template-property__empty-note\">" + omoUiHtml("les_autorites_locales_de_ce_modele_seront_ajoutees_automatiquement_a_ses_instances", "Les autorités locales de ce modèle seront ajoutées automatiquement a ses instances.") + "</div>"))
         + '</div>';
 }
 
@@ -2093,7 +2095,7 @@ function omoHolonTemplateRenderValueInputHtml(property) {
     if (formatId === 6) {
         let parts = {};
         try { parts = JSON.parse(safeValue) || {}; } catch (error) {}
-        return '<input type="text" class="omo-template-property__value-text-html-title" value="' + omoHolonTemplateEscapeHtml(parts.text || '') + '" placeholder="Texte affiche"' + valueDisabled + '>'
+        return '<input type="text" class="omo-template-property__value-text-html-title" value="' + omoHolonTemplateEscapeHtml(parts.text || '') + "\" placeholder=\"Texte affiche\"" + valueDisabled + '>'
             + '<textarea class="omo-template-property__value-text-html-detail" rows="5" placeholder="Detail HTML"' + valueDisabled + '>' + omoHolonTemplateEscapeHtml(parts.detail || '') + '</textarea>';
     }
 
@@ -2174,33 +2176,33 @@ function omoHolonTemplateCreatePropertyRow(property) {
         ? (omoHolonTemplateTexts.propertyExclude || '')
         : (omoHolonTemplateTexts.propertyRemove || '');
     const originBadge = normalizedProperty.isInherited
-        ? '<span class="omo-template-chip">Heritee</span>'
-        : '<span class="omo-template-chip omo-template-chip--accent">Locale</span>';
+        ? ("<span class=\"omo-template-chip\">" + omoUiHtml("heritee", "Héritée") + "</span>")
+        : ("<span class=\"omo-template-chip omo-template-chip--accent\">" + omoUiHtml("locale", "Locale") + "</span>");
 
     row.innerHTML = ''
         + '<div class="omo-template-property__index"></div>'
         + '<div class="omo-template-property__body">'
         + '  <div class="omo-template-property__main">'
         + '      <label class="omo-field">'
-        + '          <span>Nom</span>'
+        + ("          <span>" + omoUiHtml("nom", "Nom") + "</span>")
         + '          <input type="text" class="omo-template-property__name" maxlength="255" value="' + omoHolonTemplateEscapeHtml(normalizedProperty.name || '') + '" placeholder="Ex.: Raison d etre">'
         + '      </label>'
         + '      <label class="omo-field">'
-        + '          <span>Format</span>'
+        + ("          <span>" + omoUiHtml("format", "Format") + "</span>")
         + '          <select class="omo-template-property__format">' + formatOptions + '</select>'
         + '      </label>'
         + '  </div>'
         + window.omoPropertyTypes.render(normalizedProperty, omoHolonTemplateState.propertyTypes || omoHolonTemplateState.data.propertyTypes, omoHolonTemplateTexts.propertyType, normalizedProperty.canEditDefinition)
         + omoHolonTemplateRenderListConfigHtml(normalizedProperty)
         + '  <' + ([5, 7].indexOf(Number(normalizedProperty.formatId || 0)) >= 0 || normalizedProperty.listItemType === 'value' ? 'div' : 'label') + ' class="omo-field omo-template-property__value-field">'
-        + '      <span>Valeur heritee par defaut</span>'
+        + ("      <span>" + omoUiHtml("valeur_heritee_par_defaut", "Valeur héritée par défaut") + "</span>")
         + '      <div class="omo-template-property__value-control">' + omoHolonTemplateRenderValueInputHtml(normalizedProperty) + '</div>'
         + '      <small class="omo-template-property__value-help">' + omoHolonTemplateEscapeHtml(omoHolonTemplateGetValueHelpText(normalizedProperty.formatId, normalizedProperty)) + '</small>'
         + '  </' + ([5, 7].indexOf(Number(normalizedProperty.formatId || 0)) >= 0 || normalizedProperty.listItemType === 'value' ? 'div' : 'label') + '>'
         + '  <div class="omo-template-property__actions">'
-        + '      <button type="button" class="omo-button omo-button--ghost" data-property-move="-1">Monter</button>'
-        + '      <button type="button" class="omo-button omo-button--ghost" data-property-move="1">Descendre</button>'
-        + '      <button type="button" class="omo-button omo-button--danger" data-property-remove="1">Retirer</button>'
+        + ("      <button type=\"button\" class=\"omo-button omo-button--ghost\" data-property-move=\"-1\">" + omoUiHtml("monter", "Monter") + "</button>")
+        + ("      <button type=\"button\" class=\"omo-button omo-button--ghost\" data-property-move=\"1\">" + omoUiHtml("descendre", "Descendre") + "</button>")
+        + ("      <button type=\"button\" class=\"omo-button omo-button--danger\" data-property-remove=\"1\">" + omoUiHtml("retirer", "Retirer") + "</button>")
         + '  </div>'
         + '</div>';
 
@@ -3456,13 +3458,13 @@ if (omoHolonTemplateElements.root) {
                 if (isPendingDeletion) {
                     authorityRow.removeAttribute('data-authority-delete');
                     authorityRow.classList.remove('is-pending-delete');
-                    deleteAuthorityButton.setAttribute('aria-label', 'Supprimer l autorite');
-                    deleteAuthorityButton.title = 'Supprimer l autorite';
+                    deleteAuthorityButton.setAttribute('aria-label', omoUiText("supprimer_l_autorite", "Supprimer l’autorité"));
+                    deleteAuthorityButton.title = omoUiText("supprimer_l_autorite", "Supprimer l’autorité");
                 } else {
                     authorityRow.setAttribute('data-authority-delete', '1');
                     authorityRow.classList.add('is-pending-delete');
-                    deleteAuthorityButton.setAttribute('aria-label', 'Annuler la suppression');
-                    deleteAuthorityButton.title = 'Annuler la suppression';
+                    deleteAuthorityButton.setAttribute('aria-label', omoUiText("annuler_la_suppression", "Annuler la suppression"));
+                    deleteAuthorityButton.title = omoUiText("annuler_la_suppression", "Annuler la suppression");
                     omoHolonTemplateUpdateAuthorityDeletionCounts(authorityRow);
                 }
             }

@@ -23,10 +23,13 @@ const settle = () => new Promise(resolve => setTimeout(resolve, 0));
     document.body.appendChild(root);
     window.commonTopbarOpenModal = (title, html) => { document.getElementById('commonTopbarModalBody').innerHTML = html; };
     window.commonTopbarCloseModal = () => {};
-    window.commonNotify = message => { throw new Error(message); };
+    const notices = [];
+    window.commonNotify = message => { notices.push(message); };
     window.fetch = async url => ({ok:true, json:async () => String(url).includes('moving_holon_id=5')
         ? {status:true, before, destinations:[{id:3, pathLabel:'Source', isCurrentParent:true}, {id:4, pathLabel:'Destination'}]}
         : {status:true, context:{id:3,label:'Source'}, objects:[{id:5,label:'Role',state:before}]}});
+    window.eval(read('omo/assets/js/simple-html-field.js'));
+    window.eval(read('common/choice/proposal-html.js'));
     window.eval(read('common/choice/governance-actions.js'));
     root.querySelector('[data-add-action]').click();
     const modal = document.getElementById('commonTopbarModalBody');

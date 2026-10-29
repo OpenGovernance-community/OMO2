@@ -97,6 +97,51 @@
 
 	abstract class DbObject
 	{
+        /** Translate model feedback before it is returned to an OMO screen or API. */
+        protected static function uiMessage(string $key, array $variables = []): string
+        {
+            require_once dirname(__DIR__, 2) . '/common/translation_bundles.php';
+            static $sources = [];
+            static $bundles = [];
+            static $loadingBundle = false;
+            $class = str_starts_with($key, 'record.') ? self::class : static::class;
+            $sourceLang = $sources[$class] ??= $class === self::class
+                ? self::commonUiMessageSourceLang() : static::uiMessageSourceLang();
+            // Refresh jobs also save dbObjects. Their own feedback must not queue another refresh.
+            if ($loadingBundle) return \t($key, $variables, $sourceLang, $sourceLang);
+            $locale = \translationBundleResolveRequestLocale('lang', \translationBundleGetSupportedLocales(), 'fr');
+            try {
+                $loadingBundle = true;
+                $bundle = $bundles[$class][$locale] ??= \loadTranslationBundle(
+                    'dbobject_' . strtolower((new \ReflectionClass($class))->getShortName()) . '_messages',
+                    $locale,
+                    $sourceLang
+                );
+            } finally {
+                $loadingBundle = false;
+            }
+            return \t($key, $variables, $bundle, $sourceLang);
+        }
+
+        protected static function uiMessageSourceLang(): array
+        {
+            return [];
+        }
+
+        private static function commonUiMessageSourceLang(): array
+        {
+            return [
+                'record.error' => ['text' => 'Une erreur est survenue.', 'context' => 'Generic database record operation failure.'],
+                'record.save_error' => ['text' => 'Impossible d’enregistrer cet élément.', 'context' => 'Database record save failure.'],
+                'record.not_found' => ['text' => 'Aucun élément trouvé.', 'context' => 'Missing record in history.'],
+                'record.recovered' => ['text' => 'Élément restauré.', 'context' => 'Record restored from its history.'],
+                'record.archived' => ['text' => 'Élément archivé.', 'context' => 'Record saved to its history.'],
+                'record.saved' => ['text' => 'Élément enregistré.', 'context' => 'Successful database record save.'],
+                'record.unique' => ['text' => 'Le champ « {field} » doit être unique. Cette valeur est déjà utilisée.', 'context' => 'Unique field validation; field is its display label.'],
+                'record.empty' => ['text' => 'Aucune donnée transmise.', 'context' => 'Empty form submission validation.'],
+            ];
+        }
+
 		protected $_fieldVisibilityCanViewCache = null;
 		protected $_id; // Id de l'enregistrement
 		protected $_loaded=false; // Id de l'enregistrement
@@ -1669,7 +1714,7 @@
 		function loadBackup($id) {
 			$tableName = $this->getQuotedTableName("_historique");
 			if ($tableName === false) {
-				return array ("status"=>false, "text"=>"Error", "query"=>"invalid table name");
+				return array ("status"=>false, "text"=>self::uiMessage('record.error'), "query"=>"invalid table name");
 			}
 
 			$query="select * from ".$tableName." where `id` = :id";
@@ -1678,13 +1723,13 @@
 				Die ("Query error : ".$query);
 			}
 			if (count($rows)<1) {
-				return array ("status"=>false, "text"=>"No record found", "id"=>"0".$this->_id);
+				return array ("status"=>false, "text"=>self::uiMessage('record.not_found'), "id"=>"0".$this->_id);
 			}
 
 			$row=$rows[count($rows)-1];
 			$this->loadFromArray($row);
 			$this->_id=$id;
-			return array ("status"=>true, "text"=>"The record has been recovered", "id"=>"0".$this->_id);
+			return array ("status"=>true, "text"=>self::uiMessage('record.recovered'), "id"=>"0".$this->_id);
 		}
 
 		function backup() {
@@ -1693,7 +1738,7 @@
 			$tableName = $this->getQuotedTableName("_historique");
 			$fields = $this->getPersistableFields();
 			if ($tableName === false || $fields === false || count($fields)===0) {
-				return array ("status"=>false, "text"=>"Error", "query"=>"invalid archive payload");
+				return array ("status"=>false, "text"=>self::uiMessage('record.error'), "query"=>"invalid archive payload");
 			}
 
 			list($columns, $placeholders, $params) = $this->buildInsertParts($fields, "backup_");
@@ -1701,9 +1746,9 @@
 			$result=self::execute($query, $params);
 			
 			if ($result) {
-				return array ("status"=>true, "text"=>"Record archived", "id"=>"0".$this->_id);
+				return array ("status"=>true, "text"=>self::uiMessage('record.archived'), "id"=>"0".$this->_id);
 			} else {
-				return array ("status"=>false, "text"=>"Error", "query"=>$query);
+				return array ("status"=>false, "text"=>self::uiMessage('record.error'), "query"=>$query);
 			}
 		}
 
@@ -1723,13 +1768,13 @@
 			$tableName = $this->getQuotedTableName();
 			$fields = $this->getPersistableFields();
 			if ($tableName === false || $fields === false) {
-				return array ("status"=>false, "text"=>"Error saving record.", "query"=>"invalid table or field name");
+				return array ("status"=>false, "text"=>self::uiMessage('record.save_error'), "query"=>"invalid table or field name");
 			}
 			
 			foreach ($fields as $key=>$value) {
 				if ($this->isUnique($key)) {
 					if (!$this->isAllowedLookupField($key)) {
-						return array ("status"=>false, "text"=>"Error saving record.", "query"=>"invalid unique field");
+						return array ("status"=>false, "text"=>self::uiMessage('record.save_error'), "query"=>"invalid unique field");
 					}
 
 					$query="select `id` from ".$tableName." where ".self::quoteIdentifier($key)." = :unique_value".(!is_null($this->_id)?" and `id` != :current_id":"")." limit 1";
@@ -1740,14 +1785,14 @@
 
 					$result=self::fetchRow($query, $params);
 					if ($result !== false) {
-						return array ("status"=>false, "text"=>"The field [".$this->attributeLabels()[$key]."] should be unique. This value is already in use.", "query"=>$query);
+						return array ("status"=>false, "text"=>self::uiMessage('record.unique', ['field' => $this->attributeLabels()[$key] ?? $key]), "query"=>$query);
 					}
 				}
 			}
 							
 			if ($this->_id>0) {
 				if (count($fields)===0) {
-					return array ("status"=>true, "text"=>"Saved!", "id"=>"0".$this->_id);
+					return array ("status"=>true, "text"=>self::uiMessage('record.saved'), "id"=>"0".$this->_id);
 				}
 
 				list($assignments, $params) = $this->buildUpdateParts($fields, "update_");
@@ -1756,7 +1801,7 @@
 				$result=self::execute($query, $params);
 			} else {
 				if (count($fields)===0) {
-					return array ("status"=>false, "text"=>"Error saving record.", "query"=>"empty insert");
+					return array ("status"=>false, "text"=>self::uiMessage('record.save_error'), "query"=>"empty insert");
 				}
 
 				list($columns, $placeholders, $params) = $this->buildInsertParts($fields, "insert_");
@@ -1770,9 +1815,9 @@
 				// This is especially important when a second synchronization reads a
 				// holon property immediately after its first write.
 				self::$preload[$this->tableName()."_".$this->_id] = $this;
-				return array ("status"=>true, "text"=>"Saved!", "id"=>"0".$this->_id);
+				return array ("status"=>true, "text"=>self::uiMessage('record.saved'), "id"=>"0".$this->_id);
 			} else {
-				return array ("status"=>false, "text"=>"Error saving record.", "query"=>$query);
+				return array ("status"=>false, "text"=>self::uiMessage('record.save_error'), "query"=>$query);
 			}
 		}
 		
@@ -1780,7 +1825,7 @@
 			$message="";
 			// Contrôle que le tableau contient quelque chose
 			if (count($array)==0) {
-				$message.=($message!=""?"\n":"")."No datas send.";
+				$message.=($message!=""?"\n":"").self::uiMessage('record.empty');
 			}
 			
 			// Contrôle que les champs requis par l'objet soient renseignés

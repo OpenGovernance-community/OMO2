@@ -1,3 +1,5 @@
+var omoUiText = window.omoUiText || function (key, fallback) { return fallback; };
+var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; };
 window.commonPageScripts = window.commonPageScripts || {};
 window.commonPageScripts["/omo/api/decision/send_invitations_popup.js"] = function (pageConfig, pageScript) {
 (function () {
@@ -98,28 +100,28 @@ window.commonPageScripts["/omo/api/decision/send_invitations_popup.js"] = functi
             })
             .then(function (result) {
                 if (!result.ok || !result.data || !result.data.status) {
-                    window.omoNotify(result.data && result.data.message ? result.data.message : 'Une erreur est survenue.', 'error');
+                    window.omoNotify(result.data && result.data.message ? result.data.message : omoUiText("une_erreur_est_survenue", "Une erreur est survenue."), 'error');
                     applyAvailabilityState(false);
                     return;
                 }
 
-                window.omoNotify(result.data.message || 'Invitations envoyees.', 'success');
+                window.omoNotify(result.data.message || omoUiText("invitations_envoyees", "Invitations envoyées."), 'success');
 
                 if (typeof window.commonTopbarCloseModal === 'function') {
                     window.commonTopbarCloseModal();
                 }
 
                 if (result.data.redirectUrl && typeof window.omoDecisionOpenNestedDrawer === 'function') {
-                    window.omoDecisionOpenNestedDrawer(result.data.drawerTitle || 'Prises de decision', result.data.redirectUrl, '');
+                    window.omoDecisionOpenNestedDrawer(result.data.drawerTitle || omoUiText("prises_de_decision", "Prises de décision"), result.data.redirectUrl, '');
                     return;
                 }
 
                 if (result.data.redirectUrl && typeof window.commonTopbarOpenDrawer === 'function') {
-                    window.commonTopbarOpenDrawer(result.data.drawerTitle || 'Prises de decision', result.data.redirectUrl, 'fetch');
+                    window.commonTopbarOpenDrawer(result.data.drawerTitle || omoUiText("prises_de_decision", "Prises de décision"), result.data.redirectUrl, 'fetch');
                 }
             })
             .catch(function () {
-                window.omoNotify('Impossible d envoyer ces invitations pour le moment.', 'error');
+                window.omoNotify(omoUiText("impossible_d_envoyer_ces_invitations_pour_le_moment", "Impossible d’envoyer ces invitations pour le moment."), 'error');
                 applyAvailabilityState(false);
             });
     });

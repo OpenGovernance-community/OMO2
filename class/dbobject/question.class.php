@@ -27,12 +27,12 @@
 				'id' => 'ID',
 				'IDhowto' => 'Howto',
 				'question' => 'Question',
-				'answer' => 'Reponse',
-				'detail' => 'Detail',
+				'answer' => 'Réponse',
+				'detail' => 'Détail',
 				'displayorder' => 'Ordre',
 				'isactive' => 'Actif',
-				'created' => 'Cree le',
-				'updated' => 'Mis a jour le',
+				'created' => 'Créé le',
+				'updated' => 'Mis à jour le',
 			];
 		}
 

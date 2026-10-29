@@ -31,22 +31,22 @@ class DecisionResult extends DbObject
     {
         return [
             'id' => 'ID',
-            'IDdecision_process' => 'Prise de decision',
-            'IDdecision_group' => 'Groupe de decision',
+            'IDdecision_process' => 'Prise de décision',
+            'IDdecision_group' => 'Groupe de décision',
             'status' => 'Statut',
-            'summary' => 'Resume',
-            'parameters' => 'Parametres',
-            'computed_at' => 'Calcule le',
+            'summary' => 'Résumé',
+            'parameters' => 'Paramètres',
+            'computed_at' => 'Calculé le',
             'published_at' => 'Publie le',
-            'created_at' => 'Creation',
-            'updated_at' => 'Mise a jour',
+            'created_at' => 'Création',
+            'updated_at' => 'Mise à jour',
         ];
     }
 
     public static function attributeDescriptions()
     {
         return [
-            'parameters' => 'Structure de resultat libre dependant de la methode d evaluation.',
+            'parameters' => 'Structure de résultat libre dependant de la méthode d’évaluation.',
         ];
     }
 

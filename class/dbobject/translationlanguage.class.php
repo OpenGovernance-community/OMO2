@@ -32,8 +32,8 @@ class TranslationLanguage extends DbObject
             'sort_order' => 'Ordre',
             'active' => 'Actif',
             'is_source' => 'Langue source',
-            'created_at' => 'Creation',
-            'updated_at' => 'Mise a jour',
+            'created_at' => 'Création',
+            'updated_at' => 'Mise à jour',
         ];
     }
 
@@ -42,8 +42,8 @@ class TranslationLanguage extends DbObject
         return [
             'locale' => 'Code de langue BCP 47 utilise pour la traduction.',
             'name' => 'Nom de la langue dans la langue source du site.',
-            'native_name' => 'Nom affiche dans la langue elle-meme.',
-            'sort_order' => 'Ordre d affichage dans les selecteurs.',
+            'native_name' => 'Nom affiche dans la langue elle-même.',
+            'sort_order' => 'Ordre d’affichage dans les selecteurs.',
             'active' => 'Autorise cette langue sur cette instance.',
             'is_source' => 'Indique la langue source du contenu.',
         ];

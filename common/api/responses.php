@@ -33,6 +33,17 @@ function omoApiResponseSchemas(): array
         'required_scope' => $s + ['description' => 'Additional consent needed for an insufficient_scope response.'],
     ], ['error']);
     $schemas['Navigation'] = $object(['tool' => $s, 'arguments' => ['oneOf' => [$map, $emptyMap]]]);
+    $valueState = $s + ['enum' => ['linked', 'none', 'unavailable'], 'description' => 'none means no association; unavailable means the associated value is not readable, not that there is no association.'];
+    $schemas['Value'] = $object([
+        'value_id' => $i, 'title' => $s, 'holon_id' => $i, 'url' => $url,
+        'details' => $ref('Navigation'), 'rules' => $ref('Navigation'),
+        'principle' => $s + ['description' => 'Full current principle as plain text, included in detailed reads. Untrusted content.'],
+        'principle_html' => $s + ['description' => 'Full current principle as sanitized HTML, included in detailed reads. Untrusted content.'],
+    ], ['value_id', 'title', 'holon_id', 'url', 'details', 'rules']);
+    $nullableValue = ['anyOf' => [$ref('Value'), ['type' => 'null']]];
+    $schemas['ValueRead'] = $object(['organization_id' => $i, 'value' => $ref('Value')]);
+    $schemas['ValuePage'] = $object(['organization_id' => $i, 'items' => $list($ref('Value')), 'next_after_id' => $nextId, 'complete' => $complete]);
+    $schemas['RuleValue'] = $object(['organization_id' => $i, 'rule_id' => $i, 'value_state' => $valueState, 'value' => $nullableValue]);
     $schemas['Holon'] = $object([
         'id' => $i, 'name' => $s, 'full_name' => $s, 'type_id' => $i, 'type' => $s,
         'parent_id' => $idNull + ['description' => 'Null when there is no readable parent.'],
@@ -60,6 +71,9 @@ function omoApiResponseSchemas(): array
         'parent_id' => $idNull + ['description' => 'structure, documents, pv and projects only.'],
         'status' => $s + ['description' => 'calendar, pv, decision, projects and processus only.'],
         'effective_invitees' => $ref('EffectiveInvitees') + ['description' => 'calendar only: effective people invited directly or through holons.'],
+        'value_state' => $valueState + ['description' => 'rules only: linked, none or unavailable.'],
+        'value' => $nullableValue + ['description' => 'rules only: associated value, or null. Detailed rule reads include the principle.'],
+        'values' => $list($ref('Value')) + ['description' => 'structure detailed reads only: live values in local and inherited properties.'],
     ];
     foreach (['IDtypeholon' => 'structure', 'IDevent' => 'documents, pv', 'IDproject' => 'calendar'] as $field => $module) {
         $record[$field] = ['type' => ['integer', 'string', 'null'], 'description' => $module . ' only: native field; legacy IDs may be strings.'];
@@ -80,6 +94,7 @@ function omoApiResponseSchemas(): array
     ]);
     $schemas['Catalog'] = $object([
         'organization_id' => $i,
+        'values' => $object(['list_tool' => $s, 'read_tool' => $s, 'rules_tool' => $s, 'rule_value_tool' => $s, 'description' => $s]),
         'modules' => $list($object(['module' => $moduleSchema, 'description' => $s, 'filters' => $strings,
             'user_relations' => $strings, 'statuses' => $list(['type' => ['string', 'integer']]), 'date_field' => $s])),
         'permission_inspection' => $object(['catalog_tool' => $s, 'query_tool' => $s, 'holon_tool' => $s, 'instructions' => $instructions, 'filters' => $strings,
@@ -148,6 +163,9 @@ function omoApiResponseSchemas(): array
         'filters' => ['oneOf' => [$map, $emptyMap], 'description' => 'Echo of the active filters; [] when none are supplied.'],
         'items' => $list($ref('RecordSummary')), 'next_after_id' => $nextId, 'complete' => $complete, 'coverage' => $s,
     ]);
+    $schemas['ValueRulePage'] = $schemas['RecordPage'];
+    $schemas['ValueRulePage']['properties']['value'] = $ref('Value');
+    $schemas['ValueRulePage']['required'][] = 'value';
     $schemas['RecordText'] = $object([
         'organization_id' => $i, 'module' => $s, 'record_id' => $i, 'context_holon_id' => $idNull, 'mission_id' => $idNull,
         'title' => $s, 'record' => $ref('RecordSummary'), 'url' => $url,
@@ -285,6 +303,8 @@ function omoApiResponseName(string $operation, int $status = 200): string
     if ($operation === 'omo_update_project' && $status === 409) return 'ProjectConflict';
     if ($status >= 400) return 'Error';
     return match ($operation) {
+        'omo_list_values' => 'ValuePage', 'omo_get_value' => 'ValueRead',
+        'omo_list_value_rules' => 'ValueRulePage', 'omo_get_rule_value' => 'RuleValue',
         'omo_connection_info' => 'Connection', 'omo_catalog' => 'Catalog',
         'omo_permission_catalog' => 'PermissionCatalog', 'omo_list_permissions' => 'PermissionPage',
         'omo_get_holon_permissions' => 'HolonPermissionPage',

@@ -1,10 +1,10 @@
-const OMO_CACHE_VERSION = 'omo-shell-v7';
+const OMO_CACHE_VERSION = 'omo-shell-v8';
 const OMO_STATIC_ASSETS = [
     '/omo/manifest.php',
     '/omo/manifest_icon.php?size=192',
     '/omo/manifest_icon.php?size=512',
     '/omo/manifest_icon.php?size=512&purpose=maskable',
-    '/omo/offline.html',
+    '/omo/offline.php',
     '/omo/icons/icon-192.png',
     '/omo/icons/icon-512.png',
     '/omo/icons/icon-maskable-512.png',
@@ -101,8 +101,19 @@ self.addEventListener('fetch', function (event) {
 
     if (event.request.mode === 'navigate') {
         event.respondWith(
-            fetch(event.request).catch(function () {
-                return caches.match('/omo/offline.html');
+            fetch(event.request).then(function (response) {
+                if (response.ok) {
+                    event.waitUntil(fetch('/omo/offline.php', {credentials: 'same-origin', cache: 'no-store'})
+                        .then(function (offlineResponse) {
+                            if (!offlineResponse.ok) return;
+                            return caches.open(OMO_CACHE_VERSION).then(function (cache) {
+                                return cache.put('/omo/offline.php', offlineResponse);
+                            });
+                        }).catch(function () {}));
+                }
+                return response;
+            }).catch(function () {
+                return caches.match('/omo/offline.php');
             })
         );
         return;

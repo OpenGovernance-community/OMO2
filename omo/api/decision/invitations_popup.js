@@ -1,3 +1,5 @@
+var omoUiText = window.omoUiText || function (key, fallback) { return fallback; };
+var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; };
 window.commonPageScripts = window.commonPageScripts || {};
 window.commonPageScripts["/omo/api/decision/invitations_popup.js"] = function (pageConfig, pageScript) {
 (function () {
@@ -109,13 +111,13 @@ window.commonPageScripts["/omo/api/decision/invitations_popup.js"] = function (p
         }
 
         if (userCount > 0) {
-            summaryParts.push(userCount + (userCount > 1 ? ' membres' : ' membre'));
+            summaryParts.push(omoUiText("invitation_member_count", userCount + (userCount > 1 ? " membres" : " membre"), {count: userCount}));
         }
         if (emails.length > 0) {
-            summaryParts.push(emails.length + (emails.length > 1 ? ' invités' : ' invité'));
+            summaryParts.push(omoUiText("invitation_guest_count", emails.length + (emails.length > 1 ? " invités" : " invité"), {count: emails.length}));
         }
         if (formData.has('allow_public_self_registration')) {
-            summaryParts.push('Participation publique ouverte');
+            summaryParts.push(omoUiText("participation_publique_ouverte", "Participation publique ouverte"));
         }
 
         summary = draftTargetForm.querySelector('[data-omo-decision-invitations-summary]');
@@ -123,7 +125,7 @@ window.commonPageScripts["/omo/api/decision/invitations_popup.js"] = function (p
         if (summaryStrong) {
             summaryStrong.textContent = summaryParts.length > 0
                 ? summaryParts.join(', ')
-                : 'Aucune invitation explicite';
+                : omoUiText("aucune_invitation_explicite", "Aucune invitation explicite");
         }
 
         return true;
@@ -159,7 +161,7 @@ window.commonPageScripts["/omo/api/decision/invitations_popup.js"] = function (p
 
         if (isDraft) {
             if (!draftTargetForm || !applyDraftSelection()) {
-                feedback.textContent = 'Impossible de retrouver le formulaire de création.';
+                feedback.textContent = omoUiText("impossible_de_retrouver_le_formulaire_de_creation", "Impossible de retrouver le formulaire de création.");
                 return;
             }
             window.omoDecisionInvitationDraftTargetForm = null;

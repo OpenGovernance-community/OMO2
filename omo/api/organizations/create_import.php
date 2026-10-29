@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once dirname(__DIR__, 3) . '/common/omo_fake_cron.php';
 
@@ -8,27 +9,27 @@ header('Content-Type: application/json; charset=UTF-8');
 $currentUserId = (int)commonGetCurrentUserId();
 if ($currentUserId <= 0) {
     http_response_code(401);
-    echo json_encode(array('status' => false, 'message' => 'Connexion requise.'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    echo json_encode(array('status' => false, 'message' => omoOrganizationsUiT('connexion_requise')), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
 
 $memberInvitationEmailChoice = trim((string)($_POST['member_invitation_email_choice'] ?? ''));
 if (!in_array($memberInvitationEmailChoice, array('send', 'skip'), true)) {
     http_response_code(422);
-    echo json_encode(array('status' => false, 'message' => 'Choisissez explicitement si les e-mails d invitation aux membres doivent etre envoyes.'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    echo json_encode(array('status' => false, 'message' => omoOrganizationsUiT('choisissez_explicitement_si_les_e_mails_d_invitation_aux_membres_doivent_etre_envoyes')), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
 
 if (!isset($_FILES['omo1_export_file']) || !is_array($_FILES['omo1_export_file'])) {
     http_response_code(400);
-    echo json_encode(array('status' => false, 'message' => 'Aucun fichier ZIP ou JSON n a ete transmis.'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    echo json_encode(array('status' => false, 'message' => omoOrganizationsUiT('aucun_fichier_zip_ou_json_n_a_ete_transmis')), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
 
 $upload = $_FILES['omo1_export_file'];
 if ((int)($upload['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
     http_response_code(400);
-    echo json_encode(array('status' => false, 'message' => 'Le fichier n a pas pu etre televerse.'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    echo json_encode(array('status' => false, 'message' => omoOrganizationsUiT('le_fichier_n_a_pas_pu_etre_televerse')), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
 
@@ -37,7 +38,7 @@ try {
     $payload = $archive['payload'];
 } catch (\Throwable $exception) {
     http_response_code(422);
-    echo json_encode(['status' => false, 'message' => 'Import invalide : ' . $exception->getMessage()], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    echo json_encode(['status' => false, 'message' => omoOrganizationsUiT('import_invalide') . $exception->getMessage()], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
 $availableModules = array('structure', 'rules', 'members', 'documents', 'projects', 'tasks', 'checklists', 'indicators', 'calendar', 'pv');
@@ -64,7 +65,7 @@ if ($rawTemplateMappings !== '') {
     $postedTemplateMappings = json_decode($rawTemplateMappings, true);
     if (!is_array($postedTemplateMappings)) {
         http_response_code(400);
-        echo json_encode(array('status' => false, 'message' => 'Les correspondances de templates ne sont pas valides.'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        echo json_encode(array('status' => false, 'message' => omoOrganizationsUiT('les_correspondances_de_templates_ne_sont_pas_valides')), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         exit;
     }
 
@@ -83,7 +84,7 @@ if ($rawPropertyMappings !== '') {
     $postedPropertyMappings = json_decode($rawPropertyMappings, true);
     if (!is_array($postedPropertyMappings)) {
         http_response_code(400);
-        echo json_encode(array('status' => false, 'message' => 'Les correspondances de proprietes ne sont pas valides.'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        echo json_encode(array('status' => false, 'message' => omoOrganizationsUiT('les_correspondances_de_proprietes_ne_sont_pas_valides')), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         exit;
     }
 
@@ -115,7 +116,7 @@ if (
     && $templateCalibration['templateRootHolonId'] <= 0
 ) {
     http_response_code(400);
-    echo json_encode(array('status' => false, 'message' => 'Selectionnez le modele d organisation utilise pour les correspondances.'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    echo json_encode(array('status' => false, 'message' => omoOrganizationsUiT('selectionnez_le_modele_d_organisation_utilise_pour_les_correspondances')), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
 try {
@@ -139,7 +140,7 @@ if (empty($result['status']) || !($result['organization'] ?? null) instanceof \d
     \dbObject\OrganizationArchive::cleanup($archive['files']);
     http_response_code(422);
     $journalReference = trim((string)($result['importJournalReference'] ?? ''));
-    $message = (string)($result['message'] ?? 'L import de la nouvelle organisation a echoue.');
+    $message = (string)($result['message'] ?? omoOrganizationsUiT('l_import_de_la_nouvelle_organisation_a_echoue'));
     if ($journalReference !== '') {
         $message .= ' Reference du journal : ' . $journalReference . '.';
     }
@@ -155,7 +156,7 @@ $organization = $result['organization'];
 $maintenance = omo_run_fake_cron_maintenance(50, false, 'organization_import');
 echo json_encode(array(
     'status' => true,
-    'message' => (string)($result['message'] ?? 'La nouvelle organisation a ete importee.'),
+    'message' => (string)($result['message'] ?? omoOrganizationsUiT('la_nouvelle_organisation_a_ete_importee')),
     'organizationId' => (int)$organization->getId(),
     'organizationName' => (string)$organization->get('name'),
     'redirect' => commonBuildOrganizationHomeUrl(

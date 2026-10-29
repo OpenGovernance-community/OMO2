@@ -775,8 +775,36 @@ function translationBundleFilterTranslatedPayload(array $sourceLang, array $tran
     return $filteredPayload;
 }
 
+/** Keep complete entries together and leave room for language expansion in the response. */
+function translationBundleSplitSourceForTranslation(array $sourceLang, int $maxBytes = 6000, int $maxEntries = 50): array
+{
+    $chunks = [];
+    $chunk = [];
+    $bytes = 0;
+    foreach ($sourceLang as $key => $entry) {
+        $weight = strlen((string)json_encode([$key => translationBundleSanitizeEntry($entry)], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        if ($chunk && (count($chunk) >= $maxEntries || $bytes + $weight > $maxBytes)) {
+            $chunks[] = $chunk;
+            $chunk = [];
+            $bytes = 0;
+        }
+        $chunk[$key] = $entry;
+        $bytes += $weight;
+    }
+    if ($chunk || !$chunks) $chunks[] = $chunk;
+    return $chunks;
+}
+
 function translationBundleTranslateWithAi(string $bundleKey, string $locale, array $sourceLang): array
 {
+    $chunks = translationBundleSplitSourceForTranslation($sourceLang);
+    if (count($chunks) > 1) {
+        $translated = [];
+        foreach ($chunks as $chunk) {
+            $translated += translationBundleTranslateWithAi($bundleKey, $locale, $chunk);
+        }
+        return $translated;
+    }
     if (commonAiGetProvider() === 'disabled') throw new \RuntimeException('Text AI is disabled.');
     $apiKey = translationBundleGetOpenAiApiKey();
     if ($apiKey === '') {

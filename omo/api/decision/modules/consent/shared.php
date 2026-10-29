@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../../ui_translations.php';
 
 require_once dirname(__DIR__) . '/common.php';
 
@@ -44,7 +45,7 @@ if (!function_exists('omoDecisionConsentGetChoiceUiMap')) {
                 'theme' => 'objection',
             ],
             'no_objection' => [
-                'label' => 'Pas d objection',
+                'label' => omoDecisionUiT('pas_d_objection'),
                 'icon_url' => '/common/choice/assets/consent-favor.png',
                 'theme' => 'no_objection',
             ],

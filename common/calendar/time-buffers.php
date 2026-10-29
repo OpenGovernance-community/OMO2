@@ -31,10 +31,10 @@ function commonCalendarRenderTimeBufferSelect(string $name, int $value, bool $en
 function commonCalendarRenderPersonalTimeBufferForm(array $options): void
 {
     $sourceLang = [
-        'title' => ['text' => 'Temps avant / apres', 'context' => 'Personal event preparation and closing time editor.'],
-        'enable' => ['text' => 'Definir mes temps de preparation/cloture', 'context' => 'Enable personal time around this event.'],
-        'before' => ['text' => 'Preparation / deplacement avant', 'context' => 'Personal time before an event.'],
-        'after' => ['text' => 'Cloture / deplacement apres', 'context' => 'Personal time after an event.'],
+        'title' => ['text' => 'Temps avant / après', 'context' => 'Personal event preparation and closing time editor.'],
+        'enable' => ['text' => 'Définir mes temps de préparation/clôture', 'context' => 'Enable personal time around this event.'],
+        'before' => ['text' => 'Préparation / déplacement avant', 'context' => 'Personal time before an event.'],
+        'after' => ['text' => 'Clôture / déplacement après', 'context' => 'Personal time after an event.'],
         'save' => ['text' => 'Enregistrer', 'context' => 'Save personal event time settings.'],
     ];
     $bundle = omoLoadTranslationBundle('omo_calendar_personal_time_buffers', $sourceLang);

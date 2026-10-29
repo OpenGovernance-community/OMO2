@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__) . '/bootstrap.php';
 
 use dbObject\Organization;
@@ -9,7 +10,7 @@ $currentUserId = (int)commonGetCurrentUserId();
 if ($organizationId <= 0 || $currentUserId <= 0) {
     http_response_code(403);
     ?>
-    <div class="omo-organization-member-popup__empty generic-description">Vous devez etre connecte a une organisation pour inviter un membre.</div>
+    <div class="omo-organization-member-popup__empty generic-description"><?= htmlspecialchars(omoOrganizationUiT('vous_devez_etre_connecte_a_une_organisation_pour_inviter_un_membre'), ENT_QUOTES, 'UTF-8') ?></div>
     <?php
     exit;
 }
@@ -18,7 +19,7 @@ $organization = new Organization();
 if (!$organization->load($organizationId)) {
     http_response_code(404);
     ?>
-    <div class="omo-organization-member-popup__empty generic-description">L organisation demandee est introuvable.</div>
+    <div class="omo-organization-member-popup__empty generic-description"><?= htmlspecialchars(omoOrganizationUiT('l_organisation_demandee_est_introuvable'), ENT_QUOTES, 'UTF-8') ?></div>
     <?php
     exit;
 }
@@ -26,7 +27,7 @@ if (!$organization->load($organizationId)) {
 if (!$organization->canEdit()) {
     http_response_code(403);
     ?>
-    <div class="omo-organization-member-popup__empty generic-description">Vous n avez pas le droit d ajouter un membre dans cette organisation.</div>
+    <div class="omo-organization-member-popup__empty generic-description"><?= htmlspecialchars(omoOrganizationUiT('vous_n_avez_pas_le_droit_d_ajouter_un_membre_dans_cette_organisation'), ENT_QUOTES, 'UTF-8') ?></div>
     <?php
     exit;
 }
@@ -42,14 +43,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         http_response_code(422);
         echo json_encode(array(
             'status' => false,
-            'message' => (string)($result['message'] ?? "Impossible d'ajouter ce membre."),
+            'message' => (string)($result['message'] ?? omoOrganizationUiT('impossible_d_ajouter_ce_membre')),
         ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         exit;
     }
 
     echo json_encode(array(
         'status' => true,
-        'message' => (string)($result['message'] ?? 'Membre ajoute.'),
+        'message' => (string)($result['message'] ?? omoOrganizationUiT('membre_ajoute')),
         'organizationId' => $organizationId,
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
@@ -69,19 +70,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 >
     <div class="omo-organization-member-popup__header generic-drawer-header generic-drawer-header--sticky">
         <div class="generic-drawer-header__copy omo-organization-member-popup__header-copy">
-            <div class="generic-card-title generic-card-title--eyebrow">Organisation</div>
-            <h3 class="generic-card-title generic-card-title--medium">Ajouter un membre</h3>
+            <div class="generic-card-title generic-card-title--eyebrow"><?= htmlspecialchars(omoOrganizationUiT('organisation'), ENT_QUOTES, 'UTF-8') ?></div>
+            <h3 class="generic-card-title generic-card-title--medium"><?= htmlspecialchars(omoOrganizationUiT('ajouter_un_membre'), ENT_QUOTES, 'UTF-8') ?></h3>
         </div>
     </div>
 
     <div class="omo-organization-member-popup__shell generic-drawer-content">
         <p class="omo-organization-member-popup__intro generic-description">
-            Invitez une personne dans <strong><?= omoApiEscape(trim((string)$organization->get('name')) !== '' ? trim((string)$organization->get('name')) : 'cette organisation') ?></strong>
-            en saisissant son adresse e-mail.
+            <?= htmlspecialchars(omoOrganizationUiT('invitez_une_personne_dans'), ENT_QUOTES, 'UTF-8') ?> <strong><?= omoApiEscape(trim((string)$organization->get('name')) !== '' ? trim((string)$organization->get('name')) : 'cette organisation') ?></strong>
+            <?= htmlspecialchars(omoOrganizationUiT('en_saisissant_son_adresse_e_mail'), ENT_QUOTES, 'UTF-8') ?>
         </p>
 
         <div class="omo-organization-member-popup__group generic-stack generic-stack--compact">
-            <label class="omo-organization-member-popup__label generic-form-label" for="omoOrganizationMemberEmail">Adresse e-mail</label>
+            <label class="omo-organization-member-popup__label generic-form-label" for="omoOrganizationMemberEmail"><?= htmlspecialchars(omoOrganizationUiT('adresse_e_mail'), ENT_QUOTES, 'UTF-8') ?></label>
             <input
                 type="email"
                 id="omoOrganizationMemberEmail"
@@ -92,7 +93,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 autocomplete="email"
             >
             <div class="omo-organization-member-popup__hint generic-help-text generic-help-text--regular">
-                Si cette adresse existe deja, le profil existant sera rattache a l organisation. Sinon, une invitation sera preparee pour cette adresse.
+                <?= htmlspecialchars(omoOrganizationUiT('si_cette_adresse_existe_deja_le_profil_existant_sera_rattache_a_l_organisation_sinon_une_i'), ENT_QUOTES, 'UTF-8') ?>
             </div>
         </div>
 
@@ -100,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <div class="omo-organization-member-popup__actions generic-action-row">
             <button type="submit" id="omoOrganizationMemberPopupSubmit" class="generic-action-button generic-action-button--main">
-                Inviter
+                <?= htmlspecialchars(omoOrganizationUiT('inviter'), ENT_QUOTES, 'UTF-8') ?>
             </button>
         </div>
     </div>

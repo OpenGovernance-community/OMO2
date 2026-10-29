@@ -3,6 +3,19 @@ namespace dbObject;
 
 class Event extends DbObject
 {
+        protected static function uiMessageSourceLang(): array
+        {
+            return [
+                'contexte_de_presence_invalide' => ['text' => 'Contexte de présence invalide.', 'context' => 'Validation or action feedback for event.'],
+                'participant_introuvable_pour_cette_reunion' => ['text' => 'Participant introuvable pour cette réunion.', 'context' => 'Validation or action feedback for event.'],
+                'la_date_de_fin_de_l_evenement_est_invalide' => ['text' => 'La date de fin de l\'événement est invalide.', 'context' => 'Validation or action feedback for event.'],
+                'les_horaires_de_cette_reunion_sont_verrouilles' => ['text' => 'Les horaires de cette réunion sont verrouillés.', 'context' => 'Validation or action feedback for event.'],
+                'une_adresse_est_obligatoire_pour_un_evenement_en_presentiel' => ['text' => 'Une adresse est obligatoire pour un événement en présentiel.', 'context' => 'Validation or action feedback for event.'],
+                'un_lien_de_visio_est_obligatoire_pour_un_evenement_virtuel' => ['text' => 'Un lien de visio est obligatoire pour un événement virtuel.', 'context' => 'Validation or action feedback for event.'],
+                'une_adresse_et_un_lien_de_visio_sont_obligatoires_pour_un_evenement_mixte' => ['text' => 'Une adresse et un lien de visio sont obligatoires pour un événement mixte.', 'context' => 'Validation or action feedback for event.'],
+            ];
+        }
+
     use CalendarTimeBuffer;
     const STATUS_DRAFT = 'draft';
     const STATUS_OPTION = 'option';
@@ -40,9 +53,9 @@ class Event extends DbObject
             'IDholon' => 'Espace associé',
             'IDproject' => 'Projet',
             'IDdecision_proposal' => 'Proposition de date',
-            'IDeventrecurrence' => 'Serie de reunions',
-            'recurrence_position' => 'Position dans la serie',
-            'recurrence_exception' => 'Occurrence personnalisee',
+            'IDeventrecurrence' => 'Série de réunions',
+            'recurrence_position' => 'Position dans la série',
+            'recurrence_exception' => 'Occurrence personnalisée',
             'IDuser' => 'Créateur',
             'title' => 'Titre',
             'description' => 'Description',
@@ -1089,7 +1102,7 @@ class Event extends DbObject
         if ((int)$this->getId() <= 0 || $organizationId <= 0 || $checkedByUserId <= 0 || $identityKey === '') {
             return [
                 'status' => false,
-                'text' => 'Contexte de présence invalide.',
+                'text' => self::uiMessage('contexte_de_presence_invalide'),
             ];
         }
 
@@ -1105,7 +1118,7 @@ class Event extends DbObject
         if (!is_array($entry)) {
             return [
                 'status' => false,
-                'text' => 'Participant introuvable pour cette réunion.',
+                'text' => self::uiMessage('participant_introuvable_pour_cette_reunion'),
             ];
         }
 
@@ -1409,7 +1422,7 @@ class Event extends DbObject
         if (!($endAt instanceof \DateTimeInterface)) {
             return [
                 'status' => false,
-                'text' => "La date de fin de l'événement est invalide.",
+                'text' => self::uiMessage('la_date_de_fin_de_l_evenement_est_invalide'),
             ];
         }
 
@@ -1490,7 +1503,7 @@ class Event extends DbObject
     {
         $original = (int)$this->getId() > 0 ? self::fetchRow('SELECT title, start_at, end_at FROM event WHERE id = :id', ['id' => $this->getId()]) : null;
         if ($original && $this->isScheduleLocked(new \DateTimeImmutable($original['end_at']))) {
-            return ['status' => false, 'text' => 'Les horaires de cette reunion sont verrouilles.'];
+            return ['status' => false, 'text' => self::uiMessage('les_horaires_de_cette_reunion_sont_verrouilles')];
         }
         $this->set('status', self::normalizeStatus($this->get('status')));
 
@@ -1542,14 +1555,14 @@ class Event extends DbObject
         if ($locationMode === self::LOCATION_MODE_IN_PERSON && $locationAddress === '') {
             return [
                 'status' => false,
-                'text' => 'Une adresse est obligatoire pour un événement en présentiel.',
+                'text' => self::uiMessage('une_adresse_est_obligatoire_pour_un_evenement_en_presentiel'),
             ];
         }
 
         if ($locationMode === self::LOCATION_MODE_VIRTUAL && $videoMeetingUrl === '') {
             return [
                 'status' => false,
-                'text' => 'Un lien de visio est obligatoire pour un événement virtuel.',
+                'text' => self::uiMessage('un_lien_de_visio_est_obligatoire_pour_un_evenement_virtuel'),
             ];
         }
 
@@ -1559,7 +1572,7 @@ class Event extends DbObject
         ) {
             return [
                 'status' => false,
-                'text' => 'Une adresse et un lien de visio sont obligatoires pour un événement mixte.',
+                'text' => self::uiMessage('une_adresse_et_un_lien_de_visio_sont_obligatoires_pour_un_evenement_mixte'),
             ];
         }
 

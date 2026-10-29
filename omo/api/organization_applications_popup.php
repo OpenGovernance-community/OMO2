@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../ui_translations.php';
 require_once __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/organization_applications_access.php';
 
@@ -260,8 +261,8 @@ foreach ($activeOrganizationApplications as $organizationApplication) {
     <form id="omoApplicationPickerForm" class="omo-app-picker generic-stack generic-stack--flush" action="api/organization_applications_popup.php" method="post">
         <div class="omo-app-picker__header generic-drawer-header generic-drawer-header--sticky">
             <div class="generic-drawer-header__copy omo-app-picker__header-copy">
-                <div class="generic-card-title generic-card-title--eyebrow">Organisation</div>
-                <h3 class="generic-card-title generic-card-title--medium">Configurer les applications</h3>
+                <div class="generic-card-title generic-card-title--eyebrow"><?= htmlspecialchars(omoInterfaceUiT('organisation'), ENT_QUOTES, 'UTF-8') ?></div>
+                <h3 class="generic-card-title generic-card-title--medium"><?= htmlspecialchars(omoInterfaceUiT('configurer_les_applications'), ENT_QUOTES, 'UTF-8') ?></h3>
             </div>
         </div>
         <div class="omo-app-picker__shell generic-drawer-content">

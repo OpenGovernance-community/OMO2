@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ui_translations.php';
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/modules/context.php';
 require_once __DIR__ . '/params/shared.php';
@@ -264,11 +265,11 @@ $sourceLang = [
         'context' => 'Tooltip for the yellow participation dot during elaboration.',
     ],
     'decisions.index.participation.pending' => [
-        'text' => 'Votre reponse est attendue.',
+        'text' => 'Votre réponse est attendue.',
         'context' => 'Tooltip for the red participation dot while a ballot remains unanswered.',
     ],
     'decisions.index.participation.submitted' => [
-        'text' => 'Vous avez deja repondu.',
+        'text' => 'Vous avez déjà répondu.',
         'context' => 'Tooltip for the steady green participation dot after all ballots are submitted.',
     ],
     'decisions.index.view_filter.presentation' => [
@@ -1507,9 +1508,9 @@ if (!is_string($payloadJson)) {
 
     <div class="omo-decisions__filters" aria-label="<?= $escape(t('decisions.index.view_filter.status', [], $lang, $sourceLang)) ?>">
         <div class="omo-decisions__status-scroll" data-omo-decisions-status-scroll>
-            <button type="button" class="omo-decisions__status-scroll-button omo-decisions__status-scroll-button--prev" data-omo-decisions-status-scroll-prev aria-label="Defiler les etats vers la gauche" hidden>&lt;</button>
+            <button type="button" class="omo-decisions__status-scroll-button omo-decisions__status-scroll-button--prev" data-omo-decisions-status-scroll-prev aria-label="<?= htmlspecialchars(omoDecisionUiT('defiler_les_etats_vers_la_gauche'), ENT_QUOTES, 'UTF-8') ?>" hidden>&lt;</button>
             <div class="omo-decisions__status-tabs" data-omo-decisions-status-tabs></div>
-            <button type="button" class="omo-decisions__status-scroll-button omo-decisions__status-scroll-button--next" data-omo-decisions-status-scroll-next aria-label="Defiler les etats vers la droite" hidden>&gt;</button>
+            <button type="button" class="omo-decisions__status-scroll-button omo-decisions__status-scroll-button--next" data-omo-decisions-status-scroll-next aria-label="<?= htmlspecialchars(omoDecisionUiT('defiler_les_etats_vers_la_droite'), ENT_QUOTES, 'UTF-8') ?>" hidden>&gt;</button>
         </div>
     </div>
 

@@ -1,3 +1,5 @@
+var omoUiText = window.omoUiText || function (key, fallback) { return fallback; };
+var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; };
 window.commonPageScripts = window.commonPageScripts || {};
 window.commonPageScripts["/omo/api/documents/move.js"] = function (pageConfig, pageScript) {
 (() => {
@@ -328,7 +330,7 @@ function submitMove(event) {
         })
         .then(function (result) {
             if (!result.ok || !result.data || result.data.status !== 'ok') {
-                throw new Error(result.data && result.data.message ? result.data.message : "Impossible de déplacer le document.");
+                throw new Error(result.data && result.data.message ? result.data.message : omoUiText("impossible_de_deplacer_le_document", "Impossible de déplacer le document."));
             }
 
             if (Array.isArray(state.data.documentIds) && state.data.documentIds.length > 0) {
@@ -349,7 +351,7 @@ function submitMove(event) {
                 elements.submit.disabled = false;
             }
 
-            showStatus(error && error.message ? error.message : "Impossible de déplacer le document.", 'error');
+            showStatus(error && error.message ? error.message : omoUiText("impossible_de_deplacer_le_document", "Impossible de déplacer le document."), 'error');
         });
 }
 

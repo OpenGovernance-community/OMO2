@@ -1,13 +1,13 @@
 window.adminEditHtmlFieldPromise = window.adminEditHtmlFieldPromise || null;
 
 function adminEditEnsureHtmlField() {
-    if (window.omoSimpleHtmlField && window.omoSimpleHtmlField.version === '20261009-html-editor-placeholder') {
+    if (window.omoSimpleHtmlField && window.omoSimpleHtmlField.version === '20261029-translations') {
         return Promise.resolve(window.omoSimpleHtmlField);
     }
     if (!window.adminEditHtmlFieldPromise) {
         window.adminEditHtmlFieldPromise = new Promise(function (resolve, reject) {
             var script = document.createElement('script');
-            script.src = '/omo/assets/js/simple-html-field.js?v=20261009-html-editor-placeholder';
+            script.src = '/omo/assets/js/simple-html-field.js?v=20261029-translations';
             script.onload = function () { resolve(window.omoSimpleHtmlField); };
             script.onerror = function () { reject(new Error('html_field_load_failed')); };
             document.head.appendChild(script);

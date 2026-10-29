@@ -4,7 +4,7 @@ require_once dirname(__DIR__) . '/translation_bundles.php';
 
 $sourceLang = [
     'discard' => [
-        'text' => "Terminer l'edition en cours ? Les donnees non enregistrees seront perdues.",
+        'text' => "Terminer l'édition en cours ? Les données non enregistrées seront perdues.",
         'context' => 'Confirmation before closing an object creation or editing drawer with unsaved data. Cancel keeps the editor open.',
     ],
 ];

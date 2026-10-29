@@ -1,3 +1,5 @@
+var omoUiText = window.omoUiText || function (key, fallback) { return fallback; };
+var omoUiHtml = window.omoUiHtml || function (key, fallback) { return fallback; };
 (function () {
     'use strict';
 
@@ -437,7 +439,7 @@
             var color = seriesItem.sum ? colors[0] : colors[seriesItem.sourceIndex % colors.length];
             var lineClass = 'omo-stats-chart__line' + (seriesItem.background ? ' omo-stats-chart__line--background' : '') + (seriesItem.sum ? ' omo-stats-chart__line--sum' : '');
             if (coordinates.length > 1) {
-                svg += '<polyline class="' + lineClass + '" style="stroke:' + color + '" points="' + coordinateString(coordinates) + '"/>';
+                svg += '<polyline class="' + lineClass + '" style="stroke:' + color + "\" points=\"" + coordinateString(coordinates) + '"/>';
             }
             if (!seriesItem.background) {
                 coordinates.forEach(function (point, pointIndex) {

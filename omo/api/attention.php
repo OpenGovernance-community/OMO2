@@ -17,14 +17,14 @@ if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
 header('Content-Type: application/json; charset=UTF-8');
 
 $sourceLang = [
-    'decision.pending' => ['text' => 'Une decision sur laquelle se prononcer dans {spaceType} {spaceName}.', 'context' => 'Persistent Applications badge tooltip for an unanswered decision invitation.'],
+    'decision.pending' => ['text' => 'Une décision sur laquelle se prononcer dans {spaceType} {spaceName}.', 'context' => 'Persistent Applications badge tooltip for an unanswered decision invitation.'],
     'decision.more' => ['one' => ' Et {count} autre ailleurs.', 'other' => ' Et {count} autres ailleurs.', 'context' => 'Additional unanswered decisions after the first one in the Applications badge tooltip.'],
-    'activity.overdue' => ['text' => 'Une tache recurrente en retard dans {spaceType} {spaceName} : {title}.', 'context' => 'Recurring tasks badge tooltip, naming the first overdue task assigned to the current user.'],
+    'activity.overdue' => ['text' => 'Une tâche récurrente en retard dans {spaceType} {spaceName} : {title}.', 'context' => 'Recurring tasks badge tooltip, naming the first overdue task assigned to the current user.'],
     'activity.more' => ['one' => ' Et {count} autre dans {spaces}.', 'other' => ' Et {count} autres dans {spaces}.', 'context' => 'Other overdue recurring tasks assigned to the current user, with their number of distinct spaces.'],
     'activity.spaces' => ['one' => '{count} espace', 'other' => '{count} espaces', 'context' => 'Number of distinct spaces containing the remaining overdue recurring tasks.'],
     'scope.organization' => ['text' => "l'organisation", 'context' => 'Decision invitation tooltip scope, including the article.'],
     'scope.circle' => ['text' => 'le cercle', 'context' => 'Decision invitation tooltip scope, including the article.'],
-    'scope.role' => ['text' => 'le role', 'context' => 'Decision invitation tooltip scope, including the article.'],
+    'scope.role' => ['text' => 'le rôle', 'context' => 'Decision invitation tooltip scope, including the article.'],
     'scope.group' => ['text' => 'le groupe', 'context' => 'Decision invitation tooltip scope, including the article.'],
     'scope.space' => ['text' => "l'espace", 'context' => 'Decision invitation tooltip scope, including the article.'],
 ];
