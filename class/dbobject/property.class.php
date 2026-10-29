@@ -75,6 +75,7 @@
 		public const LIST_ITEM_HOLON = 'holon';
 		public const LIST_ITEM_PROJECT = 'project';
 		public const LIST_ITEM_AUTHORITY = 'authority';
+		public const LIST_ITEM_VALUE = 'value';
 
 	    public static function tableName()
 		{
@@ -151,6 +152,7 @@
 				array('id' => self::LIST_ITEM_HOLON, 'name' => 'Espace'),
 				array('id' => self::LIST_ITEM_PROJECT, 'name' => 'Projet'),
 				array('id' => self::LIST_ITEM_AUTHORITY, 'name' => 'Autorite'),
+				array('id' => self::LIST_ITEM_VALUE, 'name' => 'Valeur'),
 			);
 		}
 
@@ -163,6 +165,7 @@
 				array('id' => self::LIST_ITEM_DETAIL, 'name' => 'Liste detaillee'),
 				array('id' => self::LIST_ITEM_PROJECT, 'name' => 'Projet'),
 				array('id' => self::LIST_ITEM_AUTHORITY, 'name' => 'Autorite'),
+				array('id' => self::LIST_ITEM_VALUE, 'name' => 'Valeur'),
 			);
 		}
 
@@ -177,6 +180,7 @@
 				self::LIST_ITEM_HOLON,
 				self::LIST_ITEM_PROJECT,
 				self::LIST_ITEM_AUTHORITY,
+				self::LIST_ITEM_VALUE,
 			);
 
 			return in_array($value, $allowed, true) ? $value : self::LIST_ITEM_TEXT;

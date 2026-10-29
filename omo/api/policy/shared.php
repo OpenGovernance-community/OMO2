@@ -357,3 +357,92 @@ if (!function_exists('omoPolicyBuildRuleGroups')) {
         return ['nodes' => $policyGroupNodes, 'roots' => $policyRootGroupKeys, 'ruleNumbers' => $policyRuleNumbers];
     }
 }
+
+function omoPolicyRenderRuleCard(array $entry, Organization $organization, array $options = []): void
+{
+    require_once dirname(__DIR__, 3) . '/common/choice/rule-value-fields.php';
+    require_once dirname(__DIR__, 3) . '/common/choice/rule-scope-fields.php';
+    $organizationId = (int)$organization->getId();
+    $showActions = $options['showActions'] ?? true;
+    $openRuleId = (int)($options['openRuleId'] ?? 0);
+    $detailsLabel = $options['detailsLabel'] ?? 'policy.documentation';
+    $contentId = ($options['idPrefix'] ?? 'omo-policy-rule-content-') . (int)$entry['rule']->getId();
+    $rule = $entry['rule'];
+    $createdBy = $rule->getCreatedByUser();
+    $updatedBy = (int)$rule->get('IDuser_modification') !== (int)$rule->get('IDuser_creation') ? $rule->getUpdatedByUser() : null;
+    $ruleHolon = $entry['holon'];
+    $ruleAuthority = $entry['authority'];
+    $createdDate = $rule->get('created_at') instanceof DateTimeInterface ? $rule->get('created_at')->format('d.m.Y') : '';
+    $updatedDate = $rule->get('updated_at') instanceof DateTimeInterface ? $rule->get('updated_at')->format('d.m.Y H:i') : '';
+    $createdByLabel = $createdBy ? $createdBy->getScopedDisplayName($organizationId) : '-';
+    $updatedByLabel = $updatedBy ? $updatedBy->getScopedDisplayName($organizationId) : '-';
+    $creationContext = $rule->getCreationContext();
+    $creationType = is_array($creationContext) ? ($creationContext['type'] ?? '') : '';
+    $creationHtml = omoApiEscape(omoPolicyT('policy.created', ['date' => $createdDate, 'user' => $createdByLabel]));
+    if (in_array($creationType, ['decision', 'event', 'document'], true)) {
+        $contextLabel = $creationType === 'decision' ? omoPolicyT('policy.collective_decision') : (string)($creationContext['label'] ?? '');
+        $contextHtml = \dbObject\History::renderReferenceHtml(\dbObject\History::buildReferenceToken($creationType, $creationContext['id'] ?? 0, $contextLabel), $organizationId);
+        $creationHtml = str_replace('{context}', $contextHtml, omoApiEscape(omoPolicyT('policy.created.' . $creationType,
+            ['date' => $createdDate, 'context' => '{context}', 'user' => $createdByLabel])));
+    }
+    $holonLabel = $ruleHolon ? $ruleHolon->getFullDisplayName() : trim((string)$organization->get('name'));
+    $authorityLabel = $ruleAuthority ? trim((string)$ruleAuthority->get('label')) : '';
+    $canEditRule = $showActions && $rule->canEdit();
+    $canDeleteRule = $showActions && $rule->canDelete();
+    $ruleEditUrl = $canEditRule
+        ? '/omo/api/policy/edit.php?oid=' . rawurlencode((string)$organizationId) . '&cid=' . ($ruleHolon instanceof Holon ? (int)$ruleHolon->getId() : 0) . '&rule_id=' . rawurlencode((string)$rule->getId())
+        : '';
+    $isExpired = !$rule->isValidAt();
+    $needsReview = !$isExpired && $rule->isReviewDue();
+    $statusClass = $isExpired
+        ? ' omo-policy__rule-card--expired'
+        : ($needsReview ? ' omo-policy__rule-card--review' : '');
+    ?>
+    <article class="omo-policy__rule-card omo-card generic-section--stack generic-accordion generic-accordion--collapsible<?= $openRuleId === (int)$rule->getId() ? '' : ' is-collapsed' ?><?= $statusClass ?>" data-generic-accordion data-policy-rule-card data-policy-rule-id="<?= (int)$rule->getId() ?>" data-policy-rule-number="<?= omoApiEscape($entry['number']) ?>">
+        <div class="omo-policy__rule-head">
+            <h3 class="generic-card-title generic-card-title--big omo-policy__rule-title">
+                <button type="button" class="generic-accordion__trigger" data-generic-accordion-toggle aria-expanded="false" aria-controls="<?= omoApiEscape($contentId) ?>">
+                    <span><span data-policy-search-text><?= omoApiEscape($entry['number'] . '. ' . (string)$rule->get('title')) ?></span>
+                    <?php if ($isExpired): ?><span class="omo-policy__rule-status omo-policy__rule-status--expired"><?= omoApiEscape(omoPolicyT('policy.status.expired')) ?></span><?php elseif ($needsReview): ?><span class="omo-policy__rule-status omo-policy__rule-status--review"><?= omoApiEscape(omoPolicyT('policy.status.review')) ?></span><?php endif; ?></span>
+                    <span class="generic-accordion__toggle" aria-hidden="true">&#9662;</span>
+                </button>
+            </h3>
+            <?php if ($canEditRule || $canDeleteRule): ?>
+                <div class="generic-menu omo-policy__rule-menu" data-policy-rule-menu>
+                    <button type="button" class="generic-menu-toggle omo-policy__rule-menu-toggle" data-policy-rule-menu-toggle aria-haspopup="menu" aria-expanded="false" aria-label="<?= omoApiEscape(omoPolicyT('policy.edit')) ?>">&#8942;</button>
+                    <div class="generic-menu-panel omo-policy__rule-menu-panel" data-policy-rule-menu-panel role="menu" hidden>
+                        <?php if ($canEditRule): ?><button type="button" class="generic-menu-item" data-policy-rule-edit data-policy-edit-url="<?= omoApiEscape($ruleEditUrl) ?>" role="menuitem"><?= omoApiEscape(omoPolicyT('policy.edit')) ?></button><?php endif; ?>
+                        <?php if ($canDeleteRule): ?><button type="button" class="generic-menu-item generic-menu-item--danger" data-policy-rule-delete data-policy-rule-id="<?= (int)$rule->getId() ?>" role="menuitem"><?= omoApiEscape(omoPolicyT('policy.delete')) ?></button><?php endif; ?>
+                    </div>
+                </div>
+            <?php endif; ?>
+        </div>
+        <div class="generic-accordion__content generic-section--stack" id="<?= omoApiEscape($contentId) ?>">
+            <div class="omo-policy__rule-statement" data-policy-search-text><?= (string)$rule->get('description') ?></div>
+            <details class="omo-policy__rule-details generic-section generic-accordion--card"<?= $openRuleId === (int)$rule->getId() ? ' open' : '' ?>>
+                <summary><small><?= omoApiEscape(omoPolicyT($detailsLabel)) ?></small></summary>
+                <div class="omo-policy__rule-details-content">
+                    <?php $linkedValue = \dbObject\Valeur::loadInOrganization($rule->get('IDvaleur'), $organizationId); ?>
+                    <?php if ($linkedValue || trim(strip_tags((string)$rule->get('intention'))) !== ''): ?>
+                        <section class="omo-policy__rule-intention">
+                            <h4 class="generic-card-title"><?= omoApiEscape(omoPolicyT('policy.intention')) ?></h4>
+                            <div data-policy-search-text><?= omoRuleValueRender($linkedValue) ?><?= (string)$rule->get('intention') ?></div>
+                        </section>
+                    <?php endif; ?>
+                <div class="omo-policy__rule-meta">
+                    <small><?= omoApiEscape(omoRuleScopeT('scope') . ' : ' . omoRuleScopeT(\dbObject\Rule::normalizeScope($rule->get('scope')))) ?></small>
+                        <small><?= omoApiEscape(omoPolicyT('policy.review', ['date' => $rule->get('review_date') instanceof DateTimeInterface ? $rule->get('review_date')->format('d.m.Y') : ''])) ?></small>
+                        <small><?= omoApiEscape(omoPolicyT('policy.expiration', ['date' => $rule->get('expiration_date') instanceof DateTimeInterface ? $rule->get('expiration_date')->format('d.m.Y') : ''])) ?></small>
+                        <small><?= $creationHtml ?></small>
+                        <?php if ($updatedBy && (int)$rule->get('IDuser_modification') !== (int)$rule->get('IDuser_creation')): ?>
+                            <small><?= omoApiEscape(omoPolicyT('policy.updated', ['date' => $updatedDate, 'user' => $updatedByLabel])) ?></small>
+                        <?php endif; ?>
+                        <small data-policy-search-text data-policy-search-value="<?= omoApiEscape($holonLabel) ?>"><?= omoApiEscape(omoPolicyT('policy.holon', ['holon' => $holonLabel])) ?></small>
+                        <?php if ($authorityLabel !== ''): ?><small data-policy-search-text data-policy-search-value="<?= omoApiEscape($authorityLabel) ?>"><?= omoApiEscape(omoPolicyT('policy.authority', ['authority' => $authorityLabel])) ?></small><?php endif; ?>
+                    </div>
+                </div>
+            </details>
+        </div>
+    </article>
+    <?php
+}

@@ -12,6 +12,8 @@
 		public const INTERFACE_LEVEL_AUTONOMOUS = 2;
 		public const INTERFACE_LEVEL_EXPERT = 3;
 		public const STRUCTURE_DISPLAY_SETTINGS_PARAMETER = 'structureDisplay';
+		public const CALENDAR_SETTINGS_PARAMETER = 'calendar';
+		public const DEFAULT_CALENDAR_SETTINGS = ['dayStart' => '09:00', 'dayEnd' => '17:00'];
 		protected $lastDeleteError = '';
 		protected static $omo1ImportJournal = null;
 
@@ -301,6 +303,50 @@
 		public function getTransferConfigurationParameters(): array
 		{
 			return array_intersect_key($this->getLexiconParameters(), array_flip(OrganizationTransferConfiguration::ORGANIZATION_KEYS));
+		}
+
+		public static function validateCalendarSettings(array $settings): array
+		{
+			$start = $settings['dayStart'] ?? null;
+			$end = $settings['dayEnd'] ?? null;
+			$timePattern = '/^(?:[01][0-9]|2[0-3]):(?:00|30)$/D';
+			if (!is_string($start) || !is_string($end) || !preg_match($timePattern, $start)
+				|| ($end !== '24:00' && !preg_match($timePattern, $end)) || $start >= $end) {
+				throw new \InvalidArgumentException('Invalid calendar hours.');
+			}
+			return ['dayStart' => $start, 'dayEnd' => $end];
+		}
+
+		public function getCalendarSettings(): array
+		{
+			// Return only calendar defaults, also for background checks without a viewer session.
+			$settings = $this->getLexiconParameters()[self::CALENDAR_SETTINGS_PARAMETER] ?? null;
+			try {
+				return is_array($settings) ? self::validateCalendarSettings($settings) : self::DEFAULT_CALENDAR_SETTINGS;
+			} catch (\InvalidArgumentException $exception) {
+				return self::DEFAULT_CALENDAR_SETTINGS;
+			}
+		}
+
+		public function setCalendarSettings(array $settings): void
+		{
+			$settings = self::validateCalendarSettings($settings);
+			$parameters = $this->getLexiconParameters();
+			$parameters[self::CALENDAR_SETTINGS_PARAMETER] = $settings;
+			$this->setParametersArray($parameters);
+		}
+
+		public function getCalendarAvailabilityHours(): array
+		{
+			$settings = $this->getCalendarSettings();
+			$days = MeetingProfile::defaultHours();
+			foreach ($days as &$day) {
+				$day['open'] = true;
+				$day['start'] = $settings['dayStart'];
+				$day['end'] = $settings['dayEnd'];
+				$day['pause'] = false;
+			}
+			return $days;
 		}
 
 		public function getApplicationViewBaseTypeDefault($applicationKey, $typeId): ?array
@@ -12155,6 +12201,10 @@
 		{
 			$listItemType = trim((string)$listItemType);
 
+			if ($listItemType === \dbObject\Property::LIST_ITEM_VALUE) {
+				return $this->limitHolonHistoryText(is_array($item) ? trim((string)($item['title'] ?? '')) . ' - ' . strip_tags((string)($item['principle'] ?? '')) : (string)$item);
+			}
+
 			if ($listItemType === \dbObject\Property::LIST_ITEM_DETAIL) {
 				$title = trim((string)($item['title'] ?? $item['label'] ?? $item['value'] ?? ''));
 				$description = trim((string)($item['description'] ?? $item['text'] ?? ''));
@@ -13331,7 +13381,37 @@
 			return array('status' => true);
 		}
 
+		protected function saveValuePropertyEditor(array $payload, callable $save): array
+		{
+			$hasValues = false;
+			array_walk_recursive($payload, static function ($value, $key) use (&$hasValues) {
+				if ($key === 'listItemType' && $value === Property::LIST_ITEM_VALUE) $hasValues = true;
+			});
+			if (!$hasValues) return $save();
+			$pdo = self::getPdo();
+			$ownsTransaction = !$pdo->inTransaction();
+			try {
+				if ($ownsTransaction) $pdo->beginTransaction();
+				else $pdo->exec('SAVEPOINT value_property_editor');
+				$result = $save();
+				if (empty($result['status'])) throw new \RuntimeException($result['message'] ?? 'Enregistrement des valeurs impossible.');
+				if ($ownsTransaction) $pdo->commit();
+				else $pdo->exec('RELEASE SAVEPOINT value_property_editor');
+				return $result;
+			} catch (\Throwable $error) {
+				if ($ownsTransaction && $pdo->inTransaction()) $pdo->rollBack();
+				elseif (!$ownsTransaction) $pdo->exec('ROLLBACK TO SAVEPOINT value_property_editor');
+				self::$preload = [];
+				return ['status' => false, 'message' => $error->getMessage()];
+			}
+		}
+
 		public function saveHolonEditorDefinition(array $payload, $userId = 0, $contextHolonId = 0, $holonId = 0, $collectiveGovernance = false, int $collectiveHolonId = 0)
+		{
+			return $this->saveValuePropertyEditor($payload, fn() => $this->saveHolonEditorDefinitionContent($payload, $userId, $contextHolonId, $holonId, $collectiveGovernance, $collectiveHolonId));
+		}
+
+		protected function saveHolonEditorDefinitionContent(array $payload, $userId = 0, $contextHolonId = 0, $holonId = 0, $collectiveGovernance = false, int $collectiveHolonId = 0)
 		{
 			$propertyCollectiveId = $collectiveGovernance ? ($collectiveHolonId > 0 ? $collectiveHolonId : -1) : 0;
 			$rootHolon = $this->getStructuralRootHolon();
@@ -14024,6 +14104,11 @@
 
 		public function saveHolonTemplateDefinition(array $payload, $userId = 0, $contextHolonId = 0, $scope = 'contextual')
 		{
+			return $this->saveValuePropertyEditor($payload, fn() => $this->saveHolonTemplateDefinitionContent($payload, $userId, $contextHolonId, $scope));
+		}
+
+		protected function saveHolonTemplateDefinitionContent(array $payload, $userId = 0, $contextHolonId = 0, $scope = 'contextual')
+		{
 			if ($this->isDiscoveryMode()) {
 				return array(
 					'status' => false,
@@ -14476,6 +14561,11 @@
 
 		public function saveHolonDefinitionEditor(array $payload, $userId = 0, $holonId = 0)
 		{
+			return $this->saveValuePropertyEditor($payload, fn() => $this->saveHolonDefinitionEditorContent($payload, $userId, $holonId));
+		}
+
+		protected function saveHolonDefinitionEditorContent(array $payload, $userId = 0, $holonId = 0)
+		{
 			$rootHolon = $this->getStructuralRootHolon();
 			$holonId = (int)$holonId;
 
@@ -14634,7 +14724,8 @@
 						$propertyId = (int)($persistedDefinitions[$index]['id'] ?? 0);
 					}
 					if ($propertyId > 0) {
-						$postSyncSubmittedValues[$propertyId] = $definition['value'] ?? '';
+						$postSyncSubmittedValues[$propertyId] = ($definition['listItemType'] ?? '') === Property::LIST_ITEM_VALUE
+							? ($persistedDefinitions[$index]['value'] ?? '') : ($definition['value'] ?? '');
 					}
 				}
 

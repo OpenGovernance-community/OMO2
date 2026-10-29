@@ -259,6 +259,18 @@ $sourceLang = [
         'text' => 'État',
         'context' => 'Heading for decision status choices.',
     ],
+    'decisions.index.participation.elaboration' => [
+        'text' => 'Vous pouvez contribuer aux propositions.',
+        'context' => 'Tooltip for the yellow participation dot during elaboration.',
+    ],
+    'decisions.index.participation.pending' => [
+        'text' => 'Votre reponse est attendue.',
+        'context' => 'Tooltip for the red participation dot while a ballot remains unanswered.',
+    ],
+    'decisions.index.participation.submitted' => [
+        'text' => 'Vous avez deja repondu.',
+        'context' => 'Tooltip for the steady green participation dot after all ballots are submitted.',
+    ],
     'decisions.index.view_filter.presentation' => [
         'text' => 'Présentation',
         'context' => 'Heading for decision sort and density choices.',
@@ -1220,6 +1232,7 @@ foreach ($decisionRows as $row) {
     $activityGroupIndex = sharedGetRelativeDateGroupIndexForDate($lastActivity, $decisionGroups, $today);
     $activityGroup = $decisionGroups[$activityGroupIndex] ?? ['key' => 'too_far', 'label' => t('decisions.index.group.too_far', [], $lang, $sourceLang)];
 
+    $participationIndicator = $decision->getParticipationIndicatorForUser($currentUserId, $currentUserEmail);
     $decisionEntries[] = [
         'id' => $decisionId,
         'title' => trim((string)$decision->get('title')),
@@ -1227,6 +1240,10 @@ foreach ($decisionRows as $row) {
         'description' => trim((string)$decision->get('description')),
         'status' => $status,
         'statusLabel' => $statusLabels[$status] ?? ucfirst($status),
+        'participationIndicator' => $participationIndicator,
+        'participationIndicatorLabel' => $participationIndicator !== ''
+            ? t('decisions.index.participation.' . $participationIndicator, [], $lang, $sourceLang)
+            : '',
         'decisionType' => $decisionType,
         'decisionTypeLabel' => $typeLabels[$decisionType] ?? $decisionType,
         'evaluationMethod' => $method,
@@ -1526,7 +1543,7 @@ if (!is_string($payloadJson)) {
 
 <script src="<?= commonAssetUrl('/common/drawer/subdrawer.js') ?>"></script>
 <script src="<?= commonAssetUrl('/omo/assets/js/application-view-preferences.js') ?>"></script>
-<link rel="stylesheet" href="/common/choice/decision_cards.css?v=20260923-compact-editor">
+<link rel="stylesheet" href="<?= commonAssetUrl('/common/choice/decision_cards.css') ?>">
 <script src="/common/choice/decision_cards.js"></script>
 
 <link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/decision/index.css') ?>">

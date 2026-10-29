@@ -2052,6 +2052,7 @@ function omoHolonTemplateRenderValueInputHtml(property) {
     const formatId = Number(normalizedProperty.formatId || 0);
     const safeValue = normalizedProperty.value !== undefined && normalizedProperty.value !== null ? String(normalizedProperty.value) : '';
     const valueDisabled = normalizedProperty.canEditValue ? '' : ' disabled';
+    if (formatId === 2 && normalizedProperty.listItemType === 'value') return window.omoPropertyValues.render(omoHolonTemplateParseStoredListValue(safeValue), !normalizedProperty.canEditValue);
 
     if (formatId === 2) {
         const listValues = omoHolonTemplateParseStoredListValue(safeValue);
@@ -2191,11 +2192,11 @@ function omoHolonTemplateCreatePropertyRow(property) {
         + '  </div>'
         + window.omoPropertyTypes.render(normalizedProperty, omoHolonTemplateState.propertyTypes || omoHolonTemplateState.data.propertyTypes, omoHolonTemplateTexts.propertyType, normalizedProperty.canEditDefinition)
         + omoHolonTemplateRenderListConfigHtml(normalizedProperty)
-        + '  <' + ([5, 7].indexOf(Number(normalizedProperty.formatId || 0)) >= 0 ? 'div' : 'label') + ' class="omo-field omo-template-property__value-field">'
+        + '  <' + ([5, 7].indexOf(Number(normalizedProperty.formatId || 0)) >= 0 || normalizedProperty.listItemType === 'value' ? 'div' : 'label') + ' class="omo-field omo-template-property__value-field">'
         + '      <span>Valeur heritee par defaut</span>'
         + '      <div class="omo-template-property__value-control">' + omoHolonTemplateRenderValueInputHtml(normalizedProperty) + '</div>'
         + '      <small class="omo-template-property__value-help">' + omoHolonTemplateEscapeHtml(omoHolonTemplateGetValueHelpText(normalizedProperty.formatId, normalizedProperty)) + '</small>'
-        + '  </' + ([5, 7].indexOf(Number(normalizedProperty.formatId || 0)) >= 0 ? 'div' : 'label') + '>'
+        + '  </' + ([5, 7].indexOf(Number(normalizedProperty.formatId || 0)) >= 0 || normalizedProperty.listItemType === 'value' ? 'div' : 'label') + '>'
         + '  <div class="omo-template-property__actions">'
         + '      <button type="button" class="omo-button omo-button--ghost" data-property-move="-1">Monter</button>'
         + '      <button type="button" class="omo-button omo-button--ghost" data-property-move="1">Descendre</button>'
@@ -2218,6 +2219,7 @@ function omoHolonTemplateRefreshPropertyIndexes() {
 function omoHolonTemplateSerializePropertyValue(row, formatId, listItemType) {
     if (row.dataset.listConversionFrom) return String(row.dataset.conversionValue || '');
     if (row.dataset.canEditValue === '0') return String(row.dataset.value || '');
+    if ([2, 7].includes(Number(formatId)) && listItemType === 'value') return window.omoPropertyValues.serialize(row, formatId);
     const htmlFieldHost = row.querySelector('[data-omo-html-field="1"]');
     if (Number(formatId || 0) === 5 && htmlFieldHost && htmlFieldHost.__omoSimpleHtmlField && typeof htmlFieldHost.__omoSimpleHtmlField.getValue === 'function') {
         return String(htmlFieldHost.__omoSimpleHtmlField.getValue() || '');
@@ -2493,6 +2495,7 @@ function omoHolonTemplateReadPropertyState(row) {
 }
 
 function omoHolonTemplateFormatInheritedItem(item, property) {
+    if (property.listItemType === 'value') return String(item.title || '');
     const listItemType = String(property.listItemType || 'text');
     const rawValue = item !== undefined && item !== null ? String(item) : '';
 
@@ -2532,6 +2535,8 @@ function omoHolonTemplateFormatInheritedItem(item, property) {
 }
 
 function omoHolonTemplateRenderInheritedValueHtml(property) {
+    if (property.listItemType === 'value' && [2, 7].includes(Number(property.formatId))) return window.omoPropertyValues.previewStored(property.inheritedValue || '', property.formatId);
+
     const normalizedProperty = omoHolonTemplateNormalizeProperty(property);
     const inheritedValue = normalizedProperty.inheritedValue !== undefined && normalizedProperty.inheritedValue !== null
         ? String(normalizedProperty.inheritedValue)

@@ -1691,6 +1691,16 @@ function appendDetailedActionMenuButton(card, item) {
     }
 }
 
+function buildParticipationIndicatorHtml(item) {
+    const state = String(item && item.participationIndicator || '');
+    const label = String(item && item.participationIndicatorLabel || '');
+    if (['elaboration', 'pending', 'submitted'].indexOf(state) === -1 || label === '') {
+        return '';
+    }
+    return '<span class="choice-participation-indicator choice-participation-indicator--' + state
+        + '" role="img" aria-label="' + escapeHtml(label) + '" title="' + escapeHtml(label) + '"></span>';
+}
+
 function renderCompactRow(item) {
     const article = document.createElement('article');
     article.className = 'omo-decisions__item-shell generic-file-list__item-shell';
@@ -1728,7 +1738,7 @@ function renderCompactRow(item) {
             + '</div>'
         + '</div>'
         + '<div class="generic-file-list__cell" data-label="' + escapeHtml(payload.text && payload.text.compactHeaderStatus ? payload.text.compactHeaderStatus : 'Statut') + '">'
-            + '<span class="omo-decisions__compact-status">' + escapeHtml(item && item.statusLabel ? item.statusLabel : '') + '</span>'
+            + '<span class="omo-decisions__compact-status">' + escapeHtml(item && item.statusLabel ? item.statusLabel : '') + buildParticipationIndicatorHtml(item) + '</span>'
         + '</div>'
         + '<div class="generic-file-list__cell" data-label="' + escapeHtml(payload.text && payload.text.compactHeaderScope ? payload.text.compactHeaderScope : 'Structure') + '">'
             + '<span class="omo-decisions__compact-scope">' + escapeHtml(scopeLabel) + '</span>'
@@ -1934,6 +1944,10 @@ function renderCard(item) {
             openTitleAttribute: 'data-open-title'
         });
 
+        const status = card.querySelector('.omo-decisions-card__status');
+        if (status) {
+            status.insertAdjacentHTML('beforeend', buildParticipationIndicatorHtml(item));
+        }
         card.setAttribute('data-omo-decision-id', String(Number(item && item.id ? item.id : 0) || 0));
         card.querySelectorAll('[data-open-url]').forEach(function (button, buttonIndex) {
             const action = Array.isArray(item && item.actions) ? item.actions[buttonIndex] : null;
@@ -1995,7 +2009,7 @@ function renderCard(item) {
             + '<span class="omo-decisions-card__summary-copy">'
                 + '<span class="omo-decisions-card__summary-top">'
                     + '<span class="omo-decisions-card__title-line"><span class="omo-decisions-card__title generic-title generic-title--item">' + escapeHtml(item.title || '') + '</span>' + buildDecisionVisibilityIconHtml(item, 'omo-decisions-card__title-icon') + '</span>'
-                    + '<span class="omo-decisions-card__status">' + escapeHtml(item.statusLabel || '') + '</span>'
+                    + '<span class="omo-decisions-card__status">' + escapeHtml(item.statusLabel || '') + buildParticipationIndicatorHtml(item) + '</span>'
                 + '</span>'
                 + '<span class="omo-decisions-card__summary-bottom">'
                     + (ownerName !== '' ? '<span class="omo-decisions-card__owner-name">' + escapeHtml(ownerName) + '</span>' : '')

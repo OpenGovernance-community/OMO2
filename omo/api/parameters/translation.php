@@ -11,6 +11,8 @@ function omoParametersIndexSourceLang()
     }
 
     $sourceLang = [
+        'parameters.index.card.calendar.title' => ['text' => 'Calendrier', 'context' => 'Organization calendar settings card title.'],
+        'parameters.index.card.calendar.description' => ['text' => 'Definir les heures de debut et de fin de journee utilisees en absence d horaires personnels actifs.', 'context' => 'Organization calendar settings card description.'],
         'parameters.index.card.security.title' => ['text' => 'Sécurité', 'context' => 'Organization security settings card title.'],
         'parameters.index.card.security.description' => ['text' => 'Configurer l’envoi automatique des sauvegardes de l’organisation par e-mail.', 'context' => 'Organization backup settings card description.'],
         'parameters.index.card.security.cta' => ['text' => 'configurer', 'context' => 'Open organization security settings.'],

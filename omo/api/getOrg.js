@@ -1,4 +1,13 @@
 
+$(document)
+  .off('click.omoOrgValueRules', '[data-value-rules-popup]')
+  .on('click.omoOrgValueRules', '[data-value-rules-popup]', function (event) {
+    if (typeof window.commonTopbarOpenModal !== 'function') return;
+    event.preventDefault();
+    event.stopPropagation();
+    window.commonTopbarOpenModal(this.dataset.popupTitle || this.textContent, this.getAttribute('href'), 'fetch');
+  });
+
 function omoCloseHolonMenus() {
     $('#panel-left [data-holon-menu="1"]').each(function () {
         $(this).removeClass('is-open');

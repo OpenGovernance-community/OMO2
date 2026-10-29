@@ -306,6 +306,7 @@ $drawerTitle = (($editorData['mode'] ?? 'create') === 'edit') ? 'Modifier l’é
 <script src="/common/assets/multiline-list-paste.js"></script>
 <script src="/common/assets/property-list-conversion.js"></script>
 <script src="/common/assets/property-types.js"></script>
+<script src="<?= commonAssetUrl('/common/assets/property-values.js') ?>"></script>
 <link rel="stylesheet" href="/common/permissions/editor.css?v=20260923-permission-align">
 <script src="/common/permissions/editor.js?v=20260930-member-admin"></script>
 <?= commonPageScriptTags('/omo/api/holons/editor.js', [

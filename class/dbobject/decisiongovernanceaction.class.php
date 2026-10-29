@@ -166,6 +166,7 @@ class DecisionGovernanceAction extends DbObject
             'IDholon' => (int)$rule->get('IDholon') > 0 ? (int)$rule->get('IDholon') : null,
             'title' => trim((string)$rule->get('title')),
             'intention' => Rule::sanitizeContentHtml((string)$rule->get('intention')),
+            'IDvaleur' => (int)$rule->get('IDvaleur') ?: null,
             'description' => Rule::sanitizeContentHtml((string)$rule->get('description')),
             'scope' => Rule::normalizeScope($rule->get('scope')),
             'review_date' => self::normalizeDateValue($rule->get('review_date')),
@@ -182,6 +183,7 @@ class DecisionGovernanceAction extends DbObject
             'IDholon' => (int)($state['IDholon'] ?? 0) > 0 ? (int)$state['IDholon'] : null,
             'title' => trim((string)($state['title'] ?? '')),
             'intention' => Rule::sanitizeContentHtml((string)($state['intention'] ?? '')),
+            'IDvaleur' => (int)($state['IDvaleur'] ?? 0) ?: null,
             'description' => Rule::sanitizeContentHtml((string)($state['description'] ?? '')),
             'scope' => Rule::normalizeScope($state['scope'] ?? Rule::SCOPE_LOCAL),
             'review_date' => self::normalizeDateValue($state['review_date'] ?? ''),
@@ -200,6 +202,7 @@ class DecisionGovernanceAction extends DbObject
             return ['status' => false, 'message' => 'La règle doit être définie dans le contexte de la décision.'];
         }
         $state = self::normalizeRuleState($afterState, $rule);
+        if ($state['IDvaleur'] && !Valeur::loadInOrganization($state['IDvaleur'], $rule->getOrganizationId())) return ['status' => false, 'message' => 'Valeur introuvable dans cette organisation.'];
         $scopeValidation = Rule::validateScopeAttachment($afterState['scope'] ?? $state['scope'], $ruleHolon, $state['IDauthority']);
         if (empty($scopeValidation['status'])) return ['status' => false, 'message' => $scopeValidation['text']];
         if ((int)$state['IDauthority'] > 0) {
@@ -224,6 +227,10 @@ class DecisionGovernanceAction extends DbObject
         $state = self::normalizeRuleState($afterState);
         $holon = new Holon();
         if (!$holon->load((int)$expectedHolonId)) return ['status' => false, 'message' => 'Espace introuvable.'];
+        $root = new Holon();
+        $valueOrganizationId = (int)$holon->get('IDorganization');
+        if (!$valueOrganizationId && $root->load((int)$holon->get('IDholon_org'))) $valueOrganizationId = (int)$root->get('IDorganization');
+        if ($state['IDvaleur'] && !Valeur::loadInOrganization($state['IDvaleur'], $valueOrganizationId)) return ['status' => false, 'message' => 'Valeur introuvable dans cette organisation.'];
         $scopeValidation = Rule::validateScopeAttachment($afterState['scope'] ?? $state['scope'], $holon, $state['IDauthority']);
         if (empty($scopeValidation['status'])) return ['status' => false, 'message' => $scopeValidation['text']];
         if ((int)$state['IDauthority'] > 0) {
@@ -505,6 +512,7 @@ class DecisionGovernanceAction extends DbObject
     {
         $labels = [
             'IDauthority' => 'Domaine d’autorité',
+            'IDvaleur' => 'Valeur',
             'scope' => 'Portée',
             'title' => 'Titre',
             'intention' => 'Intention',
@@ -524,6 +532,12 @@ class DecisionGovernanceAction extends DbObject
                 $scopeLabels = array_column(Rule::attributeValues()['scope'], 1, 0);
                 $before = $scopeLabels[Rule::normalizeScope($before)] ?? $before;
                 $after = $scopeLabels[Rule::normalizeScope($after)] ?? $after;
+            }
+            if ($field === 'IDvaleur' && $before !== $after) {
+                $value = new Valeur();
+                if ((int)$before > 0 && $value->load((int)$before)) $before = (string)$value->get('title');
+                $value = new Valeur();
+                if ((int)$after > 0 && $value->load((int)$after)) $after = (string)$value->get('title');
             }
             if ($field === 'IDauthority' && $before !== $after) {
                 $labelsById = Authority::getLabelsByIds(array_filter([(int)$before, (int)$after]));
@@ -549,6 +563,7 @@ class DecisionGovernanceAction extends DbObject
     {
         $items = [];
         foreach ([
+            'IDvaleur' => 'Valeur',
             'scope' => 'Portée',
             'title' => 'Titre',
             'intention' => 'Intention',
@@ -559,6 +574,10 @@ class DecisionGovernanceAction extends DbObject
             $value = in_array($field, ['description', 'intention'], true)
                 ? DecisionProposal::descriptionToPlainText((string)($state[$field] ?? ''))
                 : trim(strip_tags((string)($state[$field] ?? '')));
+            if ($field === 'IDvaleur') {
+                $linkedValue = new Valeur();
+                $value = (int)$value > 0 && $linkedValue->load((int)$value) ? (string)$linkedValue->get('title') : '';
+            }
             if ($field === 'scope') $value = array_column(Rule::attributeValues()['scope'], 1, 0)[Rule::normalizeScope($value)];
             if ($value === '') {
                 continue;

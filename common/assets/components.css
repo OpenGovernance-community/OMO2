@@ -1500,6 +1500,13 @@ html[data-theme="dark"] .black-icon,
     line-height: 1.2;
 }
 
+.generic-action-button--pill {
+    border-radius: 999px;
+    min-height: 26px;
+    padding: 3px 8px;
+    gap: var(--generic-space-1);
+}
+
 /* Inline disclosure actions displayed as links, with native button interaction. */
 .generic-action-button--link {
     min-height: auto;
@@ -1989,6 +1996,14 @@ html[data-theme="dark"] .black-icon,
     box-shadow: var(--generic-form-control-focus-shadow);
     background: var(--generic-form-control-background-focus);
 }
+
+/* Read-only HTML flows normally, with half a line between paragraphs. */
+.generic-rich-text p {
+    margin: 0 0 0.5lh;
+}
+
+.generic-rich-text > :first-child { margin-top: 0; }
+.generic-rich-text > :last-child { margin-bottom: 0; }
 
 /* Shared HTML controls: the same three-line surface before and after activation.
    Consumers may change the line count or viewport cap for a documented variation. */

@@ -70,7 +70,7 @@ class McpCalendar extends DbObject
             catch (\Throwable $error) { $refreshFailed = true; error_log('OMO MCP availability refresh failed: ' . get_class($error)); }
             $busy = \commonUserAvailabilityLoadBusyIntervals($uid, $start, $end, $unknown);
             $unknown = $unknown || $refreshFailed; $incomplete = $incomplete || $unknown;
-            $hours = MeetingProfile::isStorageAvailable() ? MeetingProfile::forUser($uid)->availabilityHours() : MeetingProfile::defaultHours();
+            $hours = MeetingProfile::isStorageAvailable() ? MeetingProfile::forUser($uid)->availabilityHours($org) : $org->getCalendarAvailabilityHours();
             $free = []; $clippedBusy = [];
             foreach ($busy as [$busyStart, $busyEnd]) {
                 if ($busyStart < $end && $busyEnd > $start) $clippedBusy[] = [max($start, $busyStart), min($end, $busyEnd)];

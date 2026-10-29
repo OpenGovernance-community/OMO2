@@ -43,6 +43,8 @@ function commonCalendarAvailabilityPreviewSourceLang(): array
 function commonCalendarRenderInviteeAvailability(\dbObject\Event $previewEvent, array $targets, callable $translate, int $excludedEventId = 0, bool $compactHelp = false): void
 {
     $organizationId = (int)$previewEvent->get('IDorganization');
+    $availabilityOrganization = new \dbObject\Organization();
+    $availabilityOrganization->load($organizationId);
     $zone = new DateTimeZone('Europe/Zurich');
     $today = new DateTimeImmutable('today', $zone);
     $monthValue = trim((string)($_POST['month'] ?? $today->format('Y-m')));
@@ -75,8 +77,8 @@ function commonCalendarRenderInviteeAvailability(\dbObject\Event $previewEvent, 
             }
             commonExternalCalendarRefreshForAvailability((int)$userId, $refreshDeadline);
             $hours = \dbObject\MeetingProfile::isStorageAvailable()
-                ? \dbObject\MeetingProfile::forUser((int)$userId)->availabilityHours()
-                : \dbObject\MeetingProfile::defaultHours();
+                ? \dbObject\MeetingProfile::forUser((int)$userId)->availabilityHours($availabilityOrganization)
+                : $availabilityOrganization->getCalendarAvailabilityHours();
             $calendarIncomplete = false;
             $busy = commonUserAvailabilityLoadBusyIntervals((int)$userId, $rangeStart, $rangeEnd, $calendarIncomplete, $excludedEventId);
             $incomplete = $incomplete || $calendarIncomplete;

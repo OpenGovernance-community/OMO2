@@ -21,7 +21,7 @@ class Rule extends DbObject
         return [
             [['title', 'description', 'review_date', 'expiration_date'], 'required'],
             [['id'], 'integer'],
-            [['IDauthority', 'IDholon', 'IDorganization', 'IDuser_creation', 'IDuser_modification'], 'fk'],
+            [['IDauthority', 'IDholon', 'IDorganization', 'IDuser_creation', 'IDuser_modification', 'IDvaleur'], 'fk'],
             [['title', 'scope'], 'string'],
             [['intention', 'description'], 'html'],
             [['review_date', 'expiration_date'], 'date'],
@@ -40,6 +40,7 @@ class Rule extends DbObject
             'IDorganization' => 'Organisation',
             'title' => 'Titre',
             'intention' => 'Intention',
+            'IDvaleur' => 'Valeur',
             'description' => 'Descriptif',
             'scope' => 'Portée',
             'review_date' => 'Date de requestionnement',
@@ -262,6 +263,11 @@ class Rule extends DbObject
             return ['status' => false, 'text' => 'The rule organization could not be resolved.'];
         }
         $this->set('IDorganization', $organizationId);
+        $valueId = (int)$this->get('IDvaleur');
+        if ($valueId > 0 && !Valeur::loadInOrganization($valueId, $organizationId)) {
+            return ['status' => false, 'text' => 'La valeur choisie doit appartenir a cette organisation.'];
+        }
+        $this->set('IDvaleur', $valueId > 0 ? $valueId : null);
 
         $scopeHolon = $this->getHolon();
         if (!$scopeHolon instanceof Holon) {
@@ -308,6 +314,7 @@ class Rule extends DbObject
             'IDholon',
             'title',
             'intention',
+            'IDvaleur',
             'description',
             'scope',
             'review_date',

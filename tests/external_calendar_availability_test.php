@@ -86,8 +86,8 @@ try {
     $last = end($combined['slots']);
     openingExpect($last['busyCount'] === 1 && $last['participantCount'] === 2, 'Opening restrictions count once per guest in the team gradient.');
     $profile->set('enabled', 0);
-    $unrestricted = commonUserAvailabilityEncodeDay(commonUserAvailabilityBuildDay($day, $profile->availabilityHours(), $busy));
-    openingExpect($unrestricted[16] === '1' && $unrestricted[24] === '1' && $unrestricted[28] === '2', 'Disabled appointment booking disables weekly hours and lunch, but preserves external opening restrictions.');
+    $fallback = commonUserAvailabilityEncodeDay(commonUserAvailabilityBuildDay($day, $profile->availabilityHours($organization), $busy));
+    openingExpect($fallback[16] === '0' && $fallback[18] === '1' && $fallback[24] === '1' && $fallback[28] === '2', 'Disabled appointment booking uses organization hours without a personal lunch break, preserving external opening restrictions.');
     $profile->set('enabled', 1);
 
     $proposed = new Event();

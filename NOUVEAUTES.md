@@ -1,5 +1,23 @@
 # Journal des nouveautés
 
+- Holons / principes des valeurs (2026-10-29) : retrait de generic-form-stack du conteneur du principe ; paragraphes en flux normal avec une demi-ligne d espacement.
+
+- Connexion / renvoi de code (2026-10-29) : bouton desactive pendant 60 secondes apres chaque envoi, avec decompte visible et reprise du temps restant apres rechargement de la page.
+
+- Holons / presentation des regles associees (2026-10-29) : compteur integre sous forme de capsule arrondie compacte (padding reduit, hauteur 26 px) avec survol discret, masque en l absence de regles ; marges uniformes et espacement resserre des cartes dans la popup.
+
+- Holons / regles associees aux valeurs (2026-10-29) : listes sans puces, compteur de regles dans le principe et popup reutilisant les cartes du reglement, avec regle puis intention depliables. Champs des editeurs de regles ordonnes regle, intention, valeur incarnee. Acces et compteurs verifies par HTTP, affichage teste sur ordinateur et mobile.
+
+- Holons / valeurs (2026-10-29) : nouveau type de liste Valeur, avec titre et principe HTML dans un objet de base de donnees dedie. Creation dans les holons et modeles, principe depliable dans la structure, et lien facultatif entre une regle et une valeur affiche dans son intention. Propositions de regles et droits existants pris en compte ; sauvegardes annulees en cas d erreur. Tests PHP 8.5 et JavaScript.
+
+- Calendrier / horaires de l organisation (2026-10-28) : rubrique Calendrier dans les parametres Admin pour definir le debut et la fin de journee par defaut (09:00-17:00 initialement). Utilises pour les disponibilites individuelles, communes et via MCP en absence d horaires personnels actifs ; niveau de disponibilite calcule sur cette plage. Jours personnels, pauses et agendas existants conserves.
+
+- OMO / mini-carte de navigation (2026-10-28) : clic sur le fond gris pour revenir a la racine de l organisation, avec curseur et libelle de survol adaptes. Selection des cercles conservee.
+
+- Scrutins / suivi de participation (2026-10-28) : pastille pres du statut en vues compacte et detaillee, jaune en elaboration et rouge lorsqu une reponse reste attendue en evaluation. Pastille verte fixe apres envoi de toutes les reponses ; invitations actives et groupes de scrutin pris en compte. LeftBar inchangee.
+
+- Migration OMO1 / droits (2026-10-28) : export du projet adjacent DevOMO aligne sur les templates de l organisation Docker 2384 (Demarche Z), avec les correspondances pilotage/Premier lien, representation/Second lien et Memoire/Secretaire. Conservation des droits collectifs, des portees et des autorites etendues ; aucune modification de l organisation de reference.
+
 - PV / e-mails en revision (2026-10-28) : action Envoyer un e-mail aux participants disponible pendant la reunion et en revision, avec choix des destinataires et message personnalisable. Objet et texte proposes adaptes a la relecture ; acces conserve pour les gestionnaires autorises, sans rouvrir la modification des invites. Controle de l historique aligne sur ces droits pour permettre l enregistrement avant envoi ; test reel en base en preparation, reunion et revision.
 
 - Reunions / invites et presence (2026-10-27) : collage d adresses au format Prenom Nom <adresse@exemple.ch>, seules ou en liste. Noms conserves dans les invitations et a la reouverture du formulaire, puis affiches dans la liste de presence des reunions et des PV ; adresses seules toujours acceptees et doublons regroupes par e-mail. Placeholder avec exemples des deux formats acceptes.

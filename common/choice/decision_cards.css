@@ -468,6 +468,46 @@
     white-space: nowrap;
 }
 
+.choice-participation-indicator {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    flex: 0 0 auto;
+    margin-inline-start: 8px;
+    border: 2px solid var(--color-surface, #fff);
+    border-radius: 50%;
+    background: currentColor;
+    vertical-align: middle;
+}
+
+.choice-participation-indicator--pending {
+    color: #ef2424;
+}
+
+.choice-participation-indicator--elaboration {
+    color: #eab308;
+}
+
+.choice-participation-indicator--submitted {
+    color: #22a447;
+}
+
+.choice-participation-indicator--pending,
+.choice-participation-indicator--elaboration {
+    animation: choice-participation-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes choice-participation-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 65%, transparent); }
+    50% { box-shadow: 0 0 0 5px color-mix(in srgb, currentColor 12%, transparent); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .choice-participation-indicator {
+        animation: none;
+    }
+}
+
 .omo-decisions-card__badges,
 .omo-decisions-card__meta {
     display: flex;

@@ -38,6 +38,7 @@
 
     const authTexts = {
         'auth.button.resend_code': 'Envoyer un nouveau code',
+        'auth.button.resend_code_countdown': 'Envoyer un nouveau code ({seconds} s)',
         'auth.button.send_code': 'Envoyer le code',
         'auth.button.send_other_challenge': 'Envoyer un autre calcul',
         'auth.button.sign_in_password': 'Se connecter',
@@ -106,6 +107,10 @@
     let pendingTotpTokenExpiresAt = 0;
     let pendingTokenExpiryTimer = null;
     let loginRequestInFlight = false;
+    let loginControlsDisabled = false;
+    let resendAvailableAt = 0;
+    let resendTimer = null;
+    const resendStorageKey = 'commonLoginResendAvailableAt';
     let challengeVisible = false;
     let passwordLoginAvailable = true;
     const storageKey = 'commonLoginPendingToken';
@@ -123,6 +128,34 @@
 
     function t(key, variables) {
         return interpolate(authTexts[key] || '', variables || {});
+    }
+
+    function refreshResendControl() {
+        if (resendTimer !== null) {
+            window.clearTimeout(resendTimer);
+            resendTimer = null;
+        }
+        const seconds = Math.max(0, Math.ceil((resendAvailableAt - Date.now()) / 1000));
+        if (resendLink) {
+            resendLink.textContent = seconds > 0
+                ? t('auth.button.resend_code_countdown', {seconds: seconds})
+                : t('auth.button.resend_code');
+            resendLink.disabled = loginControlsDisabled || seconds > 0;
+            setLinkDisabled(resendLink, resendLink.disabled);
+        }
+        if (seconds > 0) {
+            resendTimer = window.setTimeout(refreshResendControl, Math.min(1000, resendAvailableAt - Date.now()));
+        }
+    }
+
+    function startResendCountdown() {
+        resendAvailableAt = Date.now() + 60000;
+        try {
+            window.sessionStorage.setItem(resendStorageKey, String(resendAvailableAt));
+        } catch (error) {
+            // The countdown still works when browser storage is unavailable.
+        }
+        refreshResendControl();
     }
 
     function mergeTranslations(payload) {
@@ -441,15 +474,14 @@
     }
 
     function setLoginControlsDisabled(disabled) {
+        loginControlsDisabled = !!disabled;
         if (submit) {
             submit.disabled = !!disabled;
         }
         if (challengeSubmit) {
             challengeSubmit.disabled = !!disabled;
         }
-        if (resendLink) {
-            resendLink.disabled = !!disabled;
-        }
+        refreshResendControl();
         if (passwordInput) {
             passwordInput.disabled = !!disabled;
         }
@@ -535,9 +567,7 @@
         if (totpIntro) totpIntro.textContent = t('auth.totp.instructions');
         if (totpInput) totpInput.placeholder = t('auth.totp.placeholder');
         if (totpSubmit) totpSubmit.textContent = t('auth.button.validate_mfa');
-        if (resendLink) {
-            resendLink.textContent = t('auth.button.resend_code');
-        }
+        refreshResendControl();
         if (resetLink) {
             resetLink.textContent = t('auth.link.reset_password');
         }
@@ -745,7 +775,7 @@
     }
 
     function submitLogin(answer) {
-        if (loginRequestInFlight) {
+        if (loginRequestInFlight || Date.now() < resendAvailableAt) {
             return;
         }
 
@@ -797,6 +827,7 @@
                 }
 
                 if ((data.status === 'code_sent' || data.status === 'code_pending') && data.request_token) {
+                    startResendCountdown();
                     setPasswordLoginAvailable(data.password_login_enabled !== false);
                     storePendingToken(data.request_token);
                     hideChallengeBox();
@@ -1105,6 +1136,13 @@
         });
     }
 
+    try {
+        const storedResendAvailableAt = Number(window.sessionStorage.getItem(resendStorageKey));
+        if (Number.isFinite(storedResendAvailableAt)) resendAvailableAt = storedResendAvailableAt;
+    } catch (error) {
+        // Browser storage is optional for the resend countdown.
+    }
+    document.addEventListener('visibilitychange', refreshResendControl);
     pendingToken = config.initialPendingToken || loadPendingToken();
     pendingTotpToken = config.initialPendingTotpToken || loadPendingTotpToken();
     if (config.initialPendingToken) {

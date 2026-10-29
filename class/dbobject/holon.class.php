@@ -4463,7 +4463,10 @@
 				$holonProperty->set('mandatory', false);
 				$holonProperty->set('locked', false);
 				$holonProperty->set('active', true);
-				$holonProperty->save();
+				$result = $holonProperty->save();
+				if (empty($result['status']) && ($definition['listItemType'] ?? '') === Property::LIST_ITEM_VALUE) {
+					throw new \RuntimeException($result['text'] ?? 'Enregistrement des valeurs impossible.');
+				}
 
 				$definition['id'] = (int)$property->getId();
 				$definition['isTemplateProperty'] = false;
@@ -4531,7 +4534,10 @@
 				$holonProperty->set('mandatory', false);
 				$holonProperty->set('locked', false);
 				$holonProperty->set('active', true);
-				$holonProperty->save();
+				$result = $holonProperty->save();
+				if (empty($result['status']) && ($definition['listItemType'] ?? '') === Property::LIST_ITEM_VALUE) {
+					throw new \RuntimeException($result['text'] ?? 'Enregistrement des valeurs impossible.');
+				}
 			}
 
 			foreach ($existingByPropertyId as $propertyId => $holonProperty) {
@@ -4727,7 +4733,10 @@
 					$holonProperty->set('mandatory', $localMandatory);
 					$holonProperty->set('locked', $localLocked);
 					$holonProperty->set('active', true);
-					$holonProperty->save();
+					$result = $holonProperty->save();
+					if (empty($result['status']) && ($definition['listItemType'] ?? '') === Property::LIST_ITEM_VALUE) {
+						throw new \RuntimeException($result['text'] ?? 'Enregistrement des valeurs impossible.');
+					}
 
 					if ($holonProperty->getId() > 0) {
 						$retainedHolonPropertyIds[$holonProperty->getId()] = true;
@@ -4796,7 +4805,10 @@
 				$holonProperty->set('mandatory', $localMandatory);
 				$holonProperty->set('locked', $localLocked);
 				$holonProperty->set('active', true);
-				$holonProperty->save();
+				$result = $holonProperty->save();
+				if (empty($result['status']) && ($definition['listItemType'] ?? '') === Property::LIST_ITEM_VALUE) {
+					throw new \RuntimeException($result['text'] ?? 'Enregistrement des valeurs impossible.');
+				}
 
 				if ($holonProperty->getId() > 0) {
 					$retainedHolonPropertyIds[$holonProperty->getId()] = true;

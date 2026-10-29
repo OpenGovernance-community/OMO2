@@ -72,6 +72,7 @@ $editorState = [
     'IDauthority' => null,
     'title' => '',
     'intention' => '',
+    'IDvaleur' => null,
     'description' => '',
     'review_date' => $defaultReview,
     'expiration_date' => $defaultExpiration,

@@ -36,6 +36,43 @@ class ArrayRule extends ArrayDbObject
         ]);
     }
 
+    public static function countByValue(int $organizationId): array
+    {
+        $counts = [];
+        $rows = Rule::fetchAll(
+            'SELECT r.`IDvaleur`, COUNT(*) AS rule_count
+             FROM `rule` r
+             LEFT JOIN `authority` a ON a.`id` = r.`IDauthority`
+             LEFT JOIN `holon` h ON h.`id` = COALESCE(r.`IDholon`, a.`IDholon`)
+             WHERE r.`IDorganization` = :organization_id AND r.`IDvaleur` IS NOT NULL
+               AND h.`archived_at` IS NULL
+             GROUP BY r.`IDvaleur`',
+            ['organization_id' => $organizationId]
+        );
+        foreach ($rows ?: [] as $row) $counts[(int)$row['IDvaleur']] = (int)$row['rule_count'];
+        return $counts;
+    }
+
+    public function loadForValue(int $valueId, int $organizationId): void
+    {
+        $this->exchangeArray([]);
+        if ($valueId <= 0 || $organizationId <= 0) return;
+        $rows = Rule::fetchAll(
+            'SELECT r.* FROM `rule` r
+             LEFT JOIN `authority` a ON a.`id` = r.`IDauthority`
+             LEFT JOIN `holon` h ON h.`id` = COALESCE(r.`IDholon`, a.`IDholon`)
+             WHERE r.`IDvaleur` = :value_id AND r.`IDorganization` = :organization_id
+               AND h.`archived_at` IS NULL
+             ORDER BY r.`title` ASC, r.`id` ASC',
+            ['value_id' => $valueId, 'organization_id' => $organizationId]
+        );
+        foreach ($rows ?: [] as $row) {
+            $rule = new Rule();
+            $rule->hydrateFromDatabaseRow($row, true);
+            $this[] = $rule;
+        }
+    }
+
     public function loadForPolicyContext($organizationId, Holon $contextHolon)
     {
         $this->loadForPolicyContexts($organizationId, [(int)$contextHolon->getId()]);

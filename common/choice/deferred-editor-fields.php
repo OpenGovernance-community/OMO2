@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/rule-scope-fields.php';
 require_once __DIR__ . '/rule-date-fields.php';
+require_once __DIR__ . '/rule-value-fields.php';
 require_once __DIR__ . '/holon-removal-fields.php';
 require_once dirname(__DIR__) . '/holon_scope_helper.php';
 
@@ -107,8 +108,9 @@ function omoDeferredEditorRenderFields(string $targetType, array $state, array $
         <?php endif; ?>
         <?php if ($targetType === 'rule'): ?>
             <?php omoRuleScopeRenderFields($state, $state['scopeContext'] ?? []); ?>
-            <?php $htmlField('intention', 'intention'); ?>
             <?php $htmlField('description', 'rule'); ?>
+            <?php $htmlField('intention', 'intention'); ?>
+            <?php omoRuleValueRenderField((int)($_SESSION['currentOrganization'] ?? 0), (int)($state['IDvaleur'] ?? 0)); ?>
             <div class="generic-form-grid">
                 <?php foreach (['review_date', 'expiration_date'] as $field): ?>
                     <label class="generic-form-field"><span class="generic-form-label"><?= $label($field) ?></span><?php omoRuleDateRenderInput($field, $state[$field] ?? ''); ?></label>

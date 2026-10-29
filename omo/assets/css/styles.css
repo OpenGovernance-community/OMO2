@@ -2273,6 +2273,11 @@ body {
     gap: var(--generic-space-3);
 }
 
+/* Embedded rule lists already receive padding from their section container. */
+.omo-policy--embedded .omo-policy__rule-card {
+    margin-inline: 0;
+}
+
 .omo-policy__rule-title {
     flex: 1 1 auto;
     min-width: 0;

@@ -285,6 +285,7 @@
                     else after.title = String(after.title || '').trim();
                     if (targetType === 'rule') {
                         after.IDauthority = Number(after.IDauthority) || null;
+                        after.IDvaleur = Number(after.IDvaleur) || null;
                         if (!strip(after.description)) {
                             if (window.commonNotify) window.commonNotify(texts.ruleContentRequired, 'error');
                             return;
